@@ -1,0 +1,9 @@
+site_name: C-LARA-2
+theme:
+  name: material
+nav:
+  - Home: docs/README.md
+  - How-to:
+      - Dev setup: docs/howto/dev-setup.md
+      - Linting & formatting: docs/howto/linting-formatting.md
+docs_dir: docs
