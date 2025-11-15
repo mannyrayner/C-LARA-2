@@ -27,9 +27,11 @@ Contract: Every in-flight API op emits heartbeat events at ~5s cadence:
 
 # src/clara2/core/telemetry.py
 
-```class Telemetry:
+```python
+class Telemetry:
 	def heartbeat(self, op_id: str, elapsed_s: float, note: str = "") -> None: ...
-	def event(self, op_id: str, level: str, msg: str, data: dict | None = None) -> None: ...```
+	def event(self, op_id: str, level: str, msg: str, data: dict | None = None) -> None: ...
+```
 
 ```openai_client.py``` wraps the OpenAI SDK:
 
