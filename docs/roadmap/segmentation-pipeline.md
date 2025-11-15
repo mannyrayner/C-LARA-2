@@ -35,7 +35,8 @@ class Telemetry:
 
 ```openai_client.py``` wraps the OpenAI SDK:
 
-```await chat_json(prompt, *, model, temperature, tools=None, response_format=None, telemetry, op_id)
+```python
+await chat_json(prompt, *, model, temperature, tools=None, response_format=None, telemetry, op_id)
 ```
 
 Handles retries (exponential backoff), httpx errors, and budget-friendly timeouts.
@@ -48,8 +49,7 @@ Ensures response_format="json_object" (or tool-calling) for structured outputs.
 
 We keep formats uniform across annotation layers.
 
-```
-# src/clara2/core/types.py
+```python
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional
 
@@ -75,7 +75,8 @@ class Text:
     l1: Optional[str] = None
     title: Optional[str] = None
     pages: List[Page] = field(default_factory=list)
-    annotations: Dict[str, str] = field(default_factory=dict)```
+    annotations: Dict[str, str] = field(default_factory=dict)
+```
 	
 Serialization: ```storage.py``` exposes ```save_text(text, path)``` / ```load_text(path)```.
 
