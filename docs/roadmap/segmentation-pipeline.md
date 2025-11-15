@@ -101,9 +101,9 @@ The generic processing flow is as follows:
 
 The segmentation operation is special because it is the first one. 
 - The input is plain text, and the output is a ```Text``` object.
-- The operation is divided into two parts. 
-- The first part converts the input plain text into a ```Text``` object where the ```Segment``` objects only contain plain text content. 
-- The second part uses the generic processing flow to convert the output of the first part into a ```Text``` object where each ```Segment``` object includes a list of ```Token``` objects.
+- The operation is divided into two parts, segmentation-phase-1 and segmentation-phase-2. 
+- segmentation-phase-1 converts the input plain text into a ```Text``` object where the ```Segment``` objects only contain plain text content. 
+- segmentation-phase-2 uses the generic processing flow to convert the output of the first part into a ```Text``` object where each ```Segment``` object includes a list of ```Token``` objects.
 
 ---
 
@@ -119,7 +119,7 @@ The segmentation operation is special because it is the first one.
   - pipeline/
     - text_gen.py				# create text from spec
     - segmentation.py			# phase-1 + phase-2 orchestration
-	- generic_annotation.py		# generic annotation for operations other than segmentation and segmentation phase-2
+	- generic_annotation.py		# generic annotation for operations other than segmentation-phase-1
 	- annotation_prompts.py		# Create prompts for use in generic annotation
   - cli/
     - seg.py					# CLI entry points for MVP (argparse/typer)
