@@ -26,14 +26,16 @@ Implement the *create text → segment pages/segments → token-level split* pip
 Contract: Every in-flight API op emits heartbeat events at ~5s cadence:
 
 # src/clara2/core/telemetry.py
-```class Telemetry:
-    def heartbeat(self, op_id: str, elapsed_s: float, note: str = "") -> None: ...
-    def event(self, op_id: str, level: str, msg: str, data: dict | None = None) -> None: ...```
 
+```
+class Telemetry:
+	def heartbeat(self, op_id: str, elapsed_s: float, note: str = "") -> None: ...
+	def event(self, op_id: str, level: str, msg: str, data: dict | None = None) -> None: ...```
 
 ```openai_client.py``` wraps the OpenAI SDK:
 
-```await chat_json(prompt, *, model, temperature, tools=None, response_format=None, telemetry, op_id)```
+```await chat_json(prompt, *, model, temperature, tools=None, response_format=None, telemetry, op_id)
+```
 
 Handles retries (exponential backoff), httpx errors, and budget-friendly timeouts.
 
@@ -104,28 +106,28 @@ The segmentation operation is special because it is the first one.
 
 ## 4) Directory layout (initial)
 
-src/clara2/
-  core/
-    types.py				# dataclasses: Text, Page, Segment, Token, etc.
-    storage.py				# local JSON read/write helpers
-    config.py				# model names, timeouts, concurrency, retry policy
-	ai_api.py				# call gpt5 and other AIs
-    telemetry.py			# heartbeat/event sink interface
-  pipeline/
-    text_gen.py				# create text from spec
-    segmentation.py			# phase-1 + phase-2 orchestration
-	generic_annotation.py	# generic annotation for operations other than segmentation and segmentation phase-2
-  cli/
-    seg.py					# CLI entry points for MVP (argparse/typer)
-  prompts/
-	segmentation_phase_1/	# Information specific to segmention phase 1 
-		fr/					# Information specific to segmention phase 1 and French				 
-			template.txt	
-			fewshots/
-		[similarly for other languages]
-    segmentation_phase_2/	# Information specific to segmention phase 2 
-		fr/					# Information specific to segmention phase 2 and French				 
-			template.txt	
-			fewshots/
-		[similarly for other languages]
-	[similarly for other annotation operations]
+- src/clara2/
+  - core/
+    - types.py				# dataclasses: Text, Page, Segment, Token, etc.
+    - storage.py				# local JSON read/write helpers
+    - config.py				# model names, timeouts, concurrency, retry policy
+	- ai_api.py				# call gpt5 and other AIs
+    - telemetry.py			# heartbeat/event sink interface
+  - pipeline/
+    - text_gen.py				# create text from spec
+    - segmentation.py			# phase-1 + phase-2 orchestration
+	- generic_annotation.py	# generic annotation for operations other than segmentation and segmentation phase-2
+  - cli/
+    - seg.py					# CLI entry points for MVP (argparse/typer)
+  - prompts/
+	- segmentation_phase_1/	# Information specific to segmention phase 1 
+		- fr/					# Information specific to segmention phase 1 and French				 
+			- template.txt	
+			- fewshots/
+		- [similarly for other languages]
+    - segmentation_phase_2/	# Information specific to segmention phase 2 
+		- fr/					# Information specific to segmention phase 2 and French				 
+			- template.txt	
+			- fewshots/
+		- [similarly for other languages]
+	- [similarly for other annotation operations]
