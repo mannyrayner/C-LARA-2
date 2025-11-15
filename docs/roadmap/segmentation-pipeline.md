@@ -91,11 +91,12 @@ Output is a ```Text``` object which includes the extra annotations.
 
 The generic processing flow is as follows:
 - Recursively descend from ```Text``` to ```Page``` to ```Segment``` and process each ```Segment``` in parallel (fan-out).
-- For each ```Segment```, first construct an appropriate prompt. The input to the prompt construction process will include 
-  - the ```Segment```
-  - a prompt template specific to the operation and source language
-  - (optionally) a list of few-shot examples specific to the operation and source language
-  - pass the prompt to the ai
+- For each ```Segment```: 
+	- Construct an appropriate prompt. The input to the prompt construction process will include 
+		- the ```Segment```
+		- a prompt template specific to the operation and source language
+		- (optionally) a list of few-shot examples specific to the operation and source language
+  - pass the prompt to the AI
 - When processing of all the ```Segment```s has completed, combine them to create the new ```Text``` object (fan-in)
 
 The segmentation operation is special because it is the first one. 
@@ -118,7 +119,8 @@ The segmentation operation is special because it is the first one.
   - pipeline/
     - text_gen.py				# create text from spec
     - segmentation.py			# phase-1 + phase-2 orchestration
-	- generic_annotation.py	# generic annotation for operations other than segmentation and segmentation phase-2
+	- generic_annotation.py		# generic annotation for operations other than segmentation and segmentation phase-2
+	- annotation_prompts.py		# Create prompts for use in generic annotation
   - cli/
     - seg.py					# CLI entry points for MVP (argparse/typer)
   - prompts/
