@@ -119,7 +119,41 @@ The ```segmentation``` operation is special because it is the first one.
 
 ---
 
-## 4) Directory layout (initial)
+## 4) Example inputs and outputs for segmentation operation
+
+Here is a minimal example of inputs and outputs for the ```segmentation``` operation.
+
+The input plain text string is the following:
+
+```
+A boy once lived with his mother in a house by the sea. The boy's name was Will. His mother's name was Emma.
+
+One day, walking on the beach, Will noticed a curious object. It looked like a very large egg.
+```
+
+A plausible output of the ```segmentation_phase_1``` operation could be the following:
+
+```python
+
+Text(l2="en",
+	 surface="""A boy once lived with his mother in a house by the sea. The boy's name was Will. His mother's name was Emma.
+
+One day, walking on the beach, Will noticed a curious object.  It looked like a very large egg.""",
+     pages=[Page(surface="A boy once lived with his mother in a house by the sea. The boy's name was Will. His mother's name was Emma.",
+	             segments=[Segment(surface="A boy once lived with his mother in a house by the sea."),
+				           Segment(surface=" The boy's name was Will")
+						   Segment(surface=" His mother's name was Emma.")
+						   ],
+			Page(surface="One day, walking on the beach, Will noticed a curious object. It looked like a very large egg.",
+	             segments=[Segment(surface="One day, walking on the beach, Will noticed a curious object."),
+				           Segment(surface=" It looked like a very large egg.")
+						   ]
+			]
+	)
+```
+---
+
+## 5) Directory layout (initial)
 
 - src/clara2/
   - core/
