@@ -131,7 +131,7 @@ A boy once lived with his mother in a house by the sea. The boy's name was Will.
 One day, walking on the beach, Will noticed a curious object. It looked like a very large egg.
 ```
 
-A plausible output of the ```segmentation_phase_1``` operation could be the following:
+A plausible output of the ```segmentation_phase_1``` operation could be the following ```Text``` object:
 
 ```python
 
@@ -141,7 +141,7 @@ Text(l2="en",
 One day, walking on the beach, Will noticed a curious object.  It looked like a very large egg.""",
      pages=[Page(surface="A boy once lived with his mother in a house by the sea. The boy's name was Will. His mother's name was Emma.",
 	             segments=[Segment(surface="A boy once lived with his mother in a house by the sea."),
-				           Segment(surface=" The boy's name was Will")
+				           Segment(surface=" The boy's name was Will."),
 						   Segment(surface=" His mother's name was Emma.")
 						   ],
 			Page(surface="One day, walking on the beach, Will noticed a curious object. It looked like a very large egg.",
@@ -151,6 +151,31 @@ One day, walking on the beach, Will noticed a curious object.  It looked like a 
 			]
 	)
 ```
+
+This ```Text``` object will be the input to the  ```segmentation_phase_2```. The output will be the same as the input, except that each ```Segment``` object will be further annotated with a ```tokens``` field. For example, the ```Segment``` object
+
+```python
+Segment(surface=" The boy's name was Will.")
+```
+
+will be transformed into 
+
+```python
+Segment(surface=" The boy's name was Will.",
+        tokens=[Token(surface=" "),
+		        Token(surface="The"),
+		        Token(surface=" "),			
+		        Token(surface="boy"),
+		        Token(surface="'s"),		
+		        Token(surface=" "),
+		        Token(surface="name"),			
+		        Token(surface=" "),
+		        Token(surface="was"),	
+		        Token(surface=" "),
+		        Token(surface="Will"),			
+		        Token(surface=".")
+               ]				
+		)
 ---
 
 ## 5) Directory layout (initial)
