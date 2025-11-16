@@ -61,11 +61,13 @@ class Token:
 
 @dataclass
 class Segment:
+	surface: str
     tokens: List[Token]
     annotations: Dict[str, str] = field(default_factory=dict)  # later: translated, mwe list
 
 @dataclass
 class Page:
+	surface: str
     segments: List[Segment]
     annotations: Dict[str, str] = field(default_factory=dict)  # page metadata (img hooks later)
 
@@ -74,6 +76,7 @@ class Text:
     l2: str
     l1: Optional[str] = None
     title: Optional[str] = None
+	surface: str
     pages: List[Page] = field(default_factory=list)
     annotations: Dict[str, str] = field(default_factory=dict)
 ```
@@ -84,12 +87,21 @@ Serialization: ```storage.py``` exposes ```save_text(text, path)``` / ```load_te
 
 ## 3) Generic processing flow for annotation operations
 
-This processing flow is used for all the annotation operations except segmentation. 
+The IDs for the annotation operations are the following: 
+- ```segmentation``` # Add segmentation information 
+- ```segmentation_phase_1``` # First part of ```segmentation``` operation
+- ```segmentation_phase_2``` # Second part of ```segmentation``` operation
+- ```translation``` # Add a translation to each ```Segment``` 
+- ```mwe``` # Add MWE (multi word expression) information to each ```Segment``` 
+- ```lemma``` # Add lemma and POS information to each ```Token``` 
+- ```gloss``` # Add gloss information to each ```Token``` 
+- ```pinyin``` # Add pinyin information to each ```Token``` (only relevant for Chinese)
 
-Input is a ```Text``` object and a specification of the type of annotations to be added.
-Output is a ```Text``` object which includes the extra annotations.
+The generic processing flow is used for all the annotation operations except ```segmentation``` and ```segmentation_phase_1```. 
 
 The generic processing flow is as follows:
+- Input is a ```Text``` object and a specification of the type of annotations to be added.
+- Output is a ```Text``` object which includes the extra annotations.
 - Recursively descend from ```Text``` to ```Page``` to ```Segment``` and process each ```Segment``` in parallel (fan-out).
 - For each ```Segment```: 
 	- Construct an appropriate prompt. The input to the prompt construction process will include 
@@ -99,11 +111,11 @@ The generic processing flow is as follows:
   - pass the prompt to the AI
 - When processing of all the ```Segment```s has completed, combine them to create the new ```Text``` object (fan-in)
 
-The segmentation operation is special because it is the first one. 
+The ```segmentation``` operation is special because it is the first one. 
 - The input is plain text, and the output is a ```Text``` object.
-- The operation is divided into two parts, segmentation-phase-1 and segmentation-phase-2. 
-- segmentation-phase-1 converts the input plain text into a ```Text``` object where the ```Segment``` objects only contain plain text content. 
-- segmentation-phase-2 uses the generic processing flow to convert the output of the first part into a ```Text``` object where each ```Segment``` object includes a list of ```Token``` objects.
+- The ```segmentation``` operation is divided into two parts, ```segmentation_phase_1``` and ```segmentation_phase_2```. 
+- ```segmentation_phase_1``` converts the input plain text into a ```Text``` object where the ```Segment``` objects only contain plain text content in the form of a ```surface``` field. 
+- ```segmentation_phase_2``` uses the generic processing flow to convert the output of the first part into a ```Text``` object where each ```Segment``` object includes a list of ```Token``` objects.
 
 ---
 
