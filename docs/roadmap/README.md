@@ -1,0 +1,55 @@
+# Roadmap documents for reimplementation of C-LARA (C-LARA-2)
+
+**Overall goal**  
+Reimplement [C-LARA](https://www.c-lara.org/) in a more rational way, learning from the initial project.
+
+## Brief description of core C-LARA-2 functionality
+
+- **Functionality from C-LARA:** We want to reproduce the core C-LARA functionality.
+	- Use AI to create multimodal text documents suitable for language learners. These should at a minimum include illustrations, translations, lemma tagging, glosses and audio. 
+	- It is essential to support multi-word expressions (MWEs) and have them interact cleanly with lemma tagging and glossing. In the final generated document, clicking or hovering over one element of an MWE accesses information attached to the whole MWE.
+	- It is essential to support creation of high-quality images that are consistent both in style (different images have the same style) and content (when a person, object etc occurs in more than one image it is depicted similarly).
+	- C-LARA-2 should be sufficiently downward-compatible that C-LARA projects can easily be imported.
+	- It should be possible to post the multimodal documents on the web, in a social-network like structure that permits rating, commenting etc.
+	- Full information about C-LARA can be found in numerous papers posted on the C-LARA site.
+- **New functionality:** User feedback suggests some new functionality would be much appreciated.
+	- Teachers want it to be easier to create the texts. Instead of providing a detailed description of the text they want to generated, they would prefer to give a brief description and then enter a dialogue with the AI to refine it. If they have a group of related texts, they want to describe the group as a whole, maybe in terms of the intended functionality and users, and have the AI suggest possible texts.
+	- Learners want to have the option of accessing non-traditional audio/image oriented texts that work well on mobile phones, e.g. audiobooks, podcasts, manga.
+
+## Important subgoals
+
+- **Involve the AI more:** Various versions of OpenAI's GPT already played an important part in the first version of C-LARA. Here, we want to increase the AI's involvement:
+	- The AI should understand the platform (functionality, software architecture, history etc) as well as possible.
+	- The AI should play as large a part as possible in implementing the new code.
+	- The AI should to as large an extent as possible be able to explain and discuss the platform.
+- **Better documentation:** In order to be able to involve the AI in the way described above, the documentation needs to be much better:
+	- All code files will be systematically documented (docstrings etc) according to a recognised standard.
+	- There will be global web-accessible documentation in the Github repo, i.e. here.
+	- The AI will play a central role in _developing_ the documentation. 
+	- As we proceed with the project, we will constantly check that the AI is in practice able to use the doc, and revise if necessary.
+	
+## Main steps in roadmap (so far, only initial steps filled in)
+
+# 1. Set up GitHub repository and add initial documentation.
+
+We have done this.
+
+# 2. Write spec for initial core functionality, and implement it
+
+The most complex part of the platform is the text creation and annotation pipeline. This consists of a sequence of operations. In each operation, the current representation of the text is processed, using calls to the AI, to add more annotations. In this step of the roadmap, we will only implement enough functionality to perform the first two operations in the pipeline. Specifically, we will implement initial versions of the following:
+
+- Spec for representation of annotated text object.
+- Basic utilities for manipulation of annotated text objects, initially reading and writing.
+- Function that wraps API calls to the AI. This should provide a heartbeat mechanism since we will in general be making multiple concurrent API calls and wish to keep the user informed of their progress.
+- Function that generates a piece of text from a user-supplied spec. (Interactive creation of texts will be in a later step).
+- Function that converts a piece of text into an annotated text object that contains segmentation information. The text will be divided into pages, each page will be divided into segments, and each segment into tokens. 
+- The function that converts plain text into a segmented text object is divided into two parts:
+	- segmentation part 1. This converts a plain text string into an annotated text object which is divided hierarchically into pages and segments. Segments are however not further divided.
+	- segmentation part 2. This takes the output of segmentation part 1 and in parallel replaces each segment representation with a further annotated version which also includes a list of tokens. This operation is performed using a generic processing function which will be used for all the other linguistic annotation operations as well.
+- Unit tests for all of the above.
+
+# 3. Write spec for full linguistic annotation pipeline, and implement it
+
+In this step of the roadmap, we will build on the preceding step to add support for all the other linguistic annotation operations, and also for rendering into HTML form.
+
+
