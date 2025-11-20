@@ -32,7 +32,7 @@ Reimplement [C-LARA](https://www.c-lara.org/) in a more rational way, learning f
 
 ### 1. Set up GitHub repository and add initial documentation.
 
-We have done this.
+We have done this. The C-LARA-2 repo is at https://github.com/mannyrayner/C-LARA-2.
 
 ### 2. Write spec for initial core functionality, and implement it
 
