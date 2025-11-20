@@ -58,10 +58,21 @@ The most complex part of the platform is the text creation and annotation pipeli
 In this step of the roadmap, we will build on the preceding step to add support for all the other functionality needed to implement the complete pipeline, from plain text to HTML form. Specifically, we need the following:
 - Support for other linguistic annotation operations. As noted above, the Segmentation part 2 operation is implemented using a generic function. We will extend it to cover the other operations by creating suitable prompt templates and few-shot examples.
 - Support for adding audio. This will involve integration of TTS engines. The recipes in C-LARA can probably be adapted easily, though we want to clean and rationalise it.
-- Support for conversion of the final annotated linguistic form into HTML. Again, the recipe in C-LARA can probably be adapted easily.
+- Support for conversion of the final annotated linguistic form into compiled form (HTML). Again, the recipe in C-LARA can probably be adapted easily.
+	- We want to include some version of the C-LARA JavaScript which ensures that hovering over one component of an MWE highlights the whole MWE.
+- Unit tests for all of the above.
 
-### 4. Write spec for basic social network functionality, and implement it
+### 4. Write spec for basic Django platform functionality, and implement it
 
+In this step, we will add the basic Django platform  functionality. Most of this can probably be adapted easily from C-LARA.
+- Top-level Django functionality with menu for core actions like creating new project, editing existing project, listing existing content, etc. We need appropriate search functionality.
+- Support for posting a piece of compiled content.
+- Support for rating and commenting a piece of compiled content.
+- Unit tests for all of the above.
 
+### 5. Write spec for image creation functionality, and implement it
 
-
+In this step, we will add the basic image creation functionality. This will be conceptually based on the corresponding functionality in C-LARA, but rationalised and reimplemented.
+- We have the same three-stage pipeline:
+	- Create style. A brief description is expanded by the AI into a detaile style description and an example image.
+	- Create element names. Generate
