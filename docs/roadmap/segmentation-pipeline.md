@@ -57,6 +57,7 @@ await OpenAIClient(config).chat_json(
 - Wraps the async OpenAI SDK so every request has: heartbeat every ~5s, exponential backoff on `RateLimit`/`APIError`/timeouts, and deterministic JSON parsing of the first message choice.
 - `config.py` holds defaults for model/temperature/timeout/backoff/heartbeat cadence, picks up `OPENAI_API_KEY` from the
   environment, and can be overridden per-call.
+- `config.py` holds defaults for model/temperature/timeout/backoff/heartbeat cadence and can be overridden per-call.
 - A generated `op_id` is attached to all telemetry events when the caller does not provide one.
 
 ---
