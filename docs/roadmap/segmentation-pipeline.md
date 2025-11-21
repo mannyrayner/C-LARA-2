@@ -25,7 +25,7 @@ Implement the *create text → segment pages/segments → token-level split* pip
 
 Contract: Every in-flight API op emits heartbeat events at ~5s cadence. The core pieces live under `src/` (sibling to `docs/`) so they are easy to import from the CLI and future Django app.
 
-# src/clara2/core/telemetry.py
+# src/core/telemetry.py
 
 ```python
 class Telemetry:
@@ -39,7 +39,7 @@ class StdoutTelemetry(Telemetry):
         ... # quick feedback while bootstrapping
 ```
 
-# src/clara2/core/ai_api.py
+# src/core/ai_api.py
 
 ```python
 await OpenAIClient(config).chat_json(
@@ -55,9 +55,9 @@ await OpenAIClient(config).chat_json(
 ```
 
 - Wraps the async OpenAI SDK so every request has: heartbeat every ~5s, exponential backoff on `RateLimit`/`APIError`/timeouts, and deterministic JSON parsing of the first message choice.
-- `config.py` holds defaults for model/temperature/timeout/backoff/heartbeat cadence, picks up `OPENAI_API_KEY` from the
-  environment, and can be overridden per-call.
-- `config.py` holds defaults for model/temperature/timeout/backoff/heartbeat cadence and can be overridden per-call.
+- `config.py` holds defaults for model/temperature/timeout/backoff/heartbeat cadence, picks up `OPENAI_API_KEY` from the environment, and can be overridden per-call.
+- The default model is `gpt5`, matching the quality bar we need from the C-LARA experiments.
+- `OpenAIClient` passes the configured `api_key` directly into `AsyncOpenAI`; by default this comes from `OPENAI_API_KEY`, but callers can construct `OpenAIConfig(api_key="...")` to override.
 - A generated `op_id` is attached to all telemetry events when the caller does not provide one.
 
 ---
@@ -210,7 +210,7 @@ will be transformed into
 
 ## 5) Directory layout (initial)
 
-- src/clara2/  *(sibling of `docs/`; import root for all pipeline code)*
+- src/  *(sibling of `docs/`; import root for all pipeline code)*
   - core/
     - ai_api.py                        # AsyncOpenAI wrapper with heartbeats + retries
     - config.py                        # model names, timeouts, retry policy, heartbeat cadence
