@@ -47,41 +47,43 @@ Ensures response_format="json_object" (or tool-calling) for structured outputs.
 
 ## 2) Data model (stable JSON)
 
-We keep formats uniform across annotation layers.
+We keep formats uniform across annotation layers and represent them as JSON objects so they can be passed directly between the CLI, pipeline steps, and the AI.
 
-```python
-from dataclasses import dataclass, field
-from typing import List, Dict, Optional
+```jsonc
+// Token
+{
+  "surface": "The",
+  "annotations": {} // later: lemma, gloss, pos, mwe_id, etc.
+}
 
-@dataclass
-class Token:
-    surface: str
-    annotations: Dict[str, str] = field(default_factory=dict)  # later: lemma, gloss, pos
-    # mwe_id, etc. added later
+// Segment
+{
+  "surface": "The boy's name was Will.",
+  "tokens": [
+    { "surface": "The", "annotations": {} }
+  ],
+  "annotations": {} // later: translated text, MWE list
+}
 
-@dataclass
-class Segment:
-	surface: str
-    tokens: List[Token]
-    annotations: Dict[str, str] = field(default_factory=dict)  # later: translated, mwe list
+// Page
+{
+  "surface": "A full page worth of text…",
+  "segments": [ /* Segment[] */ ],
+  "annotations": {} // page metadata (img hooks later)
+}
 
-@dataclass
-class Page:
-	surface: str
-    segments: List[Segment]
-    annotations: Dict[str, str] = field(default_factory=dict)  # page metadata (img hooks later)
-
-@dataclass
-class Text:
-    l2: str
-    l1: Optional[str] = None
-    title: Optional[str] = None
-	surface: str
-    pages: List[Page] = field(default_factory=list)
-    annotations: Dict[str, str] = field(default_factory=dict)
+// Text
+{
+  "l2": "en", // source language code
+  "l1": "fr", // optional target language code
+  "title": "My Story", // optional
+  "surface": "Full raw text…",
+  "pages": [ /* Page[] */ ],
+  "annotations": {}
+}
 ```
-	
-Serialization: ```storage.py``` exposes ```save_text(text, path)``` / ```load_text(path)```.
+
+In code we can still expose light dataclasses in ```types.py``` for developer ergonomics, but the persisted/on-wire format is JSON with these fields. ```storage.py``` should serialize/deserialize the plain JSON structures (`save_text(path, text_json)` / `load_text(path) -> dict`).
 
 ---
 
@@ -100,8 +102,8 @@ The IDs for the annotation operations are the following:
 The generic processing flow is used for all the annotation operations except ```segmentation``` and ```segmentation_phase_1```. 
 
 The generic processing flow is as follows:
-- Input is a ```Text``` object and a specification of the type of annotations to be added.
-- Output is a ```Text``` object which includes the extra annotations.
+- Input is a ```Text``` JSON object and a specification of the type of annotations to be added.
+- Output is a ```Text``` JSON object which includes the extra annotations.
 - Recursively descend from ```Text``` to ```Page``` to ```Segment``` and process each ```Segment``` in parallel (fan-out).
 - For each ```Segment```: 
 	- Construct an appropriate prompt. The input to the prompt construction process will include 
@@ -111,11 +113,11 @@ The generic processing flow is as follows:
   - pass the prompt to the AI
 - When processing of all the ```Segment```s has completed, combine them to create the new ```Text``` object (fan-in)
 
-The ```segmentation``` operation is special because it is the first one. 
-- The input is plain text, and the output is a ```Text``` object.
-- The ```segmentation``` operation is divided into two parts, ```segmentation_phase_1``` and ```segmentation_phase_2```. 
-- ```segmentation_phase_1``` converts the input plain text into a ```Text``` object where the ```Segment``` objects only contain plain text content in the form of a ```surface``` field. 
-- ```segmentation_phase_2``` uses the generic processing flow to convert the output of the first part into a ```Text``` object where each ```Segment``` object includes a list of ```Token``` objects.
+The ```segmentation``` operation is special because it is the first one.
+- The input is plain text, and the output is a ```Text``` JSON object.
+- The ```segmentation``` operation is divided into two parts, ```segmentation_phase_1``` and ```segmentation_phase_2```.
+- ```segmentation_phase_1``` converts the input plain text into a ```Text``` JSON object where the ```Segment``` objects only contain plain text content in the form of a ```surface``` field.
+- ```segmentation_phase_2``` uses the generic processing flow to convert the output of the first part into a ```Text``` JSON object where each ```Segment``` object includes a list of ```Token``` objects.
 
 ---
 
@@ -131,51 +133,60 @@ A boy once lived with his mother in a house by the sea. The boy's name was Will.
 One day, walking on the beach, Will noticed a curious object. It looked like a very large egg.
 ```
 
-A plausible output of the ```segmentation_phase_1``` operation could be the following ```Text``` object:
+A plausible output of the ```segmentation_phase_1``` operation could be the following ```Text``` JSON object:
 
-```python
-
-Text(l2="en",
-	 surface="""A boy once lived with his mother in a house by the sea. The boy's name was Will. His mother's name was Emma.
+```json
+{
+  "l2": "en",
+  "surface": """A boy once lived with his mother in a house by the sea. The boy's name was Will. His mother's name was Emma.
 
 One day, walking on the beach, Will noticed a curious object.  It looked like a very large egg.""",
-     pages=[Page(surface="A boy once lived with his mother in a house by the sea. The boy's name was Will. His mother's name was Emma.",
-	             segments=[Segment(surface="A boy once lived with his mother in a house by the sea."),
-				           Segment(surface=" The boy's name was Will."),
-						   Segment(surface=" His mother's name was Emma.")
-						   ],
-			Page(surface="One day, walking on the beach, Will noticed a curious object. It looked like a very large egg.",
-	             segments=[Segment(surface="One day, walking on the beach, Will noticed a curious object."),
-				           Segment(surface=" It looked like a very large egg.")
-						   ]
-			]
-	)
+  "pages": [
+    {
+      "surface": "A boy once lived with his mother in a house by the sea. The boy's name was Will. His mother's name was Emma.",
+      "segments": [
+        { "surface": "A boy once lived with his mother in a house by the sea." },
+        { "surface": " The boy's name was Will." },
+        { "surface": " His mother's name was Emma." }
+      ]
+    },
+    {
+      "surface": "One day, walking on the beach, Will noticed a curious object. It looked like a very large egg.",
+      "segments": [
+        { "surface": "One day, walking on the beach, Will noticed a curious object." },
+        { "surface": " It looked like a very large egg." }
+      ]
+    }
+  ]
+}
 ```
 
-This ```Text``` object will be the input to the  ```segmentation_phase_2```. The output will be the same as the input, except that each ```Segment``` object will be further annotated with a ```tokens``` field. For example, the ```Segment``` object
+This ```Text``` JSON object will be the input to the ```segmentation_phase_2```. The output will be the same as the input, except that each ```Segment``` object will be further annotated with a ```tokens``` array. For example, the ```Segment``` object
 
-```python
-Segment(surface=" The boy's name was Will.")
+```json
+{ "surface": " The boy's name was Will." }
 ```
 
-will be transformed into 
+will be transformed into
 
-```python
-Segment(surface=" The boy's name was Will.",
-        tokens=[Token(surface=" "),
-		        Token(surface="The"),
-		        Token(surface=" "),			
-		        Token(surface="boy"),
-		        Token(surface="'s"),		
-		        Token(surface=" "),
-		        Token(surface="name"),			
-		        Token(surface=" "),
-		        Token(surface="was"),	
-		        Token(surface=" "),
-		        Token(surface="Will"),			
-		        Token(surface=".")
-               ]				
-		)
+```json
+{
+  "surface": " The boy's name was Will.",
+  "tokens": [
+    { "surface": " " },
+    { "surface": "The" },
+    { "surface": " " },
+    { "surface": "boy" },
+    { "surface": "'s" },
+    { "surface": " " },
+    { "surface": "name" },
+    { "surface": " " },
+    { "surface": "was" },
+    { "surface": " " },
+    { "surface": "Will" },
+    { "surface": "." }
+  ]
+}
 ```
 
 ---
