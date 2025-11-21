@@ -8,22 +8,21 @@ import types
 import unittest
 from unittest.mock import AsyncMock, patch
 
-class TimeoutException(Exception):
-    pass
-
-
-class Timeout:  # type: ignore[too-few-public-methods]
-    def __init__(self, *_: object, **__: object) -> None:
+try:  # pragma: no cover - exercised in environments without OpenAI installed
+    from openai import AsyncOpenAI as _AsyncOpenAI, RateLimitError as _OpenAIRateLimitError
+    from openai._exceptions import APIError as _OpenAIAPIError
+except ModuleNotFoundError:  # pragma: no cover - fallback for offline test environments
+    class TimeoutException(Exception):
         pass
 
 
-sys.modules.setdefault("httpx", types.SimpleNamespace(Timeout=Timeout, TimeoutException=TimeoutException))
+    class Timeout:  # type: ignore[too-few-public-methods]
+        def __init__(self, *_: object, **__: object) -> None:
+            pass
 
 
-try:  # pragma: no cover - exercised in environments without OpenAI installed
-    from openai import AsyncOpenAI, RateLimitError
-    from openai._exceptions import APIError
-except ModuleNotFoundError:  # pragma: no cover - fallback for offline test environments
+    sys.modules.setdefault("httpx", types.SimpleNamespace(Timeout=Timeout, TimeoutException=TimeoutException))
+
     class AsyncOpenAI:  # type: ignore[too-few-public-methods]
         def __init__(self, **_: object) -> None:
             self.chat = None
@@ -39,6 +38,17 @@ except ModuleNotFoundError:  # pragma: no cover - fallback for offline test envi
     sys.modules["openai"] = types.SimpleNamespace(AsyncOpenAI=AsyncOpenAI, RateLimitError=RateLimitError)
     sys.modules["openai._exceptions"] = types.SimpleNamespace(APIError=APIError, RateLimitError=RateLimitError)
 else:
+    AsyncOpenAI = _AsyncOpenAI
+
+    class APIError(Exception):
+        pass
+
+    class RateLimitError(Exception):
+        def __init__(self, message: str, response: object | None = None) -> None:
+            super().__init__(message)
+            self.response = response
+
+    sys.modules["openai._exceptions"] = types.SimpleNamespace(APIError=APIError, RateLimitError=RateLimitError)
     # Ensure submodule is available for ai_api imports in case OpenAI is present
     sys.modules.setdefault("openai._exceptions", types.SimpleNamespace(APIError=APIError, RateLimitError=RateLimitError))
 
