@@ -23,6 +23,68 @@ Implement the *create text → segment pages/segments → token-level split* pip
 
 ## 1) Heartbeat + async calls
 
+Contract: Every in-flight API op emits heartbeat events at ~5s cadence. The core pieces live under `src/` (sibling to `docs/`) so they are easy to import from the CLI and future Django app.
+
+# src/clara2/core/telemetry.py
+
+```python
+class Telemetry:
+        def heartbeat(self, op_id: str, elapsed_s: float, note: str = "") -> None: ...
+        def event(self, op_id: str, level: str, msg: str, data: dict | None = None) -> None: ...
+
+class NullTelemetry(Telemetry):
+        ... # no-op default for tests/CLI
+
+class StdoutTelemetry(Telemetry):
+        ... # quick feedback while bootstrapping
+```
+
+# src/clara2/core/ai_api.py
+
+```python
+await OpenAIClient(config).chat_json(
+        prompt,
+        *,
+        model=None,
+        temperature=None,
+        tools=None,
+        response_format=None,
+        telemetry=None,
+        op_id=None,
+)
+```
+
+- Wraps the async OpenAI SDK so every request has: heartbeat every ~5s, exponential backoff on `RateLimit`/`APIError`/timeouts, and deterministic JSON parsing of the first message choice.
+- `config.py` holds defaults for model/temperature/timeout/backoff/heartbeat cadence and can be overridden per-call.
+- A generated `op_id` is attached to all telemetry events when the caller does not provide one.
+
+---
+
+# Segmentation MVP: Plan & Interfaces
+
+**Goal (MVP)**  
+Implement the *create text → segment pages/segments → token-level split* pipeline with clean interfaces, prompts, and tests — ready to extend to translation/MWE/lemma/gloss/pinyin later.
+
+---
+
+## 0) Scope (what’s in / out)
+
+**In (MVP):**
+- Generate a fresh L2 text from a simple spec (title, genre, length, level, style hints).
+- Page/segment partitioning (phase 1).
+- Per-segment tokenization/splitting (phase 2) using language-specific prompt templates and optional few-shot examples.
+- Async OpenAI calls with a periodic heartbeat (every ~5s) surfaced to the caller.
+- Deterministic JSON outputs that the later annotation operations (translation, MWE, lemma, gloss, pinyin) can consume.
+
+**Out (for now):**
+- Rendering to HTML/mobile views.
+- Translation/MWE/Lemma/Gloss/Pinyin (will layer on same patterns).
+- Auth/roles/UI — we’ll CLI/test-drive first.
+
+---
+
+## 1) Heartbeat + async calls
+
 Contract: Every in-flight API op emits heartbeat events at ~5s cadence:
 
 # src/clara2/core/telemetry.py
@@ -113,11 +175,55 @@ The generic processing flow is as follows:
   - pass the prompt to the AI
 - When processing of all the ```Segment```s has completed, combine them to create the new ```Text``` object (fan-in)
 
+
+---
+
+## 3) Generic processing flow for annotation operations
+
+The IDs for the annotation operations are the following: 
+- ```segmentation``` # Add segmentation information 
+- ```segmentation_phase_1``` # First part of ```segmentation``` operation
+- ```segmentation_phase_2``` # Second part of ```segmentation``` operation
+- ```translation``` # Add a translation to each ```Segment``` 
+- ```mwe``` # Add MWE (multi word expression) information to each ```Segment``` 
+- ```lemma``` # Add lemma and POS information to each ```Token``` 
+- ```gloss``` # Add gloss information to each ```Token``` 
+- ```pinyin``` # Add pinyin information to each ```Token``` (only relevant for Chinese)
+
+The generic processing flow is used for all the annotation operations except ```segmentation``` and ```segmentation_phase_1```. 
+
+The generic processing flow is as follows:
+- Input is a ```Text``` JSON object and a specification of the type of annotations to be added.
+- Output is a ```Text``` JSON object which includes the extra annotations.
+- Recursively descend from ```Text``` to ```Page``` to ```Segment``` and process each ```Segment``` in parallel (fan-out).
+- For each ```Segment```: 
+	- Construct an appropriate prompt. The input to the prompt construction process will include 
+		- the ```Segment```
+		- a prompt template specific to the operation and source language
+		- (optionally) a list of few-shot examples specific to the operation and source language
+  - pass the prompt to the AI
+- When processing of all the ```Segment```s has completed, combine them to create the new ```Text``` object (fan-in)
+
 The ```segmentation``` operation is special because it is the first one.
 - The input is plain text, and the output is a ```Text``` JSON object.
 - The ```segmentation``` operation is divided into two parts, ```segmentation_phase_1``` and ```segmentation_phase_2```.
 - ```segmentation_phase_1``` converts the input plain text into a ```Text``` JSON object where the ```Segment``` objects only contain plain text content in the form of a ```surface``` field.
 - ```segmentation_phase_2``` uses the generic processing flow to convert the output of the first part into a ```Text``` JSON object where each ```Segment``` object includes a list of ```Token``` objects.
+
+---
+
+## 4) Example inputs and outputs for segmentation operation
+
+Here is a minimal example of inputs and outputs for the ```segmentation``` operation.
+
+The input plain text string is the following:
+
+```
+A boy once lived with his mother in a house by the sea. The boy's name was Will. His mother's name was Emma.
+
+One day, walking on the beach, Will noticed a curious object. It looked like a very large egg.
+```
+
 
 ---
 
@@ -188,6 +294,37 @@ will be transformed into
   ]
 }
 ```
+
+---
+
+## 5) Directory layout (initial)
+
+- src/clara2/  *(sibling of `docs/`; import root for all pipeline code)*
+  - core/
+    - ai_api.py                        # AsyncOpenAI wrapper with heartbeats + retries
+    - config.py                        # model names, timeouts, retry policy, heartbeat cadence
+    - telemetry.py                     # heartbeat/event sink interface (NullTelemetry, StdoutTelemetry)
+    - types.py                         # dataclasses: Text, Page, Segment, Token, etc. (JSON-on-wire)
+    - storage.py                       # local JSON read/write helpers
+  - pipeline/
+    - text_gen.py                      # create text from spec
+    - segmentation.py                  # phase-1 + phase-2 orchestration
+    - generic_annotation.py            # generic annotation for operations other than segmentation-phase-1
+    - annotation_prompts.py            # create prompts for use in generic annotation
+  - cli/
+    - seg.py                           # CLI entry points for MVP (argparse/typer)
+  - prompts/
+    - segmentation_phase_1/            # per-language templates + fewshots
+      - fr/
+        - template.txt
+        - fewshots/
+      - [similarly for other languages]
+    - segmentation_phase_2/
+      - fr/
+        - template.txt
+        - fewshots/
+      - [similarly for other languages]
+    - [similarly for other annotation operations]
 
 ---
 
