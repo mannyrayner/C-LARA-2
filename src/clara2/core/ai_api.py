@@ -20,7 +20,14 @@ class OpenAIClient:
 
     def __init__(self, *, config: OpenAIConfig | None = None, client: AsyncOpenAI | None = None) -> None:
         self.config = config or OpenAIConfig()
-        self._client = client or AsyncOpenAI(timeout=httpx.Timeout(self.config.timeout_s))
+        if client:
+            self._client = client
+        else:
+            timeout = httpx.Timeout(self.config.timeout_s)
+            client_kwargs: dict[str, Any] = {"timeout": timeout}
+            if self.config.api_key:
+                client_kwargs["api_key"] = self.config.api_key
+            self._client = AsyncOpenAI(**client_kwargs)
 
     async def chat_json(
         self,

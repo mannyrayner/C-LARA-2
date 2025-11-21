@@ -1,6 +1,8 @@
 """Configuration defaults for OpenAI-backed operations."""
 from __future__ import annotations
 
+import os
+
 from dataclasses import dataclass
 
 
@@ -15,6 +17,7 @@ DEFAULT_TEMPERATURE = 0.2
 class OpenAIConfig:
     """Runtime configuration for OpenAI calls."""
 
+    api_key: str | None = os.getenv("OPENAI_API_KEY")
     model: str = DEFAULT_MODEL
     temperature: float = DEFAULT_TEMPERATURE
     max_retries: int = DEFAULT_MAX_RETRIES
