@@ -119,6 +119,9 @@ class OpenAIClientTests(unittest.IsolatedAsyncioTestCase):
 
         result = await client.chat_json("hello", telemetry=telemetry, op_id="op-1")
 
+        # Log the raw payload so it's visible in the test log for debugging.
+        print("chat_json_success response:", result)
+
         self.assertEqual({"ok": True}, result)
         self.assertEqual(("op-1", "info", "openai.chat attempt 1", None), telemetry.events[0])
 
@@ -149,6 +152,8 @@ class OpenAIClientTests(unittest.IsolatedAsyncioTestCase):
 
         with patch("core.ai_api.asyncio.sleep", new=AsyncMock()) as sleep_mock:
             result = await client.chat_json("go", telemetry=telemetry, op_id="op-3")
+
+        print("chat_json_retries_on_rate_limit response:", result)
 
         self.assertEqual({"retried": True}, result)
         self.assertTrue(any(evt[1] == "warn" for evt in telemetry.events))
@@ -193,6 +198,8 @@ class OpenAIClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(
             any((evt[3] or {}).get("error_type") == "LengthFinishReasonError" for evt in telemetry.events)
         )
+
+        print("length_finish_error_falls_back_to_legacy response:", result)
 
     async def test_length_finish_error_without_legacy_raises_import_error(self) -> None:
         telemetry = RecordingTelemetry()
