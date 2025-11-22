@@ -6,13 +6,6 @@
 
 PYTHON ?= python3
 
-# Use a heredoc to keep quoting simple across shells.
+# Use a dedicated helper script so we can log results to test_results.log.
 test:
-	$(PYTHON) - <<-'PY'
-	import pathlib, sys, unittest
-
-	ROOT = pathlib.Path(__file__).resolve().parent.parent
-	SRC = ROOT / 'src'
-	sys.path[:0] = [str(SRC), str(ROOT)]
-	unittest.main(module=None)
-	PY
+	$(PYTHON) run_tests.py

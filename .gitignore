@@ -9,3 +9,6 @@ venv/
 # IDE settings
 .vscode/
 .idea/
+
+# Test artifacts
+tests/test_results.log
