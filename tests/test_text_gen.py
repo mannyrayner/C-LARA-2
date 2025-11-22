@@ -9,6 +9,7 @@ import unittest
 
 from pipeline import text_gen
 from pipeline.text_gen import TextGenSpec
+from core.ai_api import _async_api_supported
 
 
 class FakeAIClient:
@@ -64,6 +65,11 @@ class TextGenTests(unittest.IsolatedAsyncioTestCase):
 
 
 class TextGenIntegrationTests(unittest.IsolatedAsyncioTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        if not _async_api_supported():
+            raise unittest.SkipTest("openai async client is missing dependencies; try reinstalling openai")
+
     def setUp(self) -> None:
         self.prompts_root = Path(__file__).resolve().parents[1] / "prompts"
 

@@ -57,19 +57,32 @@ class OpenAIClient:
         self._legacy_module = _openai_module
         self._legacy_available = _legacy_api_supported(self._legacy_module) if self._legacy_module else False
         self._mode = "async"
+        async_supported = _async_api_supported()
 
         if client is not None:  # Used by unit tests to inject fakes.
             self._client = client
             self._mode = "custom"
             return
 
-        if AsyncOpenAI is not None:
+        if AsyncOpenAI is not None and async_supported:
             timeout = httpx.Timeout(self.config.timeout_s)
             client_kwargs: dict[str, Any] = {"timeout": timeout}
             if self.config.api_key:
                 client_kwargs["api_key"] = self.config.api_key
             self._client = AsyncOpenAI(**client_kwargs)
             self._mode = "async"
+        elif AsyncOpenAI is not None and not async_supported:
+            telemetry = NullTelemetry()
+            telemetry.event("openai", "warn", "async OpenAI client missing dependencies; try reinstalling openai")
+            if self._legacy_available:
+                if self.config.api_key:
+                    self._legacy_module.api_key = self.config.api_key
+                self._mode = "legacy"
+            else:
+                raise ImportError(
+                    "AsyncOpenAI is present but required dependencies failed to import; "
+                    "try reinstalling openai or install a legacy-compatible version"
+                )
         elif self._legacy_available:
             if self.config.api_key:
                 self._legacy_module.api_key = self.config.api_key
@@ -254,6 +267,25 @@ def _legacy_api_supported(legacy_module: Any) -> bool:
     # The ChatCompletion surface was removed in >=1.0.0; avoid falling back
     # in those environments to prevent APIRemovedInV1 errors.
     return _parse_version(version) < _parse_version("1.0.0")
+
+
+def _async_api_supported() -> bool:
+    """Return True if the async OpenAI SDK appears import-healthy.
+
+    Some Windows/POSIX hybrid environments can exhibit partial installs where
+    imports inside the chat-completions path fail (e.g., missing
+    ``LengthFinishReasonError``). We attempt a lightweight import probe here so
+    we can fail fast with a clear error instead of crashing mid-request.
+    """
+
+    if AsyncOpenAI is None:
+        return False
+
+    try:  # pragma: no cover - exercised in environments with broken installs
+        from openai._exceptions import LengthFinishReasonError  # type: ignore
+    except Exception:
+        return False
+    return True
 
 
 async def _run_with_heartbeat(coro: Any, telemetry: Telemetry, op_id: str, start: float, heartbeat_s: float) -> Any:
