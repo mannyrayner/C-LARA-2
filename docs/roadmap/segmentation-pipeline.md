@@ -23,7 +23,7 @@ Implement the *create text → segment pages/segments → token-level split* pip
 
 ## 1) Heartbeat + async calls
 
-Contract: Every in-flight API op emits heartbeat events at ~5s cadence. The core pieces live under `src/` (sibling to `docs/`) so they are easy to import from the CLI and future Django app.
+Contract: Every in-flight API op emits heartbeat events at ~5s cadence. The core pieces live under `src/core/` (sibling to `docs/`) so they are easy to import from the CLI and future Django app.
 
 # src/core/telemetry.py
 
@@ -210,29 +210,29 @@ will be transformed into
 
 ## 5) Directory layout (initial)
 
-- src/  *(sibling of `docs/`; import root for all pipeline code)*
-  - core/
+- src/
+  - core/  *(sibling of `docs/`; import root for all pipeline code)*
     - ai_api.py                        # AsyncOpenAI wrapper with heartbeats + retries
     - config.py                        # model names, timeouts, retry policy, heartbeat cadence
     - telemetry.py                     # heartbeat/event sink interface (NullTelemetry, StdoutTelemetry)
     - types.py                         # dataclasses: Text, Page, Segment, Token, etc. (JSON-on-wire)
     - storage.py                       # local JSON read/write helpers
-  - pipeline/
-    - text_gen.py                      # create text from spec
-    - segmentation.py                  # phase-1 + phase-2 orchestration
-    - generic_annotation.py            # generic annotation for operations other than segmentation-phase-1
-    - annotation_prompts.py            # create prompts for use in generic annotation
-  - cli/
-    - seg.py                           # CLI entry points for MVP (argparse/typer)
-  - prompts/
-    - segmentation_phase_1/            # per-language templates + fewshots
-      - fr/
-        - template.txt
-        - fewshots/
-      - [similarly for other languages]
-    - segmentation_phase_2/
-      - fr/
-        - template.txt
-        - fewshots/
-      - [similarly for other languages]
-    - [similarly for other annotation operations]
+- pipeline/
+  - text_gen.py                      # create text from spec
+  - segmentation.py                  # phase-1 + phase-2 orchestration
+  - generic_annotation.py            # generic annotation for operations other than segmentation-phase-1
+  - annotation_prompts.py            # create prompts for use in generic annotation
+- cli/
+  - seg.py                           # CLI entry points for MVP (argparse/typer)
+- prompts/
+  - segmentation_phase_1/            # per-language templates + fewshots
+    - fr/
+      - template.txt
+      - fewshots/
+    - [similarly for other languages]
+  - segmentation_phase_2/
+    - fr/
+      - template.txt
+      - fewshots/
+    - [similarly for other languages]
+  - [similarly for other annotation operations]

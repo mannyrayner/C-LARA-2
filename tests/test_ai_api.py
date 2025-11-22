@@ -49,8 +49,6 @@ else:
             self.response = response
 
     sys.modules["openai._exceptions"] = types.SimpleNamespace(APIError=APIError, RateLimitError=RateLimitError)
-    # Ensure submodule is available for ai_api imports in case OpenAI is present
-    sys.modules.setdefault("openai._exceptions", types.SimpleNamespace(APIError=APIError, RateLimitError=RateLimitError))
 
 from core.ai_api import OpenAIClient
 from core.config import OpenAIConfig
