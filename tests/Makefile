@@ -4,11 +4,15 @@
 .ONESHELL:
 .PHONY: test
 
-PY_SCRIPT=import pathlib,sys,unittest; \
-  ROOT=pathlib.Path.cwd().parent; \
-  SRC=ROOT / 'src'; \
-  sys.path[:0]=[str(SRC), str(ROOT)]; \
-  unittest.main(module=None)
+PYTHON ?= python3
 
+# Use a heredoc to keep quoting simple across shells.
 test:
-	PYTHONPATH= python -c "$(PY_SCRIPT)"
+	$(PYTHON) - <<-'PY'
+	import pathlib, sys, unittest
+
+	ROOT = pathlib.Path(__file__).resolve().parent.parent
+	SRC = ROOT / 'src'
+	sys.path[:0] = [str(SRC), str(ROOT)]
+	unittest.main(module=None)
+	PY
