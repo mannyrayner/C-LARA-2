@@ -21,7 +21,23 @@ Implement the *create text → segment pages/segments → token-level split* pip
 
 ---
 
-## 1) Heartbeat + async calls
+## 1) Text generation (text_gen operation)
+
+**Purpose:** First pipeline step: generate a raw L2 text from a short description.
+
+**Flow:**
+- Input: a JSON object describing the desired text (e.g., title, genre, level, length/word-count, style hints, target reader).
+- Build a prompt by injecting the description into an operation-specific template (per language/genre, stored under `prompts/text_gen/`).
+- Call the AI once (no fan-out) and return a `Text` JSON object with the generated `surface`, `title`, and metadata filled in. Downstream segmentation operates directly on this output.
+- Telemetry is optional but should log a single operation ID; heartbeat timing matches the generic OpenAI wrapper defaults.
+
+**Notes:**
+- Keep the prompt template explicit about constraints (length, register, avoid formatting) so segmentation isn’t complicated by Markdown or bullets.
+- Few-shot examples can live alongside the template in `prompts/text_gen/<lang>/fewshots/`.
+
+---
+
+## 2) Heartbeat + async calls
 
 Contract: Every in-flight API op emits heartbeat events at ~5s cadence. The core pieces live under `src/core/` (sibling to `docs/`) so they are easy to import from the CLI and future Django app.
 
@@ -62,7 +78,7 @@ await OpenAIClient(config).chat_json(
 
 ---
 
-## 2) Data model (stable JSON)
+## 3) Data model (stable JSON)
 
 We keep formats uniform across annotation layers and represent them as JSON objects so they can be passed directly between the CLI, pipeline steps, and the AI.
 
@@ -104,7 +120,7 @@ In code we can still expose light dataclasses in ```types.py``` for developer er
 
 ---
 
-## 3) Generic processing flow for annotation operations
+## 4) Generic processing flow for annotation operations
 
 The IDs for the annotation operations are the following: 
 - ```segmentation``` # Add segmentation information 
@@ -138,7 +154,7 @@ The ```segmentation``` operation is special because it is the first one.
 
 ---
 
-## 4) Example inputs and outputs for segmentation operation
+## 5) Example inputs and outputs for segmentation operation
 
 Here is a minimal example of inputs and outputs for the ```segmentation``` operation.
 
@@ -208,24 +224,29 @@ will be transformed into
 
 ---
 
-## 5) Directory layout (initial)
+## 6) Directory layout (initial)
 
 - src/
-  - core/  *(sibling of `docs/`; import root for all pipeline code)*
-    - ai_api.py                        # AsyncOpenAI wrapper with heartbeats + retries
-    - config.py                        # model names, timeouts, retry policy, heartbeat cadence
-    - telemetry.py                     # heartbeat/event sink interface (NullTelemetry, StdoutTelemetry)
-    - types.py                         # dataclasses: Text, Page, Segment, Token, etc. (JSON-on-wire)
-    - storage.py                       # local JSON read/write helpers
-- pipeline/
-  - text_gen.py                      # create text from spec
-  - segmentation.py                  # phase-1 + phase-2 orchestration
-  - generic_annotation.py            # generic annotation for operations other than segmentation-phase-1
-  - annotation_prompts.py            # create prompts for use in generic annotation
-- cli/
-  - seg.py                           # CLI entry points for MVP (argparse/typer)
+  - core/                           # import root for shared infra (sibling of `docs/`)
+    - ai_api.py                     # AsyncOpenAI wrapper with heartbeats + retries
+    - config.py                     # model names, timeouts, retry policy, heartbeat cadence
+    - telemetry.py                  # heartbeat/event sink interface (NullTelemetry, StdoutTelemetry)
+    - types.py                      # dataclasses: Text, Page, Segment, Token, etc. (JSON-on-wire)
+    - storage.py                    # local JSON read/write helpers
+  - pipeline/                       # pipeline steps sit next to core under src/
+    - text_gen.py                   # create text from spec
+    - segmentation.py               # phase-1 + phase-2 orchestration
+    - generic_annotation.py         # generic annotation for operations other than segmentation-phase-1
+    - annotation_prompts.py         # create prompts for use in generic annotation
+  - cli/
+    - seg.py                        # CLI entry points for MVP (argparse/typer)
 - prompts/
-  - segmentation_phase_1/            # per-language templates + fewshots
+  - text_gen/                       # per-language templates + fewshots for text generation
+    - fr/
+      - template.txt
+      - fewshots/
+    - [similarly for other languages]
+  - segmentation_phase_1/           # per-language templates + fewshots
     - fr/
       - template.txt
       - fewshots/
