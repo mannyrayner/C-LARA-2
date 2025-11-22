@@ -55,6 +55,7 @@ class OpenAIClient:
     def __init__(self, *, config: OpenAIConfig | None = None, client: Any | None = None) -> None:
         self.config = config or OpenAIConfig()
         self._legacy_module = _openai_module
+        self._legacy_available = _legacy_api_supported(self._legacy_module) if self._legacy_module else False
         self._mode = "async"
 
         if client is not None:  # Used by unit tests to inject fakes.
@@ -69,12 +70,12 @@ class OpenAIClient:
                 client_kwargs["api_key"] = self.config.api_key
             self._client = AsyncOpenAI(**client_kwargs)
             self._mode = "async"
-        elif self._legacy_module is not None:
+        elif self._legacy_available:
             if self.config.api_key:
                 self._legacy_module.api_key = self.config.api_key
             self._mode = "legacy"
         else:  # pragma: no cover - offline environments
-            raise ImportError("OpenAI SDK is not installed")
+            raise ImportError("OpenAI SDK is not installed or legacy API is unavailable")
 
     async def chat_json(
         self,
@@ -159,7 +160,7 @@ class OpenAIClient:
                     continue
 
                 if exc.__class__.__name__ == "LengthFinishReasonError" or "LengthFinishReasonError" in str(exc):
-                    if self._legacy_module is not None and self._mode == "async":
+                    if self._legacy_available and self._mode == "async":
                         telemetry.event(
                             op_id,
                             "warn",
@@ -168,6 +169,13 @@ class OpenAIClient:
                         )
                         self._mode = "legacy"
                         continue
+                    telemetry.event(
+                        op_id,
+                        "error",
+                        "LengthFinishReasonError with no legacy fallback available",
+                        {"error": str(exc), "error_type": exc.__class__.__name__},
+                    )
+                    raise ImportError("OpenAI async client failed and legacy API is unavailable") from exc
                 telemetry.event(op_id, "error", "unexpected failure")
                 raise
 
@@ -194,8 +202,8 @@ class OpenAIClient:
                 response_format=response_format,
             )
 
-        if self._legacy_module is None:  # pragma: no cover - defensive guard
-            raise ImportError("OpenAI SDK is not installed")
+        if self._legacy_module is None or not self._legacy_available:  # pragma: no cover - defensive guard
+            raise ImportError("OpenAI SDK is not installed or legacy API is unavailable")
 
         # Legacy synchronous SDK path; run in a thread to preserve async API.
         def _call() -> Any:

@@ -192,6 +192,31 @@ class OpenAIClientTests(unittest.IsolatedAsyncioTestCase):
             any((evt[3] or {}).get("error_type") == "LengthFinishReasonError" for evt in telemetry.events)
         )
 
+    async def test_length_finish_error_without_legacy_raises_import_error(self) -> None:
+        telemetry = RecordingTelemetry()
+
+        class LengthFinishReasonError(Exception):
+            pass
+
+        class BrokenCompletions:
+            def create(self, **_: object) -> object:
+                raise LengthFinishReasonError("boom")
+
+        class BrokenChat:
+            def __init__(self) -> None:
+                self.completions = BrokenCompletions()
+
+        class BrokenAsyncOpenAI:
+            def __init__(self, **_: object) -> None:
+                self.chat = BrokenChat()
+
+        legacy_module = types.SimpleNamespace(ChatCompletion=None, api_key=None, __version__="1.2.0")
+
+        with patch("core.ai_api.AsyncOpenAI", BrokenAsyncOpenAI), patch("core.ai_api._openai_module", legacy_module):
+            client = OpenAIClient(config=OpenAIConfig(api_key=None))
+            with self.assertRaises(ImportError):
+                await client.chat_json("hello", telemetry=telemetry, op_id="op-length-missing")
+
     async def test_legacy_removed_api_raises_import_error(self) -> None:
         telemetry = RecordingTelemetry()
 
@@ -203,9 +228,14 @@ class OpenAIClientTests(unittest.IsolatedAsyncioTestCase):
         legacy_module = types.SimpleNamespace(ChatCompletion=LegacyChatCompletion, api_key=None, __version__="1.2.0")
 
         with patch("core.ai_api.AsyncOpenAI", None), patch("core.ai_api._openai_module", legacy_module):
-            client = OpenAIClient(config=OpenAIConfig(api_key=None))
             with self.assertRaises(ImportError):
-                await client.chat_json("hello", telemetry=telemetry, op_id="op-removed")
+                OpenAIClient(config=OpenAIConfig(api_key=None))
+
+    async def test_init_without_async_and_legacy_support_raises_import_error(self) -> None:
+        legacy_module = types.SimpleNamespace(ChatCompletion=None, api_key=None, __version__="1.5.0")
+        with patch("core.ai_api.AsyncOpenAI", None), patch("core.ai_api._openai_module", legacy_module):
+            with self.assertRaises(ImportError):
+                OpenAIClient(config=OpenAIConfig(api_key=None))
 
 
 if __name__ == "__main__":
