@@ -14,3 +14,15 @@ This repository starts with docs and scaffolding; we’ll fill in modules iterat
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 mkdocs serve
+```
+
+## Running tests
+From the repository root:
+```bash
+python -m unittest
+```
+
+## Pull request flow
+1. Commit changes on your feature branch after running tests locally.
+2. Push the branch; GitHub will offer a **Create PR** control in the UI.
+3. After opening the PR, the control changes to **View PR**, which you can click anytime to review or update the pull request.
