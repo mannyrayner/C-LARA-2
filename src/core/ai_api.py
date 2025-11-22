@@ -284,7 +284,10 @@ def _async_api_supported() -> bool:
     try:  # pragma: no cover - exercised in environments with broken installs
         from openai._exceptions import LengthFinishReasonError  # type: ignore
     except Exception:
-        return False
+        # Newer SDKs may move or hide this symbol; absence alone should not
+        # block async usage because ``chat_json`` will still surface any
+        # import-related failures clearly.
+        return True
     return True
 
 
