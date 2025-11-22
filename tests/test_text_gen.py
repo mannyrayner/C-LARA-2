@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from pathlib import Path
 import unittest
 
@@ -60,6 +61,66 @@ class TextGenTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([], result["pages"])
         self.assertEqual({}, result["annotations"])
         self.assertTrue(client.prompts)
+
+
+class TextGenIntegrationTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self) -> None:
+        self.prompts_root = Path(__file__).resolve().parents[1] / "prompts"
+
+    def _skip_if_no_key(self) -> None:
+        if not os.getenv("OPENAI_API_KEY"):
+            self.skipTest("OPENAI_API_KEY not set; skipping integration test")
+
+    async def test_generate_text_with_openai_client(self) -> None:
+        self._skip_if_no_key()
+
+        description = {
+            "title": "Morning Walk",
+            "genre": "short prose",
+            "length": "40-80 words",
+            "style": "warm and descriptive",
+        }
+
+        spec = TextGenSpec(description=description, language="en")
+        result = await text_gen.generate_text(spec)
+
+        self.assertIn("surface", result)
+        self.assertGreater(len(result["surface"].split()), 5)
+        # Capture the generated text in the test log for human inspection.
+        print("Generated text (prose):", result["surface"])
+
+    async def test_generate_and_verify_with_openai_client(self) -> None:
+        self._skip_if_no_key()
+
+        description = {
+            "title": "Evening Rain",
+            "genre": "short poem",
+            "length": "20-40 words",
+            "style": "gentle and reflective",
+        }
+
+        spec = TextGenSpec(description=description, language="en")
+        client = text_gen.OpenAIClient()
+        generated = await text_gen.generate_text(spec, client=client)
+
+        verify_prompt = "\n".join(
+            [
+                "Evaluate whether the generated text matches the description.",
+                "Reply with JSON: {\"is_valid\": true|false, \"reason\": string, \"word_count\": number}.",
+                "Description:",
+                json.dumps(description, indent=2),
+                "Generated text:",
+                generated.get("surface", ""),
+            ]
+        )
+
+        verification = await client.chat_json(verify_prompt)
+
+        self.assertIsInstance(verification, dict)
+        self.assertIn("is_valid", verification)
+        # Log both the generated text and the verification outcome for manual review if needed.
+        print("Generated text (poem):", generated.get("surface", ""))
+        print("Verification response:", json.dumps(verification, indent=2))
 
 
 if __name__ == "__main__":
