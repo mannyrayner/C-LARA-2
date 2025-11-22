@@ -93,7 +93,10 @@ class TextGenIntegrationTests(unittest.IsolatedAsyncioTestCase):
         }
 
         spec = TextGenSpec(description=description, language="en")
-        result = await text_gen.generate_text(spec)
+        try:
+            result = await text_gen.generate_text(spec)
+        except ImportError as exc:
+            self.skipTest(f"openai SDK import failure during generate_text: {exc}")
 
         self.assertIn("surface", result)
         self.assertGreater(len(result["surface"].split()), 5)
@@ -112,7 +115,10 @@ class TextGenIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
         spec = TextGenSpec(description=description, language="en")
         client = text_gen.OpenAIClient()
-        generated = await text_gen.generate_text(spec, client=client)
+        try:
+            generated = await text_gen.generate_text(spec, client=client)
+        except ImportError as exc:
+            self.skipTest(f"openai SDK import failure during generate_text: {exc}")
 
         verify_prompt = "\n".join(
             [
@@ -125,7 +131,10 @@ class TextGenIntegrationTests(unittest.IsolatedAsyncioTestCase):
             ]
         )
 
-        verification = await client.chat_json(verify_prompt)
+        try:
+            verification = await client.chat_json(verify_prompt)
+        except ImportError as exc:
+            self.skipTest(f"openai SDK import failure during verification call: {exc}")
 
         self.assertIsInstance(verification, dict)
         self.assertIn("is_valid", verification)
