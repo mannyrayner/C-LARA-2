@@ -50,7 +50,7 @@ else:
 
     sys.modules["openai._exceptions"] = types.SimpleNamespace(APIError=APIError, RateLimitError=RateLimitError)
 
-from core.ai_api import OpenAIClient
+from core.ai_api import APIRemovedInV1, OpenAIClient
 from core.config import OpenAIConfig
 
 
@@ -191,6 +191,21 @@ class OpenAIClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(
             any((evt[3] or {}).get("error_type") == "LengthFinishReasonError" for evt in telemetry.events)
         )
+
+    async def test_legacy_removed_api_raises_import_error(self) -> None:
+        telemetry = RecordingTelemetry()
+
+        class LegacyChatCompletion:
+            @staticmethod
+            def create(**_: object) -> dict:
+                raise APIRemovedInV1(symbol="ChatCompletion")
+
+        legacy_module = types.SimpleNamespace(ChatCompletion=LegacyChatCompletion, api_key=None, __version__="1.2.0")
+
+        with patch("core.ai_api.AsyncOpenAI", None), patch("core.ai_api._openai_module", legacy_module):
+            client = OpenAIClient(config=OpenAIConfig(api_key=None))
+            with self.assertRaises(ImportError):
+                await client.chat_json("hello", telemetry=telemetry, op_id="op-removed")
 
 
 if __name__ == "__main__":

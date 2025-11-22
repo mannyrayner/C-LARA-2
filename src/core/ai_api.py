@@ -33,6 +33,13 @@ try:  # pragma: no cover - optional legacy import
 except Exception:  # pragma: no cover - offline environments
     _openai_module = None
 
+try:  # pragma: no cover - optional legacy removal marker
+    from openai.lib._old_api import APIRemovedInV1  # type: ignore
+except Exception:  # pragma: no cover - fallback when module is absent
+    class APIRemovedInV1(Exception):
+        """Defined for environments without openai>=1.x installed."""
+
+
 from .config import OpenAIConfig
 from .telemetry import NullTelemetry, Telemetry
 
@@ -116,7 +123,12 @@ class OpenAIClient:
                 await asyncio.sleep(backoff)
                 backoff *= 2
             except ImportError as exc:
-                if self._legacy_module is not None and self._mode == "async":
+                can_use_legacy = (
+                    self._legacy_module is not None
+                    and self._mode == "async"
+                    and _legacy_api_supported(self._legacy_module)
+                )
+                if can_use_legacy:
                     telemetry.event(
                         op_id,
                         "warn",
@@ -125,6 +137,7 @@ class OpenAIClient:
                     )
                     self._mode = "legacy"
                     continue
+
                 telemetry.event(
                     op_id,
                     "error",
@@ -186,13 +199,16 @@ class OpenAIClient:
 
         # Legacy synchronous SDK path; run in a thread to preserve async API.
         def _call() -> Any:
-            return self._legacy_module.ChatCompletion.create(  # type: ignore[attr-defined]
-                model=model,
-                temperature=temperature,
-                messages=messages,
-                tools=tools_payload,
-                response_format=response_format,
-            )
+            try:
+                return self._legacy_module.ChatCompletion.create(  # type: ignore[attr-defined]
+                    model=model,
+                    temperature=temperature,
+                    messages=messages,
+                    tools=tools_payload,
+                    response_format=response_format,
+                )
+            except APIRemovedInV1 as exc:  # pragma: no cover - depends on host SDK
+                raise ImportError("Legacy ChatCompletion API removed in openai>=1.0.0") from exc
 
         return asyncio.to_thread(_call)
 
@@ -211,6 +227,25 @@ def _extract_payload(response: Any) -> str:
             message = choices[0].get("message", {})
             return message.get("content", "{}") or "{}"
     return "{}"
+
+
+def _parse_version(version: str) -> tuple[int, ...]:
+    parts: list[int] = []
+    for part in version.split("."):
+        try:
+            parts.append(int(part))
+        except ValueError:
+            parts.append(0)
+    return tuple(parts)
+
+
+def _legacy_api_supported(legacy_module: Any) -> bool:
+    """Return True if the legacy ChatCompletion API is likely usable."""
+
+    version = getattr(legacy_module, "__version__", "0.0.0")
+    # The ChatCompletion surface was removed in >=1.0.0; avoid falling back
+    # in those environments to prevent APIRemovedInV1 errors.
+    return _parse_version(version) < _parse_version("1.0.0")
 
 
 async def _run_with_heartbeat(coro: Any, telemetry: Telemetry, op_id: str, start: float, heartbeat_s: float) -> Any:
