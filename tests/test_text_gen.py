@@ -67,12 +67,23 @@ class TextGenIntegrationTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.prompts_root = Path(__file__).resolve().parents[1] / "prompts"
 
-    def _skip_if_no_key(self) -> None:
+    def _skip_if_no_key_or_incompatible(self) -> None:
         if not os.getenv("OPENAI_API_KEY"):
             self.skipTest("OPENAI_API_KEY not set; skipping integration test")
 
+        try:
+            import openai  # type: ignore
+        except ImportError:
+            self.skipTest("openai package not installed; skipping integration test")
+
+        version = getattr(openai, "__version__", "0.0.0")
+        if not _version_at_least(version, "1.40.0"):
+            self.skipTest(
+                f"openai version {version} is below 1.40.0; skipping integration test"
+            )
+
     async def test_generate_text_with_openai_client(self) -> None:
-        self._skip_if_no_key()
+        self._skip_if_no_key_or_incompatible()
 
         description = {
             "title": "Morning Walk",
@@ -90,7 +101,7 @@ class TextGenIntegrationTests(unittest.IsolatedAsyncioTestCase):
         print("Generated text (prose):", result["surface"])
 
     async def test_generate_and_verify_with_openai_client(self) -> None:
-        self._skip_if_no_key()
+        self._skip_if_no_key_or_incompatible()
 
         description = {
             "title": "Evening Rain",
@@ -125,3 +136,16 @@ class TextGenIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _version_at_least(current: str, minimum: str) -> bool:
+    def to_tuple(v: str) -> tuple[int, ...]:
+        parts: list[int] = []
+        for part in v.split("."):
+            try:
+                parts.append(int(part))
+            except ValueError:
+                parts.append(0)
+        return tuple(parts)
+
+    return to_tuple(current) >= to_tuple(minimum)
