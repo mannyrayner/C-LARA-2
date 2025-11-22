@@ -154,6 +154,44 @@ class OpenAIClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(any(evt[1] == "warn" for evt in telemetry.events))
         sleep_mock.assert_awaited()
 
+    async def test_length_finish_error_falls_back_to_legacy(self) -> None:
+        telemetry = RecordingTelemetry()
+
+        class LengthFinishReasonError(Exception):
+            pass
+
+        class BrokenCompletions:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            def create(self, **_: object) -> object:
+                self.calls += 1
+                raise LengthFinishReasonError("boom")
+
+        class BrokenChat:
+            def __init__(self) -> None:
+                self.completions = BrokenCompletions()
+
+        class BrokenAsyncOpenAI:
+            def __init__(self, **_: object) -> None:
+                self.chat = BrokenChat()
+
+        class LegacyChatCompletion:
+            @staticmethod
+            def create(**_: object) -> dict:
+                return {"choices": [{"message": {"content": '{"ok": true}'}}]}
+
+        legacy_module = types.SimpleNamespace(ChatCompletion=LegacyChatCompletion, api_key=None)
+
+        with patch("core.ai_api.AsyncOpenAI", BrokenAsyncOpenAI), patch("core.ai_api._openai_module", legacy_module):
+            client = OpenAIClient(config=OpenAIConfig(api_key=None))
+            result = await client.chat_json("hello", telemetry=telemetry, op_id="op-length")
+
+        self.assertEqual({"ok": True}, result)
+        self.assertTrue(
+            any((evt[3] or {}).get("error_type") == "LengthFinishReasonError" for evt in telemetry.events)
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

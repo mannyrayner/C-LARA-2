@@ -115,6 +115,23 @@ class OpenAIClient:
                 telemetry.event(op_id, "warn", "openai retry", {"attempt": attempt, "error": str(exc)})
                 await asyncio.sleep(backoff)
                 backoff *= 2
+            except ImportError as exc:
+                if self._legacy_module is not None and self._mode == "async":
+                    telemetry.event(
+                        op_id,
+                        "warn",
+                        "falling back to legacy OpenAI client",
+                        {"error": str(exc), "error_type": exc.__class__.__name__},
+                    )
+                    self._mode = "legacy"
+                    continue
+                telemetry.event(
+                    op_id,
+                    "error",
+                    "openai import failure",
+                    {"error": str(exc), "error_type": exc.__class__.__name__},
+                )
+                raise
             except Exception as exc:
                 # Some environments raise custom error classes (e.g., test fakes)
                 # that are not instances of the imported OpenAI exceptions. We
@@ -127,14 +144,18 @@ class OpenAIClient:
                     await asyncio.sleep(backoff)
                     backoff *= 2
                     continue
+
+                if exc.__class__.__name__ == "LengthFinishReasonError" or "LengthFinishReasonError" in str(exc):
+                    if self._legacy_module is not None and self._mode == "async":
+                        telemetry.event(
+                            op_id,
+                            "warn",
+                            "falling back to legacy OpenAI client after LengthFinishReasonError",
+                            {"error": str(exc), "error_type": exc.__class__.__name__},
+                        )
+                        self._mode = "legacy"
+                        continue
                 telemetry.event(op_id, "error", "unexpected failure")
-                raise
-            except ImportError as exc:
-                if self._legacy_module is not None and self._mode == "async":
-                    telemetry.event(op_id, "warn", "falling back to legacy OpenAI client", {"error": str(exc)})
-                    self._mode = "legacy"
-                    continue
-                telemetry.event(op_id, "error", "openai import failure", {"error": str(exc)})
                 raise
 
     def _build_request(
