@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import types
 import unittest
 from unittest.mock import AsyncMock, patch
@@ -131,6 +132,34 @@ class OpenAIClientTests(unittest.IsolatedAsyncioTestCase):
         with patch("importlib.util.find_spec", return_value=None):
             with self.assertRaises(ImportError):
                 _ensure_openai_installed()
+
+
+class OpenAIClientIntegrationTests(unittest.IsolatedAsyncioTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        if not os.getenv("OPENAI_API_KEY"):
+            raise unittest.SkipTest("OPENAI_API_KEY not set; skipping OpenAI integration tests")
+        try:
+            import openai  # type: ignore
+        except ImportError:
+            raise unittest.SkipTest("openai package not installed")
+
+        cls.openai = openai
+        cls.test_model = os.getenv("OPENAI_TEST_MODEL", "gpt-5")
+
+    async def test_chat_json_with_real_client(self) -> None:
+        telemetry = RecordingTelemetry()
+        client = OpenAIClient(config=OpenAIConfig(model=self.test_model))
+        prompt = "Return a JSON object {\\\"ok\\\": true}."
+
+        try:
+            result = await client.chat_json(prompt, telemetry=telemetry, op_id="integration-1")
+        except self.openai.NotFoundError as exc:  # type: ignore[attr-defined]
+            self.skipTest(f"model {self.test_model} unavailable: {exc}")
+
+        print("chat_json_real_client response:", result)
+        self.assertIsInstance(result, dict)
+        self.assertTrue(result)
 
 
 class RateLimitError(Exception):

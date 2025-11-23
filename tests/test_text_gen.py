@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import unittest
 
+from core.config import OpenAIConfig
 from pipeline import text_gen
 from pipeline.text_gen import TextGenSpec
 
@@ -87,6 +88,9 @@ class TextGenIntegrationTests(unittest.IsolatedAsyncioTestCase):
         except ImportError as exc:
             self.skipTest(f"openai async client unavailable: {exc}")
 
+        self.openai = openai
+        self.test_model = os.getenv("OPENAI_TEST_MODEL", "gpt-5")
+
     async def test_generate_text_with_openai_client(self) -> None:
         self._skip_if_no_key_or_incompatible()
 
@@ -98,10 +102,13 @@ class TextGenIntegrationTests(unittest.IsolatedAsyncioTestCase):
         }
 
         spec = TextGenSpec(description=description, language="en")
+        client = text_gen.OpenAIClient(config=OpenAIConfig(model=self.test_model))
         try:
-            result = await text_gen.generate_text(spec)
+            result = await text_gen.generate_text(spec, client=client)
         except ImportError as exc:
             self.skipTest(f"openai SDK import failure during generate_text: {exc}")
+        except self.openai.NotFoundError as exc:  # type: ignore[attr-defined]
+            self.skipTest(f"model {self.test_model} unavailable: {exc}")
 
         self.assertIn("surface", result)
         self.assertGreater(len(result["surface"].split()), 5)
@@ -119,11 +126,13 @@ class TextGenIntegrationTests(unittest.IsolatedAsyncioTestCase):
         }
 
         spec = TextGenSpec(description=description, language="en")
-        client = text_gen.OpenAIClient()
+        client = text_gen.OpenAIClient(config=OpenAIConfig(model=self.test_model))
         try:
             generated = await text_gen.generate_text(spec, client=client)
         except ImportError as exc:
             self.skipTest(f"openai SDK import failure during generate_text: {exc}")
+        except self.openai.NotFoundError as exc:  # type: ignore[attr-defined]
+            self.skipTest(f"model {self.test_model} unavailable: {exc}")
 
         verify_prompt = "\n".join(
             [
@@ -140,6 +149,8 @@ class TextGenIntegrationTests(unittest.IsolatedAsyncioTestCase):
             verification = await client.chat_json(verify_prompt)
         except ImportError as exc:
             self.skipTest(f"openai SDK import failure during verification call: {exc}")
+        except self.openai.NotFoundError as exc:  # type: ignore[attr-defined]
+            self.skipTest(f"model {self.test_model} unavailable during verification: {exc}")
 
         self.assertIsInstance(verification, dict)
         self.assertIn("is_valid", verification)
