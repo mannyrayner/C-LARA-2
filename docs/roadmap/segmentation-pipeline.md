@@ -158,6 +158,8 @@ The ```segmentation``` operation is special because it is the first one.
 
 Here is a minimal example of inputs and outputs for the ```segmentation``` operation.
 
+Implementation note: `src/pipeline/segmentation.py` now drives `segmentation_phase_1` by loading the language-specific prompt template and few-shot examples from `prompts/segmentation_phase_1/<lang>/`, constructing the prompt, and calling the async OpenAI wrapper. The AI is expected to return the `Text` JSON structure shown below with only `surface` fields populated inside each segment.
+
 The input plain text string is the following:
 
 ```
