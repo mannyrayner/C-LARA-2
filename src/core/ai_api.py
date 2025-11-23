@@ -107,7 +107,7 @@ class OpenAIClient:
         prompt: str,
         *,
         model: str,
-        temperature: float,
+        temperature: float | None,
         tools: Iterable[dict[str, Any]] | None,
         response_format: dict[str, str] | None,
     ) -> Any:
@@ -115,13 +115,16 @@ class OpenAIClient:
         response_format = response_format or {"type": "json_object"}
         tools_payload = list(tools) if tools else None
 
-        return self._client.chat.completions.create(
-            model=model,
-            temperature=temperature,
-            messages=messages,
-            tools=tools_payload,
-            response_format=response_format,
-        )
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "tools": tools_payload,
+            "response_format": response_format,
+        }
+        if temperature is not None:
+            kwargs["temperature"] = temperature
+
+        return self._client.chat.completions.create(**kwargs)
 
 
 def _ensure_openai_installed() -> None:
