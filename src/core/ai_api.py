@@ -272,22 +272,21 @@ def _legacy_api_supported(legacy_module: Any) -> bool:
 def _async_api_supported() -> bool:
     """Return True if the async OpenAI SDK appears import-healthy.
 
-    Some Windows/POSIX hybrid environments can exhibit partial installs where
-    imports inside the chat-completions path fail (e.g., missing
-    ``LengthFinishReasonError``). We attempt a lightweight import probe here so
-    we can fail fast with a clear error instead of crashing mid-request.
+    We proactively import the common dependencies that have been missing on some
+    host installs (e.g., ``LengthFinishReasonError``) so we can fail fast rather
+    than crashing mid-request. If the probe fails, callers can decide to skip or
+    fall back to the legacy client when available.
     """
 
     if AsyncOpenAI is None:
         return False
 
-    try:  # pragma: no cover - exercised in environments with broken installs
+    try:  # pragma: no cover - exercised only on hosts with broken installs
         from openai._exceptions import LengthFinishReasonError  # type: ignore
+        _ = LengthFinishReasonError
     except Exception:
-        # Newer SDKs may move or hide this symbol; absence alone should not
-        # block async usage because ``chat_json`` will still surface any
-        # import-related failures clearly.
-        return True
+        return False
+
     return True
 
 
