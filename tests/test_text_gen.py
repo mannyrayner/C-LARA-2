@@ -9,7 +9,6 @@ import unittest
 
 from pipeline import text_gen
 from pipeline.text_gen import TextGenSpec
-from core.ai_api import _async_api_supported
 
 
 class FakeAIClient:
@@ -65,11 +64,6 @@ class TextGenTests(unittest.IsolatedAsyncioTestCase):
 
 
 class TextGenIntegrationTests(unittest.IsolatedAsyncioTestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        if not _async_api_supported():
-            raise unittest.SkipTest("openai async client is missing dependencies; try reinstalling openai")
-
     def setUp(self) -> None:
         self.prompts_root = Path(__file__).resolve().parents[1] / "prompts"
 
@@ -83,10 +77,15 @@ class TextGenIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.skipTest("openai package not installed; skipping integration test")
 
         version = getattr(openai, "__version__", "0.0.0")
-        if not _version_at_least(version, "1.40.0"):
+        if not _version_at_least(version, "1.0.0"):
             self.skipTest(
-                f"openai version {version} is below 1.40.0; skipping integration test"
+                f"openai version {version} is below 1.0.0; skipping integration test"
             )
+
+        try:
+            text_gen.OpenAIClient()
+        except ImportError as exc:
+            self.skipTest(f"openai async client unavailable: {exc}")
 
     async def test_generate_text_with_openai_client(self) -> None:
         self._skip_if_no_key_or_incompatible()

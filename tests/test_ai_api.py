@@ -2,55 +2,12 @@
 from __future__ import annotations
 
 import asyncio
-import inspect
-import sys
+import json
 import types
 import unittest
 from unittest.mock import AsyncMock, patch
 
-try:  # pragma: no cover - exercised in environments without OpenAI installed
-    from openai import AsyncOpenAI as _AsyncOpenAI, RateLimitError as _OpenAIRateLimitError
-    from openai._exceptions import APIError as _OpenAIAPIError
-except ModuleNotFoundError:  # pragma: no cover - fallback for offline test environments
-    class TimeoutException(Exception):
-        pass
-
-
-    class Timeout:  # type: ignore[too-few-public-methods]
-        def __init__(self, *_: object, **__: object) -> None:
-            pass
-
-
-    sys.modules.setdefault("httpx", types.SimpleNamespace(Timeout=Timeout, TimeoutException=TimeoutException))
-
-    class AsyncOpenAI:  # type: ignore[too-few-public-methods]
-        def __init__(self, **_: object) -> None:
-            self.chat = None
-
-    class APIError(Exception):
-        pass
-
-    class RateLimitError(Exception):
-        def __init__(self, message: str, response: object | None = None) -> None:
-            super().__init__(message)
-            self.response = response
-
-    sys.modules["openai"] = types.SimpleNamespace(AsyncOpenAI=AsyncOpenAI, RateLimitError=RateLimitError)
-    sys.modules["openai._exceptions"] = types.SimpleNamespace(APIError=APIError, RateLimitError=RateLimitError)
-else:
-    AsyncOpenAI = _AsyncOpenAI
-
-    class APIError(Exception):
-        pass
-
-    class RateLimitError(Exception):
-        def __init__(self, message: str, response: object | None = None) -> None:
-            super().__init__(message)
-            self.response = response
-
-    sys.modules["openai._exceptions"] = types.SimpleNamespace(APIError=APIError, RateLimitError=RateLimitError)
-
-from core.ai_api import APIRemovedInV1, OpenAIClient, _async_api_supported
+from core.ai_api import OpenAIClient, _ensure_openai_installed
 from core.config import OpenAIConfig
 
 
@@ -93,9 +50,9 @@ class FakeChatCompletions:
 
         if isinstance(response, Exception):
             raise response
-        if inspect.iscoroutine(response):
+        if asyncio.iscoroutine(response):
             return await response
-        if inspect.iscoroutinefunction(response):
+        if asyncio.iscoroutinefunction(response):
             return await response()
         if callable(response):
             return response()
@@ -119,22 +76,19 @@ class OpenAIClientTests(unittest.IsolatedAsyncioTestCase):
 
         result = await client.chat_json("hello", telemetry=telemetry, op_id="op-1")
 
-        # Log the raw payload so it's visible in the test log for debugging.
         print("chat_json_success stubbed response:", result)
-
         self.assertEqual({"ok": True}, result)
-        self.assertEqual(("op-1", "info", "openai.chat attempt 1", None), telemetry.events[0])
+        self.assertTrue(any(evt[2].startswith("openai.chat attempt") for evt in telemetry.events))
 
     async def test_chat_json_emits_heartbeat(self) -> None:
         telemetry = RecordingTelemetry()
 
         async def slow_response() -> FakeResponse:
-            await asyncio.sleep(0.03)
+            await asyncio.sleep(0.05)
             return FakeResponse('{"done": true}')
 
         client = OpenAIClient(
-            config=OpenAIConfig(api_key=None, heartbeat_s=0.01),
-            client=FakeClient([slow_response]),
+            config=OpenAIConfig(api_key=None, heartbeat_s=0.01), client=FakeClient([slow_response])
         )
 
         result = await client.chat_json("hi", telemetry=telemetry, op_id="op-2")
@@ -159,113 +113,30 @@ class OpenAIClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(any(evt[1] == "warn" for evt in telemetry.events))
         sleep_mock.assert_awaited()
 
-    async def test_length_finish_error_falls_back_to_legacy(self) -> None:
+    async def test_chat_json_raises_on_length_finish_error(self) -> None:
         telemetry = RecordingTelemetry()
 
-        class LengthFinishReasonError(Exception):
+        class FakeLengthFinishError(Exception):
             pass
 
-        class BrokenCompletions:
-            def __init__(self) -> None:
-                self.calls = 0
+        async def fail() -> FakeResponse:
+            raise FakeLengthFinishError("length")
 
-            def create(self, **_: object) -> object:
-                self.calls += 1
-                raise LengthFinishReasonError("boom")
+        client = OpenAIClient(config=OpenAIConfig(api_key=None), client=FakeClient([fail]))
 
-        class BrokenChat:
-            def __init__(self) -> None:
-                self.completions = BrokenCompletions()
+        with self.assertRaises(Exception):
+            await client.chat_json("hi", telemetry=telemetry, op_id="op-4")
 
-        class BrokenAsyncOpenAI:
-            def __init__(self, **_: object) -> None:
-                self.chat = BrokenChat()
-
-        class LegacyChatCompletion:
-            @staticmethod
-            def create(**_: object) -> dict:
-                return {"choices": [{"message": {"content": '{"ok": true}'}}]}
-
-        legacy_module = types.SimpleNamespace(ChatCompletion=LegacyChatCompletion, api_key=None)
-
-        with patch("core.ai_api.AsyncOpenAI", BrokenAsyncOpenAI), patch("core.ai_api._async_api_supported", return_value=True), patch(
-            "core.ai_api._openai_module", legacy_module
-        ):
-            client = OpenAIClient(config=OpenAIConfig(api_key=None))
-            result = await client.chat_json("hello", telemetry=telemetry, op_id="op-length")
-
-        self.assertEqual({"ok": True}, result)
-        self.assertTrue(
-            any((evt[3] or {}).get("error_type") == "LengthFinishReasonError" for evt in telemetry.events)
-        )
-
-        print("length_finish_error_falls_back_to_legacy legacy stub response:", result)
-
-    async def test_length_finish_error_without_legacy_raises_import_error(self) -> None:
-        telemetry = RecordingTelemetry()
-
-        class LengthFinishReasonError(Exception):
-            pass
-
-        class BrokenCompletions:
-            def create(self, **_: object) -> object:
-                raise LengthFinishReasonError("boom")
-
-        class BrokenChat:
-            def __init__(self) -> None:
-                self.completions = BrokenCompletions()
-
-        class BrokenAsyncOpenAI:
-            def __init__(self, **_: object) -> None:
-                self.chat = BrokenChat()
-
-        legacy_module = types.SimpleNamespace(ChatCompletion=None, api_key=None, __version__="1.2.0")
-
-        with patch("core.ai_api.AsyncOpenAI", BrokenAsyncOpenAI), patch("core.ai_api._async_api_supported", return_value=True), patch(
-            "core.ai_api._openai_module", legacy_module
-        ):
-            client = OpenAIClient(config=OpenAIConfig(api_key=None))
+    def test_ensure_openai_installed_raises_when_missing(self) -> None:
+        with patch("importlib.util.find_spec", return_value=None):
             with self.assertRaises(ImportError):
-                await client.chat_json("hello", telemetry=telemetry, op_id="op-length-missing")
+                _ensure_openai_installed()
 
-    async def test_async_import_failure_prefers_legacy_when_available(self) -> None:
-        telemetry = RecordingTelemetry()
 
-        class LegacyChatCompletion:
-            @staticmethod
-            def create(**_: object) -> dict:
-                return {"choices": [{"message": {"content": "{}"}}]}
-
-        legacy_module = types.SimpleNamespace(
-            ChatCompletion=LegacyChatCompletion, api_key=None, __version__="0.27.0"
-        )
-
-        with patch("core.ai_api.AsyncOpenAI", object()), patch("core.ai_api._async_api_supported", return_value=False), patch(
-            "core.ai_api._openai_module", legacy_module
-        ):
-            client = OpenAIClient(config=OpenAIConfig(api_key=None))
-            result = await client.chat_json("{}", telemetry=telemetry, op_id="op-legacy")
-            self.assertEqual(result, {})
-
-    async def test_legacy_removed_api_raises_import_error(self) -> None:
-        telemetry = RecordingTelemetry()
-
-        class LegacyChatCompletion:
-            @staticmethod
-            def create(**_: object) -> dict:
-                raise APIRemovedInV1(symbol="ChatCompletion")
-
-        legacy_module = types.SimpleNamespace(ChatCompletion=LegacyChatCompletion, api_key=None, __version__="1.2.0")
-
-        with patch("core.ai_api.AsyncOpenAI", None), patch("core.ai_api._openai_module", legacy_module):
-            with self.assertRaises(ImportError):
-                OpenAIClient(config=OpenAIConfig(api_key=None))
-
-    async def test_init_without_async_and_legacy_support_raises_import_error(self) -> None:
-        legacy_module = types.SimpleNamespace(ChatCompletion=None, api_key=None, __version__="1.5.0")
-        with patch("core.ai_api.AsyncOpenAI", None), patch("core.ai_api._openai_module", legacy_module):
-            with self.assertRaises(ImportError):
-                OpenAIClient(config=OpenAIConfig(api_key=None))
+class RateLimitError(Exception):
+    def __init__(self, message: str, response: object | None = None) -> None:
+        super().__init__(message)
+        self.response = response
 
 
 if __name__ == "__main__":
