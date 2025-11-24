@@ -9,8 +9,16 @@ import uuid
 from typing import Any, Iterable
 
 import httpx
-from openai import APIError, AsyncOpenAI, RateLimitError
-from openai._exceptions import LengthFinishReasonError
+
+try:  # pragma: no cover - exercised indirectly in integration environments
+    from openai import APIError, AsyncOpenAI, RateLimitError
+    from openai._exceptions import LengthFinishReasonError
+except ImportError:  # pragma: no cover - offline test environments
+    AsyncOpenAI = None  # type: ignore[misc,assignment]
+    APIError = type("APIError", (Exception,), {})
+    RateLimitError = type("RateLimitError", (Exception,), {})
+    class LengthFinishReasonError(Exception):
+        pass
 
 from .config import OpenAIConfig
 from .telemetry import NullTelemetry, Telemetry
@@ -20,12 +28,15 @@ class OpenAIClient:
     """Thin wrapper around OpenAI chat completions with heartbeat + retries."""
 
     def __init__(self, *, config: OpenAIConfig | None = None, client: Any | None = None) -> None:
-        _ensure_openai_installed()
         self.config = config or OpenAIConfig()
 
         if client is not None:
             self._client = client
             return
+
+        _ensure_openai_installed()
+        if AsyncOpenAI is None:  # pragma: no cover - missing dependency
+            raise ImportError("The openai package is required. Install it via pip install openai")
 
         timeout = httpx.Timeout(self.config.timeout_s)
         client_kwargs: dict[str, Any] = {"timeout": timeout}

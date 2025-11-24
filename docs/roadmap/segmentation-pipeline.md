@@ -122,7 +122,7 @@ In code we can still expose light dataclasses in ```types.py``` for developer er
 
 ## 4) Generic processing flow for annotation operations
 
-The IDs for the annotation operations are the following: 
+The IDs for the annotation operations are the following:
 - ```segmentation``` # Add segmentation information 
 - ```segmentation_phase_1``` # First part of ```segmentation``` operation
 - ```segmentation_phase_2``` # Second part of ```segmentation``` operation
@@ -132,25 +132,32 @@ The IDs for the annotation operations are the following:
 - ```gloss``` # Add gloss information to each ```Token``` 
 - ```pinyin``` # Add pinyin information to each ```Token``` (only relevant for Chinese)
 
-The generic processing flow is used for all the annotation operations except ```segmentation``` and ```segmentation_phase_1```. 
+The generic processing flow is used for all the annotation operations except ```segmentation``` and ```segmentation_phase_1```.
+It is implemented in `src/pipeline/generic_annotation.py` with shared prompt helpers in
+`src/pipeline/annotation_prompts.py`.
 
 The generic processing flow is as follows:
 - Input is a ```Text``` JSON object and a specification of the type of annotations to be added.
 - Output is a ```Text``` JSON object which includes the extra annotations.
 - Recursively descend from ```Text``` to ```Page``` to ```Segment``` and process each ```Segment``` in parallel (fan-out).
-- For each ```Segment```: 
-	- Construct an appropriate prompt. The input to the prompt construction process will include 
-		- the ```Segment```
-		- a prompt template specific to the operation and source language
-		- (optionally) a list of few-shot examples specific to the operation and source language
-  - pass the prompt to the AI
+- For each ```Segment```:
+        - Construct an appropriate prompt. The input to the prompt construction process will include
+                - the ```Segment```
+                - a prompt template specific to the operation and source language
+                - (optionally) a list of few-shot examples specific to the operation and source language
+        - pass the prompt to the AI via the async wrapper (heartbeat + retries)
 - When processing of all the ```Segment```s has completed, combine them to create the new ```Text``` object (fan-in)
+
+Implementation hooks:
+- Prompt templates live under `prompts/<operation>/<lang>/template.txt`; optional few-shots live in `prompts/<operation>/<lang>/fewshots/`.
+- `GenericAnnotationSpec` accepts a per-segment prompt builder so operations can shape the output instructions.
+- Telemetry is shared across all segment calls with per-segment op_ids for heartbeat logging.
 
 The ```segmentation``` operation is special because it is the first one.
 - The input is plain text, and the output is a ```Text``` JSON object.
 - The ```segmentation``` operation is divided into two parts, ```segmentation_phase_1``` and ```segmentation_phase_2```.
 - ```segmentation_phase_1``` converts the input plain text into a ```Text``` JSON object where the ```Segment``` objects only contain plain text content in the form of a ```surface``` field.
-- ```segmentation_phase_2``` uses the generic processing flow to convert the output of the first part into a ```Text``` JSON object where each ```Segment``` object includes a list of ```Token``` objects.
+- ```segmentation_phase_2``` uses the generic processing flow to convert the output of the first part into a ```Text``` JSON object where each ```Segment``` object includes a list of ```Token``` objects. The prompt/template + few-shots for this step live under `prompts/segmentation_phase_2/<lang>/` and return a per-segment JSON payload containing `surface`, `tokens` (including whitespace/punctuation tokens), and `annotations`.
 
 ---
 

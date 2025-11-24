@@ -1,4 +1,4 @@
-"""Unit tests for the segmentation phase 1 pipeline step."""
+"""Unit tests for the segmentation pipeline steps."""
 from __future__ import annotations
 
 import asyncio
@@ -9,7 +9,13 @@ import unittest
 
 from core.config import OpenAIConfig
 from pipeline import segmentation
-from pipeline.segmentation import SegmentationSpec
+from pipeline.segmentation import (
+    SegmentationPhase2Spec,
+    SegmentationPipelineSpec,
+    SegmentationSpec,
+    segmentation as run_segmentation,
+    segmentation_phase_2,
+)
 
 
 class FakeAIClient:
@@ -23,12 +29,26 @@ class FakeAIClient:
         return self.response
 
 
+class FakePerCallAIClient(FakeAIClient):
+    def __init__(self, responses: list[dict]) -> None:
+        super().__init__({})
+        self._responses = responses
+        self._idx = 0
+
+    async def chat_json(self, prompt: str, **_: object) -> dict:  # type: ignore[override]
+        self.prompts.append(prompt)
+        await asyncio.sleep(0)
+        resp = self._responses[self._idx]
+        self._idx += 1
+        return resp
+
+
 class SegmentationTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.prompts_root = Path(__file__).resolve().parents[1] / "prompts"
 
     def test_loads_fewshots(self) -> None:
-        fewshots = segmentation._load_fewshots("en", prompts_root=self.prompts_root)
+        fewshots = segmentation._load_fewshots("en", prompts_root=self.prompts_root)  # type: ignore[attr-defined]
         self.assertGreaterEqual(len(fewshots), 2)
         self.assertTrue(all("input" in fs and "output" in fs for fs in fewshots))
 
@@ -42,7 +62,7 @@ class SegmentationTests(unittest.IsolatedAsyncioTestCase):
             }
         ]
 
-        prompt = segmentation._build_prompt(template, text=text, fewshots=fewshots)
+        prompt = segmentation._build_prompt(template, text=text, fewshots=fewshots)  # type: ignore[attr-defined]
 
         self.assertIn("Input text:", prompt)
         self.assertIn(text.strip(), prompt)
@@ -50,11 +70,14 @@ class SegmentationTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn(json.dumps(fewshots[0]["output"], indent=2), prompt)
 
     async def test_segmentation_normalizes_response(self) -> None:
-        client = FakeAIClient({
-            "pages": [
-                {"surface": "Line one.", "segments": [{"surface": "Line one."}]}],
-            "annotations": {},
-        })
+        client = FakeAIClient(
+            {
+                "pages": [
+                    {"surface": "Line one.", "segments": [{"surface": "Line one."}]}
+                ],
+                "annotations": {},
+            }
+        )
         spec = SegmentationSpec(text="Line one.")
 
         result = await segmentation.segmentation_phase_1(spec, client=client)
@@ -63,6 +86,72 @@ class SegmentationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("Line one.", result["surface"])
         self.assertEqual(1, len(result["pages"]))
         self.assertTrue(client.prompts)
+
+    async def test_segmentation_phase_2_adds_tokens(self) -> None:
+        text = {
+            "l2": "en",
+            "surface": "Line one.",
+            "pages": [
+                {"surface": "Line one.", "segments": [{"surface": "Line one."}]}
+            ],
+            "annotations": {},
+        }
+        client = FakeAIClient(
+            {
+                "surface": "Line one.",
+                "tokens": [
+                    {"surface": "Line"},
+                    {"surface": " "},
+                    {"surface": "one"},
+                    {"surface": "."},
+                ],
+                "annotations": {},
+            }
+        )
+        spec = SegmentationPhase2Spec(text=text, language="en")
+
+        result = await segmentation_phase_2(spec, client=client)
+
+        segment = result["pages"][0]["segments"][0]
+        self.assertIn("tokens", segment)
+        self.assertEqual(4, len(segment["tokens"]))
+
+    async def test_segmentation_full_pipeline(self) -> None:
+        phase1_response = {
+            "l2": "en",
+            "surface": "A B.",
+            "pages": [
+                {
+                    "surface": "A B.",
+                    "segments": [
+                        {"surface": "A "},
+                        {"surface": "B."},
+                    ],
+                }
+            ],
+            "annotations": {},
+        }
+        phase2_responses = [
+            {
+                "surface": "A ",
+                "tokens": [{"surface": "A"}, {"surface": " "}],
+                "annotations": {},
+            },
+            {
+                "surface": "B.",
+                "tokens": [{"surface": "B"}, {"surface": "."}],
+                "annotations": {},
+            },
+        ]
+
+        client = FakePerCallAIClient([phase1_response, *phase2_responses])
+        spec = SegmentationPipelineSpec(text="A B.")
+
+        result = await run_segmentation(spec, client=client)
+
+        segments = result["pages"][0]["segments"]
+        self.assertEqual(2, len(segments))
+        self.assertEqual("A", segments[0]["tokens"][0]["surface"])
 
 
 class SegmentationIntegrationTests(unittest.IsolatedAsyncioTestCase):
@@ -99,6 +188,32 @@ class SegmentationIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertGreaterEqual(len(result.get("pages", [])), 1)
         # Log the segmentation for manual inspection if needed.
         print("Segmentation output:", json.dumps(result, indent=2))
+
+    async def test_segmentation_phase_2_with_openai_client(self) -> None:
+        self._skip_if_no_key_or_incompatible()
+
+        sample_text = {
+            "l2": "en",
+            "surface": "The boy's name was Will.",
+            "pages": [
+                {
+                    "surface": "The boy's name was Will.",
+                    "segments": [{"surface": "The boy's name was Will."}],
+                }
+            ],
+            "annotations": {},
+        }
+        spec = SegmentationPhase2Spec(text=sample_text, language="en")
+        client = segmentation.OpenAIClient(config=OpenAIConfig(model=self.test_model))
+
+        try:
+            result = await segmentation_phase_2(spec, client=client)
+        except self.openai.NotFoundError as exc:  # type: ignore[attr-defined]
+            self.skipTest(f"model {self.test_model} unavailable: {exc}")
+
+        tokens = result.get("pages", [])[0]["segments"][0].get("tokens", [])
+        self.assertGreaterEqual(len(tokens), 3)
+        print("Segmentation phase 2 output:", json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":
