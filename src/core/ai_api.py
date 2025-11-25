@@ -173,6 +173,28 @@ def _ensure_openai_installed():
             class LengthFinishReasonError(Exception):
                 pass
 
+        # The OpenAI AsyncClient attempts to schedule an aclose() coroutine in
+        # its __del__ method. On some platforms this runs after the event loop
+        # has already been shut down, emitting noisy "Event loop is closed"
+        # warnings. We patch __del__ to be defensive so test environments stay
+        # quiet while normal explicit aclose() calls continue to work.
+        try:
+            async_client_cls = import_module("openai._base_client").AsyncClient  # type: ignore[attr-defined]
+
+            def _safe_del(self: object) -> None:  # pragma: no cover - exercised in user envs
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        loop.create_task(self.aclose())
+                except Exception:
+                    # If no loop is available or it is already closed, just
+                    # swallow the cleanup since tests call aclose() directly.
+                    pass
+
+            async_client_cls.__del__ = _safe_del  # type: ignore[assignment]
+        except Exception:
+            pass
+
         _openai_cache = openai_mod
         return openai_mod
     except Exception as exc:  # pragma: no cover - exercised in user envs
