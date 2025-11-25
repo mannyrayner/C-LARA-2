@@ -129,6 +129,9 @@ class OpenAIClientUnitTests(unittest.IsolatedAsyncioTestCase):
             await client.chat_json("hi", telemetry=telemetry, op_id="op-4")
 
     def test_ensure_openai_installed_raises_when_missing(self) -> None:
+        import core.ai_api as ai_api
+
+        ai_api._openai_cache = None
         with patch("importlib.util.find_spec", return_value=None):
             with self.assertRaises(ImportError):
                 _ensure_openai_installed()
