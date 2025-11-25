@@ -210,9 +210,13 @@ async def _run_with_heartbeat(coro: Any, telemetry: Telemetry, op_id: str, start
     finally:
         if not task.done():
             task.cancel()
-        # Always await the task to surface exceptions and avoid event-loop
-        # shutdown warnings about pending tasks. Any cancellation or runtime
-        # errors are suppressed because the caller has already handled the
-        # outcome.
-        with contextlib.suppress(Exception):
-            await task
+            try:
+                await task
+            except Exception:
+                pass
+        else:
+            # Task already completed; still await to surface errors but never
+            # propagate them here since the caller has already handled the
+            # outcome.
+            with contextlib.suppress(Exception):
+                await task
