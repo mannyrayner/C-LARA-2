@@ -133,6 +133,16 @@ class OpenAIClient:
 
         return self._client.chat.completions.create(**kwargs)
 
+    async def aclose(self) -> None:
+        """Close the underlying async client if it exposes an aclose method."""
+
+        close_fn = getattr(self._client, "aclose", None)
+        if close_fn is None:
+            return
+        result = close_fn()
+        if asyncio.iscoroutine(result):
+            await result
+
 
 def _ensure_openai_installed():
     """Check that the OpenAI SDK is installed and importable."""

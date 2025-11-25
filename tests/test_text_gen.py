@@ -100,6 +100,7 @@ class TextGenIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
         spec = TextGenSpec(description=description, language="en")
         client = text_gen.OpenAIClient(config=OpenAIConfig(model=self.test_model))
+        self.addAsyncCleanup(client.aclose)
         try:
             result = await text_gen.generate_text(spec, client=client)
         except ImportError as exc:
@@ -124,6 +125,7 @@ class TextGenIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
         spec = TextGenSpec(description=description, language="en")
         client = text_gen.OpenAIClient(config=OpenAIConfig(model=self.test_model))
+        self.addAsyncCleanup(client.aclose)
         try:
             generated = await text_gen.generate_text(spec, client=client)
         except ImportError as exc:

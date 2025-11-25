@@ -178,6 +178,7 @@ class SegmentationIntegrationTests(unittest.IsolatedAsyncioTestCase):
         sample_text = "A boy sat by the river. He skipped stones. A fish leapt in the sunlight."
         spec = SegmentationSpec(text=sample_text, language="en")
         client = segmentation.OpenAIClient(config=OpenAIConfig(model=self.test_model))
+        self.addAsyncCleanup(client.aclose)
 
         try:
             result = await segmentation.segmentation_phase_1(spec, client=client)
@@ -205,6 +206,7 @@ class SegmentationIntegrationTests(unittest.IsolatedAsyncioTestCase):
         }
         spec = SegmentationPhase2Spec(text=sample_text, language="en")
         client = segmentation.OpenAIClient(config=OpenAIConfig(model=self.test_model))
+        self.addAsyncCleanup(client.aclose)
 
         try:
             result = await segmentation_phase_2(spec, client=client)

@@ -152,6 +152,7 @@ class OpenAIClientIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_chat_json_with_real_client(self) -> None:
         telemetry = RecordingTelemetry()
         client = OpenAIClient(config=OpenAIConfig(model=self.test_model))
+        self.addAsyncCleanup(client.aclose)
         prompt = "Return a JSON object {\\\"ok\\\": true}."
 
         try:
@@ -179,6 +180,7 @@ class OpenAIClientTests(unittest.IsolatedAsyncioTestCase):
     async def test_chat_json_success(self) -> None:
         telemetry = RecordingTelemetry()
         client = OpenAIClient(config=OpenAIConfig(model=self.test_model))
+        self.addAsyncCleanup(client.aclose)
         prompt = "Return a JSON object {\\\"ok\\\": true}."
 
         try:
