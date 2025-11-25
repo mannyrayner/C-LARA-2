@@ -22,6 +22,10 @@ From the repository root:
 python -m unittest
 ```
 
+Integration tests use the real OpenAI API when `OPENAI_API_KEY` is set (and
+optionally `OPENAI_TEST_MODEL`, defaulting to `gpt-5`). Without a key, those
+tests are skipped while the unit suite still runs locally.
+
 ## Pull request flow
 1. Commit changes on your feature branch after running tests locally.
 2. Push the branch; GitHub will offer a **Create PR** control in the UI.

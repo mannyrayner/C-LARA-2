@@ -139,7 +139,9 @@ class OpenAIClientIntegrationTests(unittest.IsolatedAsyncioTestCase):
     def setUpClass(cls) -> None:
         if not os.getenv("OPENAI_API_KEY"):
             raise unittest.SkipTest("OPENAI_API_KEY not set; skipping OpenAI integration tests")
+
         try:
+            _ensure_openai_installed()
             import openai  # type: ignore
         except ImportError:
             raise unittest.SkipTest("openai package not installed")
