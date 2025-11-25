@@ -151,14 +151,18 @@ class OpenAIClientIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_chat_json_with_real_client(self) -> None:
         telemetry = RecordingTelemetry()
-        client = OpenAIClient(config=OpenAIConfig(model=self.test_model))
-        self.addAsyncCleanup(client.aclose)
         prompt = "Return a JSON object {\\\"ok\\\": true}."
+        client: OpenAIClient | None = None
 
         try:
+            client = OpenAIClient(config=OpenAIConfig(model=self.test_model))
             result = await client.chat_json(prompt, telemetry=telemetry, op_id="integration-1")
         except self.openai.NotFoundError as exc:  # type: ignore[attr-defined]
             self.skipTest(f"model {self.test_model} unavailable: {exc}")
+        finally:
+            if client:
+                await client.aclose()
+                client = None
 
         print("chat_json_real_client response:", result)
         self.assertIsInstance(result, dict)
@@ -179,14 +183,18 @@ class OpenAIClientTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_chat_json_success(self) -> None:
         telemetry = RecordingTelemetry()
-        client = OpenAIClient(config=OpenAIConfig(model=self.test_model))
-        self.addAsyncCleanup(client.aclose)
         prompt = "Return a JSON object {\\\"ok\\\": true}."
+        client: OpenAIClient | None = None
 
         try:
+            client = OpenAIClient(config=OpenAIConfig(model=self.test_model))
             result = await client.chat_json(prompt, telemetry=telemetry, op_id="real-1")
         except self.openai.NotFoundError as exc:  # type: ignore[attr-defined]
             self.skipTest(f"model {self.test_model} unavailable: {exc}")
+        finally:
+            if client:
+                await client.aclose()
+                client = None
 
         print("chat_json_real_client response:", result)
         self.assertIsInstance(result, dict)
