@@ -1,0 +1,16 @@
+{
+  "description": {
+    "title": "Morning Window",
+    "genre": "short poem",
+    "length": "6-8 lines",
+    "level": "B1",
+    "style": "gentle, rhythmic"
+  },
+  "output": {
+    "l2": "en",
+    "title": "Morning Window",
+    "surface": "I open the window to a shy blue light,\nSteam from my cup curls like a quiet wave.\nThe street hums softly, still half asleep,\nLeaves trade whispers only sparrows can save.\nI breathe in bread, rain, and a trace of pine,\nCarry the warm morning with me through time.",
+    "annotations": {},
+    "pages": []
+  }
+}
