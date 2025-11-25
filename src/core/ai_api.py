@@ -10,6 +10,8 @@ from typing import Any, Iterable
 
 import httpx
 
+TimeoutException = getattr(httpx, "TimeoutException", type("TimeoutException", (Exception,), {}))
+
 try:  # pragma: no cover - exercised indirectly in integration environments
     from openai import APIError, AsyncOpenAI, RateLimitError
     from openai._exceptions import LengthFinishReasonError
@@ -83,7 +85,7 @@ class OpenAIClient:
             except json.JSONDecodeError as exc:  # pragma: no cover - edge condition
                 telemetry.event(op_id, "error", "invalid JSON response", {"payload": payload})
                 raise ValueError("OpenAI returned non-JSON content") from exc
-            except (RateLimitError, APIError, httpx.TimeoutException) as exc:
+            except (RateLimitError, APIError, TimeoutException) as exc:
                 if attempt >= self.config.max_retries:
                     telemetry.event(op_id, "error", "openai call failed", {"error": str(exc)})
                     raise
