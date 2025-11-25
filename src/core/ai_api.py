@@ -13,12 +13,15 @@ import httpx
 TimeoutException = getattr(httpx, "TimeoutException", type("TimeoutException", (Exception,), {}))
 
 try:  # pragma: no cover - exercised indirectly in integration environments
+    import openai  # type: ignore
     from openai import APIError, AsyncOpenAI, RateLimitError
     from openai._exceptions import LengthFinishReasonError
 except ImportError:  # pragma: no cover - offline test environments
+    openai = None  # type: ignore[assignment]
     AsyncOpenAI = None  # type: ignore[misc,assignment]
     APIError = type("APIError", (Exception,), {})
     RateLimitError = type("RateLimitError", (Exception,), {})
+
     class LengthFinishReasonError(Exception):
         pass
 
@@ -141,37 +144,17 @@ class OpenAIClient:
 
 
 def _ensure_openai_installed():
-    """Import the OpenAI SDK, raising ImportError with context if unavailable.
-
-    Some hosts accidentally shadow dependencies (e.g., a local ``httpx.py`` on
-    ``sys.path``). To avoid that, we temporarily move the repository paths to
-    the end of ``sys.path`` so site-packages are preferred during the import.
-    """
+    """Check that the OpenAI SDK is installed and importable."""
 
     from importlib import import_module, util
-    from pathlib import Path
 
     if util.find_spec("openai") is None:
         raise ImportError("The openai package is required. Install it via pip install openai")
 
-    repo_root = Path(__file__).resolve().parents[2]
-
-    def _is_repo_path(entry: str) -> bool:
-        try:
-            return Path(entry or ".").resolve().is_relative_to(repo_root)
-        except Exception:
-            return False
-
-    original_path = list(sys.path)
     try:
-        preferred = [p for p in original_path if not _is_repo_path(p)]
-        fallback = [p for p in original_path if _is_repo_path(p)]
-        sys.path = preferred + fallback
-        return import_module("openai")
+        return openai or import_module("openai")
     except Exception as exc:  # pragma: no cover - exercised in user envs
         raise ImportError(f"openai package import failed: {exc}") from exc
-    finally:
-        sys.path = original_path
 
 
 def _extract_payload(response: Any) -> str:
