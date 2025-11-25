@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import sys
 import time
@@ -198,11 +199,16 @@ def _extract_payload(response: Any) -> str:
 
 async def _run_with_heartbeat(coro: Any, telemetry: Telemetry, op_id: str, start: float, heartbeat_s: float) -> Any:
     task = asyncio.create_task(coro)
-    while not task.done():
-        try:
-            await asyncio.wait_for(asyncio.shield(task), timeout=heartbeat_s)
-        except asyncio.TimeoutError:
-            elapsed = time.monotonic() - start
-            telemetry.heartbeat(op_id, elapsed)
-            continue
-    return await task
+    try:
+        while True:
+            try:
+                return await asyncio.wait_for(asyncio.shield(task), timeout=heartbeat_s)
+            except asyncio.TimeoutError:
+                elapsed = time.monotonic() - start
+                telemetry.heartbeat(op_id, elapsed)
+                continue
+    finally:
+        if not task.done():
+            task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
