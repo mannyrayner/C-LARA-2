@@ -2,9 +2,8 @@
 from __future__ import annotations
 
 import asyncio
-import importlib
-import importlib.util
 import json
+import sys
 import time
 import uuid
 from typing import Any, Iterable
@@ -142,15 +141,37 @@ class OpenAIClient:
 
 
 def _ensure_openai_installed():
-    """Import the OpenAI SDK, raising ImportError with context if unavailable."""
+    """Import the OpenAI SDK, raising ImportError with context if unavailable.
 
-    if importlib.util.find_spec("openai") is None:
+    Some hosts accidentally shadow dependencies (e.g., a local ``httpx.py`` on
+    ``sys.path``). To avoid that, we temporarily move the repository paths to
+    the end of ``sys.path`` so site-packages are preferred during the import.
+    """
+
+    from importlib import import_module, util
+    from pathlib import Path
+
+    if util.find_spec("openai") is None:
         raise ImportError("The openai package is required. Install it via pip install openai")
 
+    repo_root = Path(__file__).resolve().parents[2]
+
+    def _is_repo_path(entry: str) -> bool:
+        try:
+            return Path(entry or ".").resolve().is_relative_to(repo_root)
+        except Exception:
+            return False
+
+    original_path = list(sys.path)
     try:
-        return importlib.import_module("openai")
+        preferred = [p for p in original_path if not _is_repo_path(p)]
+        fallback = [p for p in original_path if _is_repo_path(p)]
+        sys.path = preferred + fallback
+        return import_module("openai")
     except Exception as exc:  # pragma: no cover - exercised in user envs
         raise ImportError(f"openai package import failed: {exc}") from exc
+    finally:
+        sys.path = original_path
 
 
 def _extract_payload(response: Any) -> str:
