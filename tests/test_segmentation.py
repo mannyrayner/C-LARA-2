@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import unittest
 
+from core.ai_api import _ensure_openai_installed
 from core.config import OpenAIConfig
 from pipeline import segmentation
 from pipeline.segmentation import (
@@ -160,16 +161,15 @@ class SegmentationIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.skipTest("OPENAI_API_KEY not set; skipping integration test")
 
         try:
-            import openai  # type: ignore
-        except ImportError:
-            self.skipTest("openai package not installed; skipping integration test")
+            self.openai = _ensure_openai_installed()  # type: ignore[assignment]
+        except ImportError as exc:
+            self.skipTest(str(exc))
 
         try:
             segmentation.OpenAIClient()
         except ImportError as exc:
             self.skipTest(f"openai async client unavailable: {exc}")
 
-        self.openai = openai
         self.test_model = os.getenv("OPENAI_TEST_MODEL", "gpt-5")
 
     async def test_segmentation_with_openai_client(self) -> None:

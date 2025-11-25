@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
 import importlib.util
 import json
 import time
@@ -140,9 +141,16 @@ class OpenAIClient:
         return self._client.chat.completions.create(**kwargs)
 
 
-def _ensure_openai_installed() -> None:
+def _ensure_openai_installed():
+    """Import the OpenAI SDK, raising ImportError with context if unavailable."""
+
     if importlib.util.find_spec("openai") is None:
         raise ImportError("The openai package is required. Install it via pip install openai")
+
+    try:
+        return importlib.import_module("openai")
+    except Exception as exc:  # pragma: no cover - exercised in user envs
+        raise ImportError(f"openai package import failed: {exc}") from exc
 
 
 def _extract_payload(response: Any) -> str:

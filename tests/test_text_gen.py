@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import unittest
 
+from core.ai_api import _ensure_openai_installed
 from core.config import OpenAIConfig
 from pipeline import text_gen
 from pipeline.text_gen import TextGenSpec
@@ -73,22 +74,18 @@ class TextGenIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.skipTest("OPENAI_API_KEY not set; skipping integration test")
 
         try:
-            import openai  # type: ignore
-        except ImportError:
-            self.skipTest("openai package not installed; skipping integration test")
+            self.openai = _ensure_openai_installed()  # type: ignore[assignment]
+        except ImportError as exc:
+            self.skipTest(str(exc))
 
-        version = getattr(openai, "__version__", "0.0.0")
+        version = getattr(self.openai, "__version__", "0.0.0")
         if not _version_at_least(version, "1.0.0"):
-            self.skipTest(
-                f"openai version {version} is below 1.0.0; skipping integration test"
-            )
+            self.skipTest(f"openai version {version} is below 1.0.0; skipping integration test")
 
         try:
             text_gen.OpenAIClient()
         except ImportError as exc:
             self.skipTest(f"openai async client unavailable: {exc}")
-
-        self.openai = openai
         self.test_model = os.getenv("OPENAI_TEST_MODEL", "gpt-5")
 
     async def test_generate_text_with_openai_client(self) -> None:

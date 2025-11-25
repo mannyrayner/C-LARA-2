@@ -141,12 +141,9 @@ class OpenAIClientIntegrationTests(unittest.IsolatedAsyncioTestCase):
             raise unittest.SkipTest("OPENAI_API_KEY not set; skipping OpenAI integration tests")
 
         try:
-            _ensure_openai_installed()
-            import openai  # type: ignore
-        except ImportError:
-            raise unittest.SkipTest("openai package not installed")
-
-        cls.openai = openai
+            cls.openai = _ensure_openai_installed()  # type: ignore[assignment]
+        except ImportError as exc:
+            raise unittest.SkipTest(str(exc))
         cls.test_model = os.getenv("OPENAI_TEST_MODEL", "gpt-5")
 
     async def test_chat_json_with_real_client(self) -> None:
@@ -170,10 +167,10 @@ class OpenAIClientTests(unittest.IsolatedAsyncioTestCase):
         if not os.getenv("OPENAI_API_KEY"):
             raise unittest.SkipTest("OPENAI_API_KEY not set; skipping OpenAI client tests")
 
-        _ensure_openai_installed()
-        import openai  # type: ignore
-
-        cls.openai = openai
+        try:
+            cls.openai = _ensure_openai_installed()  # type: ignore[assignment]
+        except ImportError as exc:
+            raise unittest.SkipTest(str(exc))
         cls.test_model = os.getenv("OPENAI_TEST_MODEL", "gpt-5")
 
     async def test_chat_json_success(self) -> None:
