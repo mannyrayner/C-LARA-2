@@ -70,7 +70,7 @@ class FakeClient:
         self.chat = FakeChat(responses)
 
 
-class OpenAIClientTests(unittest.IsolatedAsyncioTestCase):
+class OpenAIClientUnitTests(unittest.IsolatedAsyncioTestCase):
     async def test_chat_json_success(self) -> None:
         telemetry = RecordingTelemetry()
         client = OpenAIClient(config=OpenAIConfig(api_key=None), client=FakeClient([FakeResponse('{"ok": true}')]))
@@ -156,6 +156,33 @@ class OpenAIClientIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
         try:
             result = await client.chat_json(prompt, telemetry=telemetry, op_id="integration-1")
+        except self.openai.NotFoundError as exc:  # type: ignore[attr-defined]
+            self.skipTest(f"model {self.test_model} unavailable: {exc}")
+
+        print("chat_json_real_client response:", result)
+        self.assertIsInstance(result, dict)
+        self.assertTrue(result)
+
+
+class OpenAIClientTests(unittest.IsolatedAsyncioTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        if not os.getenv("OPENAI_API_KEY"):
+            raise unittest.SkipTest("OPENAI_API_KEY not set; skipping OpenAI client tests")
+
+        _ensure_openai_installed()
+        import openai  # type: ignore
+
+        cls.openai = openai
+        cls.test_model = os.getenv("OPENAI_TEST_MODEL", "gpt-5")
+
+    async def test_chat_json_success(self) -> None:
+        telemetry = RecordingTelemetry()
+        client = OpenAIClient(config=OpenAIConfig(model=self.test_model))
+        prompt = "Return a JSON object {\\\"ok\\\": true}."
+
+        try:
+            result = await client.chat_json(prompt, telemetry=telemetry, op_id="real-1")
         except self.openai.NotFoundError as exc:  # type: ignore[attr-defined]
             self.skipTest(f"model {self.test_model} unavailable: {exc}")
 
