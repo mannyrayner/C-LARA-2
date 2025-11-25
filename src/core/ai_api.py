@@ -181,15 +181,13 @@ def _ensure_openai_installed():
         try:
             async_client_cls = import_module("openai._base_client").AsyncClient  # type: ignore[attr-defined]
 
-            def _safe_del(self: object) -> None:  # pragma: no cover - exercised in user envs
-                try:
-                    loop = asyncio.get_event_loop()
-                    if loop.is_running():
-                        loop.create_task(self.aclose())
-                except Exception:
-                    # If no loop is available or it is already closed, just
-                    # swallow the cleanup since tests call aclose() directly.
-                    pass
+            def _safe_del(_: object) -> None:  # pragma: no cover - exercised in user envs
+                # Explicit aclose() calls are wired through the client wrapper and
+                # test cleanups. In environments where the event loop has already
+                # been torn down, OpenAI's default __del__ schedules a coroutine
+                # and can raise "Event loop is closed". Making the destructor a
+                # no-op avoids those noisy shutdown errors.
+                return None
 
             async_client_cls.__del__ = _safe_del  # type: ignore[assignment]
         except Exception:
