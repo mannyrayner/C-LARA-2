@@ -210,5 +210,9 @@ async def _run_with_heartbeat(coro: Any, telemetry: Telemetry, op_id: str, start
     finally:
         if not task.done():
             task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
+        # Always await the task to surface exceptions and avoid event-loop
+        # shutdown warnings about pending tasks. Any cancellation or runtime
+        # errors are suppressed because the caller has already handled the
+        # outcome.
+        with contextlib.suppress(Exception):
             await task
