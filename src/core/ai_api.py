@@ -9,22 +9,13 @@ import uuid
 from pathlib import Path
 from typing import Any, Iterable
 
-import httpx
+from importlib import import_module, util
 
-TimeoutException = getattr(httpx, "TimeoutException", type("TimeoutException", (Exception,), {}))
-
-try:  # pragma: no cover - exercised indirectly in integration environments
-    import openai  # type: ignore
-    from openai import APIError, AsyncOpenAI, RateLimitError
-    from openai._exceptions import LengthFinishReasonError
-except ImportError:  # pragma: no cover - offline test environments
-    openai = None  # type: ignore[assignment]
-    AsyncOpenAI = None  # type: ignore[misc,assignment]
-    APIError = type("APIError", (Exception,), {})
-    RateLimitError = type("RateLimitError", (Exception,), {})
-
-    class LengthFinishReasonError(Exception):
-        pass
+AsyncOpenAI = None  # type: ignore[assignment]
+APIError = type("APIError", (Exception,), {})
+RateLimitError = type("RateLimitError", (Exception,), {})
+LengthFinishReasonError = type("LengthFinishReasonError", (Exception,), {})
+_openai_cache: Any | None = None
 
 from .config import OpenAIConfig
 from .telemetry import NullTelemetry, Telemetry
@@ -44,8 +35,7 @@ class OpenAIClient:
         if AsyncOpenAI is None:  # pragma: no cover - missing dependency
             raise ImportError("The openai package is required. Install it via pip install openai")
 
-        timeout = httpx.Timeout(self.config.timeout_s)
-        client_kwargs: dict[str, Any] = {"timeout": timeout}
+        client_kwargs: dict[str, Any] = {"timeout": self.config.timeout_s}
         if self.config.api_key:
             client_kwargs["api_key"] = self.config.api_key
         self._client = AsyncOpenAI(**client_kwargs)
@@ -89,7 +79,7 @@ class OpenAIClient:
             except json.JSONDecodeError as exc:  # pragma: no cover - edge condition
                 telemetry.event(op_id, "error", "invalid JSON response", {"payload": payload})
                 raise ValueError("OpenAI returned non-JSON content") from exc
-            except (RateLimitError, APIError, TimeoutException) as exc:
+            except (RateLimitError, APIError) as exc:
                 if attempt >= self.config.max_retries:
                     telemetry.event(op_id, "error", "openai call failed", {"error": str(exc)})
                     raise
@@ -147,21 +137,33 @@ class OpenAIClient:
 def _ensure_openai_installed():
     """Check that the OpenAI SDK is installed and importable."""
 
+    global AsyncOpenAI, APIError, RateLimitError, LengthFinishReasonError, _openai_cache
+
+    if _openai_cache is not None:
+        return _openai_cache
+
     project_root = Path(__file__).resolve().parents[2]
     local_paths = {str(project_root), str(project_root / "src")}
     original_sys_path = sys.path.copy()
 
     try:
-        # Keep site-packages ahead of any local modules that might shadow OpenAI
-        # dependencies (e.g., a user-created src/httpx.py).
         sys.path = [p for p in original_sys_path if p not in local_paths] + [p for p in original_sys_path if p in local_paths]
-
-        from importlib import import_module, util
 
         if util.find_spec("openai") is None:
             raise ImportError("The openai package is required. Install it via pip install openai")
 
-        return openai or import_module("openai")
+        openai_mod = import_module("openai")
+        AsyncOpenAI = getattr(openai_mod, "AsyncOpenAI", None)
+        APIError = getattr(openai_mod, "APIError", APIError)
+        RateLimitError = getattr(openai_mod, "RateLimitError", RateLimitError)
+        try:
+            LengthFinishReasonError = import_module("openai._exceptions").LengthFinishReasonError  # type: ignore[attr-defined]
+        except Exception:
+            class LengthFinishReasonError(Exception):
+                pass
+
+        _openai_cache = openai_mod
+        return openai_mod
     except Exception as exc:  # pragma: no cover - exercised in user envs
         raise ImportError(f"openai package import failed: {exc}") from exc
     finally:
