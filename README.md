@@ -26,6 +26,17 @@ Integration tests use the real OpenAI API when `OPENAI_API_KEY` is set (and
 optionally `OPENAI_TEST_MODEL`, defaulting to `gpt-5`). Without a key, those
 tests are skipped while the unit suite still runs locally.
 
+## Restoring a single file from the repo
+If you need to reset a file (e.g., `src/core/ai_api.py`) to the last committed
+version in this branch, run:
+
+```bash
+git restore src/core/ai_api.py
+```
+
+This overwrites your local edits with the tracked copy without affecting other
+files.
+
 ## Pull request flow
 1. Commit changes on your feature branch after running tests locally.
 2. Push the branch; GitHub will offer a **Create PR** control in the UI.

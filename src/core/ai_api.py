@@ -6,6 +6,7 @@ import json
 import sys
 import time
 import uuid
+from pathlib import Path
 from typing import Any, Iterable
 
 import httpx
@@ -146,15 +147,25 @@ class OpenAIClient:
 def _ensure_openai_installed():
     """Check that the OpenAI SDK is installed and importable."""
 
-    from importlib import import_module, util
-
-    if util.find_spec("openai") is None:
-        raise ImportError("The openai package is required. Install it via pip install openai")
+    project_root = Path(__file__).resolve().parents[2]
+    local_paths = {str(project_root), str(project_root / "src")}
+    original_sys_path = sys.path.copy()
 
     try:
+        # Keep site-packages ahead of any local modules that might shadow OpenAI
+        # dependencies (e.g., a user-created src/httpx.py).
+        sys.path = [p for p in original_sys_path if p not in local_paths] + [p for p in original_sys_path if p in local_paths]
+
+        from importlib import import_module, util
+
+        if util.find_spec("openai") is None:
+            raise ImportError("The openai package is required. Install it via pip install openai")
+
         return openai or import_module("openai")
     except Exception as exc:  # pragma: no cover - exercised in user envs
         raise ImportError(f"openai package import failed: {exc}") from exc
+    finally:
+        sys.path = original_sys_path
 
 
 def _extract_payload(response: Any) -> str:
