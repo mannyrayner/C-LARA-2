@@ -70,8 +70,8 @@ class FakeClient:
         self.chat = FakeChat(responses)
 
 
-class OpenAIClientUnitTests(unittest.IsolatedAsyncioTestCase):
-    async def test_chat_json_success(self) -> None:
+class AOpenAIClientUnitTests(unittest.IsolatedAsyncioTestCase):
+    async def test_01_chat_json_success(self) -> None:
         telemetry = RecordingTelemetry()
         client = OpenAIClient(config=OpenAIConfig(api_key=None), client=FakeClient([FakeResponse('{"ok": true}')]))
 
@@ -81,7 +81,7 @@ class OpenAIClientUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual({"ok": True}, result)
         self.assertTrue(any(evt[2].startswith("openai.chat attempt") for evt in telemetry.events))
 
-    async def test_chat_json_emits_heartbeat(self) -> None:
+    async def test_02_chat_json_emits_heartbeat(self) -> None:
         telemetry = RecordingTelemetry()
 
         async def slow_response() -> FakeResponse:
@@ -97,7 +97,7 @@ class OpenAIClientUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual({"done": True}, result)
         self.assertTrue(any(h[0] == "op-2" for h in telemetry.heartbeats))
 
-    async def test_chat_json_retries_on_rate_limit(self) -> None:
+    async def test_00_chat_json_retries_on_rate_limit(self) -> None:
         telemetry = RecordingTelemetry()
         responses = [
             RateLimitError(message="slow down", response=None),
@@ -114,7 +114,7 @@ class OpenAIClientUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(any(evt[1] == "warn" for evt in telemetry.events))
         sleep_mock.assert_awaited()
 
-    async def test_chat_json_raises_on_length_finish_error(self) -> None:
+    async def test_03_chat_json_raises_on_length_finish_error(self) -> None:
         telemetry = RecordingTelemetry()
 
         class FakeLengthFinishError(Exception):
@@ -128,7 +128,7 @@ class OpenAIClientUnitTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(Exception):
             await client.chat_json("hi", telemetry=telemetry, op_id="op-4")
 
-    def test_ensure_openai_installed_raises_when_missing(self) -> None:
+    def test_04_ensure_openai_installed_raises_when_missing(self) -> None:
         import core.ai_api as ai_api
 
         ai_api._openai_cache = None
@@ -137,7 +137,7 @@ class OpenAIClientUnitTests(unittest.IsolatedAsyncioTestCase):
                 _ensure_openai_installed()
 
 
-class OpenAIClientIntegrationTests(unittest.IsolatedAsyncioTestCase):
+class BOpenAIClientIntegrationTests(unittest.IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         if not os.getenv("OPENAI_API_KEY"):
@@ -169,7 +169,7 @@ class OpenAIClientIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result)
 
 
-class OpenAIClientTests(unittest.IsolatedAsyncioTestCase):
+class COpenAIClientTests(unittest.IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         if not os.getenv("OPENAI_API_KEY"):
