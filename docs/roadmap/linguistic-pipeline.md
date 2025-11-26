@@ -33,13 +33,13 @@ Each operation is defined by a prompt template plus few-shot examples under `pro
   - Output annotations per token: `token.annotations.lemma` = canonical lemma (MWE-linked tokens should share the same lemma).
 - **gloss** (`prompts/gloss/<lang>/`)
   - Input: tokens + optional lemmas and `mwe_id`s.
-  - Output annotations per token: `token.annotations.gloss` = short gloss/definition (MWE-linked tokens should share the same gloss).
+  - Output annotations per token: `token.annotations.gloss` = short L1 gloss/definition for each L2 token. If a token belongs to an MWE, the gloss applies to the whole MWE and all member tokens share the same value.
 - **pinyin** (`prompts/pinyin/zh/`)
   - Input: Chinese tokens.
   - Output annotations per token: `token.annotations.pinyin` = pinyin with tone numbers.
 - **audio_stub** (`prompts/audio_stub/<lang>/`)
   - Input: segment surfaces (and optionally translations).
-  - Output: `segment.annotations.audio_hint` plus `token.annotations.audio_hint` for word tokens. Default uses TTS; cache per-word outputs so identical tokens reuse audio. Segment-level stubs can include SSML for later synthesis or human recording.
+  - Output: `segment.annotations.audio_hint` plus `token.annotations.audio_hint` for word tokens. Default uses TTS; cache per-word outputs so identical tokens reuse audio. Segment-level stubs can include SSML for later synthesis or human recording. Homograph handling (e.g., English "wound" as noun vs. verb) can use lemma/POS hints, surrounding context, or explicit disambiguation prompts to select the right TTS voice variant; allow manual overrides and cache variants by (surface, lemma/POS) key when available.
 
 ## Directory layout
 
