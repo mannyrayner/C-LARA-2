@@ -28,4 +28,10 @@ def log_test_case(
     if notes:
         payload["notes"] = notes
 
-    print(f"[TEST] {json.dumps(payload, ensure_ascii=False)}")
+    try:
+        print(f"[TEST] {json.dumps(payload, ensure_ascii=False)}")
+    except UnicodeEncodeError:
+        # Some consoles (e.g., Windows code pages) cannot encode certain
+        # characters. Fall back to an ASCII-safe rendering so tests still log
+        # successfully.
+        print(f"[TEST] {json.dumps(payload, ensure_ascii=True)}")
