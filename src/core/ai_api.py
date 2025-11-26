@@ -1,29 +1,25 @@
-"""Async OpenAI wrapper with heartbeat + retries for chat completions."""
+"""OpenAI chat wrapper with heartbeat and retries (sync calls + async heartbeat)."""
 from __future__ import annotations
 
 import asyncio
 import contextlib
 import json
-import sys
 import time
 import uuid
-from pathlib import Path
+from importlib import util
 from typing import Any, Iterable
-
-from importlib import import_module, util
-
-AsyncOpenAI = None  # type: ignore[assignment]
-APIError = type("APIError", (Exception,), {})
-RateLimitError = type("RateLimitError", (Exception,), {})
-LengthFinishReasonError = type("LengthFinishReasonError", (Exception,), {})
-_openai_cache: Any | None = None
 
 from .config import OpenAIConfig
 from .telemetry import NullTelemetry, Telemetry
 
+OpenAI = None  # type: ignore[assignment]
+APIError = type("APIError", (Exception,), {})
+RateLimitError = type("RateLimitError", (Exception,), {})
+LengthFinishReasonError = type("LengthFinishReasonError", (Exception,), {})
+
 
 class OpenAIClient:
-    """Thin wrapper around OpenAI chat completions with heartbeat + retries."""
+    """Thin wrapper around the sync OpenAI client with async heartbeat."""
 
     def __init__(self, *, config: OpenAIConfig | None = None, client: Any | None = None) -> None:
         self.config = config or OpenAIConfig()
@@ -32,14 +28,23 @@ class OpenAIClient:
             self._client = client
             return
 
-        _ensure_openai_installed()
-        if AsyncOpenAI is None:  # pragma: no cover - missing dependency
+        openai_mod = _ensure_openai_installed()
+        global OpenAI, APIError, RateLimitError, LengthFinishReasonError
+        OpenAI = getattr(openai_mod, "OpenAI", None)
+        if OpenAI is None:  # pragma: no cover - missing dependency
             raise ImportError("The openai package is required. Install it via pip install openai")
+
+        APIError = getattr(openai_mod, "APIError", APIError)
+        RateLimitError = getattr(openai_mod, "RateLimitError", RateLimitError)
+        try:
+            LengthFinishReasonError = getattr(openai_mod, "LengthFinishReasonError")
+        except Exception:
+            LengthFinishReasonError = type("LengthFinishReasonError", (Exception,), {})
 
         client_kwargs: dict[str, Any] = {"timeout": self.config.timeout_s}
         if self.config.api_key:
             client_kwargs["api_key"] = self.config.api_key
-        self._client = AsyncOpenAI(**client_kwargs)
+        self._client = OpenAI(**client_kwargs)
 
     async def chat_json(
         self,
@@ -67,14 +72,14 @@ class OpenAIClient:
             start = time.monotonic()
             telemetry.event(op_id, "info", f"openai.chat attempt {attempt}")
             try:
-                request = self._build_request(
+                kwargs = self._build_request(
                     prompt,
                     model=model,
                     temperature=temperature,
                     tools=tools,
                     response_format=response_format,
                 )
-                response = await _run_with_heartbeat(request, telemetry, op_id, start, heartbeat_s)
+                response = await _run_with_heartbeat(self._client, kwargs, telemetry, op_id, start, heartbeat_s)
                 payload = _extract_payload(response)
                 return json.loads(payload)
             except json.JSONDecodeError as exc:  # pragma: no cover - edge condition
@@ -87,7 +92,7 @@ class OpenAIClient:
                 telemetry.event(op_id, "warn", "openai retry", {"attempt": attempt, "error": str(exc)})
                 await asyncio.sleep(backoff)
                 backoff *= 2
-            except (LengthFinishReasonError, ImportError) as exc:
+            except LengthFinishReasonError as exc:
                 telemetry.event(
                     op_id,
                     "error",
@@ -96,9 +101,6 @@ class OpenAIClient:
                 )
                 raise
             except Exception as exc:
-                # Some environments raise custom error classes (e.g., test fakes)
-                # that are not instances of the imported OpenAI exceptions. We
-                # detect them by name to keep retry semantics consistent.
                 if exc.__class__.__name__ in {"RateLimitError", "APIError"}:
                     if attempt >= self.config.max_retries:
                         telemetry.event(op_id, "error", "openai call failed", {"error": str(exc)})
@@ -118,7 +120,7 @@ class OpenAIClient:
         temperature: float | None,
         tools: Iterable[dict[str, Any]] | None,
         response_format: dict[str, str] | None,
-    ) -> Any:
+    ) -> dict[str, Any]:
         messages = [{"role": "user", "content": prompt}]
         response_format = response_format or {"type": "json_object"}
         tools_payload = list(tools) if tools else None
@@ -132,12 +134,14 @@ class OpenAIClient:
         if temperature is not None:
             kwargs["temperature"] = temperature
 
-        return self._client.chat.completions.create(**kwargs)
+        return kwargs
 
     async def aclose(self) -> None:
-        """Close the underlying async client if it exposes an aclose method."""
+        """Close the underlying client if it exposes a close/aclose method."""
 
         close_fn = getattr(self._client, "aclose", None)
+        if close_fn is None:
+            close_fn = getattr(self._client, "close", None)
         if close_fn is None:
             return
         result = close_fn()
@@ -148,57 +152,15 @@ class OpenAIClient:
 def _ensure_openai_installed():
     """Check that the OpenAI SDK is installed and importable."""
 
-    global AsyncOpenAI, APIError, RateLimitError, LengthFinishReasonError, _openai_cache
-
-    if _openai_cache is not None:
-        return _openai_cache
-
-    project_root = Path(__file__).resolve().parents[2]
-    local_paths = {str(project_root), str(project_root / "src")}
-    original_sys_path = sys.path.copy()
+    if util.find_spec("openai") is None:
+        raise ImportError("The openai package is required. Install it via pip install openai")
 
     try:
-        sys.path = [p for p in original_sys_path if p not in local_paths] + [p for p in original_sys_path if p in local_paths]
-
-        if util.find_spec("openai") is None:
-            raise ImportError("The openai package is required. Install it via pip install openai")
-
-        openai_mod = import_module("openai")
-        AsyncOpenAI = getattr(openai_mod, "AsyncOpenAI", None)
-        APIError = getattr(openai_mod, "APIError", APIError)
-        RateLimitError = getattr(openai_mod, "RateLimitError", RateLimitError)
-        try:
-            LengthFinishReasonError = import_module("openai._exceptions").LengthFinishReasonError  # type: ignore[attr-defined]
-        except Exception:
-            class LengthFinishReasonError(Exception):
-                pass
-
-        # The OpenAI AsyncClient attempts to schedule an aclose() coroutine in
-        # its __del__ method. On some platforms this runs after the event loop
-        # has already been shut down, emitting noisy "Event loop is closed"
-        # warnings. We patch __del__ to be defensive so test environments stay
-        # quiet while normal explicit aclose() calls continue to work.
-        try:
-            async_client_cls = import_module("openai._base_client").AsyncClient  # type: ignore[attr-defined]
-
-            def _safe_del(_: object) -> None:  # pragma: no cover - exercised in user envs
-                # Explicit aclose() calls are wired through the client wrapper and
-                # test cleanups. In environments where the event loop has already
-                # been torn down, OpenAI's default __del__ schedules a coroutine
-                # and can raise "Event loop is closed". Making the destructor a
-                # no-op avoids those noisy shutdown errors.
-                return None
-
-            async_client_cls.__del__ = _safe_del  # type: ignore[assignment]
-        except Exception:
-            pass
-
-        _openai_cache = openai_mod
-        return openai_mod
+        import openai  # type: ignore
     except Exception as exc:  # pragma: no cover - exercised in user envs
-        raise ImportError(f"openai package import failed: {exc}") from exc
-    finally:
-        sys.path = original_sys_path
+        raise ImportError(f"The openai package is required: {exc}") from exc
+
+    return openai
 
 
 def _extract_payload(response: Any) -> str:
@@ -217,26 +179,32 @@ def _extract_payload(response: Any) -> str:
     return "{}"
 
 
-async def _run_with_heartbeat(coro: Any, telemetry: Telemetry, op_id: str, start: float, heartbeat_s: float) -> Any:
-    task = asyncio.create_task(coro)
+async def _run_with_heartbeat(
+    client: Any,
+    kwargs: dict[str, Any],
+    telemetry: Telemetry,
+    op_id: str,
+    start: float,
+    heartbeat_s: float,
+) -> Any:
+    """Execute a blocking OpenAI call in an executor with heartbeats."""
+
+    loop = asyncio.get_running_loop()
+
+    def _call() -> Any:
+        return client.chat.completions.create(**kwargs)
+
+    future = loop.run_in_executor(None, _call)
     try:
         while True:
             try:
-                return await asyncio.wait_for(asyncio.shield(task), timeout=heartbeat_s)
+                return await asyncio.wait_for(asyncio.shield(future), timeout=heartbeat_s)
             except asyncio.TimeoutError:
                 elapsed = time.monotonic() - start
                 telemetry.heartbeat(op_id, elapsed)
                 continue
     finally:
-        if not task.done():
-            task.cancel()
-            try:
-                await task
-            except Exception:
-                pass
-        else:
-            # Task already completed; still await to surface errors but never
-            # propagate them here since the caller has already handled the
-            # outcome.
+        if not future.done():
+            future.cancel()
             with contextlib.suppress(Exception):
-                await task
+                await future

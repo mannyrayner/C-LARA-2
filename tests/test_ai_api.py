@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import time
 import types
 import unittest
 from unittest.mock import AsyncMock, patch
@@ -44,17 +45,13 @@ class FakeChatCompletions:
         self._responses = responses
         self.calls = 0
 
-    async def create(self, **_: object) -> FakeResponse:
+    def create(self, **_: object) -> FakeResponse:
         idx = self.calls
         self.calls += 1
         response = self._responses[idx]
 
         if isinstance(response, Exception):
             raise response
-        if asyncio.iscoroutine(response):
-            return await response
-        if asyncio.iscoroutinefunction(response):
-            return await response()
         if callable(response):
             return response()
         return response  # type: ignore[return-value]
@@ -84,8 +81,8 @@ class AOpenAIClientUnitTests(unittest.IsolatedAsyncioTestCase):
     async def test_02_chat_json_emits_heartbeat(self) -> None:
         telemetry = RecordingTelemetry()
 
-        async def slow_response() -> FakeResponse:
-            await asyncio.sleep(0.05)
+        def slow_response() -> FakeResponse:
+            time.sleep(0.05)
             return FakeResponse('{"done": true}')
 
         client = OpenAIClient(
@@ -120,7 +117,7 @@ class AOpenAIClientUnitTests(unittest.IsolatedAsyncioTestCase):
         class FakeLengthFinishError(Exception):
             pass
 
-        async def fail() -> FakeResponse:
+        def fail() -> FakeResponse:
             raise FakeLengthFinishError("length")
 
         client = OpenAIClient(config=OpenAIConfig(api_key=None), client=FakeClient([fail]))
@@ -131,7 +128,6 @@ class AOpenAIClientUnitTests(unittest.IsolatedAsyncioTestCase):
     def test_04_ensure_openai_installed_raises_when_missing(self) -> None:
         import core.ai_api as ai_api
 
-        ai_api._openai_cache = None
         with patch("importlib.util.find_spec", return_value=None):
             with self.assertRaises(ImportError):
                 _ensure_openai_installed()
