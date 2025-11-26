@@ -57,7 +57,7 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
         template = "Translate."
         prompt = translation._build_prompt(
             template,
-            segment_surface="Hello",
+            segment={"surface": "Hello"},
             fewshots=[],
             target_language="fr",
         )

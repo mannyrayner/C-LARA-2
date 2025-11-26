@@ -1,0 +1,25 @@
+{
+  "input": "She put up with the noise.",
+  "output": {
+    "surface": "She put up with the noise.",
+    "tokens": [
+      {"surface": "She"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "put", "annotations": {"mwe_id": "m1"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "up", "annotations": {"mwe_id": "m1"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "with", "annotations": {"mwe_id": "m1"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "the"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "noise"},
+      {"surface": "."}
+    ],
+    "annotations": {
+      "mwes": [
+        {"id": "m1", "tokens": ["put", "up", "with"], "label": "phrasal verb"}
+      ]
+    }
+  }
+}

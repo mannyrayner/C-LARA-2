@@ -1,0 +1,32 @@
+{
+  "input": "He looked up the answer and wrote it down.",
+  "output": {
+    "surface": "He looked up the answer and wrote it down.",
+    "tokens": [
+      {"surface": "He"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "looked", "annotations": {"mwe_id": "m1"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "up", "annotations": {"mwe_id": "m1"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "the"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "answer"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "and"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "wrote", "annotations": {"mwe_id": "m2"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "it", "annotations": {"mwe_id": "m2"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "down", "annotations": {"mwe_id": "m2"}},
+      {"surface": "."}
+    ],
+    "annotations": {
+      "mwes": [
+        {"id": "m1", "tokens": ["looked", "up"], "label": "phrasal verb"},
+        {"id": "m2", "tokens": ["wrote", "it", "down"], "label": "phrasal verb"}
+      ]
+    }
+  }
+}

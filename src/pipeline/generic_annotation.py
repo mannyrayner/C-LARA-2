@@ -17,7 +17,7 @@ class GenericAnnotationSpec:
     text: dict[str, Any]
     language: str
     operation: str
-    build_prompt: Callable[[str], str]
+    build_prompt: Callable[[dict[str, Any]], str]
     telemetry: Telemetry | None = None
     op_id: str | None = None
 
@@ -38,7 +38,7 @@ async def generic_annotation(
 
     for page_idx, page in enumerate(pages):
         for seg_idx, segment in enumerate(page.get("segments", [])):
-            prompt = spec.build_prompt(segment.get("surface", ""))
+            prompt = spec.build_prompt(segment)
             op_id = f"{base_op_id}-p{page_idx}-s{seg_idx}"
             task = asyncio.create_task(
                 client.chat_json(prompt, telemetry=telemetry, op_id=op_id)

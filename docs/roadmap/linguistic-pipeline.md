@@ -20,7 +20,7 @@ New operations enrich `annotations` at the segment or token level, but never mut
 
 ## Operations and outputs
 
-Each operation is defined by a prompt template plus few-shot examples under `prompts/<operation>/<lang>/`. The generic annotator fans out one request per segment (unless noted) and merges results back into the text object.
+Each operation is defined by a prompt template plus few-shot examples under `prompts/<operation>/<lang>/`. The generic annotator fans out one request per segment (unless noted) and merges results back into the text object. Implemented so far: translation (EN→FR) and MWE detection.
 
 - **translation** (`prompts/translation/<lang>/`)
   - Input: segment JSON (with tokens when available).

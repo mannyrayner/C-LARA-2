@@ -131,11 +131,11 @@ async def segmentation_phase_2(
         "Preserve punctuation and whitespace as separate tokens where they appear in the input.",
     ]
 
-    def build(seg_surface: str) -> str:
+    def build(segment: dict[str, Any]) -> str:
         return annotation_prompts.build_prompt(
             template,
             content_label="Segment to tokenize:",
-            content=seg_surface,
+            content=segment.get("surface", ""),
             fewshots=fewshots,
             output_instructions=output_instructions,
         )

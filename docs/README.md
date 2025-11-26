@@ -10,13 +10,13 @@ Welcome! This folder collects the specs and notes that drive the current impleme
 ## Roadmaps and current status
 
 - **Segmentation pipeline (implemented)**: [roadmap/segmentation-pipeline.md](roadmap/segmentation-pipeline.md) – covers text generation, segmentation phases 1 and 2, and the generic annotation harness now used across the codebase.
-- **Linguistic pipeline (in progress)**: [roadmap/linguistic-pipeline.md](roadmap/linguistic-pipeline.md) – details translation, lemma, gloss, MWE, pinyin, audio, and compilation steps; translation is currently implemented for EN→FR.
+- **Linguistic pipeline (in progress)**: [roadmap/linguistic-pipeline.md](roadmap/linguistic-pipeline.md) – details translation, lemma, gloss, MWE, pinyin, audio, and compilation steps; translation (EN→FR) and MWE detection are currently implemented.
 - **Top-level roadmap**: [roadmap/README.md](roadmap/README.md) – step-by-step milestones with notes on what is done versus planned.
 
 ## What’s implemented so far
 
 - OpenAI client wrapper with heartbeat/telemetry and retry handling.
-- Text generation (`text_gen`), segmentation phases 1 and 2, and translation using the generic annotation flow.
+- Text generation (`text_gen`), segmentation phases 1 and 2, translation, and MWE detection using the generic annotation flow.
 - Prompt templates and few-shots for the above operations, plus unit/integration tests (OpenAI-gated where appropriate).
 
 ## Testing & CI
