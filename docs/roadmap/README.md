@@ -55,12 +55,7 @@ The most complex part of the platform is the text creation and annotation pipeli
 
 ### 3. Write spec for full linguistic annotation pipeline, and implement it
 
-In this step of the roadmap, we will build on the preceding step to add support for all the other functionality needed to implement the complete pipeline, from plain text to HTML form. Specifically, we need the following:
-- Support for other linguistic annotation operations. As noted above, the Segmentation part 2 operation is implemented using a generic function. We will extend it to cover the other operations by creating suitable prompt templates and few-shot examples.
-- Support for adding audio. This will involve integration of TTS engines. The recipes in C-LARA can probably be adapted easily, though we want to clean and rationalise it.
-- Support for conversion of the final annotated linguistic form into compiled form (HTML). Again, the recipe in C-LARA can probably be adapted easily.
-	- We want to include some version of the C-LARA JavaScript which ensures that hovering over one component of an MWE highlights the whole MWE.
-- Unit tests for all of the above.
+See `docs/roadmap/linguistic-pipeline.md` for the detailed plan. In summary, this step extends the generic per-segment annotation harness to cover translation, lemma tagging, glossing, multi-word expressions, pinyin, audio stubs, and HTML compilation. Each operation gets its own prompt templates and few-shots under `prompts/<operation>/<lang>/`, with unit and integration tests (OpenAI-gated) to validate the fan-out/fan-in flow.
 
 ### 4. Write spec for basic Django platform functionality, and implement it
 
