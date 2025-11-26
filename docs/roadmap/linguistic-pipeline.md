@@ -25,6 +25,7 @@ Each operation is defined by a prompt template plus few-shot examples under `pro
 - **translation** (`prompts/translation/<lang>/`)
   - Input: segment JSON (with tokens when available).
   - Output annotations: `segment.annotations.translation` = target-language string.
+  - Current prompts cover English → French; add new language pairs by copying the same structure under `prompts/translation/<l2>/`.
 - **mwe** (`prompts/mwe/<lang>/`)
   - Input: segment surfaces + tokens.
   - Output: list of MWEs with token spans; annotate tokens with `token.annotations.mwe_id` and attach `segment.annotations.mwes` metadata. Must precede lemma/gloss so downstream steps can treat MWE tokens as a unit.
