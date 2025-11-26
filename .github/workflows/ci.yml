@@ -1,0 +1,62 @@
+name: ci
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      RUN_ID: ${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install -r requirements.txt -r requirements-dev.txt
+      
+      - name: Run tests + coverage
+        run: |
+          . .venv/bin/activate
+          mkdir -p reports/${RUN_ID}
+          coverage run -m pytest --junitxml=reports/${RUN_ID}/junit.xml
+          coverage xml -o reports/${RUN_ID}/coverage.xml
+          coverage html -d reports/${RUN_ID}/coverage_html
+
+      - name: Summarize results (JSON)
+        run: |
+          . .venv/bin/activate
+          python - <<'PY'
+          import json, xml.etree.ElementTree as ET, os
+          rid = os.environ["RUN_ID"]
+          tree = ET.parse(f"reports/{rid}/junit.xml")
+          root = tree.getroot()
+          ts = root.attrib
+          summary = {
+              "run_id": rid,
+              "tests": int(ts.get("tests", 0)),
+              "failures": int(ts.get("failures", 0)),
+              "errors": int(ts.get("errors", 0)),
+              "skipped": int(ts.get("skipped", 0)),
+              "time_s": float(ts.get("time", 0.0)),
+          }
+          out = f"reports/{rid}/summary.json"
+          os.makedirs(f"reports/{rid}", exist_ok=True)
+          with open(out, "w") as fh:
+              fh.write(json.dumps(summary, indent=2))
+          print("SUMMARY:", json.dumps(summary))
+          PY
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-${{ github.run_id }}
+          path: reports/${{ github.run_id }}/
