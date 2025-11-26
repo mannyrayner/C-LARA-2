@@ -41,10 +41,19 @@ class TranslationSpec:
 def _build_prompt(
     template: str,
     *,
-    segment: dict[str, Any],
+    segment: dict[str, Any] | None = None,
+    segment_surface: str | None = None,
     fewshots: list[dict[str, Any]],
     target_language: str,
 ) -> str:
+    # Backward compatibility: some callers provided a raw surface string instead of a
+    # segment object. Normalize to a segment dict here so tests and downstream
+    # callers can use either style without breaking.
+    if segment is None:
+        segment = {"surface": segment_surface or ""}
+    elif segment_surface is not None and "surface" not in segment:
+        segment = {**segment, "surface": segment_surface}
+
     output_instructions = [
         "Return a JSON object representing the segment.",
         "Keep the original surface unchanged.",

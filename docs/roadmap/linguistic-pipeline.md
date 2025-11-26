@@ -16,7 +16,7 @@ This document expands Step 3 of the roadmap into a concrete plan for delivering 
 - **Segment**: `{ "surface": "...", "tokens": [...?], "annotations": { ... } }`
 - **Token**: `{ "surface": "...", "annotations": { ... } }`
 
-New operations enrich `annotations` at the segment or token level, but never mutate `surface` text. The segmentation phases already fill `pages`, `segments`, and `tokens`.
+New operations enrich `annotations` at the segment or token level, but never mutate `surface` text. Each step must preserve any annotations produced by earlier steps (including token arrays) and only add new annotation keys or values. The segmentation phases already fill `pages`, `segments`, and `tokens`.
 
 ## Operations and outputs
 
@@ -27,7 +27,7 @@ Each operation is defined by a prompt template plus few-shot examples under `pro
   - Output annotations: `segment.annotations.translation` = target-language string.
   - Current prompts cover English → French; add new language pairs by copying the same structure under `prompts/translation/<l2>/`.
 - **mwe** (`prompts/mwe/<lang>/`)
-  - Input: segment surfaces + tokens.
+  - Input: tokenized segments produced by segmentation (phase 2). Existing tokens/annotations must be preserved; this step only layers MWE metadata onto them.
   - Output: list of MWEs with token spans; annotate tokens with `token.annotations.mwe_id` and attach `segment.annotations.mwes` metadata. Must precede lemma/gloss so downstream steps can treat MWE tokens as a unit.
 - **lemma** (`prompts/lemma/<lang>/`)
   - Input: tokens with surface forms and optional `mwe_id`s.

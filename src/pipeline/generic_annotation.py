@@ -79,10 +79,68 @@ async def generic_annotation(
 
 def _merge_segment(segment: dict[str, Any], response: dict[str, Any]) -> dict[str, Any]:
     merged = dict(segment)
-    annotations = merged.get("annotations") or {}
-    response_annotations = response.get("annotations")
-    if response_annotations is not None:
-        annotations = response_annotations
-    merged.update({k: v for k, v in response.items() if v is not None})
-    merged["annotations"] = annotations
+
+    annotations = _merge_annotations(segment.get("annotations"), response.get("annotations"))
+    if annotations:
+        merged["annotations"] = annotations
+
+    tokens = _merge_tokens(segment.get("tokens", []), response.get("tokens"))
+    if tokens:
+        merged["tokens"] = tokens
+
+    for key, value in response.items():
+        if key in {"annotations", "tokens"} or value is None:
+            continue
+        merged[key] = value
+
+    return merged
+
+
+def _merge_annotations(
+    base: dict[str, Any] | None, updates: dict[str, Any] | None
+) -> dict[str, Any]:
+    base = dict(base or {})
+    if updates:
+        for key, value in updates.items():
+            if value is None:
+                continue
+            base[key] = value
+    return base
+
+
+def _merge_tokens(
+    base_tokens: list[dict[str, Any]] | None, response_tokens: list[dict[str, Any]] | None
+) -> list[dict[str, Any]]:
+    if not base_tokens and not response_tokens:
+        return []
+    base_tokens = base_tokens or []
+    response_tokens = response_tokens or []
+
+    merged: list[dict[str, Any]] = []
+    max_len = max(len(base_tokens), len(response_tokens))
+
+    for idx in range(max_len):
+        base = base_tokens[idx] if idx < len(base_tokens) else {}
+        update = response_tokens[idx] if idx < len(response_tokens) else {}
+
+        token = dict(base)
+
+        if update:
+            token["surface"] = update.get("surface", token.get("surface", ""))
+            token.update(
+                {
+                    k: v
+                    for k, v in update.items()
+                    if k not in {"annotations", "surface"} and v is not None
+                }
+            )
+
+        annotations = _merge_annotations(base.get("annotations"), update.get("annotations"))
+        if annotations:
+            token["annotations"] = annotations
+        elif "annotations" in token and not token["annotations"]:
+            token.pop("annotations", None)
+
+        merged.append({k: v for k, v in token.items() if v is not None})
+
     return merged
