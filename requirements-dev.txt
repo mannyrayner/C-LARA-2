@@ -2,3 +2,6 @@ mkdocs
 mkdocs-material
 mdformat
 pymarkdownlnt
+pytest
+pytest-asyncio
+coverage
