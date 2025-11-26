@@ -19,8 +19,11 @@ Welcome! This folder collects the specs and notes that drive the current impleme
 - Text generation (`text_gen`), segmentation phases 1 and 2, and translation using the generic annotation flow.
 - Prompt templates and few-shots for the above operations, plus unit/integration tests (OpenAI-gated where appropriate).
 
-## Testing
+## Testing & CI
 
-- Run the suite from the repo root: `make -C tests test`
+- Run the suite from the repo root: `make -C tests test` (pytest + pytest-asyncio,
+  logs to `tests/test_results.log`).
+- GitHub Actions (`.github/workflows/ci.yml`) runs the same suite with coverage
+  and uploads JUnit/coverage artifacts for each build.
 
 _This file is the landing page for the docs folder._

@@ -19,12 +19,18 @@ mkdocs serve
 ## Running tests
 From the repository root:
 ```bash
-python -m unittest
+make -C tests test
 ```
 
-Integration tests use the real OpenAI API when `OPENAI_API_KEY` is set (and
-optionally `OPENAI_TEST_MODEL`, defaulting to `gpt-5`). Without a key, those
-tests are skipped while the unit suite still runs locally.
+This invokes `pytest` (with `pytest-asyncio`) and writes a log to
+`tests/test_results.log`. Integration tests use the real OpenAI API when
+`OPENAI_API_KEY` is set (and optionally `OPENAI_TEST_MODEL`, defaulting to
+`gpt-5`). Without a key, those tests are skipped while the unit suite still
+runs locally.
+
+## Continuous integration
+GitHub Actions run the suite with coverage on pushes and pull requests. Results
+are uploaded as artifacts (JUnit XML, coverage XML/HTML, and a JSON summary).
 
 ## Restoring a single file from the repo
 If you need to reset a file (e.g., `src/core/ai_api.py`) to the last committed
