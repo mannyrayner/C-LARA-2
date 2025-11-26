@@ -4,9 +4,11 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import sys
 import time
 import uuid
 from importlib import util
+from pathlib import Path
 from typing import Any, Iterable
 
 from .config import OpenAIConfig
@@ -155,10 +157,27 @@ def _ensure_openai_installed():
     if util.find_spec("openai") is None:
         raise ImportError("The openai package is required. Install it via pip install openai")
 
+    # Remove project-local paths while importing openai so stdlib/site-packages
+    # dependencies (e.g., httpx) are not shadowed by files in this repo.
+    project_root = Path(__file__).resolve().parents[2]
+    original_sys_path = sys.path.copy()
+    filtered_path: list[str] = []
+    for entry in original_sys_path:
+        try:
+            if Path(entry).resolve().is_relative_to(project_root):
+                continue
+        except Exception:
+            # If the path cannot be resolved, keep it as-is.
+            pass
+        filtered_path.append(entry)
+
     try:
+        sys.path = filtered_path
         import openai  # type: ignore
     except Exception as exc:  # pragma: no cover - exercised in user envs
         raise ImportError(f"The openai package is required: {exc}") from exc
+    finally:
+        sys.path = original_sys_path
 
     return openai
 
