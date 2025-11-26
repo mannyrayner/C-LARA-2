@@ -32,12 +32,21 @@ def main() -> int:
             asyncio_args = ["--asyncio-mode=auto"]
 
         cmd = [sys.executable, "-m", "pytest", "-s", *asyncio_args]
-        proc = subprocess.run(cmd, cwd=root, env=env, capture_output=True, text=True)
-        log_path.write_text(proc.stdout)
-        sys.stdout.write(proc.stdout)
-        if proc.stderr:
-            sys.stderr.write(proc.stderr)
-        return proc.returncode
+        with log_path.open("w", encoding="utf-8") as log_file:
+            proc = subprocess.Popen(
+                cmd,
+                cwd=root,
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            assert proc.stdout
+            for line in proc.stdout:
+                sys.stdout.write(line)
+                log_file.write(line)
+            proc.wait()
+            return proc.returncode
 
     # Defensive fallback if pytest is missing: run the unittest suite directly.
     import unittest
