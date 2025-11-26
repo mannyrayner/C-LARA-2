@@ -188,8 +188,8 @@ class MWEIntegrationTests(unittest.IsolatedAsyncioTestCase):
         log_test_case(
             "mwe:integration",
             purpose="integration test for MWE detection",
-            inputs={"text": self.sample_text["surface"], "model": os.getenv("OPENAI_TEST_MODEL", "gpt-5")},
-            output={"mwes_found": len(mwes)},
+            inputs={"text": self.sample_text, "model": os.getenv("OPENAI_TEST_MODEL", "gpt-5")},
+            output={"mwes_found": len(mwes), "annotated_text": result},
             status="pass",
             notes="See stdout for detailed annotated output.",
         )

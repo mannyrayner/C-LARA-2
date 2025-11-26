@@ -1,5 +1,5 @@
 {
-  "input": "She put up with the noise.",
+  "input": "{\n  \"surface\": \"She put up with the noise.\",\n  \"tokens\": [\n    {\"surface\": \"She\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"put\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"up\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"with\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"the\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"noise\", \"annotations\": {}},\n    {\"surface\": \".\"}\n  ],\n  \"annotations\": {}\n}",
   "output": {
     "surface": "She put up with the noise.",
     "tokens": [
