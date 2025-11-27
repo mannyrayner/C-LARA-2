@@ -1,0 +1,9 @@
+{
+  "input": "He closed the window before the storm arrived.",
+  "output": {
+    "surface": "He closed the window before the storm arrived.",
+    "annotations": {
+      "translation": "Il a fermé la fenêtre avant que l'orage n'arrive."
+    }
+  }
+}
