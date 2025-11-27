@@ -52,7 +52,7 @@ See `docs/roadmap/segmentation-pipeline.md` for the specification that guided th
 
 Status: **In progress.** The detailed plan lives in `docs/roadmap/linguistic-pipeline.md`.
 
-- Implemented: translation (EN→FR), MWE detection, lemma tagging, glossing, Chinese pinyin annotation (via `pypinyin`), and audio annotation with caching (TTS stub), with prompts/few-shots where AI-backed.
+- Implemented: translation (EN→FR), MWE detection, lemma tagging, glossing, Chinese pinyin annotation (via `pypinyin`), and audio annotation with caching (OpenAI TTS or offline stub), with prompts/few-shots where AI-backed.
 - Planned/next: HTML compilation hooks and richer audio ingestion (human-recorded, phonetic-text paths).
 
 Each operation has (or will have) prompts under `prompts/<operation>/<lang>/` plus unit and integration tests (OpenAI-gated).

@@ -11,10 +11,13 @@ import hashlib
 import math
 import struct
 import wave
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
+from core.ai_api import _ensure_openai_installed
+from core.config import OpenAIConfig
 from core.telemetry import NullTelemetry, Telemetry
 
 
@@ -55,6 +58,53 @@ class SimpleTTSEngine:
             wav.writeframes(frames)
 
 
+class OpenAITTSEngine:
+    """OpenAI-backed TTS engine using the synchronous SDK."""
+
+    def __init__(self, *, config: OpenAIConfig | None = None, client: Any | None = None, model: str | None = None):
+        self.config = config or OpenAIConfig()
+        self.model = model or os.getenv("OPENAI_TTS_MODEL", "gpt-4o-mini-tts")
+
+        if client is not None:
+            self._client = client
+            return
+
+        openai_mod = _ensure_openai_installed()
+        OpenAI = getattr(openai_mod, "OpenAI", None)
+        if OpenAI is None:  # pragma: no cover - missing dependency
+            raise ImportError("The openai package is required. Install it via pip install openai")
+
+        kwargs: dict[str, Any] = {"timeout": self.config.timeout_s}
+        if self.config.api_key:
+            kwargs["api_key"] = self.config.api_key
+        self._client = OpenAI(**kwargs)
+
+    def synthesize_to_path(
+        self, text: str, output_path: Path, *, voice: str | None = None, language: str | None = None
+    ) -> None:
+        response = self._client.audio.speech.create(
+            model=self.model,
+            voice=voice or "alloy",
+            input=text,
+            response_format="wav",
+        )
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        stream_to_file = getattr(response, "stream_to_file", None)
+        if callable(stream_to_file):
+            stream_to_file(str(output_path))
+        else:  # pragma: no cover - fallback for alternate SDK behaviors
+            with open(output_path, "wb") as f:
+                f.write(getattr(response, "read", lambda: b"")())
+
+    async def aclose(self) -> None:
+        close_fn = getattr(self._client, "aclose", None) or getattr(self._client, "close", None)
+        if close_fn:
+            result = close_fn()
+            if asyncio.iscoroutine(result):
+                await result
+
+
 @dataclass(slots=True)
 class AudioSpec:
     """Specification for audio annotation."""
@@ -79,7 +129,19 @@ async def annotate_audio(
     telemetry = spec.telemetry or NullTelemetry()
     cache_dir = spec.cache_dir or Path("audio_cache")
     cache_dir.mkdir(parents=True, exist_ok=True)
-    engine = tts_engine or SimpleTTSEngine()
+
+    engine: TTSEngine
+    if tts_engine is not None:
+        engine = tts_engine
+    else:
+        if os.getenv("OPENAI_API_KEY") and os.getenv("OPENAI_TTS_MODEL"):
+            try:
+                engine = OpenAITTSEngine()
+            except Exception as exc:  # pragma: no cover - exercised in user envs
+                telemetry.event("audio", "warn", f"openai TTS unavailable, falling back: {exc}")
+                engine = SimpleTTSEngine()
+        else:
+            engine = SimpleTTSEngine()
     op_id = spec.op_id or "audio"
     concat_cache: dict[str, Path] = {}
 
@@ -164,8 +226,7 @@ async def annotate_audio(
                 "annotations": page_annotations,
             }
         )
-
-    return {
+    result = {
         "l2": spec.text.get("l2", spec.language),
         "l1": spec.text.get("l1"),
         "title": spec.text.get("title"),
@@ -173,6 +234,14 @@ async def annotate_audio(
         "pages": new_pages,
         "annotations": spec.text.get("annotations", {}),
     }
+
+    close_fn = getattr(engine, "aclose", None) or getattr(engine, "close", None)
+    if close_fn:
+        result_close = close_fn()
+        if asyncio.iscoroutine(result_close):
+            await result_close
+
+    return result
 
 
 def _is_word_token(surface: str) -> bool:

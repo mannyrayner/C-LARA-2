@@ -3,12 +3,15 @@ from __future__ import annotations
 
 import asyncio
 import math
+import os
 import struct
 import tempfile
 import unittest
 import wave
 from pathlib import Path
 
+from core.ai_api import _ensure_openai_installed
+from core.config import OpenAIConfig
 from pipeline import audio
 from tests.log_utils import log_test_case
 
@@ -137,6 +140,88 @@ class AudioTests(unittest.TestCase):
             purpose="reuses cached audio for repeat tokens",
             inputs={"text": repeat_text["surface"]},
             output={"audio_files": token_audio, "tts_calls": len(engine.calls)},
+            status="pass",
+        )
+
+
+class AudioIntegrationTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self) -> None:
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmpdir.cleanup)
+        self.cache_dir = Path(self.tmpdir.name)
+
+        self.sample_text = {
+            "l2": "en",
+            "surface": "Evening rain taps softly on the roof.",
+            "pages": [
+                {
+                    "surface": "Evening rain taps softly on the roof.",
+                    "segments": [
+                        {
+                            "surface": "Evening rain taps softly on the roof.",
+                            "tokens": [
+                                {"surface": "Evening", "annotations": {"lemma": "evening"}},
+                                {"surface": " "},
+                                {"surface": "rain"},
+                                {"surface": " "},
+                                {"surface": "taps"},
+                                {"surface": " "},
+                                {"surface": "softly"},
+                                {"surface": " "},
+                                {"surface": "on"},
+                                {"surface": " "},
+                                {"surface": "the"},
+                                {"surface": " "},
+                                {"surface": "roof"},
+                                {"surface": "."},
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+
+    def _skip_if_no_key_or_incompatible(self) -> None:
+        if not os.getenv("OPENAI_API_KEY"):
+            self.skipTest("OPENAI_API_KEY not set; skipping TTS integration test")
+
+        try:
+            self.openai = _ensure_openai_installed()  # type: ignore[assignment]
+        except ImportError as exc:
+            self.skipTest(str(exc))
+
+        version = getattr(self.openai, "__version__", "0.0.0")
+        if version.startswith("0."):
+            self.skipTest(f"openai version {version} is below 1.0.0; skipping integration test")
+
+    async def test_openai_tts_engine(self) -> None:
+        self._skip_if_no_key_or_incompatible()
+
+        engine = audio.OpenAITTSEngine(config=OpenAIConfig())
+        annotated = await audio.annotate_audio(
+            audio.AudioSpec(text=self.sample_text, cache_dir=self.cache_dir, voice="alloy"),
+            tts_engine=engine,
+        )
+
+        token_audio = [
+            tok.get("annotations", {}).get("audio")
+            for tok in annotated["pages"][0]["segments"][0]["tokens"]
+            if tok.get("surface", "").strip()
+        ]
+
+        self.assertTrue(all(Path(p).exists() for p in token_audio if p))
+        self.assertTrue(
+            Path(annotated["pages"][0]["segments"][0]["annotations"].get("audio")).exists()
+        )
+
+        log_test_case(
+            "audio:integration",
+            purpose="OpenAI TTS synthesis for tokens and segments",
+            inputs={"text": self.sample_text["surface"], "model": os.getenv("OPENAI_TTS_MODEL", "gpt-4o-mini-tts")},
+            output={
+                "token_audio": token_audio,
+                "segment_audio": annotated["pages"][0]["segments"][0]["annotations"].get("audio"),
+            },
             status="pass",
         )
 
