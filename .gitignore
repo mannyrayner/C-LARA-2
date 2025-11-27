@@ -12,3 +12,5 @@ venv/
 
 # Test artifacts
 tests/test_results.log
+audio_cache/
+reports/

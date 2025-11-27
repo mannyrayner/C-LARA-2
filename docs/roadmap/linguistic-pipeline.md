@@ -40,9 +40,9 @@ All steps must be additive: keep surfaces/tokens as-is, preserve annotations fro
 - **pinyin** (library-backed via `pypinyin`)
   - Input: Chinese tokens.
   - Output annotations per token: `token.annotations.pinyin` = pinyin with tone numbers.
-- **audio_stub** (`prompts/audio_stub/<lang>/`)
-  - Input: segment surfaces (and optionally translations).
-  - Output: `segment.annotations.audio_hint` plus `token.annotations.audio_hint` for word tokens. Default uses TTS; cache per-word outputs so identical tokens reuse audio. Segment-level stubs can include SSML for later synthesis or human recording. Homograph handling (e.g., English "wound" as noun vs. verb) can use lemma/POS hints, surrounding context, or explicit disambiguation prompts to select the right TTS voice variant; allow manual overrides and cache variants by (surface, lemma/POS) key when available.
+- **audio** (TTS-backed with caching, extensible for human/phonetic paths)
+  - Input: tokenized segments with prior annotations preserved.
+  - Output: `token.annotations.audio` for lexical tokens, `segment.annotations.audio` for every segment, and `page.annotations.audio` built by concatenating segment audio. Default implementation synthesizes short WAV files (offline-friendly stub) and caches per-language/voice+surface to avoid recomputation. Token-level cache keys may incorporate lemmas/POS when present to disambiguate homographs (e.g., "tear" noun vs. verb). Future enhancements will add human-recorded audio ingestion (e.g., Audacity-sliced clips) and phonetic-text pipelines that swap in specialised TTS engines.
 
 ## Directory layout
 
@@ -62,7 +62,7 @@ src/
     gloss.py               # token-level glossing (new)
     mwe.py                 # multi-word expression detection (new)
     pinyin.py              # Chinese romanization (new)
-    audio_stub.py          # prepare text for later audio synthesis (new)
+    audio.py               # token/segment audio synthesis with caching (new)
     compile_html.py        # HTML assembly with MWE-aware JS hooks (new)
 prompts/
   translation/<lang>/template.txt, fewshots/*.json
@@ -70,7 +70,7 @@ prompts/
   gloss/<lang>/template.txt, fewshots/*.json
   mwe/<lang>/template.txt, fewshots/*.json
   pinyin/zh/template.txt, fewshots/*.json
-  audio_stub/<lang>/template.txt, fewshots/*.json
+  # audio uses a library-backed synthesizer and cache; no prompts required
 ```
 
 ## Pipeline sequencing
@@ -83,8 +83,8 @@ prompts/
 6. **lemma** (token-level; respects shared `mwe_id` lemma).
 7. **gloss** (token-level; respects shared `mwe_id` gloss).
 8. **pinyin** (Chinese-specific token-level; optional per language; uses `pypinyin` instead of AI prompts).
-9. **audio_stub** (token + segment level; prepares input for future TTS module and caching).
-10. **compile_html** (consumes annotated JSON; emits HTML + JS that highlights MWEs and links audio hints).
+9. **audio** (token + segment level; generates/caches audio files with a pluggable TTS backend and prepares for human/phonetic inputs later).
+10. **compile_html** (consumes annotated JSON; emits HTML + JS that highlights MWEs and links audio).
 
 Steps 4–9 all use `generic_annotation.annotate_segments`, differing only in prompt folder and output schema validation. Each operation should be idempotent on already-annotated tokens (skip if the target annotation exists unless `force=True`).
 
@@ -105,7 +105,7 @@ The table below shows a short segment containing an MWE ("put up with") as it mo
 | Lemma | `token.annotations.lemma`: `she`, `put` (m1), `put` (m1), `put` (m1), `the`, `noise`; MWE members share the same lemma. |
 | Gloss | `token.annotations.gloss`: `she`, `tolerate` (m1 across three tokens), `the`, `noise`; MWE members share the same gloss. |
 | Translation | `segment.annotations.translation`: "Elle a supporté le bruit." |
-| Audio stub | `segment.annotations.audio_hint`: TTS script for the segment; `token.annotations.audio_hint` attached only to word tokens (e.g., `put`, `noise`). |
+| Audio | `segment.annotations.audio`: cached audio file path for the segment; `token.annotations.audio` attached only to word tokens (e.g., `put`, `noise`). |
 | Compile HTML | Tokens rendered with `data-mwe-id="m1"`, lemmas/gloss popups, and audio hooks. |
 
 ## Testing strategy
@@ -116,7 +116,7 @@ The table below shows a short segment containing an MWE ("put up with") as it mo
   - idempotency checks when annotations already exist.
 - **Integration tests** (guarded by `OPENAI_API_KEY` and `OPENAI_TEST_MODEL`):
   - end-to-end per operation on short English (and Chinese for pinyin) segments.
-  - full pipeline run (text_gen → segmentation → translation → mwe → lemma → gloss → audio_stub → compile_html) with assertions on shape and required annotations.
+  - full pipeline run (text_gen → segmentation → translation → mwe → lemma → gloss → audio → compile_html) with assertions on shape and required annotations.
 - **Offline mode**: default test runs use fake clients and sample outputs; real OpenAI calls are skipped automatically when credentials are missing.
 
 ## Telemetry & observability
