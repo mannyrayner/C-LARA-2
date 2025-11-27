@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import shutil
 import math
 import struct
 import wave
@@ -226,9 +227,15 @@ async def annotate_audio(
                 out_path = cache_dir / (hashlib.sha1(hash_key.encode("utf-8")).hexdigest() + ".wav")
                 if not out_path.exists():
                     telemetry.event(op_id, "info", "concatenating page audio")
-                    await asyncio.to_thread(_concat_wave_files, segment_audio_paths, out_path)
-                concat_cache[hash_key] = out_path
-            page_annotations["audio"] = str(concat_cache[hash_key])
+                    try:
+                        await asyncio.to_thread(_concat_wave_files, segment_audio_paths, out_path)
+                    except Exception as exc:  # pragma: no cover - depends on TTS backend
+                        telemetry.event(op_id, "warn", f"page audio concat failed: {exc}")
+                        out_path = None
+                if out_path:
+                    concat_cache[hash_key] = out_path
+            if concat_cache.get(hash_key):
+                page_annotations["audio"] = str(concat_cache[hash_key])
 
         new_pages.append(
             {
@@ -278,17 +285,32 @@ def _concat_wave_files(inputs: list[Path], output: Path) -> None:
     if not inputs:
         return None
 
+    # Single input: avoid header rewriting to reduce fragility when upstream
+    # TTS providers emit uncommon WAV params.
+    if len(inputs) == 1:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(inputs[0], output)
+        return None
+
     output.parent.mkdir(parents=True, exist_ok=True)
-    with wave.open(str(output), "wb") as out:
-        with wave.open(str(inputs[0]), "rb") as first:
-            params = first.getparams()
-            # Guard against malformed inputs that report zeroed params.
-            if params.nchannels <= 0 or params.sampwidth <= 0 or params.framerate <= 0:
-                raise ValueError(f"Invalid WAV parameters for {inputs[0]}: {params}")
+    try:
+        with wave.open(str(output), "wb") as out:
+            with wave.open(str(inputs[0]), "rb") as first:
+                params = first.getparams()
+                # Guard against malformed inputs that report zeroed params or
+                # unreasonable channel/sample specs.
+                if (
+                    params.nchannels <= 0
+                    or params.sampwidth not in (1, 2, 3, 4)
+                    or params.framerate <= 0
+                ):
+                    raise ValueError(f"Invalid WAV parameters for {inputs[0]}: {params}")
 
-            out.setparams(params)
-            out.writeframes(first.readframes(first.getnframes()))
+                out.setparams(params)
+                out.writeframes(first.readframes(first.getnframes()))
 
-        for path in inputs[1:]:
-            with wave.open(str(path), "rb") as wav_file:
-                out.writeframes(wav_file.readframes(wav_file.getnframes()))
+            for path in inputs[1:]:
+                with wave.open(str(path), "rb") as wav_file:
+                    out.writeframes(wav_file.readframes(wav_file.getnframes()))
+    except (wave.Error, struct.error) as exc:
+        raise ValueError(f"Failed to concatenate WAV files: {exc}") from exc
