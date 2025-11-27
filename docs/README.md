@@ -10,7 +10,7 @@ Welcome! This folder collects the specs and notes that drive the current impleme
 ## Roadmaps and current status
 
 - **Segmentation pipeline (implemented)**: [roadmap/segmentation-pipeline.md](roadmap/segmentation-pipeline.md) – covers text generation, segmentation phases 1 and 2, and the generic annotation harness now used across the codebase.
-- **Linguistic pipeline (in progress)**: [roadmap/linguistic-pipeline.md](roadmap/linguistic-pipeline.md) – details translation, lemma, gloss, MWE, pinyin, audio, and compilation steps; translation (EN→FR) and MWE detection are currently implemented.
+- **Linguistic pipeline (partially implemented)**: [roadmap/linguistic-pipeline.md](roadmap/linguistic-pipeline.md) – details translation, MWE, lemma, gloss, pinyin, audio, and compilation steps; translation (EN→FR), MWE detection, lemma tagging, and glossing are implemented with prompts, few-shots, and tests.
 - **Top-level roadmap**: [roadmap/README.md](roadmap/README.md) – step-by-step milestones with notes on what is done versus planned.
 
 ## What’s implemented so far

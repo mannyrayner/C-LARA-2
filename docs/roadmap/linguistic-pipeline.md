@@ -20,7 +20,9 @@ New operations enrich `annotations` at the segment or token level, but never mut
 
 ## Operations and outputs
 
-Each operation is defined by a prompt template plus few-shot examples under `prompts/<operation>/<lang>/`. The generic annotator fans out one request per segment (unless noted) and merges results back into the text object. Implemented so far: translation (EN→FR), MWE detection, and lemma tagging.
+Each operation is defined by a prompt template plus few-shot examples under `prompts/<operation>/<lang>/`. The generic annotator fans out one request per segment (unless noted) and merges results back into the text object. Implemented so far: translation (EN→FR), MWE detection, lemma tagging, and glossing.
+
+All steps must be additive: keep surfaces/tokens as-is, preserve annotations from earlier stages, and only layer on the new fields for that operation. Use downstream hints (e.g., translation, lemma, MWE IDs) without overwriting prior metadata.
 
 - **translation** (`prompts/translation/<lang>/`)
   - Input: segment JSON (with tokens when available).
@@ -33,8 +35,8 @@ Each operation is defined by a prompt template plus few-shot examples under `pro
   - Input: tokens with surface forms and optional `mwe_id`s.
   - Output annotations per token: `token.annotations.lemma` = canonical lemma (MWE-linked tokens should share the same lemma).
 - **gloss** (`prompts/gloss/<lang>/`)
-  - Input: tokens + optional lemmas and `mwe_id`s.
-  - Output annotations per token: `token.annotations.gloss` = short L1 gloss/definition for each L2 token. If a token belongs to an MWE, the gloss applies to the whole MWE and all member tokens share the same value.
+  - Input: tokenized segments with `mwe_id`s, ideally after translation so `segment.annotations.translation` is available as a hint.
+  - Output annotations per token: `token.annotations.gloss` = short L1 gloss/definition for each L2 token. If a token belongs to an MWE, the gloss applies to the whole MWE and all member tokens share the same value. Treat translations as guidance, not strict literals.
 - **pinyin** (`prompts/pinyin/zh/`)
   - Input: Chinese tokens.
   - Output annotations per token: `token.annotations.pinyin` = pinyin with tone numbers.
