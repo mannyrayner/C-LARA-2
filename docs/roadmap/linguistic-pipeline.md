@@ -37,7 +37,7 @@ All steps must be additive: keep surfaces/tokens as-is, preserve annotations fro
 - **gloss** (`prompts/gloss/<lang>/`)
   - Input: tokenized segments with `mwe_id`s, ideally after translation so `segment.annotations.translation` is available as a hint.
   - Output annotations per token: `token.annotations.gloss` = short L1 gloss/definition for each L2 token. If a token belongs to an MWE, the gloss applies to the whole MWE and all member tokens share the same value. Treat translations as guidance, not strict literals.
-- **pinyin** (`prompts/pinyin/zh/`)
+- **pinyin** (library-backed via `pypinyin`)
   - Input: Chinese tokens.
   - Output annotations per token: `token.annotations.pinyin` = pinyin with tone numbers.
 - **audio_stub** (`prompts/audio_stub/<lang>/`)
@@ -82,7 +82,7 @@ prompts/
 5. **mwe** (segment-level; establishes shared IDs before token-level work).
 6. **lemma** (token-level; respects shared `mwe_id` lemma).
 7. **gloss** (token-level; respects shared `mwe_id` gloss).
-8. **pinyin** (Chinese-specific token-level; optional per language).
+8. **pinyin** (Chinese-specific token-level; optional per language; uses `pypinyin` instead of AI prompts).
 9. **audio_stub** (token + segment level; prepares input for future TTS module and caching).
 10. **compile_html** (consumes annotated JSON; emits HTML + JS that highlights MWEs and links audio hints).
 
@@ -135,7 +135,7 @@ The table below shows a short segment containing an MWE ("put up with") as it mo
 ## Deliverables checklist
 
 - [ ] Operation modules under `src/pipeline/` as listed above.
-- [ ] Prompt templates + few-shots for English (and Mandarin for pinyin) under `prompts/`.
+- [ ] Prompt templates + few-shots for English-backed AI operations under `prompts/`; pinyin is library-based and does not need prompts.
 - [ ] Unit + integration tests covering the new operations and full pipeline.
 - [ ] Documentation updates (this doc + README pointer) once modules land.
 

@@ -9,15 +9,15 @@ Welcome! This folder collects the specs and notes that drive the current impleme
 
 ## Roadmaps and current status
 
-- **Segmentation pipeline (implemented)**: [roadmap/segmentation-pipeline.md](roadmap/segmentation-pipeline.md) – covers text generation, segmentation phases 1 and 2, and the generic annotation harness now used across the codebase.
-- **Linguistic pipeline (partially implemented)**: [roadmap/linguistic-pipeline.md](roadmap/linguistic-pipeline.md) – details translation, MWE, lemma, gloss, pinyin, audio, and compilation steps; translation (EN→FR), MWE detection, lemma tagging, and glossing are implemented with prompts, few-shots, and tests.
+- **Segmentation pipeline (implemented)**: [roadmap/segmentation-pipeline.md](roadmap/segmentation-pipeline.md) – covers text generation, segmentation phases 1 and 2 (with a Mandarin tokenization path via `jieba`), and the generic annotation harness now used across the codebase.
+- **Linguistic pipeline (partially implemented)**: [roadmap/linguistic-pipeline.md](roadmap/linguistic-pipeline.md) – details translation, MWE, lemma, gloss, pinyin, audio, and compilation steps; translation (EN→FR), MWE detection, lemma tagging, glossing, and pinyin annotation (via `pypinyin`) are implemented with prompts/tests where applicable.
 - **Top-level roadmap**: [roadmap/README.md](roadmap/README.md) – step-by-step milestones with notes on what is done versus planned.
 
 ## What’s implemented so far
 
 - OpenAI client wrapper with heartbeat/telemetry and retry handling.
-- Text generation (`text_gen`), segmentation phases 1 and 2, translation, and MWE detection using the generic annotation flow.
-- Prompt templates and few-shots for the above operations, plus unit/integration tests (OpenAI-gated where appropriate).
+- Text generation (`text_gen`), segmentation phases 1 and 2 (Mandarin via `jieba`), translation, MWE detection, lemma tagging, glossing, and Chinese pinyin annotation (`pypinyin`) using the generic annotation flow or language-specific helpers.
+- Prompt templates and few-shots for AI-backed operations, plus unit/integration tests (OpenAI-gated where appropriate).
 
 ## Testing & CI
 

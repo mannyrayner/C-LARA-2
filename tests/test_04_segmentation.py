@@ -150,6 +150,43 @@ class SegmentationTests(unittest.IsolatedAsyncioTestCase):
             status="pass",
         )
 
+    async def test_segmentation_phase_2_uses_jieba_for_chinese(self) -> None:
+        text = {
+            "l2": "zh",
+            "surface": "我喜欢苹果。",
+            "pages": [
+                {
+                    "surface": "我喜欢苹果。",
+                    "segments": [
+                        {
+                            "surface": "我喜欢苹果。",
+                        }
+                    ],
+                }
+            ],
+            "annotations": {},
+        }
+
+        spec = SegmentationPhase2Spec(text=text, language="zh")
+
+        try:
+            result = await segmentation_phase_2(spec)
+        except ImportError as exc:
+            self.skipTest(str(exc))
+
+        tokens = result["pages"][0]["segments"][0]["tokens"]
+        surfaces = [t["surface"] for t in tokens]
+        self.assertIn("我", surfaces)
+        self.assertTrue(any("苹果" in tok for tok in surfaces))
+
+        log_test_case(
+            "segmentation:phase2_jieba",
+            purpose="uses jieba tokenization for Mandarin segments",
+            inputs={"surface": text["surface"], "language": "zh"},
+            output={"tokens": surfaces},
+            status="pass",
+        )
+
     async def test_segmentation_full_pipeline(self) -> None:
         phase1_response = {
             "l2": "en",

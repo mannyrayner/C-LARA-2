@@ -10,7 +10,7 @@ Implement the *create text → segment pages/segments → token-level split* pip
 **In (MVP):**
 - Generate a fresh L2 text from a simple spec (title, genre, length, level, style hints).
 - Page/segment partitioning (phase 1).
-- Per-segment tokenization/splitting (phase 2) using language-specific prompt templates and optional few-shot examples.
+- Per-segment tokenization/splitting (phase 2) using language-specific prompt templates and optional few-shot examples; Mandarin segments are tokenized locally with `jieba` instead of the AI path.
 - Async OpenAI calls with a periodic heartbeat (every ~5s) surfaced to the caller.
 - Deterministic JSON outputs that the later annotation operations (translation, MWE, lemma, gloss, pinyin) can consume.
 

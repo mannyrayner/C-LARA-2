@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
+import re
 from typing import Any, Iterable
 
 from core.ai_api import OpenAIClient
@@ -109,7 +110,12 @@ async def segmentation_phase_2(
     *,
     client: OpenAIClient | None = None,
 ) -> dict[str, Any]:
-    """Annotate segments with tokens using the generic annotation flow."""
+    """Annotate segments with tokens using jieba for Mandarin or the generic flow."""
+
+    telemetry = spec.telemetry or NullTelemetry()
+
+    if spec.language.lower().startswith("zh"):
+        return _tokenize_with_jieba(spec.text, language=spec.language, telemetry=telemetry, op_id=spec.op_id)
 
     prompts_root = (
         spec.template_path.parent.parent if spec.template_path else annotation_prompts.default_prompts_root()
@@ -140,7 +146,6 @@ async def segmentation_phase_2(
             output_instructions=output_instructions,
         )
 
-    telemetry = spec.telemetry or NullTelemetry()
     ai_client = client or OpenAIClient()
     return await generic_annotation(
         GenericAnnotationSpec(
@@ -153,6 +158,61 @@ async def segmentation_phase_2(
         ),
         client=ai_client,
     )
+
+
+def _tokenize_with_jieba(
+    text: dict[str, Any], *, language: str, telemetry: Telemetry, op_id: str | None
+) -> dict[str, Any]:
+    try:
+        import jieba  # type: ignore
+    except Exception as exc:  # pragma: no cover - exercised in user envs
+        raise ImportError("jieba is required for Mandarin segmentation; install via pip install jieba") from exc
+
+    base_op = op_id or "segmentation-phase-2-jieba"
+    telemetry.event(base_op, "info", "Using jieba for Mandarin tokenization", {"language": language})
+
+    def _cut_preserve_whitespace(surface: str) -> list[dict[str, Any]]:
+        tokens: list[dict[str, Any]] = []
+        cursor = 0
+        for match in re.finditer(r"\s+", surface):
+            chunk = surface[cursor : match.start()]
+            if chunk:
+                tokens.extend({"surface": tok} for tok in jieba.cut(chunk, cut_all=False))
+            tokens.append({"surface": match.group(0)})
+            cursor = match.end()
+
+        tail = surface[cursor:]
+        if tail:
+            tokens.extend({"surface": tok} for tok in jieba.cut(tail, cut_all=False))
+        return tokens
+
+    new_pages: list[dict[str, Any]] = []
+    for page in text.get("pages", []):
+        new_segments: list[dict[str, Any]] = []
+        for segment in page.get("segments", []):
+            tokens = _cut_preserve_whitespace(segment.get("surface", ""))
+            merged = dict(segment)
+            if tokens:
+                merged["tokens"] = tokens
+            new_segments.append(merged)
+
+        new_pages.append(
+            {
+                "surface": page.get("surface", ""),
+                "segments": new_segments,
+                "annotations": page.get("annotations", {}),
+            }
+        )
+
+    normalized = {
+        "l2": text.get("l2", language),
+        "l1": text.get("l1"),
+        "title": text.get("title"),
+        "surface": text.get("surface", ""),
+        "pages": new_pages,
+        "annotations": text.get("annotations", {}),
+    }
+    return {k: v for k, v in normalized.items() if v is not None}
 
 
 @dataclass(slots=True)
