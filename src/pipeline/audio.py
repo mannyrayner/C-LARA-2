@@ -82,20 +82,31 @@ class OpenAITTSEngine:
     def synthesize_to_path(
         self, text: str, output_path: Path, *, voice: str | None = None, language: str | None = None
     ) -> None:
-        response = self._client.audio.speech.create(
-            model=self.model,
-            voice=voice or "alloy",
-            input=text,
-            response_format="wav",
-        )
-
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        stream_to_file = getattr(response, "stream_to_file", None)
-        if callable(stream_to_file):
-            stream_to_file(str(output_path))
-        else:  # pragma: no cover - fallback for alternate SDK behaviors
-            with open(output_path, "wb") as f:
-                f.write(getattr(response, "read", lambda: b"")())
+
+        streaming_factory = getattr(self._client.audio.speech, "with_streaming_response", None)
+        if streaming_factory:
+            # Recommended streaming path for SDK >=2.0.0
+            with streaming_factory.create(
+                model=self.model,
+                voice=voice or "alloy",
+                input=text,
+                response_format="wav",
+            ) as response:
+                response.stream_to_file(str(output_path))
+        else:  # pragma: no cover - fallback for SDKs lacking streaming helpers
+            response = self._client.audio.speech.create(
+                model=self.model,
+                voice=voice or "alloy",
+                input=text,
+                response_format="wav",
+            )
+            stream_to_file = getattr(response, "stream_to_file", None)
+            if callable(stream_to_file):
+                stream_to_file(str(output_path))
+            else:  # pragma: no cover - fallback for alternate SDK behaviors
+                with open(output_path, "wb") as f:
+                    f.write(getattr(response, "read", lambda: b"")())
 
     async def aclose(self) -> None:
         close_fn = getattr(self._client, "aclose", None) or getattr(self._client, "close", None)
@@ -270,7 +281,12 @@ def _concat_wave_files(inputs: list[Path], output: Path) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     with wave.open(str(output), "wb") as out:
         with wave.open(str(inputs[0]), "rb") as first:
-            out.setparams(first.getparams())
+            params = first.getparams()
+            # Guard against malformed inputs that report zeroed params.
+            if params.nchannels <= 0 or params.sampwidth <= 0 or params.framerate <= 0:
+                raise ValueError(f"Invalid WAV parameters for {inputs[0]}: {params}")
+
+            out.setparams(params)
             out.writeframes(first.readframes(first.getnframes()))
 
         for path in inputs[1:]:
