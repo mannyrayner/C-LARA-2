@@ -127,10 +127,47 @@ The table below shows a short segment containing an MWE ("put up with") as it mo
 
 ## HTML compilation notes
 
-- `compile_html.py` should accept the fully annotated text JSON and emit HTML with:
-  - token spans tagged with IDs for MWEs (`data-mwe-id`), lemmas, and gloss popups.
-  - per-segment hooks for audio (`data-audio-hint`), ready for later TTS linking.
-  - bundled JS/CSS to highlight MWEs when hovering any member token and to show glosses.
+`compile_html.py` is the final presentation step. It consumes the fully annotated JSON and emits a static bundle (HTML + JS + CSS + audio links) that mirrors the C-LARA UX. The compiler must **never mutate existing annotations**; it only adds presentational data.
+
+### Inputs
+
+- Fully annotated text JSON (segments contain translations, MWEs, lemmas, glosses, pinyin when present, and audio metadata at token/segment/page levels).
+- Audio files referenced by annotation metadata (token/segment/page) in a predictable relative path (e.g., `audio/<hash>.wav`).
+
+### Concordance construction
+
+1. Build an in-memory concordance keyed by **lemma**. Each entry keeps the lemma string, optional POS, and the list of segment references where the lemma appears.
+2. When a token belongs to an MWE, its concordance entry references the **shared MWE lemma** so the concordance treats the whole expression consistently.
+3. Persist the concordance alongside the HTML (as embedded JSON in the page) so client-side JS can render and filter without server calls.
+
+### Layout
+
+- Split the page into two panes (CSS grid/flex):
+  - **Text pane (left)**: paginated text with per-page and per-segment controls (play page audio, play segment audio, toggle translations). Tokens are wrapped in spans with:
+    - `data-lemma`, `data-gloss`, and `data-mwe-id` for hover/highlight behavior.
+    - `data-token-id` and `data-audio` (if available) for click-to-play.
+  - **Concordance pane (right)**: interactive list keyed by lemma. Selecting a lemma shows the segments containing it, reusing the same token markup so hover/click behavior is identical.
+
+### Interactions
+
+- **Click a token or concordance item**: opens the lemma’s concordance view in the right pane and plays token audio if present. If the token is part of an MWE, all member tokens highlight together.
+- **Hover a token**: shows a popup with gloss (and pinyin when available) and highlights all tokens in the same MWE. Hovering in either pane uses the same JS handlers.
+- **Segment controls**: buttons for translation reveal and segment audio playback, wired to the segment-level audio annotation.
+- **Page controls**: button for page-level audio playback that streams the concatenated audio file if available.
+- All interactions should degrade gracefully when audio/gloss/pinyin are missing (no errors, just no-op or textual fallback).
+- **Chinese pinyin rendering**: when `token.annotations.pinyin` is present, wrap L2 surfaces in `<ruby><rb>…</rb><rt>pinyin</rt></ruby>` so users see inline pinyin above characters. The same markup should be used in both panes and in concordance entries.
+
+### Assets and output
+
+- Emit the compiled HTML, a small JS bundle, and CSS into `artifacts/html/` (created if absent) so humans can open results directly from disk during reviews.
+- JS helpers should stay generic and live alongside the HTML output (e.g., `artifacts/html/static/`). Minimal dependencies: vanilla JS for DOM events plus optional lightweight utility (no heavy frameworks).
+- Keep audio references relative to the HTML output root to avoid CORS/file URL issues when opened locally.
+
+### Testing & auditing hooks
+
+- Unit tests for `compile_html` should write artifacts into a temporary `artifacts/html/test_run_<uuid>/` folder and log the absolute path to make manual inspection easy.
+- Include sample concordance snippets in the test log to confirm MWEs map to shared lemmas and that gloss/pinyin show up in popups.
+- Consider a lint step that validates `data-*` attributes are present for tokens with lemmas/MWEs and that audio metadata points to existing files when a TTS engine is configured.
 
 ## Deliverables checklist
 
