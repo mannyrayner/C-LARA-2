@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import tempfile
+import shutil
 import unittest
 from pathlib import Path
 
@@ -11,12 +11,16 @@ from tests.log_utils import log_test_case
 
 class CompileHTMLTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.tmp = tempfile.TemporaryDirectory()
-        self.tmpdir = Path(self.tmp.name)
+        self.artifacts = Path("tests/artifacts/compile_html")
+        if self.artifacts.exists():
+            shutil.rmtree(self.artifacts)
+        (self.artifacts / "audio").mkdir(parents=True, exist_ok=True)
+        (self.artifacts / "html").mkdir(parents=True, exist_ok=True)
+
         engine = SimpleTTSEngine()
-        self.token_audio = self.tmpdir / "token.wav"
-        self.segment_audio = self.tmpdir / "segment.wav"
-        self.page_audio = self.tmpdir / "page.wav"
+        self.token_audio = self.artifacts / "audio" / "token.wav"
+        self.segment_audio = self.artifacts / "audio" / "segment.wav"
+        self.page_audio = self.artifacts / "audio" / "page.wav"
         engine.synthesize_to_path("token", self.token_audio)
         engine.synthesize_to_path("segment", self.segment_audio)
         engine.synthesize_to_path("page", self.page_audio)
@@ -64,13 +68,8 @@ class CompileHTMLTests(unittest.TestCase):
             "annotations": {},
         }
 
-    def tearDown(self) -> None:
-        # Keep artifacts on disk for manual inspection of generated HTML/audio.
-        # Callers can clean the temp dir manually if desired.
-        pass
-
     def test_compile_html_writes_artifacts(self) -> None:
-        out_root = self.tmpdir / "html"
+        out_root = self.artifacts / "html"
         result = compile_html(CompileHTMLSpec(text=self.sample_text, output_dir=out_root, run_id="unit"))
 
         html_path = Path(result["html_path"])

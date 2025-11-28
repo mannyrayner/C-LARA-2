@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import asyncio
-import tempfile
-import unittest
 import os
+import shutil
+import unittest
 from pathlib import Path
 
 from core.ai_api import OpenAIClient, _ensure_openai_installed
@@ -27,8 +27,17 @@ class FakeAIClient(OpenAIClient):
 
 class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
-        self.tmpdir = tempfile.TemporaryDirectory()
-        self.temp_path = Path(self.tmpdir.name)
+        self.artifacts = Path("tests/artifacts/full_pipeline")
+        if self.artifacts.exists():
+            shutil.rmtree(self.artifacts)
+        self.artifacts.mkdir(parents=True, exist_ok=True)
+
+        self.fake_html_root = self.artifacts / "fake_html"
+        self.fake_audio_root = self.artifacts / "fake_audio"
+        self.real_html_root = self.artifacts / "real_html"
+        self.real_audio_root = self.artifacts / "real_audio"
+        for path in [self.fake_html_root, self.fake_audio_root, self.real_html_root, self.real_audio_root]:
+            path.mkdir(parents=True, exist_ok=True)
         self.sample_text = "A cat sleeps."
 
         # Responses for: seg1, seg2, translation, mwe, lemma, gloss
@@ -80,10 +89,6 @@ class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
 
         self.fake_client = FakeAIClient([seg1, seg2, translation, mwe, lemma, gloss])
 
-    def tearDown(self) -> None:
-        # Preserve temp artifacts (HTML/audio) for manual inspection.
-        pass
-
     def _skip_if_no_key_or_incompatible(self) -> None:
         if not os.getenv("OPENAI_API_KEY"):
             self.skipTest("OPENAI_API_KEY not set; skipping integration test")
@@ -102,8 +107,8 @@ class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
             text=self.sample_text,
             language="en",
             target_language="fr",
-            output_dir=self.temp_path / "html",
-            audio_cache_dir=self.temp_path / "audio",
+            output_dir=self.fake_html_root,
+            audio_cache_dir=self.fake_audio_root,
             telemetry=None,
         )
 
@@ -137,8 +142,8 @@ class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
             text=self.sample_text,
             language="en",
             target_language="fr",
-            output_dir=self.temp_path / "html_real",
-            audio_cache_dir=self.temp_path / "audio_real",
+            output_dir=self.real_html_root,
+            audio_cache_dir=self.real_audio_root,
             telemetry=None,
         )
 
