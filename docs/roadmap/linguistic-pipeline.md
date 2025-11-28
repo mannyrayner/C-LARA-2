@@ -8,6 +8,7 @@ This document expands Step 3 of the roadmap into a concrete plan for delivering 
 - Keep prompts and few-shots organized per operation and language so that new languages can be added by copying the structure.
 - Provide test hooks (unit + integration) that can run without OpenAI access by using fakes, while enabling live calls when credentials are present.
 - Produce HTML-ready annotated JSON that can be consumed by the compiler step with MWE-aware JavaScript and audio placeholders.
+  The HTML compiler (`compile_html.py`) and end-to-end runner (`run_full_pipeline`) are now implemented.
 
 ## Data model (recap)
 
@@ -20,7 +21,7 @@ New operations enrich `annotations` at the segment or token level, but never mut
 
 ## Operations and outputs
 
-Each operation is defined by a prompt template plus few-shot examples under `prompts/<operation>/<lang>/`. The generic annotator fans out one request per segment (unless noted) and merges results back into the text object. Implemented so far: translation (EN→FR), MWE detection, lemma tagging, and glossing.
+Each operation is defined by a prompt template plus few-shot examples under `prompts/<operation>/<lang>/`. The generic annotator fans out one request per segment (unless noted) and merges results back into the text object. Implemented so far: translation (EN→FR), MWE detection, lemma tagging, glossing, pinyin (via `pypinyin`), audio annotation (stub/OpenAI TTS), HTML compilation, and the stitched full-pipeline helper.
 
 All steps must be additive: keep surfaces/tokens as-is, preserve annotations from earlier stages, and only layer on the new fields for that operation. Use downstream hints (e.g., translation, lemma, MWE IDs) without overwriting prior metadata.
 
@@ -84,7 +85,7 @@ prompts/
 7. **gloss** (token-level; respects shared `mwe_id` gloss).
 8. **pinyin** (Chinese-specific token-level; optional per language; uses `pypinyin` instead of AI prompts).
 9. **audio** (token + segment level; generates/caches audio files with a pluggable TTS backend and prepares for human/phonetic inputs later).
-10. **compile_html** (consumes annotated JSON; emits HTML + JS that highlights MWEs and links audio).
+10. **compile_html** (consumes annotated JSON; emits HTML + JS that highlights MWEs and links audio). **Implemented.**
 
 Steps 4–9 all use `generic_annotation.annotate_segments`, differing only in prompt folder and output schema validation. Each operation should be idempotent on already-annotated tokens (skip if the target annotation exists unless `force=True`).
 
@@ -159,20 +160,20 @@ The table below shows a short segment containing an MWE ("put up with") as it mo
 
 ### Assets and output
 
-- Emit the compiled HTML, a small JS bundle, and CSS into `artifacts/html/` (created if absent) so humans can open results directly from disk during reviews.
+- Emit the compiled HTML, a small JS bundle, and CSS into `artifacts/html/` (created if absent) so humans can open results directly from disk during reviews. The current implementation writes to `artifacts/html/run_<id>/index.html` with inline JS/CSS and embedded concordance JSON for quick inspection.
 - JS helpers should stay generic and live alongside the HTML output (e.g., `artifacts/html/static/`). Minimal dependencies: vanilla JS for DOM events plus optional lightweight utility (no heavy frameworks).
 - Keep audio references relative to the HTML output root to avoid CORS/file URL issues when opened locally.
 
 ### Testing & auditing hooks
 
-- Unit tests for `compile_html` should write artifacts into a temporary `artifacts/html/test_run_<uuid>/` folder and log the absolute path to make manual inspection easy.
+- Unit tests for `compile_html` should write artifacts into a temporary `artifacts/html/test_run_<uuid>/` folder and log the absolute path to make manual inspection easy. Current tests log both the annotated segment JSON and the rendered HTML path for reviewers.
 - Include sample concordance snippets in the test log to confirm MWEs map to shared lemmas and that gloss/pinyin show up in popups.
 - Consider a lint step that validates `data-*` attributes are present for tokens with lemmas/MWEs and that audio metadata points to existing files when a TTS engine is configured.
 
 ## Deliverables checklist
 
-- [ ] Operation modules under `src/pipeline/` as listed above.
-- [ ] Prompt templates + few-shots for English-backed AI operations under `prompts/`; pinyin is library-based and does not need prompts.
-- [ ] Unit + integration tests covering the new operations and full pipeline.
-- [ ] Documentation updates (this doc + README pointer) once modules land.
+- [x] Operation modules under `src/pipeline/` as listed above.
+- [x] Prompt templates + few-shots for English-backed AI operations under `prompts/`; pinyin is library-based and does not need prompts.
+- [x] Unit + integration tests covering the new operations and full pipeline.
+- [x] Documentation updates (this doc + README pointer) once modules land.
 

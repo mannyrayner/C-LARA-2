@@ -10,13 +10,13 @@ Welcome! This folder collects the specs and notes that drive the current impleme
 ## Roadmaps and current status
 
 - **Segmentation pipeline (implemented)**: [roadmap/segmentation-pipeline.md](roadmap/segmentation-pipeline.md) – covers text generation, segmentation phases 1 and 2 (with a Mandarin tokenization path via `jieba`), and the generic annotation harness now used across the codebase.
-- **Linguistic pipeline (partially implemented)**: [roadmap/linguistic-pipeline.md](roadmap/linguistic-pipeline.md) – details translation, MWE, lemma, gloss, pinyin, audio, and compilation steps; translation (EN→FR), MWE detection, lemma tagging, glossing, pinyin annotation (via `pypinyin`), and TTS-backed audio annotation with caching are implemented with prompts/tests where applicable.
+- **Linguistic pipeline (implemented)**: [roadmap/linguistic-pipeline.md](roadmap/linguistic-pipeline.md) – details translation, MWE, lemma, gloss, pinyin, audio, compilation, and the full pipeline helper; translation (EN→FR), MWE detection, lemma tagging, glossing, pinyin annotation (via `pypinyin`), TTS-backed audio annotation with caching, HTML compilation, and the stitched `run_full_pipeline` flow are implemented with prompts/tests where applicable.
 - **Top-level roadmap**: [roadmap/README.md](roadmap/README.md) – step-by-step milestones with notes on what is done versus planned.
 
 ## What’s implemented so far
 
 - OpenAI client wrapper with heartbeat/telemetry and retry handling.
-- Text generation (`text_gen`), segmentation phases 1 and 2 (Mandarin via `jieba`), translation, MWE detection, lemma tagging, glossing, Chinese pinyin annotation (`pypinyin`), and audio annotation (TTS stub + caching) using the generic annotation flow or language-specific helpers.
+- Text generation (`text_gen`), segmentation phases 1 and 2 (Mandarin via `jieba`), translation, MWE detection, lemma tagging, glossing, Chinese pinyin annotation (`pypinyin`), audio annotation (TTS stub/OpenAI + caching), HTML compilation to a two-pane reader with concordance/audio hooks, and a `run_full_pipeline` helper that stitches the operations end-to-end.
 - Prompt templates and few-shots for AI-backed operations, plus unit/integration tests (OpenAI-gated where appropriate).
 
 ## Testing & CI

@@ -50,10 +50,10 @@ See `docs/roadmap/segmentation-pipeline.md` for the specification that guided th
 
 ### 3. Full linguistic annotation pipeline
 
-Status: **In progress.** The detailed plan lives in `docs/roadmap/linguistic-pipeline.md`.
+Status: **Mostly complete.** The detailed plan lives in `docs/roadmap/linguistic-pipeline.md`.
 
-- Implemented: translation (EN→FR), MWE detection, lemma tagging, glossing, Chinese pinyin annotation (via `pypinyin`), and audio annotation with caching (OpenAI TTS or offline stub), with prompts/few-shots where AI-backed.
-- Planned/next: HTML compilation hooks and richer audio ingestion (human-recorded, phonetic-text paths).
+- Implemented: translation (EN→FR), MWE detection, lemma tagging, glossing, Chinese pinyin annotation (via `pypinyin`), audio annotation with caching (OpenAI TTS or offline stub), HTML compilation to two-pane output with concordance + audio hooks, and a top-level `run_full_pipeline` helper that stitches the stages together.
+- Planned/next: richer audio ingestion (human-recorded, phonetic-text paths) and UI polish once compiled HTML stabilises.
 
 Each operation has (or will have) prompts under `prompts/<operation>/<lang>/` plus unit and integration tests (OpenAI-gated).
 
