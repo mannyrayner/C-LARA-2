@@ -129,6 +129,20 @@ class AudioSpec:
     op_id: str | None = None
 
 
+def _audio_annotation(path: Path, *, surface: str, spec: AudioSpec, level: str, engine: TTSEngine) -> dict[str, Any]:
+    """Return a JSON-friendly audio annotation with metadata for auditing."""
+
+    engine_name = getattr(engine, "name", None) or engine.__class__.__name__
+    return {
+        "path": str(path),
+        "surface": surface,
+        "engine": engine_name,
+        "voice": spec.voice or "default",
+        "language": spec.language,
+        "level": level,
+    }
+
+
 async def annotate_audio(
     spec: AudioSpec, *, tts_engine: TTSEngine | None = None
 ) -> dict[str, Any]:
@@ -198,7 +212,9 @@ async def annotate_audio(
                     token_key = annotations.get("lemma") or surface
                     audio_path = await ensure_audio(token_key, "token")
                     if audio_path:
-                        annotations["audio"] = str(audio_path)
+                        annotations["audio"] = _audio_annotation(
+                            audio_path, surface=token_key, spec=spec, level="token", engine=engine
+                        )
 
                 if annotations:
                     tokens_out.append({**token, "annotations": annotations})
@@ -208,7 +224,13 @@ async def annotate_audio(
             seg_annotations = dict(segment.get("annotations", {}))
             seg_audio = await ensure_audio(segment.get("surface", ""), "segment")
             if seg_audio:
-                seg_annotations["audio"] = str(seg_audio)
+                seg_annotations["audio"] = _audio_annotation(
+                    seg_audio,
+                    surface=segment.get("surface", ""),
+                    spec=spec,
+                    level="segment",
+                    engine=engine,
+                )
                 segment_audio_paths.append(seg_audio)
 
             new_segments.append(
@@ -235,7 +257,13 @@ async def annotate_audio(
                 if out_path:
                     concat_cache[hash_key] = out_path
             if concat_cache.get(hash_key):
-                page_annotations["audio"] = str(concat_cache[hash_key])
+                page_annotations["audio"] = _audio_annotation(
+                    concat_cache[hash_key],
+                    surface=page.get("surface", ""),
+                    spec=spec,
+                    level="page",
+                    engine=engine,
+                )
 
         new_pages.append(
             {

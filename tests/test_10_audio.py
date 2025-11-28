@@ -74,13 +74,13 @@ class AudioTests(unittest.TestCase):
         annotated = asyncio.run(audio.annotate_audio(spec, tts_engine=engine))
 
         tokens = annotated["pages"][0]["segments"][0]["tokens"]
-        hello_audio = tokens[0].get("annotations", {}).get("audio")
-        world_audio = tokens[3].get("annotations", {}).get("audio")
+        hello_audio = next(t.get("annotations", {}).get("audio") for t in tokens if t.get("surface") == "Hello")
+        world_audio = next(t.get("annotations", {}).get("audio") for t in tokens if t.get("surface") == "world")
         page_audio = annotated["pages"][0]["annotations"].get("audio")
 
-        self.assertTrue(Path(hello_audio).exists())
-        self.assertTrue(Path(world_audio).exists())
-        self.assertTrue(Path(page_audio).exists())
+        self.assertTrue(Path(hello_audio["path"]).exists())
+        self.assertTrue(Path(world_audio["path"]).exists())
+        self.assertTrue(Path(page_audio["path"]).exists())
         self.assertNotIn("audio", tokens[1].get("annotations", {}))
         self.assertNotIn("audio", tokens[2].get("annotations", {}))
         self.assertIn("translation", annotated["pages"][0]["segments"][0]["annotations"])
@@ -128,11 +128,13 @@ class AudioTests(unittest.TestCase):
         )
 
         token_audio = [
-            t.get("annotations", {}).get("audio") for t in annotated["pages"][0]["segments"][0]["tokens"] if t["surface"].strip()
+            t.get("annotations", {}).get("audio")
+            for t in annotated["pages"][0]["segments"][0]["tokens"]
+            if t["surface"].strip()
         ]
 
         # Two unique audio files: one for the shared token, one for the segment.
-        self.assertEqual(len(set(token_audio)), 1)
+        self.assertEqual(len({ta["path"] for ta in token_audio}), 1)
         self.assertEqual(len(engine.calls), 2)
 
         log_test_case(
@@ -203,26 +205,23 @@ class AudioIntegrationTests(unittest.IsolatedAsyncioTestCase):
             tts_engine=engine,
         )
 
+        segment = annotated["pages"][0]["segments"][0]
         token_audio = [
             tok.get("annotations", {}).get("audio")
-            for tok in annotated["pages"][0]["segments"][0]["tokens"]
+            for tok in segment["tokens"]
             if tok.get("surface", "").strip()
         ]
 
-        self.assertTrue(all(Path(p).exists() for p in token_audio if p))
-        self.assertTrue(
-            Path(annotated["pages"][0]["segments"][0]["annotations"].get("audio")).exists()
-        )
+        self.assertTrue(all(Path(info["path"]).exists() for info in token_audio if info))
+        self.assertTrue(Path(segment["annotations"].get("audio")["path"]).exists())
 
         log_test_case(
             "audio:integration",
             purpose="OpenAI TTS synthesis for tokens and segments",
-            inputs={"text": self.sample_text["surface"], "model": os.getenv("OPENAI_TTS_MODEL", "gpt-4o-mini-tts")},
-            output={
-                "token_audio": token_audio,
-                "segment_audio": annotated["pages"][0]["segments"][0]["annotations"].get("audio"),
-            },
+            inputs=self.sample_text,
+            output=segment,
             status="pass",
+            notes="Includes audio annotations with engine/voice metadata",
         )
 
 
