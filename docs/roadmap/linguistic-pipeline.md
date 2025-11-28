@@ -155,6 +155,7 @@ The table below shows a short segment containing an MWE ("put up with") as it mo
 - **Segment controls**: buttons for translation reveal and segment audio playback, wired to the segment-level audio annotation.
 - **Page controls**: button for page-level audio playback that streams the concatenated audio file if available.
 - All interactions should degrade gracefully when audio/gloss/pinyin are missing (no errors, just no-op or textual fallback).
+- **Chinese pinyin rendering**: when `token.annotations.pinyin` is present, wrap L2 surfaces in `<ruby><rb>…</rb><rt>pinyin</rt></ruby>` so users see inline pinyin above characters. The same markup should be used in both panes and in concordance entries.
 
 ### Assets and output
 
