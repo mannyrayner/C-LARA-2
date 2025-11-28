@@ -1,0 +1,23 @@
+{
+  "input": "{\n  \"surface\": \"They looked after the children.\",\n  \"tokens\": [\n    {\"surface\": \"They\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"looked\", \"annotations\": {\"mwe_id\": \"m1\"}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"after\", \"annotations\": {\"mwe_id\": \"m1\"}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"the\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"children\", \"annotations\": {}},\n    {\"surface\": \".\"}\n  ],\n  \"annotations\": {\n    \"mwes\": [\n      {\"id\": \"m1\", \"tokens\": [\"looked\", \"after\"], \"label\": \"phrasal verb\"}\n    ]\n  }\n}",
+  "output": {
+    "surface": "They looked after the children.",
+    "tokens": [
+      {"surface": "They", "annotations": {"lemma": "they", "pos": "PRON"}},
+      {"surface": " "},
+      {"surface": "looked", "annotations": {"mwe_id": "m1", "lemma": "look after", "pos": "VERB"}},
+      {"surface": " "},
+      {"surface": "after", "annotations": {"mwe_id": "m1", "lemma": "look after", "pos": "VERB"}},
+      {"surface": " "},
+      {"surface": "the", "annotations": {"lemma": "the", "pos": "DET"}},
+      {"surface": " "},
+      {"surface": "children", "annotations": {"lemma": "child", "pos": "NOUN"}},
+      {"surface": "."}
+    ],
+    "annotations": {
+      "mwes": [
+        {"id": "m1", "tokens": ["looked", "after"], "label": "phrasal verb"}
+      ]
+    }
+  }
+}
