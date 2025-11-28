@@ -83,7 +83,11 @@ class CompileHTMLTests(unittest.TestCase):
             "compile_html:render",
             purpose="renders annotated text and concordance to HTML",
             inputs={"segment": self.sample_text["pages"][0]["segments"][0]},
-            output={"html_path": str(html_path), "concordance_entries": len(result.get("concordance", []))},
+            output={
+                "html_path": str(html_path),
+                "concordance_entries": len(result.get("concordance", [])),
+                "html_content": content,
+            },
             status="pass",
         )
 
