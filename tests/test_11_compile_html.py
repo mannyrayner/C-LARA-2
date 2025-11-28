@@ -80,6 +80,10 @@ class CompileHTMLTests(unittest.TestCase):
         self.assertIn('<ruby><rb>Hello</rb><rt>ni hao</rt></ruby>', content)
         self.assertIn('Bonjour le monde', content)
 
+        concordance_paths = list(Path(result["run_root"]).glob("concordance_*.html"))
+        self.assertTrue(concordance_paths, "concordance pages should be emitted")
+        concordance_html = concordance_paths[0].read_text(encoding="utf-8")
+
         log_test_case(
             "compile_html:render",
             purpose="renders annotated text and concordance to HTML",
@@ -88,6 +92,7 @@ class CompileHTMLTests(unittest.TestCase):
                 "html_path": str(html_path),
                 "concordance_entries": len(result.get("concordance", [])),
                 "html_content": content,
+                "concordance_sample": concordance_html,
             },
             status="pass",
         )
