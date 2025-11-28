@@ -81,7 +81,8 @@ class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
         self.fake_client = FakeAIClient([seg1, seg2, translation, mwe, lemma, gloss])
 
     def tearDown(self) -> None:
-        self.tmpdir.cleanup()
+        # Preserve temp artifacts (HTML/audio) for manual inspection.
+        pass
 
     def _skip_if_no_key_or_incompatible(self) -> None:
         if not os.getenv("OPENAI_API_KEY"):

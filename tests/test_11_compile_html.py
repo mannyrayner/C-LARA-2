@@ -65,7 +65,9 @@ class CompileHTMLTests(unittest.TestCase):
         }
 
     def tearDown(self) -> None:
-        self.tmp.cleanup()
+        # Keep artifacts on disk for manual inspection of generated HTML/audio.
+        # Callers can clean the temp dir manually if desired.
+        pass
 
     def test_compile_html_writes_artifacts(self) -> None:
         out_root = self.tmpdir / "html"
