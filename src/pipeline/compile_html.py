@@ -8,6 +8,7 @@ cross-pane highlighting and audio playback.
 from __future__ import annotations
 
 import html
+import os
 import json
 import uuid
 import textwrap
@@ -42,13 +43,22 @@ def _escape(text: str) -> str:
 
 
 def _audio_path(path_str: str | None, root: Path) -> str | None:
+    """Return an audio path relative to the HTML run root when possible."""
+
     if not path_str:
         return None
+
     try:
         path = Path(path_str)
-        return path.as_posix() if path.is_absolute() else (root / path).as_posix()
+        path_abs = path if path.is_absolute() else path.resolve()
+        # Prefer a relative path so opening ``page_X.html`` directly can locate audio.
+        rel = os.path.relpath(path_abs, root)
+        return rel.replace("\\", "/")
     except Exception:
-        return path_str
+        try:
+            return Path(path_str).as_posix()
+        except Exception:
+            return path_str
 
 
 def _token_display(token: dict[str, Any]) -> str:
@@ -503,7 +513,7 @@ def compile_html(spec: CompileHTMLSpec) -> dict[str, Any]:
 
     telemetry = spec.telemetry or NullTelemetry()
     run_id = spec.run_id or uuid.uuid4().hex[:8]
-    run_root = (spec.output_dir or Path("artifacts/html")) / f"run_{run_id}"
+    run_root = ((spec.output_dir or Path("artifacts/html")) / f"run_{run_id}").resolve()
     run_root.mkdir(parents=True, exist_ok=True)
 
     _write_static_assets(run_root)
