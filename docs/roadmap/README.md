@@ -50,12 +50,12 @@ See `docs/roadmap/segmentation-pipeline.md` for the specification that guided th
 
 ### 3. Full linguistic annotation pipeline
 
-Status: **Mostly complete.** The detailed plan lives in `docs/roadmap/linguistic-pipeline.md`.
+Status: **Done.** The detailed plan lives in `docs/roadmap/linguistic-pipeline.md`.
 
-- Implemented: translation (EN→FR), MWE detection, lemma tagging, glossing, Chinese pinyin annotation (via `pypinyin`), audio annotation with caching (OpenAI TTS or offline stub), HTML compilation to two-pane output with concordance + audio hooks, and a top-level `run_full_pipeline` helper that stitches the stages together.
-- Planned/next: richer audio ingestion (human-recorded, phonetic-text paths) and UI polish once compiled HTML stabilises.
+- Implemented: translation (EN→FR), MWE detection, lemma tagging, glossing, Chinese pinyin annotation (via `pypinyin`), audio annotation with caching (OpenAI TTS/Google TTS or offline stub), HTML compilation to two-pane output with concordance + audio hooks, and a flexible `run_full_pipeline` helper that can start and end at any stage.
+- Remaining follow-ups: richer audio ingestion (human-recorded, phonetic-text paths) and UI polish once compiled HTML stabilises.
 
-Each operation has (or will have) prompts under `prompts/<operation>/<lang>/` plus unit and integration tests (OpenAI-gated).
+Each operation has prompts under `prompts/<operation>/<lang>/` plus unit and integration tests (OpenAI-gated where applicable).
 
 ### 4. Write spec for basic Django platform functionality, and implement it
 

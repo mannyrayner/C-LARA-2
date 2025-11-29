@@ -10,7 +10,7 @@ Welcome! This folder collects the specs and notes that drive the current impleme
 ## Roadmaps and current status
 
 - **Segmentation pipeline (implemented)**: [roadmap/segmentation-pipeline.md](roadmap/segmentation-pipeline.md) – covers text generation, segmentation phases 1 and 2 (with a Mandarin tokenization path via `jieba`), and the generic annotation harness now used across the codebase.
-- **Linguistic pipeline (implemented)**: [roadmap/linguistic-pipeline.md](roadmap/linguistic-pipeline.md) – details translation, MWE, lemma, gloss, pinyin, audio, compilation, and the full pipeline helper; translation (EN→FR), MWE detection, lemma tagging, glossing, pinyin annotation (via `pypinyin`), TTS-backed audio annotation with caching, HTML compilation, and the stitched `run_full_pipeline` flow are implemented with prompts/tests where applicable.
+- **Linguistic pipeline (implemented)**: [roadmap/linguistic-pipeline.md](roadmap/linguistic-pipeline.md) – details translation, MWE, lemma, gloss, pinyin, audio, compilation, and the full pipeline helper; translation (EN→FR), MWE detection, lemma tagging, glossing, pinyin annotation (via `pypinyin`), TTS-backed audio annotation with caching (OpenAI/Google), HTML compilation, and a flexible `run_full_pipeline` (start/end at any stage) are implemented with prompts/tests where applicable.
 - **Top-level roadmap**: [roadmap/README.md](roadmap/README.md) – step-by-step milestones with notes on what is done versus planned.
 
 ## What’s implemented so far

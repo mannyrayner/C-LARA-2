@@ -396,6 +396,91 @@ class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
             notes="Full HTML content included for audit.",
         )
 
+    async def test_full_pipeline_real_from_segmented(self) -> None:
+        """Run from segmented text through HTML with real AI + TTS on two pages and an MWE."""
+
+        self._skip_if_no_key_or_incompatible()
+
+        segmented = {
+            "l2": "en",
+            "surface": "The landlord and tenant sign off. Later, they check in again.",
+            "pages": [
+                {
+                    "surface": "The landlord and tenant sign off.",
+                    "segments": [
+                        {
+                            "surface": "The landlord and tenant sign off.",
+                            "annotations": {},
+                        }
+                    ],
+                    "annotations": {},
+                },
+                {
+                    "surface": "Later, they check in again.",
+                    "segments": [
+                        {
+                            "surface": "Later, they check in again.",
+                            "annotations": {},
+                        }
+                    ],
+                    "annotations": {},
+                },
+            ],
+            "annotations": {},
+        }
+
+        html_root = self.real_html_root / "segmented_start"
+        audio_root = self.real_audio_root / "segmented_start"
+        html_root.mkdir(parents=True, exist_ok=True)
+        audio_root.mkdir(parents=True, exist_ok=True)
+
+        client = OpenAIClient(config=OpenAIConfig(model=os.getenv("OPENAI_TEST_MODEL", "gpt-5")))
+        self.addAsyncCleanup(client.aclose)
+
+        spec = FullPipelineSpec(
+            text_obj=segmented,
+            language="en",
+            target_language="fr",
+            output_dir=html_root,
+            audio_cache_dir=audio_root,
+            telemetry=None,
+            start_stage="segmentation_phase_2",
+            end_stage="compile_html",
+        )
+
+        try:
+            result = await run_full_pipeline(spec, client=client)
+        except ImportError as exc:
+            self.skipTest(f"openai SDK import failure during full pipeline: {exc}")
+        except self.openai.NotFoundError as exc:  # type: ignore[attr-defined]
+            self.skipTest(f"model unavailable: {exc}")
+
+        pages = result["text"].get("pages", [])
+        self.assertEqual(2, len(pages))
+
+        html_root_resolved = Path(result["html"]["run_root"])
+        html_path = html_root_resolved / "page_1.html"
+        self.assertTrue(html_path.exists())
+
+        mwes = [
+            mwe
+            for page in pages
+            for segment in page.get("segments", [])
+            for mwe in segment.get("annotations", {}).get("mwes", [])
+        ]
+
+        log_test_case(
+            "pipeline:full:openai-segmented",
+            purpose="runs full pipeline from segmentation→HTML with real OpenAI + TTS",
+            inputs={"segmented_text": segmented},
+            output={
+                "html_path": str(html_path),
+                "pages": len(pages),
+                "mwes": mwes,
+            },
+            status="pass",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

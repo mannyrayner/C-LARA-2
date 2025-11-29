@@ -8,7 +8,7 @@ This document expands Step 3 of the roadmap into a concrete plan for delivering 
 - Keep prompts and few-shots organized per operation and language so that new languages can be added by copying the structure.
 - Provide test hooks (unit + integration) that can run without OpenAI access by using fakes, while enabling live calls when credentials are present.
 - Produce HTML-ready annotated JSON that can be consumed by the compiler step with MWE-aware JavaScript and audio placeholders.
-  The HTML compiler (`compile_html.py`) and end-to-end runner (`run_full_pipeline`) are now implemented.
+The HTML compiler (`compile_html.py`) and end-to-end runner (`run_full_pipeline`) are now implemented; the runner can start and end at any stage of the pipeline, which lets tests or downstream tools compose partial flows (e.g., start at segmentation outputs and finish at HTML).
 
 ## Data model (recap)
 

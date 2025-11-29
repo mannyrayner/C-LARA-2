@@ -20,11 +20,31 @@ from .text_gen import TextGenSpec, generate_text
 from .translation import TranslationSpec, translate
 
 
+PIPELINE_ORDER = [
+    "text_gen",
+    "segmentation_phase_1",
+    "segmentation_phase_2",
+    "translation",
+    "mwe",
+    "lemma",
+    "gloss",
+    "pinyin",
+    "audio",
+    "compile_html",
+]
+
+
 @dataclass(slots=True)
 class FullPipelineSpec:
-    """Specification for the full annotation pipeline."""
+    """Specification for the full annotation pipeline.
+
+    The pipeline can start and end at any stage in :data:`PIPELINE_ORDER`.
+    Provide ``text_obj`` if starting after segmentation; otherwise supply a
+    ``text`` string or ``description`` for upstream stages to consume.
+    """
 
     text: str | None = None
+    text_obj: dict[str, Any] | None = None
     description: str | None = None  # optional text_gen description
     language: str = "en"
     target_language: str = "fr"
@@ -33,75 +53,121 @@ class FullPipelineSpec:
     output_dir: Path | None = None
     telemetry: Telemetry | None = None
     op_id: str | None = None
+    start_stage: str = "segmentation_phase_1"
+    end_stage: str = "compile_html"
 
 
 async def run_full_pipeline(
     spec: FullPipelineSpec, *, client: OpenAIClient | None = None
 ) -> dict[str, Any]:
-    """Run the full pipeline from segmentation through HTML compilation."""
+    """Run the pipeline from ``start_stage`` through ``end_stage``."""
+
+    if spec.start_stage not in PIPELINE_ORDER:
+        raise ValueError(f"Unknown start stage {spec.start_stage!r}")
+    if spec.end_stage not in PIPELINE_ORDER:
+        raise ValueError(f"Unknown end stage {spec.end_stage!r}")
+
+    start_index = PIPELINE_ORDER.index(spec.start_stage)
+    end_index = PIPELINE_ORDER.index(spec.end_stage)
+    if start_index > end_index:
+        raise ValueError("start_stage must come before end_stage")
 
     telemetry = spec.telemetry or NullTelemetry()
     op_id = spec.op_id or "full_pipeline"
     ai_client = client or OpenAIClient()
 
-    # 1) Generate text if description provided, otherwise use the supplied raw text.
-    raw_text: str
-    if spec.description and not spec.text:
-        telemetry.event(op_id, "info", "Generating text from description")
-        generated = await generate_text(
-            TextGenSpec(description=spec.description, language=spec.language), client=ai_client
-        )
-        raw_text = generated.get("surface", "")
-    elif spec.text:
-        raw_text = spec.text
-    else:
-        raise ValueError("FullPipelineSpec.text or description must be provided")
+    current: Any = spec.text_obj
+    raw_text: str | None = spec.text
 
-    text_obj = await segmentation_phase_1(SegmentationSpec(text=raw_text, language=spec.language), client=ai_client)
+    # Allow description-driven generation when no text is provided.
+    if raw_text is None and current is None:
+        if spec.description:
+            telemetry.event(op_id, "info", "Generating text from description")
+            generated = await generate_text(
+                TextGenSpec(description=spec.description, language=spec.language), client=ai_client
+            )
+            raw_text = generated.get("surface", "")
+        else:
+            raise ValueError("FullPipelineSpec.text, text_obj, or description must be provided")
 
-    # 2) Segmentation phase 2 (tokenization)
-    text_obj = await segmentation_phase_2(
-        SegmentationPhase2Spec(text=text_obj, language=spec.language), client=ai_client
-    )
+    # If starting after segmentation, ensure a segmented object is available.
+    if current is None and start_index > PIPELINE_ORDER.index("segmentation_phase_1"):
+        raise ValueError("text_obj is required when starting after segmentation_phase_1")
 
-    # 3) Translation
-    text_obj = await translate(
-        TranslationSpec(text=text_obj, language=spec.language, target_language=spec.target_language), client=ai_client
-    )
+    html_result: dict[str, Any] | None = None
 
-    # 4) MWE detection
-    text_obj = await annotate_mwes(MWESpec(text=text_obj, language=spec.language), client=ai_client)
+    for stage in PIPELINE_ORDER[start_index : end_index + 1]:
+        if stage == "text_gen":
+            if current is None:
+                telemetry.event(op_id, "info", "Generating text from description")
+                generated = await generate_text(
+                    TextGenSpec(description=spec.description or "", language=spec.language), client=ai_client
+                )
+                raw_text = generated.get("surface", "")
+            continue
 
-    # 5) Lemma tagging
-    text_obj = await annotate_lemmas(LemmaSpec(text=text_obj, language=spec.language), client=ai_client)
+        if stage == "segmentation_phase_1":
+            if not isinstance(raw_text, str):
+                raise ValueError("segmentation_phase_1 requires a raw text string")
+            current = await segmentation_phase_1(
+                SegmentationSpec(text=raw_text, language=spec.language), client=ai_client
+            )
+            continue
 
-    # 6) Glossing
-    text_obj = await annotate_gloss(
-        GlossSpec(text=text_obj, language=spec.language, target_language=spec.target_language), client=ai_client
-    )
+        if current is None:
+            raise ValueError(f"Stage {stage} requires annotated text input")
 
-    # 7) Optional pinyin for Chinese
-    if spec.language.lower().startswith("zh"):
-        text_obj = annotate_pinyin(PinyinSpec(text=text_obj, language=spec.language, telemetry=telemetry))
+        if stage == "segmentation_phase_2":
+            current = await segmentation_phase_2(
+                SegmentationPhase2Spec(text=current, language=spec.language), client=ai_client
+            )
+        elif stage == "translation":
+            current = await translate(
+                TranslationSpec(text=current, language=spec.language, target_language=spec.target_language),
+                client=ai_client,
+            )
+        elif stage == "mwe":
+            current = await annotate_mwes(
+                MWESpec(text=current, language=spec.language, telemetry=telemetry, op_id=op_id), client=ai_client
+            )
+        elif stage == "lemma":
+            current = await annotate_lemmas(
+                LemmaSpec(text=current, language=spec.language, telemetry=telemetry, op_id=op_id), client=ai_client
+            )
+        elif stage == "gloss":
+            current = await annotate_gloss(
+                GlossSpec(
+                    text=current,
+                    language=spec.language,
+                    target_language=spec.target_language,
+                    telemetry=telemetry,
+                    op_id=op_id,
+                ),
+                client=ai_client,
+            )
+        elif stage == "pinyin":
+            if spec.language.lower().startswith("zh"):
+                current = annotate_pinyin(PinyinSpec(text=current, language=spec.language, telemetry=telemetry))
+        elif stage == "audio":
+            current = await annotate_audio(
+                AudioSpec(
+                    text=current,
+                    language=spec.language,
+                    voice=spec.voice,
+                    cache_dir=spec.audio_cache_dir,
+                    telemetry=telemetry,
+                    op_id=op_id,
+                )
+            )
+        elif stage == "compile_html":
+            html_result = compile_html(
+                CompileHTMLSpec(text=current, output_dir=spec.output_dir, telemetry=telemetry, op_id=op_id)
+            )
 
-    # 8) Audio (token, segment, page)
-    text_obj = await annotate_audio(
-        AudioSpec(
-            text=text_obj,
-            language=spec.language,
-            voice=spec.voice,
-            cache_dir=spec.audio_cache_dir,
-            telemetry=telemetry,
-            op_id=op_id,
-        )
-    )
-
-    # 9) HTML rendering
-    html_result = compile_html(
-        CompileHTMLSpec(text=text_obj, output_dir=spec.output_dir, telemetry=telemetry, op_id=op_id)
-    )
-
-    return {"text": text_obj, "html": html_result}
+    result: dict[str, Any] = {"text": current}
+    if html_result:
+        result["html"] = html_result
+    return result
 
 
-__all__ = ["FullPipelineSpec", "run_full_pipeline"]
+__all__ = ["FullPipelineSpec", "PIPELINE_ORDER", "run_full_pipeline"]
