@@ -130,6 +130,225 @@ class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
             status="pass",
         )
 
+    async def test_full_pipeline_with_fake_client_multi_page_mwe(self) -> None:
+        """Larger fake flow with two pages and an explicit MWE."""
+
+        multi_text = "The landlord and tenant sign off. Later, they check in again."
+
+        fake_html = self.fake_html_root / "multi"
+        fake_audio = self.fake_audio_root / "multi"
+        fake_html.mkdir(parents=True, exist_ok=True)
+        fake_audio.mkdir(parents=True, exist_ok=True)
+
+        # Phase 1 response: two pages, one segment each.
+        seg1_phase1 = {
+            "l2": "en",
+            "surface": multi_text,
+            "pages": [
+                {"surface": "The landlord and tenant sign off.", "segments": [{"surface": "The landlord and tenant sign off.", "annotations": {}}], "annotations": {}},
+                {"surface": "Later, they check in again.", "segments": [{"surface": "Later, they check in again.", "annotations": {}}], "annotations": {}},
+            ],
+            "annotations": {},
+        }
+
+        # Shared token shapes for downstream steps.
+        seg1_tokens = [
+            {"surface": "The"},
+            {"surface": " "},
+            {"surface": "landlord"},
+            {"surface": " "},
+            {"surface": "and"},
+            {"surface": " "},
+            {"surface": "tenant"},
+            {"surface": " "},
+            {"surface": "sign"},
+            {"surface": " "},
+            {"surface": "off"},
+            {"surface": "."},
+        ]
+
+        seg2_tokens = [
+            {"surface": "Later"},
+            {"surface": ","},
+            {"surface": " "},
+            {"surface": "they"},
+            {"surface": " "},
+            {"surface": "check"},
+            {"surface": " "},
+            {"surface": "in"},
+            {"surface": " "},
+            {"surface": "again"},
+            {"surface": "."},
+        ]
+
+        # Phase 2 (tokenization) responses, one per segment.
+        seg1_phase2 = {"annotations": {}, "tokens": seg1_tokens}
+        seg2_phase2 = {"annotations": {}, "tokens": seg2_tokens}
+
+        # Translation per segment.
+        seg1_translation = {
+            "annotations": {"translation": "Le propriétaire et le locataire signent."},
+            "tokens": seg1_tokens,
+        }
+        seg2_translation = {
+            "annotations": {"translation": "Plus tard, ils s'enregistrent à nouveau."},
+            "tokens": seg2_tokens,
+        }
+
+        # MWE detection: "sign off" is a single MWE.
+        seg1_mwe = {
+            "annotations": {"mwes": [{"id": "mwe1", "tokens": ["sign", "off"], "label": "phrasal"}]},
+            "tokens": [
+                {"surface": "The"},
+                {"surface": " "},
+                {"surface": "landlord"},
+                {"surface": " "},
+                {"surface": "and"},
+                {"surface": " "},
+                {"surface": "tenant"},
+                {"surface": " "},
+                {"surface": "sign", "annotations": {"mwe_id": "mwe1"}},
+                {"surface": " ", "annotations": {}},
+                {"surface": "off", "annotations": {"mwe_id": "mwe1"}},
+                {"surface": "."},
+            ],
+        }
+        seg2_mwe = {"annotations": {"mwes": []}, "tokens": seg2_tokens}
+
+        # Lemma tagging keeps MWE ids intact.
+        seg1_lemmas = {
+            "annotations": {},
+            "tokens": [
+                {"surface": "The", "annotations": {"lemma": "the", "pos": "DET"}},
+                {"surface": " ", "annotations": {}},
+                {"surface": "landlord", "annotations": {"lemma": "landlord", "pos": "NOUN"}},
+                {"surface": " "},
+                {"surface": "and", "annotations": {"lemma": "and", "pos": "CONJ"}},
+                {"surface": " "},
+                {"surface": "tenant", "annotations": {"lemma": "tenant", "pos": "NOUN"}},
+                {"surface": " "},
+                {"surface": "sign", "annotations": {"lemma": "sign", "pos": "VERB", "mwe_id": "mwe1"}},
+                {"surface": " "},
+                {"surface": "off", "annotations": {"lemma": "off", "pos": "PART", "mwe_id": "mwe1"}},
+                {"surface": "."},
+            ],
+        }
+        seg2_lemmas = {
+            "annotations": {},
+            "tokens": [
+                {"surface": "Later", "annotations": {"lemma": "later", "pos": "ADV"}},
+                {"surface": ","},
+                {"surface": " "},
+                {"surface": "they", "annotations": {"lemma": "they", "pos": "PRON"}},
+                {"surface": " "},
+                {"surface": "check", "annotations": {"lemma": "check", "pos": "VERB"}},
+                {"surface": " "},
+                {"surface": "in", "annotations": {"lemma": "in", "pos": "PART"}},
+                {"surface": " "},
+                {"surface": "again", "annotations": {"lemma": "again", "pos": "ADV"}},
+                {"surface": "."},
+            ],
+        }
+
+        # Glossing with shared MWE handling.
+        seg1_gloss = {
+            "annotations": {},
+            "tokens": [
+                {"surface": "The", "annotations": {"lemma": "the", "pos": "DET", "gloss": "le/la"}},
+                {"surface": " ", "annotations": {}},
+                {"surface": "landlord", "annotations": {"lemma": "landlord", "pos": "NOUN", "gloss": "propriétaire"}},
+                {"surface": " "},
+                {"surface": "and", "annotations": {"lemma": "and", "pos": "CONJ", "gloss": "et"}},
+                {"surface": " "},
+                {"surface": "tenant", "annotations": {"lemma": "tenant", "pos": "NOUN", "gloss": "locataire"}},
+                {"surface": " "},
+                {
+                    "surface": "sign",
+                    "annotations": {
+                        "lemma": "sign",
+                        "pos": "VERB",
+                        "gloss": "signer",
+                        "mwe_id": "mwe1",
+                    },
+                },
+                {"surface": " "},
+                {
+                    "surface": "off",
+                    "annotations": {
+                        "lemma": "off",
+                        "pos": "PART",
+                        "gloss": "terminer",
+                        "mwe_id": "mwe1",
+                    },
+                },
+                {"surface": "."},
+            ],
+        }
+        seg2_gloss = {
+            "annotations": {},
+            "tokens": [
+                {"surface": "Later", "annotations": {"lemma": "later", "pos": "ADV", "gloss": "plus tard"}},
+                {"surface": ","},
+                {"surface": " "},
+                {"surface": "they", "annotations": {"lemma": "they", "pos": "PRON", "gloss": "ils"}},
+                {"surface": " "},
+                {"surface": "check", "annotations": {"lemma": "check", "pos": "VERB", "gloss": "vérifier"}},
+                {"surface": " "},
+                {"surface": "in", "annotations": {"lemma": "in", "pos": "PART", "gloss": "enregistrer"}},
+                {"surface": " "},
+                {"surface": "again", "annotations": {"lemma": "again", "pos": "ADV", "gloss": "encore"}},
+                {"surface": "."},
+            ],
+        }
+
+        responses = [
+            seg1_phase1,
+            seg1_phase2,
+            seg2_phase2,
+            seg1_translation,
+            seg2_translation,
+            seg1_mwe,
+            seg2_mwe,
+            seg1_lemmas,
+            seg2_lemmas,
+            seg1_gloss,
+            seg2_gloss,
+        ]
+
+        fake_client = FakeAIClient(responses)
+
+        spec = FullPipelineSpec(
+            text=multi_text,
+            language="en",
+            target_language="fr",
+            output_dir=fake_html,
+            audio_cache_dir=fake_audio,
+            telemetry=None,
+        )
+
+        result = await run_full_pipeline(spec, client=fake_client)
+
+        run_root = Path(result["html"]["run_root"])
+        html_path = run_root / "page_1.html"
+        self.assertTrue(html_path.exists())
+        self.assertTrue((run_root / "page_2.html").exists())
+        pages = result["text"].get("pages", [])
+        self.assertEqual(2, len(pages))
+        mwes = pages[0]["segments"][0].get("annotations", {}).get("mwes", [])
+        self.assertTrue(mwes)
+
+        log_test_case(
+            "pipeline:full:multi",
+            purpose="runs multi-page pipeline with MWE using fake AI responses",
+            inputs={"text": multi_text},
+            output={
+                "html_path": str(html_path),
+                "pages": len(pages),
+                "mwes": mwes,
+            },
+            status="pass",
+        )
+
     async def test_full_pipeline_with_real_client(self) -> None:
         """Run end-to-end with the real OpenAI client using a short text."""
 
