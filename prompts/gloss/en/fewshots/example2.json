@@ -1,0 +1,24 @@
+{
+  "input": "{\n  \"surface\": \"He made up his mind.\",\n  \"tokens\": [\n    {\"surface\": \"He\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"made\", \"annotations\": {\"mwe_id\": \"m1\"}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"up\", \"annotations\": {\"mwe_id\": \"m1\"}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"his\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"mind\"},\n    {\"surface\": \".\"}\n  ],\n  \"annotations\": {\n    \"translation\": \"Il a pris sa décision.\",\n    \"mwes\": [{\"id\": \"m1\", \"tokens\": [\"made\", \"up\"], \"label\": \"phrasal verb\"}]\n  }\n}",
+  "output": {
+    "surface": "He made up his mind.",
+    "tokens": [
+      {"surface": "He", "annotations": {"gloss": "il"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "made", "annotations": {"mwe_id": "m1", "gloss": "prendre une décision"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "up", "annotations": {"mwe_id": "m1", "gloss": "prendre une décision"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "his", "annotations": {"gloss": "son"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "mind", "annotations": {"gloss": "décision"}},
+      {"surface": "."}
+    ],
+    "annotations": {
+      "translation": "Il a pris sa décision.",
+      "mwes": [
+        {"id": "m1", "tokens": ["made", "up"], "label": "phrasal verb"}
+      ]
+    }
+  }
+}
