@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-import shutil
 import unittest
 from pathlib import Path
 
@@ -28,8 +27,7 @@ class FakeAIClient(OpenAIClient):
 class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.artifacts = Path("tests/artifacts/full_pipeline")
-        if self.artifacts.exists():
-            shutil.rmtree(self.artifacts)
+        # Preserve prior artifacts for easier manual inspection across test runs.
         self.artifacts.mkdir(parents=True, exist_ok=True)
 
         self.fake_html_root = self.artifacts / "fake_html"
