@@ -83,6 +83,10 @@ class CompileHTMLTests(unittest.TestCase):
         concordance_paths = list(Path(result["run_root"]).glob("concordance_*.html"))
         self.assertTrue(concordance_paths, "concordance pages should be emitted")
         concordance_html = concordance_paths[0].read_text(encoding="utf-8")
+        static_js = Path(result["run_root"]) / "static" / "clara_scripts.js"
+        js_content = static_js.read_text(encoding="utf-8")
+        self.assertIn("gloss-popup", js_content)
+        self.assertIn("toggle-translation", js_content)
 
         log_test_case(
             "compile_html:render",
@@ -93,6 +97,7 @@ class CompileHTMLTests(unittest.TestCase):
                 "concordance_entries": len(result.get("concordance", [])),
                 "html_content": content,
                 "concordance_sample": concordance_html,
+                "static_js": js_content,
             },
             status="pass",
         )

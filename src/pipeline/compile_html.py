@@ -10,6 +10,7 @@ from __future__ import annotations
 import html
 import json
 import uuid
+import textwrap
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -346,6 +347,7 @@ nav a { margin-right: 0.5rem; }
 .concordance-highlight { background: #d1e8ff; }
 .mwe-highlight { background: #cce2ff; }
 .mwe-group-hover { background: #e1f1ff; }
+.gloss-popup { position: absolute; background: rgba(0,0,0,0.85); color: #fff; padding: 4px 8px; border-radius: 3px; font-size: 0.9em; z-index: 20; }
 .page audio { margin: 0.5rem 0; }
 .concordance-iframe { width: 100%; height: 85vh; border: none; }
 """,
@@ -360,105 +362,140 @@ nav a { margin-right: 0.5rem; }
 .concordance-highlight { background: #d1e8ff; }
 .mwe-group-hover { background: #e1f1ff; }
 .back-arrow-icon { cursor: pointer; margin-right: 0.35rem; }
+.gloss-popup { position: absolute; background: rgba(0,0,0,0.85); color: #fff; padding: 4px 8px; border-radius: 3px; font-size: 0.9em; z-index: 20; }
 .translation-popup { position: absolute; background: rgba(0,0,0,0.8); color: #fff; padding: 4px 10px; border-radius: 3px; z-index: 10; }
 """,
         encoding="utf-8",
     )
 
-    (static_dir / "clara_scripts.js").write_text(
-        """function removeClassAfterDuration(element, className, duration) {
-  setTimeout(() => { element.classList.remove(className); }, duration);
-}
-
-function postMessageToParent(type, data) {
-  if (window.parent !== window) {
-    window.parent.postMessage({ type, data }, '*');
-  }
-}
-
-function setUpEventListeners(contextDocument) {
-  const tokens = contextDocument.querySelectorAll('.token, .word');
-  const speakerIcons = contextDocument.querySelectorAll('.speaker-icon');
-  const translationIcons = contextDocument.querySelectorAll('.translation-icon');
-
-  tokens.forEach(token => {
-    token.addEventListener('click', () => {
-      const audioSrc = token.dataset.audio;
-      if (audioSrc) { const audio = new Audio(audioSrc); audio.play().catch(() => {}); }
-      const lemma = token.dataset.lemma;
-      if (lemma) { postMessageToParent('loadConcordance', { lemma }); }
-      const mwe = token.dataset.mweId;
-      if (mwe) { highlightMwe(mwe, contextDocument); }
-    });
-
-    token.addEventListener('mouseover', () => {
-      const mwe = token.dataset.mweId;
-      if (mwe) { contextDocument.querySelectorAll(`[data-mwe-id="${mwe}"]`).forEach(el => el.classList.add('mwe-group-hover')); }
-    });
-    token.addEventListener('mouseout', () => {
-      const mwe = token.dataset.mweId;
-      if (mwe) { contextDocument.querySelectorAll(`[data-mwe-id="${mwe}"]`).forEach(el => el.classList.remove('mwe-group-hover')); }
-    });
-  });
-
-  speakerIcons.forEach(icon => {
-    icon.addEventListener('click', () => {
-      const seg = icon.closest('.segment');
-      const audioSrc = seg && seg.dataset.segmentAudio;
-      if (audioSrc) { const audio = new Audio(audioSrc); audio.play().catch(() => {}); }
-    });
-  });
-
-  translationIcons.forEach(icon => {
-    icon.addEventListener('click', () => {
-      const translationText = icon.dataset.translation;
-      const popup = document.createElement('div');
-      popup.classList.add('translation-popup');
-      popup.innerText = translationText || '';
-      const rect = icon.getBoundingClientRect();
-      popup.style.top = `${rect.top + window.scrollY + 20}px`;
-      popup.style.left = `${rect.left + window.scrollX}px`;
-      document.body.appendChild(popup);
-      document.addEventListener('click', function removePopup(event) {
-        if (!popup.contains(event.target) && event.target !== icon) {
-          popup.remove();
-          document.removeEventListener('click', removePopup);
+    js = textwrap.dedent("""
+        function removeClassAfterDuration(element, className, duration) {
+          setTimeout(() => { element.classList.remove(className); }, duration);
         }
-      });
-    });
-  });
-}
 
-function highlightMwe(mweId, contextDocument) {
-  contextDocument.querySelectorAll('.mwe-highlight').forEach(el => el.classList.remove('mwe-highlight'));
-  contextDocument.querySelectorAll(`[data-mwe-id="${mweId}"]`).forEach(el => el.classList.add('mwe-highlight'));
-}
+        function loadConcordance(lemma, contextDocument) {
+          const targetDoc = contextDocument || document;
+          const pane = targetDoc.getElementById('concordance-pane');
+          if (pane) { pane.src = `concordance_${lemma}.html`; }
+          if (window.parent !== window) {
+            window.parent.postMessage({ type: 'loadConcordance', data: { lemma } }, '*');
+          }
+        }
 
-function setUpBackArrowEventListeners(contextDocument) {
-  const icons = contextDocument.querySelectorAll('.back-arrow-icon');
-  icons.forEach(icon => {
-    icon.addEventListener('click', () => {
-      const segmentIndex = icon.dataset.segmentIndex;
-      const pageNumber = icon.dataset.pageNumber;
-      postMessageToParent('scrollToSegment', { segmentIndex, pageNumber });
-    });
-  });
-}
+        function postMessageToParent(type, data) {
+          if (window.parent !== window) {
+            window.parent.postMessage({ type, data }, '*');
+          }
+        }
 
-window.addEventListener('message', (event) => {
-  if (event.data.type === 'loadConcordance') {
-    const concordancePane = document.getElementById('concordance-pane');
-    if (concordancePane) concordancePane.src = `concordance_${event.data.data.lemma}.html`;
-  }
-});
+        function setUpEventListeners(contextDocument) {
+          const doc = contextDocument || document;
+          const tokens = doc.querySelectorAll('.token, .word');
+          const speakerIcons = doc.querySelectorAll('.speaker-icon');
+          const translationIcons = doc.querySelectorAll('.translation-icon');
+          const translationToggleButtons = doc.querySelectorAll('.toggle-translation');
+          let glossPopup = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-  setUpEventListeners(document);
-  setUpBackArrowEventListeners(document);
-});
-""",
-        encoding="utf-8",
+          tokens.forEach(token => {
+            token.addEventListener('click', () => {
+              const audioSrc = token.dataset.audio;
+              if (audioSrc) { const audio = new Audio(audioSrc); audio.play().catch(() => {}); }
+              const lemma = token.dataset.lemma;
+              if (lemma) { loadConcordance(lemma, doc); }
+              const mwe = token.dataset.mweId;
+              if (mwe) { highlightMwe(mwe, doc); }
+            });
+
+            token.addEventListener('mouseover', () => {
+              const gloss = token.dataset.gloss;
+              if (gloss) {
+                if (glossPopup) { glossPopup.remove(); }
+                glossPopup = document.createElement('div');
+                glossPopup.classList.add('gloss-popup');
+                glossPopup.innerText = gloss;
+                const rect = token.getBoundingClientRect();
+                glossPopup.style.top = `${rect.top + window.scrollY - 28}px`;
+                glossPopup.style.left = `${rect.left + window.scrollX}px`;
+                (doc.body || document.body).appendChild(glossPopup);
+              }
+              const mwe = token.dataset.mweId;
+              if (mwe) { doc.querySelectorAll(`[data-mwe-id="${mwe}"]`).forEach(el => el.classList.add('mwe-group-hover')); }
+            });
+
+            token.addEventListener('mouseout', () => {
+              if (glossPopup) { glossPopup.remove(); glossPopup = null; }
+              const mwe = token.dataset.mweId;
+              if (mwe) { doc.querySelectorAll(`[data-mwe-id="${mwe}"]`).forEach(el => el.classList.remove('mwe-group-hover')); }
+            });
+          });
+
+          speakerIcons.forEach(icon => {
+            icon.addEventListener('click', () => {
+              const seg = icon.closest('.segment');
+              const audioSrc = seg && seg.dataset.segmentAudio;
+              if (audioSrc) { const audio = new Audio(audioSrc); audio.play().catch(() => {}); }
+            });
+          });
+
+          translationIcons.forEach(icon => {
+            icon.addEventListener('click', () => {
+              const translationText = icon.dataset.translation;
+              const popup = document.createElement('div');
+              popup.classList.add('translation-popup');
+              popup.innerText = translationText || '';
+              const rect = icon.getBoundingClientRect();
+              popup.style.top = `${rect.top + window.scrollY + 20}px`;
+              popup.style.left = `${rect.left + window.scrollX}px`;
+              document.body.appendChild(popup);
+              document.addEventListener('click', function removePopup(event) {
+                if (!popup.contains(event.target) && event.target !== icon) {
+                  popup.remove();
+                  document.removeEventListener('click', removePopup);
+                }
+              });
+            });
+          });
+
+          translationToggleButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+              const seg = btn.closest('.segment');
+              const translation = seg && seg.querySelector('.segment-translation');
+              if (translation) translation.classList.toggle('hidden');
+            });
+          });
+        }
+
+        function highlightMwe(mweId, contextDocument) {
+          const doc = contextDocument || document;
+          doc.querySelectorAll('.mwe-highlight').forEach(el => el.classList.remove('mwe-highlight'));
+          doc.querySelectorAll(`[data-mwe-id="${mweId}"]`).forEach(el => el.classList.add('mwe-highlight'));
+        }
+
+        function setUpBackArrowEventListeners(contextDocument) {
+          const doc = contextDocument || document;
+          const icons = doc.querySelectorAll('.back-arrow-icon');
+          icons.forEach(icon => {
+            icon.addEventListener('click', () => {
+              const segmentIndex = icon.dataset.segmentIndex;
+              const pageNumber = icon.dataset.pageNumber;
+              postMessageToParent('scrollToSegment', { segmentIndex, pageNumber });
+            });
+          });
+        }
+
+        window.addEventListener('message', (event) => {
+          if (event.data.type === 'loadConcordance') {
+            loadConcordance(event.data.data.lemma, document);
+          }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+          setUpEventListeners(document);
+          setUpBackArrowEventListeners(document);
+        });
+        """
     )
+    (static_dir / "clara_scripts.js").write_text(js, encoding="utf-8")
 
 
 def compile_html(spec: CompileHTMLSpec) -> dict[str, Any]:
