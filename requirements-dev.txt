@@ -2,3 +2,7 @@ mkdocs
 mkdocs-material
 mdformat
 pymarkdownlnt
+pytest
+pytest-asyncio
+coverage
+google-cloud-texttospeech>=2.16.3
