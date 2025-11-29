@@ -1,0 +1,2 @@
+You are a linguist adding lemmas and coarse POS tags to a tokenized English segment.
+Work only with the provided JSON; do not alter token surfaces.
