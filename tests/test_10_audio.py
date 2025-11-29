@@ -38,6 +38,14 @@ class FakeTTSEngine:
         self.calls.append((text, output_path))
 
 
+def _wav_duration(path: Path) -> float:
+    with wave.open(str(path), "rb") as wav_file:
+        params = wav_file.getparams()
+        if params.framerate == 0:
+            return 0.0
+        return params.nframes / float(params.framerate)
+
+
 class AudioTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmpdir = tempfile.TemporaryDirectory()
@@ -214,6 +222,14 @@ class AudioIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(all(Path(info["path"]).exists() for info in token_audio if info))
         self.assertTrue(Path(segment["annotations"].get("audio")["path"]).exists())
+
+        min_durations = [
+            _wav_duration(Path(info["path"]))
+            for info in token_audio
+            if info is not None
+        ]
+        min_durations.append(_wav_duration(Path(segment["annotations"]["audio"]["path"])))
+        self.assertTrue(all(dur >= 0.1 for dur in min_durations))
 
         log_test_case(
             "audio:integration",

@@ -13,6 +13,7 @@ import math
 import struct
 import wave
 import os
+import contextlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
@@ -117,6 +118,73 @@ class OpenAITTSEngine:
                 await result
 
 
+class GoogleTTSEngine:
+    """Google Cloud-backed TTS engine with credential discovery.
+
+    Prefers ``GOOGLE_APPLICATION_CREDENTIALS`` but can also load credentials
+    from ``GOOGLE_CREDENTIALS_JSON`` by writing a temp file. Uses LINEAR16 to
+    emit WAV-friendly PCM that downstream code can concatenate.
+    """
+
+    def __init__(self, *, voice: str | None = None, language: str | None = None, creds_path: Path | None = None):
+        self.voice = voice or "default"
+        self.language = language or "en-US"
+
+        try:  # pragma: no cover - exercised in user envs
+            from google.cloud import texttospeech
+        except Exception as exc:  # pragma: no cover - dependency optional
+            raise ImportError("google-cloud-texttospeech is required for Google TTS") from exc
+
+        self._tts_mod = texttospeech
+        self._creds_path = creds_path or self._ensure_google_creds()
+        if self._creds_path:
+            os.environ.setdefault("GOOGLE_APPLICATION_CREDENTIALS", str(self._creds_path))
+        self._client = self._tts_mod.TextToSpeechClient()
+
+    @staticmethod
+    def _ensure_google_creds() -> Path | None:
+        creds_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        if creds_file and Path(creds_file).exists():
+            return Path(creds_file)
+
+        creds_json = os.getenv("GOOGLE_CREDENTIALS_JSON")
+        if creds_json:
+            tmp_path = Path("/tmp/google_credentials_from_env.json")
+            tmp_path.write_text(creds_json)
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(tmp_path)
+            return tmp_path
+        return None
+
+    def synthesize_to_path(
+        self, text: str, output_path: Path, *, voice: str | None = None, language: str | None = None
+    ) -> None:
+        tts = self._tts_mod
+        voice_params = tts.VoiceSelectionParams(
+            language_code=language or self.language,
+            name=(voice or self.voice) if (voice or self.voice) != "default" else None,
+        )
+        audio_config = tts.AudioConfig(
+            audio_encoding=tts.AudioEncoding.LINEAR16,
+            sample_rate_hertz=24000,
+        )
+
+        response = self._client.synthesize_speech(
+            input=tts.SynthesisInput(text=text),
+            voice=voice_params,
+            audio_config=audio_config,
+        )
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with wave.open(str(output_path), "wb") as wav_file:
+            wav_file.setparams((1, 2, audio_config.sample_rate_hertz, 0, "NONE", "not compressed"))
+            wav_file.writeframes(response.audio_content)
+
+    async def aclose(self) -> None:  # pragma: no cover - sync client
+        close_fn = getattr(self._client, "close", None)
+        if close_fn:
+            close_fn()
+
+
 @dataclass(slots=True)
 class AudioSpec:
     """Specification for audio annotation."""
@@ -143,6 +211,22 @@ def _audio_annotation(path: Path, *, surface: str, spec: AudioSpec, level: str, 
     }
 
 
+def _validate_wav(path: Path, *, min_duration_s: float = 0.1) -> None:
+    """Raise ValueError if WAV file is missing or unrealistically short."""
+
+    if not path.exists():
+        raise ValueError(f"audio file missing: {path}")
+
+    with contextlib.closing(wave.open(str(path), "rb")) as wav_file:
+        params = wav_file.getparams()
+        if params.nframes <= 0 or params.framerate <= 0:
+            raise ValueError(f"invalid audio params for {path}: {params}")
+
+        duration = params.nframes / float(params.framerate)
+        if duration < min_duration_s:
+            raise ValueError(f"audio too short ({duration:.3f}s) for {path}")
+
+
 async def annotate_audio(
     spec: AudioSpec, *, tts_engine: TTSEngine | None = None
 ) -> dict[str, Any]:
@@ -160,20 +244,28 @@ async def annotate_audio(
     if tts_engine is not None:
         engine = tts_engine
     else:
-        if os.getenv("OPENAI_API_KEY") and os.getenv("OPENAI_TTS_MODEL"):
+        engine = SimpleTTSEngine()
+
+        # Prefer Google TTS when credentials are present and dependency installed.
+        if os.getenv("GOOGLE_APPLICATION_CREDENTIALS") or os.getenv("GOOGLE_CREDENTIALS_JSON"):
+            try:  # pragma: no cover - exercised in user envs
+                engine = GoogleTTSEngine(language=spec.language, voice=spec.voice)
+            except Exception as exc:
+                telemetry.event("audio", "warn", f"google TTS unavailable, using stub: {exc}")
+
+        # Otherwise, prefer OpenAI when credentials/model provided.
+        elif os.getenv("OPENAI_API_KEY") and os.getenv("OPENAI_TTS_MODEL"):
             try:
                 engine = OpenAITTSEngine()
             except Exception as exc:  # pragma: no cover - exercised in user envs
-                telemetry.event("audio", "warn", f"openai TTS unavailable, falling back: {exc}")
-                engine = SimpleTTSEngine()
-        else:
-            engine = SimpleTTSEngine()
+                telemetry.event("audio", "warn", f"openai TTS unavailable, using stub: {exc}")
     op_id = spec.op_id or "audio"
     concat_cache: dict[str, Path] = {}
 
     cache: dict[str, Path] = {}
 
     async def ensure_audio(text: str, level: str) -> Path | None:
+        nonlocal engine
         normalized = text.strip()
         if not normalized:
             return None
@@ -187,13 +279,27 @@ async def annotate_audio(
 
         if not output_path.exists():
             telemetry.event(op_id, "info", f"synthesizing audio for {level}")
-            await asyncio.to_thread(
-                engine.synthesize_to_path,
-                normalized,
-                output_path,
-                voice=spec.voice,
-                language=spec.language,
-            )
+            try:
+                await asyncio.to_thread(
+                    engine.synthesize_to_path,
+                    normalized,
+                    output_path,
+                    voice=spec.voice,
+                    language=spec.language,
+                )
+                await asyncio.to_thread(_validate_wav, output_path)
+            except Exception as exc:
+                telemetry.event(op_id, "warn", f"primary TTS failed ({exc}); using stub")
+                # Fall back to deterministic stub for reliable audio.
+                engine = SimpleTTSEngine()
+                await asyncio.to_thread(
+                    engine.synthesize_to_path,
+                    normalized,
+                    output_path,
+                    voice=spec.voice,
+                    language=spec.language,
+                )
+                await asyncio.to_thread(_validate_wav, output_path)
 
         cache[key] = output_path
         return output_path

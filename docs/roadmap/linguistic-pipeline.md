@@ -43,7 +43,7 @@ All steps must be additive: keep surfaces/tokens as-is, preserve annotations fro
   - Output annotations per token: `token.annotations.pinyin` = pinyin with tone numbers.
 - **audio** (TTS-backed with caching, extensible for human/phonetic paths)
   - Input: tokenized segments with prior annotations preserved.
-  - Output: `token.annotations.audio` for lexical tokens, `segment.annotations.audio` for every segment, and `page.annotations.audio` built by concatenating segment audio. Each audio annotation is a JSON object carrying the WAV path plus metadata (`surface`, `engine`, `voice`, `language`, `level`) so audits can trace provenance. Default implementation synthesizes short WAV files (offline-friendly stub) and caches per-language/voice+surface to avoid recomputation. When `OPENAI_API_KEY` and `OPENAI_TTS_MODEL` (e.g., `gpt-4o-mini-tts`) are set, the pipeline uses the OpenAI TTS API instead of the stub. Token-level cache keys may incorporate lemmas/POS when present to disambiguate homographs (e.g., "tear" noun vs. verb). Future enhancements will add human-recorded audio ingestion (e.g., Audacity-sliced clips) and phonetic-text pipelines that swap in specialised TTS engines.
+  - Output: `token.annotations.audio` for lexical tokens, `segment.annotations.audio` for every segment, and `page.annotations.audio` built by concatenating segment audio. Each audio annotation is a JSON object carrying the WAV path plus metadata (`surface`, `engine`, `voice`, `language`, `level`) so audits can trace provenance. Default implementation synthesizes short WAV files (offline-friendly stub) and caches per-language/voice+surface to avoid recomputation. When `GOOGLE_APPLICATION_CREDENTIALS`/`GOOGLE_CREDENTIALS_JSON` are present and `google-cloud-texttospeech` is installed, the pipeline prefers Google TTS; if those are absent but `OPENAI_API_KEY`/`OPENAI_TTS_MODEL` (e.g., `gpt-4o-mini-tts`) are set it uses OpenAI TTS. Token-level cache keys may incorporate lemmas/POS when present to disambiguate homographs (e.g., "tear" noun vs. verb). Future enhancements will add human-recorded audio ingestion (e.g., Audacity-sliced clips) and phonetic-text pipelines that swap in specialised TTS engines.
 
 ## Directory layout
 
@@ -106,7 +106,7 @@ The table below shows a short segment containing an MWE ("put up with") as it mo
 | Lemma | `token.annotations.lemma`: `she`, `put` (m1), `put` (m1), `put` (m1), `the`, `noise`; MWE members share the same lemma. |
 | Gloss | `token.annotations.gloss`: `she`, `tolerate` (m1 across three tokens), `the`, `noise`; MWE members share the same gloss. |
 | Translation | `segment.annotations.translation`: "Elle a supporté le bruit." |
-| Audio | `segment.annotations.audio`: cached audio file path for the segment; `token.annotations.audio` attached only to word tokens (e.g., `put`, `noise`). |
+| Audio | `segment.annotations.audio`: cached audio file path for the segment; `token.annotations.audio` attached only to word tokens (e.g., `put`, `noise`). Audio metadata includes path, engine, voice, language, and level; files are validated for minimal duration and fall back to the stub engine if an upstream TTS responds with empty audio. |
 | Compile HTML | Tokens rendered with `data-mwe-id="m1"`, lemmas/gloss popups, and audio hooks. |
 
 ## Testing strategy
