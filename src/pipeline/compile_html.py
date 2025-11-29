@@ -346,6 +346,7 @@ nav a { margin-right: 0.5rem; }
 .concordance-highlight { background: #d1e8ff; }
 .mwe-highlight { background: #cce2ff; }
 .mwe-group-hover { background: #e1f1ff; }
+.gloss-popup { position: absolute; background: rgba(0,0,0,0.85); color: #fff; padding: 4px 8px; border-radius: 3px; font-size: 0.9em; z-index: 20; }
 .page audio { margin: 0.5rem 0; }
 .concordance-iframe { width: 100%; height: 85vh; border: none; }
 """,
@@ -360,6 +361,7 @@ nav a { margin-right: 0.5rem; }
 .concordance-highlight { background: #d1e8ff; }
 .mwe-group-hover { background: #e1f1ff; }
 .back-arrow-icon { cursor: pointer; margin-right: 0.35rem; }
+.gloss-popup { position: absolute; background: rgba(0,0,0,0.85); color: #fff; padding: 4px 8px; border-radius: 3px; font-size: 0.9em; z-index: 20; }
 .translation-popup { position: absolute; background: rgba(0,0,0,0.8); color: #fff; padding: 4px 10px; border-radius: 3px; z-index: 10; }
 """,
         encoding="utf-8",
@@ -380,6 +382,8 @@ function setUpEventListeners(contextDocument) {
   const tokens = contextDocument.querySelectorAll('.token, .word');
   const speakerIcons = contextDocument.querySelectorAll('.speaker-icon');
   const translationIcons = contextDocument.querySelectorAll('.translation-icon');
+  const translationToggleButtons = contextDocument.querySelectorAll('.toggle-translation');
+  let glossPopup = null;
 
   tokens.forEach(token => {
     token.addEventListener('click', () => {
@@ -392,10 +396,22 @@ function setUpEventListeners(contextDocument) {
     });
 
     token.addEventListener('mouseover', () => {
+      const gloss = token.dataset.gloss;
+      if (gloss) {
+        if (glossPopup) { glossPopup.remove(); }
+        glossPopup = document.createElement('div');
+        glossPopup.classList.add('gloss-popup');
+        glossPopup.innerText = gloss;
+        const rect = token.getBoundingClientRect();
+        glossPopup.style.top = `${rect.top + window.scrollY - 28}px`;
+        glossPopup.style.left = `${rect.left + window.scrollX}px`;
+        (contextDocument.body || document.body).appendChild(glossPopup);
+      }
       const mwe = token.dataset.mweId;
       if (mwe) { contextDocument.querySelectorAll(`[data-mwe-id="${mwe}"]`).forEach(el => el.classList.add('mwe-group-hover')); }
     });
     token.addEventListener('mouseout', () => {
+      if (glossPopup) { glossPopup.remove(); glossPopup = null; }
       const mwe = token.dataset.mweId;
       if (mwe) { contextDocument.querySelectorAll(`[data-mwe-id="${mwe}"]`).forEach(el => el.classList.remove('mwe-group-hover')); }
     });
@@ -425,6 +441,14 @@ function setUpEventListeners(contextDocument) {
           document.removeEventListener('click', removePopup);
         }
       });
+    });
+  });
+
+  translationToggleButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const seg = btn.closest('.segment');
+      const translation = seg && seg.querySelector('.segment-translation');
+      if (translation) translation.classList.toggle('hidden');
     });
   });
 }
