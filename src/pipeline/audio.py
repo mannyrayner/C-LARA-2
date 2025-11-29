@@ -246,19 +246,22 @@ async def annotate_audio(
     else:
         engine = SimpleTTSEngine()
 
-        # Prefer Google TTS when credentials are present and dependency installed.
-        if os.getenv("GOOGLE_APPLICATION_CREDENTIALS") or os.getenv("GOOGLE_CREDENTIALS_JSON"):
-            try:  # pragma: no cover - exercised in user envs
-                engine = GoogleTTSEngine(language=spec.language, voice=spec.voice)
-            except Exception as exc:
-                telemetry.event("audio", "warn", f"google TTS unavailable, using stub: {exc}")
-
-        # Otherwise, prefer OpenAI when credentials/model provided.
-        elif os.getenv("OPENAI_API_KEY") and os.getenv("OPENAI_TTS_MODEL"):
+        # Prefer OpenAI when credentials/model provided.
+        if os.getenv("OPENAI_API_KEY") and os.getenv("OPENAI_TTS_MODEL"):
             try:
                 engine = OpenAITTSEngine()
             except Exception as exc:  # pragma: no cover - exercised in user envs
                 telemetry.event("audio", "warn", f"openai TTS unavailable, using stub: {exc}")
+
+        # Google TTS is opt-in due to platform-dependent library stability. Enable
+        # by setting ENABLE_GOOGLE_TTS=1 alongside credentials.
+        elif os.getenv("ENABLE_GOOGLE_TTS") and (
+            os.getenv("GOOGLE_APPLICATION_CREDENTIALS") or os.getenv("GOOGLE_CREDENTIALS_JSON")
+        ):
+            try:  # pragma: no cover - exercised in user envs
+                engine = GoogleTTSEngine(language=spec.language, voice=spec.voice)
+            except Exception as exc:
+                telemetry.event("audio", "warn", f"google TTS unavailable, using stub: {exc}")
     op_id = spec.op_id or "audio"
     concat_cache: dict[str, Path] = {}
 
