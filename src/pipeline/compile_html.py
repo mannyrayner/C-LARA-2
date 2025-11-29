@@ -12,6 +12,8 @@ import os
 import json
 import uuid
 import textwrap
+import hashlib
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -61,6 +63,40 @@ def _audio_path(path_str: str | None, root: Path) -> str | None:
             return path_str
 
 
+class _AudioResolver:
+    """Copy audio into the run directory and return relative paths for HTML."""
+
+    def __init__(self, run_root: Path):
+        self.run_root = run_root
+        self.audio_dir = run_root / "audio"
+        self.audio_dir.mkdir(parents=True, exist_ok=True)
+        self._cache: dict[Path, str] = {}
+
+    def resolve(self, path_str: str | None) -> str | None:
+        if not path_str:
+            return None
+
+        try:
+            src = Path(path_str)
+            if src.exists():
+                key = src.resolve()
+                if key in self._cache:
+                    return self._cache[key]
+
+                digest = hashlib.sha1(str(key).encode("utf-8")).hexdigest()
+                suffix = src.suffix or ".wav"
+                dest = self.audio_dir / f"{digest}{suffix}"
+                shutil.copy2(key, dest)
+                rel = dest.relative_to(self.run_root).as_posix()
+                self._cache[key] = rel
+                return rel
+        except Exception:
+            pass
+
+        # Fallback to best-effort relative path without copying.
+        return _audio_path(path_str, self.run_root)
+
+
 def _token_display(token: dict[str, Any]) -> str:
     surface = token.get("surface", "")
     annotations = token.get("annotations", {}) or {}
@@ -76,7 +112,7 @@ def _render_tokens(
     page_index: int,
     segment_index: int,
     token_ids: dict[tuple[int, int, int], str],
-    run_root: Path,
+    resolver: _AudioResolver,
     token_info: list[dict[str, Any]],
     highlight_lemma: str | None = None,
 ) -> str:
@@ -102,7 +138,7 @@ def _render_tokens(
         audio_meta = annotations.get("audio")
         audio_path = None
         if isinstance(audio_meta, dict):
-            audio_path = _audio_path(audio_meta.get("path"), run_root)
+            audio_path = resolver.resolve(audio_meta.get("path"))
 
         if lemma:
             data_attrs.append(f'data-lemma="{_escape(str(lemma))}"')
@@ -157,7 +193,7 @@ def _render_segment(
     page_index: int,
     segment_index: int,
     token_ids: dict[tuple[int, int, int], str],
-    run_root: Path,
+    resolver: _AudioResolver,
     token_info: list[dict[str, Any]],
     highlight_lemma: str | None = None,
     include_translation: bool = True,
@@ -165,7 +201,7 @@ def _render_segment(
     seg_audio = (segment.get("annotations", {}) or {}).get("audio")
     seg_audio_path = None
     if isinstance(seg_audio, dict):
-        seg_audio_path = _audio_path(seg_audio.get("path"), run_root)
+        seg_audio_path = resolver.resolve(seg_audio.get("path"))
     translation = None
     if include_translation:
         translation = (segment.get("annotations", {}) or {}).get("translation")
@@ -186,7 +222,7 @@ def _render_segment(
         page_index=page_index,
         segment_index=segment_index,
         token_ids=token_ids,
-        run_root=run_root,
+        resolver=resolver,
         token_info=token_info,
         highlight_lemma=highlight_lemma,
     )
@@ -202,7 +238,7 @@ def _render_page(
     text: dict[str, Any],
     page_index: int,
     token_ids: dict[tuple[int, int, int], str],
-    run_root: Path,
+    resolver: _AudioResolver,
     token_info: list[dict[str, Any]],
     total_pages: int,
     title: str | None,
@@ -211,7 +247,7 @@ def _render_page(
     page_audio = (page.get("annotations", {}) or {}).get("audio")
     page_audio_path = None
     if isinstance(page_audio, dict):
-        page_audio_path = _audio_path(page_audio.get("path"), run_root)
+        page_audio_path = resolver.resolve(page_audio.get("path"))
 
     nav = ["<nav class=\"nav-bar\">"]
     first = 1
@@ -239,7 +275,7 @@ def _render_page(
                 page_index=page_index,
                 segment_index=s_idx,
                 token_ids=token_ids,
-                run_root=run_root,
+                resolver=resolver,
                 token_info=token_info,
             )
         )
@@ -298,7 +334,7 @@ def _render_concordance_page(
     entry: dict[str, Any],
     text: dict[str, Any],
     token_ids: dict[tuple[int, int, int], str],
-    run_root: Path,
+    resolver: _AudioResolver,
 ) -> str:
     lemma = entry.get("lemma") or ""
     heading = _escape(str(lemma))
@@ -318,14 +354,14 @@ def _render_concordance_page(
                 page_index=p_idx,
                 segment_index=s_idx,
                 token_ids=token_ids,
-                run_root=run_root,
+                resolver=resolver,
                 token_info=[],
                 highlight_lemma=str(lemma),
             )
             seg_audio = (segment.get("annotations", {}) or {}).get("audio")
             seg_audio_path = None
             if isinstance(seg_audio, dict):
-                seg_audio_path = _audio_path(seg_audio.get("path"), run_root)
+                seg_audio_path = resolver.resolve(seg_audio.get("path"))
             seg_attrs = [f'data-segment-index="{s_idx}"']
             if seg_audio_path:
                 seg_attrs.append(f'data-segment-audio="{_escape(seg_audio_path)}"')
@@ -404,6 +440,7 @@ nav a { margin-right: 0.5rem; }
           const speakerIcons = doc.querySelectorAll('.speaker-icon');
           const translationIcons = doc.querySelectorAll('.translation-icon');
           const translationToggleButtons = doc.querySelectorAll('.toggle-translation');
+          const playButtons = doc.querySelectorAll('.play');
           let glossPopup = null;
 
           tokens.forEach(token => {
@@ -443,6 +480,13 @@ nav a { margin-right: 0.5rem; }
             icon.addEventListener('click', () => {
               const seg = icon.closest('.segment');
               const audioSrc = seg && seg.dataset.segmentAudio;
+              if (audioSrc) { const audio = new Audio(audioSrc); audio.play().catch(() => {}); }
+            });
+          });
+
+          playButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+              const audioSrc = btn.dataset.audio;
               if (audioSrc) { const audio = new Audio(audioSrc); audio.play().catch(() => {}); }
             });
           });
@@ -515,6 +559,7 @@ def compile_html(spec: CompileHTMLSpec) -> dict[str, Any]:
     run_id = spec.run_id or uuid.uuid4().hex[:8]
     run_root = ((spec.output_dir or Path("artifacts/html")) / f"run_{run_id}").resolve()
     run_root.mkdir(parents=True, exist_ok=True)
+    resolver = _AudioResolver(run_root)
 
     _write_static_assets(run_root)
 
@@ -528,7 +573,7 @@ def compile_html(spec: CompileHTMLSpec) -> dict[str, Any]:
             text=spec.text,
             page_index=p_idx,
             token_ids=token_ids,
-            run_root=run_root,
+            resolver=resolver,
             token_info=token_info,
             total_pages=total_pages,
             title=spec.title,
@@ -543,7 +588,7 @@ def compile_html(spec: CompileHTMLSpec) -> dict[str, Any]:
         if not lemma_key:
             continue
         conc_html = _render_concordance_page(
-            entry=entry, text=spec.text, token_ids=token_ids, run_root=run_root
+            entry=entry, text=spec.text, token_ids=token_ids, resolver=resolver
         )
         conc_path = run_root / f"concordance_{lemma_key}.html"
         conc_path.write_text(conc_html, encoding="utf-8")
