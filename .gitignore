@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+
+# IDE settings
+.vscode/
+.idea/
+
+# Test artifacts
+tests/test_results.log
+tests/artifacts/
+audio_cache/
+reports/
+artifacts/
