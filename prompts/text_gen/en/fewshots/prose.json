@@ -1,0 +1,16 @@
+{
+  "description": {
+    "title": "The Lost Key",
+    "genre": "short prose",
+    "length": "80-100 words",
+    "level": "A2",
+    "style": "warm, descriptive"
+  },
+  "output": {
+    "l2": "en",
+    "title": "The Lost Key",
+    "surface": "Maya found an old brass key in the garden after a storm. It was smooth and heavy, but no door in the house fit it. She asked her neighbours and even the librarian, but no one knew where it belonged. One evening, she noticed a small wooden box on a high shelf in the attic. The key turned easily, and inside she discovered letters from her grandmother. Maya sat on the floor reading the gentle words, feeling close to someone she missed very much.",
+    "annotations": {},
+    "pages": []
+  }
+}
