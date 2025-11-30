@@ -59,8 +59,10 @@ Each operation has prompts under `prompts/<operation>/<lang>/` plus unit and int
 
 ### 4. Write spec for basic Django platform functionality, and implement it
 
-In this step, we will add the basic Django platform  functionality. Most of this can probably be adapted easily from C-LARA.
-- Top-level Django functionality with menu for core actions like creating new project, editing existing project, listing existing content, etc. We need appropriate search functionality.
+Status: **Spec drafted.** See `docs/roadmap/django-platform.md` for the platform-level plan covering users/projects, permissions, pipeline orchestration, storage layout, and publishing flows. Implementation remains to be done.
+
+Planned functionality (to be implemented):
+- Top-level Django functionality with menu for core actions like creating new project, editing existing project, listing existing content, etc., plus search.
 - Support for posting a piece of compiled content.
 - Support for rating and commenting a piece of compiled content.
 - Unit tests for all of the above.
