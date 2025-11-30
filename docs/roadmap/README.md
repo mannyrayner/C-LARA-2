@@ -62,6 +62,7 @@ Each operation has prompts under `prompts/<operation>/<lang>/` plus unit and int
 Status: **Spec drafted.** See `docs/roadmap/django-platform.md` for the platform-level plan covering users/projects, permissions, pipeline orchestration, storage layout, and publishing flows. Implementation remains to be done.
 
 Planned functionality (to be implemented):
+- Minimal, guided UI for non-technical users (AI-led create/edit flows, defaults first, unobtrusive overrides) alongside the full workspace.
 - Top-level Django functionality with menu for core actions like creating new project, editing existing project, listing existing content, etc., plus search.
 - Support for posting a piece of compiled content.
 - Support for rating and commenting a piece of compiled content.

@@ -67,6 +67,11 @@ media/
 - Import/export: allow uploading existing C-LARA projects (ZIP containing JSON/HTML/audio) into a project; export any version as ZIP for offline review.
 
 ## UI flows (high level)
+- **Minimal, guided UI (non-technical users)**:
+  - Landing dialog to **create a project** with AI-guided questions (title, L1/L2, short description). Defaults select a safe pipeline preset and storage layout; advanced fields stay hidden until expanded.
+  - **Modify existing project** via an AI-backed chat that can launch common actions (rerun pipeline, regenerate audio, toggle visibility, trigger publish) and offers links to manual forms for overrides.
+  - **Access posted content** from a simple library view listing published projects; respects permissions and opens the compiled HTML viewer. Non-essential controls remain tucked behind an “Options” menu.
+  - The minimal UI coexists with the full workspace; users can switch to the advanced view without losing state.
 - **Dashboard**: list projects with status badges (draft, running, failed, published), quick actions (resume/edit/publish/view), and search/filter by tag/language.
 - **Project workspace**:
   - Source tab: upload/edit raw text and metadata; start pipeline runs with stage selection and target languages.
