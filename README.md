@@ -35,6 +35,8 @@ project creation, pipeline-driven compilation to HTML, publishing toggles, and g
 compiled artifacts. To try it locally:
 
 ```bash
+make run-platform
+# or, if you prefer manual steps:
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 cd platform_server

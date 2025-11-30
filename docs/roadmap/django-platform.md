@@ -7,6 +7,7 @@ This document sketches the Django layer that will host users, projects, and comp
 - A minimal Django project lives under `platform_server/` with registration/login/logout, project creation, compile-to-HTML, publish toggle, and gated viewing of compiled artifacts. It uses the existing pipeline to run segmentation→HTML and stores outputs under `media/projects/<user>/<project>/run_<timestamp>/`.
 - The UI is currently the “advanced” workspace aimed at technical users; the minimal guided UI (chat-first create/edit/access) will layer on top without breaking the existing flows.
 - Next iterations: collaborator roles, background job handling for long pipelines, published content browsing, rating/commenting, and cost/credit tracking hooks.
+- How to run it locally: see [howto/run-django-platform.md](../howto/run-django-platform.md) for a one-line dev server command and manual steps.
 
 ## Goals
 
