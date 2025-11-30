@@ -2,6 +2,12 @@
 
 This document sketches the Django layer that will host users, projects, and compiled content. It is a peer to `linguistic-pipeline.md` and focuses on the web app that orchestrates pipeline runs, manual edits, sharing, and publishing.
 
+## Current status (initial implementation)
+
+- A minimal Django project lives under `platform_server/` with registration/login/logout, project creation, compile-to-HTML, publish toggle, and gated viewing of compiled artifacts. It uses the existing pipeline to run segmentation→HTML and stores outputs under `media/projects/<user>/<project>/run_<timestamp>/`.
+- The UI is currently the “advanced” workspace aimed at technical users; the minimal guided UI (chat-first create/edit/access) will layer on top without breaking the existing flows.
+- Next iterations: collaborator roles, background job handling for long pipelines, published content browsing, rating/commenting, and cost/credit tracking hooks.
+
 ## Goals
 
 - Provide an authenticated multi-user platform for creating, editing, and publishing annotated texts.

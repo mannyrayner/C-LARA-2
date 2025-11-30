@@ -28,6 +28,25 @@ This invokes `pytest` (with `pytest-asyncio`) and writes a log to
 `gpt-5`). Without a key, those tests are skipped while the unit suite still
 runs locally.
 
+## Django platform (initial implementation)
+
+A minimal Django layer lives under `platform_server/` with account flows (register/login/logout),
+project creation, pipeline-driven compilation to HTML, publishing toggles, and gated viewing of
+compiled artifacts. To try it locally:
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+cd platform_server
+python manage.py migrate
+python manage.py runserver
+```
+
+By default the server uses SQLite (`platform_server/db.sqlite3`) and stores compiled artifacts under
+`platform_server/media/projects/`. Use the web UI to create an account, add a project, compile to
+HTML, and view or publish the result. OpenAI credentials are required for real pipeline runs; when
+absent, pipeline calls will fail fast instead of silently falling back to stub audio.
+
 ## Continuous integration
 GitHub Actions run the suite with coverage on pushes and pull requests. Results
 are uploaded as artifacts (JUnit XML, coverage XML/HTML, and a JSON summary).

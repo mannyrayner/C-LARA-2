@@ -59,14 +59,19 @@ Each operation has prompts under `prompts/<operation>/<lang>/` plus unit and int
 
 ### 4. Write spec for basic Django platform functionality, and implement it
 
-Status: **Spec drafted.** See `docs/roadmap/django-platform.md` for the platform-level plan covering users/projects, permissions, pipeline orchestration, storage layout, and publishing flows. Implementation remains to be done.
+Status: **In progress (initial implementation landed).** See `docs/roadmap/django-platform.md` for the platform plan and current implementation notes. A minimal Django project now exists under `platform_server/` with:
 
-Planned functionality (to be implemented):
+- Account flows: register, login, logout (Django auth).
+- Project CRUD (create/read) with source text, language targets, and owner scoping.
+- Compile to HTML by invoking the pipeline (segmentation → annotations → audio → HTML) and persisting artifacts per-user/project.
+- Publish toggle plus gated viewing of compiled output (owner/private vs. published).
+- Artifact serving for compiled HTML/audio stored under `media/projects/`.
+
+Planned follow-ups:
 - Minimal, guided UI for non-technical users (AI-led create/edit flows, defaults first, unobtrusive overrides) alongside the full workspace.
-- Top-level Django functionality with menu for core actions like creating new project, editing existing project, listing existing content, etc., plus search.
-- Support for posting a piece of compiled content.
-- Support for rating and commenting a piece of compiled content.
-- Unit tests for all of the above.
+- Search/browse for published content, ratings/comments, and richer project editing flows.
+- Cost tracking and API-key association (see notes in `docs/roadmap/django-platform.md`).
+- Unit and end-to-end tests across the platform views and permissions.
 
 ### 5. Write spec for image creation functionality, and implement it
 
