@@ -209,7 +209,12 @@ class AudioIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
         engine = audio.OpenAITTSEngine(config=OpenAIConfig())
         annotated = await audio.annotate_audio(
-            audio.AudioSpec(text=self.sample_text, cache_dir=self.cache_dir, voice="alloy"),
+            audio.AudioSpec(
+                text=self.sample_text,
+                cache_dir=self.cache_dir,
+                voice="alloy",
+                require_real_tts=True,
+            ),
             tts_engine=engine,
         )
 
@@ -222,6 +227,8 @@ class AudioIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(all(Path(info["path"]).exists() for info in token_audio if info))
         self.assertTrue(Path(segment["annotations"].get("audio")["path"]).exists())
+        self.assertTrue(all(info.get("engine") == "OpenAITTSEngine" for info in token_audio if info))
+        self.assertEqual(segment["annotations"].get("audio", {}).get("engine"), "OpenAITTSEngine")
 
         min_durations = [
             _wav_duration(Path(info["path"]))

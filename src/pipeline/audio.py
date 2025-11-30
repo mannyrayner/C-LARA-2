@@ -195,6 +195,7 @@ class AudioSpec:
     voice: str | None = None
     telemetry: Telemetry | None = None
     op_id: str | None = None
+    require_real_tts: bool = False
 
 
 def _audio_annotation(path: Path, *, surface: str, spec: AudioSpec, level: str, engine: TTSEngine) -> dict[str, Any]:
@@ -263,6 +264,9 @@ async def annotate_audio(
                 engine = GoogleTTSEngine(language=spec.language, voice=spec.voice)
             except Exception as exc:
                 telemetry.event("audio", "warn", f"google TTS unavailable, using stub: {exc}")
+
+    if spec.require_real_tts and isinstance(engine, SimpleTTSEngine):
+        raise RuntimeError("Real TTS requested but no engine available; set OPENAI_API_KEY or ENABLE_GOOGLE_TTS")
     op_id = spec.op_id or "audio"
     concat_cache: dict[str, Path] = {}
 
@@ -293,6 +297,8 @@ async def annotate_audio(
                 )
                 await asyncio.to_thread(_validate_wav, output_path)
             except Exception as exc:
+                if spec.require_real_tts or tts_engine is not None:
+                    raise
                 telemetry.event(op_id, "warn", f"primary TTS failed ({exc}); using stub")
                 # Fall back to deterministic stub for reliable audio.
                 engine = SimpleTTSEngine()

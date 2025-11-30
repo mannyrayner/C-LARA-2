@@ -55,6 +55,7 @@ class FullPipelineSpec:
     op_id: str | None = None
     start_stage: str = "segmentation_phase_1"
     end_stage: str = "compile_html"
+    require_real_tts: bool = False
 
 
 async def run_full_pipeline(
@@ -157,6 +158,7 @@ async def run_full_pipeline(
                     cache_dir=spec.audio_cache_dir,
                     telemetry=telemetry,
                     op_id=op_id,
+                    require_real_tts=spec.require_real_tts,
                 )
             )
         elif stage == "compile_html":

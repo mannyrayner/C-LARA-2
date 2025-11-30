@@ -362,6 +362,7 @@ class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
             output_dir=self.real_html_root,
             audio_cache_dir=self.real_audio_root,
             telemetry=None,
+            require_real_tts=True,
         )
 
         try:
@@ -444,6 +445,7 @@ class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
             telemetry=None,
             start_stage="segmentation_phase_2",
             end_stage="compile_html",
+            require_real_tts=True,
         )
 
         try:
