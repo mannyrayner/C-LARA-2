@@ -14,6 +14,7 @@ import uuid
 import textwrap
 import hashlib
 import shutil
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -41,7 +42,12 @@ def _is_lexical(surface: str) -> bool:
 
 
 def _escape(text: str) -> str:
-    return html.escape(text, quote=True)
+    # Normalize to NFC to keep accents intact, then emit numeric character
+    # references for any non-ASCII symbols so browsers render them correctly
+    # regardless of local encodings.
+    normalized = unicodedata.normalize("NFC", text)
+    escaped = html.escape(normalized, quote=True)
+    return escaped.encode("ascii", "xmlcharrefreplace").decode("ascii")
 
 
 def _audio_path(path_str: str | None, root: Path) -> str | None:

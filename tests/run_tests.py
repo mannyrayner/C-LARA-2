@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 
@@ -18,6 +19,14 @@ def _pytest_available() -> bool:
 def main() -> int:
     root = pathlib.Path(__file__).resolve().parent.parent
     log_path = root / "tests" / "test_results.log"
+    artifacts_root = root / "tests" / "artifacts"
+
+    # Start from a clean slate so fresh audio/HTML artifacts are generated on
+    # each run. This avoids confusing leftovers from previous executions when
+    # reviewing outputs.
+    if artifacts_root.exists():
+        shutil.rmtree(artifacts_root)
+
     env = os.environ.copy()
     env_paths = [str(root / "src"), str(root), env.get("PYTHONPATH", "")]
     env["PYTHONPATH"] = os.pathsep.join(p for p in env_paths if p)
