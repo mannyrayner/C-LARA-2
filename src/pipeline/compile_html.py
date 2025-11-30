@@ -443,19 +443,19 @@ nav a { margin-right: 0.5rem; }
           const playButtons = doc.querySelectorAll('.play');
           let glossPopup = null;
 
-          tokens.forEach(token => {
-            token.addEventListener('click', () => {
-              const audioSrc = token.dataset.audio;
-              if (audioSrc) { const audio = new Audio(audioSrc); audio.play().catch(() => {}); }
-              const lemma = token.dataset.lemma;
-              if (lemma) { loadConcordance(lemma, doc); }
-              const mwe = token.dataset.mweId;
-              if (mwe) { highlightMwe(mwe, doc); }
-            });
+    tokens.forEach(token => {
+        token.addEventListener('click', () => {
+            const audioSrc = token.dataset.audio;
+            if (audioSrc) { const audio = new Audio(audioSrc); audio.play().catch(() => {}); }
+            const lemma = token.dataset.lemma;
+            if (lemma) { loadConcordance(lemma, doc); }
+            const mwe = token.dataset.mweId;
+            if (mwe) { highlightMwe(mwe, doc, token); }
+        });
 
-            token.addEventListener('mouseover', () => {
-              const gloss = token.dataset.gloss;
-              if (gloss) {
+        token.addEventListener('mouseover', () => {
+            const gloss = token.dataset.gloss;
+            if (gloss) {
                 if (glossPopup) { glossPopup.remove(); }
                 glossPopup = document.createElement('div');
                 glossPopup.classList.add('gloss-popup');
@@ -464,17 +464,23 @@ nav a { margin-right: 0.5rem; }
                 glossPopup.style.top = `${rect.top + window.scrollY - 28}px`;
                 glossPopup.style.left = `${rect.left + window.scrollX}px`;
                 (doc.body || document.body).appendChild(glossPopup);
-              }
-              const mwe = token.dataset.mweId;
-              if (mwe) { doc.querySelectorAll(`[data-mwe-id="${mwe}"]`).forEach(el => el.classList.add('mwe-group-hover')); }
-            });
+            }
+            const mwe = token.dataset.mweId;
+            if (mwe) {
+              token.classList.add('mwe-group-hover');
+              doc.querySelectorAll(`[data-mwe-id="${mwe}"]`).forEach(el => el.classList.add('mwe-group-hover'));
+            }
+        });
 
-            token.addEventListener('mouseout', () => {
-              if (glossPopup) { glossPopup.remove(); glossPopup = null; }
-              const mwe = token.dataset.mweId;
-              if (mwe) { doc.querySelectorAll(`[data-mwe-id="${mwe}"]`).forEach(el => el.classList.remove('mwe-group-hover')); }
-            });
-          });
+        token.addEventListener('mouseout', () => {
+            if (glossPopup) { glossPopup.remove(); glossPopup = null; }
+            const mwe = token.dataset.mweId;
+            if (mwe) {
+              token.classList.remove('mwe-group-hover');
+              doc.querySelectorAll(`[data-mwe-id="${mwe}"]`).forEach(el => el.classList.remove('mwe-group-hover'));
+            }
+        });
+    });
 
           speakerIcons.forEach(icon => {
             icon.addEventListener('click', () => {
@@ -519,11 +525,12 @@ nav a { margin-right: 0.5rem; }
           });
         }
 
-        function highlightMwe(mweId, contextDocument) {
-          const doc = contextDocument || document;
-          doc.querySelectorAll('.mwe-highlight').forEach(el => el.classList.remove('mwe-highlight'));
-          doc.querySelectorAll(`[data-mwe-id="${mweId}"]`).forEach(el => el.classList.add('mwe-highlight'));
-        }
+function highlightMwe(mweId, contextDocument, sourceToken) {
+  const doc = contextDocument || document;
+  doc.querySelectorAll('.mwe-highlight').forEach(el => el.classList.remove('mwe-highlight'));
+  doc.querySelectorAll(`[data-mwe-id="${mweId}"]`).forEach(el => el.classList.add('mwe-highlight'));
+  if (sourceToken) sourceToken.classList.add('mwe-highlight');
+}
 
         function setUpBackArrowEventListeners(contextDocument) {
           const doc = contextDocument || document;

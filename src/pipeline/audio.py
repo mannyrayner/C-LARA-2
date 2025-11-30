@@ -246,8 +246,9 @@ async def annotate_audio(
     else:
         engine = SimpleTTSEngine()
 
-        # Prefer OpenAI when credentials/model provided.
-        if os.getenv("OPENAI_API_KEY") and os.getenv("OPENAI_TTS_MODEL"):
+        # Prefer OpenAI when credentials are provided; model defaults to OPENAI_TTS_MODEL
+        # or the engine's fallback.
+        if os.getenv("OPENAI_API_KEY"):
             try:
                 engine = OpenAITTSEngine()
             except Exception as exc:  # pragma: no cover - exercised in user envs
