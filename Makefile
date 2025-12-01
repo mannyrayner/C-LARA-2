@@ -6,4 +6,4 @@
 PYTHON ?= python3
 
 run-platform:
-cd platform_server && PYTHONPATH= $(PYTHON) manage.py migrate && PYTHONPATH= $(PYTHON) manage.py runserver
+	cd platform_server && PYTHONPATH= $(PYTHON) manage.py migrate && PYTHONPATH= $(PYTHON) manage.py runserver
