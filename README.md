@@ -44,6 +44,9 @@ python manage.py migrate
 python manage.py runserver
 ```
 
+If you hit interpreter errors from a host `PYTHONPATH` (common on Windows), run `PYTHON=<path-to-python> make run-platform` to
+force a clean environment.
+
 By default the server uses SQLite (`platform_server/db.sqlite3`) and stores compiled artifacts under
 `platform_server/media/projects/`. Use the web UI to create an account, add a project, compile to
 HTML, and view or publish the result. OpenAI credentials are required for real pipeline runs; when
