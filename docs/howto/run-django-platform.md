@@ -17,7 +17,7 @@ make run-platform
 This launches `python manage.py runserver` bound to `http://127.0.0.1:8000/`.
 
 Notes:
-- The target clears `PYTHONPATH` so host settings (common on Windows) don’t break the interpreter. Override the interpreter with `PYTHON=<path/to/python>` if needed.
+- The target clears `PYTHONPATH` and forces `DJANGO_SETTINGS_MODULE=platform_server.settings` so host settings (common on Windows) don’t break the interpreter. Override the interpreter with `PYTHON=<path/to/python>` if needed.
 
 ## Manual steps (if you prefer)
 ```bash

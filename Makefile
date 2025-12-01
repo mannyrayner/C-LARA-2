@@ -6,4 +6,6 @@
 PYTHON ?= python3
 
 run-platform:
-	cd platform_server && PYTHONPATH= $(PYTHON) manage.py migrate && PYTHONPATH= $(PYTHON) manage.py runserver
+	cd platform_server && \
+		PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py migrate && \
+		PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py runserver
