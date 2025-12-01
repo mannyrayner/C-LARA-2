@@ -1,0 +1,19 @@
+{
+  "input": "Morning fog covered the harbor. Boats sounded their horns. Fishermen whispered as they checked their nets. The fog lifted slowly, revealing a bright blue sky.",
+  "output": {
+    "l2": "en",
+    "surface": "Morning fog covered the harbor. Boats sounded their horns. Fishermen whispered as they checked their nets. The fog lifted slowly, revealing a bright blue sky.",
+    "pages": [
+      {
+        "surface": "Morning fog covered the harbor. Boats sounded their horns. Fishermen whispered as they checked their nets. The fog lifted slowly, revealing a bright blue sky.",
+        "segments": [
+          {"surface": "Morning fog covered the harbor."},
+          {"surface": " Boats sounded their horns."},
+          {"surface": " Fishermen whispered as they checked their nets."},
+          {"surface": " The fog lifted slowly, revealing a bright blue sky."}
+        ]
+      }
+    ],
+    "annotations": {}
+  }
+}
