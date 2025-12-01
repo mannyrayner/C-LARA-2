@@ -28,47 +28,50 @@ Reimplement [C-LARA](https://www.c-lara.org/) in a more rational way, learning f
 	- The AI will play a central role in _developing_ the documentation. 
 	- As we proceed with the project, we will constantly check that the AI is in practice able to use the doc, and revise if necessary.
 	
-## Main steps in roadmap (so far, only initial steps filled in)
+## Main steps in roadmap
 
 ### 1. Set up GitHub repository and add initial documentation.
 
-We have done this. The C-LARA-2 repo is at https://github.com/mannyrayner/C-LARA-2.
+Status: **Done.** The C-LARA-2 repo is at https://github.com/mannyrayner/C-LARA-2.
 
-### 2. Write spec for initial core functionality, and implement it
+### 2. Initial core functionality: text generation and segmentation
 
-The most complex part of the platform is the text creation and annotation pipeline. This consists of a sequence of operations. In each operation, the current representation of the text is processed, using calls to the AI, to add more annotations. In this step of the roadmap, we will only implement enough functionality to perform the first two operations in the pipeline. Specifically, we will implement initial versions of the following:
+Status: **Done.** The foundational pieces for the text pipeline are implemented and tested:
 
-- Spec for representation of annotated text object.
-- Basic utilities for manipulation of annotated text objects, initially reading and writing.
-- Function that wraps API calls to the AI. This should provide a heartbeat mechanism since we will in general be making multiple concurrent API calls and wish to keep the user informed of their progress.
-- Function that generates a piece of text from a user-supplied spec. (Interactive creation of texts will be in a later step).
-- Function that converts a piece of text into an annotated text object that contains segmentation information. The text will be divided into pages, each page will be divided into segments, and each segment into tokens. 
-- The function that converts plain text into a segmented text object is divided into two parts:
-	- Segmentation part 1. This converts a plain text string into an annotated text object which is divided hierarchically into pages and segments. Segments are however not further divided.
-	- Segmentation part 2. This takes the output of segmentation part 1 and in parallel replaces each segment representation with a further annotated version which also includes a list of tokens. This operation is performed using a generic processing function which will be used for all the other linguistic annotation operations as well.
-	- The generic linguistic annotation function works schematically as follows:
-		- Recursively descend through the text object to reach all the segment representation.
-		- For each segment representation, construct a suitable annotation prompt. Input to this prompt construction function includes the segment representation itself, a prompt template, and a list of few-shot examples. The prompt template and the few-shot examples are specific to the operation and source language.
-		- In parallel, pass each annotation prompt the AI (fan-out)
-		- Gather the results and substitute them into the input text object to create the output text object (fan-in)-
-- Unit tests for all of the above.
+- Annotated text representation and utilities.
+- OpenAI wrapper with heartbeat, telemetry, retries, and unit/integration coverage.
+- Text generation (`text_gen`) to produce starter texts from descriptions.
+- Segmentation phase 1 (pages/segments) and phase 2 (tokenization) using the generic annotation harness.
+- Generic per-segment annotation fan-out/fan-in infrastructure reused by later steps.
+- Prompts and few-shots for the above operations.
+- Tests under `tests/` (OpenAI-gated where applicable); run with `make -C tests test`.
 
-### 3. Write spec for full linguistic annotation pipeline, and implement it
+See `docs/roadmap/segmentation-pipeline.md` for the specification that guided these implementations.
 
-In this step of the roadmap, we will build on the preceding step to add support for all the other functionality needed to implement the complete pipeline, from plain text to HTML form. Specifically, we need the following:
-- Support for other linguistic annotation operations. As noted above, the Segmentation part 2 operation is implemented using a generic function. We will extend it to cover the other operations by creating suitable prompt templates and few-shot examples.
-- Support for adding audio. This will involve integration of TTS engines. The recipes in C-LARA can probably be adapted easily, though we want to clean and rationalise it.
-- Support for conversion of the final annotated linguistic form into compiled form (HTML). Again, the recipe in C-LARA can probably be adapted easily.
-	- We want to include some version of the C-LARA JavaScript which ensures that hovering over one component of an MWE highlights the whole MWE.
-- Unit tests for all of the above.
+### 3. Full linguistic annotation pipeline
+
+Status: **Done.** The detailed plan lives in `docs/roadmap/linguistic-pipeline.md`.
+
+- Implemented: translation (EN→FR), MWE detection, lemma tagging, glossing, Chinese pinyin annotation (via `pypinyin`), audio annotation with caching (OpenAI TTS by default, Google TTS opt-in, or offline stub), HTML compilation to two-pane output with concordance + audio hooks, and a flexible `run_full_pipeline` helper that can start and end at any stage.
+- Remaining follow-ups: richer audio ingestion (human-recorded, phonetic-text paths) and UI polish once compiled HTML stabilises.
+
+Each operation has prompts under `prompts/<operation>/<lang>/` plus unit and integration tests (OpenAI-gated where applicable).
 
 ### 4. Write spec for basic Django platform functionality, and implement it
 
-In this step, we will add the basic Django platform  functionality. Most of this can probably be adapted easily from C-LARA.
-- Top-level Django functionality with menu for core actions like creating new project, editing existing project, listing existing content, etc. We need appropriate search functionality.
-- Support for posting a piece of compiled content.
-- Support for rating and commenting a piece of compiled content.
-- Unit tests for all of the above.
+Status: **In progress (initial implementation landed).** See `docs/roadmap/django-platform.md` for the platform plan and current implementation notes. A minimal Django project now exists under `platform_server/` with:
+
+- Account flows: register, login, logout (Django auth).
+- Project CRUD (create/read) with source text, language targets, and owner scoping.
+- Compile to HTML by invoking the pipeline (segmentation → annotations → audio → HTML) and persisting artifacts per-user/project.
+- Publish toggle plus gated viewing of compiled output (owner/private vs. published).
+- Artifact serving for compiled HTML/audio stored under `media/projects/`.
+
+Planned follow-ups:
+- Minimal, guided UI for non-technical users (AI-led create/edit flows, defaults first, unobtrusive overrides) alongside the full workspace.
+- Search/browse for published content, ratings/comments, and richer project editing flows.
+- Cost tracking and API-key association (see notes in `docs/roadmap/django-platform.md`).
+- Unit and end-to-end tests across the platform views and permissions.
 
 ### 5. Write spec for image creation functionality, and implement it
 
