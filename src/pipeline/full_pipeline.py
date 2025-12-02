@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -56,6 +57,7 @@ class FullPipelineSpec:
     start_stage: str = "segmentation_phase_1"
     end_stage: str = "compile_html"
     require_real_tts: bool = False
+    persist_intermediates: bool = False
 
 
 async def run_full_pipeline(
@@ -80,6 +82,22 @@ async def run_full_pipeline(
     current: Any = spec.text_obj
     raw_text: str | None = spec.text
 
+    stage_dir: Path | None = None
+    if spec.persist_intermediates:
+        base_dir = spec.output_dir or Path.cwd() / "artifacts"
+        stage_dir = base_dir / "stages"
+        stage_dir.mkdir(parents=True, exist_ok=True)
+
+    def _persist(stage: str, payload: Any) -> None:
+        if not stage_dir:
+            return
+        try:
+            (stage_dir / f"{stage}.json").write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+        except Exception:
+            pass
+
     # Allow description-driven generation when no text is provided.
     if raw_text is None and current is None:
         if spec.description:
@@ -88,6 +106,7 @@ async def run_full_pipeline(
                 TextGenSpec(description=spec.description, language=spec.language), client=ai_client
             )
             raw_text = generated.get("surface", "")
+            _persist("text_gen", generated)
         else:
             raise ValueError("FullPipelineSpec.text, text_obj, or description must be provided")
 
@@ -105,6 +124,7 @@ async def run_full_pipeline(
                     TextGenSpec(description=spec.description or "", language=spec.language), client=ai_client
                 )
                 raw_text = generated.get("surface", "")
+                _persist("text_gen", generated)
             continue
 
         if stage == "segmentation_phase_1":
@@ -113,6 +133,7 @@ async def run_full_pipeline(
             current = await segmentation_phase_1(
                 SegmentationSpec(text=raw_text, language=spec.language), client=ai_client
             )
+            _persist("segmentation_phase_1", current)
             continue
 
         if current is None:
@@ -122,19 +143,23 @@ async def run_full_pipeline(
             current = await segmentation_phase_2(
                 SegmentationPhase2Spec(text=current, language=spec.language), client=ai_client
             )
+            _persist("segmentation_phase_2", current)
         elif stage == "translation":
             current = await translate(
                 TranslationSpec(text=current, language=spec.language, target_language=spec.target_language),
                 client=ai_client,
             )
+            _persist("translation", current)
         elif stage == "mwe":
             current = await annotate_mwes(
                 MWESpec(text=current, language=spec.language, telemetry=telemetry, op_id=op_id), client=ai_client
             )
+            _persist("mwe", current)
         elif stage == "lemma":
             current = await annotate_lemmas(
                 LemmaSpec(text=current, language=spec.language, telemetry=telemetry, op_id=op_id), client=ai_client
             )
+            _persist("lemma", current)
         elif stage == "gloss":
             current = await annotate_gloss(
                 GlossSpec(
@@ -146,9 +171,11 @@ async def run_full_pipeline(
                 ),
                 client=ai_client,
             )
+            _persist("gloss", current)
         elif stage == "pinyin":
             if spec.language.lower().startswith("zh"):
                 current = annotate_pinyin(PinyinSpec(text=current, language=spec.language, telemetry=telemetry))
+                _persist("pinyin", current)
         elif stage == "audio":
             current = await annotate_audio(
                 AudioSpec(
@@ -161,10 +188,12 @@ async def run_full_pipeline(
                     require_real_tts=spec.require_real_tts,
                 )
             )
+            _persist("audio", current)
         elif stage == "compile_html":
             html_result = compile_html(
                 CompileHTMLSpec(text=current, output_dir=spec.output_dir, telemetry=telemetry, op_id=op_id)
             )
+            _persist("compile_html", html_result or {})
 
     result: dict[str, Any] = {"text": current}
     if html_result:

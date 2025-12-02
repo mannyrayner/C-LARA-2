@@ -49,6 +49,19 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
     def get_queryset(self):  # type: ignore[override]
         return Project.objects.filter(owner=self.request.user)
 
+    def get_context_data(self, **kwargs):  # type: ignore[override]
+        context = super().get_context_data(**kwargs)
+        project: Project = context["object"]
+        stage_files: list[str] = []
+        if project.artifact_root:
+            stage_dir = Path(project.artifact_root) / "stages"
+            if stage_dir.exists():
+                stage_files = [
+                    str(path.relative_to(project.artifact_root)) for path in sorted(stage_dir.glob("*.json"))
+                ]
+        context["stage_files"] = stage_files
+        return context
+
 
 class ProjectCreateView(LoginRequiredMixin, CreateView):
     model = Project
@@ -89,9 +102,11 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         output_dir=output_dir,
         audio_cache_dir=output_dir / "audio",
         require_real_tts=True,
+        persist_intermediates=True,
     )
 
     client = _build_ai_client()
+    messages.info(request, "Compiling project; this may take a moment...")
     try:
         result = asyncio.run(run_full_pipeline(spec, client=client))
     except Exception as exc:  # pragma: no cover - surface to UI
@@ -105,7 +120,10 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     project.compiled_path = str(index_path) if index_path else ""
     project.artifact_root = str(output_dir)
     project.save(update_fields=["compiled_path", "artifact_root", "updated_at"])
-    messages.success(request, "Project compiled to HTML.")
+    if index_path:
+        messages.success(request, "Project compiled to HTML.")
+    else:
+        messages.warning(request, "Compilation finished but no HTML was produced.")
     return redirect("project-detail", pk=project.pk)
 
 
