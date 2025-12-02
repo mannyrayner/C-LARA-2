@@ -81,13 +81,19 @@ prompts/
   # audio uses a library-backed synthesizer and cache; no prompts required
 ```
 
-**Artifact layout per pipeline run** (used by tests and by the Django platform):
+**Artifact layout per pipeline run** (mirrors what the Django platform writes under
+`media/`):
 
 ```
-artifacts/
-  html/run_<id>/            # compiled HTML pages + concordance + static assets
-  audio/<hash>.wav          # cached audio (token/segment/page) generated during the run
-  stages/                   # JSON snapshots per stage when persisted
+<artifact_root>/
+  html/                    # compiled HTML pages + concordance + static assets
+    page_1.html
+    page_2.html
+    concordance_<lemma>.html
+    static/                # JS/CSS assets copied per run
+  audio/                   # token/segment/page WAV files for this run only
+    <sha1>.wav
+  stages/                  # JSON snapshots per stage (when persisted)
     segmentation_phase_1.json
     segmentation_phase_2.json
     translation.json
@@ -96,10 +102,12 @@ artifacts/
     gloss.json
     pinyin.json
     audio.json
+    compile_html.json
+    progress.jsonl         # optional timestamped start/done entries
 ```
 
-Within a run, HTML pages reference audio using relative paths (e.g., `audio/<hash>.wav`) so opening `page_1.html` directly from
-disk loads token/segment/page audio without server rewrites. Concordance pages live alongside `page_<n>.html` and are named
+Within `html/`, all audio references are POSIX-relative (e.g., `audio/<sha1>.wav`) so opening `page_1.html` directly from disk
+resolves token/segment/page audio without server rewrites. Concordance pages live alongside `page_<n>.html` and are named
 `concordance_<lemma>.html`.
 
 ## Pipeline sequencing

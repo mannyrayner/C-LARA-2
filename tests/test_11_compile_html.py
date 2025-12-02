@@ -80,10 +80,12 @@ class CompileHTMLTests(unittest.TestCase):
         self.assertIn('<ruby><rb>Hello</rb><rt>ni hao</rt></ruby>', content)
         self.assertIn('Bonjour le monde', content)
 
-        concordance_paths = list(Path(result["run_root"]).glob("concordance_*.html"))
+        run_root = Path(result["run_root"])
+        html_root = run_root / "html"
+        concordance_paths = list(html_root.glob("concordance_*.html"))
         self.assertTrue(concordance_paths, "concordance pages should be emitted")
         concordance_html = concordance_paths[0].read_text(encoding="utf-8")
-        static_js = Path(result["run_root"]) / "static" / "clara_scripts.js"
+        static_js = html_root / "static" / "clara_scripts.js"
         js_content = static_js.read_text(encoding="utf-8")
         self.assertIn("gloss-popup", js_content)
         self.assertIn("toggle-translation", js_content)

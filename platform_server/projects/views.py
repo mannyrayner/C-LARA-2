@@ -192,18 +192,19 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         return redirect("project-detail", pk=project.pk)
 
     html_info: dict[str, Any] | None = result.get("html") if isinstance(result, dict) else None
-    index_path = None
-    if html_info:
-        index_path = html_info.get("index_path") or html_info.get("html_path")
     compiled_rel = ""
-    if index_path:
-        try:
-            base = output_dir.resolve()
-            compiled_rel = Path(index_path).resolve().relative_to(base).as_posix()
-        except Exception:
-            compiled_rel = Path(index_path).as_posix()
+    run_root = output_dir
+    if html_info:
+        run_root = Path(html_info.get("run_root", output_dir)).resolve()
+        index_path = html_info.get("index_path") or html_info.get("html_path")
+        if index_path:
+            html_path = Path(index_path).resolve()
+            try:
+                compiled_rel = html_path.relative_to(run_root).as_posix()
+            except Exception:
+                compiled_rel = html_path.as_posix()
     project.compiled_path = compiled_rel
-    project.artifact_root = str(output_dir)
+    project.artifact_root = str(run_root)
     project.save(update_fields=["compiled_path", "artifact_root", "updated_at"])
     if compiled_rel:
         messages.success(request, "Project compiled to HTML.")

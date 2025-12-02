@@ -327,9 +327,10 @@ class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
         result = await run_full_pipeline(spec, client=fake_client)
 
         run_root = Path(result["html"]["run_root"])
-        html_path = run_root / "page_1.html"
+        html_root = Path(result["html"].get("html_root", run_root / "html"))
+        html_path = html_root / "page_1.html"
         self.assertTrue(html_path.exists())
-        self.assertTrue((run_root / "page_2.html").exists())
+        self.assertTrue((html_root / "page_2.html").exists())
         pages = result["text"].get("pages", [])
         self.assertEqual(2, len(pages))
         mwes = pages[0]["segments"][0].get("annotations", {}).get("mwes", [])
@@ -458,7 +459,7 @@ class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
         pages = result["text"].get("pages", [])
         self.assertEqual(2, len(pages))
 
-        html_root_resolved = Path(result["html"]["run_root"])
+        html_root_resolved = Path(result["html"].get("html_root", result["html"].get("run_root")))
         html_path = html_root_resolved / "page_1.html"
         self.assertTrue(html_path.exists())
 

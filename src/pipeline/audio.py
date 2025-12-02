@@ -319,17 +319,31 @@ async def annotate_audio(
         new_segments: list[dict[str, Any]] = []
         segment_audio_paths: list[Path] = []
         for segment in page.get("segments", []):
+            # Collect MWE spans up front so we can synthesize a single audio
+            # clip per expression and reuse it across member tokens.
+            mwe_surfaces: dict[str, list[str]] = {}
+            for tok in segment.get("tokens", []):
+                mwe_id = tok.get("annotations", {}).get("mwe_id") if isinstance(tok, dict) else None
+                if not mwe_id:
+                    continue
+                if not _is_word_token(tok.get("surface", "")):
+                    continue
+                mwe_surfaces.setdefault(mwe_id, []).append(tok.get("surface", ""))  # type: ignore[arg-type]
+            mwe_surface_text: dict[str, str] = {
+                mwe_id: " ".join(parts) for mwe_id, parts in mwe_surfaces.items()
+            }
+
             tokens_out: list[dict[str, Any]] = []
             for token in segment.get("tokens", []):
                 surface = token.get("surface", "")
                 annotations = dict(token.get("annotations", {}))
 
                 if _is_word_token(surface):
-                    token_key = surface
-                    audio_path = await ensure_audio(token_key, "token")
+                    audio_surface = mwe_surface_text.get(annotations.get("mwe_id"), surface)
+                    audio_path = await ensure_audio(audio_surface, "token")
                     if audio_path:
                         annotations["audio"] = _audio_annotation(
-                            audio_path, surface=surface, spec=spec, level="token", engine=engine
+                            audio_path, surface=audio_surface, spec=spec, level="token", engine=engine
                         )
 
                 if annotations:

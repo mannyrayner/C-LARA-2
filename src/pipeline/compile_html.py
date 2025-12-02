@@ -70,11 +70,12 @@ def _audio_path(path_str: str | None, root: Path) -> str | None:
 
 
 class _AudioResolver:
-    """Copy audio into the run directory and return relative paths for HTML."""
+    """Copy audio into the run directory and return paths relative to HTML."""
 
-    def __init__(self, run_root: Path):
-        self.run_root = run_root
-        self.audio_dir = run_root / "audio"
+    def __init__(self, artifact_root: Path, html_root: Path):
+        self.artifact_root = artifact_root
+        self.html_root = html_root
+        self.audio_dir = artifact_root / "audio"
         self.audio_dir.mkdir(parents=True, exist_ok=True)
         self._cache: dict[Path, str] = {}
 
@@ -93,14 +94,15 @@ class _AudioResolver:
                 suffix = src.suffix or ".wav"
                 dest = self.audio_dir / f"{digest}{suffix}"
                 shutil.copy2(key, dest)
-                rel = dest.relative_to(self.run_root).as_posix()
-                self._cache[key] = rel
-                return rel
+                rel = os.path.relpath(dest, self.html_root)
+                rel_posix = Path(rel).as_posix()
+                self._cache[key] = rel_posix
+                return rel_posix
         except Exception:
             pass
 
         # Fallback to best-effort relative path without copying.
-        return _audio_path(path_str, self.run_root)
+        return _audio_path(path_str, self.html_root)
 
 
 def _token_display(token: dict[str, Any]) -> str:
@@ -570,11 +572,16 @@ def compile_html(spec: CompileHTMLSpec) -> dict[str, Any]:
 
     telemetry = spec.telemetry or NullTelemetry()
     run_id = spec.run_id or uuid.uuid4().hex[:8]
-    run_root = ((spec.output_dir or Path("artifacts/html")) / f"run_{run_id}").resolve()
-    run_root.mkdir(parents=True, exist_ok=True)
-    resolver = _AudioResolver(run_root)
+    if spec.output_dir is not None:
+        run_root = Path(spec.output_dir).resolve()
+    else:
+        artifact_root = Path("artifacts") / "runs"
+        run_root = (artifact_root / f"run_{run_id}").resolve()
+    html_root = run_root / "html"
+    html_root.mkdir(parents=True, exist_ok=True)
+    resolver = _AudioResolver(run_root, html_root)
 
-    _write_static_assets(run_root)
+    _write_static_assets(html_root)
 
     token_ids = _token_ids(spec.text)
     token_info: list[dict[str, Any]] = []
@@ -591,7 +598,7 @@ def compile_html(spec: CompileHTMLSpec) -> dict[str, Any]:
             total_pages=total_pages,
             title=spec.title,
         )
-        page_path = run_root / f"page_{p_idx + 1}.html"
+        page_path = html_root / f"page_{p_idx + 1}.html"
         page_path.write_text(html_doc, encoding="utf-8")
         page_paths.append(page_path)
 
@@ -603,12 +610,13 @@ def compile_html(spec: CompileHTMLSpec) -> dict[str, Any]:
         conc_html = _render_concordance_page(
             entry=entry, text=spec.text, token_ids=token_ids, resolver=resolver
         )
-        conc_path = run_root / f"concordance_{lemma_key}.html"
+        conc_path = html_root / f"concordance_{lemma_key}.html"
         conc_path.write_text(conc_html, encoding="utf-8")
 
-    telemetry.event(spec.op_id or "compile_html", "info", f"wrote HTML pages under {run_root}")
+    telemetry.event(spec.op_id or "compile_html", "info", f"wrote HTML pages under {html_root}")
     return {
         "html_path": str(page_paths[0]),
         "run_root": str(run_root),
+        "html_root": str(html_root),
         "concordance": concordance,
     }

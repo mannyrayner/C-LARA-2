@@ -51,21 +51,27 @@ This document sketches the Django layer that will host users, projects, and comp
 ```
 media/
   users/<user_id>/projects/<project_slug>/
-    source/                 # uploaded texts, descriptions
-    runs/<timestamp>/       # per-pipeline-run artifacts
-      input/                # normalized input JSON for the run
-      stage_<name>/         # JSON outputs per stage
-      audio/                # TTS assets (token/segment/page) copied per run
-      html/                 # compiled multi-page HTML + static assets (page_*.html + concordance_*.html + static/)
-      logs/                 # telemetry + pipeline logs
-    manual_edits/           # patches keyed by version
-    published/<version_id>/ # frozen artifacts for public serving
+    source/                 # uploaded texts, descriptions (optional)
+    runs/<run_id>/           # per-pipeline-run artifacts (run_id = run_<timestamp>)
+      html/                 # compiled multi-page HTML + concordance + static assets
+        page_1.html
+        concordance_<lemma>.html
+        static/
+      audio/                # TTS assets copied for this run; HTML references are POSIX-relative
+        <sha1>.wav
+      stages/               # JSON outputs per stage + progress log (optional)
+        segmentation_phase_1.json
+        ...
+        compile_html.json
+        progress.jsonl
+      logs/                 # telemetry/pipeline logs (future)
+    manual_edits/           # patches keyed by version (future)
+    published/<version_id>/ # frozen artifacts for public serving (future)
 ```
 - Media backed by Django `FileField` storage; default to local filesystem in dev, S3/GCS/Azure in production.
-- Checksums recorded per artifact to detect drift and support caching.
-- Paths exposed in the UI should be **POSIX-style relative to `runs/<timestamp>/`** so HTML/audio links remain valid when served
-  from Django or opened directly from disk during reviews. When copying audio into a run, the compiler rewrites `data-audio`
-  attributes to `audio/<hash>.wav` to avoid leaking absolute paths.
+- Paths exposed in the UI are **POSIX-style relative to `runs/<run_id>/`** so HTML/audio links remain valid when served from
+  Django or opened directly from disk. Audio is copied into `audio/` and HTML references use `audio/<sha1>.wav` to avoid
+  leaking absolute paths.
 
 ## Pipeline orchestration (Django layer)
 - A `PipelineService` (Django service module) wraps `run_full_pipeline` with:
