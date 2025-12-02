@@ -247,6 +247,35 @@ class AudioIntegrationTests(unittest.IsolatedAsyncioTestCase):
             notes="Includes audio annotations with engine/voice metadata",
         )
 
+    async def test_openai_tts_required(self) -> None:
+        self._skip_if_no_key_or_incompatible()
+
+        engine = audio.OpenAITTSEngine(config=OpenAIConfig())
+        annotated = await audio.annotate_audio(
+            audio.AudioSpec(
+                text=self.sample_text,
+                cache_dir=self.cache_dir,
+                voice="alloy",
+                require_real_tts=True,
+            ),
+            tts_engine=engine,
+        )
+
+        token_audio = [
+            tok.get("annotations", {}).get("audio")
+            for tok in annotated["pages"][0]["segments"][0]["tokens"]
+            if tok.get("annotations", {}).get("audio")
+        ]
+        self.assertTrue(all(info.get("engine") == "OpenAITTSEngine" for info in token_audio))
+
+        log_test_case(
+            "audio:integration:real_tts",
+            purpose="requires real TTS when requested",
+            inputs={"require_real_tts": True},
+            output=token_audio,
+            status="pass",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

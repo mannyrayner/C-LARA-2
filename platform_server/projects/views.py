@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -53,13 +54,24 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         project: Project = context["object"]
         stage_files: list[str] = []
+        progress: list[dict[str, Any]] = []
         if project.artifact_root:
             stage_dir = Path(project.artifact_root) / "stages"
             if stage_dir.exists():
                 stage_files = [
-                    str(path.relative_to(project.artifact_root)) for path in sorted(stage_dir.glob("*.json"))
+                    str(path.relative_to(project.artifact_root))
+                    for path in sorted(stage_dir.glob("*.json"), key=lambda p: p.stat().st_mtime)
                 ]
+                progress_path = stage_dir / "progress.jsonl"
+                if progress_path.exists():
+                    for line in progress_path.read_text(encoding="utf-8").splitlines():
+                        try:
+                            progress.append(json.loads(line))
+                        except Exception:
+                            continue
+                    progress.sort(key=lambda p: p.get("timestamp", ""))
         context["stage_files"] = stage_files
+        context["progress"] = progress
         return context
 
 
@@ -94,6 +106,17 @@ def _prepare_output_dir(project: Project) -> Path:
 def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     project = get_object_or_404(Project, pk=pk, owner=request.user)
     output_dir = _prepare_output_dir(project)
+    stage_dir = output_dir / "stages"
+    stage_dir.mkdir(parents=True, exist_ok=True)
+    progress_log = stage_dir / "progress.jsonl"
+
+    def progress_cb(stage: str, status: str, timestamp: str) -> None:
+        entry = {"stage": stage, "status": status, "timestamp": timestamp}
+        try:
+            with progress_log.open("a", encoding="utf-8") as fp:
+                fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        except Exception:
+            pass
 
     spec = FullPipelineSpec(
         text=project.source_text,
@@ -103,6 +126,7 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         audio_cache_dir=output_dir / "audio",
         require_real_tts=True,
         persist_intermediates=True,
+        progress_callback=progress_cb,
     )
 
     client = _build_ai_client()

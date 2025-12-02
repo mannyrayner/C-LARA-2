@@ -112,6 +112,7 @@ async def translate(
             build_prompt=build,
             telemetry=telemetry,
             op_id=spec.op_id,
+            max_concurrency=8,
         ),
         client=ai_client,
     )

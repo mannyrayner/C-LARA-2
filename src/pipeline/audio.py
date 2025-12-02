@@ -325,11 +325,11 @@ async def annotate_audio(
                 annotations = dict(token.get("annotations", {}))
 
                 if _is_word_token(surface):
-                    token_key = annotations.get("lemma") or surface
+                    token_key = surface
                     audio_path = await ensure_audio(token_key, "token")
                     if audio_path:
                         annotations["audio"] = _audio_annotation(
-                            audio_path, surface=token_key, spec=spec, level="token", engine=engine
+                            audio_path, surface=surface, spec=spec, level="token", engine=engine
                         )
 
                 if annotations:

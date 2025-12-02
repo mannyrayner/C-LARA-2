@@ -4,8 +4,9 @@ from __future__ import annotations
 import asyncio
 import json
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from core.ai_api import OpenAIClient
 from core.telemetry import NullTelemetry, Telemetry
@@ -58,6 +59,7 @@ class FullPipelineSpec:
     end_stage: str = "compile_html"
     require_real_tts: bool = False
     persist_intermediates: bool = False
+    progress_callback: Callable[[str, str, str], None] | None = None
 
 
 async def run_full_pipeline(
@@ -83,6 +85,7 @@ async def run_full_pipeline(
     raw_text: str | None = spec.text
 
     stage_dir: Path | None = None
+    progress_cb = spec.progress_callback
     if spec.persist_intermediates:
         base_dir = spec.output_dir or Path.cwd() / "artifacts"
         stage_dir = base_dir / "stages"
@@ -95,6 +98,15 @@ async def run_full_pipeline(
             (stage_dir / f"{stage}.json").write_text(
                 json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
             )
+        except Exception:
+            pass
+
+    def _progress(stage: str, status: str) -> None:
+        if progress_cb is None:
+            return
+        timestamp = datetime.utcnow().isoformat()
+        try:
+            progress_cb(stage, status, timestamp)
         except Exception:
             pass
 
@@ -120,47 +132,60 @@ async def run_full_pipeline(
         if stage == "text_gen":
             if current is None:
                 telemetry.event(op_id, "info", "Generating text from description")
+                _progress("text_gen", "start")
                 generated = await generate_text(
                     TextGenSpec(description=spec.description or "", language=spec.language), client=ai_client
                 )
                 raw_text = generated.get("surface", "")
                 _persist("text_gen", generated)
+                _progress("text_gen", "done")
             continue
 
         if stage == "segmentation_phase_1":
             if not isinstance(raw_text, str):
                 raise ValueError("segmentation_phase_1 requires a raw text string")
+            _progress("segmentation_phase_1", "start")
             current = await segmentation_phase_1(
                 SegmentationSpec(text=raw_text, language=spec.language), client=ai_client
             )
             _persist("segmentation_phase_1", current)
+            _progress("segmentation_phase_1", "done")
             continue
 
         if current is None:
             raise ValueError(f"Stage {stage} requires annotated text input")
 
         if stage == "segmentation_phase_2":
+            _progress("segmentation_phase_2", "start")
             current = await segmentation_phase_2(
                 SegmentationPhase2Spec(text=current, language=spec.language), client=ai_client
             )
             _persist("segmentation_phase_2", current)
+            _progress("segmentation_phase_2", "done")
         elif stage == "translation":
+            _progress("translation", "start")
             current = await translate(
                 TranslationSpec(text=current, language=spec.language, target_language=spec.target_language),
                 client=ai_client,
             )
             _persist("translation", current)
+            _progress("translation", "done")
         elif stage == "mwe":
+            _progress("mwe", "start")
             current = await annotate_mwes(
                 MWESpec(text=current, language=spec.language, telemetry=telemetry, op_id=op_id), client=ai_client
             )
             _persist("mwe", current)
+            _progress("mwe", "done")
         elif stage == "lemma":
+            _progress("lemma", "start")
             current = await annotate_lemmas(
                 LemmaSpec(text=current, language=spec.language, telemetry=telemetry, op_id=op_id), client=ai_client
             )
             _persist("lemma", current)
+            _progress("lemma", "done")
         elif stage == "gloss":
+            _progress("gloss", "start")
             current = await annotate_gloss(
                 GlossSpec(
                     text=current,
@@ -172,11 +197,15 @@ async def run_full_pipeline(
                 client=ai_client,
             )
             _persist("gloss", current)
+            _progress("gloss", "done")
         elif stage == "pinyin":
             if spec.language.lower().startswith("zh"):
+                _progress("pinyin", "start")
                 current = annotate_pinyin(PinyinSpec(text=current, language=spec.language, telemetry=telemetry))
                 _persist("pinyin", current)
+                _progress("pinyin", "done")
         elif stage == "audio":
+            _progress("audio", "start")
             current = await annotate_audio(
                 AudioSpec(
                     text=current,
@@ -189,11 +218,14 @@ async def run_full_pipeline(
                 )
             )
             _persist("audio", current)
+            _progress("audio", "done")
         elif stage == "compile_html":
+            _progress("compile_html", "start")
             html_result = compile_html(
                 CompileHTMLSpec(text=current, output_dir=spec.output_dir, telemetry=telemetry, op_id=op_id)
             )
             _persist("compile_html", html_result or {})
+            _progress("compile_html", "done")
 
     result: dict[str, Any] = {"text": current}
     if html_result:

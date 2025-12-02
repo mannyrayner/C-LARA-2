@@ -20,6 +20,7 @@ class GenericAnnotationSpec:
     build_prompt: Callable[[dict[str, Any]], str]
     telemetry: Telemetry | None = None
     op_id: str | None = None
+    max_concurrency: int | None = None
 
 
 async def generic_annotation(
@@ -36,13 +37,21 @@ async def generic_annotation(
     tasks: list[asyncio.Task] = []
     index: list[tuple[int, int]] = []
 
+    semaphore: asyncio.Semaphore | None = None
+    if spec.max_concurrency:
+        semaphore = asyncio.Semaphore(spec.max_concurrency)
+
+    async def _annotate(prompt: str, op_id: str) -> dict[str, Any]:
+        if semaphore:
+            async with semaphore:
+                return await client.chat_json(prompt, telemetry=telemetry, op_id=op_id)
+        return await client.chat_json(prompt, telemetry=telemetry, op_id=op_id)
+
     for page_idx, page in enumerate(pages):
         for seg_idx, segment in enumerate(page.get("segments", [])):
             prompt = spec.build_prompt(segment)
             op_id = f"{base_op_id}-p{page_idx}-s{seg_idx}"
-            task = asyncio.create_task(
-                client.chat_json(prompt, telemetry=telemetry, op_id=op_id)
-            )
+            task = asyncio.create_task(_annotate(prompt, op_id))
             tasks.append(task)
             index.append((page_idx, seg_idx))
 
