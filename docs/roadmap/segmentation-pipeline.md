@@ -10,7 +10,7 @@ Implement the *create text → segment pages/segments → token-level split* pip
 **In (MVP):**
 - Generate a fresh L2 text from a simple spec (title, genre, length, level, style hints).
 - Page/segment partitioning (phase 1).
-- Per-segment tokenization/splitting (phase 2) using language-specific prompt templates and optional few-shot examples.
+- Per-segment tokenization/splitting (phase 2) using language-specific prompt templates and optional few-shot examples; Mandarin segments are tokenized locally with `jieba` instead of the AI path.
 - Async OpenAI calls with a periodic heartbeat (every ~5s) surfaced to the caller.
 - Deterministic JSON outputs that the later annotation operations (translation, MWE, lemma, gloss, pinyin) can consume.
 
@@ -23,71 +23,106 @@ Implement the *create text → segment pages/segments → token-level split* pip
 
 ## 1) Heartbeat + async calls
 
-Contract: Every in-flight API op emits heartbeat events at ~5s cadence:
+Contract: Every in-flight API op emits heartbeat events at ~5s cadence. The core pieces live under `src/core/` (sibling to `docs/`) so they are easy to import from the CLI and future Django app.
 
-# src/clara2/core/telemetry.py
+# src/core/telemetry.py
 
 ```python
 class Telemetry:
-	def heartbeat(self, op_id: str, elapsed_s: float, note: str = "") -> None: ...
-	def event(self, op_id: str, level: str, msg: str, data: dict | None = None) -> None: ...
+        def heartbeat(self, op_id: str, elapsed_s: float, note: str = "") -> None: ...
+        def event(self, op_id: str, level: str, msg: str, data: dict | None = None) -> None: ...
+
+class NullTelemetry(Telemetry):
+        ... # no-op default for tests/CLI
+
+class StdoutTelemetry(Telemetry):
+        ... # quick feedback while bootstrapping
 ```
 
-```openai_client.py``` wraps the OpenAI SDK:
+# src/core/ai_api.py
 
 ```python
-await chat_json(prompt, *, model, temperature, tools=None, response_format=None, telemetry, op_id)
+await OpenAIClient(config).chat_json(
+        prompt,
+        *,
+        model=None,
+        temperature=None,
+        tools=None,
+        response_format=None,
+        telemetry=None,
+        op_id=None,
+)
 ```
 
-Handles retries (exponential backoff), httpx errors, and budget-friendly timeouts.
-
-Ensures response_format="json_object" (or tool-calling) for structured outputs.
+- Wraps the async OpenAI SDK so every request has: heartbeat every ~5s, exponential backoff on `RateLimit`/`APIError`/timeouts, and deterministic JSON parsing of the first message choice.
+- `config.py` holds defaults for model/temperature/timeout/backoff/heartbeat cadence, picks up `OPENAI_API_KEY` from the environment, and can be overridden per-call. `temperature` defaults to `None` so models that enforce a fixed default (e.g., `gpt-5`) run without error.
+- The default model is `gpt-5`, matching the quality bar we need from the C-LARA experiments.
+- `OpenAIClient` passes the configured `api_key` directly into `AsyncOpenAI`; by default this comes from `OPENAI_API_KEY`, but callers can construct `OpenAIConfig(api_key="...")` to override.
+- A generated `op_id` is attached to all telemetry events when the caller does not provide one.
 
 ---
 
-## 2) Data model (stable JSON)
+## 2) Text generation (text_gen operation)
 
-We keep formats uniform across annotation layers.
+**Purpose:** First pipeline step: generate a raw L2 text from a short description.
 
-```python
-from dataclasses import dataclass, field
-from typing import List, Dict, Optional
+**Flow:**
+- Input: a JSON object describing the desired text (e.g., title, genre, level, length/word-count, style hints, target reader).
+- Build a prompt by injecting the description into an operation-specific template (per language/genre, stored under `prompts/text_gen/`).
+- Call the AI once (no fan-out) and return a `Text` JSON object with the generated `surface`, `title`, and metadata filled in. Downstream segmentation operates directly on this output.
+- Telemetry is optional but should log a single operation ID; heartbeat timing matches the generic OpenAI wrapper defaults.
 
-@dataclass
-class Token:
-    surface: str
-    annotations: Dict[str, str] = field(default_factory=dict)  # later: lemma, gloss, pos
-    # mwe_id, etc. added later
-
-@dataclass
-class Segment:
-	surface: str
-    tokens: List[Token]
-    annotations: Dict[str, str] = field(default_factory=dict)  # later: translated, mwe list
-
-@dataclass
-class Page:
-	surface: str
-    segments: List[Segment]
-    annotations: Dict[str, str] = field(default_factory=dict)  # page metadata (img hooks later)
-
-@dataclass
-class Text:
-    l2: str
-    l1: Optional[str] = None
-    title: Optional[str] = None
-	surface: str
-    pages: List[Page] = field(default_factory=list)
-    annotations: Dict[str, str] = field(default_factory=dict)
-```
-	
-Serialization: ```storage.py``` exposes ```save_text(text, path)``` / ```load_text(path)```.
+**Notes:**
+- Keep the prompt template explicit about constraints (length, register, avoid formatting) so segmentation isn’t complicated by Markdown or bullets.
+- Few-shot examples can live alongside the template in `prompts/text_gen/<lang>/fewshots/`.
 
 ---
 
-## 3) Generic processing flow for annotation operations
+## 3) Data model (stable JSON)
 
-The IDs for the annotation operations are the following: 
+We keep formats uniform across annotation layers and represent them as JSON objects so they can be passed directly between the CLI, pipeline steps, and the AI.
+
+```jsonc
+// Token
+{
+  "surface": "The",
+  "annotations": {} // later: lemma, gloss, pos, mwe_id, etc.
+}
+
+// Segment
+{
+  "surface": "The boy's name was Will.",
+  "tokens": [
+    { "surface": "The", "annotations": {} }
+  ],
+  "annotations": {} // later: translated text, MWE list
+}
+
+// Page
+{
+  "surface": "A full page worth of text…",
+  "segments": [ /* Segment[] */ ],
+  "annotations": {} // page metadata (img hooks later)
+}
+
+// Text
+{
+  "l2": "en", // source language code
+  "l1": "fr", // optional target language code
+  "title": "My Story", // optional
+  "surface": "Full raw text…",
+  "pages": [ /* Page[] */ ],
+  "annotations": {}
+}
+```
+
+In code we can still expose light dataclasses in ```types.py``` for developer ergonomics, but the persisted/on-wire format is JSON with these fields. ```storage.py``` should serialize/deserialize the plain JSON structures (`save_text(path, text_json)` / `load_text(path) -> dict`).
+
+---
+
+## 4) Generic processing flow for annotation operations
+
+The IDs for the annotation operations are the following:
 - ```segmentation``` # Add segmentation information 
 - ```segmentation_phase_1``` # First part of ```segmentation``` operation
 - ```segmentation_phase_2``` # Second part of ```segmentation``` operation
@@ -97,31 +132,40 @@ The IDs for the annotation operations are the following:
 - ```gloss``` # Add gloss information to each ```Token``` 
 - ```pinyin``` # Add pinyin information to each ```Token``` (only relevant for Chinese)
 
-The generic processing flow is used for all the annotation operations except ```segmentation``` and ```segmentation_phase_1```. 
+The generic processing flow is used for all the annotation operations except ```segmentation``` and ```segmentation_phase_1```.
+It is implemented in `src/pipeline/generic_annotation.py` with shared prompt helpers in
+`src/pipeline/annotation_prompts.py`.
 
 The generic processing flow is as follows:
-- Input is a ```Text``` object and a specification of the type of annotations to be added.
-- Output is a ```Text``` object which includes the extra annotations.
+- Input is a ```Text``` JSON object and a specification of the type of annotations to be added.
+- Output is a ```Text``` JSON object which includes the extra annotations.
 - Recursively descend from ```Text``` to ```Page``` to ```Segment``` and process each ```Segment``` in parallel (fan-out).
-- For each ```Segment```: 
-	- Construct an appropriate prompt. The input to the prompt construction process will include 
-		- the ```Segment```
-		- a prompt template specific to the operation and source language
-		- (optionally) a list of few-shot examples specific to the operation and source language
-  - pass the prompt to the AI
+- For each ```Segment```:
+        - Construct an appropriate prompt. The input to the prompt construction process will include
+                - the ```Segment```
+                - a prompt template specific to the operation and source language
+                - (optionally) a list of few-shot examples specific to the operation and source language
+        - pass the prompt to the AI via the async wrapper (heartbeat + retries)
 - When processing of all the ```Segment```s has completed, combine them to create the new ```Text``` object (fan-in)
 
-The ```segmentation``` operation is special because it is the first one. 
-- The input is plain text, and the output is a ```Text``` object.
-- The ```segmentation``` operation is divided into two parts, ```segmentation_phase_1``` and ```segmentation_phase_2```. 
-- ```segmentation_phase_1``` converts the input plain text into a ```Text``` object where the ```Segment``` objects only contain plain text content in the form of a ```surface``` field. 
-- ```segmentation_phase_2``` uses the generic processing flow to convert the output of the first part into a ```Text``` object where each ```Segment``` object includes a list of ```Token``` objects.
+Implementation hooks:
+- Prompt templates live under `prompts/<operation>/<lang>/template.txt`; optional few-shots live in `prompts/<operation>/<lang>/fewshots/`.
+- `GenericAnnotationSpec` accepts a per-segment prompt builder so operations can shape the output instructions.
+- Telemetry is shared across all segment calls with per-segment op_ids for heartbeat logging.
+
+The ```segmentation``` operation is special because it is the first one.
+- The input is plain text, and the output is a ```Text``` JSON object.
+- The ```segmentation``` operation is divided into two parts, ```segmentation_phase_1``` and ```segmentation_phase_2```.
+- ```segmentation_phase_1``` converts the input plain text into a ```Text``` JSON object where the ```Segment``` objects only contain plain text content in the form of a ```surface``` field.
+- ```segmentation_phase_2``` uses the generic processing flow to convert the output of the first part into a ```Text``` JSON object where each ```Segment``` object includes a list of ```Token``` objects. The prompt/template + few-shots for this step live under `prompts/segmentation_phase_2/<lang>/` and return a per-segment JSON payload containing `surface`, `tokens` (including whitespace/punctuation tokens), and `annotations`.
 
 ---
 
-## 4) Example inputs and outputs for segmentation operation
+## 5) Example inputs and outputs for segmentation operation
 
 Here is a minimal example of inputs and outputs for the ```segmentation``` operation.
+
+Implementation note: `src/pipeline/segmentation.py` now drives `segmentation_phase_1` by loading the language-specific prompt template and few-shot examples from `prompts/segmentation_phase_1/<lang>/`, constructing the prompt, and calling the async OpenAI wrapper. The AI is expected to return the `Text` JSON structure shown below with only `surface` fields populated inside each segment.
 
 The input plain text string is the following:
 
@@ -131,80 +175,94 @@ A boy once lived with his mother in a house by the sea. The boy's name was Will.
 One day, walking on the beach, Will noticed a curious object. It looked like a very large egg.
 ```
 
-A plausible output of the ```segmentation_phase_1``` operation could be the following ```Text``` object:
+A plausible output of the ```segmentation_phase_1``` operation could be the following ```Text``` JSON object:
 
-```python
-
-Text(l2="en",
-	 surface="""A boy once lived with his mother in a house by the sea. The boy's name was Will. His mother's name was Emma.
+```json
+{
+  "l2": "en",
+  "surface": """A boy once lived with his mother in a house by the sea. The boy's name was Will. His mother's name was Emma.
 
 One day, walking on the beach, Will noticed a curious object.  It looked like a very large egg.""",
-     pages=[Page(surface="A boy once lived with his mother in a house by the sea. The boy's name was Will. His mother's name was Emma.",
-	             segments=[Segment(surface="A boy once lived with his mother in a house by the sea."),
-				           Segment(surface=" The boy's name was Will."),
-						   Segment(surface=" His mother's name was Emma.")
-						   ],
-			Page(surface="One day, walking on the beach, Will noticed a curious object. It looked like a very large egg.",
-	             segments=[Segment(surface="One day, walking on the beach, Will noticed a curious object."),
-				           Segment(surface=" It looked like a very large egg.")
-						   ]
-			]
-	)
+  "pages": [
+    {
+      "surface": "A boy once lived with his mother in a house by the sea. The boy's name was Will. His mother's name was Emma.",
+      "segments": [
+        { "surface": "A boy once lived with his mother in a house by the sea." },
+        { "surface": " The boy's name was Will." },
+        { "surface": " His mother's name was Emma." }
+      ]
+    },
+    {
+      "surface": "One day, walking on the beach, Will noticed a curious object. It looked like a very large egg.",
+      "segments": [
+        { "surface": "One day, walking on the beach, Will noticed a curious object." },
+        { "surface": " It looked like a very large egg." }
+      ]
+    }
+  ]
+}
 ```
 
-This ```Text``` object will be the input to the  ```segmentation_phase_2```. The output will be the same as the input, except that each ```Segment``` object will be further annotated with a ```tokens``` field. For example, the ```Segment``` object
+This ```Text``` JSON object will be the input to the ```segmentation_phase_2```. The output will be the same as the input, except that each ```Segment``` object will be further annotated with a ```tokens``` array. For example, the ```Segment``` object
 
-```python
-Segment(surface=" The boy's name was Will.")
+```json
+{ "surface": " The boy's name was Will." }
 ```
 
-will be transformed into 
+will be transformed into
 
-```python
-Segment(surface=" The boy's name was Will.",
-        tokens=[Token(surface=" "),
-		        Token(surface="The"),
-		        Token(surface=" "),			
-		        Token(surface="boy"),
-		        Token(surface="'s"),		
-		        Token(surface=" "),
-		        Token(surface="name"),			
-		        Token(surface=" "),
-		        Token(surface="was"),	
-		        Token(surface=" "),
-		        Token(surface="Will"),			
-		        Token(surface=".")
-               ]				
-		)
+```json
+{
+  "surface": " The boy's name was Will.",
+  "tokens": [
+    { "surface": " " },
+    { "surface": "The" },
+    { "surface": " " },
+    { "surface": "boy" },
+    { "surface": "'s" },
+    { "surface": " " },
+    { "surface": "name" },
+    { "surface": " " },
+    { "surface": "was" },
+    { "surface": " " },
+    { "surface": "Will" },
+    { "surface": "." }
+  ]
+}
 ```
 
 ---
 
-## 5) Directory layout (initial)
+## 6) Directory layout (initial)
 
-- src/clara2/
-  - core/
-    - types.py				# dataclasses: Text, Page, Segment, Token, etc.
-    - storage.py				# local JSON read/write helpers
-    - config.py				# model names, timeouts, concurrency, retry policy
-	- ai_api.py				# call gpt5 and other AIs
-    - telemetry.py			# heartbeat/event sink interface
-  - pipeline/
-    - text_gen.py				# create text from spec
-    - segmentation.py			# phase-1 + phase-2 orchestration
-	- generic_annotation.py		# generic annotation for operations other than segmentation-phase-1
-	- annotation_prompts.py		# Create prompts for use in generic annotation
+- src/
+  - core/                           # import root for shared infra (sibling of `docs/`)
+    - ai_api.py                     # AsyncOpenAI wrapper with heartbeats + retries
+    - config.py                     # model names, timeouts, retry policy, heartbeat cadence
+    - telemetry.py                  # heartbeat/event sink interface (NullTelemetry, StdoutTelemetry)
+    - types.py                      # dataclasses: Text, Page, Segment, Token, etc. (JSON-on-wire)
+    - storage.py                    # local JSON read/write helpers
+  - pipeline/                       # pipeline steps sit next to core under src/
+    - text_gen.py                   # create text from spec
+    - segmentation.py               # phase-1 + phase-2 orchestration
+    - generic_annotation.py         # generic annotation for operations other than segmentation-phase-1
+    - annotation_prompts.py         # create prompts for use in generic annotation
   - cli/
-    - seg.py					# CLI entry points for MVP (argparse/typer)
-  - prompts/
-	- segmentation_phase_1/	# Information specific to segmention phase 1 
-		- fr/					# Information specific to segmention phase 1 and French				 
-			- template.txt	
-			- fewshots/
-		- [similarly for other languages]
-    - segmentation_phase_2/	# Information specific to segmention phase 2 
-		- fr/					# Information specific to segmention phase 2 and French				 
-			- template.txt	
-			- fewshots/
-		- [similarly for other languages]
-	- [similarly for other annotation operations]
+    - seg.py                        # CLI entry points for MVP (argparse/typer)
+- prompts/
+  - text_gen/                       # per-language templates + fewshots for text generation
+    - fr/
+      - template.txt
+      - fewshots/
+    - [similarly for other languages]
+  - segmentation_phase_1/           # per-language templates + fewshots
+    - fr/
+      - template.txt
+      - fewshots/
+    - [similarly for other languages]
+  - segmentation_phase_2/
+    - fr/
+      - template.txt
+      - fewshots/
+    - [similarly for other languages]
+  - [similarly for other annotation operations]
