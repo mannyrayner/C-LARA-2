@@ -1,0 +1,33 @@
+{% extends "projects/base.html" %}
+{% block title %}Project: {{ object.title }}{% endblock %}
+{% block content %}
+<h1>{{ object.title }}</h1>
+<p>{{ object.description }}</p>
+<p>Language: {{ object.language }} → {{ object.target_language }}</p>
+<p><a class="btn" href="{% url 'project-compile' object.pk %}">Compile to HTML</a>
+<a class="btn secondary" href="{% url 'project-publish' object.pk %}">{% if object.is_published %}Unpublish{% else %}Publish{% endif %}</a></p>
+{% if object.compiled_path %}
+  <p><a class="btn link" href="{% url 'project-compiled' pk=object.pk path='page_1.html' %}" target="_blank">View compiled HTML</a></p>
+  <p>Artifacts stored at: {{ object.artifact_root }}</p>
+{% else %}
+  <p>No compilation yet. Use "Compile to HTML" to generate outputs.</p>
+{% endif %}
+
+{% if progress %}
+  <h3>Progress</h3>
+  <ul>
+    {% for entry in progress %}
+      <li><strong>{{ entry.stage }}</strong> — {{ entry.status }} @ {{ entry.timestamp }}</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+{% if stage_files %}
+  <h3>Intermediate artifacts</h3>
+  <ul>
+    {% for file in stage_files %}
+      <li><a href="{% url 'project-compiled' pk=object.pk path=file %}" target="_blank">{{ file }}</a></li>
+    {% endfor %}
+  </ul>
+{% endif %}
+{% endblock %}
