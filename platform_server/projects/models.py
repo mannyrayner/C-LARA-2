@@ -7,10 +7,18 @@ from django.utils import timezone
 
 
 class Project(models.Model):
+    INPUT_DESCRIPTION = "description"
+    INPUT_SOURCE = "source_text"
+    INPUT_CHOICES = [
+        (INPUT_DESCRIPTION, "Description (AI-generate text)"),
+        (INPUT_SOURCE, "Source text"),
+    ]
+
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="projects")
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
-    source_text = models.TextField()
+    source_text = models.TextField(blank=True)
+    input_mode = models.CharField(max_length=20, choices=INPUT_CHOICES, default=INPUT_SOURCE)
     language = models.CharField(max_length=16, default="en")
     target_language = models.CharField(max_length=16, default="fr")
     compiled_path = models.CharField(max_length=512, blank=True)

@@ -17,7 +17,7 @@ from django.views.generic import DetailView, ListView, CreateView
 
 from core.config import OpenAIConfig
 from core.ai_api import OpenAIClient
-from pipeline.full_pipeline import FullPipelineSpec, run_full_pipeline
+from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 
 from .forms import ProjectForm, RegistrationForm
 from .models import Project
@@ -72,6 +72,10 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
                     progress.sort(key=lambda p: p.get("timestamp", ""))
         context["stage_files"] = stage_files
         context["progress"] = progress
+        context["pipeline_stages"] = PIPELINE_ORDER
+        context["default_start_stage"] = (
+            "text_gen" if project.input_mode == Project.INPUT_DESCRIPTION else "segmentation_phase_1"
+        )
         return context
 
 
@@ -102,6 +106,18 @@ def _prepare_output_dir(project: Project) -> Path:
     return output_dir
 
 
+def _load_stage_payload(project: Project, stage: str) -> dict[str, Any] | None:
+    if not project.artifact_root:
+        return None
+    path = Path(project.artifact_root) / "stages" / f"{stage}.json"
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
 @login_required
 def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     project = get_object_or_404(Project, pk=pk, owner=request.user)
@@ -118,8 +134,43 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         except Exception:
             pass
 
+    start_stage = request.POST.get("start_stage") or (
+        "text_gen" if project.input_mode == Project.INPUT_DESCRIPTION else "segmentation_phase_1"
+    )
+    if start_stage not in PIPELINE_ORDER:
+        messages.error(request, "Unknown start stage.")
+        return redirect("project-detail", pk=project.pk)
+
+    text: str | None = None
+    text_obj: dict[str, Any] | None = None
+    description: str | None = None
+
+    if start_stage == "text_gen":
+        description = (project.description or "").strip()
+        if not description:
+            messages.error(request, "Please provide a description to generate text.")
+            return redirect("project-detail", pk=project.pk)
+    elif start_stage == "segmentation_phase_1":
+        text = (project.source_text or "").strip()
+        if not text:
+            messages.error(request, "Please provide source text to segment.")
+            return redirect("project-detail", pk=project.pk)
+    else:
+        # Start from a persisted intermediate produced by a previous run.
+        upstream_index = PIPELINE_ORDER.index(start_stage) - 1
+        upstream_stage = PIPELINE_ORDER[upstream_index]
+        text_obj = _load_stage_payload(project, upstream_stage)
+        if text_obj is None:
+            messages.error(
+                request,
+                f"Cannot start at {start_stage}: missing upstream stage output ({upstream_stage}).",
+            )
+            return redirect("project-detail", pk=project.pk)
+
     spec = FullPipelineSpec(
-        text=project.source_text,
+        text=text,
+        text_obj=text_obj,
+        description=description,
         language=project.language,
         target_language=project.target_language,
         output_dir=output_dir,
@@ -127,10 +178,11 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         require_real_tts=True,
         persist_intermediates=True,
         progress_callback=progress_cb,
+        start_stage=start_stage,
     )
 
     client = _build_ai_client()
-    messages.info(request, "Compiling project; this may take a moment...")
+    messages.info(request, f"Compiling project starting at {start_stage}; this may take a moment...")
     try:
         result = asyncio.run(run_full_pipeline(spec, client=client))
     except Exception as exc:  # pragma: no cover - surface to UI

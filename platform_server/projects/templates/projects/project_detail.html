@@ -4,8 +4,17 @@
 <h1>{{ object.title }}</h1>
 <p>{{ object.description }}</p>
 <p>Language: {{ object.language }} → {{ object.target_language }}</p>
-<p><a class="btn" href="{% url 'project-compile' object.pk %}">Compile to HTML</a>
-<a class="btn secondary" href="{% url 'project-publish' object.pk %}">{% if object.is_published %}Unpublish{% else %}Publish{% endif %}</a></p>
+<form method="post" action="{% url 'project-compile' object.pk %}">{% csrf_token %}
+  <p><label for="start_stage">Start from stage:</label>
+    <select name="start_stage" id="start_stage">
+      {% for stage in pipeline_stages %}
+        <option value="{{ stage }}" {% if stage == default_start_stage %}selected{% endif %}>{{ stage }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn" type="submit">Compile to HTML</button>
+  </p>
+</form>
+<p><a class="btn secondary" href="{% url 'project-publish' object.pk %}">{% if object.is_published %}Unpublish{% else %}Publish{% endif %}</a></p>
 {% if object.compiled_path %}
   <p><a class="btn link" href="{% url 'project-compiled' pk=object.pk path='page_1.html' %}" target="_blank">View compiled HTML</a></p>
   <p>Artifacts stored at: {{ object.artifact_root }}</p>
