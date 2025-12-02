@@ -56,10 +56,11 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         stage_files: list[str] = []
         progress: list[dict[str, Any]] = []
         if project.artifact_root:
-            stage_dir = Path(project.artifact_root) / "stages"
+            base = Path(project.artifact_root).resolve()
+            stage_dir = base / "stages"
             if stage_dir.exists():
                 stage_files = [
-                    path.relative_to(project.artifact_root).as_posix()
+                    path.resolve().relative_to(base).as_posix()
                     for path in sorted(stage_dir.glob("*.json"), key=lambda p: p.stat().st_mtime)
                 ]
                 progress_path = stage_dir / "progress.jsonl"
@@ -121,7 +122,7 @@ def _load_stage_payload(project: Project, stage: str) -> dict[str, Any] | None:
 @login_required
 def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     project = get_object_or_404(Project, pk=pk, owner=request.user)
-    output_dir = _prepare_output_dir(project)
+    output_dir = _prepare_output_dir(project).resolve()
     stage_dir = output_dir / "stages"
     stage_dir.mkdir(parents=True, exist_ok=True)
     progress_log = stage_dir / "progress.jsonl"
@@ -196,9 +197,10 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     compiled_rel = ""
     if index_path:
         try:
-            compiled_rel = Path(index_path).resolve().relative_to(output_dir.resolve()).as_posix()
+            base = output_dir.resolve()
+            compiled_rel = Path(index_path).resolve().relative_to(base).as_posix()
         except Exception:
-            compiled_rel = str(index_path)
+            compiled_rel = Path(index_path).as_posix()
     project.compiled_path = compiled_rel
     project.artifact_root = str(output_dir)
     project.save(update_fields=["compiled_path", "artifact_root", "updated_at"])
