@@ -74,5 +74,9 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Auth redirects
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/accounts/login/"
+
 # Pipeline defaults for server integration
 PIPELINE_OUTPUT_ROOT = MEDIA_ROOT / "projects"

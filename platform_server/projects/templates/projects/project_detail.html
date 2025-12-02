@@ -7,7 +7,7 @@
 <p><a class="btn" href="{% url 'project-compile' object.pk %}">Compile to HTML</a>
 <a class="btn secondary" href="{% url 'project-publish' object.pk %}">{% if object.is_published %}Unpublish{% else %}Publish{% endif %}</a></p>
 {% if object.compiled_path %}
-  <p><a class="btn link" href="{% url 'project-compiled' object.pk path='page_1.html' %}" target="_blank">View compiled HTML</a></p>
+  <p><a class="btn link" href="{% url 'project-compiled' pk=object.pk path='page_1.html' %}" target="_blank">View compiled HTML</a></p>
   <p>Artifacts stored at: {{ object.artifact_root }}</p>
 {% else %}
   <p>No compilation yet.</p>
