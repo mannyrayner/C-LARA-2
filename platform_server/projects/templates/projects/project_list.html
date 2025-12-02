@@ -1,0 +1,13 @@
+{% extends "projects/base.html" %}
+{% block title %}Projects{% endblock %}
+{% block content %}
+<h1>Your projects</h1>
+<p><a class="btn" href="{% url 'project-create' %}">New project</a></p>
+<ul>
+  {% for project in object_list %}
+    <li><a href="{% url 'project-detail' project.pk %}">{{ project.title }}</a> {% if project.is_published %}(published){% endif %}</li>
+  {% empty %}
+    <li>No projects yet.</li>
+  {% endfor %}
+</ul>
+{% endblock %}
