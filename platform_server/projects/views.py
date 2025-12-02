@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -246,3 +247,20 @@ def serve_compiled(request: HttpRequest, pk: int, path: str) -> HttpResponse:
     if not file_path.exists():
         raise Http404()
     return FileResponse(open(file_path, "rb"))
+
+
+@login_required
+def delete_project(request: HttpRequest, pk: int) -> HttpResponse:
+    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    if request.method != "POST":
+        messages.error(request, "Project deletion must be confirmed.")
+        return redirect("project-detail", pk=project.pk)
+
+    artifact_dir = project.artifact_dir()
+    project.delete()
+    try:
+        shutil.rmtree(artifact_dir, ignore_errors=True)
+    except Exception:
+        pass
+    messages.success(request, "Project deleted.")
+    return redirect("project-list")
