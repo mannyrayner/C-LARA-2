@@ -19,6 +19,13 @@ The HTML compiler (`compile_html.py`) and end-to-end runner (`run_full_pipeline`
 
 New operations enrich `annotations` at the segment or token level, but never mutate `surface` text. Each step must preserve any annotations produced by earlier steps (including token arrays) and only add new annotation keys or values. The segmentation phases already fill `pages`, `segments`, and `tokens`.
 
+### Runtime annotation contracts
+
+- **MWEs**: tokens that belong to an MWE carry `token.annotations.mwe_id`. All tokens with the same ID share lemma/gloss/audio semantics and must be highlighted together in the HTML layer. The segment also records `segment.annotations.mwes` so callers know the spans and labels.
+- **Audio**: token-level audio must be generated from the **token surface** (not the lemma) so inflected forms sound correct (e.g., `loved` → audio from “loved”, not “love”). MWE tokens still use the per-token surface even though they share lemma/gloss metadata. Each audio annotation is a JSON object: `{ "path": "audio/<hash>.wav", "surface": "...", "engine": "...", "voice": "...", "language": "...", "level": "token|segment|page" }`.
+- **Glosses**: gloss values should respect MWEs (shared across all tokens in the span) and keep diacritics. Prompts must not strip accents; downstream HTML escapes non-ASCII characters as numeric entities so browsers display the original spelling.
+- **Concordance**: concordance entries are keyed by lemma. When a token is part of an MWE, the concordance entry uses the shared lemma and includes the token IDs and page/segment indices for navigation.
+
 ## Operations and outputs
 
 Each operation is defined by a prompt template plus few-shot examples under `prompts/<operation>/<lang>/`. The generic annotator fans out one request per segment (unless noted) and merges results back into the text object. Implemented so far: translation (EN→FR), MWE detection, lemma tagging, glossing, pinyin (via `pypinyin`), audio annotation (stub/OpenAI TTS), HTML compilation, and the stitched full-pipeline helper.
@@ -60,11 +67,11 @@ src/
     text_gen.py            # description → generated text
     translation.py         # segment-level translation (new)
     lemma.py               # token-level lemmatization (new)
-    gloss.py               # token-level glossing (new)
-    mwe.py                 # multi-word expression detection (new)
-    pinyin.py              # Chinese romanization (new)
-    audio.py               # token/segment audio synthesis with caching (new)
-    compile_html.py        # HTML assembly with MWE-aware JS hooks (new)
+  gloss.py               # token-level glossing (new)
+  mwe.py                 # multi-word expression detection (new)
+  pinyin.py              # Chinese romanization (new)
+  audio.py               # token/segment audio synthesis with caching (new)
+  compile_html.py        # HTML assembly with MWE-aware JS hooks (new)
 prompts/
   translation/<lang>/template.txt, fewshots/*.json
   lemma/<lang>/template.txt, fewshots/*.json
@@ -73,6 +80,27 @@ prompts/
   pinyin/zh/template.txt, fewshots/*.json
   # audio uses a library-backed synthesizer and cache; no prompts required
 ```
+
+**Artifact layout per pipeline run** (used by tests and by the Django platform):
+
+```
+artifacts/
+  html/run_<id>/            # compiled HTML pages + concordance + static assets
+  audio/<hash>.wav          # cached audio (token/segment/page) generated during the run
+  stages/                   # JSON snapshots per stage when persisted
+    segmentation_phase_1.json
+    segmentation_phase_2.json
+    translation.json
+    mwe.json
+    lemma.json
+    gloss.json
+    pinyin.json
+    audio.json
+```
+
+Within a run, HTML pages reference audio using relative paths (e.g., `audio/<hash>.wav`) so opening `page_1.html` directly from
+disk loads token/segment/page audio without server rewrites. Concordance pages live alongside `page_<n>.html` and are named
+`concordance_<lemma>.html`.
 
 ## Pipeline sequencing
 
@@ -151,8 +179,8 @@ The table below shows a short segment containing an MWE ("put up with") as it mo
 
 ### Interactions
 
-- **Click a token or concordance item**: opens the lemma’s concordance view in the right pane and plays token audio if present. If the token is part of an MWE, all member tokens highlight together.
-- **Hover a token**: shows a popup with gloss (and pinyin when available) and highlights all tokens in the same MWE. Hovering in either pane uses the same JS handlers.
+- **Click a token or concordance item**: opens the lemma’s concordance view in the right pane (load `concordance_<lemma>.html`), plays token audio if present, and highlights the clicked token plus all other members of the same MWE.
+- **Hover a token**: shows a popup with gloss (and pinyin when available) and highlights the hovered token plus all tokens in the same MWE. Hovering in either pane uses the same JS handlers.
 - **Segment controls**: buttons for translation reveal and segment audio playback, wired to the segment-level audio annotation.
 - **Page controls**: button for page-level audio playback that streams the concatenated audio file if available.
 - All interactions should degrade gracefully when audio/gloss/pinyin are missing (no errors, just no-op or textual fallback).

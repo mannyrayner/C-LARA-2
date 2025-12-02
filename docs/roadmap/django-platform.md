@@ -55,14 +55,17 @@ media/
     runs/<timestamp>/       # per-pipeline-run artifacts
       input/                # normalized input JSON for the run
       stage_<name>/         # JSON outputs per stage
-      audio/                # TTS assets (token/segment/page)
-      html/                 # compiled multi-page HTML + static assets
+      audio/                # TTS assets (token/segment/page) copied per run
+      html/                 # compiled multi-page HTML + static assets (page_*.html + concordance_*.html + static/)
       logs/                 # telemetry + pipeline logs
     manual_edits/           # patches keyed by version
     published/<version_id>/ # frozen artifacts for public serving
 ```
 - Media backed by Django `FileField` storage; default to local filesystem in dev, S3/GCS/Azure in production.
 - Checksums recorded per artifact to detect drift and support caching.
+- Paths exposed in the UI should be **POSIX-style relative to `runs/<timestamp>/`** so HTML/audio links remain valid when served
+  from Django or opened directly from disk during reviews. When copying audio into a run, the compiler rewrites `data-audio`
+  attributes to `audio/<hash>.wav` to avoid leaking absolute paths.
 
 ## Pipeline orchestration (Django layer)
 - A `PipelineService` (Django service module) wraps `run_full_pipeline` with:
@@ -70,6 +73,10 @@ media/
   - Idempotent logging: store input spec, outputs, and telemetry per run.
   - Background execution via Celery/RQ for long-running jobs; progress updates push to WebSocket/SSE for UI.
   - Error handling: mark run as failed with traceback and partial artifacts for debugging.
+  - Progress visibility: emit ordered start/done events per stage (with timestamps) and optionally persist `stages/<name>.json`
+    snapshots so the UI can show “in progress” updates and links as soon as a stage finishes.
+  - Start-stage selection: the UI passes an explicit `start_stage` (description → text_gen vs. provided source → segmentation
+    phase 1); intermediate artifacts from later stages are cleared when rerunning from an earlier stage.
 - Manual edit flow: users can open the latest JSON at a stage, apply edits via UI, save as a new `ProjectVersion` with a `ManualEdit` entry, and re-run downstream stages.
 - Import/export: allow uploading existing C-LARA projects (ZIP containing JSON/HTML/audio) into a project; export any version as ZIP for offline review.
 
@@ -80,12 +87,15 @@ media/
   - **Access posted content** from a simple library view listing published projects; respects permissions and opens the compiled HTML viewer. Non-essential controls remain tucked behind an “Options” menu.
   - The minimal UI coexists with the full workspace; users can switch to the advanced view without losing state.
 - **Dashboard**: list projects with status badges (draft, running, failed, published), quick actions (resume/edit/publish/view), and search/filter by tag/language.
-- **Project workspace**:
-  - Source tab: upload/edit raw text and metadata; start pipeline runs with stage selection and target languages.
-  - Versions tab: chronological list of versions with stage coverage, notes, artifacts links, and diff view between versions.
-  - Annotations tab: read-only view of JSON per stage with download buttons.
-  - Manual edit tab: UI to edit JSON (segmentation or later stages) with validation and change previews.
-  - Publish tab: select a version to publish, set visibility, manage slug, view published URL, and preview compiled HTML.
+  - **Project workspace**:
+    - Source tab: upload/edit raw text and metadata; start pipeline runs with stage selection and target languages.
+    - Compile tab: choose start stage (description → text_gen or supplied source → segmentation_phase_1 by default), kick off the
+      pipeline, and show live status messages for each stage. Intermediate artifacts and compiled HTML links appear as soon as
+      they are written.
+    - Versions tab: chronological list of versions with stage coverage, notes, artifacts links, and diff view between versions.
+    - Annotations tab: read-only view of JSON per stage with download buttons.
+    - Manual edit tab: UI to edit JSON (segmentation or later stages) with validation and change previews.
+    - Publish tab: select a version to publish, set visibility, manage slug, view published URL, and preview compiled HTML.
 - **Viewer**: public-facing page to read compiled HTML, play audio, and see concordance; shows translation toggles, gloss popups, MWE highlights; includes rating/comment widgets if enabled.
 - **Admin/moderation**: manage users, handle abuse reports, remove content, view audit logs.
 
