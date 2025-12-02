@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{% block title %}C-LARA-2 Platform{% endblock %}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; }
+    nav a { margin-right: 1rem; }
+    .messages { margin: 1rem 0; padding: 0; list-style: none; }
+    .messages li { padding: 0.5rem; background: #f5f5f5; margin-bottom: 0.5rem; }
+    textarea { width: 100%; }
+    .btn { padding: 0.4rem 0.8rem; background: #0366d6; color: white; border: none; text-decoration: none; }
+    .btn.secondary { background: #444; }
+    .btn.link { background: transparent; color: #0366d6; border: none; }
+  </style>
+</head>
+<body>
+<nav>
+  {% if user.is_authenticated %}
+    Hello, {{ user.username }} |
+    <a href="{% url 'project-list' %}">Projects</a>
+    <a href="{% url 'logout' %}">Logout</a>
+  {% else %}
+    <a href="{% url 'login' %}">Login</a>
+    <a href="{% url 'register' %}">Register</a>
+  {% endif %}
+</nav>
+<ul class="messages">
+  {% for message in messages %}
+    <li>{{ message }}</li>
+  {% endfor %}
+</ul>
+{% block content %}{% endblock %}
+</body>
+</html>
