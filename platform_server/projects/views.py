@@ -59,7 +59,7 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
             stage_dir = Path(project.artifact_root) / "stages"
             if stage_dir.exists():
                 stage_files = [
-                    str(path.relative_to(project.artifact_root))
+                    path.relative_to(project.artifact_root).as_posix()
                     for path in sorted(stage_dir.glob("*.json"), key=lambda p: p.stat().st_mtime)
                 ]
                 progress_path = stage_dir / "progress.jsonl"
@@ -193,13 +193,30 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     index_path = None
     if html_info:
         index_path = html_info.get("index_path") or html_info.get("html_path")
-    project.compiled_path = str(index_path) if index_path else ""
+    compiled_rel = ""
+    if index_path:
+        try:
+            compiled_rel = Path(index_path).resolve().relative_to(output_dir.resolve()).as_posix()
+        except Exception:
+            compiled_rel = str(index_path)
+    project.compiled_path = compiled_rel
     project.artifact_root = str(output_dir)
     project.save(update_fields=["compiled_path", "artifact_root", "updated_at"])
-    if index_path:
+    if compiled_rel:
         messages.success(request, "Project compiled to HTML.")
     else:
         messages.warning(request, "Compilation finished but no HTML was produced.")
+    # Surface per-stage progress entries as notifications for quick visibility.
+    if progress_log.exists():
+        try:
+            for line in progress_log.read_text(encoding="utf-8").splitlines():
+                entry = json.loads(line)
+                messages.info(
+                    request,
+                    f"{entry.get('stage')}: {entry.get('status')} @ {entry.get('timestamp')}",
+                )
+        except Exception:
+            pass
     return redirect("project-detail", pk=project.pk)
 
 
