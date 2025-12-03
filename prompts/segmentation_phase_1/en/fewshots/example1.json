@@ -1,0 +1,18 @@
+{
+  "input": "A bird sat on the windowsill. It watched the rain. When the sun came out, it flew away.",
+  "output": {
+    "l2": "en",
+    "surface": "A bird sat on the windowsill. It watched the rain. When the sun came out, it flew away.",
+    "pages": [
+      {
+        "surface": "A bird sat on the windowsill. It watched the rain. When the sun came out, it flew away.",
+        "segments": [
+          {"surface": "A bird sat on the windowsill."},
+          {"surface": " It watched the rain."},
+          {"surface": " When the sun came out, it flew away."}
+        ]
+      }
+    ],
+    "annotations": {}
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "input": "She learned to cook by watching her grandmother.",
+  "output": {
+    "surface": "She learned to cook by watching her grandmother.",
+    "annotations": {
+      "translation": "Elle a appris à cuisiner en regardant sa grand-mère."
+    }
+  }
+}
