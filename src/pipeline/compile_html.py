@@ -431,8 +431,8 @@ nav a { margin-right: 0.5rem; }
         const targetDoc = contextDocument || document;
         const pane = targetDoc.getElementById('concordance-pane');
         const encoded = encodeURIComponent(lemma);
-        const url = new URL(`concordance_${encoded}.html`, window.location.href);
-        if (pane) { pane.src = url.toString(); }
+        const target = `concordance_${encoded}.html`;
+        if (pane) { pane.src = target; }
         if (window.parent !== window) {
           window.parent.postMessage({ type: 'loadConcordance', data: { lemma } }, '*');
         }

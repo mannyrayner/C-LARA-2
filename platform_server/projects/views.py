@@ -74,17 +74,17 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
                 except ValueError:
                     compiled_uri = compiled_abs.as_posix()
 
-                # Prefer a deterministic MEDIA_URL-based link so compiled pages load
-                # concordances/static assets without relying on the authenticated
-                # serve_compiled view. This mirrors the direct file access that works
-                # reliably when opening pages from disk.
+                rel_media = None
                 try:
                     rel_media = compiled_abs.relative_to(media_root)
                 except Exception:
-                    # If the path sits outside MEDIA_ROOT, fall back to joining the
-                    # artifact directory name manually.
+                    pass
+                if rel_media is None:
                     try:
-                        rel_media = Path(base).relative_to(media_root) / Path(project.compiled_path)
+                        rel_media = (
+                            Path(project.artifact_root or base).resolve().relative_to(media_root)
+                            / Path(project.compiled_path)
+                        )
                     except Exception:
                         rel_media = None
 
