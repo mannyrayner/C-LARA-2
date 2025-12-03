@@ -35,8 +35,14 @@ class Project(models.Model):
         return f"{self.title} ({self.owner})"
 
     def artifact_dir(self) -> Path:
-        base = getattr(settings, "PIPELINE_OUTPUT_ROOT", Path(settings.MEDIA_ROOT) / "projects")
-        return Path(base) / str(self.owner.id) / f"project_{self.id}"
+        """Return the base artifact directory for this project.
+
+        Layout mirrors the documented structure under ``media/users/<user_id>/projects``
+        so each project keeps its runs grouped beneath a user-specific folder.
+        """
+
+        base = getattr(settings, "PIPELINE_OUTPUT_ROOT", Path(settings.MEDIA_ROOT) / "users")
+        return Path(base) / str(self.owner.id) / "projects" / f"project_{self.id}"
 
     def compiled_index(self) -> Path | None:
         if self.compiled_path:

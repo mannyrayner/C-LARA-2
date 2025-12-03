@@ -101,7 +101,7 @@ def _build_ai_client() -> OpenAIClient:
 
 
 def _prepare_output_dir(project: Project) -> Path:
-    base = project.artifact_dir()
+    base = project.artifact_dir() / "runs"
     timestamp = datetime.utcnow().strftime("run_%Y%m%d_%H%M%S")
     output_dir = base / timestamp
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -203,8 +203,8 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
                 compiled_rel = html_path.relative_to(run_root).as_posix()
             except Exception:
                 compiled_rel = html_path.as_posix()
-    project.compiled_path = compiled_rel
-    project.artifact_root = str(run_root)
+    project.compiled_path = compiled_rel.replace("\\", "/")
+    project.artifact_root = str(run_root).replace("\\", "/")
     project.save(update_fields=["compiled_path", "artifact_root", "updated_at"])
     if compiled_rel:
         messages.success(request, "Project compiled to HTML.")

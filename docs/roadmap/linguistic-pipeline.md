@@ -82,7 +82,7 @@ prompts/
 ```
 
 **Artifact layout per pipeline run** (mirrors what the Django platform writes under
-`media/`):
+`media/users/<user_id>/projects/project_<id>/runs/run_<timestamp>/`):
 
 ```
 <artifact_root>/
@@ -108,7 +108,8 @@ prompts/
 
 Within `html/`, all audio references are POSIX-relative (e.g., `audio/<sha1>.wav`) so opening `page_1.html` directly from disk
 resolves token/segment/page audio without server rewrites. Concordance pages live alongside `page_<n>.html` and are named
-`concordance_<lemma>.html`.
+`concordance_<lemma>.html`. When a caller provides an explicit `output_dir`, `compiled_path` should store the HTML entrypoint
+relative to the run root (e.g., `html/page_1.html`) and `artifact_root` should point at the run root itself.
 
 ## Pipeline sequencing
 

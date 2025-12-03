@@ -50,28 +50,29 @@ This document sketches the Django layer that will host users, projects, and comp
 ## Storage layout
 ```
 media/
-  users/<user_id>/projects/<project_slug>/
-    source/                 # uploaded texts, descriptions (optional)
-    runs/<run_id>/           # per-pipeline-run artifacts (run_id = run_<timestamp>)
-      html/                 # compiled multi-page HTML + concordance + static assets
+  users/<user_id>/projects/project_<id>/
+    runs/run_<timestamp>/            # per-pipeline-run artifacts (fresh on every compile)
+      html/                          # compiled multi-page HTML + concordance + static assets
         page_1.html
         concordance_<lemma>.html
         static/
-      audio/                # TTS assets copied for this run; HTML references are POSIX-relative
+      audio/                         # TTS assets copied for this run; HTML references are POSIX-relative
         <sha1>.wav
-      stages/               # JSON outputs per stage + progress log (optional)
+      stages/                        # JSON outputs per stage + progress log
         segmentation_phase_1.json
         ...
         compile_html.json
         progress.jsonl
-      logs/                 # telemetry/pipeline logs (future)
-    manual_edits/           # patches keyed by version (future)
-    published/<version_id>/ # frozen artifacts for public serving (future)
+      logs/                          # telemetry/pipeline logs (future)
+    source/                          # uploaded texts or descriptions (future)
+    manual_edits/                    # patches keyed by version (future)
+    published/<version_id>/          # frozen artifacts for public serving (future)
 ```
 - Media backed by Django `FileField` storage; default to local filesystem in dev, S3/GCS/Azure in production.
-- Paths exposed in the UI are **POSIX-style relative to `runs/<run_id>/`** so HTML/audio links remain valid when served from
+- Paths exposed in the UI are **POSIX-style relative to a run root** so HTML/audio links remain valid when served from
   Django or opened directly from disk. Audio is copied into `audio/` and HTML references use `audio/<sha1>.wav` to avoid
-  leaking absolute paths.
+  leaking absolute paths. `project.compiled_path` stores the relative HTML entrypoint (e.g., `html/page_1.html`) and
+  `project.artifact_root` points to the active run directory.
 
 ## Pipeline orchestration (Django layer)
 - A `PipelineService` (Django service module) wraps `run_full_pipeline` with:

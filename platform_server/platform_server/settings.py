@@ -79,4 +79,7 @@ LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
 
 # Pipeline defaults for server integration
-PIPELINE_OUTPUT_ROOT = MEDIA_ROOT / "projects"
+# Pipeline artifacts live under media/users/<user_id>/projects/project_<id>/runs/
+# so each user’s runs are isolated while keeping relative links stable for HTML
+# and audio assets.
+PIPELINE_OUTPUT_ROOT = MEDIA_ROOT / "users"
