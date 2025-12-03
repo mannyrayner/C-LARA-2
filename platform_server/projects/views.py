@@ -73,11 +73,23 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
                     compiled_uri = compiled_abs.as_uri()
                 except ValueError:
                     compiled_uri = compiled_abs.as_posix()
+
+                # Prefer a deterministic MEDIA_URL-based link so compiled pages load
+                # concordances/static assets without relying on the authenticated
+                # serve_compiled view. This mirrors the direct file access that works
+                # reliably when opening pages from disk.
                 try:
                     rel_media = compiled_abs.relative_to(media_root)
-                    compiled_media_url = settings.MEDIA_URL.rstrip("/") + "/" + rel_media.as_posix()
                 except Exception:
-                    compiled_media_url = None
+                    # If the path sits outside MEDIA_ROOT, fall back to joining the
+                    # artifact directory name manually.
+                    try:
+                        rel_media = Path(base).relative_to(media_root) / Path(project.compiled_path)
+                    except Exception:
+                        rel_media = None
+
+                if rel_media is not None:
+                    compiled_media_url = settings.MEDIA_URL.rstrip("/") + "/" + rel_media.as_posix()
 
         if run_dir:
             try:
@@ -85,6 +97,22 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
                 run_media_base = settings.MEDIA_URL.rstrip("/") + "/" + rel_run_media
             except Exception:
                 run_media_base = None
+
+            # If the compiled page sits under this run and we failed to compute a
+            # media URL earlier, derive one relative to the run directory so HTML
+            # pages can load concordances and audio when served through Django.
+            if not compiled_media_url and project.compiled_path:
+                try:
+                    compiled_rel_from_run = Path(project.compiled_path).relative_to(
+                        Path("runs") / run_dir.name
+                    )
+                    compiled_media_url = (
+                        (run_media_base.rstrip("/"))
+                        + "/"
+                        + compiled_rel_from_run.as_posix()
+                    )
+                except Exception:
+                    compiled_media_url = None
 
             stage_dir = run_dir / "stages"
             if stage_dir.exists():
