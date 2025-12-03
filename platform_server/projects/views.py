@@ -12,6 +12,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.generic import DetailView, ListView, CreateView
@@ -66,6 +67,14 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         compiled_media_url: str | None = None
         run_media_base: str | None = None
 
+        project_media_base = (
+            Path(settings.MEDIA_URL.rstrip("/"))
+            / "users"
+            / str(project.owner.id)
+            / "projects"
+            / f"project_{project.id}"
+        ).as_posix()
+
         if project.compiled_path:
             compiled_abs = (base / project.compiled_path).resolve()
             if compiled_abs.exists():
@@ -74,45 +83,14 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
                 except ValueError:
                     compiled_uri = compiled_abs.as_posix()
 
-                rel_media = None
-                try:
-                    rel_media = compiled_abs.relative_to(media_root)
-                except Exception:
-                    pass
-                if rel_media is None:
-                    try:
-                        rel_media = (
-                            Path(project.artifact_root or base).resolve().relative_to(media_root)
-                            / Path(project.compiled_path)
-                        )
-                    except Exception:
-                        rel_media = None
-
-                if rel_media is not None:
-                    compiled_media_url = settings.MEDIA_URL.rstrip("/") + "/" + rel_media.as_posix()
+            # Always provide a MEDIA_URL-based link so compiled pages and
+            # concordances can load without hitting the view indirection.
+            compiled_media_url = f"{project_media_base}/{project.compiled_path}"
 
         if run_dir:
-            try:
-                rel_run_media = run_dir.relative_to(media_root).as_posix()
-                run_media_base = settings.MEDIA_URL.rstrip("/") + "/" + rel_run_media
-            except Exception:
-                run_media_base = None
-
-            # If the compiled page sits under this run and we failed to compute a
-            # media URL earlier, derive one relative to the run directory so HTML
-            # pages can load concordances and audio when served through Django.
-            if not compiled_media_url and project.compiled_path:
-                try:
-                    compiled_rel_from_run = Path(project.compiled_path).relative_to(
-                        Path("runs") / run_dir.name
-                    )
-                    compiled_media_url = (
-                        (run_media_base.rstrip("/"))
-                        + "/"
-                        + compiled_rel_from_run.as_posix()
-                    )
-                except Exception:
-                    compiled_media_url = None
+            # Keep the MEDIA-relative run base stable for stage links even if
+            # the project was compiled on a different host path.
+            run_media_base = f"{project_media_base}/runs/{run_dir.name}"
 
             stage_dir = run_dir / "stages"
             if stage_dir.exists():
@@ -345,21 +323,34 @@ def toggle_publish(request: HttpRequest, pk: int) -> HttpResponse:
 
 
 @login_required
+@xframe_options_sameorigin
 def serve_compiled(request: HttpRequest, pk: int, path: str) -> HttpResponse:
+    """Serve compiled artifacts from a project's run directory.
+
+    Mirrors the C-LARA behaviour so concordance iframes and relative links work
+    without refusing the connection.
+    """
+
     project = get_object_or_404(Project, pk=pk)
     if project.owner != request.user and not project.is_published:
         raise Http404()
-    base = Path(project.artifact_root or project.artifact_dir())
+
+    base = Path(project.artifact_root or project.artifact_dir()).resolve()
     safe_path = Path(unquote(path))
     file_path = (base / safe_path).resolve()
+
     try:
-        file_path.relative_to(base.resolve())
+        file_path.relative_to(base)
     except ValueError:
         raise Http404()
+
     if not file_path.exists():
         raise Http404()
-    content_type, _ = mimetypes.guess_type(str(file_path))
-    return FileResponse(open(file_path, "rb"), content_type=content_type or "application/octet-stream")
+
+    content_type, _ = mimetypes.guess_type(unquote(str(file_path)))
+    with open(file_path, "rb") as fp:
+        data = fp.read()
+    return HttpResponse(data, content_type=content_type or "application/octet-stream")
 
 
 @login_required
