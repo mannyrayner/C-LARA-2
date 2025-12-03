@@ -1,0 +1,16 @@
+{% extends "projects/base.html" %}
+{% block title %}New project{% endblock %}
+{% block content %}
+<h1>New project</h1>
+<form method="post">{% csrf_token %}
+  <p>{{ form.title.label_tag }} {{ form.title }}</p>
+  <p>{{ form.input_mode.label_tag }} {{ form.input_mode }}</p>
+  <p><strong>Provide only one input:</strong></p>
+  <p>{{ form.description.label_tag }} {{ form.description }}</p>
+  <p>{{ form.source_text.label_tag }} {{ form.source_text }}</p>
+  <p>{{ form.language.label_tag }} {{ form.language }}</p>
+  <p>{{ form.target_language.label_tag }} {{ form.target_language }}</p>
+  {% if form.non_field_errors %}<div class="messages">{{ form.non_field_errors }}</div>{% endif %}
+  <button class="btn" type="submit">Save</button>
+</form>
+{% endblock %}
