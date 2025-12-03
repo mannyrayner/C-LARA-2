@@ -93,7 +93,7 @@ prompts/
     static/                # JS/CSS assets copied per run
   audio/                   # token/segment/page WAV files for this run only
     <sha1>.wav
-  stages/                  # JSON snapshots per stage (when persisted)
+ stages/                  # JSON snapshots per stage (when persisted)
     segmentation_phase_1.json
     segmentation_phase_2.json
     translation.json
@@ -176,7 +176,8 @@ The table below shows a short segment containing an MWE ("put up with") as it mo
 
 1. Build an in-memory concordance keyed by **lemma**. Each entry keeps the lemma string, optional POS, and the list of segment references where the lemma appears.
 2. When a token belongs to an MWE, its concordance entry references the **shared MWE lemma** so the concordance treats the whole expression consistently.
-3. Persist the concordance alongside the HTML (as embedded JSON in the page) so client-side JS can render and filter without server calls.
+3. When multiple tokens with the same `mwe_id` share a lemma in a segment, record the segment **once** in the concordance to avoid duplicated occurrences across MWE members.
+4. Persist the concordance alongside the HTML (as embedded JSON in the page) so client-side JS can render and filter without server calls. HTML and concordance pages reference audio via run-relative paths (e.g., `audio/<sha1>.wav`) so they remain portable when opened directly from disk or served by Django.
 
 ### Layout
 

@@ -104,6 +104,64 @@ class CompileHTMLTests(unittest.TestCase):
             status="pass",
         )
 
+    def test_concordance_deduplicates_mwe_segments(self) -> None:
+        """Ensure an MWE lemma only appears once per segment in the concordance."""
+
+        out_root = self.artifacts / "html"
+        mwe_text = {
+            "l2": "en",
+            "surface": "The friends sign off together.",
+            "pages": [
+                {
+                    "surface": "The friends sign off together.",
+                    "segments": [
+                        {
+                            "surface": "The friends sign off together.",
+                            "tokens": [
+                                {"surface": "The", "annotations": {}},
+                                {"surface": " ", "annotations": {}},
+                                {"surface": "friends", "annotations": {}},
+                                {"surface": " ", "annotations": {}},
+                                {
+                                    "surface": "sign",
+                                    "annotations": {
+                                        "lemma": "sign off",
+                                        "pos": "VERB",
+                                        "mwe_id": "m1",
+                                        "audio": {"path": str(self.token_audio)},
+                                    },
+                                },
+                                {"surface": " ", "annotations": {}},
+                                {
+                                    "surface": "off",
+                                    "annotations": {
+                                        "lemma": "sign off",
+                                        "pos": "VERB",
+                                        "mwe_id": "m1",
+                                        "audio": {"path": str(self.token_audio)},
+                                    },
+                                },
+                                {"surface": " ", "annotations": {}},
+                                {"surface": "together", "annotations": {}},
+                                {"surface": ".", "annotations": {}},
+                            ],
+                            "annotations": {"translation": "Les amis finissent ensemble."},
+                        }
+                    ],
+                }
+            ],
+        }
+
+        result = compile_html(CompileHTMLSpec(text=mwe_text, output_dir=out_root, run_id="mwe"))
+        concordance = result.get("concordance", [])
+        mwe_entry = next((e for e in concordance if e.get("lemma") == "sign off"), None)
+        self.assertIsNotNone(mwe_entry, "MWE lemma should appear in concordance")
+        self.assertEqual(
+            1,
+            len(mwe_entry["occurrences"]),
+            "MWE lemma should be listed once per segment in concordance",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

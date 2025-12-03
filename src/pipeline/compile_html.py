@@ -8,6 +8,7 @@ cross-pane highlighting and audio playback.
 from __future__ import annotations
 
 import html
+from collections import defaultdict
 import os
 import json
 import uuid
@@ -312,6 +313,9 @@ def _build_concordance(
     text: dict[str, Any], token_info: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
     concordance: dict[str, dict[str, Any]] = {}
+    # For MWEs, multiple tokens share the same lemma; we only want to list each
+    # segment once per MWE so the concordance does not show duplicate lines.
+    seen_mwe: dict[str, set[tuple[Any, Any, Any]]] = defaultdict(set)
     for meta in token_info:
         lemma = meta.get("lemma")
         if not lemma:
@@ -325,6 +329,14 @@ def _build_concordance(
             entry["pos"] = meta.get("pos")
         if entry.get("gloss") is None and meta.get("gloss"):
             entry["gloss"] = meta.get("gloss")
+
+        mwe_id = meta.get("mwe_id")
+        if mwe_id is not None:
+            dedup_key = (mwe_id, meta.get("page_index"), meta.get("segment_index"))
+            if dedup_key in seen_mwe[lemma_key]:
+                continue
+            seen_mwe[lemma_key].add(dedup_key)
+
         entry["occurrences"].append(
             {
                 "token_id": meta.get("token_id"),

@@ -73,6 +73,10 @@ media/
   Django or opened directly from disk. Audio is copied into `audio/` and HTML references use `audio/<sha1>.wav` to avoid
   leaking absolute paths. `project.compiled_path` stores the relative HTML entrypoint (e.g., `html/page_1.html`) and
   `project.artifact_root` points to the active run directory.
+- Concordance panes in compiled HTML use `concordance_<lemma>.html` loaded in an iframe from the same run folder via
+  `MEDIA_URL`; lemmas must be URL-encoded and paths must remain run-relative to avoid cross-origin failures or double
+  escaping. When debugging concordance loading, verify the generated HTML uses `concordance_<lemma>.html` (no extra
+  encoding) and that the Django view serves files from the run directory with `X-Frame-Options: SAMEORIGIN` semantics.
 
 ## Pipeline orchestration (Django layer)
 - A `PipelineService` (Django service module) wraps `run_full_pipeline` with:
