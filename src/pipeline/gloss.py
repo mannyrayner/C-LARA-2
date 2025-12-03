@@ -13,6 +13,40 @@ from . import annotation_prompts
 from .generic_annotation import GenericAnnotationSpec, generic_annotation
 
 
+def _simplify_segment(segment: dict[str, Any]) -> dict[str, Any]:
+    """Return a lightweight segment JSON for prompting.
+
+    We keep only the surface, the token surfaces, and MWE markers. All other
+    annotations (lemma, gloss, POS, audio, etc.) are stripped to reduce prompt
+    size and latency. Segment-level annotations are reduced to translation and
+    MWEs when present.
+    """
+
+    simplified_tokens: list[dict[str, Any]] = []
+    for token in segment.get("tokens", []):
+        simplified_token = {"surface": token.get("surface", "")}
+        mwe_id = (token.get("annotations") or {}).get("mwe_id")
+        if mwe_id:
+            simplified_token["annotations"] = {"mwe_id": mwe_id}
+        simplified_tokens.append(simplified_token)
+
+    annotations: dict[str, Any] = {}
+    seg_ann = segment.get("annotations") or {}
+    if seg_ann.get("translation"):
+        annotations["translation"] = seg_ann["translation"]
+    if seg_ann.get("mwes"):
+        annotations["mwes"] = seg_ann["mwes"]
+
+    simplified = {
+        "surface": segment.get("surface", ""),
+        "tokens": simplified_tokens,
+    }
+    if annotations:
+        simplified["annotations"] = annotations
+
+    return simplified
+
+
 def _load_template(language: str, *, prompts_root: Path) -> str:
     return annotation_prompts.load_template("gloss", language, prompts_root=prompts_root)
 
@@ -41,15 +75,18 @@ def _build_prompt(
     fewshots: list[dict[str, Any]],
     target_language: str,
 ) -> str:
+    simplified = _simplify_segment(segment)
+
     output_instructions = [
-        "Return a JSON object representing the segment.",
-        "Preserve the original surface and tokens.",
-        "For each token, add annotations.gloss: a short {} gloss.".format(target_language.upper()),
-        "Tokens that share the same annotations.mwe_id must share the same gloss value (gloss the whole MWE).",
-        "Use annotations.translation as a hint when present, but prefer concise dictionary-style glosses even when the translation is non-literal.",
+        "Return JSON matching the input structure.",
+        "Populate annotations.gloss for each token using {} (respect surface form).".format(
+            target_language.upper()
+        ),
+        "Tokens sharing the same annotations.mwe_id must share the same gloss (gloss the whole expression).",
+        "If a token cannot sensibly be glossed, set annotations.gloss to '-' instead of inventing content.",
     ]
 
-    segment_json = json.dumps(segment, ensure_ascii=False, indent=2)
+    segment_json = json.dumps(simplified, ensure_ascii=False, indent=2)
     header = f"Segment JSON to gloss into {target_language}:"
     return annotation_prompts.build_prompt(
         template,

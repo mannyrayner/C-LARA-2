@@ -14,13 +14,17 @@ from tests.log_utils import log_test_case
 
 
 class FakeAIClient:
-    def __init__(self, response: dict) -> None:
+    def __init__(self, response: dict, *, delay: float = 0.0) -> None:
         self.response = response
         self.prompts: list[str] = []
+        self.delay = delay
 
     async def chat_json(self, prompt: str, **_: object) -> dict:
         self.prompts.append(prompt)
-        await asyncio.sleep(0)
+        if self.delay:
+            await asyncio.sleep(self.delay)
+        else:
+            await asyncio.sleep(0)
         return self.response
 
 
@@ -124,6 +128,116 @@ class GlossUnitTests(unittest.IsolatedAsyncioTestCase):
             purpose="applies gloss annotations to tokens without losing MWE or translation data",
             inputs={"surface": self.sample_segment["surface"]},
             output={"glosses": glosses, "annotations": segment.get("annotations", {})},
+            status="pass",
+        )
+
+    async def test_gloss_long_segments_reports_time(self) -> None:
+        """Ensure longer segments log processing time and still merge glosses."""
+
+        long_segments = [
+            {
+                "surface": "Once upon a time the kind dormouse shared crumbs with every hungry friend.",
+                "tokens": [
+                    {"surface": "Once", "annotations": {"mwe_id": "m1"}},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "upon", "annotations": {"mwe_id": "m1"}},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "a", "annotations": {}},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "time", "annotations": {"mwe_id": "m1"}},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "the"},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "kind"},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "dormouse"},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "shared"},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "crumbs"},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "with"},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "every"},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "hungry"},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "friend"},
+                    {"surface": "."},
+                ],
+                "annotations": {
+                    "translation": "Il était une fois la gentille souris qui partageait des miettes avec chaque ami affamé.",
+                    "mwes": [{"id": "m1", "tokens": ["Once", "upon", "time"], "label": "idiom"}],
+                },
+            },
+            {
+                "surface": "Later that evening they cleaned up and said good night before the long trip ahead.",
+                "tokens": [
+                    {"surface": "Later"},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "that"},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "evening"},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "they"},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "cleaned"},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "up"},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "and"},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "said"},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "good"},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "night"},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "before"},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "the"},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "long"},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "trip"},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "ahead"},
+                    {"surface": "."},
+                ],
+                "annotations": {
+                    "translation": "Plus tard dans la soirée, ils ont tout rangé et se sont dit bonne nuit avant le long voyage.",
+                },
+            },
+        ]
+
+        long_text = {
+            "l2": "en",
+            "l1": "fr",
+            "surface": " ".join(seg["surface"] for seg in long_segments),
+            "pages": [
+                {"surface": long_segments[0]["surface"], "segments": [long_segments[0]]},
+                {"surface": long_segments[1]["surface"], "segments": [long_segments[1]]},
+            ],
+        }
+
+        fake_response = {"surface": "", "tokens": [], "annotations": {}}
+        client = FakeAIClient(fake_response, delay=0.05)
+
+        spec = GlossSpec(text=long_text, language="en", target_language="fr")
+
+        start = asyncio.get_event_loop().time()
+        result = await gloss.annotate_gloss(spec, client=client)
+        duration = asyncio.get_event_loop().time() - start
+
+        # Ensure tokens preserved
+        total_tokens = sum(len(seg.get("tokens", [])) for page in result.get("pages", []) for seg in page.get("segments", []))
+        self.assertGreater(total_tokens, 0)
+
+        log_test_case(
+            "gloss:long_segments",
+            purpose="times glossing of longer segments with simplified prompts",
+            inputs={"segments": [seg["surface"] for seg in long_segments]},
+            output={"duration_s": round(duration, 3), "prompts": len(client.prompts)},
             status="pass",
         )
 

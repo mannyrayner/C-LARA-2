@@ -43,8 +43,8 @@ All steps must be additive: keep surfaces/tokens as-is, preserve annotations fro
   - Input: tokens with surface forms and optional `mwe_id`s.
   - Output annotations per token: `token.annotations.lemma` = canonical lemma (MWE-linked tokens should share the same lemma).
 - **gloss** (`prompts/gloss/<lang>/`)
-  - Input: tokenized segments with `mwe_id`s, ideally after translation so `segment.annotations.translation` is available as a hint.
-  - Output annotations per token: `token.annotations.gloss` = short L1 gloss/definition for each L2 token. If a token belongs to an MWE, the gloss applies to the whole MWE and all member tokens share the same value. Treat translations as guidance, not strict literals.
+  - Input: a **simplified** segment JSON that strips annotations except for `mwe_id` markers on tokens and the segment-level `translation`/`mwes` lists. This keeps prompts small and reduces latency; the full annotated structure is restored after the AI call by merging the returned glosses back into the original segment. Translation remains an optional hint (when present) but is not required.
+  - Output annotations per token: `token.annotations.gloss` = short L1 gloss/definition for each L2 token. If a token belongs to an MWE, the gloss applies to the whole MWE and all member tokens share the same value. Use "-" when no sensible gloss exists. Treat translations as guidance, not strict literals, and do not add/remove tokens.
 - **pinyin** (library-backed via `pypinyin`)
   - Input: Chinese tokens.
   - Output annotations per token: `token.annotations.pinyin` = pinyin with tone numbers.
