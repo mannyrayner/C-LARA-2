@@ -15,6 +15,8 @@ from django.http import FileResponse, Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.generic import DetailView, ListView, CreateView
+import mimetypes
+from urllib.parse import unquote
 
 from core.config import OpenAIConfig
 from core.ai_api import OpenAIClient
@@ -50,21 +52,53 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
 
     def get_queryset(self):  # type: ignore[override]
         return Project.objects.filter(owner=self.request.user)
-
     def get_context_data(self, **kwargs):  # type: ignore[override]
         context = super().get_context_data(**kwargs)
         project: Project = context["object"]
-        stage_files: list[str] = []
+
+        stage_files: list[dict[str, Any]] = []
         progress: list[dict[str, Any]] = []
+
         base = project.artifact_dir().resolve()
         run_dir = _resolve_run_dir(project)
+        media_root = Path(settings.MEDIA_ROOT).resolve()
+        compiled_uri: str | None = None
+        compiled_media_url: str | None = None
+        run_media_base: str | None = None
+
+        if project.compiled_path:
+            compiled_abs = (base / project.compiled_path).resolve()
+            if compiled_abs.exists():
+                try:
+                    compiled_uri = compiled_abs.as_uri()
+                except ValueError:
+                    compiled_uri = compiled_abs.as_posix()
+                try:
+                    rel_media = compiled_abs.relative_to(media_root)
+                    compiled_media_url = settings.MEDIA_URL.rstrip("/") + "/" + rel_media.as_posix()
+                except Exception:
+                    compiled_media_url = None
+
         if run_dir:
+            try:
+                rel_run_media = run_dir.relative_to(media_root).as_posix()
+                run_media_base = settings.MEDIA_URL.rstrip("/") + "/" + rel_run_media
+            except Exception:
+                run_media_base = None
+
             stage_dir = run_dir / "stages"
             if stage_dir.exists():
-                stage_files = [
-                    path.resolve().relative_to(base).as_posix()
-                    for path in sorted(stage_dir.glob("*.json"), key=lambda p: p.stat().st_mtime)
-                ]
+                for path in sorted(stage_dir.glob("*.json"), key=lambda p: p.stat().st_mtime):
+                    rel = path.resolve().relative_to(base).as_posix()
+                    url = None
+                    if run_media_base:
+                        try:
+                            rel_from_run = path.resolve().relative_to(run_dir).as_posix()
+                            url = run_media_base.rstrip("/") + "/" + rel_from_run
+                        except Exception:
+                            url = None
+                    stage_files.append({"path": rel, "url": url})
+
                 progress_path = stage_dir / "progress.jsonl"
                 if progress_path.exists():
                     for line in progress_path.read_text(encoding="utf-8").splitlines():
@@ -73,12 +107,15 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
                         except Exception:
                             continue
                     progress.sort(key=lambda p: p.get("timestamp", ""))
+
         context["stage_files"] = stage_files
         context["progress"] = progress
         context["pipeline_stages"] = PIPELINE_ORDER
         context["default_start_stage"] = (
             "text_gen" if project.input_mode == Project.INPUT_DESCRIPTION else "segmentation_phase_1"
         )
+        context["compiled_uri"] = compiled_uri
+        context["compiled_media_url"] = compiled_media_url
         return context
 
 
@@ -90,7 +127,9 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):  # type: ignore[override]
         form.instance.owner = self.request.user
         messages.info(self.request, "Project created. Compile when ready.")
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        _persist_project_source(self.object)
+        return response
 
     def get_success_url(self):  # type: ignore[override]
         return reverse("project-detail", args=[self.object.pk])
@@ -111,6 +150,26 @@ def _prepare_output_dir(project: Project) -> Path:
     output_dir = runs_dir / timestamp
     output_dir.mkdir(parents=True, exist_ok=True)
     return output_dir
+
+
+def _persist_project_source(project: Project) -> None:
+    """Write the project's current description/source text into ``source/``.
+
+    This keeps the on-disk layout aligned with the documented structure so that
+    downstream tooling (and humans) can inspect the inputs that seeded a run.
+    Files are written even when blank so the chosen input mode is obvious on disk.
+    """
+
+    base = project.artifact_dir()
+    source_dir = base / "source"
+    source_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        (source_dir / "description.txt").write_text(project.description or "", encoding="utf-8")
+        (source_dir / "source_text.txt").write_text(project.source_text or "", encoding="utf-8")
+    except Exception:
+        # Best-effort persistence; failures should not block UI flows.
+        pass
 
 
 def _resolve_run_dir(project: Project) -> Path | None:
@@ -145,6 +204,7 @@ def _load_stage_payload(project: Project, stage: str) -> dict[str, Any] | None:
 def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     project = get_object_or_404(Project, pk=pk, owner=request.user)
     project_root = project.artifact_dir().resolve()
+    _persist_project_source(project)
     output_dir = _prepare_output_dir(project).resolve()
     stage_dir = output_dir / "stages"
     stage_dir.mkdir(parents=True, exist_ok=True)
@@ -262,14 +322,16 @@ def serve_compiled(request: HttpRequest, pk: int, path: str) -> HttpResponse:
     if project.owner != request.user and not project.is_published:
         raise Http404()
     base = Path(project.artifact_root or project.artifact_dir())
-    file_path = (base / path).resolve()
+    safe_path = Path(unquote(path))
+    file_path = (base / safe_path).resolve()
     try:
         file_path.relative_to(base.resolve())
     except ValueError:
         raise Http404()
     if not file_path.exists():
         raise Http404()
-    return FileResponse(open(file_path, "rb"))
+    content_type, _ = mimetypes.guess_type(str(file_path))
+    return FileResponse(open(file_path, "rb"), content_type=content_type or "application/octet-stream")
 
 
 @login_required
