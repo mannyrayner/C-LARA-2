@@ -56,9 +56,10 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         project: Project = context["object"]
         stage_files: list[str] = []
         progress: list[dict[str, Any]] = []
-        if project.artifact_root:
-            base = Path(project.artifact_root).resolve()
-            stage_dir = base / "stages"
+        base = project.artifact_dir().resolve()
+        run_dir = _resolve_run_dir(project)
+        if run_dir:
+            stage_dir = run_dir / "stages"
             if stage_dir.exists():
                 stage_files = [
                     path.resolve().relative_to(base).as_posix()
@@ -101,17 +102,37 @@ def _build_ai_client() -> OpenAIClient:
 
 
 def _prepare_output_dir(project: Project) -> Path:
-    base = project.artifact_dir() / "runs"
+    base = project.artifact_dir()
+    # Ensure base/source directories exist so future uploads or manual edits have
+    # a stable home.
+    (base / "source").mkdir(parents=True, exist_ok=True)
+    runs_dir = base / "runs"
     timestamp = datetime.utcnow().strftime("run_%Y%m%d_%H%M%S")
-    output_dir = base / timestamp
+    output_dir = runs_dir / timestamp
     output_dir.mkdir(parents=True, exist_ok=True)
     return output_dir
 
 
+def _resolve_run_dir(project: Project) -> Path | None:
+    base = project.artifact_dir().resolve()
+    if project.compiled_path:
+        rel = Path(project.compiled_path)
+        if len(rel.parts) >= 2 and rel.parts[0] == "runs":
+            return (base / rel.parts[0] / rel.parts[1]).resolve()
+    runs_root = base / "runs"
+    if runs_root.exists():
+        try:
+            return max(runs_root.iterdir(), key=lambda p: p.stat().st_mtime)
+        except ValueError:
+            return None
+    return None
+
+
 def _load_stage_payload(project: Project, stage: str) -> dict[str, Any] | None:
-    if not project.artifact_root:
+    run_dir = _resolve_run_dir(project)
+    if not run_dir:
         return None
-    path = Path(project.artifact_root) / "stages" / f"{stage}.json"
+    path = run_dir / "stages" / f"{stage}.json"
     if not path.exists():
         return None
     try:
@@ -123,6 +144,7 @@ def _load_stage_payload(project: Project, stage: str) -> dict[str, Any] | None:
 @login_required
 def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     project = get_object_or_404(Project, pk=pk, owner=request.user)
+    project_root = project.artifact_dir().resolve()
     output_dir = _prepare_output_dir(project).resolve()
     stage_dir = output_dir / "stages"
     stage_dir.mkdir(parents=True, exist_ok=True)
@@ -200,11 +222,11 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         if index_path:
             html_path = Path(index_path).resolve()
             try:
-                compiled_rel = html_path.relative_to(run_root).as_posix()
+                compiled_rel = html_path.relative_to(project_root).as_posix()
             except Exception:
                 compiled_rel = html_path.as_posix()
     project.compiled_path = compiled_rel.replace("\\", "/")
-    project.artifact_root = str(run_root).replace("\\", "/")
+    project.artifact_root = str(project_root).replace("\\", "/")
     project.save(update_fields=["compiled_path", "artifact_root", "updated_at"])
     if compiled_rel:
         messages.success(request, "Project compiled to HTML.")
@@ -239,7 +261,7 @@ def serve_compiled(request: HttpRequest, pk: int, path: str) -> HttpResponse:
     project = get_object_or_404(Project, pk=pk)
     if project.owner != request.user and not project.is_published:
         raise Http404()
-    base = Path(project.artifact_root)
+    base = Path(project.artifact_root or project.artifact_dir())
     file_path = (base / path).resolve()
     try:
         file_path.relative_to(base.resolve())
