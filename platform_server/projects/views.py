@@ -251,6 +251,10 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
 
         entry = {"stage": stage, "status": status, "timestamp": local_timestamp}
         try:
+            messages.info(request, f"{stage}: {status} @ {local_timestamp}")
+        except Exception:
+            pass
+        try:
             with progress_log.open("a", encoding="utf-8") as fp:
                 fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
         except Exception:
@@ -330,17 +334,6 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         messages.success(request, "Project compiled to HTML.")
     else:
         messages.warning(request, "Compilation finished but no HTML was produced.")
-    # Surface per-stage progress entries as notifications for quick visibility.
-    if progress_log.exists():
-        try:
-            for line in progress_log.read_text(encoding="utf-8").splitlines():
-                entry = json.loads(line)
-                messages.info(
-                    request,
-                    f"{entry.get('stage')}: {entry.get('status')} @ {entry.get('timestamp')}",
-                )
-        except Exception:
-            pass
     return redirect("project-detail", pk=project.pk)
 
 
