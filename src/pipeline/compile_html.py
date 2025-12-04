@@ -408,7 +408,7 @@ nav a { margin-right: 0.5rem; }
 .segment { display: block; margin-bottom: 0.75rem; }
 .segment-controls button { margin-right: 0.5rem; }
 .segment-translation.hidden { display: none; }
-.token { cursor: pointer; padding: 0 2px; }
+.token { cursor: pointer; padding: 0; }
 .token:hover { background: #fffae6; }
 .concordance-highlight { background: #d1e8ff; }
 .mwe-highlight { background: #cce2ff; }
@@ -423,7 +423,7 @@ nav a { margin-right: 0.5rem; }
     (static_dir / "clara_styles_concordance.css").write_text(
         """body { font-family: Arial, sans-serif; margin: 1rem; }
 .segment { display: block; margin-bottom: 0.75rem; }
-.word { cursor: pointer; padding: 0 2px; }
+.word { cursor: pointer; padding: 0; }
 .word:hover { background: #fffae6; }
 .concordance-highlight { background: #d1e8ff; }
 .mwe-group-hover { background: #e1f1ff; }
