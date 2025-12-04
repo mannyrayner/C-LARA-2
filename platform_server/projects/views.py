@@ -23,20 +23,37 @@ from core.config import OpenAIConfig
 from core.ai_api import OpenAIClient
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 
-from .forms import ProjectForm, RegistrationForm
-from .models import Project
+from .forms import ProfileForm, ProjectForm, RegistrationForm
+from .models import Profile, Project
 
 
 def register(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         form = RegistrationForm(request.POST)
         if form.is_valid():
-            form.save()
+            user = form.save()
+            Profile.objects.get_or_create(user=user)
             messages.success(request, "Account created. Please log in.")
             return redirect("login")
     else:
         form = RegistrationForm()
     return render(request, "projects/register.html", {"form": form})
+
+
+@login_required
+def profile(request: HttpRequest) -> HttpResponse:
+    profile_obj, _ = Profile.objects.get_or_create(user=request.user)
+
+    if request.method == "POST":
+        form = ProfileForm(request.POST, instance=profile_obj)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Profile saved.")
+            return redirect("profile")
+    else:
+        form = ProfileForm(instance=profile_obj)
+
+    return render(request, "projects/profile_form.html", {"form": form})
 
 
 class ProjectListView(LoginRequiredMixin, ListView):
