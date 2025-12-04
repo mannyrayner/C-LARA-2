@@ -1,0 +1,53 @@
+{% extends "projects/base.html" %}
+{% block title %}Project: {{ object.title }}{% endblock %}
+{% block content %}
+<h1>{{ object.title }}</h1>
+<p>{{ object.description }}</p>
+<p>Language: {{ object.language }} → {{ object.target_language }}</p>
+<form method="post" action="{% url 'project-compile' object.pk %}">{% csrf_token %}
+  <p><label for="start_stage">Start from stage:</label>
+    <select name="start_stage" id="start_stage">
+      {% for stage in pipeline_stages %}
+        <option value="{{ stage }}" {% if stage == default_start_stage %}selected{% endif %}>{{ stage }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn" type="submit">Compile to HTML</button>
+  </p>
+</form>
+<p><a class="btn secondary" href="{% url 'project-publish' object.pk %}">{% if object.is_published %}Unpublish{% else %}Publish{% endif %}</a></p>
+<form method="post" action="{% url 'project-delete' object.pk %}" onsubmit="return confirm('Delete this project and its artifacts?');">{% csrf_token %}
+  <button class="btn secondary" type="submit">Delete project</button>
+</form>
+{% if object.compiled_path %}
+  <p>
+    <a class="btn link" href="{% url 'project-compiled' pk=object.pk path=object.compiled_path %}" target="_blank">View via server</a>
+  </p>
+  <p>Artifacts stored at: {{ object.artifact_root }}</p>
+{% else %}
+  <p>No compilation yet. Use "Compile to HTML" to generate outputs.</p>
+{% endif %}
+
+{% if progress %}
+  <h3>Progress</h3>
+  <ul>
+    {% for entry in progress %}
+      <li><strong>{{ entry.stage }}</strong> — {{ entry.status }} @ {{ entry.timestamp }}</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+{% if stage_files %}
+  <h3>Intermediate artifacts</h3>
+  <ul>
+    {% for file in stage_files %}
+      <li>
+        {% if file.url %}
+          <a href="{{ file.url }}" target="_blank">{{ file.path }}</a>
+        {% else %}
+          <a href="{% url 'project-compiled' pk=object.pk path=file.path %}" target="_blank">{{ file.path }}</a>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% endif %}
+{% endblock %}
