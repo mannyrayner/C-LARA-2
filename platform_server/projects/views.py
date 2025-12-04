@@ -3,7 +3,8 @@ from __future__ import annotations
 import asyncio
 import json
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from typing import Any
 
@@ -233,8 +234,22 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     stage_dir.mkdir(parents=True, exist_ok=True)
     progress_log = stage_dir / "progress.jsonl"
 
+    try:
+        profile = request.user.profile
+        timezone_name = profile.timezone or "UTC"
+    except Profile.DoesNotExist:
+        timezone_name = "UTC"
+
     def progress_cb(stage: str, status: str, timestamp: str) -> None:
-        entry = {"stage": stage, "status": status, "timestamp": timestamp}
+        try:
+            dt = datetime.fromisoformat(timestamp)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            local_timestamp = dt.astimezone(ZoneInfo(timezone_name)).isoformat()
+        except Exception:
+            local_timestamp = timestamp
+
+        entry = {"stage": stage, "status": status, "timestamp": local_timestamp}
         try:
             with progress_log.open("a", encoding="utf-8") as fp:
                 fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
