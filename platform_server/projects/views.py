@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import shutil
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
@@ -26,6 +27,8 @@ from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pi
 
 from .forms import ProfileForm, ProjectForm, RegistrationForm
 from .models import Profile, Project
+
+logger = logging.getLogger(__name__)
 
 
 def register(request: HttpRequest) -> HttpResponse:
@@ -253,7 +256,12 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         try:
             messages.info(request, f"{stage}: {status} @ {local_timestamp}")
         except Exception:
-            pass
+            logger.exception(
+                "Failed to add progress message for stage %s (%s @ %s)",
+                stage,
+                status,
+                local_timestamp,
+            )
         try:
             with progress_log.open("a", encoding="utf-8") as fp:
                 fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
