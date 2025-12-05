@@ -35,6 +35,8 @@ make run-platform-with-real-q
 
 The `run-platform-with-real-q` target sets `DJANGO_Q_USE_REAL=1`, which gives precedence to the installed `django_q` package so the genuine `qcluster` runs alongside the dev server. This is useful when debugging message delivery differences between the stub and a real queue service.
 
+The default `Q_CLUSTER` settings in `platform_server/settings.py` use a long timeout for compile jobs and a larger retry window (`retry` > `timeout`) so a real `django-q` install starts cleanly without warning about misconfiguration. If you override these values, keep that relationship in mind to avoid noisy startup warnings.
+
 ## Manual steps (if you prefer)
 ```bash
 cd platform_server

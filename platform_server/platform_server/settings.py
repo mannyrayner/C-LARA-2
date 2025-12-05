@@ -97,7 +97,9 @@ Q_CLUSTER = {
     "name": "c-lara-2",
     "workers": 2,
     "timeout": 60 * 60,  # allow long compiles
-    "retry": 60 * 2,
+    # Ensure retry exceeds timeout to satisfy django-q expectations and avoid
+    # noisy warnings about misconfiguration.
+    "retry": 60 * 90,
     "queue_limit": 50,
     "bulk": 10,
     "orm": "default",
