@@ -4,21 +4,24 @@ import asyncio
 import json
 import logging
 import shutil
-import threading
 from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
 from pathlib import Path
 from typing import Any
+from types import SimpleNamespace
+from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.messages.storage.session import SessionStorage
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse
-from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.views.generic import DetailView, ListView, CreateView
+from django.views.decorators.clickjacking import xframe_options_sameorigin
+from django.views.generic import CreateView, DetailView, ListView
+from importlib import import_module
+from django_q.tasks import async_task
 import mimetypes
 from urllib.parse import unquote
 
@@ -30,6 +33,22 @@ from .forms import ProfileForm, ProjectForm, RegistrationForm
 from .models import Profile, Project
 
 logger = logging.getLogger(__name__)
+
+
+def _add_session_message(session_key: str | None, level: int, message: str) -> None:
+    """Persist a message to a user's session outside the request cycle."""
+
+    if not session_key:
+        return
+
+    engine = import_module(settings.SESSION_ENGINE)
+    session_store_cls = engine.SessionStore
+    store = session_store_cls(session_key=session_key)
+    request_like = SimpleNamespace(session=store)
+    storage = SessionStorage(request_like)
+    storage.add(level, message)
+    storage.update()
+    store.save()
 
 
 def register(request: HttpRequest) -> HttpResponse:
@@ -228,12 +247,20 @@ def _load_stage_payload(project: Project, stage: str) -> dict[str, Any] | None:
         return None
 
 
-@login_required
-def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
-    project = get_object_or_404(Project, pk=pk, owner=request.user)
-    project_root = project.artifact_dir().resolve()
-    _persist_project_source(project)
-    output_dir = _prepare_output_dir(project).resolve()
+def _run_compile_task(
+    project_id: int,
+    output_dir_str: str,
+    project_root_str: str,
+    start_stage: str,
+    timezone_name: str,
+    session_key: str | None,
+    description: str | None,
+    text: str | None,
+    text_obj: dict[str, Any] | None,
+) -> None:
+    project = Project.objects.get(pk=project_id)
+    output_dir = Path(output_dir_str)
+    project_root = Path(project_root_str)
     stage_dir = output_dir / "stages"
     stage_dir.mkdir(parents=True, exist_ok=True)
     progress_log = stage_dir / "progress.jsonl"
@@ -315,7 +342,81 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
             with progress_log.open("a", encoding="utf-8") as fp:
                 fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
         except Exception:
-            pass
+            logger.exception("Failed to append progress entry; progress_log=%s", progress_log)
+
+        try:
+            _add_session_message(session_key, messages.INFO, f"{stage}: {status} @ {local_timestamp}")
+        except Exception:
+            logger.exception(
+                "Failed to add session message for progress update; stage=%s status=%s tz=%s log=%s",
+                stage,
+                status,
+                timezone_name,
+                progress_log,
+            )
+
+    spec = FullPipelineSpec(
+        text=text,
+        text_obj=text_obj,
+        description=description,
+        language=project.language,
+        target_language=project.target_language,
+        output_dir=output_dir,
+        audio_cache_dir=output_dir / "audio",
+        require_real_tts=True,
+        persist_intermediates=True,
+        progress_callback=progress_cb,
+        start_stage=start_stage,
+    )
+
+    client = _build_ai_client()
+
+    try:
+        result = asyncio.run(run_full_pipeline(spec, client=client))
+    except Exception as exc:  # pragma: no cover - surfaced through session
+        logger.exception("Compile failed for project %s", project_id)
+        _add_session_message(session_key, messages.ERROR, f"Compile failed: {exc}")
+        return
+
+    html_info: dict[str, Any] | None = result.get("html") if isinstance(result, dict) else None
+    compiled_rel = ""
+    run_root = output_dir
+    if html_info:
+        run_root = Path(html_info.get("run_root", output_dir)).resolve()
+        index_path = html_info.get("index_path") or html_info.get("html_path")
+        if index_path:
+            html_path = Path(index_path).resolve()
+            try:
+                compiled_rel = html_path.relative_to(project_root).as_posix()
+            except Exception:
+                compiled_rel = html_path.as_posix()
+    project.compiled_path = compiled_rel.replace("\\", "/")
+    project.artifact_root = str(project_root).replace("\\", "/")
+    project.save(update_fields=["compiled_path", "artifact_root", "updated_at"])
+
+    if compiled_rel:
+        _add_session_message(session_key, messages.SUCCESS, "Project compiled to HTML.")
+    else:
+        _add_session_message(session_key, messages.WARNING, "Compilation finished but no HTML was produced.")
+
+
+@login_required
+def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
+    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    project_root = project.artifact_dir().resolve()
+    _persist_project_source(project)
+    output_dir = _prepare_output_dir(project).resolve()
+    stage_dir = output_dir / "stages"
+    stage_dir.mkdir(parents=True, exist_ok=True)
+
+    if not request.session.session_key:
+        request.session.save()
+
+    try:
+        profile = request.user.profile
+        timezone_name = profile.timezone or "UTC"
+    except Profile.DoesNotExist:
+        timezone_name = "UTC"
 
     start_stage = request.POST.get("start_stage") or (
         "text_gen" if project.input_mode == Project.INPUT_DESCRIPTION else "segmentation_phase_1"
@@ -350,51 +451,24 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
             )
             return redirect("project-detail", pk=project.pk)
 
-    spec = FullPipelineSpec(
-        text=text,
-        text_obj=text_obj,
-        description=description,
-        language=project.language,
-        target_language=project.target_language,
-        output_dir=output_dir,
-        audio_cache_dir=output_dir / "audio",
-        require_real_tts=True,
-        persist_intermediates=True,
-        progress_callback=progress_cb,
-        start_stage=start_stage,
+    async_task(
+        _run_compile_task,
+        project.pk,
+        str(output_dir),
+        str(project_root),
+        start_stage,
+        timezone_name,
+        request.session.session_key,
+        description,
+        text,
+        text_obj,
+        q_options={"sync": False},
     )
 
-    client = _build_ai_client()
-    messages.info(request, f"Compiling project starting at {start_stage}; this may take a moment...")
-    stop_event, watcher = _start_progress_watcher()
-    try:
-        result = asyncio.run(run_full_pipeline(spec, client=client))
-    except Exception as exc:  # pragma: no cover - surface to UI
-        messages.error(request, f"Compile failed: {exc}")
-        return redirect("project-detail", pk=project.pk)
-    finally:
-        stop_event.set()
-        watcher.join(timeout=2)
-
-    html_info: dict[str, Any] | None = result.get("html") if isinstance(result, dict) else None
-    compiled_rel = ""
-    run_root = output_dir
-    if html_info:
-        run_root = Path(html_info.get("run_root", output_dir)).resolve()
-        index_path = html_info.get("index_path") or html_info.get("html_path")
-        if index_path:
-            html_path = Path(index_path).resolve()
-            try:
-                compiled_rel = html_path.relative_to(project_root).as_posix()
-            except Exception:
-                compiled_rel = html_path.as_posix()
-    project.compiled_path = compiled_rel.replace("\\", "/")
-    project.artifact_root = str(project_root).replace("\\", "/")
-    project.save(update_fields=["compiled_path", "artifact_root", "updated_at"])
-    if compiled_rel:
-        messages.success(request, "Project compiled to HTML.")
-    else:
-        messages.warning(request, "Compilation finished but no HTML was produced.")
+    messages.info(
+        request,
+        f"Compilation queued at {start_stage}; progress messages will appear as the pipeline runs.",
+    )
     return redirect("project-detail", pk=project.pk)
 
 
