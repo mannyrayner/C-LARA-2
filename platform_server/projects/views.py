@@ -255,12 +255,18 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         entry = {"stage": stage, "status": status, "timestamp": local_timestamp}
         try:
             messages.info(request, f"{stage}: {status} @ {local_timestamp}")
-        except Exception:
+        except Exception as exc:
             logger.exception(
-                "Failed to add progress message for stage %s (%s @ %s)",
+                "Failed to add progress message for stage %s (%s @ %s); user=%s (id=%s) tz=%s; progress_log=%s; request_path=%s; err=%s",
                 stage,
                 status,
                 local_timestamp,
+                getattr(request, "user", None),
+                getattr(getattr(request, "user", None), "id", None),
+                timezone_name,
+                progress_log,
+                getattr(request, "path", None),
+                exc,
             )
         try:
             with progress_log.open("a", encoding="utf-8") as fp:
