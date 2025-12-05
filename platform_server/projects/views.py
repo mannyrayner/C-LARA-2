@@ -47,7 +47,10 @@ def _add_session_message(session_key: str | None, level: int, message: str) -> N
     request_like = SimpleNamespace(session=store)
     storage = SessionStorage(request_like)
     storage.add(level, message)
-    storage.update()
+    # ``update`` requires a response object, but the session backend doesn't use
+    # it, so pass a lightweight placeholder to satisfy the signature when
+    # persisting messages outside the request/response cycle.
+    storage.update(SimpleNamespace())
     store.save()
 
 
