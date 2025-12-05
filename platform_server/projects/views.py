@@ -265,6 +265,69 @@ def _run_compile_task(
     stage_dir.mkdir(parents=True, exist_ok=True)
     progress_log = stage_dir / "progress.jsonl"
 
+    try:
+        profile = request.user.profile
+        timezone_name = profile.timezone or "UTC"
+    except Profile.DoesNotExist:
+        timezone_name = "UTC"
+
+    def _start_progress_watcher() -> tuple[threading.Event, threading.Thread]:
+        stop_event = threading.Event()
+
+        def _watch_progress_log() -> None:
+            last_pos = 0
+            while not stop_event.is_set():
+                try:
+                    if progress_log.exists():
+                        with progress_log.open("r", encoding="utf-8") as fp:
+                            fp.seek(last_pos)
+                            while True:
+                                line = fp.readline()
+                                if not line:
+                                    break
+
+                                last_pos = fp.tell()
+                                try:
+                                    entry = json.loads(line)
+                                except Exception:
+                                    continue
+
+                                stage = entry.get("stage") or "unknown"
+                                status = entry.get("status") or ""
+                                timestamp = entry.get("timestamp") or ""
+
+                                try:
+                                    dt = datetime.fromisoformat(timestamp)
+                                    if dt.tzinfo is None:
+                                        dt = dt.replace(tzinfo=timezone.utc)
+                                    local_timestamp = dt.astimezone(ZoneInfo(timezone_name)).isoformat()
+                                except Exception:
+                                    local_timestamp = timestamp
+
+                                try:
+                                    messages.info(request, f"{stage}: {status} @ {local_timestamp}")
+                                except Exception as exc:
+                                    logger.exception(
+                                        "Progress watcher failed to add message for %s (%s @ %s); user=%s (id=%s) tz=%s; progress_log=%s; request_path=%s; err=%s",
+                                        stage,
+                                        status,
+                                        local_timestamp,
+                                        getattr(request, "user", None),
+                                        getattr(getattr(request, "user", None), "id", None),
+                                        timezone_name,
+                                        progress_log,
+                                        getattr(request, "path", None),
+                                        exc,
+                                    )
+                except Exception:
+                    logger.exception("Progress watcher encountered an unexpected error; progress_log=%s", progress_log)
+
+                stop_event.wait(1)
+
+        thread = threading.Thread(target=_watch_progress_log, daemon=True)
+        thread.start()
+        return stop_event, thread
+
     def progress_cb(stage: str, status: str, timestamp: str) -> None:
         try:
             dt = datetime.fromisoformat(timestamp)
