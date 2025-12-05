@@ -254,7 +254,11 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
                     if progress_log.exists():
                         with progress_log.open("r", encoding="utf-8") as fp:
                             fp.seek(last_pos)
-                            for line in fp:
+                            while True:
+                                line = fp.readline()
+                                if not line:
+                                    break
+
                                 last_pos = fp.tell()
                                 try:
                                     entry = json.loads(line)
