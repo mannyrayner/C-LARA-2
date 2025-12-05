@@ -41,17 +41,30 @@ def _add_session_message(session_key: str | None, level: int, message: str) -> N
     if not session_key:
         return
 
-    engine = import_module(settings.SESSION_ENGINE)
-    session_store_cls = engine.SessionStore
-    store = session_store_cls(session_key=session_key)
-    request_like = SimpleNamespace(session=store)
-    storage = SessionStorage(request_like)
-    storage.add(level, message)
-    # ``update`` requires a response object, but the session backend doesn't use
-    # it, so pass a lightweight placeholder to satisfy the signature when
-    # persisting messages outside the request/response cycle.
-    storage.update(SimpleNamespace())
-    store.save()
+    def _write() -> None:
+        engine = import_module(settings.SESSION_ENGINE)
+        session_store_cls = engine.SessionStore
+        store = session_store_cls(session_key=session_key)
+        request_like = SimpleNamespace(session=store)
+        storage = SessionStorage(request_like)
+        storage.add(level, message)
+        # ``update`` requires a response object, but the session backend doesn't use
+        # it, so pass a lightweight placeholder to satisfy the signature when
+        # persisting messages outside the request/response cycle.
+        storage.update(SimpleNamespace())
+        store.save()
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        # No running loop: safe to run synchronously.
+        _write()
+        return
+
+    # Avoid Django's async safety checks by executing the session write in a
+    # background thread when called from an async context (e.g., within the
+    # pipeline event loop).
+    loop.run_in_executor(None, _write)
 
 
 def register(request: HttpRequest) -> HttpResponse:
