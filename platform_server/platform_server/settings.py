@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "projects",
+    "django_q",
 ]
 
 MIDDLEWARE = [
@@ -83,3 +84,13 @@ LOGOUT_REDIRECT_URL = "/accounts/login/"
 # so each user’s runs are isolated while keeping relative links stable for HTML
 # and audio assets.
 PIPELINE_OUTPUT_ROOT = MEDIA_ROOT / "users"
+
+Q_CLUSTER = {
+    "name": "c-lara-2",
+    "workers": 2,
+    "timeout": 60 * 60,  # allow long compiles
+    "retry": 60 * 2,
+    "queue_limit": 50,
+    "bulk": 10,
+    "orm": "default",
+}
