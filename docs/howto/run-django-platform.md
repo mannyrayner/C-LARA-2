@@ -19,10 +19,20 @@ This launches `python manage.py runserver` bound to `http://127.0.0.1:8000/`; th
 Notes:
 - The target clears `PYTHONPATH` and forces `DJANGO_SETTINGS_MODULE=platform_server.settings` so host settings (common on Windows) don’t break the interpreter. Override the interpreter with `PYTHON=<path/to/python>` if needed.
 
+## With the background worker (django-q style)
+Compilation messages are delivered from background tasks. For parity with C-LARA, run both the web server and the Django Q worker:
+
+```bash
+make run-platform-with-q
+```
+
+The `run-platform-with-q` target runs migrations, starts a stub `qcluster` process (good enough for local dev with the bundled `django_q` shim), and then launches the dev server. If you install the real [`django-q` package](https://django-q.readthedocs.io/), the same target will start its worker cluster so compile tasks execute out of process.
+
 ## Manual steps (if you prefer)
 ```bash
 cd platform_server
 python manage.py migrate
+python manage.py qcluster  # keep running in its own terminal to process tasks
 python manage.py runserver
 ```
 
