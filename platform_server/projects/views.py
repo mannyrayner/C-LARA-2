@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import shutil
-from datetime import datetime
+import threading
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from typing import Any
 
@@ -23,20 +26,39 @@ from core.config import OpenAIConfig
 from core.ai_api import OpenAIClient
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 
-from .forms import ProjectForm, RegistrationForm
-from .models import Project
+from .forms import ProfileForm, ProjectForm, RegistrationForm
+from .models import Profile, Project
+
+logger = logging.getLogger(__name__)
 
 
 def register(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         form = RegistrationForm(request.POST)
         if form.is_valid():
-            form.save()
+            user = form.save()
+            Profile.objects.get_or_create(user=user)
             messages.success(request, "Account created. Please log in.")
             return redirect("login")
     else:
         form = RegistrationForm()
     return render(request, "projects/register.html", {"form": form})
+
+
+@login_required
+def profile(request: HttpRequest) -> HttpResponse:
+    profile_obj, _ = Profile.objects.get_or_create(user=request.user)
+
+    if request.method == "POST":
+        form = ProfileForm(request.POST, instance=profile_obj)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Profile saved.")
+            return redirect("profile")
+    else:
+        form = ProfileForm(instance=profile_obj)
+
+    return render(request, "projects/profile_form.html", {"form": form})
 
 
 class ProjectListView(LoginRequiredMixin, ListView):
@@ -216,8 +238,75 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     stage_dir.mkdir(parents=True, exist_ok=True)
     progress_log = stage_dir / "progress.jsonl"
 
+    try:
+        profile = request.user.profile
+        timezone_name = profile.timezone or "UTC"
+    except Profile.DoesNotExist:
+        timezone_name = "UTC"
+
+    def _start_progress_watcher() -> tuple[threading.Event, threading.Thread]:
+        stop_event = threading.Event()
+
+        def _watch_progress_log() -> None:
+            last_pos = 0
+            while not stop_event.is_set():
+                try:
+                    if progress_log.exists():
+                        with progress_log.open("r", encoding="utf-8") as fp:
+                            fp.seek(last_pos)
+                            for line in fp:
+                                last_pos = fp.tell()
+                                try:
+                                    entry = json.loads(line)
+                                except Exception:
+                                    continue
+
+                                stage = entry.get("stage") or "unknown"
+                                status = entry.get("status") or ""
+                                timestamp = entry.get("timestamp") or ""
+
+                                try:
+                                    dt = datetime.fromisoformat(timestamp)
+                                    if dt.tzinfo is None:
+                                        dt = dt.replace(tzinfo=timezone.utc)
+                                    local_timestamp = dt.astimezone(ZoneInfo(timezone_name)).isoformat()
+                                except Exception:
+                                    local_timestamp = timestamp
+
+                                try:
+                                    messages.info(request, f"{stage}: {status} @ {local_timestamp}")
+                                except Exception as exc:
+                                    logger.exception(
+                                        "Progress watcher failed to add message for %s (%s @ %s); user=%s (id=%s) tz=%s; progress_log=%s; request_path=%s; err=%s",
+                                        stage,
+                                        status,
+                                        local_timestamp,
+                                        getattr(request, "user", None),
+                                        getattr(getattr(request, "user", None), "id", None),
+                                        timezone_name,
+                                        progress_log,
+                                        getattr(request, "path", None),
+                                        exc,
+                                    )
+                except Exception:
+                    logger.exception("Progress watcher encountered an unexpected error; progress_log=%s", progress_log)
+
+                stop_event.wait(1)
+
+        thread = threading.Thread(target=_watch_progress_log, daemon=True)
+        thread.start()
+        return stop_event, thread
+
     def progress_cb(stage: str, status: str, timestamp: str) -> None:
-        entry = {"stage": stage, "status": status, "timestamp": timestamp}
+        try:
+            dt = datetime.fromisoformat(timestamp)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            local_timestamp = dt.astimezone(ZoneInfo(timezone_name)).isoformat()
+        except Exception:
+            local_timestamp = timestamp
+
+        entry = {"stage": stage, "status": status, "timestamp": local_timestamp}
         try:
             with progress_log.open("a", encoding="utf-8") as fp:
                 fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
@@ -273,11 +362,15 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
 
     client = _build_ai_client()
     messages.info(request, f"Compiling project starting at {start_stage}; this may take a moment...")
+    stop_event, watcher = _start_progress_watcher()
     try:
         result = asyncio.run(run_full_pipeline(spec, client=client))
     except Exception as exc:  # pragma: no cover - surface to UI
         messages.error(request, f"Compile failed: {exc}")
         return redirect("project-detail", pk=project.pk)
+    finally:
+        stop_event.set()
+        watcher.join(timeout=2)
 
     html_info: dict[str, Any] | None = result.get("html") if isinstance(result, dict) else None
     compiled_rel = ""
@@ -298,17 +391,6 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         messages.success(request, "Project compiled to HTML.")
     else:
         messages.warning(request, "Compilation finished but no HTML was produced.")
-    # Surface per-stage progress entries as notifications for quick visibility.
-    if progress_log.exists():
-        try:
-            for line in progress_log.read_text(encoding="utf-8").splitlines():
-                entry = json.loads(line)
-                messages.info(
-                    request,
-                    f"{entry.get('stage')}: {entry.get('status')} @ {entry.get('timestamp')}",
-                )
-        except Exception:
-            pass
     return redirect("project-detail", pk=project.pk)
 
 
