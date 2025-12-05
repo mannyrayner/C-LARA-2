@@ -5,8 +5,16 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 ROOT_DIR = BASE_DIR.parent
 SRC_DIR = ROOT_DIR / "src"
+USE_REAL_DJANGO_Q = os.environ.get("DJANGO_Q_USE_REAL", "").lower() in {
+    "1",
+    "true",
+    "yes",
+}
 if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
+    if USE_REAL_DJANGO_Q:
+        sys.path.append(str(SRC_DIR))
+    else:
+        sys.path.insert(0, str(SRC_DIR))
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key")
 DEBUG = True
 ALLOWED_HOSTS: list[str] = ["*"]

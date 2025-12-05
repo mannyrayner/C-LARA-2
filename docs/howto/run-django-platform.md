@@ -26,7 +26,14 @@ Compilation messages are delivered from background tasks. For parity with C-LARA
 make run-platform-with-q
 ```
 
-The `run-platform-with-q` target runs migrations, starts a stub `qcluster` process (good enough for local dev with the bundled `django_q` shim), and then launches the dev server. If you install the real [`django-q` package](https://django-q.readthedocs.io/), the same target will start its worker cluster so compile tasks execute out of process.
+The `run-platform-with-q` target runs migrations, starts a stub `qcluster` process (good enough for local dev with the bundled `django_q` shim), and then launches the dev server. If you want to exercise the *real* Django Q worker instead of the stub, install [`django-q2`](https://pypi.org/project/django-q2/) (or another Django 5-compatible fork) and use:
+
+```bash
+pip install django-q2
+make run-platform-with-real-q
+```
+
+The `run-platform-with-real-q` target sets `DJANGO_Q_USE_REAL=1`, which gives precedence to the installed `django_q` package so the genuine `qcluster` runs alongside the dev server. This is useful when debugging message delivery differences between the stub and a real queue service.
 
 ## Manual steps (if you prefer)
 ```bash
