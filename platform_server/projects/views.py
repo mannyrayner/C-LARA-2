@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import shutil
+import asyncio
+import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -41,30 +43,78 @@ def _add_session_message(session_key: str | None, level: int, message: str) -> N
     if not session_key:
         return
 
-    def _write() -> None:
-        engine = import_module(settings.SESSION_ENGINE)
-        session_store_cls = engine.SessionStore
-        store = session_store_cls(session_key=session_key)
-        request_like = SimpleNamespace(session=store)
-        storage = SessionStorage(request_like)
-        storage.add(level, message)
-        # ``update`` requires a response object, but the session backend doesn't use
-        # it, so pass a lightweight placeholder to satisfy the signature when
-        # persisting messages outside the request/response cycle.
-        storage.update(SimpleNamespace())
-        store.save()
+    engine = import_module(settings.SESSION_ENGINE)
+    session_store_cls = engine.SessionStore
+    store = session_store_cls(session_key=session_key)
+    request_like = SimpleNamespace(session=store)
+    storage = SessionStorage(request_like)
+    storage.add(level, message)
+    # ``update`` requires a response object, but the session backend doesn't use
+    # it, so pass a lightweight placeholder to satisfy the signature when
+    # persisting messages outside the request/response cycle.
+    storage.update(SimpleNamespace())
+    store.save()
 
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        # No running loop: safe to run synchronously.
-        _write()
+
+def _start_progress_watcher(progress_log: Path, session_key: str | None, tz_name: str) -> None:
+    """Start a background watcher that surfaces new progress log lines."""
+
+    if not session_key:
         return
 
-    # Avoid Django's async safety checks by executing the session write in a
-    # background thread when called from an async context (e.g., within the
-    # pipeline event loop).
-    loop.run_in_executor(None, _write)
+    def _watch() -> None:
+        last_pos = 0
+        while True:
+            if not progress_log.exists():
+                time.sleep(1)
+                continue
+
+            try:
+                with progress_log.open("r", encoding="utf-8") as fp:
+                    fp.seek(last_pos)
+                    for line in fp:
+                        last_pos = fp.tell()
+                        try:
+                            entry = json.loads(line)
+                        except Exception:
+                            continue
+
+                        stage = entry.get("stage", "")
+                        status = entry.get("status", "")
+                        timestamp = entry.get("timestamp", "")
+                        try:
+                            dt = datetime.fromisoformat(timestamp)
+                            if dt.tzinfo is None:
+                                dt = dt.replace(tzinfo=timezone.utc)
+                            timestamp = dt.astimezone(ZoneInfo(tz_name)).isoformat()
+                        except Exception:
+                            pass
+
+                        try:
+                            _add_session_message(
+                                session_key, messages.INFO, f"{stage}: {status} @ {timestamp}"
+                            )
+                        except Exception:
+                            logger.exception(
+                                "Progress watcher failed to add session message; stage=%s status=%s log=%s",
+                                stage,
+                                status,
+                                progress_log,
+                            )
+
+                        if stage == "compile" and status in {"success", "error"}:
+                            return
+
+                time.sleep(1)
+            except Exception:
+                logger.exception(
+                    "Progress watcher encountered an unexpected error; progress_log=%s",
+                    progress_log,
+                )
+                time.sleep(1)
+
+    thread = threading.Thread(target=_watch, name="progress-watcher", daemon=True)
+    thread.start()
 
 
 def register(request: HttpRequest) -> HttpResponse:
@@ -304,17 +354,6 @@ def _run_compile_task(
         except Exception:
             logger.exception("Failed to append progress entry; progress_log=%s", progress_log)
 
-        try:
-            _add_session_message(session_key, messages.INFO, f"{stage}: {status} @ {local_timestamp}")
-        except Exception:
-            logger.exception(
-                "Failed to add session message for progress update; stage=%s status=%s tz=%s log=%s",
-                stage,
-                status,
-                tz_name,
-                progress_log,
-            )
-
     spec = FullPipelineSpec(
         text=text,
         text_obj=text_obj,
@@ -354,10 +393,21 @@ def _run_compile_task(
     project.artifact_root = str(project_root).replace("\\", "/")
     project.save(update_fields=["compiled_path", "artifact_root", "updated_at"])
 
-    if compiled_rel:
-        _add_session_message(session_key, messages.SUCCESS, "Project compiled to HTML.")
-    else:
-        _add_session_message(session_key, messages.WARNING, "Compilation finished but no HTML was produced.")
+    final_status = "success" if compiled_rel else "error"
+    completion_entry = {
+        "stage": "compile",
+        "status": "success" if compiled_rel else "error",
+        "timestamp": datetime.utcnow().replace(tzinfo=timezone.utc).isoformat(),
+    }
+    try:
+        with progress_log.open("a", encoding="utf-8") as fp:
+            fp.write(json.dumps(completion_entry, ensure_ascii=False) + "\n")
+    except Exception:
+        logger.exception("Failed to append compile completion entry; progress_log=%s", progress_log)
+
+    # Surface the outcome through the watcher stream.
+    outcome_message = "Project compiled to HTML." if compiled_rel else "Compilation finished but no HTML was produced."
+    _add_session_message(session_key, messages.SUCCESS if compiled_rel else messages.WARNING, outcome_message)
 
 
 @login_required
@@ -385,31 +435,16 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         messages.error(request, "Unknown start stage.")
         return redirect("project-detail", pk=project.pk)
 
-    text: str | None = None
-    text_obj: dict[str, Any] | None = None
-    description: str | None = None
-
-    if start_stage == "text_gen":
-        description = (project.description or "").strip()
-        if not description:
-            messages.error(request, "Please provide a description to generate text.")
-            return redirect("project-detail", pk=project.pk)
-    elif start_stage == "segmentation_phase_1":
-        text = (project.source_text or "").strip()
-        if not text:
-            messages.error(request, "Please provide source text to segment.")
-            return redirect("project-detail", pk=project.pk)
-    else:
-        # Start from a persisted intermediate produced by a previous run.
-        upstream_index = PIPELINE_ORDER.index(start_stage) - 1
-        upstream_stage = PIPELINE_ORDER[upstream_index]
-        text_obj = _load_stage_payload(project, upstream_stage)
-        if text_obj is None:
-            messages.error(
-                request,
-                f"Cannot start at {start_stage}: missing upstream stage output ({upstream_stage}).",
+        try:
+            _add_session_message(session_key, messages.INFO, f"{stage}: {status} @ {local_timestamp}")
+        except Exception:
+            logger.exception(
+                "Failed to add session message for progress update; stage=%s status=%s tz=%s log=%s",
+                stage,
+                status,
+                tz_name,
+                progress_log,
             )
-            return redirect("project-detail", pk=project.pk)
 
     async_task(
         _run_compile_task,
@@ -425,6 +460,8 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         text_obj,
         q_options={"sync": False},
     )
+
+    _start_progress_watcher(stage_dir / "progress.jsonl", request.session.session_key, timezone_name)
 
     messages.info(
         request,
