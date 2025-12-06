@@ -72,7 +72,11 @@ def _start_progress_watcher(progress_log: Path, session_key: str | None, tz_name
             try:
                 with progress_log.open("r", encoding="utf-8") as fp:
                     fp.seek(last_pos)
-                    for line in fp:
+                    while True:
+                        line = fp.readline()
+                        if not line:
+                            break
+
                         last_pos = fp.tell()
                         try:
                             entry = json.loads(line)
