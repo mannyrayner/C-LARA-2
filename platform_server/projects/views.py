@@ -435,16 +435,32 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         messages.error(request, "Unknown start stage.")
         return redirect("project-detail", pk=project.pk)
 
-        try:
-            _add_session_message(session_key, messages.INFO, f"{stage}: {status} @ {local_timestamp}")
-        except Exception:
-            logger.exception(
-                "Failed to add session message for progress update; stage=%s status=%s tz=%s log=%s",
-                stage,
-                status,
-                tz_name,
-                progress_log,
+    text: str | None = None
+    text_obj: dict[str, Any] | None = None
+    # Always define ``description`` so queued tasks receive a predictable
+    # argument, avoiding NameError if the start stage skips description entry.
+    description: str | None = (project.description or "").strip()
+
+    if start_stage == "text_gen":
+        if not description:
+            messages.error(request, "Please provide a description to generate text.")
+            return redirect("project-detail", pk=project.pk)
+    elif start_stage == "segmentation_phase_1":
+        text = (project.source_text or "").strip()
+        if not text:
+            messages.error(request, "Please provide source text to segment.")
+            return redirect("project-detail", pk=project.pk)
+    else:
+        # Start from a persisted intermediate produced by a previous run.
+        upstream_index = PIPELINE_ORDER.index(start_stage) - 1
+        upstream_stage = PIPELINE_ORDER[upstream_index]
+        text_obj = _load_stage_payload(project, upstream_stage)
+        if text_obj is None:
+            messages.error(
+                request,
+                f"Cannot start at {start_stage}: missing upstream stage output ({upstream_stage}).",
             )
+            return redirect("project-detail", pk=project.pk)
 
     async_task(
         _run_compile_task,
