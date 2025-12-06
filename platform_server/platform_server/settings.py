@@ -40,6 +40,11 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+# Use a database-backed session store so background threads can persist
+# progress messages that are retrieved in subsequent requests. The default
+# signed-cookie backend cannot be updated outside the request/response cycle.
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
+
 ROOT_URLCONF = "platform_server.urls"
 
 TEMPLATES = [

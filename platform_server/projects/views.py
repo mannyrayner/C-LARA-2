@@ -46,14 +46,33 @@ def _add_session_message(session_key: str | None, level: int, message: str) -> N
     engine = import_module(settings.SESSION_ENGINE)
     session_store_cls = engine.SessionStore
     store = session_store_cls(session_key=session_key)
-    request_like = SimpleNamespace(session=store)
-    storage = SessionStorage(request_like)
-    storage.add(level, message)
-    # ``update`` requires a response object, but the session backend doesn't use
-    # it, so pass a lightweight placeholder to satisfy the signature when
-    # persisting messages outside the request/response cycle.
-    storage.update(SimpleNamespace())
-    store.save()
+
+    try:
+        # Load any existing session state so we append to the current message
+        # queue rather than overwriting it.
+        store.load()
+
+        request_like = SimpleNamespace(session=store)
+        storage = SessionStorage(request_like)
+        storage.add(level, message)
+        # ``update`` requires a response object, but the session backend doesn't
+        # use it, so pass a lightweight placeholder to satisfy the signature
+        # when persisting messages outside the request/response cycle.
+        storage.update(SimpleNamespace())
+        store.save()
+        logger.debug(
+            "Persisted session message; session_key=%s level=%s message=%s",
+            session_key,
+            level,
+            message,
+        )
+    except Exception:
+        logger.exception(
+            "Failed to persist session message; session_key=%s level=%s message=%s",
+            session_key,
+            level,
+            message,
+        )
 
 
 def _start_progress_watcher(progress_log: Path, session_key: str | None, tz_name: str) -> None:
