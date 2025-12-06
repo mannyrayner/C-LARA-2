@@ -5,6 +5,7 @@ from . import views
 urlpatterns = [
     path("accounts/login/", auth_views.LoginView.as_view(template_name="projects/login.html"), name="login"),
     path("accounts/logout/", auth_views.LogoutView.as_view(next_page="login"), name="logout"),
+    path("accounts/profile/", views.profile, name="profile"),
     path("", views.ProjectListView.as_view(), name="project-list"),
     path("projects/new/", views.ProjectCreateView.as_view(), name="project-create"),
     path("projects/<int:pk>/", views.ProjectDetailView.as_view(), name="project-detail"),
