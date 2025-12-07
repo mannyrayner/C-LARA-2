@@ -361,7 +361,8 @@ def _run_compile_task(
             logger.exception("Failed to append progress entry; progress_log=%s", progress_log)
 
         try:
-            post_update(f"{stage}: {status} @ {local_timestamp}")
+            display_ts, _ = _format_timestamp(local_timestamp, tz_name)
+            post_update(f"{stage}: {status} @ {display_ts}")
         except Exception:
             logger.exception(
                 "Failed to persist task update; stage=%s status=%s report_id=%s",
