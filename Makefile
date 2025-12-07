@@ -31,7 +31,11 @@ count-lines:
 	@folders="docs platform_server prompts src tests"; total=0; \
 	for dir in $$folders; do \
 		if [ -d $$dir ]; then \
-			count=$$(find $$dir -type f -not -path "*/.git/*" -print0 | xargs -0 wc -l | awk 'END {print $$1}'); \
+			count=$$(find $$dir \( \
+				-path "*/.git/*" -o \
+				-path "$$dir/media" -o -path "$$dir/media/*" -o \
+				-path "$$dir/artifacts" -o -path "$$dir/artifacts/*" \
+			\) -prune -o -type f -print0 | xargs -0 wc -l | awk 'END {print $$1}'); \
 			printf "%-16s %s\n" $$dir $$count; \
 			total=$$((total + count)); \
 		else \
