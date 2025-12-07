@@ -19,6 +19,7 @@ import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
+from urllib.parse import quote
 
 from core.telemetry import NullTelemetry, Telemetry
 
@@ -40,6 +41,16 @@ def _is_lexical(surface: str) -> bool:
         return False
     # Treat alphanumerics and CJK as lexical; skip pure punctuation/whitespace.
     return any(ch.isalnum() for ch in surface) or any("\u4e00" <= ch <= "\u9fff" for ch in surface)
+
+
+def _encode_lemma_for_filename(lemma: str) -> str:
+    """Encode lemma text so concordance filenames are filesystem-safe."""
+
+    if not lemma:
+        return "unknown"
+
+    encoded = quote(lemma, safe="~()*!.'-_")
+    return encoded or "unknown"
 
 
 def _escape(text: str) -> str:
@@ -624,7 +635,8 @@ def compile_html(spec: CompileHTMLSpec) -> dict[str, Any]:
         conc_html = _render_concordance_page(
             entry=entry, text=spec.text, token_ids=token_ids, resolver=resolver
         )
-        conc_path = html_root / f"concordance_{lemma_key}.html"
+        lemma_slug = _encode_lemma_for_filename(str(lemma_key))
+        conc_path = html_root / f"concordance_{lemma_slug}.html"
         conc_path.write_text(conc_html, encoding="utf-8")
 
     telemetry.event(spec.op_id or "compile_html", "info", f"wrote HTML pages under {html_root}")
