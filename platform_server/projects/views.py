@@ -5,7 +5,7 @@ import logging
 import shutil
 import uuid
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
 from zoneinfo import ZoneInfo
@@ -31,6 +31,33 @@ from .forms import ProfileForm, ProjectForm, RegistrationForm
 from .models import Profile, Project, TaskUpdate
 
 logger = logging.getLogger(__name__)
+
+
+def _format_timestamp(ts: str, tz_name: str) -> tuple[str, datetime | None]:
+    """Return a user-friendly timestamp string and the parsed datetime.
+
+    Falls back to the raw value when parsing fails.
+    """
+
+    try:
+        dt = datetime.fromisoformat(ts)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        dt_local = dt.astimezone(ZoneInfo(tz_name))
+
+        # Round to 0.1 second for a concise display.
+        rounded_microseconds = int(round(dt_local.microsecond / 100_000) * 100_000)
+        if rounded_microseconds == 1_000_000:
+            dt_local = dt_local + timedelta(seconds=1)
+            rounded_microseconds = 0
+        dt_local = dt_local.replace(microsecond=rounded_microseconds)
+
+        offset = dt_local.strftime("%z")
+        offset_fmt = f"{offset[:3]}:{offset[3:]}" if len(offset) == 5 else offset
+        display = f"{dt_local.strftime('%Y-%m-%d %H:%M:%S')}.{rounded_microseconds // 100_000} ({offset_fmt})"
+        return display, dt_local
+    except Exception:
+        return ts, None
 
 
 def _make_task_callback(
@@ -142,6 +169,11 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
             # concordances can load without hitting the view indirection.
             compiled_media_url = f"{project_media_base}/{project.compiled_path}"
 
+        try:
+            tz_name = self.request.user.profile.timezone
+        except Exception:
+            tz_name = "UTC"
+
         if run_dir:
             # Keep the MEDIA-relative run base stable for stage links even if
             # the project was compiled on a different host path.
@@ -164,10 +196,29 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
                 if progress_path.exists():
                     for line in progress_path.read_text(encoding="utf-8").splitlines():
                         try:
-                            progress.append(json.loads(line))
+                            raw_entry = json.loads(line)
                         except Exception:
                             continue
-                    progress.sort(key=lambda p: p.get("timestamp", ""))
+
+                        display_ts, dt = _format_timestamp(
+                            raw_entry.get("timestamp", ""), tz_name
+                        )
+                        progress.append(
+                            {
+                                "stage": raw_entry.get("stage"),
+                                "status": raw_entry.get("status"),
+                                "timestamp": display_ts,
+                                "_dt": dt,
+                            }
+                        )
+
+                    progress.sort(
+                        key=lambda p: p.get("_dt") or p.get("timestamp", "")
+                    )
+
+        # Drop helper datetime objects used for sorting before rendering.
+        for p in progress:
+            p.pop("_dt", None)
 
         context["stage_files"] = stage_files
         context["progress"] = progress
@@ -362,7 +413,7 @@ def _run_compile_task(
     completion_entry = {
         "stage": "compile",
         "status": "success" if compiled_rel else "error",
-        "timestamp": datetime.utcnow().replace(tzinfo=timezone.utc).isoformat(),
+        "timestamp": datetime.now(ZoneInfo(tz_name)).isoformat(),
     }
     try:
         with progress_log.open("a", encoding="utf-8") as fp:
