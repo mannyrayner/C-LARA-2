@@ -14,7 +14,7 @@ from core.telemetry import NullTelemetry, Telemetry
 class TextGenSpec:
     """Specification for generating a new text."""
 
-    description: dict[str, Any]
+    description: dict[str, Any] | str
     language: str = "en"
     template_path: Path | None = None
     fewshot_paths: Iterable[Path] | None = None
@@ -59,12 +59,17 @@ def _build_prompt(template: str, *, description: dict[str, Any], fewshots: list[
 
 
 def _normalize_response(
-    response: dict[str, Any], *, language: str, description: dict[str, Any]
+    response: dict[str, Any], *, language: str, description: dict[str, Any] | str
 ) -> dict[str, Any]:
+    desc_dict: dict[str, Any]
+    if isinstance(description, dict):
+        desc_dict = description
+    else:
+        desc_dict = {}
     text_json = {
-        "l2": response.get("l2") or description.get("l2") or language,
-        "l1": response.get("l1") or description.get("l1"),
-        "title": response.get("title") or description.get("title"),
+        "l2": response.get("l2") or desc_dict.get("l2") or language,
+        "l1": response.get("l1") or desc_dict.get("l1"),
+        "title": response.get("title") or desc_dict.get("title"),
         "surface": response.get("surface", ""),
         "pages": response.get("pages") or [],
         "annotations": response.get("annotations") or {},
@@ -88,8 +93,12 @@ async def generate_text(
         else _load_fewshots(spec.language, prompts_root=prompts_root)
     )
 
-    prompt = _build_prompt(template, description=spec.description, fewshots=fewshots)
+    description_payload: dict[str, Any] | str = spec.description
+    if isinstance(description_payload, str):
+        description_payload = {"description": description_payload}
+
+    prompt = _build_prompt(template, description=description_payload, fewshots=fewshots)
     telemetry = spec.telemetry or NullTelemetry()
     ai_client = client or OpenAIClient()
     response = await ai_client.chat_json(prompt, telemetry=telemetry, op_id=spec.op_id)
-    return _normalize_response(response, language=spec.language, description=spec.description)
+    return _normalize_response(response, language=spec.language, description=description_payload)
