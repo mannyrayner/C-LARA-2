@@ -61,11 +61,12 @@ def _format_timestamp(ts: str, tz_name: str) -> tuple[str, datetime | None]:
 
 
 def _make_task_callback(
-    task_type: str, user_id: int, report_id: uuid.UUID | None = None
+    task_type: str | None, user_id: int, report_id: uuid.UUID | None = None
 ) -> tuple[Callable[[str, str | None], None], str]:
     """Return a callback that records task updates and the corresponding report ID."""
 
     report_id = report_id or uuid.uuid4()
+    task_label = task_type or "compile_project"
 
     def _post(message: str, status: str | None = None) -> None:
         """Persist updates safely from both sync and async contexts."""
@@ -74,7 +75,7 @@ def _make_task_callback(
             TaskUpdate.objects.create(
                 report_id=report_id,
                 user_id=user_id,
-                task_type=task_type,
+                task_type=task_label,
                 message=message[:1024],
                 status=status,
             )
@@ -322,8 +323,8 @@ def _run_compile_task(
     description: str | None,
     text: str | None,
     text_obj: dict[str, Any] | None,
-    report_id: str,
-    task_type: str,
+    report_id: str | None = None,
+    task_type: str | None = None,
 ) -> None:
     project = Project.objects.get(pk=project_id)
     output_dir = Path(output_dir_str)
@@ -339,10 +340,12 @@ def _run_compile_task(
         tz_name = timezone_name or "UTC"
 
     try:
-        report_uuid = uuid.UUID(report_id)
+        report_uuid = uuid.UUID(report_id) if report_id else uuid.uuid4()
     except Exception:
         report_uuid = uuid.uuid4()
-    post_update, _ = _make_task_callback(task_type, user_id, report_uuid)
+    post_update, _ = _make_task_callback(
+        task_type or f"compile_project_{project_id}", user_id, report_uuid
+    )
 
     def progress_cb(stage: str, status: str, timestamp: str) -> None:
         try:
