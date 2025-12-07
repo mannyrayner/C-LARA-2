@@ -4,6 +4,8 @@ from pathlib import Path
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from django.contrib.auth import get_user_model
+import uuid
 
 
 class Project(models.Model):
@@ -48,3 +50,41 @@ class Project(models.Model):
         if self.compiled_path:
             return Path(self.compiled_path)
         return None
+
+
+class Profile(models.Model):
+    user = models.OneToOneField(
+        get_user_model(), on_delete=models.CASCADE, related_name="profile"
+    )
+    timezone = models.CharField(max_length=64, default="UTC")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:  # pragma: no cover - display helper
+        return f"Profile for {self.user.username}"
+
+
+class TaskUpdate(models.Model):
+    """Lightweight progress updates emitted by background tasks.
+
+    ``report_id`` groups updates for a single task invocation. ``user`` scopes
+    updates to the requesting user. ``status`` can be ``"running"``,
+    ``"finished"``, or ``"error"`` to help the polling endpoint know whether to
+    redirect once the task completes.
+    """
+
+    report_id = models.UUIDField(default=uuid.uuid4, db_index=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE
+    )
+    task_type = models.CharField(max_length=255, null=True, blank=True)
+    message = models.CharField(max_length=1024)
+    status = models.CharField(max_length=32, null=True, blank=True)
+    read = models.BooleanField(default=False)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["report_id", "timestamp"])]
+        ordering = ["timestamp"]
+
+    def __str__(self) -> str:  # pragma: no cover - display helper
+        return f"Update {self.report_id}: {self.message}"

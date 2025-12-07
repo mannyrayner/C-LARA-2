@@ -1,21 +1,25 @@
 from __future__ import annotations
 
-import asyncio
 import json
+import logging
 import shutil
-from datetime import datetime
+import uuid
+import asyncio
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
+from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import FileResponse, Http404, HttpRequest, HttpResponse
-from django.views.decorators.clickjacking import xframe_options_sameorigin
+from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.views.generic import DetailView, ListView, CreateView
+from django.views.decorators.clickjacking import xframe_options_sameorigin
+from django.views.generic import CreateView, DetailView, ListView
+from django_q.tasks import async_task
 import mimetypes
 from urllib.parse import unquote
 
@@ -23,20 +27,58 @@ from core.config import OpenAIConfig
 from core.ai_api import OpenAIClient
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 
-from .forms import ProjectForm, RegistrationForm
-from .models import Project
+from .forms import ProfileForm, ProjectForm, RegistrationForm
+from .models import Profile, Project, TaskUpdate
+
+logger = logging.getLogger(__name__)
+
+
+def _make_task_callback(
+    task_type: str, user_id: int, report_id: uuid.UUID | None = None
+) -> tuple[Callable[[str, str | None], None], str]:
+    """Return a callback that records task updates and the corresponding report ID."""
+
+    report_id = report_id or uuid.uuid4()
+
+    def _post(message: str, status: str | None = None) -> None:
+        TaskUpdate.objects.create(
+            report_id=report_id,
+            user_id=user_id,
+            task_type=task_type,
+            message=message[:1024],
+            status=status,
+        )
+
+    return _post, str(report_id)
 
 
 def register(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         form = RegistrationForm(request.POST)
         if form.is_valid():
-            form.save()
+            user = form.save()
+            Profile.objects.get_or_create(user=user)
             messages.success(request, "Account created. Please log in.")
             return redirect("login")
     else:
         form = RegistrationForm()
     return render(request, "projects/register.html", {"form": form})
+
+
+@login_required
+def profile(request: HttpRequest) -> HttpResponse:
+    profile_obj, _ = Profile.objects.get_or_create(user=request.user)
+
+    if request.method == "POST":
+        form = ProfileForm(request.POST, instance=profile_obj)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Profile saved.")
+            return redirect("profile")
+    else:
+        form = ProfileForm(instance=profile_obj)
+
+    return render(request, "projects/profile_form.html", {"form": form})
 
 
 class ProjectListView(LoginRequiredMixin, ListView):
@@ -206,6 +248,121 @@ def _load_stage_payload(project: Project, stage: str) -> dict[str, Any] | None:
         return None
 
 
+def _run_compile_task(
+    project_id: int,
+    user_id: int,
+    output_dir_str: str,
+    project_root_str: str,
+    start_stage: str,
+    timezone_name: str | None,
+    description: str | None,
+    text: str | None,
+    text_obj: dict[str, Any] | None,
+    report_id: str,
+    task_type: str,
+) -> None:
+    project = Project.objects.get(pk=project_id)
+    output_dir = Path(output_dir_str)
+    project_root = Path(project_root_str)
+    stage_dir = output_dir / "stages"
+    stage_dir.mkdir(parents=True, exist_ok=True)
+    progress_log = stage_dir / "progress.jsonl"
+
+    try:
+        profile = Profile.objects.get(user_id=user_id)
+        tz_name = profile.timezone or "UTC"
+    except Profile.DoesNotExist:
+        tz_name = timezone_name or "UTC"
+
+    try:
+        report_uuid = uuid.UUID(report_id)
+    except Exception:
+        report_uuid = uuid.uuid4()
+    post_update, _ = _make_task_callback(task_type, user_id, report_uuid)
+
+    def progress_cb(stage: str, status: str, timestamp: str) -> None:
+        try:
+            dt = datetime.fromisoformat(timestamp)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            local_timestamp = dt.astimezone(ZoneInfo(tz_name)).isoformat()
+        except Exception:
+            local_timestamp = timestamp
+
+        entry = {"stage": stage, "status": status, "timestamp": local_timestamp}
+        try:
+            with progress_log.open("a", encoding="utf-8") as fp:
+                fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        except Exception:
+            logger.exception("Failed to append progress entry; progress_log=%s", progress_log)
+
+        try:
+            post_update(f"{stage}: {status} @ {local_timestamp}")
+        except Exception:
+            logger.exception(
+                "Failed to persist task update; stage=%s status=%s report_id=%s",
+                stage,
+                status,
+                report_id,
+            )
+
+    spec = FullPipelineSpec(
+        text=text,
+        text_obj=text_obj,
+        description=description,
+        language=project.language,
+        target_language=project.target_language,
+        output_dir=output_dir,
+        audio_cache_dir=output_dir / "audio",
+        require_real_tts=True,
+        persist_intermediates=True,
+        progress_callback=progress_cb,
+        start_stage=start_stage,
+    )
+
+    client = _build_ai_client()
+
+    try:
+        result = asyncio.run(run_full_pipeline(spec, client=client))
+    except Exception as exc:  # pragma: no cover - surfaced through session
+        logger.exception("Compile failed for project %s", project_id)
+        post_update(f"Compile failed: {exc}", status="error")
+        return
+
+    html_info: dict[str, Any] | None = result.get("html") if isinstance(result, dict) else None
+    compiled_rel = ""
+    run_root = output_dir
+    if html_info:
+        run_root = Path(html_info.get("run_root", output_dir)).resolve()
+        index_path = html_info.get("index_path") or html_info.get("html_path")
+        if index_path:
+            html_path = Path(index_path).resolve()
+            try:
+                compiled_rel = html_path.relative_to(project_root).as_posix()
+            except Exception:
+                compiled_rel = html_path.as_posix()
+    project.compiled_path = compiled_rel.replace("\\", "/")
+    project.artifact_root = str(project_root).replace("\\", "/")
+    project.save(update_fields=["compiled_path", "artifact_root", "updated_at"])
+
+    final_status = "success" if compiled_rel else "error"
+    completion_entry = {
+        "stage": "compile",
+        "status": "success" if compiled_rel else "error",
+        "timestamp": datetime.utcnow().replace(tzinfo=timezone.utc).isoformat(),
+    }
+    try:
+        with progress_log.open("a", encoding="utf-8") as fp:
+            fp.write(json.dumps(completion_entry, ensure_ascii=False) + "\n")
+    except Exception:
+        logger.exception("Failed to append compile completion entry; progress_log=%s", progress_log)
+
+    outcome_message = (
+        "Project compiled to HTML." if compiled_rel else "Compilation finished but no HTML was produced."
+    )
+    post_update(outcome_message, status="finished" if compiled_rel else "error")
+
+
 @login_required
 def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     project = get_object_or_404(Project, pk=pk, owner=request.user)
@@ -214,15 +371,12 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     output_dir = _prepare_output_dir(project).resolve()
     stage_dir = output_dir / "stages"
     stage_dir.mkdir(parents=True, exist_ok=True)
-    progress_log = stage_dir / "progress.jsonl"
 
-    def progress_cb(stage: str, status: str, timestamp: str) -> None:
-        entry = {"stage": stage, "status": status, "timestamp": timestamp}
-        try:
-            with progress_log.open("a", encoding="utf-8") as fp:
-                fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
-        except Exception:
-            pass
+    try:
+        profile = request.user.profile
+        timezone_name = profile.timezone or "UTC"
+    except Profile.DoesNotExist:
+        timezone_name = "UTC"
 
     start_stage = request.POST.get("start_stage") or (
         "text_gen" if project.input_mode == Project.INPUT_DESCRIPTION else "segmentation_phase_1"
@@ -233,10 +387,11 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
 
     text: str | None = None
     text_obj: dict[str, Any] | None = None
-    description: str | None = None
+    # Always define ``description`` so queued tasks receive a predictable
+    # argument, avoiding NameError if the start stage skips description entry.
+    description: str | None = (project.description or "").strip()
 
     if start_stage == "text_gen":
-        description = (project.description or "").strip()
         if not description:
             messages.error(request, "Please provide a description to generate text.")
             return redirect("project-detail", pk=project.pk)
@@ -257,59 +412,68 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
             )
             return redirect("project-detail", pk=project.pk)
 
-    spec = FullPipelineSpec(
-        text=text,
-        text_obj=text_obj,
-        description=description,
-        language=project.language,
-        target_language=project.target_language,
-        output_dir=output_dir,
-        audio_cache_dir=output_dir / "audio",
-        require_real_tts=True,
-        persist_intermediates=True,
-        progress_callback=progress_cb,
-        start_stage=start_stage,
+    task_type = f"compile_project_{project.pk}"
+    report_id = str(uuid.uuid4())
+
+    async_task(
+        _run_compile_task,
+        project.pk,
+        request.user.id,
+        str(output_dir),
+        str(project_root),
+        start_stage,
+        timezone_name,
+        description,
+        text,
+        text_obj,
+        report_id,
+        task_type,
+        q_options={"sync": False},
     )
 
-    client = _build_ai_client()
-    messages.info(request, f"Compiling project starting at {start_stage}; this may take a moment...")
-    try:
-        result = asyncio.run(run_full_pipeline(spec, client=client))
-    except Exception as exc:  # pragma: no cover - surface to UI
-        messages.error(request, f"Compile failed: {exc}")
-        return redirect("project-detail", pk=project.pk)
+    return redirect("project-compile-monitor", pk=project.pk, report_id=report_id)
 
-    html_info: dict[str, Any] | None = result.get("html") if isinstance(result, dict) else None
-    compiled_rel = ""
-    run_root = output_dir
-    if html_info:
-        run_root = Path(html_info.get("run_root", output_dir)).resolve()
-        index_path = html_info.get("index_path") or html_info.get("html_path")
-        if index_path:
-            html_path = Path(index_path).resolve()
-            try:
-                compiled_rel = html_path.relative_to(project_root).as_posix()
-            except Exception:
-                compiled_rel = html_path.as_posix()
-    project.compiled_path = compiled_rel.replace("\\", "/")
-    project.artifact_root = str(project_root).replace("\\", "/")
-    project.save(update_fields=["compiled_path", "artifact_root", "updated_at"])
-    if compiled_rel:
-        messages.success(request, "Project compiled to HTML.")
-    else:
-        messages.warning(request, "Compilation finished but no HTML was produced.")
-    # Surface per-stage progress entries as notifications for quick visibility.
-    if progress_log.exists():
-        try:
-            for line in progress_log.read_text(encoding="utf-8").splitlines():
-                entry = json.loads(line)
-                messages.info(
-                    request,
-                    f"{entry.get('stage')}: {entry.get('status')} @ {entry.get('timestamp')}",
-                )
-        except Exception:
-            pass
-    return redirect("project-detail", pk=project.pk)
+
+@login_required
+def compile_monitor(request: HttpRequest, pk: int, report_id: str) -> HttpResponse:
+    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    return render(
+        request,
+        "projects/compile_monitor.html",
+        {"project": project, "report_id": report_id},
+    )
+
+
+@login_required
+def compile_status(request: HttpRequest, pk: int, report_id: str) -> JsonResponse:
+    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    updates = (
+        TaskUpdate.objects.filter(report_id=report_id, user=request.user)
+        .order_by("timestamp")
+        .all()
+    )
+
+    unread = [u for u in updates if not u.read]
+    messages_out = [u.message for u in unread]
+    status = "running"
+
+    for u in unread:
+        if u.status == "error":
+            status = "error"
+            break
+        if u.status == "finished":
+            status = "finished"
+
+    TaskUpdate.objects.filter(pk__in=[u.pk for u in unread]).update(read=True)
+
+    if status == "running" and unread == []:
+        # Check the latest status so the monitor can exit even if all updates
+        # have been consumed.
+        last = updates.last()
+        if last and last.status in {"error", "finished"}:
+            status = last.status
+
+    return JsonResponse({"messages": messages_out, "status": status, "project": project.pk})
 
 
 @login_required
