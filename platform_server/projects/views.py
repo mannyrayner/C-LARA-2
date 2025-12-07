@@ -3,26 +3,22 @@ from __future__ import annotations
 import json
 import logging
 import shutil
+import uuid
 import asyncio
-import threading
-import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
-from types import SimpleNamespace
+from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.messages.storage.session import SessionStorage
-from django.http import FileResponse, Http404, HttpRequest, HttpResponse
+from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import CreateView, DetailView, ListView
-from importlib import import_module
 from django_q.tasks import async_task
 import mimetypes
 from urllib.parse import unquote
@@ -32,112 +28,28 @@ from core.ai_api import OpenAIClient
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 
 from .forms import ProfileForm, ProjectForm, RegistrationForm
-from .models import Profile, Project
+from .models import Profile, Project, TaskUpdate
 
 logger = logging.getLogger(__name__)
 
 
-def _add_session_message(session_key: str | None, level: int, message: str) -> None:
-    """Persist a message to a user's session outside the request cycle."""
+def _make_task_callback(
+    task_type: str, user_id: int, report_id: uuid.UUID | None = None
+) -> tuple[Callable[[str, str | None], None], str]:
+    """Return a callback that records task updates and the corresponding report ID."""
 
-    if not session_key:
-        return
+    report_id = report_id or uuid.uuid4()
 
-    engine = import_module(settings.SESSION_ENGINE)
-    session_store_cls = engine.SessionStore
-    store = session_store_cls(session_key=session_key)
-
-    try:
-        # Load any existing session state so we append to the current message
-        # queue rather than overwriting it.
-        store.load()
-
-        request_like = SimpleNamespace(session=store)
-        storage = SessionStorage(request_like)
-        storage.add(level, message)
-        # ``update`` requires a response object, but the session backend doesn't
-        # use it, so pass a lightweight placeholder to satisfy the signature
-        # when persisting messages outside the request/response cycle.
-        storage.update(SimpleNamespace())
-        store.save()
-        logger.debug(
-            "Persisted session message; session_key=%s level=%s message=%s",
-            session_key,
-            level,
-            message,
-        )
-    except Exception:
-        logger.exception(
-            "Failed to persist session message; session_key=%s level=%s message=%s",
-            session_key,
-            level,
-            message,
+    def _post(message: str, status: str | None = None) -> None:
+        TaskUpdate.objects.create(
+            report_id=report_id,
+            user_id=user_id,
+            task_type=task_type,
+            message=message[:1024],
+            status=status,
         )
 
-
-def _start_progress_watcher(progress_log: Path, session_key: str | None, tz_name: str) -> None:
-    """Start a background watcher that surfaces new progress log lines."""
-
-    if not session_key:
-        return
-
-    def _watch() -> None:
-        last_pos = 0
-        while True:
-            if not progress_log.exists():
-                time.sleep(1)
-                continue
-
-            try:
-                with progress_log.open("r", encoding="utf-8") as fp:
-                    fp.seek(last_pos)
-                    while True:
-                        line = fp.readline()
-                        if not line:
-                            break
-
-                        last_pos = fp.tell()
-                        try:
-                            entry = json.loads(line)
-                        except Exception:
-                            continue
-
-                        stage = entry.get("stage", "")
-                        status = entry.get("status", "")
-                        timestamp = entry.get("timestamp", "")
-                        try:
-                            dt = datetime.fromisoformat(timestamp)
-                            if dt.tzinfo is None:
-                                dt = dt.replace(tzinfo=timezone.utc)
-                            timestamp = dt.astimezone(ZoneInfo(tz_name)).isoformat()
-                        except Exception:
-                            pass
-
-                        try:
-                            _add_session_message(
-                                session_key, messages.INFO, f"{stage}: {status} @ {timestamp}"
-                            )
-                        except Exception:
-                            logger.exception(
-                                "Progress watcher failed to add session message; stage=%s status=%s log=%s",
-                                stage,
-                                status,
-                                progress_log,
-                            )
-
-                        if stage == "compile" and status in {"success", "error"}:
-                            return
-
-                time.sleep(1)
-            except Exception:
-                logger.exception(
-                    "Progress watcher encountered an unexpected error; progress_log=%s",
-                    progress_log,
-                )
-                time.sleep(1)
-
-    thread = threading.Thread(target=_watch, name="progress-watcher", daemon=True)
-    thread.start()
+    return _post, str(report_id)
 
 
 def register(request: HttpRequest) -> HttpResponse:
@@ -343,10 +255,11 @@ def _run_compile_task(
     project_root_str: str,
     start_stage: str,
     timezone_name: str | None,
-    session_key: str | None,
     description: str | None,
     text: str | None,
     text_obj: dict[str, Any] | None,
+    report_id: str,
+    task_type: str,
 ) -> None:
     project = Project.objects.get(pk=project_id)
     output_dir = Path(output_dir_str)
@@ -360,6 +273,12 @@ def _run_compile_task(
         tz_name = profile.timezone or "UTC"
     except Profile.DoesNotExist:
         tz_name = timezone_name or "UTC"
+
+    try:
+        report_uuid = uuid.UUID(report_id)
+    except Exception:
+        report_uuid = uuid.uuid4()
+    post_update, _ = _make_task_callback(task_type, user_id, report_uuid)
 
     def progress_cb(stage: str, status: str, timestamp: str) -> None:
         try:
@@ -376,6 +295,16 @@ def _run_compile_task(
                 fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
         except Exception:
             logger.exception("Failed to append progress entry; progress_log=%s", progress_log)
+
+        try:
+            post_update(f"{stage}: {status} @ {local_timestamp}")
+        except Exception:
+            logger.exception(
+                "Failed to persist task update; stage=%s status=%s report_id=%s",
+                stage,
+                status,
+                report_id,
+            )
 
     spec = FullPipelineSpec(
         text=text,
@@ -397,7 +326,7 @@ def _run_compile_task(
         result = asyncio.run(run_full_pipeline(spec, client=client))
     except Exception as exc:  # pragma: no cover - surfaced through session
         logger.exception("Compile failed for project %s", project_id)
-        _add_session_message(session_key, messages.ERROR, f"Compile failed: {exc}")
+        post_update(f"Compile failed: {exc}", status="error")
         return
 
     html_info: dict[str, Any] | None = result.get("html") if isinstance(result, dict) else None
@@ -428,9 +357,10 @@ def _run_compile_task(
     except Exception:
         logger.exception("Failed to append compile completion entry; progress_log=%s", progress_log)
 
-    # Surface the outcome through the watcher stream.
-    outcome_message = "Project compiled to HTML." if compiled_rel else "Compilation finished but no HTML was produced."
-    _add_session_message(session_key, messages.SUCCESS if compiled_rel else messages.WARNING, outcome_message)
+    outcome_message = (
+        "Project compiled to HTML." if compiled_rel else "Compilation finished but no HTML was produced."
+    )
+    post_update(outcome_message, status="finished" if compiled_rel else "error")
 
 
 @login_required
@@ -441,9 +371,6 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     output_dir = _prepare_output_dir(project).resolve()
     stage_dir = output_dir / "stages"
     stage_dir.mkdir(parents=True, exist_ok=True)
-
-    if not request.session.session_key:
-        request.session.save()
 
     try:
         profile = request.user.profile
@@ -485,6 +412,9 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
             )
             return redirect("project-detail", pk=project.pk)
 
+    task_type = f"compile_project_{project.pk}"
+    report_id = str(uuid.uuid4())
+
     async_task(
         _run_compile_task,
         project.pk,
@@ -493,20 +423,57 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         str(project_root),
         start_stage,
         timezone_name,
-        request.session.session_key,
         description,
         text,
         text_obj,
+        report_id,
+        task_type,
         q_options={"sync": False},
     )
 
-    _start_progress_watcher(stage_dir / "progress.jsonl", request.session.session_key, timezone_name)
+    return redirect("project-compile-monitor", pk=project.pk, report_id=report_id)
 
-    messages.info(
+
+@login_required
+def compile_monitor(request: HttpRequest, pk: int, report_id: str) -> HttpResponse:
+    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    return render(
         request,
-        f"Compilation queued at {start_stage}; progress messages will appear as the pipeline runs.",
+        "projects/compile_monitor.html",
+        {"project": project, "report_id": report_id},
     )
-    return redirect("project-detail", pk=project.pk)
+
+
+@login_required
+def compile_status(request: HttpRequest, pk: int, report_id: str) -> JsonResponse:
+    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    updates = (
+        TaskUpdate.objects.filter(report_id=report_id, user=request.user)
+        .order_by("timestamp")
+        .all()
+    )
+
+    unread = [u for u in updates if not u.read]
+    messages_out = [u.message for u in unread]
+    status = "running"
+
+    for u in unread:
+        if u.status == "error":
+            status = "error"
+            break
+        if u.status == "finished":
+            status = "finished"
+
+    TaskUpdate.objects.filter(pk__in=[u.pk for u in unread]).update(read=True)
+
+    if status == "running" and unread == []:
+        # Check the latest status so the monitor can exit even if all updates
+        # have been consumed.
+        last = updates.last()
+        if last and last.status in {"error", "finished"}:
+            status = last.status
+
+    return JsonResponse({"messages": messages_out, "status": status, "project": project.pk})
 
 
 @login_required

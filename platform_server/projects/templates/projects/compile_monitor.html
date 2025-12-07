@@ -1,0 +1,52 @@
+{% extends "projects/base.html" %}
+
+{% block content %}
+<h2>Compiling "{{ project.title }}"</h2>
+<div id="status-messages" class="mb-3" style="max-height: 300px; overflow-y: auto;"></div>
+
+<script>
+  const statusUrl = "{% url 'project-compile-status' project.pk report_id %}";
+  const projectDetailUrl = "{% url 'project-detail' project.pk %}";
+  const statusMessages = document.getElementById('status-messages');
+  let lastUpdate = Date.now();
+
+  async function pollStatus() {
+    try {
+      const response = await fetch(statusUrl);
+      if (!response.ok) {
+        throw new Error('Failed to fetch status');
+      }
+      const data = await response.json();
+      if (Array.isArray(data.messages) && data.messages.length) {
+        data.messages.forEach((msg) => {
+          const p = document.createElement('p');
+          p.textContent = msg;
+          statusMessages.appendChild(p);
+        });
+        statusMessages.scrollTop = statusMessages.scrollHeight;
+        lastUpdate = Date.now();
+      }
+
+      if (data.status === 'finished' || data.status === 'error') {
+        window.location = projectDetailUrl;
+        return;
+      }
+
+      if (Date.now() - lastUpdate > 60000) {
+        const p = document.createElement('p');
+        p.textContent = '[No updates for 60 seconds]';
+        statusMessages.appendChild(p);
+        statusMessages.scrollTop = statusMessages.scrollHeight;
+        lastUpdate = Date.now();
+      }
+    } catch (err) {
+      const p = document.createElement('p');
+      p.textContent = 'Error checking status: ' + err;
+      statusMessages.appendChild(p);
+    }
+  }
+
+  setInterval(pollStatus, 5000);
+  pollStatus();
+</script>
+{% endblock %}

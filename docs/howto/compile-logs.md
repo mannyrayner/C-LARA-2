@@ -21,9 +21,7 @@ Each line in `progress.jsonl` is a JSON object that records a stage name, status
 ## Quick lookup from the UI
 On the project detail page, the **Stages** section lists the most recent run directory and provides a link to `progress.jsonl` if it exists, so you can download it directly without browsing the filesystem.
 
-## Debug logging for message delivery
-Pipeline stages run in a DjangoQ-style background task and write to `progress.jsonl`. A watcher in the web process tails this log and mirrors each entry into the user's session so messages surface while the job is in flight. If a progress entry cannot be converted into a UI message, the watcher logs a detailed exception via the `projects.views` logger. With the default settings in this repository, those log lines appear in whichever console is executing tasks (the stub `qcluster` process started by `make run-platform-with-q`, or the real `python manage.py qcluster` if you install Django Q; when using the stub only, they still show up with `runserver`). In deployed environments, check your configured Django logging handlers (e.g., Gunicorn or systemd service logs) for entries from `projects.views`.
-
-Because the watcher is not part of a request/response cycle, session messages are written directly to the database-backed session store (`SESSION_ENGINE = "django.contrib.sessions.backends.db"`). If you switch to a cookie-based session engine, background progress messages will not be persisted for retrieval in subsequent requests.
+## Live progress in the UI
+When you start a compile, the request queues a background task and redirects you to a monitor page. The monitor polls a JSON endpoint every few seconds for new entries written by the compile callback. Updates are stored in the `TaskUpdate` table and returned to the browser as soon as they arrive. When the pipeline sends a final `finished` or `error` status, the monitor automatically redirects back to the project detail page.
 
 If you suspect the stub queue is masking behaviour differences, install a Django 5-compatible queue package such as `django-q2` and start the stack with `make run-platform-with-real-q` so progress messages flow through the real worker implementation.
