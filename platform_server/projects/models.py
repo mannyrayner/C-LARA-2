@@ -23,6 +23,7 @@ class Project(models.Model):
     input_mode = models.CharField(max_length=20, choices=INPUT_CHOICES, default=INPUT_SOURCE)
     language = models.CharField(max_length=16, default="en")
     target_language = models.CharField(max_length=16, default="fr")
+    ai_model = models.CharField(max_length=64, default="gpt-4o")
     compiled_path = models.CharField(max_length=512, blank=True)
     artifact_root = models.CharField(max_length=512, blank=True)
     is_published = models.BooleanField(default=False)

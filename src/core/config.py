@@ -9,7 +9,7 @@ from dataclasses import dataclass
 DEFAULT_HEARTBEAT_S = 5.0
 DEFAULT_TIMEOUT_S = 60.0
 DEFAULT_MAX_RETRIES = 3
-DEFAULT_MODEL = "gpt-5"
+DEFAULT_MODEL = "gpt-4o"
 DEFAULT_TEMPERATURE: float | None = None
 
 

@@ -3,6 +3,7 @@ import uuid
 from pathlib import Path
 from unittest.mock import patch
 from django.contrib.auth import get_user_model
+from django.contrib.messages import get_messages
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -61,6 +62,25 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["status"], "finished")
 
+    def test_status_adds_error_message_for_project_page(self):
+        TaskUpdate.objects.create(
+            report_id=self.report_id,
+            user=self.user,
+            task_type="compile_project",
+            message="Compile failed: timeout",
+            status="error",
+        )
+        url = reverse(
+            "project-compile-status", args=[self.project.pk, self.report_id]
+        )
+
+        resp = self.client.get(url)
+        self.assertEqual(resp.json()["status"], "error")
+
+        msgs = list(get_messages(resp.wsgi_request))
+        self.assertEqual(len(msgs), 1)
+        self.assertIn("timeout", msgs[0].message)
+
     def test_make_task_callback_handles_missing_task_type(self):
         post_update, rep_id = views._make_task_callback(None, self.user.id)
         post_update("hello", status="running")
@@ -102,3 +122,15 @@ class CompileStatusViewTests(TestCase):
         self.assertTrue(mock_async_task.called)
         args, kwargs = mock_async_task.call_args
         self.assertIn(str(new_run), args)
+
+    @patch("projects.views.async_task")
+    def test_compile_passes_selected_model(self, mock_async_task):
+        url = reverse("project-compile", args=[self.project.pk])
+        resp = self.client.post(url, {"start_stage": "segmentation_phase_1", "ai_model": "gpt-5"})
+        self.assertEqual(resp.status_code, 302)
+
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.ai_model, "gpt-5")
+
+        args, kwargs = mock_async_task.call_args
+        self.assertIn("gpt-5", args)

@@ -11,6 +11,12 @@
         <option value="{{ stage }}" {% if stage == default_start_stage %}selected{% endif %}>{{ stage }}</option>
       {% endfor %}
     </select>
+    <label for="ai_model" class="ml-2">Model:</label>
+    <select name="ai_model" id="ai_model">
+      {% for model in ai_models %}
+        <option value="{{ model }}" {% if model == selected_ai_model %}selected{% endif %}>{{ model }}</option>
+      {% endfor %}
+    </select>
     <button class="btn" type="submit">Compile to HTML</button>
   </p>
 </form>

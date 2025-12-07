@@ -23,7 +23,7 @@ from django_q.tasks import async_task
 import mimetypes
 from urllib.parse import unquote
 
-from core.config import OpenAIConfig
+from core.config import DEFAULT_MODEL, OpenAIConfig
 from core.ai_api import OpenAIClient
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 
@@ -31,6 +31,12 @@ from .forms import ProfileForm, ProjectForm, RegistrationForm
 from .models import Profile, Project, TaskUpdate
 
 logger = logging.getLogger(__name__)
+
+AI_MODEL_CHOICES = [
+    "gpt-4o",
+    "gpt-4o-mini",
+    "gpt-5",
+]
 
 
 def _format_timestamp(ts: str, tz_name: str) -> tuple[str, datetime | None]:
@@ -229,6 +235,8 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         )
         context["compiled_uri"] = compiled_uri
         context["compiled_media_url"] = compiled_media_url
+        context["ai_models"] = AI_MODEL_CHOICES
+        context["selected_ai_model"] = project.ai_model or DEFAULT_MODEL
         return context
 
 
@@ -248,8 +256,8 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
         return reverse("project-detail", args=[self.object.pk])
 
 
-def _build_ai_client() -> OpenAIClient:
-    config = OpenAIConfig()
+def _build_ai_client(model_name: str | None = None) -> OpenAIClient:
+    config = OpenAIConfig(model=model_name or DEFAULT_MODEL)
     return OpenAIClient(config=config)
 
 
@@ -358,6 +366,7 @@ def _run_compile_task(
     text_obj: dict[str, Any] | None,
     report_id: str | None = None,
     task_type: str | None = None,
+    ai_model: str | None = None,
 ) -> None:
     project = Project.objects.get(pk=project_id)
     output_dir = Path(output_dir_str)
@@ -421,12 +430,28 @@ def _run_compile_task(
         start_stage=start_stage,
     )
 
-    client = _build_ai_client()
+    chosen_model = ai_model or project.ai_model or DEFAULT_MODEL
+    if chosen_model not in AI_MODEL_CHOICES:
+        chosen_model = DEFAULT_MODEL
+
+    client = _build_ai_client(model_name=chosen_model)
 
     try:
         result = asyncio.run(run_full_pipeline(spec, client=client))
     except Exception as exc:  # pragma: no cover - surfaced through session
         logger.exception("Compile failed for project %s", project_id)
+        failure_entry = {
+            "stage": "compile",
+            "status": "error",
+            "timestamp": datetime.now(ZoneInfo(tz_name)).isoformat(),
+        }
+        try:
+            with progress_log.open("a", encoding="utf-8") as fp:
+                fp.write(json.dumps(failure_entry, ensure_ascii=False) + "\n")
+        except Exception:
+            logger.exception(
+                "Failed to append compile failure entry; progress_log=%s", progress_log
+            )
         post_update(f"Compile failed: {exc}", status="error")
         return
 
@@ -485,6 +510,14 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     if start_stage not in PIPELINE_ORDER:
         messages.error(request, "Unknown start stage.")
         return redirect("project-detail", pk=project.pk)
+
+    ai_model = request.POST.get("ai_model") or project.ai_model or DEFAULT_MODEL
+    if ai_model not in AI_MODEL_CHOICES:
+        messages.error(request, "Unknown AI model selection.")
+        return redirect("project-detail", pk=project.pk)
+    if ai_model != project.ai_model:
+        project.ai_model = ai_model
+        project.save(update_fields=["ai_model", "updated_at"])
 
     text: str | None = None
     text_obj: dict[str, Any] | None = None
@@ -546,6 +579,7 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         text_obj,
         report_id,
         task_type,
+        ai_model,
         q_options={"sync": False},
     )
 
@@ -590,6 +624,12 @@ def compile_status(request: HttpRequest, pk: int, report_id: str) -> JsonRespons
         last = updates.last()
         if last and last.status in {"error", "finished"}:
             status = last.status
+
+    if status in {"error", "finished"} and messages_out:
+        level = messages.ERROR if status == "error" else messages.INFO
+        # Surface the last update to the project detail page when the monitor
+        # redirects after completion.
+        messages.add_message(request, level, messages_out[-1])
 
     return JsonResponse({"messages": messages_out, "status": status, "project": project.pk})
 
