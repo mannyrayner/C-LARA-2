@@ -201,6 +201,56 @@ class CompileHTMLTests(unittest.TestCase):
             f"Expected concordance file {expected_path.name} to be written",
         )
 
+    def test_mwe_tokens_include_encoded_slug(self) -> None:
+        """Tokens that belong to an MWE should carry the encoded lemma slug used for concordances."""
+
+        out_root = self.artifacts / "html"
+        mwe_text = {
+            "l2": "en",
+            "surface": "A sharp pain appeared.",
+            "pages": [
+                {
+                    "surface": "A sharp pain appeared.",
+                    "segments": [
+                        {
+                            "surface": "A sharp pain appeared.",
+                            "tokens": [
+                                {"surface": "A", "annotations": {}},
+                                {"surface": " ", "annotations": {}},
+                                {
+                                    "surface": "sharp",
+                                    "annotations": {
+                                        "lemma": "sharp pain",
+                                        "pos": "NOUN",
+                                        "mwe_id": "m2",
+                                    },
+                                },
+                                {"surface": " ", "annotations": {}},
+                                {
+                                    "surface": "pain",
+                                    "annotations": {
+                                        "lemma": "sharp pain",
+                                        "pos": "NOUN",
+                                        "mwe_id": "m2",
+                                    },
+                                },
+                                {"surface": " ", "annotations": {}},
+                                {"surface": "appeared", "annotations": {}},
+                                {"surface": ".", "annotations": {}},
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+
+        result = compile_html(CompileHTMLSpec(text=mwe_text, output_dir=out_root, run_id="mwe-slug"))
+
+        html_path = Path(result["html_path"])
+        page_content = html_path.read_text(encoding="utf-8")
+        expected_slug = quote("sharp pain", safe="~()*!.'-_")
+        self.assertIn(f'data-lemma-slug="{expected_slug}"', page_content)
+
 
 if __name__ == "__main__":
     unittest.main()

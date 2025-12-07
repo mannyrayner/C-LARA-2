@@ -161,7 +161,11 @@ def _render_tokens(
             audio_path = resolver.resolve(audio_meta.get("path"))
 
         if lemma:
-            data_attrs.append(f'data-lemma="{_escape(str(lemma))}"')
+            lemma_str = str(lemma)
+            data_attrs.append(f'data-lemma="{_escape(lemma_str)}"')
+            data_attrs.append(
+                f'data-lemma-slug="{_escape(_encode_lemma_for_filename(lemma_str))}"'
+            )
         if gloss:
             data_attrs.append(f'data-gloss="{_escape(str(gloss))}"')
         if pos:
@@ -450,14 +454,14 @@ nav a { margin-right: 0.5rem; }
           setTimeout(() => { element.classList.remove(className); }, duration);
         }
 
-      function loadConcordance(lemma, contextDocument) {
+      function loadConcordance(lemma, contextDocument, encodedLemma) {
         const targetDoc = contextDocument || document;
         const pane = targetDoc.getElementById('concordance-pane');
-        const encoded = encodeURIComponent(lemma);
+        const encoded = encodedLemma || encodeURIComponent(lemma);
         const target = `concordance_${encoded}.html`;
         if (pane) { pane.src = target; }
         if (window.parent !== window) {
-          window.parent.postMessage({ type: 'loadConcordance', data: { lemma } }, '*');
+          window.parent.postMessage({ type: 'loadConcordance', data: { lemma, slug: encoded } }, '*');
         }
       }
 
@@ -481,7 +485,8 @@ nav a { margin-right: 0.5rem; }
             const audioSrc = token.dataset.audio;
             if (audioSrc) { const audio = new Audio(audioSrc); audio.play().catch(() => {}); }
             const lemma = token.dataset.lemma;
-            if (lemma) { loadConcordance(lemma, doc); }
+            const lemmaSlug = token.dataset.lemmaSlug;
+            if (lemma) { loadConcordance(lemma, doc, lemmaSlug); }
             const mwe = token.dataset.mweId;
             if (mwe) { highlightMwe(mwe, doc, token); }
         });
@@ -579,7 +584,7 @@ function highlightMwe(mweId, contextDocument, sourceToken) {
 
         window.addEventListener('message', (event) => {
           if (event.data.type === 'loadConcordance') {
-            loadConcordance(event.data.data.lemma, document);
+            loadConcordance(event.data.data.lemma, document, event.data.data.slug);
           }
         });
 
