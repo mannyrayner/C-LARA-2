@@ -300,8 +300,25 @@ def _resolve_run_dir(project: Project) -> Path | None:
     return None
 
 
-def _load_stage_payload(project: Project, stage: str) -> dict[str, Any] | None:
-    run_dir = _resolve_run_dir(project)
+def _iter_runs(project: Project) -> list[Path]:
+    runs_root = (project.artifact_dir() / "runs").resolve()
+    if not runs_root.exists():
+        return []
+    return sorted(runs_root.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True)
+
+
+def _find_run_with_stage(project: Project, stage: str) -> Path | None:
+    for run_dir in _iter_runs(project):
+        if (run_dir / "stages" / f"{stage}.json").exists():
+            return run_dir
+    return None
+
+
+def _load_stage_payload(
+    project: Project, stage: str, run_dir: Path | None = None
+) -> dict[str, Any] | None:
+    if run_dir is None:
+        run_dir = _resolve_run_dir(project)
     if not run_dir:
         return None
     path = run_dir / "stages" / f"{stage}.json"
@@ -312,6 +329,22 @@ def _load_stage_payload(project: Project, stage: str) -> dict[str, Any] | None:
     except Exception:
         return None
 
+
+def _copy_run_artifacts(src: Path, dest: Path) -> None:
+    """Copy prior run outputs into ``dest`` so partial recompiles have inputs.
+
+    Stages upstream from the chosen start point live in previous run folders.
+    Copying those artifacts forward lets later partial runs chain together even
+    when the most recent run only contains downstream outputs.
+    """
+
+    for item in src.iterdir():
+        target = dest / item.name
+        if item.is_dir():
+            shutil.copytree(item, target, dirs_exist_ok=True)
+        elif item.is_file():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(item, target)
 
 def _run_compile_task(
     project_id: int,
@@ -472,13 +505,30 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         # Start from a persisted intermediate produced by a previous run.
         upstream_index = PIPELINE_ORDER.index(start_stage) - 1
         upstream_stage = PIPELINE_ORDER[upstream_index]
-        text_obj = _load_stage_payload(project, upstream_stage)
+        source_run = _find_run_with_stage(project, upstream_stage)
+        if not source_run:
+            messages.error(
+                request,
+                f"Cannot start at {start_stage}: missing upstream stage output ({upstream_stage}).",
+            )
+            return redirect("project-detail", pk=project.pk)
+
+        text_obj = _load_stage_payload(project, upstream_stage, run_dir=source_run)
         if text_obj is None:
             messages.error(
                 request,
                 f"Cannot start at {start_stage}: missing upstream stage output ({upstream_stage}).",
             )
             return redirect("project-detail", pk=project.pk)
+
+        try:
+            _copy_run_artifacts(source_run, output_dir)
+            # Each run gets its own progress trail; start with a clean slate.
+            progress_log = output_dir / "stages" / "progress.jsonl"
+            if progress_log.exists():
+                progress_log.unlink()
+        except Exception:
+            logger.exception("Failed to copy prior run artifacts from %s", source_run)
 
     task_type = f"compile_project_{project.pk}"
     report_id = str(uuid.uuid4())

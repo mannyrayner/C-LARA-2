@@ -1,4 +1,7 @@
+import os
 import uuid
+from pathlib import Path
+from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
@@ -66,3 +69,36 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual(update.message, "hello")
         self.assertEqual(update.task_type, "compile_project")
         self.assertEqual(update.status, "running")
+
+    @patch("projects.views.async_task")
+    def test_partial_recompile_reuses_prior_run_artifacts(self, mock_async_task):
+        base = self.project.artifact_dir()
+        run_old = base / "runs" / "run_older"
+        run_newer = base / "runs" / "run_newer"
+        for run_dir in (run_old, run_newer):
+            (run_dir / "stages").mkdir(parents=True, exist_ok=True)
+        # Older run has upstream stage output; newer run only has downstream data.
+        (run_old / "stages" / "lemma.json").write_text("{\"lemma\": true}", encoding="utf-8")
+        (run_newer / "stages" / "compile_html.json").write_text("{}", encoding="utf-8")
+        os.utime(run_old, (1, 1))
+        os.utime(run_newer, (2, 2))
+
+        existing_runs = set(Path(base / "runs").glob("run_*"))
+
+        url = reverse("project-compile", args=[self.project.pk])
+        resp = self.client.post(url, {"start_stage": "gloss"})
+        self.assertEqual(resp.status_code, 302)
+
+        runs_after = set(Path(base / "runs").glob("run_*"))
+        new_runs = runs_after - existing_runs
+        self.assertEqual(len(new_runs), 1)
+        new_run = new_runs.pop()
+
+        copied_stage = new_run / "stages" / "lemma.json"
+        self.assertTrue(copied_stage.exists())
+        self.assertEqual(copied_stage.read_text(encoding="utf-8"), "{\"lemma\": true}")
+
+        # Ensure we scheduled the compile task using the new run directory.
+        self.assertTrue(mock_async_task.called)
+        args, kwargs = mock_async_task.call_args
+        self.assertIn(str(new_run), args)
