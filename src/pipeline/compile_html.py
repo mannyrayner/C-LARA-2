@@ -454,14 +454,26 @@ nav a { margin-right: 0.5rem; }
           setTimeout(() => { element.classList.remove(className); }, duration);
         }
 
+      function encodeLemmaForFilename(lemma) {
+        if (!lemma) return 'unknown';
+        let encoded = encodeURIComponent(lemma);
+        encoded = encoded.replace(/%21/g, '!').replace(/%27/g, "'").replace(/%28/g, '(').replace(/%29/g, ')').replace(/%2A/g, '*');
+        return encoded || 'unknown';
+      }
+
+      function encodeSlugForUrl(slug) {
+        return (slug || 'unknown').replace(/%/g, '%25');
+      }
+
       function loadConcordance(lemma, contextDocument, encodedLemma) {
         const targetDoc = contextDocument || document;
         const pane = targetDoc.getElementById('concordance-pane');
-        const encoded = encodedLemma || encodeURIComponent(lemma);
-        const target = `concordance_${encoded}.html`;
+        const slug = encodedLemma || encodeLemmaForFilename(lemma || '');
+        const targetSlug = encodeSlugForUrl(slug);
+        const target = `concordance_${targetSlug}.html`;
         if (pane) { pane.src = target; }
         if (window.parent !== window) {
-          window.parent.postMessage({ type: 'loadConcordance', data: { lemma, slug: encoded } }, '*');
+          window.parent.postMessage({ type: 'loadConcordance', data: { lemma, slug } }, '*');
         }
       }
 

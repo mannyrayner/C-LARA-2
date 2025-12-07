@@ -251,6 +251,18 @@ class CompileHTMLTests(unittest.TestCase):
         expected_slug = quote("sharp pain", safe="~()*!.'-_")
         self.assertIn(f'data-lemma-slug="{expected_slug}"', page_content)
 
+    def test_concordance_loader_preserves_percent_signs(self) -> None:
+        """Concordance JS should escape percent signs so encoded slugs resolve to on-disk files."""
+
+        out_root = self.artifacts / "html"
+        result = compile_html(CompileHTMLSpec(text=self.sample_text, output_dir=out_root, run_id="percent-safe"))
+
+        scripts_path = Path(result["html_path"]).parent / "static" / "clara_scripts.js"
+        script = scripts_path.read_text(encoding="utf-8")
+
+        self.assertIn("function encodeSlugForUrl(slug)", script)
+        self.assertIn("replace(/%/g, '%25')", script)
+
 
 if __name__ == "__main__":
     unittest.main()
