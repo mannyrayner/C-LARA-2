@@ -1,7 +1,10 @@
+from zoneinfo import available_timezones
+
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Project
+
+from .models import Project, Profile
 
 
 class RegistrationForm(UserCreationForm):
@@ -49,3 +52,14 @@ class ProjectForm(forms.ModelForm):
             self.add_error(None, "Please provide either a description or source text, not both.")
 
         return cleaned
+
+
+TIMEZONE_CHOICES = [(tz, tz) for tz in sorted(available_timezones())]
+
+
+class ProfileForm(forms.ModelForm):
+    timezone = forms.ChoiceField(choices=TIMEZONE_CHOICES)
+
+    class Meta:
+        model = Profile
+        fields = ["timezone"]
