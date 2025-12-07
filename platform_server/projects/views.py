@@ -41,13 +41,26 @@ def _make_task_callback(
     report_id = report_id or uuid.uuid4()
 
     def _post(message: str, status: str | None = None) -> None:
-        TaskUpdate.objects.create(
-            report_id=report_id,
-            user_id=user_id,
-            task_type=task_type,
-            message=message[:1024],
-            status=status,
-        )
+        """Persist updates safely from both sync and async contexts."""
+
+        def _write() -> None:
+            TaskUpdate.objects.create(
+                report_id=report_id,
+                user_id=user_id,
+                task_type=task_type,
+                message=message[:1024],
+                status=status,
+            )
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            # No running loop: normal sync execution.
+            _write()
+        else:
+            # Running inside an event loop (e.g., pipeline coroutine); schedule
+            # database write off the loop to avoid SynchronousOnlyOperation.
+            loop.create_task(asyncio.to_thread(_write))
 
     return _post, str(report_id)
 
