@@ -3,6 +3,7 @@ from __future__ import annotations
 import shutil
 import unittest
 from pathlib import Path
+from urllib.parse import quote
 
 from pipeline.audio import SimpleTTSEngine
 from pipeline.compile_html import CompileHTMLSpec, compile_html
@@ -160,6 +161,44 @@ class CompileHTMLTests(unittest.TestCase):
             1,
             len(mwe_entry["occurrences"]),
             "MWE lemma should be listed once per segment in concordance",
+        )
+
+    def test_concordance_filenames_are_encoded(self) -> None:
+        """Problematic lemma characters should be encoded for concordance filenames."""
+
+        out_root = self.artifacts / "html"
+        text_with_quote = self.sample_text.copy()
+        text_with_quote["pages"] = [
+            {
+                "surface": "Hi",
+                "segments": [
+                    {
+                        "surface": "Hi",
+                        "tokens": [
+                            {
+                                "surface": "Hi",
+                                "annotations": {
+                                    "lemma": '"',
+                                    "gloss": "quote",
+                                },
+                            }
+                        ],
+                    }
+                ],
+            }
+        ]
+
+        result = compile_html(
+            CompileHTMLSpec(text=text_with_quote, output_dir=out_root, run_id="encoded")
+        )
+
+        run_root = Path(result["run_root"])
+        html_root = run_root / "html"
+        encoded_slug = quote('"', safe="~()*!.'-_")
+        expected_path = html_root / f"concordance_{encoded_slug}.html"
+        self.assertTrue(
+            expected_path.exists(),
+            f"Expected concordance file {expected_path.name} to be written",
         )
 
 
