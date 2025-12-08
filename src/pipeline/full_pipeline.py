@@ -47,7 +47,7 @@ class FullPipelineSpec:
 
     text: str | None = None
     text_obj: dict[str, Any] | None = None
-    description: str | None = None  # optional text_gen description
+    description: dict[str, Any] | str | None = None  # optional text_gen description
     language: str = "en"
     target_language: str = "fr"
     voice: str | None = None
