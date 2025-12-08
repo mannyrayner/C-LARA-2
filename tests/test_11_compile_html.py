@@ -262,8 +262,8 @@ class CompileHTMLTests(unittest.TestCase):
         scripts_path = Path(result["html_path"]).parent / "static" / "clara_scripts.js"
         script = scripts_path.read_text(encoding="utf-8")
 
-        self.assertIn("function encodeSlugForUrl(slug)", script)
-        self.assertIn("replace(/%/g, '%25')", script)
+        self.assertIn("lemmaFileSlug", script)
+        self.assertIn("replace(/%25/g, '%')", script)
 
 
 if __name__ == "__main__":

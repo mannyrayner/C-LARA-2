@@ -469,24 +469,20 @@ nav a { margin-right: 0.5rem; }
         return encoded || 'unknown';
       }
 
-      function encodeSlugForUrl(slug) {
-        return (slug || 'unknown').replace(/%/g, '%25');
+      function normalizeSlug(fileSlug, slug, lemma) {
+        const candidate = fileSlug || slug;
+        if (candidate) return candidate.replace(/%25/g, '%');
+        return encodeLemmaForFilename(lemma || '');
       }
 
-      function normalizeSlug(slug, lemma) {
-        const base = slug || encodeLemmaForFilename(lemma || '');
-        if (base.includes('%25')) return base;
-        return encodeSlugForUrl(base);
-      }
-
-      function loadConcordance(lemma, contextDocument, encodedLemma) {
+      function loadConcordance(lemma, contextDocument, encodedFileSlug, encodedUrlSlug) {
         const targetDoc = contextDocument || document;
         const pane = targetDoc.getElementById('concordance-pane');
-        const targetSlug = normalizeSlug(encodedLemma, lemma);
+        const targetSlug = normalizeSlug(encodedFileSlug, encodedUrlSlug, lemma);
         const target = `concordance_${targetSlug}.html`;
         if (pane) { pane.src = target; }
         if (window.parent !== window) {
-          window.parent.postMessage({ type: 'loadConcordance', data: { lemma, slug: targetSlug } }, '*');
+          window.parent.postMessage({ type: 'loadConcordance', data: { lemma, slug: targetSlug, fileSlug: encodedFileSlug } }, '*');
         }
       }
 
@@ -511,7 +507,8 @@ nav a { margin-right: 0.5rem; }
             if (audioSrc) { const audio = new Audio(audioSrc); audio.play().catch(() => {}); }
             const lemma = token.dataset.lemma;
             const lemmaSlug = token.dataset.lemmaSlug;
-            if (lemma) { loadConcordance(lemma, doc, lemmaSlug); }
+            const lemmaFileSlug = token.dataset.lemmaFileSlug;
+            if (lemma) { loadConcordance(lemma, doc, lemmaFileSlug, lemmaSlug); }
             const mwe = token.dataset.mweId;
             if (mwe) { highlightMwe(mwe, doc, token); }
         });
@@ -609,7 +606,7 @@ function highlightMwe(mweId, contextDocument, sourceToken) {
 
         window.addEventListener('message', (event) => {
           if (event.data.type === 'loadConcordance') {
-            loadConcordance(event.data.data.lemma, document, event.data.data.slug);
+            loadConcordance(event.data.data.lemma, document, event.data.data.fileSlug, event.data.data.slug);
           }
         });
 
