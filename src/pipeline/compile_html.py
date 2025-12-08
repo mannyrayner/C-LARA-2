@@ -53,13 +53,6 @@ def _encode_lemma_for_filename(lemma: str) -> str:
     return encoded or "unknown"
 
 
-def _encode_lemma_for_url(lemma: str) -> str:
-    """Encode a lemma slug for use in URLs without double-decoding issues."""
-
-    file_slug = _encode_lemma_for_filename(lemma)
-    return file_slug.replace("%", "%25")
-
-
 def _escape(text: str) -> str:
     # Normalize to NFC to keep accents intact, then emit numeric character
     # references for any non-ASCII symbols so browsers render them correctly
@@ -67,6 +60,13 @@ def _escape(text: str) -> str:
     normalized = unicodedata.normalize("NFC", text)
     escaped = html.escape(normalized, quote=True)
     return escaped.encode("ascii", "xmlcharrefreplace").decode("ascii")
+
+
+def _escape_preserve_unicode(text: str) -> str:
+    """Escape HTML while keeping Unicode characters readable."""
+
+    normalized = unicodedata.normalize("NFC", text)
+    return html.escape(normalized, quote=True)
 
 
 def _audio_path(path_str: str | None, root: Path) -> str | None:
@@ -170,12 +170,8 @@ def _render_tokens(
         if lemma:
             lemma_str = str(lemma)
             data_attrs.append(f'data-lemma="{_escape(lemma_str)}"')
-            file_slug = _encode_lemma_for_filename(lemma_str)
-            url_slug = _encode_lemma_for_url(lemma_str)
-            data_attrs.append(f'data-lemma-slug="{_escape(url_slug)}"')
-            data_attrs.append(f'data-lemma-file-slug="{_escape(file_slug)}"')
         if gloss:
-            data_attrs.append(f'data-gloss="{_escape(str(gloss))}"')
+            data_attrs.append(f'data-gloss="{_escape_preserve_unicode(str(gloss))}"')
         if pos:
             data_attrs.append(f'data-pos="{_escape(str(pos))}"')
         if mwe_id:
@@ -260,7 +256,9 @@ def _render_segment(
     )
     parts.append(f"<div class=\"segment-surface\">{tokens_html}</div>")
     if translation:
-        parts.append(f'<div class="segment-translation hidden">{_escape(str(translation))}</div>')
+        parts.append(
+            f'<div class="segment-translation hidden">{_escape_preserve_unicode(str(translation))}</div>'
+        )
     parts.append("</div>")
     return "".join(parts)
 
@@ -469,20 +467,14 @@ nav a { margin-right: 0.5rem; }
         return encoded || 'unknown';
       }
 
-      function normalizeSlug(fileSlug, slug, lemma) {
-        const candidate = fileSlug || slug;
-        if (candidate) return candidate.replace(/%25/g, '%');
-        return encodeLemmaForFilename(lemma || '');
-      }
-
-      function loadConcordance(lemma, contextDocument, encodedFileSlug, encodedUrlSlug) {
+      function loadConcordance(lemma, contextDocument) {
         const targetDoc = contextDocument || document;
         const pane = targetDoc.getElementById('concordance-pane');
-        const targetSlug = normalizeSlug(encodedFileSlug, encodedUrlSlug, lemma);
+        const targetSlug = encodeLemmaForFilename(lemma || '');
         const target = `concordance_${targetSlug}.html`;
         if (pane) { pane.src = target; }
         if (window.parent !== window) {
-          window.parent.postMessage({ type: 'loadConcordance', data: { lemma, slug: targetSlug, fileSlug: encodedFileSlug } }, '*');
+          window.parent.postMessage({ type: 'loadConcordance', data: { lemma, slug: targetSlug } }, '*');
         }
       }
 
