@@ -248,8 +248,10 @@ class CompileHTMLTests(unittest.TestCase):
 
         html_path = Path(result["html_path"])
         page_content = html_path.read_text(encoding="utf-8")
-        expected_slug = quote("sharp pain", safe="~()*!.'-_")
-        self.assertIn(f'data-lemma-slug="{expected_slug}"', page_content)
+        expected_file_slug = quote("sharp pain", safe="~()*!.'-_")
+        expected_url_slug = expected_file_slug.replace("%", "%25")
+        self.assertIn(f'data-lemma-slug="{expected_url_slug}"', page_content)
+        self.assertIn(f'data-lemma-file-slug="{expected_file_slug}"', page_content)
 
     def test_concordance_loader_preserves_percent_signs(self) -> None:
         """Concordance JS should escape percent signs so encoded slugs resolve to on-disk files."""

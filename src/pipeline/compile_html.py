@@ -53,6 +53,13 @@ def _encode_lemma_for_filename(lemma: str) -> str:
     return encoded or "unknown"
 
 
+def _encode_lemma_for_url(lemma: str) -> str:
+    """Encode a lemma slug for use in URLs without double-decoding issues."""
+
+    file_slug = _encode_lemma_for_filename(lemma)
+    return file_slug.replace("%", "%25")
+
+
 def _escape(text: str) -> str:
     # Normalize to NFC to keep accents intact, then emit numeric character
     # references for any non-ASCII symbols so browsers render them correctly
@@ -163,9 +170,10 @@ def _render_tokens(
         if lemma:
             lemma_str = str(lemma)
             data_attrs.append(f'data-lemma="{_escape(lemma_str)}"')
-            data_attrs.append(
-                f'data-lemma-slug="{_escape(_encode_lemma_for_filename(lemma_str))}"'
-            )
+            file_slug = _encode_lemma_for_filename(lemma_str)
+            url_slug = _encode_lemma_for_url(lemma_str)
+            data_attrs.append(f'data-lemma-slug="{_escape(url_slug)}"')
+            data_attrs.append(f'data-lemma-file-slug="{_escape(file_slug)}"')
         if gloss:
             data_attrs.append(f'data-gloss="{_escape(str(gloss))}"')
         if pos:
@@ -465,15 +473,20 @@ nav a { margin-right: 0.5rem; }
         return (slug || 'unknown').replace(/%/g, '%25');
       }
 
+      function normalizeSlug(slug, lemma) {
+        const base = slug || encodeLemmaForFilename(lemma || '');
+        if (base.includes('%25')) return base;
+        return encodeSlugForUrl(base);
+      }
+
       function loadConcordance(lemma, contextDocument, encodedLemma) {
         const targetDoc = contextDocument || document;
         const pane = targetDoc.getElementById('concordance-pane');
-        const slug = encodedLemma || encodeLemmaForFilename(lemma || '');
-        const targetSlug = encodeSlugForUrl(slug);
+        const targetSlug = normalizeSlug(encodedLemma, lemma);
         const target = `concordance_${targetSlug}.html`;
         if (pane) { pane.src = target; }
         if (window.parent !== window) {
-          window.parent.postMessage({ type: 'loadConcordance', data: { lemma, slug } }, '*');
+          window.parent.postMessage({ type: 'loadConcordance', data: { lemma, slug: targetSlug } }, '*');
         }
       }
 
