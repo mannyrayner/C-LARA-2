@@ -498,7 +498,9 @@ nav a { margin-right: 0.5rem; }
             const audioSrc = token.dataset.audio;
             if (audioSrc) { const audio = new Audio(audioSrc); audio.play().catch(() => {}); }
             const lemma = token.dataset.lemma;
-            if (lemma) { loadConcordance(lemma, doc); }
+            const lemmaSlug = token.dataset.lemmaSlug;
+            const lemmaFileSlug = token.dataset.lemmaFileSlug;
+            if (lemma) { loadConcordance(lemma, doc, lemmaFileSlug, lemmaSlug); }
             const mwe = token.dataset.mweId;
             if (mwe) { highlightMwe(mwe, doc, token); }
         });
@@ -596,7 +598,7 @@ function highlightMwe(mweId, contextDocument, sourceToken) {
 
         window.addEventListener('message', (event) => {
           if (event.data.type === 'loadConcordance') {
-            loadConcordance(event.data.data.lemma, document);
+            loadConcordance(event.data.data.lemma, document, event.data.data.fileSlug, event.data.data.slug);
           }
         });
 
