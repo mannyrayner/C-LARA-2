@@ -1,0 +1,48 @@
+{% extends "projects/base.html" %}
+{% block title %}Image style: {{ project.title }}{% endblock %}
+{% block content %}
+<h1>Image style for {{ project.title }}</h1>
+
+<p>
+  This is the first version of the initial <strong>Style</strong> substep. It stores the
+  style brief, generates an expanded style description, and prepares a sample image
+  prompt that can later be passed to an image model.
+</p>
+
+<p><a href="{% url 'project-detail' project.pk %}">← Back to project</a></p>
+
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <p>
+    <button class="btn" type="submit" name="action" value="generate">Generate style draft</button>
+    <button class="btn" type="submit" name="action" value="generate_image">Generate sample image</button>
+    <button class="btn secondary" type="submit" name="action" value="save">Save draft</button>
+    <button class="btn secondary" type="submit" name="action" value="approve">Approve style</button>
+  </p>
+</form>
+
+<h3>Current status</h3>
+<p>Status: <strong>{{ style.get_status_display }}</strong></p>
+<p>Artifacts stored at: {{ style_artifact_dir }}</p>
+
+{% if style.representative_excerpt %}
+  <h3>Representative excerpt</h3>
+  <pre>{{ style.representative_excerpt }}</pre>
+{% endif %}
+
+{% if style.sample_image_prompt %}
+  <h3>Sample image prompt</h3>
+  <pre>{{ style.sample_image_prompt }}</pre>
+{% endif %}
+
+{% if style.sample_image_revised_prompt %}
+  <h3>Provider-revised prompt</h3>
+  <pre>{{ style.sample_image_revised_prompt }}</pre>
+{% endif %}
+
+{% if style_image_url %}
+  <h3>Sample style image</h3>
+  <p><img src="{{ style_image_url }}" alt="Sample style image" style="max-width: 512px; width: 100%; height: auto;" /></p>
+{% endif %}
+{% endblock %}
