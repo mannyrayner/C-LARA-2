@@ -6,6 +6,7 @@ Welcome! This folder collects the specs and notes that drive the current impleme
 
 - **How-to**: [Quickstart](howto/quickstart.md)
 - **How-to**: [Run the Django platform locally](howto/run-django-platform.md)
+- **How-to**: [Locate compile progress logs](howto/compile-logs.md)
 - **Architecture Decision Records (ADRs)**: [ADR-0001: Documentation & Structure](adr/0001-documentation-and-structure.md)
 
 ## Roadmaps and current status
