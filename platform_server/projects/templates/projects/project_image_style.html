@@ -16,6 +16,7 @@
   {{ form.as_p }}
   <p>
     <button class="btn" type="submit" name="action" value="generate">Generate style draft</button>
+    <button class="btn" type="submit" name="action" value="generate_image">Generate sample image</button>
     <button class="btn secondary" type="submit" name="action" value="save">Save draft</button>
     <button class="btn secondary" type="submit" name="action" value="approve">Approve style</button>
   </p>
@@ -33,5 +34,15 @@
 {% if style.sample_image_prompt %}
   <h3>Sample image prompt</h3>
   <pre>{{ style.sample_image_prompt }}</pre>
+{% endif %}
+
+{% if style.sample_image_revised_prompt %}
+  <h3>Provider-revised prompt</h3>
+  <pre>{{ style.sample_image_revised_prompt }}</pre>
+{% endif %}
+
+{% if style_image_url %}
+  <h3>Sample style image</h3>
+  <p><img src="{{ style_image_url }}" alt="Sample style image" style="max-width: 512px; width: 100%; height: auto;" /></p>
 {% endif %}
 {% endblock %}

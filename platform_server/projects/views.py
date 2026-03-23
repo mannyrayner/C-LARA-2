@@ -122,11 +122,16 @@ def _persist_image_style_artifacts(
     (style_dir / "sample_image_prompt.txt").write_text(
         style.sample_image_prompt or "", encoding="utf-8"
     )
+    (style_dir / "sample_image_revised_prompt.txt").write_text(
+        style.sample_image_revised_prompt or "", encoding="utf-8"
+    )
     (style_dir / "style_status.json").write_text(
         json.dumps(
             {
                 "project_id": project.pk,
                 "ai_model": style.ai_model,
+                "sample_image_model": style.sample_image_model,
+                "sample_image_path": style.sample_image_path,
                 "status": style.status,
                 "updated_at": style.updated_at.isoformat(),
             },
@@ -216,6 +221,39 @@ def _generate_project_image_style(
     }
 
 
+def _generate_project_style_sample_image(
+    project: Project,
+    style: ProjectImageStyle,
+) -> dict[str, Any]:
+    prompt = (style.sample_image_prompt or style.expanded_style_description or "").strip()
+    if not prompt:
+        raise ValueError("Please generate or enter a sample image prompt first.")
+
+    client = _build_ai_client()
+    image_result = client.generate_image(prompt, model=style.sample_image_model)
+    style_dir = _image_style_dir(project)
+    style_dir.mkdir(parents=True, exist_ok=True)
+    image_filename = "style_sample_image.png"
+    image_path = style_dir / image_filename
+    image_path.write_bytes(image_result["bytes"])
+
+    rel_path = image_path.relative_to(project.artifact_dir()).as_posix()
+    metadata = {
+        "prompt": prompt,
+        "revised_prompt": image_result.get("revised_prompt") or "",
+        "model": image_result.get("model") or style.sample_image_model,
+        "size": image_result.get("size"),
+        "quality": image_result.get("quality"),
+        "output_format": image_result.get("output_format"),
+        "path": rel_path,
+    }
+    (style_dir / "style_sample_image_metadata.json").write_text(
+        json.dumps(metadata, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return metadata
+
+
 def register(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         form = RegistrationForm(request.POST)
@@ -292,6 +330,22 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
                         request,
                         "Generated an expanded style description and sample image prompt.",
                     )
+            elif action == "generate_image":
+                try:
+                    metadata = _generate_project_style_sample_image(project, style_obj)
+                except Exception as exc:
+                    logger.exception(
+                        "Failed to generate style sample image for project %s", project.pk
+                    )
+                    messages.error(request, f"Sample image generation failed: {exc}")
+                else:
+                    style_obj.sample_image_path = metadata["path"]
+                    style_obj.sample_image_revised_prompt = metadata["revised_prompt"]
+                    style_obj.status = ProjectImageStyle.STATUS_GENERATED
+                    messages.success(
+                        request,
+                        "Generated a sample style image with gpt-image-1.",
+                    )
             elif action == "approve":
                 style_obj.status = ProjectImageStyle.STATUS_APPROVED
                 messages.success(request, "Style marked as approved.")
@@ -320,6 +374,11 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
             "form": form,
             "style": style_obj,
             "style_artifact_dir": _image_style_dir(project),
+            "style_image_url": (
+                reverse("project-compiled", args=[project.pk, style_obj.sample_image_path])
+                if style_obj.sample_image_path
+                else None
+            ),
         },
     )
 

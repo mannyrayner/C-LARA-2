@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import contextlib
 import json
 import re
@@ -155,6 +156,46 @@ class OpenAIClient:
         result = close_fn()
         if asyncio.iscoroutine(result):
             await result
+
+    def generate_image(
+        self,
+        prompt: str,
+        *,
+        model: str = "gpt-image-1",
+        size: str = "1024x1024",
+        quality: str = "medium",
+        output_format: str = "png",
+    ) -> dict[str, Any]:
+        """Generate an image and return decoded bytes plus provider metadata."""
+
+        response = self._client.images.generate(
+            model=model,
+            prompt=prompt,
+            size=size,
+            quality=quality,
+            output_format=output_format,
+            response_format="b64_json",
+        )
+        data = getattr(response, "data", None) or []
+        if not data:
+            raise ValueError("Image generation returned no images")
+        first = data[0]
+        b64_json = getattr(first, "b64_json", None) or (
+            first.get("b64_json") if isinstance(first, dict) else None
+        )
+        if not b64_json:
+            raise ValueError("Image generation response did not include base64 image data")
+        revised_prompt = getattr(first, "revised_prompt", None) or (
+            first.get("revised_prompt") if isinstance(first, dict) else None
+        )
+        return {
+            "bytes": base64.b64decode(b64_json),
+            "revised_prompt": revised_prompt or "",
+            "model": model,
+            "size": size,
+            "quality": quality,
+            "output_format": output_format,
+        }
 
 
 def _ensure_openai_installed():
