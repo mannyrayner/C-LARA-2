@@ -27,8 +27,8 @@ from core.config import DEFAULT_MODEL, OpenAIConfig
 from core.ai_api import OpenAIClient
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 
-from .forms import ProfileForm, ProjectForm, RegistrationForm
-from .models import Profile, Project, TaskUpdate
+from .forms import ProfileForm, ProjectForm, ProjectImageStyleForm, RegistrationForm
+from .models import Profile, Project, ProjectImageStyle, TaskUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +99,123 @@ def _make_task_callback(
     return _post, str(report_id)
 
 
+def _image_style_dir(project: Project) -> Path:
+    return project.artifact_dir() / "images" / "style"
+
+
+def _persist_image_style_artifacts(
+    project: Project,
+    style: ProjectImageStyle,
+    *,
+    request_payload: dict[str, Any] | None = None,
+    response_payload: dict[str, Any] | None = None,
+) -> None:
+    style_dir = _image_style_dir(project)
+    style_dir.mkdir(parents=True, exist_ok=True)
+    (style_dir / "style_brief.txt").write_text(style.style_brief or "", encoding="utf-8")
+    (style_dir / "style_description.txt").write_text(
+        style.expanded_style_description or "", encoding="utf-8"
+    )
+    (style_dir / "representative_excerpt.txt").write_text(
+        style.representative_excerpt or "", encoding="utf-8"
+    )
+    (style_dir / "sample_image_prompt.txt").write_text(
+        style.sample_image_prompt or "", encoding="utf-8"
+    )
+    (style_dir / "style_status.json").write_text(
+        json.dumps(
+            {
+                "project_id": project.pk,
+                "ai_model": style.ai_model,
+                "status": style.status,
+                "updated_at": style.updated_at.isoformat(),
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    if request_payload is not None:
+        (style_dir / "style_expansion_prompt.json").write_text(
+            json.dumps(request_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    if response_payload is not None:
+        (style_dir / "style_expansion_response.json").write_text(
+            json.dumps(response_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+
+def _extract_project_plain_text(project: Project) -> str:
+    if (project.source_text or "").strip():
+        return project.source_text.strip()
+
+    latest_run = _resolve_run_dir(project)
+    if latest_run:
+        for stage in ("text_gen", "segmentation_phase_1", "segmentation_phase_2"):
+            payload = _load_stage_payload(project, stage, run_dir=latest_run)
+            if isinstance(payload, dict):
+                surface = (payload.get("surface") or "").strip()
+                if surface:
+                    return surface
+    return (project.description or "").strip()
+
+
+def _build_style_generation_request(project: Project, style_brief: str) -> dict[str, Any]:
+    plain_text = _extract_project_plain_text(project)
+    representative_excerpt = plain_text[:1500].strip()
+    prompt = "\n".join(
+        [
+            "You are helping define a consistent illustration style for a language-learning story.",
+            "Return JSON with keys: expanded_style_description, representative_excerpt, sample_image_prompt.",
+            "expanded_style_description should preserve the user's brief but elaborate it in a way that fits the story content.",
+            "representative_excerpt should be a short excerpt or summary snippet from the story most useful for a sample image.",
+            "sample_image_prompt should be a detailed prompt for a single sample image that demonstrates the style for this story.",
+            "",
+            f"Project title: {project.title}",
+            f"Project language: {project.language}",
+            f"Target language: {project.target_language}",
+            f"User style brief: {style_brief}",
+            "Project text:",
+            plain_text or "[No text available; rely on the description.]",
+        ]
+    )
+    return {
+        "style_brief": style_brief,
+        "plain_text": plain_text,
+        "prompt": prompt,
+    }
+
+
+def _generate_project_image_style(
+    project: Project,
+    style_brief: str,
+    *,
+    ai_model: str,
+) -> dict[str, Any]:
+    request_payload = _build_style_generation_request(project, style_brief)
+    client = _build_ai_client(model_name=ai_model)
+    response = asyncio.run(client.chat_json(request_payload["prompt"], model=ai_model))
+
+    return {
+        "expanded_style_description": (
+            response.get("expanded_style_description") or style_brief
+        ).strip(),
+        "representative_excerpt": (
+            response.get("representative_excerpt")
+            or request_payload["plain_text"][:800]
+        ).strip(),
+        "sample_image_prompt": (
+            response.get("sample_image_prompt")
+            or response.get("expanded_style_description")
+            or style_brief
+        ).strip(),
+        "_request_payload": request_payload,
+        "_response_payload": response,
+    }
+
+
 def register(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         form = RegistrationForm(request.POST)
@@ -126,6 +243,85 @@ def profile(request: HttpRequest) -> HttpResponse:
         form = ProfileForm(instance=profile_obj)
 
     return render(request, "projects/profile_form.html", {"form": form})
+
+
+@login_required
+def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
+    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    style_obj, _ = ProjectImageStyle.objects.get_or_create(
+        project=project,
+        defaults={"ai_model": project.ai_model or DEFAULT_MODEL},
+    )
+
+    if request.method == "POST":
+        action = request.POST.get("action") or "save"
+        form = ProjectImageStyleForm(
+            request.POST,
+            instance=style_obj,
+            ai_model_choices=AI_MODEL_CHOICES,
+        )
+        if form.is_valid():
+            style_obj = form.save(commit=False)
+            request_payload = None
+            response_payload = None
+
+            if action == "generate":
+                try:
+                    generated = _generate_project_image_style(
+                        project,
+                        style_obj.style_brief,
+                        ai_model=style_obj.ai_model,
+                    )
+                except Exception as exc:
+                    logger.exception(
+                        "Failed to generate image style for project %s", project.pk
+                    )
+                    messages.error(request, f"Style generation failed: {exc}")
+                else:
+                    style_obj.expanded_style_description = generated[
+                        "expanded_style_description"
+                    ]
+                    style_obj.representative_excerpt = generated[
+                        "representative_excerpt"
+                    ]
+                    style_obj.sample_image_prompt = generated["sample_image_prompt"]
+                    style_obj.status = ProjectImageStyle.STATUS_GENERATED
+                    request_payload = generated["_request_payload"]
+                    response_payload = generated["_response_payload"]
+                    messages.success(
+                        request,
+                        "Generated an expanded style description and sample image prompt.",
+                    )
+            elif action == "approve":
+                style_obj.status = ProjectImageStyle.STATUS_APPROVED
+                messages.success(request, "Style marked as approved.")
+            else:
+                messages.success(request, "Style draft saved.")
+
+            style_obj.save()
+            _persist_image_style_artifacts(
+                project,
+                style_obj,
+                request_payload=request_payload,
+                response_payload=response_payload,
+            )
+            return redirect("project-image-style", pk=project.pk)
+    else:
+        form = ProjectImageStyleForm(
+            instance=style_obj,
+            ai_model_choices=AI_MODEL_CHOICES,
+        )
+
+    return render(
+        request,
+        "projects/project_image_style.html",
+        {
+            "project": project,
+            "form": form,
+            "style": style_obj,
+            "style_artifact_dir": _image_style_dir(project),
+        },
+    )
 
 
 class ProjectListView(LoginRequiredMixin, ListView):

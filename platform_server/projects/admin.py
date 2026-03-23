@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Profile, Project, TaskUpdate
+from .models import Profile, Project, ProjectImageStyle, TaskUpdate
 
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
@@ -19,3 +19,10 @@ class TaskUpdateAdmin(admin.ModelAdmin):
     list_display = ("report_id", "user", "task_type", "status", "timestamp", "read")
     search_fields = ("report_id", "user__username", "task_type", "message")
     list_filter = ("status", "read")
+
+
+@admin.register(ProjectImageStyle)
+class ProjectImageStyleAdmin(admin.ModelAdmin):
+    list_display = ("project", "ai_model", "status", "updated_at")
+    search_fields = ("project__title", "project__owner__username", "style_brief")
+    list_filter = ("status", "ai_model")

@@ -4,7 +4,7 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 
-from .models import Project, Profile
+from .models import Project, Profile, ProjectImageStyle
 
 
 class RegistrationForm(UserCreationForm):
@@ -63,3 +63,34 @@ class ProfileForm(forms.ModelForm):
     class Meta:
         model = Profile
         fields = ["timezone"]
+
+
+class ProjectImageStyleForm(forms.ModelForm):
+    class Meta:
+        model = ProjectImageStyle
+        fields = [
+            "style_brief",
+            "expanded_style_description",
+            "sample_image_prompt",
+            "ai_model",
+            "status",
+        ]
+        widgets = {
+            "style_brief": forms.Textarea(attrs={"rows": 3}),
+            "expanded_style_description": forms.Textarea(attrs={"rows": 10}),
+            "sample_image_prompt": forms.Textarea(attrs={"rows": 8}),
+        }
+
+    def __init__(self, *args, ai_model_choices: list[str] | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        model_choices = ai_model_choices or []
+        self.fields["ai_model"] = forms.ChoiceField(
+            choices=[(model, model) for model in model_choices],
+            initial=self.instance.ai_model if getattr(self.instance, "pk", None) else None,
+        )
+
+    def clean_style_brief(self):
+        brief = (self.cleaned_data.get("style_brief") or "").strip()
+        if not brief:
+            raise forms.ValidationError("Please provide a brief image style description.")
+        return brief

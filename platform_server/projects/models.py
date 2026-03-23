@@ -89,3 +89,36 @@ class TaskUpdate(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - display helper
         return f"Update {self.report_id}: {self.message}"
+
+
+class ProjectImageStyle(models.Model):
+    """Project-scoped artifacts for the initial image style substep."""
+
+    STATUS_DRAFT = "draft"
+    STATUS_GENERATED = "generated"
+    STATUS_APPROVED = "approved"
+    STATUS_CHOICES = [
+        (STATUS_DRAFT, "Draft"),
+        (STATUS_GENERATED, "Generated"),
+        (STATUS_APPROVED, "Approved"),
+    ]
+
+    project = models.OneToOneField(
+        Project, on_delete=models.CASCADE, related_name="image_style"
+    )
+    style_brief = models.TextField(blank=True)
+    expanded_style_description = models.TextField(blank=True)
+    representative_excerpt = models.TextField(blank=True)
+    sample_image_prompt = models.TextField(blank=True)
+    ai_model = models.CharField(max_length=64, default="gpt-4o")
+    status = models.CharField(
+        max_length=32, choices=STATUS_CHOICES, default=STATUS_DRAFT
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    def __str__(self) -> str:  # pragma: no cover - display helper
+        return f"Image style for {self.project.title}"
