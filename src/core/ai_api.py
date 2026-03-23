@@ -8,6 +8,7 @@ import json
 import re
 import sys
 import time
+import urllib.request
 import uuid
 from importlib import util
 from pathlib import Path
@@ -174,7 +175,6 @@ class OpenAIClient:
             size=size,
             quality=quality,
             output_format=output_format,
-            response_format="b64_json",
         )
         data = getattr(response, "data", None) or []
         if not data:
@@ -183,13 +183,23 @@ class OpenAIClient:
         b64_json = getattr(first, "b64_json", None) or (
             first.get("b64_json") if isinstance(first, dict) else None
         )
-        if not b64_json:
-            raise ValueError("Image generation response did not include base64 image data")
+        image_bytes: bytes | None = None
+        if b64_json:
+            image_bytes = base64.b64decode(b64_json)
+        else:
+            url = getattr(first, "url", None) or (
+                first.get("url") if isinstance(first, dict) else None
+            )
+            if url:
+                with urllib.request.urlopen(url) as response_fp:
+                    image_bytes = response_fp.read()
+        if not image_bytes:
+            raise ValueError("Image generation response did not include image data")
         revised_prompt = getattr(first, "revised_prompt", None) or (
             first.get("revised_prompt") if isinstance(first, dict) else None
         )
         return {
-            "bytes": base64.b64decode(b64_json),
+            "bytes": image_bytes,
             "revised_prompt": revised_prompt or "",
             "model": model,
             "size": size,

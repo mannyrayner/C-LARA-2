@@ -38,6 +38,10 @@ AI_MODEL_CHOICES = [
     "gpt-5",
 ]
 
+IMAGE_MODEL_CHOICES = [
+    "gpt-image-1",
+]
+
 
 def _format_timestamp(ts: str, tz_name: str) -> tuple[str, datetime | None]:
     """Return a user-friendly timestamp string and the parsed datetime.
@@ -297,6 +301,7 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
             request.POST,
             instance=style_obj,
             ai_model_choices=AI_MODEL_CHOICES,
+            image_model_choices=IMAGE_MODEL_CHOICES,
         )
         if form.is_valid():
             style_obj = form.save(commit=False)
@@ -364,6 +369,7 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
         form = ProjectImageStyleForm(
             instance=style_obj,
             ai_model_choices=AI_MODEL_CHOICES,
+            image_model_choices=IMAGE_MODEL_CHOICES,
         )
 
     return render(
