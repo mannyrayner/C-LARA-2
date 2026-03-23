@@ -4,11 +4,18 @@
 <h1>{{ object.title }}</h1>
 <p>{{ object.description }}</p>
 <p>Language: {{ object.language }} → {{ object.target_language }}</p>
+<p><a class="btn secondary" href="{% url 'project-image-style' object.pk %}">Image style</a></p>
 <form method="post" action="{% url 'project-compile' object.pk %}">{% csrf_token %}
   <p><label for="start_stage">Start from stage:</label>
     <select name="start_stage" id="start_stage">
       {% for stage in pipeline_stages %}
         <option value="{{ stage }}" {% if stage == default_start_stage %}selected{% endif %}>{{ stage }}</option>
+      {% endfor %}
+    </select>
+    <label for="ai_model" class="ml-2">Model:</label>
+    <select name="ai_model" id="ai_model">
+      {% for model in ai_models %}
+        <option value="{{ model }}" {% if model == selected_ai_model %}selected{% endif %}>{{ model }}</option>
       {% endfor %}
     </select>
     <button class="btn" type="submit">Compile to HTML</button>
