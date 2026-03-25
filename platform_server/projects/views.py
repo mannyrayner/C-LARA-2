@@ -58,6 +58,8 @@ IMAGE_MODEL_CHOICES = [
     "gpt-image-1",
 ]
 
+PAGE_IMAGE_PLACEMENT_CHOICES = ["none", "top", "bottom"]
+
 
 def _format_timestamp(ts: str, tz_name: str) -> tuple[str, datetime | None]:
     """Return a user-friendly timestamp string and the parsed datetime.
@@ -1102,6 +1104,8 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["compiled_media_url"] = compiled_media_url
         context["ai_models"] = AI_MODEL_CHOICES
         context["selected_ai_model"] = project.ai_model or DEFAULT_MODEL
+        context["page_image_placement_options"] = PAGE_IMAGE_PLACEMENT_CHOICES
+        context["selected_page_image_placement"] = "none"
         return context
 
 
@@ -1219,6 +1223,55 @@ def _copy_run_artifacts(src: Path, dest: Path) -> None:
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(item, target)
 
+
+def _inject_page_images_into_compiled_html(
+    project: Project,
+    *,
+    run_root: Path,
+    placement: str,
+) -> int:
+    if placement not in {"top", "bottom"}:
+        return 0
+
+    inserted = 0
+    page_rows = project.image_pages.exclude(image_path="").order_by("page_number")
+    for row in page_rows:
+        page_file = run_root / f"page_{row.page_number}.html"
+        if not page_file.exists():
+            continue
+        try:
+            image_abs = (project.artifact_dir() / row.image_path).resolve()
+            rel_image = os.path.relpath(image_abs, page_file.parent).replace("\\", "/")
+            snippet = (
+                f'<figure class="generated-page-image generated-page-image-{placement}">'
+                f'<img src="{rel_image}" alt="Generated illustration for page {row.page_number}" '
+                f'style="max-width: 100%; height: auto; display: block; margin: 0 auto 0.75rem auto;" />'
+                "</figure>"
+            )
+
+            html_text = page_file.read_text(encoding="utf-8")
+            if placement == "top":
+                marker = '<div class="page" id="main-text-pane">'
+                if marker in html_text:
+                    html_text = html_text.replace(marker, marker + snippet, 1)
+                else:
+                    continue
+            else:
+                marker = "</div></div><div class=\"concordance-pane-wrapper\">"
+                if marker in html_text:
+                    html_text = html_text.replace(marker, snippet + marker, 1)
+                else:
+                    continue
+            page_file.write_text(html_text, encoding="utf-8")
+            inserted += 1
+        except Exception:
+            logger.exception(
+                "Failed to inject generated page image into HTML; project=%s page=%s",
+                project.pk,
+                row.page_number,
+            )
+    return inserted
+
 def _run_compile_task(
     project_id: int,
     user_id: int,
@@ -1232,6 +1285,8 @@ def _run_compile_task(
     report_id: str | None = None,
     task_type: str | None = None,
     ai_model: str | None = None,
+    end_stage: str | None = None,
+    page_image_placement: str | None = None,
 ) -> None:
     project = Project.objects.get(pk=project_id)
     output_dir = Path(output_dir_str)
@@ -1293,6 +1348,7 @@ def _run_compile_task(
         persist_intermediates=True,
         progress_callback=progress_cb,
         start_stage=start_stage,
+        end_stage=end_stage or "compile_html",
     )
 
     chosen_model = ai_model or project.ai_model or DEFAULT_MODEL
@@ -1332,6 +1388,17 @@ def _run_compile_task(
                 compiled_rel = html_path.relative_to(project_root).as_posix()
             except Exception:
                 compiled_rel = html_path.as_posix()
+        placement = (page_image_placement or "none").strip().lower()
+        if placement in {"top", "bottom"}:
+            inserted = _inject_page_images_into_compiled_html(
+                project,
+                run_root=run_root,
+                placement=placement,
+            )
+            if inserted:
+                post_update(
+                    f"Inserted generated page images into {inserted} compiled page(s) ({placement})."
+                )
     project.compiled_path = compiled_rel.replace("\\", "/")
     project.artifact_root = str(project_root).replace("\\", "/")
     project.save(update_fields=["compiled_path", "artifact_root", "updated_at"])
@@ -1374,6 +1441,18 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     )
     if start_stage not in PIPELINE_ORDER:
         messages.error(request, "Unknown start stage.")
+        return redirect("project-detail", pk=project.pk)
+    end_stage = request.POST.get("end_stage") or "compile_html"
+    if end_stage not in PIPELINE_ORDER:
+        messages.error(request, "Unknown end stage.")
+        return redirect("project-detail", pk=project.pk)
+    if PIPELINE_ORDER.index(end_stage) < PIPELINE_ORDER.index(start_stage):
+        messages.error(request, "End stage must come after the selected start stage.")
+        return redirect("project-detail", pk=project.pk)
+
+    page_image_placement = (request.POST.get("page_image_placement") or "none").strip().lower()
+    if page_image_placement not in PAGE_IMAGE_PLACEMENT_CHOICES:
+        messages.error(request, "Unknown page image placement option.")
         return redirect("project-detail", pk=project.pk)
 
     ai_model = request.POST.get("ai_model") or project.ai_model or DEFAULT_MODEL
@@ -1445,6 +1524,8 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         report_id,
         task_type,
         ai_model,
+        end_stage,
+        page_image_placement,
         q_options={"sync": False},
     )
 

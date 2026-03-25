@@ -134,3 +134,20 @@ class CompileStatusViewTests(TestCase):
 
         args, kwargs = mock_async_task.call_args
         self.assertIn("gpt-5", args)
+
+    @patch("projects.views.async_task")
+    def test_compile_passes_end_stage_and_page_image_placement(self, mock_async_task):
+        url = reverse("project-compile", args=[self.project.pk])
+        resp = self.client.post(
+            url,
+            {
+                "start_stage": "segmentation_phase_1",
+                "end_stage": "segmentation_phase_1",
+                "ai_model": "gpt-4o",
+                "page_image_placement": "bottom",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        args, kwargs = mock_async_task.call_args
+        self.assertIn("segmentation_phase_1", args)
+        self.assertIn("bottom", args)
