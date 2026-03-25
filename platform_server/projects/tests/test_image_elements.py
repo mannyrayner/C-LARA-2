@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.contrib.messages import get_messages
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -121,3 +122,21 @@ class ProjectImageElementsViewTests(TestCase):
         element.refresh_from_db()
         self.assertIn("curly hair", element.expanded_description)
         self.assertEqual(element.status, ProjectImageElement.STATUS_EXPANDED)
+
+    @patch("projects.views._build_ai_client")
+    def test_discover_elements_adds_processing_message(self, mock_build_ai_client):
+        mock_build_ai_client.return_value = FakeAIClient([{"elements": []}])
+        resp = self.client.post(
+            reverse("project-image-elements", args=[self.project.pk]),
+            {
+                "form-TOTAL_FORMS": "0",
+                "form-INITIAL_FORMS": "0",
+                "form-MIN_NUM_FORMS": "0",
+                "form-MAX_NUM_FORMS": "1000",
+                "action": "discover",
+            },
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        msgs = [m.message for m in get_messages(resp.wsgi_request)]
+        self.assertTrue(any("Discovering recurring elements" in msg for msg in msgs))

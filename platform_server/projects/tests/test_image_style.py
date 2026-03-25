@@ -2,6 +2,7 @@ from unittest.mock import patch
 import base64
 
 from django.contrib.auth import get_user_model
+from django.contrib.messages import get_messages
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -152,3 +153,32 @@ class ProjectImageStyleViewTests(TestCase):
         image_path = self.project.artifact_dir() / style.sample_image_path
         self.assertTrue(image_path.exists())
         self.assertGreater(image_path.stat().st_size, 0)
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_style_adds_processing_and_completion_messages(self, mock_build_ai_client):
+        fake_client = FakeAIClient(
+            {
+                "expanded_style_description": "Painterly style",
+                "representative_excerpt": "Celine arrives.",
+                "sample_image_prompt": "Paint Celine arriving.",
+            }
+        )
+        mock_build_ai_client.return_value = fake_client
+
+        resp = self.client.post(
+            reverse("project-image-style", args=[self.project.pk]),
+            {
+                "style_brief": "watercolor",
+                "expanded_style_description": "",
+                "sample_image_prompt": "",
+                "ai_model": "gpt-4o",
+                "sample_image_model": "gpt-image-1",
+                "status": "draft",
+                "action": "generate",
+            },
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        msgs = [m.message for m in get_messages(resp.wsgi_request)]
+        self.assertTrue(any("Processing style expansion" in msg for msg in msgs))
+        self.assertTrue(any("Style expansion completed" in msg for msg in msgs))

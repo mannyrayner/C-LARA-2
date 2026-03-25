@@ -486,6 +486,10 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
             response_payload = None
 
             if action == "generate":
+                messages.info(
+                    request,
+                    f"Processing style expansion with {style_obj.ai_model}. This may take a little while.",
+                )
                 try:
                     generated = _generate_project_image_style(
                         project,
@@ -510,9 +514,13 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
                     response_payload = generated["_response_payload"]
                     messages.success(
                         request,
-                        "Generated an expanded style description and sample image prompt.",
+                        f"Style expansion completed with {style_obj.ai_model}: prompt and excerpt are ready for review.",
                     )
             elif action == "generate_image":
+                messages.info(
+                    request,
+                    f"Generating sample style image with {style_obj.sample_image_model}.",
+                )
                 try:
                     metadata = _generate_project_style_sample_image(project, style_obj)
                 except Exception as exc:
@@ -526,7 +534,7 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
                     style_obj.status = ProjectImageStyle.STATUS_GENERATED
                     messages.success(
                         request,
-                        "Generated a sample style image with gpt-image-1.",
+                        f"Sample style image generation completed with {metadata.get('model') or style_obj.sample_image_model}.",
                     )
             elif action == "approve":
                 style_obj.status = ProjectImageStyle.STATUS_APPROVED
@@ -593,6 +601,10 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
             formset.save_m2m()
 
             if action == "discover":
+                messages.info(
+                    request,
+                    f"Discovering recurring elements with {style.ai_model or DEFAULT_MODEL}.",
+                )
                 try:
                     discovered, request_payload, response_payload = _discover_project_image_elements(
                         project, ai_model=style.ai_model or DEFAULT_MODEL
@@ -616,6 +628,10 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
                     )
                     messages.success(request, f"Discovered {len(discovered)} recurring elements.")
             elif action == "expand":
+                messages.info(
+                    request,
+                    f"Expanding element prompts with {style.ai_model or DEFAULT_MODEL}.",
+                )
                 try:
                     expanded = _expand_project_image_elements(
                         project, ai_model=style.ai_model or DEFAULT_MODEL
