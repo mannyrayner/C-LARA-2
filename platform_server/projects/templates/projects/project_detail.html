@@ -11,8 +11,19 @@
   <input type="hidden" name="start_stage" value="segmentation_phase_1" />
   <input type="hidden" name="end_stage" value="segmentation_phase_1" />
   <input type="hidden" name="ai_model" value="{{ selected_ai_model }}" />
-  <input type="hidden" name="page_image_placement" value="none" />
+  <input type="hidden" name="page_image_placement" value="{{ selected_page_image_placement }}" />
   <p><button class="btn secondary" type="submit">Segment text into pages (phase 1 only)</button></p>
+</form>
+<form method="post" action="{% url 'project-image-placement' object.pk %}">{% csrf_token %}
+  <p>
+    <label for="page_image_placement">Page image placement:</label>
+    <select name="page_image_placement" id="page_image_placement">
+      {% for placement in page_image_placement_options %}
+        <option value="{{ placement }}" {% if placement == selected_page_image_placement %}selected{% endif %}>{{ placement }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn secondary" type="submit">Save image placement</button>
+  </p>
 </form>
 <form method="post" action="{% url 'project-compile' object.pk %}">{% csrf_token %}
   <p><label for="start_stage">Start from stage:</label>
@@ -33,12 +44,7 @@
         <option value="{{ model }}" {% if model == selected_ai_model %}selected{% endif %}>{{ model }}</option>
       {% endfor %}
     </select>
-    <label for="page_image_placement" class="ml-2">Page image placement:</label>
-    <select name="page_image_placement" id="page_image_placement">
-      {% for placement in page_image_placement_options %}
-        <option value="{{ placement }}" {% if placement == selected_page_image_placement %}selected{% endif %}>{{ placement }}</option>
-      {% endfor %}
-    </select>
+    <input type="hidden" name="page_image_placement" value="{{ selected_page_image_placement }}" />
     <button class="btn" type="submit">Compile to HTML</button>
   </p>
 </form>

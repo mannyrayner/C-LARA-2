@@ -1105,7 +1105,11 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["ai_models"] = AI_MODEL_CHOICES
         context["selected_ai_model"] = project.ai_model or DEFAULT_MODEL
         context["page_image_placement_options"] = PAGE_IMAGE_PLACEMENT_CHOICES
-        context["selected_page_image_placement"] = "none"
+        context["selected_page_image_placement"] = (
+            project.page_image_placement
+            if project.page_image_placement in PAGE_IMAGE_PLACEMENT_CHOICES
+            else "none"
+        )
         return context
 
 
@@ -1450,7 +1454,11 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         messages.error(request, "End stage must come after the selected start stage.")
         return redirect("project-detail", pk=project.pk)
 
-    page_image_placement = (request.POST.get("page_image_placement") or "none").strip().lower()
+    page_image_placement = (
+        request.POST.get("page_image_placement")
+        or project.page_image_placement
+        or "none"
+    ).strip().lower()
     if page_image_placement not in PAGE_IMAGE_PLACEMENT_CHOICES:
         messages.error(request, "Unknown page image placement option.")
         return redirect("project-detail", pk=project.pk)
@@ -1530,6 +1538,20 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
     return redirect("project-compile-monitor", pk=project.pk, report_id=report_id)
+
+
+@login_required
+def set_page_image_placement(request: HttpRequest, pk: int) -> HttpResponse:
+    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    placement = (request.POST.get("page_image_placement") or "none").strip().lower()
+    if placement not in PAGE_IMAGE_PLACEMENT_CHOICES:
+        messages.error(request, "Unknown page image placement option.")
+        return redirect("project-detail", pk=project.pk)
+    if placement != project.page_image_placement:
+        project.page_image_placement = placement
+        project.save(update_fields=["page_image_placement", "updated_at"])
+    messages.success(request, f"Saved page image placement setting: {placement}.")
+    return redirect("project-detail", pk=project.pk)
 
 
 @login_required

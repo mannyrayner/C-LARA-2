@@ -137,6 +137,8 @@ class CompileStatusViewTests(TestCase):
 
     @patch("projects.views.async_task")
     def test_compile_passes_end_stage_and_page_image_placement(self, mock_async_task):
+        self.project.page_image_placement = "bottom"
+        self.project.save(update_fields=["page_image_placement"])
         url = reverse("project-compile", args=[self.project.pk])
         resp = self.client.post(
             url,
@@ -144,10 +146,16 @@ class CompileStatusViewTests(TestCase):
                 "start_stage": "segmentation_phase_1",
                 "end_stage": "segmentation_phase_1",
                 "ai_model": "gpt-4o",
-                "page_image_placement": "bottom",
             },
         )
         self.assertEqual(resp.status_code, 302)
         args, kwargs = mock_async_task.call_args
         self.assertIn("segmentation_phase_1", args)
         self.assertIn("bottom", args)
+
+    def test_set_page_image_placement_updates_project(self):
+        url = reverse("project-image-placement", args=[self.project.pk])
+        resp = self.client.post(url, {"page_image_placement": "top"})
+        self.assertEqual(resp.status_code, 302)
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.page_image_placement, "top")
