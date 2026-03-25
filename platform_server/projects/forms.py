@@ -120,12 +120,15 @@ class ProjectImageElementForm(forms.ModelForm):
             "why_consistency_matters",
             "expanded_description",
             "expanded_prompt",
+            "image_model",
+            "image_revised_prompt",
             "is_confirmed",
         ]
         widgets = {
             "why_consistency_matters": forms.Textarea(attrs={"rows": 2}),
             "expanded_description": forms.Textarea(attrs={"rows": 4}),
             "expanded_prompt": forms.Textarea(attrs={"rows": 4}),
+            "image_revised_prompt": forms.Textarea(attrs={"rows": 2}),
         }
 
 

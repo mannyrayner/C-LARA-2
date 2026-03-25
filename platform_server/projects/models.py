@@ -148,6 +148,9 @@ class ProjectImageElement(models.Model):
     why_consistency_matters = models.TextField(blank=True)
     expanded_description = models.TextField(blank=True)
     expanded_prompt = models.TextField(blank=True)
+    image_model = models.CharField(max_length=64, default="gpt-image-1")
+    image_path = models.CharField(max_length=512, blank=True)
+    image_revised_prompt = models.TextField(blank=True)
     is_confirmed = models.BooleanField(default=False)
     ai_model = models.CharField(max_length=64, default="gpt-4o")
     status = models.CharField(

@@ -30,6 +30,6 @@ class ProjectImageStyleAdmin(admin.ModelAdmin):
 
 @admin.register(ProjectImageElement)
 class ProjectImageElementAdmin(admin.ModelAdmin):
-    list_display = ("project", "name", "element_type", "status", "is_confirmed", "updated_at")
+    list_display = ("project", "name", "element_type", "status", "image_model", "is_confirmed", "updated_at")
     search_fields = ("project__title", "name", "why_consistency_matters")
     list_filter = ("status", "is_confirmed", "element_type")

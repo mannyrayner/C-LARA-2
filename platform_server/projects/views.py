@@ -20,6 +20,7 @@ from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import CreateView, DetailView, ListView
 from django_q.tasks import async_task
+from django.utils.text import slugify
 import mimetypes
 from urllib.parse import unquote
 
@@ -301,6 +302,9 @@ def _persist_image_elements_artifacts(
             "why_consistency_matters",
             "expanded_description",
             "expanded_prompt",
+            "image_model",
+            "image_path",
+            "image_revised_prompt",
             "is_confirmed",
             "status",
             "ai_model",
@@ -435,6 +439,58 @@ def _expand_project_image_elements(
     return count
 
 
+def _generate_project_element_images(
+    project: Project,
+    *,
+    image_model: str,
+) -> int:
+    client = _build_ai_client()
+    elements_dir = _image_elements_dir(project)
+    elements_dir.mkdir(parents=True, exist_ok=True)
+    generated = 0
+    for element in project.image_elements.order_by("name", "id"):
+        prompt = (element.expanded_prompt or element.expanded_description or element.name).strip()
+        if not prompt:
+            continue
+        image_result = client.generate_image(prompt, model=image_model)
+        element_slug = slugify(element.name) or f"element-{element.id}"
+        element_dir = elements_dir / element_slug
+        element_dir.mkdir(parents=True, exist_ok=True)
+        image_path = element_dir / "reference.png"
+        image_path.write_bytes(image_result["bytes"])
+        rel_path = image_path.relative_to(project.artifact_dir()).as_posix()
+        element.image_model = image_model
+        element.image_path = rel_path
+        element.image_revised_prompt = image_result.get("revised_prompt") or ""
+        if element.status != ProjectImageElement.STATUS_CONFIRMED:
+            element.status = ProjectImageElement.STATUS_EXPANDED
+        element.save(
+            update_fields=[
+                "image_model",
+                "image_path",
+                "image_revised_prompt",
+                "status",
+                "updated_at",
+            ]
+        )
+        (element_dir / "metadata.json").write_text(
+            json.dumps(
+                {
+                    "name": element.name,
+                    "prompt": prompt,
+                    "model": image_model,
+                    "revised_prompt": element.image_revised_prompt,
+                    "image_path": rel_path,
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        generated += 1
+    return generated
+
+
 def register(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         form = RegistrationForm(request.POST)
@@ -549,7 +605,7 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
                 request_payload=request_payload,
                 response_payload=response_payload,
             )
-            return redirect("project-image-style", pk=project.pk)
+            return redirect(f"{reverse('project-image-style', args=[project.pk])}?notice=done")
         messages.error(
             request,
             "Could not process the style request. Please review the highlighted form fields.",
@@ -574,6 +630,7 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
                 if style_obj.sample_image_path
                 else None
             ),
+            "status_notice": request.GET.get("notice"),
         },
     )
 
@@ -591,8 +648,18 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
 
     if request.method == "POST":
         action = request.POST.get("action") or "save"
+        requested_image_model = (request.POST.get("image_model") or "").strip()
+        image_model = requested_image_model or "gpt-image-1"
+        invalid_image_model = image_model not in IMAGE_MODEL_CHOICES
+        if invalid_image_model:
+            image_model = "gpt-image-1"
         formset = ProjectImageElementFormSet(request.POST, queryset=queryset)
         if formset.is_valid():
+            if action == "generate_images" and requested_image_model and invalid_image_model:
+                messages.warning(
+                    request,
+                    f"Unknown image model '{requested_image_model}'. Using gpt-image-1 instead.",
+                )
             instances = formset.save(commit=False)
             for obj in formset.deleted_objects:
                 obj.delete()
@@ -655,10 +722,28 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
                         confirmed += 1
                 _persist_image_elements_artifacts(project)
                 messages.success(request, f"Confirmed {confirmed} elements.")
+            elif action == "generate_images":
+                messages.info(
+                    request,
+                    f"Generating element reference images with {image_model}.",
+                )
+                try:
+                    generated_images = _generate_project_element_images(
+                        project, image_model=image_model
+                    )
+                except Exception as exc:
+                    logger.exception("Failed to generate element images for project %s", project.pk)
+                    messages.error(request, f"Element image generation failed: {exc}")
+                else:
+                    _persist_image_elements_artifacts(project)
+                    messages.success(
+                        request,
+                        f"Generated {generated_images} element reference images with {image_model}.",
+                    )
             else:
                 _persist_image_elements_artifacts(project)
                 messages.success(request, "Saved element edits.")
-            return redirect("project-image-elements", pk=project.pk)
+            return redirect(f"{reverse('project-image-elements', args=[project.pk])}?notice=done")
         messages.error(
             request,
             "Could not process the elements request. Please review the form rows for errors.",
@@ -675,6 +760,14 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
             "formset": formset,
             "elements_artifact_dir": _image_elements_dir(project),
             "confirmed_count": project.image_elements.filter(is_confirmed=True).count(),
+            "image_models": IMAGE_MODEL_CHOICES,
+            "selected_image_model": request.GET.get("image_model")
+            or project.image_elements.filter(image_model__isnull=False)
+            .exclude(image_model="")
+            .values_list("image_model", flat=True)
+            .first()
+            or "gpt-image-1",
+            "status_notice": request.GET.get("notice"),
         },
     )
 
