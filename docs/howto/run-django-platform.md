@@ -19,10 +19,29 @@ This launches `python manage.py runserver` bound to `http://127.0.0.1:8000/`; th
 Notes:
 - The target clears `PYTHONPATH` and forces `DJANGO_SETTINGS_MODULE=platform_server.settings` so host settings (common on Windows) don’t break the interpreter. Override the interpreter with `PYTHON=<path/to/python>` if needed.
 
+## With the background worker (django-q style)
+Compilation messages are delivered from background tasks. For parity with C-LARA, run both the web server and the Django Q worker:
+
+```bash
+make run-platform-with-q
+```
+
+The `run-platform-with-q` target runs migrations, starts a stub `qcluster` process (good enough for local dev with the bundled `django_q` shim), and then launches the dev server. If you want to exercise the *real* Django Q worker instead of the stub, install [`django-q2`](https://pypi.org/project/django-q2/) (or another Django 5-compatible fork) and use:
+
+```bash
+pip install django-q2
+make run-platform-with-real-q
+```
+
+The `run-platform-with-real-q` target sets `DJANGO_Q_USE_REAL=1`, which gives precedence to the installed `django_q` package so the genuine `qcluster` runs alongside the dev server. This is useful when debugging message delivery differences between the stub and a real queue service.
+
+The default `Q_CLUSTER` settings in `platform_server/settings.py` use a long timeout for compile jobs and a larger retry window (`retry` > `timeout`) so a real `django-q` install starts cleanly without warning about misconfiguration. If you override these values, keep that relationship in mind to avoid noisy startup warnings.
+
 ## Manual steps (if you prefer)
 ```bash
 cd platform_server
 python manage.py migrate
+python manage.py qcluster  # keep running in its own terminal to process tasks
 python manage.py runserver
 ```
 
