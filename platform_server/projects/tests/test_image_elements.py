@@ -56,6 +56,18 @@ class ProjectImageElementsViewTests(TestCase):
         self.assertContains(resp, "Discover elements")
         self.assertContains(resp, "Generate element images")
 
+    def test_get_elements_page_shows_generated_image(self):
+        ProjectImageElement.objects.create(
+            project=self.project,
+            name="Celine",
+            element_type="character",
+            image_path="images/elements/celine/reference.png",
+        )
+        resp = self.client.get(reverse("project-image-elements", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Generated reference image")
+        self.assertContains(resp, "/compiled/images/elements/celine/reference.png")
+
     @patch("projects.views._build_ai_client")
     def test_discover_elements_creates_rows(self, mock_build_ai_client):
         mock_build_ai_client.return_value = FakeAIClient(

@@ -542,10 +542,6 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
             response_payload = None
 
             if action == "generate":
-                messages.info(
-                    request,
-                    f"Processing style expansion with {style_obj.ai_model}. This may take a little while.",
-                )
                 try:
                     generated = _generate_project_image_style(
                         project,
@@ -573,10 +569,6 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
                         f"Style expansion completed with {style_obj.ai_model}: prompt and excerpt are ready for review.",
                     )
             elif action == "generate_image":
-                messages.info(
-                    request,
-                    f"Generating sample style image with {style_obj.sample_image_model}.",
-                )
                 try:
                     metadata = _generate_project_style_sample_image(project, style_obj)
                 except Exception as exc:
@@ -723,10 +715,6 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
                 _persist_image_elements_artifacts(project)
                 messages.success(request, f"Confirmed {confirmed} elements.")
             elif action == "generate_images":
-                messages.info(
-                    request,
-                    f"Generating element reference images with {image_model}.",
-                )
                 try:
                     generated_images = _generate_project_element_images(
                         project, image_model=image_model

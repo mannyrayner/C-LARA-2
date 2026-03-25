@@ -46,6 +46,16 @@
         {{ form.id }}
         <p><strong>Element {{ forloop.counter }}</strong></p>
         {{ form.as_p }}
+        {% if form.instance.image_path %}
+          <p><strong>Generated reference image</strong></p>
+          <p>
+            <img
+              src="{% url 'project-compiled' project.pk form.instance.image_path %}"
+              alt="Reference image for {{ form.instance.name }}"
+              style="max-width: 320px; width: 100%; height: auto;"
+            />
+          </p>
+        {% endif %}
       </fieldset>
     {% endfor %}
   {% else %}

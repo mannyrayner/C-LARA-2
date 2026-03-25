@@ -155,7 +155,7 @@ class ProjectImageStyleViewTests(TestCase):
         self.assertGreater(image_path.stat().st_size, 0)
 
     @patch("projects.views._build_ai_client")
-    def test_generate_style_adds_processing_and_completion_messages(self, mock_build_ai_client):
+    def test_generate_style_adds_completion_message(self, mock_build_ai_client):
         fake_client = FakeAIClient(
             {
                 "expanded_style_description": "Painterly style",
@@ -180,7 +180,6 @@ class ProjectImageStyleViewTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         msgs = [m.message for m in get_messages(resp.wsgi_request)]
-        self.assertTrue(any("Processing style expansion" in msg for msg in msgs))
         self.assertTrue(any("Style expansion completed" in msg for msg in msgs))
 
     def test_invalid_style_submit_adds_error_message(self):
