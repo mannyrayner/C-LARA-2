@@ -1,42 +1,775 @@
 from __future__ import annotations
 
-import asyncio
 import json
+import logging
 import shutil
-from datetime import datetime
+import uuid
+import asyncio
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
+from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import FileResponse, Http404, HttpRequest, HttpResponse
-from django.views.decorators.clickjacking import xframe_options_sameorigin
+from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.views.generic import DetailView, ListView, CreateView
+from django.views.decorators.clickjacking import xframe_options_sameorigin
+from django.views.generic import CreateView, DetailView, ListView
+from django_q.tasks import async_task
+from django.utils.text import slugify
 import mimetypes
 from urllib.parse import unquote
 
-from core.config import OpenAIConfig
+from core.config import DEFAULT_MODEL, OpenAIConfig
 from core.ai_api import OpenAIClient
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 
-from .forms import ProjectForm, RegistrationForm
-from .models import Project
+from .forms import (
+    ProfileForm,
+    ProjectForm,
+    ProjectImageElementFormSet,
+    ProjectImageStyleForm,
+    RegistrationForm,
+)
+from .models import Profile, Project, ProjectImageElement, ProjectImageStyle, TaskUpdate
+
+logger = logging.getLogger(__name__)
+
+AI_MODEL_CHOICES = [
+    "gpt-4o",
+    "gpt-4o-mini",
+    "gpt-5",
+]
+
+IMAGE_MODEL_CHOICES = [
+    "gpt-image-1",
+]
+
+
+def _format_timestamp(ts: str, tz_name: str) -> tuple[str, datetime | None]:
+    """Return a user-friendly timestamp string and the parsed datetime.
+
+    Falls back to the raw value when parsing fails.
+    """
+
+    try:
+        dt = datetime.fromisoformat(ts)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        dt_local = dt.astimezone(ZoneInfo(tz_name))
+
+        # Round to 0.1 second for a concise display.
+        rounded_microseconds = int(round(dt_local.microsecond / 100_000) * 100_000)
+        if rounded_microseconds == 1_000_000:
+            dt_local = dt_local + timedelta(seconds=1)
+            rounded_microseconds = 0
+        dt_local = dt_local.replace(microsecond=rounded_microseconds)
+
+        offset = dt_local.strftime("%z")
+        offset_fmt = f"{offset[:3]}:{offset[3:]}" if len(offset) == 5 else offset
+        display = f"{dt_local.strftime('%Y-%m-%d %H:%M:%S')}.{rounded_microseconds // 100_000} ({offset_fmt})"
+        return display, dt_local
+    except Exception:
+        return ts, None
+
+
+def _make_task_callback(
+    task_type: str | None, user_id: int, report_id: uuid.UUID | None = None
+) -> tuple[Callable[[str, str | None], None], str]:
+    """Return a callback that records task updates and the corresponding report ID."""
+
+    report_id = report_id or uuid.uuid4()
+    task_label = task_type or "compile_project"
+
+    def _post(message: str, status: str | None = None) -> None:
+        """Persist updates safely from both sync and async contexts."""
+
+        def _write() -> None:
+            TaskUpdate.objects.create(
+                report_id=report_id,
+                user_id=user_id,
+                task_type=task_label,
+                message=message[:1024],
+                status=status,
+            )
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            # No running loop: normal sync execution.
+            _write()
+        else:
+            # Running inside an event loop (e.g., pipeline coroutine); schedule
+            # database write off the loop to avoid SynchronousOnlyOperation.
+            loop.create_task(asyncio.to_thread(_write))
+
+    return _post, str(report_id)
+
+
+def _image_style_dir(project: Project) -> Path:
+    return project.artifact_dir() / "images" / "style"
+
+
+def _persist_image_style_artifacts(
+    project: Project,
+    style: ProjectImageStyle,
+    *,
+    request_payload: dict[str, Any] | None = None,
+    response_payload: dict[str, Any] | None = None,
+) -> None:
+    style_dir = _image_style_dir(project)
+    style_dir.mkdir(parents=True, exist_ok=True)
+    (style_dir / "style_brief.txt").write_text(style.style_brief or "", encoding="utf-8")
+    (style_dir / "style_description.txt").write_text(
+        style.expanded_style_description or "", encoding="utf-8"
+    )
+    (style_dir / "representative_excerpt.txt").write_text(
+        style.representative_excerpt or "", encoding="utf-8"
+    )
+    (style_dir / "sample_image_prompt.txt").write_text(
+        style.sample_image_prompt or "", encoding="utf-8"
+    )
+    (style_dir / "sample_image_revised_prompt.txt").write_text(
+        style.sample_image_revised_prompt or "", encoding="utf-8"
+    )
+    (style_dir / "style_status.json").write_text(
+        json.dumps(
+            {
+                "project_id": project.pk,
+                "ai_model": style.ai_model,
+                "sample_image_model": style.sample_image_model,
+                "sample_image_path": style.sample_image_path,
+                "status": style.status,
+                "updated_at": style.updated_at.isoformat(),
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    if request_payload is not None:
+        (style_dir / "style_expansion_prompt.json").write_text(
+            json.dumps(request_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    if response_payload is not None:
+        (style_dir / "style_expansion_response.json").write_text(
+            json.dumps(response_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+
+def _extract_project_plain_text(project: Project) -> str:
+    if (project.source_text or "").strip():
+        return project.source_text.strip()
+
+    latest_run = _resolve_run_dir(project)
+    if latest_run:
+        for stage in ("text_gen", "segmentation_phase_1", "segmentation_phase_2"):
+            payload = _load_stage_payload(project, stage, run_dir=latest_run)
+            if isinstance(payload, dict):
+                surface = (payload.get("surface") or "").strip()
+                if surface:
+                    return surface
+    return (project.description or "").strip()
+
+
+def _build_style_generation_request(project: Project, style_brief: str) -> dict[str, Any]:
+    plain_text = _extract_project_plain_text(project)
+    representative_excerpt = plain_text[:1500].strip()
+    prompt = "\n".join(
+        [
+            "You are helping define a consistent illustration style for a language-learning story.",
+            "Return JSON with keys: expanded_style_description, representative_excerpt, sample_image_prompt.",
+            "expanded_style_description should preserve the user's brief but elaborate it in a way that fits the story content.",
+            "representative_excerpt should be a short excerpt or summary snippet from the story most useful for a sample image.",
+            "sample_image_prompt should be a detailed prompt for a single sample image that demonstrates the style for this story.",
+            "",
+            f"Project title: {project.title}",
+            f"Project language: {project.language}",
+            f"Target language: {project.target_language}",
+            f"User style brief: {style_brief}",
+            "Project text:",
+            plain_text or "[No text available; rely on the description.]",
+        ]
+    )
+    return {
+        "style_brief": style_brief,
+        "plain_text": plain_text,
+        "prompt": prompt,
+    }
+
+
+def _generate_project_image_style(
+    project: Project,
+    style_brief: str,
+    *,
+    ai_model: str,
+) -> dict[str, Any]:
+    request_payload = _build_style_generation_request(project, style_brief)
+    client = _build_ai_client(model_name=ai_model)
+    response = asyncio.run(client.chat_json(request_payload["prompt"], model=ai_model))
+
+    return {
+        "expanded_style_description": (
+            response.get("expanded_style_description") or style_brief
+        ).strip(),
+        "representative_excerpt": (
+            response.get("representative_excerpt")
+            or request_payload["plain_text"][:800]
+        ).strip(),
+        "sample_image_prompt": (
+            response.get("sample_image_prompt")
+            or response.get("expanded_style_description")
+            or style_brief
+        ).strip(),
+        "_request_payload": request_payload,
+        "_response_payload": response,
+    }
+
+
+def _generate_project_style_sample_image(
+    project: Project,
+    style: ProjectImageStyle,
+) -> dict[str, Any]:
+    prompt = (style.sample_image_prompt or style.expanded_style_description or "").strip()
+    if not prompt:
+        raise ValueError("Please generate or enter a sample image prompt first.")
+
+    client = _build_ai_client()
+    image_result = client.generate_image(prompt, model=style.sample_image_model)
+    style_dir = _image_style_dir(project)
+    style_dir.mkdir(parents=True, exist_ok=True)
+    image_filename = "style_sample_image.png"
+    image_path = style_dir / image_filename
+    image_path.write_bytes(image_result["bytes"])
+
+    rel_path = image_path.relative_to(project.artifact_dir()).as_posix()
+    metadata = {
+        "prompt": prompt,
+        "revised_prompt": image_result.get("revised_prompt") or "",
+        "model": image_result.get("model") or style.sample_image_model,
+        "size": image_result.get("size"),
+        "quality": image_result.get("quality"),
+        "output_format": image_result.get("output_format"),
+        "path": rel_path,
+    }
+    (style_dir / "style_sample_image_metadata.json").write_text(
+        json.dumps(metadata, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return metadata
+
+
+def _image_elements_dir(project: Project) -> Path:
+    return project.artifact_dir() / "images" / "elements"
+
+
+def _extract_project_pages(project: Project) -> list[str]:
+    latest_run = _resolve_run_dir(project)
+    if latest_run:
+        seg1 = _load_stage_payload(project, "segmentation_phase_1", run_dir=latest_run)
+        if isinstance(seg1, dict):
+            pages = seg1.get("pages", [])
+            surfaces = [str(page.get("surface", "")).strip() for page in pages if str(page.get("surface", "")).strip()]
+            if surfaces:
+                return surfaces
+    plain_text = _extract_project_plain_text(project)
+    if not plain_text:
+        return []
+    chunks = [chunk.strip() for chunk in plain_text.split("\n\n") if chunk.strip()]
+    return chunks or [plain_text]
+
+
+def _persist_image_elements_artifacts(
+    project: Project,
+    *,
+    request_payload: dict[str, Any] | None = None,
+    response_payload: dict[str, Any] | None = None,
+) -> None:
+    elements_dir = _image_elements_dir(project)
+    elements_dir.mkdir(parents=True, exist_ok=True)
+    elements_data = list(
+        project.image_elements.order_by("name", "id").values(
+            "id",
+            "name",
+            "element_type",
+            "page_refs",
+            "why_consistency_matters",
+            "expanded_description",
+            "expanded_prompt",
+            "image_model",
+            "image_path",
+            "image_revised_prompt",
+            "is_confirmed",
+            "status",
+            "ai_model",
+            "updated_at",
+        )
+    )
+    (elements_dir / "elements_list.json").write_text(
+        json.dumps(elements_data, ensure_ascii=False, indent=2, default=str),
+        encoding="utf-8",
+    )
+    if request_payload is not None:
+        (elements_dir / "elements_discovery_prompt.json").write_text(
+            json.dumps(request_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    if response_payload is not None:
+        (elements_dir / "elements_discovery_response.json").write_text(
+            json.dumps(response_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+
+def _discover_project_image_elements(
+    project: Project,
+    *,
+    ai_model: str,
+) -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
+    pages = _extract_project_pages(project)
+    style_description = ""
+    try:
+        style_description = project.image_style.expanded_style_description
+    except Exception:
+        style_description = ""
+
+    prompt = "\n".join(
+        [
+            "Identify recurring visual elements that should be rendered consistently.",
+            "Return JSON with key 'elements', where each item has keys:",
+            "name, type, page_refs, why_consistency_matters.",
+            "page_refs should be a list of 1-indexed page numbers.",
+            "Only include elements that appear on at least two pages or are central recurring motifs.",
+            "",
+            f"Project title: {project.title}",
+            f"Language: {project.language}",
+            f"Approved style description: {style_description or '[none]'}",
+            "Pages:",
+        ]
+    )
+    for idx, page_surface in enumerate(pages, start=1):
+        prompt += f"\nPage {idx}: {page_surface}"
+
+    request_payload = {
+        "pages": pages,
+        "style_description": style_description,
+        "prompt": prompt,
+    }
+    client = _build_ai_client(model_name=ai_model)
+    response = asyncio.run(client.chat_json(prompt, model=ai_model))
+    elements = response.get("elements") or []
+    if not isinstance(elements, list):
+        elements = []
+    normalized: list[dict[str, Any]] = []
+    for item in elements:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        if not name:
+            continue
+        refs = item.get("page_refs") or []
+        if isinstance(refs, list):
+            refs_text = ",".join(str(x) for x in refs if str(x).strip())
+        else:
+            refs_text = str(refs)
+        normalized.append(
+            {
+                "name": name[:255],
+                "element_type": str(item.get("type") or "character")[:64],
+                "page_refs": refs_text[:255],
+                "why_consistency_matters": str(item.get("why_consistency_matters") or "")[:2000],
+            }
+        )
+    return normalized, request_payload, response
+
+
+def _expand_project_image_elements(
+    project: Project,
+    *,
+    ai_model: str,
+) -> int:
+    style_description = ""
+    try:
+        style_description = project.image_style.expanded_style_description
+    except Exception:
+        style_description = ""
+    full_text = _extract_project_plain_text(project)
+    count = 0
+    client = _build_ai_client(model_name=ai_model)
+    for element in project.image_elements.order_by("name", "id"):
+        prompt = "\n".join(
+            [
+                "Create an expanded visual element description for consistent illustration.",
+                "Return JSON with keys: expanded_description, expanded_prompt.",
+                "",
+                f"Element name: {element.name}",
+                f"Element type: {element.element_type}",
+                f"Page refs: {element.page_refs}",
+                f"Why consistency matters: {element.why_consistency_matters}",
+                f"Project style description: {style_description or '[none]'}",
+                "Project text:",
+                full_text or "[none]",
+            ]
+        )
+        response = asyncio.run(client.chat_json(prompt, model=ai_model))
+        element.expanded_description = str(
+            response.get("expanded_description") or element.expanded_description or ""
+        ).strip()
+        element.expanded_prompt = str(
+            response.get("expanded_prompt") or element.expanded_description or ""
+        ).strip()
+        element.ai_model = ai_model
+        element.status = ProjectImageElement.STATUS_EXPANDED
+        element.save(
+            update_fields=[
+                "expanded_description",
+                "expanded_prompt",
+                "ai_model",
+                "status",
+                "updated_at",
+            ]
+        )
+        count += 1
+    return count
+
+
+def _generate_project_element_images(
+    project: Project,
+    *,
+    image_model: str,
+) -> int:
+    client = _build_ai_client()
+    elements_dir = _image_elements_dir(project)
+    elements_dir.mkdir(parents=True, exist_ok=True)
+    generated = 0
+    for element in project.image_elements.order_by("name", "id"):
+        prompt = (element.expanded_prompt or element.expanded_description or element.name).strip()
+        if not prompt:
+            continue
+        image_result = client.generate_image(prompt, model=image_model)
+        element_slug = slugify(element.name) or f"element-{element.id}"
+        element_dir = elements_dir / element_slug
+        element_dir.mkdir(parents=True, exist_ok=True)
+        image_path = element_dir / "reference.png"
+        image_path.write_bytes(image_result["bytes"])
+        rel_path = image_path.relative_to(project.artifact_dir()).as_posix()
+        element.image_model = image_model
+        element.image_path = rel_path
+        element.image_revised_prompt = image_result.get("revised_prompt") or ""
+        if element.status != ProjectImageElement.STATUS_CONFIRMED:
+            element.status = ProjectImageElement.STATUS_EXPANDED
+        element.save(
+            update_fields=[
+                "image_model",
+                "image_path",
+                "image_revised_prompt",
+                "status",
+                "updated_at",
+            ]
+        )
+        (element_dir / "metadata.json").write_text(
+            json.dumps(
+                {
+                    "name": element.name,
+                    "prompt": prompt,
+                    "model": image_model,
+                    "revised_prompt": element.image_revised_prompt,
+                    "image_path": rel_path,
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        generated += 1
+    return generated
 
 
 def register(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         form = RegistrationForm(request.POST)
         if form.is_valid():
-            form.save()
+            user = form.save()
+            Profile.objects.get_or_create(user=user)
             messages.success(request, "Account created. Please log in.")
             return redirect("login")
     else:
         form = RegistrationForm()
     return render(request, "projects/register.html", {"form": form})
+
+
+@login_required
+def profile(request: HttpRequest) -> HttpResponse:
+    profile_obj, _ = Profile.objects.get_or_create(user=request.user)
+
+    if request.method == "POST":
+        form = ProfileForm(request.POST, instance=profile_obj)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Profile saved.")
+            return redirect("profile")
+    else:
+        form = ProfileForm(instance=profile_obj)
+
+    return render(request, "projects/profile_form.html", {"form": form})
+
+
+@login_required
+def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
+    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    style_obj, _ = ProjectImageStyle.objects.get_or_create(
+        project=project,
+        defaults={"ai_model": project.ai_model or DEFAULT_MODEL},
+    )
+
+    if request.method == "POST":
+        action = request.POST.get("action") or "save"
+        form = ProjectImageStyleForm(
+            request.POST,
+            instance=style_obj,
+            ai_model_choices=AI_MODEL_CHOICES,
+            image_model_choices=IMAGE_MODEL_CHOICES,
+        )
+        if form.is_valid():
+            style_obj = form.save(commit=False)
+            request_payload = None
+            response_payload = None
+
+            if action == "generate":
+                messages.info(
+                    request,
+                    f"Processing style expansion with {style_obj.ai_model}. This may take a little while.",
+                )
+                try:
+                    generated = _generate_project_image_style(
+                        project,
+                        style_obj.style_brief,
+                        ai_model=style_obj.ai_model,
+                    )
+                except Exception as exc:
+                    logger.exception(
+                        "Failed to generate image style for project %s", project.pk
+                    )
+                    messages.error(request, f"Style generation failed: {exc}")
+                else:
+                    style_obj.expanded_style_description = generated[
+                        "expanded_style_description"
+                    ]
+                    style_obj.representative_excerpt = generated[
+                        "representative_excerpt"
+                    ]
+                    style_obj.sample_image_prompt = generated["sample_image_prompt"]
+                    style_obj.status = ProjectImageStyle.STATUS_GENERATED
+                    request_payload = generated["_request_payload"]
+                    response_payload = generated["_response_payload"]
+                    messages.success(
+                        request,
+                        f"Style expansion completed with {style_obj.ai_model}: prompt and excerpt are ready for review.",
+                    )
+            elif action == "generate_image":
+                messages.info(
+                    request,
+                    f"Generating sample style image with {style_obj.sample_image_model}.",
+                )
+                try:
+                    metadata = _generate_project_style_sample_image(project, style_obj)
+                except Exception as exc:
+                    logger.exception(
+                        "Failed to generate style sample image for project %s", project.pk
+                    )
+                    messages.error(request, f"Sample image generation failed: {exc}")
+                else:
+                    style_obj.sample_image_path = metadata["path"]
+                    style_obj.sample_image_revised_prompt = metadata["revised_prompt"]
+                    style_obj.status = ProjectImageStyle.STATUS_GENERATED
+                    messages.success(
+                        request,
+                        f"Sample style image generation completed with {metadata.get('model') or style_obj.sample_image_model}.",
+                    )
+            elif action == "approve":
+                style_obj.status = ProjectImageStyle.STATUS_APPROVED
+                messages.success(request, "Style marked as approved.")
+            else:
+                messages.success(request, "Style draft saved.")
+
+            style_obj.save()
+            _persist_image_style_artifacts(
+                project,
+                style_obj,
+                request_payload=request_payload,
+                response_payload=response_payload,
+            )
+            return redirect(f"{reverse('project-image-style', args=[project.pk])}?notice=done")
+        messages.error(
+            request,
+            "Could not process the style request. Please review the highlighted form fields.",
+        )
+    else:
+        form = ProjectImageStyleForm(
+            instance=style_obj,
+            ai_model_choices=AI_MODEL_CHOICES,
+            image_model_choices=IMAGE_MODEL_CHOICES,
+        )
+
+    return render(
+        request,
+        "projects/project_image_style.html",
+        {
+            "project": project,
+            "form": form,
+            "style": style_obj,
+            "style_artifact_dir": _image_style_dir(project),
+            "style_image_url": (
+                reverse("project-compiled", args=[project.pk, style_obj.sample_image_path])
+                if style_obj.sample_image_path
+                else None
+            ),
+            "status_notice": request.GET.get("notice"),
+        },
+    )
+
+
+@login_required
+def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
+    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    try:
+        style = project.image_style
+    except ProjectImageStyle.DoesNotExist:
+        messages.error(request, "Please complete the Style step first.")
+        return redirect("project-image-style", pk=project.pk)
+
+    queryset = ProjectImageElement.objects.filter(project=project).order_by("name", "id")
+
+    if request.method == "POST":
+        action = request.POST.get("action") or "save"
+        requested_image_model = (request.POST.get("image_model") or "").strip()
+        image_model = requested_image_model or "gpt-image-1"
+        invalid_image_model = image_model not in IMAGE_MODEL_CHOICES
+        if invalid_image_model:
+            image_model = "gpt-image-1"
+        formset = ProjectImageElementFormSet(request.POST, queryset=queryset)
+        if formset.is_valid():
+            if action == "generate_images" and requested_image_model and invalid_image_model:
+                messages.warning(
+                    request,
+                    f"Unknown image model '{requested_image_model}'. Using gpt-image-1 instead.",
+                )
+            instances = formset.save(commit=False)
+            for obj in formset.deleted_objects:
+                obj.delete()
+            for obj in instances:
+                obj.project = project
+                obj.ai_model = obj.ai_model or style.ai_model or DEFAULT_MODEL
+                if obj.is_confirmed:
+                    obj.status = ProjectImageElement.STATUS_CONFIRMED
+                obj.save()
+            formset.save_m2m()
+
+            if action == "discover":
+                messages.info(
+                    request,
+                    f"Discovering recurring elements with {style.ai_model or DEFAULT_MODEL}.",
+                )
+                try:
+                    discovered, request_payload, response_payload = _discover_project_image_elements(
+                        project, ai_model=style.ai_model or DEFAULT_MODEL
+                    )
+                except Exception as exc:
+                    logger.exception("Failed to discover image elements for project %s", project.pk)
+                    messages.error(request, f"Element discovery failed: {exc}")
+                else:
+                    project.image_elements.all().delete()
+                    for item in discovered:
+                        ProjectImageElement.objects.create(
+                            project=project,
+                            ai_model=style.ai_model or DEFAULT_MODEL,
+                            status=ProjectImageElement.STATUS_PROPOSED,
+                            **item,
+                        )
+                    _persist_image_elements_artifacts(
+                        project,
+                        request_payload=request_payload,
+                        response_payload=response_payload,
+                    )
+                    messages.success(request, f"Discovered {len(discovered)} recurring elements.")
+            elif action == "expand":
+                messages.info(
+                    request,
+                    f"Expanding element prompts with {style.ai_model or DEFAULT_MODEL}.",
+                )
+                try:
+                    expanded = _expand_project_image_elements(
+                        project, ai_model=style.ai_model or DEFAULT_MODEL
+                    )
+                except Exception as exc:
+                    logger.exception("Failed to expand image elements for project %s", project.pk)
+                    messages.error(request, f"Element expansion failed: {exc}")
+                else:
+                    _persist_image_elements_artifacts(project)
+                    messages.success(request, f"Expanded prompts for {expanded} elements.")
+            elif action == "confirm":
+                confirmed = 0
+                for element in project.image_elements.all():
+                    if element.is_confirmed:
+                        element.status = ProjectImageElement.STATUS_CONFIRMED
+                        element.save(update_fields=["status", "updated_at"])
+                        confirmed += 1
+                _persist_image_elements_artifacts(project)
+                messages.success(request, f"Confirmed {confirmed} elements.")
+            elif action == "generate_images":
+                messages.info(
+                    request,
+                    f"Generating element reference images with {image_model}.",
+                )
+                try:
+                    generated_images = _generate_project_element_images(
+                        project, image_model=image_model
+                    )
+                except Exception as exc:
+                    logger.exception("Failed to generate element images for project %s", project.pk)
+                    messages.error(request, f"Element image generation failed: {exc}")
+                else:
+                    _persist_image_elements_artifacts(project)
+                    messages.success(
+                        request,
+                        f"Generated {generated_images} element reference images with {image_model}.",
+                    )
+            else:
+                _persist_image_elements_artifacts(project)
+                messages.success(request, "Saved element edits.")
+            return redirect(f"{reverse('project-image-elements', args=[project.pk])}?notice=done")
+        messages.error(
+            request,
+            "Could not process the elements request. Please review the form rows for errors.",
+        )
+    else:
+        formset = ProjectImageElementFormSet(queryset=queryset)
+
+    return render(
+        request,
+        "projects/project_image_elements.html",
+        {
+            "project": project,
+            "style": style,
+            "formset": formset,
+            "elements_artifact_dir": _image_elements_dir(project),
+            "confirmed_count": project.image_elements.filter(is_confirmed=True).count(),
+            "image_models": IMAGE_MODEL_CHOICES,
+            "selected_image_model": request.GET.get("image_model")
+            or project.image_elements.filter(image_model__isnull=False)
+            .exclude(image_model="")
+            .values_list("image_model", flat=True)
+            .first()
+            or "gpt-image-1",
+            "status_notice": request.GET.get("notice"),
+        },
+    )
 
 
 class ProjectListView(LoginRequiredMixin, ListView):
@@ -87,6 +820,11 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
             # concordances can load without hitting the view indirection.
             compiled_media_url = f"{project_media_base}/{project.compiled_path}"
 
+        try:
+            tz_name = self.request.user.profile.timezone
+        except Exception:
+            tz_name = "UTC"
+
         if run_dir:
             # Keep the MEDIA-relative run base stable for stage links even if
             # the project was compiled on a different host path.
@@ -109,10 +847,29 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
                 if progress_path.exists():
                     for line in progress_path.read_text(encoding="utf-8").splitlines():
                         try:
-                            progress.append(json.loads(line))
+                            raw_entry = json.loads(line)
                         except Exception:
                             continue
-                    progress.sort(key=lambda p: p.get("timestamp", ""))
+
+                        display_ts, dt = _format_timestamp(
+                            raw_entry.get("timestamp", ""), tz_name
+                        )
+                        progress.append(
+                            {
+                                "stage": raw_entry.get("stage"),
+                                "status": raw_entry.get("status"),
+                                "timestamp": display_ts,
+                                "_dt": dt,
+                            }
+                        )
+
+                    progress.sort(
+                        key=lambda p: p.get("_dt") or p.get("timestamp", "")
+                    )
+
+        # Drop helper datetime objects used for sorting before rendering.
+        for p in progress:
+            p.pop("_dt", None)
 
         context["stage_files"] = stage_files
         context["progress"] = progress
@@ -122,6 +879,8 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         )
         context["compiled_uri"] = compiled_uri
         context["compiled_media_url"] = compiled_media_url
+        context["ai_models"] = AI_MODEL_CHOICES
+        context["selected_ai_model"] = project.ai_model or DEFAULT_MODEL
         return context
 
 
@@ -141,8 +900,8 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
         return reverse("project-detail", args=[self.object.pk])
 
 
-def _build_ai_client() -> OpenAIClient:
-    config = OpenAIConfig()
+def _build_ai_client(model_name: str | None = None) -> OpenAIClient:
+    config = OpenAIConfig(model=model_name or DEFAULT_MODEL)
     return OpenAIClient(config=config)
 
 
@@ -193,8 +952,25 @@ def _resolve_run_dir(project: Project) -> Path | None:
     return None
 
 
-def _load_stage_payload(project: Project, stage: str) -> dict[str, Any] | None:
-    run_dir = _resolve_run_dir(project)
+def _iter_runs(project: Project) -> list[Path]:
+    runs_root = (project.artifact_dir() / "runs").resolve()
+    if not runs_root.exists():
+        return []
+    return sorted(runs_root.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True)
+
+
+def _find_run_with_stage(project: Project, stage: str) -> Path | None:
+    for run_dir in _iter_runs(project):
+        if (run_dir / "stages" / f"{stage}.json").exists():
+            return run_dir
+    return None
+
+
+def _load_stage_payload(
+    project: Project, stage: str, run_dir: Path | None = None
+) -> dict[str, Any] | None:
+    if run_dir is None:
+        run_dir = _resolve_run_dir(project)
     if not run_dir:
         return None
     path = run_dir / "stages" / f"{stage}.json"
@@ -206,56 +982,83 @@ def _load_stage_payload(project: Project, stage: str) -> dict[str, Any] | None:
         return None
 
 
-@login_required
-def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
-    project = get_object_or_404(Project, pk=pk, owner=request.user)
-    project_root = project.artifact_dir().resolve()
-    _persist_project_source(project)
-    output_dir = _prepare_output_dir(project).resolve()
+def _copy_run_artifacts(src: Path, dest: Path) -> None:
+    """Copy prior run outputs into ``dest`` so partial recompiles have inputs.
+
+    Stages upstream from the chosen start point live in previous run folders.
+    Copying those artifacts forward lets later partial runs chain together even
+    when the most recent run only contains downstream outputs.
+    """
+
+    for item in src.iterdir():
+        target = dest / item.name
+        if item.is_dir():
+            shutil.copytree(item, target, dirs_exist_ok=True)
+        elif item.is_file():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(item, target)
+
+def _run_compile_task(
+    project_id: int,
+    user_id: int,
+    output_dir_str: str,
+    project_root_str: str,
+    start_stage: str,
+    timezone_name: str | None,
+    description: str | None,
+    text: str | None,
+    text_obj: dict[str, Any] | None,
+    report_id: str | None = None,
+    task_type: str | None = None,
+    ai_model: str | None = None,
+) -> None:
+    project = Project.objects.get(pk=project_id)
+    output_dir = Path(output_dir_str)
+    project_root = Path(project_root_str)
     stage_dir = output_dir / "stages"
     stage_dir.mkdir(parents=True, exist_ok=True)
     progress_log = stage_dir / "progress.jsonl"
 
+    try:
+        profile = Profile.objects.get(user_id=user_id)
+        tz_name = profile.timezone or "UTC"
+    except Profile.DoesNotExist:
+        tz_name = timezone_name or "UTC"
+
+    try:
+        report_uuid = uuid.UUID(report_id) if report_id else uuid.uuid4()
+    except Exception:
+        report_uuid = uuid.uuid4()
+    post_update, _ = _make_task_callback(
+        task_type or f"compile_project_{project_id}", user_id, report_uuid
+    )
+
     def progress_cb(stage: str, status: str, timestamp: str) -> None:
-        entry = {"stage": stage, "status": status, "timestamp": timestamp}
+        try:
+            dt = datetime.fromisoformat(timestamp)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            local_timestamp = dt.astimezone(ZoneInfo(tz_name)).isoformat()
+        except Exception:
+            local_timestamp = timestamp
+
+        entry = {"stage": stage, "status": status, "timestamp": local_timestamp}
         try:
             with progress_log.open("a", encoding="utf-8") as fp:
                 fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
         except Exception:
-            pass
+            logger.exception("Failed to append progress entry; progress_log=%s", progress_log)
 
-    start_stage = request.POST.get("start_stage") or (
-        "text_gen" if project.input_mode == Project.INPUT_DESCRIPTION else "segmentation_phase_1"
-    )
-    if start_stage not in PIPELINE_ORDER:
-        messages.error(request, "Unknown start stage.")
-        return redirect("project-detail", pk=project.pk)
-
-    text: str | None = None
-    text_obj: dict[str, Any] | None = None
-    description: str | None = None
-
-    if start_stage == "text_gen":
-        description = (project.description or "").strip()
-        if not description:
-            messages.error(request, "Please provide a description to generate text.")
-            return redirect("project-detail", pk=project.pk)
-    elif start_stage == "segmentation_phase_1":
-        text = (project.source_text or "").strip()
-        if not text:
-            messages.error(request, "Please provide source text to segment.")
-            return redirect("project-detail", pk=project.pk)
-    else:
-        # Start from a persisted intermediate produced by a previous run.
-        upstream_index = PIPELINE_ORDER.index(start_stage) - 1
-        upstream_stage = PIPELINE_ORDER[upstream_index]
-        text_obj = _load_stage_payload(project, upstream_stage)
-        if text_obj is None:
-            messages.error(
-                request,
-                f"Cannot start at {start_stage}: missing upstream stage output ({upstream_stage}).",
+        try:
+            display_ts, _ = _format_timestamp(local_timestamp, tz_name)
+            post_update(f"{stage}: {status} @ {display_ts}")
+        except Exception:
+            logger.exception(
+                "Failed to persist task update; stage=%s status=%s report_id=%s",
+                stage,
+                status,
+                report_id,
             )
-            return redirect("project-detail", pk=project.pk)
 
     spec = FullPipelineSpec(
         text=text,
@@ -271,13 +1074,30 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         start_stage=start_stage,
     )
 
-    client = _build_ai_client()
-    messages.info(request, f"Compiling project starting at {start_stage}; this may take a moment...")
+    chosen_model = ai_model or project.ai_model or DEFAULT_MODEL
+    if chosen_model not in AI_MODEL_CHOICES:
+        chosen_model = DEFAULT_MODEL
+
+    client = _build_ai_client(model_name=chosen_model)
+
     try:
         result = asyncio.run(run_full_pipeline(spec, client=client))
-    except Exception as exc:  # pragma: no cover - surface to UI
-        messages.error(request, f"Compile failed: {exc}")
-        return redirect("project-detail", pk=project.pk)
+    except Exception as exc:  # pragma: no cover - surfaced through session
+        logger.exception("Compile failed for project %s", project_id)
+        failure_entry = {
+            "stage": "compile",
+            "status": "error",
+            "timestamp": datetime.now(ZoneInfo(tz_name)).isoformat(),
+        }
+        try:
+            with progress_log.open("a", encoding="utf-8") as fp:
+                fp.write(json.dumps(failure_entry, ensure_ascii=False) + "\n")
+        except Exception:
+            logger.exception(
+                "Failed to append compile failure entry; progress_log=%s", progress_log
+            )
+        post_update(f"Compile failed: {exc}", status="error")
+        return
 
     html_info: dict[str, Any] | None = result.get("html") if isinstance(result, dict) else None
     compiled_rel = ""
@@ -294,22 +1114,168 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     project.compiled_path = compiled_rel.replace("\\", "/")
     project.artifact_root = str(project_root).replace("\\", "/")
     project.save(update_fields=["compiled_path", "artifact_root", "updated_at"])
-    if compiled_rel:
-        messages.success(request, "Project compiled to HTML.")
+
+    final_status = "success" if compiled_rel else "error"
+    completion_entry = {
+        "stage": "compile",
+        "status": "success" if compiled_rel else "error",
+        "timestamp": datetime.now(ZoneInfo(tz_name)).isoformat(),
+    }
+    try:
+        with progress_log.open("a", encoding="utf-8") as fp:
+            fp.write(json.dumps(completion_entry, ensure_ascii=False) + "\n")
+    except Exception:
+        logger.exception("Failed to append compile completion entry; progress_log=%s", progress_log)
+
+    outcome_message = (
+        "Project compiled to HTML." if compiled_rel else "Compilation finished but no HTML was produced."
+    )
+    post_update(outcome_message, status="finished" if compiled_rel else "error")
+
+
+@login_required
+def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
+    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    project_root = project.artifact_dir().resolve()
+    _persist_project_source(project)
+    output_dir = _prepare_output_dir(project).resolve()
+    stage_dir = output_dir / "stages"
+    stage_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        profile = request.user.profile
+        timezone_name = profile.timezone or "UTC"
+    except Profile.DoesNotExist:
+        timezone_name = "UTC"
+
+    start_stage = request.POST.get("start_stage") or (
+        "text_gen" if project.input_mode == Project.INPUT_DESCRIPTION else "segmentation_phase_1"
+    )
+    if start_stage not in PIPELINE_ORDER:
+        messages.error(request, "Unknown start stage.")
+        return redirect("project-detail", pk=project.pk)
+
+    ai_model = request.POST.get("ai_model") or project.ai_model or DEFAULT_MODEL
+    if ai_model not in AI_MODEL_CHOICES:
+        messages.error(request, "Unknown AI model selection.")
+        return redirect("project-detail", pk=project.pk)
+    if ai_model != project.ai_model:
+        project.ai_model = ai_model
+        project.save(update_fields=["ai_model", "updated_at"])
+
+    text: str | None = None
+    text_obj: dict[str, Any] | None = None
+    # Always define ``description`` so queued tasks receive a predictable
+    # argument, avoiding NameError if the start stage skips description entry.
+    description: str | None = (project.description or "").strip()
+
+    if start_stage == "text_gen":
+        if not description:
+            messages.error(request, "Please provide a description to generate text.")
+            return redirect("project-detail", pk=project.pk)
+    elif start_stage == "segmentation_phase_1":
+        text = (project.source_text or "").strip()
+        if not text:
+            messages.error(request, "Please provide source text to segment.")
+            return redirect("project-detail", pk=project.pk)
     else:
-        messages.warning(request, "Compilation finished but no HTML was produced.")
-    # Surface per-stage progress entries as notifications for quick visibility.
-    if progress_log.exists():
+        # Start from a persisted intermediate produced by a previous run.
+        upstream_index = PIPELINE_ORDER.index(start_stage) - 1
+        upstream_stage = PIPELINE_ORDER[upstream_index]
+        source_run = _find_run_with_stage(project, upstream_stage)
+        if not source_run:
+            messages.error(
+                request,
+                f"Cannot start at {start_stage}: missing upstream stage output ({upstream_stage}).",
+            )
+            return redirect("project-detail", pk=project.pk)
+
+        text_obj = _load_stage_payload(project, upstream_stage, run_dir=source_run)
+        if text_obj is None:
+            messages.error(
+                request,
+                f"Cannot start at {start_stage}: missing upstream stage output ({upstream_stage}).",
+            )
+            return redirect("project-detail", pk=project.pk)
+
         try:
-            for line in progress_log.read_text(encoding="utf-8").splitlines():
-                entry = json.loads(line)
-                messages.info(
-                    request,
-                    f"{entry.get('stage')}: {entry.get('status')} @ {entry.get('timestamp')}",
-                )
+            _copy_run_artifacts(source_run, output_dir)
+            # Each run gets its own progress trail; start with a clean slate.
+            progress_log = output_dir / "stages" / "progress.jsonl"
+            if progress_log.exists():
+                progress_log.unlink()
         except Exception:
-            pass
-    return redirect("project-detail", pk=project.pk)
+            logger.exception("Failed to copy prior run artifacts from %s", source_run)
+
+    task_type = f"compile_project_{project.pk}"
+    report_id = str(uuid.uuid4())
+
+    async_task(
+        _run_compile_task,
+        project.pk,
+        request.user.id,
+        str(output_dir),
+        str(project_root),
+        start_stage,
+        timezone_name,
+        description,
+        text,
+        text_obj,
+        report_id,
+        task_type,
+        ai_model,
+        q_options={"sync": False},
+    )
+
+    return redirect("project-compile-monitor", pk=project.pk, report_id=report_id)
+
+
+@login_required
+def compile_monitor(request: HttpRequest, pk: int, report_id: str) -> HttpResponse:
+    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    return render(
+        request,
+        "projects/compile_monitor.html",
+        {"project": project, "report_id": report_id},
+    )
+
+
+@login_required
+def compile_status(request: HttpRequest, pk: int, report_id: str) -> JsonResponse:
+    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    updates = (
+        TaskUpdate.objects.filter(report_id=report_id, user=request.user)
+        .order_by("timestamp")
+        .all()
+    )
+
+    unread = [u for u in updates if not u.read]
+    messages_out = [u.message for u in unread]
+    status = "running"
+
+    for u in unread:
+        if u.status == "error":
+            status = "error"
+            break
+        if u.status == "finished":
+            status = "finished"
+
+    TaskUpdate.objects.filter(pk__in=[u.pk for u in unread]).update(read=True)
+
+    if status == "running" and unread == []:
+        # Check the latest status so the monitor can exit even if all updates
+        # have been consumed.
+        last = updates.last()
+        if last and last.status in {"error", "finished"}:
+            status = last.status
+
+    if status in {"error", "finished"} and messages_out:
+        level = messages.ERROR if status == "error" else messages.INFO
+        # Surface the last update to the project detail page when the monitor
+        # redirects after completion.
+        messages.add_message(request, level, messages_out[-1])
+
+    return JsonResponse({"messages": messages_out, "status": status, "project": project.pk})
 
 
 @login_required
