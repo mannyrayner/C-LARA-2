@@ -4,9 +4,9 @@
 <h1>{{ object.title }}</h1>
 <p>{{ object.description }}</p>
 <p>Language: {{ object.language }} → {{ object.target_language }}</p>
-<p><a class="btn secondary" href="{% url 'project-image-style' object.pk %}">Image style</a></p>
-<p><a class="btn secondary" href="{% url 'project-image-elements' object.pk %}">Image elements</a></p>
-<p><a class="btn secondary" href="{% url 'project-image-pages' object.pk %}">Page images</a></p>
+<p><a class="btn secondary" href="{% url 'project-image-style' object.pk %}">Image style{% if style_ready %} ✅{% endif %}</a></p>
+<p><a class="btn secondary" href="{% url 'project-image-elements' object.pk %}">Image elements{% if elements_ready %} ✅{% endif %}</a></p>
+<p><a class="btn secondary" href="{% url 'project-image-pages' object.pk %}">Page images{% if pages_ready %} ✅{% endif %}</a></p>
 <form method="post" action="{% url 'project-compile' object.pk %}">{% csrf_token %}
   <input type="hidden" name="start_stage" value="segmentation_phase_1" />
   <input type="hidden" name="end_stage" value="segmentation_phase_1" />

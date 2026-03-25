@@ -1104,6 +1104,12 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["compiled_media_url"] = compiled_media_url
         context["ai_models"] = AI_MODEL_CHOICES
         context["selected_ai_model"] = project.ai_model or DEFAULT_MODEL
+        style_obj = getattr(project, "image_style", None)
+        context["style_ready"] = bool(
+            style_obj and (style_obj.sample_image_path or style_obj.status == ProjectImageStyle.STATUS_APPROVED)
+        )
+        context["elements_ready"] = project.image_elements.exclude(image_path="").exists()
+        context["pages_ready"] = project.image_pages.exclude(image_path="").exists()
         context["page_image_placement_options"] = PAGE_IMAGE_PLACEMENT_CHOICES
         context["selected_page_image_placement"] = (
             project.page_image_placement
@@ -1402,6 +1408,25 @@ def _run_compile_task(
             if inserted:
                 post_update(
                     f"Inserted generated page images into {inserted} compiled page(s) ({placement})."
+                )
+            else:
+                expected_paths: list[str] = []
+                for row in project.image_pages.order_by("page_number"):
+                    if not row.image_path:
+                        expected_paths.append(f"page {row.page_number}: [no image_path set]")
+                        continue
+                    abs_path = (project.artifact_dir() / row.image_path).resolve()
+                    expected_paths.append(
+                        f"page {row.page_number}: {abs_path} (exists={abs_path.exists()})"
+                    )
+                logger.warning(
+                    "Page image placement is '%s' but no images were injected. Expected references: %s",
+                    placement,
+                    "; ".join(expected_paths) if expected_paths else "[no ProjectImagePage rows found]",
+                )
+                post_update(
+                    "Warning: page image placement is enabled but no page images were inserted. "
+                    "Check that ProjectImagePage rows have image_path values and that files exist."
                 )
     project.compiled_path = compiled_rel.replace("\\", "/")
     project.artifact_root = str(project_root).replace("\\", "/")

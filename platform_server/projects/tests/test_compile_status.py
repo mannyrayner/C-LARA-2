@@ -8,7 +8,14 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from projects import views
-from projects.models import Project, TaskUpdate
+from projects.models import (
+    Profile,
+    Project,
+    ProjectImageElement,
+    ProjectImagePage,
+    ProjectImageStyle,
+    TaskUpdate,
+)
 
 
 class CompileStatusViewTests(TestCase):
@@ -159,3 +166,77 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual(resp.status_code, 302)
         self.project.refresh_from_db()
         self.assertEqual(self.project.page_image_placement, "top")
+
+    def test_project_detail_shows_image_stage_ticks(self):
+        ProjectImageStyle.objects.create(
+            project=self.project,
+            style_brief="style",
+            sample_image_path="images/style/style_sample_image.png",
+            status=ProjectImageStyle.STATUS_GENERATED,
+        )
+        ProjectImageElement.objects.create(
+            project=self.project,
+            name="Celine",
+            element_type="character",
+            image_path="images/elements/celine/reference.png",
+        )
+        ProjectImagePage.objects.create(
+            project=self.project,
+            page_number=1,
+            page_text="hello",
+            image_path="images/pages/page_001/image.png",
+        )
+
+        resp = self.client.get(reverse("project-detail", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Image style ✅")
+        self.assertContains(resp, "Image elements ✅")
+        self.assertContains(resp, "Page images ✅")
+
+    @patch("projects.views._build_ai_client")
+    @patch("projects.views.run_full_pipeline")
+    def test_compile_task_warns_when_placement_enabled_but_no_images_inserted(
+        self, mock_run_full_pipeline, mock_build_ai_client
+    ):
+        project = self.project
+        project.page_image_placement = "top"
+        project.save(update_fields=["page_image_placement"])
+        Profile.objects.get_or_create(user=self.user, defaults={"timezone": "UTC"})
+
+        run_root = project.artifact_dir() / "runs" / "run_test"
+        run_root.mkdir(parents=True, exist_ok=True)
+        page_file = run_root / "page_1.html"
+        page_file.write_text(
+            '<div class="page" id="main-text-pane"><p>hello</p></div></div><div class="concordance-pane-wrapper">',
+            encoding="utf-8",
+        )
+
+        async def _fake_pipeline(spec, client):
+            return {"html": {"run_root": str(run_root), "index_path": str(page_file)}}
+
+        mock_run_full_pipeline.side_effect = _fake_pipeline
+        mock_build_ai_client.return_value = object()
+
+        views._run_compile_task(
+            project.id,
+            self.user.id,
+            str(run_root),
+            str(project.artifact_dir()),
+            "segmentation_phase_1",
+            "UTC",
+            project.description,
+            "Hello world",
+            None,
+            str(uuid.uuid4()),
+            "compile_project_test",
+            "gpt-4o",
+            "compile_html",
+            "top",
+        )
+
+        self.assertTrue(
+            TaskUpdate.objects.filter(
+                user=self.user,
+                message__icontains="no page images were inserted",
+            ).exists()
+        )
