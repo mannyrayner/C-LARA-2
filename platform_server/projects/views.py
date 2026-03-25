@@ -27,8 +27,14 @@ from core.config import DEFAULT_MODEL, OpenAIConfig
 from core.ai_api import OpenAIClient
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 
-from .forms import ProfileForm, ProjectForm, ProjectImageStyleForm, RegistrationForm
-from .models import Profile, Project, ProjectImageStyle, TaskUpdate
+from .forms import (
+    ProfileForm,
+    ProjectForm,
+    ProjectImageElementFormSet,
+    ProjectImageStyleForm,
+    RegistrationForm,
+)
+from .models import Profile, Project, ProjectImageElement, ProjectImageStyle, TaskUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -258,6 +264,177 @@ def _generate_project_style_sample_image(
     return metadata
 
 
+def _image_elements_dir(project: Project) -> Path:
+    return project.artifact_dir() / "images" / "elements"
+
+
+def _extract_project_pages(project: Project) -> list[str]:
+    latest_run = _resolve_run_dir(project)
+    if latest_run:
+        seg1 = _load_stage_payload(project, "segmentation_phase_1", run_dir=latest_run)
+        if isinstance(seg1, dict):
+            pages = seg1.get("pages", [])
+            surfaces = [str(page.get("surface", "")).strip() for page in pages if str(page.get("surface", "")).strip()]
+            if surfaces:
+                return surfaces
+    plain_text = _extract_project_plain_text(project)
+    if not plain_text:
+        return []
+    chunks = [chunk.strip() for chunk in plain_text.split("\n\n") if chunk.strip()]
+    return chunks or [plain_text]
+
+
+def _persist_image_elements_artifacts(
+    project: Project,
+    *,
+    request_payload: dict[str, Any] | None = None,
+    response_payload: dict[str, Any] | None = None,
+) -> None:
+    elements_dir = _image_elements_dir(project)
+    elements_dir.mkdir(parents=True, exist_ok=True)
+    elements_data = list(
+        project.image_elements.order_by("name", "id").values(
+            "id",
+            "name",
+            "element_type",
+            "page_refs",
+            "why_consistency_matters",
+            "expanded_description",
+            "expanded_prompt",
+            "is_confirmed",
+            "status",
+            "ai_model",
+            "updated_at",
+        )
+    )
+    (elements_dir / "elements_list.json").write_text(
+        json.dumps(elements_data, ensure_ascii=False, indent=2, default=str),
+        encoding="utf-8",
+    )
+    if request_payload is not None:
+        (elements_dir / "elements_discovery_prompt.json").write_text(
+            json.dumps(request_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    if response_payload is not None:
+        (elements_dir / "elements_discovery_response.json").write_text(
+            json.dumps(response_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+
+def _discover_project_image_elements(
+    project: Project,
+    *,
+    ai_model: str,
+) -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
+    pages = _extract_project_pages(project)
+    style_description = ""
+    try:
+        style_description = project.image_style.expanded_style_description
+    except Exception:
+        style_description = ""
+
+    prompt = "\n".join(
+        [
+            "Identify recurring visual elements that should be rendered consistently.",
+            "Return JSON with key 'elements', where each item has keys:",
+            "name, type, page_refs, why_consistency_matters.",
+            "page_refs should be a list of 1-indexed page numbers.",
+            "Only include elements that appear on at least two pages or are central recurring motifs.",
+            "",
+            f"Project title: {project.title}",
+            f"Language: {project.language}",
+            f"Approved style description: {style_description or '[none]'}",
+            "Pages:",
+        ]
+    )
+    for idx, page_surface in enumerate(pages, start=1):
+        prompt += f"\nPage {idx}: {page_surface}"
+
+    request_payload = {
+        "pages": pages,
+        "style_description": style_description,
+        "prompt": prompt,
+    }
+    client = _build_ai_client(model_name=ai_model)
+    response = asyncio.run(client.chat_json(prompt, model=ai_model))
+    elements = response.get("elements") or []
+    if not isinstance(elements, list):
+        elements = []
+    normalized: list[dict[str, Any]] = []
+    for item in elements:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        if not name:
+            continue
+        refs = item.get("page_refs") or []
+        if isinstance(refs, list):
+            refs_text = ",".join(str(x) for x in refs if str(x).strip())
+        else:
+            refs_text = str(refs)
+        normalized.append(
+            {
+                "name": name[:255],
+                "element_type": str(item.get("type") or "character")[:64],
+                "page_refs": refs_text[:255],
+                "why_consistency_matters": str(item.get("why_consistency_matters") or "")[:2000],
+            }
+        )
+    return normalized, request_payload, response
+
+
+def _expand_project_image_elements(
+    project: Project,
+    *,
+    ai_model: str,
+) -> int:
+    style_description = ""
+    try:
+        style_description = project.image_style.expanded_style_description
+    except Exception:
+        style_description = ""
+    full_text = _extract_project_plain_text(project)
+    count = 0
+    client = _build_ai_client(model_name=ai_model)
+    for element in project.image_elements.order_by("name", "id"):
+        prompt = "\n".join(
+            [
+                "Create an expanded visual element description for consistent illustration.",
+                "Return JSON with keys: expanded_description, expanded_prompt.",
+                "",
+                f"Element name: {element.name}",
+                f"Element type: {element.element_type}",
+                f"Page refs: {element.page_refs}",
+                f"Why consistency matters: {element.why_consistency_matters}",
+                f"Project style description: {style_description or '[none]'}",
+                "Project text:",
+                full_text or "[none]",
+            ]
+        )
+        response = asyncio.run(client.chat_json(prompt, model=ai_model))
+        element.expanded_description = str(
+            response.get("expanded_description") or element.expanded_description or ""
+        ).strip()
+        element.expanded_prompt = str(
+            response.get("expanded_prompt") or element.expanded_description or ""
+        ).strip()
+        element.ai_model = ai_model
+        element.status = ProjectImageElement.STATUS_EXPANDED
+        element.save(
+            update_fields=[
+                "expanded_description",
+                "expanded_prompt",
+                "ai_model",
+                "status",
+                "updated_at",
+            ]
+        )
+        count += 1
+    return count
+
+
 def register(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         form = RegistrationForm(request.POST)
@@ -385,6 +562,95 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
                 if style_obj.sample_image_path
                 else None
             ),
+        },
+    )
+
+
+@login_required
+def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
+    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    try:
+        style = project.image_style
+    except ProjectImageStyle.DoesNotExist:
+        messages.error(request, "Please complete the Style step first.")
+        return redirect("project-image-style", pk=project.pk)
+
+    queryset = ProjectImageElement.objects.filter(project=project).order_by("name", "id")
+
+    if request.method == "POST":
+        action = request.POST.get("action") or "save"
+        formset = ProjectImageElementFormSet(request.POST, queryset=queryset)
+        if formset.is_valid():
+            instances = formset.save(commit=False)
+            for obj in formset.deleted_objects:
+                obj.delete()
+            for obj in instances:
+                obj.project = project
+                obj.ai_model = obj.ai_model or style.ai_model or DEFAULT_MODEL
+                if obj.is_confirmed:
+                    obj.status = ProjectImageElement.STATUS_CONFIRMED
+                obj.save()
+            formset.save_m2m()
+
+            if action == "discover":
+                try:
+                    discovered, request_payload, response_payload = _discover_project_image_elements(
+                        project, ai_model=style.ai_model or DEFAULT_MODEL
+                    )
+                except Exception as exc:
+                    logger.exception("Failed to discover image elements for project %s", project.pk)
+                    messages.error(request, f"Element discovery failed: {exc}")
+                else:
+                    project.image_elements.all().delete()
+                    for item in discovered:
+                        ProjectImageElement.objects.create(
+                            project=project,
+                            ai_model=style.ai_model or DEFAULT_MODEL,
+                            status=ProjectImageElement.STATUS_PROPOSED,
+                            **item,
+                        )
+                    _persist_image_elements_artifacts(
+                        project,
+                        request_payload=request_payload,
+                        response_payload=response_payload,
+                    )
+                    messages.success(request, f"Discovered {len(discovered)} recurring elements.")
+            elif action == "expand":
+                try:
+                    expanded = _expand_project_image_elements(
+                        project, ai_model=style.ai_model or DEFAULT_MODEL
+                    )
+                except Exception as exc:
+                    logger.exception("Failed to expand image elements for project %s", project.pk)
+                    messages.error(request, f"Element expansion failed: {exc}")
+                else:
+                    _persist_image_elements_artifacts(project)
+                    messages.success(request, f"Expanded prompts for {expanded} elements.")
+            elif action == "confirm":
+                confirmed = 0
+                for element in project.image_elements.all():
+                    if element.is_confirmed:
+                        element.status = ProjectImageElement.STATUS_CONFIRMED
+                        element.save(update_fields=["status", "updated_at"])
+                        confirmed += 1
+                _persist_image_elements_artifacts(project)
+                messages.success(request, f"Confirmed {confirmed} elements.")
+            else:
+                _persist_image_elements_artifacts(project)
+                messages.success(request, "Saved element edits.")
+            return redirect("project-image-elements", pk=project.pk)
+    else:
+        formset = ProjectImageElementFormSet(queryset=queryset)
+
+    return render(
+        request,
+        "projects/project_image_elements.html",
+        {
+            "project": project,
+            "style": style,
+            "formset": formset,
+            "elements_artifact_dir": _image_elements_dir(project),
+            "confirmed_count": project.image_elements.filter(is_confirmed=True).count(),
         },
     )
 

@@ -4,7 +4,9 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 
-from .models import Project, Profile, ProjectImageStyle
+from django.forms import modelformset_factory
+
+from .models import Project, Profile, ProjectImageElement, ProjectImageStyle
 
 
 class RegistrationForm(UserCreationForm):
@@ -106,3 +108,30 @@ class ProjectImageStyleForm(forms.ModelForm):
         if not brief:
             raise forms.ValidationError("Please provide a brief image style description.")
         return brief
+
+
+class ProjectImageElementForm(forms.ModelForm):
+    class Meta:
+        model = ProjectImageElement
+        fields = [
+            "name",
+            "element_type",
+            "page_refs",
+            "why_consistency_matters",
+            "expanded_description",
+            "expanded_prompt",
+            "is_confirmed",
+        ]
+        widgets = {
+            "why_consistency_matters": forms.Textarea(attrs={"rows": 2}),
+            "expanded_description": forms.Textarea(attrs={"rows": 4}),
+            "expanded_prompt": forms.Textarea(attrs={"rows": 4}),
+        }
+
+
+ProjectImageElementFormSet = modelformset_factory(
+    ProjectImageElement,
+    form=ProjectImageElementForm,
+    can_delete=True,
+    extra=0,
+)

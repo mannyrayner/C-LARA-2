@@ -1,0 +1,41 @@
+{% extends "projects/base.html" %}
+{% block title %}Image elements: {{ project.title }}{% endblock %}
+{% block content %}
+<h1>Image elements for {{ project.title }}</h1>
+
+<p>
+  This is the first text-focused version of the <strong>Elements</strong> substep. It identifies recurring
+  visual elements, links them to pages, and generates expanded descriptions/prompts for user review.
+</p>
+
+<p>
+  <a href="{% url 'project-image-style' project.pk %}">← Back to Style step</a>
+</p>
+
+<p>Status from style step: <strong>{{ style.get_status_display }}</strong></p>
+<p>Elements artifacts stored at: {{ elements_artifact_dir }}</p>
+<p>Confirmed elements: {{ confirmed_count }}</p>
+
+<form method="post">
+  {% csrf_token %}
+  {{ formset.management_form }}
+  <p>
+    <button class="btn" type="submit" name="action" value="discover">Discover elements</button>
+    <button class="btn" type="submit" name="action" value="expand">Generate expanded prompts</button>
+    <button class="btn secondary" type="submit" name="action" value="save">Save edits</button>
+    <button class="btn secondary" type="submit" name="action" value="confirm">Confirm selected</button>
+  </p>
+
+  {% if formset.forms %}
+    {% for form in formset.forms %}
+      <fieldset style="margin: 1rem 0; padding: 0.75rem; border: 1px solid #ddd;">
+        {{ form.id }}
+        <p><strong>Element {{ forloop.counter }}</strong></p>
+        {{ form.as_p }}
+      </fieldset>
+    {% endfor %}
+  {% else %}
+    <p>No elements yet. Click <strong>Discover elements</strong> to generate an initial list.</p>
+  {% endif %}
+</form>
+{% endblock %}

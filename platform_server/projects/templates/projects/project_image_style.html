@@ -10,6 +10,7 @@
 </p>
 
 <p><a href="{% url 'project-detail' project.pk %}">← Back to project</a></p>
+<p><a class="btn secondary" href="{% url 'project-image-elements' project.pk %}">Go to Elements step</a></p>
 
 <form method="post">
   {% csrf_token %}

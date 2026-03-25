@@ -125,3 +125,40 @@ class ProjectImageStyle(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - display helper
         return f"Image style for {self.project.title}"
+
+
+class ProjectImageElement(models.Model):
+    """Recurring visual element proposed/curated for a project."""
+
+    STATUS_PROPOSED = "proposed"
+    STATUS_EXPANDED = "expanded"
+    STATUS_CONFIRMED = "confirmed"
+    STATUS_CHOICES = [
+        (STATUS_PROPOSED, "Proposed"),
+        (STATUS_EXPANDED, "Expanded"),
+        (STATUS_CONFIRMED, "Confirmed"),
+    ]
+
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="image_elements"
+    )
+    name = models.CharField(max_length=255)
+    element_type = models.CharField(max_length=64, blank=True, default="character")
+    page_refs = models.CharField(max_length=255, blank=True)
+    why_consistency_matters = models.TextField(blank=True)
+    expanded_description = models.TextField(blank=True)
+    expanded_prompt = models.TextField(blank=True)
+    is_confirmed = models.BooleanField(default=False)
+    ai_model = models.CharField(max_length=64, default="gpt-4o")
+    status = models.CharField(
+        max_length=32, choices=STATUS_CHOICES, default=STATUS_PROPOSED
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name", "id"]
+        unique_together = ("project", "name")
+
+    def __str__(self) -> str:  # pragma: no cover - display helper
+        return f"{self.project.title}: {self.name}"
