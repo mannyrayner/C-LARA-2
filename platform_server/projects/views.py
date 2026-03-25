@@ -550,6 +550,10 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
                 response_payload=response_payload,
             )
             return redirect("project-image-style", pk=project.pk)
+        messages.error(
+            request,
+            "Could not process the style request. Please review the highlighted form fields.",
+        )
     else:
         form = ProjectImageStyleForm(
             instance=style_obj,
@@ -655,6 +659,10 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
                 _persist_image_elements_artifacts(project)
                 messages.success(request, "Saved element edits.")
             return redirect("project-image-elements", pk=project.pk)
+        messages.error(
+            request,
+            "Could not process the elements request. Please review the form rows for errors.",
+        )
     else:
         formset = ProjectImageElementFormSet(queryset=queryset)
 

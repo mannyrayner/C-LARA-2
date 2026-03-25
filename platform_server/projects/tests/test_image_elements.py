@@ -140,3 +140,33 @@ class ProjectImageElementsViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         msgs = [m.message for m in get_messages(resp.wsgi_request)]
         self.assertTrue(any("Discovering recurring elements" in msg for msg in msgs))
+
+    def test_invalid_elements_submit_adds_error_message(self):
+        element = ProjectImageElement.objects.create(
+            project=self.project,
+            name="Celine",
+            element_type="character",
+            page_refs="1,2",
+            why_consistency_matters="Main character",
+        )
+        resp = self.client.post(
+            reverse("project-image-elements", args=[self.project.pk]),
+            {
+                "form-TOTAL_FORMS": "1",
+                "form-INITIAL_FORMS": "1",
+                "form-MIN_NUM_FORMS": "0",
+                "form-MAX_NUM_FORMS": "1000",
+                "form-0-id": str(element.id),
+                "form-0-name": "",
+                "form-0-element_type": element.element_type,
+                "form-0-page_refs": element.page_refs,
+                "form-0-why_consistency_matters": element.why_consistency_matters,
+                "form-0-expanded_description": "",
+                "form-0-expanded_prompt": "",
+                "action": "save",
+            },
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        msgs = [m.message for m in get_messages(resp.wsgi_request)]
+        self.assertTrue(any("Could not process the elements request" in msg for msg in msgs))

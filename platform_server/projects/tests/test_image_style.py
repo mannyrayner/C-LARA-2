@@ -182,3 +182,21 @@ class ProjectImageStyleViewTests(TestCase):
         msgs = [m.message for m in get_messages(resp.wsgi_request)]
         self.assertTrue(any("Processing style expansion" in msg for msg in msgs))
         self.assertTrue(any("Style expansion completed" in msg for msg in msgs))
+
+    def test_invalid_style_submit_adds_error_message(self):
+        resp = self.client.post(
+            reverse("project-image-style", args=[self.project.pk]),
+            {
+                "style_brief": "",
+                "expanded_style_description": "",
+                "sample_image_prompt": "",
+                "ai_model": "gpt-4o",
+                "sample_image_model": "gpt-image-1",
+                "status": "draft",
+                "action": "save",
+            },
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        msgs = [m.message for m in get_messages(resp.wsgi_request)]
+        self.assertTrue(any("Could not process the style request" in msg for msg in msgs))
