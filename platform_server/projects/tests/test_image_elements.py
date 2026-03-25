@@ -54,6 +54,7 @@ class ProjectImageElementsViewTests(TestCase):
         resp = self.client.get(reverse("project-image-elements", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Discover elements")
+        self.assertContains(resp, "Generate element images")
 
     @patch("projects.views._build_ai_client")
     def test_discover_elements_creates_rows(self, mock_build_ai_client):
