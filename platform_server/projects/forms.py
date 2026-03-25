@@ -6,7 +6,13 @@ from django.contrib.auth.models import User
 
 from django.forms import modelformset_factory
 
-from .models import Project, Profile, ProjectImageElement, ProjectImageStyle
+from .models import (
+    Project,
+    Profile,
+    ProjectImageElement,
+    ProjectImagePage,
+    ProjectImageStyle,
+)
 
 
 class RegistrationForm(UserCreationForm):
@@ -136,5 +142,31 @@ ProjectImageElementFormSet = modelformset_factory(
     ProjectImageElement,
     form=ProjectImageElementForm,
     can_delete=True,
+    extra=0,
+)
+
+
+class ProjectImagePageForm(forms.ModelForm):
+    class Meta:
+        model = ProjectImagePage
+        fields = [
+            "page_number",
+            "page_text",
+            "generation_prompt",
+            "image_model",
+            "image_revised_prompt",
+            "status",
+        ]
+        widgets = {
+            "page_text": forms.Textarea(attrs={"rows": 4}),
+            "generation_prompt": forms.Textarea(attrs={"rows": 6}),
+            "image_revised_prompt": forms.Textarea(attrs={"rows": 2}),
+        }
+
+
+ProjectImagePageFormSet = modelformset_factory(
+    ProjectImagePage,
+    form=ProjectImagePageForm,
+    can_delete=False,
     extra=0,
 )

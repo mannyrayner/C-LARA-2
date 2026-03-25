@@ -5,6 +5,7 @@ import logging
 import shutil
 import uuid
 import asyncio
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -32,10 +33,18 @@ from .forms import (
     ProfileForm,
     ProjectForm,
     ProjectImageElementFormSet,
+    ProjectImagePageFormSet,
     ProjectImageStyleForm,
     RegistrationForm,
 )
-from .models import Profile, Project, ProjectImageElement, ProjectImageStyle, TaskUpdate
+from .models import (
+    Profile,
+    Project,
+    ProjectImageElement,
+    ProjectImagePage,
+    ProjectImageStyle,
+    TaskUpdate,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -491,6 +500,165 @@ def _generate_project_element_images(
     return generated
 
 
+def _image_pages_dir(project: Project) -> Path:
+    return project.artifact_dir() / "images" / "pages"
+
+
+def _page_refs_match(page_refs: str, page_number: int) -> bool:
+    refs = [chunk.strip() for chunk in (page_refs or "").split(",") if chunk.strip()]
+    return str(page_number) in refs
+
+
+def _build_page_image_prompt(
+    *,
+    project: Project,
+    style: ProjectImageStyle,
+    page_number: int,
+    page_text: str,
+    full_text: str,
+    relevant_elements: list[ProjectImageElement],
+) -> str:
+    lines = [
+        "Create one story illustration page in a consistent style.",
+        "Keep visual continuity with the existing style and element references.",
+        "",
+        f"Project title: {project.title}",
+        f"Language: {project.language}",
+        f"Page number: {page_number}",
+        f"Style description: {style.expanded_style_description or style.style_brief or '[none]'}",
+        "Page text:",
+        page_text or "[none]",
+        "",
+        "Full story text for context:",
+        full_text or "[none]",
+        "",
+        "Relevant element references:",
+    ]
+    if relevant_elements:
+        for element in relevant_elements:
+            lines.extend(
+                [
+                    f"- Element: {element.name} ({element.element_type or 'unspecified'})",
+                    f"  Description: {element.expanded_description or element.why_consistency_matters or '[none]'}",
+                    f"  Prompt: {element.expanded_prompt or '[none]'}",
+                    f"  Reference image path: {element.image_path or '[none]'}",
+                ]
+            )
+    else:
+        lines.append("- [No relevant elements with image references]")
+    return "\n".join(lines)
+
+
+def _ensure_project_page_rows(project: Project) -> int:
+    pages = _extract_project_pages(project)
+    existing = {
+        row.page_number: row
+        for row in ProjectImagePage.objects.filter(project=project)
+    }
+    for idx, page_text in enumerate(pages, start=1):
+        row = existing.get(idx)
+        if row:
+            if row.page_text != page_text:
+                row.page_text = page_text
+                row.save(update_fields=["page_text", "updated_at"])
+        else:
+            ProjectImagePage.objects.create(
+                project=project,
+                page_number=idx,
+                page_text=page_text,
+            )
+    return len(pages)
+
+
+def _persist_image_pages_artifacts(project: Project) -> None:
+    pages_dir = _image_pages_dir(project)
+    pages_dir.mkdir(parents=True, exist_ok=True)
+    rows = list(
+        project.image_pages.order_by("page_number", "id").values(
+            "id",
+            "page_number",
+            "page_text",
+            "generation_prompt",
+            "image_model",
+            "image_path",
+            "image_revised_prompt",
+            "status",
+            "updated_at",
+        )
+    )
+    (pages_dir / "pages_list.json").write_text(
+        json.dumps(rows, ensure_ascii=False, indent=2, default=str),
+        encoding="utf-8",
+    )
+
+
+def _generate_project_page_images(project: Project, *, image_model: str) -> int:
+    style = project.image_style
+    full_text = _extract_project_plain_text(project)
+    pages_dir = _image_pages_dir(project)
+    pages_dir.mkdir(parents=True, exist_ok=True)
+    page_rows = list(project.image_pages.order_by("page_number", "id"))
+    relevant_elements = [
+        element
+        for element in project.image_elements.order_by("name", "id")
+        if element.image_path
+    ]
+    if not page_rows:
+        return 0
+
+    def _generate_one(page_obj: ProjectImagePage) -> tuple[int, str, str]:
+        refs = [
+            element
+            for element in relevant_elements
+            if not element.page_refs or _page_refs_match(element.page_refs, page_obj.page_number)
+        ]
+        prompt = _build_page_image_prompt(
+            project=project,
+            style=style,
+            page_number=page_obj.page_number,
+            page_text=page_obj.page_text,
+            full_text=full_text,
+            relevant_elements=refs,
+        )
+        client = _build_ai_client()
+        image_result = client.generate_image(prompt, model=image_model)
+        page_dir = pages_dir / f"page_{page_obj.page_number:03d}"
+        page_dir.mkdir(parents=True, exist_ok=True)
+        image_path = page_dir / "image.png"
+        image_path.write_bytes(image_result["bytes"])
+        rel_path = image_path.relative_to(project.artifact_dir()).as_posix()
+        metadata = {
+            "page_number": page_obj.page_number,
+            "prompt": prompt,
+            "model": image_model,
+            "revised_prompt": image_result.get("revised_prompt") or "",
+            "image_path": rel_path,
+        }
+        (page_dir / "metadata.json").write_text(
+            json.dumps(metadata, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        return page_obj.pk, rel_path, metadata["revised_prompt"], prompt
+
+    generated = 0
+    futures = {}
+    with ThreadPoolExecutor(max_workers=min(8, len(page_rows))) as executor:
+        for page_obj in page_rows:
+            future = executor.submit(_generate_one, page_obj)
+            futures[future] = page_obj
+        for future in as_completed(futures):
+            page_pk, rel_path, revised_prompt, prompt = future.result()
+            ProjectImagePage.objects.filter(pk=page_pk).update(
+                generation_prompt=prompt,
+                image_model=image_model,
+                image_path=rel_path,
+                image_revised_prompt=revised_prompt,
+                status=ProjectImagePage.STATUS_GENERATED,
+            )
+            generated += 1
+    return generated
+
+
 def register(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         form = RegistrationForm(request.POST)
@@ -755,6 +923,71 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
             .values_list("image_model", flat=True)
             .first()
             or "gpt-image-1",
+            "status_notice": request.GET.get("notice"),
+        },
+    )
+
+
+@login_required
+def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
+    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    try:
+        style = project.image_style
+    except ProjectImageStyle.DoesNotExist:
+        messages.error(request, "Please complete the Style step first.")
+        return redirect("project-image-style", pk=project.pk)
+
+    _ensure_project_page_rows(project)
+    queryset = ProjectImagePage.objects.filter(project=project).order_by("page_number", "id")
+
+    if request.method == "POST":
+        action = request.POST.get("action") or "save"
+        requested_image_model = (request.POST.get("image_model") or "").strip()
+        image_model = requested_image_model or "gpt-image-1"
+        if image_model not in IMAGE_MODEL_CHOICES:
+            image_model = "gpt-image-1"
+        formset = ProjectImagePageFormSet(request.POST, queryset=queryset)
+        if formset.is_valid():
+            rows = formset.save(commit=False)
+            for row in rows:
+                row.project = project
+                row.save()
+
+            if action == "refresh":
+                synced = _ensure_project_page_rows(project)
+                messages.success(request, f"Synced {synced} page rows from source text.")
+            elif action == "generate_images":
+                try:
+                    generated = _generate_project_page_images(project, image_model=image_model)
+                except Exception as exc:
+                    logger.exception("Failed to generate page images for project %s", project.pk)
+                    messages.error(request, f"Page image generation failed: {exc}")
+                else:
+                    messages.success(
+                        request,
+                        f"Generated {generated} page images with {image_model}.",
+                    )
+            else:
+                messages.success(request, "Saved page image prompt edits.")
+            _persist_image_pages_artifacts(project)
+            return redirect(f"{reverse('project-image-pages', args=[project.pk])}?notice=done")
+        messages.error(
+            request,
+            "Could not process the page image request. Please review the form rows for errors.",
+        )
+    else:
+        formset = ProjectImagePageFormSet(queryset=queryset)
+
+    return render(
+        request,
+        "projects/project_image_pages.html",
+        {
+            "project": project,
+            "style": style,
+            "formset": formset,
+            "pages_artifact_dir": _image_pages_dir(project),
+            "image_models": IMAGE_MODEL_CHOICES,
+            "selected_image_model": request.GET.get("image_model") or "gpt-image-1",
             "status_notice": request.GET.get("notice"),
         },
     )

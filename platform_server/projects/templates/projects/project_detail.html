@@ -6,6 +6,7 @@
 <p>Language: {{ object.language }} → {{ object.target_language }}</p>
 <p><a class="btn secondary" href="{% url 'project-image-style' object.pk %}">Image style</a></p>
 <p><a class="btn secondary" href="{% url 'project-image-elements' object.pk %}">Image elements</a></p>
+<p><a class="btn secondary" href="{% url 'project-image-pages' object.pk %}">Page images</a></p>
 <form method="post" action="{% url 'project-compile' object.pk %}">{% csrf_token %}
   <p><label for="start_stage">Start from stage:</label>
     <select name="start_stage" id="start_stage">

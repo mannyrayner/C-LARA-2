@@ -165,3 +165,38 @@ class ProjectImageElement(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - display helper
         return f"{self.project.title}: {self.name}"
+
+
+class ProjectImagePage(models.Model):
+    """Per-page image prompt/output generated from style, text, and elements."""
+
+    STATUS_DRAFT = "draft"
+    STATUS_GENERATED = "generated"
+    STATUS_APPROVED = "approved"
+    STATUS_CHOICES = [
+        (STATUS_DRAFT, "Draft"),
+        (STATUS_GENERATED, "Generated"),
+        (STATUS_APPROVED, "Approved"),
+    ]
+
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="image_pages"
+    )
+    page_number = models.PositiveIntegerField()
+    page_text = models.TextField(blank=True)
+    generation_prompt = models.TextField(blank=True)
+    image_model = models.CharField(max_length=64, default="gpt-image-1")
+    image_path = models.CharField(max_length=512, blank=True)
+    image_revised_prompt = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=32, choices=STATUS_CHOICES, default=STATUS_DRAFT
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["page_number", "id"]
+        unique_together = ("project", "page_number")
+
+    def __str__(self) -> str:  # pragma: no cover - display helper
+        return f"{self.project.title}: page {self.page_number}"

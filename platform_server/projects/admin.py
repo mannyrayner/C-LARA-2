@@ -1,5 +1,12 @@
 from django.contrib import admin
-from .models import Profile, Project, ProjectImageElement, ProjectImageStyle, TaskUpdate
+from .models import (
+    Profile,
+    Project,
+    ProjectImageElement,
+    ProjectImagePage,
+    ProjectImageStyle,
+    TaskUpdate,
+)
 
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
@@ -33,3 +40,10 @@ class ProjectImageElementAdmin(admin.ModelAdmin):
     list_display = ("project", "name", "element_type", "status", "image_model", "is_confirmed", "updated_at")
     search_fields = ("project__title", "name", "why_consistency_matters")
     list_filter = ("status", "is_confirmed", "element_type")
+
+
+@admin.register(ProjectImagePage)
+class ProjectImagePageAdmin(admin.ModelAdmin):
+    list_display = ("project", "page_number", "status", "image_model", "updated_at")
+    search_fields = ("project__title", "page_number", "page_text")
+    list_filter = ("status", "image_model")

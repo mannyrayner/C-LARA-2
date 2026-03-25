@@ -11,6 +11,7 @@
 <p>
   <a href="{% url 'project-image-style' project.pk %}">← Back to Style step</a>
 </p>
+<p><a class="btn secondary" href="{% url 'project-image-pages' project.pk %}">Go to Page images step</a></p>
 
 <p>Status from style step: <strong>{{ style.get_status_display }}</strong></p>
 <p>Elements artifacts stored at: {{ elements_artifact_dir }}</p>
