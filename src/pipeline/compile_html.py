@@ -275,6 +275,12 @@ def _render_page(
 ) -> str:
     page = text.get("pages", [])[page_index]
     page_audio = (page.get("annotations", {}) or {}).get("audio")
+    generated_image = (page.get("annotations", {}) or {}).get("generated_image") or {}
+    generated_image_path = ""
+    generated_image_placement = ""
+    if isinstance(generated_image, dict):
+        generated_image_path = str(generated_image.get("path") or "").strip()
+        generated_image_placement = str(generated_image.get("placement") or "").strip().lower()
     page_audio_path = None
     if isinstance(page_audio, dict):
         page_audio_path = resolver.resolve(page_audio.get("path"))
@@ -316,10 +322,26 @@ def _render_page(
             f"<p><button class=\"play\" data-audio=\"{_escape(page_audio_path)}\">Play page audio</button></p>"
         )
 
+    image_block = ""
+    if generated_image_path and generated_image_placement in {"top", "bottom"}:
+        image_block = (
+            f'<figure class="generated-page-image generated-page-image-{generated_image_placement}">'
+            f'<img src="{_escape(generated_image_path)}" alt="Generated illustration for page {current}" '
+            'style="max-width: 100%; height: auto; display: block; margin: 0 auto 0.75rem auto;" />'
+            "</figure>"
+        )
+
+    page_content = f"{page_audio_control}{''.join(segments_html)}"
+    if image_block:
+        if generated_image_placement == "top":
+            page_content = image_block + page_content
+        else:
+            page_content = page_content + image_block
+
     body = (
         "<div class=\"page-container\">"
         "<div class=\"main-text-pane-wrapper\">"
-        f"<div class=\"page\" id=\"main-text-pane\">{page_audio_control}{''.join(segments_html)}</div>"
+        f"<div class=\"page\" id=\"main-text-pane\">{page_content}</div>"
         "</div>"
         "<div class=\"concordance-pane-wrapper\"><iframe id=\"concordance-pane\" src=\"\" frameborder=\"0\" class=\"concordance-iframe\"></iframe></div>"
         "</div>"

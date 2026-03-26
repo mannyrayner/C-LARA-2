@@ -264,6 +264,32 @@ class CompileHTMLTests(unittest.TestCase):
         self.assertIn("function encodeLemmaForFilename", script)
         self.assertIn("loadConcordance(lemma", script)
 
+    def test_page_generated_image_from_annotations_is_rendered(self) -> None:
+        out_root = self.artifacts / "html"
+        text_with_image = {
+            **self.sample_text,
+            "pages": [
+                {
+                    **self.sample_text["pages"][0],
+                    "annotations": {
+                        **(self.sample_text["pages"][0].get("annotations", {}) or {}),
+                        "generated_image": {
+                            "path": "../images/pages/page_001/image.png",
+                            "placement": "top",
+                        },
+                    },
+                }
+            ],
+        }
+
+        result = compile_html(
+            CompileHTMLSpec(text=text_with_image, output_dir=out_root, run_id="generated-image")
+        )
+        html_path = Path(result["html_path"])
+        content = html_path.read_text(encoding="utf-8")
+        self.assertIn("generated-page-image-top", content)
+        self.assertIn("../images/pages/page_001/image.png", content)
+
 
 if __name__ == "__main__":
     unittest.main()

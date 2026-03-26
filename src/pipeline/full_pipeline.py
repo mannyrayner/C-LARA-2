@@ -57,6 +57,7 @@ class FullPipelineSpec:
     op_id: str | None = None
     start_stage: str = "segmentation_phase_1"
     end_stage: str = "compile_html"
+    page_images: dict[int, dict[str, str]] | None = None
     require_real_tts: bool = False
     persist_intermediates: bool = False
     progress_callback: Callable[[str, str, str], None] | None = None
@@ -220,6 +221,21 @@ async def run_full_pipeline(
             _persist("audio", current)
             _progress("audio", "done")
         elif stage == "compile_html":
+            if spec.page_images and isinstance(current, dict):
+                pages = current.get("pages") or []
+                if isinstance(pages, list):
+                    for page_number, image_meta in spec.page_images.items():
+                        if not isinstance(page_number, int):
+                            continue
+                        idx = page_number - 1
+                        if idx < 0 or idx >= len(pages):
+                            continue
+                        page_obj = pages[idx]
+                        if not isinstance(page_obj, dict):
+                            continue
+                        annotations = page_obj.setdefault("annotations", {})
+                        if isinstance(annotations, dict):
+                            annotations["generated_image"] = image_meta
             _progress("compile_html", "start")
             html_result = compile_html(
                 CompileHTMLSpec(text=current, output_dir=spec.output_dir, telemetry=telemetry, op_id=op_id)

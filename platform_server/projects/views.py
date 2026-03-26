@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import re
 import shutil
 import uuid
 import asyncio
@@ -1236,65 +1235,6 @@ def _copy_run_artifacts(src: Path, dest: Path) -> None:
             shutil.copy2(item, target)
 
 
-def _inject_page_images_into_compiled_html(
-    project: Project,
-    *,
-    run_root: Path,
-    placement: str,
-) -> int:
-    if placement not in {"top", "bottom"}:
-        return 0
-
-    inserted = 0
-    page_rows = project.image_pages.exclude(image_path="").order_by("page_number")
-    for row in page_rows:
-        page_file = run_root / f"page_{row.page_number}.html"
-        if not page_file.exists():
-            continue
-        try:
-            image_abs = (project.artifact_dir() / row.image_path).resolve()
-            rel_image = os.path.relpath(image_abs, page_file.parent).replace("\\", "/")
-            snippet = (
-                f'<figure class="generated-page-image generated-page-image-{placement}">'
-                f'<img src="{rel_image}" alt="Generated illustration for page {row.page_number}" '
-                f'style="max-width: 100%; height: auto; display: block; margin: 0 auto 0.75rem auto;" />'
-                "</figure>"
-            )
-
-            html_text = page_file.read_text(encoding="utf-8")
-            if placement == "top":
-                pattern = re.compile(r'(<div[^>]*id="main-text-pane"[^>]*>)', re.IGNORECASE)
-                html_text, replacements = pattern.subn(r"\1" + snippet, html_text, count=1)
-                if replacements == 0:
-                    logger.warning(
-                        "Could not inject top page image for page %s: main-text-pane marker not found in %s",
-                        row.page_number,
-                        page_file,
-                    )
-                    continue
-            else:
-                pattern = re.compile(
-                    r"(</div>\s*</div>\s*<div class=\"concordance-pane-wrapper\">)",
-                    re.IGNORECASE,
-                )
-                html_text, replacements = pattern.subn(snippet + r"\1", html_text, count=1)
-                if replacements == 0:
-                    logger.warning(
-                        "Could not inject bottom page image for page %s: concordance split marker not found in %s",
-                        row.page_number,
-                        page_file,
-                    )
-                    continue
-            page_file.write_text(html_text, encoding="utf-8")
-            inserted += 1
-        except Exception:
-            logger.exception(
-                "Failed to inject generated page image into HTML; project=%s page=%s",
-                project.pk,
-                row.page_number,
-            )
-    return inserted
-
 def _run_compile_task(
     project_id: int,
     user_id: int,
@@ -1372,7 +1312,32 @@ def _run_compile_task(
         progress_callback=progress_cb,
         start_stage=start_stage,
         end_stage=end_stage or "compile_html",
+        page_images={},
     )
+
+    placement = (page_image_placement or "none").strip().lower()
+    if placement in {"top", "bottom"}:
+        page_images: dict[int, dict[str, str]] = {}
+        expected_paths: list[str] = []
+        for row in project.image_pages.order_by("page_number"):
+            if not row.image_path:
+                expected_paths.append(f"page {row.page_number}: [no image_path set]")
+                continue
+            abs_path = (project.artifact_dir() / row.image_path).resolve()
+            rel_path = os.path.relpath(abs_path, output_dir).replace("\\", "/")
+            expected_paths.append(f"page {row.page_number}: {abs_path} (exists={abs_path.exists()})")
+            if abs_path.exists():
+                page_images[row.page_number] = {"path": rel_path, "placement": placement}
+        spec.page_images = page_images
+        if not page_images:
+            logger.warning(
+                "Page image placement is '%s' but no source images were resolved for compile input. Expected references: %s",
+                placement,
+                "; ".join(expected_paths) if expected_paths else "[no ProjectImagePage rows found]",
+            )
+            post_update(
+                "Warning: page image placement is enabled but no page images were found for compile input."
+            )
 
     chosen_model = ai_model or project.ai_model or DEFAULT_MODEL
     if chosen_model not in AI_MODEL_CHOICES:
@@ -1411,36 +1376,10 @@ def _run_compile_task(
                 compiled_rel = html_path.relative_to(project_root).as_posix()
             except Exception:
                 compiled_rel = html_path.as_posix()
-        placement = (page_image_placement or "none").strip().lower()
-        if placement in {"top", "bottom"}:
-            inserted = _inject_page_images_into_compiled_html(
-                project,
-                run_root=run_root,
-                placement=placement,
+        if placement in {"top", "bottom"} and spec.page_images:
+            post_update(
+                f"Attached {len(spec.page_images)} generated page image reference(s) to compile input ({placement})."
             )
-            if inserted:
-                post_update(
-                    f"Inserted generated page images into {inserted} compiled page(s) ({placement})."
-                )
-            else:
-                expected_paths: list[str] = []
-                for row in project.image_pages.order_by("page_number"):
-                    if not row.image_path:
-                        expected_paths.append(f"page {row.page_number}: [no image_path set]")
-                        continue
-                    abs_path = (project.artifact_dir() / row.image_path).resolve()
-                    expected_paths.append(
-                        f"page {row.page_number}: {abs_path} (exists={abs_path.exists()})"
-                    )
-                logger.warning(
-                    "Page image placement is '%s' but no images were injected. Expected references: %s",
-                    placement,
-                    "; ".join(expected_paths) if expected_paths else "[no ProjectImagePage rows found]",
-                )
-                post_update(
-                    "Warning: page image placement is enabled but no page images were inserted. "
-                    "Check that ProjectImagePage rows have image_path values and that files exist."
-                )
     project.compiled_path = compiled_rel.replace("\\", "/")
     project.artifact_root = str(project_root).replace("\\", "/")
     project.save(update_fields=["compiled_path", "artifact_root", "updated_at"])

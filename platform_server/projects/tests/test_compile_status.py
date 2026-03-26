@@ -195,7 +195,7 @@ class CompileStatusViewTests(TestCase):
 
     @patch("projects.views._build_ai_client")
     @patch("projects.views.run_full_pipeline")
-    def test_compile_task_warns_when_placement_enabled_but_no_images_inserted(
+    def test_compile_task_warns_when_placement_enabled_but_no_images_for_compile_input(
         self, mock_run_full_pipeline, mock_build_ai_client
     ):
         project = self.project
@@ -237,34 +237,60 @@ class CompileStatusViewTests(TestCase):
         self.assertTrue(
             TaskUpdate.objects.filter(
                 user=self.user,
-                message__icontains="no page images were inserted",
+                message__icontains="no page images were found for compile input",
             ).exists()
         )
 
-    def test_inject_page_images_handles_flexible_html_markup(self):
+    @patch("projects.views._build_ai_client")
+    @patch("projects.views.run_full_pipeline")
+    def test_compile_task_passes_page_images_into_pipeline_spec(
+        self, mock_run_full_pipeline, mock_build_ai_client
+    ):
         project = self.project
-        pages_dir = project.artifact_dir() / "images" / "pages" / "page_001"
-        pages_dir.mkdir(parents=True, exist_ok=True)
-        (pages_dir / "image.png").write_bytes(b"png")
+        project.page_image_placement = "top"
+        project.save(update_fields=["page_image_placement"])
+        Profile.objects.get_or_create(user=self.user, defaults={"timezone": "UTC"})
+
+        image_dir = project.artifact_dir() / "images" / "pages" / "page_001"
+        image_dir.mkdir(parents=True, exist_ok=True)
+        (image_dir / "image.png").write_bytes(b"png")
         ProjectImagePage.objects.create(
             project=project,
             page_number=1,
             page_text="hello",
             image_path="images/pages/page_001/image.png",
         )
-        run_root = project.artifact_dir() / "runs" / "run_markup"
+
+        run_root = project.artifact_dir() / "runs" / "run_spec"
         run_root.mkdir(parents=True, exist_ok=True)
         page_file = run_root / "page_1.html"
-        page_file.write_text(
-            '<div id="main-text-pane" class="page">\n<p>hello</p>\n</div>\n</div>\n<div class="concordance-pane-wrapper">',
-            encoding="utf-8",
+        page_file.write_text('<div id="main-text-pane" class="page"></div>', encoding="utf-8")
+
+        captured = {}
+
+        async def _fake_pipeline(spec, client):
+            captured["page_images"] = spec.page_images
+            return {"html": {"run_root": str(run_root), "index_path": str(page_file)}}
+
+        mock_run_full_pipeline.side_effect = _fake_pipeline
+        mock_build_ai_client.return_value = object()
+
+        views._run_compile_task(
+            project.id,
+            self.user.id,
+            str(run_root),
+            str(project.artifact_dir()),
+            "segmentation_phase_1",
+            "UTC",
+            project.description,
+            "Hello world",
+            None,
+            str(uuid.uuid4()),
+            "compile_project_test",
+            "gpt-4o",
+            "compile_html",
+            "top",
         )
 
-        inserted = views._inject_page_images_into_compiled_html(
-            project,
-            run_root=run_root,
-            placement="top",
-        )
-        self.assertEqual(inserted, 1)
-        html_text = page_file.read_text(encoding="utf-8")
-        self.assertIn("generated-page-image", html_text)
+        self.assertIn(1, captured["page_images"])
+        self.assertEqual("top", captured["page_images"][1]["placement"])
