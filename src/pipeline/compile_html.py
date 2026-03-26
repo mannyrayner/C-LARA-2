@@ -327,7 +327,7 @@ def _render_page(
         image_block = (
             f'<figure class="generated-page-image generated-page-image-{generated_image_placement}">'
             f'<img src="{_escape(generated_image_path)}" alt="Generated illustration for page {current}" '
-            'style="max-width: 100%; height: auto; display: block; margin: 0 auto 0.75rem auto;" />'
+            'style="width: 35%; max-width: 35%; height: auto; display: block; margin: 0 auto 0.75rem auto;" />'
             "</figure>"
         )
 
