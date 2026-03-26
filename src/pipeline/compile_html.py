@@ -622,7 +622,7 @@ function highlightMwe(mweId, contextDocument, sourceToken) {
 
         window.addEventListener('message', (event) => {
           if (event.data.type === 'loadConcordance') {
-            loadConcordance(event.data.data.lemma, document);
+            loadConcordance(event.data.data.lemma, document, event.data.data.fileSlug, event.data.data.slug);
           }
         });
 
