@@ -19,6 +19,7 @@ import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
+from urllib.parse import quote
 
 from core.telemetry import NullTelemetry, Telemetry
 
@@ -42,6 +43,16 @@ def _is_lexical(surface: str) -> bool:
     return any(ch.isalnum() for ch in surface) or any("\u4e00" <= ch <= "\u9fff" for ch in surface)
 
 
+def _encode_lemma_for_filename(lemma: str) -> str:
+    """Encode lemma text so concordance filenames are filesystem-safe."""
+
+    if not lemma:
+        return "unknown"
+
+    encoded = quote(lemma, safe="~()*!.'-_")
+    return encoded or "unknown"
+
+
 def _escape(text: str) -> str:
     # Normalize to NFC to keep accents intact, then emit numeric character
     # references for any non-ASCII symbols so browsers render them correctly
@@ -49,6 +60,13 @@ def _escape(text: str) -> str:
     normalized = unicodedata.normalize("NFC", text)
     escaped = html.escape(normalized, quote=True)
     return escaped.encode("ascii", "xmlcharrefreplace").decode("ascii")
+
+
+def _escape_preserve_unicode(text: str) -> str:
+    """Escape HTML while keeping Unicode characters readable."""
+
+    normalized = unicodedata.normalize("NFC", text)
+    return html.escape(normalized, quote=True)
 
 
 def _audio_path(path_str: str | None, root: Path) -> str | None:
@@ -150,9 +168,10 @@ def _render_tokens(
             audio_path = resolver.resolve(audio_meta.get("path"))
 
         if lemma:
-            data_attrs.append(f'data-lemma="{_escape(str(lemma))}"')
+            lemma_str = str(lemma)
+            data_attrs.append(f'data-lemma="{_escape(lemma_str)}"')
         if gloss:
-            data_attrs.append(f'data-gloss="{_escape(str(gloss))}"')
+            data_attrs.append(f'data-gloss="{_escape_preserve_unicode(str(gloss))}"')
         if pos:
             data_attrs.append(f'data-pos="{_escape(str(pos))}"')
         if mwe_id:
@@ -237,7 +256,9 @@ def _render_segment(
     )
     parts.append(f"<div class=\"segment-surface\">{tokens_html}</div>")
     if translation:
-        parts.append(f'<div class="segment-translation hidden">{_escape(str(translation))}</div>')
+        parts.append(
+            f'<div class="segment-translation hidden">{_escape_preserve_unicode(str(translation))}</div>'
+        )
     parts.append("</div>")
     return "".join(parts)
 
@@ -254,6 +275,12 @@ def _render_page(
 ) -> str:
     page = text.get("pages", [])[page_index]
     page_audio = (page.get("annotations", {}) or {}).get("audio")
+    generated_image = (page.get("annotations", {}) or {}).get("generated_image") or {}
+    generated_image_path = ""
+    generated_image_placement = ""
+    if isinstance(generated_image, dict):
+        generated_image_path = str(generated_image.get("path") or "").strip()
+        generated_image_placement = str(generated_image.get("placement") or "").strip().lower()
     page_audio_path = None
     if isinstance(page_audio, dict):
         page_audio_path = resolver.resolve(page_audio.get("path"))
@@ -295,10 +322,26 @@ def _render_page(
             f"<p><button class=\"play\" data-audio=\"{_escape(page_audio_path)}\">Play page audio</button></p>"
         )
 
+    image_block = ""
+    if generated_image_path and generated_image_placement in {"top", "bottom"}:
+        image_block = (
+            f'<figure class="generated-page-image generated-page-image-{generated_image_placement}">'
+            f'<img src="{_escape(generated_image_path)}" alt="Generated illustration for page {current}" '
+            'style="max-width: 100%; height: auto; display: block; margin: 0 auto 0.75rem auto;" />'
+            "</figure>"
+        )
+
+    page_content = f"{page_audio_control}{''.join(segments_html)}"
+    if image_block:
+        if generated_image_placement == "top":
+            page_content = image_block + page_content
+        else:
+            page_content = page_content + image_block
+
     body = (
         "<div class=\"page-container\">"
         "<div class=\"main-text-pane-wrapper\">"
-        f"<div class=\"page\" id=\"main-text-pane\">{page_audio_control}{''.join(segments_html)}</div>"
+        f"<div class=\"page\" id=\"main-text-pane\">{page_content}</div>"
         "</div>"
         "<div class=\"concordance-pane-wrapper\"><iframe id=\"concordance-pane\" src=\"\" frameborder=\"0\" class=\"concordance-iframe\"></iframe></div>"
         "</div>"
@@ -439,14 +482,21 @@ nav a { margin-right: 0.5rem; }
           setTimeout(() => { element.classList.remove(className); }, duration);
         }
 
+      function encodeLemmaForFilename(lemma) {
+        if (!lemma) return 'unknown';
+        let encoded = encodeURIComponent(lemma);
+        encoded = encoded.replace(/%21/g, '!').replace(/%27/g, "'").replace(/%28/g, '(').replace(/%29/g, ')').replace(/%2A/g, '*');
+        return encoded || 'unknown';
+      }
+
       function loadConcordance(lemma, contextDocument) {
         const targetDoc = contextDocument || document;
         const pane = targetDoc.getElementById('concordance-pane');
-        const encoded = encodeURIComponent(lemma);
-        const target = `concordance_${encoded}.html`;
+        const targetSlug = encodeLemmaForFilename(lemma || '');
+        const target = `concordance_${targetSlug}.html`;
         if (pane) { pane.src = target; }
         if (window.parent !== window) {
-          window.parent.postMessage({ type: 'loadConcordance', data: { lemma } }, '*');
+          window.parent.postMessage({ type: 'loadConcordance', data: { lemma, slug: targetSlug } }, '*');
         }
       }
 
@@ -624,7 +674,8 @@ def compile_html(spec: CompileHTMLSpec) -> dict[str, Any]:
         conc_html = _render_concordance_page(
             entry=entry, text=spec.text, token_ids=token_ids, resolver=resolver
         )
-        conc_path = html_root / f"concordance_{lemma_key}.html"
+        lemma_slug = _encode_lemma_for_filename(str(lemma_key))
+        conc_path = html_root / f"concordance_{lemma_slug}.html"
         conc_path.write_text(conc_html, encoding="utf-8")
 
     telemetry.event(spec.op_id or "compile_html", "info", f"wrote HTML pages under {html_root}")
