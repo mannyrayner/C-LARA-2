@@ -200,11 +200,13 @@ async def run_full_pipeline(
             _persist("gloss", current)
             _progress("gloss", "done")
         elif stage == "pinyin":
+            _progress("pinyin", "start")
             if spec.language.lower().startswith("zh"):
-                _progress("pinyin", "start")
                 current = annotate_pinyin(PinyinSpec(text=current, language=spec.language, telemetry=telemetry))
-                _persist("pinyin", current)
-                _progress("pinyin", "done")
+            # For languages without a pinyin-like pass, persist the unchanged
+            # structure so downstream tooling still sees a concrete pinyin stage artifact.
+            _persist("pinyin", current)
+            _progress("pinyin", "done")
         elif stage == "audio":
             _progress("audio", "start")
             current = await annotate_audio(
