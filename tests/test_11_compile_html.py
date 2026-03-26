@@ -202,7 +202,7 @@ class CompileHTMLTests(unittest.TestCase):
         )
 
     def test_mwe_tokens_include_encoded_slug(self) -> None:
-        """Tokens that belong to an MWE should carry the encoded lemma slug used for concordances."""
+        """Tokens should carry the encoded concordance slug for robust lookup."""
 
         out_root = self.artifacts / "html"
         mwe_text = {
@@ -249,8 +249,7 @@ class CompileHTMLTests(unittest.TestCase):
         html_path = Path(result["html_path"])
         page_content = html_path.read_text(encoding="utf-8")
         self.assertIn('data-lemma="sharp pain"', page_content)
-        self.assertNotIn('data-lemma-slug=', page_content)
-        self.assertNotIn('data-lemma-file-slug=', page_content)
+        self.assertIn('data-lemma-file-slug="sharp%20pain"', page_content)
 
     def test_concordance_loader_preserves_percent_signs(self) -> None:
         """Concordance JS should escape percent signs so encoded slugs resolve to on-disk files."""
@@ -263,6 +262,8 @@ class CompileHTMLTests(unittest.TestCase):
 
         self.assertIn("function encodeLemmaForFilename", script)
         self.assertIn("loadConcordance(lemma", script)
+        self.assertIn("forcedSlug || encodeLemmaForFilename", script)
+        self.assertIn("token.dataset.lemmaFileSlug", script)
 
     def test_page_generated_image_from_annotations_is_rendered(self) -> None:
         out_root = self.artifacts / "html"

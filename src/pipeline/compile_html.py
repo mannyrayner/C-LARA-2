@@ -170,6 +170,9 @@ def _render_tokens(
         if lemma:
             lemma_str = str(lemma)
             data_attrs.append(f'data-lemma="{_escape(lemma_str)}"')
+            data_attrs.append(
+                f'data-lemma-file-slug="{_escape(_encode_lemma_for_filename(lemma_str))}"'
+            )
         if gloss:
             data_attrs.append(f'data-gloss="{_escape_preserve_unicode(str(gloss))}"')
         if pos:
@@ -489,10 +492,10 @@ nav a { margin-right: 0.5rem; }
         return encoded || 'unknown';
       }
 
-      function loadConcordance(lemma, contextDocument) {
+      function loadConcordance(lemma, contextDocument, forcedSlug) {
         const targetDoc = contextDocument || document;
         const pane = targetDoc.getElementById('concordance-pane');
-        const targetSlug = encodeLemmaForFilename(lemma || '');
+        const targetSlug = forcedSlug || encodeLemmaForFilename(lemma || '');
         const target = `concordance_${targetSlug}.html`;
         if (pane) { pane.src = target; }
         if (window.parent !== window) {
@@ -520,9 +523,8 @@ nav a { margin-right: 0.5rem; }
             const audioSrc = token.dataset.audio;
             if (audioSrc) { const audio = new Audio(audioSrc); audio.play().catch(() => {}); }
             const lemma = token.dataset.lemma;
-            const lemmaSlug = token.dataset.lemmaSlug;
             const lemmaFileSlug = token.dataset.lemmaFileSlug;
-            if (lemma) { loadConcordance(lemma, doc, lemmaFileSlug, lemmaSlug); }
+            if (lemma) { loadConcordance(lemma, doc, lemmaFileSlug); }
             const mwe = token.dataset.mweId;
             if (mwe) { highlightMwe(mwe, doc, token); }
         });
