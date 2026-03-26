@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import json
 import unittest
 from pathlib import Path
 
@@ -126,6 +127,31 @@ class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
             inputs={"text": self.sample_text},
             output={"html_path": str(html_path), "lemmas": lemmas},
             status="pass",
+        )
+
+    async def test_non_chinese_pipeline_persists_pinyin_stage_artifact(self) -> None:
+        out_root = self.fake_html_root / "persist_pinyin"
+        out_root.mkdir(parents=True, exist_ok=True)
+        spec = FullPipelineSpec(
+            text=self.sample_text,
+            language="en",
+            target_language="fr",
+            output_dir=out_root,
+            audio_cache_dir=self.fake_audio_root / "persist_pinyin",
+            telemetry=None,
+            persist_intermediates=True,
+            start_stage="segmentation_phase_1",
+            end_stage="pinyin",
+        )
+
+        await run_full_pipeline(spec, client=self.fake_client)
+        pinyin_path = out_root / "stages" / "pinyin.json"
+        gloss_path = out_root / "stages" / "gloss.json"
+        self.assertTrue(pinyin_path.exists(), "pinyin stage artifact should always be persisted")
+        self.assertTrue(gloss_path.exists())
+        self.assertEqual(
+            json.loads(gloss_path.read_text(encoding="utf-8")),
+            json.loads(pinyin_path.read_text(encoding="utf-8")),
         )
 
     async def test_full_pipeline_with_fake_client_multi_page_mwe(self) -> None:

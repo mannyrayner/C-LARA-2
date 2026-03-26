@@ -2,10 +2,13 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import contextlib
 import json
+import re
 import sys
 import time
+import urllib.request
 import uuid
 from importlib import util
 from pathlib import Path
@@ -18,6 +21,7 @@ OpenAI = None  # type: ignore[assignment]
 APIError = type("APIError", (Exception,), {})
 RateLimitError = type("RateLimitError", (Exception,), {})
 LengthFinishReasonError = type("LengthFinishReasonError", (Exception,), {})
+_MALFORMED_UNICODE_ESCAPE_RE = re.compile(r"\x00([0-9a-fA-F]{2})")
 
 
 class OpenAIClient:
@@ -83,7 +87,11 @@ class OpenAIClient:
                 )
                 response = await _run_with_heartbeat(self._client, kwargs, telemetry, op_id, start, heartbeat_s)
                 payload = _extract_payload(response)
-                return json.loads(payload)
+                result = json.loads(payload)
+                normalized = _normalize_json_text(result)
+                if normalized != result:
+                    telemetry.event(op_id, "warn", "normalized malformed unicode escapes in JSON response")
+                return normalized
             except json.JSONDecodeError as exc:  # pragma: no cover - edge condition
                 telemetry.event(op_id, "error", "invalid JSON response", {"payload": payload})
                 raise ValueError("OpenAI returned non-JSON content") from exc
@@ -150,6 +158,55 @@ class OpenAIClient:
         if asyncio.iscoroutine(result):
             await result
 
+    def generate_image(
+        self,
+        prompt: str,
+        *,
+        model: str = "gpt-image-1",
+        size: str = "1024x1024",
+        quality: str = "medium",
+        output_format: str = "png",
+    ) -> dict[str, Any]:
+        """Generate an image and return decoded bytes plus provider metadata."""
+
+        response = self._client.images.generate(
+            model=model,
+            prompt=prompt,
+            size=size,
+            quality=quality,
+            output_format=output_format,
+        )
+        data = getattr(response, "data", None) or []
+        if not data:
+            raise ValueError("Image generation returned no images")
+        first = data[0]
+        b64_json = getattr(first, "b64_json", None) or (
+            first.get("b64_json") if isinstance(first, dict) else None
+        )
+        image_bytes: bytes | None = None
+        if b64_json:
+            image_bytes = base64.b64decode(b64_json)
+        else:
+            url = getattr(first, "url", None) or (
+                first.get("url") if isinstance(first, dict) else None
+            )
+            if url:
+                with urllib.request.urlopen(url) as response_fp:
+                    image_bytes = response_fp.read()
+        if not image_bytes:
+            raise ValueError("Image generation response did not include image data")
+        revised_prompt = getattr(first, "revised_prompt", None) or (
+            first.get("revised_prompt") if isinstance(first, dict) else None
+        )
+        return {
+            "bytes": image_bytes,
+            "revised_prompt": revised_prompt or "",
+            "model": model,
+            "size": size,
+            "quality": quality,
+            "output_format": output_format,
+        }
+
 
 def _ensure_openai_installed():
     """Check that the OpenAI SDK is installed and importable."""
@@ -196,6 +253,41 @@ def _extract_payload(response: Any) -> str:
             message = choices[0].get("message", {})
             return message.get("content", "{}") or "{}"
     return "{}"
+
+
+def _normalize_json_text(value: Any) -> Any:
+    """Recursively repair malformed escaped-Unicode sequences in JSON values.
+
+    Some model responses contain strings such as ``"C\\u0000e9line"``. After
+    ``json.loads`` this becomes ``"C\\x00e9line"``, which then renders badly in
+    HTML. We repair those sequences here so downstream pipeline stages operate on
+    normal Unicode strings.
+    """
+
+    if isinstance(value, str):
+        return _normalize_malformed_unicode_escapes(value)
+    if isinstance(value, list):
+        return [_normalize_json_text(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _normalize_json_text(item) for key, item in value.items()}
+    return value
+
+
+def _normalize_malformed_unicode_escapes(text: str) -> str:
+    def _replace(match: re.Match[str]) -> str:
+        codepoint_text = match.group(1)
+        try:
+            codepoint = int(codepoint_text, 16)
+        except ValueError:
+            return match.group(0)
+        if codepoint < 0 or codepoint > 0x10FFFF:
+            return match.group(0)
+        return chr(codepoint)
+
+    normalized = _MALFORMED_UNICODE_ESCAPE_RE.sub(_replace, text)
+    if "\x00" in normalized:
+        normalized = normalized.replace("\x00", "")
+    return normalized
 
 
 async def _run_with_heartbeat(

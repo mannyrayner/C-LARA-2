@@ -5,8 +5,16 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 ROOT_DIR = BASE_DIR.parent
 SRC_DIR = ROOT_DIR / "src"
+USE_REAL_DJANGO_Q = os.environ.get("DJANGO_Q_USE_REAL", "").lower() in {
+    "1",
+    "true",
+    "yes",
+}
 if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
+    if USE_REAL_DJANGO_Q:
+        sys.path.append(str(SRC_DIR))
+    else:
+        sys.path.insert(0, str(SRC_DIR))
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key")
 DEBUG = True
 ALLOWED_HOSTS: list[str] = ["*"]
@@ -19,6 +27,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "projects",
+    "django_q",
 ]
 
 MIDDLEWARE = [
@@ -30,6 +39,11 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+# Use a database-backed session store so background threads can persist
+# progress messages that are retrieved in subsequent requests. The default
+# signed-cookie backend cannot be updated outside the request/response cycle.
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
 
 ROOT_URLCONF = "platform_server.urls"
 
@@ -83,3 +97,15 @@ LOGOUT_REDIRECT_URL = "/accounts/login/"
 # so each user’s runs are isolated while keeping relative links stable for HTML
 # and audio assets.
 PIPELINE_OUTPUT_ROOT = MEDIA_ROOT / "users"
+
+Q_CLUSTER = {
+    "name": "c-lara-2",
+    "workers": 2,
+    "timeout": 60 * 60,  # allow long compiles
+    # Ensure retry exceeds timeout to satisfy django-q expectations and avoid
+    # noisy warnings about misconfiguration.
+    "retry": 60 * 90,
+    "queue_limit": 50,
+    "bulk": 10,
+    "orm": "default",
+}
