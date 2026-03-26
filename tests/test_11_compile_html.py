@@ -194,7 +194,7 @@ class CompileHTMLTests(unittest.TestCase):
 
         run_root = Path(result["run_root"])
         html_root = run_root / "html"
-        encoded_slug = quote('"', safe="~()*!.'-_")
+        encoded_slug = "_"
         expected_path = html_root / f"concordance_{encoded_slug}.html"
         self.assertTrue(
             expected_path.exists(),
@@ -249,10 +249,10 @@ class CompileHTMLTests(unittest.TestCase):
         html_path = Path(result["html_path"])
         page_content = html_path.read_text(encoding="utf-8")
         self.assertIn('data-lemma="sharp pain"', page_content)
-        self.assertIn('data-lemma-file-slug="sharp%20pain"', page_content)
+        self.assertIn('data-lemma-file-slug="sharp pain"', page_content)
 
-    def test_concordance_loader_preserves_percent_signs(self) -> None:
-        """Concordance JS should escape percent signs so encoded slugs resolve to on-disk files."""
+    def test_concordance_loader_uses_filesystem_safe_slug_transform(self) -> None:
+        """Concordance JS should mirror the filesystem-safe slug transform used by Python."""
 
         out_root = self.artifacts / "html"
         result = compile_html(CompileHTMLSpec(text=self.sample_text, output_dir=out_root, run_id="percent-safe"))
@@ -264,6 +264,7 @@ class CompileHTMLTests(unittest.TestCase):
         self.assertIn("loadConcordance(lemma", script)
         self.assertIn("forcedSlug || encodeLemmaForFilename", script)
         self.assertIn("token.dataset.lemmaFileSlug", script)
+        self.assertIn("replace(/[\\/:*?\"<>|\\x00-\\x1f]/g, '_')", script)
 
     def test_page_generated_image_from_annotations_is_rendered(self) -> None:
         out_root = self.artifacts / "html"

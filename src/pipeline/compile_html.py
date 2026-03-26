@@ -11,6 +11,7 @@ import html
 from collections import defaultdict
 import os
 import json
+import re
 import uuid
 import textwrap
 import hashlib
@@ -44,13 +45,20 @@ def _is_lexical(surface: str) -> bool:
 
 
 def _encode_lemma_for_filename(lemma: str) -> str:
-    """Encode lemma text so concordance filenames are filesystem-safe."""
+    """Encode lemma text so concordance filenames are filesystem-safe.
+
+    Keep Unicode and spaces readable; only replace characters that are known
+    to break file paths (especially on Windows) or URL/path parsing.
+    """
 
     if not lemma:
         return "unknown"
-
-    encoded = quote(lemma, safe="~()*!.'-_")
-    return encoded or "unknown"
+    normalized = unicodedata.normalize("NFC", str(lemma)).strip()
+    if not normalized:
+        return "unknown"
+    # Forbidden on Windows and problematic in URLs/path parsing.
+    sanitized = re.sub(r'[\\/:*?"<>|\x00-\x1f]', "_", normalized)
+    return sanitized or "unknown"
 
 
 def _escape(text: str) -> str:
@@ -487,9 +495,9 @@ nav a { margin-right: 0.5rem; }
 
       function encodeLemmaForFilename(lemma) {
         if (!lemma) return 'unknown';
-        let encoded = encodeURIComponent(lemma);
-        encoded = encoded.replace(/%21/g, '!').replace(/%27/g, "'").replace(/%28/g, '(').replace(/%29/g, ')').replace(/%2A/g, '*');
-        return encoded || 'unknown';
+        const normalized = `${lemma}`.trim();
+        if (!normalized) return 'unknown';
+        return normalized.replace(/[\\/:*?"<>|\\x00-\\x1f]/g, '_') || 'unknown';
       }
 
       function loadConcordance(lemma, contextDocument, forcedSlug) {
