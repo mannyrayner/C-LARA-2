@@ -1324,7 +1324,7 @@ def _run_compile_task(
                 expected_paths.append(f"page {row.page_number}: [no image_path set]")
                 continue
             abs_path = (project.artifact_dir() / row.image_path).resolve()
-            rel_path = os.path.relpath(abs_path, output_dir).replace("\\", "/")
+            rel_path = os.path.relpath(abs_path, output_dir / "html").replace("\\", "/")
             expected_paths.append(f"page {row.page_number}: {abs_path} (exists={abs_path.exists()})")
             if abs_path.exists():
                 page_images[row.page_number] = {"path": rel_path, "placement": placement}

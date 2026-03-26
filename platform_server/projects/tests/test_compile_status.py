@@ -294,3 +294,4 @@ class CompileStatusViewTests(TestCase):
 
         self.assertIn(1, captured["page_images"])
         self.assertEqual("top", captured["page_images"][1]["placement"])
+        self.assertTrue(captured["page_images"][1]["path"].startswith("../../../images/pages/"))
