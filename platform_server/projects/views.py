@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import re
 import shutil
 import uuid
 import asyncio
@@ -1261,16 +1263,27 @@ def _inject_page_images_into_compiled_html(
 
             html_text = page_file.read_text(encoding="utf-8")
             if placement == "top":
-                marker = '<div class="page" id="main-text-pane">'
-                if marker in html_text:
-                    html_text = html_text.replace(marker, marker + snippet, 1)
-                else:
+                pattern = re.compile(r'(<div[^>]*id="main-text-pane"[^>]*>)', re.IGNORECASE)
+                html_text, replacements = pattern.subn(r"\1" + snippet, html_text, count=1)
+                if replacements == 0:
+                    logger.warning(
+                        "Could not inject top page image for page %s: main-text-pane marker not found in %s",
+                        row.page_number,
+                        page_file,
+                    )
                     continue
             else:
-                marker = "</div></div><div class=\"concordance-pane-wrapper\">"
-                if marker in html_text:
-                    html_text = html_text.replace(marker, snippet + marker, 1)
-                else:
+                pattern = re.compile(
+                    r"(</div>\s*</div>\s*<div class=\"concordance-pane-wrapper\">)",
+                    re.IGNORECASE,
+                )
+                html_text, replacements = pattern.subn(snippet + r"\1", html_text, count=1)
+                if replacements == 0:
+                    logger.warning(
+                        "Could not inject bottom page image for page %s: concordance split marker not found in %s",
+                        row.page_number,
+                        page_file,
+                    )
                     continue
             page_file.write_text(html_text, encoding="utf-8")
             inserted += 1

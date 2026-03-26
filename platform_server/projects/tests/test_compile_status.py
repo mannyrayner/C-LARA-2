@@ -240,3 +240,31 @@ class CompileStatusViewTests(TestCase):
                 message__icontains="no page images were inserted",
             ).exists()
         )
+
+    def test_inject_page_images_handles_flexible_html_markup(self):
+        project = self.project
+        pages_dir = project.artifact_dir() / "images" / "pages" / "page_001"
+        pages_dir.mkdir(parents=True, exist_ok=True)
+        (pages_dir / "image.png").write_bytes(b"png")
+        ProjectImagePage.objects.create(
+            project=project,
+            page_number=1,
+            page_text="hello",
+            image_path="images/pages/page_001/image.png",
+        )
+        run_root = project.artifact_dir() / "runs" / "run_markup"
+        run_root.mkdir(parents=True, exist_ok=True)
+        page_file = run_root / "page_1.html"
+        page_file.write_text(
+            '<div id="main-text-pane" class="page">\n<p>hello</p>\n</div>\n</div>\n<div class="concordance-pane-wrapper">',
+            encoding="utf-8",
+        )
+
+        inserted = views._inject_page_images_into_compiled_html(
+            project,
+            run_root=run_root,
+            placement="top",
+        )
+        self.assertEqual(inserted, 1)
+        html_text = page_file.read_text(encoding="utf-8")
+        self.assertIn("generated-page-image", html_text)
