@@ -122,6 +122,58 @@ class OpenAIClient:
                 telemetry.event(op_id, "error", "unexpected failure")
                 raise
 
+    async def chat_text(
+        self,
+        prompt: str,
+        *,
+        model: str | None = None,
+        temperature: float | None = None,
+        telemetry: Telemetry | None = None,
+        op_id: str | None = None,
+    ) -> str:
+        """Send a chat completion request and return plain text content."""
+
+        telemetry = telemetry or NullTelemetry()
+        op_id = op_id or f"op-{uuid.uuid4()}"
+        model = model or self.config.model
+        temperature = temperature if temperature is not None else self.config.temperature
+        heartbeat_s = self.config.heartbeat_s
+
+        attempt = 0
+        backoff = 1.0
+        while True:
+            attempt += 1
+            start = time.monotonic()
+            telemetry.event(op_id, "info", f"openai.chat_text attempt {attempt}")
+            try:
+                kwargs = self._build_request(
+                    prompt,
+                    model=model,
+                    temperature=temperature,
+                    tools=None,
+                    response_format=None,
+                )
+                response = await _run_with_heartbeat(self._client, kwargs, telemetry, op_id, start, heartbeat_s)
+                return _extract_payload(response).strip()
+            except (RateLimitError, APIError) as exc:
+                if attempt >= self.config.max_retries:
+                    telemetry.event(op_id, "error", "openai text call failed", {"error": str(exc)})
+                    raise
+                telemetry.event(op_id, "warn", "openai text retry", {"attempt": attempt, "error": str(exc)})
+                await asyncio.sleep(backoff)
+                backoff *= 2
+            except Exception as exc:
+                if exc.__class__.__name__ in {"RateLimitError", "APIError"}:
+                    if attempt >= self.config.max_retries:
+                        telemetry.event(op_id, "error", "openai text call failed", {"error": str(exc)})
+                        raise
+                    telemetry.event(op_id, "warn", "openai text retry", {"attempt": attempt, "error": str(exc)})
+                    await asyncio.sleep(backoff)
+                    backoff *= 2
+                    continue
+                telemetry.event(op_id, "error", "unexpected text failure")
+                raise
+
     def _build_request(
         self,
         prompt: str,
@@ -139,8 +191,9 @@ class OpenAIClient:
             "model": model,
             "messages": messages,
             "tools": tools_payload,
-            "response_format": response_format,
         }
+        if response_format is not None:
+            kwargs["response_format"] = response_format
         if temperature is not None:
             kwargs["temperature"] = temperature
 

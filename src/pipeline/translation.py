@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import asyncio
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -10,9 +12,6 @@ from core.ai_api import OpenAIClient
 from core.telemetry import NullTelemetry, Telemetry
 
 from . import annotation_prompts
-from .generic_annotation import GenericAnnotationSpec, generic_annotation
-
-
 def _load_template(language: str, *, prompts_root: Path) -> str:
     return annotation_prompts.load_template(
         "translation", language, prompts_root=prompts_root
@@ -55,9 +54,8 @@ def _build_prompt(
         segment = {**segment, "surface": segment_surface}
 
     output_instructions = [
-        "Return a JSON object representing the segment.",
-        "Keep the original surface unchanged.",
-        "Add annotations.translation set to the translation string in the target language.",
+        "Return only the translated text string.",
+        "Do not return JSON, markdown, labels, or explanation.",
     ]
 
     header = f"Segment to translate into {target_language}:"
@@ -93,33 +91,91 @@ async def translate(
         else _load_fewshots(spec.language, prompts_root=prompts_root)
     )
 
+    normalized_fewshots: list[dict[str, Any]] = []
+    for item in fewshots:
+        input_obj = item.get("input") if isinstance(item, dict) else None
+        output_obj = item.get("output") if isinstance(item, dict) else None
+        try:
+            if isinstance(input_obj, str):
+                input_obj = json.loads(input_obj)
+            if isinstance(output_obj, str):
+                output_obj = json.loads(output_obj)
+        except Exception:
+            pass
+        input_surface = ""
+        output_translation = ""
+        if isinstance(input_obj, dict):
+            input_surface = str(input_obj.get("surface") or "")
+        if isinstance(output_obj, dict):
+            output_translation = str(
+                (output_obj.get("annotations") or {}).get("translation") or ""
+            )
+        normalized_fewshots.append(
+            {"input": input_surface, "output": output_translation}
+        )
+
     def build(segment: dict[str, Any]) -> str:
         return _build_prompt(
             template,
             segment=segment,
-            fewshots=fewshots,
+            fewshots=normalized_fewshots,
             target_language=spec.target_language,
         )
 
     telemetry = spec.telemetry or NullTelemetry()
     ai_client = client or OpenAIClient()
 
-    annotated = await generic_annotation(
-        GenericAnnotationSpec(
-            text=spec.text,
-            language=spec.language,
-            operation="translation",
-            build_prompt=build,
-            telemetry=telemetry,
-            op_id=spec.op_id,
-            max_concurrency=8,
-        ),
-        client=ai_client,
-    )
+    base_op_id = spec.op_id or f"translation-{uuid.uuid4()}"
+    semaphore = asyncio.Semaphore(8)
+    tasks: list[asyncio.Task[str]] = []
+    index: list[tuple[int, int]] = []
+
+    async def _translate_segment(prompt: str, op_id: str) -> str:
+        async with semaphore:
+            text = await ai_client.chat_text(prompt, telemetry=telemetry, op_id=op_id)
+            text = text.strip()
+            if len(text) >= 2 and text[0] == text[-1] and text[0] in {'"', "'"}:
+                text = text[1:-1].strip()
+            return text
+
+    pages = spec.text.get("pages", [])
+    for page_idx, page in enumerate(pages):
+        for seg_idx, segment in enumerate(page.get("segments", [])):
+            prompt = build(segment)
+            op_id = f"{base_op_id}-p{page_idx}-s{seg_idx}"
+            tasks.append(asyncio.create_task(_translate_segment(prompt, op_id)))
+            index.append((page_idx, seg_idx))
+
+    responses: dict[tuple[int, int], str] = {}
+    if tasks:
+        for idx, text in zip(index, await asyncio.gather(*tasks)):
+            responses[idx] = text
+
+    new_pages: list[dict[str, Any]] = []
+    for page_idx, page in enumerate(pages):
+        new_segments: list[dict[str, Any]] = []
+        for seg_idx, segment in enumerate(page.get("segments", [])):
+            updated = dict(segment)
+            annotations = dict(segment.get("annotations") or {})
+            annotations["translation"] = responses.get((page_idx, seg_idx), "")
+            updated["annotations"] = annotations
+            new_segments.append(updated)
+        new_pages.append(
+            {
+                "surface": page.get("surface", ""),
+                "segments": new_segments,
+                "annotations": page.get("annotations", {}),
+            }
+        )
+
+    annotated: dict[str, Any] = {
+        "l2": spec.text.get("l2", spec.language),
+        "l1": spec.text.get("l1") or spec.target_language,
+        "title": spec.text.get("title"),
+        "surface": spec.text.get("surface", ""),
+        "pages": new_pages,
+        "annotations": spec.text.get("annotations", {}),
+    }
 
     # Ensure the target language is recorded at the text level.
-    if annotated.get("l1") is None:
-        annotated["l1"] = spec.target_language
-
-    return annotated
-
+    return {k: v for k, v in annotated.items() if v is not None}

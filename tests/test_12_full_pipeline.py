@@ -24,6 +24,18 @@ class FakeAIClient(OpenAIClient):
         response = self.responses.pop(0)
         return response
 
+    async def chat_text(self, prompt: str, **_: object) -> str:
+        await asyncio.sleep(0)
+        if not self.responses:
+            raise RuntimeError("No fake responses left for chat_text")
+        response = self.responses.pop(0)
+        if isinstance(response, dict):
+            annotations = response.get("annotations") if isinstance(response.get("annotations"), dict) else {}
+            text = (annotations or {}).get("translation")
+            if isinstance(text, str):
+                return text
+        return str(response)
+
 
 class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
