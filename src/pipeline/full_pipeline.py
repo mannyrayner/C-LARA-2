@@ -47,7 +47,7 @@ class FullPipelineSpec:
 
     text: str | None = None
     text_obj: dict[str, Any] | None = None
-    description: str | None = None  # optional text_gen description
+    description: dict[str, Any] | str | None = None  # optional text_gen description
     language: str = "en"
     target_language: str = "fr"
     voice: str | None = None
@@ -57,6 +57,7 @@ class FullPipelineSpec:
     op_id: str | None = None
     start_stage: str = "segmentation_phase_1"
     end_stage: str = "compile_html"
+    page_images: dict[int, dict[str, str]] | None = None
     require_real_tts: bool = False
     persist_intermediates: bool = False
     progress_callback: Callable[[str, str, str], None] | None = None
@@ -199,11 +200,13 @@ async def run_full_pipeline(
             _persist("gloss", current)
             _progress("gloss", "done")
         elif stage == "pinyin":
+            _progress("pinyin", "start")
             if spec.language.lower().startswith("zh"):
-                _progress("pinyin", "start")
                 current = annotate_pinyin(PinyinSpec(text=current, language=spec.language, telemetry=telemetry))
-                _persist("pinyin", current)
-                _progress("pinyin", "done")
+            # For languages without a pinyin-like pass, persist the unchanged
+            # structure so downstream tooling still sees a concrete pinyin stage artifact.
+            _persist("pinyin", current)
+            _progress("pinyin", "done")
         elif stage == "audio":
             _progress("audio", "start")
             current = await annotate_audio(
@@ -220,6 +223,21 @@ async def run_full_pipeline(
             _persist("audio", current)
             _progress("audio", "done")
         elif stage == "compile_html":
+            if spec.page_images and isinstance(current, dict):
+                pages = current.get("pages") or []
+                if isinstance(pages, list):
+                    for page_number, image_meta in spec.page_images.items():
+                        if not isinstance(page_number, int):
+                            continue
+                        idx = page_number - 1
+                        if idx < 0 or idx >= len(pages):
+                            continue
+                        page_obj = pages[idx]
+                        if not isinstance(page_obj, dict):
+                            continue
+                        annotations = page_obj.setdefault("annotations", {})
+                        if isinstance(annotations, dict):
+                            annotations["generated_image"] = image_meta
             _progress("compile_html", "start")
             html_result = compile_html(
                 CompileHTMLSpec(text=current, output_dir=spec.output_dir, telemetry=telemetry, op_id=op_id)

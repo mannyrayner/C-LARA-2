@@ -14,11 +14,11 @@ from tests.log_utils import log_test_case
 
 
 class FakeAIClient:
-    def __init__(self, response: dict) -> None:
+    def __init__(self, response: str) -> None:
         self.response = response
         self.prompts: list[str] = []
 
-    async def chat_json(self, prompt: str, **_: object) -> dict:
+    async def chat_text(self, prompt: str, **_: object) -> str:
         self.prompts.append(prompt)
         await asyncio.sleep(0)
         return self.response
@@ -43,7 +43,7 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
     def test_loads_fewshots(self) -> None:
         fewshots = translation._load_fewshots("en", prompts_root=self.prompts_root)
         self.assertGreaterEqual(len(fewshots), 2)
-        self.assertTrue(all("annotations" in fs.get("output", {}) for fs in fewshots))
+        self.assertTrue(all(isinstance(fs.get("output"), str) for fs in fewshots))
 
         log_test_case(
             "translation:load_fewshots",
@@ -62,7 +62,7 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
             target_language="fr",
         )
         self.assertIn("translate into fr", prompt.lower())
-        self.assertIn("annotations.translation", prompt)
+        self.assertIn("Return only the translated text string.", prompt)
 
         log_test_case(
             "translation:build_prompt",
@@ -73,10 +73,7 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_translate_normalizes_response_and_sets_l1(self) -> None:
-        fake_response = {
-            "surface": self.sample_text["surface"],
-            "annotations": {"translation": "Il a fermé la fenêtre avant l'orage."},
-        }
+        fake_response = "Il a fermé la fenêtre avant l'orage."
         client = FakeAIClient(fake_response)
         spec = TranslationSpec(text=self.sample_text, language="en", target_language="fr")
 
@@ -93,6 +90,22 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
             inputs={"surface": self.sample_text["surface"]},
             output={"translation": page["annotations"]["translation"], "l1": result["l1"]},
             status="pass",
+        )
+
+    async def test_translate_extracts_json_wrapper_and_unescapes_unicode(self) -> None:
+        fake_response = (
+            '{"translated_text":"C\\u0000e9line est une \\u0000e9tudiante fran\\u0000e7aise '
+            'en \\u0000e9change \\u0000e0 Ad\\u0000e9la\\u0000efd."}'
+        )
+        client = FakeAIClient(fake_response)
+        spec = TranslationSpec(text=self.sample_text, language="en", target_language="fr")
+
+        result = await translation.translate(spec, client=client)
+
+        page = result["pages"][0]["segments"][0]
+        self.assertEqual(
+            "Céline est une étudiante française en échange à Adélaïd.",
+            page["annotations"]["translation"],
         )
 
 
