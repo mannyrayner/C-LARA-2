@@ -45,8 +45,10 @@ class FakeChatCompletions:
     def __init__(self, responses: list[object]) -> None:
         self._responses = responses
         self.calls = 0
+        self.last_kwargs: dict[str, object] | None = None
 
-    def create(self, **_: object) -> FakeResponse:
+    def create(self, **kwargs: object) -> FakeResponse:
+        self.last_kwargs = dict(kwargs)
         idx = self.calls
         self.calls += 1
         response = self._responses[idx]
@@ -107,6 +109,42 @@ class AOpenAIClientUnitTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual({"done": True}, result)
         self.assertTrue(any(h[0] == "op-2" for h in telemetry.heartbeats))
+
+    async def test_02b_chat_json_normalizes_malformed_unicode_escapes(self) -> None:
+        telemetry = RecordingTelemetry()
+        payload = (
+            '{"annotations":{"translation":"C\\u0000e9line avait h\\u0000e2te de visiter '
+            'Ad\\u0000e9la\\u0000efde."},"tokens":[{"surface":"m\\u0000e8re"}]}'
+        )
+        client = OpenAIClient(config=OpenAIConfig(api_key=None), client=FakeClient([FakeResponse(payload)]))
+
+        result = await client.chat_json("hello", telemetry=telemetry, op_id="op-2b")
+
+        self.assertEqual(
+            "Céline avait hâte de visiter Adélaïde.",
+            result["annotations"]["translation"],
+        )
+        self.assertEqual("mère", result["tokens"][0]["surface"])
+        self.assertTrue(
+            any(evt[1] == "warn" and "normalized malformed unicode escapes" in evt[2] for evt in telemetry.events)
+        )
+
+    async def test_02c_chat_text_emits_request_and_response_events(self) -> None:
+        telemetry = RecordingTelemetry()
+        client = OpenAIClient(
+            config=OpenAIConfig(api_key=None),
+            client=FakeClient([FakeResponse("Bonjour tout le monde.")]),
+        )
+
+        result = await client.chat_text("Translate: hello everyone.", telemetry=telemetry, op_id="op-2c")
+
+        self.assertEqual("Bonjour tout le monde.", result)
+        messages = [evt[2] for evt in telemetry.events]
+        self.assertIn("openai.chat_text request start", messages)
+        self.assertIn("openai.chat_text response received", messages)
+        last_kwargs = client._client.chat.completions.last_kwargs  # type: ignore[attr-defined]
+        self.assertIsNotNone(last_kwargs)
+        self.assertNotIn("response_format", last_kwargs)
 
     async def test_00_chat_json_retries_on_rate_limit(self) -> None:
         telemetry = RecordingTelemetry()
