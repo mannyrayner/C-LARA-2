@@ -76,7 +76,7 @@ class GlossUnitTests(unittest.IsolatedAsyncioTestCase):
         )
 
     def test_build_prompt_mentions_translation(self) -> None:
-        template = "Gloss tokens"
+        template = "Gloss tokens into {glossing_language}"
         prompt = gloss._build_prompt(
             template,
             segment=self.sample_segment,
@@ -85,6 +85,7 @@ class GlossUnitTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertIn("translation", prompt)
         self.assertIn("Segment JSON", prompt)
+        self.assertIn("Gloss tokens into fr", prompt)
 
         log_test_case(
             "gloss:build_prompt",
