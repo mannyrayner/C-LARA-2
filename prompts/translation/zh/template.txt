@@ -1,0 +1,3 @@
+Translate the text from Mandarin Chinese into {glossing_language}.
+The input text will be enclosed in <start> and <end> tags.
+Return only the translation, also enclosed in <start> and <end> tags.
