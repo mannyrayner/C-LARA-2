@@ -99,7 +99,7 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual(update.status, "running")
 
     def test_task_telemetry_writes_jsonl_and_surfaces_warning(self):
-        telemetry_log = self.project.artifact_dir() / "runs" / "telemetry_test.jsonl"
+        telemetry_log = self.project.artifact_dir() / "runs" / "new_run" / "stages" / "telemetry_test.jsonl"
         captured: list[tuple[str, str | None]] = []
 
         def _post_update(message: str, status: str | None = None) -> None:
@@ -108,6 +108,7 @@ class CompileStatusViewTests(TestCase):
         telemetry = views._TaskTelemetry(log_path=telemetry_log, post_update=_post_update)
         telemetry.event("op-1", "warn", "openai.chat_text response normalized", {"preview": "bad payload"})
 
+        self.assertTrue(telemetry_log.parent.exists())
         self.assertTrue(telemetry_log.exists())
         lines = telemetry_log.read_text(encoding="utf-8").strip().splitlines()
         self.assertEqual(len(lines), 1)

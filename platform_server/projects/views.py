@@ -68,6 +68,7 @@ class _TaskTelemetry:
     def __init__(self, *, log_path: Path, post_update: Callable[[str, str | None], None]) -> None:
         self._log_path = log_path
         self._post_update = post_update
+        self._log_path.parent.mkdir(parents=True, exist_ok=True)
 
     def _append(self, record: dict[str, Any]) -> None:
         try:
@@ -1332,6 +1333,8 @@ def _run_compile_task(
     )
     telemetry_log = output_dir / "stages" / "telemetry.jsonl"
     telemetry = _TaskTelemetry(log_path=telemetry_log, post_update=post_update)
+    post_update(f"Telemetry log file: {telemetry_log}")
+    logger.info("Compile telemetry log file: %s", telemetry_log)
 
     def progress_cb(stage: str, status: str, timestamp: str) -> None:
         try:
