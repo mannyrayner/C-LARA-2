@@ -20,6 +20,7 @@ import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
+from urllib.parse import quote
 
 from core.telemetry import NullTelemetry, Telemetry
 
@@ -629,7 +630,7 @@ function highlightMwe(mweId, contextDocument, sourceToken) {
 
         window.addEventListener('message', (event) => {
           if (event.data.type === 'loadConcordance') {
-            loadConcordance(event.data.data.lemma, document);
+            loadConcordance(event.data.data.lemma, document, event.data.data.fileSlug, event.data.data.slug);
           }
         });
 

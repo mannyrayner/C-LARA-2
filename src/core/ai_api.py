@@ -101,6 +101,17 @@ class OpenAIClient:
                         "prompt_preview": _preview_text(prompt),
                     },
                 )
+                telemetry.event(
+                    op_id,
+                    "info",
+                    "openai.chat request start",
+                    {
+                        "model": model,
+                        "temperature": temperature,
+                        "heartbeat_s": heartbeat_s,
+                        "prompt_preview": _preview_text(prompt),
+                    },
+                )
                 response = await _run_with_heartbeat(self._client, kwargs, telemetry, op_id, start, heartbeat_s)
                 payload = _extract_payload(response)
                 telemetry.event(
