@@ -62,6 +62,65 @@ IMAGE_MODEL_CHOICES = [
 PAGE_IMAGE_PLACEMENT_CHOICES = ["none", "top", "bottom"]
 
 
+class _TaskTelemetry:
+    """Telemetry sink for compile runs (Django log + per-run JSONL + TaskUpdate)."""
+
+    def __init__(self, *, log_path: Path, post_update: Callable[[str, str | None], None]) -> None:
+        self._log_path = log_path
+        self._post_update = post_update
+
+    def _append(self, record: dict[str, Any]) -> None:
+        try:
+            with self._log_path.open("a", encoding="utf-8") as fp:
+                fp.write(json.dumps(record, ensure_ascii=False) + "\n")
+        except Exception:
+            logger.exception("Failed to append telemetry log entry; log_path=%s", self._log_path)
+
+    def heartbeat(self, op_id: str, elapsed_s: float, note: str | None = None) -> None:
+        msg = f"[heartbeat] {op_id} +{elapsed_s:.1f}s"
+        if note:
+            msg = f"{msg} ({note})"
+        logger.info(msg)
+        self._append(
+            {
+                "type": "heartbeat",
+                "op_id": op_id,
+                "elapsed_s": round(elapsed_s, 3),
+                "note": note,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+
+    def event(self, op_id: str, level: str, msg: str, data: dict | None = None) -> None:
+        text = f"[{level}] {op_id} {msg}"
+        if data:
+            text = f"{text} data={json.dumps(data, ensure_ascii=False)}"
+
+        logger_level = {
+            "debug": logging.DEBUG,
+            "info": logging.INFO,
+            "warn": logging.WARNING,
+            "warning": logging.WARNING,
+            "error": logging.ERROR,
+        }.get(level.lower(), logging.INFO)
+        logger.log(logger_level, text)
+
+        self._append(
+            {
+                "type": "event",
+                "op_id": op_id,
+                "level": level,
+                "message": msg,
+                "data": data or {},
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+
+        # Surface warnings/errors in compile monitor updates.
+        if logger_level >= logging.WARNING:
+            self._post_update(text[:1024], status="error" if logger_level >= logging.ERROR else None)
+
+
 def _format_timestamp(ts: str, tz_name: str) -> tuple[str, datetime | None]:
     """Return a user-friendly timestamp string and the parsed datetime.
 
@@ -1271,6 +1330,8 @@ def _run_compile_task(
     post_update, _ = _make_task_callback(
         task_type or f"compile_project_{project_id}", user_id, report_uuid
     )
+    telemetry_log = output_dir / "stages" / "telemetry.jsonl"
+    telemetry = _TaskTelemetry(log_path=telemetry_log, post_update=post_update)
 
     def progress_cb(stage: str, status: str, timestamp: str) -> None:
         try:
@@ -1313,6 +1374,7 @@ def _run_compile_task(
         start_stage=start_stage,
         end_stage=end_stage or "compile_html",
         page_images={},
+        telemetry=telemetry,
     )
 
     placement = (page_image_placement or "none").strip().lower()

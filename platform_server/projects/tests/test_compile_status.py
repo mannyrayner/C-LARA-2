@@ -1,4 +1,5 @@
 import os
+import json
 import uuid
 from pathlib import Path
 from unittest.mock import patch
@@ -96,6 +97,26 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual(update.message, "hello")
         self.assertEqual(update.task_type, "compile_project")
         self.assertEqual(update.status, "running")
+
+    def test_task_telemetry_writes_jsonl_and_surfaces_warning(self):
+        telemetry_log = self.project.artifact_dir() / "runs" / "telemetry_test.jsonl"
+        captured: list[tuple[str, str | None]] = []
+
+        def _post_update(message: str, status: str | None = None) -> None:
+            captured.append((message, status))
+
+        telemetry = views._TaskTelemetry(log_path=telemetry_log, post_update=_post_update)
+        telemetry.event("op-1", "warn", "openai.chat_text response normalized", {"preview": "bad payload"})
+
+        self.assertTrue(telemetry_log.exists())
+        lines = telemetry_log.read_text(encoding="utf-8").strip().splitlines()
+        self.assertEqual(len(lines), 1)
+        record = json.loads(lines[0])
+        self.assertEqual(record["type"], "event")
+        self.assertEqual(record["op_id"], "op-1")
+        self.assertEqual(record["level"], "warn")
+        self.assertTrue(captured)
+        self.assertIn("openai.chat_text response normalized", captured[0][0])
 
     @patch("projects.views.async_task")
     def test_partial_recompile_reuses_prior_run_artifacts(self, mock_async_task):
