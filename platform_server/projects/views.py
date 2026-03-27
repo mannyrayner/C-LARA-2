@@ -1542,7 +1542,23 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     elif start_stage == "segmentation_phase_1":
         text = (project.source_text or "").strip()
         if not text:
-            messages.error(request, "Please provide source text to segment.")
+            source_run = _find_run_with_stage(project, "text_gen")
+            if source_run:
+                generated = _load_stage_payload(project, "text_gen", run_dir=source_run)
+                if isinstance(generated, dict):
+                    text = str(generated.get("surface") or "").strip()
+                try:
+                    _copy_run_artifacts(source_run, output_dir)
+                    progress_log = output_dir / "stages" / "progress.jsonl"
+                    if progress_log.exists():
+                        progress_log.unlink()
+                except Exception:
+                    logger.exception("Failed to copy prior run artifacts from %s", source_run)
+        if not text:
+            messages.error(
+                request,
+                "Please provide source text to segment, or run text_gen first to create source text.",
+            )
             return redirect("project-detail", pk=project.pk)
     else:
         # Start from a persisted intermediate produced by a previous run.

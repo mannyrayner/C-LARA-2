@@ -190,6 +190,29 @@ class CompileStatusViewTests(TestCase):
         self.assertIn("gpt-5", args)
 
     @patch("projects.views.async_task")
+    def test_segmentation_phase_1_uses_text_gen_surface_when_source_text_missing(self, mock_async_task):
+        self.project.source_text = ""
+        self.project.input_mode = Project.INPUT_DESCRIPTION
+        self.project.description = "A short German text."
+        self.project.save(update_fields=["source_text", "input_mode", "description"])
+
+        base = self.project.artifact_dir()
+        run_text_gen = base / "runs" / "run_text_gen"
+        (run_text_gen / "stages").mkdir(parents=True, exist_ok=True)
+        (run_text_gen / "stages" / "text_gen.json").write_text(
+            json.dumps({"surface": "Guten Morgen, Anna."}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+
+        url = reverse("project-compile", args=[self.project.pk])
+        resp = self.client.post(url, {"start_stage": "segmentation_phase_1", "end_stage": "segmentation_phase_1"})
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(mock_async_task.called)
+        args, _ = mock_async_task.call_args
+        # Positional arg 8 is the raw text argument passed into _run_compile_task.
+        self.assertEqual("Guten Morgen, Anna.", args[8])
+
+    @patch("projects.views.async_task")
     def test_compile_passes_end_stage_and_page_image_placement(self, mock_async_task):
         self.project.page_image_placement = "bottom"
         self.project.save(update_fields=["page_image_placement"])
