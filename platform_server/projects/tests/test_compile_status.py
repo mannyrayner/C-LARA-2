@@ -237,6 +237,16 @@ class CompileStatusViewTests(TestCase):
         self.project.refresh_from_db()
         self.assertEqual(self.project.page_image_placement, "top")
 
+    def test_project_create_form_uses_language_dropdowns_with_clear_labels(self):
+        resp = self.client.get(reverse("project-create"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Text language")
+        self.assertContains(resp, "Glossing language")
+        self.assertContains(resp, '<select name="language"', html=False)
+        self.assertContains(resp, '<select name="target_language"', html=False)
+        self.assertContains(resp, "English")
+        self.assertContains(resp, "German")
+
     def test_project_detail_shows_image_stage_ticks(self):
         ProjectImageStyle.objects.create(
             project=self.project,

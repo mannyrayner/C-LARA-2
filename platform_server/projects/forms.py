@@ -24,6 +24,21 @@ class RegistrationForm(UserCreationForm):
 
 
 class ProjectForm(forms.ModelForm):
+    LANGUAGE_CHOICES = [
+        ("en", "English"),
+        ("fr", "French"),
+        ("de", "German"),
+        ("zh", "Mandarin Chinese"),
+        ("hi", "Hindi"),
+        ("es", "Spanish"),
+        ("it", "Italian"),
+        ("pt", "Portuguese"),
+        ("ja", "Japanese"),
+        ("ko", "Korean"),
+        ("ar", "Arabic"),
+        ("ru", "Russian"),
+    ]
+
     class Meta:
         model = Project
         fields = [
@@ -38,6 +53,19 @@ class ProjectForm(forms.ModelForm):
             "description": forms.Textarea(attrs={"rows": 3}),
             "source_text": forms.Textarea(attrs={"rows": 8}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["language"] = forms.ChoiceField(
+            choices=self.LANGUAGE_CHOICES,
+            initial=self.instance.language if getattr(self.instance, "pk", None) else "en",
+            label="Text language",
+        )
+        self.fields["target_language"] = forms.ChoiceField(
+            choices=self.LANGUAGE_CHOICES,
+            initial=self.instance.target_language if getattr(self.instance, "pk", None) else "fr",
+            label="Glossing language",
+        )
 
     def clean(self):  # type: ignore[override]
         cleaned = super().clean()
