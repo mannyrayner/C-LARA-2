@@ -64,6 +64,19 @@ class TextGenTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual({}, result["annotations"])
         self.assertTrue(client.prompts)
 
+    async def test_generate_text_with_string_description(self) -> None:
+        description = "A short story about rain."
+        client = FakeAIClient({"surface": "It rains.", "annotations": {}})
+        spec = TextGenSpec(description=description, language="en", telemetry=None)
+
+        result = await text_gen.generate_text(spec, client=client)
+
+        self.assertEqual("en", result["l2"])
+        self.assertEqual("It rains.", result["surface"])
+        self.assertEqual([], result["pages"])
+        self.assertEqual({}, result["annotations"])
+        self.assertTrue(client.prompts)
+
 
 class TextGenIntegrationTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:

@@ -4,6 +4,8 @@ from pathlib import Path
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from django.contrib.auth import get_user_model
+import uuid
 
 
 class Project(models.Model):
@@ -21,6 +23,8 @@ class Project(models.Model):
     input_mode = models.CharField(max_length=20, choices=INPUT_CHOICES, default=INPUT_SOURCE)
     language = models.CharField(max_length=16, default="en")
     target_language = models.CharField(max_length=16, default="fr")
+    ai_model = models.CharField(max_length=64, default="gpt-4o")
+    page_image_placement = models.CharField(max_length=16, default="none")
     compiled_path = models.CharField(max_length=512, blank=True)
     artifact_root = models.CharField(max_length=512, blank=True)
     is_published = models.BooleanField(default=False)
@@ -48,3 +52,152 @@ class Project(models.Model):
         if self.compiled_path:
             return Path(self.compiled_path)
         return None
+
+
+class Profile(models.Model):
+    user = models.OneToOneField(
+        get_user_model(), on_delete=models.CASCADE, related_name="profile"
+    )
+    timezone = models.CharField(max_length=64, default="UTC")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:  # pragma: no cover - display helper
+        return f"Profile for {self.user.username}"
+
+
+class TaskUpdate(models.Model):
+    """Lightweight progress updates emitted by background tasks.
+
+    ``report_id`` groups updates for a single task invocation. ``user`` scopes
+    updates to the requesting user. ``status`` can be ``"running"``,
+    ``"finished"``, or ``"error"`` to help the polling endpoint know whether to
+    redirect once the task completes.
+    """
+
+    report_id = models.UUIDField(default=uuid.uuid4, db_index=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE
+    )
+    task_type = models.CharField(max_length=255, null=True, blank=True)
+    message = models.CharField(max_length=1024)
+    status = models.CharField(max_length=32, null=True, blank=True)
+    read = models.BooleanField(default=False)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["report_id", "timestamp"])]
+        ordering = ["timestamp"]
+
+    def __str__(self) -> str:  # pragma: no cover - display helper
+        return f"Update {self.report_id}: {self.message}"
+
+
+class ProjectImageStyle(models.Model):
+    """Project-scoped artifacts for the initial image style substep."""
+
+    STATUS_DRAFT = "draft"
+    STATUS_GENERATED = "generated"
+    STATUS_APPROVED = "approved"
+    STATUS_CHOICES = [
+        (STATUS_DRAFT, "Draft"),
+        (STATUS_GENERATED, "Generated"),
+        (STATUS_APPROVED, "Approved"),
+    ]
+
+    project = models.OneToOneField(
+        Project, on_delete=models.CASCADE, related_name="image_style"
+    )
+    style_brief = models.TextField(blank=True)
+    expanded_style_description = models.TextField(blank=True)
+    representative_excerpt = models.TextField(blank=True)
+    sample_image_prompt = models.TextField(blank=True)
+    sample_image_path = models.CharField(max_length=512, blank=True)
+    sample_image_revised_prompt = models.TextField(blank=True)
+    sample_image_model = models.CharField(max_length=64, default="gpt-image-1")
+    ai_model = models.CharField(max_length=64, default="gpt-4o")
+    status = models.CharField(
+        max_length=32, choices=STATUS_CHOICES, default=STATUS_DRAFT
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    def __str__(self) -> str:  # pragma: no cover - display helper
+        return f"Image style for {self.project.title}"
+
+
+class ProjectImageElement(models.Model):
+    """Recurring visual element proposed/curated for a project."""
+
+    STATUS_PROPOSED = "proposed"
+    STATUS_EXPANDED = "expanded"
+    STATUS_CONFIRMED = "confirmed"
+    STATUS_CHOICES = [
+        (STATUS_PROPOSED, "Proposed"),
+        (STATUS_EXPANDED, "Expanded"),
+        (STATUS_CONFIRMED, "Confirmed"),
+    ]
+
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="image_elements"
+    )
+    name = models.CharField(max_length=255)
+    element_type = models.CharField(max_length=64, blank=True, default="character")
+    page_refs = models.CharField(max_length=255, blank=True)
+    why_consistency_matters = models.TextField(blank=True)
+    expanded_description = models.TextField(blank=True)
+    expanded_prompt = models.TextField(blank=True)
+    image_model = models.CharField(max_length=64, default="gpt-image-1")
+    image_path = models.CharField(max_length=512, blank=True)
+    image_revised_prompt = models.TextField(blank=True)
+    is_confirmed = models.BooleanField(default=False)
+    ai_model = models.CharField(max_length=64, default="gpt-4o")
+    status = models.CharField(
+        max_length=32, choices=STATUS_CHOICES, default=STATUS_PROPOSED
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name", "id"]
+        unique_together = ("project", "name")
+
+    def __str__(self) -> str:  # pragma: no cover - display helper
+        return f"{self.project.title}: {self.name}"
+
+
+class ProjectImagePage(models.Model):
+    """Per-page image prompt/output generated from style, text, and elements."""
+
+    STATUS_DRAFT = "draft"
+    STATUS_GENERATED = "generated"
+    STATUS_APPROVED = "approved"
+    STATUS_CHOICES = [
+        (STATUS_DRAFT, "Draft"),
+        (STATUS_GENERATED, "Generated"),
+        (STATUS_APPROVED, "Approved"),
+    ]
+
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="image_pages"
+    )
+    page_number = models.PositiveIntegerField()
+    page_text = models.TextField(blank=True)
+    generation_prompt = models.TextField(blank=True)
+    image_model = models.CharField(max_length=64, default="gpt-image-1")
+    image_path = models.CharField(max_length=512, blank=True)
+    image_revised_prompt = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=32, choices=STATUS_CHOICES, default=STATUS_DRAFT
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["page_number", "id"]
+        unique_together = ("project", "page_number")
+
+    def __str__(self) -> str:  # pragma: no cover - display helper
+        return f"{self.project.title}: page {self.page_number}"
