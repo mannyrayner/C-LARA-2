@@ -24,6 +24,11 @@ LengthFinishReasonError = type("LengthFinishReasonError", (Exception,), {})
 _MALFORMED_UNICODE_ESCAPE_RE = re.compile(r"\x00([0-9a-fA-F]{2})")
 
 
+def _preview_text(text: str, *, limit: int = 200) -> str:
+    compact = " ".join((text or "").split())
+    return compact if len(compact) <= limit else f"{compact[:limit]}..."
+
+
 class OpenAIClient:
     """Thin wrapper around the sync OpenAI client with async heartbeat."""
 
@@ -85,8 +90,25 @@ class OpenAIClient:
                     tools=tools,
                     response_format=response_format,
                 )
+                telemetry.event(
+                    op_id,
+                    "info",
+                    "openai.chat request start",
+                    {
+                        "model": model,
+                        "temperature": temperature,
+                        "heartbeat_s": heartbeat_s,
+                        "prompt_preview": _preview_text(prompt),
+                    },
+                )
                 response = await _run_with_heartbeat(self._client, kwargs, telemetry, op_id, start, heartbeat_s)
                 payload = _extract_payload(response)
+                telemetry.event(
+                    op_id,
+                    "info",
+                    "openai.chat response received",
+                    {"elapsed_s": round(time.monotonic() - start, 3), "payload_preview": _preview_text(payload)},
+                )
                 result = json.loads(payload)
                 normalized = _normalize_json_text(result)
                 if normalized != result:
@@ -153,8 +175,26 @@ class OpenAIClient:
                     tools=None,
                     response_format=None,
                 )
+                telemetry.event(
+                    op_id,
+                    "info",
+                    "openai.chat_text request start",
+                    {
+                        "model": model,
+                        "temperature": temperature,
+                        "heartbeat_s": heartbeat_s,
+                        "prompt_preview": _preview_text(prompt),
+                    },
+                )
                 response = await _run_with_heartbeat(self._client, kwargs, telemetry, op_id, start, heartbeat_s)
-                return _extract_payload(response).strip()
+                payload = _extract_payload(response).strip()
+                telemetry.event(
+                    op_id,
+                    "info",
+                    "openai.chat_text response received",
+                    {"elapsed_s": round(time.monotonic() - start, 3), "payload_preview": _preview_text(payload)},
+                )
+                return payload
             except (RateLimitError, APIError) as exc:
                 if attempt >= self.config.max_retries:
                     telemetry.event(op_id, "error", "openai text call failed", {"error": str(exc)})

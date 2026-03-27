@@ -127,6 +127,20 @@ class AOpenAIClientUnitTests(unittest.IsolatedAsyncioTestCase):
             any(evt[1] == "warn" and "normalized malformed unicode escapes" in evt[2] for evt in telemetry.events)
         )
 
+    async def test_02c_chat_text_emits_request_and_response_events(self) -> None:
+        telemetry = RecordingTelemetry()
+        client = OpenAIClient(
+            config=OpenAIConfig(api_key=None),
+            client=FakeClient([FakeResponse("Bonjour tout le monde.")]),
+        )
+
+        result = await client.chat_text("Translate: hello everyone.", telemetry=telemetry, op_id="op-2c")
+
+        self.assertEqual("Bonjour tout le monde.", result)
+        messages = [evt[2] for evt in telemetry.events]
+        self.assertIn("openai.chat_text request start", messages)
+        self.assertIn("openai.chat_text response received", messages)
+
     async def test_00_chat_json_retries_on_rate_limit(self) -> None:
         telemetry = RecordingTelemetry()
         responses = [
