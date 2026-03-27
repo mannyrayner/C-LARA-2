@@ -1,0 +1,16 @@
+{
+  "description": {
+    "title": "Rain at Night",
+    "genre": "short poem",
+    "length": "40-60 words",
+    "level": "A2",
+    "style": "simple, lyrical"
+  },
+  "output": {
+    "l2": "{text_language}",
+    "title": "Rain at Night",
+    "surface": "Sample poem text in {text_language} for language learners.",
+    "annotations": {},
+    "pages": []
+  }
+}

@@ -14,14 +14,28 @@ def default_prompts_root() -> Path:
 
 def load_template(operation: str, language: str, *, prompts_root: Path | None = None) -> str:
     prompts_root = prompts_root or default_prompts_root()
-    template_path = prompts_root / operation / language / "template.txt"
-    return template_path.read_text(encoding="utf-8")
+    candidate_paths = [
+        prompts_root / operation / language / "template.txt",
+        prompts_root / operation / "default" / "template.txt",
+        prompts_root / operation / "en" / "template.txt",
+    ]
+    for template_path in candidate_paths:
+        if template_path.exists():
+            return template_path.read_text(encoding="utf-8")
+    raise FileNotFoundError(
+        f"No template found for operation={operation!r}, language={language!r} under {prompts_root}"
+    )
 
 
 def load_fewshots(operation: str, language: str, *, prompts_root: Path | None = None) -> list[dict[str, Any]]:
     prompts_root = prompts_root or default_prompts_root()
-    fewshot_dir = prompts_root / operation / language / "fewshots"
-    if not fewshot_dir.exists():
+    candidate_dirs = [
+        prompts_root / operation / language / "fewshots",
+        prompts_root / operation / "default" / "fewshots",
+        prompts_root / operation / "en" / "fewshots",
+    ]
+    fewshot_dir = next((path for path in candidate_dirs if path.exists()), None)
+    if fewshot_dir is None:
         return []
     fewshots: list[dict[str, Any]] = []
     for path in sorted(fewshot_dir.glob("*.json")):
