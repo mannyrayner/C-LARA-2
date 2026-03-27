@@ -65,15 +65,16 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
         )
 
     def test_build_prompt_mentions_target_language(self) -> None:
-        template = "Translate."
+        template = "Translate the text into {glossing_language}."
         prompt = translation._build_prompt(
             template,
             segment={"surface": "Hello"},
             fewshots=[],
             target_language="fr",
         )
-        self.assertIn("translate into fr", prompt.lower())
-        self.assertIn("Return only the translated text string.", prompt)
+        self.assertIn("Translate the text into fr.", prompt)
+        self.assertIn("<start>Hello</end>", prompt)
+        self.assertIn("Return format: <start>...</end>", prompt)
 
         log_test_case(
             "translation:build_prompt",
@@ -84,7 +85,7 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_translate_normalizes_response_and_sets_l1(self) -> None:
-        fake_response = "Il a fermé la fenêtre avant l'orage."
+        fake_response = "<start>Il a fermé la fenêtre avant l'orage.</end>"
         client = FakeAIClient(fake_response)
         spec = TranslationSpec(text=self.sample_text, language="en", target_language="fr")
 
@@ -105,8 +106,8 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_translate_extracts_json_wrapper_and_unescapes_unicode(self) -> None:
         fake_response = (
-            '{"translated_text":"C\\u0000e9line est une \\u0000e9tudiante fran\\u0000e7aise '
-            'en \\u0000e9change \\u0000e0 Ad\\u0000e9la\\u0000efd."}'
+            '{"translated_text":"<start>C\\u0000e9line est une \\u0000e9tudiante fran\\u0000e7aise '
+            'en \\u0000e9change \\u0000e0 Ad\\u0000e9la\\u0000efd.</end>"}'
         )
         client = FakeAIClient(fake_response)
         spec = TranslationSpec(text=self.sample_text, language="en", target_language="fr")
@@ -120,7 +121,7 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_translate_emits_raw_response_logging(self) -> None:
-        client = FakeAIClient('{"translated_text":"Bonjour"}')
+        client = FakeAIClient('{"translated_text":"<start>Bonjour</end>"}')
         telemetry = RecordingTelemetry()
         spec = TranslationSpec(
             text=self.sample_text,

@@ -86,6 +86,11 @@ def _postprocess_translation_response(raw_text: str) -> str:
         text = parsed
 
     text = text.strip()
+    if "<start>" in text and "</end>" in text:
+        try:
+            text = text.split("<start>", 1)[1].split("</end>", 1)[0].strip()
+        except Exception:
+            pass
     if len(text) >= 2 and text[0] == text[-1] and text[0] in {'"', "'"}:
         text = text[1:-1].strip()
     return _decode_escaped_unicode(text)
@@ -112,19 +117,24 @@ def _build_prompt(
     elif segment_surface is not None and "surface" not in segment:
         segment = {**segment, "surface": segment_surface}
 
-    output_instructions = [
-        "Return only the translated text string.",
-        "Do not return JSON, markdown, labels, introductory words, explanation, or surrounding quotes.",
-    ]
+    template_text = template.format(glossing_language=target_language).strip()
+    lines: list[str] = [template_text, ""]
 
-    header = f"Segment to translate into {target_language}:"
-    return annotation_prompts.build_prompt(
-        template,
-        content_label=header,
-        content=segment.get("surface", ""),
-        fewshots=fewshots,
-        output_instructions=output_instructions,
-    )
+    if fewshots:
+        lines.append(f"Here are some examples showing English glossed with {target_language}.")
+        lines.append("")
+        for idx, example in enumerate(fewshots, start=1):
+            lines.append(f"Example {idx} input:")
+            lines.append(example.get("input", "").strip())
+            lines.append("Example output:")
+            lines.append(example.get("output", "").strip())
+            lines.append("")
+
+    lines.append("Text to translate:")
+    lines.append(f"<start>{segment.get('surface', '')}</end>")
+    lines.append("")
+    lines.append("Return format: <start>...</end>")
+    return "\n".join(lines)
 
 
 async def translate(
@@ -165,10 +175,14 @@ async def translate(
         output_translation = ""
         if isinstance(input_obj, dict):
             input_surface = str(input_obj.get("surface") or "")
+        elif isinstance(input_obj, str):
+            input_surface = input_obj
         if isinstance(output_obj, dict):
             output_translation = str(
                 (output_obj.get("annotations") or {}).get("translation") or ""
             )
+        elif isinstance(output_obj, str):
+            output_translation = output_obj
         normalized_fewshots.append(
             {"input": input_surface, "output": output_translation}
         )

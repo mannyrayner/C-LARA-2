@@ -1,4 +1,4 @@
 {
-  "input": "She learned to cook by watching her grandmother.",
-  "output": "Elle a appris à cuisiner en regardant sa grand-mère."
+  "input": "<start>She learned to cook by watching her grandmother.</end>",
+  "output": "<start>Elle a appris à cuisiner en regardant sa grand-mère.</end>"
 }

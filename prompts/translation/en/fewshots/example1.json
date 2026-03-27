@@ -1,4 +1,4 @@
 {
-  "input": "He closed the window before the storm arrived.",
-  "output": "Il a fermé la fenêtre avant que l'orage n'arrive."
+  "input": "<start>He closed the window before the storm arrived.</end>",
+  "output": "<start>Il a fermé la fenêtre avant que l'orage n'arrive.</end>"
 }
