@@ -33,7 +33,7 @@ class SegmentationSpec:
     op_id: str | None = None
 
 
-def _build_prompt(template: str, *, text: str, fewshots: list[dict[str, Any]]) -> str:
+def _build_prompt(template: str, *, text: str, fewshots: list[dict[str, Any]], language: str) -> str:
     lines = [template.strip(), "", "Input text:", text.strip(), ""]
     if fewshots:
         lines.append("Few-shot examples:")
@@ -47,6 +47,8 @@ def _build_prompt(template: str, *, text: str, fewshots: list[dict[str, Any]]) -
         "Return a JSON object with keys: l2, optional l1, surface (original text), pages (array of pages with surface and segmen"
         "ts arrays), and annotations (object)."
     )
+    lines.append(f"Set l2 to '{language}'.")
+    lines.append(f"Do not translate; keep all text in the original language ({language}).")
     lines.append(
         "Each segment should only include a surface field; do not add tokens or other annotations in this phase."
     )
@@ -86,7 +88,7 @@ async def segmentation_phase_1(
         else annotation_prompts.load_fewshots("segmentation_phase_1", spec.language, prompts_root=prompts_root)
     )
 
-    prompt = _build_prompt(template, text=spec.text, fewshots=fewshots)
+    prompt = _build_prompt(template, text=spec.text, fewshots=fewshots, language=spec.language)
     telemetry = spec.telemetry or NullTelemetry()
     ai_client = client or OpenAIClient()
     response = await ai_client.chat_json(prompt, telemetry=telemetry, op_id=spec.op_id)
