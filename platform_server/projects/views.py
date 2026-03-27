@@ -117,8 +117,13 @@ class _TaskTelemetry:
             }
         )
 
-        # Surface warnings/errors in compile monitor updates.
-        if logger_level >= logging.WARNING:
+        # Surface warnings/errors, and API request-start diagnostics, in compile monitor updates.
+        should_surface = logger_level >= logging.WARNING or msg in {
+            "openai.chat request start",
+            "openai.chat_text request start",
+            "stage failed",
+        }
+        if should_surface:
             self._post_update(text[:1024], status="error" if logger_level >= logging.ERROR else None)
 
 

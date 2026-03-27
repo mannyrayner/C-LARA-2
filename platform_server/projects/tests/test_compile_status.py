@@ -99,7 +99,13 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual(update.status, "running")
 
     def test_task_telemetry_writes_jsonl_and_surfaces_warning(self):
-        telemetry_log = self.project.artifact_dir() / "runs" / "new_run" / "stages" / "telemetry_test.jsonl"
+        telemetry_log = (
+            self.project.artifact_dir()
+            / "runs"
+            / "new_run"
+            / "stages"
+            / f"telemetry_test_{uuid.uuid4().hex}.jsonl"
+        )
         captured: list[tuple[str, str | None]] = []
 
         def _post_update(message: str, status: str | None = None) -> None:
@@ -118,6 +124,25 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual(record["level"], "warn")
         self.assertTrue(captured)
         self.assertIn("openai.chat_text response normalized", captured[0][0])
+
+    def test_task_telemetry_surfaces_api_request_start_messages(self):
+        telemetry_log = (
+            self.project.artifact_dir()
+            / "runs"
+            / "new_run"
+            / "stages"
+            / f"telemetry_test_info_{uuid.uuid4().hex}.jsonl"
+        )
+        captured: list[tuple[str, str | None]] = []
+
+        def _post_update(message: str, status: str | None = None) -> None:
+            captured.append((message, status))
+
+        telemetry = views._TaskTelemetry(log_path=telemetry_log, post_update=_post_update)
+        telemetry.event("op-2", "info", "openai.chat_text request start", {"model": "gpt-5"})
+
+        self.assertTrue(captured)
+        self.assertIn("openai.chat_text request start", captured[0][0])
 
     @patch("projects.views.async_task")
     def test_partial_recompile_reuses_prior_run_artifacts(self, mock_async_task):

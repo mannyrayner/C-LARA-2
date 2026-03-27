@@ -37,6 +37,21 @@ class FakeAIClient(OpenAIClient):
         return str(response)
 
 
+class RecordingAIClient(FakeAIClient):
+    def __init__(self, responses: list[dict[str, object]]):
+        super().__init__(responses)
+        self.chat_json_op_ids: list[str | None] = []
+        self.chat_text_op_ids: list[str | None] = []
+
+    async def chat_json(self, prompt: str, **kwargs: object) -> dict:
+        self.chat_json_op_ids.append(kwargs.get("op_id") if isinstance(kwargs, dict) else None)
+        return await super().chat_json(prompt, **kwargs)
+
+    async def chat_text(self, prompt: str, **kwargs: object) -> str:
+        self.chat_text_op_ids.append(kwargs.get("op_id") if isinstance(kwargs, dict) else None)
+        return await super().chat_text(prompt, **kwargs)
+
+
 class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.artifacts = Path("tests/artifacts/full_pipeline")
@@ -99,6 +114,34 @@ class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
         gloss = {"annotations": {}, "tokens": gloss_tokens}
 
         self.fake_client = FakeAIClient([seg1, seg2, translation, mwe, lemma, gloss])
+
+    async def test_pipeline_passes_stage_specific_op_ids_to_ai_calls(self) -> None:
+        seg1 = {
+            "l2": "en",
+            "surface": self.sample_text,
+            "pages": [{"surface": self.sample_text, "segments": [{"surface": self.sample_text, "annotations": {}}]}],
+            "annotations": {},
+        }
+        seg2 = {"annotations": {}, "tokens": [{"surface": "A"}, {"surface": "cat"}, {"surface": "."}]}
+        client = RecordingAIClient([seg1, seg2, {"annotations": {"translation": "Un chat."}}])
+
+        spec = FullPipelineSpec(
+            text=self.sample_text,
+            language="en",
+            target_language="fr",
+            output_dir=self.fake_html_root / "opid",
+            audio_cache_dir=self.fake_audio_root / "opid",
+            start_stage="segmentation_phase_1",
+            end_stage="translation",
+            op_id="compile-xyz",
+            telemetry=None,
+        )
+
+        await run_full_pipeline(spec, client=client)
+
+        self.assertIn("compile-xyz:segmentation_phase_1", client.chat_json_op_ids)
+        self.assertIn("compile-xyz:segmentation_phase_2-p0-s0", client.chat_json_op_ids)
+        self.assertIn("compile-xyz:translation-p0-s0", client.chat_text_op_ids)
 
     def _skip_if_no_key_or_incompatible(self) -> None:
         if not os.getenv("OPENAI_API_KEY"):
