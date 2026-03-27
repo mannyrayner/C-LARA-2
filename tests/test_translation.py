@@ -23,6 +23,17 @@ class FakeAIClient:
         return self.response
 
 
+class RecordingTelemetry:
+    def __init__(self) -> None:
+        self.events: list[tuple[str, str, str, dict | None]] = []
+
+    def heartbeat(self, op_id: str, elapsed_s: float, note: str | None = None) -> None:
+        return None
+
+    def event(self, op_id: str, level: str, msg: str, data: dict | None = None) -> None:
+        self.events.append((op_id, level, msg, data))
+
+
 class TranslationTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.prompts_root = Path(__file__).resolve().parents[1] / "prompts"
@@ -82,6 +93,24 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
             "Céline est une étudiante française en échange à Adélaïd.",
             page["annotations"]["translation"],
         )
+
+    async def test_translate_emits_raw_response_logging(self) -> None:
+        client = FakeAIClient('{"translated_text":"Bonjour"}')
+        telemetry = RecordingTelemetry()
+        spec = TranslationSpec(
+            text=self.sample_text,
+            language="en",
+            target_language="fr",
+            telemetry=telemetry,
+            op_id="translation-telemetry-test",
+        )
+
+        result = await translation.translate(spec, client=client)
+
+        self.assertEqual("Bonjour", result["pages"][0]["segments"][0]["annotations"]["translation"])
+        messages = [evt[2] for evt in telemetry.events]
+        self.assertIn("translation segment raw response received", messages)
+        self.assertIn("translation segment response normalized", messages)
 
 
 class TranslationIntegrationTests(unittest.IsolatedAsyncioTestCase):

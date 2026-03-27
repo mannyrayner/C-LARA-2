@@ -91,6 +91,11 @@ def _postprocess_translation_response(raw_text: str) -> str:
     return _decode_escaped_unicode(text)
 
 
+def _preview_text(text: str, *, limit: int = 200) -> str:
+    compact = " ".join(text.split())
+    return compact if len(compact) <= limit else f"{compact[:limit]}..."
+
+
 def _build_prompt(
     template: str,
     *,
@@ -186,8 +191,28 @@ async def translate(
 
     async def _translate_segment(prompt: str, op_id: str) -> str:
         async with semaphore:
-            text = await ai_client.chat_text(prompt, telemetry=telemetry, op_id=op_id)
-            return _postprocess_translation_response(text)
+            telemetry.event(op_id, "info", "translation segment request sent")
+            raw_text = await ai_client.chat_text(prompt, telemetry=telemetry, op_id=op_id)
+            telemetry.event(
+                op_id,
+                "info",
+                "translation segment raw response received",
+                {"preview": _preview_text(raw_text)},
+            )
+            normalized_text = _postprocess_translation_response(raw_text)
+            if normalized_text != raw_text.strip():
+                telemetry.event(
+                    op_id,
+                    "warn",
+                    "translation segment response normalized",
+                    {
+                        "raw_preview": _preview_text(raw_text),
+                        "normalized_preview": _preview_text(normalized_text),
+                    },
+                )
+            if not normalized_text:
+                telemetry.event(op_id, "warn", "translation segment produced empty output")
+            return normalized_text
 
     pages = spec.text.get("pages", [])
     for page_idx, page in enumerate(pages):
