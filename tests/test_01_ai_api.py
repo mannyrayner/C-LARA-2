@@ -45,8 +45,10 @@ class FakeChatCompletions:
     def __init__(self, responses: list[object]) -> None:
         self._responses = responses
         self.calls = 0
+        self.last_kwargs: dict[str, object] | None = None
 
-    def create(self, **_: object) -> FakeResponse:
+    def create(self, **kwargs: object) -> FakeResponse:
+        self.last_kwargs = dict(kwargs)
         idx = self.calls
         self.calls += 1
         response = self._responses[idx]
@@ -140,6 +142,9 @@ class AOpenAIClientUnitTests(unittest.IsolatedAsyncioTestCase):
         messages = [evt[2] for evt in telemetry.events]
         self.assertIn("openai.chat_text request start", messages)
         self.assertIn("openai.chat_text response received", messages)
+        last_kwargs = client._client.chat.completions.last_kwargs  # type: ignore[attr-defined]
+        self.assertIsNotNone(last_kwargs)
+        self.assertNotIn("response_format", last_kwargs)
 
     async def test_00_chat_json_retries_on_rate_limit(self) -> None:
         telemetry = RecordingTelemetry()

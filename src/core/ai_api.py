@@ -88,7 +88,18 @@ class OpenAIClient:
                     model=model,
                     temperature=temperature,
                     tools=tools,
-                    response_format=response_format,
+                    response_format=response_format or {"type": "json_object"},
+                )
+                telemetry.event(
+                    op_id,
+                    "info",
+                    "openai.chat request start",
+                    {
+                        "model": model,
+                        "temperature": temperature,
+                        "heartbeat_s": heartbeat_s,
+                        "prompt_preview": _preview_text(prompt),
+                    },
                 )
                 telemetry.event(
                     op_id,
@@ -224,7 +235,6 @@ class OpenAIClient:
         response_format: dict[str, str] | None,
     ) -> dict[str, Any]:
         messages = [{"role": "user", "content": prompt}]
-        response_format = response_format or {"type": "json_object"}
         tools_payload = list(tools) if tools else None
 
         kwargs: dict[str, Any] = {
