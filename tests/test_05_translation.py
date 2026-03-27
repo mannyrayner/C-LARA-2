@@ -43,7 +43,7 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
     def test_loads_fewshots(self) -> None:
         fewshots = translation._load_fewshots("en", prompts_root=self.prompts_root)
         self.assertGreaterEqual(len(fewshots), 2)
-        self.assertTrue(all("annotations" in fs.get("output", {}) for fs in fewshots))
+        self.assertTrue(all(isinstance(fs.get("output"), str) for fs in fewshots))
 
         log_test_case(
             "translation:load_fewshots",
@@ -90,6 +90,22 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
             inputs={"surface": self.sample_text["surface"]},
             output={"translation": page["annotations"]["translation"], "l1": result["l1"]},
             status="pass",
+        )
+
+    async def test_translate_extracts_json_wrapper_and_unescapes_unicode(self) -> None:
+        fake_response = (
+            '{"translated_text":"C\\u0000e9line est une \\u0000e9tudiante fran\\u0000e7aise '
+            'en \\u0000e9change \\u0000e0 Ad\\u0000e9la\\u0000efd."}'
+        )
+        client = FakeAIClient(fake_response)
+        spec = TranslationSpec(text=self.sample_text, language="en", target_language="fr")
+
+        result = await translation.translate(spec, client=client)
+
+        page = result["pages"][0]["segments"][0]
+        self.assertEqual(
+            "Céline est une étudiante française en échange à Adélaïd.",
+            page["annotations"]["translation"],
         )
 
 

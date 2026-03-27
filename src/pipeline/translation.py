@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import asyncio
+import re
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -37,6 +38,59 @@ class TranslationSpec:
     op_id: str | None = None
 
 
+_ESCAPED_U4_RE = re.compile(r"\\u([0-9a-fA-F]{4})")
+_ESCAPED_U8_RE = re.compile(r"\\U([0-9a-fA-F]{8})")
+_ESCAPED_X2_RE = re.compile(r"\\x([0-9a-fA-F]{2})")
+_ESCAPED_MALFORMED_U2_RE = re.compile(r"\\u0000([0-9a-fA-F]{2})")
+_MALFORMED_NULL_HEX_RE = re.compile(r"\x00([0-9a-fA-F]{2})")
+
+
+def _decode_escaped_unicode(text: str) -> str:
+    def _replace_hex(match: re.Match[str]) -> str:
+        try:
+            return chr(int(match.group(1), 16))
+        except ValueError:
+            return match.group(0)
+
+    normalized = _ESCAPED_MALFORMED_U2_RE.sub(_replace_hex, text)
+    normalized = _ESCAPED_U4_RE.sub(_replace_hex, normalized)
+    normalized = _ESCAPED_U8_RE.sub(_replace_hex, normalized)
+    normalized = _ESCAPED_X2_RE.sub(_replace_hex, normalized)
+    normalized = _MALFORMED_NULL_HEX_RE.sub(_replace_hex, normalized)
+    normalized = normalized.replace("\x00", "")
+    return normalized.replace('\\"', '"').replace("\\'", "'")
+
+
+def _postprocess_translation_response(raw_text: str) -> str:
+    text = raw_text.strip()
+
+    if text.startswith("```"):
+        stripped = text.strip("`")
+        text = stripped.replace("json\n", "", 1).strip()
+
+    parsed: Any = None
+    try:
+        parsed = json.loads(text)
+    except Exception:
+        parsed = None
+
+    if isinstance(parsed, dict):
+        for key in ("translated_text", "translation", "text", "output"):
+            value = parsed.get(key)
+            if isinstance(value, str):
+                text = value
+                break
+        else:
+            text = next((str(v) for v in parsed.values() if isinstance(v, str)), text)
+    elif isinstance(parsed, str):
+        text = parsed
+
+    text = text.strip()
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in {'"', "'"}:
+        text = text[1:-1].strip()
+    return _decode_escaped_unicode(text)
+
+
 def _build_prompt(
     template: str,
     *,
@@ -55,7 +109,7 @@ def _build_prompt(
 
     output_instructions = [
         "Return only the translated text string.",
-        "Do not return JSON, markdown, labels, or explanation.",
+        "Do not return JSON, markdown, labels, introductory words, explanation, or surrounding quotes.",
     ]
 
     header = f"Segment to translate into {target_language}:"
@@ -133,10 +187,7 @@ async def translate(
     async def _translate_segment(prompt: str, op_id: str) -> str:
         async with semaphore:
             text = await ai_client.chat_text(prompt, telemetry=telemetry, op_id=op_id)
-            text = text.strip()
-            if len(text) >= 2 and text[0] == text[-1] and text[0] in {'"', "'"}:
-                text = text[1:-1].strip()
-            return text
+            return _postprocess_translation_response(text)
 
     pages = spec.text.get("pages", [])
     for page_idx, page in enumerate(pages):
