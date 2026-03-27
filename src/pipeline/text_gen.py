@@ -27,18 +27,40 @@ def _default_prompts_root() -> Path:
 
 
 def _load_template(language: str, *, prompts_root: Path) -> str:
-    template_path = prompts_root / "text_gen" / language / "template.txt"
-    return template_path.read_text(encoding="utf-8")
+    candidate_paths = [
+        prompts_root / "text_gen" / language / "template.txt",
+        prompts_root / "text_gen" / "default" / "template.txt",
+        prompts_root / "text_gen" / "en" / "template.txt",
+    ]
+    for template_path in candidate_paths:
+        if template_path.exists():
+            return template_path.read_text(encoding="utf-8")
+    raise FileNotFoundError(f"No text_gen template found for language={language!r}")
 
 
 def _load_fewshots(language: str, *, prompts_root: Path) -> list[dict[str, Any]]:
-    fewshot_dir = prompts_root / "text_gen" / language / "fewshots"
-    if not fewshot_dir.exists():
+    candidate_dirs = [
+        prompts_root / "text_gen" / language / "fewshots",
+        prompts_root / "text_gen" / "default" / "fewshots",
+        prompts_root / "text_gen" / "en" / "fewshots",
+    ]
+    fewshot_dir = next((path for path in candidate_dirs if path.exists()), None)
+    if fewshot_dir is None:
         return []
     fewshots: list[dict[str, Any]] = []
     for path in sorted(fewshot_dir.glob("*.json")):
         fewshots.append(json.loads(path.read_text(encoding="utf-8")))
     return fewshots
+
+
+def _instantiate_language_vars(value: Any, *, language: str) -> Any:
+    if isinstance(value, str):
+        return value.replace("{text_language}", language)
+    if isinstance(value, list):
+        return [_instantiate_language_vars(item, language=language) for item in value]
+    if isinstance(value, dict):
+        return {k: _instantiate_language_vars(v, language=language) for k, v in value.items()}
+    return value
 
 
 def _build_prompt(template: str, *, description: dict[str, Any], fewshots: list[dict[str, Any]]) -> str:
@@ -86,12 +108,18 @@ async def generate_text(
     """Generate a text from a description using a prompt template and few-shots."""
 
     prompts_root = spec.template_path.parent.parent if spec.template_path else _default_prompts_root()
-    template = spec.template_path.read_text(encoding="utf-8") if spec.template_path else _load_template(spec.language, prompts_root=prompts_root)
+    template = (
+        spec.template_path.read_text(encoding="utf-8")
+        if spec.template_path
+        else _load_template(spec.language, prompts_root=prompts_root)
+    )
     fewshots = (
         [json.loads(path.read_text(encoding="utf-8")) for path in spec.fewshot_paths]
         if spec.fewshot_paths
         else _load_fewshots(spec.language, prompts_root=prompts_root)
     )
+    template = _instantiate_language_vars(template, language=spec.language)
+    fewshots = _instantiate_language_vars(fewshots, language=spec.language)
 
     description_payload: dict[str, Any] | str = spec.description
     if isinstance(description_payload, str):

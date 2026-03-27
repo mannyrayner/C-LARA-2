@@ -32,6 +32,8 @@ class TextGenTests(unittest.IsolatedAsyncioTestCase):
         fewshots = text_gen._load_fewshots("en", prompts_root=self.prompts_root)
         self.assertGreaterEqual(len(fewshots), 2)
         self.assertTrue(all("description" in fs and "output" in fs for fs in fewshots))
+        fallback_fewshots = text_gen._load_fewshots("xx", prompts_root=self.prompts_root)
+        self.assertGreaterEqual(len(fallback_fewshots), 2)
 
     def test_build_prompt_includes_description_and_examples(self) -> None:
         template = "Return JSON"
@@ -49,6 +51,10 @@ class TextGenTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Example 1 description:", prompt)
         self.assertIn("Example output:", prompt)
 
+    def test_load_template_fallbacks_for_non_english_language(self) -> None:
+        template = text_gen._load_template("de", prompts_root=self.prompts_root)
+        self.assertIn("de text", template)
+
     async def test_generate_text_normalizes_response(self) -> None:
         description = {"title": "Rain", "l1": "fr"}
         client = FakeAIClient({"surface": "It rains.", "annotations": {}})
@@ -63,6 +69,16 @@ class TextGenTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([], result["pages"])
         self.assertEqual({}, result["annotations"])
         self.assertTrue(client.prompts)
+
+    async def test_generate_text_instantiates_language_placeholders(self) -> None:
+        description = {"title": "Morgen", "genre": "short prose"}
+        client = FakeAIClient({"surface": "Guten Morgen.", "annotations": {}})
+        spec = TextGenSpec(description=description, language="de", telemetry=None)
+
+        await text_gen.generate_text(spec, client=client)
+
+        self.assertTrue(client.prompts)
+        self.assertIn("de text", client.prompts[0])
 
     async def test_generate_text_with_string_description(self) -> None:
         description = "A short story about rain."
