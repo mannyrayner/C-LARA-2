@@ -38,6 +38,13 @@ class TranslationSpec:
     op_id: str | None = None
 
 
+def _instantiate_language_vars(text: str, *, source_language: str, target_language: str) -> str:
+    return (
+        text.replace("{text_language}", source_language)
+        .replace("{glossing_language}", target_language)
+    )
+
+
 _ESCAPED_U4_RE = re.compile(r"\\u([0-9a-fA-F]{4})")
 _ESCAPED_U8_RE = re.compile(r"\\U([0-9a-fA-F]{8})")
 _ESCAPED_X2_RE = re.compile(r"\\x([0-9a-fA-F]{2})")
@@ -107,6 +114,7 @@ def _build_prompt(
     segment: dict[str, Any] | None = None,
     segment_surface: str | None = None,
     fewshots: list[dict[str, Any]],
+    source_language: str,
     target_language: str,
 ) -> str:
     # Backward compatibility: some callers provided a raw surface string instead of a
@@ -117,11 +125,16 @@ def _build_prompt(
     elif segment_surface is not None and "surface" not in segment:
         segment = {**segment, "surface": segment_surface}
 
-    template_text = template.format(glossing_language=target_language).strip()
+    template_text = template.format(
+        text_language=source_language,
+        glossing_language=target_language,
+    ).strip()
     lines: list[str] = [template_text, ""]
 
     if fewshots:
-        lines.append(f"Here are some examples showing English glossed with {target_language}.")
+        lines.append(
+            f"Here are some examples showing {source_language} glossed with {target_language}."
+        )
         lines.append("")
         for idx, example in enumerate(fewshots, start=1):
             lines.append(f"Example {idx} input:")
@@ -154,6 +167,9 @@ async def translate(
         if spec.template_path
         else _load_template(spec.language, prompts_root=prompts_root)
     )
+    template = _instantiate_language_vars(
+        template, source_language=spec.language, target_language=spec.target_language
+    )
     fewshots = (
         [json.loads(path.read_text(encoding="utf-8")) for path in spec.fewshot_paths]
         if spec.fewshot_paths
@@ -184,7 +200,14 @@ async def translate(
         elif isinstance(output_obj, str):
             output_translation = output_obj
         normalized_fewshots.append(
-            {"input": input_surface, "output": output_translation}
+            {
+                "input": _instantiate_language_vars(
+                    input_surface, source_language=spec.language, target_language=spec.target_language
+                ),
+                "output": _instantiate_language_vars(
+                    output_translation, source_language=spec.language, target_language=spec.target_language
+                ),
+            }
         )
 
     def build(segment: dict[str, Any]) -> str:
@@ -192,6 +215,7 @@ async def translate(
             template,
             segment=segment,
             fewshots=normalized_fewshots,
+            source_language=spec.language,
             target_language=spec.target_language,
         )
 

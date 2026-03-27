@@ -55,6 +55,8 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
         fewshots = translation._load_fewshots("en", prompts_root=self.prompts_root)
         self.assertGreaterEqual(len(fewshots), 2)
         self.assertTrue(all(isinstance(fs.get("output"), str) for fs in fewshots))
+        fallback_fewshots = translation._load_fewshots("xx", prompts_root=self.prompts_root)
+        self.assertGreaterEqual(len(fallback_fewshots), 2)
 
         log_test_case(
             "translation:load_fewshots",
@@ -70,11 +72,24 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
             template,
             segment={"surface": "Hello"},
             fewshots=[],
+            source_language="en",
             target_language="fr",
         )
         self.assertIn("Translate the text into fr.", prompt)
         self.assertIn("<start>Hello</end>", prompt)
         self.assertIn("Return format: <start>...</end>", prompt)
+
+    def test_build_prompt_mentions_source_and_target_in_examples_preface(self) -> None:
+        template = "Translate the text from {text_language} into {glossing_language}."
+        prompt = translation._build_prompt(
+            template,
+            segment={"surface": "Guten Tag"},
+            fewshots=[{"input": "<start>Hallo</end>", "output": "<start>Hello</end>"}],
+            source_language="de",
+            target_language="en",
+        )
+        self.assertIn("Here are some examples showing de glossed with en.", prompt)
+        self.assertIn("<start>Guten Tag</end>", prompt)
 
         log_test_case(
             "translation:build_prompt",
