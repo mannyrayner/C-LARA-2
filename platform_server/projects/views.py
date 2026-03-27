@@ -1434,6 +1434,7 @@ def _run_compile_task(
         post_update(f"Compile failed: {exc}", status="error")
         return
 
+    requested_end_stage = spec.end_stage or "compile_html"
     html_info: dict[str, Any] | None = result.get("html") if isinstance(result, dict) else None
     compiled_rel = ""
     run_root = output_dir
@@ -1450,14 +1451,21 @@ def _run_compile_task(
             post_update(
                 f"Attached {len(spec.page_images)} generated page image reference(s) to compile input ({placement})."
             )
-    project.compiled_path = compiled_rel.replace("\\", "/")
+    update_fields = ["artifact_root", "updated_at"]
+    if compiled_rel:
+        project.compiled_path = compiled_rel.replace("\\", "/")
+        update_fields.append("compiled_path")
+    elif requested_end_stage == "compile_html":
+        # compile_html was requested but no HTML was produced; clear compiled path.
+        project.compiled_path = ""
+        update_fields.append("compiled_path")
     project.artifact_root = str(project_root).replace("\\", "/")
-    project.save(update_fields=["compiled_path", "artifact_root", "updated_at"])
+    project.save(update_fields=update_fields)
 
-    final_status = "success" if compiled_rel else "error"
+    final_status = "success" if (compiled_rel or requested_end_stage != "compile_html") else "error"
     completion_entry = {
         "stage": "compile",
-        "status": "success" if compiled_rel else "error",
+        "status": final_status,
         "timestamp": datetime.now(ZoneInfo(tz_name)).isoformat(),
     }
     try:
@@ -1466,10 +1474,13 @@ def _run_compile_task(
     except Exception:
         logger.exception("Failed to append compile completion entry; progress_log=%s", progress_log)
 
-    outcome_message = (
-        "Project compiled to HTML." if compiled_rel else "Compilation finished but no HTML was produced."
-    )
-    post_update(outcome_message, status="finished" if compiled_rel else "error")
+    if compiled_rel:
+        outcome_message = "Project compiled to HTML."
+    elif requested_end_stage != "compile_html":
+        outcome_message = f"Pipeline finished successfully at stage: {requested_end_stage}."
+    else:
+        outcome_message = "Compilation finished but no HTML was produced."
+    post_update(outcome_message, status="finished" if final_status == "success" else "error")
 
 
 @login_required

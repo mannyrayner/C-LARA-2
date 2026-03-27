@@ -342,3 +342,44 @@ class CompileStatusViewTests(TestCase):
         self.assertIn(1, captured["page_images"])
         self.assertEqual("top", captured["page_images"][1]["placement"])
         self.assertTrue(captured["page_images"][1]["path"].startswith("../../../images/pages/"))
+
+    @patch("projects.views._build_ai_client")
+    @patch("projects.views.run_full_pipeline")
+    def test_compile_task_non_html_end_stage_reports_finished_not_error(
+        self, mock_run_full_pipeline, mock_build_ai_client
+    ):
+        project = self.project
+        Profile.objects.get_or_create(user=self.user, defaults={"timezone": "UTC"})
+
+        run_root = project.artifact_dir() / "runs" / "run_non_html"
+        run_root.mkdir(parents=True, exist_ok=True)
+
+        async def _fake_pipeline(spec, client):
+            return {"text": {"pages": []}}
+
+        mock_run_full_pipeline.side_effect = _fake_pipeline
+        mock_build_ai_client.return_value = object()
+
+        report_id = str(uuid.uuid4())
+        views._run_compile_task(
+            project.id,
+            self.user.id,
+            str(run_root),
+            str(project.artifact_dir()),
+            "segmentation_phase_1",
+            "UTC",
+            project.description,
+            "Hello world",
+            None,
+            report_id,
+            "compile_project_test",
+            "gpt-4o",
+            "segmentation_phase_2",
+            "none",
+        )
+
+        updates = TaskUpdate.objects.filter(report_id=report_id, user=self.user).order_by("timestamp")
+        self.assertTrue(updates.filter(status="finished").exists())
+        self.assertTrue(
+            updates.filter(message__icontains="Pipeline finished successfully at stage: segmentation_phase_2.").exists()
+        )
