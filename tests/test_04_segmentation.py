@@ -130,6 +130,12 @@ class SegmentationTests(unittest.IsolatedAsyncioTestCase):
             status="pass",
         )
 
+    def test_normalize_phase1_ignores_empty_page_chunks(self) -> None:
+        raw = "<page>\nपहली पंक्ति।||दूसरी पंक्ति।"
+        result = segmentation._normalize_phase1_response(raw, text="पहली पंक्ति। दूसरी पंक्ति।", language="hi")  # type: ignore[attr-defined]
+        self.assertEqual(1, len(result["pages"]))
+        self.assertEqual(2, len(result["pages"][0]["segments"]))
+
     async def test_segmentation_phase_2_adds_tokens(self) -> None:
         text = {
             "l2": "en",

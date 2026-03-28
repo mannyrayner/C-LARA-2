@@ -159,12 +159,16 @@ def _normalize_phase1_response(raw_response: str, *, text: str, language: str) -
     page_chunks = annotated.split("<page>")
     pages: list[dict[str, Any]] = []
     for chunk in page_chunks:
+        if not str(chunk).strip():
+            continue
         page_surface = chunk
         segment_chunks = chunk.split("||") if "||" in chunk else [chunk]
         segments = [{"surface": seg} for seg in segment_chunks if seg != ""]
         if not segments:
             segments = [{"surface": page_surface}]
         pages.append({"surface": page_surface, "segments": segments, "annotations": {}})
+    if not pages:
+        pages = [{"surface": text, "segments": [{"surface": text}], "annotations": {}}]
 
     return {
         "l2": language,
