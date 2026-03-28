@@ -33,24 +33,52 @@ class SegmentationSpec:
     op_id: str | None = None
 
 
-def _build_prompt(template: str, *, text: str, fewshots: list[dict[str, Any]]) -> str:
-    lines = [template.strip(), "", "Input text:", text.strip(), ""]
-    if fewshots:
-        lines.append("Few-shot examples:")
-        for idx, example in enumerate(fewshots, start=1):
-            lines.append(f"Example {idx} input:")
-            lines.append(example.get("input", "").strip())
-            lines.append("Example output:")
-            lines.append(json.dumps(example.get("output", {}), indent=2))
-            lines.append("")
-    lines.append(
-        "Return a JSON object with keys: l2, optional l1, surface (original text), pages (array of pages with surface and segmen"
-        "ts arrays), and annotations (object)."
+def _render_fewshot_examples(fewshots: list[dict[str, Any]]) -> str:
+    lines: list[str] = []
+    for idx, example in enumerate(fewshots, start=1):
+        lines.append(f"Example {idx}:")
+        lines.append("<startoftext>")
+        lines.append((example.get("input") or "").strip())
+        lines.append("<endoftext>")
+        lines.append("Annotated output:")
+        lines.append("<startoftext>")
+        output = example.get("output")
+        if isinstance(output, str):
+            lines.append(output.strip())
+        else:
+            lines.append(_json_like_output_to_tagged_text(output).strip())
+        lines.append("<endoftext>")
+        lines.append("")
+    return "\n".join(lines).strip()
+
+
+def _json_like_output_to_tagged_text(output: Any) -> str:
+    if not isinstance(output, dict):
+        return str(output or "")
+    pages = output.get("pages")
+    if not isinstance(pages, list) or not pages:
+        return str(output.get("surface") or "")
+    rendered_pages: list[str] = []
+    for page in pages:
+        if not isinstance(page, dict):
+            continue
+        segments = page.get("segments")
+        if isinstance(segments, list) and segments:
+            segment_texts = [str((seg or {}).get("surface") if isinstance(seg, dict) else seg or "") for seg in segments]
+            rendered_pages.append("||".join(segment_texts))
+        else:
+            rendered_pages.append(str(page.get("surface") or ""))
+    return "<page>".join(rendered_pages)
+
+
+def _build_prompt(template: str, *, text: str, fewshots: list[dict[str, Any]], language: str) -> str:
+    examples = _render_fewshot_examples(fewshots)
+    return template.format(
+        l2_language=language,
+        examples=examples or "[No examples provided]",
+        text=text,
+        text_type_advice="",
     )
-    lines.append(
-        "Each segment should only include a surface field; do not add tokens or other annotations in this phase."
-    )
-    return "\n".join(lines)
 
 
 def _normalize_response(response: dict[str, Any], *, text: str, language: str) -> dict[str, Any]:
@@ -86,11 +114,59 @@ async def segmentation_phase_1(
         else annotation_prompts.load_fewshots("segmentation_phase_1", spec.language, prompts_root=prompts_root)
     )
 
-    prompt = _build_prompt(template, text=spec.text, fewshots=fewshots)
+    prompt = _build_prompt(template, text=spec.text, fewshots=fewshots, language=spec.language)
     telemetry = spec.telemetry or NullTelemetry()
     ai_client = client or OpenAIClient()
-    response = await ai_client.chat_json(prompt, telemetry=telemetry, op_id=spec.op_id)
-    return _normalize_response(response, text=spec.text, language=spec.language)
+    raw_response = await ai_client.chat_text(prompt, telemetry=telemetry, op_id=spec.op_id)
+    return _normalize_phase1_response(raw_response, text=spec.text, language=spec.language)
+
+
+def _normalize_phase1_response(raw_response: str, *, text: str, language: str) -> dict[str, Any]:
+    try:
+        parsed_json = json.loads(raw_response)
+        if isinstance(parsed_json, dict):
+            return _normalize_response(parsed_json, text=text, language=language)
+    except Exception:
+        pass
+
+    annotated = _extract_between_tags(raw_response, "startoftext", "endoftext").strip()
+    if not annotated:
+        annotated = raw_response.strip()
+    if not annotated:
+        annotated = text
+
+    original_non_ws = len(re.sub(r"\s+", "", text))
+    annotated_non_ws = len(re.sub(r"\s+", "", annotated))
+    if original_non_ws > 0 and annotated_non_ws < max(3, int(original_non_ws * 0.5)):
+        annotated = text
+
+    page_chunks = annotated.split("<page>")
+    pages: list[dict[str, Any]] = []
+    for chunk in page_chunks:
+        page_surface = chunk
+        segment_chunks = chunk.split("||") if "||" in chunk else [chunk]
+        segments = [{"surface": seg} for seg in segment_chunks if seg != ""]
+        if not segments:
+            segments = [{"surface": page_surface}]
+        pages.append({"surface": page_surface, "segments": segments, "annotations": {}})
+
+    return {
+        "l2": language,
+        "surface": annotated,
+        "pages": pages,
+        "annotations": {},
+    }
+
+
+def _extract_between_tags(text: str, start_tag: str, end_tag: str) -> str:
+    pattern = re.compile(
+        rf"<{start_tag}>\s*(.*?)\s*<{end_tag}>",
+        flags=re.DOTALL | re.IGNORECASE,
+    )
+    match = pattern.search(text)
+    if not match:
+        return ""
+    return match.group(1)
 
 
 @dataclass(slots=True)
