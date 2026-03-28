@@ -45,7 +45,7 @@
       {% endfor %}
     </select>
     <input type="hidden" name="page_image_placement" value="{{ selected_page_image_placement }}" />
-    <button class="btn" type="submit">Compile to HTML</button>
+    <button class="btn" type="submit">Run selected pipeline stages</button>
   </p>
 </form>
 <p><a class="btn secondary" href="{% url 'project-publish' object.pk %}">{% if object.is_published %}Unpublish{% else %}Publish{% endif %}</a></p>
@@ -58,7 +58,7 @@
   </p>
   <p>Artifacts stored at: {{ object.artifact_root }}</p>
 {% else %}
-  <p>No compilation yet. Use "Compile to HTML" to generate outputs.</p>
+  <p>No pipeline run yet. Use "Run selected pipeline stages" to generate outputs.</p>
 {% endif %}
 
 {% if progress %}

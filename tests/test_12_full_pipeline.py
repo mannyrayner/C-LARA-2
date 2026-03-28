@@ -30,10 +30,9 @@ class FakeAIClient(OpenAIClient):
             raise RuntimeError("No fake responses left for chat_text")
         response = self.responses.pop(0)
         if isinstance(response, dict):
-            annotations = response.get("annotations") if isinstance(response.get("annotations"), dict) else {}
-            text = (annotations or {}).get("translation")
-            if isinstance(text, str):
-                return text
+            # Phase 1 and translation can call chat_text; returning JSON keeps
+            # both parsing paths deterministic for fake-client tests.
+            return json.dumps(response)
         return str(response)
 
 
@@ -139,7 +138,7 @@ class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
 
         await run_full_pipeline(spec, client=client)
 
-        self.assertIn("compile-xyz:segmentation_phase_1", client.chat_json_op_ids)
+        self.assertIn("compile-xyz:segmentation_phase_1", client.chat_text_op_ids)
         self.assertIn("compile-xyz:segmentation_phase_2-p0-s0", client.chat_json_op_ids)
         self.assertIn("compile-xyz:translation-p0-s0", client.chat_text_op_ids)
 
