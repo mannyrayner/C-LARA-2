@@ -7,7 +7,7 @@ from pipeline import pinyin
 from tests.log_utils import log_test_case
 
 
-class PinyinTests(unittest.TestCase):
+class PinyinTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.sample_text = {
             "l2": "zh",
@@ -31,10 +31,10 @@ class PinyinTests(unittest.TestCase):
             "annotations": {},
         }
 
-    def test_adds_pinyin_annotations(self) -> None:
+    async def test_adds_pinyin_annotations(self) -> None:
         spec = pinyin.PinyinSpec(text=self.sample_text)
         try:
-            annotated = pinyin.annotate_pinyin(spec)
+            annotated = await pinyin.annotate_pinyin(spec)
         except ImportError as exc:
             self.skipTest(str(exc))
 

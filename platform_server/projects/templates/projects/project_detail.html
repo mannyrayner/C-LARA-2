@@ -4,6 +4,44 @@
 <h1>{{ object.title }}</h1>
 <p>{{ object.description }}</p>
 <p>Language: {{ object.language }} → {{ object.target_language }}</p>
+<p><a class="btn secondary" href="{% url 'project-image-style' object.pk %}">Image style{% if style_ready %} ✅{% endif %}</a></p>
+<p><a class="btn secondary" href="{% url 'project-image-elements' object.pk %}">Image elements{% if elements_ready %} ✅{% endif %}</a></p>
+<p><a class="btn secondary" href="{% url 'project-image-pages' object.pk %}">Page images{% if pages_ready %} ✅{% endif %}</a></p>
+<form method="post" action="{% url 'project-compile' object.pk %}">{% csrf_token %}
+  <input type="hidden" name="start_stage" value="segmentation_phase_1" />
+  <input type="hidden" name="end_stage" value="segmentation_phase_1" />
+  <input type="hidden" name="ai_model" value="{{ selected_ai_model }}" />
+  <input type="hidden" name="page_image_placement" value="{{ selected_page_image_placement }}" />
+  <p><button class="btn secondary" type="submit">Segment text into pages (phase 1 only)</button></p>
+</form>
+<form method="post" action="{% url 'project-image-placement' object.pk %}">{% csrf_token %}
+  <p>
+    <label for="page_image_placement">Page image placement:</label>
+    <select name="page_image_placement" id="page_image_placement">
+      {% for placement in page_image_placement_options %}
+        <option value="{{ placement }}" {% if placement == selected_page_image_placement %}selected{% endif %}>{{ placement }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn secondary" type="submit">Save image placement</button>
+  </p>
+</form>
+<form method="post" action="{% url 'project-processing-options' object.pk %}">{% csrf_token %}
+  <p>
+    <label for="segmentation_method">Segmentation (phase 2):</label>
+    <select name="segmentation_method" id="segmentation_method">
+      {% for value, label in segmentation_method_options %}
+        <option value="{{ value }}" {% if value == selected_segmentation_method %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <label for="romanization_method" class="ml-2">Romanization:</label>
+    <select name="romanization_method" id="romanization_method">
+      {% for value, label in romanization_method_options %}
+        <option value="{{ value }}" {% if value == selected_romanization_method %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn secondary" type="submit">Save language options</button>
+  </p>
+</form>
 <form method="post" action="{% url 'project-compile' object.pk %}">{% csrf_token %}
   <p><label for="start_stage">Start from stage:</label>
     <select name="start_stage" id="start_stage">
@@ -11,7 +49,22 @@
         <option value="{{ stage }}" {% if stage == default_start_stage %}selected{% endif %}>{{ stage }}</option>
       {% endfor %}
     </select>
-    <button class="btn" type="submit">Compile to HTML</button>
+    <label for="end_stage" class="ml-2">End at stage:</label>
+    <select name="end_stage" id="end_stage">
+      {% for stage in pipeline_stages %}
+        <option value="{{ stage }}" {% if stage == "compile_html" %}selected{% endif %}>{{ stage }}</option>
+      {% endfor %}
+    </select>
+    <label for="ai_model" class="ml-2">Model:</label>
+    <select name="ai_model" id="ai_model">
+      {% for model in ai_models %}
+        <option value="{{ model }}" {% if model == selected_ai_model %}selected{% endif %}>{{ model }}</option>
+      {% endfor %}
+    </select>
+    <input type="hidden" name="page_image_placement" value="{{ selected_page_image_placement }}" />
+    <input type="hidden" name="segmentation_method" value="{{ selected_segmentation_method }}" />
+    <input type="hidden" name="romanization_method" value="{{ selected_romanization_method }}" />
+    <button class="btn" type="submit">Run selected pipeline stages</button>
   </p>
 </form>
 <p><a class="btn secondary" href="{% url 'project-publish' object.pk %}">{% if object.is_published %}Unpublish{% else %}Publish{% endif %}</a></p>
@@ -24,7 +77,7 @@
   </p>
   <p>Artifacts stored at: {{ object.artifact_root }}</p>
 {% else %}
-  <p>No compilation yet. Use "Compile to HTML" to generate outputs.</p>
+  <p>No pipeline run yet. Use "Run selected pipeline stages" to generate outputs.</p>
 {% endif %}
 
 {% if progress %}
