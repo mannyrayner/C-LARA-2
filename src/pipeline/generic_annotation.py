@@ -21,6 +21,7 @@ class GenericAnnotationSpec:
     telemetry: Telemetry | None = None
     op_id: str | None = None
     max_concurrency: int | None = None
+    preserve_segment_surface: bool = False
 
 
 async def generic_annotation(
@@ -65,7 +66,11 @@ async def generic_annotation(
     for page_idx, page in enumerate(pages):
         new_segments: list[dict[str, Any]] = []
         for seg_idx, segment in enumerate(page.get("segments", [])):
-            updated = _merge_segment(segment, results.get((page_idx, seg_idx), {}))
+            updated = _merge_segment(
+                segment,
+                results.get((page_idx, seg_idx), {}),
+                preserve_surface=spec.preserve_segment_surface,
+            )
             new_segments.append(updated)
         new_pages.append(
             {
@@ -86,7 +91,9 @@ async def generic_annotation(
     return {k: v for k, v in normalized.items() if v is not None}
 
 
-def _merge_segment(segment: dict[str, Any], response: dict[str, Any]) -> dict[str, Any]:
+def _merge_segment(
+    segment: dict[str, Any], response: dict[str, Any], *, preserve_surface: bool = False
+) -> dict[str, Any]:
     merged = dict(segment)
 
     annotations = _merge_annotations(segment.get("annotations"), response.get("annotations"))
@@ -99,6 +106,8 @@ def _merge_segment(segment: dict[str, Any], response: dict[str, Any]) -> dict[st
 
     for key, value in response.items():
         if key in {"annotations", "tokens"} or value is None:
+            continue
+        if preserve_surface and key == "surface":
             continue
         merged[key] = value
 
