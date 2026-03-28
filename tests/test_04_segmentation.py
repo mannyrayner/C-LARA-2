@@ -25,6 +25,11 @@ class FakeAIClient:
         self.response = response
         self.prompts: list[str] = []
 
+    async def chat_text(self, prompt: str, **_: object) -> str:
+        self.prompts.append(prompt)
+        await asyncio.sleep(0)
+        return json.dumps(self.response)
+
     async def chat_json(self, prompt: str, **_: object) -> dict:
         self.prompts.append(prompt)
         await asyncio.sleep(0)
@@ -44,6 +49,15 @@ class FakePerCallAIClient(FakeAIClient):
         self._idx += 1
         return resp
 
+    async def chat_text(self, prompt: str, **_: object) -> str:  # type: ignore[override]
+        self.prompts.append(prompt)
+        await asyncio.sleep(0)
+        resp = self._responses[self._idx]
+        self._idx += 1
+        if isinstance(resp, str):
+            return resp
+        return json.dumps(resp)
+
 
 class SegmentationTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
@@ -53,6 +67,8 @@ class SegmentationTests(unittest.IsolatedAsyncioTestCase):
         fewshots = segmentation._load_fewshots("en", prompts_root=self.prompts_root)  # type: ignore[attr-defined]
         self.assertGreaterEqual(len(fewshots), 2)
         self.assertTrue(all("input" in fs and "output" in fs for fs in fewshots))
+        zh_fewshots = segmentation._load_fewshots("zh", prompts_root=self.prompts_root)  # type: ignore[attr-defined]
+        self.assertGreaterEqual(len(zh_fewshots), 2)
 
         log_test_case(
             "segmentation:load_fewshots",
@@ -72,12 +88,13 @@ class SegmentationTests(unittest.IsolatedAsyncioTestCase):
             }
         ]
 
-        prompt = segmentation._build_prompt(template, text=text, fewshots=fewshots)  # type: ignore[attr-defined]
+        prompt = segmentation._build_prompt(template, text=text, fewshots=fewshots, language="en")  # type: ignore[attr-defined]
 
         self.assertIn("Input text:", prompt)
         self.assertIn(text.strip(), prompt)
-        self.assertIn("Example 1 input:", prompt)
-        self.assertIn(json.dumps(fewshots[0]["output"], indent=2), prompt)
+        self.assertIn("Example 1:", prompt)
+        self.assertIn("<startoftext>", prompt)
+        self.assertIn("First line.", prompt)
 
         log_test_case(
             "segmentation:build_prompt",

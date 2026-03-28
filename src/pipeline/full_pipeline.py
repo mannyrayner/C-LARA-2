@@ -47,7 +47,7 @@ class FullPipelineSpec:
 
     text: str | None = None
     text_obj: dict[str, Any] | None = None
-    description: str | None = None  # optional text_gen description
+    description: dict[str, Any] | str | None = None  # optional text_gen description
     language: str = "en"
     target_language: str = "fr"
     voice: str | None = None
@@ -57,6 +57,7 @@ class FullPipelineSpec:
     op_id: str | None = None
     start_stage: str = "segmentation_phase_1"
     end_stage: str = "compile_html"
+    page_images: dict[int, dict[str, str]] | None = None
     require_real_tts: bool = False
     persist_intermediates: bool = False
     progress_callback: Callable[[str, str, str], None] | None = None
@@ -129,61 +130,114 @@ async def run_full_pipeline(
     html_result: dict[str, Any] | None = None
 
     for stage in PIPELINE_ORDER[start_index : end_index + 1]:
+        stage_op_id = f"{op_id}:{stage}"
+        telemetry.event(stage_op_id, "info", "stage start")
+
         if stage == "text_gen":
-            if current is None:
-                telemetry.event(op_id, "info", "Generating text from description")
-                _progress("text_gen", "start")
-                generated = await generate_text(
-                    TextGenSpec(description=spec.description or "", language=spec.language), client=ai_client
-                )
-                raw_text = generated.get("surface", "")
-                _persist("text_gen", generated)
-                _progress("text_gen", "done")
+            try:
+                if current is None:
+                    telemetry.event(stage_op_id, "info", "Generating text from description")
+                    _progress("text_gen", "start")
+                    generated = await generate_text(
+                        TextGenSpec(
+                            description=spec.description or "",
+                            language=spec.language,
+                            telemetry=telemetry,
+                            op_id=stage_op_id,
+                        ),
+                        client=ai_client,
+                    )
+                    raw_text = generated.get("surface", "")
+                    _persist("text_gen", generated)
+                    _progress("text_gen", "done")
+                telemetry.event(stage_op_id, "info", "stage done")
+            except Exception as exc:
+                _progress("text_gen", "error")
+                telemetry.event(stage_op_id, "error", "stage failed", {"error": str(exc)})
+                raise
             continue
 
         if stage == "segmentation_phase_1":
             if not isinstance(raw_text, str):
                 raise ValueError("segmentation_phase_1 requires a raw text string")
-            _progress("segmentation_phase_1", "start")
-            current = await segmentation_phase_1(
-                SegmentationSpec(text=raw_text, language=spec.language), client=ai_client
-            )
-            _persist("segmentation_phase_1", current)
-            _progress("segmentation_phase_1", "done")
+            try:
+                _progress("segmentation_phase_1", "start")
+                current = await segmentation_phase_1(
+                    SegmentationSpec(
+                        text=raw_text,
+                        language=spec.language,
+                        telemetry=telemetry,
+                        op_id=stage_op_id,
+                    ),
+                    client=ai_client,
+                )
+                _persist("segmentation_phase_1", current)
+                _progress("segmentation_phase_1", "done")
+                telemetry.event(stage_op_id, "info", "stage done")
+            except Exception as exc:
+                _progress("segmentation_phase_1", "error")
+                telemetry.event(stage_op_id, "error", "stage failed", {"error": str(exc)})
+                raise
             continue
 
         if current is None:
             raise ValueError(f"Stage {stage} requires annotated text input")
 
         if stage == "segmentation_phase_2":
-            _progress("segmentation_phase_2", "start")
-            current = await segmentation_phase_2(
-                SegmentationPhase2Spec(text=current, language=spec.language), client=ai_client
-            )
-            _persist("segmentation_phase_2", current)
-            _progress("segmentation_phase_2", "done")
+            try:
+                _progress("segmentation_phase_2", "start")
+                current = await segmentation_phase_2(
+                    SegmentationPhase2Spec(
+                        text=current,
+                        language=spec.language,
+                        telemetry=telemetry,
+                        op_id=stage_op_id,
+                    ),
+                    client=ai_client,
+                )
+                _persist("segmentation_phase_2", current)
+                _progress("segmentation_phase_2", "done")
+                telemetry.event(stage_op_id, "info", "stage done")
+            except Exception as exc:
+                _progress("segmentation_phase_2", "error")
+                telemetry.event(stage_op_id, "error", "stage failed", {"error": str(exc)})
+                raise
         elif stage == "translation":
-            _progress("translation", "start")
-            current = await translate(
-                TranslationSpec(text=current, language=spec.language, target_language=spec.target_language),
-                client=ai_client,
-            )
-            _persist("translation", current)
-            _progress("translation", "done")
+            try:
+                _progress("translation", "start")
+                current = await translate(
+                    TranslationSpec(
+                        text=current,
+                        language=spec.language,
+                        target_language=spec.target_language,
+                        telemetry=telemetry,
+                        op_id=stage_op_id,
+                    ),
+                    client=ai_client,
+                )
+                _persist("translation", current)
+                _progress("translation", "done")
+                telemetry.event(stage_op_id, "info", "stage done")
+            except Exception as exc:
+                _progress("translation", "error")
+                telemetry.event(stage_op_id, "error", "stage failed", {"error": str(exc)})
+                raise
         elif stage == "mwe":
             _progress("mwe", "start")
             current = await annotate_mwes(
-                MWESpec(text=current, language=spec.language, telemetry=telemetry, op_id=op_id), client=ai_client
+                MWESpec(text=current, language=spec.language, telemetry=telemetry, op_id=stage_op_id), client=ai_client
             )
             _persist("mwe", current)
             _progress("mwe", "done")
+            telemetry.event(stage_op_id, "info", "stage done")
         elif stage == "lemma":
             _progress("lemma", "start")
             current = await annotate_lemmas(
-                LemmaSpec(text=current, language=spec.language, telemetry=telemetry, op_id=op_id), client=ai_client
+                LemmaSpec(text=current, language=spec.language, telemetry=telemetry, op_id=stage_op_id), client=ai_client
             )
             _persist("lemma", current)
             _progress("lemma", "done")
+            telemetry.event(stage_op_id, "info", "stage done")
         elif stage == "gloss":
             _progress("gloss", "start")
             current = await annotate_gloss(
@@ -192,18 +246,24 @@ async def run_full_pipeline(
                     language=spec.language,
                     target_language=spec.target_language,
                     telemetry=telemetry,
-                    op_id=op_id,
+                    op_id=stage_op_id,
                 ),
                 client=ai_client,
             )
             _persist("gloss", current)
             _progress("gloss", "done")
+            telemetry.event(stage_op_id, "info", "stage done")
         elif stage == "pinyin":
+            _progress("pinyin", "start")
             if spec.language.lower().startswith("zh"):
-                _progress("pinyin", "start")
-                current = annotate_pinyin(PinyinSpec(text=current, language=spec.language, telemetry=telemetry))
-                _persist("pinyin", current)
-                _progress("pinyin", "done")
+                current = annotate_pinyin(
+                    PinyinSpec(text=current, language=spec.language, telemetry=telemetry, op_id=stage_op_id)
+                )
+            # For languages without a pinyin-like pass, persist the unchanged
+            # structure so downstream tooling still sees a concrete pinyin stage artifact.
+            _persist("pinyin", current)
+            _progress("pinyin", "done")
+            telemetry.event(stage_op_id, "info", "stage done")
         elif stage == "audio":
             _progress("audio", "start")
             current = await annotate_audio(
@@ -213,19 +273,36 @@ async def run_full_pipeline(
                     voice=spec.voice,
                     cache_dir=spec.audio_cache_dir,
                     telemetry=telemetry,
-                    op_id=op_id,
+                    op_id=stage_op_id,
                     require_real_tts=spec.require_real_tts,
                 )
             )
             _persist("audio", current)
             _progress("audio", "done")
+            telemetry.event(stage_op_id, "info", "stage done")
         elif stage == "compile_html":
+            if spec.page_images and isinstance(current, dict):
+                pages = current.get("pages") or []
+                if isinstance(pages, list):
+                    for page_number, image_meta in spec.page_images.items():
+                        if not isinstance(page_number, int):
+                            continue
+                        idx = page_number - 1
+                        if idx < 0 or idx >= len(pages):
+                            continue
+                        page_obj = pages[idx]
+                        if not isinstance(page_obj, dict):
+                            continue
+                        annotations = page_obj.setdefault("annotations", {})
+                        if isinstance(annotations, dict):
+                            annotations["generated_image"] = image_meta
             _progress("compile_html", "start")
             html_result = compile_html(
-                CompileHTMLSpec(text=current, output_dir=spec.output_dir, telemetry=telemetry, op_id=op_id)
+                CompileHTMLSpec(text=current, output_dir=spec.output_dir, telemetry=telemetry, op_id=stage_op_id)
             )
             _persist("compile_html", html_result or {})
             _progress("compile_html", "done")
+            telemetry.event(stage_op_id, "info", "stage done")
 
     result: dict[str, Any] = {"text": current}
     if html_result:
