@@ -73,12 +73,28 @@ def _json_like_output_to_tagged_text(output: Any) -> str:
 
 def _build_prompt(template: str, *, text: str, fewshots: list[dict[str, Any]], language: str) -> str:
     examples = _render_fewshot_examples(fewshots)
-    return template.format(
-        l2_language=language,
-        examples=examples or "[No examples provided]",
-        text=text,
-        text_type_advice="",
+    template_has_placeholders = any(
+        token in template for token in ("{l2_language}", "{examples}", "{text}", "{text_type_advice}")
     )
+    if template_has_placeholders:
+        return template.format(
+            l2_language=language,
+            examples=examples or "[No examples provided]",
+            text=text,
+            text_type_advice="",
+        )
+
+    # Backward-compatible fallback for plain-text templates without format placeholders.
+    lines = [template.strip(), "", "Examples:", examples or "[No examples provided]", "", "Input text:"]
+    lines.append("<startoftext>")
+    lines.append(text.strip())
+    lines.append("<endoftext>")
+    lines.append("")
+    lines.append(
+        "Output only the annotated text enclosed in <startoftext> and <endoftext> tags, "
+        "using <page> for page boundaries and || for segment boundaries."
+    )
+    return "\n".join(lines)
 
 
 def _normalize_response(response: dict[str, Any], *, text: str, language: str) -> dict[str, Any]:

@@ -25,6 +25,11 @@ class FakeAIClient:
         self.response = response
         self.prompts: list[str] = []
 
+    async def chat_text(self, prompt: str, **_: object) -> str:
+        self.prompts.append(prompt)
+        await asyncio.sleep(0)
+        return json.dumps(self.response)
+
     async def chat_json(self, prompt: str, **_: object) -> dict:
         self.prompts.append(prompt)
         await asyncio.sleep(0)
@@ -43,6 +48,15 @@ class FakePerCallAIClient(FakeAIClient):
         resp = self._responses[self._idx]
         self._idx += 1
         return resp
+
+    async def chat_text(self, prompt: str, **_: object) -> str:  # type: ignore[override]
+        self.prompts.append(prompt)
+        await asyncio.sleep(0)
+        resp = self._responses[self._idx]
+        self._idx += 1
+        if isinstance(resp, str):
+            return resp
+        return json.dumps(resp)
 
 
 class SegmentationTests(unittest.IsolatedAsyncioTestCase):
@@ -78,9 +92,9 @@ class SegmentationTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIn("Input text:", prompt)
         self.assertIn(text.strip(), prompt)
-        self.assertIn("Example 1 input:", prompt)
-        self.assertIn(json.dumps(fewshots[0]["output"], indent=2), prompt)
-        self.assertIn("Do not translate", prompt)
+        self.assertIn("Example 1:", prompt)
+        self.assertIn("<startoftext>", prompt)
+        self.assertIn("First line.", prompt)
 
         log_test_case(
             "segmentation:build_prompt",
