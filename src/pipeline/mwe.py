@@ -47,7 +47,16 @@ def _build_prompt(
         "For each token that belongs to an MWE, set token.annotations.mwe_id to the corresponding MWE id.",
     ]
 
-    segment_json = json.dumps(segment, ensure_ascii=False, indent=2)
+    # Only send token-level material for MWE analysis.
+    # Segment-level fields such as translation can distract the model and are not
+    # required to identify MWEs.
+    segment_json = json.dumps(
+        {
+            "tokens": segment.get("tokens", []),
+        },
+        ensure_ascii=False,
+        indent=2,
+    )
     return annotation_prompts.build_prompt(
         template,
         content_label="Segment JSON to annotate for MWEs:",
@@ -92,6 +101,7 @@ async def annotate_mwes(
             build_prompt=build,
             telemetry=telemetry,
             op_id=spec.op_id,
+            preserve_segment_surface=True,
         ),
         client=ai_client,
     )
