@@ -58,6 +58,8 @@ class FullPipelineSpec:
     start_stage: str = "segmentation_phase_1"
     end_stage: str = "compile_html"
     page_images: dict[int, dict[str, str]] | None = None
+    segmentation_method: str = "auto"
+    romanization_method: str = "auto"
     require_real_tts: bool = False
     persist_intermediates: bool = False
     progress_callback: Callable[[str, str, str], None] | None = None
@@ -192,6 +194,7 @@ async def run_full_pipeline(
                         language=spec.language,
                         telemetry=telemetry,
                         op_id=stage_op_id,
+                        method=spec.segmentation_method,
                     ),
                     client=ai_client,
                 )
@@ -255,12 +258,16 @@ async def run_full_pipeline(
             telemetry.event(stage_op_id, "info", "stage done")
         elif stage == "pinyin":
             _progress("pinyin", "start")
-            if spec.language.lower().startswith("zh"):
-                current = annotate_pinyin(
-                    PinyinSpec(text=current, language=spec.language, telemetry=telemetry, op_id=stage_op_id)
-                )
-            # For languages without a pinyin-like pass, persist the unchanged
-            # structure so downstream tooling still sees a concrete pinyin stage artifact.
+            current = await annotate_pinyin(
+                PinyinSpec(
+                    text=current,
+                    language=spec.language,
+                    telemetry=telemetry,
+                    op_id=stage_op_id,
+                    method=spec.romanization_method,
+                ),
+                client=ai_client,
+            )
             _persist("pinyin", current)
             _progress("pinyin", "done")
             telemetry.event(stage_op_id, "info", "stage done")

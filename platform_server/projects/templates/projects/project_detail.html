@@ -25,6 +25,23 @@
     <button class="btn secondary" type="submit">Save image placement</button>
   </p>
 </form>
+<form method="post" action="{% url 'project-processing-options' object.pk %}">{% csrf_token %}
+  <p>
+    <label for="segmentation_method">Segmentation (phase 2):</label>
+    <select name="segmentation_method" id="segmentation_method">
+      {% for value, label in segmentation_method_options %}
+        <option value="{{ value }}" {% if value == selected_segmentation_method %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <label for="romanization_method" class="ml-2">Romanization:</label>
+    <select name="romanization_method" id="romanization_method">
+      {% for value, label in romanization_method_options %}
+        <option value="{{ value }}" {% if value == selected_romanization_method %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn secondary" type="submit">Save language options</button>
+  </p>
+</form>
 <form method="post" action="{% url 'project-compile' object.pk %}">{% csrf_token %}
   <p><label for="start_stage">Start from stage:</label>
     <select name="start_stage" id="start_stage">
@@ -45,6 +62,8 @@
       {% endfor %}
     </select>
     <input type="hidden" name="page_image_placement" value="{{ selected_page_image_placement }}" />
+    <input type="hidden" name="segmentation_method" value="{{ selected_segmentation_method }}" />
+    <input type="hidden" name="romanization_method" value="{{ selected_romanization_method }}" />
     <button class="btn" type="submit">Run selected pipeline stages</button>
   </p>
 </form>

@@ -195,6 +195,7 @@ class SegmentationPhase2Spec:
     fewshot_paths: Iterable[Path] | None = None
     telemetry: Telemetry | None = None
     op_id: str | None = None
+    method: str = "auto"
 
 
 async def segmentation_phase_2(
@@ -205,9 +206,12 @@ async def segmentation_phase_2(
     """Annotate segments with tokens using jieba for Mandarin or the generic flow."""
 
     telemetry = spec.telemetry or NullTelemetry()
+    method = (spec.method or "auto").strip().lower()
 
-    if spec.language.lower().startswith("zh"):
+    if spec.language.lower().startswith("zh") and method in {"auto", "jieba"}:
         return _tokenize_with_jieba(spec.text, language=spec.language, telemetry=telemetry, op_id=spec.op_id)
+    if method not in {"auto", "ai", "jieba"}:
+        raise ValueError(f"Unknown segmentation method: {method}")
 
     prompts_root = (
         spec.template_path.parent.parent if spec.template_path else annotation_prompts.default_prompts_root()

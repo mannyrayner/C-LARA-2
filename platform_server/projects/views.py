@@ -60,6 +60,31 @@ IMAGE_MODEL_CHOICES = [
 ]
 
 PAGE_IMAGE_PLACEMENT_CHOICES = ["none", "top", "bottom"]
+SEGMENTATION_METHOD_CHOICES = ["auto", "jieba", "ai"]
+ROMANIZATION_METHOD_CHOICES = ["auto", "pypinyin", "indic_transliteration", "ai"]
+
+
+def _resolve_segmentation_method(language: str, configured: str | None) -> str:
+    method = (configured or "auto").strip().lower()
+    if language.lower().startswith("zh"):
+        if method in {"auto", "jieba", "ai"}:
+            return "jieba" if method == "auto" else method
+        return "jieba"
+    return "ai"
+
+
+def _resolve_romanization_method(language: str, configured: str | None) -> str:
+    method = (configured or "auto").strip().lower()
+    lang = language.lower()
+    if lang.startswith("zh"):
+        if method in {"auto", "pypinyin", "ai"}:
+            return "pypinyin" if method == "auto" else method
+        return "pypinyin"
+    if lang.startswith("hi"):
+        if method in {"auto", "indic_transliteration", "ai"}:
+            return "indic_transliteration" if method == "auto" else method
+        return "indic_transliteration"
+    return "auto"
 
 
 class _TaskTelemetry:
@@ -1182,6 +1207,25 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
             if project.page_image_placement in PAGE_IMAGE_PLACEMENT_CHOICES
             else "none"
         )
+        if project.language.lower().startswith("zh"):
+            context["segmentation_method_options"] = [("auto", "Jieba (default)"), ("jieba", "Jieba"), ("ai", "AI")]
+            context["romanization_method_options"] = [
+                ("auto", "pypinyin (default)"),
+                ("pypinyin", "pypinyin"),
+                ("ai", "AI"),
+            ]
+        elif project.language.lower().startswith("hi"):
+            context["segmentation_method_options"] = [("auto", "AI (default)"), ("ai", "AI")]
+            context["romanization_method_options"] = [
+                ("auto", "indic_transliteration (default)"),
+                ("indic_transliteration", "indic_transliteration"),
+                ("ai", "AI"),
+            ]
+        else:
+            context["segmentation_method_options"] = [("auto", "AI (default)"), ("ai", "AI")]
+            context["romanization_method_options"] = [("auto", "Not used for this language")]
+        context["selected_segmentation_method"] = project.segmentation_method or "auto"
+        context["selected_romanization_method"] = project.romanization_method or "auto"
         return context
 
 
@@ -1315,6 +1359,8 @@ def _run_compile_task(
     ai_model: str | None = None,
     end_stage: str | None = None,
     page_image_placement: str | None = None,
+    segmentation_method: str | None = None,
+    romanization_method: str | None = None,
 ) -> None:
     project = Project.objects.get(pk=project_id)
     output_dir = Path(output_dir_str)
@@ -1382,6 +1428,8 @@ def _run_compile_task(
         start_stage=start_stage,
         end_stage=end_stage or "compile_html",
         page_images={},
+        segmentation_method=_resolve_segmentation_method(project.language, segmentation_method or project.segmentation_method),
+        romanization_method=_resolve_romanization_method(project.language, romanization_method or project.romanization_method),
         telemetry=telemetry,
     )
 
@@ -1529,6 +1577,24 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         project.ai_model = ai_model
         project.save(update_fields=["ai_model", "updated_at"])
 
+    segmentation_method = (request.POST.get("segmentation_method") or project.segmentation_method or "auto").strip().lower()
+    romanization_method = (request.POST.get("romanization_method") or project.romanization_method or "auto").strip().lower()
+    if segmentation_method not in SEGMENTATION_METHOD_CHOICES:
+        messages.error(request, "Unknown segmentation method option.")
+        return redirect("project-detail", pk=project.pk)
+    if romanization_method not in ROMANIZATION_METHOD_CHOICES:
+        messages.error(request, "Unknown romanization method option.")
+        return redirect("project-detail", pk=project.pk)
+    update_fields: list[str] = []
+    if segmentation_method != project.segmentation_method:
+        project.segmentation_method = segmentation_method
+        update_fields.append("segmentation_method")
+    if romanization_method != project.romanization_method:
+        project.romanization_method = romanization_method
+        update_fields.append("romanization_method")
+    if update_fields:
+        project.save(update_fields=update_fields + ["updated_at"])
+
     text: str | None = None
     text_obj: dict[str, Any] | None = None
     # Always define ``description`` so queued tasks receive a predictable
@@ -1608,6 +1674,8 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         ai_model,
         end_stage,
         page_image_placement,
+        segmentation_method,
+        romanization_method,
         q_options={"sync": False},
     )
 
@@ -1625,6 +1693,30 @@ def set_page_image_placement(request: HttpRequest, pk: int) -> HttpResponse:
         project.page_image_placement = placement
         project.save(update_fields=["page_image_placement", "updated_at"])
     messages.success(request, f"Saved page image placement setting: {placement}.")
+    return redirect("project-detail", pk=project.pk)
+
+
+@login_required
+def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
+    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    segmentation_method = (request.POST.get("segmentation_method") or project.segmentation_method or "auto").strip().lower()
+    romanization_method = (request.POST.get("romanization_method") or project.romanization_method or "auto").strip().lower()
+    if segmentation_method not in SEGMENTATION_METHOD_CHOICES:
+        messages.error(request, "Unknown segmentation method option.")
+        return redirect("project-detail", pk=project.pk)
+    if romanization_method not in ROMANIZATION_METHOD_CHOICES:
+        messages.error(request, "Unknown romanization method option.")
+        return redirect("project-detail", pk=project.pk)
+    update_fields: list[str] = []
+    if segmentation_method != project.segmentation_method:
+        project.segmentation_method = segmentation_method
+        update_fields.append("segmentation_method")
+    if romanization_method != project.romanization_method:
+        project.romanization_method = romanization_method
+        update_fields.append("romanization_method")
+    if update_fields:
+        project.save(update_fields=update_fields + ["updated_at"])
+    messages.success(request, "Saved language-processing options.")
     return redirect("project-detail", pk=project.pk)
 
 

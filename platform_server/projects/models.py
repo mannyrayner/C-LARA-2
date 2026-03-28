@@ -25,6 +25,8 @@ class Project(models.Model):
     target_language = models.CharField(max_length=16, default="fr")
     ai_model = models.CharField(max_length=64, default="gpt-4o")
     page_image_placement = models.CharField(max_length=16, default="none")
+    segmentation_method = models.CharField(max_length=32, default="auto")
+    romanization_method = models.CharField(max_length=32, default="auto")
     compiled_path = models.CharField(max_length=512, blank=True)
     artifact_root = models.CharField(max_length=512, blank=True)
     is_published = models.BooleanField(default=False)
