@@ -121,6 +121,37 @@ class MWEUnitTests(unittest.IsolatedAsyncioTestCase):
             status="pass",
         )
 
+    async def test_detect_mwes_filters_single_token_mwes(self) -> None:
+        fake_response = {
+            "surface": self.sample_segment["surface"],
+            "tokens": [
+                {"surface": "She"},
+                {"surface": " ", "annotations": {}},
+                {"surface": "put", "annotations": {"mwe_id": "m1"}},
+                {"surface": " ", "annotations": {}},
+                {"surface": "up", "annotations": {"mwe_id": "m2"}},
+                {"surface": " ", "annotations": {}},
+                {"surface": "with", "annotations": {"mwe_id": "m1"}},
+                {"surface": "."},
+            ],
+            "annotations": {
+                "mwes": [
+                    {"id": "m1", "tokens": ["put", "with"], "label": "phrasal"},
+                    {"id": "m2", "tokens": ["up"], "label": "bad-single"},
+                ]
+            },
+        }
+        client = FakeAIClient(fake_response)
+        spec = MWESpec(text=self.sample_text, language="en")
+
+        result = await mwe.annotate_mwes(spec, client=client)
+        segment = result["pages"][0]["segments"][0]
+        mwes = segment.get("annotations", {}).get("mwes", [])
+        self.assertEqual(1, len(mwes))
+        self.assertEqual("m1", mwes[0]["id"])
+        token_ids = [t.get("annotations", {}).get("mwe_id") for t in segment.get("tokens", [])]
+        self.assertNotIn("m2", token_ids)
+
 
 class MWEIntegrationTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:

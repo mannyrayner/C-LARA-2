@@ -14,7 +14,7 @@ from core.telemetry import NullTelemetry, Telemetry
 class TextGenSpec:
     """Specification for generating a new text."""
 
-    description: dict[str, Any]
+    description: dict[str, Any] | str
     language: str = "en"
     template_path: Path | None = None
     fewshot_paths: Iterable[Path] | None = None
@@ -27,18 +27,40 @@ def _default_prompts_root() -> Path:
 
 
 def _load_template(language: str, *, prompts_root: Path) -> str:
-    template_path = prompts_root / "text_gen" / language / "template.txt"
-    return template_path.read_text(encoding="utf-8")
+    candidate_paths = [
+        prompts_root / "text_gen" / language / "template.txt",
+        prompts_root / "text_gen" / "default" / "template.txt",
+        prompts_root / "text_gen" / "en" / "template.txt",
+    ]
+    for template_path in candidate_paths:
+        if template_path.exists():
+            return template_path.read_text(encoding="utf-8")
+    raise FileNotFoundError(f"No text_gen template found for language={language!r}")
 
 
 def _load_fewshots(language: str, *, prompts_root: Path) -> list[dict[str, Any]]:
-    fewshot_dir = prompts_root / "text_gen" / language / "fewshots"
-    if not fewshot_dir.exists():
+    candidate_dirs = [
+        prompts_root / "text_gen" / language / "fewshots",
+        prompts_root / "text_gen" / "default" / "fewshots",
+        prompts_root / "text_gen" / "en" / "fewshots",
+    ]
+    fewshot_dir = next((path for path in candidate_dirs if path.exists()), None)
+    if fewshot_dir is None:
         return []
     fewshots: list[dict[str, Any]] = []
     for path in sorted(fewshot_dir.glob("*.json")):
         fewshots.append(json.loads(path.read_text(encoding="utf-8")))
     return fewshots
+
+
+def _instantiate_language_vars(value: Any, *, language: str) -> Any:
+    if isinstance(value, str):
+        return value.replace("{text_language}", language)
+    if isinstance(value, list):
+        return [_instantiate_language_vars(item, language=language) for item in value]
+    if isinstance(value, dict):
+        return {k: _instantiate_language_vars(v, language=language) for k, v in value.items()}
+    return value
 
 
 def _build_prompt(template: str, *, description: dict[str, Any], fewshots: list[dict[str, Any]]) -> str:
@@ -59,12 +81,17 @@ def _build_prompt(template: str, *, description: dict[str, Any], fewshots: list[
 
 
 def _normalize_response(
-    response: dict[str, Any], *, language: str, description: dict[str, Any]
+    response: dict[str, Any], *, language: str, description: dict[str, Any] | str
 ) -> dict[str, Any]:
+    desc_dict: dict[str, Any]
+    if isinstance(description, dict):
+        desc_dict = description
+    else:
+        desc_dict = {}
     text_json = {
-        "l2": response.get("l2") or description.get("l2") or language,
-        "l1": response.get("l1") or description.get("l1"),
-        "title": response.get("title") or description.get("title"),
+        "l2": response.get("l2") or desc_dict.get("l2") or language,
+        "l1": response.get("l1") or desc_dict.get("l1"),
+        "title": response.get("title") or desc_dict.get("title"),
         "surface": response.get("surface", ""),
         "pages": response.get("pages") or [],
         "annotations": response.get("annotations") or {},
@@ -81,15 +108,25 @@ async def generate_text(
     """Generate a text from a description using a prompt template and few-shots."""
 
     prompts_root = spec.template_path.parent.parent if spec.template_path else _default_prompts_root()
-    template = spec.template_path.read_text(encoding="utf-8") if spec.template_path else _load_template(spec.language, prompts_root=prompts_root)
+    template = (
+        spec.template_path.read_text(encoding="utf-8")
+        if spec.template_path
+        else _load_template(spec.language, prompts_root=prompts_root)
+    )
     fewshots = (
         [json.loads(path.read_text(encoding="utf-8")) for path in spec.fewshot_paths]
         if spec.fewshot_paths
         else _load_fewshots(spec.language, prompts_root=prompts_root)
     )
+    template = _instantiate_language_vars(template, language=spec.language)
+    fewshots = _instantiate_language_vars(fewshots, language=spec.language)
 
-    prompt = _build_prompt(template, description=spec.description, fewshots=fewshots)
+    description_payload: dict[str, Any] | str = spec.description
+    if isinstance(description_payload, str):
+        description_payload = {"description": description_payload}
+
+    prompt = _build_prompt(template, description=description_payload, fewshots=fewshots)
     telemetry = spec.telemetry or NullTelemetry()
     ai_client = client or OpenAIClient()
     response = await ai_client.chat_json(prompt, telemetry=telemetry, op_id=spec.op_id)
-    return _normalize_response(response, language=spec.language, description=spec.description)
+    return _normalize_response(response, language=spec.language, description=description_payload)
