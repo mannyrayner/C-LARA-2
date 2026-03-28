@@ -269,6 +269,7 @@ async def annotate_audio(
         raise RuntimeError("Real TTS requested but no engine available; set OPENAI_API_KEY or ENABLE_GOOGLE_TTS")
     op_id = spec.op_id or "audio"
     concat_cache: dict[str, Path] = {}
+    synth_semaphore = asyncio.Semaphore(8)
 
     cache: dict[str, Path] = {}
 
@@ -288,28 +289,30 @@ async def annotate_audio(
         if not output_path.exists():
             telemetry.event(op_id, "info", f"synthesizing audio for {level}")
             try:
-                await asyncio.to_thread(
-                    engine.synthesize_to_path,
-                    normalized,
-                    output_path,
-                    voice=spec.voice,
-                    language=spec.language,
-                )
-                await asyncio.to_thread(_validate_wav, output_path)
+                async with synth_semaphore:
+                    await asyncio.to_thread(
+                        engine.synthesize_to_path,
+                        normalized,
+                        output_path,
+                        voice=spec.voice,
+                        language=spec.language,
+                    )
+                    await asyncio.to_thread(_validate_wav, output_path)
             except Exception as exc:
                 if spec.require_real_tts or tts_engine is not None:
                     raise
                 telemetry.event(op_id, "warn", f"primary TTS failed ({exc}); using stub")
                 # Fall back to deterministic stub for reliable audio.
                 engine = SimpleTTSEngine()
-                await asyncio.to_thread(
-                    engine.synthesize_to_path,
-                    normalized,
-                    output_path,
-                    voice=spec.voice,
-                    language=spec.language,
-                )
-                await asyncio.to_thread(_validate_wav, output_path)
+                async with synth_semaphore:
+                    await asyncio.to_thread(
+                        engine.synthesize_to_path,
+                        normalized,
+                        output_path,
+                        voice=spec.voice,
+                        language=spec.language,
+                    )
+                    await asyncio.to_thread(_validate_wav, output_path)
 
         cache[key] = output_path
         return output_path
@@ -332,6 +335,27 @@ async def annotate_audio(
             mwe_surface_text: dict[str, str] = {
                 mwe_id: " ".join(parts) for mwe_id, parts in mwe_surfaces.items()
             }
+            token_audio_requests: set[tuple[str, str]] = set()
+            for token in segment.get("tokens", []):
+                surface = token.get("surface", "")
+                annotations = token.get("annotations", {}) if isinstance(token, dict) else {}
+                if not _is_word_token(surface):
+                    continue
+                audio_surface = mwe_surface_text.get((annotations or {}).get("mwe_id"), surface)
+                token_audio_requests.add((audio_surface, "token"))
+
+            segment_surface = segment.get("surface", "")
+            if str(segment_surface).strip():
+                token_audio_requests.add((segment_surface, "segment"))
+
+            request_list = list(token_audio_requests)
+            resolved_paths = await asyncio.gather(
+                *(ensure_audio(req_surface, req_level) for req_surface, req_level in request_list)
+            )
+            resolved_audio: dict[tuple[str, str], Path] = {}
+            for (req_surface, req_level), maybe_path in zip(request_list, resolved_paths):
+                if maybe_path:
+                    resolved_audio[(req_surface, req_level)] = maybe_path
 
             tokens_out: list[dict[str, Any]] = []
             for token in segment.get("tokens", []):
@@ -340,7 +364,7 @@ async def annotate_audio(
 
                 if _is_word_token(surface):
                     audio_surface = mwe_surface_text.get(annotations.get("mwe_id"), surface)
-                    audio_path = await ensure_audio(audio_surface, "token")
+                    audio_path = resolved_audio.get((audio_surface, "token"))
                     if audio_path:
                         annotations["audio"] = _audio_annotation(
                             audio_path, surface=audio_surface, spec=spec, level="token", engine=engine
@@ -352,7 +376,7 @@ async def annotate_audio(
                     tokens_out.append(dict(token))
 
             seg_annotations = dict(segment.get("annotations", {}))
-            seg_audio = await ensure_audio(segment.get("surface", ""), "segment")
+            seg_audio = resolved_audio.get((segment.get("surface", ""), "segment"))
             if seg_audio:
                 seg_annotations["audio"] = _audio_annotation(
                     seg_audio,
@@ -463,12 +487,21 @@ def _concat_wave_files(inputs: list[Path], output: Path) -> None:
                     or params.framerate <= 0
                 ):
                     raise ValueError(f"Invalid WAV parameters for {inputs[0]}: {params}")
-
-                out.setparams(params)
+                out.setnchannels(params.nchannels)
+                out.setsampwidth(params.sampwidth)
+                out.setframerate(params.framerate)
                 out.writeframes(first.readframes(first.getnframes()))
 
             for path in inputs[1:]:
                 with wave.open(str(path), "rb") as wav_file:
+                    p = wav_file.getparams()
+                    if (
+                        p.nchannels != params.nchannels
+                        or p.sampwidth != params.sampwidth
+                        or p.framerate != params.framerate
+                    ):
+                        # Skip incompatible files rather than failing the full page concat.
+                        continue
                     out.writeframes(wav_file.readframes(wav_file.getnframes()))
     except (wave.Error, struct.error) as exc:
         raise ValueError(f"Failed to concatenate WAV files: {exc}") from exc
