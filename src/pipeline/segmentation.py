@@ -109,6 +109,25 @@ def _normalize_response(response: dict[str, Any], *, text: str, language: str) -
     return {k: v for k, v in normalized.items() if v is not None}
 
 
+def _fallback_tokenize_surface(surface: str) -> list[dict[str, Any]]:
+    parts = re.findall(r"\s+|[^\w\s]|[\w]+", surface, flags=re.UNICODE)
+    return [{"surface": p} for p in parts if p != ""]
+
+
+def _normalize_phase2_output(text_obj: dict[str, Any]) -> dict[str, Any]:
+    for page in text_obj.get("pages", []) or []:
+        for segment in page.get("segments", []) or []:
+            surface = str(segment.get("surface", ""))
+            tokens = segment.get("tokens")
+            if not isinstance(tokens, list) or not tokens:
+                segment["tokens"] = _fallback_tokenize_surface(surface)
+                continue
+            concatenated = "".join(str((tok or {}).get("surface", "")) for tok in tokens if isinstance(tok, dict))
+            if re.sub(r"\s+", "", concatenated) != re.sub(r"\s+", "", surface):
+                segment["tokens"] = _fallback_tokenize_surface(surface)
+    return text_obj
+
+
 async def segmentation_phase_1(
     spec: SegmentationSpec,
     *,
@@ -247,7 +266,7 @@ async def segmentation_phase_2(
         )
 
     ai_client = client or OpenAIClient()
-    return await generic_annotation(
+    annotated = await generic_annotation(
         GenericAnnotationSpec(
             text=spec.text,
             language=spec.language,
@@ -255,9 +274,11 @@ async def segmentation_phase_2(
             build_prompt=build,
             telemetry=telemetry,
             op_id=spec.op_id,
+            preserve_segment_surface=True,
         ),
         client=ai_client,
     )
+    return _normalize_phase2_output(annotated)
 
 
 def _tokenize_with_jieba(

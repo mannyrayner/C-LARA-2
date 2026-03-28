@@ -55,6 +55,9 @@ def build_prompt(
     fewshot_list = list(fewshots)
     if fewshot_list:
         lines.append("Few-shot examples:")
+        lines.append(
+            "These examples may be in a different language (often English); use them only as format guidance."
+        )
         for idx, example in enumerate(fewshot_list, start=1):
             lines.append(f"Example {idx} input:")
             lines.append(example.get("input", "").strip())

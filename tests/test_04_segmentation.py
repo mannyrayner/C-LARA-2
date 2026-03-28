@@ -173,6 +173,25 @@ class SegmentationTests(unittest.IsolatedAsyncioTestCase):
             status="pass",
         )
 
+    async def test_segmentation_phase_2_preserves_surface_and_recovers_bad_tokens(self) -> None:
+        text = {
+            "l2": "hi",
+            "surface": "नमस्ते दुनिया",
+            "pages": [{"surface": "नमस्ते दुनिया", "segments": [{"surface": "नमस्ते दुनिया"}]}],
+            "annotations": {},
+        }
+        client = FakeAIClient(
+            {
+                "surface": "Few-shot examples: Hello world",
+                "tokens": [{"surface": "Few-shot"}, {"surface": "examples"}],
+                "annotations": {},
+            }
+        )
+        result = await segmentation_phase_2(SegmentationPhase2Spec(text=text, language="hi"), client=client)
+        segment = result["pages"][0]["segments"][0]
+        self.assertEqual("नमस्ते दुनिया", segment["surface"])
+        self.assertEqual("नमस्तेदुनिया", "".join(t["surface"] for t in segment["tokens"]).replace(" ", ""))
+
     async def test_segmentation_phase_2_uses_jieba_for_chinese(self) -> None:
         text = {
             "l2": "zh",
