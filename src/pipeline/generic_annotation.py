@@ -138,8 +138,10 @@ def _merge_tokens(
     max_len = max(len(base_tokens), len(response_tokens))
 
     for idx in range(max_len):
-        base = base_tokens[idx] if idx < len(base_tokens) else {}
-        update = response_tokens[idx] if idx < len(response_tokens) else {}
+        raw_base = base_tokens[idx] if idx < len(base_tokens) else {}
+        raw_update = response_tokens[idx] if idx < len(response_tokens) else {}
+        base = raw_base if isinstance(raw_base, dict) else {"surface": str(raw_base or "")}
+        update = raw_update if isinstance(raw_update, dict) else {"surface": str(raw_update or "")}
 
         token = dict(base)
 
