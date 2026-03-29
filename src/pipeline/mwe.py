@@ -145,11 +145,11 @@ def _normalize_mwes(text: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(pages, list):
         return text
 
-    for page in pages:
+    for page_idx, page in enumerate(pages):
         segments = page.get("segments")
         if not isinstance(segments, list):
             continue
-        for segment in segments:
+        for seg_idx, segment in enumerate(segments):
             annotations = segment.get("annotations")
             if not isinstance(annotations, dict):
                 continue
@@ -189,6 +189,12 @@ def _normalize_mwes(text: dict[str, Any]) -> dict[str, Any]:
                 normalized_entry["tokens"] = token_surfaces
                 filtered.append(normalized_entry)
                 valid_ids.add(mwe_id)
+
+            id_remap = {old_id: f"p{page_idx}s{seg_idx}_{old_id}" for old_id in valid_ids}
+            for entry in filtered:
+                old_id = str(entry.get("id") or "")
+                if old_id in id_remap:
+                    entry["id"] = id_remap[old_id]
             annotations["mwes"] = filtered
 
             tokens = segment.get("tokens")
@@ -199,6 +205,11 @@ def _normalize_mwes(text: dict[str, Any]) -> dict[str, Any]:
                 if not isinstance(token_ann, dict):
                     continue
                 mwe_id = token_ann.get("mwe_id")
-                if mwe_id and str(mwe_id) not in valid_ids:
+                if not mwe_id:
+                    continue
+                str_id = str(mwe_id)
+                if str_id not in valid_ids:
                     token_ann.pop("mwe_id", None)
+                    continue
+                token_ann["mwe_id"] = id_remap.get(str_id, str_id)
     return text
