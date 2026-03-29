@@ -68,6 +68,10 @@ class GlossSpec:
     op_id: str | None = None
 
 
+def _instantiate_gloss_language_vars(text: str, *, target_language: str) -> str:
+    return text.replace("{glossing_language}", target_language)
+
+
 def _build_prompt(
     template: str,
     *,
@@ -75,6 +79,7 @@ def _build_prompt(
     fewshots: list[dict[str, Any]],
     target_language: str,
 ) -> str:
+    template = _instantiate_gloss_language_vars(template, target_language=target_language)
     simplified = _simplify_segment(segment)
 
     output_instructions = [
@@ -117,6 +122,13 @@ async def annotate_gloss(
         if spec.fewshot_paths
         else _load_fewshots(spec.language, prompts_root=prompts_root)
     )
+    template = _instantiate_gloss_language_vars(template, target_language=spec.target_language)
+
+    # Avoid French-specific fallback examples when glossing into other languages.
+    if spec.target_language.lower() != "fr" and spec.fewshot_paths is None:
+        language_specific_fewshots = prompts_root / "gloss" / spec.language / "fewshots"
+        if not language_specific_fewshots.exists():
+            fewshots = []
 
     def build(segment: dict[str, Any]) -> str:
         return _build_prompt(
