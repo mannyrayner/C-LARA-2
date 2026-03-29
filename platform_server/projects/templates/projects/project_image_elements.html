@@ -1,0 +1,66 @@
+{% extends "projects/base.html" %}
+{% block title %}Image elements: {{ project.title }}{% endblock %}
+{% block content %}
+<h1>Image elements for {{ project.title }}</h1>
+
+<p>
+  This is the first text-focused version of the <strong>Elements</strong> substep. It identifies recurring
+  visual elements, links them to pages, and generates expanded descriptions/prompts for user review.
+</p>
+
+<p>
+  <a href="{% url 'project-image-style' project.pk %}">← Back to Style step</a>
+</p>
+<p><a class="btn secondary" href="{% url 'project-image-pages' project.pk %}">Go to Page images step</a></p>
+
+<p>Status from style step: <strong>{{ style.get_status_display }}</strong></p>
+<p>Elements artifacts stored at: {{ elements_artifact_dir }}</p>
+<p>Confirmed elements: {{ confirmed_count }}</p>
+{% if status_notice == "done" %}
+  <p><strong>Request completed.</strong> Check the messages above for details.</p>
+{% endif %}
+
+<form method="post">
+  {% csrf_token %}
+  {{ formset.management_form }}
+  <p>
+    <button class="btn" style="cursor:pointer" type="submit" name="action" value="discover">Discover elements</button>
+    <button class="btn" style="cursor:pointer" type="submit" name="action" value="expand">Generate expanded prompts</button>
+    <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="save">Save edits</button>
+    <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="confirm">Confirm selected</button>
+  </p>
+  <h3>Element image generation</h3>
+  <p>Use this control after prompts are expanded to generate one reference image per element.</p>
+  <p>
+    <label for="image_model">Image model:</label>
+    <select name="image_model" id="image_model" style="cursor:pointer">
+      {% for model in image_models %}
+        <option value="{{ model }}" {% if model == selected_image_model %}selected{% endif %}>{{ model }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_images">Generate element images</button>
+  </p>
+
+  {% if formset.forms %}
+    {% for form in formset.forms %}
+      <fieldset style="margin: 1rem 0; padding: 0.75rem; border: 1px solid #ddd;">
+        {{ form.id }}
+        <p><strong>Element {{ forloop.counter }}</strong></p>
+        {{ form.as_p }}
+        {% if form.instance.image_path %}
+          <p><strong>Generated reference image</strong></p>
+          <p>
+            <img
+              src="{% url 'project-compiled' project.pk form.instance.image_path %}"
+              alt="Reference image for {{ form.instance.name }}"
+              style="max-width: 320px; width: 100%; height: auto;"
+            />
+          </p>
+        {% endif %}
+      </fieldset>
+    {% endfor %}
+  {% else %}
+    <p>No elements yet. Click <strong>Discover elements</strong> to generate an initial list.</p>
+  {% endif %}
+</form>
+{% endblock %}

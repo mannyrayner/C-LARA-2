@@ -12,12 +12,15 @@
     .btn { padding: 0.4rem 0.8rem; background: #0366d6; color: white; border: none; text-decoration: none; }
     .btn.secondary { background: #444; }
     .btn.link { background: transparent; color: #0366d6; border: none; }
+    a[href], button, .btn, .btn *, input[type="submit"], input[type="button"], label[for] { cursor: pointer !important; }
+    button[disabled], input[disabled] { cursor: not-allowed; }
   </style>
 </head>
 <body>
 <nav>
   {% if user.is_authenticated %}
     Hello, {{ user.username }} |
+    <a href="{% url 'profile' %}">Profile</a>
     <a href="{% url 'project-list' %}">Projects</a>
     <a href="{% url 'logout' %}">Logout</a>
   {% else %}
