@@ -22,6 +22,7 @@ from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import CreateView, DetailView, ListView
 from django_q.tasks import async_task
+from django.utils.html import escape
 from django.utils.text import slugify
 import mimetypes
 import tempfile
@@ -1854,28 +1855,59 @@ def download_project_bundle(request: HttpRequest, pk: int) -> HttpResponse:
     bundle_root = Path(f"{safe_title}-bundle")
 
     spool = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024, mode="w+b")
+    created_at = datetime.now(timezone.utc)
     with zipfile.ZipFile(spool, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
-        _write_tree_to_zip(
+        run_file_count = _write_tree_to_zip(
             zf,
             run_dir,
             bundle_root / "runs" / run_dir.name,
         )
-        _write_tree_to_zip(zf, images_dir, bundle_root / "images")
+        image_file_count = _write_tree_to_zip(zf, images_dir, bundle_root / "images")
 
-        readme_lines = [
-            "C-LARA project bundle",
-            f"Project: {project.title}",
-            f"Project ID: {project.pk}",
-            f"Run: {run_dir.name}",
-            "",
-            "Contents:",
-            "- runs/<run_id>/html: compiled HTML pages",
-            "- runs/<run_id>/audio: copied audio files used by the HTML",
-            "- images: generated image assets",
-            "",
-            "To preview, open runs/<run_id>/html/index.html in a browser.",
-        ]
-        zf.writestr((bundle_root / "README.txt").as_posix(), "\n".join(readme_lines))
+        html_dir = run_dir / "html"
+        start_page = "page_1.html" if (html_dir / "page_1.html").exists() else "index.html"
+        start_page_href = f"runs/{run_dir.name}/html/{start_page}"
+        audio_dir = run_dir / "audio"
+        audio_file_count = sum(1 for p in audio_dir.rglob("*") if p.is_file()) if audio_dir.exists() else 0
+
+        media_notes: list[str] = []
+        if audio_file_count:
+            media_notes.append(f"<li>Audio files: {audio_file_count}</li>")
+        else:
+            media_notes.append("<li>Audio files: none included in this bundle.</li>")
+
+        if image_file_count:
+            media_notes.append(f"<li>Image files: {image_file_count}</li>")
+        else:
+            media_notes.append("<li>Image files: none included in this bundle.</li>")
+
+        readme_html = f"""<!doctype html>
+<html lang="en"> 
+  <head>
+    <meta charset="utf-8" />
+    <title>{escape(project.title)} bundle</title>
+  </head>
+  <body>
+    <h1>C-LARA project bundle</h1>
+    <p><strong>Project:</strong> {escape(project.title)}</p>
+    <p><strong>Project ID:</strong> {project.pk}</p>
+    <p><strong>Run:</strong> {escape(run_dir.name)}</p>
+    <p><strong>Created (UTC):</strong> {created_at.isoformat(timespec='seconds')}</p>
+    <p><strong>Total bundled files:</strong> {run_file_count + image_file_count}</p>
+
+    <p><a href="{escape(start_page_href)}">Open the compiled text (page 1)</a></p>
+
+    <h2>Bundle contents</h2>
+    <ul>
+      <li><code>runs/&lt;run_id&gt;/html</code>: compiled HTML pages</li>
+      <li><code>runs/&lt;run_id&gt;/audio</code>: copied audio files used by the HTML</li>
+      <li><code>images</code>: generated image assets (if any)</li>
+      {''.join(media_notes)}
+    </ul>
+  </body>
+</html>
+"""
+        zf.writestr((bundle_root / "README.html").as_posix(), readme_html)
 
     spool.seek(0)
 

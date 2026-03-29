@@ -315,6 +315,31 @@ class CompileStatusViewTests(TestCase):
             expected_prefix + "images/pages/page_001/image.png",
             names,
         )
+        self.assertIn(expected_prefix + "README.html", names)
+
+
+
+    def test_download_project_bundle_readme_notes_missing_audio_and_images(self):
+        shutil.rmtree(self.project.artifact_dir(), ignore_errors=True)
+        run_dir = self.project.artifact_dir() / "runs" / "run_bundle_no_media"
+        html_dir = run_dir / "html"
+        html_dir.mkdir(parents=True, exist_ok=True)
+        (html_dir / "page_1.html").write_text("<html>p1</html>", encoding="utf-8")
+
+        self.project.compiled_path = "runs/run_bundle_no_media/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+
+        resp = self.client.get(reverse("project-download-bundle", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+
+        payload = b"".join(resp.streaming_content)
+        with zipfile.ZipFile(io.BytesIO(payload), "r") as zf:
+            readme = zf.read("test-project-bundle/README.html").decode("utf-8")
+
+        self.assertIn("Created (UTC):", readme)
+        self.assertIn("runs/run_bundle_no_media/html/page_1.html", readme)
+        self.assertIn("Audio files: none included in this bundle.", readme)
+        self.assertIn("Image files: none included in this bundle.", readme)
 
     def test_download_project_bundle_requires_existing_run(self):
         shutil.rmtree(self.project.artifact_dir(), ignore_errors=True)
