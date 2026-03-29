@@ -3,6 +3,7 @@ from __future__ import annotations
 import shutil
 import unittest
 from pathlib import Path
+from urllib.parse import quote
 
 from pipeline.audio import SimpleTTSEngine
 from pipeline.compile_html import CompileHTMLSpec, compile_html
