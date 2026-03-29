@@ -117,10 +117,15 @@ class _AudioResolver:
                 if key in self._cache:
                     return self._cache[key]
 
-                digest = hashlib.sha1(str(key).encode("utf-8")).hexdigest()
+                stem = src.stem or "audio"
                 suffix = src.suffix or ".wav"
-                dest = self.audio_dir / f"{digest}{suffix}"
-                shutil.copy2(key, dest)
+                candidate = self.audio_dir / f"{stem}{suffix}"
+                dest = candidate
+                if dest.exists() and dest.resolve() != key:
+                    digest = hashlib.sha1(str(key).encode("utf-8")).hexdigest()[:10]
+                    dest = self.audio_dir / f"{stem}_{digest}{suffix}"
+                if not dest.exists():
+                    shutil.copy2(key, dest)
                 rel = os.path.relpath(dest, self.html_root)
                 rel_posix = Path(rel).as_posix()
                 self._cache[key] = rel_posix

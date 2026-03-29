@@ -80,8 +80,10 @@ class CompileHTMLTests(unittest.TestCase):
         self.assertIn('data-lemma="hello"', content)
         self.assertIn('<ruby><rb>Hello</rb><rt>ni hao</rt></ruby>', content)
         self.assertIn('Bonjour le monde', content)
+        self.assertIn('data-audio="../audio/token.wav"', content)
 
         run_root = Path(result["run_root"])
+        self.assertTrue((run_root / "audio" / "token.wav").exists())
         html_root = run_root / "html"
         concordance_paths = list(html_root.glob("concordance_*.html"))
         self.assertTrue(concordance_paths, "concordance pages should be emitted")
