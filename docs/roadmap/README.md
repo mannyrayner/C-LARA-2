@@ -75,7 +75,13 @@ Planned follow-ups:
 
 ### 5. Write spec for image creation functionality, and implement it
 
+Status: **Planned / in design.** The detailed plan now lives in `docs/roadmap/image-generation-pipeline.md`.
+
 In this step, we will add the basic image creation functionality. This will be conceptually based on the corresponding functionality in C-LARA, but rationalised and reimplemented.
-- We have the same three-stage pipeline:
-	- Create style. A brief description is expanded by the AI into a detaile style description and an example image.
-	- Create element names. Generate
+
+Planned high-level stages:
+- Create style. A brief description is expanded by the AI into a detailed style description and sample image, with user review/editing before approval.
+- Create recurring elements. The AI proposes cross-page visual elements that need consistency; the user curates the list, and the system generates editable descriptions plus reference images for each element.
+- Create page images. The system determines which elements matter on each page and generates one image per page using the page text, project context, approved style, and relevant element references.
+
+See `docs/roadmap/image-generation-pipeline.md` for the fuller workflow, persistence strategy, UI checkpoints, background-task expectations, and open design questions.
