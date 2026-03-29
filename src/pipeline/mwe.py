@@ -105,7 +105,39 @@ async def annotate_mwes(
         ),
         client=ai_client,
     )
-    return _normalize_mwes(annotated)
+    restored = _restore_token_surfaces(spec.text, annotated)
+    return _normalize_mwes(restored)
+
+
+def _restore_token_surfaces(original: dict[str, Any], annotated: dict[str, Any]) -> dict[str, Any]:
+    original_pages = original.get("pages") if isinstance(original, dict) else None
+    annotated_pages = annotated.get("pages") if isinstance(annotated, dict) else None
+    if not isinstance(original_pages, list) or not isinstance(annotated_pages, list):
+        return annotated
+
+    for p_idx, page in enumerate(annotated_pages):
+        if p_idx >= len(original_pages):
+            break
+        orig_page = original_pages[p_idx] if isinstance(original_pages[p_idx], dict) else {}
+        orig_segments = orig_page.get("segments") if isinstance(orig_page, dict) else []
+        segments = page.get("segments") if isinstance(page, dict) else []
+        if not isinstance(orig_segments, list) or not isinstance(segments, list):
+            continue
+        for s_idx, segment in enumerate(segments):
+            if s_idx >= len(orig_segments):
+                break
+            orig_segment = orig_segments[s_idx] if isinstance(orig_segments[s_idx], dict) else {}
+            orig_tokens = orig_segment.get("tokens") if isinstance(orig_segment, dict) else []
+            tokens = segment.get("tokens") if isinstance(segment, dict) else []
+            if not isinstance(orig_tokens, list) or not isinstance(tokens, list):
+                continue
+            for t_idx, token in enumerate(tokens):
+                if t_idx >= len(orig_tokens):
+                    break
+                if not isinstance(token, dict) or not isinstance(orig_tokens[t_idx], dict):
+                    continue
+                token["surface"] = str(orig_tokens[t_idx].get("surface", ""))
+    return annotated
 
 
 def _normalize_mwes(text: dict[str, Any]) -> dict[str, Any]:
@@ -125,6 +157,22 @@ def _normalize_mwes(text: dict[str, Any]) -> dict[str, Any]:
             if not isinstance(mwes, list):
                 continue
 
+            id_to_surfaces: dict[str, list[str]] = {}
+            tokens = segment.get("tokens")
+            if isinstance(tokens, list):
+                for token in tokens:
+                    if not isinstance(token, dict):
+                        continue
+                    tok_surface = str(token.get("surface") or "")
+                    tok_ann = token.get("annotations")
+                    if not isinstance(tok_ann, dict):
+                        continue
+                    mwe_id = tok_ann.get("mwe_id")
+                    if not mwe_id:
+                        continue
+                    if tok_surface.strip():
+                        id_to_surfaces.setdefault(str(mwe_id), []).append(tok_surface)
+
             valid_ids: set[str] = set()
             filtered: list[dict[str, Any]] = []
             for entry in mwes:
@@ -134,7 +182,7 @@ def _normalize_mwes(text: dict[str, Any]) -> dict[str, Any]:
                 tokens = entry.get("tokens")
                 if not mwe_id or not isinstance(tokens, list):
                     continue
-                token_surfaces = [str(tok) for tok in tokens if str(tok).strip()]
+                token_surfaces = id_to_surfaces.get(mwe_id) or [str(tok) for tok in tokens if str(tok).strip()]
                 if len(token_surfaces) < 2:
                     continue
                 normalized_entry = dict(entry)

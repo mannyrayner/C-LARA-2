@@ -183,6 +183,44 @@ class MWEUnitTests(unittest.IsolatedAsyncioTestCase):
         segment = result["pages"][0]["segments"][0]
         self.assertEqual(original_surface, segment["surface"])
 
+    async def test_detect_mwes_restores_token_surfaces_and_mwe_tokens(self) -> None:
+        sample_text = {
+            "l2": "hi",
+            "surface": "अंकल और आंटी",
+            "pages": [
+                {
+                    "surface": "अंकल और आंटी",
+                    "segments": [
+                        {
+                            "surface": "अंकल और आंटी",
+                            "tokens": [
+                                {"surface": "अंकल"},
+                                {"surface": " "},
+                                {"surface": "और", "annotations": {"mwe_id": "m1"}},
+                                {"surface": " "},
+                                {"surface": "आंटी", "annotations": {"mwe_id": "m1"}},
+                            ],
+                            "annotations": {},
+                        }
+                    ],
+                }
+            ],
+        }
+        fake_response = {
+            "tokens": [
+                {"surface": "\u0005\u00012"},
+                {"surface": " "},
+                {"surface": "\u00029\u00028", "annotations": {"mwe_id": "m1"}},
+                {"surface": " "},
+                {"surface": "\u0003", "annotations": {"mwe_id": "m1"}},
+            ],
+            "annotations": {"mwes": [{"id": "m1", "tokens": ["\u00029\u00028", "\u0003"], "label": "fixed expression"}]},
+        }
+        result = await mwe.annotate_mwes(MWESpec(text=sample_text, language="hi"), client=FakeAIClient(fake_response))
+        segment = result["pages"][0]["segments"][0]
+        self.assertEqual(["अंकल", " ", "और", " ", "आंटी"], [t["surface"] for t in segment["tokens"]])
+        self.assertEqual(["और", "आंटी"], segment["annotations"]["mwes"][0]["tokens"])
+
 
 class MWEIntegrationTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
