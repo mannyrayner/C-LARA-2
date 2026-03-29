@@ -24,6 +24,8 @@ from django.views.generic import CreateView, DetailView, ListView
 from django_q.tasks import async_task
 from django.utils.text import slugify
 import mimetypes
+import tempfile
+import zipfile
 from urllib.parse import unquote
 
 from core.config import DEFAULT_MODEL, OpenAIConfig
@@ -1297,6 +1299,22 @@ def _resolve_run_dir(project: Project) -> Path | None:
     return None
 
 
+
+def _write_tree_to_zip(zip_file: zipfile.ZipFile, source_dir: Path, zip_root: Path) -> int:
+    """Write all files under ``source_dir`` into ``zip_file`` under ``zip_root``."""
+
+    if not source_dir.exists():
+        return 0
+
+    count = 0
+    for file_path in source_dir.rglob("*"):
+        if not file_path.is_file():
+            continue
+        rel = file_path.relative_to(source_dir)
+        zip_file.write(file_path, arcname=(zip_root / rel).as_posix())
+        count += 1
+    return count
+
 def _iter_runs(project: Project) -> list[Path]:
     runs_root = (project.artifact_dir() / "runs").resolve()
     if not runs_root.exists():
@@ -1808,6 +1826,61 @@ def serve_compiled(request: HttpRequest, pk: int, path: str) -> HttpResponse:
         data = fp.read()
     return HttpResponse(data, content_type=content_type or "application/octet-stream")
 
+
+
+@login_required
+def download_project_bundle(request: HttpRequest, pk: int) -> HttpResponse:
+    """Download a self-contained zip with compiled HTML, audio and images."""
+
+    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    run_dir = _resolve_run_dir(project)
+    if run_dir is None or not run_dir.exists():
+        messages.error(request, "No compiled run is available yet. Please compile the project first.")
+        return redirect("project-detail", pk=project.pk)
+
+    artifact_root = project.artifact_dir().resolve()
+    images_dir = artifact_root / "images"
+
+    has_html = (run_dir / "html").exists()
+    has_images = images_dir.exists()
+    if not has_html and not has_images:
+        messages.error(
+            request,
+            "Could not find compiled HTML or generated images to include in a bundle.",
+        )
+        return redirect("project-detail", pk=project.pk)
+
+    safe_title = slugify(project.title) or f"project-{project.pk}"
+    bundle_root = Path(f"{safe_title}-bundle")
+
+    spool = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024, mode="w+b")
+    with zipfile.ZipFile(spool, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        _write_tree_to_zip(
+            zf,
+            run_dir,
+            bundle_root / "runs" / run_dir.name,
+        )
+        _write_tree_to_zip(zf, images_dir, bundle_root / "images")
+
+        readme_lines = [
+            "C-LARA project bundle",
+            f"Project: {project.title}",
+            f"Project ID: {project.pk}",
+            f"Run: {run_dir.name}",
+            "",
+            "Contents:",
+            "- runs/<run_id>/html: compiled HTML pages",
+            "- runs/<run_id>/audio: copied audio files used by the HTML",
+            "- images: generated image assets",
+            "",
+            "To preview, open runs/<run_id>/html/index.html in a browser.",
+        ]
+        zf.writestr((bundle_root / "README.txt").as_posix(), "\n".join(readme_lines))
+
+    spool.seek(0)
+
+    filename = f"{safe_title}-{run_dir.name}.zip"
+    return FileResponse(spool, as_attachment=True, filename=filename, content_type="application/zip")
 
 @login_required
 def delete_project(request: HttpRequest, pk: int) -> HttpResponse:

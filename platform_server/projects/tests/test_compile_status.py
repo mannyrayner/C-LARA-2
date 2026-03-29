@@ -1,6 +1,9 @@
 import os
+import shutil
+import io
 import json
 import uuid
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 from django.contrib.auth import get_user_model
@@ -273,6 +276,51 @@ class CompileStatusViewTests(TestCase):
         self.assertContains(resp, "Image elements ✅")
         self.assertContains(resp, "Page images ✅")
 
+
+
+    def test_download_project_bundle_includes_run_and_images(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_bundle"
+        html_dir = run_dir / "html"
+        audio_dir = run_dir / "audio"
+        html_dir.mkdir(parents=True, exist_ok=True)
+        audio_dir.mkdir(parents=True, exist_ok=True)
+        (html_dir / "index.html").write_text("<html>ok</html>", encoding="utf-8")
+        (audio_dir / "a.wav").write_bytes(b"wav")
+
+        images_dir = self.project.artifact_dir() / "images" / "pages" / "page_001"
+        images_dir.mkdir(parents=True, exist_ok=True)
+        (images_dir / "image.png").write_bytes(b"png")
+
+        self.project.compiled_path = "runs/run_bundle/html/index.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+
+        resp = self.client.get(reverse("project-download-bundle", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp["Content-Type"], "application/zip")
+
+        payload = b"".join(resp.streaming_content)
+        with zipfile.ZipFile(io.BytesIO(payload), "r") as zf:
+            names = set(zf.namelist())
+
+        expected_prefix = "test-project-bundle/"
+        self.assertIn(
+            expected_prefix + "runs/run_bundle/html/index.html",
+            names,
+        )
+        self.assertIn(
+            expected_prefix + "runs/run_bundle/audio/a.wav",
+            names,
+        )
+        self.assertIn(
+            expected_prefix + "images/pages/page_001/image.png",
+            names,
+        )
+
+    def test_download_project_bundle_requires_existing_run(self):
+        shutil.rmtree(self.project.artifact_dir(), ignore_errors=True)
+        resp = self.client.get(reverse("project-download-bundle", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, reverse("project-detail", args=[self.project.pk]))
     @patch("projects.views._build_ai_client")
     @patch("projects.views.run_full_pipeline")
     def test_compile_task_warns_when_placement_enabled_but_no_images_for_compile_input(

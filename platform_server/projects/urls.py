@@ -25,6 +25,7 @@ urlpatterns = [
         views.compile_status,
         name="project-compile-status",
     ),
+    path("projects/<int:pk>/download-bundle/", views.download_project_bundle, name="project-download-bundle"),
     path("projects/<int:pk>/publish/", views.toggle_publish, name="project-publish"),
     path("projects/<int:pk>/delete/", views.delete_project, name="project-delete"),
     path("projects/<int:pk>/compiled/<path:path>", views.serve_compiled, name="project-compiled"),
