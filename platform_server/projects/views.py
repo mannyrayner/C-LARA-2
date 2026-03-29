@@ -215,6 +215,13 @@ def _make_task_callback(
     return _post, str(report_id)
 
 
+
+def _audio_repository_dir(language: str) -> Path:
+    """Return global audio repository path for a language."""
+
+    lang = slugify((language or "und").replace("_", "-")).replace("-", "_") or "und"
+    return Path(settings.MEDIA_ROOT).resolve() / "audio_repository" / lang
+
 def _image_style_dir(project: Project) -> Path:
     return project.artifact_dir() / "images" / "style"
 
@@ -1440,7 +1447,7 @@ def _run_compile_task(
         language=project.language,
         target_language=project.target_language,
         output_dir=output_dir,
-        audio_cache_dir=output_dir / "audio",
+        audio_cache_dir=_audio_repository_dir(project.language),
         require_real_tts=True,
         persist_intermediates=True,
         progress_callback=progress_cb,

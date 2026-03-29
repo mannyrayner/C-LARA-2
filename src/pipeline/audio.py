@@ -13,6 +13,7 @@ import math
 import struct
 import wave
 import os
+import re
 import contextlib
 from dataclasses import dataclass
 from pathlib import Path
@@ -198,6 +199,29 @@ class AudioSpec:
     require_real_tts: bool = False
 
 
+
+def _slug_for_audio(text: str, *, max_len: int = 48) -> str:
+    """Return a filesystem-safe slug for audio filenames."""
+
+    cleaned = re.sub(r"\s+", "_", text.strip().lower())
+    cleaned = re.sub(r"[^\w\-]+", "_", cleaned, flags=re.UNICODE)
+    cleaned = re.sub(r"_+", "_", cleaned).strip("_")
+    if not cleaned:
+        return "item"
+    return cleaned[:max_len]
+
+
+def _audio_filename(*, level: str, language: str, voice: str | None, text: str, pos: str | None = None) -> str:
+    """Build a readable filename with a short hash suffix for uniqueness."""
+
+    language_slug = _slug_for_audio(language, max_len=12)
+    base = _slug_for_audio(text)
+    if pos:
+        base = f"{base}_{_slug_for_audio(pos, max_len=16)}"
+    digest_key = f"{level}:{language}:{voice or 'default'}:{pos or ''}:{text.strip().lower()}"
+    digest = hashlib.sha1(digest_key.encode("utf-8")).hexdigest()[:10]
+    return f"{language_slug}_{base}_{digest}.wav"
+
 def _audio_annotation(path: Path, *, surface: str, spec: AudioSpec, level: str, engine: TTSEngine) -> dict[str, Any]:
     """Return a JSON-friendly audio annotation with metadata for auditing."""
 
@@ -273,17 +297,17 @@ async def annotate_audio(
 
     cache: dict[str, Path] = {}
 
-    async def ensure_audio(text: str, level: str) -> Path | None:
+    async def ensure_audio(text: str, level: str, *, pos: str | None = None) -> Path | None:
         nonlocal engine
         normalized = text.strip()
         if not normalized:
             return None
 
-        key = f"{level}:{spec.language}:{spec.voice or 'default'}:{normalized.lower()}"
+        key = f"{level}:{spec.language}:{spec.voice or 'default'}:{pos or ''}:{normalized.lower()}"
         if key in cache:
             return cache[key]
 
-        filename = hashlib.sha1(key.encode("utf-8")).hexdigest() + ".wav"
+        filename = _audio_filename(level=level, language=spec.language, voice=spec.voice, text=normalized, pos=pos)
         output_path = cache_dir / filename
 
         if not output_path.exists():
@@ -335,27 +359,27 @@ async def annotate_audio(
             mwe_surface_text: dict[str, str] = {
                 mwe_id: " ".join(parts) for mwe_id, parts in mwe_surfaces.items()
             }
-            token_audio_requests: set[tuple[str, str]] = set()
+            token_audio_requests: set[tuple[str, str, str | None]] = set()
             for token in segment.get("tokens", []):
                 surface = token.get("surface", "")
                 annotations = token.get("annotations", {}) if isinstance(token, dict) else {}
                 if not _is_word_token(surface):
                     continue
                 audio_surface = mwe_surface_text.get((annotations or {}).get("mwe_id"), surface)
-                token_audio_requests.add((audio_surface, "token"))
+                token_audio_requests.add((audio_surface, "token", annotations.get("pos")))
 
             segment_surface = segment.get("surface", "")
             if str(segment_surface).strip():
-                token_audio_requests.add((segment_surface, "segment"))
+                token_audio_requests.add((segment_surface, "segment", None))
 
             request_list = list(token_audio_requests)
             resolved_paths = await asyncio.gather(
-                *(ensure_audio(req_surface, req_level) for req_surface, req_level in request_list)
+                *(ensure_audio(req_surface, req_level, pos=req_pos) for req_surface, req_level, req_pos in request_list)
             )
-            resolved_audio: dict[tuple[str, str], Path] = {}
-            for (req_surface, req_level), maybe_path in zip(request_list, resolved_paths):
+            resolved_audio: dict[tuple[str, str, str | None], Path] = {}
+            for (req_surface, req_level, req_pos), maybe_path in zip(request_list, resolved_paths):
                 if maybe_path:
-                    resolved_audio[(req_surface, req_level)] = maybe_path
+                    resolved_audio[(req_surface, req_level, req_pos)] = maybe_path
 
             tokens_out: list[dict[str, Any]] = []
             for token in segment.get("tokens", []):
@@ -364,7 +388,7 @@ async def annotate_audio(
 
                 if _is_word_token(surface):
                     audio_surface = mwe_surface_text.get(annotations.get("mwe_id"), surface)
-                    audio_path = resolved_audio.get((audio_surface, "token"))
+                    audio_path = resolved_audio.get((audio_surface, "token", annotations.get("pos")))
                     if audio_path:
                         annotations["audio"] = _audio_annotation(
                             audio_path, surface=audio_surface, spec=spec, level="token", engine=engine
@@ -376,7 +400,7 @@ async def annotate_audio(
                     tokens_out.append(dict(token))
 
             seg_annotations = dict(segment.get("annotations", {}))
-            seg_audio = resolved_audio.get((segment.get("surface", ""), "segment"))
+            seg_audio = resolved_audio.get((segment.get("surface", ""), "segment", None))
             if seg_audio:
                 seg_annotations["audio"] = _audio_annotation(
                     seg_audio,

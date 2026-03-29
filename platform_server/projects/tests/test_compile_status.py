@@ -423,6 +423,7 @@ class CompileStatusViewTests(TestCase):
 
         async def _fake_pipeline(spec, client):
             captured["page_images"] = spec.page_images
+            captured["audio_cache_dir"] = spec.audio_cache_dir
             return {"html": {"run_root": str(run_root), "index_path": str(page_file)}}
 
         mock_run_full_pipeline.side_effect = _fake_pipeline
@@ -448,6 +449,7 @@ class CompileStatusViewTests(TestCase):
         self.assertIn(1, captured["page_images"])
         self.assertEqual("top", captured["page_images"][1]["placement"])
         self.assertTrue(captured["page_images"][1]["path"].startswith("../../../images/pages/"))
+        self.assertIn("audio_repository/en", str(captured["audio_cache_dir"]).replace("\\", "/"))
 
     @patch("projects.views._build_ai_client")
     @patch("projects.views.run_full_pipeline")
