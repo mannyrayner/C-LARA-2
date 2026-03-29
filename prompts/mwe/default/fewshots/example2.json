@@ -1,0 +1,32 @@
+{
+  "input": "{\n  \"surface\": \"He looked up the answer and wrote it down.\",\n  \"tokens\": [\n    {\"surface\": \"He\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"looked\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"up\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"the\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"answer\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"and\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"wrote\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"it\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"down\", \"annotations\": {}},\n    {\"surface\": \".\"}\n  ],\n  \"annotations\": {}\n}",
+  "output": {
+    "surface": "He looked up the answer and wrote it down.",
+    "tokens": [
+      {"surface": "He"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "looked", "annotations": {"mwe_id": "m1"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "up", "annotations": {"mwe_id": "m1"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "the"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "answer"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "and"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "wrote", "annotations": {"mwe_id": "m2"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "it", "annotations": {"mwe_id": "m2"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "down", "annotations": {"mwe_id": "m2"}},
+      {"surface": "."}
+    ],
+    "annotations": {
+      "mwes": [
+        {"id": "m1", "tokens": ["looked", "up"], "label": "phrasal verb"},
+        {"id": "m2", "tokens": ["wrote", "it", "down"], "label": "phrasal verb"}
+      ]
+    }
+  }
+}
