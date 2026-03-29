@@ -190,7 +190,7 @@ class SegmentationTests(unittest.IsolatedAsyncioTestCase):
         result = await segmentation_phase_2(SegmentationPhase2Spec(text=text, language="hi"), client=client)
         segment = result["pages"][0]["segments"][0]
         self.assertEqual("नमस्ते दुनिया", segment["surface"])
-        self.assertEqual("नमस्तेदुनिया", "".join(t["surface"] for t in segment["tokens"]).replace(" ", ""))
+        self.assertEqual(["नमस्ते", " ", "दुनिया"], [t["surface"] for t in segment["tokens"]])
 
     async def test_segmentation_phase_2_accepts_string_tokens_from_model(self) -> None:
         text = {

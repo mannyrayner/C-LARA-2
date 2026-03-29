@@ -5,6 +5,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 import re
+import unicodedata
 from typing import Any, Iterable
 
 from core.ai_api import OpenAIClient
@@ -110,8 +111,42 @@ def _normalize_response(response: dict[str, Any], *, text: str, language: str) -
 
 
 def _fallback_tokenize_surface(surface: str) -> list[dict[str, Any]]:
-    parts = re.findall(r"\s+|[^\w\s]|[\w]+", surface, flags=re.UNICODE)
-    return [{"surface": p} for p in parts if p != ""]
+    tokens: list[str] = []
+    current = ""
+    current_type = ""
+
+    def _kind(ch: str) -> str:
+        if ch.isspace():
+            return "ws"
+        cat = unicodedata.category(ch)
+        if cat.startswith("P"):
+            return "punct"
+        return "word"
+
+    for ch in surface:
+        kind = _kind(ch)
+        if kind == "punct":
+            if current:
+                tokens.append(current)
+                current = ""
+                current_type = ""
+            tokens.append(ch)
+            continue
+        if not current:
+            current = ch
+            current_type = kind
+            continue
+        if kind == current_type:
+            current += ch
+        else:
+            tokens.append(current)
+            current = ch
+            current_type = kind
+
+    if current:
+        tokens.append(current)
+
+    return [{"surface": p} for p in tokens if p != ""]
 
 
 def _normalize_phase2_output(text_obj: dict[str, Any]) -> dict[str, Any]:
