@@ -1,0 +1,4 @@
+{
+  "input": "<start>Sample sentence in {text_language}.</end>",
+  "output": "<start>Sample translation in {glossing_language}.</end>"
+}
