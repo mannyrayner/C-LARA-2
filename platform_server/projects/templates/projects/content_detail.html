@@ -1,0 +1,18 @@
+{% extends "projects/base.html" %}
+{% block title %}Content: {{ project.title }}{% endblock %}
+{% block content %}
+<h1>{{ project.title }}</h1>
+<p><strong>Owner:</strong> {{ project.owner.username }}</p>
+<p><strong>Languages:</strong> {{ project.language }} → {{ project.target_language }}</p>
+<p><strong>Published:</strong> {% if project.published_at %}{{ project.published_at|date:"Y-m-d H:i" }}{% else %}Unknown{% endif %}</p>
+<p><strong>Accesses:</strong> {{ project.access_count }}</p>
+<p><strong>Description:</strong> {{ project.description|default:"(none)" }}</p>
+
+{% if page_one_path %}
+  <p>
+    <a class="btn" href="{% url 'project-compiled' pk=project.pk path=page_one_path %}" target="_blank">Open compiled text (page 1)</a>
+  </p>
+{% else %}
+  <p>No compiled HTML is currently available for this published project.</p>
+{% endif %}
+{% endblock %}
