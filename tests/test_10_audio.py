@@ -391,6 +391,42 @@ class AudioTests(unittest.TestCase):
         self.assertGreater(_wav_duration(out), 0.05)
 
 
+
+    def test_audio_filenames_include_surface_and_pos_for_debugging(self) -> None:
+        engine = FakeTTSEngine()
+        text = {
+            "l2": "en",
+            "surface": "impact",
+            "pages": [
+                {
+                    "surface": "impact",
+                    "segments": [
+                        {
+                            "surface": "impact",
+                            "tokens": [
+                                {"surface": "impact", "annotations": {"pos": "noun"}},
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+
+        annotated = asyncio.run(audio.annotate_audio(audio.AudioSpec(text=text, cache_dir=self.cache_dir), tts_engine=engine))
+        token_audio = annotated["pages"][0]["segments"][0]["tokens"][0]["annotations"]["audio"]["path"]
+        self.assertIn("impact_noun", Path(token_audio).name)
+
+    def test_concat_wave_files_skips_incompatible_inputs(self) -> None:
+        a = self.cache_dir / "a.wav"
+        b = self.cache_dir / "b.wav"
+        out = self.cache_dir / "out.wav"
+        _write_tone(a, sample_rate=22050)
+        _write_tone(b, sample_rate=24000)
+        audio._concat_wave_files([a, b], out)  # type: ignore[attr-defined]
+        self.assertTrue(out.exists())
+        self.assertGreater(_wav_duration(out), 0.05)
+
+
 class AudioIntegrationTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.tmpdir = tempfile.TemporaryDirectory()

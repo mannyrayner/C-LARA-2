@@ -1278,9 +1278,14 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
             context["romanization_method_options"] = [("auto", "Not used for this language")]
         context["selected_segmentation_method"] = project.segmentation_method or "auto"
         context["selected_romanization_method"] = project.romanization_method or "auto"
-        context["collaborators"] = project.collaborators.select_related("user").all()
+        collaborators = project.collaborators.select_related("user").all()
+        context["collaborators"] = collaborators
         context["collaborator_role_choices"] = ProjectCollaborator.ROLE_CHOICES
         context["current_user_role"] = _project_role_for_user(project, self.request.user)
+        assigned_ids = {c.user_id for c in collaborators}
+        assigned_ids.add(project.owner_id)
+        User = get_user_model()
+        context["available_collaborator_users"] = User.objects.exclude(id__in=assigned_ids).order_by("username")[:500]
         return context
 
 

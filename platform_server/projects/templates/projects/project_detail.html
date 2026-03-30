@@ -95,15 +95,23 @@
   {% endif %}
   <form method="post" action="{% url 'project-collaborators' object.pk %}">{% csrf_token %}
     <p>
-      <label for="collab_username">Username:</label>
-      <input id="collab_username" name="username" type="text" />
+      <label for="collab_username">User:</label>
+      <select id="collab_username" name="username">
+        {% if available_collaborator_users %}
+          {% for u in available_collaborator_users %}
+            <option value="{{ u.username }}">{{ u.username }}</option>
+          {% endfor %}
+        {% else %}
+          <option value="" selected>(No available users)</option>
+        {% endif %}
+      </select>
       <label for="collab_role" class="ml-2">Role:</label>
       <select id="collab_role" name="role">
         {% for role_value, role_label in collaborator_role_choices %}
           <option value="{{ role_value }}">{{ role_label }}</option>
         {% endfor %}
       </select>
-      <button class="btn secondary" type="submit">Save collaborator</button>
+      <button class="btn secondary" type="submit" {% if not available_collaborator_users %}disabled{% endif %}>Save collaborator</button>
     </p>
   </form>
 {% endif %}

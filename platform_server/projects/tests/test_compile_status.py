@@ -423,6 +423,18 @@ class CompileStatusViewTests(TestCase):
         resp_publish = viewer_client.get(reverse("project-publish", args=[self.project.pk]))
         self.assertEqual(resp_publish.status_code, 404)
 
+
+
+    def test_project_detail_shows_collaborator_user_menu_for_owner(self):
+        User = get_user_model()
+        candidate = User.objects.create_user(username="candidate_user", password="pw")
+
+        resp = self.client.get(reverse("project-detail", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'name="username"')
+        self.assertContains(resp, "candidate_user")
+        self.assertNotContains(resp, 'value="tester"')
+
     def test_project_owner_can_assign_collaborator_role(self):
         User = get_user_model()
         collaborator = User.objects.create_user(username="annotator", password="pw")
