@@ -103,3 +103,15 @@ Planned direction:
 - Human-in-the-loop revision workflow for AI-produced annotations.
 - Image generation still enabled via pivot-language translations.
 - Full compatibility with publish/content/community workflows for these projects.
+
+
+### 8. Deployment and migration roadmap
+
+Status: **New roadmap document added.** See `docs/roadmap/deployment-and-migration.md`.
+
+Priorities:
+- Urgent: Adelaide dual-run deployment with existing C-LARA (target before end of April 2026).
+- Next: structured migration tooling from C-LARA data to C-LARA-2 data model.
+- Next: host portability and backup export/import workflows (likely AWS Sydney target).
+
+Key constraint: the urgent Adelaide deployment approach must remain upward-compatible with migration and relocation work.
