@@ -1,0 +1,16 @@
+{
+  "description": {
+    "title": "A Quiet Morning",
+    "genre": "short prose",
+    "length": "80-100 words",
+    "level": "A2",
+    "style": "warm, descriptive"
+  },
+  "output": {
+    "l2": "{text_language}",
+    "title": "A Quiet Morning",
+    "surface": "Sample prose text in {text_language} for language learners.",
+    "annotations": {},
+    "pages": []
+  }
+}
