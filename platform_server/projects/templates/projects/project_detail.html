@@ -81,6 +81,32 @@
   <p>No pipeline run yet. Use "Run selected pipeline stages" to generate outputs.</p>
 {% endif %}
 
+
+{% if current_user_role == "owner" %}
+  <h3>Collaborators</h3>
+  {% if collaborators %}
+    <ul>
+      {% for c in collaborators %}
+        <li>{{ c.user.username }} — {{ c.role|upper }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No collaborators yet.</p>
+  {% endif %}
+  <form method="post" action="{% url 'project-collaborators' object.pk %}">{% csrf_token %}
+    <p>
+      <label for="collab_username">Username:</label>
+      <input id="collab_username" name="username" type="text" />
+      <label for="collab_role" class="ml-2">Role:</label>
+      <select id="collab_role" name="role">
+        {% for role_value, role_label in collaborator_role_choices %}
+          <option value="{{ role_value }}">{{ role_label }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn secondary" type="submit">Save collaborator</button>
+    </p>
+  </form>
+{% endif %}
 {% if progress %}
   <h3>Progress</h3>
   <ul>

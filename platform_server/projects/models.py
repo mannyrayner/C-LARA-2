@@ -205,3 +205,56 @@ class ProjectImagePage(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - display helper
         return f"{self.project.title}: page {self.page_number}"
+
+
+class ProjectCollaborator(models.Model):
+    ROLE_OWNER = "owner"
+    ROLE_ANNOTATOR = "annotator"
+    ROLE_VIEWER = "viewer"
+    ROLE_CHOICES = [
+        (ROLE_OWNER, "OWNER"),
+        (ROLE_ANNOTATOR, "ANNOTATOR"),
+        (ROLE_VIEWER, "VIEWER"),
+    ]
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="collaborators")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="project_collaborations")
+    role = models.CharField(max_length=16, choices=ROLE_CHOICES, default=ROLE_VIEWER)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("project", "user")
+        ordering = ["project_id", "user_id"]
+
+
+class ContentComment(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="content_comments")
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="content_comments")
+    body = models.TextField()
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_hidden = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class ContentRating(models.Model):
+    VALUE_UP = "up"
+    VALUE_DOWN = "down"
+    VALUE_CHOICES = [
+        (VALUE_UP, "Thumbs up"),
+        (VALUE_DOWN, "Thumbs down"),
+    ]
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="content_ratings")
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="content_ratings")
+    value = models.CharField(max_length=8, choices=VALUE_CHOICES)
+    comment = models.TextField(blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("project", "author")
+        ordering = ["-updated_at"]

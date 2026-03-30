@@ -15,11 +15,12 @@ from zoneinfo import ZoneInfo
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.db.models import F
+from django.db.models import F, Q
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import CreateView, DetailView, ListView
 from django_q.tasks import async_task
@@ -50,6 +51,9 @@ from .models import (
     ProjectImagePage,
     ProjectImageStyle,
     TaskUpdate,
+    ProjectCollaborator,
+    ContentComment,
+    ContentRating,
 )
 
 logger = logging.getLogger(__name__)
@@ -74,6 +78,35 @@ CONTENT_DATE_FILTERS = {
     "last_3_months": timedelta(days=90),
     "last_year": timedelta(days=365),
 }
+
+
+
+ROLE_RANK = {
+    ProjectCollaborator.ROLE_VIEWER: 1,
+    ProjectCollaborator.ROLE_ANNOTATOR: 2,
+    ProjectCollaborator.ROLE_OWNER: 3,
+}
+
+
+def _project_role_for_user(project: Project, user) -> str | None:
+    if project.owner_id == user.id:
+        return ProjectCollaborator.ROLE_OWNER
+    collab = project.collaborators.filter(user=user).values_list("role", flat=True).first()
+    return str(collab) if collab else None
+
+
+def _get_project_for_user(*, pk: int, user, min_role: str = ProjectCollaborator.ROLE_VIEWER) -> Project:
+    project = get_object_or_404(Project, pk=pk)
+    role = _project_role_for_user(project, user)
+    if role is None:
+        raise Http404()
+    if ROLE_RANK.get(role, 0) < ROLE_RANK.get(min_role, 0):
+        raise Http404()
+    return project
+
+
+def _projects_for_user(user):
+    return Project.objects.filter(Q(owner=user) | Q(collaborators__user=user)).distinct()
 
 
 def _resolve_segmentation_method(language: str, configured: str | None) -> str:
@@ -802,7 +835,7 @@ def profile(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
-    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
     style_obj, _ = ProjectImageStyle.objects.get_or_create(
         project=project,
         defaults={"ai_model": project.ai_model or DEFAULT_MODEL},
@@ -909,7 +942,7 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
 
 @login_required
 def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
-    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
     try:
         style = project.image_style
     except ProjectImageStyle.DoesNotExist:
@@ -1042,7 +1075,7 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
 
 @login_required
 def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
-    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
     try:
         style = project.image_style
     except ProjectImageStyle.DoesNotExist:
@@ -1110,7 +1143,7 @@ class ProjectListView(LoginRequiredMixin, ListView):
     template_name = "projects/project_list.html"
 
     def get_queryset(self):  # type: ignore[override]
-        return Project.objects.filter(owner=self.request.user)
+        return _projects_for_user(self.request.user)
 
 
 class ProjectDetailView(LoginRequiredMixin, DetailView):
@@ -1118,7 +1151,7 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
     template_name = "projects/project_detail.html"
 
     def get_queryset(self):  # type: ignore[override]
-        return Project.objects.filter(owner=self.request.user)
+        return _projects_for_user(self.request.user)
     def get_context_data(self, **kwargs):  # type: ignore[override]
         context = super().get_context_data(**kwargs)
         project: Project = context["object"]
@@ -1245,6 +1278,9 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
             context["romanization_method_options"] = [("auto", "Not used for this language")]
         context["selected_segmentation_method"] = project.segmentation_method or "auto"
         context["selected_romanization_method"] = project.romanization_method or "auto"
+        context["collaborators"] = project.collaborators.select_related("user").all()
+        context["collaborator_role_choices"] = ProjectCollaborator.ROLE_CHOICES
+        context["current_user_role"] = _project_role_for_user(project, self.request.user)
         return context
 
 
@@ -1568,7 +1604,7 @@ def _run_compile_task(
 
 @login_required
 def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
-    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
     project_root = project.artifact_dir().resolve()
     _persist_project_source(project)
     output_dir = _prepare_output_dir(project).resolve()
@@ -1719,7 +1755,7 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
 
 @login_required
 def set_page_image_placement(request: HttpRequest, pk: int) -> HttpResponse:
-    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
     placement = (request.POST.get("page_image_placement") or "none").strip().lower()
     if placement not in PAGE_IMAGE_PLACEMENT_CHOICES:
         messages.error(request, "Unknown page image placement option.")
@@ -1733,7 +1769,7 @@ def set_page_image_placement(request: HttpRequest, pk: int) -> HttpResponse:
 
 @login_required
 def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
-    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
     segmentation_method = (request.POST.get("segmentation_method") or project.segmentation_method or "auto").strip().lower()
     romanization_method = (request.POST.get("romanization_method") or project.romanization_method or "auto").strip().lower()
     if segmentation_method not in SEGMENTATION_METHOD_CHOICES:
@@ -1757,7 +1793,7 @@ def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
 
 @login_required
 def compile_monitor(request: HttpRequest, pk: int, report_id: str) -> HttpResponse:
-    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
     return render(
         request,
         "projects/compile_monitor.html",
@@ -1767,7 +1803,7 @@ def compile_monitor(request: HttpRequest, pk: int, report_id: str) -> HttpRespon
 
 @login_required
 def compile_status(request: HttpRequest, pk: int, report_id: str) -> JsonResponse:
-    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
     updates = (
         TaskUpdate.objects.filter(report_id=report_id, user=request.user)
         .order_by("timestamp")
@@ -1871,8 +1907,37 @@ def content_detail(request: HttpRequest, pk: int) -> HttpResponse:
 
     project = get_object_or_404(Project, pk=pk, is_published=True)
     Project.objects.filter(pk=project.pk).update(access_count=F("access_count") + 1)
+
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip().lower()
+        if action == "comment":
+            body = (request.POST.get("body") or "").strip()
+            if body:
+                ContentComment.objects.create(project=project, author=request.user, body=body)
+                messages.success(request, "Comment posted.")
+            else:
+                messages.error(request, "Comment cannot be empty.")
+        elif action == "rate":
+            value = (request.POST.get("value") or "").strip().lower()
+            note = (request.POST.get("comment") or "").strip()
+            if value in {ContentRating.VALUE_UP, ContentRating.VALUE_DOWN}:
+                ContentRating.objects.update_or_create(
+                    project=project,
+                    author=request.user,
+                    defaults={"value": value, "comment": note},
+                )
+                messages.success(request, "Rating saved.")
+            else:
+                messages.error(request, "Unknown rating value.")
+        return redirect("content-detail", pk=project.pk)
+
     project.refresh_from_db(fields=["access_count"])
     page_one = _compiled_page_one_path(project)
+    comments = project.content_comments.filter(is_hidden=False).select_related("author")[:100]
+    ratings = project.content_ratings.all()
+    up_count = ratings.filter(value=ContentRating.VALUE_UP).count()
+    down_count = ratings.filter(value=ContentRating.VALUE_DOWN).count()
+    user_rating = ratings.filter(author=request.user).first()
 
     return render(
         request,
@@ -1880,12 +1945,16 @@ def content_detail(request: HttpRequest, pk: int) -> HttpResponse:
         {
             "project": project,
             "page_one_path": page_one,
+            "comments": comments,
+            "up_count": up_count,
+            "down_count": down_count,
+            "user_rating": user_rating,
         },
     )
 
 @login_required
 def toggle_publish(request: HttpRequest, pk: int) -> HttpResponse:
-    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
     project.is_published = not project.is_published
     if project.is_published and project.published_at is None:
         project.published_at = django_timezone.now()
@@ -1931,7 +2000,7 @@ def serve_compiled(request: HttpRequest, pk: int, path: str) -> HttpResponse:
 def download_project_bundle(request: HttpRequest, pk: int) -> HttpResponse:
     """Download a self-contained zip with compiled HTML, audio and images."""
 
-    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
     run_dir = _resolve_run_dir(project)
     if run_dir is None or not run_dir.exists():
         messages.error(request, "No compiled run is available yet. Please compile the project first.")
@@ -2012,9 +2081,44 @@ def download_project_bundle(request: HttpRequest, pk: int) -> HttpResponse:
     filename = f"{safe_title}-{run_dir.name}.zip"
     return FileResponse(spool, as_attachment=True, filename=filename, content_type="application/zip")
 
+
+@login_required
+def set_project_collaborator(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
+    if request.method != "POST":
+        return redirect("project-detail", pk=project.pk)
+
+    username = (request.POST.get("username") or "").strip()
+    role = (request.POST.get("role") or "").strip().lower()
+    if role not in {r for r, _ in ProjectCollaborator.ROLE_CHOICES}:
+        messages.error(request, "Unknown collaborator role.")
+        return redirect("project-detail", pk=project.pk)
+    if not username:
+        messages.error(request, "Please provide a username.")
+        return redirect("project-detail", pk=project.pk)
+
+    User = get_user_model()
+    try:
+        user = User.objects.get(username=username)
+    except User.DoesNotExist:
+        messages.error(request, f"User '{username}' was not found.")
+        return redirect("project-detail", pk=project.pk)
+
+    if user.id == project.owner_id:
+        messages.info(request, "Project owner already has OWNER permissions.")
+        return redirect("project-detail", pk=project.pk)
+
+    ProjectCollaborator.objects.update_or_create(
+        project=project,
+        user=user,
+        defaults={"role": role},
+    )
+    messages.success(request, f"Saved collaborator '{username}' with role {role.upper()}.")
+    return redirect("project-detail", pk=project.pk)
+
 @login_required
 def delete_project(request: HttpRequest, pk: int) -> HttpResponse:
-    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
     if request.method != "POST":
         messages.error(request, "Project deletion must be confirmed.")
         return redirect("project-detail", pk=project.pk)

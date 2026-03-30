@@ -19,6 +19,9 @@ from projects.models import (
     ProjectImageElement,
     ProjectImagePage,
     ProjectImageStyle,
+    ProjectCollaborator,
+    ContentComment,
+    ContentRating,
     TaskUpdate,
 )
 
@@ -385,6 +388,57 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual(self.project.access_count, 1)
         self.assertContains(resp, "Accesses:")
         self.assertContains(resp, reverse("project-compiled", args=[self.project.pk, "runs/run_demo/html/page_1.html"]))
+
+
+    def test_content_detail_supports_comments_and_ratings(self):
+        self.project.is_published = True
+        self.project.published_at = timezone.now()
+        self.project.save(update_fields=["is_published", "published_at", "updated_at"])
+
+        url = reverse("content-detail", args=[self.project.pk])
+        post_comment = self.client.post(url, {"action": "comment", "body": "Great story"})
+        self.assertEqual(post_comment.status_code, 302)
+        self.assertTrue(ContentComment.objects.filter(project=self.project, body="Great story").exists())
+
+        post_rating = self.client.post(url, {"action": "rate", "value": "up", "comment": "Nice"})
+        self.assertEqual(post_rating.status_code, 302)
+        rating = ContentRating.objects.get(project=self.project, author=self.user)
+        self.assertEqual(rating.value, "up")
+
+        page = self.client.get(url)
+        self.assertContains(page, "Great story")
+        self.assertContains(page, "👍")
+
+    def test_project_collaborator_viewer_can_open_detail_but_not_publish(self):
+        User = get_user_model()
+        collaborator = User.objects.create_user(username="viewer", password="pw")
+        ProjectCollaborator.objects.create(project=self.project, user=collaborator, role=ProjectCollaborator.ROLE_VIEWER)
+
+        viewer_client = Client()
+        viewer_client.login(username="viewer", password="pw")
+
+        resp_detail = viewer_client.get(reverse("project-detail", args=[self.project.pk]))
+        self.assertEqual(resp_detail.status_code, 200)
+
+        resp_publish = viewer_client.get(reverse("project-publish", args=[self.project.pk]))
+        self.assertEqual(resp_publish.status_code, 404)
+
+    def test_project_owner_can_assign_collaborator_role(self):
+        User = get_user_model()
+        collaborator = User.objects.create_user(username="annotator", password="pw")
+
+        resp = self.client.post(
+            reverse("project-collaborators", args=[self.project.pk]),
+            {"username": "annotator", "role": "annotator"},
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(
+            ProjectCollaborator.objects.filter(
+                project=self.project,
+                user=collaborator,
+                role=ProjectCollaborator.ROLE_ANNOTATOR,
+            ).exists()
+        )
     @patch("projects.views._build_ai_client")
     @patch("projects.views.run_full_pipeline")
     def test_compile_task_warns_when_placement_enabled_but_no_images_for_compile_input(
