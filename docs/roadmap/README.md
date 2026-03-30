@@ -50,38 +50,56 @@ See `docs/roadmap/segmentation-pipeline.md` for the specification that guided th
 
 ### 3. Full linguistic annotation pipeline
 
-Status: **Done.** The detailed plan lives in `docs/roadmap/linguistic-pipeline.md`.
+Status: **Done (with expanded romanization support).** The detailed plan lives in `docs/roadmap/linguistic-pipeline.md`.
 
-- Implemented: translation (EN→FR), MWE detection, lemma tagging, glossing, Chinese pinyin annotation (via `pypinyin`), audio annotation with caching (OpenAI TTS by default, Google TTS opt-in, or offline stub), HTML compilation to two-pane output with concordance + audio hooks, and a flexible `run_full_pipeline` helper that can start and end at any stage.
-- Remaining follow-ups: richer audio ingestion (human-recorded, phonetic-text paths) and UI polish once compiled HTML stabilises.
-
-Each operation has prompts under `prompts/<operation>/<lang>/` plus unit and integration tests (OpenAI-gated where applicable).
+- Implemented: translation, MWE detection, lemma tagging, glossing, audio annotation, HTML compilation, and a flexible `run_full_pipeline` helper.
+- Romanization stage: the former “pinyin stage” is now a general **romanization** stage.
+  - `pypinyin` for Mandarin,
+  - `indic_transliteration` for Hindi,
+  - AI-backed romanization fallback for other languages.
+- This lets us support language-specific local romanizers when available, while still keeping a generic AI path.
 
 ### 4. Write spec for basic Django platform functionality, and implement it
 
-Status: **In progress (initial implementation landed).** See `docs/roadmap/django-platform.md` for the platform plan and current implementation notes. A minimal Django project now exists under `platform_server/` with:
+Status: **In progress (strong initial implementation landed).** See `docs/roadmap/django-platform.md` for the platform plan and implementation notes.
 
-- Account flows: register, login, logout (Django auth).
-- Project CRUD (create/read) with source text, language targets, and owner scoping.
-- Compile to HTML by invoking the pipeline (segmentation → annotations → audio → HTML) and persisting artifacts per-user/project.
-- Publish toggle plus gated viewing of compiled output (owner/private vs. published).
-- Artifact serving for compiled HTML/audio stored under `media/projects/`.
-
-Planned follow-ups:
-- Minimal, guided UI for non-technical users (AI-led create/edit flows, defaults first, unobtrusive overrides) alongside the full workspace.
-- Search/browse for published content, ratings/comments, and richer project editing flows.
-- Cost tracking and API-key association (see notes in `docs/roadmap/django-platform.md`).
-- Unit and end-to-end tests across the platform views and permissions.
+Implemented highlights now include:
+- Account flows and project workspace.
+- Compile orchestration with monitor/status polling and persisted per-run artifacts.
+- Publish toggle and browseable **Content** tab with published-content search and per-content metadata pages.
+- Bundle export (self-contained ZIP with HTML/audio/images + README).
 
 ### 5. Write spec for image creation functionality, and implement it
 
-Status: **Planned / in design.** The detailed plan now lives in `docs/roadmap/image-generation-pipeline.md`.
+Status: **Initial implementation done.** See `docs/roadmap/image-generation-pipeline.md`.
 
-In this step, we will add the basic image creation functionality. This will be conceptually based on the corresponding functionality in C-LARA, but rationalised and reimplemented.
+Implemented highlights:
+- Style → recurring elements → page-image workflow.
+- Project-scoped artifact persistence for prompts, metadata, and images.
+- Integration with compile/HTML pipeline so generated page images can appear in final HTML.
+- ZIP export support for sharing compiled outputs and image assets.
 
-Planned high-level stages:
-- Create style. A brief description is expanded by the AI into a detailed style description and sample image, with user review/editing before approval.
-- Create recurring elements. The AI proposes cross-page visual elements that need consistency; the user curates the list, and the system generates editable descriptions plus reference images for each element.
-- Create page images. The system determines which elements matter on each page and generates one image per page using the page text, project context, approved style, and relevant element references.
+### 6. Social-network functionality roadmap
 
-See `docs/roadmap/image-generation-pipeline.md` for the fuller workflow, persistence strategy, UI checkpoints, background-task expectations, and open design questions.
+Status: **New roadmap document added.** See `docs/roadmap/social-network-functionality.md`.
+
+Initial delivered functionality:
+- Publishing a project.
+- Browsing published content via the Content tab.
+- Per-content metadata page (including access counter and link to compiled page 1).
+
+Planned next functionality:
+- Comments and ratings.
+- Multi-user project roles (`OWNER`, `ANNOTATOR`, `VIEWER`).
+- Language-centered communities with organizer/member roles.
+- Community-driven image rating/regeneration loops.
+
+### 7. Support for languages where AI annotation is weak or unavailable
+
+Status: **New roadmap document added.** See `docs/roadmap/low-resource-languages.md`.
+
+Planned direction:
+- Manual editing UI for all annotation layers, with strict structural validation.
+- Human-in-the-loop revision workflow for AI-produced annotations.
+- Image generation still enabled via pivot-language translations.
+- Full compatibility with publish/content/community workflows for these projects.

@@ -9,6 +9,20 @@ This document expands Step 5 of the roadmap into a concrete plan for adding cohe
 
 The design is inspired by the original C-LARA image flow, but reorganised into clearer pipeline stages and persistent artifacts.
 
+
+## Implementation snapshot (March 2026)
+
+The first complete implementation of the image-generation branch is now in place and integrated with the main annotation pipeline.
+
+Implemented now:
+- Project-level style creation and approval (including sample style image).
+- Recurring-element discovery/curation with reference image generation.
+- Per-page image prompt generation and per-page image generation.
+- Integration with compile pipeline so page images can be injected into generated HTML (top/bottom placement options).
+- Self-contained ZIP export of generated outputs (compiled HTML + audio + images), suitable for external review.
+
+This document remains the roadmap/spec for next iterations (quality, UX, moderation/community loops, cost controls, and richer regeneration workflows).
+
 ## 1. High-level goals
 
 We want a new optional branch of the pipeline that can run after text creation/segmentation and before or after linguistic annotation, depending on workflow. The image branch should:
