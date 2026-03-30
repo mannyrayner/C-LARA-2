@@ -19,6 +19,8 @@ Welcome! This folder collects specifications, architecture notes, and delivery r
 - **Social-network functionality (new roadmap)**: [roadmap/social-network-functionality.md](roadmap/social-network-functionality.md)
 - **Low-resource/AI-weak language support (new roadmap)**: [roadmap/low-resource-languages.md](roadmap/low-resource-languages.md)
 - **Deployment and migration roadmap (new)**: [roadmap/deployment-and-migration.md](roadmap/deployment-and-migration.md)
+- **Exercises roadmap (new)**: [roadmap/exercises.md](roadmap/exercises.md)
+- **Alignment roadmap (new)**: [roadmap/alignment.md](roadmap/alignment.md)
 
 ## Current implementation snapshot
 

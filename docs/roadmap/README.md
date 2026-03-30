@@ -115,3 +115,21 @@ Priorities:
 - Next: host portability and backup export/import workflows (likely AWS Sydney target).
 
 Key constraint: the urgent Adelaide deployment approach must remain upward-compatible with migration and relocation work.
+
+### 9. Exercise generation roadmap
+
+Status: **New roadmap document added.** See `docs/roadmap/exercises.md`.
+
+Focus:
+- Cloze and flashcard generation from existing project artifacts.
+- Distractor generation/validation and review workflows.
+- Learner-facing exercise player and future spaced repetition support.
+
+### 10. Alignment roadmap (phonetic + text/audio/translation)
+
+Status: **New roadmap document added.** See `docs/roadmap/alignment.md`.
+
+Focus:
+- 2a: Phonetic decomposition and phonetic compile mode with cache/provenance.
+- 2b: Triple alignment pipeline (text + high-quality audio + translation), with LARA-style baseline and AI-assisted improvements.
+- Metrics-first delivery with review queues for uncertain segments.
