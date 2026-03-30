@@ -14,31 +14,11 @@ for low-resource languages, with manual-first annotation and strong structural v
 
 ---
 
-## 1) Manual annotation editor (core requirement)
+## 1) Manual annotation editor
 
-### Scope
-Provide an editing interface for all annotation stages, including:
-- segmentation (pages/segments/tokens),
-- translation,
-- MWE,
-- lemma,
-- gloss,
-- romanization,
-- audio metadata.
+This is now tracked as a cross-language roadmap item: **`docs/roadmap/manual-annotation-editor.md`**.
 
-### Requirements
-- JSON editing should not be raw-only by default; provide structured form/table views.
-- Enforce formal consistency constraints before save:
-  - token arrays remain aligned with segment surface,
-  - MWE ids remain valid and refer to existing tokens,
-  - required annotation fields have correct type,
-  - no broken references in audio/image paths.
-- Show clear validation errors with pinpointed location (page/segment/token).
-
-### Recommended architecture
-- Validation layer shared between API and UI.
-- Stage-specific schema validators + cross-stage consistency checks.
-- Save as new version/checkpoint with audit metadata.
+For low-resource languages, manual editing remains the central enabling workflow and should be treated as a prerequisite for broad adoption.
 
 ---
 

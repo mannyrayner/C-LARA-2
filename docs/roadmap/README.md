@@ -133,3 +133,13 @@ Focus:
 - 2a: Phonetic decomposition and phonetic compile mode with cache/provenance.
 - 2b: Triple alignment pipeline (text + high-quality audio + translation), with LARA-style baseline and AI-assisted improvements.
 - Metrics-first delivery with review queues for uncertain segments.
+
+
+### 11. Manual annotation editor roadmap
+
+Status: **New roadmap document added.** See `docs/roadmap/manual-annotation-editor.md`.
+
+Focus:
+- Cross-language manual editing for all annotation layers.
+- Shared validators, versioned saves, and diff/review tools.
+- Human-in-the-loop quality control for both low-resource and high-resource languages.

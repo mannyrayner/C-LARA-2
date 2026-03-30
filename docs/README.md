@@ -21,6 +21,7 @@ Welcome! This folder collects specifications, architecture notes, and delivery r
 - **Deployment and migration roadmap (new)**: [roadmap/deployment-and-migration.md](roadmap/deployment-and-migration.md)
 - **Exercises roadmap (new)**: [roadmap/exercises.md](roadmap/exercises.md)
 - **Alignment roadmap (new)**: [roadmap/alignment.md](roadmap/alignment.md)
+- **Manual annotation editor roadmap (new)**: [roadmap/manual-annotation-editor.md](roadmap/manual-annotation-editor.md)
 
 ## Current implementation snapshot
 
@@ -36,3 +37,13 @@ Implemented in the codebase today includes:
 - CI (`.github/workflows/ci.yml`) runs automated checks and uploads artifacts.
 
 _This file is the landing page for the docs folder and should stay aligned with `docs/roadmap/README.md`._
+
+
+## Likely near-term priorities (for team discussion)
+
+These priorities are a **working proposal** based on current team requests and still need discussion/confirmation with the wider C-LARA group.
+
+1. **Deployment on server** so members can start hands-on experimentation quickly.
+2. **Manual editing of content/annotations** via the manual annotation editor roadmap.
+3. **Low-resource language support** so Indigenous-language and AI-weak language workflows are practical.
+4. **Community review of AI-generated images** to improve quality and consistency over time.
