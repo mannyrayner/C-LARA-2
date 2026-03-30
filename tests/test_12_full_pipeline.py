@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import json
 import unittest
 from pathlib import Path
 
@@ -22,6 +23,32 @@ class FakeAIClient(OpenAIClient):
             raise RuntimeError("No fake responses left for chat_json")
         response = self.responses.pop(0)
         return response
+
+    async def chat_text(self, prompt: str, **_: object) -> str:
+        await asyncio.sleep(0)
+        if not self.responses:
+            raise RuntimeError("No fake responses left for chat_text")
+        response = self.responses.pop(0)
+        if isinstance(response, dict):
+            # Phase 1 and translation can call chat_text; returning JSON keeps
+            # both parsing paths deterministic for fake-client tests.
+            return json.dumps(response)
+        return str(response)
+
+
+class RecordingAIClient(FakeAIClient):
+    def __init__(self, responses: list[dict[str, object]]):
+        super().__init__(responses)
+        self.chat_json_op_ids: list[str | None] = []
+        self.chat_text_op_ids: list[str | None] = []
+
+    async def chat_json(self, prompt: str, **kwargs: object) -> dict:
+        self.chat_json_op_ids.append(kwargs.get("op_id") if isinstance(kwargs, dict) else None)
+        return await super().chat_json(prompt, **kwargs)
+
+    async def chat_text(self, prompt: str, **kwargs: object) -> str:
+        self.chat_text_op_ids.append(kwargs.get("op_id") if isinstance(kwargs, dict) else None)
+        return await super().chat_text(prompt, **kwargs)
 
 
 class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
@@ -87,6 +114,34 @@ class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
 
         self.fake_client = FakeAIClient([seg1, seg2, translation, mwe, lemma, gloss])
 
+    async def test_pipeline_passes_stage_specific_op_ids_to_ai_calls(self) -> None:
+        seg1 = {
+            "l2": "en",
+            "surface": self.sample_text,
+            "pages": [{"surface": self.sample_text, "segments": [{"surface": self.sample_text, "annotations": {}}]}],
+            "annotations": {},
+        }
+        seg2 = {"annotations": {}, "tokens": [{"surface": "A"}, {"surface": "cat"}, {"surface": "."}]}
+        client = RecordingAIClient([seg1, seg2, {"annotations": {"translation": "Un chat."}}])
+
+        spec = FullPipelineSpec(
+            text=self.sample_text,
+            language="en",
+            target_language="fr",
+            output_dir=self.fake_html_root / "opid",
+            audio_cache_dir=self.fake_audio_root / "opid",
+            start_stage="segmentation_phase_1",
+            end_stage="translation",
+            op_id="compile-xyz",
+            telemetry=None,
+        )
+
+        await run_full_pipeline(spec, client=client)
+
+        self.assertIn("compile-xyz:segmentation_phase_1", client.chat_text_op_ids)
+        self.assertIn("compile-xyz:segmentation_phase_2-p0-s0", client.chat_json_op_ids)
+        self.assertIn("compile-xyz:translation-p0-s0", client.chat_text_op_ids)
+
     def _skip_if_no_key_or_incompatible(self) -> None:
         if not os.getenv("OPENAI_API_KEY"):
             self.skipTest("OPENAI_API_KEY not set; skipping integration test")
@@ -126,6 +181,31 @@ class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
             inputs={"text": self.sample_text},
             output={"html_path": str(html_path), "lemmas": lemmas},
             status="pass",
+        )
+
+    async def test_non_chinese_pipeline_persists_pinyin_stage_artifact(self) -> None:
+        out_root = self.fake_html_root / "persist_pinyin"
+        out_root.mkdir(parents=True, exist_ok=True)
+        spec = FullPipelineSpec(
+            text=self.sample_text,
+            language="en",
+            target_language="fr",
+            output_dir=out_root,
+            audio_cache_dir=self.fake_audio_root / "persist_pinyin",
+            telemetry=None,
+            persist_intermediates=True,
+            start_stage="segmentation_phase_1",
+            end_stage="pinyin",
+        )
+
+        await run_full_pipeline(spec, client=self.fake_client)
+        pinyin_path = out_root / "stages" / "pinyin.json"
+        gloss_path = out_root / "stages" / "gloss.json"
+        self.assertTrue(pinyin_path.exists(), "pinyin stage artifact should always be persisted")
+        self.assertTrue(gloss_path.exists())
+        self.assertEqual(
+            json.loads(gloss_path.read_text(encoding="utf-8")),
+            json.loads(pinyin_path.read_text(encoding="utf-8")),
         )
 
     async def test_full_pipeline_with_fake_client_multi_page_mwe(self) -> None:
