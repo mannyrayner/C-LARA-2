@@ -19,11 +19,13 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.db.models import F
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import CreateView, DetailView, ListView
 from django_q.tasks import async_task
 from django.utils.html import escape
 from django.utils.text import slugify
+from django.utils import timezone as django_timezone
 import mimetypes
 import tempfile
 import zipfile
@@ -65,6 +67,13 @@ IMAGE_MODEL_CHOICES = [
 PAGE_IMAGE_PLACEMENT_CHOICES = ["none", "top", "bottom"]
 SEGMENTATION_METHOD_CHOICES = ["auto", "jieba", "ai"]
 ROMANIZATION_METHOD_CHOICES = ["auto", "pypinyin", "indic_transliteration", "ai"]
+CONTENT_DATE_FILTERS = {
+    "any": None,
+    "last_3_days": timedelta(days=3),
+    "last_month": timedelta(days=30),
+    "last_3_months": timedelta(days=90),
+    "last_year": timedelta(days=365),
+}
 
 
 def _resolve_segmentation_method(language: str, configured: str | None) -> str:
@@ -1794,11 +1803,93 @@ def compile_status(request: HttpRequest, pk: int, report_id: str) -> JsonRespons
     return JsonResponse({"messages": messages_out, "status": status, "project": project.pk})
 
 
+
+def _compiled_page_one_path(project: Project) -> str | None:
+    """Return compiled page_1 path when available."""
+
+    compiled = (project.compiled_path or "").strip()
+    if not compiled:
+        return None
+    compiled_path = Path(compiled)
+    page_one = compiled_path.with_name("page_1.html")
+    base = Path(project.artifact_root or project.artifact_dir()).resolve()
+    if (base / page_one).exists():
+        return page_one.as_posix()
+    return compiled_path.as_posix()
+
+
+@login_required
+def content_list(request: HttpRequest) -> HttpResponse:
+    """Search/browse published projects."""
+
+    title = (request.GET.get("title") or "").strip()
+    text_language = (request.GET.get("text_language") or "").strip()
+    annotation_language = (request.GET.get("annotation_language") or "").strip()
+    date_posted = (request.GET.get("date_posted") or "any").strip()
+    if date_posted not in CONTENT_DATE_FILTERS:
+        date_posted = "any"
+
+    qs = Project.objects.filter(is_published=True)
+    if title:
+        qs = qs.filter(title__icontains=title)
+    if text_language:
+        qs = qs.filter(language__iexact=text_language)
+    if annotation_language:
+        qs = qs.filter(target_language__iexact=annotation_language)
+
+    window = CONTENT_DATE_FILTERS.get(date_posted)
+    if window is not None:
+        cutoff = django_timezone.now() - window
+        qs = qs.filter(published_at__gte=cutoff)
+
+    projects = list(qs.order_by("-published_at", "-updated_at")[:200])
+    return render(
+        request,
+        "projects/content_list.html",
+        {
+            "projects": projects,
+            "filters": {
+                "title": title,
+                "text_language": text_language,
+                "annotation_language": annotation_language,
+                "date_posted": date_posted,
+            },
+            "date_options": [
+                ("any", "Any time"),
+                ("last_3_days", "Last 3 days"),
+                ("last_month", "Last month"),
+                ("last_3_months", "Last 3 months"),
+                ("last_year", "Last year"),
+            ],
+        },
+    )
+
+
+@login_required
+def content_detail(request: HttpRequest, pk: int) -> HttpResponse:
+    """Show metadata for a published project and link to page 1."""
+
+    project = get_object_or_404(Project, pk=pk, is_published=True)
+    Project.objects.filter(pk=project.pk).update(access_count=F("access_count") + 1)
+    project.refresh_from_db(fields=["access_count"])
+    page_one = _compiled_page_one_path(project)
+
+    return render(
+        request,
+        "projects/content_detail.html",
+        {
+            "project": project,
+            "page_one_path": page_one,
+        },
+    )
+
 @login_required
 def toggle_publish(request: HttpRequest, pk: int) -> HttpResponse:
     project = get_object_or_404(Project, pk=pk, owner=request.user)
     project.is_published = not project.is_published
-    project.save(update_fields=["is_published"])
+    if project.is_published and project.published_at is None:
+        project.published_at = django_timezone.now()
+    project.save(update_fields=["is_published", "published_at", "updated_at"])
     state = "published" if project.is_published else "unpublished"
     messages.info(request, f"Project {state}.")
     return redirect("project-detail", pk=project.pk)

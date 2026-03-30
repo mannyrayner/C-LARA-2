@@ -10,6 +10,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from projects import views
 from projects.models import (
@@ -346,6 +347,44 @@ class CompileStatusViewTests(TestCase):
         resp = self.client.get(reverse("project-download-bundle", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(resp.url, reverse("project-detail", args=[self.project.pk]))
+
+
+    def test_content_list_filters_published_projects(self):
+        self.project.is_published = True
+        self.project.published_at = timezone.now()
+        self.project.compiled_path = "runs/run_1/html/page_1.html"
+        self.project.save(update_fields=["is_published", "published_at", "compiled_path", "updated_at"])
+
+        other = Project.objects.create(
+            owner=self.user,
+            title="Unpublished",
+            source_text="x",
+            language="fr",
+            target_language="en",
+        )
+
+        resp = self.client.get(reverse("content-list"), {"title": "Test", "text_language": "en"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Test Project")
+        self.assertNotContains(resp, "Unpublished")
+
+    def test_content_detail_increments_access_count_and_links_page_one(self):
+        self.project.is_published = True
+        self.project.published_at = timezone.now()
+        self.project.compiled_path = "runs/run_demo/html/page_2.html"
+        run_dir = self.project.artifact_dir() / "runs" / "run_demo" / "html"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "page_1.html").write_text("<html>p1</html>", encoding="utf-8")
+        self.project.save(update_fields=["is_published", "published_at", "compiled_path", "updated_at"])
+
+        url = reverse("content-detail", args=[self.project.pk])
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.access_count, 1)
+        self.assertContains(resp, "Accesses:")
+        self.assertContains(resp, reverse("project-compiled", args=[self.project.pk, "runs/run_demo/html/page_1.html"]))
     @patch("projects.views._build_ai_client")
     @patch("projects.views.run_full_pipeline")
     def test_compile_task_warns_when_placement_enabled_but_no_images_for_compile_input(
