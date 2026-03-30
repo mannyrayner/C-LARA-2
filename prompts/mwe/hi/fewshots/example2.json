@@ -1,0 +1,22 @@
+{
+  "input": "{\n  \"tokens\": [\n    {\"surface\": \"मुझे\"},\n    {\"surface\": \" \"},\n    {\"surface\": \"उस\"},\n    {\"surface\": \" \"},\n    {\"surface\": \"पर\"},\n    {\"surface\": \" \"},\n    {\"surface\": \"भरोसा\"},\n    {\"surface\": \" \"},\n    {\"surface\": \"है\"},\n    {\"surface\": \"।\"}\n  ]\n}",
+  "output": {
+    "tokens": [
+      {"surface": "मुझे"},
+      {"surface": " "},
+      {"surface": "उस"},
+      {"surface": " "},
+      {"surface": "पर", "annotations": {"mwe_id": "m1"}},
+      {"surface": " "},
+      {"surface": "भरोसा", "annotations": {"mwe_id": "m1"}},
+      {"surface": " "},
+      {"surface": "है"},
+      {"surface": "।"}
+    ],
+    "annotations": {
+      "mwes": [
+        {"id": "m1", "tokens": ["पर", "भरोसा"], "label": "fixed expression"}
+      ]
+    }
+  }
+}
