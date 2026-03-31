@@ -2083,6 +2083,8 @@ Create exactly 3 plausible distractors for a cloze exercise.
 Theme: {theme}
 Segment: {segment_text}
 Correct answer: {target_word}
+Each distractor must make the sentence clearly incorrect in context.
+Do not produce near-synonyms that could still fit.
 
 Return JSON with:
 - distractors: array of 3 strings
@@ -2119,7 +2121,7 @@ def generate_cloze_exercises(request: HttpRequest, pk: int) -> HttpResponse:
         return redirect("project-detail", pk=project.pk)
 
     if request.method == "POST":
-        form = ClozeExerciseSetForm(request.POST)
+        form = ClozeExerciseSetForm(request.POST, ai_model_choices=AI_MODEL_CHOICES)
         if form.is_valid():
             theme = form.cleaned_data["theme"]
             item_count = form.cleaned_data["item_count"]
@@ -2170,7 +2172,10 @@ def generate_cloze_exercises(request: HttpRequest, pk: int) -> HttpResponse:
             messages.success(request, f"Generated {len(items)} cloze items.")
             return redirect("exercise-set-detail", set_id=ex_set.id)
     else:
-        form = ClozeExerciseSetForm(initial={"ai_model": project.ai_model or DEFAULT_MODEL})
+        form = ClozeExerciseSetForm(
+            initial={"ai_model": project.ai_model or DEFAULT_MODEL},
+            ai_model_choices=AI_MODEL_CHOICES,
+        )
 
     return render(
         request,
@@ -2189,6 +2194,45 @@ def exercise_set_detail(request: HttpRequest, set_id: int) -> HttpResponse:
         request,
         "projects/exercise_set_detail.html",
         {"exercise_set": ex_set, "items": ex_set.items.all(), "project": project},
+    )
+
+
+@login_required
+def exercise_set_play(request: HttpRequest, set_id: int) -> HttpResponse:
+    ex_set = get_object_or_404(ExerciseSet.objects.select_related("project"), pk=set_id)
+    project = ex_set.project
+    if project.owner != request.user and not ex_set.is_published:
+        raise Http404()
+    items = list(ex_set.items.all())
+    if not items:
+        return render(request, "projects/exercise_set_play.html", {"exercise_set": ex_set, "project": project, "done": True})
+
+    idx = int(request.GET.get("i", "0") or "0")
+    idx = max(0, min(idx, len(items) - 1))
+    current = items[idx]
+    feedback = None
+    selected = None
+    if request.method == "POST":
+        selected = (request.POST.get("choice") or "").strip()
+        feedback = {
+            "selected": selected,
+            "correct": current.answer,
+            "is_correct": selected == current.answer,
+        }
+    next_index = idx + 1 if idx + 1 < len(items) else None
+    return render(
+        request,
+        "projects/exercise_set_play.html",
+        {
+            "exercise_set": ex_set,
+            "project": project,
+            "item": current,
+            "index": idx,
+            "total": len(items),
+            "feedback": feedback,
+            "next_index": next_index,
+            "done": False,
+        },
     )
 
 

@@ -476,6 +476,43 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual(ex_set.exercise_type, ExerciseSet.TYPE_CLOZE)
         self.assertEqual(ex_set.items.count(), 2)
 
+    def test_generate_cloze_form_uses_model_dropdown(self):
+        resp = self.client.get(reverse("project-generate-cloze", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, '<select name="ai_model"', html=False)
+        self.assertContains(resp, "gpt-4o")
+
+    def test_published_content_links_to_playable_exercises(self):
+        ex_set = ExerciseSet.objects.create(
+            project=self.project,
+            created_by=self.user,
+            exercise_type=ExerciseSet.TYPE_CLOZE,
+            theme=ExerciseSet.THEME_VOCAB,
+            title="Set 1",
+            status=ExerciseSet.STATUS_PUBLISHED,
+            is_published=True,
+        )
+        ex_set.items.create(
+            order_index=0,
+            page_number=1,
+            segment_index=0,
+            segment_text="The cat sleeps",
+            prompt="The ____ sleeps",
+            answer="cat",
+            options=["cat", "dog", "fish", "bird"],
+            rationale={},
+        )
+        self.project.is_published = True
+        self.project.save(update_fields=["is_published", "updated_at"])
+
+        resp = self.client.get(reverse("content-detail", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, reverse("exercise-set-play", args=[ex_set.id]))
+
+        play = self.client.post(reverse("exercise-set-play", args=[ex_set.id]), {"choice": "dog"})
+        self.assertEqual(play.status_code, 200)
+        self.assertContains(play, "Incorrect")
+
 
     def test_content_list_filters_published_projects(self):
         self.project.is_published = True
