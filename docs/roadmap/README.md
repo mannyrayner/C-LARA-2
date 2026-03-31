@@ -153,3 +153,13 @@ Focus:
 - Optional conversational UX layer on top of existing C-LARA-2 workflows.
 - Transparent action planning with explicit assumptions, alternatives, and backtracking.
 - Strong onboarding support for nontechnical users, with “show me the underlying UI” handoff.
+
+
+### 13. AI-judges evaluation roadmap
+
+Status: **New roadmap document added.** See `docs/roadmap/ai-judges-evaluation.md`.
+
+Focus:
+- Panel-based AI scoring for outputs from key processing stages.
+- Aggregation, disagreement analysis, and optional foreman summarization.
+- Human-audit calibration to keep AI evaluation useful and methodologically grounded.
