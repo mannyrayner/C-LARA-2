@@ -1,0 +1,17 @@
+{
+  "input": "Short sample text in the original language. Keep it unchanged.",
+  "output": {
+    "l2": "xx",
+    "surface": "Short sample text in the original language. Keep it unchanged.",
+    "pages": [
+      {
+        "surface": "Short sample text in the original language. Keep it unchanged.",
+        "segments": [
+          {"surface": "Short sample text in the original language."},
+          {"surface": " Keep it unchanged."}
+        ]
+      }
+    ],
+    "annotations": {}
+  }
+}
