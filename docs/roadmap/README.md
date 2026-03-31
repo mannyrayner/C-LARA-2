@@ -167,9 +167,14 @@ Focus:
 
 ### 14. Source project export/import bundles roadmap
 
-Status: **New roadmap document added.** See `docs/roadmap/source-project-bundles.md`.
+Status: **Initial implementation delivered.** See `docs/roadmap/source-project-bundles.md`.
 
 Focus:
 - ZIP export/import of editable source artifacts from latest (or selected) runs.
 - Full preservation of text annotations and image-pipeline metadata/provenance.
 - Server↔laptop portability for debugging, handover, backup, and migration workflows.
+
+Implemented now:
+- Export source bundle from project detail.
+- Import source bundle from project list, always creating a new project.
+- Imported project title is kept when unique for that user, otherwise suffixed (`(2)`, `(3)`, ...).

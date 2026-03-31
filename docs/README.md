@@ -24,7 +24,7 @@ Welcome! This folder collects specifications, architecture notes, and delivery r
 - **Manual annotation editor roadmap (new)**: [roadmap/manual-annotation-editor.md](roadmap/manual-annotation-editor.md)
 - **Dialogue top-level roadmap (new)**: [roadmap/dialogue-top-level.md](roadmap/dialogue-top-level.md)
 - **AI-judges evaluation roadmap (new)**: [roadmap/ai-judges-evaluation.md](roadmap/ai-judges-evaluation.md)
-- **Source project export/import roadmap (new)**: [roadmap/source-project-bundles.md](roadmap/source-project-bundles.md)
+- **Source project export/import roadmap (initial implementation delivered)**: [roadmap/source-project-bundles.md](roadmap/source-project-bundles.md)
 
 ## Current implementation snapshot
 
