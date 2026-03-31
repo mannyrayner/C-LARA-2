@@ -24,6 +24,7 @@ Welcome! This folder collects specifications, architecture notes, and delivery r
 - **Manual annotation editor roadmap (new)**: [roadmap/manual-annotation-editor.md](roadmap/manual-annotation-editor.md)
 - **Dialogue top-level roadmap (new)**: [roadmap/dialogue-top-level.md](roadmap/dialogue-top-level.md)
 - **AI-judges evaluation roadmap (new)**: [roadmap/ai-judges-evaluation.md](roadmap/ai-judges-evaluation.md)
+- **Source project export/import roadmap (new)**: [roadmap/source-project-bundles.md](roadmap/source-project-bundles.md)
 
 ## Current implementation snapshot
 
@@ -43,7 +44,7 @@ _This file is the landing page for the docs folder and should stay aligned with 
 
 ## Likely near-term priorities (for team discussion)
 
-These priorities are a **working proposal** based on current team requests and still need discussion/confirmation with the wider C-LARA group.
+These priorities are a **working proposal** based on current team requests and still need discussion/confirmation with the wider C-LARA group. We should also evaluate where source export/import bundles fit in this near-term list, given their value for debugging and server↔laptop workflows.
 
 1. **Deployment on server** so members can start hands-on experimentation quickly.
 2. **Dialogue-based top level** to reduce UX friction for nontechnical users while preserving access to the underlying UI.

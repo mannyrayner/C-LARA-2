@@ -163,3 +163,13 @@ Focus:
 - Panel-based AI scoring for outputs from key processing stages.
 - Aggregation, disagreement analysis, and optional foreman summarization.
 - Human-audit calibration to keep AI evaluation useful and methodologically grounded.
+
+
+### 14. Source project export/import bundles roadmap
+
+Status: **New roadmap document added.** See `docs/roadmap/source-project-bundles.md`.
+
+Focus:
+- ZIP export/import of editable source artifacts from latest (or selected) runs.
+- Full preservation of text annotations and image-pipeline metadata/provenance.
+- Server↔laptop portability for debugging, handover, backup, and migration workflows.
