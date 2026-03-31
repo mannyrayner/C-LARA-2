@@ -25,7 +25,6 @@ Export the latest run’s source-side artifacts, including where available:
 - translation outputs,
 - MWE annotations,
 - lemma/gloss/romanization layers,
-- audio metadata references,
 - image pipeline artifacts:
   - style definitions,
   - recurring element records,
@@ -65,8 +64,6 @@ project_source_bundle.zip
     prompts.json
     files/
       ...
-  audio/
-    metadata.json
   runs/
     latest_run_summary.json
 ```
@@ -87,14 +84,13 @@ project_source_bundle.zip
 - UI action from project page: **Export Source Bundle**.
 - API endpoint for scripted export.
 - Option toggles:
-  - include/exclude large media files,
   - include only latest run vs selected run,
   - include/exclude judge/evaluation artifacts.
 - Deterministic file naming for reproducible diffs.
 
 ## Import requirements
 
-- UI action: **Import Source Bundle** (new project or merge into existing).
+- UI action: **Import Source Bundle** (always creates a new project).
 - Preflight validation before write:
   - schema compatibility,
   - required files present,
@@ -102,19 +98,13 @@ project_source_bundle.zip
   - safe path handling (zip-slip protection).
 - Import modes:
   1. create new project,
-  2. update existing project,
-  3. dry-run validation only.
+  2. dry-run validation only.
 
-## Merge/conflict strategy
+## Project identity handling
 
-When importing into an existing project:
-
-- detect collisions in IDs/artifact paths,
-- show conflict report and proposed resolution,
-- support configurable policies:
-  - keep existing,
-  - overwrite,
-  - duplicate with remapped IDs.
+- Import always creates a new project record.
+- Original project identifiers are stored as provenance metadata.
+- Internal artifact IDs are remapped as needed to avoid collisions in the target environment.
 
 ## Security and privacy
 
@@ -140,12 +130,12 @@ When importing into an existing project:
 ### Phase B — media + image completeness
 
 - Include image artifacts/prompts and optional media payloads.
-- Better conflict reports and import options.
+- Better import preflight reporting and environment-compatibility checks.
 
-### Phase C — merge and reproducibility
+### Phase C — reproducibility hardening
 
-- Import into existing projects with conflict policies.
 - Stronger provenance mapping and deterministic packaging.
+- Consistency checks for cross-environment reruns (server vs laptop).
 
 ### Phase D — automation and ops support
 
