@@ -1,31 +1,53 @@
 # C-LARA-2 Docs
 
-Welcome! This folder collects the specs and notes that drive the current implementation work.
+Welcome! This folder collects specifications, architecture notes, and delivery roadmaps for C-LARA-2.
 
 ## Quick links
 
 - **How-to**: [Quickstart](howto/quickstart.md)
 - **How-to**: [Run the Django platform locally](howto/run-django-platform.md)
-- **Architecture Decision Records (ADRs)**: [ADR-0001: Documentation & Structure](adr/0001-documentation-and-structure.md)
+- **How-to**: [Locate compile progress logs](howto/compile-logs.md)
+- **ADRs**: [ADR-0001: Documentation & Structure](adr/0001-documentation-and-structure.md)
 
-## Roadmaps and current status
+## Roadmaps and status
 
-- **Segmentation pipeline (implemented)**: [roadmap/segmentation-pipeline.md](roadmap/segmentation-pipeline.md) – covers text generation, segmentation phases 1 and 2 (with a Mandarin tokenization path via `jieba`), and the generic annotation harness now used across the codebase.
-- **Linguistic pipeline (implemented)**: [roadmap/linguistic-pipeline.md](roadmap/linguistic-pipeline.md) – details translation, MWE, lemma, gloss, pinyin, audio, compilation, and the full pipeline helper; translation (EN→FR), MWE detection, lemma tagging, glossing, pinyin annotation (via `pypinyin`), TTS-backed audio annotation with caching (OpenAI/Google), HTML compilation, and a flexible `run_full_pipeline` (start/end at any stage) are implemented with prompts/tests where applicable.
-- **Django platform**: [roadmap/django-platform.md](roadmap/django-platform.md) – describes users/projects, storage/layout, permissions, pipeline orchestration, publishing, and testing strategy for the web app layer. A minimal Django project (`platform_server/`) now supports account/login flows, project creation, pipeline-driven compilation to HTML, publishing toggles, and artifact serving; a guided minimal UI for non-technical users will follow.
-- **Top-level roadmap**: [roadmap/README.md](roadmap/README.md) – step-by-step milestones with notes on what is done versus planned.
+- **Top-level roadmap**: [roadmap/README.md](roadmap/README.md)
+- **Segmentation pipeline (implemented)**: [roadmap/segmentation-pipeline.md](roadmap/segmentation-pipeline.md)
+- **Linguistic pipeline (implemented; romanization generalized)**: [roadmap/linguistic-pipeline.md](roadmap/linguistic-pipeline.md)
+- **Django platform (initial implementation delivered, expanding)**: [roadmap/django-platform.md](roadmap/django-platform.md)
+- **Image generation pipeline (initial implementation delivered)**: [roadmap/image-generation-pipeline.md](roadmap/image-generation-pipeline.md)
+- **Social-network functionality (new roadmap)**: [roadmap/social-network-functionality.md](roadmap/social-network-functionality.md)
+- **Low-resource/AI-weak language support (new roadmap)**: [roadmap/low-resource-languages.md](roadmap/low-resource-languages.md)
+- **Deployment and migration roadmap (new)**: [roadmap/deployment-and-migration.md](roadmap/deployment-and-migration.md)
+- **Exercises roadmap (new)**: [roadmap/exercises.md](roadmap/exercises.md)
+- **Alignment roadmap (new)**: [roadmap/alignment.md](roadmap/alignment.md)
+- **Manual annotation editor roadmap (new)**: [roadmap/manual-annotation-editor.md](roadmap/manual-annotation-editor.md)
+- **Dialogue top-level roadmap (new)**: [roadmap/dialogue-top-level.md](roadmap/dialogue-top-level.md)
+- **AI-judges evaluation roadmap (new)**: [roadmap/ai-judges-evaluation.md](roadmap/ai-judges-evaluation.md)
+- **Source project export/import roadmap (initial implementation delivered)**: [roadmap/source-project-bundles.md](roadmap/source-project-bundles.md)
 
-## What’s implemented so far
+## Current implementation snapshot
 
-- OpenAI client wrapper with heartbeat/telemetry and retry handling.
-- Text generation (`text_gen`), segmentation phases 1 and 2 (Mandarin via `jieba`), translation, MWE detection, lemma tagging, glossing, Chinese pinyin annotation (`pypinyin`), audio annotation (TTS stub/OpenAI + caching), HTML compilation to a two-pane reader with concordance/audio hooks, and a `run_full_pipeline` helper that stitches the operations end-to-end.
-- Prompt templates and few-shots for AI-backed operations, plus unit/integration tests (OpenAI-gated where appropriate).
+Implemented in the codebase today includes:
+
+- End-to-end text pipeline with text generation, segmentation (phase 1/2), translation, MWE, lemma, gloss, romanization (`pypinyin`/`indic_transliteration`/AI fallback), audio generation/caching, and HTML compilation.
+- Image workflow (style → recurring elements → page images) integrated with compile output so generated images can be included in final HTML.
+- Django platform with account/project flows, compile monitor/status polling, publish/content browsing pages, and self-contained ZIP export (HTML + audio + images).
 
 ## Testing & CI
 
-- Run the suite from the repo root: `make -C tests test` (pytest + pytest-asyncio,
-  logs to `tests/test_results.log`).
-- GitHub Actions (`.github/workflows/ci.yml`) runs the same suite with coverage
-  and uploads JUnit/coverage artifacts for each build.
+- Run tests from repo root: `make -C tests test`.
+- CI (`.github/workflows/ci.yml`) runs automated checks and uploads artifacts.
 
-_This file is the landing page for the docs folder._
+_This file is the landing page for the docs folder and should stay aligned with `docs/roadmap/README.md`._
+
+
+## Likely near-term priorities (for team discussion)
+
+These priorities are a **working proposal** based on current team requests and still need discussion/confirmation with the wider C-LARA group. We should also evaluate where source export/import bundles fit in this near-term list, given their value for debugging and server↔laptop workflows.
+
+1. **Deployment on server** so members can start hands-on experimentation quickly.
+2. **Dialogue-based top level** to reduce UX friction for nontechnical users while preserving access to the underlying UI.
+3. **Manual editing of content/annotations** via the manual annotation editor roadmap.
+4. **Low-resource language support** so Indigenous-language and AI-weak language workflows are practical.
+5. **Community review of AI-generated images** to improve quality and consistency over time.
