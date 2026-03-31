@@ -2162,8 +2162,8 @@ def download_project_source_bundle(request: HttpRequest, pk: int) -> HttpRespons
         manifest = {
             "schema_version": "1.0",
             "created_utc": created_at.isoformat(timespec="seconds"),
-            "project_id": project.pk,
-            "project_title": project.title,
+            "source_project_id": project.pk,
+            "source_project_title": project.title,
             "run_id": run_name,
         }
         zf.writestr((bundle_root / "manifest.json").as_posix(), json.dumps(manifest, ensure_ascii=False, indent=2))
@@ -2248,7 +2248,7 @@ def import_project_source_bundle(request: HttpRequest) -> HttpResponse:
             messages.error(request, "Bundle is missing project metadata.")
             return redirect("project-list")
 
-        title = _build_unique_import_title(request.user, f"{metadata.get('title', 'Imported project')} (Imported)")
+        title = _build_unique_import_title(request.user, metadata.get("title", "Imported project"))
         project = Project.objects.create(
             owner=request.user,
             title=title,

@@ -414,12 +414,34 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual(resp.status_code, 302)
 
         imported = Project.objects.exclude(pk=self.project.pk).get()
-        self.assertIn("Hindi Story", imported.title)
+        self.assertEqual("Hindi Story", imported.title)
         self.assertEqual(imported.language, "hi")
         self.assertEqual(imported.target_language, "en")
 
         stage_files = list((imported.artifact_dir() / "runs").rglob("translation.json"))
         self.assertTrue(stage_files)
+
+    def test_import_source_bundle_adds_suffix_when_title_conflicts_for_same_user(self):
+        bundle = io.BytesIO()
+        with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as zf:
+            root = "imported-source-bundle"
+            zf.writestr(
+                f"{root}/project/metadata.json",
+                json.dumps(
+                    {
+                        "title": "Test Project",
+                        "source_text": "hello",
+                        "input_mode": "source_text",
+                        "language": "en",
+                        "target_language": "fr",
+                    }
+                ),
+            )
+        upload = SimpleUploadedFile("source_bundle.zip", bundle.getvalue(), content_type="application/zip")
+        resp = self.client.post(reverse("project-import-source-bundle"), {"source_bundle": upload})
+        self.assertEqual(resp.status_code, 302)
+        imported = Project.objects.exclude(pk=self.project.pk).get()
+        self.assertEqual("Test Project (2)", imported.title)
 
 
     def test_content_list_filters_published_projects(self):
