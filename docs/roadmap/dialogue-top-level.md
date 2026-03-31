@@ -64,6 +64,16 @@ For each nontrivial action, the platform should state:
 - Log intent failures and correction patterns.
 - Use this data to tune prompting, policies, and defaults.
 
+### 6) Session memory and lightweight personalization
+
+- Store compact summaries of prior user sessions (with explicit user consent and clear controls).
+- Reuse these summaries as context in later sessions to improve relevance and reduce repeated clarification.
+- Support per-user memory controls:
+  - view/edit/delete stored summaries,
+  - disable personalization,
+  - reset assistant memory.
+- Keep memory payloads concise to control token cost and avoid stale context drift.
+
 ## Architecture sketch
 
 ### Dialogue orchestrator
@@ -98,26 +108,30 @@ Focus on high-frequency tasks where guidance is most valuable:
 - Read-only conversational help + content discovery.
 - No write actions, low risk.
 
-### Phase B — Guided project actions
+### Phase B — Early personalization and memory
+
+- Introduce compact per-user session summaries to carry context across sessions.
+- Add user controls for memory visibility, correction, reset, and opt-out.
+- Start lightweight adaptive guidance from observed preferences.
+
+### Phase C — Guided project actions
 
 - Create project and configure core options.
 - Confirmed execution of safe operations.
+- Use stored preferences to preselect defaults, while always showing assumptions.
 
-### Phase C — Full workflow assistant
+### Phase D — Full workflow assistant + iterative tuning
 
 - Support annotation/image/publish operations end-to-end.
 - Backtracking controls and richer failure recovery.
-
-### Phase D — Personalization and tuning
-
-- Adaptive guidance by user type (teacher/learner/editor).
-- Iterative tuning from observed user feedback.
+- Continue policy/prompt tuning from explicit and implicit feedback.
 
 ## Success criteria
 
 - New users can complete first meaningful task with fewer steps and less help from experts.
 - Users can understand why the system took an action and how to change it.
 - Task completion and satisfaction improve for nontechnical users without reducing expert productivity.
+- Users receive increasingly relevant suggestions over time, with transparent and controllable personalization.
 
 ## Relationship to other roadmaps
 
