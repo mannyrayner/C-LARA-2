@@ -1373,6 +1373,27 @@ def _write_tree_to_zip(zip_file: zipfile.ZipFile, source_dir: Path, zip_root: Pa
         count += 1
     return count
 
+
+def _safe_zip_read_json(zf: zipfile.ZipFile, member: str) -> dict[str, Any] | None:
+    try:
+        with zf.open(member, "r") as fp:
+            return json.loads(fp.read().decode("utf-8"))
+    except Exception:
+        return None
+
+
+def _build_unique_import_title(user: Any, base_title: str) -> str:
+    candidate = (base_title or "Imported project").strip()
+    if not candidate:
+        candidate = "Imported project"
+    if not Project.objects.filter(owner=user, title=candidate).exists():
+        return candidate
+    for idx in range(2, 200):
+        titled = f"{candidate} ({idx})"
+        if not Project.objects.filter(owner=user, title=titled).exists():
+            return titled
+    return f"{candidate} ({uuid.uuid4().hex[:8]})"
+
 def _iter_runs(project: Project) -> list[Path]:
     runs_root = (project.artifact_dir() / "runs").resolve()
     if not runs_root.exists():
@@ -2085,6 +2106,264 @@ def download_project_bundle(request: HttpRequest, pk: int) -> HttpResponse:
 
     filename = f"{safe_title}-{run_dir.name}.zip"
     return FileResponse(spool, as_attachment=True, filename=filename, content_type="application/zip")
+
+
+@login_required
+def download_project_source_bundle(request: HttpRequest, pk: int) -> HttpResponse:
+    """Download a source-focused bundle for latest run artifacts."""
+
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    run_dir = _resolve_run_dir(project)
+    if run_dir is None or not run_dir.exists():
+        messages.error(request, "No run is available yet. Please run the pipeline first.")
+        return redirect("project-detail", pk=project.pk)
+
+    stages_dir = run_dir / "stages"
+    if not stages_dir.exists():
+        messages.error(request, "Latest run does not contain stage artifacts to export.")
+        return redirect("project-detail", pk=project.pk)
+
+    safe_title = slugify(project.title) or f"project-{project.pk}"
+    bundle_root = Path(f"{safe_title}-source-bundle")
+    artifact_root = project.artifact_dir().resolve()
+    created_at = datetime.now(timezone.utc)
+    run_name = run_dir.name
+
+    style = ProjectImageStyle.objects.filter(project=project).first()
+    elements = list(ProjectImageElement.objects.filter(project=project).order_by("id").values())
+    pages = list(ProjectImagePage.objects.filter(project=project).order_by("page_number", "id").values())
+
+    style_data = None
+    if style:
+        style_data = {
+            "style_brief": style.style_brief,
+            "expanded_style_description": style.expanded_style_description,
+            "representative_excerpt": style.representative_excerpt,
+            "sample_image_prompt": style.sample_image_prompt,
+            "sample_image_path": style.sample_image_path,
+            "sample_image_revised_prompt": style.sample_image_revised_prompt,
+            "sample_image_model": style.sample_image_model,
+            "ai_model": style.ai_model,
+            "status": style.status,
+        }
+
+    image_rel_paths: set[str] = set()
+    if style and style.sample_image_path:
+        image_rel_paths.add(style.sample_image_path)
+    for row in elements:
+        if row.get("image_path"):
+            image_rel_paths.add(str(row["image_path"]))
+    for row in pages:
+        if row.get("image_path"):
+            image_rel_paths.add(str(row["image_path"]))
+
+    spool = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024, mode="w+b")
+    with zipfile.ZipFile(spool, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        manifest = {
+            "schema_version": "1.0",
+            "created_utc": created_at.isoformat(timespec="seconds"),
+            "project_id": project.pk,
+            "project_title": project.title,
+            "run_id": run_name,
+        }
+        zf.writestr((bundle_root / "manifest.json").as_posix(), json.dumps(manifest, ensure_ascii=False, indent=2))
+
+        metadata = {
+            "title": project.title,
+            "description": project.description,
+            "source_text": project.source_text,
+            "input_mode": project.input_mode,
+            "language": project.language,
+            "target_language": project.target_language,
+            "ai_model": project.ai_model,
+            "page_image_placement": project.page_image_placement,
+            "segmentation_method": project.segmentation_method,
+            "romanization_method": project.romanization_method,
+        }
+        zf.writestr((bundle_root / "project" / "metadata.json").as_posix(), json.dumps(metadata, ensure_ascii=False, indent=2))
+
+        pipeline_config = {
+            "ai_model": project.ai_model,
+            "segmentation_method": project.segmentation_method,
+            "romanization_method": project.romanization_method,
+            "page_image_placement": project.page_image_placement,
+        }
+        zf.writestr((bundle_root / "project" / "pipeline_config.json").as_posix(), json.dumps(pipeline_config, ensure_ascii=False, indent=2))
+
+        source_dir = artifact_root / "source"
+        if source_dir.exists():
+            _write_tree_to_zip(zf, source_dir, bundle_root / "text")
+        else:
+            zf.writestr((bundle_root / "text" / "source_text.txt").as_posix(), project.source_text or "")
+            zf.writestr((bundle_root / "text" / "description.txt").as_posix(), project.description or "")
+
+        _write_tree_to_zip(zf, stages_dir, bundle_root / "stages")
+        zf.writestr((bundle_root / "runs" / "latest_run_summary.json").as_posix(), json.dumps({"run_id": run_name}, ensure_ascii=False, indent=2))
+
+        zf.writestr((bundle_root / "images" / "style.json").as_posix(), json.dumps(style_data, ensure_ascii=False, indent=2))
+        zf.writestr((bundle_root / "images" / "elements.json").as_posix(), json.dumps(elements, ensure_ascii=False, indent=2))
+        zf.writestr((bundle_root / "images" / "pages.json").as_posix(), json.dumps(pages, ensure_ascii=False, indent=2))
+
+        for rel in sorted(image_rel_paths):
+            abs_path = (artifact_root / rel).resolve()
+            try:
+                abs_path.relative_to(artifact_root)
+            except ValueError:
+                continue
+            if abs_path.exists() and abs_path.is_file():
+                zf.write(abs_path, arcname=(bundle_root / "assets" / rel).as_posix())
+
+    spool.seek(0)
+    filename = f"{safe_title}-source-{run_name}.zip"
+    return FileResponse(spool, as_attachment=True, filename=filename, content_type="application/zip")
+
+
+@login_required
+def import_project_source_bundle(request: HttpRequest) -> HttpResponse:
+    """Import a source bundle and always create a new project."""
+
+    if request.method != "POST":
+        return redirect("project-list")
+
+    upload = request.FILES.get("source_bundle")
+    if upload is None:
+        messages.error(request, "Please select a ZIP file to import.")
+        return redirect("project-list")
+
+    try:
+        zf = zipfile.ZipFile(upload)
+    except Exception:
+        messages.error(request, "Could not read ZIP file.")
+        return redirect("project-list")
+
+    with zf:
+        names = zf.namelist()
+        if not names:
+            messages.error(request, "ZIP file is empty.")
+            return redirect("project-list")
+
+        root = Path(names[0]).parts[0]
+        metadata = _safe_zip_read_json(zf, f"{root}/project/metadata.json")
+        if not metadata:
+            messages.error(request, "Bundle is missing project metadata.")
+            return redirect("project-list")
+
+        title = _build_unique_import_title(request.user, f"{metadata.get('title', 'Imported project')} (Imported)")
+        project = Project.objects.create(
+            owner=request.user,
+            title=title,
+            description=(metadata.get("description") or "")[:100000],
+            source_text=(metadata.get("source_text") or "")[:1000000],
+            input_mode=metadata.get("input_mode") if metadata.get("input_mode") in {Project.INPUT_DESCRIPTION, Project.INPUT_SOURCE} else Project.INPUT_SOURCE,
+            language=(metadata.get("language") or "en")[:16],
+            target_language=(metadata.get("target_language") or "fr")[:16],
+            ai_model=(metadata.get("ai_model") or DEFAULT_MODEL)[:64],
+            page_image_placement=(metadata.get("page_image_placement") or "none")[:16],
+            segmentation_method=(metadata.get("segmentation_method") or "auto")[:32],
+            romanization_method=(metadata.get("romanization_method") or "auto")[:32],
+        )
+
+        artifact_root = project.artifact_dir().resolve()
+        (artifact_root / "source").mkdir(parents=True, exist_ok=True)
+
+        def _safe_write(member_name: str, target: Path) -> None:
+            try:
+                with zf.open(member_name, "r") as fp:
+                    data = fp.read()
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(data)
+            except KeyError:
+                return
+
+        _safe_write(f"{root}/text/source_text.txt", artifact_root / "source" / "source_text.txt")
+        _safe_write(f"{root}/text/description.txt", artifact_root / "source" / "description.txt")
+
+        # Restore latest run stages if available.
+        run_dir = artifact_root / "runs" / f"run_imported_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
+        stage_prefix = f"{root}/stages/"
+        stage_names = [n for n in names if n.startswith(stage_prefix) and n.endswith(".json")]
+        if stage_names:
+            for member_name in stage_names:
+                rel = Path(member_name).relative_to(stage_prefix)
+                target = run_dir / "stages" / rel
+                _safe_write(member_name, target)
+
+        # Restore images metadata.
+        style_payload = _safe_zip_read_json(zf, f"{root}/images/style.json")
+        if isinstance(style_payload, dict) and style_payload:
+            ProjectImageStyle.objects.update_or_create(
+                project=project,
+                defaults={
+                    "style_brief": style_payload.get("style_brief", ""),
+                    "expanded_style_description": style_payload.get("expanded_style_description", ""),
+                    "representative_excerpt": style_payload.get("representative_excerpt", ""),
+                    "sample_image_prompt": style_payload.get("sample_image_prompt", ""),
+                    "sample_image_path": style_payload.get("sample_image_path", ""),
+                    "sample_image_revised_prompt": style_payload.get("sample_image_revised_prompt", ""),
+                    "sample_image_model": style_payload.get("sample_image_model", "gpt-image-1"),
+                    "ai_model": style_payload.get("ai_model", DEFAULT_MODEL),
+                    "status": style_payload.get("status", ProjectImageStyle.STATUS_DRAFT),
+                },
+            )
+
+        elements_payload = _safe_zip_read_json(zf, f"{root}/images/elements.json")
+        if isinstance(elements_payload, list):
+            for row in elements_payload:
+                if not isinstance(row, dict):
+                    continue
+                ProjectImageElement.objects.create(
+                    project=project,
+                    name=(row.get("name") or "Element")[:255],
+                    element_type=(row.get("element_type") or "")[:64],
+                    page_refs=(row.get("page_refs") or "")[:255],
+                    why_consistency_matters=row.get("why_consistency_matters") or "",
+                    expanded_description=row.get("expanded_description") or "",
+                    expanded_prompt=row.get("expanded_prompt") or "",
+                    image_model=(row.get("image_model") or "gpt-image-1")[:64],
+                    image_path=(row.get("image_path") or "")[:512],
+                    image_revised_prompt=row.get("image_revised_prompt") or "",
+                    is_confirmed=bool(row.get("is_confirmed")),
+                    ai_model=(row.get("ai_model") or DEFAULT_MODEL)[:64],
+                    status=(row.get("status") or ProjectImageElement.STATUS_PROPOSED)[:32],
+                )
+
+        pages_payload = _safe_zip_read_json(zf, f"{root}/images/pages.json")
+        if isinstance(pages_payload, list):
+            for row in pages_payload:
+                if not isinstance(row, dict):
+                    continue
+                page_num = row.get("page_number")
+                if not isinstance(page_num, int):
+                    continue
+                ProjectImagePage.objects.update_or_create(
+                    project=project,
+                    page_number=page_num,
+                    defaults={
+                        "page_text": row.get("page_text") or "",
+                        "generation_prompt": row.get("generation_prompt") or "",
+                        "image_model": (row.get("image_model") or "gpt-image-1")[:64],
+                        "image_path": (row.get("image_path") or "")[:512],
+                        "image_revised_prompt": row.get("image_revised_prompt") or "",
+                        "status": (row.get("status") or ProjectImagePage.STATUS_DRAFT)[:32],
+                    },
+                )
+
+        # Restore selected image files under their original relative paths.
+        asset_prefix = f"{root}/assets/"
+        for member_name in names:
+            if not member_name.startswith(asset_prefix):
+                continue
+            rel = Path(member_name).relative_to(asset_prefix)
+            target = (artifact_root / rel).resolve()
+            try:
+                target.relative_to(artifact_root)
+            except ValueError:
+                continue
+            _safe_write(member_name, target)
+
+        _persist_project_source(project)
+        messages.success(request, f"Imported source bundle as new project '{project.title}'.")
+        return redirect("project-detail", pk=project.pk)
 
 
 @login_required

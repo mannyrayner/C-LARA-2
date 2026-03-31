@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -350,6 +351,75 @@ class CompileStatusViewTests(TestCase):
         resp = self.client.get(reverse("project-download-bundle", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(resp.url, reverse("project-detail", args=[self.project.pk]))
+
+    def test_download_source_bundle_contains_stage_and_image_metadata(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_source"
+        stages_dir = run_dir / "stages"
+        stages_dir.mkdir(parents=True, exist_ok=True)
+        (stages_dir / "segmentation_phase_1.json").write_text('{"ok": true}', encoding="utf-8")
+        (self.project.artifact_dir() / "source").mkdir(parents=True, exist_ok=True)
+        (self.project.artifact_dir() / "source" / "source_text.txt").write_text("Hello", encoding="utf-8")
+
+        ProjectImageStyle.objects.create(
+            project=self.project,
+            style_brief="flat colors",
+            sample_image_path="images/style/sample.png",
+        )
+        img_path = self.project.artifact_dir() / "images" / "style" / "sample.png"
+        img_path.parent.mkdir(parents=True, exist_ok=True)
+        img_path.write_bytes(b"png")
+
+        self.project.compiled_path = "runs/run_source/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+
+        resp = self.client.get(reverse("project-download-source-bundle", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        payload = b"".join(resp.streaming_content)
+        with zipfile.ZipFile(io.BytesIO(payload), "r") as zf:
+            names = set(zf.namelist())
+            root = "test-project-source-bundle/"
+            self.assertIn(root + "manifest.json", names)
+            self.assertIn(root + "project/metadata.json", names)
+            self.assertIn(root + "stages/segmentation_phase_1.json", names)
+            self.assertIn(root + "images/style.json", names)
+            self.assertIn(root + "assets/images/style/sample.png", names)
+
+    def test_import_source_bundle_creates_new_project(self):
+        bundle = io.BytesIO()
+        with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as zf:
+            root = "imported-source-bundle"
+            zf.writestr(
+                f"{root}/project/metadata.json",
+                json.dumps(
+                    {
+                        "title": "Hindi Story",
+                        "description": "desc",
+                        "source_text": "नमस्ते दुनिया",
+                        "input_mode": "source_text",
+                        "language": "hi",
+                        "target_language": "en",
+                        "ai_model": "gpt-4o",
+                        "page_image_placement": "top",
+                        "segmentation_method": "ai",
+                        "romanization_method": "indic_transliteration",
+                    }
+                ),
+            )
+            zf.writestr(f"{root}/text/source_text.txt", "नमस्ते दुनिया")
+            zf.writestr(f"{root}/stages/translation.json", '{"pages":[]}')
+        bundle.seek(0)
+
+        upload = SimpleUploadedFile("source_bundle.zip", bundle.getvalue(), content_type="application/zip")
+        resp = self.client.post(reverse("project-import-source-bundle"), {"source_bundle": upload})
+        self.assertEqual(resp.status_code, 302)
+
+        imported = Project.objects.exclude(pk=self.project.pk).get()
+        self.assertIn("Hindi Story", imported.title)
+        self.assertEqual(imported.language, "hi")
+        self.assertEqual(imported.target_language, "en")
+
+        stage_files = list((imported.artifact_dir() / "runs").rglob("translation.json"))
+        self.assertTrue(stage_files)
 
 
     def test_content_list_filters_published_projects(self):
