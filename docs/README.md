@@ -22,6 +22,7 @@ Welcome! This folder collects specifications, architecture notes, and delivery r
 - **Exercises roadmap (new)**: [roadmap/exercises.md](roadmap/exercises.md)
 - **Alignment roadmap (new)**: [roadmap/alignment.md](roadmap/alignment.md)
 - **Manual annotation editor roadmap (new)**: [roadmap/manual-annotation-editor.md](roadmap/manual-annotation-editor.md)
+- **Dialogue top-level roadmap (new)**: [roadmap/dialogue-top-level.md](roadmap/dialogue-top-level.md)
 
 ## Current implementation snapshot
 
@@ -44,6 +45,7 @@ _This file is the landing page for the docs folder and should stay aligned with 
 These priorities are a **working proposal** based on current team requests and still need discussion/confirmation with the wider C-LARA group.
 
 1. **Deployment on server** so members can start hands-on experimentation quickly.
-2. **Manual editing of content/annotations** via the manual annotation editor roadmap.
-3. **Low-resource language support** so Indigenous-language and AI-weak language workflows are practical.
-4. **Community review of AI-generated images** to improve quality and consistency over time.
+2. **Dialogue-based top level** to reduce UX friction for nontechnical users while preserving access to the underlying UI.
+3. **Manual editing of content/annotations** via the manual annotation editor roadmap.
+4. **Low-resource language support** so Indigenous-language and AI-weak language workflows are practical.
+5. **Community review of AI-generated images** to improve quality and consistency over time.

@@ -143,3 +143,13 @@ Focus:
 - Cross-language manual editing for all annotation layers.
 - Shared validators, versioned saves, and diff/review tools.
 - Human-in-the-loop quality control for both low-resource and high-resource languages.
+
+
+### 12. Freeform dialogue-based top-level roadmap
+
+Status: **New roadmap document added.** See `docs/roadmap/dialogue-top-level.md`.
+
+Focus:
+- Optional conversational UX layer on top of existing C-LARA-2 workflows.
+- Transparent action planning with explicit assumptions, alternatives, and backtracking.
+- Strong onboarding support for nontechnical users, with “show me the underlying UI” handoff.
