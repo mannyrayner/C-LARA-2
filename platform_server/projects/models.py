@@ -258,3 +258,62 @@ class ContentRating(models.Model):
     class Meta:
         unique_together = ("project", "author")
         ordering = ["-updated_at"]
+
+
+class ExerciseSet(models.Model):
+    TYPE_CLOZE = "cloze"
+    TYPE_FLASHCARD = "flashcard"
+    TYPE_CHOICES = [
+        (TYPE_CLOZE, "Cloze"),
+        (TYPE_FLASHCARD, "Flashcard"),
+    ]
+
+    THEME_VOCAB = "vocabulary"
+    THEME_GRAMMAR = "grammar"
+    THEME_MORPH = "morphology"
+    THEME_GRAMMAR_MORPH = "grammar_morphology"
+    THEME_CHOICES = [
+        (THEME_VOCAB, "Vocabulary"),
+        (THEME_GRAMMAR, "Grammar"),
+        (THEME_MORPH, "Morphology"),
+        (THEME_GRAMMAR_MORPH, "Grammar/Morphology"),
+    ]
+
+    STATUS_DRAFT = "draft"
+    STATUS_READY = "ready"
+    STATUS_PUBLISHED = "published"
+    STATUS_CHOICES = [
+        (STATUS_DRAFT, "Draft"),
+        (STATUS_READY, "Ready"),
+        (STATUS_PUBLISHED, "Published"),
+    ]
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="exercise_sets")
+    exercise_type = models.CharField(max_length=32, choices=TYPE_CHOICES, default=TYPE_CLOZE)
+    theme = models.CharField(max_length=32, choices=THEME_CHOICES, default=THEME_VOCAB)
+    title = models.CharField(max_length=255, blank=True)
+    instructions = models.TextField(blank=True)
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_DRAFT)
+    is_published = models.BooleanField(default=False)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="created_exercise_sets")
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+
+class ExerciseItem(models.Model):
+    exercise_set = models.ForeignKey(ExerciseSet, on_delete=models.CASCADE, related_name="items")
+    order_index = models.PositiveIntegerField(default=0)
+    page_number = models.PositiveIntegerField(default=1)
+    segment_index = models.PositiveIntegerField(default=0)
+    segment_text = models.TextField(blank=True)
+    prompt = models.TextField(blank=True)
+    answer = models.CharField(max_length=255, blank=True)
+    options = models.JSONField(default=list, blank=True)
+    rationale = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["order_index", "id"]

@@ -118,12 +118,17 @@ Key constraint: the urgent Adelaide deployment approach must remain upward-compa
 
 ### 9. Exercise generation roadmap
 
-Status: **New roadmap document added.** See `docs/roadmap/exercises.md`.
+Status: **Initial cloze implementation delivered.** See `docs/roadmap/exercises.md`.
 
 Focus:
 - Cloze and flashcard generation from existing project artifacts.
 - Distractor generation/validation and review workflows.
 - Learner-facing exercise player and future spaced repetition support.
+
+Implemented now:
+- Generate cloze exercise sets from latest run segments.
+- Theme options include vocabulary, grammar, morphology, and grammar/morphology.
+- Publish/unpublish exercise sets and expose published links on content pages.
 
 ### 10. Alignment roadmap (phonetic + text/audio/translation)
 

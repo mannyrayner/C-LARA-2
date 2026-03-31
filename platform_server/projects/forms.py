@@ -198,3 +198,17 @@ ProjectImagePageFormSet = modelformset_factory(
     can_delete=False,
     extra=0,
 )
+
+
+class ClozeExerciseSetForm(forms.Form):
+    theme = forms.ChoiceField(
+        choices=[
+            ("vocabulary", "Vocabulary"),
+            ("grammar", "Grammar"),
+            ("morphology", "Morphology"),
+            ("grammar_morphology", "Grammar/Morphology"),
+        ],
+        initial="vocabulary",
+    )
+    item_count = forms.IntegerField(min_value=1, max_value=50, initial=10)
+    ai_model = forms.CharField(max_length=64, required=False, initial="gpt-4o")

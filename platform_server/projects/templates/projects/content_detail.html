@@ -49,4 +49,15 @@
 {% else %}
   <p>No compiled HTML is currently available for this published project.</p>
 {% endif %}
+
+{% if published_exercise_sets %}
+  <h2>Published exercises</h2>
+  <ul>
+    {% for s in published_exercise_sets %}
+      <li><a href="{% url 'exercise-set-detail' s.id %}">{{ s.title|default:"Exercise set" }}</a> ({{ s.exercise_type }}, {{ s.theme }})</li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>No published exercises yet.</p>
+{% endif %}
 {% endblock %}

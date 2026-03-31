@@ -6,6 +6,8 @@ from .models import (
     ProjectImagePage,
     ProjectImageStyle,
     TaskUpdate,
+    ExerciseSet,
+    ExerciseItem,
 )
 
 @admin.register(Project)
@@ -47,3 +49,16 @@ class ProjectImagePageAdmin(admin.ModelAdmin):
     list_display = ("project", "page_number", "status", "image_model", "updated_at")
     search_fields = ("project__title", "page_number", "page_text")
     list_filter = ("status", "image_model")
+
+
+@admin.register(ExerciseSet)
+class ExerciseSetAdmin(admin.ModelAdmin):
+    list_display = ("project", "exercise_type", "theme", "status", "is_published", "updated_at")
+    search_fields = ("project__title", "title")
+    list_filter = ("exercise_type", "theme", "status", "is_published")
+
+
+@admin.register(ExerciseItem)
+class ExerciseItemAdmin(admin.ModelAdmin):
+    list_display = ("exercise_set", "order_index", "page_number", "segment_index", "answer")
+    search_fields = ("exercise_set__project__title", "prompt", "answer")

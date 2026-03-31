@@ -37,6 +37,7 @@ from core.ai_api import OpenAIClient
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 
 from .forms import (
+    ClozeExerciseSetForm,
     ProfileForm,
     ProjectForm,
     ProjectImageElementFormSet,
@@ -54,6 +55,8 @@ from .models import (
     ProjectCollaborator,
     ContentComment,
     ContentRating,
+    ExerciseSet,
+    ExerciseItem,
 )
 
 logger = logging.getLogger(__name__)
@@ -1286,6 +1289,7 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         assigned_ids.add(project.owner_id)
         User = get_user_model()
         context["available_collaborator_users"] = User.objects.exclude(id__in=assigned_ids).order_by("username")[:500]
+        context["exercise_sets"] = project.exercise_sets.all()[:20]
         return context
 
 
@@ -1975,6 +1979,7 @@ def content_detail(request: HttpRequest, pk: int) -> HttpResponse:
             "up_count": up_count,
             "down_count": down_count,
             "user_rating": user_rating,
+            "published_exercise_sets": project.exercise_sets.filter(is_published=True).order_by("-updated_at"),
         },
     )
 
@@ -2019,6 +2024,189 @@ def serve_compiled(request: HttpRequest, pk: int, path: str) -> HttpResponse:
     with open(file_path, "rb") as fp:
         data = fp.read()
     return HttpResponse(data, content_type=content_type or "application/octet-stream")
+
+
+def _extract_segment_candidates_for_cloze(run_dir: Path) -> list[dict[str, Any]]:
+    stage_names = ["gloss", "lemma", "mwe", "translation", "segmentation_phase_2"]
+    payload = None
+    for stage in stage_names:
+        path = run_dir / "stages" / f"{stage}.json"
+        if path.exists():
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                break
+            except Exception:
+                continue
+    if not payload:
+        return []
+
+    candidates: list[dict[str, Any]] = []
+    for page in payload.get("pages", []):
+        page_number = page.get("page_number", 1)
+        for idx, seg in enumerate(page.get("segments", [])):
+            tokens = seg.get("tokens", [])
+            words: list[str] = []
+            for t in tokens:
+                surface = (t.get("surface") or "").strip()
+                ann = t.get("annotations", {}) or {}
+                if not surface:
+                    continue
+                if ann.get("mwe_id"):
+                    continue
+                if any(ch.isalpha() for ch in surface):
+                    words.append(surface)
+            if words:
+                seg_text = "".join(t.get("surface", "") for t in tokens).strip() or seg.get("surface", "")
+                candidates.append(
+                    {
+                        "page_number": page_number,
+                        "segment_index": idx,
+                        "segment_text": seg_text,
+                        "words": words,
+                    }
+                )
+    return candidates
+
+
+async def _generate_cloze_item(
+    client: OpenAIClient,
+    model: str,
+    theme: str,
+    candidate: dict[str, Any],
+    order_index: int,
+) -> dict[str, Any]:
+    target_word = candidate["words"][order_index % len(candidate["words"])]
+    segment_text = candidate["segment_text"]
+    cloze_text = segment_text.replace(target_word, "____", 1)
+    prompt = f"""
+Create exactly 3 plausible distractors for a cloze exercise.
+Theme: {theme}
+Segment: {segment_text}
+Correct answer: {target_word}
+
+Return JSON with:
+- distractors: array of 3 strings
+- rationale: object mapping each distractor string to one short rationale
+"""
+    try:
+        data = await client.chat_json(prompt, model=model)
+    except Exception:
+        data = {}
+    distractors = [str(x).strip() for x in (data.get("distractors") or []) if str(x).strip()]
+    distractors = [d for d in distractors if d.lower() != target_word.lower()]
+    distractors = distractors[:3]
+    while len(distractors) < 3:
+        distractors.append(f"{target_word}_{len(distractors)+1}")
+    options = [target_word] + distractors
+    return {
+        "order_index": order_index,
+        "page_number": candidate["page_number"],
+        "segment_index": candidate["segment_index"],
+        "segment_text": segment_text,
+        "prompt": cloze_text,
+        "answer": target_word,
+        "options": options,
+        "rationale": data.get("rationale") if isinstance(data.get("rationale"), dict) else {},
+    }
+
+
+@login_required
+def generate_cloze_exercises(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    run_dir = _resolve_run_dir(project)
+    if run_dir is None or not run_dir.exists():
+        messages.error(request, "Please run the pipeline first to generate stage artifacts.")
+        return redirect("project-detail", pk=project.pk)
+
+    if request.method == "POST":
+        form = ClozeExerciseSetForm(request.POST)
+        if form.is_valid():
+            theme = form.cleaned_data["theme"]
+            item_count = form.cleaned_data["item_count"]
+            model = form.cleaned_data.get("ai_model") or project.ai_model or DEFAULT_MODEL
+
+            candidates = _extract_segment_candidates_for_cloze(run_dir)
+            if not candidates:
+                messages.error(request, "Could not find suitable segments/tokens for cloze generation.")
+                return redirect("project-detail", pk=project.pk)
+
+            selected = candidates[:item_count]
+            ex_set = ExerciseSet.objects.create(
+                project=project,
+                exercise_type=ExerciseSet.TYPE_CLOZE,
+                theme=theme,
+                title=f"{project.title} — Cloze ({theme})",
+                status=ExerciseSet.STATUS_DRAFT,
+                created_by=request.user,
+            )
+
+            async def _run() -> list[dict[str, Any]]:
+                client = _build_ai_client(model)
+                tasks = [
+                    _generate_cloze_item(client, model, theme, cand, idx)
+                    for idx, cand in enumerate(selected)
+                ]
+                return await asyncio.gather(*tasks)
+
+            items = asyncio.run(_run())
+            ExerciseItem.objects.bulk_create(
+                [
+                    ExerciseItem(
+                        exercise_set=ex_set,
+                        order_index=item["order_index"],
+                        page_number=item["page_number"],
+                        segment_index=item["segment_index"],
+                        segment_text=item["segment_text"],
+                        prompt=item["prompt"],
+                        answer=item["answer"],
+                        options=item["options"],
+                        rationale=item["rationale"],
+                    )
+                    for item in items
+                ]
+            )
+            ex_set.status = ExerciseSet.STATUS_READY
+            ex_set.save(update_fields=["status", "updated_at"])
+            messages.success(request, f"Generated {len(items)} cloze items.")
+            return redirect("exercise-set-detail", set_id=ex_set.id)
+    else:
+        form = ClozeExerciseSetForm(initial={"ai_model": project.ai_model or DEFAULT_MODEL})
+
+    return render(
+        request,
+        "projects/exercise_generate_cloze.html",
+        {"project": project, "form": form},
+    )
+
+
+@login_required
+def exercise_set_detail(request: HttpRequest, set_id: int) -> HttpResponse:
+    ex_set = get_object_or_404(ExerciseSet.objects.select_related("project"), pk=set_id)
+    project = ex_set.project
+    if project.owner != request.user and not ex_set.is_published:
+        raise Http404()
+    return render(
+        request,
+        "projects/exercise_set_detail.html",
+        {"exercise_set": ex_set, "items": ex_set.items.all(), "project": project},
+    )
+
+
+@login_required
+def publish_exercise_set(request: HttpRequest, set_id: int) -> HttpResponse:
+    ex_set = get_object_or_404(ExerciseSet.objects.select_related("project"), pk=set_id)
+    _get_project_for_user(pk=ex_set.project_id, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
+    ex_set.is_published = not ex_set.is_published
+    ex_set.status = ExerciseSet.STATUS_PUBLISHED if ex_set.is_published else ExerciseSet.STATUS_READY
+    ex_set.save(update_fields=["is_published", "status", "updated_at"])
+    return redirect("exercise-set-detail", set_id=ex_set.id)
+
+
+@login_required
+def published_exercises_for_project(request: HttpRequest, pk: int) -> HttpResponse:
+    project = get_object_or_404(Project, pk=pk, is_published=True)
+    sets = project.exercise_sets.filter(is_published=True).order_by("-updated_at")
+    return render(request, "projects/published_exercises.html", {"project": project, "exercise_sets": sets})
 
 
 

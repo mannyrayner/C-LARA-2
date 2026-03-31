@@ -24,6 +24,7 @@ from projects.models import (
     ContentComment,
     ContentRating,
     TaskUpdate,
+    ExerciseSet,
 )
 
 
@@ -442,6 +443,38 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual(resp.status_code, 302)
         imported = Project.objects.exclude(pk=self.project.pk).get()
         self.assertEqual("Test Project (2)", imported.title)
+
+    def test_generate_cloze_exercises_creates_set(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_exercise" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        sample = {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "segments": [
+                        {"tokens": [{"surface": "The "}, {"surface": "cat"}, {"surface": " sleeps"}]},
+                        {"tokens": [{"surface": "A "}, {"surface": "dog"}, {"surface": " runs"}]},
+                    ],
+                }
+            ]
+        }
+        (run_dir / "gloss.json").write_text(json.dumps(sample), encoding="utf-8")
+        self.project.compiled_path = "runs/run_exercise/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+
+        class _FakeClient:
+            async def chat_json(self, *_args, **_kwargs):
+                return {"distractors": ["bird", "fish", "mouse"], "rationale": {"bird": "animal"}}
+
+        with patch("projects.views._build_ai_client", return_value=_FakeClient()):
+            resp = self.client.post(
+                reverse("project-generate-cloze", args=[self.project.pk]),
+                {"theme": "vocabulary", "item_count": 2, "ai_model": "gpt-4o"},
+            )
+        self.assertEqual(resp.status_code, 302)
+        ex_set = ExerciseSet.objects.get(project=self.project)
+        self.assertEqual(ex_set.exercise_type, ExerciseSet.TYPE_CLOZE)
+        self.assertEqual(ex_set.items.count(), 2)
 
 
     def test_content_list_filters_published_projects(self):

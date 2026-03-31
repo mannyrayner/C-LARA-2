@@ -17,6 +17,10 @@ urlpatterns = [
     path("projects/<int:pk>/images/pages/", views.project_image_pages, name="project-image-pages"),
     path("projects/<int:pk>/image-placement/", views.set_page_image_placement, name="project-image-placement"),
     path("projects/<int:pk>/processing-options/", views.set_processing_options, name="project-processing-options"),
+    path("projects/<int:pk>/exercises/cloze/", views.generate_cloze_exercises, name="project-generate-cloze"),
+    path("exercise-sets/<int:set_id>/", views.exercise_set_detail, name="exercise-set-detail"),
+    path("exercise-sets/<int:set_id>/publish/", views.publish_exercise_set, name="exercise-set-publish"),
+    path("content/<int:pk>/exercises/", views.published_exercises_for_project, name="content-exercises"),
     path("projects/<int:pk>/collaborators/", views.set_project_collaborator, name="project-collaborators"),
     path("projects/<int:pk>/compile/", views.compile_project, name="project-compile"),
     path(
