@@ -38,6 +38,7 @@ from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pi
 
 from .forms import (
     ClozeExerciseSetForm,
+    FlashcardExerciseSetForm,
     ProfileForm,
     ProjectForm,
     ProjectImageElementFormSet,
@@ -2171,6 +2172,53 @@ def _extract_segment_candidates_for_cloze(run_dir: Path) -> list[dict[str, Any]]
     return candidates
 
 
+def _extract_token_candidates_for_flashcards(run_dir: Path) -> list[dict[str, Any]]:
+    stage_names = ["gloss", "lemma", "mwe", "translation", "segmentation_phase_2"]
+    payload = None
+    for stage in stage_names:
+        path = run_dir / "stages" / f"{stage}.json"
+        if path.exists():
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                break
+            except Exception:
+                continue
+    if not payload:
+        return []
+
+    candidates: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for page in payload.get("pages", []):
+        page_number = page.get("page_number", 1)
+        for seg_idx, seg in enumerate(page.get("segments", [])):
+            tokens = seg.get("tokens", [])
+            for tok_idx, token in enumerate(tokens):
+                surface = (token.get("surface") or "").strip()
+                if not surface or not any(ch.isalpha() for ch in surface):
+                    continue
+                ann = token.get("annotations", {}) or {}
+                if ann.get("mwe_id"):
+                    continue
+                gloss = str(ann.get("gloss") or "").strip()
+                if not gloss:
+                    continue
+                pair = (surface.lower(), gloss.lower())
+                if pair in seen:
+                    continue
+                seen.add(pair)
+                candidates.append(
+                    {
+                        "page_number": page_number,
+                        "segment_index": seg_idx,
+                        "token_index": tok_idx,
+                        "source_word": surface,
+                        "target_gloss": gloss,
+                        "segment_text": "".join(t.get("surface", "") for t in tokens).strip() or seg.get("surface", ""),
+                    }
+                )
+    return candidates
+
+
 async def _generate_cloze_item(
     client: OpenAIClient,
     model: str,
@@ -2210,6 +2258,48 @@ Return JSON with:
         "segment_text": segment_text,
         "prompt": cloze_text,
         "answer": target_word,
+        "options": options,
+        "rationale": data.get("rationale") if isinstance(data.get("rationale"), dict) else {},
+    }
+
+
+async def _generate_flashcard_item(
+    client: OpenAIClient,
+    model: str,
+    theme: str,
+    candidate: dict[str, Any],
+    order_index: int,
+) -> dict[str, Any]:
+    source_word = candidate["source_word"]
+    correct_gloss = candidate["target_gloss"]
+    segment_text = candidate["segment_text"]
+    prompt = f"""
+Create exactly 3 plausible distractor translations/glosses for a flashcard multiple-choice item.
+Theme: {theme}
+Source word: {source_word}
+Correct gloss: {correct_gloss}
+Segment context: {segment_text}
+Return JSON with:
+- distractors: array of 3 strings
+- rationale: object mapping each distractor to a short reason
+"""
+    try:
+        data = await client.chat_json(prompt, model=model)
+    except Exception:
+        data = {}
+    distractors = [str(x).strip() for x in (data.get("distractors") or []) if str(x).strip()]
+    distractors = [d for d in distractors if d.lower() != correct_gloss.lower()]
+    distractors = distractors[:3]
+    while len(distractors) < 3:
+        distractors.append(f"{correct_gloss}_{len(distractors)+1}")
+    options = [correct_gloss] + distractors
+    return {
+        "order_index": order_index,
+        "page_number": candidate["page_number"],
+        "segment_index": candidate["segment_index"],
+        "segment_text": segment_text,
+        "prompt": f"What is the best gloss/translation for: {source_word}?",
+        "answer": correct_gloss,
         "options": options,
         "rationale": data.get("rationale") if isinstance(data.get("rationale"), dict) else {},
     }
@@ -2283,6 +2373,81 @@ def generate_cloze_exercises(request: HttpRequest, pk: int) -> HttpResponse:
     return render(
         request,
         "projects/exercise_generate_cloze.html",
+        {"project": project, "form": form},
+    )
+
+
+@login_required
+def generate_flashcard_exercises(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    run_dir = _resolve_run_dir(project)
+    if run_dir is None or not run_dir.exists():
+        messages.error(request, "Please run the pipeline first to generate stage artifacts.")
+        return redirect("project-detail", pk=project.pk)
+
+    if request.method == "POST":
+        form = FlashcardExerciseSetForm(request.POST, ai_model_choices=AI_MODEL_CHOICES)
+        if form.is_valid():
+            theme = form.cleaned_data["theme"]
+            item_count = form.cleaned_data["item_count"]
+            model = form.cleaned_data.get("ai_model") or project.ai_model or DEFAULT_MODEL
+
+            candidates = _extract_token_candidates_for_flashcards(run_dir)
+            if not candidates:
+                messages.error(
+                    request,
+                    "Could not find suitable glossed tokens for flashcard generation. Run glossing first.",
+                )
+                return redirect("project-detail", pk=project.pk)
+
+            selected = candidates[:item_count]
+            ex_set = ExerciseSet.objects.create(
+                project=project,
+                exercise_type=ExerciseSet.TYPE_FLASHCARD,
+                theme=theme,
+                title=f"{project.title} — Flashcards ({theme})",
+                status=ExerciseSet.STATUS_DRAFT,
+                created_by=request.user,
+            )
+
+            async def _run() -> list[dict[str, Any]]:
+                client = _build_ai_client(model)
+                tasks = [
+                    _generate_flashcard_item(client, model, theme, cand, idx)
+                    for idx, cand in enumerate(selected)
+                ]
+                return await asyncio.gather(*tasks)
+
+            items = asyncio.run(_run())
+            ExerciseItem.objects.bulk_create(
+                [
+                    ExerciseItem(
+                        exercise_set=ex_set,
+                        order_index=item["order_index"],
+                        page_number=item["page_number"],
+                        segment_index=item["segment_index"],
+                        segment_text=item["segment_text"],
+                        prompt=item["prompt"],
+                        answer=item["answer"],
+                        options=item["options"],
+                        rationale=item["rationale"],
+                    )
+                    for item in items
+                ]
+            )
+            ex_set.status = ExerciseSet.STATUS_READY
+            ex_set.save(update_fields=["status", "updated_at"])
+            messages.success(request, f"Generated {len(items)} flashcard items.")
+            return redirect("exercise-set-detail", set_id=ex_set.id)
+    else:
+        form = FlashcardExerciseSetForm(
+            initial={"ai_model": project.ai_model or DEFAULT_MODEL},
+            ai_model_choices=AI_MODEL_CHOICES,
+        )
+
+    return render(
+        request,
+        "projects/exercise_generate_flashcard.html",
         {"project": project, "form": form},
     )
 

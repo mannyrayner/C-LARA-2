@@ -2,6 +2,11 @@
 
 This roadmap describes how C-LARA-2 should generate and deliver interactive exercises derived from a project text and its annotations.
 
+## Current status (April 2026)
+
+- Cloze: implemented in Django platform.
+- Flashcards (first version): implemented for **form → meaning** multiple-choice using glossed tokens, with AI distractor generation and publish/play flows shared with cloze.
+
 ## Goals
 
 - Automatically generate pedagogically useful exercises from existing project artifacts.

@@ -4,6 +4,7 @@
 <h1>Exercises — {{ project.title }}</h1>
 <p><a class="btn secondary" href="{% url 'project-detail' project.pk %}">← Back to project</a></p>
 <p><a class="btn" href="{% url 'project-generate-cloze' project.pk %}">Generate cloze exercises</a></p>
+<p><a class="btn" href="{% url 'project-generate-flashcards' project.pk %}">Generate flashcard exercises</a></p>
 
 {% if exercise_sets %}
   <h2>Latest exercise set per type</h2>

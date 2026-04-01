@@ -482,6 +482,46 @@ class CompileStatusViewTests(TestCase):
         self.assertContains(resp, '<select name="ai_model"', html=False)
         self.assertContains(resp, "gpt-4o")
 
+    def test_generate_flashcards_creates_set(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_flashcards" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        sample = {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "segments": [
+                        {
+                            "tokens": [
+                                {"surface": "cat", "annotations": {"gloss": "chat"}},
+                                {"surface": "sleeps", "annotations": {"gloss": "dort"}},
+                            ]
+                        }
+                    ],
+                }
+            ]
+        }
+        (run_dir / "gloss.json").write_text(json.dumps(sample), encoding="utf-8")
+        self.project.compiled_path = "runs/run_flashcards/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+
+        class _FakeClient:
+            async def chat_json(self, *_args, **_kwargs):
+                return {"distractors": ["chien", "oiseau", "poisson"], "rationale": {"chien": "animal"}}
+
+        with patch("projects.views._build_ai_client", return_value=_FakeClient()):
+            resp = self.client.post(
+                reverse("project-generate-flashcards", args=[self.project.pk]),
+                {"theme": "vocabulary", "item_count": 1, "ai_model": "gpt-4o"},
+            )
+        self.assertEqual(resp.status_code, 302)
+        ex_set = ExerciseSet.objects.get(project=self.project, exercise_type=ExerciseSet.TYPE_FLASHCARD)
+        self.assertEqual(ex_set.items.count(), 1)
+
+    def test_project_exercises_home_shows_flashcard_generation_link(self):
+        resp = self.client.get(reverse("project-exercises-home", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, reverse("project-generate-flashcards", args=[self.project.pk]))
+
     def test_project_detail_shows_subpage_links(self):
         resp = self.client.get(reverse("project-detail", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)

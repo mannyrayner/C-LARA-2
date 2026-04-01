@@ -21,6 +21,7 @@ urlpatterns = [
     path("projects/<int:pk>/image-placement/", views.set_page_image_placement, name="project-image-placement"),
     path("projects/<int:pk>/processing-options/", views.set_processing_options, name="project-processing-options"),
     path("projects/<int:pk>/exercises/cloze/", views.generate_cloze_exercises, name="project-generate-cloze"),
+    path("projects/<int:pk>/exercises/flashcards/", views.generate_flashcard_exercises, name="project-generate-flashcards"),
     path("exercise-sets/<int:set_id>/", views.exercise_set_detail, name="exercise-set-detail"),
     path("exercise-sets/<int:set_id>/play/", views.exercise_set_play, name="exercise-set-play"),
     path("exercise-sets/<int:set_id>/publish/", views.publish_exercise_set, name="exercise-set-publish"),

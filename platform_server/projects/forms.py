@@ -218,3 +218,23 @@ class ClozeExerciseSetForm(forms.Form):
         choices = ai_model_choices or ["gpt-4o"]
         self.fields["ai_model"].choices = [(m, m) for m in choices]
         self.fields["ai_model"].initial = choices[0]
+
+
+class FlashcardExerciseSetForm(forms.Form):
+    theme = forms.ChoiceField(
+        choices=[
+            ("vocabulary", "Vocabulary"),
+            ("grammar", "Grammar"),
+            ("morphology", "Morphology"),
+            ("grammar_morphology", "Grammar/Morphology"),
+        ],
+        initial="vocabulary",
+    )
+    item_count = forms.IntegerField(min_value=1, max_value=50, initial=10)
+    ai_model = forms.ChoiceField(choices=[], required=False)
+
+    def __init__(self, *args, ai_model_choices: list[str] | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        choices = ai_model_choices or ["gpt-4o"]
+        self.fields["ai_model"].choices = [(m, m) for m in choices]
+        self.fields["ai_model"].initial = choices[0]
