@@ -659,6 +659,29 @@ class CompileStatusViewTests(TestCase):
         self.assertNotContains(resp, "Older cloze")
         self.assertContains(resp, "Flashcards")
 
+    def test_project_exercises_home_shows_latest_flashcards_per_mode(self):
+        ExerciseSet.objects.create(
+            project=self.project,
+            created_by=self.user,
+            exercise_type=ExerciseSet.TYPE_FLASHCARD,
+            flashcard_mode=ExerciseSet.FLASHCARD_MODE_FORM_TO_MEANING,
+            theme=ExerciseSet.THEME_VOCAB,
+            title="F2M set",
+        )
+        ExerciseSet.objects.create(
+            project=self.project,
+            created_by=self.user,
+            exercise_type=ExerciseSet.TYPE_FLASHCARD,
+            flashcard_mode=ExerciseSet.FLASHCARD_MODE_MEANING_TO_FORM,
+            theme=ExerciseSet.THEME_VOCAB,
+            title="M2F set",
+        )
+
+        resp = self.client.get(reverse("project-exercises-home", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "F2M set")
+        self.assertContains(resp, "M2F set")
+
     def test_published_content_links_to_playable_exercises(self):
         ex_set = ExerciseSet.objects.create(
             project=self.project,

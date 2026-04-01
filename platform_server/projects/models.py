@@ -267,6 +267,12 @@ class ExerciseSet(models.Model):
         (TYPE_CLOZE, "Cloze"),
         (TYPE_FLASHCARD, "Flashcard"),
     ]
+    FLASHCARD_MODE_FORM_TO_MEANING = "form_to_meaning"
+    FLASHCARD_MODE_MEANING_TO_FORM = "meaning_to_form"
+    FLASHCARD_MODE_CHOICES = [
+        (FLASHCARD_MODE_FORM_TO_MEANING, "Form → meaning"),
+        (FLASHCARD_MODE_MEANING_TO_FORM, "Meaning → form"),
+    ]
 
     THEME_VOCAB = "vocabulary"
     THEME_GRAMMAR = "grammar"
@@ -290,6 +296,7 @@ class ExerciseSet(models.Model):
 
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="exercise_sets")
     exercise_type = models.CharField(max_length=32, choices=TYPE_CHOICES, default=TYPE_CLOZE)
+    flashcard_mode = models.CharField(max_length=32, choices=FLASHCARD_MODE_CHOICES, blank=True, default="")
     theme = models.CharField(max_length=32, choices=THEME_CHOICES, default=THEME_VOCAB)
     title = models.CharField(max_length=255, blank=True)
     instructions = models.TextField(blank=True)

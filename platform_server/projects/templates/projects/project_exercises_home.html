@@ -13,7 +13,7 @@
     {% for s in exercise_sets %}
       <li>
         <a href="{% url 'exercise-set-detail' s.id %}">{{ s.title|default:"Exercise set" }}</a>
-        ({{ s.exercise_type }}, {{ s.theme }}, updated {{ s.updated_at }})
+        ({{ s.exercise_type }}{% if s.flashcard_mode %}:{{ s.flashcard_mode }}{% endif %}, {{ s.theme }}, updated {{ s.updated_at }})
         {% if s.is_published %}<strong>published</strong>{% endif %}
         {% if can_publish %}
           <a class="btn secondary" href="{% url 'exercise-set-publish' s.id %}">{% if s.is_published %}Unpublish{% else %}Publish{% endif %}</a>

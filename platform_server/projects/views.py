@@ -1370,14 +1370,24 @@ def project_exercises_home(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
     role = _project_role_for_user(project, request.user)
     latest_sets: list[ExerciseSet] = []
-    for exercise_type, _label in ExerciseSet.TYPE_CHOICES:
-        latest_set = (
-            project.exercise_sets.filter(exercise_type=exercise_type)
-            .order_by("-updated_at", "-id")
-            .first()
-        )
-        if latest_set is not None:
-            latest_sets.append(latest_set)
+    # Keep one latest set per cloze type and one per flashcard mode.
+    latest_cloze = (
+        project.exercise_sets.filter(exercise_type=ExerciseSet.TYPE_CLOZE)
+        .order_by("-updated_at", "-id")
+        .first()
+    )
+    if latest_cloze is not None:
+        latest_sets.append(latest_cloze)
+
+    for mode, _label in ExerciseSet.FLASHCARD_MODE_CHOICES:
+        flashcard_query = project.exercise_sets.filter(exercise_type=ExerciseSet.TYPE_FLASHCARD)
+        if mode == ExerciseSet.FLASHCARD_MODE_FORM_TO_MEANING:
+            flashcard_query = flashcard_query.filter(Q(flashcard_mode=mode) | Q(flashcard_mode=""))
+        else:
+            flashcard_query = flashcard_query.filter(flashcard_mode=mode)
+        latest_flashcards_for_mode = flashcard_query.order_by("-updated_at", "-id").first()
+        if latest_flashcards_for_mode is not None:
+            latest_sets.append(latest_flashcards_for_mode)
 
     latest_sets.sort(key=lambda s: s.updated_at, reverse=True)
     return render(
@@ -2452,6 +2462,7 @@ def generate_flashcard_exercises(request: HttpRequest, pk: int) -> HttpResponse:
             ex_set = ExerciseSet.objects.create(
                 project=project,
                 exercise_type=ExerciseSet.TYPE_FLASHCARD,
+                flashcard_mode=flashcard_mode,
                 theme=theme,
                 title=f"{project.title} — Flashcards ({flashcard_mode}, {theme})",
                 status=ExerciseSet.STATUS_DRAFT,
