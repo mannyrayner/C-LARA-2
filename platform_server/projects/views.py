@@ -1293,6 +1293,32 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
+class ProjectAnnotationView(ProjectDetailView):
+    template_name = "projects/project_annotation.html"
+
+
+@login_required
+def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    return render(request, "projects/project_images_home.html", {"project": project})
+
+
+@login_required
+def project_exercises_home(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    role = _project_role_for_user(project, request.user)
+    sets = project.exercise_sets.all().order_by("-updated_at")
+    return render(
+        request,
+        "projects/project_exercises_home.html",
+        {
+            "project": project,
+            "exercise_sets": sets,
+            "can_publish": role == ProjectCollaborator.ROLE_OWNER or project.owner_id == request.user.id,
+        },
+    )
+
+
 class ProjectCreateView(LoginRequiredMixin, CreateView):
     model = Project
     form_class = ProjectForm

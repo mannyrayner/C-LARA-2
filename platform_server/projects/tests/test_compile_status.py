@@ -482,6 +482,13 @@ class CompileStatusViewTests(TestCase):
         self.assertContains(resp, '<select name="ai_model"', html=False)
         self.assertContains(resp, "gpt-4o")
 
+    def test_project_detail_shows_subpage_links(self):
+        resp = self.client.get(reverse("project-detail", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, reverse("project-annotation-home", args=[self.project.pk]))
+        self.assertContains(resp, reverse("project-images-home", args=[self.project.pk]))
+        self.assertContains(resp, reverse("project-exercises-home", args=[self.project.pk]))
+
     def test_published_content_links_to_playable_exercises(self):
         ex_set = ExerciseSet.objects.create(
             project=self.project,
