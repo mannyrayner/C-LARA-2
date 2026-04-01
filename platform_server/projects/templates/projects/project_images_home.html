@@ -1,0 +1,39 @@
+{% extends "projects/base.html" %}
+{% block title %}Images: {{ project.title }}{% endblock %}
+{% block content %}
+<h1>Images — {{ project.title }}</h1>
+<p><a class="btn secondary" href="{% url 'project-detail' project.pk %}">← Back to project</a></p>
+<h2>Style</h2>
+{% if style %}
+  <p>Style record exists{% if style.sample_image_path %}; sample image is available{% endif %}.</p>
+{% else %}
+  <p>No style data yet.</p>
+{% endif %}
+<p><a class="btn" href="{% url 'project-image-style' project.pk %}">Browse/create image style</a></p>
+
+<h2>Elements</h2>
+{% if elements_with_images_count %}
+  <p>{{ elements_with_images_count }} element image(s) available.</p>
+  <ul>
+    {% for element in sample_elements_with_images %}
+      <li>{{ element.name }}</li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>No generated element images yet.</p>
+{% endif %}
+<p><a class="btn" href="{% url 'project-image-elements' project.pk %}">Browse/create element images</a></p>
+
+<h2>Pages</h2>
+{% if pages_with_images_count %}
+  <p>{{ pages_with_images_count }} page image(s) available.</p>
+  <ul>
+    {% for page in sample_pages_with_images %}
+      <li>Page {{ page.page_number }}</li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>No generated page images yet.</p>
+{% endif %}
+<p><a class="btn" href="{% url 'project-image-pages' project.pk %}">Browse/create page images</a></p>
+{% endblock %}

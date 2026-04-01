@@ -1,0 +1,20 @@
+{
+  "input": "The boy's name was Will.",
+  "output": {
+    "surface": "The boy's name was Will.",
+    "tokens": [
+      {"surface": "The"},
+      {"surface": " "},
+      {"surface": "boy"},
+      {"surface": "'s"},
+      {"surface": " "},
+      {"surface": "name"},
+      {"surface": " "},
+      {"surface": "was"},
+      {"surface": " "},
+      {"surface": "Will"},
+      {"surface": "."}
+    ],
+    "annotations": {}
+  }
+}
