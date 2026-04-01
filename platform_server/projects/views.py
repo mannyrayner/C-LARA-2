@@ -1262,6 +1262,7 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
             if project.page_image_placement in PAGE_IMAGE_PLACEMENT_CHOICES
             else "none"
         )
+        context["has_segmentation_phase_1"] = _has_segmentation_phase_1_output(project)
         if project.language.lower().startswith("zh"):
             context["segmentation_method_options"] = [("auto", "Jieba (default)"), ("jieba", "Jieba"), ("ai", "AI")]
             context["romanization_method_options"] = [
@@ -1313,6 +1314,13 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
             "sample_elements_with_images": elements_with_images[:5],
             "pages_with_images_count": pages_with_images.count(),
             "sample_pages_with_images": pages_with_images[:5],
+            "has_segmentation_phase_1": _has_segmentation_phase_1_output(project),
+            "selected_ai_model": project.ai_model or DEFAULT_MODEL,
+            "selected_page_image_placement": (
+                project.page_image_placement
+                if project.page_image_placement in PAGE_IMAGE_PLACEMENT_CHOICES
+                else "none"
+            ),
         },
     )
 
@@ -1409,6 +1417,13 @@ def _resolve_run_dir(project: Project) -> Path | None:
         except ValueError:
             return None
     return None
+
+
+def _has_segmentation_phase_1_output(project: Project) -> bool:
+    run_dir = _resolve_run_dir(project)
+    if not run_dir:
+        return False
+    return (run_dir / "stages" / "segmentation_phase_1.json").exists()
 
 
 

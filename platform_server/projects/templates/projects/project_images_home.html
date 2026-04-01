@@ -3,6 +3,19 @@
 {% block content %}
 <h1>Images — {{ project.title }}</h1>
 <p><a class="btn secondary" href="{% url 'project-detail' project.pk %}">← Back to project</a></p>
+
+{% if not has_segmentation_phase_1 %}
+  <h2>Prepare page segmentation</h2>
+  <p>Before generating page images, segment the text into pages (phase 1).</p>
+  <form method="post" action="{% url 'project-compile' project.pk %}">{% csrf_token %}
+    <input type="hidden" name="start_stage" value="segmentation_phase_1" />
+    <input type="hidden" name="end_stage" value="segmentation_phase_1" />
+    <input type="hidden" name="ai_model" value="{{ selected_ai_model }}" />
+    <input type="hidden" name="page_image_placement" value="{{ selected_page_image_placement }}" />
+    <p><button class="btn secondary" type="submit">Segment text into pages (phase 1 only)</button></p>
+  </form>
+{% endif %}
+
 <h2>Style</h2>
 {% if style %}
   <p>Style record exists{% if style.sample_image_path %}; sample image is available{% endif %}.</p>

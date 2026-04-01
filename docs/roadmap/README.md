@@ -183,3 +183,12 @@ Implemented now:
 - Export source bundle from project detail.
 - Import source bundle from project list, always creating a new project.
 - Imported project title is kept when unique for that user, otherwise suffixed (`(2)`, `(3)`, ...).
+
+### 15. Conventional UX roadmap (project workspace IA)
+
+Status: **New roadmap document added.** See `docs/roadmap/conventional-ux.md`.
+
+Focus:
+- Keep the non-dialogue UX coherent as feature surface grows.
+- Define canonical control placement across top-level/annotation/images/exercises pages.
+- Reduce cognitive load through conditional controls and latest-first summaries.

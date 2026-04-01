@@ -12,8 +12,45 @@
 <p><a class="btn secondary" href="{% url 'project-download-source-bundle' object.pk %}">Download source ZIP</a></p>
 <p><a class="btn secondary" href="{% url 'project-download-bundle' object.pk %}">Download compiled ZIP</a></p>
 <p><a class="btn secondary" href="{% url 'project-publish' object.pk %}">{% if object.is_published %}Unpublish{% else %}Publish{% endif %}</a></p>
+{% if object.compiled_path %}
+  <p><a class="btn link" href="{% url 'project-compiled' pk=object.pk path=object.compiled_path %}" target="_blank">View via server</a></p>
+{% endif %}
 
 <form method="post" action="{% url 'project-delete' object.pk %}" onsubmit="return confirm('Delete this project and its artifacts?');">{% csrf_token %}
   <button class="btn secondary" type="submit">Delete project</button>
 </form>
+
+{% if current_user_role == "owner" %}
+  <h3>Collaborators</h3>
+  {% if collaborators %}
+    <ul>
+      {% for c in collaborators %}
+        <li>{{ c.user.username }} — {{ c.role|upper }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No collaborators yet.</p>
+  {% endif %}
+  <form method="post" action="{% url 'project-collaborators' object.pk %}">{% csrf_token %}
+    <p>
+      <label for="collab_username">User:</label>
+      <select id="collab_username" name="username">
+        {% if available_collaborator_users %}
+          {% for u in available_collaborator_users %}
+            <option value="{{ u.username }}">{{ u.username }}</option>
+          {% endfor %}
+        {% else %}
+          <option value="" selected>(No available users)</option>
+        {% endif %}
+      </select>
+      <label for="collab_role" class="ml-2">Role:</label>
+      <select id="collab_role" name="role">
+        {% for role_value, role_label in collaborator_role_choices %}
+          <option value="{{ role_value }}">{{ role_label }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn secondary" type="submit" {% if not available_collaborator_users %}disabled{% endif %}>Save collaborator</button>
+    </p>
+  </form>
+{% endif %}
 {% endblock %}

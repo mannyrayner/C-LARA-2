@@ -489,6 +489,32 @@ class CompileStatusViewTests(TestCase):
         self.assertContains(resp, reverse("project-images-home", args=[self.project.pk]))
         self.assertContains(resp, reverse("project-exercises-home", args=[self.project.pk]))
 
+    def test_project_detail_shows_view_via_server_link_when_compiled(self):
+        self.project.compiled_path = "runs/run_demo/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+        resp = self.client.get(reverse("project-detail", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(
+            resp,
+            reverse("project-compiled", args=[self.project.pk, "runs/run_demo/html/page_1.html"]),
+        )
+
+    def test_project_images_home_shows_phase_1_control_only_when_needed(self):
+        url = reverse("project-images-home", args=[self.project.pk])
+        resp_before = self.client.get(url)
+        self.assertEqual(resp_before.status_code, 200)
+        self.assertContains(resp_before, "Segment text into pages (phase 1 only)")
+
+        run_dir = self.project.artifact_dir() / "runs" / "run_for_seg1" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "segmentation_phase_1.json").write_text("{}", encoding="utf-8")
+        self.project.compiled_path = "runs/run_for_seg1/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+
+        resp_after = self.client.get(url)
+        self.assertEqual(resp_after.status_code, 200)
+        self.assertNotContains(resp_after, "Segment text into pages (phase 1 only)")
+
     def test_project_images_home_shows_existing_assets_summary(self):
         ProjectImageStyle.objects.create(
             project=self.project,
