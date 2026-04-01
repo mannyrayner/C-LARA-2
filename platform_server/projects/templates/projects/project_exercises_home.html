@@ -1,0 +1,25 @@
+{% extends "projects/base.html" %}
+{% block title %}Exercises: {{ project.title }}{% endblock %}
+{% block content %}
+<h1>Exercises — {{ project.title }}</h1>
+<p><a class="btn secondary" href="{% url 'project-detail' project.pk %}">← Back to project</a></p>
+<p><a class="btn" href="{% url 'project-generate-cloze' project.pk %}">Generate cloze exercises</a></p>
+
+{% if exercise_sets %}
+  <h2>Existing exercise sets</h2>
+  <ul>
+    {% for s in exercise_sets %}
+      <li>
+        <a href="{% url 'exercise-set-detail' s.id %}">{{ s.title|default:"Exercise set" }}</a>
+        ({{ s.exercise_type }}, {{ s.theme }})
+        {% if s.is_published %}<strong>published</strong>{% endif %}
+        {% if can_publish %}
+          <a class="btn secondary" href="{% url 'exercise-set-publish' s.id %}">{% if s.is_published %}Unpublish{% else %}Publish{% endif %}</a>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>No exercise sets yet.</p>
+{% endif %}
+{% endblock %}

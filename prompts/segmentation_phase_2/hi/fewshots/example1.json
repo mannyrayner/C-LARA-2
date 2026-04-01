@@ -1,0 +1,15 @@
+{
+  "input": "राम बाज़ार गया।",
+  "output": {
+    "surface": "राम बाज़ार गया।",
+    "tokens": [
+      {"surface": "राम"},
+      {"surface": " "},
+      {"surface": "बाज़ार"},
+      {"surface": " "},
+      {"surface": "गया"},
+      {"surface": "।"}
+    ],
+    "annotations": {}
+  }
+}
