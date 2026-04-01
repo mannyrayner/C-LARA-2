@@ -6,12 +6,13 @@
 <p><a class="btn" href="{% url 'project-generate-cloze' project.pk %}">Generate cloze exercises</a></p>
 
 {% if exercise_sets %}
-  <h2>Existing exercise sets</h2>
+  <h2>Latest exercise set per type</h2>
+  <p>To reduce confusion, only the most recently generated set for each exercise type is listed here.</p>
   <ul>
     {% for s in exercise_sets %}
       <li>
         <a href="{% url 'exercise-set-detail' s.id %}">{{ s.title|default:"Exercise set" }}</a>
-        ({{ s.exercise_type }}, {{ s.theme }})
+        ({{ s.exercise_type }}, {{ s.theme }}, updated {{ s.updated_at }})
         {% if s.is_published %}<strong>published</strong>{% endif %}
         {% if can_publish %}
           <a class="btn secondary" href="{% url 'exercise-set-publish' s.id %}">{% if s.is_published %}Unpublish{% else %}Publish{% endif %}</a>

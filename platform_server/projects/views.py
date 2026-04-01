@@ -1300,20 +1300,44 @@ class ProjectAnnotationView(ProjectDetailView):
 @login_required
 def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
-    return render(request, "projects/project_images_home.html", {"project": project})
+    style = getattr(project, "image_style", None)
+    elements_with_images = project.image_elements.exclude(image_path="").order_by("name", "id")
+    pages_with_images = project.image_pages.exclude(image_path="").order_by("page_number", "id")
+    return render(
+        request,
+        "projects/project_images_home.html",
+        {
+            "project": project,
+            "style": style,
+            "elements_with_images_count": elements_with_images.count(),
+            "sample_elements_with_images": elements_with_images[:5],
+            "pages_with_images_count": pages_with_images.count(),
+            "sample_pages_with_images": pages_with_images[:5],
+        },
+    )
 
 
 @login_required
 def project_exercises_home(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
     role = _project_role_for_user(project, request.user)
-    sets = project.exercise_sets.all().order_by("-updated_at")
+    latest_sets: list[ExerciseSet] = []
+    for exercise_type, _label in ExerciseSet.TYPE_CHOICES:
+        latest_set = (
+            project.exercise_sets.filter(exercise_type=exercise_type)
+            .order_by("-updated_at", "-id")
+            .first()
+        )
+        if latest_set is not None:
+            latest_sets.append(latest_set)
+
+    latest_sets.sort(key=lambda s: s.updated_at, reverse=True)
     return render(
         request,
         "projects/project_exercises_home.html",
         {
             "project": project,
-            "exercise_sets": sets,
+            "exercise_sets": latest_sets,
             "can_publish": role == ProjectCollaborator.ROLE_OWNER or project.owner_id == request.user.id,
         },
     )

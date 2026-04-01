@@ -489,6 +489,60 @@ class CompileStatusViewTests(TestCase):
         self.assertContains(resp, reverse("project-images-home", args=[self.project.pk]))
         self.assertContains(resp, reverse("project-exercises-home", args=[self.project.pk]))
 
+    def test_project_images_home_shows_existing_assets_summary(self):
+        ProjectImageStyle.objects.create(
+            project=self.project,
+            sample_image_path="images/style/style_sample_image.png",
+        )
+        ProjectImageElement.objects.create(
+            project=self.project,
+            name="cat",
+            image_path="images/elements/cat/reference.png",
+        )
+        ProjectImagePage.objects.create(
+            project=self.project,
+            page_number=1,
+            image_path="images/pages/page_1/image.png",
+        )
+
+        resp = self.client.get(reverse("project-images-home", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "sample image is available")
+        self.assertContains(resp, "1 element image(s) available")
+        self.assertContains(resp, "cat")
+        self.assertContains(resp, "1 page image(s) available")
+        self.assertContains(resp, "Page 1")
+
+    def test_project_exercises_home_shows_only_latest_set_per_type(self):
+        old_cloze = ExerciseSet.objects.create(
+            project=self.project,
+            created_by=self.user,
+            exercise_type=ExerciseSet.TYPE_CLOZE,
+            theme=ExerciseSet.THEME_VOCAB,
+            title="Older cloze",
+        )
+        latest_cloze = ExerciseSet.objects.create(
+            project=self.project,
+            created_by=self.user,
+            exercise_type=ExerciseSet.TYPE_CLOZE,
+            theme=ExerciseSet.THEME_VOCAB,
+            title="Latest cloze",
+        )
+        ExerciseSet.objects.create(
+            project=self.project,
+            created_by=self.user,
+            exercise_type=ExerciseSet.TYPE_FLASHCARD,
+            theme=ExerciseSet.THEME_VOCAB,
+            title="Flashcards",
+        )
+        self.assertNotEqual(old_cloze.id, latest_cloze.id)
+
+        resp = self.client.get(reverse("project-exercises-home", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Latest cloze")
+        self.assertNotContains(resp, "Older cloze")
+        self.assertContains(resp, "Flashcards")
+
     def test_published_content_links_to_playable_exercises(self):
         ex_set = ExerciseSet.objects.create(
             project=self.project,
