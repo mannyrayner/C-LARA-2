@@ -511,11 +511,61 @@ class CompileStatusViewTests(TestCase):
         with patch("projects.views._build_ai_client", return_value=_FakeClient()):
             resp = self.client.post(
                 reverse("project-generate-flashcards", args=[self.project.pk]),
-                {"theme": "vocabulary", "item_count": 1, "ai_model": "gpt-4o"},
+                {
+                    "theme": "vocabulary",
+                    "flashcard_mode": "form_to_meaning",
+                    "item_count": 1,
+                    "ai_model": "gpt-4o",
+                },
             )
         self.assertEqual(resp.status_code, 302)
         ex_set = ExerciseSet.objects.get(project=self.project, exercise_type=ExerciseSet.TYPE_FLASHCARD)
         self.assertEqual(ex_set.items.count(), 1)
+        item = ex_set.items.first()
+        self.assertIsNotNone(item)
+        self.assertIn("chat", item.options)
+        self.assertNotEqual(item.options[0], item.answer)
+
+    def test_generate_inverse_flashcards_creates_set(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_flashcards_inverse" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        sample = {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "segments": [
+                        {"tokens": [{"surface": "freund", "annotations": {"gloss": "boyfriend"}}]}
+                    ],
+                }
+            ]
+        }
+        (run_dir / "gloss.json").write_text(json.dumps(sample), encoding="utf-8")
+        self.project.compiled_path = "runs/run_flashcards_inverse/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+
+        class _FakeClient:
+            async def chat_json(self, *_args, **_kwargs):
+                return {"distractors": ["mann", "haus", "kind"], "rationale": {}}
+
+        with patch("projects.views._build_ai_client", return_value=_FakeClient()):
+            resp = self.client.post(
+                reverse("project-generate-flashcards", args=[self.project.pk]),
+                {
+                    "theme": "vocabulary",
+                    "flashcard_mode": "meaning_to_form",
+                    "item_count": 1,
+                    "ai_model": "gpt-4o",
+                },
+            )
+        self.assertEqual(resp.status_code, 302)
+        ex_set = ExerciseSet.objects.filter(
+            project=self.project, exercise_type=ExerciseSet.TYPE_FLASHCARD
+        ).order_by("-id").first()
+        self.assertIsNotNone(ex_set)
+        item = ex_set.items.first()
+        self.assertIsNotNone(item)
+        self.assertIn("boyfriend", item.prompt.lower())
+        self.assertEqual(item.answer, "freund")
 
     def test_project_exercises_home_shows_flashcard_generation_link(self):
         resp = self.client.get(reverse("project-exercises-home", args=[self.project.pk]))

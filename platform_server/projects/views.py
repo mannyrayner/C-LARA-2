@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import random
 import shutil
 import uuid
 import asyncio
@@ -2269,37 +2270,82 @@ async def _generate_flashcard_item(
     theme: str,
     candidate: dict[str, Any],
     order_index: int,
+    flashcard_mode: str,
 ) -> dict[str, Any]:
     source_word = candidate["source_word"]
     correct_gloss = candidate["target_gloss"]
     segment_text = candidate["segment_text"]
-    prompt = f"""
-Create exactly 3 plausible distractor translations/glosses for a flashcard multiple-choice item.
+    if flashcard_mode == "meaning_to_form":
+        prompt = f"""
+Create exactly 3 WRONG distractor source-language words for a flashcard multiple-choice item.
+Theme: {theme}
+Gloss-language prompt: {correct_gloss}
+Correct source-language answer: {source_word}
+Segment context: {segment_text}
+Hard constraints:
+- Every distractor must be incorrect for this prompt.
+- Do NOT return the correct answer.
+- Do NOT return close variants/spellings/morphological forms of the answer.
+- Do NOT return the gloss-language word.
+Return JSON with:
+- distractors: array of 3 strings
+- rationale: object mapping each distractor to a short reason it is clearly wrong
+"""
+    else:
+        prompt = f"""
+Create exactly 3 WRONG distractor glosses/translations for a flashcard multiple-choice item.
 Theme: {theme}
 Source word: {source_word}
 Correct gloss: {correct_gloss}
 Segment context: {segment_text}
+Hard constraints:
+- Every distractor must be incorrect for this source word in this context.
+- Do NOT return the source word itself.
+- Do NOT return the correct gloss.
+- Do NOT return close variants/spellings/morphological forms of the correct gloss.
 Return JSON with:
 - distractors: array of 3 strings
-- rationale: object mapping each distractor to a short reason
+- rationale: object mapping each distractor to a short reason it is clearly wrong
 """
     try:
         data = await client.chat_json(prompt, model=model)
     except Exception:
         data = {}
     distractors = [str(x).strip() for x in (data.get("distractors") or []) if str(x).strip()]
-    distractors = [d for d in distractors if d.lower() != correct_gloss.lower()]
+    if flashcard_mode == "meaning_to_form":
+        distractors = [
+            d
+            for d in distractors
+            if d.lower() != source_word.lower() and d.lower() != correct_gloss.lower()
+        ]
+    else:
+        distractors = [
+            d
+            for d in distractors
+            if d.lower() != correct_gloss.lower() and d.lower() != source_word.lower()
+        ]
     distractors = distractors[:3]
     while len(distractors) < 3:
-        distractors.append(f"{correct_gloss}_{len(distractors)+1}")
-    options = [correct_gloss] + distractors
+        filler_base = source_word if flashcard_mode == "meaning_to_form" else correct_gloss
+        distractors.append(f"{filler_base}_{len(distractors)+1}")
+
+    answer = source_word if flashcard_mode == "meaning_to_form" else correct_gloss
+    prompt_text = (
+        f"What is the best source-language word for: {correct_gloss}?"
+        if flashcard_mode == "meaning_to_form"
+        else f"What is the best gloss/translation for: {source_word}?"
+    )
+    options = [answer] + distractors
+    random.Random(f"{source_word}|{correct_gloss}|{order_index}|{flashcard_mode}").shuffle(options)
+    if options and options[0] == answer and len(options) > 1:
+        options[0], options[1] = options[1], options[0]
     return {
         "order_index": order_index,
         "page_number": candidate["page_number"],
         "segment_index": candidate["segment_index"],
         "segment_text": segment_text,
-        "prompt": f"What is the best gloss/translation for: {source_word}?",
-        "answer": correct_gloss,
+        "prompt": prompt_text,
+        "answer": answer,
         "options": options,
         "rationale": data.get("rationale") if isinstance(data.get("rationale"), dict) else {},
     }
@@ -2317,6 +2363,7 @@ def generate_cloze_exercises(request: HttpRequest, pk: int) -> HttpResponse:
         form = ClozeExerciseSetForm(request.POST, ai_model_choices=AI_MODEL_CHOICES)
         if form.is_valid():
             theme = form.cleaned_data["theme"]
+            flashcard_mode = form.cleaned_data["flashcard_mode"]
             item_count = form.cleaned_data["item_count"]
             model = form.cleaned_data.get("ai_model") or project.ai_model or DEFAULT_MODEL
 
@@ -2389,6 +2436,7 @@ def generate_flashcard_exercises(request: HttpRequest, pk: int) -> HttpResponse:
         form = FlashcardExerciseSetForm(request.POST, ai_model_choices=AI_MODEL_CHOICES)
         if form.is_valid():
             theme = form.cleaned_data["theme"]
+            flashcard_mode = form.cleaned_data["flashcard_mode"]
             item_count = form.cleaned_data["item_count"]
             model = form.cleaned_data.get("ai_model") or project.ai_model or DEFAULT_MODEL
 
@@ -2405,7 +2453,7 @@ def generate_flashcard_exercises(request: HttpRequest, pk: int) -> HttpResponse:
                 project=project,
                 exercise_type=ExerciseSet.TYPE_FLASHCARD,
                 theme=theme,
-                title=f"{project.title} — Flashcards ({theme})",
+                title=f"{project.title} — Flashcards ({flashcard_mode}, {theme})",
                 status=ExerciseSet.STATUS_DRAFT,
                 created_by=request.user,
             )
@@ -2413,7 +2461,7 @@ def generate_flashcard_exercises(request: HttpRequest, pk: int) -> HttpResponse:
             async def _run() -> list[dict[str, Any]]:
                 client = _build_ai_client(model)
                 tasks = [
-                    _generate_flashcard_item(client, model, theme, cand, idx)
+                    _generate_flashcard_item(client, model, theme, cand, idx, flashcard_mode)
                     for idx, cand in enumerate(selected)
                 ]
                 return await asyncio.gather(*tasks)

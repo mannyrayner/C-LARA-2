@@ -221,6 +221,11 @@ class ClozeExerciseSetForm(forms.Form):
 
 
 class FlashcardExerciseSetForm(forms.Form):
+    FLASHCARD_MODE_CHOICES = [
+        ("form_to_meaning", "Form → meaning"),
+        ("meaning_to_form", "Meaning → form"),
+    ]
+
     theme = forms.ChoiceField(
         choices=[
             ("vocabulary", "Vocabulary"),
@@ -230,6 +235,7 @@ class FlashcardExerciseSetForm(forms.Form):
         ],
         initial="vocabulary",
     )
+    flashcard_mode = forms.ChoiceField(choices=FLASHCARD_MODE_CHOICES, initial="form_to_meaning")
     item_count = forms.IntegerField(min_value=1, max_value=50, initial=10)
     ai_model = forms.ChoiceField(choices=[], required=False)
 
