@@ -42,7 +42,8 @@ For each project, the navigation should be:
    - Should include:
      - links into Style/Elements/Pages workflows,
      - summaries of existing style/element/page assets,
-     - conditional “Segment text into pages (phase 1)” control if page segmentation output is not yet available.
+     - conditional “Segment text into pages (phase 1)” control if page segmentation output is not yet available,
+     - explicit long-running-action feedback (spinner/progress text) for expensive image-generation operations.
 
 4. **Exercises page**
    - Purpose: exercise workflow hub and learner-facing exercise publishing state.

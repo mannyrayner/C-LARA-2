@@ -55,6 +55,7 @@ class ProjectImageElementsViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Discover elements")
         self.assertContains(resp, "Generate element images")
+        self.assertContains(resp, "fan-out/fan-in")
 
     def test_get_elements_page_shows_generated_image(self):
         ProjectImageElement.objects.create(

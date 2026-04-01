@@ -10,10 +10,16 @@
 
 <p><a href="{% url 'project-image-elements' project.pk %}">← Back to Elements step</a></p>
 <p>Status from style step: <strong>{{ style.get_status_display }}</strong></p>
+<p>
+  Status from elements step:
+  <strong>{{ elements_with_images_count }}/{{ element_count }}</strong> element image(s) generated,
+  <strong>{{ confirmed_element_count }}</strong> confirmed.
+</p>
 <p>Page image artifacts stored at: {{ pages_artifact_dir }}</p>
 {% if status_notice == "done" %}
   <p><strong>Request completed.</strong> Check the messages above for details.</p>
 {% endif %}
+<p id="pages-progress" style="display:none;"><strong>Generating page images… please wait.</strong></p>
 
 <form method="post">
   {% csrf_token %}
@@ -29,7 +35,7 @@
         <option value="{{ model }}" {% if model == selected_image_model %}selected{% endif %}>{{ model }}</option>
       {% endfor %}
     </select>
-    <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_images">Generate page images</button>
+    <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_images" data-long-action="true">Generate page images</button>
   </p>
 
   {% if formset.forms %}
@@ -54,4 +60,18 @@
     <p>No pages detected yet. Click <strong>Sync pages from text</strong>.</p>
   {% endif %}
 </form>
+<script>
+  (function () {
+    const form = document.querySelector("form");
+    const progress = document.getElementById("pages-progress");
+    if (!form || !progress) return;
+    form.addEventListener("submit", function (event) {
+      const submitter = event.submitter;
+      if (!submitter || submitter.dataset.longAction !== "true") return;
+      progress.style.display = "block";
+      submitter.disabled = true;
+      submitter.textContent = "Processing…";
+    });
+  })();
+</script>
 {% endblock %}

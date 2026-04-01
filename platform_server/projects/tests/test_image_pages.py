@@ -77,6 +77,8 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Generate page images")
         self.assertEqual(ProjectImagePage.objects.filter(project=self.project).count(), 2)
+        self.assertContains(resp, "Status from elements step:")
+        self.assertContains(resp, "1/1")
 
     @patch("projects.views._build_ai_client")
     def test_generate_page_images_persists_output(self, mock_build_ai_client):

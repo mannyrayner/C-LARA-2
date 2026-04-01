@@ -16,16 +16,18 @@
 <p>Status from style step: <strong>{{ style.get_status_display }}</strong></p>
 <p>Elements artifacts stored at: {{ elements_artifact_dir }}</p>
 <p>Confirmed elements: {{ confirmed_count }}</p>
+<p><em>Generation uses fan-out/fan-in (parallel API calls, then merge/save).</em></p>
 {% if status_notice == "done" %}
   <p><strong>Request completed.</strong> Check the messages above for details.</p>
 {% endif %}
+<p id="elements-progress" style="display:none;"><strong>Processing request… this may take a while for many elements.</strong></p>
 
 <form method="post">
   {% csrf_token %}
   {{ formset.management_form }}
   <p>
-    <button class="btn" style="cursor:pointer" type="submit" name="action" value="discover">Discover elements</button>
-    <button class="btn" style="cursor:pointer" type="submit" name="action" value="expand">Generate expanded prompts</button>
+    <button class="btn" style="cursor:pointer" type="submit" name="action" value="discover" data-long-action="true">Discover elements</button>
+    <button class="btn" style="cursor:pointer" type="submit" name="action" value="expand" data-long-action="true">Generate expanded prompts</button>
     <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="save">Save edits</button>
     <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="confirm">Confirm selected</button>
   </p>
@@ -38,7 +40,7 @@
         <option value="{{ model }}" {% if model == selected_image_model %}selected{% endif %}>{{ model }}</option>
       {% endfor %}
     </select>
-    <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_images">Generate element images</button>
+    <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_images" data-long-action="true">Generate element images</button>
   </p>
 
   {% if formset.forms %}
@@ -63,4 +65,18 @@
     <p>No elements yet. Click <strong>Discover elements</strong> to generate an initial list.</p>
   {% endif %}
 </form>
+<script>
+  (function () {
+    const form = document.querySelector("form");
+    const progress = document.getElementById("elements-progress");
+    if (!form || !progress) return;
+    form.addEventListener("submit", function (event) {
+      const submitter = event.submitter;
+      if (!submitter || submitter.dataset.longAction !== "true") return;
+      progress.style.display = "block";
+      submitter.disabled = true;
+      submitter.textContent = "Processing…";
+    });
+  })();
+</script>
 {% endblock %}

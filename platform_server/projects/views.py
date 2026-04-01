@@ -601,15 +601,44 @@ def _generate_project_element_images(
     *,
     image_model: str,
 ) -> int:
-    client = _build_ai_client()
     elements_dir = _image_elements_dir(project)
     elements_dir.mkdir(parents=True, exist_ok=True)
     generated = 0
-    for element in project.image_elements.order_by("name", "id"):
+    elements = list(project.image_elements.order_by("name", "id"))
+    work_items: list[tuple[ProjectImageElement, str]] = []
+    for element in elements:
         prompt = (element.expanded_prompt or element.expanded_description or element.name).strip()
-        if not prompt:
-            continue
-        image_result = client.generate_image(prompt, model=image_model)
+        if prompt:
+            work_items.append((element, prompt))
+
+    if not work_items:
+        return 0
+
+    max_workers = min(4, len(work_items))
+    logger.info(
+        "Generating %s element images with fan-out/fan-in (workers=%s, model=%s) for project %s",
+        len(work_items),
+        max_workers,
+        image_model,
+        project.pk,
+    )
+    results_by_id: dict[int, dict[str, Any]] = {}
+
+    def _generate_one(element_id: int, prompt_text: str) -> tuple[int, dict[str, Any]]:
+        client = _build_ai_client()
+        return element_id, client.generate_image(prompt_text, model=image_model)
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(_generate_one, element.id, prompt): (element.id, prompt)
+            for element, prompt in work_items
+        }
+        for future in as_completed(futures):
+            element_id, _prompt = futures[future]
+            results_by_id[element_id] = future.result()[1]
+
+    for element, prompt in work_items:
+        image_result = results_by_id[element.id]
         element_slug = slugify(element.name) or f"element-{element.id}"
         element_dir = elements_dir / element_slug
         element_dir.mkdir(parents=True, exist_ok=True)
@@ -645,6 +674,12 @@ def _generate_project_element_images(
             encoding="utf-8",
         )
         generated += 1
+
+    logger.info(
+        "Completed element image generation fan-in for project %s (%s images).",
+        project.pk,
+        generated,
+    )
     return generated
 
 
@@ -1136,6 +1171,9 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
             "pages_artifact_dir": _image_pages_dir(project),
             "image_models": IMAGE_MODEL_CHOICES,
             "selected_image_model": request.GET.get("image_model") or "gpt-image-1",
+            "element_count": project.image_elements.count(),
+            "confirmed_element_count": project.image_elements.filter(is_confirmed=True).count(),
+            "elements_with_images_count": project.image_elements.exclude(image_path="").count(),
             "status_notice": request.GET.get("notice"),
         },
     )
