@@ -43,7 +43,9 @@ This summary mirrors `docs/roadmap/README.md`.
 1. **Adelaide deployment** with C-LARA and C-LARA-2 running safely side-by-side.
 2. **Structured manual annotation editor** so human reviewers can correct all stages without raw JSON editing.
 
-## Testing & CI
+- End-to-end text pipeline with text generation, segmentation (phase 1/2), translation, MWE, lemma, gloss, romanization (`pypinyin`/`indic_transliteration`/AI fallback), audio generation/caching, and HTML compilation.
+- Image workflow (style → recurring elements → page images) integrated with compile output so generated images can be included in final HTML.
+- Django platform with account/project flows, compile monitor/status polling, publish/content browsing pages, and self-contained ZIP export (HTML + audio + images).
 
 - Run tests from repo root: `make -C tests test`.
 - CI (`.github/workflows/ci.yml`) runs automated checks and uploads artifacts.
