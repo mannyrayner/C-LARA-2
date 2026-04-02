@@ -6,7 +6,7 @@
 
 <script>
   const statusUrl = "{% url 'project-compile-status' project.pk report_id %}";
-  const projectDetailUrl = "{% url 'project-detail' project.pk %}";
+  const returnUrl = "{{ return_url|escapejs }}";
   const statusMessages = document.getElementById('status-messages');
   let lastUpdate = Date.now();
 
@@ -28,7 +28,7 @@
       }
 
       if (data.status === 'finished' || data.status === 'error') {
-        window.location = projectDetailUrl;
+        window.location = returnUrl;
         return;
       }
 

@@ -239,6 +239,39 @@ class CompileStatusViewTests(TestCase):
         self.assertIn("segmentation_phase_1", args)
         self.assertIn("bottom", args)
 
+    @patch("projects.views.async_task")
+    def test_compile_from_annotation_preserves_annotation_return_target(self, mock_async_task):
+        url = reverse("project-compile", args=[self.project.pk])
+        resp = self.client.post(
+            url,
+            {
+                "start_stage": "segmentation_phase_1",
+                "end_stage": "segmentation_phase_1",
+                "return_to": reverse("project-annotation-home", args=[self.project.pk]),
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("/compile/monitor/", resp.url)
+        self.assertIn("next=/projects/", resp.url)
+        self.assertIn("/annotation/", resp.url)
+
+    def test_resolve_run_dir_prefers_latest_run_over_compiled_path_run(self):
+        base = self.project.artifact_dir()
+        older = base / "runs" / "run_old"
+        newer = base / "runs" / "run_new"
+        for run_dir in (older, newer):
+            (run_dir / "stages").mkdir(parents=True, exist_ok=True)
+
+        (older / "stages" / "compile_html.json").write_text("{}", encoding="utf-8")
+        (newer / "stages" / "lemma.json").write_text("{}", encoding="utf-8")
+        os.utime(older, (1, 1))
+        os.utime(newer, (4_000_000_000, 4_000_000_000))
+
+        self.project.compiled_path = "runs/run_old/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+        selected = views._resolve_run_dir(self.project)
+        self.assertEqual(selected, newer.resolve())
+
     def test_set_page_image_placement_updates_project(self):
         url = reverse("project-image-placement", args=[self.project.pk])
         resp = self.client.post(url, {"page_image_placement": "top"})

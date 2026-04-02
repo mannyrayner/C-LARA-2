@@ -32,6 +32,7 @@ import mimetypes
 import tempfile
 import zipfile
 from urllib.parse import unquote
+from urllib.parse import quote
 
 from core.config import DEFAULT_MODEL, OpenAIConfig
 from core.ai_api import OpenAIClient
@@ -1456,17 +1457,24 @@ def _persist_project_source(project: Project) -> None:
 
 def _resolve_run_dir(project: Project) -> Path | None:
     base = project.artifact_dir().resolve()
+    compiled_run_dir: Path | None = None
     if project.compiled_path:
         rel = Path(project.compiled_path)
         if len(rel.parts) >= 2 and rel.parts[0] == "runs":
-            return (base / rel.parts[0] / rel.parts[1]).resolve()
+            candidate = (base / rel.parts[0] / rel.parts[1]).resolve()
+            if candidate.exists():
+                compiled_run_dir = candidate
     runs_root = base / "runs"
+    latest_run_dir: Path | None = None
     if runs_root.exists():
         try:
-            return max(runs_root.iterdir(), key=lambda p: p.stat().st_mtime)
+            latest_run_dir = max(runs_root.iterdir(), key=lambda p: p.stat().st_mtime)
         except ValueError:
-            return None
-    return None
+            latest_run_dir = None
+
+    if compiled_run_dir and latest_run_dir:
+        return latest_run_dir if latest_run_dir.stat().st_mtime >= compiled_run_dir.stat().st_mtime else compiled_run_dir
+    return latest_run_dir or compiled_run_dir
 
 
 def _has_segmentation_phase_1_output(project: Project) -> bool:
@@ -1761,20 +1769,23 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         timezone_name = profile.timezone or "UTC"
     except Profile.DoesNotExist:
         timezone_name = "UTC"
+    return_to = (request.POST.get("return_to") or "").strip()
+    if not return_to.startswith("/"):
+        return_to = reverse("project-detail", args=[project.pk])
 
     start_stage = request.POST.get("start_stage") or (
         "text_gen" if project.input_mode == Project.INPUT_DESCRIPTION else "segmentation_phase_1"
     )
     if start_stage not in PIPELINE_ORDER:
         messages.error(request, "Unknown start stage.")
-        return redirect("project-detail", pk=project.pk)
+        return redirect(return_to)
     end_stage = request.POST.get("end_stage") or "compile_html"
     if end_stage not in PIPELINE_ORDER:
         messages.error(request, "Unknown end stage.")
-        return redirect("project-detail", pk=project.pk)
+        return redirect(return_to)
     if PIPELINE_ORDER.index(end_stage) < PIPELINE_ORDER.index(start_stage):
         messages.error(request, "End stage must come after the selected start stage.")
-        return redirect("project-detail", pk=project.pk)
+        return redirect(return_to)
 
     page_image_placement = (
         request.POST.get("page_image_placement")
@@ -1783,12 +1794,12 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     ).strip().lower()
     if page_image_placement not in PAGE_IMAGE_PLACEMENT_CHOICES:
         messages.error(request, "Unknown page image placement option.")
-        return redirect("project-detail", pk=project.pk)
+        return redirect(return_to)
 
     ai_model = request.POST.get("ai_model") or project.ai_model or DEFAULT_MODEL
     if ai_model not in AI_MODEL_CHOICES:
         messages.error(request, "Unknown AI model selection.")
-        return redirect("project-detail", pk=project.pk)
+        return redirect(return_to)
     if ai_model != project.ai_model:
         project.ai_model = ai_model
         project.save(update_fields=["ai_model", "updated_at"])
@@ -1797,10 +1808,10 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     romanization_method = (request.POST.get("romanization_method") or project.romanization_method or "auto").strip().lower()
     if segmentation_method not in SEGMENTATION_METHOD_CHOICES:
         messages.error(request, "Unknown segmentation method option.")
-        return redirect("project-detail", pk=project.pk)
+        return redirect(return_to)
     if romanization_method not in ROMANIZATION_METHOD_CHOICES:
         messages.error(request, "Unknown romanization method option.")
-        return redirect("project-detail", pk=project.pk)
+        return redirect(return_to)
     update_fields: list[str] = []
     if segmentation_method != project.segmentation_method:
         project.segmentation_method = segmentation_method
@@ -1820,7 +1831,7 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     if start_stage == "text_gen":
         if not description:
             messages.error(request, "Please provide a description to generate text.")
-            return redirect("project-detail", pk=project.pk)
+            return redirect(return_to)
     elif start_stage == "segmentation_phase_1":
         text = (project.source_text or "").strip()
         if not text:
@@ -1841,7 +1852,7 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
                 request,
                 "Please provide source text to segment, or run text_gen first to create source text.",
             )
-            return redirect("project-detail", pk=project.pk)
+            return redirect(return_to)
     else:
         # Start from a persisted intermediate produced by a previous run.
         upstream_index = PIPELINE_ORDER.index(start_stage) - 1
@@ -1852,7 +1863,7 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
                 request,
                 f"Cannot start at {start_stage}: missing upstream stage output ({upstream_stage}).",
             )
-            return redirect("project-detail", pk=project.pk)
+            return redirect(return_to)
 
         text_obj = _load_stage_payload(project, upstream_stage, run_dir=source_run)
         if text_obj is None:
@@ -1860,7 +1871,7 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
                 request,
                 f"Cannot start at {start_stage}: missing upstream stage output ({upstream_stage}).",
             )
-            return redirect("project-detail", pk=project.pk)
+            return redirect(return_to)
 
         try:
             _copy_run_artifacts(source_run, output_dir)
@@ -1895,7 +1906,8 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         q_options={"sync": False},
     )
 
-    return redirect("project-compile-monitor", pk=project.pk, report_id=report_id)
+    monitor_url = reverse("project-compile-monitor", args=[project.pk, report_id])
+    return redirect(f"{monitor_url}?next={quote(return_to, safe='/')}")
 
 
 @login_required
@@ -1939,10 +1951,11 @@ def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 def compile_monitor(request: HttpRequest, pk: int, report_id: str) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    return_url = request.GET.get("next") or reverse("project-detail", args=[project.pk])
     return render(
         request,
         "projects/compile_monitor.html",
-        {"project": project, "report_id": report_id},
+        {"project": project, "report_id": report_id, "return_url": return_url},
     )
 
 

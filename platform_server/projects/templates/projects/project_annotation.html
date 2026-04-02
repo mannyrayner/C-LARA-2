@@ -55,6 +55,7 @@
     <input type="hidden" name="page_image_placement" value="{{ selected_page_image_placement }}" />
     <input type="hidden" name="segmentation_method" value="{{ selected_segmentation_method }}" />
     <input type="hidden" name="romanization_method" value="{{ selected_romanization_method }}" />
+    <input type="hidden" name="return_to" value="{% url 'project-annotation-home' object.pk %}" />
     <button class="btn" type="submit">Run selected pipeline stages</button>
   </p>
 </form>
