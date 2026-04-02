@@ -133,6 +133,102 @@ To turn this from roadmap to exact executable runbook, we still need:
 7. Existing log locations and rotation policy.
 8. Any firewall/SELinux/AppArmor/network policy constraints on Adelaide hosts.
 
+### How to collect this information (operator checklist)
+If you are not a deployment specialist, use this as a copy/paste checklist for whoever has shell access to the Adelaide host.
+
+> Run these commands on the Adelaide server and save outputs in a dated text file (e.g. `deploy-discovery-2026-04-02.txt`).
+
+#### 1) Nginx config for current site
+- Commands:
+  - `sudo nginx -T | less`
+  - `sudo nginx -T | grep -n "server_name"`
+  - `sudo ls -l /etc/nginx/sites-enabled /etc/nginx/conf.d`
+- What to capture:
+  - `server_name` entries for `c-lara.unisa.edu.au`,
+  - `location` and `proxy_pass` blocks,
+  - TLS certificate/key file paths,
+  - include-file structure.
+
+#### 2) Systemd service definitions (gunicorn + djangoq)
+- Commands:
+  - `systemctl list-unit-files | grep -E "gunicorn|djangoq|qcluster"`
+  - `sudo systemctl cat gunicorn`
+  - `sudo systemctl cat djangoq.service`
+  - `sudo systemctl status gunicorn djangoq.service --no-pager`
+- What to capture:
+  - `ExecStart`, `WorkingDirectory`, `User`, `Group`,
+  - environment file references,
+  - restart policy/timeouts.
+
+#### 3) Python and venv path currently in use
+- Commands:
+  - `sudo systemctl cat gunicorn | grep -E "ExecStart|Environment|WorkingDirectory"`
+  - `ps aux | grep -E "gunicorn|manage.py|qcluster" | grep -v grep`
+  - `which python3 && python3 --version`
+- What to capture:
+  - absolute venv/bin/python path used by services,
+  - package environment location,
+  - Python version.
+
+#### 4) DB engine/version + backup method
+- Commands (adapt to your DB):
+  - PostgreSQL: `psql --version`, `sudo -u postgres psql -c "\l"`
+  - MariaDB/MySQL: `mysql --version`, `mysql -e "SHOW DATABASES;"`
+  - Find backup jobs: `sudo crontab -l`, `sudo ls -l /etc/cron*`, `sudo systemctl list-timers --all`
+- What to capture:
+  - DB type/version,
+  - database name/user for C-LARA,
+  - actual backup command/script path and schedule,
+  - backup destination + retention policy.
+
+#### 5) TLS certificate provisioning method
+- Commands:
+  - `sudo nginx -T | grep -E "ssl_certificate|ssl_certificate_key|ssl_trusted_certificate"`
+  - `sudo certbot certificates` (if certbot is used)
+  - `sudo ls -l /etc/letsencrypt/live 2>/dev/null || true`
+- What to capture:
+  - whether certs are from certbot, institutional reverse proxy, or manual files,
+  - renewal mechanism and owner.
+
+#### 6) File ownership and runtime user model
+- Commands:
+  - `id`
+  - `ps -eo user,group,cmd | grep -E "nginx|gunicorn|qcluster|djangoq" | grep -v grep`
+  - `sudo ls -ld <root>/C-LARA <root>/C-LARA-2 2>/dev/null || true`
+- What to capture:
+  - Unix users/groups running web/app/worker,
+  - ownership/permissions on code, media, log directories.
+
+#### 7) Logs and log rotation
+- Commands:
+  - `sudo find /var/log -maxdepth 2 -type f | grep -E "nginx|gunicorn|django|qcluster|djangoq"`
+  - `sudo ls -l /etc/logrotate.d`
+  - `sudo sed -n '1,200p' /etc/logrotate.d/nginx`
+- What to capture:
+  - active log file locations,
+  - rotation frequency/retention,
+  - whether app logs are journal-only or file-based.
+
+#### 8) Network and host security constraints
+- Commands:
+  - Firewall: `sudo ufw status verbose` or `sudo firewall-cmd --list-all`
+  - SELinux: `getenforce` (if present)
+  - AppArmor: `sudo aa-status` (if present)
+  - Listening ports: `sudo ss -tulpn | head -n 200`
+- What to capture:
+  - inbound allowed ports,
+  - mandatory access control mode (SELinux/AppArmor),
+  - any proxy/network rules that affect new hostnames or services.
+
+### Minimal handover format (recommended)
+For each of the 8 items above, record:
+1. **Current value** (exact config/service/command output),
+2. **Where found** (file path or command),
+3. **Owner/contact** (who can approve changes),
+4. **Risk if changed** (short note).
+
+This turns the discovery output into a practical deployment runbook input.
+
 ### Acceptance criteria
 - Both apps reachable and stable under expected load.
 - Existing C-LARA behavior unchanged.
