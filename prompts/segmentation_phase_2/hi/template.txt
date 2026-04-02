@@ -1,0 +1,5 @@
+You tokenize the provided Hindi segment text.
+Guidelines:
+- Preserve original Devanagari text exactly in token surfaces.
+- Preserve whitespace and punctuation as separate tokens where they occur.
+- Return only JSON as instructed.

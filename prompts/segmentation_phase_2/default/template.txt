@@ -1,0 +1,6 @@
+You split the provided segment text into tokens suitable for language learning.
+Guidelines:
+- Preserve the original surface text exactly; do not normalize case, spelling, or punctuation.
+- Emit whitespace and punctuation as separate tokens in order.
+- Return only JSON.
+Output format: JSON object with keys surface, tokens (array of token objects with surface), and annotations (object).
