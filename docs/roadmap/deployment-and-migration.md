@@ -23,16 +23,95 @@ Design requirement: Priority A decisions must be **upward-compatible** with B an
 - Keep operational separation while allowing shared infrastructure where safe.
 - Enable rollback with minimal risk.
 
-### Proposed architecture (first cut)
-- Reverse proxy (Nginx/Apache) routes by path or subdomain:
-  - `c-lara.org/...` → existing C-LARA
-  - `c-lara.org/clara2/...` or `clara2.c-lara.org/...` → C-LARA-2
-- Separate runtime services:
-  - separate app process/systemd unit/container,
-  - separate queue worker,
-  - separate database schema or database,
-  - separate media/artifact root.
-- Shared TLS certificate management at proxy layer.
+### Known current baseline (from existing C-LARA ops)
+- Current production URL: `https://c-lara.unisa.edu.au/`.
+- Reverse proxy: **Nginx**.
+- C-LARA code root: `<root>/C-LARA`, exposed as `$CLARA`.
+- Typical restart sequence:
+  - `sudo systemctl restart gunicorn`
+  - `sudo systemctl restart djangoq.service`
+  - `sudo systemctl restart nginx`
+- Existing app Makefile includes `migrate`, `runserver`, `qcluster`.
+
+### Recommended C-LARA-2 target shape on Adelaide
+
+#### Hostname and routing
+- Keep C-LARA unchanged at `https://c-lara.unisa.edu.au/`.
+- Deploy C-LARA-2 at `https://c-lara-2.unisa.edu.au/` (preferred, clear separation).
+- Nginx should use separate server blocks and upstreams for C-LARA and C-LARA-2.
+
+#### Filesystem layout and environment variables
+- Keep C-LARA at `<root>/C-LARA` with `$CLARA`.
+- Place C-LARA-2 at `<root>/C-LARA-2`.
+- Use an env var name without hyphens, e.g.:
+  - `$CLARA2` (recommended) or `$CLARA_2`.
+  - **Do not** use `$C-LARA-2` (invalid shell variable syntax).
+
+#### Process isolation
+- Use distinct systemd units:
+  - `gunicorn-clara.service` (existing C-LARA),
+  - `djangoq-clara.service` (existing C-LARA),
+  - `gunicorn-clara2.service` (new),
+  - `djangoq-clara2.service` (new).
+- Keep separate sockets/pids/log files for each service to simplify debugging.
+
+#### Runtime/data isolation
+- Separate DB names (or at minimum separate DB schemas/users) for C-LARA vs C-LARA-2.
+- Separate media/artifact roots:
+  - C-LARA: existing media root,
+  - C-LARA-2: dedicated media root (no shared writes).
+- Separate secrets/config files:
+  - `<root>/C-LARA/.env` (or equivalent),
+  - `<root>/C-LARA-2/.env` (or equivalent).
+
+### Part 1 implementation plan (detailed)
+
+#### Phase 1 — discovery + freeze (very short, high impact)
+1. Export and snapshot current C-LARA deployment config:
+   - Nginx site config,
+   - `gunicorn`/`djangoq` systemd unit files,
+   - current venv path and python package lock/freeze,
+   - DB connection settings and backup routine.
+2. Create rollback bookmarks:
+   - git commit/tag currently deployed for C-LARA,
+   - copy of active service files,
+   - DB backup timestamp recorded in runbook.
+
+#### Phase 2 — install C-LARA-2 side-by-side
+1. Provision `<root>/C-LARA-2` and dedicated venv.
+2. Install dependencies from pinned lock constraints (see “Python package hygiene” below).
+3. Configure C-LARA-2 `.env` with separate DB/media/secret values.
+4. Run:
+   - migrations,
+   - static collection (if applicable),
+   - smoke startup via `runserver` and `qcluster`.
+
+#### Phase 3 — wire production services
+1. Add `gunicorn-clara2.service` and `djangoq-clara2.service`.
+2. Add Nginx `server_name c-lara-2.unisa.edu.au` with TLS and proxy upstream.
+3. Start/restart C-LARA-2 services, then Nginx.
+4. Validate:
+   - health page/login/project list,
+   - compile monitor + worker execution,
+   - artifact serving and media writes.
+
+#### Phase 4 — post-cutover validation + rollback drill
+1. Execute smoke script for critical flows (compile, image generation, exercises, publish/content page).
+2. Confirm C-LARA remains unaffected.
+3. Run a rollback dry-run:
+   - stop clara2 services,
+   - disable clara2 server block,
+   - verify C-LARA only mode still healthy.
+
+### Python package hygiene (explicit fix for prior “messy installs”)
+- Maintain a dedicated venv per app (`C-LARA` and `C-LARA-2` must not share site-packages).
+- Pin dependencies using a lock file workflow (`requirements.txt` + lock, or `pip-tools`/`uv` lock).
+- Update process:
+  1. change dependency file in repo,
+  2. rebuild venv from lock,
+  3. restart relevant app services,
+  4. record package diff in deployment log.
+- Avoid manual `pip install` on production except as emergency hotfix, and log any emergency action.
 
 ### Operational checklist
 - Health endpoints for app and worker.
@@ -40,6 +119,17 @@ Design requirement: Priority A decisions must be **upward-compatible** with B an
 - Resource limits/monitoring to avoid one app starving the other.
 - Staging dry-run before production cutover.
 - One-command rollback procedure.
+
+### Information still needed to complete Part 1 precisely
+To turn this from roadmap to exact executable runbook, we still need:
+1. Current Nginx site config for `c-lara.unisa.edu.au`.
+2. Current systemd unit files for C-LARA (`gunicorn` + `djangoq`).
+3. Exact Python/venv path used by current C-LARA.
+4. Current DB engine/version and backup command(s).
+5. TLS certificate provisioning method (certbot/manual/institutional proxy).
+6. File ownership/user model (which Unix user runs app, worker, and nginx).
+7. Existing log locations and rotation policy.
+8. Any firewall/SELinux/AppArmor/network policy constraints on Adelaide hosts.
 
 ### Acceptance criteria
 - Both apps reachable and stable under expected load.
