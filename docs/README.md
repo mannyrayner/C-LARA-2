@@ -25,6 +25,8 @@ Welcome! This folder collects specifications, architecture notes, and delivery r
 - **Dialogue top-level roadmap (new)**: [roadmap/dialogue-top-level.md](roadmap/dialogue-top-level.md)
 - **AI-judges evaluation roadmap (new)**: [roadmap/ai-judges-evaluation.md](roadmap/ai-judges-evaluation.md)
 - **Source project export/import roadmap (initial implementation delivered)**: [roadmap/source-project-bundles.md](roadmap/source-project-bundles.md)
+- **Conventional UX roadmap (new)**: [roadmap/conventional-ux.md](roadmap/conventional-ux.md)
+- **Credits and billing roadmap (new)**: [roadmap/credits-and-billing.md](roadmap/credits-and-billing.md)
 
 ## Current implementation snapshot
 
@@ -34,20 +36,16 @@ Implemented in the codebase today includes:
 - Image workflow (style → recurring elements → page images) integrated with compile output so generated images can be included in final HTML.
 - Django platform with account/project flows, compile monitor/status polling, publish/content browsing pages, and self-contained ZIP export (HTML + audio + images).
 
-## Testing & CI
+## Immediate priorities (April 2026)
+
+This summary mirrors `docs/roadmap/README.md`.
+
+1. **Adelaide deployment** with C-LARA and C-LARA-2 running safely side-by-side.
+2. **Structured manual annotation editor** so human reviewers can correct all stages without raw JSON editing.
+
+## Likely near-term priorities (for team discussion)
 
 - Run tests from repo root: `make -C tests test`.
 - CI (`.github/workflows/ci.yml`) runs automated checks and uploads artifacts.
 
 _This file is the landing page for the docs folder and should stay aligned with `docs/roadmap/README.md`._
-
-
-## Likely near-term priorities (for team discussion)
-
-These priorities are a **working proposal** based on current team requests and still need discussion/confirmation with the wider C-LARA group. We should also evaluate where source export/import bundles fit in this near-term list, given their value for debugging and server↔laptop workflows.
-
-1. **Deployment on server** so members can start hands-on experimentation quickly.
-2. **Dialogue-based top level** to reduce UX friction for nontechnical users while preserving access to the underlying UI.
-3. **Manual editing of content/annotations** via the manual annotation editor roadmap.
-4. **Low-resource language support** so Indigenous-language and AI-weak language workflows are practical.
-5. **Community review of AI-generated images** to improve quality and consistency over time.
