@@ -43,6 +43,38 @@ This roadmap defines a credit-based usage model for C-LARA-2 so AI/API spend is 
 - Idempotency protection for retries/webhooks.
 - Exportable audit reports for finance/ops review.
 
+
+## Why Phase C (PayPal/Stripe) is non-trivial
+
+Online payments add work beyond a simple API integration:
+- provider onboarding, compliance checks, and country/institution policy constraints;
+- webhook reliability and idempotency (avoid double-crediting on retries);
+- dispute/refund handling and reconciliation against the internal credit ledger;
+- tax/VAT/GST and accounting reporting requirements;
+- fraud controls (rate limits, suspicious transfer patterns, abuse lockouts).
+
+Because of this, Phase C should be treated as a product + operations project, not just an engineering task.
+
+## Teacher adoption strategy without forcing personal API keys
+
+To address the concern that many teachers will not create their own API keys, use a hybrid model:
+
+1. **Default: platform-managed credits**
+   - Teachers can start immediately with institution- or admin-funded credits.
+   - No provider account setup required for first use.
+
+2. **Optional: bring-your-own-key (BYOK)**
+   - Advanced users can connect personal keys for direct billing/control.
+   - Keep this optional, not mandatory.
+
+3. **Guided onboarding for users who do want BYOK**
+   - In-product step-by-step setup checklist (where to click, what permissions to choose, test call button).
+   - Key validation + clear error messages before saving.
+
+4. **Institution-first rollout path**
+   - Start with admin recharge workflows and internal budget controls.
+   - Add external PayPal/Stripe top-up only after ledger/reconciliation/audit tooling is stable.
+
 ## Delivery phases
 
 ### Phase A

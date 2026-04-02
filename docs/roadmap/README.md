@@ -49,13 +49,13 @@ Status: **Done.** The foundational pieces for the text pipeline are implemented 
 - Segmentation phase 1 (pages/segments) and phase 2 (tokenization) using the generic annotation harness.
 - Generic per-segment annotation fan-out/fan-in infrastructure reused by later steps.
 - Prompts and few-shots for the above operations.
-- Tests under `tests/` (OpenAI-gated where applicable); run with `make -C tests test`.
+- Tests under `tests/` (OpenAI-gated where applicable); run with [`make -C tests test`](../../Makefile).
 
-See `docs/roadmap/segmentation-pipeline.md` for the specification that guided these implementations.
+See [roadmap/segmentation-pipeline.md](segmentation-pipeline.md) for the specification that guided these implementations.
 
 ### 3. Full linguistic annotation pipeline
 
-Status: **Done (with expanded romanization support).** The detailed plan lives in `docs/roadmap/linguistic-pipeline.md`.
+Status: **Done (with expanded romanization support).** The detailed plan lives in [roadmap/linguistic-pipeline.md](linguistic-pipeline.md).
 
 - Implemented: translation, MWE detection, lemma tagging, glossing, audio annotation, HTML compilation, and a flexible `run_full_pipeline` helper.
 - Romanization stage: the former “pinyin stage” is now a general **romanization** stage.
@@ -66,7 +66,7 @@ Status: **Done (with expanded romanization support).** The detailed plan lives i
 
 ### 4. Write spec for basic Django platform functionality, and implement it
 
-Status: **In progress (strong initial implementation landed).** See `docs/roadmap/django-platform.md` for the platform plan and implementation notes.
+Status: **In progress (strong initial implementation landed).** See [roadmap/django-platform.md](django-platform.md) for the platform plan and implementation notes.
 
 Implemented highlights now include:
 - Account flows and project workspace.
@@ -76,7 +76,7 @@ Implemented highlights now include:
 
 ### 5. Write spec for image creation functionality, and implement it
 
-Status: **Initial implementation done.** See `docs/roadmap/image-generation-pipeline.md`.
+Status: **Initial implementation done.** See [roadmap/image-generation-pipeline.md](image-generation-pipeline.md).
 
 Implemented highlights:
 - Style → recurring elements → page-image workflow.
@@ -86,7 +86,7 @@ Implemented highlights:
 
 ### 6. Social-network functionality roadmap
 
-Status: **New roadmap document added.** See `docs/roadmap/social-network-functionality.md`.
+Status: **New roadmap document added.** See [roadmap/social-network-functionality.md](social-network-functionality.md).
 
 Initial delivered functionality:
 - Publishing a project.
@@ -101,7 +101,7 @@ Planned next functionality:
 
 ### 7. Support for languages where AI annotation is weak or unavailable
 
-Status: **New roadmap document added.** See `docs/roadmap/low-resource-languages.md`.
+Status: **New roadmap document added.** See [roadmap/low-resource-languages.md](low-resource-languages.md).
 
 Planned direction:
 - Manual editing UI for all annotation layers, with strict structural validation.
@@ -112,7 +112,7 @@ Planned direction:
 
 ### 8. Deployment and migration roadmap
 
-Status: **New roadmap document added.** See `docs/roadmap/deployment-and-migration.md`.
+Status: **New roadmap document added.** See [roadmap/deployment-and-migration.md](deployment-and-migration.md).
 
 Priorities:
 - Urgent: Adelaide dual-run deployment with existing C-LARA (target before end of April 2026).
@@ -123,7 +123,7 @@ Key constraint: the urgent Adelaide deployment approach must remain upward-compa
 
 ### 9. Exercise generation roadmap
 
-Status: **Initial cloze implementation delivered.** See `docs/roadmap/exercises.md`.
+Status: **Initial cloze implementation delivered.** See [roadmap/exercises.md](exercises.md).
 
 Focus:
 - Cloze and flashcard generation from existing project artifacts.
@@ -137,7 +137,7 @@ Implemented now:
 
 ### 10. Alignment roadmap (phonetic + text/audio/translation)
 
-Status: **New roadmap document added.** See `docs/roadmap/alignment.md`.
+Status: **New roadmap document added.** See [roadmap/alignment.md](alignment.md).
 
 Focus:
 - 2a: Phonetic decomposition and phonetic compile mode with cache/provenance.
@@ -147,7 +147,7 @@ Focus:
 
 ### 11. Manual annotation editor roadmap
 
-Status: **New roadmap document added.** See `docs/roadmap/manual-annotation-editor.md`.
+Status: **New roadmap document added.** See [roadmap/manual-annotation-editor.md](manual-annotation-editor.md).
 
 Focus:
 - Cross-language manual editing for all annotation layers.
@@ -157,7 +157,7 @@ Focus:
 
 ### 12. Freeform dialogue-based top-level roadmap
 
-Status: **New roadmap document added.** See `docs/roadmap/dialogue-top-level.md`.
+Status: **New roadmap document added.** See [roadmap/dialogue-top-level.md](dialogue-top-level.md).
 
 Focus:
 - Optional conversational UX layer on top of existing C-LARA-2 workflows.
@@ -167,7 +167,7 @@ Focus:
 
 ### 13. AI-judges evaluation roadmap
 
-Status: **New roadmap document added.** See `docs/roadmap/ai-judges-evaluation.md`.
+Status: **New roadmap document added.** See [roadmap/ai-judges-evaluation.md](ai-judges-evaluation.md).
 
 Focus:
 - Panel-based AI scoring for outputs from key processing stages.
@@ -177,7 +177,7 @@ Focus:
 
 ### 14. Source project export/import bundles roadmap
 
-Status: **Initial implementation delivered.** See `docs/roadmap/source-project-bundles.md`.
+Status: **Initial implementation delivered.** See [roadmap/source-project-bundles.md](source-project-bundles.md).
 
 Focus:
 - ZIP export/import of editable source artifacts from latest (or selected) runs.
@@ -191,7 +191,7 @@ Implemented now:
 
 ### 15. Conventional UX roadmap (project workspace IA)
 
-Status: **New roadmap document added.** See `docs/roadmap/conventional-ux.md`.
+Status: **New roadmap document added.** See [roadmap/conventional-ux.md](conventional-ux.md).
 
 Focus:
 - Keep the non-dialogue UX coherent as feature surface grows.
@@ -201,7 +201,7 @@ Focus:
 
 ### 16. Credits and billing roadmap
 
-Status: **New roadmap document added.** See `docs/roadmap/credits-and-billing.md`.
+Status: **New roadmap document added.** See [roadmap/credits-and-billing.md](credits-and-billing.md).
 
 Focus:
 - Per-user credit balances tied to AI/API usage cost.
