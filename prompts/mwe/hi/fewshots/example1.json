@@ -1,0 +1,22 @@
+{
+  "input": "{\n  \"tokens\": [\n    {\"surface\": \"वह\"},\n    {\"surface\": \" \"},\n    {\"surface\": \"फोटो\"},\n    {\"surface\": \" \"},\n    {\"surface\": \"खींच\"},\n    {\"surface\": \" \"},\n    {\"surface\": \"रहा\"},\n    {\"surface\": \" \"},\n    {\"surface\": \"है\"},\n    {\"surface\": \"।\"}\n  ]\n}",
+  "output": {
+    "tokens": [
+      {"surface": "वह"},
+      {"surface": " "},
+      {"surface": "फोटो"},
+      {"surface": " "},
+      {"surface": "खींच", "annotations": {"mwe_id": "m1"}},
+      {"surface": " "},
+      {"surface": "रहा", "annotations": {"mwe_id": "m1"}},
+      {"surface": " "},
+      {"surface": "है", "annotations": {"mwe_id": "m1"}},
+      {"surface": "।"}
+    ],
+    "annotations": {
+      "mwes": [
+        {"id": "m1", "tokens": ["खींच", "रहा", "है"], "label": "light/progressive construction"}
+      ]
+    }
+  }
+}
