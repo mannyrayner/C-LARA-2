@@ -43,7 +43,7 @@ This summary mirrors `docs/roadmap/README.md`.
 1. **Adelaide deployment** with C-LARA and C-LARA-2 running safely side-by-side.
 2. **Structured manual annotation editor** so human reviewers can correct all stages without raw JSON editing.
 
-## Testing & CI
+## Likely near-term priorities (for team discussion)
 
 - Run tests from repo root: `make -C tests test`.
 - CI (`.github/workflows/ci.yml`) runs automated checks and uploads artifacts.
