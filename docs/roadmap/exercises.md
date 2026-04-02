@@ -123,5 +123,8 @@ Each item should store provenance:
 
 ### Phase 3
 - Image-based flashcards.
+  - **Prompt = image, options = text** (choose the correct word/meaning for an image).
+  - **Prompt = text, options = image** (choose the matching image for a word/phrase).
+- Reuse existing project image artifacts and metadata so image exercises do not require a separate media pipeline.
 - Spaced repetition and performance analytics.
 - Community sharing/rating of exercise sets.

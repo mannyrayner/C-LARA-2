@@ -25,6 +25,7 @@ Provide an editing interface for all annotation stages, including:
 
 ## Requirements
 
+- Primary editing mode must be **structured** (form/table/tree controls), with raw JSON as an expert fallback only.
 - JSON editing should not be raw-only by default; provide structured form/table views.
 - Enforce formal consistency constraints before save:
   - token arrays remain aligned with segment surface,
@@ -32,6 +33,8 @@ Provide an editing interface for all annotation stages, including:
   - required annotation fields have correct type,
   - no broken references in audio/image paths.
 - Show clear validation errors with pinpointed location (page/segment/token).
+- Prevent malformed structures at input time where possible (typed controls, constrained choices, relation pickers).
+- Optional companion view: when compiled HTML exists, allow side-by-side per-segment preview while editing annotations.
 
 ## Recommended architecture
 

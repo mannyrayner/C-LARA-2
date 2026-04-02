@@ -70,3 +70,21 @@ For each project, the navigation should be:
 - `docs/roadmap/image-generation-pipeline.md` covers image generation internals.
 - `docs/roadmap/exercises.md` covers exercise generation logic and pedagogy.
 - This document focuses specifically on **user-facing placement and navigation conventions**.
+
+
+## Localization and inclusion track
+
+### Localization for designated interface languages
+- Support a configurable set of UI languages.
+- Use AI-generated draft translations for fast bootstrap, followed by human review/edit workflows.
+- Keep locale strings versioned so UI copy updates can be retranslated incrementally.
+
+### Smartphone-first UX
+- Prioritize phone layouts for key learner/teacher flows (read/play/exercises/review).
+- Define compact navigation patterns and larger touch targets for annotation/exercise actions.
+- Budget page weight and media loading for lower-bandwidth mobile contexts.
+
+### Indigenous-user UX considerations
+- Validate copy, navigation metaphors, and onboarding with Indigenous users/educators during design reviews.
+- Provide culturally appropriate defaults and avoid forcing Western classroom assumptions in core flows.
+- Track feedback items explicitly in UX backlog and verify fixes in follow-up sessions.

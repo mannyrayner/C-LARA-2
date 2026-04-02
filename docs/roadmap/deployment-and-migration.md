@@ -14,6 +14,8 @@ This roadmap covers production deployment strategy for C-LARA-2, with special em
 
 Design requirement: Priority A decisions must be **upward-compatible** with B and C.
 
+Decision rule: if a short-term Adelaide workaround conflicts with migration/relocation portability, choose the portable option or document an explicit deprecation path.
+
 ---
 
 ## 1) Adelaide dual-run deployment (urgent)

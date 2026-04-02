@@ -30,6 +30,11 @@ Reimplement [C-LARA](https://www.c-lara.org/) in a more rational way, learning f
 	
 ## Main steps in roadmap
 
+### Immediate priorities (April 2026)
+
+- **Priority 1:** Adelaide deployment with C-LARA and C-LARA-2 running safely side-by-side.
+- **Priority 2:** Structured manual annotation editor so human reviewers can correct all stages without raw JSON surgery.
+
 ### 1. Set up GitHub repository and add initial documentation.
 
 Status: **Done.** The C-LARA-2 repo is at https://github.com/mannyrayner/C-LARA-2.
@@ -192,3 +197,14 @@ Focus:
 - Keep the non-dialogue UX coherent as feature surface grows.
 - Define canonical control placement across top-level/annotation/images/exercises pages.
 - Reduce cognitive load through conditional controls and latest-first summaries.
+
+
+### 16. Credits and billing roadmap
+
+Status: **New roadmap document added.** See `docs/roadmap/credits-and-billing.md`.
+
+Focus:
+- Per-user credit balances tied to AI/API usage cost.
+- Hard balance gate for AI calls when funds are insufficient.
+- Admin recharge, user-provided API keys, and optional user-to-user transfers.
+- Future online top-up integration (e.g., PayPal/Stripe) once accounting baseline is stable.
