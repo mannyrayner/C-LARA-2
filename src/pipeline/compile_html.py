@@ -459,6 +459,7 @@ def _render_concordance_page(
 def _write_static_assets(root: Path) -> None:
     static_dir = root / "static"
     static_dir.mkdir(parents=True, exist_ok=True)
+    hover_highlight_color = "#ffd54f"
     (static_dir / "clara_styles_main.css").write_text(
         """body { font-family: Arial, sans-serif; margin: 0; padding: 1rem; }
 nav a { margin-right: 0.5rem; }
@@ -468,14 +469,14 @@ nav a { margin-right: 0.5rem; }
 .segment-controls button { margin-right: 0.5rem; }
 .segment-translation.hidden { display: none; }
 .token { cursor: pointer; padding: 0; }
-.token:hover { background: #fffae6; }
-.concordance-highlight { background: #d1e8ff; }
-.mwe-highlight { background: #cce2ff; }
-.mwe-group-hover { background: #e1f1ff; }
+.token:hover { background: __HOVER__; }
+.concordance-highlight { background: __HOVER__; }
+.mwe-highlight { background: __HOVER__; }
+.mwe-group-hover { background: __HOVER__; }
 .gloss-popup { position: absolute; background: rgba(0,0,0,0.85); color: #fff; padding: 4px 8px; border-radius: 3px; font-size: 0.9em; z-index: 20; }
 .page audio { margin: 0.5rem 0; }
 .concordance-iframe { width: 100%; height: 85vh; border: none; }
-""",
+""".replace("__HOVER__", hover_highlight_color),
         encoding="utf-8",
     )
 
@@ -483,13 +484,14 @@ nav a { margin-right: 0.5rem; }
         """body { font-family: Arial, sans-serif; margin: 1rem; }
 .segment { display: block; margin-bottom: 0.75rem; }
 .word { cursor: pointer; padding: 0; }
-.word:hover { background: #fffae6; }
-.concordance-highlight { background: #d1e8ff; }
-.mwe-group-hover { background: #e1f1ff; }
+.word:hover { background: __HOVER__; }
+.concordance-highlight { background: __HOVER__; }
+.mwe-highlight { background: __HOVER__; }
+.mwe-group-hover { background: __HOVER__; }
 .back-arrow-icon { cursor: pointer; margin-right: 0.35rem; }
 .gloss-popup { position: absolute; background: rgba(0,0,0,0.85); color: #fff; padding: 4px 8px; border-radius: 3px; font-size: 0.9em; z-index: 20; }
 .translation-popup { position: absolute; background: rgba(0,0,0,0.8); color: #fff; padding: 4px 10px; border-radius: 3px; z-index: 10; }
-""",
+""".replace("__HOVER__", hover_highlight_color),
         encoding="utf-8",
     )
 

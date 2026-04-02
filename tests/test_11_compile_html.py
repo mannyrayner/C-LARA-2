@@ -107,6 +107,22 @@ class CompileHTMLTests(unittest.TestCase):
             status="pass",
         )
 
+    def test_compiled_css_uses_unified_hover_highlight_color(self) -> None:
+        out_root = self.artifacts / "html"
+        result = compile_html(CompileHTMLSpec(text=self.sample_text, output_dir=out_root, run_id="css-highlight"))
+        run_root = Path(result["run_root"])
+        main_css = (run_root / "html" / "static" / "clara_styles_main.css").read_text(encoding="utf-8")
+        concordance_css = (run_root / "html" / "static" / "clara_styles_concordance.css").read_text(encoding="utf-8")
+        expected = "#ffd54f"
+        self.assertIn(f".token:hover {{ background: {expected}; }}", main_css)
+        self.assertIn(f".concordance-highlight {{ background: {expected}; }}", main_css)
+        self.assertIn(f".mwe-highlight {{ background: {expected}; }}", main_css)
+        self.assertIn(f".mwe-group-hover {{ background: {expected}; }}", main_css)
+        self.assertIn(f".word:hover {{ background: {expected}; }}", concordance_css)
+        self.assertIn(f".concordance-highlight {{ background: {expected}; }}", concordance_css)
+        self.assertIn(f".mwe-highlight {{ background: {expected}; }}", concordance_css)
+        self.assertIn(f".mwe-group-hover {{ background: {expected}; }}", concordance_css)
+
     def test_concordance_deduplicates_mwe_segments(self) -> None:
         """Ensure an MWE lemma only appears once per segment in the concordance."""
 
