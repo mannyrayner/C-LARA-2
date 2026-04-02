@@ -30,6 +30,11 @@ Reimplement [C-LARA](https://www.c-lara.org/) in a more rational way, learning f
 	
 ## Main steps in roadmap
 
+### Immediate priorities (April 2026)
+
+- **Priority 1:** Adelaide deployment with C-LARA and C-LARA-2 running safely side-by-side.
+- **Priority 2:** Structured manual annotation editor so human reviewers can correct all stages without raw JSON surgery.
+
 ### 1. Set up GitHub repository and add initial documentation.
 
 Status: **Done.** The C-LARA-2 repo is at https://github.com/mannyrayner/C-LARA-2.
@@ -44,38 +49,162 @@ Status: **Done.** The foundational pieces for the text pipeline are implemented 
 - Segmentation phase 1 (pages/segments) and phase 2 (tokenization) using the generic annotation harness.
 - Generic per-segment annotation fan-out/fan-in infrastructure reused by later steps.
 - Prompts and few-shots for the above operations.
-- Tests under `tests/` (OpenAI-gated where applicable); run with `make -C tests test`.
+- Tests under `tests/` (OpenAI-gated where applicable); run with [`make -C tests test`](../../Makefile).
 
-See `docs/roadmap/segmentation-pipeline.md` for the specification that guided these implementations.
+See [roadmap/segmentation-pipeline.md](segmentation-pipeline.md) for the specification that guided these implementations.
 
 ### 3. Full linguistic annotation pipeline
 
-Status: **Done.** The detailed plan lives in `docs/roadmap/linguistic-pipeline.md`.
+Status: **Done (with expanded romanization support).** The detailed plan lives in [roadmap/linguistic-pipeline.md](linguistic-pipeline.md).
 
-- Implemented: translation (EN→FR), MWE detection, lemma tagging, glossing, Chinese pinyin annotation (via `pypinyin`), audio annotation with caching (OpenAI TTS by default, Google TTS opt-in, or offline stub), HTML compilation to two-pane output with concordance + audio hooks, and a flexible `run_full_pipeline` helper that can start and end at any stage.
-- Remaining follow-ups: richer audio ingestion (human-recorded, phonetic-text paths) and UI polish once compiled HTML stabilises.
-
-Each operation has prompts under `prompts/<operation>/<lang>/` plus unit and integration tests (OpenAI-gated where applicable).
+- Implemented: translation, MWE detection, lemma tagging, glossing, audio annotation, HTML compilation, and a flexible `run_full_pipeline` helper.
+- Romanization stage: the former “pinyin stage” is now a general **romanization** stage.
+  - `pypinyin` for Mandarin,
+  - `indic_transliteration` for Hindi,
+  - AI-backed romanization fallback for other languages.
+- This lets us support language-specific local romanizers when available, while still keeping a generic AI path.
 
 ### 4. Write spec for basic Django platform functionality, and implement it
 
-Status: **In progress (initial implementation landed).** See `docs/roadmap/django-platform.md` for the platform plan and current implementation notes. A minimal Django project now exists under `platform_server/` with:
+Status: **In progress (strong initial implementation landed).** See [roadmap/django-platform.md](django-platform.md) for the platform plan and implementation notes.
 
-- Account flows: register, login, logout (Django auth).
-- Project CRUD (create/read) with source text, language targets, and owner scoping.
-- Compile to HTML by invoking the pipeline (segmentation → annotations → audio → HTML) and persisting artifacts per-user/project.
-- Publish toggle plus gated viewing of compiled output (owner/private vs. published).
-- Artifact serving for compiled HTML/audio stored under `media/projects/`.
-
-Planned follow-ups:
-- Minimal, guided UI for non-technical users (AI-led create/edit flows, defaults first, unobtrusive overrides) alongside the full workspace.
-- Search/browse for published content, ratings/comments, and richer project editing flows.
-- Cost tracking and API-key association (see notes in `docs/roadmap/django-platform.md`).
-- Unit and end-to-end tests across the platform views and permissions.
+Implemented highlights now include:
+- Account flows and project workspace.
+- Compile orchestration with monitor/status polling and persisted per-run artifacts.
+- Publish toggle and browseable **Content** tab with published-content search and per-content metadata pages.
+- Bundle export (self-contained ZIP with HTML/audio/images + README).
 
 ### 5. Write spec for image creation functionality, and implement it
 
-In this step, we will add the basic image creation functionality. This will be conceptually based on the corresponding functionality in C-LARA, but rationalised and reimplemented.
-- We have the same three-stage pipeline:
-	- Create style. A brief description is expanded by the AI into a detaile style description and an example image.
-	- Create element names. Generate
+Status: **Initial implementation done.** See [roadmap/image-generation-pipeline.md](image-generation-pipeline.md).
+
+Implemented highlights:
+- Style → recurring elements → page-image workflow.
+- Project-scoped artifact persistence for prompts, metadata, and images.
+- Integration with compile/HTML pipeline so generated page images can appear in final HTML.
+- ZIP export support for sharing compiled outputs and image assets.
+
+### 6. Social-network functionality roadmap
+
+Status: **New roadmap document added.** See [roadmap/social-network-functionality.md](social-network-functionality.md).
+
+Initial delivered functionality:
+- Publishing a project.
+- Browsing published content via the Content tab.
+- Per-content metadata page (including access counter and link to compiled page 1).
+
+Planned next functionality:
+- Comments and ratings.
+- Multi-user project roles (`OWNER`, `ANNOTATOR`, `VIEWER`).
+- Language-centered communities with organizer/member roles.
+- Community-driven image rating/regeneration loops.
+
+### 7. Support for languages where AI annotation is weak or unavailable
+
+Status: **New roadmap document added.** See [roadmap/low-resource-languages.md](low-resource-languages.md).
+
+Planned direction:
+- Manual editing UI for all annotation layers, with strict structural validation.
+- Human-in-the-loop revision workflow for AI-produced annotations.
+- Image generation still enabled via pivot-language translations.
+- Full compatibility with publish/content/community workflows for these projects.
+
+
+### 8. Deployment and migration roadmap
+
+Status: **New roadmap document added.** See [roadmap/deployment-and-migration.md](deployment-and-migration.md).
+
+Priorities:
+- Urgent: Adelaide dual-run deployment with existing C-LARA (target before end of April 2026).
+- Next: structured migration tooling from C-LARA data to C-LARA-2 data model.
+- Next: host portability and backup export/import workflows (likely AWS Sydney target).
+
+Key constraint: the urgent Adelaide deployment approach must remain upward-compatible with migration and relocation work.
+
+### 9. Exercise generation roadmap
+
+Status: **Initial cloze implementation delivered.** See [roadmap/exercises.md](exercises.md).
+
+Focus:
+- Cloze and flashcard generation from existing project artifacts.
+- Distractor generation/validation and review workflows.
+- Learner-facing exercise player and future spaced repetition support.
+
+Implemented now:
+- Generate cloze exercise sets from latest run segments.
+- Theme options include vocabulary, grammar, morphology, and grammar/morphology.
+- Publish/unpublish exercise sets and expose published links on content pages.
+
+### 10. Alignment roadmap (phonetic + text/audio/translation)
+
+Status: **New roadmap document added.** See [roadmap/alignment.md](alignment.md).
+
+Focus:
+- 2a: Phonetic decomposition and phonetic compile mode with cache/provenance.
+- 2b: Triple alignment pipeline (text + high-quality audio + translation), with LARA-style baseline and AI-assisted improvements.
+- Metrics-first delivery with review queues for uncertain segments.
+
+
+### 11. Manual annotation editor roadmap
+
+Status: **New roadmap document added.** See [roadmap/manual-annotation-editor.md](manual-annotation-editor.md).
+
+Focus:
+- Cross-language manual editing for all annotation layers.
+- Shared validators, versioned saves, and diff/review tools.
+- Human-in-the-loop quality control for both low-resource and high-resource languages.
+
+
+### 12. Freeform dialogue-based top-level roadmap
+
+Status: **New roadmap document added.** See [roadmap/dialogue-top-level.md](dialogue-top-level.md).
+
+Focus:
+- Optional conversational UX layer on top of existing C-LARA-2 workflows.
+- Transparent action planning with explicit assumptions, alternatives, and backtracking.
+- Strong onboarding support for nontechnical users, with “show me the underlying UI” handoff.
+
+
+### 13. AI-judges evaluation roadmap
+
+Status: **New roadmap document added.** See [roadmap/ai-judges-evaluation.md](ai-judges-evaluation.md).
+
+Focus:
+- Panel-based AI scoring for outputs from key processing stages.
+- Aggregation, disagreement analysis, and optional foreman summarization.
+- Human-audit calibration to keep AI evaluation useful and methodologically grounded.
+
+
+### 14. Source project export/import bundles roadmap
+
+Status: **Initial implementation delivered.** See [roadmap/source-project-bundles.md](source-project-bundles.md).
+
+Focus:
+- ZIP export/import of editable source artifacts from latest (or selected) runs.
+- Full preservation of text annotations and image-pipeline metadata/provenance.
+- Server↔laptop portability for debugging, handover, backup, and migration workflows.
+
+Implemented now:
+- Export source bundle from project detail.
+- Import source bundle from project list, always creating a new project.
+- Imported project title is kept when unique for that user, otherwise suffixed (`(2)`, `(3)`, ...).
+
+### 15. Conventional UX roadmap (project workspace IA)
+
+Status: **New roadmap document added.** See [roadmap/conventional-ux.md](conventional-ux.md).
+
+Focus:
+- Keep the non-dialogue UX coherent as feature surface grows.
+- Define canonical control placement across top-level/annotation/images/exercises pages.
+- Reduce cognitive load through conditional controls and latest-first summaries.
+
+
+### 16. Credits and billing roadmap
+
+Status: **New roadmap document added.** See [roadmap/credits-and-billing.md](credits-and-billing.md).
+
+Focus:
+- Per-user credit balances tied to AI/API usage cost.
+- Hard balance gate for AI calls when funds are insufficient.
+- Admin recharge, user-provided API keys, and optional user-to-user transfers.
+- Future online top-up integration (e.g., PayPal/Stripe) once accounting baseline is stable.
