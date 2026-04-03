@@ -86,24 +86,36 @@ class OpenAITTSEngine:
         self, text: str, output_path: Path, *, voice: str | None = None, language: str | None = None
     ) -> None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
+        request_kwargs: dict[str, Any] = {
+            "model": self.model,
+            "voice": voice or "alloy",
+            "input": text,
+            "response_format": "wav",
+        }
+        language_hint = _tts_language_hint(language)
+        if language_hint:
+            # Helps disambiguate short forms such as "in"/"nun" when using
+            # multilingual voices.
+            request_kwargs["instructions"] = (
+                f"Pronounce the text in {language_hint}. Keep the original text unchanged."
+            )
 
         streaming_factory = getattr(self._client.audio.speech, "with_streaming_response", None)
         if streaming_factory:
             # Recommended streaming path for SDK >=2.0.0
-            with streaming_factory.create(
-                model=self.model,
-                voice=voice or "alloy",
-                input=text,
-                response_format="wav",
-            ) as response:
+            try:
+                response_ctx = streaming_factory.create(**request_kwargs)
+            except TypeError:  # older SDKs may not support "instructions"
+                request_kwargs.pop("instructions", None)
+                response_ctx = streaming_factory.create(**request_kwargs)
+            with response_ctx as response:
                 response.stream_to_file(str(output_path))
         else:  # pragma: no cover - fallback for SDKs lacking streaming helpers
-            response = self._client.audio.speech.create(
-                model=self.model,
-                voice=voice or "alloy",
-                input=text,
-                response_format="wav",
-            )
+            try:
+                response = self._client.audio.speech.create(**request_kwargs)
+            except TypeError:  # older SDKs may not support "instructions"
+                request_kwargs.pop("instructions", None)
+                response = self._client.audio.speech.create(**request_kwargs)
             stream_to_file = getattr(response, "stream_to_file", None)
             if callable(stream_to_file):
                 stream_to_file(str(output_path))
@@ -221,6 +233,31 @@ def _audio_filename(*, level: str, language: str, voice: str | None, text: str, 
     digest_key = f"{level}:{language}:{voice or 'default'}:{pos or ''}:{text.strip().lower()}"
     digest = hashlib.sha1(digest_key.encode("utf-8")).hexdigest()[:10]
     return f"{language_slug}_{base}_{digest}.wav"
+
+
+def _tts_language_hint(language: str | None) -> str | None:
+    """Return a human-friendly language hint for multilingual TTS engines."""
+
+    if not language:
+        return None
+    lang = language.strip().lower()
+    if not lang:
+        return None
+    # Keep this focused on common project languages and fall back to raw code.
+    language_map = {
+        "ar": "Arabic (ar)",
+        "de": "German (de)",
+        "en": "English (en)",
+        "es": "Spanish (es)",
+        "fa": "Persian (fa)",
+        "fr": "French (fr)",
+        "hi": "Hindi (hi)",
+        "it": "Italian (it)",
+        "pt": "Portuguese (pt)",
+        "zh": "Mandarin Chinese (zh)",
+    }
+    base = lang.split("-", 1)[0]
+    return language_map.get(base, f"language code {lang}")
 
 def _audio_annotation(path: Path, *, surface: str, spec: AudioSpec, level: str, engine: TTSEngine) -> dict[str, Any]:
     """Return a JSON-friendly audio annotation with metadata for auditing."""
