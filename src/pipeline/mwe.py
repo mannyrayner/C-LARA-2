@@ -106,7 +106,7 @@ async def annotate_mwes(
         client=ai_client,
     )
     restored = _restore_token_surfaces(spec.text, annotated)
-    return _normalize_mwes(restored)
+    return normalize_mwes(restored)
 
 
 def _restore_token_surfaces(original: dict[str, Any], annotated: dict[str, Any]) -> dict[str, Any]:
@@ -140,7 +140,7 @@ def _restore_token_surfaces(original: dict[str, Any], annotated: dict[str, Any])
     return annotated
 
 
-def _normalize_mwes(text: dict[str, Any]) -> dict[str, Any]:
+def normalize_mwes(text: dict[str, Any]) -> dict[str, Any]:
     pages = text.get("pages")
     if not isinstance(pages, list):
         return text
@@ -149,6 +149,7 @@ def _normalize_mwes(text: dict[str, Any]) -> dict[str, Any]:
         segments = page.get("segments")
         if not isinstance(segments, list):
             continue
+        page_counter = 1
         for seg_idx, segment in enumerate(segments):
             annotations = segment.get("annotations")
             if not isinstance(annotations, dict):
@@ -190,7 +191,8 @@ def _normalize_mwes(text: dict[str, Any]) -> dict[str, Any]:
                 filtered.append(normalized_entry)
                 valid_ids.add(mwe_id)
 
-            id_remap = {old_id: f"p{page_idx}s{seg_idx}_{old_id}" for old_id in valid_ids}
+            id_remap = {old_id: f"p{page_idx}m{page_counter + i}" for i, old_id in enumerate(sorted(valid_ids))}
+            page_counter += len(id_remap)
             for entry in filtered:
                 old_id = str(entry.get("id") or "")
                 if old_id in id_remap:

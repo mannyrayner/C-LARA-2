@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import html
 from collections import defaultdict
+import copy
 import os
 import json
 import re
@@ -23,6 +24,7 @@ from typing import Any, Iterable
 from urllib.parse import quote
 
 from core.telemetry import NullTelemetry, Telemetry
+from .mwe import normalize_mwes
 
 
 @dataclass(slots=True)
@@ -694,14 +696,15 @@ def compile_html(spec: CompileHTMLSpec) -> dict[str, Any]:
 
     _write_static_assets(html_root)
 
-    token_ids = _token_ids(spec.text)
+    normalized_text = normalize_mwes(copy.deepcopy(spec.text))
+    token_ids = _token_ids(normalized_text)
     token_info: list[dict[str, Any]] = []
 
-    total_pages = len(spec.text.get("pages", [])) or 1
+    total_pages = len(normalized_text.get("pages", [])) or 1
     page_paths: list[Path] = []
     for p_idx in range(total_pages):
         html_doc = _render_page(
-            text=spec.text,
+            text=normalized_text,
             page_index=p_idx,
             token_ids=token_ids,
             resolver=resolver,
@@ -713,13 +716,13 @@ def compile_html(spec: CompileHTMLSpec) -> dict[str, Any]:
         page_path.write_text(html_doc, encoding="utf-8")
         page_paths.append(page_path)
 
-    concordance = _build_concordance(spec.text, token_info)
+    concordance = _build_concordance(normalized_text, token_info)
     for entry in concordance:
         lemma_key = entry.get("lemma")
         if not lemma_key:
             continue
         conc_html = _render_concordance_page(
-            entry=entry, text=spec.text, token_ids=token_ids, resolver=resolver
+            entry=entry, text=normalized_text, token_ids=token_ids, resolver=resolver
         )
         lemma_slug = _encode_lemma_for_filename(str(lemma_key))
         conc_path = html_root / f"concordance_{lemma_slug}.html"

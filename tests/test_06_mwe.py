@@ -125,7 +125,7 @@ class MWEUnitTests(unittest.IsolatedAsyncioTestCase):
         segment = result["pages"][0]["segments"][0]
 
         mwe_ids = [t.get("annotations", {}).get("mwe_id") for t in segment.get("tokens", [])]
-        self.assertTrue(any(str(mid).endswith("_m1") for mid in mwe_ids if mid))
+        self.assertTrue(any(str(mid).startswith("p0m") for mid in mwe_ids if mid))
         self.assertEqual("phrasal verb", segment.get("annotations", {}).get("mwes", [{}])[0].get("label"))
         self.assertTrue(client.prompts)
 
@@ -164,9 +164,50 @@ class MWEUnitTests(unittest.IsolatedAsyncioTestCase):
         segment = result["pages"][0]["segments"][0]
         mwes = segment.get("annotations", {}).get("mwes", [])
         self.assertEqual(1, len(mwes))
-        self.assertTrue(str(mwes[0]["id"]).endswith("_m1"))
+        self.assertTrue(str(mwes[0]["id"]).startswith("p0m"))
         token_ids = [t.get("annotations", {}).get("mwe_id") for t in segment.get("tokens", [])]
         self.assertFalse(any(str(mid).endswith("_m2") for mid in token_ids if mid))
+
+    async def test_detect_mwes_ids_are_unique_within_page(self) -> None:
+        text = {
+            "l2": "de",
+            "surface": "x",
+            "pages": [
+                {
+                    "surface": "x",
+                    "segments": [
+                        {"surface": "auf Deutsch", "tokens": [{"surface": "auf"}, {"surface": " "}, {"surface": "Deutsch"}], "annotations": {}},
+                        {"surface": "aber auch", "tokens": [{"surface": "aber"}, {"surface": " "}, {"surface": "auch"}], "annotations": {}},
+                    ],
+                }
+            ],
+        }
+        responses = [
+            {
+                "surface": "auf Deutsch",
+                "tokens": [
+                    {"surface": "auf", "annotations": {"mwe_id": "m1"}},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "Deutsch", "annotations": {"mwe_id": "m1"}},
+                ],
+                "annotations": {"mwes": [{"id": "m1", "tokens": ["auf", "Deutsch"], "label": "pp"}]},
+            },
+            {
+                "surface": "aber auch",
+                "tokens": [
+                    {"surface": "aber", "annotations": {"mwe_id": "m1"}},
+                    {"surface": " ", "annotations": {}},
+                    {"surface": "auch", "annotations": {"mwe_id": "m1"}},
+                ],
+                "annotations": {"mwes": [{"id": "m1", "tokens": ["aber", "auch"], "label": "conj"}]},
+            },
+        ]
+        client = FakePerCallAIClient(responses)
+        result = await mwe.annotate_mwes(MWESpec(text=text, language="de"), client=client)
+        seg0, seg1 = result["pages"][0]["segments"]
+        id0 = seg0["annotations"]["mwes"][0]["id"]
+        id1 = seg1["annotations"]["mwes"][0]["id"]
+        self.assertNotEqual(id0, id1)
 
     async def test_detect_mwes_preserves_original_surface(self) -> None:
         fake_response = {

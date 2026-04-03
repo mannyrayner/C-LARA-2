@@ -218,3 +218,13 @@ Focus:
 - Central language-direction declarations (start with Arabic and Persian).
 - Propagate text direction metadata through annotation, storage, APIs, and compile artifacts.
 - Ensure robust RTL behavior in conventional UX, manual annotation editor, and compiled HTML output.
+
+
+### 18. Multi-word expression (MWE) strategy roadmap
+
+Status: **New roadmap document added.** See [roadmap/mwe-strategy.md](mwe-strategy.md).
+
+Focus:
+- ID-scope policy and deterministic normalization across pages/stages.
+- MWE integrity across mwe → lemma → gloss → compile HTML.
+- Regression testing and diagnostics for inconsistent model output.

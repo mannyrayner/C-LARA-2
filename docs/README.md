@@ -28,6 +28,7 @@ Welcome! This folder collects specifications, architecture notes, and delivery r
 - **Conventional UX roadmap (new)**: [roadmap/conventional-ux.md](roadmap/conventional-ux.md)
 - **Credits and billing roadmap (new)**: [roadmap/credits-and-billing.md](roadmap/credits-and-billing.md)
 - **RTL support roadmap (new)**: [roadmap/rtl-support.md](roadmap/rtl-support.md)
+- **MWE strategy roadmap (new)**: [roadmap/mwe-strategy.md](roadmap/mwe-strategy.md)
 
 ## Current implementation snapshot
 

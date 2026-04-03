@@ -154,6 +154,43 @@ class CompileHTMLTests(unittest.TestCase):
         copied = sorted(p.name for p in (Path(result["run_root"]) / "audio").glob("token*.wav"))
         self.assertEqual(["token.wav"], copied)
 
+    def test_compile_html_normalizes_page_level_mwe_ids(self) -> None:
+        out_root = self.artifacts / "html"
+        text = {
+            "l2": "de",
+            "surface": "x",
+            "pages": [
+                {
+                    "surface": "x",
+                    "segments": [
+                        {
+                            "surface": "auf Deutsch",
+                            "tokens": [
+                                {"surface": "auf", "annotations": {"mwe_id": "m1"}},
+                                {"surface": " "},
+                                {"surface": "Deutsch", "annotations": {"mwe_id": "m1"}},
+                            ],
+                            "annotations": {"mwes": [{"id": "m1", "tokens": ["auf", "Deutsch"]}]},
+                        },
+                        {
+                            "surface": "aber auch",
+                            "tokens": [
+                                {"surface": "aber", "annotations": {"mwe_id": "m1"}},
+                                {"surface": " "},
+                                {"surface": "auch", "annotations": {"mwe_id": "m1"}},
+                            ],
+                            "annotations": {"mwes": [{"id": "m1", "tokens": ["aber", "auch"]}]},
+                        },
+                    ],
+                }
+            ],
+        }
+        result = compile_html(CompileHTMLSpec(text=text, output_dir=out_root, run_id="mwe-page-ids"))
+        html = Path(result["html_path"]).read_text(encoding="utf-8")
+        self.assertNotIn('data-mwe-id="m1"', html)
+        self.assertIn('data-mwe-id="p0m1"', html)
+        self.assertIn('data-mwe-id="p0m2"', html)
+
     def test_compiled_css_uses_unified_hover_highlight_color(self) -> None:
         out_root = self.artifacts / "html"
         result = compile_html(CompileHTMLSpec(text=self.sample_text, output_dir=out_root, run_id="css-highlight"))
