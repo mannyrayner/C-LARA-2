@@ -40,7 +40,9 @@ from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pi
 
 from .forms import (
     ClozeExerciseSetForm,
+    DeleteCachedWordAudioForm,
     FlashcardExerciseSetForm,
+    GrantAdminPrivilegesForm,
     ProfileForm,
     ProjectForm,
     ProjectImageElementFormSet,
@@ -113,6 +115,27 @@ def _get_project_for_user(*, pk: int, user, min_role: str = ProjectCollaborator.
 
 def _projects_for_user(user):
     return Project.objects.filter(Q(owner=user) | Q(collaborators__user=user)).distinct()
+
+
+def _bootstrap_admin_usernames() -> set[str]:
+    configured = getattr(settings, "BOOTSTRAP_ADMIN_USERNAMES", []) or []
+    return {str(name).strip() for name in configured if str(name).strip()}
+
+
+def _ensure_bootstrap_admin(user) -> None:
+    if not user or not getattr(user, "is_authenticated", False):
+        return
+    if user.is_staff:
+        return
+    if user.username in _bootstrap_admin_usernames():
+        user.is_staff = True
+        user.save(update_fields=["is_staff"])
+
+
+def _require_admin(user) -> None:
+    _ensure_bootstrap_admin(user)
+    if not user.is_staff:
+        raise Http404()
 
 
 def _resolve_segmentation_method(language: str, configured: str | None) -> str:
@@ -850,6 +873,7 @@ def register(request: HttpRequest) -> HttpResponse:
         form = RegistrationForm(request.POST)
         if form.is_valid():
             user = form.save()
+            _ensure_bootstrap_admin(user)
             Profile.objects.get_or_create(user=user)
             messages.success(request, "Account created. Please log in.")
             return redirect("login")
@@ -860,6 +884,7 @@ def register(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def profile(request: HttpRequest) -> HttpResponse:
+    _ensure_bootstrap_admin(request.user)
     profile_obj, _ = Profile.objects.get_or_create(user=request.user)
 
     if request.method == "POST":
@@ -872,6 +897,70 @@ def profile(request: HttpRequest) -> HttpResponse:
         form = ProfileForm(instance=profile_obj)
 
     return render(request, "projects/profile_form.html", {"form": form})
+
+
+def _audio_cache_language_choices() -> list[tuple[str, str]]:
+    labels = {code: label for code, label in ProjectForm.LANGUAGE_CHOICES}
+    root = Path(settings.MEDIA_ROOT).resolve() / "audio_repository"
+    known_codes = set(labels.keys())
+    if root.exists():
+        for child in root.iterdir():
+            if child.is_dir():
+                known_codes.add(child.name.replace("_", "-"))
+    return sorted(
+        [(code, f"{labels.get(code, code)} ({code})") for code in known_codes],
+        key=lambda item: item[1].lower(),
+    )
+
+
+@login_required
+def admin_tools(request: HttpRequest) -> HttpResponse:
+    _require_admin(request.user)
+    delete_form = DeleteCachedWordAudioForm(language_choices=_audio_cache_language_choices())
+    grant_form = GrantAdminPrivilegesForm(
+        queryset=get_user_model().objects.filter(is_staff=False).order_by("username")
+    )
+
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+        if action == "delete_audio_cache":
+            delete_form = DeleteCachedWordAudioForm(
+                request.POST,
+                language_choices=_audio_cache_language_choices(),
+            )
+            if delete_form.is_valid():
+                language = delete_form.cleaned_data["language"]
+                cache_dir = _audio_repository_dir(language)
+                if cache_dir.exists():
+                    shutil.rmtree(cache_dir)
+                    messages.success(request, f"Deleted cached word audio for {language}.")
+                else:
+                    messages.info(request, f"No cached word audio found for {language}.")
+                return redirect("admin-tools")
+        elif action == "grant_admin":
+            grant_form = GrantAdminPrivilegesForm(
+                request.POST,
+                queryset=get_user_model().objects.filter(is_staff=False).order_by("username"),
+            )
+            if grant_form.is_valid():
+                user_obj = grant_form.cleaned_data["user"]
+                user_obj.is_staff = True
+                user_obj.save(update_fields=["is_staff"])
+                messages.success(request, f"{user_obj.username} now has admin privileges.")
+                return redirect("admin-tools")
+        else:
+            messages.error(request, "Unknown admin action.")
+
+    return render(
+        request,
+        "projects/admin_tools.html",
+        {
+            "delete_audio_form": delete_form,
+            "grant_admin_form": grant_form,
+            "bootstrap_admin_usernames": sorted(_bootstrap_admin_usernames()),
+            "current_admins": get_user_model().objects.filter(is_staff=True).order_by("username"),
+        },
+    )
 
 
 @login_required
@@ -1187,6 +1276,7 @@ class ProjectListView(LoginRequiredMixin, ListView):
     template_name = "projects/project_list.html"
 
     def get_queryset(self):  # type: ignore[override]
+        _ensure_bootstrap_admin(self.request.user)
         return _projects_for_user(self.request.user)
 
 

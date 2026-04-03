@@ -244,3 +244,22 @@ class FlashcardExerciseSetForm(forms.Form):
         choices = ai_model_choices or ["gpt-4o"]
         self.fields["ai_model"].choices = [(m, m) for m in choices]
         self.fields["ai_model"].initial = choices[0]
+
+
+class DeleteCachedWordAudioForm(forms.Form):
+    language = forms.ChoiceField(choices=[], label="Language")
+
+    def __init__(self, *args, language_choices: list[tuple[str, str]] | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        choices = language_choices or []
+        self.fields["language"].choices = choices
+
+
+class GrantAdminPrivilegesForm(forms.Form):
+    user = forms.ModelChoiceField(queryset=User.objects.none(), label="User")
+
+    def __init__(self, *args, queryset=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if queryset is None:
+            queryset = User.objects.filter(is_staff=False).order_by("username")
+        self.fields["user"].queryset = queryset

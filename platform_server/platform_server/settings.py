@@ -109,3 +109,13 @@ Q_CLUSTER = {
     "bulk": 10,
     "orm": "default",
 }
+
+# Comma-separated usernames that should automatically receive staff/admin
+# privileges on registration (and when visiting authenticated views).
+# Example:
+#   C_LARA_BOOTSTRAP_ADMINS=alice,bob
+BOOTSTRAP_ADMIN_USERNAMES = [
+    name.strip()
+    for name in os.environ.get("C_LARA_BOOTSTRAP_ADMINS", "admin").split(",")
+    if name.strip()
+]
