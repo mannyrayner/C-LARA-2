@@ -1647,15 +1647,16 @@ def _copy_run_artifacts(src: Path, dest: Path) -> None:
     Stages upstream from the chosen start point live in previous run folders.
     Copying those artifacts forward lets later partial runs chain together even
     when the most recent run only contains downstream outputs.
+
+    Important: only stage artifacts are copied. Runtime output directories like
+    ``audio/`` and ``html/`` are intentionally not copied because they can
+    contain stale files from older runs, which may cause filename collisions and
+    mismatched audio references during recompilation.
     """
 
-    for item in src.iterdir():
-        target = dest / item.name
-        if item.is_dir():
-            shutil.copytree(item, target, dirs_exist_ok=True)
-        elif item.is_file():
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(item, target)
+    stage_src = src / "stages"
+    if stage_src.exists():
+        shutil.copytree(stage_src, dest / "stages", dirs_exist_ok=True)
 
 
 def _run_compile_task(

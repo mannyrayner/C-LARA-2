@@ -162,6 +162,8 @@ class CompileStatusViewTests(TestCase):
             (run_dir / "stages").mkdir(parents=True, exist_ok=True)
         # Older run has upstream stage output; newer run only has downstream data.
         (run_old / "stages" / "lemma.json").write_text("{\"lemma\": true}", encoding="utf-8")
+        (run_old / "audio").mkdir(parents=True, exist_ok=True)
+        (run_old / "audio" / "stale.wav").write_bytes(b"old")
         (run_newer / "stages" / "compile_html.json").write_text("{}", encoding="utf-8")
         os.utime(run_old, (1, 1))
         os.utime(run_newer, (2, 2))
@@ -180,6 +182,7 @@ class CompileStatusViewTests(TestCase):
         copied_stage = new_run / "stages" / "lemma.json"
         self.assertTrue(copied_stage.exists())
         self.assertEqual(copied_stage.read_text(encoding="utf-8"), "{\"lemma\": true}")
+        self.assertFalse((new_run / "audio").exists())
 
         # Ensure we scheduled the compile task using the new run directory.
         self.assertTrue(mock_async_task.called)
