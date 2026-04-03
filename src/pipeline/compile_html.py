@@ -106,6 +106,15 @@ class _AudioResolver:
         self.audio_dir.mkdir(parents=True, exist_ok=True)
         self._cache: dict[Path, str] = {}
 
+    @staticmethod
+    def _same_bytes(a: Path, b: Path) -> bool:
+        try:
+            if a.stat().st_size != b.stat().st_size:
+                return False
+            return hashlib.sha1(a.read_bytes()).digest() == hashlib.sha1(b.read_bytes()).digest()
+        except Exception:
+            return False
+
     def resolve(self, path_str: str | None) -> str | None:
         if not path_str:
             return None
@@ -122,8 +131,12 @@ class _AudioResolver:
                 candidate = self.audio_dir / f"{stem}{suffix}"
                 dest = candidate
                 if dest.exists() and dest.resolve() != key:
-                    digest = hashlib.sha1(str(key).encode("utf-8")).hexdigest()[:10]
-                    dest = self.audio_dir / f"{stem}_{digest}{suffix}"
+                    # When two different source paths point to identical audio
+                    # bytes (e.g. Windows-style path vs POSIX-style alias),
+                    # reuse the existing file instead of minting a suffix.
+                    if not self._same_bytes(dest, key):
+                        digest = hashlib.sha1(str(key).encode("utf-8")).hexdigest()[:10]
+                        dest = self.audio_dir / f"{stem}_{digest}{suffix}"
                 if not dest.exists():
                     shutil.copy2(key, dest)
                 rel = os.path.relpath(dest, self.html_root)

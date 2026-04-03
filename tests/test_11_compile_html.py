@@ -107,6 +107,53 @@ class CompileHTMLTests(unittest.TestCase):
             status="pass",
         )
 
+    def test_audio_copy_reuses_existing_file_when_bytes_match(self) -> None:
+        out_root = self.artifacts / "html"
+        alt_dir = self.artifacts / "audio_alias"
+        alt_dir.mkdir(parents=True, exist_ok=True)
+        alt_token = alt_dir / "token.wav"
+        alt_token.write_bytes(self.token_audio.read_bytes())
+
+        text = {
+            **self.sample_text,
+            "pages": [
+                {
+                    "surface": "Hello world",
+                    "segments": [
+                        {
+                            "surface": "Hello world",
+                            "tokens": [
+                                {
+                                    "surface": "Hello",
+                                    "annotations": {
+                                        "lemma": "hello",
+                                        "gloss": "salut",
+                                        "audio": {"path": str(self.token_audio)},
+                                    },
+                                },
+                                {"surface": " ", "annotations": {}},
+                                {
+                                    "surface": "world",
+                                    "annotations": {
+                                        "lemma": "world",
+                                        "gloss": "monde",
+                                        "audio": {"path": str(alt_token)},
+                                    },
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+
+        result = compile_html(CompileHTMLSpec(text=text, output_dir=out_root, run_id="audio-alias"))
+        html_path = Path(result["html_path"])
+        html = html_path.read_text(encoding="utf-8")
+        self.assertIn('data-audio="../audio/token.wav"', html)
+        copied = sorted(p.name for p in (Path(result["run_root"]) / "audio").glob("token*.wav"))
+        self.assertEqual(["token.wav"], copied)
+
     def test_compiled_css_uses_unified_hover_highlight_color(self) -> None:
         out_root = self.artifacts / "html"
         result = compile_html(CompileHTMLSpec(text=self.sample_text, output_dir=out_root, run_id="css-highlight"))
