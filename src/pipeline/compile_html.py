@@ -251,15 +251,6 @@ def _render_segment(
         translation = (segment.get("annotations", {}) or {}).get("translation")
 
     parts: list[str] = [f'<div class="segment" data-segment="{segment_index}">']
-    controls: list[str] = ["<div class=\"segment-controls\">"]
-    if include_translation:
-        controls.append("<button class=\"toggle-translation\" data-target='translation'>Show translation</button>")
-    if seg_audio_path:
-        controls.append(
-            f' <button class="play" data-audio="{_escape(seg_audio_path)}">Play audio</button>'
-        )
-    controls.append("</div>")
-    parts.append("".join(controls))
 
     tokens_html = _render_tokens(
         segment.get("tokens", []),
@@ -270,7 +261,19 @@ def _render_segment(
         token_info=token_info,
         highlight_lemma=highlight_lemma,
     )
-    parts.append(f"<div class=\"segment-surface\">{tokens_html}</div>")
+    inline_controls: list[str] = ["<span class=\"segment-inline-controls\">"]
+    if include_translation:
+        inline_controls.append(
+            "<button class=\"icon-control toggle-translation\" data-target='translation' "
+            "title=\"Show/hide translation\" aria-label=\"Show or hide translation\">✎</button>"
+        )
+    if seg_audio_path:
+        inline_controls.append(
+            f"<button class=\"icon-control play\" data-audio=\"{_escape(seg_audio_path)}\" "
+            "title=\"Play segment audio\" aria-label=\"Play segment audio\">🔊</button>"
+        )
+    inline_controls.append("</span>")
+    parts.append(f"<div class=\"segment-surface\">{tokens_html}{''.join(inline_controls)}</div>")
     if translation:
         parts.append(
             f'<div class="segment-translation hidden">{_escape_preserve_unicode(str(translation))}</div>'
@@ -466,7 +469,19 @@ nav a { margin-right: 0.5rem; }
 .page-container { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; }
 .main-text-pane-wrapper, .concordance-pane-wrapper { border: 1px solid #ccc; padding: 1rem; max-height: 90vh; overflow: auto; }
 .segment { display: block; margin-bottom: 0.75rem; }
-.segment-controls button { margin-right: 0.5rem; }
+.segment-inline-controls { margin-left: 0.35rem; white-space: nowrap; }
+.icon-control {
+  border: none;
+  background: none;
+  padding: 0;
+  margin-left: 0.25rem;
+  cursor: pointer;
+  font-size: 0.95em;
+  line-height: 1;
+  vertical-align: baseline;
+  opacity: 0.8;
+}
+.icon-control:hover { opacity: 1; }
 .segment-translation.hidden { display: none; }
 .token { cursor: pointer; padding: 0; }
 .token:hover { background: __HOVER__; }

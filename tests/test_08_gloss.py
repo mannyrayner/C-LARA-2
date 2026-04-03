@@ -242,6 +242,28 @@ class GlossUnitTests(unittest.IsolatedAsyncioTestCase):
             status="pass",
         )
 
+    def test_postprocess_removes_whitespace_gloss_and_keeps_proper_name(self) -> None:
+        text = {
+            "pages": [
+                {
+                    "segments": [
+                        {
+                            "tokens": [
+                                {"surface": " ", "annotations": {"gloss": "WRONG"}},
+                                {"surface": "Aisha", "annotations": {"pos": "PROPN", "gloss": "-"}},
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+
+        gloss._postprocess_glosses(text)
+
+        tokens = text["pages"][0]["segments"][0]["tokens"]
+        self.assertNotIn("annotations", tokens[0])
+        self.assertEqual(tokens[1]["annotations"]["gloss"], "Aisha")
+
 
 class GlossIntegrationTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
