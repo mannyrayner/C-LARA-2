@@ -56,3 +56,33 @@ Keeping this in one document makes it easier to track cross-stage decisions.
 - No cross-segment false highlighting caused by reused IDs.
 - MWE IDs are deterministic and scoped according to chosen policy.
 - MWE integrity issues are detectable, test-covered, and observable in logs/telemetry.
+
+## Language-specific prompting guidance (cross-lingual policy)
+
+To improve annotation quality, MWE templates/few-shots should include a small language-specific section whenever the language has recurrent structural traps.
+
+### General policy for set phrases vs open combinations
+
+- Prefer MWEs that are lexicalized/fixed in usage, not merely frequent compositional spans.
+- Include explicit boundary examples where over-tagging is likely.
+- Canonical example pattern:
+  - mark fixed quantifier/adverbial phrases (e.g., "ein wenig"),
+  - do **not** mark open compositional combinations derived from them (e.g., "wenig nervös").
+
+### German priorities
+
+German templates and few-shots should explicitly cover:
+
+1. **Separable verbs**
+   - Treat verb stem + separated particle as one MWE when lexically established (e.g., `steht ... auf`, `ruft ... an`).
+2. **Reflexive verb constructions**
+   - Capture fixed reflexive constructions (e.g., `sich freuen`, `sich erinnern`) where reflexive marking is part of lexical behavior.
+3. **Set-phrase boundaries**
+   - Provide positive/negative contrasts such as `ein wenig` (MWE) vs `wenig nervös` (not an MWE by default).
+
+### Reuse in other languages
+
+When adding a new language-specific MWE prompt set, include:
+- 1 example focused on language-typical discontinuous or morphosyntactic MWE behavior,
+- 1 example focused on a common false-positive boundary,
+- concise rules in template text describing both.

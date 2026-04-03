@@ -1,31 +1,29 @@
 {
-  "input": "{\n  \"surface\": \"He looked up the answer and wrote it down.\",\n  \"tokens\": [\n    {\"surface\": \"He\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"looked\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"up\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"the\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"answer\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"and\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"wrote\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"it\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"down\", \"annotations\": {}},\n    {\"surface\": \".\"}\n  ],\n  \"annotations\": {}\n}",
+  "input": "{\n  \"surface\": \"Sarah is a little nervous, but also excited.\",\n  \"tokens\": [\n    {\"surface\": \"Sarah\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"is\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"a\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"little\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"nervous\", \"annotations\": {}},\n    {\"surface\": \",\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"but\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"also\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"excited\", \"annotations\": {}},\n    {\"surface\": \".\"}\n  ],\n  \"annotations\": {}\n}",
   "output": {
-    "surface": "He looked up the answer and wrote it down.",
+    "surface": "Sarah is a little nervous, but also excited.",
     "tokens": [
-      {"surface": "He"},
+      {"surface": "Sarah"},
       {"surface": " ", "annotations": {}},
-      {"surface": "looked", "annotations": {"mwe_id": "m1"}},
+      {"surface": "is"},
       {"surface": " ", "annotations": {}},
-      {"surface": "up", "annotations": {"mwe_id": "m1"}},
+      {"surface": "a", "annotations": {"mwe_id": "m1"}},
       {"surface": " ", "annotations": {}},
-      {"surface": "the"},
+      {"surface": "little", "annotations": {"mwe_id": "m1"}},
       {"surface": " ", "annotations": {}},
-      {"surface": "answer"},
+      {"surface": "nervous"},
+      {"surface": ","},
       {"surface": " ", "annotations": {}},
-      {"surface": "and"},
+      {"surface": "but"},
       {"surface": " ", "annotations": {}},
-      {"surface": "wrote", "annotations": {"mwe_id": "m2"}},
+      {"surface": "also"},
       {"surface": " ", "annotations": {}},
-      {"surface": "it", "annotations": {"mwe_id": "m2"}},
-      {"surface": " ", "annotations": {}},
-      {"surface": "down", "annotations": {"mwe_id": "m2"}},
+      {"surface": "excited"},
       {"surface": "."}
     ],
     "annotations": {
       "mwes": [
-        {"id": "m1", "tokens": ["looked", "up"], "label": "phrasal verb"},
-        {"id": "m2", "tokens": ["wrote", "it", "down"], "label": "phrasal verb"}
+        {"id": "m1", "tokens": ["a", "little"], "label": "fixed quantifier phrase"}
       ]
     }
   }
