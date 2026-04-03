@@ -27,6 +27,7 @@ Welcome! This folder collects specifications, architecture notes, and delivery r
 - **Source project export/import roadmap (initial implementation delivered)**: [roadmap/source-project-bundles.md](roadmap/source-project-bundles.md)
 - **Conventional UX roadmap (new)**: [roadmap/conventional-ux.md](roadmap/conventional-ux.md)
 - **Credits and billing roadmap (new)**: [roadmap/credits-and-billing.md](roadmap/credits-and-billing.md)
+- **RTL support roadmap (new)**: [roadmap/rtl-support.md](roadmap/rtl-support.md)
 
 ## Current implementation snapshot
 

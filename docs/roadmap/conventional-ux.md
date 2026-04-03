@@ -88,3 +88,15 @@ For each project, the navigation should be:
 - Validate copy, navigation metaphors, and onboarding with Indigenous users/educators during design reviews.
 - Provide culturally appropriate defaults and avoid forcing Western classroom assumptions in core flows.
 - Track feedback items explicitly in UX backlog and verify fixes in follow-up sessions.
+
+
+## Right-to-left (RTL) UX requirements
+
+Practical target languages for first delivery: **Arabic** and **Persian**.
+
+- Introduce a shared language-direction registry (`ltr`/`rtl`) used by server and templates.
+- Apply `dir` and `lang` attributes at page/container level so browser bidi handling is predictable.
+- Mirror key layout patterns for RTL (navigation alignment, card/list metadata placement, button groups, pagination direction).
+- Ensure mixed-script readability (Arabic/Persian with Latin tokens, numbers, URLs, model names).
+- Verify mobile layouts in RTL mode (touch targets, overflow, truncation, exercise options).
+- Add regression checklist/screenshots for both LTR and RTL on project, annotation, images, exercises, and content pages.

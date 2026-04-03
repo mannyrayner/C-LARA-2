@@ -82,3 +82,12 @@ A **lock reviewed annotations** option so later reruns avoid overwriting approve
 - Editors can complete and correct projects end-to-end without raw JSON surgery.
 - Invalid structures are blocked with actionable diagnostics.
 - Manual edits remain stable across pipeline reruns unless explicitly overridden.
+
+
+## RTL-specific editor requirements
+
+- The editor must render tokens/segments with the correct base direction (`dir="rtl"`) for RTL languages and preserve that direction on save/reload.
+- Cursor movement, token boundary highlighting, and selection behavior must be validated for RTL text and mixed RTL/LTR segments.
+- Side-by-side views should keep source and annotation panes direction-aware independently (avoid forcing one global direction).
+- Validation/error pinpointing must reference logical token indices consistently regardless of visual ordering.
+- Diff/review views must avoid false diffs caused only by bidi control characters or display reordering.

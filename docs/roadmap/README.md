@@ -208,3 +208,13 @@ Focus:
 - Hard balance gate for AI calls when funds are insufficient.
 - Admin recharge, user-provided API keys, and optional user-to-user transfers.
 - Future online top-up integration (e.g., PayPal/Stripe) once accounting baseline is stable.
+
+
+### 17. Right-to-left (RTL) language support roadmap
+
+Status: **New roadmap document added.** See [roadmap/rtl-support.md](rtl-support.md).
+
+Focus:
+- Central language-direction declarations (start with Arabic and Persian).
+- Propagate text direction metadata through annotation, storage, APIs, and compile artifacts.
+- Ensure robust RTL behavior in conventional UX, manual annotation editor, and compiled HTML output.
