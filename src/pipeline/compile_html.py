@@ -11,6 +11,7 @@ import html
 from collections import defaultdict
 import os
 import json
+import re
 import uuid
 import textwrap
 import hashlib
@@ -42,6 +43,23 @@ def _is_lexical(surface: str) -> bool:
     return any(ch.isalnum() for ch in surface) or any("\u4e00" <= ch <= "\u9fff" for ch in surface)
 
 
+def _encode_lemma_for_filename(lemma: str) -> str:
+    """Encode lemma text so concordance filenames are filesystem-safe.
+
+    Keep Unicode and spaces readable; only replace characters that are known
+    to break file paths (especially on Windows) or URL/path parsing.
+    """
+
+    if not lemma:
+        return "unknown"
+    normalized = unicodedata.normalize("NFC", str(lemma)).strip()
+    if not normalized:
+        return "unknown"
+    # Forbidden on Windows and problematic in URLs/path parsing.
+    sanitized = re.sub(r'[\\/:*?"<>|\x00-\x1f]', "_", normalized)
+    return sanitized or "unknown"
+
+
 def _escape(text: str) -> str:
     # Normalize to NFC to keep accents intact, then emit numeric character
     # references for any non-ASCII symbols so browsers render them correctly
@@ -49,6 +67,13 @@ def _escape(text: str) -> str:
     normalized = unicodedata.normalize("NFC", text)
     escaped = html.escape(normalized, quote=True)
     return escaped.encode("ascii", "xmlcharrefreplace").decode("ascii")
+
+
+def _escape_preserve_unicode(text: str) -> str:
+    """Escape HTML while keeping Unicode characters readable."""
+
+    normalized = unicodedata.normalize("NFC", text)
+    return html.escape(normalized, quote=True)
 
 
 def _audio_path(path_str: str | None, root: Path) -> str | None:
@@ -80,6 +105,15 @@ class _AudioResolver:
         self.audio_dir.mkdir(parents=True, exist_ok=True)
         self._cache: dict[Path, str] = {}
 
+    @staticmethod
+    def _same_bytes(a: Path, b: Path) -> bool:
+        try:
+            if a.stat().st_size != b.stat().st_size:
+                return False
+            return hashlib.sha1(a.read_bytes()).digest() == hashlib.sha1(b.read_bytes()).digest()
+        except Exception:
+            return False
+
     def resolve(self, path_str: str | None) -> str | None:
         if not path_str:
             return None
@@ -91,10 +125,19 @@ class _AudioResolver:
                 if key in self._cache:
                     return self._cache[key]
 
-                digest = hashlib.sha1(str(key).encode("utf-8")).hexdigest()
+                stem = src.stem or "audio"
                 suffix = src.suffix or ".wav"
-                dest = self.audio_dir / f"{digest}{suffix}"
-                shutil.copy2(key, dest)
+                candidate = self.audio_dir / f"{stem}{suffix}"
+                dest = candidate
+                if dest.exists() and dest.resolve() != key:
+                    # When two different source paths point to identical audio
+                    # bytes (e.g. Windows-style path vs POSIX-style alias),
+                    # reuse the existing file instead of minting a suffix.
+                    if not self._same_bytes(dest, key):
+                        digest = hashlib.sha1(str(key).encode("utf-8")).hexdigest()[:10]
+                        dest = self.audio_dir / f"{stem}_{digest}{suffix}"
+                if not dest.exists():
+                    shutil.copy2(key, dest)
                 rel = os.path.relpath(dest, self.html_root)
                 rel_posix = Path(rel).as_posix()
                 self._cache[key] = rel_posix
@@ -150,9 +193,13 @@ def _render_tokens(
             audio_path = resolver.resolve(audio_meta.get("path"))
 
         if lemma:
-            data_attrs.append(f'data-lemma="{_escape(str(lemma))}"')
+            lemma_str = str(lemma)
+            data_attrs.append(f'data-lemma="{_escape(lemma_str)}"')
+            data_attrs.append(
+                f'data-lemma-file-slug="{_escape(_encode_lemma_for_filename(lemma_str))}"'
+            )
         if gloss:
-            data_attrs.append(f'data-gloss="{_escape(str(gloss))}"')
+            data_attrs.append(f'data-gloss="{_escape_preserve_unicode(str(gloss))}"')
         if pos:
             data_attrs.append(f'data-pos="{_escape(str(pos))}"')
         if mwe_id:
@@ -216,15 +263,6 @@ def _render_segment(
         translation = (segment.get("annotations", {}) or {}).get("translation")
 
     parts: list[str] = [f'<div class="segment" data-segment="{segment_index}">']
-    controls: list[str] = ["<div class=\"segment-controls\">"]
-    if include_translation:
-        controls.append("<button class=\"toggle-translation\" data-target='translation'>Show translation</button>")
-    if seg_audio_path:
-        controls.append(
-            f' <button class="play" data-audio="{_escape(seg_audio_path)}">Play audio</button>'
-        )
-    controls.append("</div>")
-    parts.append("".join(controls))
 
     tokens_html = _render_tokens(
         segment.get("tokens", []),
@@ -235,9 +273,23 @@ def _render_segment(
         token_info=token_info,
         highlight_lemma=highlight_lemma,
     )
-    parts.append(f"<div class=\"segment-surface\">{tokens_html}</div>")
+    inline_controls: list[str] = ["<span class=\"segment-inline-controls\">"]
+    if include_translation:
+        inline_controls.append(
+            "<button class=\"icon-control toggle-translation\" data-target='translation' "
+            "title=\"Show/hide translation\" aria-label=\"Show or hide translation\">✎</button>"
+        )
+    if seg_audio_path:
+        inline_controls.append(
+            f"<button class=\"icon-control play\" data-audio=\"{_escape(seg_audio_path)}\" "
+            "title=\"Play segment audio\" aria-label=\"Play segment audio\">🔊</button>"
+        )
+    inline_controls.append("</span>")
+    parts.append(f"<div class=\"segment-surface\">{tokens_html}{''.join(inline_controls)}</div>")
     if translation:
-        parts.append(f'<div class="segment-translation hidden">{_escape(str(translation))}</div>')
+        parts.append(
+            f'<div class="segment-translation hidden">{_escape_preserve_unicode(str(translation))}</div>'
+        )
     parts.append("</div>")
     return "".join(parts)
 
@@ -254,6 +306,12 @@ def _render_page(
 ) -> str:
     page = text.get("pages", [])[page_index]
     page_audio = (page.get("annotations", {}) or {}).get("audio")
+    generated_image = (page.get("annotations", {}) or {}).get("generated_image") or {}
+    generated_image_path = ""
+    generated_image_placement = ""
+    if isinstance(generated_image, dict):
+        generated_image_path = str(generated_image.get("path") or "").strip()
+        generated_image_placement = str(generated_image.get("placement") or "").strip().lower()
     page_audio_path = None
     if isinstance(page_audio, dict):
         page_audio_path = resolver.resolve(page_audio.get("path"))
@@ -295,10 +353,26 @@ def _render_page(
             f"<p><button class=\"play\" data-audio=\"{_escape(page_audio_path)}\">Play page audio</button></p>"
         )
 
+    image_block = ""
+    if generated_image_path and generated_image_placement in {"top", "bottom"}:
+        image_block = (
+            f'<figure class="generated-page-image generated-page-image-{generated_image_placement}">'
+            f'<img src="{_escape(generated_image_path)}" alt="Generated illustration for page {current}" '
+            'style="width: 35%; max-width: 35%; height: auto; display: block; margin: 0 auto 0.75rem auto;" />'
+            "</figure>"
+        )
+
+    page_content = f"{page_audio_control}{''.join(segments_html)}"
+    if image_block:
+        if generated_image_placement == "top":
+            page_content = image_block + page_content
+        else:
+            page_content = page_content + image_block
+
     body = (
         "<div class=\"page-container\">"
         "<div class=\"main-text-pane-wrapper\">"
-        f"<div class=\"page\" id=\"main-text-pane\">{page_audio_control}{''.join(segments_html)}</div>"
+        f"<div class=\"page\" id=\"main-text-pane\">{page_content}</div>"
         "</div>"
         "<div class=\"concordance-pane-wrapper\"><iframe id=\"concordance-pane\" src=\"\" frameborder=\"0\" class=\"concordance-iframe\"></iframe></div>"
         "</div>"
@@ -400,23 +474,36 @@ def _render_concordance_page(
 def _write_static_assets(root: Path) -> None:
     static_dir = root / "static"
     static_dir.mkdir(parents=True, exist_ok=True)
+    hover_highlight_color = "#ffd54f"
     (static_dir / "clara_styles_main.css").write_text(
         """body { font-family: Arial, sans-serif; margin: 0; padding: 1rem; }
 nav a { margin-right: 0.5rem; }
 .page-container { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; }
 .main-text-pane-wrapper, .concordance-pane-wrapper { border: 1px solid #ccc; padding: 1rem; max-height: 90vh; overflow: auto; }
 .segment { display: block; margin-bottom: 0.75rem; }
-.segment-controls button { margin-right: 0.5rem; }
+.segment-inline-controls { margin-left: 0.35rem; white-space: nowrap; }
+.icon-control {
+  border: none;
+  background: none;
+  padding: 0;
+  margin-left: 0.25rem;
+  cursor: pointer;
+  font-size: 0.95em;
+  line-height: 1;
+  vertical-align: baseline;
+  opacity: 0.8;
+}
+.icon-control:hover { opacity: 1; }
 .segment-translation.hidden { display: none; }
 .token { cursor: pointer; padding: 0; }
-.token:hover { background: #fffae6; }
-.concordance-highlight { background: #d1e8ff; }
-.mwe-highlight { background: #cce2ff; }
-.mwe-group-hover { background: #e1f1ff; }
+.token:hover { background: __HOVER__; }
+.concordance-highlight { background: __HOVER__; }
+.mwe-highlight { background: __HOVER__; }
+.mwe-group-hover { background: __HOVER__; }
 .gloss-popup { position: absolute; background: rgba(0,0,0,0.85); color: #fff; padding: 4px 8px; border-radius: 3px; font-size: 0.9em; z-index: 20; }
 .page audio { margin: 0.5rem 0; }
 .concordance-iframe { width: 100%; height: 85vh; border: none; }
-""",
+""".replace("__HOVER__", hover_highlight_color),
         encoding="utf-8",
     )
 
@@ -424,13 +511,14 @@ nav a { margin-right: 0.5rem; }
         """body { font-family: Arial, sans-serif; margin: 1rem; }
 .segment { display: block; margin-bottom: 0.75rem; }
 .word { cursor: pointer; padding: 0; }
-.word:hover { background: #fffae6; }
-.concordance-highlight { background: #d1e8ff; }
-.mwe-group-hover { background: #e1f1ff; }
+.word:hover { background: __HOVER__; }
+.concordance-highlight { background: __HOVER__; }
+.mwe-highlight { background: __HOVER__; }
+.mwe-group-hover { background: __HOVER__; }
 .back-arrow-icon { cursor: pointer; margin-right: 0.35rem; }
 .gloss-popup { position: absolute; background: rgba(0,0,0,0.85); color: #fff; padding: 4px 8px; border-radius: 3px; font-size: 0.9em; z-index: 20; }
 .translation-popup { position: absolute; background: rgba(0,0,0,0.8); color: #fff; padding: 4px 10px; border-radius: 3px; z-index: 10; }
-""",
+""".replace("__HOVER__", hover_highlight_color),
         encoding="utf-8",
     )
 
@@ -439,14 +527,21 @@ nav a { margin-right: 0.5rem; }
           setTimeout(() => { element.classList.remove(className); }, duration);
         }
 
-      function loadConcordance(lemma, contextDocument) {
+      function encodeLemmaForFilename(lemma) {
+        if (!lemma) return 'unknown';
+        const normalized = `${lemma}`.trim();
+        if (!normalized) return 'unknown';
+        return normalized.replace(/[\\/:*?"<>|\\x00-\\x1f]/g, '_') || 'unknown';
+      }
+
+      function loadConcordance(lemma, contextDocument, forcedSlug) {
         const targetDoc = contextDocument || document;
         const pane = targetDoc.getElementById('concordance-pane');
-        const encoded = encodeURIComponent(lemma);
-        const target = `concordance_${encoded}.html`;
+        const targetSlug = forcedSlug || encodeLemmaForFilename(lemma || '');
+        const target = `concordance_${targetSlug}.html`;
         if (pane) { pane.src = target; }
         if (window.parent !== window) {
-          window.parent.postMessage({ type: 'loadConcordance', data: { lemma } }, '*');
+          window.parent.postMessage({ type: 'loadConcordance', data: { lemma, slug: targetSlug } }, '*');
         }
       }
 
@@ -470,7 +565,8 @@ nav a { margin-right: 0.5rem; }
             const audioSrc = token.dataset.audio;
             if (audioSrc) { const audio = new Audio(audioSrc); audio.play().catch(() => {}); }
             const lemma = token.dataset.lemma;
-            if (lemma) { loadConcordance(lemma, doc); }
+            const lemmaFileSlug = token.dataset.lemmaFileSlug;
+            if (lemma) { loadConcordance(lemma, doc, lemmaFileSlug); }
             const mwe = token.dataset.mweId;
             if (mwe) { highlightMwe(mwe, doc, token); }
         });
@@ -624,7 +720,8 @@ def compile_html(spec: CompileHTMLSpec) -> dict[str, Any]:
         conc_html = _render_concordance_page(
             entry=entry, text=spec.text, token_ids=token_ids, resolver=resolver
         )
-        conc_path = html_root / f"concordance_{lemma_key}.html"
+        lemma_slug = _encode_lemma_for_filename(str(lemma_key))
+        conc_path = html_root / f"concordance_{lemma_slug}.html"
         conc_path.write_text(conc_html, encoding="utf-8")
 
     telemetry.event(spec.op_id or "compile_html", "info", f"wrote HTML pages under {html_root}")
