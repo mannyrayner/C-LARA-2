@@ -64,18 +64,43 @@ A **lock reviewed annotations** option so later reruns avoid overwriting approve
 
 ### Phase A
 
-- Editor MVP for segmentation + translation + lemma/gloss.
-- Strict validators and versioned saves.
+- **Segmentation-only editor MVP**.
+- Restrict operations to segmentation structure changes only:
+  - add/remove page separators,
+  - add/remove segment separators,
+  - add/remove element separators.
+- No annotation-field editing in this phase; goal is to establish reliable text structuring UX.
+- Strict segmentation validators and versioned saves.
 
 ### Phase B
 
-- Extend editor to MWE + romanization + audio metadata.
-- Diff/review tools for AI-assisted workflows.
+- Add editing for:
+  - **translation** (segment-level),
+  - **images** (page-level),
+  - **MWE** (token-group level).
+- Rationale:
+  - translation and images are low-risk for dependency propagation and useful for UX experimentation,
+  - MWE must arrive early because downstream lemma/gloss/audio depend on MWE grouping.
+- Add dependency-aware MWE validation (group consistency, legal ids, token coverage constraints).
 
 ### Phase C
 
-- Collaboration enhancements: assignment, review queues, and approval states.
-- Better conflict handling for concurrent edits.
+- Add editing for:
+  - lemma,
+  - gloss,
+  - audio metadata,
+  - romanization.
+- Present segments as lexical units with explicit MWE tagging.
+- Allow MWE-consistent editing of annotation values, but not arbitrary decomposition changes that would break established MWE structure.
+- Add richer diff/review tools for AI-assisted workflows.
+
+### Phase D
+
+- Safeguards against accidental overwrite by AI reruns:
+  - explicit warnings when rerun will overwrite human-edited stages,
+  - force-confirmation workflow before destructive rerun,
+  - rollback/recovery path to last reviewed checkpoint.
+- Collaboration enhancements: assignment, review queues, approval states, and better concurrent-edit conflict handling.
 
 ## Success criteria
 
