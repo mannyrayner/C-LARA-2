@@ -1,23 +1,18 @@
-# Status report generation method
+# Stakeholder reports workflow
 
-The first version of report generation is driven from the Django admin tools page.
+Status reports are no longer generated automatically inside the Django platform.
 
-## Inputs
-- Prioritized source set:
-  1. `docs/**/README*.md` (especially `docs/README.md`)
-  2. most recent previous report from `reports/updates/`
-  3. files in `docs/roadmap/`
-  4. files likely relevant to new functionality since previous report (derived from git changes)
+## Current approach
+- Reports are created directly in Codex sessions.
+- Output format is HTML (no LaTeX/Markdown conversion step in the platform).
+- Completed report files are checked into `reports/updates/`.
 
-## Output
-- Datestamped Markdown file: `reports/updates/status_report_YYYYMMDD_HHMMSSZ.md`.
+## Recommended information sources for report authoring
+1. `docs/README.md` and other README files under `docs/`.
+2. The most recent previous report in `reports/updates/`.
+3. `docs/roadmap/*.md`.
+4. Newly created files/features since the previous report.
 
-## Prompting strategy
-The generator asks the AI model for a concise 3-6 page stakeholder update in Markdown with sections for:
-1. summary for users,
-2. changes since previous report,
-3. current user-visible functionality,
-4. near-term work,
-5. risks/notes.
-When relevant, generated reports should include links to repo files using:
+## Linking guidance
+Where useful, include links to repository files using:
 `https://github.com/mannyrayner/C-LARA-2/tree/main/<relative_path>`.

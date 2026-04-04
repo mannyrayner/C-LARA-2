@@ -264,13 +264,3 @@ class GrantAdminPrivilegesForm(forms.Form):
             queryset = User.objects.filter(is_staff=False).order_by("username")
         self.fields["user"].queryset = queryset
 
-
-class GenerateStatusReportForm(forms.Form):
-    ai_model = forms.ChoiceField(choices=[], required=False, label="AI model")
-    max_docs = forms.IntegerField(min_value=5, max_value=200, initial=40, label="Max docs to scan")
-
-    def __init__(self, *args, ai_model_choices: list[str] | None = None, **kwargs):
-        super().__init__(*args, **kwargs)
-        choices = ai_model_choices or ["gpt-4o"]
-        self.fields["ai_model"].choices = [(m, m) for m in choices]
-        self.fields["ai_model"].initial = choices[0]

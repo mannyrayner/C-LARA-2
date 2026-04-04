@@ -1,6 +1,5 @@
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
@@ -47,27 +46,6 @@ class AdminToolsViewTests(TestCase):
                 )
                 self.assertEqual(resp.status_code, 200)
                 self.assertFalse(cache_dir.exists())
-
-    def test_admin_can_generate_status_report(self):
-        self.client.login(username="staffer", password="pw")
-        with tempfile.TemporaryDirectory() as tmpdir:
-            root = Path(tmpdir)
-            report_path = root / "reports" / "updates" / "status_report_20260404_010101Z.md"
-            report_path.parent.mkdir(parents=True, exist_ok=True)
-            report_path.write_text("# report", encoding="utf-8")
-
-            with patch("projects.views._repo_root", return_value=root), patch(
-                "projects.views._generate_status_report", return_value=report_path
-            ):
-                resp = self.client.post(
-                    reverse("admin-tools"),
-                    {"action": "generate_status_report", "ai_model": "gpt-4o", "max_docs": 20},
-                    follow=True,
-                )
-                self.assertEqual(resp.status_code, 200)
-                messages = [m.message for m in resp.context["messages"]]
-                self.assertTrue(any("Created report:" in m for m in messages))
-
 
 @override_settings(BOOTSTRAP_ADMIN_USERNAMES=["bootstrap"])
 class BootstrapAdminRegistrationTests(TestCase):

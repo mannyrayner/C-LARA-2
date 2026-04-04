@@ -20,6 +20,7 @@ reports/*
 !reports/code/README.md
 !reports/updates/
 !reports/updates/.gitkeep
+!reports/updates/*.html
 artifacts/
 platform_server/db.sqlite3
 platform_server/media/

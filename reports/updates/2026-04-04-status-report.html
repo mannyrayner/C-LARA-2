@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>C-LARA-2 Status Report — 2026-04-04</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.5; margin: 2rem auto; max-width: 900px; }
+    h1, h2 { color: #1f3b5b; }
+    code { background: #f4f4f4; padding: 0.1rem 0.25rem; }
+  </style>
+</head>
+<body>
+  <h1>C-LARA-2 status report (2026-04-04)</h1>
+
+  <h2>Summary for non-experts</h2>
+  <p>
+    C-LARA-2 now supports an end-to-end workflow for creating language projects: authoring text,
+    running annotation/compilation, adding image assets, generating exercises, and publishing content
+    in the Django platform.
+  </p>
+
+  <h2>What users can do now</h2>
+  <ul>
+    <li>Create and manage projects with multiple processing options.</li>
+    <li>Run compile jobs with monitor/status pages and task updates.</li>
+    <li>Manage project image styles, image elements, and page images.</li>
+    <li>Generate and publish cloze/flashcard exercise sets.</li>
+    <li>Browse published content and view associated exercises.</li>
+    <li>Use improved MWE prompting resources across multiple languages.</li>
+  </ul>
+
+  <h2>Current technical strengths</h2>
+  <ul>
+    <li>Richer AI client support (text/json/image helpers, telemetry, retries, heartbeat patterns).</li>
+    <li>Generalized romanization options and resilient segmentation/tokenization fallbacks.</li>
+    <li>Improved MWE consistency across prompt templates and postprocessing.</li>
+    <li>More robust audio generation/caching and compile-time asset handling.</li>
+  </ul>
+
+  <h2>Near-term focus areas</h2>
+  <ul>
+    <li>Keep improving report quality and communication for non-technical stakeholders.</li>
+    <li>Continue tightening language-specific prompt guidance and evaluation loops.</li>
+    <li>Stabilize and simplify operational tooling around compile monitoring and admin workflows.</li>
+  </ul>
+
+  <h2>Useful links</h2>
+  <ul>
+    <li><a href="https://github.com/mannyrayner/C-LARA-2/tree/main/docs/README.md">docs/README.md</a></li>
+    <li><a href="https://github.com/mannyrayner/C-LARA-2/tree/main/docs/roadmap">docs/roadmap/</a></li>
+    <li><a href="https://github.com/mannyrayner/C-LARA-2/tree/main/platform_server/projects">platform_server/projects/</a></li>
+    <li><a href="https://github.com/mannyrayner/C-LARA-2/tree/main/src/pipeline">src/pipeline/</a></li>
+  </ul>
+</body>
+</html>

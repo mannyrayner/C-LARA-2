@@ -21,14 +21,6 @@
   <button class="btn" type="submit">Grant admin</button>
 </form>
 
-<h2>Generate stakeholder status report (Markdown)</h2>
-<form method="post">
-  {% csrf_token %}
-  <input type="hidden" name="action" value="generate_status_report" />
-  {{ report_form.as_p }}
-  <button class="btn" type="submit">Generate report</button>
-</form>
-
 <h2>Current admins</h2>
 <ul>
   {% for admin_user in current_admins %}
