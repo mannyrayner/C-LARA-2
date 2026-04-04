@@ -28,7 +28,7 @@ New operations enrich `annotations` at the segment or token level, but never mut
 
 ## Operations and outputs
 
-Each operation is defined by a prompt template plus few-shot examples under `prompts/<operation>/<lang>/`. The generic annotator fans out one request per segment (unless noted) and merges results back into the text object. Implemented so far: translation (EN→FR), MWE detection, lemma tagging, glossing, pinyin (via `pypinyin`), audio annotation (stub/OpenAI TTS), HTML compilation, and the stitched full-pipeline helper.
+Each operation is defined by a prompt template plus few-shot examples under `prompts/<operation>/<lang>/`. The generic annotator fans out one request per segment (unless noted) and merges results back into the text object. Implemented so far: translation, MWE detection, lemma tagging, glossing, romanization (Mandarin via `pypinyin`, Hindi via `indic_transliteration`, plus AI fallback), audio annotation (stub/OpenAI TTS), HTML compilation, and the stitched full-pipeline helper.
 
 All steps must be additive: keep surfaces/tokens as-is, preserve annotations from earlier stages, and only layer on the new fields for that operation. Use downstream hints (e.g., translation, lemma, MWE IDs) without overwriting prior metadata.
 
@@ -45,9 +45,13 @@ All steps must be additive: keep surfaces/tokens as-is, preserve annotations fro
 - **gloss** (`prompts/gloss/<lang>/`)
   - Input: a **simplified** segment JSON that strips annotations except for `mwe_id` markers on tokens and the segment-level `translation`/`mwes` lists. This keeps prompts small and reduces latency; the full annotated structure is restored after the AI call by merging the returned glosses back into the original segment. Translation remains an optional hint (when present) but is not required.
   - Output annotations per token: `token.annotations.gloss` = short L1 gloss/definition for each L2 token. If a token belongs to an MWE, the gloss applies to the whole MWE and all member tokens share the same value. Use "-" when no sensible gloss exists. Treat translations as guidance, not strict literals, and do not add/remove tokens.
-- **pinyin** (library-backed via `pypinyin`)
-  - Input: Chinese tokens.
-  - Output annotations per token: `token.annotations.pinyin` = pinyin with tone numbers.
+- **romanization** (language-aware; historically “pinyin” stage)
+  - Input: tokenized segments for languages that use non-Latin scripts or where romanized support is useful.
+  - Output annotations per token: `token.annotations.pinyin` (legacy key) containing romanized text.
+  - Methods:
+    - `pypinyin` for Mandarin,
+    - `indic_transliteration` for Hindi,
+    - AI fallback for other languages or when package-based methods are unavailable.
 - **audio** (TTS-backed with caching, extensible for human/phonetic paths)
   - Input: tokenized segments with prior annotations preserved.
 - Output: `token.annotations.audio` for lexical tokens, `segment.annotations.audio` for every segment, and `page.annotations.audio` built by concatenating segment audio. Each audio annotation is a JSON object carrying the WAV path plus metadata (`surface`, `engine`, `voice`, `language`, `level`) so audits can trace provenance. Default implementation synthesizes short WAV files (offline-friendly stub) and caches per-language/voice+surface to avoid recomputation. If `OPENAI_API_KEY`/`OPENAI_TTS_MODEL` (e.g., `gpt-4o-mini-tts`) are set, the pipeline prefers OpenAI TTS. Google Cloud TTS is opt-in (set `ENABLE_GOOGLE_TTS=1` alongside `GOOGLE_APPLICATION_CREDENTIALS`/`GOOGLE_CREDENTIALS_JSON`) because platform stability varies; when enabled and available, it takes precedence over the stub. Token-level cache keys may incorporate lemmas/POS when present to disambiguate homographs (e.g., "tear" noun vs. verb). Future enhancements will add human-recorded audio ingestion (e.g., Audacity-sliced clips) and phonetic-text pipelines that swap in specialised TTS engines.
@@ -120,7 +124,7 @@ relative to the run root (e.g., `html/page_1.html`) and `artifact_root` should p
 5. **mwe** (segment-level; establishes shared IDs before token-level work).
 6. **lemma** (token-level; respects shared `mwe_id` lemma).
 7. **gloss** (token-level; respects shared `mwe_id` gloss).
-8. **pinyin** (Chinese-specific token-level; optional per language; uses `pypinyin` instead of AI prompts).
+8. **romanization** (language-specific token-level; optional per language; can use `pypinyin`, `indic_transliteration`, or AI fallback).
 9. **audio** (token + segment level; generates/caches audio files with a pluggable TTS backend and prepares for human/phonetic inputs later).
 10. **compile_html** (consumes annotated JSON; emits HTML + JS that highlights MWEs and links audio). **Implemented.**
 
@@ -211,7 +215,7 @@ The table below shows a short segment containing an MWE ("put up with") as it mo
 ## Deliverables checklist
 
 - [x] Operation modules under `src/pipeline/` as listed above.
-- [x] Prompt templates + few-shots for English-backed AI operations under `prompts/`; pinyin is library-based and does not need prompts.
+- [x] Prompt templates + few-shots for English-backed AI operations under `prompts/`; romanization may be library-based (`pypinyin`, `indic_transliteration`) or AI-backed depending on language/method.
 - [x] Unit + integration tests covering the new operations and full pipeline.
 - [x] Documentation updates (this doc + README pointer) once modules land.
 

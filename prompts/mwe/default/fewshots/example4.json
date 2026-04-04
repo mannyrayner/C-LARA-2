@@ -1,0 +1,10 @@
+{
+  "input": "{\n  \"surface\": \"Ils se souviennent de ce voyage.\",\n  \"tokens\": [\n    {\"surface\": \"Ils\"}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"se\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"souviennent\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"de\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"ce\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"voyage\", \"annotations\": {}}, {\"surface\": \".\"}\n  ],\n  \"annotations\": {}\n}",
+  "output": {
+    "surface": "Ils se souviennent de ce voyage.",
+    "tokens": [
+      {"surface": "Ils"}, {"surface": " ", "annotations": {}}, {"surface": "se", "annotations": {"mwe_id": "m1"}}, {"surface": " ", "annotations": {}}, {"surface": "souviennent", "annotations": {"mwe_id": "m1"}}, {"surface": " ", "annotations": {}}, {"surface": "de", "annotations": {"mwe_id": "m1"}}, {"surface": " ", "annotations": {}}, {"surface": "ce"}, {"surface": " ", "annotations": {}}, {"surface": "voyage"}, {"surface": "."}
+    ],
+    "annotations": {"mwes": [{"id": "m1", "tokens": ["se", "souviennent", "de"], "label": "fixed pronominal verb pattern"}]}
+  }
+}
