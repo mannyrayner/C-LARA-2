@@ -19,10 +19,57 @@ This launches `python manage.py runserver` bound to `http://127.0.0.1:8000/`; th
 Notes:
 - The target clears `PYTHONPATH` and forces `DJANGO_SETTINGS_MODULE=platform_server.settings` so host settings (common on Windows) don’t break the interpreter. Override the interpreter with `PYTHON=<path/to/python>` if needed.
 
+## With the background worker (django-q style)
+Compilation messages are delivered from background tasks. For parity with C-LARA, run both the web server and the Django Q worker:
+
+```bash
+make run-platform-with-q
+```
+
+The `run-platform-with-q` target runs migrations, starts a stub `qcluster` process (good enough for local dev with the bundled `django_q` shim), and then launches the dev server. If you want to exercise the *real* Django Q worker instead of the stub, install [`django-q2`](https://pypi.org/project/django-q2/) (or another Django 5-compatible fork) and use:
+
+```bash
+pip install django-q2
+make run-platform-with-real-q
+```
+
+The `run-platform-with-real-q` target sets `DJANGO_Q_USE_REAL=1`, which gives precedence to the installed `django_q` package so the genuine `qcluster` runs alongside the dev server. This is useful when debugging message delivery differences between the stub and a real queue service.
+
+The default `Q_CLUSTER` settings in `platform_server/settings.py` use a long timeout for compile jobs and a larger retry window (`retry` > `timeout`) so a real `django-q` install starts cleanly without warning about misconfiguration. If you override these values, keep that relationship in mind to avoid noisy startup warnings.
+
+
+## Branch sync and "inconsistent codebase" troubleshooting
+If `make run-platform-with-q` fails immediately with a Python syntax/indentation error (for example `IndentationError` in `platform_server/projects/views.py`), your working tree is usually on a branch that contains only part of the platform refactor.
+
+Recommended workflow:
+
+```bash
+git fetch origin
+git switch main
+git pull --ff-only origin main
+```
+
+Then verify you have the complete branch tip before starting Django:
+
+```bash
+git rev-parse --short HEAD
+cd platform_server && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings python manage.py check
+```
+
+If you intentionally want the older pre-refactor state, switch to that branch explicitly and pull that branch:
+
+```bash
+git switch pre-report-state
+git pull --ff-only origin pre-report-state
+```
+
+Do **not** mix runtime commands from one branch with source files from another. Always run migrate/qcluster/runserver from the currently checked-out branch after a clean fast-forward pull.
+
 ## Manual steps (if you prefer)
 ```bash
 cd platform_server
 python manage.py migrate
+python manage.py qcluster  # keep running in its own terminal to process tasks
 python manage.py runserver
 ```
 
