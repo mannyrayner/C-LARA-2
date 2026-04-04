@@ -31,6 +31,8 @@ from django.utils import timezone as django_timezone
 import mimetypes
 import tempfile
 import zipfile
+import subprocess
+import re
 from urllib.parse import unquote
 from urllib.parse import quote
 
@@ -89,16 +91,20 @@ CONTENT_DATE_FILTERS = {
 }
 
 STATUS_REPORT_SYSTEM_PROMPT = """You are preparing a concise progress update for non-technical stakeholders.
-Write valid standalone LaTeX content (no markdown fences), targeting roughly 3-6 pages.
+Write plain Markdown (no code fences), targeting roughly 3-6 pages when rendered.
 Use this structure:
-\\section*{C-LARA-2 Status Update}
-\\subsection*{Summary for users}
-\\subsection*{What changed since the last report}
-\\subsection*{What users can do now}
-\\subsection*{Near-term issues and planned work}
-\\subsection*{Notes and risks}
+# C-LARA-2 Status Update
+## Summary for users
+## What changed since the last report
+## What users can do now
+## Near-term issues and planned work
+## Notes and risks
 Focus on user-visible functionality and concrete progress.
+When relevant, include markdown links to repository files using:
+https://github.com/mannyrayner/C-LARA-2/tree/main/<relative_path>
 """
+
+_REPORT_STAMP_RE = re.compile(r"status_report_(\d{8}_\d{6})Z\.(?:md|tex)$")
 
 
 
@@ -159,32 +165,113 @@ def _reports_root() -> Path:
     return _repo_root() / "reports"
 
 
-def _collect_docs_digest(max_docs: int) -> str:
-    docs_root = _repo_root() / "docs"
-    if not docs_root.exists():
-        return "No docs directory found."
-    chunks: list[str] = []
-    for path in sorted(docs_root.rglob("*.md"))[: max(5, max_docs)]:
-        rel = path.relative_to(_repo_root())
-        try:
-            lines = path.read_text(encoding="utf-8").splitlines()
-        except Exception:
-            continue
-        snippet = "\n".join(lines[:25]).strip()
-        if snippet:
-            chunks.append(f"## {rel}\n{snippet}")
-    return "\n\n".join(chunks) if chunks else "No markdown docs found."
+def _latest_report_path(updates_dir: Path) -> Path | None:
+    reports = sorted(list(updates_dir.glob("status_report_*.md")) + list(updates_dir.glob("status_report_*.tex")))
+    return reports[-1] if reports else None
 
 
 def _latest_report_text(updates_dir: Path) -> str:
-    reports = sorted(updates_dir.glob("status_report_*.tex"))
-    if not reports:
+    latest = _latest_report_path(updates_dir)
+    if latest is None:
         return "No previous report."
-    latest = reports[-1]
     try:
         return latest.read_text(encoding="utf-8")
     except Exception:
         return f"Could not read previous report {latest.name}"
+
+    if compiled_run_dir and latest_run_dir:
+        return latest_run_dir if latest_run_dir.stat().st_mtime >= compiled_run_dir.stat().st_mtime else compiled_run_dir
+    return latest_run_dir or compiled_run_dir
+
+def _latest_report_timestamp(updates_dir: Path) -> datetime | None:
+    latest = _latest_report_path(updates_dir)
+    if latest is None:
+        return None
+    match = _REPORT_STAMP_RE.match(latest.name)
+    if not match:
+        return None
+    try:
+        return datetime.strptime(match.group(1), "%Y%m%d_%H%M%S").replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
+
+
+def _recent_changed_files(since_dt: datetime | None, *, max_files: int = 40) -> list[Path]:
+    if since_dt is None:
+        return []
+    try:
+        out = subprocess.check_output(
+            [
+                "git",
+                "log",
+                "--name-only",
+                "--pretty=format:",
+                f"--since={since_dt.strftime('%Y-%m-%d %H:%M:%S')}",
+            ],
+            cwd=_repo_root(),
+            text=True,
+        )
+    except Exception:
+        return []
+    seen: list[Path] = []
+    for line in out.splitlines():
+        rel = line.strip()
+        if not rel:
+            continue
+        path = _repo_root() / rel
+        if not path.exists() or path.is_dir():
+            continue
+        if path not in seen:
+            seen.append(path)
+        if len(seen) >= max_files:
+            break
+    return seen
+
+
+def _prioritized_report_sources(*, max_docs: int, since_dt: datetime | None) -> list[Path]:
+    root = _repo_root()
+    docs_root = root / "docs"
+    selected: list[Path] = []
+
+    # 2a. README files in docs
+    for p in sorted(docs_root.rglob("README*.md")):
+        selected.append(p)
+    if (docs_root / "README.md").exists() and (docs_root / "README.md") not in selected:
+        selected.insert(0, docs_root / "README.md")
+
+    # 2c. docs/roadmap files
+    roadmap_root = docs_root / "roadmap"
+    if roadmap_root.exists():
+        for p in sorted(roadmap_root.glob("*.md")):
+            if p not in selected:
+                selected.append(p)
+
+    # 2d. files relevant to recent new functionality since previous report
+    for p in _recent_changed_files(since_dt):
+        rel = p.relative_to(root).as_posix()
+        if rel.startswith(("docs/", "platform_server/projects/", "src/pipeline/", "src/core/", "prompts/")):
+            if p not in selected:
+                selected.append(p)
+
+    return selected[: max(5, max_docs)]
+
+
+def _collect_docs_digest(max_docs: int, *, since_dt: datetime | None) -> str:
+    selected = _prioritized_report_sources(max_docs=max_docs, since_dt=since_dt)
+    if not selected:
+        return "No source files found."
+    chunks: list[str] = []
+    for path in selected:
+        rel = path.relative_to(_repo_root()).as_posix()
+        link = f"https://github.com/mannyrayner/C-LARA-2/tree/main/{rel}"
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except Exception:
+            continue
+        snippet = "\n".join(lines[:30]).strip()
+        if snippet:
+            chunks.append(f"## {rel}\nLink: {link}\n{snippet}")
+    return "\n\n".join(chunks) if chunks else "No readable source snippets found."
 
 
 def _build_status_report_prompt(*, docs_digest: str, previous_report: str) -> str:
@@ -194,7 +281,7 @@ def _build_status_report_prompt(*, docs_digest: str, previous_report: str) -> st
         "Prioritize user-facing features, progress, and near-term plans.\n\n"
         "=== PREVIOUS REPORT ===\n"
         f"{previous_report[:15000]}\n\n"
-        "=== DOCS SNAPSHOT ===\n"
+        "=== PRIORITIZED SOURCE SNAPSHOT ===\n"
         f"{docs_digest[:80000]}\n"
     )
 
@@ -205,26 +292,18 @@ def _generate_status_report(*, ai_model: str, max_docs: int) -> Path:
     updates_dir = reports_root / "updates"
     updates_dir.mkdir(parents=True, exist_ok=True)
 
-    docs_digest = _collect_docs_digest(max_docs=max_docs)
+    since_dt = _latest_report_timestamp(updates_dir)
+    docs_digest = _collect_docs_digest(max_docs=max_docs, since_dt=since_dt)
     previous_report = _latest_report_text(updates_dir)
     prompt = _build_status_report_prompt(docs_digest=docs_digest, previous_report=previous_report)
 
     client = OpenAIClient(config=OpenAIConfig(model=ai_model or DEFAULT_MODEL))
-    latex = asyncio.run(client.chat_text(prompt, model=ai_model or DEFAULT_MODEL, temperature=0.2)).strip()
-    if not latex:
+    markdown = asyncio.run(client.chat_text(prompt, model=ai_model or DEFAULT_MODEL, temperature=0.2)).strip()
+    if not markdown:
         raise ValueError("AI returned empty report")
-    if "\\documentclass" not in latex:
-        latex = (
-            "\\documentclass{article}\n"
-            "\\usepackage[margin=1in]{geometry}\n"
-            "\\usepackage[T1]{fontenc}\n"
-            "\\begin{document}\n"
-            f"{latex}\n"
-            "\\end{document}\n"
-        )
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%SZ")
-    out_path = updates_dir / f"status_report_{stamp}.tex"
-    out_path.write_text(latex, encoding="utf-8")
+    out_path = updates_dir / f"status_report_{stamp}.md"
+    out_path.write_text(markdown, encoding="utf-8")
     return out_path
 
 
@@ -1672,9 +1751,6 @@ def _resolve_run_dir(project: Project) -> Path | None:
         return latest_run_dir if latest_run_dir.stat().st_mtime >= compiled_run_dir.stat().st_mtime else compiled_run_dir
     return latest_run_dir or compiled_run_dir
 
-    if compiled_run_dir and latest_run_dir:
-        return latest_run_dir if latest_run_dir.stat().st_mtime >= compiled_run_dir.stat().st_mtime else compiled_run_dir
-    return latest_run_dir or compiled_run_dir
 
 def _has_segmentation_phase_1_output(project: Project) -> bool:
     run_dir = _resolve_run_dir(project)

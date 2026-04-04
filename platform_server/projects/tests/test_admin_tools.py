@@ -52,9 +52,9 @@ class AdminToolsViewTests(TestCase):
         self.client.login(username="staffer", password="pw")
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            report_path = root / "reports" / "updates" / "status_report_20260404_010101Z.tex"
+            report_path = root / "reports" / "updates" / "status_report_20260404_010101Z.md"
             report_path.parent.mkdir(parents=True, exist_ok=True)
-            report_path.write_text("\\documentclass{article}\\begin{document}x\\end{document}", encoding="utf-8")
+            report_path.write_text("# report", encoding="utf-8")
 
             with patch("projects.views._repo_root", return_value=root), patch(
                 "projects.views._generate_status_report", return_value=report_path
