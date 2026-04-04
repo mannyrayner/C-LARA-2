@@ -79,6 +79,10 @@ German templates and few-shots should explicitly cover:
    - Capture fixed reflexive constructions (e.g., `sich freuen`, `sich erinnern`) where reflexive marking is part of lexical behavior.
 3. **Set-phrase boundaries**
    - Provide positive/negative contrasts such as `ein wenig` (MWE) vs `wenig nervös` (not an MWE by default).
+4. **False-positive blockers for German**
+   - Explicitly reject ordinary quantifier+noun phrases (e.g., `etwas Obst`) and accidental long-distance pairings (e.g., `beginnt ... reist`, `im ... auf`).
+
+German discontinuous MWEs are predominantly separable verbs and fixed reflexive verb constructions; other discontinuous types should be treated as rare and require strong lexical evidence before annotation.
 
 ### Reuse in other languages
 
