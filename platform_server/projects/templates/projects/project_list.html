@@ -3,6 +3,14 @@
 {% block content %}
 <h1>Your projects</h1>
 <p><a class="btn" href="{% url 'project-create' %}">New project</a></p>
+<form method="post" action="{% url 'project-import-source-bundle' %}" enctype="multipart/form-data">
+  {% csrf_token %}
+  <p>
+    <label for="source_bundle">Import source ZIP:</label>
+    <input type="file" id="source_bundle" name="source_bundle" accept=".zip,application/zip" required />
+    <button class="btn secondary" type="submit">Import as new project</button>
+  </p>
+</form>
 <ul>
   {% for project in object_list %}
     <li>
