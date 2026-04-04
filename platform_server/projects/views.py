@@ -179,6 +179,9 @@ def _latest_report_text(updates_dir: Path) -> str:
     except Exception:
         return f"Could not read previous report {latest.name}"
 
+    if compiled_run_dir and latest_run_dir:
+        return latest_run_dir if latest_run_dir.stat().st_mtime >= compiled_run_dir.stat().st_mtime else compiled_run_dir
+    return latest_run_dir or compiled_run_dir
 
 def _latest_report_timestamp(updates_dir: Path) -> datetime | None:
     latest = _latest_report_path(updates_dir)
