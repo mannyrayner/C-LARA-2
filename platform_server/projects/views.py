@@ -42,6 +42,7 @@ from .forms import (
     ClozeExerciseSetForm,
     DeleteCachedWordAudioForm,
     FlashcardExerciseSetForm,
+    GenerateStatusReportForm,
     GrantAdminPrivilegesForm,
     ProfileForm,
     ProjectForm,
@@ -86,6 +87,18 @@ CONTENT_DATE_FILTERS = {
     "last_3_months": timedelta(days=90),
     "last_year": timedelta(days=365),
 }
+
+STATUS_REPORT_SYSTEM_PROMPT = """You are preparing a concise progress update for non-technical stakeholders.
+Write valid standalone LaTeX content (no markdown fences), targeting roughly 3-6 pages.
+Use this structure:
+\\section*{C-LARA-2 Status Update}
+\\subsection*{Summary for users}
+\\subsection*{What changed since the last report}
+\\subsection*{What users can do now}
+\\subsection*{Near-term issues and planned work}
+\\subsection*{Notes and risks}
+Focus on user-visible functionality and concrete progress.
+"""
 
 
 
@@ -136,6 +149,83 @@ def _require_admin(user) -> None:
     _ensure_bootstrap_admin(user)
     if not user.is_staff:
         raise Http404()
+
+
+def _repo_root() -> Path:
+    return Path(settings.BASE_DIR).resolve().parent
+
+
+def _reports_root() -> Path:
+    return _repo_root() / "reports"
+
+
+def _collect_docs_digest(max_docs: int) -> str:
+    docs_root = _repo_root() / "docs"
+    if not docs_root.exists():
+        return "No docs directory found."
+    chunks: list[str] = []
+    for path in sorted(docs_root.rglob("*.md"))[: max(5, max_docs)]:
+        rel = path.relative_to(_repo_root())
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except Exception:
+            continue
+        snippet = "\n".join(lines[:25]).strip()
+        if snippet:
+            chunks.append(f"## {rel}\n{snippet}")
+    return "\n\n".join(chunks) if chunks else "No markdown docs found."
+
+
+def _latest_report_text(updates_dir: Path) -> str:
+    reports = sorted(updates_dir.glob("status_report_*.tex"))
+    if not reports:
+        return "No previous report."
+    latest = reports[-1]
+    try:
+        return latest.read_text(encoding="utf-8")
+    except Exception:
+        return f"Could not read previous report {latest.name}"
+
+
+def _build_status_report_prompt(*, docs_digest: str, previous_report: str) -> str:
+    return (
+        f"{STATUS_REPORT_SYSTEM_PROMPT}\n\n"
+        "Use the previous report (if any) to identify deltas.\n"
+        "Prioritize user-facing features, progress, and near-term plans.\n\n"
+        "=== PREVIOUS REPORT ===\n"
+        f"{previous_report[:15000]}\n\n"
+        "=== DOCS SNAPSHOT ===\n"
+        f"{docs_digest[:80000]}\n"
+    )
+
+
+def _generate_status_report(*, ai_model: str, max_docs: int) -> Path:
+    reports_root = _reports_root()
+    (reports_root / "code").mkdir(parents=True, exist_ok=True)
+    updates_dir = reports_root / "updates"
+    updates_dir.mkdir(parents=True, exist_ok=True)
+
+    docs_digest = _collect_docs_digest(max_docs=max_docs)
+    previous_report = _latest_report_text(updates_dir)
+    prompt = _build_status_report_prompt(docs_digest=docs_digest, previous_report=previous_report)
+
+    client = OpenAIClient(config=OpenAIConfig(model=ai_model or DEFAULT_MODEL))
+    latex = asyncio.run(client.chat_text(prompt, model=ai_model or DEFAULT_MODEL, temperature=0.2)).strip()
+    if not latex:
+        raise ValueError("AI returned empty report")
+    if "\\documentclass" not in latex:
+        latex = (
+            "\\documentclass{article}\n"
+            "\\usepackage[margin=1in]{geometry}\n"
+            "\\usepackage[T1]{fontenc}\n"
+            "\\begin{document}\n"
+            f"{latex}\n"
+            "\\end{document}\n"
+        )
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%SZ")
+    out_path = updates_dir / f"status_report_{stamp}.tex"
+    out_path.write_text(latex, encoding="utf-8")
+    return out_path
 
 
 def _resolve_segmentation_method(language: str, configured: str | None) -> str:
@@ -920,6 +1010,7 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
     grant_form = GrantAdminPrivilegesForm(
         queryset=get_user_model().objects.filter(is_staff=False).order_by("username")
     )
+    report_form = GenerateStatusReportForm(ai_model_choices=AI_MODEL_CHOICES)
 
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
@@ -948,6 +1039,20 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
                 user_obj.save(update_fields=["is_staff"])
                 messages.success(request, f"{user_obj.username} now has admin privileges.")
                 return redirect("admin-tools")
+        elif action == "generate_status_report":
+            report_form = GenerateStatusReportForm(request.POST, ai_model_choices=AI_MODEL_CHOICES)
+            if report_form.is_valid():
+                ai_model = report_form.cleaned_data["ai_model"] or DEFAULT_MODEL
+                max_docs = int(report_form.cleaned_data["max_docs"])
+                try:
+                    out_path = _generate_status_report(ai_model=ai_model, max_docs=max_docs)
+                except Exception as exc:
+                    logger.exception("Status report generation failed")
+                    messages.error(request, f"Report generation failed: {exc}")
+                else:
+                    rel = out_path.relative_to(_repo_root())
+                    messages.success(request, f"Created report: {rel}")
+                return redirect("admin-tools")
         else:
             messages.error(request, "Unknown admin action.")
 
@@ -957,6 +1062,7 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
         {
             "delete_audio_form": delete_form,
             "grant_admin_form": grant_form,
+            "report_form": report_form,
             "bootstrap_admin_usernames": sorted(_bootstrap_admin_usernames()),
             "current_admins": get_user_model().objects.filter(is_staff=True).order_by("username"),
         },
@@ -1566,6 +1672,9 @@ def _resolve_run_dir(project: Project) -> Path | None:
         return latest_run_dir if latest_run_dir.stat().st_mtime >= compiled_run_dir.stat().st_mtime else compiled_run_dir
     return latest_run_dir or compiled_run_dir
 
+    if compiled_run_dir and latest_run_dir:
+        return latest_run_dir if latest_run_dir.stat().st_mtime >= compiled_run_dir.stat().st_mtime else compiled_run_dir
+    return latest_run_dir or compiled_run_dir
 
 def _has_segmentation_phase_1_output(project: Project) -> bool:
     run_dir = _resolve_run_dir(project)
