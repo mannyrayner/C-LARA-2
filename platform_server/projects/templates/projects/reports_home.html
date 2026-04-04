@@ -1,0 +1,17 @@
+{% extends "projects/base.html" %}
+{% block title %}Reports · C-LARA-2{% endblock %}
+{% block content %}
+<h1>Project reports</h1>
+<p>Stakeholder-facing status reports, most recent first.</p>
+
+<ul>
+  {% for report in reports %}
+    <li>
+      <a href="{% url 'report-detail' report.name %}">{{ report.name }}</a>
+      <small>(updated {{ report.modified|date:"Y-m-d H:i" }} UTC)</small>
+    </li>
+  {% empty %}
+    <li>No reports are available yet.</li>
+  {% endfor %}
+</ul>
+{% endblock %}
