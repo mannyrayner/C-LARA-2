@@ -13,6 +13,14 @@ def create_missing_profiles(apps, schema_editor):
         profile_model.objects.get_or_create(user=user, defaults={"timezone": "UTC"})
 
 
+def create_profile_table_if_missing(apps, schema_editor):
+    table_names = schema_editor.connection.introspection.table_names()
+    if "projects_profile" in table_names:
+        return
+    profile_model = apps.get_model("projects", "Profile")
+    schema_editor.create_model(profile_model)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -21,38 +29,45 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.CreateModel(
-            name="Profile",
-            fields=[
-                (
-                    "id",
-                    models.BigAutoField(
-                        auto_created=True,
-                        primary_key=True,
-                        serialize=False,
-                        verbose_name="ID",
-                    ),
-                ),
-                ("timezone", models.CharField(default="UTC", max_length=64)),
-                (
-                    "display_name",
-                    models.CharField(blank=True, default="", max_length=120),
-                ),
-                ("bio", models.TextField(blank=True, default="")),
-                ("created_at", models.DateTimeField(default=django.utils.timezone.now)),
-                ("updated_at", models.DateTimeField(auto_now=True)),
-                (
-                    "user",
-                    models.OneToOneField(
-                        on_delete=django.db.models.deletion.CASCADE,
-                        related_name="profile",
-                        to=settings.AUTH_USER_MODEL,
-                    ),
-                ),
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.CreateModel(
+                    name="Profile",
+                    fields=[
+                        (
+                            "id",
+                            models.BigAutoField(
+                                auto_created=True,
+                                primary_key=True,
+                                serialize=False,
+                                verbose_name="ID",
+                            ),
+                        ),
+                        ("timezone", models.CharField(default="UTC", max_length=64)),
+                        (
+                            "display_name",
+                            models.CharField(blank=True, default="", max_length=120),
+                        ),
+                        ("bio", models.TextField(blank=True, default="")),
+                        ("created_at", models.DateTimeField(default=django.utils.timezone.now)),
+                        ("updated_at", models.DateTimeField(auto_now=True)),
+                        (
+                            "user",
+                            models.OneToOneField(
+                                on_delete=django.db.models.deletion.CASCADE,
+                                related_name="profile",
+                                to=settings.AUTH_USER_MODEL,
+                            ),
+                        ),
+                    ],
+                    options={
+                        "ordering": ["user_id"],
+                    },
+                )
             ],
-            options={
-                "ordering": ["user_id"],
-            },
+            database_operations=[
+                migrations.RunPython(create_profile_table_if_missing, migrations.RunPython.noop),
+            ],
         ),
         migrations.RunPython(create_missing_profiles, migrations.RunPython.noop),
     ]
