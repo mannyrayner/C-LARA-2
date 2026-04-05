@@ -1,0 +1,26 @@
+{
+  "input": "{\n  \"surface\": \"Sie brauchen Brot, Käse und etwas Obst.\",\n  \"tokens\": [\n    {\"surface\": \"Sie\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"brauchen\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"Brot\", \"annotations\": {}},\n    {\"surface\": \",\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"Käse\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"und\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"etwas\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"Obst\", \"annotations\": {}},\n    {\"surface\": \".\"}\n  ],\n  \"annotations\": {}\n}",
+  "output": {
+    "surface": "Sie brauchen Brot, Käse und etwas Obst.",
+    "tokens": [
+      {"surface": "Sie"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "brauchen"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "Brot"},
+      {"surface": ","},
+      {"surface": " ", "annotations": {}},
+      {"surface": "Käse"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "und"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "etwas"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "Obst"},
+      {"surface": "."}
+    ],
+    "annotations": {
+      "mwes": []
+    }
+  }
+}
