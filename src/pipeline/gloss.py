@@ -68,6 +68,10 @@ class GlossSpec:
     op_id: str | None = None
 
 
+def _instantiate_gloss_language_vars(text: str, *, target_language: str) -> str:
+    return text.replace("{glossing_language}", target_language)
+
+
 def _build_prompt(
     template: str,
     *,
@@ -75,6 +79,7 @@ def _build_prompt(
     fewshots: list[dict[str, Any]],
     target_language: str,
 ) -> str:
+    template = _instantiate_gloss_language_vars(template, target_language=target_language)
     simplified = _simplify_segment(segment)
 
     output_instructions = [
@@ -82,6 +87,8 @@ def _build_prompt(
         "Populate annotations.gloss for each token using {} (respect surface form).".format(
             target_language.upper()
         ),
+        "Do not add glosses to whitespace-only tokens.",
+        "For proper names, default to the name itself (or a script-converted form), not '-'.",
         "Tokens sharing the same annotations.mwe_id must share the same gloss (gloss the whole expression).",
         "If a token cannot sensibly be glossed, set annotations.gloss to '-' instead of inventing content.",
     ]
@@ -117,6 +124,13 @@ async def annotate_gloss(
         if spec.fewshot_paths
         else _load_fewshots(spec.language, prompts_root=prompts_root)
     )
+    template = _instantiate_gloss_language_vars(template, target_language=spec.target_language)
+
+    # Avoid French-specific fallback examples when glossing into other languages.
+    if spec.target_language.lower() != "fr" and spec.fewshot_paths is None:
+        language_specific_fewshots = prompts_root / "gloss" / spec.language / "fewshots"
+        if not language_specific_fewshots.exists():
+            fewshots = []
 
     def build(segment: dict[str, Any]) -> str:
         return _build_prompt(
@@ -146,4 +160,31 @@ async def annotate_gloss(
     if annotated.get("l1") is None:
         annotated["l1"] = spec.target_language
 
+    _postprocess_glosses(annotated)
+
     return annotated
+
+
+def _postprocess_glosses(text: dict[str, Any]) -> None:
+    """Normalize known bad gloss patterns from model output."""
+
+    for page in text.get("pages", []):
+        for segment in page.get("segments", []):
+            for token in segment.get("tokens", []):
+                surface = str(token.get("surface", ""))
+                annotations = token.get("annotations")
+                if not isinstance(annotations, dict):
+                    continue
+                gloss_value = annotations.get("gloss")
+                if gloss_value is None:
+                    continue
+
+                if surface.isspace():
+                    annotations.pop("gloss", None)
+                    if not annotations:
+                        token.pop("annotations", None)
+                    continue
+
+                pos = str(annotations.get("pos", "")).upper()
+                if pos in {"PROPN", "NNP", "NNPS"} and str(gloss_value).strip() == "-":
+                    annotations["gloss"] = surface
