@@ -3,6 +3,30 @@
 from django.db import migrations, models
 
 
+def ensure_fields_for_0008(apps, schema_editor):
+    model = apps.get_model("projects", "ProjectImagePage")
+    table = model._meta.db_table
+    table_names = set(schema_editor.connection.introspection.table_names())
+    if table not in table_names:
+        schema_editor.create_model(model)
+        return
+    with schema_editor.connection.cursor() as cursor:
+        existing_columns = {
+            col.name for col in schema_editor.connection.introspection.get_table_description(cursor, table)
+        }
+    for field_name in (
+        "generation_prompt",
+        "image_model",
+        "image_revised_prompt",
+        "page_number",
+        "page_text",
+        "status",
+    ):
+        field = model._meta.get_field(field_name)
+        if field.column not in existing_columns:
+            schema_editor.add_field(model, field)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,34 +34,41 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name="projectimagepage",
-            name="generation_prompt",
-            field=models.TextField(blank=True, default=""),
-        ),
-        migrations.AddField(
-            model_name="projectimagepage",
-            name="image_model",
-            field=models.CharField(blank=True, default="", max_length=120),
-        ),
-        migrations.AddField(
-            model_name="projectimagepage",
-            name="image_revised_prompt",
-            field=models.TextField(blank=True, default=""),
-        ),
-        migrations.AddField(
-            model_name="projectimagepage",
-            name="page_number",
-            field=models.PositiveIntegerField(default=1),
-        ),
-        migrations.AddField(
-            model_name="projectimagepage",
-            name="page_text",
-            field=models.TextField(blank=True, default=""),
-        ),
-        migrations.AddField(
-            model_name="projectimagepage",
-            name="status",
-            field=models.CharField(blank=True, default="", max_length=40),
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.AddField(
+                    model_name="projectimagepage",
+                    name="generation_prompt",
+                    field=models.TextField(blank=True, default=""),
+                ),
+                migrations.AddField(
+                    model_name="projectimagepage",
+                    name="image_model",
+                    field=models.CharField(blank=True, default="", max_length=120),
+                ),
+                migrations.AddField(
+                    model_name="projectimagepage",
+                    name="image_revised_prompt",
+                    field=models.TextField(blank=True, default=""),
+                ),
+                migrations.AddField(
+                    model_name="projectimagepage",
+                    name="page_number",
+                    field=models.PositiveIntegerField(default=1),
+                ),
+                migrations.AddField(
+                    model_name="projectimagepage",
+                    name="page_text",
+                    field=models.TextField(blank=True, default=""),
+                ),
+                migrations.AddField(
+                    model_name="projectimagepage",
+                    name="status",
+                    field=models.CharField(blank=True, default="", max_length=40),
+                ),
+            ],
+            database_operations=[
+                migrations.RunPython(ensure_fields_for_0008, migrations.RunPython.noop),
+            ],
         ),
     ]

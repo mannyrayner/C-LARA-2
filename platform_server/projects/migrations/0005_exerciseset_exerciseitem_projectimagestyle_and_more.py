@@ -6,6 +6,35 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def ensure_models_for_0005(apps, schema_editor):
+    model_names = [
+        "ExerciseSet",
+        "ExerciseItem",
+        "ProjectImageStyle",
+        "TaskUpdate",
+        "ProjectCollaborator",
+        "ProjectImageElement",
+        "ProjectImagePage",
+    ]
+    table_names = set(schema_editor.connection.introspection.table_names())
+    for model_name in model_names:
+        model = apps.get_model("projects", model_name)
+        table = model._meta.db_table
+        if table not in table_names:
+            schema_editor.create_model(model)
+            table_names.add(table)
+            continue
+
+        with schema_editor.connection.cursor() as cursor:
+            existing_columns = {
+                col.name
+                for col in schema_editor.connection.introspection.get_table_description(cursor, table)
+            }
+        for field in model._meta.local_fields:
+            if field.column not in existing_columns:
+                schema_editor.add_field(model, field)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -14,6 +43,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
         migrations.CreateModel(
             name="ExerciseSet",
             fields=[
@@ -245,5 +276,10 @@ class Migration(migrations.Migration):
                 "ordering": ["project_id", "page_index"],
                 "unique_together": {("project", "page_index")},
             },
+        ),
+            ],
+            database_operations=[
+                migrations.RunPython(ensure_models_for_0005, migrations.RunPython.noop),
+            ],
         ),
     ]
