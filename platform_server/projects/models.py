@@ -147,6 +147,94 @@ class Profile(models.Model):
         return f"Profile<{self.user_id}:{self.timezone}>"
 
 
+class TaskUpdate(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="task_updates")
+    message = models.TextField()
+    level = models.CharField(max_length=20, default="info")
+    created_at = models.DateTimeField(default=django_timezone.now)
+
+    class Meta:
+        ordering = ["project_id", "-created_at"]
+
+
+class ProjectImageStyle(models.Model):
+    project = models.OneToOneField(Project, on_delete=models.CASCADE, related_name="image_style")
+    brief_description = models.TextField(blank=True, default="")
+    expanded_prompt = models.TextField(blank=True, default="")
+    sample_image_path = models.CharField(max_length=512, blank=True, default="")
+    created_at = models.DateTimeField(default=django_timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class ProjectImageElement(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="image_elements")
+    element_key = models.CharField(max_length=120)
+    description = models.TextField(blank=True, default="")
+    canonical_image_path = models.CharField(max_length=512, blank=True, default="")
+    created_at = models.DateTimeField(default=django_timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("project", "element_key")
+        ordering = ["project_id", "element_key"]
+
+
+class ProjectImagePage(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="image_pages")
+    page_index = models.PositiveIntegerField(default=1)
+    prompt = models.TextField(blank=True, default="")
+    image_path = models.CharField(max_length=512, blank=True, default="")
+    created_at = models.DateTimeField(default=django_timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("project", "page_index")
+        ordering = ["project_id", "page_index"]
+
+
+class ProjectCollaborator(models.Model):
+    ROLE_OWNER = "owner"
+    ROLE_ANNOTATOR = "annotator"
+    ROLE_VIEWER = "viewer"
+    ROLE_CHOICES = [
+        (ROLE_OWNER, "Owner"),
+        (ROLE_ANNOTATOR, "Annotator"),
+        (ROLE_VIEWER, "Viewer"),
+    ]
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="collaborators")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="project_collaborations")
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default=ROLE_VIEWER)
+    created_at = models.DateTimeField(default=django_timezone.now)
+
+    class Meta:
+        unique_together = ("project", "user")
+        ordering = ["project_id", "user_id"]
+
+
+class ExerciseSet(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="exercise_sets")
+    title = models.CharField(max_length=200)
+    exercise_type = models.CharField(max_length=30, default="cloze")
+    is_published = models.BooleanField(default=False)
+    created_at = models.DateTimeField(default=django_timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["project_id", "-created_at"]
+
+
+class ExerciseItem(models.Model):
+    exercise_set = models.ForeignKey(ExerciseSet, on_delete=models.CASCADE, related_name="items")
+    prompt = models.TextField()
+    answer = models.TextField(blank=True, default="")
+    distractors = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(default=django_timezone.now)
+
+    class Meta:
+        ordering = ["exercise_set_id", "id"]
+
+
 @receiver(post_save, sender=get_user_model())
 def ensure_profile_for_user(sender, instance, created, **kwargs):  # type: ignore[no-untyped-def]
     if created:

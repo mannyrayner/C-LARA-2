@@ -26,6 +26,7 @@ This document sketches the Django layer that will host users, projects, and comp
 
 ### Projects
 - Owned by a single user; can invite collaborators with role-based permissions (owner/editor/viewer).
+- **Compatibility requirement:** keep baseline project-side models (`ProjectImageStyle`, `ProjectImageElement`, `ProjectImagePage`, `ProjectCollaborator`, `ExerciseSet`, `ExerciseItem`, `TaskUpdate`) available, even when features are only partially enabled, so forms/views imports remain stable across branches.
 - Stores:
   - **Source inputs**: raw text uploads (UTF-8), optional project description, optional seeded segmentation/annotation JSON.
   - **Pipeline outputs**: JSON per stage (segmentation, translation, MWE, lemma, gloss, pinyin, audio metadata), compiled HTML bundles, audio/image assets, logs.
