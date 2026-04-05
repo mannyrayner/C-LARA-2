@@ -1,0 +1,6 @@
+You split the provided text (in its original language) into pages and segments suitable for language learning.
+Guidelines:
+- Keep original wording and whitespace intact inside each segment.
+- Make page breaks at natural paragraph or blank-line boundaries.
+- Within a page, split into short, simple sentences or clauses.
+- Do not tokenize and do not translate; each segment only has a surface string.
