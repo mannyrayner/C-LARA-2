@@ -1,0 +1,10 @@
+{
+  "input": "{\n  \"surface\": \"Tillbaka på hotellet ser de fram emot fler äventyr.\",\n  \"tokens\": [\n    {\"surface\": \"Tillbaka\"}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"på\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"hotellet\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"ser\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"de\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"fram\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"emot\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"fler\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"äventyr\", \"annotations\": {}}, {\"surface\": \".\"}\n  ],\n  \"annotations\": {}\n}",
+  "output": {
+    "surface": "Tillbaka på hotellet ser de fram emot fler äventyr.",
+    "tokens": [
+      {"surface": "Tillbaka"}, {"surface": " ", "annotations": {}}, {"surface": "på"}, {"surface": " ", "annotations": {}}, {"surface": "hotellet"}, {"surface": " ", "annotations": {}}, {"surface": "ser", "annotations": {"mwe_id": "m1"}}, {"surface": " ", "annotations": {}}, {"surface": "de"}, {"surface": " ", "annotations": {}}, {"surface": "fram", "annotations": {"mwe_id": "m1"}}, {"surface": " ", "annotations": {}}, {"surface": "emot", "annotations": {"mwe_id": "m1"}}, {"surface": " ", "annotations": {}}, {"surface": "fler"}, {"surface": " ", "annotations": {}}, {"surface": "äventyr"}, {"surface": "."}
+    ],
+    "annotations": {"mwes": [{"id": "m1", "tokens": ["ser", "fram", "emot"], "label": "partikelverb med preposition"}]}
+  }
+}
