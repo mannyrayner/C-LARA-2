@@ -15,6 +15,7 @@
   </p>
 </form>
 <p><a class="btn secondary" href="{% url 'project-publish' object.pk %}">{% if object.is_published %}Unpublish{% else %}Publish{% endif %}</a></p>
+<p><a class="btn secondary" href="{% url 'project-manual-edit' object.pk %}">Manual editing</a></p>
 <form method="post" action="{% url 'project-delete' object.pk %}" onsubmit="return confirm('Delete this project and its artifacts?');">{% csrf_token %}
   <button class="btn secondary" type="submit">Delete project</button>
 </form>
