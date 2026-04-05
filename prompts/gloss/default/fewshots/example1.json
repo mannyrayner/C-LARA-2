@@ -1,0 +1,26 @@
+{
+  "input": "{\n  \"surface\": \"She put up with the noise.\",\n  \"tokens\": [\n    {\"surface\": \"She\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"put\", \"annotations\": {\"mwe_id\": \"m1\"}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"up\", \"annotations\": {\"mwe_id\": \"m1\"}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"with\", \"annotations\": {\"mwe_id\": \"m1\"}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"the\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"noise\"},\n    {\"surface\": \".\"}\n  ],\n  \"annotations\": {\n    \"translation\": \"Elle a supporté le bruit.\",\n    \"mwes\": [{\"id\": \"m1\", \"tokens\": [\"put\", \"up\", \"with\"], \"label\": \"phrasal verb\"}]\n  }\n}",
+  "output": {
+    "surface": "She put up with the noise.",
+    "tokens": [
+      {"surface": "She", "annotations": {"gloss": "elle"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "put", "annotations": {"mwe_id": "m1", "gloss": "supporter"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "up", "annotations": {"mwe_id": "m1", "gloss": "supporter"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "with", "annotations": {"mwe_id": "m1", "gloss": "supporter"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "the", "annotations": {"gloss": "le"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "noise", "annotations": {"gloss": "bruit"}},
+      {"surface": "."}
+    ],
+    "annotations": {
+      "translation": "Elle a supporté le bruit.",
+      "mwes": [
+        {"id": "m1", "tokens": ["put", "up", "with"], "label": "phrasal verb"}
+      ]
+    }
+  }
+}
