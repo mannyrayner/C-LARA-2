@@ -1,14 +1,15 @@
 # C-LARA-2 Docs
 
-Welcome! This folder collects the specs and notes that drive the current implementation work.
+Welcome! This folder collects specifications, architecture notes, and delivery roadmaps for C-LARA-2.
 
 ## Quick links
 
 - **How-to**: [Quickstart](howto/quickstart.md)
 - **How-to**: [Run the Django platform locally](howto/run-django-platform.md)
-- **Architecture Decision Records (ADRs)**: [ADR-0001: Documentation & Structure](adr/0001-documentation-and-structure.md)
+- **How-to**: [Locate compile progress logs](howto/compile-logs.md)
+- **ADRs**: [ADR-0001: Documentation & Structure](adr/0001-documentation-and-structure.md)
 
-## Roadmaps and current status
+## Roadmaps and status
 
 Grouped roughly by delivery maturity, with more complete items first.
 
@@ -46,17 +47,24 @@ Grouped roughly by delivery maturity, with more complete items first.
 - **Top-level roadmap index**: [roadmap/README.md](roadmap/README.md)
 - **Backtracking-from-errors incident log**: [roadmap/backtracking-from-errors.md](roadmap/backtracking-from-errors.md)
 
-## What’s implemented so far
+## Current implementation snapshot
 
-- OpenAI client wrapper with heartbeat/telemetry and retry handling.
-- Text generation (`text_gen`), segmentation phases 1 and 2 (Mandarin via `jieba`), translation, MWE detection, lemma tagging, glossing, Chinese pinyin annotation (`pypinyin`), audio annotation (TTS stub/OpenAI + caching), HTML compilation to a two-pane reader with concordance/audio hooks, and a `run_full_pipeline` helper that stitches the operations end-to-end.
-- Prompt templates and few-shots for AI-backed operations, plus unit/integration tests (OpenAI-gated where appropriate).
+Implemented in the codebase today includes:
+
+- End-to-end text pipeline with text generation, segmentation (phase 1/2), translation, MWE, lemma, gloss, romanization (`pypinyin`/`indic_transliteration`/AI fallback), audio generation/caching, and HTML compilation.
+- Image workflow (style → recurring elements → page images) integrated with compile output so generated images can be included in final HTML.
+- Django platform with account/project flows, compile monitor/status polling, publish/content browsing pages, and self-contained ZIP export (HTML + audio + images).
+
+## Immediate priorities (April 2026)
+
+This summary mirrors `docs/roadmap/README.md`.
+
+1. **Adelaide deployment** with C-LARA and C-LARA-2 running safely side-by-side.
+2. **Structured manual annotation editor** so human reviewers can correct all stages without raw JSON editing.
 
 ## Testing & CI
 
-- Run the suite from the repo root: `make -C tests test` (pytest + pytest-asyncio,
-  logs to `tests/test_results.log`).
-- GitHub Actions (`.github/workflows/ci.yml`) runs the same suite with coverage
-  and uploads JUnit/coverage artifacts for each build.
+- Run tests from repo root: `make -C tests test`.
+- CI (`.github/workflows/ci.yml`) runs automated checks and uploads artifacts.
 
-_This file is the landing page for the docs folder._
+_This file is the landing page for the docs folder and should stay aligned with `docs/roadmap/README.md`._

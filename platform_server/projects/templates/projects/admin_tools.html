@@ -1,0 +1,41 @@
+{% extends "projects/base.html" %}
+{% block title %}Admin Tools · C-LARA-2{% endblock %}
+{% block content %}
+<h1>Admin tools</h1>
+
+<p>These commands are visible only to users with admin privileges.</p>
+
+<h2>Delete cached word audio for language</h2>
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="delete_audio_cache" />
+  {{ delete_audio_form.as_p }}
+  <button class="btn" type="submit">Delete cache</button>
+</form>
+
+<h2>Give another user admin privileges</h2>
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="grant_admin" />
+  {{ grant_admin_form.as_p }}
+  <button class="btn" type="submit">Grant admin</button>
+</form>
+
+<h2>Current admins</h2>
+<ul>
+  {% for admin_user in current_admins %}
+    <li>{{ admin_user.username }}</li>
+  {% empty %}
+    <li>No admins found.</li>
+  {% endfor %}
+</ul>
+
+<h2>Bootstrap admin usernames (from config)</h2>
+<ul>
+  {% for username in bootstrap_admin_usernames %}
+    <li>{{ username }}</li>
+  {% empty %}
+    <li>No bootstrap admins configured.</li>
+  {% endfor %}
+</ul>
+{% endblock %}
