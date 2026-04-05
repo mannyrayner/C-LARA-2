@@ -1,4 +1,3 @@
-import django.utils.timezone
 from django.db import migrations, models
 
 
@@ -27,10 +26,16 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name="project",
-            name="published_at",
-            field=models.DateTimeField(blank=True, null=True),
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.AddField(
+                    model_name="project",
+                    name="published_at",
+                    field=models.DateTimeField(blank=True, null=True),
+                ),
+            ],
+            database_operations=[
+                migrations.RunPython(ensure_project_published_at, migrations.RunPython.noop),
+            ],
         ),
-        migrations.RunPython(ensure_project_published_at, migrations.RunPython.noop),
     ]
