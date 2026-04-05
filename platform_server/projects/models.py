@@ -3,9 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from django.conf import settings
 from django.db import models
-from django.utils import timezone
 from django.contrib.auth import get_user_model
-import uuid
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.utils import timezone as django_timezone
 
 
 class Project(models.Model):
@@ -30,9 +31,7 @@ class Project(models.Model):
     compiled_path = models.CharField(max_length=512, blank=True)
     artifact_root = models.CharField(max_length=512, blank=True)
     is_published = models.BooleanField(default=False)
-    published_at = models.DateTimeField(null=True, blank=True)
-    access_count = models.PositiveIntegerField(default=0)
-    created_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(default=django_timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -123,7 +122,7 @@ class SegmentationManualVersion(models.Model):
         on_delete=models.SET_NULL,
         related_name="+",
     )
-    created_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(default=django_timezone.now)
 
     class Meta:
         unique_together = ("project", "version")
@@ -131,3 +130,24 @@ class SegmentationManualVersion(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - display helper
         return f"{self.project_id}:segmentation:v{self.version}"
+
+
+class Profile(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
+    timezone = models.CharField(max_length=64, default="UTC")
+    display_name = models.CharField(max_length=120, blank=True, default="")
+    bio = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(default=django_timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["user_id"]
+
+    def __str__(self) -> str:  # pragma: no cover - display helper
+        return f"Profile<{self.user_id}:{self.timezone}>"
+
+
+@receiver(post_save, sender=get_user_model())
+def ensure_profile_for_user(sender, instance, created, **kwargs):  # type: ignore[no-untyped-def]
+    if created:
+        Profile.objects.get_or_create(user=instance)
