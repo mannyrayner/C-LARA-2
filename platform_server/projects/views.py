@@ -11,6 +11,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import PermissionDenied
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.shortcuts import get_object_or_404, redirect, render
@@ -24,7 +25,39 @@ from core.ai_api import OpenAIClient
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 
 from .forms import ProjectForm, RegistrationForm
-from .models import Project
+from .models import ManualStageState, Profile, Project, SegmentationManualVersion
+
+
+# Compatibility constants used by older content-list views in mixed branches.
+CONTENT_DATE_FILTERS = {"all", "today", "week", "month", "year"}
+
+
+def _ensure_bootstrap_admin(user) -> None:  # type: ignore[no-untyped-def]
+    """Compatibility shim for older views that call bootstrap-admin setup.
+
+    Older branch variants call this helper from list views; keeping a safe
+    no-op implementation avoids NameError while preserving current behaviour.
+    """
+
+    return None
+
+
+def _projects_for_user(user):  # type: ignore[no-untyped-def]
+    """Compatibility helper for older detail/list views."""
+    _ensure_bootstrap_admin(user)
+    return Project.objects.filter(owner=user)
+
+
+def _require_admin(user) -> None:  # type: ignore[no-untyped-def]
+    """Compatibility guard used by older admin-tools views."""
+    if not getattr(user, "is_authenticated", False) or not getattr(user, "is_staff", False):
+        raise PermissionDenied("Admin access required.")
+
+
+def _profile_for_user(user) -> Profile:
+    """Return an existing profile or create one for compatibility code paths."""
+    profile, _ = Profile.objects.get_or_create(user=user)
+    return profile
 
 
 def register(request: HttpRequest) -> HttpResponse:
@@ -44,7 +77,7 @@ class ProjectListView(LoginRequiredMixin, ListView):
     template_name = "projects/project_list.html"
 
     def get_queryset(self):  # type: ignore[override]
-        return Project.objects.filter(owner=self.request.user)
+        return _projects_for_user(self.request.user)
 
 
 class ProjectDetailView(LoginRequiredMixin, DetailView):
@@ -52,7 +85,7 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
     template_name = "projects/project_detail.html"
 
     def get_queryset(self):  # type: ignore[override]
-        return Project.objects.filter(owner=self.request.user)
+        return _projects_for_user(self.request.user)
     def get_context_data(self, **kwargs):  # type: ignore[override]
         context = super().get_context_data(**kwargs)
         project: Project = context["object"]
@@ -204,6 +237,109 @@ def _load_stage_payload(project: Project, stage: str) -> dict[str, Any] | None:
         return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return None
+
+
+MANUAL_STAGE_ORDER = [
+    ManualStageState.STAGE_SEGMENTATION,
+    ManualStageState.STAGE_TRANSLATION,
+    ManualStageState.STAGE_MWE,
+    ManualStageState.STAGE_LEMMA,
+    ManualStageState.STAGE_GLOSS,
+    ManualStageState.STAGE_AUDIO,
+    ManualStageState.STAGE_ROMANIZATION,
+]
+
+MANUAL_STAGE_DEPENDENCIES: dict[str, list[str]] = {
+    ManualStageState.STAGE_SEGMENTATION: [],
+    ManualStageState.STAGE_TRANSLATION: [ManualStageState.STAGE_SEGMENTATION],
+    ManualStageState.STAGE_MWE: [ManualStageState.STAGE_SEGMENTATION],
+    ManualStageState.STAGE_LEMMA: [ManualStageState.STAGE_MWE],
+    ManualStageState.STAGE_GLOSS: [ManualStageState.STAGE_MWE],
+    ManualStageState.STAGE_AUDIO: [ManualStageState.STAGE_MWE, ManualStageState.STAGE_LEMMA],
+    ManualStageState.STAGE_ROMANIZATION: [ManualStageState.STAGE_SEGMENTATION],
+}
+
+
+def _parse_breaks(raw: str, *, text_len: int, name: str) -> list[int]:
+    if not raw.strip():
+        return []
+    parts = [p.strip() for p in raw.split(",")]
+    out: list[int] = []
+    for token in parts:
+        if not token:
+            continue
+        try:
+            value = int(token)
+        except ValueError as exc:
+            raise ValueError(f"{name} must contain integers separated by commas.") from exc
+        if value <= 0 or value >= text_len:
+            raise ValueError(f"{name} values must be between 1 and {text_len - 1}.")
+        out.append(value)
+    deduped = sorted(set(out))
+    return deduped
+
+
+def _validate_segmentation_breaks(
+    text: str,
+    *,
+    page_breaks: list[int],
+    segment_breaks: list[int],
+    token_breaks: list[int],
+) -> None:
+    text_len = len(text)
+    for label, breaks in (
+        ("Page breaks", page_breaks),
+        ("Segment breaks", segment_breaks),
+        ("Token breaks", token_breaks),
+    ):
+        if breaks != sorted(breaks):
+            raise ValueError(f"{label} must be sorted.")
+        if len(set(breaks)) != len(breaks):
+            raise ValueError(f"{label} must not contain duplicate values.")
+        if any(v <= 0 or v >= text_len for v in breaks):
+            raise ValueError(f"{label} must be between 1 and {text_len - 1}.")
+
+    if not set(page_breaks).issubset(segment_breaks):
+        raise ValueError("Each page break must also be a segment break.")
+    if not set(segment_breaks).issubset(token_breaks):
+        raise ValueError("Each segment break must also be a token break.")
+
+
+def _render_marked_text(text: str, marks: dict[int, list[str]]) -> str:
+    chunks: list[str] = []
+    for idx, ch in enumerate(text):
+        labels = marks.get(idx)
+        if labels:
+            chunks.append("⟦" + "|".join(labels) + "⟧")
+        chunks.append(ch)
+    end_labels = marks.get(len(text))
+    if end_labels:
+        chunks.append("⟦" + "|".join(end_labels) + "⟧")
+    return "".join(chunks)
+
+
+def _segmentation_preview(text: str, *, page_breaks: list[int], segment_breaks: list[int], token_breaks: list[int]) -> str:
+    marks: dict[int, list[str]] = {}
+    for pos in token_breaks:
+        marks.setdefault(pos, []).append("T")
+    for pos in segment_breaks:
+        marks.setdefault(pos, []).append("S")
+    for pos in page_breaks:
+        marks.setdefault(pos, []).append("P")
+    return _render_marked_text(text, marks)
+
+
+def _ensure_manual_stage_states(project: Project) -> dict[str, ManualStageState]:
+    existing = {row.stage: row for row in project.manual_stage_states.all()}
+    for stage in MANUAL_STAGE_ORDER:
+        if stage not in existing:
+            existing[stage] = ManualStageState.objects.create(project=project, stage=stage)
+    return existing
+
+
+def _stage_unlocked(stage: str, states: dict[str, ManualStageState]) -> bool:
+    deps = MANUAL_STAGE_DEPENDENCIES.get(stage, [])
+    return all(states[d].status == ManualStageState.STATUS_APPROVED for d in deps)
 
 
 @login_required
@@ -368,3 +504,106 @@ def delete_project(request: HttpRequest, pk: int) -> HttpResponse:
         pass
     messages.success(request, "Project deleted.")
     return redirect("project-list")
+
+
+@login_required
+def project_manual_edit(request: HttpRequest, pk: int) -> HttpResponse:
+    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    states = _ensure_manual_stage_states(project)
+    stage_state = states[ManualStageState.STAGE_SEGMENTATION]
+    latest = project.segmentation_versions.order_by("-version").first()
+
+    text = project.source_text or ""
+    if not text:
+        messages.warning(
+            request,
+            "This project has empty source text. Add source text before using manual segmentation editing.",
+        )
+
+    default_token_breaks: list[int] = []
+    if text:
+        default_token_breaks = [i for i, ch in enumerate(text, start=1) if ch.isspace() and i < len(text)]
+
+    if request.method == "POST":
+        action = request.POST.get("action", "save")
+        note = (request.POST.get("note") or "").strip()
+        page_raw = request.POST.get("page_breaks", "")
+        segment_raw = request.POST.get("segment_breaks", "")
+        token_raw = request.POST.get("token_breaks", "")
+        try:
+            page_breaks = _parse_breaks(page_raw, text_len=len(text), name="Page breaks") if text else []
+            segment_breaks = _parse_breaks(segment_raw, text_len=len(text), name="Segment breaks") if text else []
+            token_breaks = _parse_breaks(token_raw, text_len=len(text), name="Token breaks") if text else []
+            _validate_segmentation_breaks(
+                text, page_breaks=page_breaks, segment_breaks=segment_breaks, token_breaks=token_breaks
+            )
+        except ValueError as exc:
+            messages.error(request, str(exc))
+        else:
+            last_version = project.segmentation_versions.order_by("-version").first()
+            next_version = 1 if not last_version else last_version.version + 1
+            SegmentationManualVersion.objects.create(
+                project=project,
+                version=next_version,
+                source_text_snapshot=text,
+                page_breaks=page_breaks,
+                segment_breaks=segment_breaks,
+                token_breaks=token_breaks,
+                note=note,
+                created_by=request.user,
+            )
+
+            stage_state.status = (
+                ManualStageState.STATUS_APPROVED if action == "approve" else ManualStageState.STATUS_IN_PROGRESS
+            )
+            if action == "approve":
+                stage_state.approved_version = next_version
+            stage_state.updated_by = request.user
+            stage_state.save(update_fields=["status", "approved_version", "updated_by", "updated_at"])
+
+            if action == "approve":
+                messages.success(request, f"Segmentation version v{next_version} approved.")
+            else:
+                messages.success(request, f"Saved segmentation version v{next_version}.")
+            return redirect("project-manual-edit", pk=project.pk)
+
+    latest = project.segmentation_versions.order_by("-version").first()
+    page_breaks = latest.page_breaks if latest else []
+    segment_breaks = latest.segment_breaks if latest else []
+    token_breaks = latest.token_breaks if latest else default_token_breaks
+    preview = _segmentation_preview(
+        text,
+        page_breaks=list(page_breaks),
+        segment_breaks=list(segment_breaks),
+        token_breaks=list(token_breaks),
+    ) if text else ""
+
+    stage_rows: list[dict[str, Any]] = []
+    for stage in MANUAL_STAGE_ORDER:
+        state = states[stage]
+        stage_rows.append(
+            {
+                "stage": stage,
+                "label": state.get_stage_display(),
+                "status": state.get_status_display(),
+                "unlocked": _stage_unlocked(stage, states),
+            }
+        )
+
+    return render(
+        request,
+        "projects/project_manual_edit.html",
+        {
+            "project": project,
+            "stage_state": stage_state,
+            "stage_rows": stage_rows,
+            "latest_version": latest.version if latest else 0,
+            "approved_version": stage_state.approved_version,
+            "page_breaks": ",".join(str(x) for x in page_breaks),
+            "segment_breaks": ",".join(str(x) for x in segment_breaks),
+            "token_breaks": ",".join(str(x) for x in token_breaks),
+            "preview": preview,
+            "source_text": text,
+            "latest_note": latest.note if latest else "",
+        },
+    )
