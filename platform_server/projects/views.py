@@ -55,6 +55,13 @@ CONTENT_DATE_FILTERS = {
     "year": 366,
 }
 
+# Compatibility AI model options used by older project detail templates/views.
+AI_MODEL_CHOICES = [
+    ("", "Default"),
+    ("gpt-4.1-mini", "gpt-4.1-mini"),
+    ("gpt-4.1", "gpt-4.1"),
+]
+
 
 def _ensure_bootstrap_admin(user) -> None:  # type: ignore[no-untyped-def]
     """Compatibility shim for older views that call bootstrap-admin setup.
@@ -131,6 +138,15 @@ class DeleteCachedWordAudioForm(forms.Form):
     def save(self):  # type: ignore[no-untyped-def]
         # Keep API compatibility without assuming optional audio cache models.
         return SimpleNamespace(deleted=0)
+
+
+class GrantAdminPrivilegesForm(forms.Form):
+    """Compatibility form used by older admin-tools views."""
+
+    email = forms.EmailField(required=False)
+
+    def save(self):  # type: ignore[no-untyped-def]
+        return SimpleNamespace(updated=0)
 
 
 def register(request: HttpRequest) -> HttpResponse:
