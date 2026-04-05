@@ -6,7 +6,12 @@
 PYTHON ?= python3
 
 count-lines:
-	wc -l $$(rg --files)
+	find . -type f \
+		-not -path './.git/*' \
+		-not -path './.venv/*' \
+		-not -path './venv/*' \
+		-not -path './node_modules/*' \
+		-print0 | xargs -0 wc -l
 
 run-platform:
 	cd platform_server && \

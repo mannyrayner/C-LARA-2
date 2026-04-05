@@ -84,8 +84,12 @@ def _profile_for_user(user) -> Profile:
     return profile
 
 
-def _format_timestamp(value):  # type: ignore[no-untyped-def]
+def _format_timestamp(value, *_args, **_kwargs):  # type: ignore[no-untyped-def]
     """Compatibility formatter for older project-detail templates/views."""
+    # Older call-sites may pass extra positional args (e.g. timezone/user).
+    # Keep the helper permissive to avoid TypeError in mixed branch states.
+    if isinstance(value, tuple) and value:
+        value = value[0]
     if isinstance(value, datetime):
         return value.strftime("%Y-%m-%d %H:%M:%S"), value
     if isinstance(value, str):
@@ -99,6 +103,14 @@ def _format_timestamp(value):  # type: ignore[no-untyped-def]
     return "", None
 
 
+class ProfileForm(forms.ModelForm):
+    """Compatibility form for older profile views."""
+
+    class Meta:
+        model = Profile
+        fields = ["display_name", "timezone", "bio"]
+
+
 class DeleteCachedWordAudioForm(forms.Form):
     """Compatibility form for older admin-tools view code paths."""
 
@@ -106,6 +118,15 @@ class DeleteCachedWordAudioForm(forms.Form):
     # keep GET rendering and no-op POST handling stable across branches.
     language = forms.CharField(required=False)
     voice = forms.CharField(required=False)
+
+    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        self.language_choices = kwargs.pop("language_choices", None)
+        super().__init__(*args, **kwargs)
+        if self.language_choices:
+            self.fields["language"] = forms.ChoiceField(
+                required=False,
+                choices=[("", "All")] + list(self.language_choices),
+            )
 
     def save(self):  # type: ignore[no-untyped-def]
         # Keep API compatibility without assuming optional audio cache models.
