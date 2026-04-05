@@ -1,0 +1,25 @@
+{% extends "projects/base.html" %}
+{% block title %}Exercise set{% endblock %}
+{% block content %}
+<h1>{{ exercise_set.title|default:"Exercise set" }}</h1>
+<p>Type: {{ exercise_set.exercise_type }} | Theme: {{ exercise_set.theme }} | Status: {{ exercise_set.status }}</p>
+<p><a class="btn" href="{% url 'exercise-set-play' exercise_set.id %}">Play this set</a></p>
+{% if project.owner == user %}
+  <p><a class="btn secondary" href="{% url 'exercise-set-publish' exercise_set.id %}">{% if exercise_set.is_published %}Unpublish{% else %}Publish{% endif %}</a></p>
+{% endif %}
+<ol>
+{% for item in items %}
+  <li>
+    <p><strong>{{ item.prompt }}</strong></p>
+    <ul>
+      {% for opt in item.options %}
+        <li>{{ opt }}{% if opt == item.answer %} ✅{% endif %}</li>
+      {% endfor %}
+    </ul>
+  </li>
+{% empty %}
+  <li>No items.</li>
+{% endfor %}
+</ol>
+<p><a class="btn secondary" href="{% url 'project-detail' project.pk %}">Back to project</a></p>
+{% endblock %}
