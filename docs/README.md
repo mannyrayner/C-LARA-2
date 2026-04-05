@@ -10,10 +10,41 @@ Welcome! This folder collects the specs and notes that drive the current impleme
 
 ## Roadmaps and current status
 
-- **Segmentation pipeline (implemented)**: [roadmap/segmentation-pipeline.md](roadmap/segmentation-pipeline.md) – covers text generation, segmentation phases 1 and 2 (with a Mandarin tokenization path via `jieba`), and the generic annotation harness now used across the codebase.
-- **Linguistic pipeline (implemented)**: [roadmap/linguistic-pipeline.md](roadmap/linguistic-pipeline.md) – details translation, MWE, lemma, gloss, pinyin, audio, compilation, and the full pipeline helper; translation (EN→FR), MWE detection, lemma tagging, glossing, pinyin annotation (via `pypinyin`), TTS-backed audio annotation with caching (OpenAI/Google), HTML compilation, and a flexible `run_full_pipeline` (start/end at any stage) are implemented with prompts/tests where applicable.
-- **Django platform**: [roadmap/django-platform.md](roadmap/django-platform.md) – describes users/projects, storage/layout, permissions, pipeline orchestration, publishing, and testing strategy for the web app layer. A minimal Django project (`platform_server/`) now supports account/login flows, project creation, pipeline-driven compilation to HTML, publishing toggles, and artifact serving; a guided minimal UI for non-technical users will follow.
-- **Top-level roadmap**: [roadmap/README.md](roadmap/README.md) – step-by-step milestones with notes on what is done versus planned.
+Grouped roughly by delivery maturity, with more complete items first.
+
+### Implemented / largely implemented
+
+- **Segmentation pipeline (implemented)**: [roadmap/segmentation-pipeline.md](roadmap/segmentation-pipeline.md)
+- **Linguistic pipeline (implemented; romanization generalized)**: [roadmap/linguistic-pipeline.md](roadmap/linguistic-pipeline.md)
+
+### Initial implementation delivered (active expansion)
+
+- **Django platform (initial implementation delivered, expanding)**: [roadmap/django-platform.md](roadmap/django-platform.md)
+- **Image generation pipeline (initial implementation delivered)**: [roadmap/image-generation-pipeline.md](roadmap/image-generation-pipeline.md)
+- **Social-network functionality (initial implementation delivered)**: [roadmap/social-network-functionality.md](roadmap/social-network-functionality.md)
+- **Exercises roadmap (initial implementation delivered)**: [roadmap/exercises.md](roadmap/exercises.md)
+- **Source project export/import roadmap (initial implementation delivered)**: [roadmap/source-project-bundles.md](roadmap/source-project-bundles.md)
+- **Conventional UX roadmap (initial implementation delivered)**: [roadmap/conventional-ux.md](roadmap/conventional-ux.md)
+- **MWE strategy roadmap (initial implementation delivered)**: [roadmap/mwe-strategy.md](roadmap/mwe-strategy.md)
+
+### Priority roadmap items (immediate attention)
+
+- **Deployment and migration roadmap (priority)**: [roadmap/deployment-and-migration.md](roadmap/deployment-and-migration.md)
+- **Manual annotation editor roadmap (priority)**: [roadmap/manual-annotation-editor.md](roadmap/manual-annotation-editor.md)
+- **Credits and billing roadmap (priority)**: [roadmap/credits-and-billing.md](roadmap/credits-and-billing.md)
+
+### Newer/planned roadmap tracks
+
+- **Low-resource/AI-weak language support**: [roadmap/low-resource-languages.md](roadmap/low-resource-languages.md)
+- **Alignment roadmap**: [roadmap/alignment.md](roadmap/alignment.md)
+- **Dialogue top-level roadmap**: [roadmap/dialogue-top-level.md](roadmap/dialogue-top-level.md)
+- **AI-judges evaluation roadmap**: [roadmap/ai-judges-evaluation.md](roadmap/ai-judges-evaluation.md)
+- **RTL support roadmap**: [roadmap/rtl-support.md](roadmap/rtl-support.md)
+
+### Process/meta roadmap docs
+
+- **Top-level roadmap index**: [roadmap/README.md](roadmap/README.md)
+- **Backtracking-from-errors incident log**: [roadmap/backtracking-from-errors.md](roadmap/backtracking-from-errors.md)
 
 ## What’s implemented so far
 
