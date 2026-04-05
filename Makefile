@@ -1,9 +1,12 @@
-.PHONY: run-platform run-platform-with-q run-platform-with-real-q merge-project-migrations
+.PHONY: count-lines run-platform run-platform-with-q run-platform-with-real-q merge-project-migrations
 
 # Launch the Django dev server (runs migrations first). We clear PYTHONPATH
 # to avoid host-level contamination (e.g., Windows user profiles with custom
 # search paths) and default to python3 unless the caller overrides PYTHON.
 PYTHON ?= python3
+
+count-lines:
+	wc -l $$(rg --files)
 
 run-platform:
 	cd platform_server && \

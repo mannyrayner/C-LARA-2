@@ -10,8 +10,8 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable
-from zoneinfo import ZoneInfo
+from types import SimpleNamespace
+from typing import Any
 
 from django.conf import settings
 from django.contrib import messages
@@ -19,6 +19,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
+from django import forms
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.shortcuts import get_object_or_404, redirect, render
@@ -44,8 +45,15 @@ from .forms import ProjectForm, RegistrationForm
 from .models import ManualStageState, Profile, Project, SegmentationManualVersion
 
 
-# Compatibility constants used by older content-list views in mixed branches.
-CONTENT_DATE_FILTERS = {"all", "today", "week", "month", "year"}
+# Compatibility filters used by older content-list views in mixed branches.
+# Values are rolling-window day counts; ``None`` means no date filter.
+CONTENT_DATE_FILTERS = {
+    "all": None,
+    "today": 1,
+    "week": 7,
+    "month": 31,
+    "year": 366,
+}
 
 
 def _ensure_bootstrap_admin(user) -> None:  # type: ignore[no-untyped-def]
@@ -74,6 +82,34 @@ def _profile_for_user(user) -> Profile:
     """Return an existing profile or create one for compatibility code paths."""
     profile, _ = Profile.objects.get_or_create(user=user)
     return profile
+
+
+def _format_timestamp(value):  # type: ignore[no-untyped-def]
+    """Compatibility formatter for older project-detail templates/views."""
+    if isinstance(value, datetime):
+        return value.strftime("%Y-%m-%d %H:%M:%S"), value
+    if isinstance(value, str):
+        for parser in (datetime.fromisoformat,):
+            try:
+                parsed = parser(value.replace("Z", "+00:00"))
+                return parsed.strftime("%Y-%m-%d %H:%M:%S"), parsed
+            except Exception:
+                continue
+        return value, None
+    return "", None
+
+
+class DeleteCachedWordAudioForm(forms.Form):
+    """Compatibility form for older admin-tools view code paths."""
+
+    # Field names mirror historical usage patterns; both are optional here to
+    # keep GET rendering and no-op POST handling stable across branches.
+    language = forms.CharField(required=False)
+    voice = forms.CharField(required=False)
+
+    def save(self):  # type: ignore[no-untyped-def]
+        # Keep API compatibility without assuming optional audio cache models.
+        return SimpleNamespace(deleted=0)
 
 
 def register(request: HttpRequest) -> HttpResponse:
