@@ -58,269 +58,76 @@ class Project(models.Model):
         return None
 
 
-class Profile(models.Model):
-    user = models.OneToOneField(
-        get_user_model(), on_delete=models.CASCADE, related_name="profile"
-    )
-    timezone = models.CharField(max_length=64, default="UTC")
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self) -> str:  # pragma: no cover - display helper
-        return f"Profile for {self.user.username}"
-
-
-class TaskUpdate(models.Model):
-    """Lightweight progress updates emitted by background tasks.
-
-    ``report_id`` groups updates for a single task invocation. ``user`` scopes
-    updates to the requesting user. ``status`` can be ``"running"``,
-    ``"finished"``, or ``"error"`` to help the polling endpoint know whether to
-    redirect once the task completes.
-    """
-
-    report_id = models.UUIDField(default=uuid.uuid4, db_index=True)
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE
-    )
-    task_type = models.CharField(max_length=255, null=True, blank=True)
-    message = models.CharField(max_length=1024)
-    status = models.CharField(max_length=32, null=True, blank=True)
-    read = models.BooleanField(default=False)
-    timestamp = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        indexes = [models.Index(fields=["report_id", "timestamp"])]
-        ordering = ["timestamp"]
-
-    def __str__(self) -> str:  # pragma: no cover - display helper
-        return f"Update {self.report_id}: {self.message}"
-
-
-class ProjectImageStyle(models.Model):
-    """Project-scoped artifacts for the initial image style substep."""
-
-    STATUS_DRAFT = "draft"
-    STATUS_GENERATED = "generated"
+class ManualStageState(models.Model):
+    STATUS_NOT_STARTED = "not_started"
+    STATUS_IN_PROGRESS = "in_progress"
+    STATUS_READY_FOR_REVIEW = "ready_for_review"
     STATUS_APPROVED = "approved"
     STATUS_CHOICES = [
-        (STATUS_DRAFT, "Draft"),
-        (STATUS_GENERATED, "Generated"),
+        (STATUS_NOT_STARTED, "Not started"),
+        (STATUS_IN_PROGRESS, "In progress"),
+        (STATUS_READY_FOR_REVIEW, "Ready for review"),
         (STATUS_APPROVED, "Approved"),
     ]
 
-    project = models.OneToOneField(
-        Project, on_delete=models.CASCADE, related_name="image_style"
+    STAGE_SEGMENTATION = "segmentation"
+    STAGE_TRANSLATION = "translation"
+    STAGE_MWE = "mwe"
+    STAGE_LEMMA = "lemma"
+    STAGE_GLOSS = "gloss"
+    STAGE_AUDIO = "audio"
+    STAGE_ROMANIZATION = "romanization"
+    STAGE_CHOICES = [
+        (STAGE_SEGMENTATION, "Segmentation"),
+        (STAGE_TRANSLATION, "Translation"),
+        (STAGE_MWE, "MWE"),
+        (STAGE_LEMMA, "Lemma"),
+        (STAGE_GLOSS, "Gloss"),
+        (STAGE_AUDIO, "Audio"),
+        (STAGE_ROMANIZATION, "Pinyin/Romanization"),
+    ]
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="manual_stage_states")
+    stage = models.CharField(max_length=32, choices=STAGE_CHOICES)
+    status = models.CharField(max_length=24, choices=STATUS_CHOICES, default=STATUS_NOT_STARTED)
+    approved_version = models.PositiveIntegerField(default=0)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
     )
-    style_brief = models.TextField(blank=True)
-    expanded_style_description = models.TextField(blank=True)
-    representative_excerpt = models.TextField(blank=True)
-    sample_image_prompt = models.TextField(blank=True)
-    sample_image_path = models.CharField(max_length=512, blank=True)
-    sample_image_revised_prompt = models.TextField(blank=True)
-    sample_image_model = models.CharField(max_length=64, default="gpt-image-1")
-    ai_model = models.CharField(max_length=64, default="gpt-4o")
-    status = models.CharField(
-        max_length=32, choices=STATUS_CHOICES, default=STATUS_DRAFT
-    )
-    created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["-updated_at"]
+        unique_together = ("project", "stage")
+        ordering = ["project_id", "stage"]
 
     def __str__(self) -> str:  # pragma: no cover - display helper
-        return f"Image style for {self.project.title}"
+        return f"{self.project_id}:{self.stage}:{self.status}"
 
 
-class ProjectImageElement(models.Model):
-    """Recurring visual element proposed/curated for a project."""
-
-    STATUS_PROPOSED = "proposed"
-    STATUS_EXPANDED = "expanded"
-    STATUS_CONFIRMED = "confirmed"
-    STATUS_CHOICES = [
-        (STATUS_PROPOSED, "Proposed"),
-        (STATUS_EXPANDED, "Expanded"),
-        (STATUS_CONFIRMED, "Confirmed"),
-    ]
-
-    project = models.ForeignKey(
-        Project, on_delete=models.CASCADE, related_name="image_elements"
-    )
-    name = models.CharField(max_length=255)
-    element_type = models.CharField(max_length=64, blank=True, default="character")
-    page_refs = models.CharField(max_length=255, blank=True)
-    why_consistency_matters = models.TextField(blank=True)
-    expanded_description = models.TextField(blank=True)
-    expanded_prompt = models.TextField(blank=True)
-    image_model = models.CharField(max_length=64, default="gpt-image-1")
-    image_path = models.CharField(max_length=512, blank=True)
-    image_revised_prompt = models.TextField(blank=True)
-    is_confirmed = models.BooleanField(default=False)
-    ai_model = models.CharField(max_length=64, default="gpt-4o")
-    status = models.CharField(
-        max_length=32, choices=STATUS_CHOICES, default=STATUS_PROPOSED
+class SegmentationManualVersion(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="segmentation_versions")
+    version = models.PositiveIntegerField()
+    source_text_snapshot = models.TextField(default="", blank=True)
+    page_breaks = models.JSONField(default=list, blank=True)
+    segment_breaks = models.JSONField(default=list, blank=True)
+    token_breaks = models.JSONField(default=list, blank=True)
+    note = models.TextField(blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
     )
     created_at = models.DateTimeField(default=timezone.now)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["name", "id"]
-        unique_together = ("project", "name")
+        unique_together = ("project", "version")
+        ordering = ["project_id", "-version"]
 
     def __str__(self) -> str:  # pragma: no cover - display helper
-        return f"{self.project.title}: {self.name}"
-
-
-class ProjectImagePage(models.Model):
-    """Per-page image prompt/output generated from style, text, and elements."""
-
-    STATUS_DRAFT = "draft"
-    STATUS_GENERATED = "generated"
-    STATUS_APPROVED = "approved"
-    STATUS_CHOICES = [
-        (STATUS_DRAFT, "Draft"),
-        (STATUS_GENERATED, "Generated"),
-        (STATUS_APPROVED, "Approved"),
-    ]
-
-    project = models.ForeignKey(
-        Project, on_delete=models.CASCADE, related_name="image_pages"
-    )
-    page_number = models.PositiveIntegerField()
-    page_text = models.TextField(blank=True)
-    generation_prompt = models.TextField(blank=True)
-    image_model = models.CharField(max_length=64, default="gpt-image-1")
-    image_path = models.CharField(max_length=512, blank=True)
-    image_revised_prompt = models.TextField(blank=True)
-    status = models.CharField(
-        max_length=32, choices=STATUS_CHOICES, default=STATUS_DRAFT
-    )
-    created_at = models.DateTimeField(default=timezone.now)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ["page_number", "id"]
-        unique_together = ("project", "page_number")
-
-    def __str__(self) -> str:  # pragma: no cover - display helper
-        return f"{self.project.title}: page {self.page_number}"
-
-
-class ProjectCollaborator(models.Model):
-    ROLE_OWNER = "owner"
-    ROLE_ANNOTATOR = "annotator"
-    ROLE_VIEWER = "viewer"
-    ROLE_CHOICES = [
-        (ROLE_OWNER, "OWNER"),
-        (ROLE_ANNOTATOR, "ANNOTATOR"),
-        (ROLE_VIEWER, "VIEWER"),
-    ]
-
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="collaborators")
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="project_collaborations")
-    role = models.CharField(max_length=16, choices=ROLE_CHOICES, default=ROLE_VIEWER)
-    created_at = models.DateTimeField(default=timezone.now)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        unique_together = ("project", "user")
-        ordering = ["project_id", "user_id"]
-
-
-class ContentComment(models.Model):
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="content_comments")
-    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="content_comments")
-    body = models.TextField()
-    created_at = models.DateTimeField(default=timezone.now)
-    updated_at = models.DateTimeField(auto_now=True)
-    is_hidden = models.BooleanField(default=False)
-
-    class Meta:
-        ordering = ["-created_at"]
-
-
-class ContentRating(models.Model):
-    VALUE_UP = "up"
-    VALUE_DOWN = "down"
-    VALUE_CHOICES = [
-        (VALUE_UP, "Thumbs up"),
-        (VALUE_DOWN, "Thumbs down"),
-    ]
-
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="content_ratings")
-    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="content_ratings")
-    value = models.CharField(max_length=8, choices=VALUE_CHOICES)
-    comment = models.TextField(blank=True)
-    created_at = models.DateTimeField(default=timezone.now)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        unique_together = ("project", "author")
-        ordering = ["-updated_at"]
-
-
-class ExerciseSet(models.Model):
-    TYPE_CLOZE = "cloze"
-    TYPE_FLASHCARD = "flashcard"
-    TYPE_CHOICES = [
-        (TYPE_CLOZE, "Cloze"),
-        (TYPE_FLASHCARD, "Flashcard"),
-    ]
-    FLASHCARD_MODE_FORM_TO_MEANING = "form_to_meaning"
-    FLASHCARD_MODE_MEANING_TO_FORM = "meaning_to_form"
-    FLASHCARD_MODE_CHOICES = [
-        (FLASHCARD_MODE_FORM_TO_MEANING, "Form → meaning"),
-        (FLASHCARD_MODE_MEANING_TO_FORM, "Meaning → form"),
-    ]
-
-    THEME_VOCAB = "vocabulary"
-    THEME_GRAMMAR = "grammar"
-    THEME_MORPH = "morphology"
-    THEME_GRAMMAR_MORPH = "grammar_morphology"
-    THEME_CHOICES = [
-        (THEME_VOCAB, "Vocabulary"),
-        (THEME_GRAMMAR, "Grammar"),
-        (THEME_MORPH, "Morphology"),
-        (THEME_GRAMMAR_MORPH, "Grammar/Morphology"),
-    ]
-
-    STATUS_DRAFT = "draft"
-    STATUS_READY = "ready"
-    STATUS_PUBLISHED = "published"
-    STATUS_CHOICES = [
-        (STATUS_DRAFT, "Draft"),
-        (STATUS_READY, "Ready"),
-        (STATUS_PUBLISHED, "Published"),
-    ]
-
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="exercise_sets")
-    exercise_type = models.CharField(max_length=32, choices=TYPE_CHOICES, default=TYPE_CLOZE)
-    flashcard_mode = models.CharField(max_length=32, choices=FLASHCARD_MODE_CHOICES, blank=True, default="")
-    theme = models.CharField(max_length=32, choices=THEME_CHOICES, default=THEME_VOCAB)
-    title = models.CharField(max_length=255, blank=True)
-    instructions = models.TextField(blank=True)
-    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_DRAFT)
-    is_published = models.BooleanField(default=False)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="created_exercise_sets")
-    created_at = models.DateTimeField(default=timezone.now)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ["-updated_at"]
-
-
-class ExerciseItem(models.Model):
-    exercise_set = models.ForeignKey(ExerciseSet, on_delete=models.CASCADE, related_name="items")
-    order_index = models.PositiveIntegerField(default=0)
-    page_number = models.PositiveIntegerField(default=1)
-    segment_index = models.PositiveIntegerField(default=0)
-    segment_text = models.TextField(blank=True)
-    prompt = models.TextField(blank=True)
-    answer = models.CharField(max_length=255, blank=True)
-    options = models.JSONField(default=list, blank=True)
-    rationale = models.JSONField(default=dict, blank=True)
-    created_at = models.DateTimeField(default=timezone.now)
-
-    class Meta:
-        ordering = ["order_index", "id"]
+        return f"{self.project_id}:segmentation:v{self.version}"

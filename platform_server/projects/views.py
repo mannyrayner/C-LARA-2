@@ -38,834 +38,8 @@ from core.config import DEFAULT_MODEL, OpenAIConfig
 from core.ai_api import OpenAIClient
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 
-from .forms import (
-    ClozeExerciseSetForm,
-    DeleteCachedWordAudioForm,
-    FlashcardExerciseSetForm,
-    GrantAdminPrivilegesForm,
-    ProfileForm,
-    ProjectForm,
-    ProjectImageElementFormSet,
-    ProjectImagePageFormSet,
-    ProjectImageStyleForm,
-    RegistrationForm,
-)
-from .models import (
-    Profile,
-    Project,
-    ProjectImageElement,
-    ProjectImagePage,
-    ProjectImageStyle,
-    TaskUpdate,
-    ProjectCollaborator,
-    ContentComment,
-    ContentRating,
-    ExerciseSet,
-    ExerciseItem,
-)
-
-logger = logging.getLogger(__name__)
-
-AI_MODEL_CHOICES = [
-    "gpt-4o",
-    "gpt-4o-mini",
-    "gpt-5",
-]
-
-IMAGE_MODEL_CHOICES = [
-    "gpt-image-1",
-]
-
-PAGE_IMAGE_PLACEMENT_CHOICES = ["none", "top", "bottom"]
-SEGMENTATION_METHOD_CHOICES = ["auto", "jieba", "ai"]
-ROMANIZATION_METHOD_CHOICES = ["auto", "pypinyin", "indic_transliteration", "ai"]
-CONTENT_DATE_FILTERS = {
-    "any": None,
-    "last_3_days": timedelta(days=3),
-    "last_month": timedelta(days=30),
-    "last_3_months": timedelta(days=90),
-    "last_year": timedelta(days=365),
-}
-
-
-
-ROLE_RANK = {
-    ProjectCollaborator.ROLE_VIEWER: 1,
-    ProjectCollaborator.ROLE_ANNOTATOR: 2,
-    ProjectCollaborator.ROLE_OWNER: 3,
-}
-
-
-def _project_role_for_user(project: Project, user) -> str | None:
-    if project.owner_id == user.id:
-        return ProjectCollaborator.ROLE_OWNER
-    collab = project.collaborators.filter(user=user).values_list("role", flat=True).first()
-    return str(collab) if collab else None
-
-
-def _get_project_for_user(*, pk: int, user, min_role: str = ProjectCollaborator.ROLE_VIEWER) -> Project:
-    project = get_object_or_404(Project, pk=pk)
-    role = _project_role_for_user(project, user)
-    if role is None:
-        raise Http404()
-    if ROLE_RANK.get(role, 0) < ROLE_RANK.get(min_role, 0):
-        raise Http404()
-    return project
-
-
-def _projects_for_user(user):
-    return Project.objects.filter(Q(owner=user) | Q(collaborators__user=user)).distinct()
-
-
-def _bootstrap_admin_usernames() -> set[str]:
-    configured = getattr(settings, "BOOTSTRAP_ADMIN_USERNAMES", []) or []
-    return {str(name).strip() for name in configured if str(name).strip()}
-
-
-def _ensure_bootstrap_admin(user) -> None:
-    if not user or not getattr(user, "is_authenticated", False):
-        return
-    if user.is_staff:
-        return
-    if user.username in _bootstrap_admin_usernames():
-        user.is_staff = True
-        user.save(update_fields=["is_staff"])
-
-
-def _require_admin(user) -> None:
-    _ensure_bootstrap_admin(user)
-    if not user.is_staff:
-        raise Http404()
-
-
-def _resolve_segmentation_method(language: str, configured: str | None) -> str:
-    method = (configured or "auto").strip().lower()
-    if language.lower().startswith("zh"):
-        if method in {"auto", "jieba", "ai"}:
-            return "jieba" if method == "auto" else method
-        return "jieba"
-    return "ai"
-
-
-def _resolve_romanization_method(language: str, configured: str | None) -> str:
-    method = (configured or "auto").strip().lower()
-    lang = language.lower()
-    if lang.startswith("zh"):
-        if method in {"auto", "pypinyin", "ai"}:
-            return "pypinyin" if method == "auto" else method
-        return "pypinyin"
-    if lang.startswith("hi"):
-        if method in {"auto", "indic_transliteration", "ai"}:
-            return "indic_transliteration" if method == "auto" else method
-        return "indic_transliteration"
-    return "auto"
-
-
-class _TaskTelemetry:
-    """Telemetry sink for compile runs (Django log + per-run JSONL + TaskUpdate)."""
-
-    def __init__(self, *, log_path: Path, post_update: Callable[[str, str | None], None]) -> None:
-        self._log_path = log_path
-        self._post_update = post_update
-        self._log_path.parent.mkdir(parents=True, exist_ok=True)
-
-    def _append(self, record: dict[str, Any]) -> None:
-        try:
-            with self._log_path.open("a", encoding="utf-8") as fp:
-                fp.write(json.dumps(record, ensure_ascii=False) + "\n")
-        except Exception:
-            logger.exception("Failed to append telemetry log entry; log_path=%s", self._log_path)
-
-    def heartbeat(self, op_id: str, elapsed_s: float, note: str | None = None) -> None:
-        msg = f"[heartbeat] {op_id} +{elapsed_s:.1f}s"
-        if note:
-            msg = f"{msg} ({note})"
-        logger.info(msg)
-        self._append(
-            {
-                "type": "heartbeat",
-                "op_id": op_id,
-                "elapsed_s": round(elapsed_s, 3),
-                "note": note,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            }
-        )
-
-    def event(self, op_id: str, level: str, msg: str, data: dict | None = None) -> None:
-        text = f"[{level}] {op_id} {msg}"
-        if data:
-            text = f"{text} data={json.dumps(data, ensure_ascii=False)}"
-
-        logger_level = {
-            "debug": logging.DEBUG,
-            "info": logging.INFO,
-            "warn": logging.WARNING,
-            "warning": logging.WARNING,
-            "error": logging.ERROR,
-        }.get(level.lower(), logging.INFO)
-        logger.log(logger_level, text)
-
-        self._append(
-            {
-                "type": "event",
-                "op_id": op_id,
-                "level": level,
-                "message": msg,
-                "data": data or {},
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            }
-        )
-
-        # Surface warnings/errors, and API request-start diagnostics, in compile monitor updates.
-        should_surface = logger_level >= logging.WARNING or msg in {
-            "openai.chat request start",
-            "openai.chat_text request start",
-            "stage failed",
-        }
-        if should_surface:
-            self._post_update(text[:1024], status="error" if logger_level >= logging.ERROR else None)
-
-
-def _format_timestamp(ts: str, tz_name: str) -> tuple[str, datetime | None]:
-    """Return a user-friendly timestamp string and the parsed datetime.
-
-    Falls back to the raw value when parsing fails.
-    """
-
-    try:
-        dt = datetime.fromisoformat(ts)
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        dt_local = dt.astimezone(ZoneInfo(tz_name))
-
-        # Round to 0.1 second for a concise display.
-        rounded_microseconds = int(round(dt_local.microsecond / 100_000) * 100_000)
-        if rounded_microseconds == 1_000_000:
-            dt_local = dt_local + timedelta(seconds=1)
-            rounded_microseconds = 0
-        dt_local = dt_local.replace(microsecond=rounded_microseconds)
-
-        offset = dt_local.strftime("%z")
-        offset_fmt = f"{offset[:3]}:{offset[3:]}" if len(offset) == 5 else offset
-        display = f"{dt_local.strftime('%Y-%m-%d %H:%M:%S')}.{rounded_microseconds // 100_000} ({offset_fmt})"
-        return display, dt_local
-    except Exception:
-        return ts, None
-
-
-def _make_task_callback(
-    task_type: str | None, user_id: int, report_id: uuid.UUID | None = None
-) -> tuple[Callable[[str, str | None], None], str]:
-    """Return a callback that records task updates and the corresponding report ID."""
-
-    report_id = report_id or uuid.uuid4()
-    task_label = task_type or "compile_project"
-
-    def _post(message: str, status: str | None = None) -> None:
-        """Persist updates safely from both sync and async contexts."""
-
-        def _write() -> None:
-            TaskUpdate.objects.create(
-                report_id=report_id,
-                user_id=user_id,
-                task_type=task_label,
-                message=message[:1024],
-                status=status,
-            )
-
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            # No running loop: normal sync execution.
-            _write()
-        else:
-            # Running inside an event loop (e.g., pipeline coroutine); schedule
-            # database write off the loop to avoid SynchronousOnlyOperation.
-            loop.create_task(asyncio.to_thread(_write))
-
-    return _post, str(report_id)
-
-
-
-def _audio_repository_dir(language: str) -> Path:
-    """Return global audio repository path for a language."""
-
-    lang = slugify((language or "und").replace("_", "-")).replace("-", "_") or "und"
-    return Path(settings.MEDIA_ROOT).resolve() / "audio_repository" / lang
-
-def _image_style_dir(project: Project) -> Path:
-    return project.artifact_dir() / "images" / "style"
-
-
-def _persist_image_style_artifacts(
-    project: Project,
-    style: ProjectImageStyle,
-    *,
-    request_payload: dict[str, Any] | None = None,
-    response_payload: dict[str, Any] | None = None,
-) -> None:
-    style_dir = _image_style_dir(project)
-    style_dir.mkdir(parents=True, exist_ok=True)
-    (style_dir / "style_brief.txt").write_text(style.style_brief or "", encoding="utf-8")
-    (style_dir / "style_description.txt").write_text(
-        style.expanded_style_description or "", encoding="utf-8"
-    )
-    (style_dir / "representative_excerpt.txt").write_text(
-        style.representative_excerpt or "", encoding="utf-8"
-    )
-    (style_dir / "sample_image_prompt.txt").write_text(
-        style.sample_image_prompt or "", encoding="utf-8"
-    )
-    (style_dir / "sample_image_revised_prompt.txt").write_text(
-        style.sample_image_revised_prompt or "", encoding="utf-8"
-    )
-    (style_dir / "style_status.json").write_text(
-        json.dumps(
-            {
-                "project_id": project.pk,
-                "ai_model": style.ai_model,
-                "sample_image_model": style.sample_image_model,
-                "sample_image_path": style.sample_image_path,
-                "status": style.status,
-                "updated_at": style.updated_at.isoformat(),
-            },
-            ensure_ascii=False,
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
-    if request_payload is not None:
-        (style_dir / "style_expansion_prompt.json").write_text(
-            json.dumps(request_payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-    if response_payload is not None:
-        (style_dir / "style_expansion_response.json").write_text(
-            json.dumps(response_payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-
-
-def _extract_project_plain_text(project: Project) -> str:
-    if (project.source_text or "").strip():
-        return project.source_text.strip()
-
-    latest_run = _resolve_run_dir(project)
-    if latest_run:
-        for stage in ("text_gen", "segmentation_phase_1", "segmentation_phase_2"):
-            payload = _load_stage_payload(project, stage, run_dir=latest_run)
-            if isinstance(payload, dict):
-                surface = (payload.get("surface") or "").strip()
-                if surface:
-                    return surface
-    return (project.description or "").strip()
-
-
-def _build_style_generation_request(project: Project, style_brief: str) -> dict[str, Any]:
-    plain_text = _extract_project_plain_text(project)
-    representative_excerpt = plain_text[:1500].strip()
-    prompt = "\n".join(
-        [
-            "You are helping define a consistent illustration style for a language-learning story.",
-            "Return JSON with keys: expanded_style_description, representative_excerpt, sample_image_prompt.",
-            "expanded_style_description should preserve the user's brief but elaborate it in a way that fits the story content.",
-            "representative_excerpt should be a short excerpt or summary snippet from the story most useful for a sample image.",
-            "sample_image_prompt should be a detailed prompt for a single sample image that demonstrates the style for this story.",
-            "",
-            f"Project title: {project.title}",
-            f"Project language: {project.language}",
-            f"Target language: {project.target_language}",
-            f"User style brief: {style_brief}",
-            "Project text:",
-            plain_text or "[No text available; rely on the description.]",
-        ]
-    )
-    return {
-        "style_brief": style_brief,
-        "plain_text": plain_text,
-        "prompt": prompt,
-    }
-
-
-def _generate_project_image_style(
-    project: Project,
-    style_brief: str,
-    *,
-    ai_model: str,
-) -> dict[str, Any]:
-    request_payload = _build_style_generation_request(project, style_brief)
-    client = _build_ai_client(model_name=ai_model)
-    response = asyncio.run(client.chat_json(request_payload["prompt"], model=ai_model))
-
-    return {
-        "expanded_style_description": (
-            response.get("expanded_style_description") or style_brief
-        ).strip(),
-        "representative_excerpt": (
-            response.get("representative_excerpt")
-            or request_payload["plain_text"][:800]
-        ).strip(),
-        "sample_image_prompt": (
-            response.get("sample_image_prompt")
-            or response.get("expanded_style_description")
-            or style_brief
-        ).strip(),
-        "_request_payload": request_payload,
-        "_response_payload": response,
-    }
-
-
-def _generate_project_style_sample_image(
-    project: Project,
-    style: ProjectImageStyle,
-) -> dict[str, Any]:
-    prompt = (style.sample_image_prompt or style.expanded_style_description or "").strip()
-    if not prompt:
-        raise ValueError("Please generate or enter a sample image prompt first.")
-
-    client = _build_ai_client()
-    image_result = client.generate_image(prompt, model=style.sample_image_model)
-    style_dir = _image_style_dir(project)
-    style_dir.mkdir(parents=True, exist_ok=True)
-    image_filename = "style_sample_image.png"
-    image_path = style_dir / image_filename
-    image_path.write_bytes(image_result["bytes"])
-
-    rel_path = image_path.relative_to(project.artifact_dir()).as_posix()
-    metadata = {
-        "prompt": prompt,
-        "revised_prompt": image_result.get("revised_prompt") or "",
-        "model": image_result.get("model") or style.sample_image_model,
-        "size": image_result.get("size"),
-        "quality": image_result.get("quality"),
-        "output_format": image_result.get("output_format"),
-        "path": rel_path,
-    }
-    (style_dir / "style_sample_image_metadata.json").write_text(
-        json.dumps(metadata, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    return metadata
-
-
-def _image_elements_dir(project: Project) -> Path:
-    return project.artifact_dir() / "images" / "elements"
-
-
-def _extract_project_pages(project: Project) -> list[str]:
-    latest_run = _resolve_run_dir(project)
-    if latest_run:
-        seg1 = _load_stage_payload(project, "segmentation_phase_1", run_dir=latest_run)
-        if isinstance(seg1, dict):
-            pages = seg1.get("pages", [])
-            surfaces = [str(page.get("surface", "")).strip() for page in pages if str(page.get("surface", "")).strip()]
-            if surfaces:
-                return surfaces
-    plain_text = _extract_project_plain_text(project)
-    if not plain_text:
-        return []
-    chunks = [chunk.strip() for chunk in plain_text.split("\n\n") if chunk.strip()]
-    return chunks or [plain_text]
-
-
-def _persist_image_elements_artifacts(
-    project: Project,
-    *,
-    request_payload: dict[str, Any] | None = None,
-    response_payload: dict[str, Any] | None = None,
-) -> None:
-    elements_dir = _image_elements_dir(project)
-    elements_dir.mkdir(parents=True, exist_ok=True)
-    elements_data = list(
-        project.image_elements.order_by("name", "id").values(
-            "id",
-            "name",
-            "element_type",
-            "page_refs",
-            "why_consistency_matters",
-            "expanded_description",
-            "expanded_prompt",
-            "image_model",
-            "image_path",
-            "image_revised_prompt",
-            "is_confirmed",
-            "status",
-            "ai_model",
-            "updated_at",
-        )
-    )
-    (elements_dir / "elements_list.json").write_text(
-        json.dumps(elements_data, ensure_ascii=False, indent=2, default=str),
-        encoding="utf-8",
-    )
-    if request_payload is not None:
-        (elements_dir / "elements_discovery_prompt.json").write_text(
-            json.dumps(request_payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-    if response_payload is not None:
-        (elements_dir / "elements_discovery_response.json").write_text(
-            json.dumps(response_payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-
-
-def _discover_project_image_elements(
-    project: Project,
-    *,
-    ai_model: str,
-) -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
-    pages = _extract_project_pages(project)
-    style_description = ""
-    try:
-        style_description = project.image_style.expanded_style_description
-    except Exception:
-        style_description = ""
-
-    prompt = "\n".join(
-        [
-            "Identify recurring visual elements that should be rendered consistently.",
-            "Return JSON with key 'elements', where each item has keys:",
-            "name, type, page_refs, why_consistency_matters.",
-            "page_refs should be a list of 1-indexed page numbers.",
-            "Only include elements that appear on at least two pages or are central recurring motifs.",
-            "",
-            f"Project title: {project.title}",
-            f"Language: {project.language}",
-            f"Approved style description: {style_description or '[none]'}",
-            "Pages:",
-        ]
-    )
-    for idx, page_surface in enumerate(pages, start=1):
-        prompt += f"\nPage {idx}: {page_surface}"
-
-    request_payload = {
-        "pages": pages,
-        "style_description": style_description,
-        "prompt": prompt,
-    }
-    client = _build_ai_client(model_name=ai_model)
-    response = asyncio.run(client.chat_json(prompt, model=ai_model))
-    elements = response.get("elements") or []
-    if not isinstance(elements, list):
-        elements = []
-    normalized: list[dict[str, Any]] = []
-    for item in elements:
-        if not isinstance(item, dict):
-            continue
-        name = str(item.get("name") or "").strip()
-        if not name:
-            continue
-        refs = item.get("page_refs") or []
-        if isinstance(refs, list):
-            refs_text = ",".join(str(x) for x in refs if str(x).strip())
-        else:
-            refs_text = str(refs)
-        normalized.append(
-            {
-                "name": name[:255],
-                "element_type": str(item.get("type") or "character")[:64],
-                "page_refs": refs_text[:255],
-                "why_consistency_matters": str(item.get("why_consistency_matters") or "")[:2000],
-            }
-        )
-    return normalized, request_payload, response
-
-
-def _expand_project_image_elements(
-    project: Project,
-    *,
-    ai_model: str,
-) -> int:
-    style_description = ""
-    try:
-        style_description = project.image_style.expanded_style_description
-    except Exception:
-        style_description = ""
-    full_text = _extract_project_plain_text(project)
-    count = 0
-    client = _build_ai_client(model_name=ai_model)
-    for element in project.image_elements.order_by("name", "id"):
-        prompt = "\n".join(
-            [
-                "Create an expanded visual element description for consistent illustration.",
-                "Return JSON with keys: expanded_description, expanded_prompt.",
-                "",
-                f"Element name: {element.name}",
-                f"Element type: {element.element_type}",
-                f"Page refs: {element.page_refs}",
-                f"Why consistency matters: {element.why_consistency_matters}",
-                f"Project style description: {style_description or '[none]'}",
-                "Project text:",
-                full_text or "[none]",
-            ]
-        )
-        response = asyncio.run(client.chat_json(prompt, model=ai_model))
-        element.expanded_description = str(
-            response.get("expanded_description") or element.expanded_description or ""
-        ).strip()
-        element.expanded_prompt = str(
-            response.get("expanded_prompt") or element.expanded_description or ""
-        ).strip()
-        element.ai_model = ai_model
-        element.status = ProjectImageElement.STATUS_EXPANDED
-        element.save(
-            update_fields=[
-                "expanded_description",
-                "expanded_prompt",
-                "ai_model",
-                "status",
-                "updated_at",
-            ]
-        )
-        count += 1
-    return count
-
-
-def _generate_project_element_images(
-    project: Project,
-    *,
-    image_model: str,
-) -> int:
-    elements_dir = _image_elements_dir(project)
-    elements_dir.mkdir(parents=True, exist_ok=True)
-    generated = 0
-    elements = list(project.image_elements.order_by("name", "id"))
-    work_items: list[tuple[ProjectImageElement, str]] = []
-    for element in elements:
-        prompt = (element.expanded_prompt or element.expanded_description or element.name).strip()
-        if prompt:
-            work_items.append((element, prompt))
-
-    if not work_items:
-        return 0
-
-    max_workers = min(4, len(work_items))
-    logger.info(
-        "Generating %s element images with fan-out/fan-in (workers=%s, model=%s) for project %s",
-        len(work_items),
-        max_workers,
-        image_model,
-        project.pk,
-    )
-    results_by_id: dict[int, dict[str, Any]] = {}
-
-    def _generate_one(element_id: int, prompt_text: str) -> tuple[int, dict[str, Any]]:
-        client = _build_ai_client()
-        return element_id, client.generate_image(prompt_text, model=image_model)
-
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {
-            executor.submit(_generate_one, element.id, prompt): (element.id, prompt)
-            for element, prompt in work_items
-        }
-        for future in as_completed(futures):
-            element_id, _prompt = futures[future]
-            results_by_id[element_id] = future.result()[1]
-
-    for element, prompt in work_items:
-        image_result = results_by_id[element.id]
-        element_slug = slugify(element.name) or f"element-{element.id}"
-        element_dir = elements_dir / element_slug
-        element_dir.mkdir(parents=True, exist_ok=True)
-        image_path = element_dir / "reference.png"
-        image_path.write_bytes(image_result["bytes"])
-        rel_path = image_path.relative_to(project.artifact_dir()).as_posix()
-        element.image_model = image_model
-        element.image_path = rel_path
-        element.image_revised_prompt = image_result.get("revised_prompt") or ""
-        if element.status != ProjectImageElement.STATUS_CONFIRMED:
-            element.status = ProjectImageElement.STATUS_EXPANDED
-        element.save(
-            update_fields=[
-                "image_model",
-                "image_path",
-                "image_revised_prompt",
-                "status",
-                "updated_at",
-            ]
-        )
-        (element_dir / "metadata.json").write_text(
-            json.dumps(
-                {
-                    "name": element.name,
-                    "prompt": prompt,
-                    "model": image_model,
-                    "revised_prompt": element.image_revised_prompt,
-                    "image_path": rel_path,
-                },
-                ensure_ascii=False,
-                indent=2,
-            ),
-            encoding="utf-8",
-        )
-        generated += 1
-
-    logger.info(
-        "Completed element image generation fan-in for project %s (%s images).",
-        project.pk,
-        generated,
-    )
-    return generated
-
-
-def _image_pages_dir(project: Project) -> Path:
-    return project.artifact_dir() / "images" / "pages"
-
-
-def _page_refs_match(page_refs: str, page_number: int) -> bool:
-    refs = [chunk.strip() for chunk in (page_refs or "").split(",") if chunk.strip()]
-    return str(page_number) in refs
-
-
-def _build_page_image_prompt(
-    *,
-    project: Project,
-    style: ProjectImageStyle,
-    page_number: int,
-    page_text: str,
-    full_text: str,
-    relevant_elements: list[ProjectImageElement],
-) -> str:
-    lines = [
-        "Create one story illustration page in a consistent style.",
-        "Keep visual continuity with the existing style and element references.",
-        "",
-        f"Project title: {project.title}",
-        f"Language: {project.language}",
-        f"Page number: {page_number}",
-        f"Style description: {style.expanded_style_description or style.style_brief or '[none]'}",
-        "Page text:",
-        page_text or "[none]",
-        "",
-        "Full story text for context:",
-        full_text or "[none]",
-        "",
-        "Relevant element references:",
-    ]
-    if relevant_elements:
-        for element in relevant_elements:
-            lines.extend(
-                [
-                    f"- Element: {element.name} ({element.element_type or 'unspecified'})",
-                    f"  Description: {element.expanded_description or element.why_consistency_matters or '[none]'}",
-                    f"  Prompt: {element.expanded_prompt or '[none]'}",
-                    f"  Reference image path: {element.image_path or '[none]'}",
-                ]
-            )
-    else:
-        lines.append("- [No relevant elements with image references]")
-    return "\n".join(lines)
-
-
-def _ensure_project_page_rows(project: Project) -> int:
-    pages = _extract_project_pages(project)
-    existing = {
-        row.page_number: row
-        for row in ProjectImagePage.objects.filter(project=project)
-    }
-    for idx, page_text in enumerate(pages, start=1):
-        row = existing.get(idx)
-        if row:
-            if row.page_text != page_text:
-                row.page_text = page_text
-                row.save(update_fields=["page_text", "updated_at"])
-        else:
-            ProjectImagePage.objects.create(
-                project=project,
-                page_number=idx,
-                page_text=page_text,
-            )
-    return len(pages)
-
-
-def _persist_image_pages_artifacts(project: Project) -> None:
-    pages_dir = _image_pages_dir(project)
-    pages_dir.mkdir(parents=True, exist_ok=True)
-    rows = list(
-        project.image_pages.order_by("page_number", "id").values(
-            "id",
-            "page_number",
-            "page_text",
-            "generation_prompt",
-            "image_model",
-            "image_path",
-            "image_revised_prompt",
-            "status",
-            "updated_at",
-        )
-    )
-    (pages_dir / "pages_list.json").write_text(
-        json.dumps(rows, ensure_ascii=False, indent=2, default=str),
-        encoding="utf-8",
-    )
-
-
-def _generate_project_page_images(project: Project, *, image_model: str) -> int:
-    style = project.image_style
-    full_text = _extract_project_plain_text(project)
-    pages_dir = _image_pages_dir(project)
-    pages_dir.mkdir(parents=True, exist_ok=True)
-    page_rows = list(project.image_pages.order_by("page_number", "id"))
-    relevant_elements = [
-        element
-        for element in project.image_elements.order_by("name", "id")
-        if element.image_path
-    ]
-    if not page_rows:
-        return 0
-
-    def _generate_one(page_obj: ProjectImagePage) -> tuple[int, str, str]:
-        refs = [
-            element
-            for element in relevant_elements
-            if not element.page_refs or _page_refs_match(element.page_refs, page_obj.page_number)
-        ]
-        prompt = _build_page_image_prompt(
-            project=project,
-            style=style,
-            page_number=page_obj.page_number,
-            page_text=page_obj.page_text,
-            full_text=full_text,
-            relevant_elements=refs,
-        )
-        client = _build_ai_client()
-        image_result = client.generate_image(prompt, model=image_model)
-        page_dir = pages_dir / f"page_{page_obj.page_number:03d}"
-        page_dir.mkdir(parents=True, exist_ok=True)
-        image_path = page_dir / "image.png"
-        image_path.write_bytes(image_result["bytes"])
-        rel_path = image_path.relative_to(project.artifact_dir()).as_posix()
-        metadata = {
-            "page_number": page_obj.page_number,
-            "prompt": prompt,
-            "model": image_model,
-            "revised_prompt": image_result.get("revised_prompt") or "",
-            "image_path": rel_path,
-        }
-        (page_dir / "metadata.json").write_text(
-            json.dumps(metadata, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-        return page_obj.pk, rel_path, metadata["revised_prompt"], prompt
-
-    generated = 0
-    futures = {}
-    with ThreadPoolExecutor(max_workers=min(8, len(page_rows))) as executor:
-        for page_obj in page_rows:
-            future = executor.submit(_generate_one, page_obj)
-            futures[future] = page_obj
-        for future in as_completed(futures):
-            page_pk, rel_path, revised_prompt, prompt = future.result()
-            ProjectImagePage.objects.filter(pk=page_pk).update(
-                generation_prompt=prompt,
-                image_model=image_model,
-                image_path=rel_path,
-                image_revised_prompt=revised_prompt,
-                status=ProjectImagePage.STATUS_GENERATED,
-            )
-            generated += 1
-    return generated
+from .forms import ProjectForm, RegistrationForm
+from .models import ManualStageState, Project, SegmentationManualVersion
 
 
 def register(request: HttpRequest) -> HttpResponse:
@@ -1641,45 +815,115 @@ def _load_stage_payload(
         return None
 
 
-def _copy_run_artifacts(src: Path, dest: Path) -> None:
-    """Copy prior run outputs into ``dest`` so partial recompiles have inputs.
+MANUAL_STAGE_ORDER = [
+    ManualStageState.STAGE_SEGMENTATION,
+    ManualStageState.STAGE_TRANSLATION,
+    ManualStageState.STAGE_MWE,
+    ManualStageState.STAGE_LEMMA,
+    ManualStageState.STAGE_GLOSS,
+    ManualStageState.STAGE_AUDIO,
+    ManualStageState.STAGE_ROMANIZATION,
+]
 
-    Stages upstream from the chosen start point live in previous run folders.
-    Copying those artifacts forward lets later partial runs chain together even
-    when the most recent run only contains downstream outputs.
-
-    Important: only stage artifacts are copied. Runtime output directories like
-    ``audio/`` and ``html/`` are intentionally not copied because they can
-    contain stale files from older runs, which may cause filename collisions and
-    mismatched audio references during recompilation.
-    """
-
-    stage_src = src / "stages"
-    if stage_src.exists():
-        shutil.copytree(stage_src, dest / "stages", dirs_exist_ok=True)
+MANUAL_STAGE_DEPENDENCIES: dict[str, list[str]] = {
+    ManualStageState.STAGE_SEGMENTATION: [],
+    ManualStageState.STAGE_TRANSLATION: [ManualStageState.STAGE_SEGMENTATION],
+    ManualStageState.STAGE_MWE: [ManualStageState.STAGE_SEGMENTATION],
+    ManualStageState.STAGE_LEMMA: [ManualStageState.STAGE_MWE],
+    ManualStageState.STAGE_GLOSS: [ManualStageState.STAGE_MWE],
+    ManualStageState.STAGE_AUDIO: [ManualStageState.STAGE_MWE, ManualStageState.STAGE_LEMMA],
+    ManualStageState.STAGE_ROMANIZATION: [ManualStageState.STAGE_SEGMENTATION],
+}
 
 
-def _run_compile_task(
-    project_id: int,
-    user_id: int,
-    output_dir_str: str,
-    project_root_str: str,
-    start_stage: str,
-    timezone_name: str | None,
-    description: str | None,
-    text: str | None,
-    text_obj: dict[str, Any] | None,
-    report_id: str | None = None,
-    task_type: str | None = None,
-    ai_model: str | None = None,
-    end_stage: str | None = None,
-    page_image_placement: str | None = None,
-    segmentation_method: str | None = None,
-    romanization_method: str | None = None,
+def _parse_breaks(raw: str, *, text_len: int, name: str) -> list[int]:
+    if not raw.strip():
+        return []
+    parts = [p.strip() for p in raw.split(",")]
+    out: list[int] = []
+    for token in parts:
+        if not token:
+            continue
+        try:
+            value = int(token)
+        except ValueError as exc:
+            raise ValueError(f"{name} must contain integers separated by commas.") from exc
+        if value <= 0 or value >= text_len:
+            raise ValueError(f"{name} values must be between 1 and {text_len - 1}.")
+        out.append(value)
+    deduped = sorted(set(out))
+    return deduped
+
+
+def _validate_segmentation_breaks(
+    text: str,
+    *,
+    page_breaks: list[int],
+    segment_breaks: list[int],
+    token_breaks: list[int],
 ) -> None:
-    project = Project.objects.get(pk=project_id)
-    output_dir = Path(output_dir_str)
-    project_root = Path(project_root_str)
+    text_len = len(text)
+    for label, breaks in (
+        ("Page breaks", page_breaks),
+        ("Segment breaks", segment_breaks),
+        ("Token breaks", token_breaks),
+    ):
+        if breaks != sorted(breaks):
+            raise ValueError(f"{label} must be sorted.")
+        if len(set(breaks)) != len(breaks):
+            raise ValueError(f"{label} must not contain duplicate values.")
+        if any(v <= 0 or v >= text_len for v in breaks):
+            raise ValueError(f"{label} must be between 1 and {text_len - 1}.")
+
+    if not set(page_breaks).issubset(segment_breaks):
+        raise ValueError("Each page break must also be a segment break.")
+    if not set(segment_breaks).issubset(token_breaks):
+        raise ValueError("Each segment break must also be a token break.")
+
+
+def _render_marked_text(text: str, marks: dict[int, list[str]]) -> str:
+    chunks: list[str] = []
+    for idx, ch in enumerate(text):
+        labels = marks.get(idx)
+        if labels:
+            chunks.append("⟦" + "|".join(labels) + "⟧")
+        chunks.append(ch)
+    end_labels = marks.get(len(text))
+    if end_labels:
+        chunks.append("⟦" + "|".join(end_labels) + "⟧")
+    return "".join(chunks)
+
+
+def _segmentation_preview(text: str, *, page_breaks: list[int], segment_breaks: list[int], token_breaks: list[int]) -> str:
+    marks: dict[int, list[str]] = {}
+    for pos in token_breaks:
+        marks.setdefault(pos, []).append("T")
+    for pos in segment_breaks:
+        marks.setdefault(pos, []).append("S")
+    for pos in page_breaks:
+        marks.setdefault(pos, []).append("P")
+    return _render_marked_text(text, marks)
+
+
+def _ensure_manual_stage_states(project: Project) -> dict[str, ManualStageState]:
+    existing = {row.stage: row for row in project.manual_stage_states.all()}
+    for stage in MANUAL_STAGE_ORDER:
+        if stage not in existing:
+            existing[stage] = ManualStageState.objects.create(project=project, stage=stage)
+    return existing
+
+
+def _stage_unlocked(stage: str, states: dict[str, ManualStageState]) -> bool:
+    deps = MANUAL_STAGE_DEPENDENCIES.get(stage, [])
+    return all(states[d].status == ManualStageState.STATUS_APPROVED for d in deps)
+
+
+@login_required
+def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
+    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    project_root = project.artifact_dir().resolve()
+    _persist_project_source(project)
+    output_dir = _prepare_output_dir(project).resolve()
     stage_dir = output_dir / "stages"
     stage_dir.mkdir(parents=True, exist_ok=True)
     progress_log = stage_dir / "progress.jsonl"
@@ -3078,3 +2322,106 @@ def delete_project(request: HttpRequest, pk: int) -> HttpResponse:
         pass
     messages.success(request, "Project deleted.")
     return redirect("project-list")
+
+
+@login_required
+def project_manual_edit(request: HttpRequest, pk: int) -> HttpResponse:
+    project = get_object_or_404(Project, pk=pk, owner=request.user)
+    states = _ensure_manual_stage_states(project)
+    stage_state = states[ManualStageState.STAGE_SEGMENTATION]
+    latest = project.segmentation_versions.order_by("-version").first()
+
+    text = project.source_text or ""
+    if not text:
+        messages.warning(
+            request,
+            "This project has empty source text. Add source text before using manual segmentation editing.",
+        )
+
+    default_token_breaks: list[int] = []
+    if text:
+        default_token_breaks = [i for i, ch in enumerate(text, start=1) if ch.isspace() and i < len(text)]
+
+    if request.method == "POST":
+        action = request.POST.get("action", "save")
+        note = (request.POST.get("note") or "").strip()
+        page_raw = request.POST.get("page_breaks", "")
+        segment_raw = request.POST.get("segment_breaks", "")
+        token_raw = request.POST.get("token_breaks", "")
+        try:
+            page_breaks = _parse_breaks(page_raw, text_len=len(text), name="Page breaks") if text else []
+            segment_breaks = _parse_breaks(segment_raw, text_len=len(text), name="Segment breaks") if text else []
+            token_breaks = _parse_breaks(token_raw, text_len=len(text), name="Token breaks") if text else []
+            _validate_segmentation_breaks(
+                text, page_breaks=page_breaks, segment_breaks=segment_breaks, token_breaks=token_breaks
+            )
+        except ValueError as exc:
+            messages.error(request, str(exc))
+        else:
+            last_version = project.segmentation_versions.order_by("-version").first()
+            next_version = 1 if not last_version else last_version.version + 1
+            SegmentationManualVersion.objects.create(
+                project=project,
+                version=next_version,
+                source_text_snapshot=text,
+                page_breaks=page_breaks,
+                segment_breaks=segment_breaks,
+                token_breaks=token_breaks,
+                note=note,
+                created_by=request.user,
+            )
+
+            stage_state.status = (
+                ManualStageState.STATUS_APPROVED if action == "approve" else ManualStageState.STATUS_IN_PROGRESS
+            )
+            if action == "approve":
+                stage_state.approved_version = next_version
+            stage_state.updated_by = request.user
+            stage_state.save(update_fields=["status", "approved_version", "updated_by", "updated_at"])
+
+            if action == "approve":
+                messages.success(request, f"Segmentation version v{next_version} approved.")
+            else:
+                messages.success(request, f"Saved segmentation version v{next_version}.")
+            return redirect("project-manual-edit", pk=project.pk)
+
+    latest = project.segmentation_versions.order_by("-version").first()
+    page_breaks = latest.page_breaks if latest else []
+    segment_breaks = latest.segment_breaks if latest else []
+    token_breaks = latest.token_breaks if latest else default_token_breaks
+    preview = _segmentation_preview(
+        text,
+        page_breaks=list(page_breaks),
+        segment_breaks=list(segment_breaks),
+        token_breaks=list(token_breaks),
+    ) if text else ""
+
+    stage_rows: list[dict[str, Any]] = []
+    for stage in MANUAL_STAGE_ORDER:
+        state = states[stage]
+        stage_rows.append(
+            {
+                "stage": stage,
+                "label": state.get_stage_display(),
+                "status": state.get_status_display(),
+                "unlocked": _stage_unlocked(stage, states),
+            }
+        )
+
+    return render(
+        request,
+        "projects/project_manual_edit.html",
+        {
+            "project": project,
+            "stage_state": stage_state,
+            "stage_rows": stage_rows,
+            "latest_version": latest.version if latest else 0,
+            "approved_version": stage_state.approved_version,
+            "page_breaks": ",".join(str(x) for x in page_breaks),
+            "segment_breaks": ",".join(str(x) for x in segment_breaks),
+            "token_breaks": ",".join(str(x) for x in token_breaks),
+            "preview": preview,
+            "source_text": text,
+            "latest_note": latest.note if latest else "",
+        },
+    )
