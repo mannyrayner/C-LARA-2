@@ -174,7 +174,16 @@ class ProjectImageStyle(models.Model):
 
 class ProjectImageElement(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="image_elements")
+    name = models.CharField(max_length=200, blank=True, default="")
     element_key = models.CharField(max_length=120)
+    element_type = models.CharField(max_length=80, blank=True, default="")
+    expanded_description = models.TextField(blank=True, default="")
+    why_consistency_matters = models.TextField(blank=True, default="")
+    page_refs = models.CharField(max_length=200, blank=True, default="")
+    expanded_prompt = models.TextField(blank=True, default="")
+    image_model = models.CharField(max_length=120, blank=True, default="")
+    image_revised_prompt = models.TextField(blank=True, default="")
+    is_confirmed = models.BooleanField(default=False)
     description = models.TextField(blank=True, default="")
     canonical_image_path = models.CharField(max_length=512, blank=True, default="")
     created_at = models.DateTimeField(default=django_timezone.now)
