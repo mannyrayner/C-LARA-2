@@ -1,93 +1,204 @@
-# Roadmap: manual annotation editor
+# Manual annotation editor roadmap
 
-This roadmap defines a **manual annotation editor** that is relevant across all C-LARA-2 languages, not only low-resource settings.
+## Purpose
 
-## Why this matters
+Provide a structured, language-agnostic manual annotation workflow so human annotators can correct or replace AI output without editing raw JSON.
 
-Manual editing is required for:
+The editor must respect pipeline dependencies, preserve data integrity, and make it obvious which stages are ready to edit versus blocked by missing prerequisites.
 
-- low-resource/AI-weak languages,
-- quality control in high-resource languages,
-- teacher-led curation workflows,
-- safe correction of AI outputs before publishing.
+## Design principles
 
-## Scope
+- **Dependency-first UX**: users should edit stages in an order that matches true data dependencies.
+- **Non-destructive editing**: every save is versioned and auditable.
+- **Constraint-guided UI**: invalid states are prevented where possible; otherwise flagged clearly.
+- **Hybrid workflow**: manual edits and AI regeneration should coexist safely.
+- **Low-resource readiness**: support fully manual progression when AI quality is insufficient.
 
-Provide an editing interface for all annotation stages, including:
+## Stage model and dependency graph
 
-- segmentation (pages/segments/tokens),
-- translation,
-- MWE,
-- lemma,
-- gloss,
-- romanization,
-- audio metadata.
+For manual editing, we treat **segmentation phase 1 + segmentation phase 2** as one **virtual Segmentation stage**.
 
-## Requirements
+### Virtual Segmentation stage (phase1 + phase2)
 
-- Primary editing mode must be **structured** (form/table/tree controls), with raw JSON as an expert fallback only.
-- JSON editing should not be raw-only by default; provide structured form/table views.
-- Enforce formal consistency constraints before save:
-  - token arrays remain aligned with segment surface,
-  - MWE ids remain valid and refer to existing tokens,
-  - required annotation fields have correct type,
-  - no broken references in audio/image paths.
-- Show clear validation errors with pinpointed location (page/segment/token).
-- Prevent malformed structures at input time where possible (typed controls, constrained choices, relation pickers).
-- Optional companion view: when compiled HTML exists, allow side-by-side per-segment preview while editing annotations.
+- **Input**: raw plain text.
+- **Internal phase 1 output**: pages and segments.
+- **Internal phase 2 output**: lexical units per segment.
+- **Manual UX**: show immutable text with editable boundary markers for:
+  - page boundaries,
+  - segment boundaries,
+  - lexical-unit boundaries.
+- **Constraint**: text content itself cannot be modified in this stage.
 
-## Recommended architecture
+### Downstream stage dependencies
 
-- Validation layer shared between API and UI.
-- Stage-specific schema validators + cross-stage consistency checks.
-- Save as new version/checkpoint with audit metadata.
+- **Translation** depends on Segmentation only.
+- **MWE** depends on Segmentation only.
+- **Lemma** depends on MWE (+ tokenization from Segmentation).
+- **Gloss** depends on MWE (+ tokenization; and may optionally use Translation context).
+- **Audio** depends on MWE and Lemma (and tokenization).
+- **Pinyin/Romanization** depends on tokenization from Segmentation (MWE not required).
 
-## Human-in-the-loop revision flow
+## Stage-by-stage UX specification
 
-1. Run AI stage (optional).
-2. Open review/editor view with diffs against prior version.
-3. Accept/modify/reject entries.
-4. Save reviewed stage output.
-5. Continue with downstream pipeline stages.
+### 1) Segmentation (virtual)
 
-### Key feature
+**Presentation**
+- Entire text shown in reading order.
+- Visual markers distinguish pages, segments, lexical units.
+- Optional synchronized tree panel (`Page > Segment > Lexical unit`) for fast navigation.
 
-A **lock reviewed annotations** option so later reruns avoid overwriting approved manual edits unless explicitly forced.
+**Allowed actions**
+- Add/remove/move page boundaries.
+- Add/remove/move segment boundaries.
+- Split/merge lexical units.
 
-## Integration points
+**Disallowed actions**
+- Editing raw text characters.
 
-- Works with low-resource roadmap as the core enablement mechanism.
-- Feeds corrected artifacts into compile and publish workflows.
-- Provides auditable revisions for collaborative/community projects.
+**Validation**
+- No empty pages/segments.
+- Lexical units must partition each segment (no overlaps/gaps).
+- Deterministic export back to canonical segmented representation.
 
-## Delivery phases
+### 2) Translation
 
-### Phase A
+**Presentation**
+- Segment-by-segment table: source segment + editable translation.
 
-- Editor MVP for segmentation + translation + lemma/gloss.
-- Strict validators and versioned saves.
+**Allowed actions**
+- Add, modify, clear translation for each segment.
+- Bulk tools: copy previous machine translation, clear all, regenerate selected ranges.
 
-### Phase B
+**Validation**
+- Every segment has at most one active translation per target language.
+- Unsaved translations block stage completion.
 
-- Extend editor to MWE + romanization + audio metadata.
-- Diff/review tools for AI-assisted workflows.
+**Notes**
+- Translation output should be available to later stages as context (especially Gloss, optionally MWE hints).
 
-### Phase C
+### 3) MWE
 
-- Collaboration enhancements: assignment, review queues, and approval states.
-- Better conflict handling for concurrent edits.
+**Presentation**
+- Segment text tokenized into lexical units.
+- Annotator can assign MWE ids (`m1`, `m2`, …) to lexical units.
+- Segment-level MWE metadata panel for optional labels (e.g., `m1 = phrasal verb`).
 
-## Success criteria
+**Allowed actions**
+- Tag/untag lexical units with one MWE id.
+- Rename or delete MWE ids.
+- Add optional MWE-level notes/category fields.
 
-- Editors can complete and correct projects end-to-end without raw JSON surgery.
-- Invalid structures are blocked with actionable diagnostics.
-- Manual edits remain stable across pipeline reruns unless explicitly overridden.
+**Validation**
+- An MWE id must occur on at least two lexical units in the segment.
+- All units sharing an MWE id are treated as one MWE object.
+- Segment-local ids are permitted in editor; page-global uniqueness can be applied in post-processing.
 
+**Example**
+- Segment: *She threw it away.*
+- Units `threw` + `away` both tagged `m1`.
+- Optional annotation: `m1 = phrasal verb`.
 
-## RTL-specific editor requirements
+### 4) Lemma and Gloss
 
-- The editor must render tokens/segments with the correct base direction (`dir="rtl"`) for RTL languages and preserve that direction on save/reload.
-- Cursor movement, token boundary highlighting, and selection behavior must be validated for RTL text and mixed RTL/LTR segments.
-- Side-by-side views should keep source and annotation panes direction-aware independently (avoid forcing one global direction).
-- Validation/error pinpointing must reference logical token indices consistently regardless of visual ordering.
-- Diff/review views must avoid false diffs caused only by bidi control characters or display reordering.
+These two stages are separate outputs but share crucial constraints from MWE.
+
+**Presentation**
+- Token-level grid for each segment with visible MWE overlays.
+- For each lexical unit (or MWE group), editable lemma and gloss fields.
+
+**Allowed actions**
+- Edit lemma values.
+- Edit gloss values.
+- Apply edit to all members of an MWE in one action.
+
+**Validation**
+- **MWE consistency rule**: components of the same MWE must have consistent MWE-linked annotation behavior (same MWE id and aligned group treatment).
+- Highlight conflicts inline; prevent finalization until resolved.
+
+### 5) Audio
+
+**Presentation**
+- Segment and lexical/MWE rows each show:
+  - current audio status,
+  - play controls,
+  - provenance (TTS provider/model vs human recording),
+  - optional POS/context used for generation.
+
+**Dependencies and behavior**
+- Uses MWE structure because MWE audio is generated/stored per full MWE span.
+- Uses lemma/POS information for homograph disambiguation when invoking TTS.
+
+**Allowed actions**
+- Play current audio for segment/token/MWE.
+- Regenerate TTS for selected items.
+- (Future) record/re-record human audio when recording workflow is enabled.
+
+**Validation**
+- Ensure expected audio assets exist for all required units.
+- Surface stale audio when upstream text/lemma/MWE changes invalidate previous renders.
+
+### 6) Pinyin/Romanization
+
+**Presentation**
+- Segment displayed as lexical units with editable romanization field per unit.
+
+**Dependencies and behavior**
+- Requires Segmentation tokenization.
+- Does **not** require MWE annotations.
+
+**Allowed actions**
+- Edit romanization values manually.
+- Regenerate selected rows via language-specific or AI-backed romanization.
+
+## Implementation plan (phased delivery)
+
+### Phase A — Foundation (data + API + audit)
+
+- Introduce editor-side stage state machine (`not_started`, `in_progress`, `ready_for_review`, `approved`).
+- Add versioned save records with `who/when/why` metadata and diff snapshots.
+- Add dependency gate checks so stages cannot be finalized out of order.
+
+### Phase B — Segmentation editor (virtual stage)
+
+- Build the combined boundary editor for page/segment/lexical-unit markers.
+- Implement strict partition validation and deterministic serializer.
+- Add keyboard-first operations for split/merge and boundary navigation.
+
+### Phase C — Translation + MWE editors
+
+- Deliver segment translation editor with bulk operations.
+- Deliver token-level MWE editor with multi-select tagging and MWE metadata panel.
+- Add validations for minimum MWE cardinality and id integrity.
+
+### Phase D — Lemma + Gloss editors
+
+- Add synchronized lemma/gloss workspace with visible MWE groupings.
+- Implement “apply to MWE” and conflict-highlighting workflows.
+- Add review mode showing unresolved constraints before approval.
+
+### Phase E — Audio + Romanization editors
+
+- Add audio playback/regeneration UI with provenance and stale-state detection.
+- Add romanization editor/regeneration controls.
+- Integrate queue/background-job status updates for regeneration actions.
+
+### Phase F — Human recording and low-resource hardening
+
+- Add recording/upload/re-record UX and asset lifecycle management.
+- Add offline-first/manual-first path where AI suggestions are optional.
+- Add reviewer assignment + approval workflow for educational/community QA.
+
+## Concrete engineering notes
+
+- Prefer storing editor outputs in canonical pipeline-compatible structures to avoid bespoke conversion layers.
+- Add migration-safe schema for stage versions and per-stage approvals.
+- Implement optimistic locking (or row-version checks) to avoid concurrent overwrite.
+- Include regression fixtures for MWE consistency and segmentation partition invariants.
+- Ensure compile/export consumes approved manual annotations by default, with explicit fallback toggles.
+
+## Acceptance criteria
+
+- Annotators can complete Segmentation → Translation → MWE → Lemma/Gloss → Audio → Romanization in dependency order without raw JSON edits.
+- Invalid MWE or segmentation states are blocked or clearly actionable.
+- Every manual edit is auditable and reversible.
+- Low-resource workflow remains usable when AI generation is unavailable or poor.

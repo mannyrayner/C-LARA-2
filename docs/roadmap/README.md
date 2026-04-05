@@ -89,3 +89,13 @@ Focus:
 - Keep a short, visible history of rollback/backtracking decisions.
 - Record exact corrective git actions and resulting branch policy.
 - Reuse one template format for future incidents.
+
+### 7. Manual annotation editor roadmap
+
+Status: **New roadmap document added.** See `docs/roadmap/manual-annotation-editor.md`.
+
+Focus:
+- Dependency-aware manual editing across segmentation, translation, MWE, lemma/gloss, audio, and romanization.
+- Strong validation and auditability so annotators do not need raw JSON edits.
+- Phased implementation with low-resource/manual-first compatibility.
+
