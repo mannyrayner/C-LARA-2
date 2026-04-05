@@ -1,0 +1,27 @@
+{
+  "input": "{\n  \"surface\": \"They need bread, cheese, and some fruit.\",\n  \"tokens\": [\n    {\"surface\": \"They\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"need\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"bread\", \"annotations\": {}},\n    {\"surface\": \",\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"cheese\", \"annotations\": {}},\n    {\"surface\": \",\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"and\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"some\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"fruit\", \"annotations\": {}},\n    {\"surface\": \".\"}\n  ],\n  \"annotations\": {}\n}",
+  "output": {
+    "surface": "They need bread, cheese, and some fruit.",
+    "tokens": [
+      {"surface": "They"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "need"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "bread"},
+      {"surface": ","},
+      {"surface": " ", "annotations": {}},
+      {"surface": "cheese"},
+      {"surface": ","},
+      {"surface": " ", "annotations": {}},
+      {"surface": "and"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "some"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "fruit"},
+      {"surface": "."}
+    ],
+    "annotations": {
+      "mwes": []
+    }
+  }
+}
