@@ -14,17 +14,18 @@ def ensure_fields_for_0006(apps, schema_editor):
         existing_columns = {
             col.name for col in schema_editor.connection.introspection.get_table_description(cursor, table)
         }
-    for field_name in (
-        "ai_model",
-        "expanded_style_description",
-        "sample_image_model",
-        "sample_image_prompt",
-        "status",
-        "style_brief",
-    ):
-        field = model._meta.get_field(field_name)
-        if field.column not in existing_columns:
-            schema_editor.add_field(model, field)
+    column_sql = {
+        "ai_model": "VARCHAR(120) NOT NULL DEFAULT ''",
+        "expanded_style_description": "TEXT NOT NULL DEFAULT ''",
+        "sample_image_model": "VARCHAR(120) NOT NULL DEFAULT ''",
+        "sample_image_prompt": "TEXT NOT NULL DEFAULT ''",
+        "status": "VARCHAR(40) NOT NULL DEFAULT ''",
+        "style_brief": "TEXT NOT NULL DEFAULT ''",
+    }
+    qn = schema_editor.quote_name
+    for column, sql_type in column_sql.items():
+        if column not in existing_columns:
+            schema_editor.execute(f"ALTER TABLE {qn(table)} ADD COLUMN {qn(column)} {sql_type}")
 
 
 class Migration(migrations.Migration):

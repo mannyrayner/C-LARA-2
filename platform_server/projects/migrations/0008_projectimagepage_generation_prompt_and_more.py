@@ -14,17 +14,18 @@ def ensure_fields_for_0008(apps, schema_editor):
         existing_columns = {
             col.name for col in schema_editor.connection.introspection.get_table_description(cursor, table)
         }
-    for field_name in (
-        "generation_prompt",
-        "image_model",
-        "image_revised_prompt",
-        "page_number",
-        "page_text",
-        "status",
-    ):
-        field = model._meta.get_field(field_name)
-        if field.column not in existing_columns:
-            schema_editor.add_field(model, field)
+    column_sql = {
+        "generation_prompt": "TEXT NOT NULL DEFAULT ''",
+        "image_model": "VARCHAR(120) NOT NULL DEFAULT ''",
+        "image_revised_prompt": "TEXT NOT NULL DEFAULT ''",
+        "page_number": "INTEGER NOT NULL DEFAULT 1",
+        "page_text": "TEXT NOT NULL DEFAULT ''",
+        "status": "VARCHAR(40) NOT NULL DEFAULT ''",
+    }
+    qn = schema_editor.quote_name
+    for column, sql_type in column_sql.items():
+        if column not in existing_columns:
+            schema_editor.execute(f"ALTER TABLE {qn(table)} ADD COLUMN {qn(column)} {sql_type}")
 
 
 class Migration(migrations.Migration):
