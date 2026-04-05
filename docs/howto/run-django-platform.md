@@ -26,6 +26,27 @@ python manage.py migrate
 python manage.py runserver
 ```
 
+## If you get conflicting migrations
+When branch history has diverged, Django can report multiple migration leaf nodes (for example in `projects`).
+
+From the repository root, run either:
+
+```bash
+python platform_server/manage.py makemigrations --merge projects
+```
+
+or:
+
+```bash
+make merge-project-migrations
+```
+
+Then re-run:
+
+```bash
+make run-platform-with-q
+```
+
 ## Using the UI
 - Visit `http://127.0.0.1:8000/`.
 - Register a new account or log in (registration is open in dev).
