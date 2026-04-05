@@ -66,6 +66,8 @@ Then re-run:
 make run-platform-with-q
 ```
 
+`run-platform*` targets now attempt a non-interactive merge-migration step for `projects` before `migrate`, which helps when local branch history has parallel migration leaf nodes.
+
 ## Using the UI
 - Visit `http://127.0.0.1:8000/`.
 - Register a new account or log in (registration is open in dev).
