@@ -14,7 +14,13 @@ venv/
 tests/test_results.log
 tests/artifacts/
 audio_cache/
-reports/
+reports/*
+!reports/README.md
+!reports/code/
+!reports/code/README.md
+!reports/updates/
+!reports/updates/.gitkeep
+!reports/updates/*.html
 artifacts/
 platform_server/db.sqlite3
 platform_server/media/
