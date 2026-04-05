@@ -120,6 +120,52 @@ class LemmaUnitTests(unittest.IsolatedAsyncioTestCase):
             status="pass",
         )
 
+    async def test_lemmatize_overwrites_mwe_lemma_with_full_mwe_surface(self) -> None:
+        segment = {
+            "surface": "freuen sich auf mehr Abenteuer",
+            "tokens": [
+                {"surface": "freuen", "annotations": {"mwe_id": "m3"}},
+                {"surface": " ", "annotations": {}},
+                {"surface": "sich", "annotations": {"mwe_id": "m3"}},
+                {"surface": " ", "annotations": {}},
+                {"surface": "auf", "annotations": {"mwe_id": "m3"}},
+                {"surface": " ", "annotations": {}},
+                {"surface": "mehr", "annotations": {"mwe_id": "m3"}},
+                {"surface": " ", "annotations": {}},
+                {"surface": "Abenteuer", "annotations": {"mwe_id": "m3"}},
+            ],
+            "annotations": {
+                "mwes": [
+                    {"id": "m3", "tokens": ["freuen", "sich", "auf", "mehr", "Abenteuer"], "label": "expression"}
+                ]
+            },
+        }
+        text = {"l2": "de", "surface": segment["surface"], "pages": [{"surface": segment["surface"], "segments": [segment]}]}
+        fake_response = {
+            "surface": segment["surface"],
+            "tokens": [
+                {"surface": "freuen", "annotations": {"mwe_id": "m3", "lemma": "sich freuen auf", "pos": "VERB"}},
+                {"surface": " ", "annotations": {}},
+                {"surface": "sich", "annotations": {"mwe_id": "m3", "lemma": "sich freuen auf", "pos": "VERB"}},
+                {"surface": " ", "annotations": {}},
+                {"surface": "auf", "annotations": {"mwe_id": "m3", "lemma": "sich freuen auf", "pos": "VERB"}},
+                {"surface": " ", "annotations": {}},
+                {"surface": "mehr", "annotations": {"mwe_id": "m3", "lemma": "sich freuen auf", "pos": "VERB"}},
+                {"surface": " ", "annotations": {}},
+                {"surface": "Abenteuer", "annotations": {"mwe_id": "m3", "lemma": "sich freuen auf", "pos": "VERB"}},
+            ],
+            "annotations": segment["annotations"],
+        }
+        client = FakeAIClient(fake_response)
+        result = await lemma.annotate_lemmas(LemmaSpec(text=text, language="de"), client=client)
+        out_tokens = result["pages"][0]["segments"][0]["tokens"]
+        mwe_lemmas = {
+            t.get("annotations", {}).get("lemma")
+            for t in out_tokens
+            if (t.get("annotations") or {}).get("mwe_id") == "m3"
+        }
+        self.assertEqual({"freuen sich auf mehr Abenteuer"}, mwe_lemmas)
+
 
 class LemmaIntegrationTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
