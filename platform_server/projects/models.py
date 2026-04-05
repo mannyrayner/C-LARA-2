@@ -4,6 +4,8 @@ from pathlib import Path
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from django.contrib.auth import get_user_model
+import uuid
 
 
 class Project(models.Model):
@@ -21,9 +23,15 @@ class Project(models.Model):
     input_mode = models.CharField(max_length=20, choices=INPUT_CHOICES, default=INPUT_SOURCE)
     language = models.CharField(max_length=16, default="en")
     target_language = models.CharField(max_length=16, default="fr")
+    ai_model = models.CharField(max_length=64, default="gpt-4o")
+    page_image_placement = models.CharField(max_length=16, default="none")
+    segmentation_method = models.CharField(max_length=32, default="auto")
+    romanization_method = models.CharField(max_length=32, default="auto")
     compiled_path = models.CharField(max_length=512, blank=True)
     artifact_root = models.CharField(max_length=512, blank=True)
     is_published = models.BooleanField(default=False)
+    published_at = models.DateTimeField(null=True, blank=True)
+    access_count = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
