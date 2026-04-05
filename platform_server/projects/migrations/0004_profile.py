@@ -14,11 +14,23 @@ def create_missing_profiles(apps, schema_editor):
 
 
 def create_profile_table_if_missing(apps, schema_editor):
-    table_names = schema_editor.connection.introspection.table_names()
-    if "projects_profile" in table_names:
-        return
     profile_model = apps.get_model("projects", "Profile")
-    schema_editor.create_model(profile_model)
+    table_names = schema_editor.connection.introspection.table_names()
+    if "projects_profile" not in table_names:
+        schema_editor.create_model(profile_model)
+        return
+
+    # If the table already exists (from older branch history), make sure its
+    # columns match the current migration state before any ORM query runs.
+    with schema_editor.connection.cursor() as cursor:
+        existing_columns = {
+            col.name
+            for col in schema_editor.connection.introspection.get_table_description(cursor, "projects_profile")
+        }
+
+    for field in profile_model._meta.local_fields:
+        if field.column not in existing_columns:
+            schema_editor.add_field(profile_model, field)
 
 
 class Migration(migrations.Migration):
