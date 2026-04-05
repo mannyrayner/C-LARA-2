@@ -38,5 +38,10 @@ class ImageElementSpec:
 @dataclass
 class ImagePageSpec:
     page_index: int = 1
+    page_number: int = 1
+    page_text: str = ""
+    generation_prompt: str = ""
     prompt: str = ""
     image_model: str = ""
+    image_revised_prompt: str = ""
+    status: str = IMAGE_STATUS_DRAFT

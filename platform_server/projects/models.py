@@ -196,8 +196,14 @@ class ProjectImageElement(models.Model):
 
 class ProjectImagePage(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="image_pages")
+    page_number = models.PositiveIntegerField(default=1)
     page_index = models.PositiveIntegerField(default=1)
+    page_text = models.TextField(blank=True, default="")
+    generation_prompt = models.TextField(blank=True, default="")
     prompt = models.TextField(blank=True, default="")
+    image_model = models.CharField(max_length=120, blank=True, default="")
+    image_revised_prompt = models.TextField(blank=True, default="")
+    status = models.CharField(max_length=40, blank=True, default="")
     image_path = models.CharField(max_length=512, blank=True, default="")
     created_at = models.DateTimeField(default=django_timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
