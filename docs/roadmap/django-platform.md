@@ -20,11 +20,14 @@ This document sketches the Django layer that will host users, projects, and comp
 
 ### Users
 - Standard Django user model plus profile (display name, affiliation, avatar, preferred languages).
+- **Compatibility requirement:** keep a concrete `Profile` model available in `projects.models` (at minimum with `timezone`) so platform/runtime imports do not break when branches diverge.
 - Roles/flags: admin, staff/moderator, regular user. Use Django permissions for fine-grained access (e.g., can_review_projects, can_publish_public).
 - Activity log per user: project actions, publishes, comments/ratings given.
 
 ### Projects
 - Owned by a single user; can invite collaborators with role-based permissions (owner/editor/viewer).
+- **Compatibility requirement:** keep baseline project-side models (`ProjectImageStyle`, `ProjectImageElement`, `ProjectImagePage`, `ProjectCollaborator`, `ExerciseSet`, `ExerciseItem`, `TaskUpdate`) available, even when features are only partially enabled, so forms/views imports remain stable across branches.
+- **Form-compatibility requirement:** keep legacy `ProjectImageStyle` field names (`style_brief`, `expanded_style_description`, `ai_model`, `status`, `sample_image_prompt`, `sample_image_model`) alongside newer names so historical forms remain import-safe.
 - Stores:
   - **Source inputs**: raw text uploads (UTF-8), optional project description, optional seeded segmentation/annotation JSON.
   - **Pipeline outputs**: JSON per stage (segmentation, translation, MWE, lemma, gloss, pinyin, audio metadata), compiled HTML bundles, audio/image assets, logs.
