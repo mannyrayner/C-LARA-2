@@ -159,6 +159,12 @@ class TaskUpdate(models.Model):
 
 class ProjectImageStyle(models.Model):
     project = models.OneToOneField(Project, on_delete=models.CASCADE, related_name="image_style")
+    style_brief = models.TextField(blank=True, default="")
+    expanded_style_description = models.TextField(blank=True, default="")
+    ai_model = models.CharField(max_length=120, blank=True, default="")
+    status = models.CharField(max_length=40, blank=True, default="")
+    sample_image_prompt = models.TextField(blank=True, default="")
+    sample_image_model = models.CharField(max_length=120, blank=True, default="")
     brief_description = models.TextField(blank=True, default="")
     expanded_prompt = models.TextField(blank=True, default="")
     sample_image_path = models.CharField(max_length=512, blank=True, default="")
