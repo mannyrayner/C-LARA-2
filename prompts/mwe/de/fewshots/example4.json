@@ -1,0 +1,50 @@
+{
+  "input": "{\n  \"surface\": \"Sie hat gerade ihr Studium in Australien abgeschlossen und beginnt nun ein Jahr, in dem sie durch Europa reist.\",\n  \"tokens\": [\n    {\"surface\": \"Sie\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"hat\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"gerade\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"ihr\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"Studium\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"in\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"Australien\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"abgeschlossen\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"und\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"beginnt\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"nun\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"ein\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"Jahr\", \"annotations\": {}},\n    {\"surface\": \",\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"in\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"dem\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"sie\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"durch\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"Europa\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"reist\", \"annotations\": {}},\n    {\"surface\": \".\"}\n  ],\n  \"annotations\": {}\n}",
+  "output": {
+    "surface": "Sie hat gerade ihr Studium in Australien abgeschlossen und beginnt nun ein Jahr, in dem sie durch Europa reist.",
+    "tokens": [
+      {"surface": "Sie"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "hat"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "gerade"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "ihr"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "Studium"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "in"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "Australien"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "abgeschlossen"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "und"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "beginnt"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "nun"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "ein"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "Jahr"},
+      {"surface": ","},
+      {"surface": " ", "annotations": {}},
+      {"surface": "in"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "dem"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "sie"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "durch"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "Europa"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "reist"},
+      {"surface": "."}
+    ],
+    "annotations": {
+      "mwes": []
+    }
+  }
+}
