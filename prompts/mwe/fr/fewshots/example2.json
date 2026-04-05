@@ -1,0 +1,10 @@
+{
+  "input": "{\n  \"surface\": \"Ils ont du pain, du fromage et des fruits.\",\n  \"tokens\": [\n    {\"surface\": \"Ils\"}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"ont\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"du\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"pain\", \"annotations\": {}}, {\"surface\": \",\"}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"du\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"fromage\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"et\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"des\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"fruits\", \"annotations\": {}}, {\"surface\": \".\"}\n  ],\n  \"annotations\": {}\n}",
+  "output": {
+    "surface": "Ils ont du pain, du fromage et des fruits.",
+    "tokens": [
+      {"surface": "Ils"}, {"surface": " ", "annotations": {}}, {"surface": "ont"}, {"surface": " ", "annotations": {}}, {"surface": "du"}, {"surface": " ", "annotations": {}}, {"surface": "pain"}, {"surface": ","}, {"surface": " ", "annotations": {}}, {"surface": "du"}, {"surface": " ", "annotations": {}}, {"surface": "fromage"}, {"surface": " ", "annotations": {}}, {"surface": "et"}, {"surface": " ", "annotations": {}}, {"surface": "des"}, {"surface": " ", "annotations": {}}, {"surface": "fruits"}, {"surface": "."}
+    ],
+    "annotations": {"mwes": []}
+  }
+}
