@@ -1,0 +1,62 @@
+{% extends "projects/base.html" %}
+{% block title %}Manual editing: {{ project.title }}{% endblock %}
+{% block content %}
+<h1>Manual editing: {{ project.title }}</h1>
+<p><a class="btn secondary" href="{% url 'project-detail' project.pk %}">Back to project</a></p>
+
+<h3>Stage status (phase A first cut)</h3>
+<table>
+  <thead>
+    <tr><th>Stage</th><th>Status</th><th>Unlocked?</th></tr>
+  </thead>
+  <tbody>
+    {% for row in stage_rows %}
+      <tr>
+        <td>{{ row.label }}</td>
+        <td>{{ row.status }}</td>
+        <td>{% if row.unlocked %}Yes{% else %}Blocked{% endif %}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3>Segmentation editor (phase B first cut)</h3>
+<p>
+  Text is read-only. Add/remove boundary markers using comma-separated character offsets
+  (positions between characters, from <code>1</code> to <code>text_length - 1</code>).
+</p>
+<p>
+  Rules: page breaks ⊆ segment breaks ⊆ token breaks.
+</p>
+<p>
+  Latest version: <strong>v{{ latest_version }}</strong>.
+  Approved version: <strong>{% if approved_version %}v{{ approved_version }}{% else %}none{% endif %}</strong>.
+</p>
+
+<form method="post">
+  {% csrf_token %}
+  <p><label>Source text (read-only)</label><br>
+  <textarea rows="8" cols="120" readonly>{{ source_text }}</textarea></p>
+
+  <p><label>Page breaks</label><br>
+  <input type="text" name="page_breaks" size="120" value="{{ page_breaks }}"></p>
+
+  <p><label>Segment breaks</label><br>
+  <input type="text" name="segment_breaks" size="120" value="{{ segment_breaks }}"></p>
+
+  <p><label>Token breaks</label><br>
+  <input type="text" name="token_breaks" size="120" value="{{ token_breaks }}"></p>
+
+  <p><label>Change note (optional)</label><br>
+  <input type="text" name="note" size="120" value="{{ latest_note }}"></p>
+
+  <button class="btn" type="submit" name="action" value="save">Save new version</button>
+  <button class="btn secondary" type="submit" name="action" value="approve">Save + approve segmentation</button>
+</form>
+
+<h4>Preview with boundaries</h4>
+<p>
+  Markers: <code>P</code> page, <code>S</code> segment, <code>T</code> token.
+</p>
+<pre>{{ preview }}</pre>
+{% endblock %}
