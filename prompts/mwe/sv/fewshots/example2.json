@@ -1,0 +1,10 @@
+{
+  "input": "{\n  \"surface\": \"De behöver bröd, ost och lite frukt.\",\n  \"tokens\": [\n    {\"surface\": \"De\"}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"behöver\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"bröd\", \"annotations\": {}}, {\"surface\": \",\"}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"ost\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"och\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"lite\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"frukt\", \"annotations\": {}}, {\"surface\": \".\"}\n  ],\n  \"annotations\": {}\n}",
+  "output": {
+    "surface": "De behöver bröd, ost och lite frukt.",
+    "tokens": [
+      {"surface": "De"}, {"surface": " ", "annotations": {}}, {"surface": "behöver"}, {"surface": " ", "annotations": {}}, {"surface": "bröd"}, {"surface": ","}, {"surface": " ", "annotations": {}}, {"surface": "ost"}, {"surface": " ", "annotations": {}}, {"surface": "och"}, {"surface": " ", "annotations": {}}, {"surface": "lite"}, {"surface": " ", "annotations": {}}, {"surface": "frukt"}, {"surface": "."}
+    ],
+    "annotations": {"mwes": []}
+  }
+}

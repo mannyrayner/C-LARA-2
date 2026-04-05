@@ -4,51 +4,57 @@
 <h1>{{ object.title }}</h1>
 <p>{{ object.description }}</p>
 <p>Language: {{ object.language }} → {{ object.target_language }}</p>
-<form method="post" action="{% url 'project-compile' object.pk %}">{% csrf_token %}
-  <p><label for="start_stage">Start from stage:</label>
-    <select name="start_stage" id="start_stage">
-      {% for stage in pipeline_stages %}
-        <option value="{{ stage }}" {% if stage == default_start_stage %}selected{% endif %}>{{ stage }}</option>
-      {% endfor %}
-    </select>
-    <button class="btn" type="submit">Compile to HTML</button>
-  </p>
-</form>
+
+<p><a class="btn" href="{% url 'project-annotation-home' object.pk %}">Linguistic annotation</a></p>
+<p><a class="btn" href="{% url 'project-images-home' object.pk %}">Images</a></p>
+<p><a class="btn" href="{% url 'project-exercises-home' object.pk %}">Exercises</a></p>
+
+<p><a class="btn secondary" href="{% url 'project-download-source-bundle' object.pk %}">Download source ZIP</a></p>
+<p><a class="btn secondary" href="{% url 'project-download-bundle' object.pk %}">Download compiled ZIP</a></p>
 <p><a class="btn secondary" href="{% url 'project-publish' object.pk %}">{% if object.is_published %}Unpublish{% else %}Publish{% endif %}</a></p>
 <p><a class="btn secondary" href="{% url 'project-manual-edit' object.pk %}">Manual editing</a></p>
 <form method="post" action="{% url 'project-delete' object.pk %}" onsubmit="return confirm('Delete this project and its artifacts?');">{% csrf_token %}
   <button class="btn secondary" type="submit">Delete project</button>
 </form>
 {% if object.compiled_path %}
-  <p>
-    <a class="btn link" href="{% url 'project-compiled' pk=object.pk path=object.compiled_path %}" target="_blank">View via server</a>
-  </p>
-  <p>Artifacts stored at: {{ object.artifact_root }}</p>
-{% else %}
-  <p>No compilation yet. Use "Compile to HTML" to generate outputs.</p>
+  <p><a class="btn link" href="{% url 'project-compiled' pk=object.pk path=object.compiled_path %}" target="_blank">View via server</a></p>
 {% endif %}
 
-{% if progress %}
-  <h3>Progress</h3>
-  <ul>
-    {% for entry in progress %}
-      <li><strong>{{ entry.stage }}</strong> — {{ entry.status }} @ {{ entry.timestamp }}</li>
-    {% endfor %}
-  </ul>
-{% endif %}
+<form method="post" action="{% url 'project-delete' object.pk %}" onsubmit="return confirm('Delete this project and its artifacts?');">{% csrf_token %}
+  <button class="btn secondary" type="submit">Delete project</button>
+</form>
 
-{% if stage_files %}
-  <h3>Intermediate artifacts</h3>
-  <ul>
-    {% for file in stage_files %}
-      <li>
-        {% if file.url %}
-          <a href="{{ file.url }}" target="_blank">{{ file.path }}</a>
+{% if current_user_role == "owner" %}
+  <h3>Collaborators</h3>
+  {% if collaborators %}
+    <ul>
+      {% for c in collaborators %}
+        <li>{{ c.user.username }} — {{ c.role|upper }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No collaborators yet.</p>
+  {% endif %}
+  <form method="post" action="{% url 'project-collaborators' object.pk %}">{% csrf_token %}
+    <p>
+      <label for="collab_username">User:</label>
+      <select id="collab_username" name="username">
+        {% if available_collaborator_users %}
+          {% for u in available_collaborator_users %}
+            <option value="{{ u.username }}">{{ u.username }}</option>
+          {% endfor %}
         {% else %}
-          <a href="{% url 'project-compiled' pk=object.pk path=file.path %}" target="_blank">{{ file.path }}</a>
+          <option value="" selected>(No available users)</option>
         {% endif %}
-      </li>
-    {% endfor %}
-  </ul>
+      </select>
+      <label for="collab_role" class="ml-2">Role:</label>
+      <select id="collab_role" name="role">
+        {% for role_value, role_label in collaborator_role_choices %}
+          <option value="{{ role_value }}">{{ role_label }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn secondary" type="submit" {% if not available_collaborator_users %}disabled{% endif %}>Save collaborator</button>
+    </p>
+  </form>
 {% endif %}
 {% endblock %}
