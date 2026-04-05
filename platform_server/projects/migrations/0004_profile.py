@@ -8,9 +8,21 @@ from django.db import migrations, models
 
 def create_missing_profiles(apps, schema_editor):
     user_model = apps.get_model(*settings.AUTH_USER_MODEL.split("."))
-    profile_model = apps.get_model("projects", "Profile")
-    for user in user_model.objects.all().iterator():
-        profile_model.objects.get_or_create(user=user, defaults={"timezone": "UTC"})
+    user_table = user_model._meta.db_table
+    profile_table = "projects_profile"
+    qn = schema_editor.quote_name
+    sql = f"""
+        INSERT INTO {qn(profile_table)} (user_id, timezone)
+        SELECT u.id, 'UTC'
+        FROM {qn(user_table)} u
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM {qn(profile_table)} p
+            WHERE p.user_id = u.id
+        )
+    """
+    with schema_editor.connection.cursor() as cursor:
+        cursor.execute(sql)
 
 
 def create_profile_table_if_missing(apps, schema_editor):
