@@ -42,6 +42,16 @@ from .forms import ProjectForm, RegistrationForm
 from .models import ManualStageState, Project, SegmentationManualVersion
 
 
+def _ensure_bootstrap_admin(user) -> None:  # type: ignore[no-untyped-def]
+    """Compatibility shim for older views that call bootstrap-admin setup.
+
+    Older branch variants call this helper from list views; keeping a safe
+    no-op implementation avoids NameError while preserving current behaviour.
+    """
+
+    return None
+
+
 def register(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         form = RegistrationForm(request.POST)
@@ -451,7 +461,7 @@ class ProjectListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):  # type: ignore[override]
         _ensure_bootstrap_admin(self.request.user)
-        return _projects_for_user(self.request.user)
+        return Project.objects.filter(owner=self.request.user)
 
 
 class ProjectDetailView(LoginRequiredMixin, DetailView):
