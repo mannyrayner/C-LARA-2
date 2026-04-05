@@ -18,7 +18,9 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse
+from django.core.exceptions import PermissionDenied
+from django.http import FileResponse, Http404, HttpRequest, HttpResponse
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.db.models import F, Q
@@ -39,7 +41,11 @@ from core.ai_api import OpenAIClient
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 
 from .forms import ProjectForm, RegistrationForm
-from .models import ManualStageState, Project, SegmentationManualVersion
+from .models import ManualStageState, Profile, Project, SegmentationManualVersion
+
+
+# Compatibility constants used by older content-list views in mixed branches.
+CONTENT_DATE_FILTERS = {"all", "today", "week", "month", "year"}
 
 
 def _ensure_bootstrap_admin(user) -> None:  # type: ignore[no-untyped-def]
@@ -50,6 +56,24 @@ def _ensure_bootstrap_admin(user) -> None:  # type: ignore[no-untyped-def]
     """
 
     return None
+
+
+def _projects_for_user(user):  # type: ignore[no-untyped-def]
+    """Compatibility helper for older detail/list views."""
+    _ensure_bootstrap_admin(user)
+    return Project.objects.filter(owner=user)
+
+
+def _require_admin(user) -> None:  # type: ignore[no-untyped-def]
+    """Compatibility guard used by older admin-tools views."""
+    if not getattr(user, "is_authenticated", False) or not getattr(user, "is_staff", False):
+        raise PermissionDenied("Admin access required.")
+
+
+def _profile_for_user(user) -> Profile:
+    """Return an existing profile or create one for compatibility code paths."""
+    profile, _ = Profile.objects.get_or_create(user=user)
+    return profile
 
 
 def register(request: HttpRequest) -> HttpResponse:
@@ -460,8 +484,7 @@ class ProjectListView(LoginRequiredMixin, ListView):
     template_name = "projects/project_list.html"
 
     def get_queryset(self):  # type: ignore[override]
-        _ensure_bootstrap_admin(self.request.user)
-        return Project.objects.filter(owner=self.request.user)
+        return _projects_for_user(self.request.user)
 
 
 class ProjectDetailView(LoginRequiredMixin, DetailView):
