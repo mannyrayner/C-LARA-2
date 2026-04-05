@@ -6,15 +6,13 @@
 PYTHON ?= python3
 
 count-lines:
-	@docs_lines=$$(find docs -type f -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l); \
-	py_lines=$$(find platform_server/projects -maxdepth 1 -name '*.py' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l); \
-	template_lines=$$(find platform_server/projects/templates -type f -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l); \
-	status_lines=$$(find platform_server/projects/status -type f -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l); \
-	total_lines=$$((docs_lines + py_lines + template_lines + status_lines)); \
-	echo "docs: $$docs_lines"; \
-	echo "platform_server/projects/*.py: $$py_lines"; \
-	echo "platform_server/projects/templates: $$template_lines"; \
-	echo "platform_server/projects/status: $$status_lines"; \
+	@projects_py_lines=$$(find platform_server/projects -maxdepth 1 -name '*.py' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l); \
+	pipeline_lines=$$(find src/pipeline -type f -name '*.py' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l); \
+	core_lines=$$(find src/core -type f -name '*.py' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l); \
+	total_lines=$$((projects_py_lines + pipeline_lines + core_lines)); \
+	echo "platform_server/projects/*.py: $$projects_py_lines"; \
+	echo "src/pipeline: $$pipeline_lines"; \
+	echo "src/core: $$core_lines"; \
 	echo "total: $$total_lines"
 
 run-platform:
