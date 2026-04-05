@@ -20,6 +20,7 @@ This document sketches the Django layer that will host users, projects, and comp
 
 ### Users
 - Standard Django user model plus profile (display name, affiliation, avatar, preferred languages).
+- **Compatibility requirement:** keep a concrete `Profile` model available in `projects.models` (at minimum with `timezone`) so platform/runtime imports do not break when branches diverge.
 - Roles/flags: admin, staff/moderator, regular user. Use Django permissions for fine-grained access (e.g., can_review_projects, can_publish_public).
 - Activity log per user: project actions, publishes, comments/ratings given.
 

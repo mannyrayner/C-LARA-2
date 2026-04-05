@@ -3,7 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from django.conf import settings
 from django.db import models
-from django.utils import timezone
+from django.contrib.auth import get_user_model
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.utils import timezone as django_timezone
 
 
 class Project(models.Model):
@@ -24,7 +27,7 @@ class Project(models.Model):
     compiled_path = models.CharField(max_length=512, blank=True)
     artifact_root = models.CharField(max_length=512, blank=True)
     is_published = models.BooleanField(default=False)
-    created_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(default=django_timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -48,3 +51,99 @@ class Project(models.Model):
         if self.compiled_path:
             return Path(self.compiled_path)
         return None
+
+
+class ManualStageState(models.Model):
+    STATUS_NOT_STARTED = "not_started"
+    STATUS_IN_PROGRESS = "in_progress"
+    STATUS_READY_FOR_REVIEW = "ready_for_review"
+    STATUS_APPROVED = "approved"
+    STATUS_CHOICES = [
+        (STATUS_NOT_STARTED, "Not started"),
+        (STATUS_IN_PROGRESS, "In progress"),
+        (STATUS_READY_FOR_REVIEW, "Ready for review"),
+        (STATUS_APPROVED, "Approved"),
+    ]
+
+    STAGE_SEGMENTATION = "segmentation"
+    STAGE_TRANSLATION = "translation"
+    STAGE_MWE = "mwe"
+    STAGE_LEMMA = "lemma"
+    STAGE_GLOSS = "gloss"
+    STAGE_AUDIO = "audio"
+    STAGE_ROMANIZATION = "romanization"
+    STAGE_CHOICES = [
+        (STAGE_SEGMENTATION, "Segmentation"),
+        (STAGE_TRANSLATION, "Translation"),
+        (STAGE_MWE, "MWE"),
+        (STAGE_LEMMA, "Lemma"),
+        (STAGE_GLOSS, "Gloss"),
+        (STAGE_AUDIO, "Audio"),
+        (STAGE_ROMANIZATION, "Pinyin/Romanization"),
+    ]
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="manual_stage_states")
+    stage = models.CharField(max_length=32, choices=STAGE_CHOICES)
+    status = models.CharField(max_length=24, choices=STATUS_CHOICES, default=STATUS_NOT_STARTED)
+    approved_version = models.PositiveIntegerField(default=0)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("project", "stage")
+        ordering = ["project_id", "stage"]
+
+    def __str__(self) -> str:  # pragma: no cover - display helper
+        return f"{self.project_id}:{self.stage}:{self.status}"
+
+
+class SegmentationManualVersion(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="segmentation_versions")
+    version = models.PositiveIntegerField()
+    source_text_snapshot = models.TextField(default="", blank=True)
+    page_breaks = models.JSONField(default=list, blank=True)
+    segment_breaks = models.JSONField(default=list, blank=True)
+    token_breaks = models.JSONField(default=list, blank=True)
+    note = models.TextField(blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    created_at = models.DateTimeField(default=django_timezone.now)
+
+    class Meta:
+        unique_together = ("project", "version")
+        ordering = ["project_id", "-version"]
+
+    def __str__(self) -> str:  # pragma: no cover - display helper
+        return f"{self.project_id}:segmentation:v{self.version}"
+
+
+class Profile(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
+    timezone = models.CharField(max_length=64, default="UTC")
+    display_name = models.CharField(max_length=120, blank=True, default="")
+    bio = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(default=django_timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["user_id"]
+
+    def __str__(self) -> str:  # pragma: no cover - display helper
+        return f"Profile<{self.user_id}:{self.timezone}>"
+
+
+@receiver(post_save, sender=get_user_model())
+def ensure_profile_for_user(sender, instance, created, **kwargs):  # type: ignore[no-untyped-def]
+    if created:
+        Profile.objects.get_or_create(user=instance)
