@@ -79,3 +79,13 @@ In this step, we will add the basic image creation functionality. This will be c
 - We have the same three-stage pipeline:
 	- Create style. A brief description is expanded by the AI into a detaile style description and an example image.
 	- Create element names. Generate
+
+
+### 6. Backtracking from errors log
+
+Status: **New incident log document added.** See `docs/roadmap/backtracking-from-errors.md`.
+
+Focus:
+- Keep a short, visible history of rollback/backtracking decisions.
+- Record exact corrective git actions and resulting branch policy.
+- Reuse one template format for future incidents.
