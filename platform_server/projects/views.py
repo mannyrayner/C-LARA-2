@@ -547,14 +547,19 @@ def _discover_project_image_elements(
     client = _build_ai_client(model_name=ai_model)
     response = asyncio.run(client.chat_json(prompt, model=ai_model))
     elements = response.get("elements") or []
+    raw_elements_count = len(elements) if isinstance(elements, list) else 0
     if not isinstance(elements, list):
         elements = []
     normalized: list[dict[str, Any]] = []
+    skipped_non_dict = 0
+    skipped_empty_name = 0
     for item in elements:
         if not isinstance(item, dict):
+            skipped_non_dict += 1
             continue
         name = str(item.get("name") or "").strip()
         if not name:
+            skipped_empty_name += 1
             continue
         refs = item.get("page_refs") or []
         if isinstance(refs, list):
@@ -568,6 +573,21 @@ def _discover_project_image_elements(
                 "page_refs": refs_text[:255],
                 "why_consistency_matters": str(item.get("why_consistency_matters") or "")[:2000],
             }
+        )
+    diagnostics = {
+        "pages_count": len(pages),
+        "raw_elements_count": raw_elements_count,
+        "normalized_elements_count": len(normalized),
+        "skipped_non_dict": skipped_non_dict,
+        "skipped_empty_name": skipped_empty_name,
+    }
+    if isinstance(response, dict):
+        response.setdefault("_diagnostics", diagnostics)
+    if not normalized:
+        logger.warning(
+            "Element discovery returned no usable elements for project %s: %s",
+            project.pk,
+            diagnostics,
         )
     return normalized, request_payload, response
 
@@ -1132,7 +1152,19 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
                         request_payload=request_payload,
                         response_payload=response_payload,
                     )
-                    messages.success(request, f"Discovered {len(discovered)} recurring elements.")
+                    if discovered:
+                        messages.success(request, f"Discovered {len(discovered)} recurring elements.")
+                    else:
+                        diagnostics = response_payload.get("_diagnostics", {}) if isinstance(response_payload, dict) else {}
+                        messages.warning(
+                            request,
+                            "No recurring elements were discovered. "
+                            f"Diagnostics: raw={diagnostics.get('raw_elements_count', 0)}, "
+                            f"usable={diagnostics.get('normalized_elements_count', 0)}, "
+                            f"pages={diagnostics.get('pages_count', 0)}. "
+                            "Inspect images/elements/elements_discovery_prompt.json and "
+                            "images/elements/elements_discovery_response.json for details.",
+                        )
             elif action == "expand":
                 messages.info(
                     request,
@@ -1566,6 +1598,9 @@ def _resolve_run_dir(project: Project) -> Path | None:
         return latest_run_dir if latest_run_dir.stat().st_mtime >= compiled_run_dir.stat().st_mtime else compiled_run_dir
     return latest_run_dir or compiled_run_dir
 
+    if compiled_run_dir and latest_run_dir:
+        return latest_run_dir if latest_run_dir.stat().st_mtime >= compiled_run_dir.stat().st_mtime else compiled_run_dir
+    return latest_run_dir or compiled_run_dir
 
 def _has_segmentation_phase_1_output(project: Project) -> bool:
     run_dir = _resolve_run_dir(project)
