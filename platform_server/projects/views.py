@@ -2512,7 +2512,6 @@ def generate_cloze_exercises(request: HttpRequest, pk: int) -> HttpResponse:
         form = ClozeExerciseSetForm(request.POST, ai_model_choices=AI_MODEL_CHOICES)
         if form.is_valid():
             theme = form.cleaned_data["theme"]
-            flashcard_mode = form.cleaned_data["flashcard_mode"]
             item_count = form.cleaned_data["item_count"]
             model = form.cleaned_data.get("ai_model") or project.ai_model or DEFAULT_MODEL
 
@@ -2899,8 +2898,14 @@ def download_project_source_bundle(request: HttpRequest, pk: int) -> HttpRespons
         zf.writestr((bundle_root / "runs" / "latest_run_summary.json").as_posix(), json.dumps({"run_id": run_name}, ensure_ascii=False, indent=2))
 
         zf.writestr((bundle_root / "images" / "style.json").as_posix(), json.dumps(style_data, ensure_ascii=False, indent=2))
-        zf.writestr((bundle_root / "images" / "elements.json").as_posix(), json.dumps(elements, ensure_ascii=False, indent=2))
-        zf.writestr((bundle_root / "images" / "pages.json").as_posix(), json.dumps(pages, ensure_ascii=False, indent=2))
+        zf.writestr(
+            (bundle_root / "images" / "elements.json").as_posix(),
+            json.dumps(elements, ensure_ascii=False, indent=2, default=str),
+        )
+        zf.writestr(
+            (bundle_root / "images" / "pages.json").as_posix(),
+            json.dumps(pages, ensure_ascii=False, indent=2, default=str),
+        )
 
         for rel in sorted(image_rel_paths):
             abs_path = (artifact_root / rel).resolve()
