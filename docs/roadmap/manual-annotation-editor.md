@@ -102,24 +102,25 @@ A **lock reviewed annotations** option so later reruns avoid overwriting approve
 - Implement hard validation: text hash before/after must match.
 - Version every save.
 
-### Step 2 — Translation + gloss editor (structure locked)
+### Step 2 — Translation editor (structure locked)
 
 - Introduce annotation editor on top of frozen segmentation structure.
-- Translation and gloss side-by-side at segment level.
-- Prefer workflow order: translation → gloss (soft guidance, not hard block).
+- Translation at segment level, with structure immutability checks.
 - Enforce structure immutability and per-field validation.
 
 ### Step 3 — MWE editor as dependency anchor
 
 - Add dedicated MWE editing view over content elements.
 - Persist explicit MWE groups/IDs.
-- Add cross-stage checks so lemma/gloss/audio edits cannot silently contradict MWE groupings.
+- Add cross-stage checks so downstream edits cannot silently contradict MWE groupings.
 
-### Step 4 — Lemma/gloss/audio consistency layer
+### Step 4 — Lemma/gloss/audio consistency layer (after MWE)
 
 - Add rule checks such as:
   - MWE-linked elements must satisfy shared-lemma consistency rules,
   - downstream annotations reference valid content elements/MWE IDs.
+- Add gloss UI after MWE is available so gloss decisions can respect MWE boundaries by default.
+- Keep translation visible while glossing (recommended order: translation → MWE → gloss).
 - Show actionable diagnostics and quick-fix suggestions.
 
 ### Step 5 — Romanization and advanced review UX
