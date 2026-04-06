@@ -4,25 +4,18 @@
 <h1>Manual segmentation phase 1</h1>
 <p><a class="btn secondary" href="{% url 'project-annotation-home' project.pk %}">← Back to annotation home</a></p>
 <p>
-  Structure-only editor: text is read-only. Adjust boundaries with comma-separated offsets.
+  Structure-only editor. Insert/delete only <code>&lt;page&gt;</code> and <code>||</code> separators.
 </p>
 <p>Base text length: {{ base_text_length }} characters. Text hash: <code>{{ base_hash }}</code></p>
 <form method="post">
   {% csrf_token %}
-  <p><strong>Read-only base text</strong></p>
+  <p><strong>Read-only segmentation text (with current separators)</strong></p>
   <p>
-    <textarea rows="14" style="width:100%; font-family: monospace;" readonly>{{ base_text }}</textarea>
+    <textarea rows="10" style="width:100%; font-family: monospace;" readonly>{{ read_only_surface }}</textarea>
   </p>
+  <p><strong>Editable segmentation text</strong></p>
   <p>
-    Segment break offsets (character positions where a new segment starts, excluding 0 and end):
-    <input type="text" name="segment_breaks" value="{{ segment_breaks }}" style="width:100%; font-family: monospace;">
-  </p>
-  <p>
-    Page break segment indices (segment numbers where a new page starts, first page is implicit):
-    <input type="text" name="page_breaks" value="{{ page_breaks }}" style="width:100%; font-family: monospace;">
-  </p>
-  <p>
-    Current segments: {{ total_segments }}
+    <textarea name="editable_surface" rows="12" style="width:100%; font-family: monospace;">{{ editable_surface }}</textarea>
   </p>
   <p>
     <button class="btn" type="submit">Save phase 1 manual segmentation</button>

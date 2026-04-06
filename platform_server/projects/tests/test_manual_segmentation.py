@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
@@ -21,6 +22,7 @@ class ManualSegmentationEditorTests(TestCase):
         )
         self.client = Client()
         self.client.login(username="annotator", password="pw")
+        shutil.rmtree(self.project.artifact_dir(), ignore_errors=True)
 
     def _latest_run_stage_dir(self) -> Path:
         runs_root = self.project.artifact_dir() / "runs"
@@ -32,14 +34,15 @@ class ManualSegmentationEditorTests(TestCase):
     def test_phase_1_editor_uses_read_only_structure_inputs(self):
         resp = self.client.get(reverse("manual-segmentation-phase-1", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "name=\"segment_breaks\"")
-        self.assertContains(resp, "name=\"page_breaks\"")
+        self.assertContains(resp, "name=\"editable_surface\"")
+        self.assertContains(resp, "&lt;page&gt;")
+        self.assertContains(resp, "||</code> separators")
         self.assertContains(resp, "readonly")
 
     def test_phase_1_save_writes_versioned_payload_with_hash_metadata(self):
         resp = self.client.post(
             reverse("manual-segmentation-phase-1", args=[self.project.pk]),
-            {"segment_breaks": "5", "page_breaks": ""},
+            {"editable_surface": "Hello|| world"},
             follow=True,
         )
         self.assertEqual(resp.status_code, 200)
@@ -116,3 +119,17 @@ class ManualSegmentationEditorTests(TestCase):
         resp = self.client.get(reverse("manual-segmentation-phase-1", args=[self.project.pk]), follow=True)
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "inconsistent with base text")
+
+    def test_phase_1_editor_canonicalizes_trailing_page_markers(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_trailing_page" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "l2": "en",
+            "surface": "Hello world<page>",
+            "pages": [{"surface": "Hello world", "segments": [{"surface": "Hello world"}], "annotations": {}}],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_1.json").write_text(json.dumps(payload), encoding="utf-8")
+        resp = self.client.get(reverse("manual-segmentation-phase-1", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, "Hello world&lt;page&gt;")
