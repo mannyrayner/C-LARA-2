@@ -1,0 +1,17 @@
+{
+  "input": "Another sample sentence. Keep language and wording exactly as provided.",
+  "output": {
+    "l2": "xx",
+    "surface": "Another sample sentence. Keep language and wording exactly as provided.",
+    "pages": [
+      {
+        "surface": "Another sample sentence. Keep language and wording exactly as provided.",
+        "segments": [
+          {"surface": "Another sample sentence."},
+          {"surface": " Keep language and wording exactly as provided."}
+        ]
+      }
+    ],
+    "annotations": {}
+  }
+}

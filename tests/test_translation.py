@@ -13,14 +13,25 @@ from pipeline.translation import TranslationSpec
 
 
 class FakeAIClient:
-    def __init__(self, response: dict) -> None:
+    def __init__(self, response: str) -> None:
         self.response = response
         self.prompts: list[str] = []
 
-    async def chat_json(self, prompt: str, **_: object) -> dict:
+    async def chat_text(self, prompt: str, **_: object) -> str:
         self.prompts.append(prompt)
         await asyncio.sleep(0)
         return self.response
+
+
+class RecordingTelemetry:
+    def __init__(self) -> None:
+        self.events: list[tuple[str, str, str, dict | None]] = []
+
+    def heartbeat(self, op_id: str, elapsed_s: float, note: str | None = None) -> None:
+        return None
+
+    def event(self, op_id: str, level: str, msg: str, data: dict | None = None) -> None:
+        self.events.append((op_id, level, msg, data))
 
 
 class TranslationTests(unittest.IsolatedAsyncioTestCase):
@@ -42,24 +53,37 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
     def test_loads_fewshots(self) -> None:
         fewshots = translation._load_fewshots("en", prompts_root=self.prompts_root)
         self.assertGreaterEqual(len(fewshots), 2)
-        self.assertTrue(all("annotations" in fs.get("output", {}) for fs in fewshots))
+        self.assertTrue(all(isinstance(fs.get("output"), str) for fs in fewshots))
+        fallback_fewshots = translation._load_fewshots("xx", prompts_root=self.prompts_root)
+        self.assertGreaterEqual(len(fallback_fewshots), 2)
 
     def test_build_prompt_mentions_target_language(self) -> None:
-        template = "Translate."
+        template = "Translate the text into {glossing_language}."
         prompt = translation._build_prompt(
             template,
             segment_surface="Hello",
             fewshots=[],
+            source_language="en",
             target_language="fr",
         )
-        self.assertIn("translate into fr", prompt.lower())
-        self.assertIn("annotations.translation", prompt)
+        self.assertIn("Translate the text into fr.", prompt)
+        self.assertIn("<start>Hello</end>", prompt)
+        self.assertIn("Return format: <start>...</end>", prompt)
+
+    def test_build_prompt_mentions_source_and_target_in_examples_preface(self) -> None:
+        template = "Translate the text from {text_language} into {glossing_language}."
+        prompt = translation._build_prompt(
+            template,
+            segment_surface="Guten Tag",
+            fewshots=[{"input": "<start>Hallo</end>", "output": "<start>Hello</end>"}],
+            source_language="de",
+            target_language="en",
+        )
+        self.assertIn("Here are some examples showing de glossed with en.", prompt)
+        self.assertIn("<start>Guten Tag</end>", prompt)
 
     async def test_translate_normalizes_response_and_sets_l1(self) -> None:
-        fake_response = {
-            "surface": self.sample_text["surface"],
-            "annotations": {"translation": "Il a fermé la fenêtre avant l'orage."},
-        }
+        fake_response = "<start>Il a fermé la fenêtre avant l'orage.</end>"
         client = FakeAIClient(fake_response)
         spec = TranslationSpec(text=self.sample_text, language="en", target_language="fr")
 
@@ -69,6 +93,40 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("Il a fermé la fenêtre avant l'orage.", page["annotations"]["translation"])
         self.assertEqual("fr", result["l1"])
         self.assertTrue(client.prompts)
+
+    async def test_translate_extracts_json_wrapper_and_unescapes_unicode(self) -> None:
+        fake_response = (
+            '{"translated_text":"<start>C\\u0000e9line est une \\u0000e9tudiante fran\\u0000e7aise '
+            'en \\u0000e9change \\u0000e0 Ad\\u0000e9la\\u0000efd.</end>"}'
+        )
+        client = FakeAIClient(fake_response)
+        spec = TranslationSpec(text=self.sample_text, language="en", target_language="fr")
+
+        result = await translation.translate(spec, client=client)
+
+        page = result["pages"][0]["segments"][0]
+        self.assertEqual(
+            "Céline est une étudiante française en échange à Adélaïd.",
+            page["annotations"]["translation"],
+        )
+
+    async def test_translate_emits_raw_response_logging(self) -> None:
+        client = FakeAIClient('{"translated_text":"<start>Bonjour</end>"}')
+        telemetry = RecordingTelemetry()
+        spec = TranslationSpec(
+            text=self.sample_text,
+            language="en",
+            target_language="fr",
+            telemetry=telemetry,
+            op_id="translation-telemetry-test",
+        )
+
+        result = await translation.translate(spec, client=client)
+
+        self.assertEqual("Bonjour", result["pages"][0]["segments"][0]["annotations"]["translation"])
+        messages = [evt[2] for evt in telemetry.events]
+        self.assertIn("translation segment raw response received", messages)
+        self.assertIn("translation segment response normalized", messages)
 
 
 class TranslationIntegrationTests(unittest.IsolatedAsyncioTestCase):
