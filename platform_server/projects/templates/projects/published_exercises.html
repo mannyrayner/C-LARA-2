@@ -1,0 +1,12 @@
+{% extends "projects/base.html" %}
+{% block title %}Published exercises{% endblock %}
+{% block content %}
+<h1>Published exercises for {{ project.title }}</h1>
+<ul>
+  {% for s in exercise_sets %}
+    <li><a href="{% url 'exercise-set-detail' s.id %}">{{ s.title|default:"Exercise set" }}</a></li>
+  {% empty %}
+    <li>No published exercise sets.</li>
+  {% endfor %}
+</ul>
+{% endblock %}
