@@ -1589,7 +1589,7 @@ def _phase1_surface_from_boundaries(base_text: str, segment_breaks: list[int], p
     return "<page>".join("||".join(page_segments) for page_segments in pages)
 
 
-def _phase2_token_break_rows(seg1_payload: dict[str, Any], seg2_payload: dict[str, Any]) -> list[dict[str, Any]]:
+def _phase2_token_bar_rows(seg1_payload: dict[str, Any], seg2_payload: dict[str, Any]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for p_idx, (base_page, edited_page) in enumerate(
         zip(seg1_payload.get("pages") or [], seg2_payload.get("pages") or []),
@@ -1600,39 +1600,43 @@ def _phase2_token_break_rows(seg1_payload: dict[str, Any], seg2_payload: dict[st
             start=1,
         ):
             segment_text = str(base_segment.get("surface") or "")
-            offsets: list[int] = []
-            cursor = 0
-            for tok in (edited_segment.get("tokens") or [])[:-1]:
-                cursor += len(str((tok or {}).get("surface") or ""))
-                offsets.append(cursor)
+            token_surfaces = [str((tok or {}).get("surface") or "") for tok in (edited_segment.get("tokens") or [])]
+            tokenized_text = "¦".join(token_surfaces) if token_surfaces else segment_text
             rows.append(
                 {
                     "page_index": p_idx,
                     "segment_index": s_idx,
                     "segment_text": segment_text,
-                    "token_breaks": ",".join(str(v) for v in offsets),
+                    "tokenized_text": tokenized_text,
                 }
             )
     return rows
 
 
-def _phase2_payload_from_break_rows(seg1_payload: dict[str, Any], rows: list[dict[str, Any]]) -> dict[str, Any]:
-    token_break_map: dict[tuple[int, int], list[int]] = {}
+def _phase2_payload_from_bar_rows(seg1_payload: dict[str, Any], rows: list[dict[str, Any]]) -> dict[str, Any]:
+    token_map: dict[tuple[int, int], list[str]] = {}
     for row in rows:
-        token_break_map[(row["page_index"], row["segment_index"])] = _parse_int_csv(
-            row["token_breaks"],
-            lower=1,
-            upper=max(len(str(row["segment_text"])) - 1, 1),
-        )
+        edited = str(row["tokenized_text"] or "")
+        segment_text = str(row["segment_text"] or "")
+        if edited.replace("¦", "") != segment_text:
+            raise ValueError(
+                f"Page {row['page_index']} segment {row['segment_index']} changes text content; "
+                "only token separators may be inserted or removed."
+            )
+        tokens = edited.split("¦")
+        if any(tok == "" for tok in tokens):
+            raise ValueError(
+                f"Page {row['page_index']} segment {row['segment_index']} contains an empty token "
+                "(adjacent/leading/trailing separators are not allowed)."
+            )
+        token_map[(row["page_index"], row["segment_index"])] = tokens
     edited = json.loads(json.dumps(seg1_payload))
     for p_idx, page in enumerate(edited.get("pages") or [], start=1):
         for s_idx, segment in enumerate(page.get("segments") or [], start=1):
-            text = str(segment.get("surface") or "")
-            split_points = [0] + token_break_map.get((p_idx, s_idx), []) + [len(text)]
-            segment["tokens"] = [
-                {"surface": text[split_points[i] : split_points[i + 1]]}
-                for i in range(len(split_points) - 1)
-            ]
+            token_surfaces = token_map.get((p_idx, s_idx))
+            if not token_surfaces:
+                token_surfaces = [str(segment.get("surface") or "")]
+            segment["tokens"] = [{"surface": surface} for surface in token_surfaces]
     return edited
 
 
@@ -1675,7 +1679,16 @@ def manual_segmentation_phase_1(request: HttpRequest, pk: int) -> HttpResponse:
     run_dir = _find_run_with_stage(project, "segmentation_phase_1") or _resolve_run_dir(project)
     current_payload = _load_stage_payload(project, "segmentation_phase_1", run_dir=run_dir) if run_dir else None
     current_surface = str((current_payload or {}).get("surface") or base_text)
-    segment_breaks, page_breaks = _phase1_boundaries_from_surface(current_surface, base_text)
+    try:
+        segment_breaks, page_breaks = _phase1_boundaries_from_surface(current_surface, base_text)
+    except ValueError:
+        messages.warning(
+            request,
+            "The existing segmentation output is inconsistent with base text. "
+            "Showing boundaries derived from the base text instead.",
+        )
+        current_surface = base_text
+        segment_breaks, page_breaks = _phase1_boundaries_from_surface(current_surface, base_text)
     segment_breaks_csv = ",".join(str(v) for v in segment_breaks)
     page_breaks_csv = ",".join(str(v) for v in page_breaks)
     base_hash = _stable_text_hash(base_text)
@@ -1743,17 +1756,17 @@ def manual_segmentation_phase_2(request: HttpRequest, pk: int) -> HttpResponse:
         for page in seg2_payload.get("pages", []) or []:
             for segment in page.get("segments", []) or []:
                 segment["tokens"] = [{"surface": segment.get("surface", "")}]
-    token_rows = _phase2_token_break_rows(seg1_payload, seg2_payload)
+    token_rows = _phase2_token_bar_rows(seg1_payload, seg2_payload)
     base_hash = _stable_text_hash(str(seg1_payload.get("surface") or ""))
 
     if request.method == "POST":
         try:
             for row in token_rows:
-                row["token_breaks"] = request.POST.get(
-                    f"token_breaks_{row['page_index']}_{row['segment_index']}",
-                    row["token_breaks"],
+                row["tokenized_text"] = request.POST.get(
+                    f"tokenized_text_{row['page_index']}_{row['segment_index']}",
+                    row["tokenized_text"],
                 )
-            edited_payload = _phase2_payload_from_break_rows(seg1_payload, token_rows)
+            edited_payload = _phase2_payload_from_bar_rows(seg1_payload, token_rows)
         except ValueError as exc:
             messages.error(request, str(exc))
         else:
@@ -1922,6 +1935,9 @@ def _resolve_run_dir(project: Project) -> Path | None:
         return latest_run_dir if latest_run_dir.stat().st_mtime >= compiled_run_dir.stat().st_mtime else compiled_run_dir
     return latest_run_dir or compiled_run_dir
 
+    if compiled_run_dir and latest_run_dir:
+        return latest_run_dir if latest_run_dir.stat().st_mtime >= compiled_run_dir.stat().st_mtime else compiled_run_dir
+    return latest_run_dir or compiled_run_dir
 
 def _has_segmentation_phase_1_output(project: Project) -> bool:
     run_dir = _resolve_run_dir(project)

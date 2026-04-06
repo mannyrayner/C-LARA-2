@@ -187,8 +187,23 @@ async def segmentation_phase_1(
     prompt = _build_prompt(template, text=spec.text, fewshots=fewshots, language=spec.language)
     telemetry = spec.telemetry or NullTelemetry()
     ai_client = client or OpenAIClient()
-    raw_response = await ai_client.chat_text(prompt, telemetry=telemetry, op_id=spec.op_id)
-    return _normalize_phase1_response(raw_response, text=spec.text, language=spec.language)
+    max_attempts = 3
+    for attempt in range(1, max_attempts + 1):
+        raw_response = await ai_client.chat_text(prompt, telemetry=telemetry, op_id=spec.op_id)
+        normalized = _normalize_phase1_response(raw_response, text=spec.text, language=spec.language)
+        if _phase1_surface_matches_text(spec.text, str(normalized.get("surface") or "")):
+            return normalized
+        telemetry.event(
+            spec.op_id or "segmentation_phase_1",
+            "warn",
+            "segmentation_phase_1 output changed base text; retrying",
+            {"attempt": attempt, "max_attempts": max_attempts},
+        )
+
+    raise ValueError(
+        "Segmentation phase 1 failed validation: model output changed the text content "
+        f"after {max_attempts} attempts."
+    )
 
 
 def _normalize_phase1_response(raw_response: str, *, text: str, language: str) -> dict[str, Any]:
@@ -230,6 +245,12 @@ def _normalize_phase1_response(raw_response: str, *, text: str, language: str) -
         "pages": pages,
         "annotations": {},
     }
+
+
+def _phase1_surface_matches_text(base_text: str, annotated_surface: str) -> bool:
+    normalized_base = base_text.replace("\r\n", "\n")
+    normalized_annotated = annotated_surface.replace("\r\n", "\n").replace("<page>", "").replace("||", "")
+    return normalized_base == normalized_annotated
 
 
 def _extract_between_tags(text: str, start_tag: str, end_tag: str) -> str:

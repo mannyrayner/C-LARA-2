@@ -76,7 +76,7 @@ class ManualSegmentationEditorTests(TestCase):
 
         resp = self.client.post(
             reverse("manual-segmentation-phase-2", args=[self.project.pk]),
-            {"token_breaks_1_1": "5"},
+            {"tokenized_text_1_1": "Hello¦ world"},
             follow=True,
         )
         self.assertEqual(resp.status_code, 200)
@@ -101,3 +101,18 @@ class ManualSegmentationEditorTests(TestCase):
         resp = self.client.get(reverse("project-detail", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, reverse("manual-segmentation-phase-1", args=[self.project.pk]))
+
+    def test_phase_1_handles_inconsistent_existing_surface_without_server_error(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_broken" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        broken = {
+            "l2": "en",
+            "surface": "Different text||here",
+            "pages": [{"surface": "Different text||here", "segments": [{"surface": "Different text"}, {"surface": "here"}]}],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_1.json").write_text(json.dumps(broken), encoding="utf-8")
+
+        resp = self.client.get(reverse("manual-segmentation-phase-1", args=[self.project.pk]), follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "inconsistent with base text")

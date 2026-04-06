@@ -130,6 +130,30 @@ class SegmentationTests(unittest.IsolatedAsyncioTestCase):
             status="pass",
         )
 
+    async def test_segmentation_phase_1_retries_when_text_is_changed(self) -> None:
+        client = FakePerCallAIClient(
+            [
+                {"surface": "Different text", "pages": [{"surface": "Different text", "segments": [{"surface": "Different text"}]}]},
+                {"surface": "Line one.", "pages": [{"surface": "Line one.", "segments": [{"surface": "Line one."}]}]},
+            ]
+        )
+        spec = SegmentationSpec(text="Line one.")
+        result = await segmentation.segmentation_phase_1(spec, client=client)
+        self.assertEqual("Line one.", result["surface"])
+        self.assertEqual(2, len(client.prompts))
+
+    async def test_segmentation_phase_1_fails_after_retries_if_text_changes(self) -> None:
+        client = FakePerCallAIClient(
+            [
+                {"surface": "Different 1", "pages": [{"surface": "Different 1", "segments": [{"surface": "Different 1"}]}]},
+                {"surface": "Different 2", "pages": [{"surface": "Different 2", "segments": [{"surface": "Different 2"}]}]},
+                {"surface": "Different 3", "pages": [{"surface": "Different 3", "segments": [{"surface": "Different 3"}]}]},
+            ]
+        )
+        spec = SegmentationSpec(text="Line one.")
+        with self.assertRaises(ValueError):
+            await segmentation.segmentation_phase_1(spec, client=client)
+
     def test_normalize_phase1_ignores_empty_page_chunks(self) -> None:
         raw = "<page>\nपहली पंक्ति।||दूसरी पंक्ति।"
         result = segmentation._normalize_phase1_response(raw, text="पहली पंक्ति। दूसरी पंक्ति।", language="hi")  # type: ignore[attr-defined]

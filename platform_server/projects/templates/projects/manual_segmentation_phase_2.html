@@ -17,14 +17,11 @@
     <div style="border:1px solid #ddd; padding:0.75rem; margin-bottom:0.75rem;">
       <div><strong>Page {{ row.page_index }}, Segment {{ row.segment_index }}</strong></div>
       <textarea rows="2" style="width:100%; font-family: monospace;" readonly>{{ row.segment_text }}</textarea>
-      <label>
-        Token break offsets:
-        <input
-          type="text"
-          name="token_breaks_{{ row.page_index }}_{{ row.segment_index }}"
-          value="{{ row.token_breaks }}"
-          style="width:100%; font-family: monospace;">
-      </label>
+      <label>Editable tokenization (insert/remove <code>¦</code> separators only):</label>
+      <textarea
+        rows="2"
+        name="tokenized_text_{{ row.page_index }}_{{ row.segment_index }}"
+        style="width:100%; font-family: monospace;">{{ row.tokenized_text }}</textarea>
     </div>
   {% empty %}
     <p>No segments available.</p>
