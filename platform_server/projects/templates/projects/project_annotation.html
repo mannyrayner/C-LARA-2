@@ -61,6 +61,19 @@
 </form>
 <p><a class="btn secondary" href="{% url 'project-download-bundle' object.pk %}">Download self-contained ZIP (HTML + audio + images)</a></p>
 <p><a class="btn secondary" href="{% url 'project-download-source-bundle' object.pk %}">Download source ZIP (latest run annotations + image metadata)</a></p>
+<h3>Manual segmentation editor (Step 1)</h3>
+{% if has_source_text_for_manual_segmentation %}
+  <p><a class="btn secondary" href="{% url 'manual-segmentation-phase-1' object.pk %}">Manual segmentation phase 1</a></p>
+{% else %}
+  <p>Manual segmentation phase 1 is unavailable until source text is present.</p>
+{% endif %}
+
+{% if has_segmentation_phase_1 %}
+  <p><a class="btn secondary" href="{% url 'manual-segmentation-phase-2' object.pk %}">Manual segmentation phase 2</a></p>
+{% else %}
+  <p>Manual segmentation phase 2 is unavailable until segmentation phase 1 annotated text exists.</p>
+{% endif %}
+
 <p><a class="btn secondary" href="{% url 'project-publish' object.pk %}">{% if object.is_published %}Unpublish{% else %}Publish{% endif %}</a></p>
 <form method="post" action="{% url 'project-delete' object.pk %}" onsubmit="return confirm('Delete this project and its artifacts?');">{% csrf_token %}
   <button class="btn secondary" type="submit">Delete project</button>

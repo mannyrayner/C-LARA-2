@@ -5,6 +5,7 @@ import logging
 import os
 import random
 import shutil
+import hashlib
 import uuid
 import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -1425,6 +1426,7 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
             if project.page_image_placement in PAGE_IMAGE_PLACEMENT_CHOICES
             else "none"
         )
+        context["has_source_text_for_manual_segmentation"] = bool(_base_text_for_segmentation_phase_1(project).strip())
         context["has_segmentation_phase_1"] = _has_segmentation_phase_1_output(project)
         if project.language.lower().startswith("zh"):
             context["segmentation_method_options"] = [("auto", "Jieba (default)"), ("jieba", "Jieba"), ("ai", "AI")]
@@ -1459,6 +1461,328 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
 
 class ProjectAnnotationView(ProjectDetailView):
     template_name = "projects/project_annotation.html"
+
+
+def _ensure_stage_run_dir(project: Project) -> Path:
+    run_dir = _resolve_run_dir(project)
+    if run_dir is None:
+        run_dir = _prepare_output_dir(project)
+    stage_dir = run_dir / "stages"
+    stage_dir.mkdir(parents=True, exist_ok=True)
+    return run_dir
+
+
+def _base_text_for_segmentation_phase_1(project: Project) -> str:
+    source_text = (project.source_text or "").replace("\r\n", "\n")
+    if source_text.strip():
+        return source_text
+    run_dir = _find_run_with_stage(project, "text_gen")
+    payload = _load_stage_payload(project, "text_gen", run_dir=run_dir) if run_dir else None
+    if isinstance(payload, dict):
+        return str(payload.get("surface") or "").replace("\r\n", "\n")
+    return ""
+
+
+def _surface_without_phase1_markers(surface: str) -> str:
+    return surface.replace("<page>\n", "").replace("<page>", "").replace("||", "")
+
+
+def _build_phase1_payload_from_surface(surface: str, language: str) -> dict[str, Any]:
+    pages: list[dict[str, Any]] = []
+    for page_raw in surface.split("<page>"):
+        if page_raw == "":
+            continue
+        segments_raw = page_raw.split("||")
+        segments = [{"surface": seg} for seg in segments_raw]
+        pages.append({"surface": page_raw, "segments": segments, "annotations": {}})
+    return {"l2": language, "surface": surface, "pages": pages, "annotations": {}}
+
+
+def _phase2_preview_from_payload(payload: dict[str, Any]) -> str:
+    lines: list[str] = []
+    for p_idx, page in enumerate(payload.get("pages", []) or [], start=1):
+        lines.append(f"# Page {p_idx}")
+        for s_idx, segment in enumerate(page.get("segments", []) or [], start=1):
+            tokens = segment.get("tokens") or []
+            token_surfaces = [str(tok.get("surface", "")) for tok in tokens if isinstance(tok, dict)]
+            if token_surfaces:
+                lines.append(f"P{p_idx}S{s_idx}: " + "¦".join(token_surfaces))
+            else:
+                lines.append(f"P{p_idx}S{s_idx}: {segment.get('surface', '')}")
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _stable_text_hash(text: str) -> str:
+    return hashlib.sha256(text.replace("\r\n", "\n").encode("utf-8")).hexdigest()
+
+
+def _parse_int_csv(value: str, *, lower: int, upper: int) -> list[int]:
+    raw = (value or "").strip()
+    if not raw:
+        return []
+    try:
+        values = [int(piece.strip()) for piece in raw.split(",") if piece.strip()]
+    except ValueError as exc:
+        raise ValueError("All boundary values must be integers.") from exc
+    if values != sorted(values):
+        raise ValueError("Boundary values must be sorted in ascending order.")
+    if len(values) != len(set(values)):
+        raise ValueError("Boundary values must not contain duplicates.")
+    for item in values:
+        if item < lower or item > upper:
+            raise ValueError(f"Boundary value {item} is outside the valid range [{lower}, {upper}].")
+    return values
+
+
+def _save_versioned_stage_payload(
+    *,
+    project: Project,
+    stage_name: str,
+    payload: dict[str, Any],
+    metadata: dict[str, Any],
+) -> None:
+    target_run = _ensure_stage_run_dir(project)
+    stage_dir = target_run / "stages"
+    stage_dir.mkdir(parents=True, exist_ok=True)
+    (stage_dir / f"{stage_name}.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    versions_dir = stage_dir / "manual_versions"
+    versions_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    version_payload = {"saved_at": stamp, "stage": stage_name, "metadata": metadata, "payload": payload}
+    (versions_dir / f"{stage_name}_{stamp}.json").write_text(
+        json.dumps(version_payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+def _phase1_boundaries_from_surface(surface: str, base_text: str) -> tuple[list[int], list[int]]:
+    pages = [p for p in surface.split("<page>") if p != ""]
+    segments: list[str] = []
+    page_breaks: list[int] = []
+    seg_counter = 0
+    for p_idx, page in enumerate(pages):
+        page_segments = page.split("||")
+        if p_idx > 0:
+            page_breaks.append(seg_counter)
+        segments.extend(page_segments)
+        seg_counter += len(page_segments)
+    if "".join(segments) != base_text:
+        raise ValueError("Current segmentation content differs from base text.")
+    cursor = 0
+    segment_breaks: list[int] = []
+    for segment in segments[:-1]:
+        cursor += len(segment)
+        segment_breaks.append(cursor)
+    return segment_breaks, page_breaks
+
+
+def _phase1_surface_from_boundaries(base_text: str, segment_breaks: list[int], page_breaks: list[int]) -> str:
+    split_points = [0] + segment_breaks + [len(base_text)]
+    segments = [base_text[split_points[i] : split_points[i + 1]] for i in range(len(split_points) - 1)]
+    page_break_set = set(page_breaks)
+    pages: list[list[str]] = [[]]
+    for idx, segment in enumerate(segments):
+        if idx in page_break_set:
+            pages.append([])
+        pages[-1].append(segment)
+    return "<page>".join("||".join(page_segments) for page_segments in pages)
+
+
+def _phase2_token_break_rows(seg1_payload: dict[str, Any], seg2_payload: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for p_idx, (base_page, edited_page) in enumerate(
+        zip(seg1_payload.get("pages") or [], seg2_payload.get("pages") or []),
+        start=1,
+    ):
+        for s_idx, (base_segment, edited_segment) in enumerate(
+            zip(base_page.get("segments") or [], edited_page.get("segments") or []),
+            start=1,
+        ):
+            segment_text = str(base_segment.get("surface") or "")
+            offsets: list[int] = []
+            cursor = 0
+            for tok in (edited_segment.get("tokens") or [])[:-1]:
+                cursor += len(str((tok or {}).get("surface") or ""))
+                offsets.append(cursor)
+            rows.append(
+                {
+                    "page_index": p_idx,
+                    "segment_index": s_idx,
+                    "segment_text": segment_text,
+                    "token_breaks": ",".join(str(v) for v in offsets),
+                }
+            )
+    return rows
+
+
+def _phase2_payload_from_break_rows(seg1_payload: dict[str, Any], rows: list[dict[str, Any]]) -> dict[str, Any]:
+    token_break_map: dict[tuple[int, int], list[int]] = {}
+    for row in rows:
+        token_break_map[(row["page_index"], row["segment_index"])] = _parse_int_csv(
+            row["token_breaks"],
+            lower=1,
+            upper=max(len(str(row["segment_text"])) - 1, 1),
+        )
+    edited = json.loads(json.dumps(seg1_payload))
+    for p_idx, page in enumerate(edited.get("pages") or [], start=1):
+        for s_idx, segment in enumerate(page.get("segments") or [], start=1):
+            text = str(segment.get("surface") or "")
+            split_points = [0] + token_break_map.get((p_idx, s_idx), []) + [len(text)]
+            segment["tokens"] = [
+                {"surface": text[split_points[i] : split_points[i + 1]]}
+                for i in range(len(split_points) - 1)
+            ]
+    return edited
+
+
+def _validate_phase2_structure(seg1_payload: dict[str, Any], edited_payload: dict[str, Any]) -> str | None:
+    base_pages = seg1_payload.get("pages") or []
+    edited_pages = edited_payload.get("pages") or []
+    if len(base_pages) != len(edited_pages):
+        return "Edited segmentation phase 2 must keep the same number of pages as segmentation phase 1."
+    for p_idx, (base_page, edited_page) in enumerate(zip(base_pages, edited_pages), start=1):
+        base_segments = base_page.get("segments") or []
+        edited_segments = edited_page.get("segments") or []
+        if len(base_segments) != len(edited_segments):
+            return f"Page {p_idx} must keep the same number of segments as segmentation phase 1."
+        for s_idx, (base_segment, edited_segment) in enumerate(zip(base_segments, edited_segments), start=1):
+            base_surface = str(base_segment.get("surface") or "")
+            tokens = edited_segment.get("tokens") or []
+            if not isinstance(tokens, list) or not tokens:
+                return f"Page {p_idx} segment {s_idx} must contain a non-empty token list."
+            rebuilt = ""
+            for token in tokens:
+                if not isinstance(token, dict):
+                    return f"Page {p_idx} segment {s_idx} has an invalid token entry."
+                rebuilt += str(token.get("surface") or "")
+            if rebuilt != base_surface:
+                return (
+                    f"Page {p_idx} segment {s_idx} changes text content. "
+                    "Only content-element boundaries may be edited in segmentation phase 2."
+                )
+    return None
+
+
+@login_required
+def manual_segmentation_phase_1(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    base_text = _base_text_for_segmentation_phase_1(project)
+    if not base_text.strip():
+        messages.error(request, "Manual segmentation phase 1 requires source text.")
+        return redirect("project-annotation-home", pk=project.pk)
+
+    run_dir = _find_run_with_stage(project, "segmentation_phase_1") or _resolve_run_dir(project)
+    current_payload = _load_stage_payload(project, "segmentation_phase_1", run_dir=run_dir) if run_dir else None
+    current_surface = str((current_payload or {}).get("surface") or base_text)
+    segment_breaks, page_breaks = _phase1_boundaries_from_surface(current_surface, base_text)
+    segment_breaks_csv = ",".join(str(v) for v in segment_breaks)
+    page_breaks_csv = ",".join(str(v) for v in page_breaks)
+    base_hash = _stable_text_hash(base_text)
+
+    if request.method == "POST":
+        segment_breaks_csv = request.POST.get("segment_breaks") or ""
+        page_breaks_csv = request.POST.get("page_breaks") or ""
+        try:
+            segment_breaks = _parse_int_csv(segment_breaks_csv, lower=1, upper=max(len(base_text) - 1, 1))
+            total_segments = len(segment_breaks) + 1
+            page_breaks = _parse_int_csv(page_breaks_csv, lower=1, upper=max(total_segments - 1, 1))
+            edited_surface = _phase1_surface_from_boundaries(base_text, segment_breaks, page_breaks)
+            edited_hash = _stable_text_hash(_surface_without_phase1_markers(edited_surface))
+            if edited_hash != base_hash:
+                messages.error(request, "Text hash mismatch; only boundaries may be changed.")
+            else:
+                payload = _build_phase1_payload_from_surface(edited_surface, project.language)
+                _save_versioned_stage_payload(
+                    project=project,
+                    stage_name="segmentation_phase_1",
+                    payload=payload,
+                    metadata={
+                        "before_text_hash": base_hash,
+                        "after_text_hash": edited_hash,
+                        "segment_breaks": segment_breaks,
+                        "page_breaks": page_breaks,
+                    },
+                )
+                messages.success(request, "Saved manual segmentation phase 1.")
+                return redirect("manual-segmentation-phase-1", pk=project.pk)
+        except ValueError as exc:
+            messages.error(request, str(exc))
+
+    return render(
+        request,
+        "projects/manual_segmentation_phase_1.html",
+        {
+            "project": project,
+            "base_text": base_text,
+            "segment_breaks": segment_breaks_csv,
+            "page_breaks": page_breaks_csv,
+            "base_hash": base_hash,
+            "base_text_length": len(base_text),
+            "total_segments": len(segment_breaks) + 1,
+        },
+    )
+
+
+@login_required
+def manual_segmentation_phase_2(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    seg1_run = _find_run_with_stage(project, "segmentation_phase_1")
+    seg1_payload = _load_stage_payload(project, "segmentation_phase_1", run_dir=seg1_run) if seg1_run else None
+    if not seg1_payload:
+        messages.error(
+            request,
+            "Manual segmentation phase 2 requires segmentation phase 1 annotated text.",
+        )
+        return redirect("project-annotation-home", pk=project.pk)
+
+    seg2_run = _find_run_with_stage(project, "segmentation_phase_2") or seg1_run
+    seg2_payload = _load_stage_payload(project, "segmentation_phase_2", run_dir=seg2_run) if seg2_run else None
+    if not seg2_payload:
+        seg2_payload = json.loads(json.dumps(seg1_payload))
+        for page in seg2_payload.get("pages", []) or []:
+            for segment in page.get("segments", []) or []:
+                segment["tokens"] = [{"surface": segment.get("surface", "")}]
+    token_rows = _phase2_token_break_rows(seg1_payload, seg2_payload)
+    base_hash = _stable_text_hash(str(seg1_payload.get("surface") or ""))
+
+    if request.method == "POST":
+        try:
+            for row in token_rows:
+                row["token_breaks"] = request.POST.get(
+                    f"token_breaks_{row['page_index']}_{row['segment_index']}",
+                    row["token_breaks"],
+                )
+            edited_payload = _phase2_payload_from_break_rows(seg1_payload, token_rows)
+        except ValueError as exc:
+            messages.error(request, str(exc))
+        else:
+            error = _validate_phase2_structure(seg1_payload, edited_payload)
+            edited_hash = _stable_text_hash(str(edited_payload.get("surface") or ""))
+            if error:
+                messages.error(request, error)
+            elif edited_hash != base_hash:
+                messages.error(request, "Text hash mismatch; only content-element boundaries may be changed.")
+            else:
+                _save_versioned_stage_payload(
+                    project=project,
+                    stage_name="segmentation_phase_2",
+                    payload=edited_payload,
+                    metadata={"before_text_hash": base_hash, "after_text_hash": edited_hash},
+                )
+                messages.success(request, "Saved manual segmentation phase 2.")
+                return redirect("manual-segmentation-phase-2", pk=project.pk)
+
+    return render(
+        request,
+        "projects/manual_segmentation_phase_2.html",
+        {
+            "project": project,
+            "token_rows": token_rows,
+            "base_hash": base_hash,
+            "preview": _phase2_preview_from_payload(seg2_payload),
+        },
+    )
 
 
 @login_required
@@ -1598,9 +1922,6 @@ def _resolve_run_dir(project: Project) -> Path | None:
         return latest_run_dir if latest_run_dir.stat().st_mtime >= compiled_run_dir.stat().st_mtime else compiled_run_dir
     return latest_run_dir or compiled_run_dir
 
-    if compiled_run_dir and latest_run_dir:
-        return latest_run_dir if latest_run_dir.stat().st_mtime >= compiled_run_dir.stat().st_mtime else compiled_run_dir
-    return latest_run_dir or compiled_run_dir
 
 def _has_segmentation_phase_1_output(project: Project) -> bool:
     run_dir = _resolve_run_dir(project)
