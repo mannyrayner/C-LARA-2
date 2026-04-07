@@ -64,12 +64,22 @@
 <h3>Manual segmentation editor (Step 1)</h3>
 {% if has_source_text_for_manual_segmentation %}
   <p><a class="btn secondary" href="{% url 'manual-segmentation-phase-1' object.pk %}">Manual segmentation phase 1</a></p>
+  {% with s=manual_stage_status.segmentation_phase_1 %}
+    {% if s.exists %}
+      <p><small>Latest: {{ s.updated_at }} ({{ s.provenance }}, run {{ s.run }}){% if s.note %}; {{ s.note }}{% endif %}</small></p>
+    {% endif %}
+  {% endwith %}
 {% else %}
   <p>Manual segmentation phase 1 is unavailable until source text is present.</p>
 {% endif %}
 
 {% if has_segmentation_phase_1 %}
   <p><a class="btn secondary" href="{% url 'manual-segmentation-phase-2' object.pk %}">Manual segmentation phase 2</a></p>
+  {% with s=manual_stage_status.segmentation_phase_2 %}
+    {% if s.exists %}
+      <p><small>Latest: {{ s.updated_at }} ({{ s.provenance }}, run {{ s.run }}){% if s.note %}; {{ s.note }}{% endif %}</small></p>
+    {% endif %}
+  {% endwith %}
 {% else %}
   <p>Manual segmentation phase 2 is unavailable until segmentation phase 1 annotated text exists.</p>
 {% endif %}

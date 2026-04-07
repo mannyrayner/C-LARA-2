@@ -237,3 +237,54 @@ class ManualSegmentationEditorTests(TestCase):
         resp = self.client.get(reverse("manual-segmentation-phase-2", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Hello¦ world")
+
+    def test_phase_2_view_auto_reconciles_inconsistent_payload(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_inconsistent" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        seg1_payload = {
+            "l2": "en",
+            "surface": "A||B<page>C",
+            "pages": [
+                {"surface": "A||B", "segments": [{"surface": "A"}, {"surface": "B"}], "annotations": {}},
+                {"surface": "C", "segments": [{"surface": "C"}], "annotations": {}},
+            ],
+            "annotations": {},
+        }
+        seg2_payload = {
+            "l2": "en",
+            "surface": "A<page>B||C",
+            "pages": [
+                {"surface": "A", "segments": [{"surface": "A", "tokens": [{"surface": "A"}]}]},
+                {
+                    "surface": "B||C",
+                    "segments": [
+                        {"surface": "B", "tokens": [{"surface": "B"}, {"surface": "x"}]},
+                        {"surface": "C", "tokens": [{"surface": "C"}]},
+                    ],
+                },
+            ],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_1.json").write_text(json.dumps(seg1_payload), encoding="utf-8")
+        (run_dir / "segmentation_phase_2.json").write_text(json.dumps(seg2_payload), encoding="utf-8")
+
+        resp = self.client.get(reverse("manual-segmentation-phase-2", args=[self.project.pk]), follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "auto-reconciled")
+        self.assertContains(resp, "name=\"tokenized_text_1_2\"")
+        self.assertContains(resp, ">B</textarea>")
+
+    def test_annotation_home_shows_manual_stage_status(self):
+        stage_dir = self.project.artifact_dir() / "runs" / "run_manual" / "stages"
+        manual_dir = stage_dir / "manual_versions"
+        stage_dir.mkdir(parents=True, exist_ok=True)
+        manual_dir.mkdir(parents=True, exist_ok=True)
+        (stage_dir / "segmentation_phase_1.json").write_text("{}", encoding="utf-8")
+        (manual_dir / "segmentation_phase_1_20260101T000000000000Z.json").write_text("{}", encoding="utf-8")
+        ts = 2000
+        os.utime(stage_dir / "segmentation_phase_1.json", (ts, ts))
+        os.utime(manual_dir / "segmentation_phase_1_20260101T000000000000Z.json", (ts, ts))
+
+        resp = self.client.get(reverse("project-annotation-home", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "manual edit")

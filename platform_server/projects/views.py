@@ -1428,6 +1428,10 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         )
         context["has_source_text_for_manual_segmentation"] = bool(_base_text_for_segmentation_phase_1(project).strip())
         context["has_segmentation_phase_1"] = _has_segmentation_phase_1_output(project)
+        context["manual_stage_status"] = {
+            "segmentation_phase_1": _manual_stage_status(project, "segmentation_phase_1"),
+            "segmentation_phase_2": _manual_stage_status(project, "segmentation_phase_2"),
+        }
         if project.language.lower().startswith("zh"):
             context["segmentation_method_options"] = [("auto", "Jieba (default)"), ("jieba", "Jieba"), ("ai", "AI")]
             context["romanization_method_options"] = [
@@ -1599,6 +1603,29 @@ def _phase2_payload_from_bar_rows(seg1_payload: dict[str, Any], rows: list[dict[
     return edited
 
 
+def _reconcile_phase2_payload_with_seg1(seg1_payload: dict[str, Any], seg2_payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    if _validate_phase2_structure(seg1_payload, seg2_payload) is None:
+        return seg2_payload, False
+
+    reconciled = _build_phase2_seed_from_seg1(seg1_payload)
+    old_pages = seg2_payload.get("pages") or []
+    new_pages = reconciled.get("pages") or []
+    for pidx, new_page in enumerate(new_pages):
+        new_segments = (new_page or {}).get("segments") or []
+        old_segments = ((old_pages[pidx] if pidx < len(old_pages) else {}) or {}).get("segments") or []
+        for sidx, new_segment in enumerate(new_segments):
+            old_segment = (old_segments[sidx] if sidx < len(old_segments) else {}) or {}
+            if str(old_segment.get("surface") or "") != str(new_segment.get("surface") or ""):
+                continue
+            tokens = old_segment.get("tokens") or []
+            if not isinstance(tokens, list) or not tokens:
+                continue
+            rebuilt = "".join(str((tok or {}).get("surface") or "") for tok in tokens if isinstance(tok, dict))
+            if rebuilt == str(new_segment.get("surface") or ""):
+                new_segment["tokens"] = tokens
+    return reconciled, True
+
+
 def _page_surface_hashes(payload: dict[str, Any]) -> list[str]:
     hashes: list[str] = []
     for page in payload.get("pages", []) or []:
@@ -1672,6 +1699,34 @@ def _invalidate_downstream_stage_files(run_dir: Path, from_stage: str) -> None:
         path = run_dir / "stages" / f"{stage}.json"
         if path.exists():
             path.unlink()
+
+
+def _manual_stage_status(project: Project, stage: str) -> dict[str, Any]:
+    latest = _find_latest_stage_file(project, f"{stage}.json")
+    if not latest:
+        return {"exists": False, "stage": stage}
+    run_dir, stage_path = latest
+    stage_mtime = datetime.fromtimestamp(stage_path.stat().st_mtime, tz=timezone.utc)
+    manual_dir = run_dir / "stages" / "manual_versions"
+    provenance = "pipeline/auto"
+    if manual_dir.exists():
+        matches = sorted(manual_dir.glob(f"{stage}_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+        if matches and abs(matches[0].stat().st_mtime - stage_path.stat().st_mtime) < 3:
+            provenance = "manual edit"
+    note = ""
+    if stage == "segmentation_phase_2":
+        upstream = _find_latest_stage_file(project, "segmentation_phase_1.json")
+        if upstream and upstream[1].stat().st_mtime > stage_path.stat().st_mtime:
+            note = "upstream phase 1 is newer"
+    return {
+        "exists": True,
+        "stage": stage,
+        "run": run_dir.name,
+        "path": stage_path,
+        "updated_at": stage_mtime.isoformat(),
+        "provenance": provenance,
+        "note": note,
+    }
 
 
 def _validate_phase2_structure(seg1_payload: dict[str, Any], edited_payload: dict[str, Any]) -> str | None:
@@ -1784,6 +1839,18 @@ def manual_segmentation_phase_2(request: HttpRequest, pk: int) -> HttpResponse:
         for page in seg2_payload.get("pages", []) or []:
             for segment in page.get("segments", []) or []:
                 segment["tokens"] = [{"surface": segment.get("surface", "")}]
+    seg2_payload, reconciled = _reconcile_phase2_payload_with_seg1(seg1_payload, seg2_payload)
+    if reconciled:
+        target_run = _ensure_stage_run_dir(project)
+        (target_run / "stages" / "segmentation_phase_2.json").write_text(
+            json.dumps(seg2_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        messages.warning(
+            request,
+            "Segmentation phase 2 was out of sync with phase 1 and has been auto-reconciled; "
+            "unchanged aligned segments were preserved.",
+        )
     token_rows = _phase2_token_bar_rows(seg1_payload, seg2_payload)
     base_hash = _stable_text_hash(str(seg1_payload.get("surface") or ""))
 
@@ -2039,67 +2106,6 @@ def _load_stage_payload(
 ) -> dict[str, Any] | None:
     if run_dir is None:
         run_dir = _find_run_with_stage(project, stage) or _resolve_run_dir(project)
-    if not run_dir:
-        return False
-    return (run_dir / "stages" / "segmentation_phase_1.json").exists()
-
-
-
-def _write_tree_to_zip(zip_file: zipfile.ZipFile, source_dir: Path, zip_root: Path) -> int:
-    """Write all files under ``source_dir`` into ``zip_file`` under ``zip_root``."""
-
-    if not source_dir.exists():
-        return 0
-
-    count = 0
-    for file_path in source_dir.rglob("*"):
-        if not file_path.is_file():
-            continue
-        rel = file_path.relative_to(source_dir)
-        zip_file.write(file_path, arcname=(zip_root / rel).as_posix())
-        count += 1
-    return count
-
-
-def _safe_zip_read_json(zf: zipfile.ZipFile, member: str) -> dict[str, Any] | None:
-    try:
-        with zf.open(member, "r") as fp:
-            return json.loads(fp.read().decode("utf-8"))
-    except Exception:
-        return None
-
-
-def _build_unique_import_title(user: Any, base_title: str) -> str:
-    candidate = (base_title or "Imported project").strip()
-    if not candidate:
-        candidate = "Imported project"
-    if not Project.objects.filter(owner=user, title=candidate).exists():
-        return candidate
-    for idx in range(2, 200):
-        titled = f"{candidate} ({idx})"
-        if not Project.objects.filter(owner=user, title=titled).exists():
-            return titled
-    return f"{candidate} ({uuid.uuid4().hex[:8]})"
-
-def _iter_runs(project: Project) -> list[Path]:
-    runs_root = (project.artifact_dir() / "runs").resolve()
-    if not runs_root.exists():
-        return []
-    return sorted(runs_root.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True)
-
-
-def _find_run_with_stage(project: Project, stage: str) -> Path | None:
-    for run_dir in _iter_runs(project):
-        if (run_dir / "stages" / f"{stage}.json").exists():
-            return run_dir
-    return None
-
-
-def _load_stage_payload(
-    project: Project, stage: str, run_dir: Path | None = None
-) -> dict[str, Any] | None:
-    if run_dir is None:
-        run_dir = _resolve_run_dir(project)
     if not run_dir:
         return None
     path = run_dir / "stages" / f"{stage}.json"
