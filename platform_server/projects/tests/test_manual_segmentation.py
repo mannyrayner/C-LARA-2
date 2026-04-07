@@ -1,4 +1,5 @@
 import json
+import os
 import shutil
 from pathlib import Path
 
@@ -183,3 +184,56 @@ class ManualSegmentationEditorTests(TestCase):
         second_page_tokens = salvaged_seg2["pages"][1]["segments"][0]["tokens"]
         self.assertEqual(second_page_tokens, [{"surface": "Bb"}])
         self.assertFalse((latest_stage_dir / "translation.json").exists())
+
+    def test_annotation_home_uses_latest_stage_files_across_runs(self):
+        pipeline_stage_dir = self.project.artifact_dir() / "runs" / "run_pipeline" / "stages"
+        manual_stage_dir = self.project.artifact_dir() / "runs" / "run_manual" / "stages"
+        pipeline_stage_dir.mkdir(parents=True, exist_ok=True)
+        manual_stage_dir.mkdir(parents=True, exist_ok=True)
+        (pipeline_stage_dir / "translation.json").write_text("{\"surface\":\"PIPELINE\"}", encoding="utf-8")
+        (pipeline_stage_dir / "segmentation_phase_1.json").write_text("{\"surface\":\"old\"}", encoding="utf-8")
+        (manual_stage_dir / "segmentation_phase_1.json").write_text("{\"surface\":\"new\"}", encoding="utf-8")
+        os.utime(pipeline_stage_dir / "segmentation_phase_1.json", (1000, 1000))
+        os.utime(manual_stage_dir / "segmentation_phase_1.json", (2000, 2000))
+
+        resp = self.client.get(reverse("project-annotation-home", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "run_manual/stages/segmentation_phase_1.json")
+        self.assertContains(resp, "run_pipeline/stages/translation.json")
+
+    def test_phase_2_view_uses_latest_seg2_payload_by_file_time(self):
+        run_newer_dir = self.project.artifact_dir() / "runs" / "run_newer" / "stages"
+        run_manual_dir = self.project.artifact_dir() / "runs" / "run_manual" / "stages"
+        run_newer_dir.mkdir(parents=True, exist_ok=True)
+        run_manual_dir.mkdir(parents=True, exist_ok=True)
+        seg1_payload = {
+            "l2": "en",
+            "surface": "Hello world",
+            "pages": [{"surface": "Hello world", "segments": [{"surface": "Hello world"}], "annotations": {}}],
+            "annotations": {},
+        }
+        seg2_old = {
+            "l2": "en",
+            "surface": "Hello world",
+            "pages": [{"surface": "Hello world", "segments": [{"surface": "Hello world", "tokens": [{"surface": "OLD"}]}]}],
+            "annotations": {},
+        }
+        seg2_new = {
+            "l2": "en",
+            "surface": "Hello world",
+            "pages": [{"surface": "Hello world", "segments": [{"surface": "Hello world", "tokens": [{"surface": "Hello"}, {"surface": " world"}]}]}],
+            "annotations": {},
+        }
+        (run_newer_dir / "segmentation_phase_1.json").write_text(json.dumps(seg1_payload), encoding="utf-8")
+        (run_newer_dir / "segmentation_phase_2.json").write_text(json.dumps(seg2_old), encoding="utf-8")
+        (run_manual_dir / "segmentation_phase_2.json").write_text(json.dumps(seg2_new), encoding="utf-8")
+        # Make manual seg2 the newest stage file while keeping run_newer directory mtime newer.
+        old_ts = 1000
+        new_ts = 2000
+        os.utime(run_newer_dir / "segmentation_phase_2.json", (old_ts, old_ts))
+        os.utime(run_manual_dir / "segmentation_phase_2.json", (new_ts, new_ts))
+        os.utime(run_newer_dir.parent, (new_ts + 500, new_ts + 500))
+
+        resp = self.client.get(reverse("manual-segmentation-phase-2", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Hello¦ world")

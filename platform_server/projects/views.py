@@ -1359,46 +1359,46 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
             tz_name = "UTC"
 
         if run_dir:
-            # Keep the MEDIA-relative run base stable for stage links even if
-            # the project was compiled on a different host path.
+            latest_stage_by_name: dict[str, Path] = {}
+            for candidate_run in _iter_runs(project):
+                stage_dir = candidate_run / "stages"
+                if not stage_dir.exists():
+                    continue
+                for path in stage_dir.glob("*.json"):
+                    current = latest_stage_by_name.get(path.name)
+                    if current is None or path.stat().st_mtime > current.stat().st_mtime:
+                        latest_stage_by_name[path.name] = path
+            for path in sorted(latest_stage_by_name.values(), key=lambda p: p.stat().st_mtime):
+                rel = path.resolve().relative_to(base).as_posix()
+                url = f"{project_media_base}/{rel}"
+                stage_files.append({"path": rel, "url": url})
+
+            # Keep the MEDIA-relative run base stable for progress links.
             run_media_base = f"{project_media_base}/runs/{run_dir.name}"
-
             stage_dir = run_dir / "stages"
-            if stage_dir.exists():
-                for path in sorted(stage_dir.glob("*.json"), key=lambda p: p.stat().st_mtime):
-                    rel = path.resolve().relative_to(base).as_posix()
-                    url = None
-                    if run_media_base:
-                        try:
-                            rel_from_run = path.resolve().relative_to(run_dir).as_posix()
-                            url = run_media_base.rstrip("/") + "/" + rel_from_run
-                        except Exception:
-                            url = None
-                    stage_files.append({"path": rel, "url": url})
+            progress_path = stage_dir / "progress.jsonl"
+            if progress_path.exists():
+                for line in progress_path.read_text(encoding="utf-8").splitlines():
+                    try:
+                        raw_entry = json.loads(line)
+                    except Exception:
+                        continue
 
-                progress_path = stage_dir / "progress.jsonl"
-                if progress_path.exists():
-                    for line in progress_path.read_text(encoding="utf-8").splitlines():
-                        try:
-                            raw_entry = json.loads(line)
-                        except Exception:
-                            continue
-
-                        display_ts, dt = _format_timestamp(
-                            raw_entry.get("timestamp", ""), tz_name
-                        )
-                        progress.append(
-                            {
-                                "stage": raw_entry.get("stage"),
-                                "status": raw_entry.get("status"),
-                                "timestamp": display_ts,
-                                "_dt": dt,
-                            }
-                        )
-
-                    progress.sort(
-                        key=lambda p: p.get("_dt") or p.get("timestamp", "")
+                    display_ts, dt = _format_timestamp(
+                        raw_entry.get("timestamp", ""), tz_name
                     )
+                    progress.append(
+                        {
+                            "stage": raw_entry.get("stage"),
+                            "status": raw_entry.get("status"),
+                            "timestamp": display_ts,
+                            "_dt": dt,
+                        }
+                    )
+
+                progress.sort(
+                    key=lambda p: p.get("_dt") or p.get("timestamp", "")
+                )
 
         # Drop helper datetime objects used for sorting before rendering.
         for p in progress:
@@ -1963,12 +1963,82 @@ def _resolve_run_dir(project: Project) -> Path | None:
         return latest_run_dir if latest_run_dir.stat().st_mtime >= compiled_run_dir.stat().st_mtime else compiled_run_dir
     return latest_run_dir or compiled_run_dir
 
-    if compiled_run_dir and latest_run_dir:
-        return latest_run_dir if latest_run_dir.stat().st_mtime >= compiled_run_dir.stat().st_mtime else compiled_run_dir
-    return latest_run_dir or compiled_run_dir
 
 def _has_segmentation_phase_1_output(project: Project) -> bool:
-    run_dir = _resolve_run_dir(project)
+    return _find_latest_stage_file(project, "segmentation_phase_1.json") is not None
+
+
+
+def _write_tree_to_zip(zip_file: zipfile.ZipFile, source_dir: Path, zip_root: Path) -> int:
+    """Write all files under ``source_dir`` into ``zip_file`` under ``zip_root``."""
+
+    if not source_dir.exists():
+        return 0
+
+    count = 0
+    for file_path in source_dir.rglob("*"):
+        if not file_path.is_file():
+            continue
+        rel = file_path.relative_to(source_dir)
+        zip_file.write(file_path, arcname=(zip_root / rel).as_posix())
+        count += 1
+    return count
+
+
+def _safe_zip_read_json(zf: zipfile.ZipFile, member: str) -> dict[str, Any] | None:
+    try:
+        with zf.open(member, "r") as fp:
+            return json.loads(fp.read().decode("utf-8"))
+    except Exception:
+        return None
+
+
+def _build_unique_import_title(user: Any, base_title: str) -> str:
+    candidate = (base_title or "Imported project").strip()
+    if not candidate:
+        candidate = "Imported project"
+    if not Project.objects.filter(owner=user, title=candidate).exists():
+        return candidate
+    for idx in range(2, 200):
+        titled = f"{candidate} ({idx})"
+        if not Project.objects.filter(owner=user, title=titled).exists():
+            return titled
+    return f"{candidate} ({uuid.uuid4().hex[:8]})"
+
+def _iter_runs(project: Project) -> list[Path]:
+    runs_root = (project.artifact_dir() / "runs").resolve()
+    if not runs_root.exists():
+        return []
+    return sorted(runs_root.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True)
+
+
+def _find_latest_stage_file(project: Project, stage_filename: str) -> tuple[Path, Path] | None:
+    newest: tuple[Path, Path] | None = None
+    newest_mtime = float("-inf")
+    for run_dir in _iter_runs(project):
+        candidate = run_dir / "stages" / stage_filename
+        if not candidate.exists():
+            continue
+        try:
+            mtime = candidate.stat().st_mtime
+        except Exception:
+            continue
+        if mtime > newest_mtime:
+            newest = (run_dir, candidate)
+            newest_mtime = mtime
+    return newest
+
+
+def _find_run_with_stage(project: Project, stage: str) -> Path | None:
+    latest = _find_latest_stage_file(project, f"{stage}.json")
+    return latest[0] if latest else None
+
+
+def _load_stage_payload(
+    project: Project, stage: str, run_dir: Path | None = None
+) -> dict[str, Any] | None:
+    if run_dir is None:
+        run_dir = _find_run_with_stage(project, stage) or _resolve_run_dir(project)
     if not run_dir:
         return False
     return (run_dir / "stages" / "segmentation_phase_1.json").exists()
