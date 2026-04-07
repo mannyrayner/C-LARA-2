@@ -1,0 +1,38 @@
+{
+  "input": "{\n  \"surface\": \"Er steht jeden Tag früh auf und freut sich auf das Wochenende.\",\n  \"tokens\": [\n    {\"surface\": \"Er\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"steht\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"jeden\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"Tag\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"früh\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"auf\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"und\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"freut\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"sich\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"auf\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"das\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"Wochenende\", \"annotations\": {}},\n    {\"surface\": \".\"}\n  ],\n  \"annotations\": {}\n}",
+  "output": {
+    "surface": "Er steht jeden Tag früh auf und freut sich auf das Wochenende.",
+    "tokens": [
+      {"surface": "Er"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "steht", "annotations": {"mwe_id": "m1"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "jeden"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "Tag"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "früh"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "auf", "annotations": {"mwe_id": "m1"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "und"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "freut", "annotations": {"mwe_id": "m2"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "sich", "annotations": {"mwe_id": "m2"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "auf"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "das"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "Wochenende"},
+      {"surface": "."}
+    ],
+    "annotations": {
+      "mwes": [
+        {"id": "m1", "tokens": ["steht", "auf"], "label": "trennbares Verb"},
+        {"id": "m2", "tokens": ["freut", "sich"], "label": "reflexive Verbkonstruktion"}
+      ]
+    }
+  }
+}

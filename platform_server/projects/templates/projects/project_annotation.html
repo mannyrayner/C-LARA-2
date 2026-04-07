@@ -1,0 +1,151 @@
+{% extends "projects/base.html" %}
+{% block title %}Project: {{ object.title }}{% endblock %}
+{% block content %}
+<h1>{{ object.title }}</h1>
+<p><a class="btn secondary" href="{% url 'project-detail' object.pk %}">← Back to project</a></p>
+<p>{{ object.description }}</p>
+<p>Language: {{ object.language }} → {{ object.target_language }}</p>
+<form method="post" action="{% url 'project-image-placement' object.pk %}">{% csrf_token %}
+  <p>
+    <label for="page_image_placement">Page image placement:</label>
+    <select name="page_image_placement" id="page_image_placement">
+      {% for placement in page_image_placement_options %}
+        <option value="{{ placement }}" {% if placement == selected_page_image_placement %}selected{% endif %}>{{ placement }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn secondary" type="submit">Save image placement</button>
+  </p>
+</form>
+<form method="post" action="{% url 'project-processing-options' object.pk %}">{% csrf_token %}
+  <p>
+    <label for="segmentation_method">Segmentation (phase 2):</label>
+    <select name="segmentation_method" id="segmentation_method">
+      {% for value, label in segmentation_method_options %}
+        <option value="{{ value }}" {% if value == selected_segmentation_method %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <label for="romanization_method" class="ml-2">Romanization:</label>
+    <select name="romanization_method" id="romanization_method">
+      {% for value, label in romanization_method_options %}
+        <option value="{{ value }}" {% if value == selected_romanization_method %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn secondary" type="submit">Save language options</button>
+  </p>
+</form>
+<form method="post" action="{% url 'project-compile' object.pk %}">{% csrf_token %}
+  <p><label for="start_stage">Start from stage:</label>
+    <select name="start_stage" id="start_stage">
+      {% for stage in pipeline_stages %}
+        <option value="{{ stage }}" {% if stage == default_start_stage %}selected{% endif %}>{{ stage }}</option>
+      {% endfor %}
+    </select>
+    <label for="end_stage" class="ml-2">End at stage:</label>
+    <select name="end_stage" id="end_stage">
+      {% for stage in pipeline_stages %}
+        <option value="{{ stage }}" {% if stage == "compile_html" %}selected{% endif %}>{{ stage }}</option>
+      {% endfor %}
+    </select>
+    <label for="ai_model" class="ml-2">Model:</label>
+    <select name="ai_model" id="ai_model">
+      {% for model in ai_models %}
+        <option value="{{ model }}" {% if model == selected_ai_model %}selected{% endif %}>{{ model }}</option>
+      {% endfor %}
+    </select>
+    <input type="hidden" name="page_image_placement" value="{{ selected_page_image_placement }}" />
+    <input type="hidden" name="segmentation_method" value="{{ selected_segmentation_method }}" />
+    <input type="hidden" name="romanization_method" value="{{ selected_romanization_method }}" />
+    <input type="hidden" name="return_to" value="{% url 'project-annotation-home' object.pk %}" />
+    <button class="btn" type="submit">Run selected pipeline stages</button>
+  </p>
+</form>
+<p><a class="btn secondary" href="{% url 'project-download-bundle' object.pk %}">Download self-contained ZIP (HTML + audio + images)</a></p>
+<p><a class="btn secondary" href="{% url 'project-download-source-bundle' object.pk %}">Download source ZIP (latest run annotations + image metadata)</a></p>
+<h3>Manual segmentation editor (Step 1)</h3>
+{% if has_source_text_for_manual_segmentation %}
+  <p><a class="btn secondary" href="{% url 'manual-segmentation-phase-1' object.pk %}">Manual segmentation phase 1</a></p>
+  {% with s=manual_stage_status.segmentation_phase_1 %}
+    {% if s.exists %}
+      <p><small>Latest: {{ s.updated_at }} ({{ s.provenance }}, run {{ s.run }}){% if s.note %}; {{ s.note }}{% endif %}</small></p>
+    {% endif %}
+  {% endwith %}
+{% else %}
+  <p>Manual segmentation phase 1 is unavailable until source text is present.</p>
+{% endif %}
+
+{% if has_segmentation_phase_1 %}
+  <p><a class="btn secondary" href="{% url 'manual-segmentation-phase-2' object.pk %}">Manual segmentation phase 2</a></p>
+  {% with s=manual_stage_status.segmentation_phase_2 %}
+    {% if s.exists %}
+      <p><small>Latest: {{ s.updated_at }} ({{ s.provenance }}, run {{ s.run }}){% if s.note %}; {{ s.note }}{% endif %}</small></p>
+    {% endif %}
+  {% endwith %}
+{% else %}
+  <p>Manual segmentation phase 2 is unavailable until segmentation phase 1 annotated text exists.</p>
+{% endif %}
+
+{% if has_segmentation_phase_2 %}
+  <p><a class="btn secondary" href="{% url 'manual-mwe' object.pk %}">Manual MWE</a></p>
+  {% with s=manual_stage_status.mwe %}
+    {% if s.exists %}
+      <p><small>Latest: {{ s.updated_at }} ({{ s.provenance }}, run {{ s.run }}){% if s.note %}; {{ s.note }}{% endif %}</small></p>
+    {% endif %}
+  {% endwith %}
+  {% if has_mwe %}
+    <p><a class="btn secondary" href="{% url 'manual-lemma' object.pk %}">Manual lemma</a></p>
+    {% with s=manual_stage_status.lemma %}
+      {% if s.exists %}
+        <p><small>Latest: {{ s.updated_at }} ({{ s.provenance }}, run {{ s.run }}){% if s.note %}; {{ s.note }}{% endif %}</small></p>
+      {% endif %}
+    {% endwith %}
+  {% else %}
+    <p>Manual lemma is unavailable until MWE annotated text exists.</p>
+  {% endif %}
+  <p><a class="btn secondary" href="{% url 'manual-translation' object.pk %}">Manual translation</a></p>
+  {% with s=manual_stage_status.translation %}
+    {% if s.exists %}
+      <p><small>Latest: {{ s.updated_at }} ({{ s.provenance }}, run {{ s.run }}){% if s.note %}; {{ s.note }}{% endif %}</small></p>
+    {% endif %}
+  {% endwith %}
+{% else %}
+  <p>Manual translation is unavailable until segmentation phase 2 annotated text exists.</p>
+{% endif %}
+
+<p><a class="btn secondary" href="{% url 'project-publish' object.pk %}">{% if object.is_published %}Unpublish{% else %}Publish{% endif %}</a></p>
+<form method="post" action="{% url 'project-delete' object.pk %}" onsubmit="return confirm('Delete this project and its artifacts?');">{% csrf_token %}
+  <button class="btn secondary" type="submit">Delete project</button>
+</form>
+{% if object.compiled_path %}
+  <p>
+    <a class="btn link" href="{% url 'project-compiled' pk=object.pk path=object.compiled_path %}" target="_blank">View via server</a>
+  </p>
+  <p>Artifacts stored at: {{ object.artifact_root }}</p>
+{% else %}
+  <p>No pipeline run yet. Use "Run selected pipeline stages" to generate outputs.</p>
+{% endif %}
+
+
+{% if progress %}
+  <h3>Progress</h3>
+  <ul>
+    {% for entry in progress %}
+      <li><strong>{{ entry.stage }}</strong> — {{ entry.status }} @ {{ entry.timestamp }}</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+{% if stage_files %}
+  <h3>Intermediate artifacts</h3>
+  <ul>
+    {% for file in stage_files %}
+      <li>
+        {% if file.url %}
+          <a href="{{ file.url }}" target="_blank">{{ file.path }}</a>
+        {% else %}
+          <a href="{% url 'project-compiled' pk=object.pk path=file.path %}" target="_blank">{{ file.path }}</a>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% endif %}
+{% endblock %}
