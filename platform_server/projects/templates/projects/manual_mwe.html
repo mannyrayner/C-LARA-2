@@ -1,0 +1,43 @@
+{% extends "projects/base.html" %}
+{% block title %}Manual MWE: {{ project.title }}{% endblock %}
+{% block content %}
+<h1>Manual MWE</h1>
+<p><a class="btn secondary" href="{% url 'project-annotation-home' project.pk %}">← Back to annotation home</a></p>
+<p>
+  Structure-only editor: token text is read-only. Edit <code>mwe_id</code> on non-whitespace tokens only.
+</p>
+<p>Text hash: <code>{{ base_hash }}</code></p>
+
+<form method="post">
+  {% csrf_token %}
+  {% for row in rows %}
+    <div style="border:1px solid #ddd; padding:0.75rem; margin-bottom:0.75rem;">
+      <div><strong>Page {{ row.page_index }}, Segment {{ row.segment_index }}</strong></div>
+      <textarea rows="2" style="width:100%; font-family: monospace;" readonly>{{ row.source_text }}</textarea>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+        {% for token in row.tokens %}
+          <div style="border:1px solid #eee; padding:0.5rem;">
+            <label>Token {{ token.token_index }}</label>
+            <textarea rows="1" style="width:100%; font-family: monospace;" readonly>{{ token.surface }}</textarea>
+            {% if token.is_whitespace %}
+              <input type="text" style="width:100%; font-family: monospace;" value="" readonly placeholder="whitespace token" />
+            {% else %}
+              <input
+                type="text"
+                name="mwe_id_{{ row.page_index }}_{{ row.segment_index }}_{{ token.token_index }}"
+                style="width:100%; font-family: monospace;"
+                value="{{ token.mwe_id }}"
+                placeholder="mwe id (optional)" />
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% empty %}
+    <p>No segments available.</p>
+  {% endfor %}
+  <p>
+    <button class="btn" type="submit">Save manual MWE annotations</button>
+  </p>
+</form>
+{% endblock %}
