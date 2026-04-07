@@ -1,0 +1,14 @@
+{
+  "input": "{\n  \"surface\": \"De retour à l'hôtel, ils se réjouissent de nouvelles aventures.\",\n  \"tokens\": [\n    {\"surface\": \"De\"}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"retour\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"à\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"l'hôtel\", \"annotations\": {}}, {\"surface\": \",\"}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"ils\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"se\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"réjouissent\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"de\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"nouvelles\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"aventures\", \"annotations\": {}}, {\"surface\": \".\"}\n  ],\n  \"annotations\": {}\n}",
+  "output": {
+    "surface": "De retour à l'hôtel, ils se réjouissent de nouvelles aventures.",
+    "tokens": [
+      {"surface": "De"}, {"surface": " ", "annotations": {}}, {"surface": "retour"}, {"surface": " ", "annotations": {}}, {"surface": "à"}, {"surface": " ", "annotations": {}}, {"surface": "l'hôtel"}, {"surface": ","}, {"surface": " ", "annotations": {}}, {"surface": "ils"}, {"surface": " ", "annotations": {}}, {"surface": "se", "annotations": {"mwe_id": "m1"}}, {"surface": " ", "annotations": {}}, {"surface": "réjouissent", "annotations": {"mwe_id": "m1"}}, {"surface": " ", "annotations": {}}, {"surface": "de", "annotations": {"mwe_id": "m1"}}, {"surface": " ", "annotations": {}}, {"surface": "nouvelles"}, {"surface": " ", "annotations": {}}, {"surface": "aventures"}, {"surface": "."}
+    ],
+    "annotations": {
+      "mwes": [
+        {"id": "m1", "tokens": ["se", "réjouissent", "de"], "label": "verbe pronominal avec préposition"}
+      ]
+    }
+  }
+}
