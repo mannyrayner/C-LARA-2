@@ -1750,17 +1750,23 @@ def _mwe_rows(seg2_payload: dict[str, Any], mwe_payload: dict[str, Any]) -> list
             seg_tokens = seg2_seg.get("tokens") or []
             mwe_tokens = mwe_seg.get("tokens") or []
             token_rows: list[dict[str, Any]] = []
+            pending_ws = ""
             for tidx, token in enumerate(seg_tokens, start=1):
+                surface = str((token or {}).get("surface") or "")
+                if not surface.strip():
+                    pending_ws += surface
+                    continue
                 mwe_token = (mwe_tokens[tidx - 1] if tidx - 1 < len(mwe_tokens) else {}) or {}
                 mwe_id = str((((mwe_token.get("annotations") or {}).get("mwe_id")) or ""))
                 token_rows.append(
                     {
                         "token_index": tidx,
-                        "surface": str((token or {}).get("surface") or ""),
+                        "surface": surface,
+                        "leading_ws": pending_ws,
                         "mwe_id": mwe_id,
-                        "is_whitespace": not str((token or {}).get("surface") or "").strip(),
                     }
                 )
+                pending_ws = ""
             rows.append(
                 {
                     "page_index": pidx,
@@ -1819,11 +1825,11 @@ def _mwe_payload_from_rows(seg2_payload: dict[str, Any], rows: list[dict[str, An
         if str(seg.get("surface") or "") != str(row["source_text"] or ""):
             raise ValueError("Source segment text changed; only token MWE ids may be edited.")
         tokens = seg.get("tokens") or []
-        edited_tokens = row.get("tokens") or []
-        if len(tokens) != len(edited_tokens):
-            raise ValueError("Token count changed; only token MWE ids may be edited.")
-        for idx, token in enumerate(tokens):
-            edited_token = edited_tokens[idx] if idx < len(edited_tokens) else {}
+        edited_tokens = {int(t.get("token_index")): t for t in (row.get("tokens") or []) if t.get("token_index")}
+        for idx, token in enumerate(tokens, start=1):
+            edited_token = edited_tokens.get(idx)
+            if not edited_token:
+                continue
             if str((token.get("surface") or "")) != str((edited_token.get("surface") or "")):
                 raise ValueError("Token text changed; only token MWE ids may be edited.")
             annotations = dict(token.get("annotations") or {})
@@ -2140,9 +2146,6 @@ def manual_mwe(request: HttpRequest, pk: int) -> HttpResponse:
     if request.method == "POST":
         for row in rows:
             for token in row["tokens"]:
-                if token["is_whitespace"]:
-                    token["mwe_id"] = ""
-                    continue
                 token["mwe_id"] = request.POST.get(
                     f"mwe_id_{row['page_index']}_{row['segment_index']}_{token['token_index']}",
                     token["mwe_id"],
