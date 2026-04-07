@@ -1433,12 +1433,14 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["has_segmentation_phase_2"] = _find_latest_stage_file(project, "segmentation_phase_2.json") is not None
         context["has_mwe"] = _find_latest_stage_file(project, "mwe.json") is not None
         context["has_lemma"] = _find_latest_stage_file(project, "lemma.json") is not None
+        context["has_gloss"] = _find_latest_stage_file(project, "gloss.json") is not None
         context["manual_stage_status"] = {
             "segmentation_phase_1": _manual_stage_status(project, "segmentation_phase_1"),
             "segmentation_phase_2": _manual_stage_status(project, "segmentation_phase_2"),
             "mwe": _manual_stage_status(project, "mwe"),
             "lemma": _manual_stage_status(project, "lemma"),
             "gloss": _manual_stage_status(project, "gloss"),
+            "pinyin": _manual_stage_status(project, "pinyin"),
             "translation": _manual_stage_status(project, "translation"),
         }
         if project.language.lower().startswith("zh"):
@@ -2071,6 +2073,112 @@ def _gloss_payload_from_rows(lemma_payload: dict[str, Any], rows: list[dict[str,
     return payload
 
 
+def _pinyin_rows(gloss_payload: dict[str, Any], pinyin_payload: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    gloss_pages = gloss_payload.get("pages") or []
+    pinyin_pages = pinyin_payload.get("pages") or []
+    for pidx, gloss_page in enumerate(gloss_pages, start=1):
+        gloss_segments = gloss_page.get("segments") or []
+        pinyin_segments = ((pinyin_pages[pidx - 1] if pidx - 1 < len(pinyin_pages) else {}) or {}).get("segments") or []
+        for sidx, gloss_seg in enumerate(gloss_segments, start=1):
+            pinyin_seg = (pinyin_segments[sidx - 1] if sidx - 1 < len(pinyin_segments) else {}) or {}
+            gloss_tokens = gloss_seg.get("tokens") or []
+            pinyin_tokens = pinyin_seg.get("tokens") or []
+            token_rows: list[dict[str, Any]] = []
+            pending_ws = ""
+            for tidx, token in enumerate(gloss_tokens, start=1):
+                surface = str((token or {}).get("surface") or "")
+                if not surface.strip():
+                    pending_ws += surface
+                    continue
+                pinyin_token = (pinyin_tokens[tidx - 1] if tidx - 1 < len(pinyin_tokens) else {}) or {}
+                pinyin_ann = (pinyin_token.get("annotations") or {}) if isinstance(pinyin_token, dict) else {}
+                token_rows.append(
+                    {
+                        "token_index": tidx,
+                        "surface": surface,
+                        "leading_ws": pending_ws,
+                        "pinyin": str((pinyin_ann.get("pinyin") or "")),
+                    }
+                )
+                pending_ws = ""
+            rows.append(
+                {
+                    "page_index": pidx,
+                    "segment_index": sidx,
+                    "source_text": str(gloss_seg.get("surface") or ""),
+                    "tokens": token_rows,
+                }
+            )
+    return rows
+
+
+def _segment_has_pinyin_data(segment: dict[str, Any]) -> bool:
+    for token in (segment.get("tokens") or []):
+        ann = (token or {}).get("annotations") or {}
+        if ann.get("pinyin"):
+            return True
+    return False
+
+
+def _reconcile_pinyin_payload_with_gloss(gloss_payload: dict[str, Any], pinyin_payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    reconciled = json.loads(json.dumps(gloss_payload))
+    changed = False
+    pinyin_pages = pinyin_payload.get("pages") or []
+    for pidx, page in enumerate(reconciled.get("pages") or []):
+        segs = page.get("segments") or []
+        pinyin_segs = ((pinyin_pages[pidx] if pidx < len(pinyin_pages) else {}) or {}).get("segments") or []
+        for sidx, seg in enumerate(segs):
+            pinyin_seg = (pinyin_segs[sidx] if sidx < len(pinyin_segs) else {}) or {}
+            if str(pinyin_seg.get("surface") or "") != str(seg.get("surface") or ""):
+                continue
+            if not _segment_tokens_match(seg, pinyin_seg):
+                if _segment_has_pinyin_data(pinyin_seg):
+                    changed = True
+                continue
+            seg_tokens = seg.get("tokens") or []
+            pinyin_tokens = pinyin_seg.get("tokens") or []
+            for tidx, token in enumerate(seg_tokens):
+                pinyin_token = (pinyin_tokens[tidx] if tidx < len(pinyin_tokens) else {}) or {}
+                pinyin_ann = (pinyin_token.get("annotations") or {}) if isinstance(pinyin_token, dict) else {}
+                token_annotations = dict(token.get("annotations") or {})
+                old_val = str(token_annotations.get("pinyin") or "")
+                new_val = str(pinyin_ann.get("pinyin") or "")
+                if old_val != new_val:
+                    changed = True
+                if new_val:
+                    token_annotations["pinyin"] = new_val
+                else:
+                    token_annotations.pop("pinyin", None)
+                token["annotations"] = token_annotations
+    return reconciled, changed
+
+
+def _pinyin_payload_from_rows(gloss_payload: dict[str, Any], rows: list[dict[str, Any]]) -> dict[str, Any]:
+    payload = json.loads(json.dumps(gloss_payload))
+    for row in rows:
+        page = payload["pages"][row["page_index"] - 1]
+        seg = page["segments"][row["segment_index"] - 1]
+        if str(seg.get("surface") or "") != str(row["source_text"] or ""):
+            raise ValueError("Source segment text changed; only token pinyin/romanization may be edited.")
+        tokens = seg.get("tokens") or []
+        edited_tokens = {int(t.get("token_index")): t for t in (row.get("tokens") or []) if t.get("token_index")}
+        for idx, token in enumerate(tokens, start=1):
+            edited_token = edited_tokens.get(idx)
+            if not edited_token:
+                continue
+            if str((token.get("surface") or "")) != str((edited_token.get("surface") or "")):
+                raise ValueError("Token text changed; only token pinyin/romanization may be edited.")
+            annotations = dict(token.get("annotations") or {})
+            pinyin_value = str((edited_token.get("pinyin") or "")).strip()
+            if pinyin_value:
+                annotations["pinyin"] = pinyin_value
+            else:
+                annotations.pop("pinyin", None)
+            token["annotations"] = annotations
+    return payload
+
+
 def _page_surface_hashes(payload: dict[str, Any]) -> list[str]:
     hashes: list[str] = []
     for page in payload.get("pages", []) or []:
@@ -2175,6 +2283,10 @@ def _manual_stage_status(project: Project, stage: str) -> dict[str, Any]:
         upstream = _find_latest_stage_file(project, "lemma.json")
         if upstream and upstream[1].stat().st_mtime > stage_path.stat().st_mtime:
             note = "upstream lemma is newer"
+    elif stage == "pinyin":
+        upstream = _find_latest_stage_file(project, "gloss.json")
+        if upstream and upstream[1].stat().st_mtime > stage_path.stat().st_mtime:
+            note = "upstream gloss is newer"
     return {
         "exists": True,
         "stage": stage,
@@ -2539,6 +2651,69 @@ def manual_gloss(request: HttpRequest, pk: int) -> HttpResponse:
     return render(
         request,
         "projects/manual_gloss.html",
+        {"project": project, "rows": rows, "base_hash": base_hash},
+    )
+
+
+@login_required
+def manual_pinyin(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    gloss_run = _find_run_with_stage(project, "gloss")
+    gloss_payload = _load_stage_payload(project, "gloss", run_dir=gloss_run) if gloss_run else None
+    if not gloss_payload:
+        messages.error(request, "Manual pinyin/romanization editing requires gloss annotated text.")
+        return redirect("project-annotation-home", pk=project.pk)
+
+    pinyin_run = _find_run_with_stage(project, "pinyin") or gloss_run
+    pinyin_payload = _load_stage_payload(project, "pinyin", run_dir=pinyin_run) if pinyin_run else None
+    if not pinyin_payload:
+        pinyin_payload = json.loads(json.dumps(gloss_payload))
+    pinyin_payload, reconciled = _reconcile_pinyin_payload_with_gloss(gloss_payload, pinyin_payload)
+    if reconciled:
+        target_run = _ensure_stage_run_dir(project)
+        (target_run / "stages" / "pinyin.json").write_text(
+            json.dumps(pinyin_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        messages.warning(
+            request,
+            "Pinyin/romanization stage was out of sync with gloss and has been auto-reconciled; "
+            "aligned token-level values were preserved.",
+        )
+
+    rows = _pinyin_rows(gloss_payload, pinyin_payload)
+    base_hash = _stable_text_hash(str(gloss_payload.get("surface") or ""))
+
+    if request.method == "POST":
+        for row in rows:
+            for token in row["tokens"]:
+                token["pinyin"] = request.POST.get(
+                    f"pinyin_{row['page_index']}_{row['segment_index']}_{token['token_index']}",
+                    token["pinyin"],
+                )
+        try:
+            edited_payload = _pinyin_payload_from_rows(gloss_payload, rows)
+        except ValueError as exc:
+            messages.error(request, str(exc))
+        else:
+            edited_hash = _stable_text_hash(str(edited_payload.get("surface") or ""))
+            if edited_hash != base_hash:
+                messages.error(request, "Text hash mismatch; only token pinyin/romanization may be changed.")
+            else:
+                _save_versioned_stage_payload(
+                    project=project,
+                    stage_name="pinyin",
+                    payload=edited_payload,
+                    metadata={"before_text_hash": base_hash, "after_text_hash": edited_hash},
+                )
+                target_run = _ensure_stage_run_dir(project)
+                _invalidate_downstream_stage_files(target_run, "pinyin")
+                messages.success(request, "Saved manual pinyin/romanization annotations.")
+                return redirect("manual-pinyin", pk=project.pk)
+
+    return render(
+        request,
+        "projects/manual_pinyin.html",
         {"project": project, "rows": rows, "base_hash": base_hash},
     )
 
@@ -3243,6 +3418,169 @@ def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
     messages.success(request, "Saved language-processing options.")
     return redirect("project-detail", pk=project.pk)
 
+
+@login_required
+def compile_monitor(request: HttpRequest, pk: int, report_id: str) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    return_url = request.GET.get("next") or reverse("project-detail", args=[project.pk])
+    return render(
+        request,
+        "projects/compile_monitor.html",
+        {"project": project, "report_id": report_id, "return_url": return_url},
+    )
+
+
+@login_required
+def compile_status(request: HttpRequest, pk: int, report_id: str) -> JsonResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    updates = (
+        TaskUpdate.objects.filter(report_id=report_id, user=request.user)
+        .order_by("timestamp")
+        .all()
+    )
+
+    unread = [u for u in updates if not u.read]
+    messages_out = [u.message for u in unread]
+    status = "running"
+
+    for u in unread:
+        if u.status == "error":
+            status = "error"
+            break
+        if u.status == "finished":
+            status = "finished"
+
+    TaskUpdate.objects.filter(pk__in=[u.pk for u in unread]).update(read=True)
+
+    if status == "running" and unread == []:
+        # Check the latest status so the monitor can exit even if all updates
+        # have been consumed.
+        last = updates.last()
+        if last and last.status in {"error", "finished"}:
+            status = last.status
+
+    if status in {"error", "finished"} and messages_out:
+        level = messages.ERROR if status == "error" else messages.INFO
+        # Surface the last update to the project detail page when the monitor
+        # redirects after completion.
+        messages.add_message(request, level, messages_out[-1])
+
+    return JsonResponse({"messages": messages_out, "status": status, "project": project.pk})
+
+
+
+def _compiled_page_one_path(project: Project) -> str | None:
+    """Return compiled page_1 path when available."""
+
+    compiled = (project.compiled_path or "").strip()
+    if not compiled:
+        return None
+    compiled_path = Path(compiled)
+    page_one = compiled_path.with_name("page_1.html")
+    base = Path(project.artifact_root or project.artifact_dir()).resolve()
+    if (base / page_one).exists():
+        return page_one.as_posix()
+    return compiled_path.as_posix()
+
+
+@login_required
+def content_list(request: HttpRequest) -> HttpResponse:
+    """Search/browse published projects."""
+
+    title = (request.GET.get("title") or "").strip()
+    text_language = (request.GET.get("text_language") or "").strip()
+    annotation_language = (request.GET.get("annotation_language") or "").strip()
+    date_posted = (request.GET.get("date_posted") or "any").strip()
+    if date_posted not in CONTENT_DATE_FILTERS:
+        date_posted = "any"
+
+    qs = Project.objects.filter(is_published=True)
+    if title:
+        qs = qs.filter(title__icontains=title)
+    if text_language:
+        qs = qs.filter(language__iexact=text_language)
+    if annotation_language:
+        qs = qs.filter(target_language__iexact=annotation_language)
+
+    window = CONTENT_DATE_FILTERS.get(date_posted)
+    if window is not None:
+        cutoff = django_timezone.now() - window
+        qs = qs.filter(published_at__gte=cutoff)
+
+    projects = list(qs.order_by("-published_at", "-updated_at")[:200])
+    return render(
+        request,
+        "projects/content_list.html",
+        {
+            "projects": projects,
+            "filters": {
+                "title": title,
+                "text_language": text_language,
+                "annotation_language": annotation_language,
+                "date_posted": date_posted,
+            },
+            "date_options": [
+                ("any", "Any time"),
+                ("last_3_days", "Last 3 days"),
+                ("last_month", "Last month"),
+                ("last_3_months", "Last 3 months"),
+                ("last_year", "Last year"),
+            ],
+        },
+    )
+
+
+@login_required
+def content_detail(request: HttpRequest, pk: int) -> HttpResponse:
+    """Show metadata for a published project and link to page 1."""
+
+    project = get_object_or_404(Project, pk=pk, is_published=True)
+    Project.objects.filter(pk=project.pk).update(access_count=F("access_count") + 1)
+
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip().lower()
+        if action == "comment":
+            body = (request.POST.get("body") or "").strip()
+            if body:
+                ContentComment.objects.create(project=project, author=request.user, body=body)
+                messages.success(request, "Comment posted.")
+            else:
+                messages.error(request, "Comment cannot be empty.")
+        elif action == "rate":
+            value = (request.POST.get("value") or "").strip().lower()
+            note = (request.POST.get("comment") or "").strip()
+            if value in {ContentRating.VALUE_UP, ContentRating.VALUE_DOWN}:
+                ContentRating.objects.update_or_create(
+                    project=project,
+                    author=request.user,
+                    defaults={"value": value, "comment": note},
+                )
+                messages.success(request, "Rating saved.")
+            else:
+                messages.error(request, "Unknown rating value.")
+        return redirect("content-detail", pk=project.pk)
+
+    project.refresh_from_db(fields=["access_count"])
+    page_one = _compiled_page_one_path(project)
+    comments = project.content_comments.filter(is_hidden=False).select_related("author")[:100]
+    ratings = project.content_ratings.all()
+    up_count = ratings.filter(value=ContentRating.VALUE_UP).count()
+    down_count = ratings.filter(value=ContentRating.VALUE_DOWN).count()
+    user_rating = ratings.filter(author=request.user).first()
+
+    return render(
+        request,
+        "projects/content_detail.html",
+        {
+            "project": project,
+            "page_one_path": page_one,
+            "comments": comments,
+            "up_count": up_count,
+            "down_count": down_count,
+            "user_rating": user_rating,
+            "published_exercise_sets": project.exercise_sets.filter(is_published=True).order_by("-updated_at"),
+        },
+    )
 
 @login_required
 def compile_monitor(request: HttpRequest, pk: int, report_id: str) -> HttpResponse:

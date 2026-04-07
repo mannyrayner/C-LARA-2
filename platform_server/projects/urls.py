@@ -44,6 +44,11 @@ urlpatterns = [
         views.manual_gloss,
         name="manual-gloss",
     ),
+    path(
+        "projects/<int:pk>/annotation/manual/pinyin/",
+        views.manual_pinyin,
+        name="manual-pinyin",
+    ),
     path("projects/<int:pk>/images/", views.project_images_home, name="project-images-home"),
     path("projects/<int:pk>/exercises/", views.project_exercises_home, name="project-exercises-home"),
     path("projects/<int:pk>/images/style/", views.project_image_style, name="project-image-style"),

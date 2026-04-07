@@ -105,6 +105,16 @@
           <p><small>Latest: {{ s.updated_at }} ({{ s.provenance }}, run {{ s.run }}){% if s.note %}; {{ s.note }}{% endif %}</small></p>
         {% endif %}
       {% endwith %}
+      {% if has_gloss %}
+        <p><a class="btn secondary" href="{% url 'manual-pinyin' object.pk %}">Manual pinyin/romanization</a></p>
+        {% with s=manual_stage_status.pinyin %}
+          {% if s.exists %}
+            <p><small>Latest: {{ s.updated_at }} ({{ s.provenance }}, run {{ s.run }}){% if s.note %}; {{ s.note }}{% endif %}</small></p>
+          {% endif %}
+        {% endwith %}
+      {% else %}
+        <p>Manual pinyin/romanization is unavailable until gloss annotated text exists.</p>
+      {% endif %}
     {% else %}
       <p>Manual gloss is unavailable until lemma annotated text exists.</p>
     {% endif %}

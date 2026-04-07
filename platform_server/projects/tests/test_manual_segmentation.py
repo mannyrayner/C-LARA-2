@@ -611,3 +611,95 @@ class ManualSegmentationEditorTests(TestCase):
         resp = self.client.get(reverse("manual-gloss", args=[self.project.pk]), follow=True)
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "auto-reconciled")
+
+    def test_manual_pinyin_save_and_link_visibility(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_pinyin" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        gloss_payload = {
+            "l2": "zh",
+            "surface": "你好 世界",
+            "pages": [
+                {
+                    "surface": "你好 世界",
+                    "segments": [
+                        {
+                            "surface": "你好 世界",
+                            "tokens": [
+                                {"surface": "你好", "annotations": {"gloss": "hello"}},
+                                {"surface": " "},
+                                {"surface": "世界", "annotations": {"gloss": "world"}},
+                            ],
+                            "annotations": {},
+                        }
+                    ],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_2.json").write_text(json.dumps(gloss_payload), encoding="utf-8")
+        (run_dir / "mwe.json").write_text(json.dumps(gloss_payload), encoding="utf-8")
+        (run_dir / "lemma.json").write_text(json.dumps(gloss_payload), encoding="utf-8")
+        (run_dir / "gloss.json").write_text(json.dumps(gloss_payload), encoding="utf-8")
+
+        ann = self.client.get(reverse("project-annotation-home", args=[self.project.pk]))
+        self.assertContains(ann, reverse("manual-pinyin", args=[self.project.pk]))
+
+        resp = self.client.post(
+            reverse("manual-pinyin", args=[self.project.pk]),
+            {"pinyin_1_1_1": "ni3 hao3", "pinyin_1_1_3": "shi4 jie4"},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        stage_dir = self._latest_run_stage_dir()
+        saved = json.loads((stage_dir / "pinyin.json").read_text(encoding="utf-8"))
+        tokens = saved["pages"][0]["segments"][0]["tokens"]
+        self.assertEqual(tokens[0]["annotations"]["pinyin"], "ni3 hao3")
+        self.assertEqual(tokens[2]["annotations"]["pinyin"], "shi4 jie4")
+        self.assertNotIn("pinyin", tokens[1].get("annotations", {}))
+
+    def test_manual_pinyin_view_auto_reconciles_inconsistent_payload(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_pinyin_reconcile" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        gloss_payload = {
+            "l2": "zh",
+            "surface": "你好 世界",
+            "pages": [
+                {
+                    "surface": "你好 世界",
+                    "segments": [
+                        {
+                            "surface": "你好 世界",
+                            "tokens": [{"surface": "你好"}, {"surface": " "}, {"surface": "世界"}],
+                            "annotations": {},
+                        }
+                    ],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        pinyin_payload = {
+            "l2": "zh",
+            "surface": "你好 世界",
+            "pages": [
+                {
+                    "surface": "你好 世界",
+                    "segments": [
+                        {
+                            "surface": "你好 世界",
+                            "tokens": [{"surface": "你好 世界", "annotations": {"pinyin": "bad"}}],
+                            "annotations": {},
+                        }
+                    ],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        (run_dir / "gloss.json").write_text(json.dumps(gloss_payload), encoding="utf-8")
+        (run_dir / "pinyin.json").write_text(json.dumps(pinyin_payload), encoding="utf-8")
+
+        resp = self.client.get(reverse("manual-pinyin", args=[self.project.pk]), follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "auto-reconciled")
