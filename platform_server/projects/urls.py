@@ -34,6 +34,11 @@ urlpatterns = [
         views.manual_mwe,
         name="manual-mwe",
     ),
+    path(
+        "projects/<int:pk>/annotation/manual/lemma/",
+        views.manual_lemma,
+        name="manual-lemma",
+    ),
     path("projects/<int:pk>/images/", views.project_images_home, name="project-images-home"),
     path("projects/<int:pk>/exercises/", views.project_exercises_home, name="project-exercises-home"),
     path("projects/<int:pk>/images/style/", views.project_image_style, name="project-image-style"),

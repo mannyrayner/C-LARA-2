@@ -421,3 +421,102 @@ class ManualSegmentationEditorTests(TestCase):
         resp = self.client.get(reverse("manual-mwe", args=[self.project.pk]), follow=True)
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "auto-reconciled")
+
+    def test_manual_lemma_save_and_link_visibility(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_lemma" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        mwe_payload = {
+            "l2": "en",
+            "surface": "Milo was here",
+            "pages": [
+                {
+                    "surface": "Milo was here",
+                    "segments": [
+                        {
+                            "surface": "Milo was here",
+                            "tokens": [
+                                {"surface": "Milo"},
+                                {"surface": " "},
+                                {"surface": "was"},
+                                {"surface": " "},
+                                {"surface": "here"},
+                            ],
+                            "annotations": {},
+                        }
+                    ],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_2.json").write_text(json.dumps(mwe_payload), encoding="utf-8")
+        (run_dir / "mwe.json").write_text(json.dumps(mwe_payload), encoding="utf-8")
+
+        ann = self.client.get(reverse("project-annotation-home", args=[self.project.pk]))
+        self.assertContains(ann, reverse("manual-lemma", args=[self.project.pk]))
+
+        resp = self.client.post(
+            reverse("manual-lemma", args=[self.project.pk]),
+            {
+                "lemma_1_1_1": "Milo",
+                "pos_1_1_1": "PROPN",
+                "lemma_1_1_3": "be",
+                "pos_1_1_3": "VERB",
+            },
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        stage_dir = self._latest_run_stage_dir()
+        saved = json.loads((stage_dir / "lemma.json").read_text(encoding="utf-8"))
+        tokens = saved["pages"][0]["segments"][0]["tokens"]
+        self.assertEqual(tokens[0]["annotations"]["lemma"], "Milo")
+        self.assertEqual(tokens[0]["annotations"]["pos"], "PROPN")
+        self.assertEqual(tokens[2]["annotations"]["lemma"], "be")
+        self.assertEqual(tokens[2]["annotations"]["pos"], "VERB")
+        self.assertNotIn("lemma", tokens[1].get("annotations", {}))
+
+    def test_manual_lemma_view_auto_reconciles_inconsistent_payload(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_lemma_reconcile" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        mwe_payload = {
+            "l2": "en",
+            "surface": "Alpha beta",
+            "pages": [
+                {
+                    "surface": "Alpha beta",
+                    "segments": [
+                        {
+                            "surface": "Alpha beta",
+                            "tokens": [{"surface": "Alpha"}, {"surface": " "}, {"surface": "beta"}],
+                            "annotations": {},
+                        }
+                    ],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        lemma_payload = {
+            "l2": "en",
+            "surface": "Alpha beta",
+            "pages": [
+                {
+                    "surface": "Alpha beta",
+                    "segments": [
+                        {
+                            "surface": "Alpha beta",
+                            "tokens": [{"surface": "Alpha beta", "annotations": {"lemma": "x", "pos": "NOUN"}}],
+                            "annotations": {},
+                        }
+                    ],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        (run_dir / "mwe.json").write_text(json.dumps(mwe_payload), encoding="utf-8")
+        (run_dir / "lemma.json").write_text(json.dumps(lemma_payload), encoding="utf-8")
+
+        resp = self.client.get(reverse("manual-lemma", args=[self.project.pk]), follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "auto-reconciled")
