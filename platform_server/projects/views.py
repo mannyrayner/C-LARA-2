@@ -6,6 +6,7 @@ import os
 import random
 import shutil
 import hashlib
+import re
 import uuid
 import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -1507,8 +1508,10 @@ def _phase2_preview_from_payload(payload: dict[str, Any]) -> str:
     for p_idx, page in enumerate(payload.get("pages", []) or [], start=1):
         lines.append(f"# Page {p_idx}")
         for s_idx, segment in enumerate(page.get("segments", []) or [], start=1):
-            tokens = segment.get("tokens") or []
-            token_surfaces = [str(tok.get("surface", "")) for tok in tokens if isinstance(tok, dict)]
+            token_surfaces = _display_token_surfaces_for_segment(
+                str(segment.get("surface") or ""),
+                segment.get("tokens") or [],
+            )
             if token_surfaces:
                 lines.append(f"P{p_idx}S{s_idx}: " + "¦".join(token_surfaces))
             else:
@@ -1563,7 +1566,10 @@ def _phase2_token_bar_rows(seg1_payload: dict[str, Any], seg2_payload: dict[str,
             start=1,
         ):
             segment_text = str(base_segment.get("surface") or "")
-            token_surfaces = [str((tok or {}).get("surface") or "") for tok in (edited_segment.get("tokens") or [])]
+            token_surfaces = _display_token_surfaces_for_segment(
+                segment_text,
+                edited_segment.get("tokens") or [],
+            )
             tokenized_text = "¦".join(token_surfaces) if token_surfaces else segment_text
             rows.append(
                 {
@@ -1601,6 +1607,14 @@ def _phase2_payload_from_bar_rows(seg1_payload: dict[str, Any], rows: list[dict[
                 token_surfaces = [str(segment.get("surface") or "")]
             segment["tokens"] = [{"surface": surface} for surface in token_surfaces]
     return edited
+
+
+def _display_token_surfaces_for_segment(segment_text: str, raw_tokens: list[Any]) -> list[str]:
+    token_surfaces = [str((tok or {}).get("surface") or "") for tok in raw_tokens if isinstance(tok, dict)]
+    if token_surfaces and "".join(token_surfaces) == segment_text and len(token_surfaces) > 1:
+        return token_surfaces
+    fallback = [m.group(0) for m in re.finditer(r"\w+|\s+|[^\w\s]", segment_text, flags=re.UNICODE)]
+    return fallback if fallback else [segment_text]
 
 
 def _reconcile_phase2_payload_with_seg1(seg1_payload: dict[str, Any], seg2_payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
