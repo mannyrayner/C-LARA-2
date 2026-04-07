@@ -44,6 +44,7 @@ def _build_prompt(
         "Preserve the original surface and tokens.",
         "For each token, add annotations.lemma (canonical lemma) and annotations.pos (coarse POS tag).",
         "Tokens that share the same annotations.mwe_id should share the same lemma (e.g., phrasal verb parts).",
+        "For MWE tokens, the shared lemma should match the full MWE surface string represented by those tokens.",
     ]
 
     segment_json = json.dumps(segment, ensure_ascii=False, indent=2)
@@ -95,4 +96,52 @@ async def annotate_lemmas(
         client=ai_client,
     )
 
-    return annotated
+    return _normalize_mwe_lemmas_to_surface(annotated)
+
+
+def _normalize_mwe_lemmas_to_surface(text: dict[str, Any]) -> dict[str, Any]:
+    """Ensure each MWE group uses a lemma matching the detected MWE surface.
+
+    We trust the MWE detector's token grouping. If the lemma model returns a
+    shortened canonical form for that group, we overwrite it with the explicit
+    MWE surface string so annotations remain internally consistent.
+    """
+
+    for page in text.get("pages", []) or []:
+        for segment in page.get("segments", []) or []:
+            tokens = segment.get("tokens", []) or []
+            segment_mwes = (segment.get("annotations") or {}).get("mwes") or []
+
+            mwe_surface_by_id: dict[str, str] = {}
+            for mwe in segment_mwes:
+                mwe_id = str(mwe.get("id") or "").strip()
+                mwe_tokens = [str(tok).strip() for tok in (mwe.get("tokens") or []) if str(tok).strip()]
+                if mwe_id and mwe_tokens:
+                    mwe_surface_by_id[mwe_id] = " ".join(mwe_tokens)
+
+            token_surfaces_by_id: dict[str, list[str]] = {}
+            token_indices_by_id: dict[str, list[int]] = {}
+            for idx, token in enumerate(tokens):
+                ann = token.get("annotations") or {}
+                mwe_id = ann.get("mwe_id")
+                if not mwe_id:
+                    continue
+                key = str(mwe_id)
+                surface = str(token.get("surface") or "").strip()
+                if surface:
+                    token_surfaces_by_id.setdefault(key, []).append(surface)
+                token_indices_by_id.setdefault(key, []).append(idx)
+
+            for mwe_id, indices in token_indices_by_id.items():
+                normalized = (
+                    mwe_surface_by_id.get(mwe_id)
+                    or " ".join(token_surfaces_by_id.get(mwe_id, []))
+                ).strip()
+                if not normalized:
+                    continue
+                for token_idx in indices:
+                    token = tokens[token_idx]
+                    ann = token.setdefault("annotations", {})
+                    ann["lemma"] = normalized
+
+    return text
