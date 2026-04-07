@@ -24,6 +24,11 @@ urlpatterns = [
         views.manual_segmentation_phase_2,
         name="manual-segmentation-phase-2",
     ),
+    path(
+        "projects/<int:pk>/annotation/manual/translation/",
+        views.manual_translation,
+        name="manual-translation",
+    ),
     path("projects/<int:pk>/images/", views.project_images_home, name="project-images-home"),
     path("projects/<int:pk>/exercises/", views.project_exercises_home, name="project-exercises-home"),
     path("projects/<int:pk>/images/style/", views.project_image_style, name="project-image-style"),

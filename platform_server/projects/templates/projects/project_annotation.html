@@ -84,6 +84,17 @@
   <p>Manual segmentation phase 2 is unavailable until segmentation phase 1 annotated text exists.</p>
 {% endif %}
 
+{% if has_segmentation_phase_2 %}
+  <p><a class="btn secondary" href="{% url 'manual-translation' object.pk %}">Manual translation</a></p>
+  {% with s=manual_stage_status.translation %}
+    {% if s.exists %}
+      <p><small>Latest: {{ s.updated_at }} ({{ s.provenance }}, run {{ s.run }}){% if s.note %}; {{ s.note }}{% endif %}</small></p>
+    {% endif %}
+  {% endwith %}
+{% else %}
+  <p>Manual translation is unavailable until segmentation phase 2 annotated text exists.</p>
+{% endif %}
+
 <p><a class="btn secondary" href="{% url 'project-publish' object.pk %}">{% if object.is_published %}Unpublish{% else %}Publish{% endif %}</a></p>
 <form method="post" action="{% url 'project-delete' object.pk %}" onsubmit="return confirm('Delete this project and its artifacts?');">{% csrf_token %}
   <button class="btn secondary" type="submit">Delete project</button>

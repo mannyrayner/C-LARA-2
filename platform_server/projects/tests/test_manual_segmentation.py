@@ -310,3 +310,27 @@ class ManualSegmentationEditorTests(TestCase):
         resp = self.client.get(reverse("manual-segmentation-phase-2", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "One¦ ¦day¦.")
+
+    def test_manual_translation_save_and_link_visibility(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_translation" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        seg2_payload = {
+            "l2": "en",
+            "surface": "Hello world",
+            "pages": [{"surface": "Hello world", "segments": [{"surface": "Hello world"}], "annotations": {}}],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_2.json").write_text(json.dumps(seg2_payload), encoding="utf-8")
+
+        ann = self.client.get(reverse("project-annotation-home", args=[self.project.pk]))
+        self.assertContains(ann, reverse("manual-translation", args=[self.project.pk]))
+
+        resp = self.client.post(
+            reverse("manual-translation", args=[self.project.pk]),
+            {"translation_text_1_1": "Bonjour le monde"},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        stage_dir = self._latest_run_stage_dir()
+        saved = json.loads((stage_dir / "translation.json").read_text(encoding="utf-8"))
+        self.assertEqual(saved["pages"][0]["segments"][0]["annotations"]["translation"], "Bonjour le monde")

@@ -1429,9 +1429,11 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         )
         context["has_source_text_for_manual_segmentation"] = bool(_base_text_for_segmentation_phase_1(project).strip())
         context["has_segmentation_phase_1"] = _has_segmentation_phase_1_output(project)
+        context["has_segmentation_phase_2"] = _find_latest_stage_file(project, "segmentation_phase_2.json") is not None
         context["manual_stage_status"] = {
             "segmentation_phase_1": _manual_stage_status(project, "segmentation_phase_1"),
             "segmentation_phase_2": _manual_stage_status(project, "segmentation_phase_2"),
+            "translation": _manual_stage_status(project, "translation"),
         }
         if project.language.lower().startswith("zh"):
             context["segmentation_method_options"] = [("auto", "Jieba (default)"), ("jieba", "Jieba"), ("ai", "AI")]
@@ -1638,6 +1640,63 @@ def _reconcile_phase2_payload_with_seg1(seg1_payload: dict[str, Any], seg2_paylo
             if rebuilt == str(new_segment.get("surface") or ""):
                 new_segment["tokens"] = tokens
     return reconciled, True
+
+
+def _translation_rows(seg2_payload: dict[str, Any], translation_payload: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    seg2_pages = seg2_payload.get("pages") or []
+    tr_pages = translation_payload.get("pages") or []
+    for pidx, seg2_page in enumerate(seg2_pages, start=1):
+        seg2_segments = seg2_page.get("segments") or []
+        tr_segments = ((tr_pages[pidx - 1] if pidx - 1 < len(tr_pages) else {}) or {}).get("segments") or []
+        for sidx, seg2_seg in enumerate(seg2_segments, start=1):
+            tr_seg = (tr_segments[sidx - 1] if sidx - 1 < len(tr_segments) else {}) or {}
+            translation_value = str(((tr_seg.get("annotations") or {}).get("translation")) or "")
+            rows.append(
+                {
+                    "page_index": pidx,
+                    "segment_index": sidx,
+                    "source_text": str(seg2_seg.get("surface") or ""),
+                    "translation_text": translation_value,
+                }
+            )
+    return rows
+
+
+def _reconcile_translation_payload_with_seg2(
+    seg2_payload: dict[str, Any], translation_payload: dict[str, Any]
+) -> tuple[dict[str, Any], bool]:
+    reconciled = json.loads(json.dumps(seg2_payload))
+    changed = False
+    tr_pages = translation_payload.get("pages") or []
+    for pidx, page in enumerate(reconciled.get("pages") or []):
+        segs = page.get("segments") or []
+        tr_segs = ((tr_pages[pidx] if pidx < len(tr_pages) else {}) or {}).get("segments") or []
+        for sidx, seg in enumerate(segs):
+            anns = dict(seg.get("annotations") or {})
+            copied = ""
+            tr_seg = (tr_segs[sidx] if sidx < len(tr_segs) else {}) or {}
+            if str(tr_seg.get("surface") or "") == str(seg.get("surface") or ""):
+                copied = str(((tr_seg.get("annotations") or {}).get("translation")) or "")
+            if copied != str((seg.get("annotations") or {}).get("translation") or ""):
+                changed = True
+            anns["translation"] = copied
+            seg["annotations"] = anns
+    return reconciled, changed
+
+
+def _translation_payload_from_rows(seg2_payload: dict[str, Any], rows: list[dict[str, Any]]) -> dict[str, Any]:
+    payload = json.loads(json.dumps(seg2_payload))
+    for row in rows:
+        page = payload["pages"][row["page_index"] - 1]
+        seg = page["segments"][row["segment_index"] - 1]
+        if str(seg.get("surface") or "") != str(row["source_text"] or ""):
+            raise ValueError("Source segment text changed; only translation text may be edited.")
+        annotations = dict(seg.get("annotations") or {})
+        annotations["translation"] = str(row["translation_text"] or "")
+        seg["annotations"] = annotations
+    payload["l1"] = payload.get("l1") or ""
+    return payload
 
 
 def _page_surface_hashes(payload: dict[str, Any]) -> list[str]:
@@ -1904,6 +1963,68 @@ def manual_segmentation_phase_2(request: HttpRequest, pk: int) -> HttpResponse:
             "base_hash": base_hash,
             "preview": _phase2_preview_from_payload(seg2_payload),
         },
+    )
+
+
+@login_required
+def manual_translation(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    seg2_run = _find_run_with_stage(project, "segmentation_phase_2")
+    seg2_payload = _load_stage_payload(project, "segmentation_phase_2", run_dir=seg2_run) if seg2_run else None
+    if not seg2_payload:
+        messages.error(request, "Manual translation requires segmentation phase 2 annotated text.")
+        return redirect("project-annotation-home", pk=project.pk)
+
+    tr_run = _find_run_with_stage(project, "translation") or seg2_run
+    tr_payload = _load_stage_payload(project, "translation", run_dir=tr_run) if tr_run else None
+    if not tr_payload:
+        tr_payload = json.loads(json.dumps(seg2_payload))
+    tr_payload, reconciled = _reconcile_translation_payload_with_seg2(seg2_payload, tr_payload)
+    if reconciled:
+        target_run = _ensure_stage_run_dir(project)
+        (target_run / "stages" / "translation.json").write_text(
+            json.dumps(tr_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        messages.warning(
+            request,
+            "Translation stage was out of sync with segmentation phase 2 and has been auto-reconciled; "
+            "aligned segments were preserved.",
+        )
+
+    rows = _translation_rows(seg2_payload, tr_payload)
+    base_hash = _stable_text_hash(str(seg2_payload.get("surface") or ""))
+
+    if request.method == "POST":
+        for row in rows:
+            row["translation_text"] = request.POST.get(
+                f"translation_text_{row['page_index']}_{row['segment_index']}",
+                row["translation_text"],
+            )
+        try:
+            edited_payload = _translation_payload_from_rows(seg2_payload, rows)
+        except ValueError as exc:
+            messages.error(request, str(exc))
+        else:
+            edited_hash = _stable_text_hash(str(edited_payload.get("surface") or ""))
+            if edited_hash != base_hash:
+                messages.error(request, "Text hash mismatch; only translation annotations may be changed.")
+            else:
+                _save_versioned_stage_payload(
+                    project=project,
+                    stage_name="translation",
+                    payload=edited_payload,
+                    metadata={"before_text_hash": base_hash, "after_text_hash": edited_hash},
+                )
+                target_run = _ensure_stage_run_dir(project)
+                _invalidate_downstream_stage_files(target_run, "translation")
+                messages.success(request, "Saved manual translation.")
+                return redirect("manual-translation", pk=project.pk)
+
+    return render(
+        request,
+        "projects/manual_translation.html",
+        {"project": project, "rows": rows, "base_hash": base_hash},
     )
 
 
