@@ -39,6 +39,7 @@ from urllib.parse import quote
 from core.config import DEFAULT_MODEL, OpenAIConfig
 from core.ai_api import OpenAIClient
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
+from pipeline.mwe import normalize_mwes
 
 from .forms import (
     ClozeExerciseSetForm,
@@ -1433,6 +1434,7 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["manual_stage_status"] = {
             "segmentation_phase_1": _manual_stage_status(project, "segmentation_phase_1"),
             "segmentation_phase_2": _manual_stage_status(project, "segmentation_phase_2"),
+            "mwe": _manual_stage_status(project, "mwe"),
             "translation": _manual_stage_status(project, "translation"),
         }
         if project.language.lower().startswith("zh"):
@@ -1699,6 +1701,142 @@ def _translation_payload_from_rows(seg2_payload: dict[str, Any], rows: list[dict
     return payload
 
 
+def _segment_tokens_match(seg_a: dict[str, Any], seg_b: dict[str, Any]) -> bool:
+    tokens_a = seg_a.get("tokens") or []
+    tokens_b = seg_b.get("tokens") or []
+    if len(tokens_a) != len(tokens_b):
+        return False
+    for idx, token_a in enumerate(tokens_a):
+        token_b = tokens_b[idx] if idx < len(tokens_b) else {}
+        if str((token_a or {}).get("surface") or "") != str((token_b or {}).get("surface") or ""):
+            return False
+    return True
+
+
+def _rebuild_segment_mwes_from_token_ids(segment: dict[str, Any]) -> None:
+    tokens = segment.get("tokens") or []
+    seg_annotations = dict(segment.get("annotations") or {})
+    existing = seg_annotations.get("mwes") or []
+    labels_by_id = {
+        str(entry.get("id") or ""): str(entry.get("label") or "")
+        for entry in existing
+        if isinstance(entry, dict) and entry.get("id")
+    }
+    id_to_surfaces: dict[str, list[str]] = {}
+    for token in tokens:
+        token_annotations = (token or {}).get("annotations") or {}
+        mwe_id = str(token_annotations.get("mwe_id") or "").strip()
+        tok_surface = str((token or {}).get("surface") or "")
+        if not mwe_id or not tok_surface.strip():
+            continue
+        id_to_surfaces.setdefault(mwe_id, []).append(tok_surface)
+    seg_annotations["mwes"] = [
+        {"id": mwe_id, "tokens": surfaces, "label": labels_by_id.get(mwe_id, "")}
+        for mwe_id, surfaces in sorted(id_to_surfaces.items())
+        if len(surfaces) >= 2
+    ]
+    segment["annotations"] = seg_annotations
+
+
+def _mwe_rows(seg2_payload: dict[str, Any], mwe_payload: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    seg2_pages = seg2_payload.get("pages") or []
+    mwe_pages = mwe_payload.get("pages") or []
+    for pidx, seg2_page in enumerate(seg2_pages, start=1):
+        seg2_segments = seg2_page.get("segments") or []
+        mwe_segments = ((mwe_pages[pidx - 1] if pidx - 1 < len(mwe_pages) else {}) or {}).get("segments") or []
+        for sidx, seg2_seg in enumerate(seg2_segments, start=1):
+            mwe_seg = (mwe_segments[sidx - 1] if sidx - 1 < len(mwe_segments) else {}) or {}
+            seg_tokens = seg2_seg.get("tokens") or []
+            mwe_tokens = mwe_seg.get("tokens") or []
+            token_rows: list[dict[str, Any]] = []
+            for tidx, token in enumerate(seg_tokens, start=1):
+                mwe_token = (mwe_tokens[tidx - 1] if tidx - 1 < len(mwe_tokens) else {}) or {}
+                mwe_id = str((((mwe_token.get("annotations") or {}).get("mwe_id")) or ""))
+                token_rows.append(
+                    {
+                        "token_index": tidx,
+                        "surface": str((token or {}).get("surface") or ""),
+                        "mwe_id": mwe_id,
+                        "is_whitespace": not str((token or {}).get("surface") or "").strip(),
+                    }
+                )
+            rows.append(
+                {
+                    "page_index": pidx,
+                    "segment_index": sidx,
+                    "source_text": str(seg2_seg.get("surface") or ""),
+                    "tokens": token_rows,
+                }
+            )
+    return rows
+
+
+def _reconcile_mwe_payload_with_seg2(seg2_payload: dict[str, Any], mwe_payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    reconciled = json.loads(json.dumps(seg2_payload))
+    changed = False
+    mwe_pages = mwe_payload.get("pages") or []
+    for pidx, page in enumerate(reconciled.get("pages") or []):
+        segs = page.get("segments") or []
+        mwe_segs = ((mwe_pages[pidx] if pidx < len(mwe_pages) else {}) or {}).get("segments") or []
+        for sidx, seg in enumerate(segs):
+            mwe_seg = (mwe_segs[sidx] if sidx < len(mwe_segs) else {}) or {}
+            if str(mwe_seg.get("surface") or "") != str(seg.get("surface") or ""):
+                continue
+            if not _segment_tokens_match(seg, mwe_seg):
+                has_mwe_data = bool((mwe_seg.get("annotations") or {}).get("mwes"))
+                if not has_mwe_data:
+                    for tok in (mwe_seg.get("tokens") or []):
+                        if ((tok or {}).get("annotations") or {}).get("mwe_id"):
+                            has_mwe_data = True
+                            break
+                if has_mwe_data:
+                    changed = True
+                continue
+            seg_tokens = seg.get("tokens") or []
+            mwe_tokens = mwe_seg.get("tokens") or []
+            for tidx, token in enumerate(seg_tokens):
+                mwe_token = (mwe_tokens[tidx] if tidx < len(mwe_tokens) else {}) or {}
+                token_annotations = dict(token.get("annotations") or {})
+                old_mwe_id = str((token_annotations.get("mwe_id") or ""))
+                new_mwe_id = str((((mwe_token.get("annotations") or {}).get("mwe_id")) or ""))
+                if old_mwe_id != new_mwe_id:
+                    changed = True
+                if new_mwe_id:
+                    token_annotations["mwe_id"] = new_mwe_id
+                else:
+                    token_annotations.pop("mwe_id", None)
+                token["annotations"] = token_annotations
+            _rebuild_segment_mwes_from_token_ids(seg)
+    return normalize_mwes(reconciled), changed
+
+
+def _mwe_payload_from_rows(seg2_payload: dict[str, Any], rows: list[dict[str, Any]]) -> dict[str, Any]:
+    payload = json.loads(json.dumps(seg2_payload))
+    for row in rows:
+        page = payload["pages"][row["page_index"] - 1]
+        seg = page["segments"][row["segment_index"] - 1]
+        if str(seg.get("surface") or "") != str(row["source_text"] or ""):
+            raise ValueError("Source segment text changed; only token MWE ids may be edited.")
+        tokens = seg.get("tokens") or []
+        edited_tokens = row.get("tokens") or []
+        if len(tokens) != len(edited_tokens):
+            raise ValueError("Token count changed; only token MWE ids may be edited.")
+        for idx, token in enumerate(tokens):
+            edited_token = edited_tokens[idx] if idx < len(edited_tokens) else {}
+            if str((token.get("surface") or "")) != str((edited_token.get("surface") or "")):
+                raise ValueError("Token text changed; only token MWE ids may be edited.")
+            annotations = dict(token.get("annotations") or {})
+            mwe_id = str((edited_token.get("mwe_id") or "")).strip()
+            if mwe_id:
+                annotations["mwe_id"] = mwe_id
+            else:
+                annotations.pop("mwe_id", None)
+            token["annotations"] = annotations
+        _rebuild_segment_mwes_from_token_ids(seg)
+    return normalize_mwes(payload)
+
+
 def _page_surface_hashes(payload: dict[str, Any]) -> list[str]:
     hashes: list[str] = []
     for page in payload.get("pages", []) or []:
@@ -1791,6 +1929,10 @@ def _manual_stage_status(project: Project, stage: str) -> dict[str, Any]:
         upstream = _find_latest_stage_file(project, "segmentation_phase_1.json")
         if upstream and upstream[1].stat().st_mtime > stage_path.stat().st_mtime:
             note = "upstream phase 1 is newer"
+    elif stage == "mwe":
+        upstream = _find_latest_stage_file(project, "segmentation_phase_2.json")
+        if upstream and upstream[1].stat().st_mtime > stage_path.stat().st_mtime:
+            note = "upstream segmentation phase 2 is newer"
     return {
         "exists": True,
         "stage": stage,
@@ -1963,6 +2105,72 @@ def manual_segmentation_phase_2(request: HttpRequest, pk: int) -> HttpResponse:
             "base_hash": base_hash,
             "preview": _phase2_preview_from_payload(seg2_payload),
         },
+    )
+
+
+@login_required
+def manual_mwe(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    seg2_run = _find_run_with_stage(project, "segmentation_phase_2")
+    seg2_payload = _load_stage_payload(project, "segmentation_phase_2", run_dir=seg2_run) if seg2_run else None
+    if not seg2_payload:
+        messages.error(request, "Manual MWE editing requires segmentation phase 2 annotated text.")
+        return redirect("project-annotation-home", pk=project.pk)
+
+    mwe_run = _find_run_with_stage(project, "mwe") or seg2_run
+    mwe_payload = _load_stage_payload(project, "mwe", run_dir=mwe_run) if mwe_run else None
+    if not mwe_payload:
+        mwe_payload = json.loads(json.dumps(seg2_payload))
+    mwe_payload, reconciled = _reconcile_mwe_payload_with_seg2(seg2_payload, mwe_payload)
+    if reconciled:
+        target_run = _ensure_stage_run_dir(project)
+        (target_run / "stages" / "mwe.json").write_text(
+            json.dumps(mwe_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        messages.warning(
+            request,
+            "MWE stage was out of sync with segmentation phase 2 and has been auto-reconciled; "
+            "aligned token-level MWE ids were preserved.",
+        )
+
+    rows = _mwe_rows(seg2_payload, mwe_payload)
+    base_hash = _stable_text_hash(str(seg2_payload.get("surface") or ""))
+
+    if request.method == "POST":
+        for row in rows:
+            for token in row["tokens"]:
+                if token["is_whitespace"]:
+                    token["mwe_id"] = ""
+                    continue
+                token["mwe_id"] = request.POST.get(
+                    f"mwe_id_{row['page_index']}_{row['segment_index']}_{token['token_index']}",
+                    token["mwe_id"],
+                )
+        try:
+            edited_payload = _mwe_payload_from_rows(seg2_payload, rows)
+        except ValueError as exc:
+            messages.error(request, str(exc))
+        else:
+            edited_hash = _stable_text_hash(str(edited_payload.get("surface") or ""))
+            if edited_hash != base_hash:
+                messages.error(request, "Text hash mismatch; only token MWE ids may be changed.")
+            else:
+                _save_versioned_stage_payload(
+                    project=project,
+                    stage_name="mwe",
+                    payload=edited_payload,
+                    metadata={"before_text_hash": base_hash, "after_text_hash": edited_hash},
+                )
+                target_run = _ensure_stage_run_dir(project)
+                _invalidate_downstream_stage_files(target_run, "mwe")
+                messages.success(request, "Saved manual MWE annotations.")
+                return redirect("manual-mwe", pk=project.pk)
+
+    return render(
+        request,
+        "projects/manual_mwe.html",
+        {"project": project, "rows": rows, "base_hash": base_hash},
     )
 
 

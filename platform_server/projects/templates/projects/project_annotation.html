@@ -85,6 +85,12 @@
 {% endif %}
 
 {% if has_segmentation_phase_2 %}
+  <p><a class="btn secondary" href="{% url 'manual-mwe' object.pk %}">Manual MWE</a></p>
+  {% with s=manual_stage_status.mwe %}
+    {% if s.exists %}
+      <p><small>Latest: {{ s.updated_at }} ({{ s.provenance }}, run {{ s.run }}){% if s.note %}; {{ s.note }}{% endif %}</small></p>
+    {% endif %}
+  {% endwith %}
   <p><a class="btn secondary" href="{% url 'manual-translation' object.pk %}">Manual translation</a></p>
   {% with s=manual_stage_status.translation %}
     {% if s.exists %}

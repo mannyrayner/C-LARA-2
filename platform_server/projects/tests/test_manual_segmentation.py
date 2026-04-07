@@ -334,3 +334,90 @@ class ManualSegmentationEditorTests(TestCase):
         stage_dir = self._latest_run_stage_dir()
         saved = json.loads((stage_dir / "translation.json").read_text(encoding="utf-8"))
         self.assertEqual(saved["pages"][0]["segments"][0]["annotations"]["translation"], "Bonjour le monde")
+
+    def test_manual_mwe_save_and_link_visibility(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_mwe" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        seg2_payload = {
+            "l2": "en",
+            "surface": "New York!",
+            "pages": [
+                {
+                    "surface": "New York!",
+                    "segments": [
+                        {
+                            "surface": "New York!",
+                            "tokens": [{"surface": "New"}, {"surface": " "}, {"surface": "York"}, {"surface": "!"}],
+                            "annotations": {},
+                        }
+                    ],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_2.json").write_text(json.dumps(seg2_payload), encoding="utf-8")
+
+        ann = self.client.get(reverse("project-annotation-home", args=[self.project.pk]))
+        self.assertContains(ann, reverse("manual-mwe", args=[self.project.pk]))
+
+        resp = self.client.post(
+            reverse("manual-mwe", args=[self.project.pk]),
+            {"mwe_id_1_1_1": "city_1", "mwe_id_1_1_3": "city_1"},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        stage_dir = self._latest_run_stage_dir()
+        saved = json.loads((stage_dir / "mwe.json").read_text(encoding="utf-8"))
+        tokens = saved["pages"][0]["segments"][0]["tokens"]
+        self.assertEqual(tokens[0]["annotations"]["mwe_id"], "p0m1")
+        self.assertEqual(tokens[2]["annotations"]["mwe_id"], "p0m1")
+        self.assertNotIn("mwe_id", tokens[1].get("annotations", {}))
+        mwes = saved["pages"][0]["segments"][0]["annotations"]["mwes"]
+        self.assertEqual(len(mwes), 1)
+
+    def test_manual_mwe_view_auto_reconciles_inconsistent_payload(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_mwe_reconcile" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        seg2_payload = {
+            "l2": "en",
+            "surface": "Alpha beta",
+            "pages": [
+                {
+                    "surface": "Alpha beta",
+                    "segments": [
+                        {
+                            "surface": "Alpha beta",
+                            "tokens": [{"surface": "Alpha"}, {"surface": " "}, {"surface": "beta"}],
+                            "annotations": {},
+                        }
+                    ],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        mwe_payload = {
+            "l2": "en",
+            "surface": "Alpha beta",
+            "pages": [
+                {
+                    "surface": "Alpha beta",
+                    "segments": [
+                        {
+                            "surface": "Alpha beta",
+                            "tokens": [{"surface": "Alpha beta", "annotations": {"mwe_id": "bad"}}],
+                            "annotations": {"mwes": [{"id": "bad", "tokens": ["Alpha beta"], "label": "x"}]},
+                        }
+                    ],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_2.json").write_text(json.dumps(seg2_payload), encoding="utf-8")
+        (run_dir / "mwe.json").write_text(json.dumps(mwe_payload), encoding="utf-8")
+
+        resp = self.client.get(reverse("manual-mwe", args=[self.project.pk]), follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "auto-reconciled")
