@@ -1,0 +1,52 @@
+{
+  "input": "{\n  \"surface\": \"Sie sucht nach bekannten Marken und hofft, dass sie sich an die deutschen Wörter aus der Schule erinnern kann.\",\n  \"tokens\": [\n    {\"surface\": \"Sie\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"sucht\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"nach\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"bekannten\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"Marken\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"und\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"hofft\", \"annotations\": {}},\n    {\"surface\": \",\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"dass\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"sie\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"sich\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"an\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"die\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"deutschen\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"Wörter\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"aus\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"der\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"Schule\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"erinnern\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"kann\", \"annotations\": {}},\n    {\"surface\": \".\"}\n  ],\n  \"annotations\": {}\n}",
+  "output": {
+    "surface": "Sie sucht nach bekannten Marken und hofft, dass sie sich an die deutschen Wörter aus der Schule erinnern kann.",
+    "tokens": [
+      {"surface": "Sie"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "sucht"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "nach"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "bekannten"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "Marken"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "und"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "hofft"},
+      {"surface": ","},
+      {"surface": " ", "annotations": {}},
+      {"surface": "dass"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "sie"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "sich", "annotations": {"mwe_id": "m1"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "an", "annotations": {"mwe_id": "m1"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "die"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "deutschen"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "Wörter"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "aus"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "der"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "Schule"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "erinnern", "annotations": {"mwe_id": "m1"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "kann"},
+      {"surface": "."}
+    ],
+    "annotations": {
+      "mwes": [
+        {"id": "m1", "tokens": ["sich", "an", "erinnern"], "label": "reflexive Verb-Präpositions-Konstruktion"}
+      ]
+    }
+  }
+}

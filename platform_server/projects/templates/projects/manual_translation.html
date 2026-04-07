@@ -1,0 +1,30 @@
+{% extends "projects/base.html" %}
+{% block title %}Manual translation: {{ project.title }}{% endblock %}
+{% block content %}
+<h1>Manual translation</h1>
+<p><a class="btn secondary" href="{% url 'project-annotation-home' project.pk %}">← Back to annotation home</a></p>
+<p>
+  Structure-only editor: source text is read-only. Edit translation values only.
+</p>
+<p>Text hash: <code>{{ base_hash }}</code></p>
+
+<form method="post">
+  {% csrf_token %}
+  {% for row in rows %}
+    <div style="border:1px solid #ddd; padding:0.75rem; margin-bottom:0.75rem;">
+      <div><strong>Page {{ row.page_index }}, Segment {{ row.segment_index }}</strong></div>
+      <textarea rows="2" style="width:100%; font-family: monospace;" readonly>{{ row.source_text }}</textarea>
+      <label>Editable translation:</label>
+      <textarea
+        rows="2"
+        name="translation_text_{{ row.page_index }}_{{ row.segment_index }}"
+        style="width:100%; font-family: monospace;">{{ row.translation_text }}</textarea>
+    </div>
+  {% empty %}
+    <p>No segments available.</p>
+  {% endfor %}
+  <p>
+    <button class="btn" type="submit">Save manual translation</button>
+  </p>
+</form>
+{% endblock %}

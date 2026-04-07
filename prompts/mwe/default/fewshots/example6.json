@@ -1,0 +1,10 @@
+{
+  "input": "{\n  \"surface\": \"वह काम कर रहा है।\",\n  \"tokens\": [\n    {\"surface\": \"वह\"}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"काम\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"कर\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"रहा\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"है\", \"annotations\": {}}, {\"surface\": \"।\"}\n  ],\n  \"annotations\": {}\n}",
+  "output": {
+    "surface": "वह काम कर रहा है।",
+    "tokens": [
+      {"surface": "वह"}, {"surface": " ", "annotations": {}}, {"surface": "काम", "annotations": {"mwe_id": "m1"}}, {"surface": " ", "annotations": {}}, {"surface": "कर", "annotations": {"mwe_id": "m1"}}, {"surface": " ", "annotations": {}}, {"surface": "रहा"}, {"surface": " ", "annotations": {}}, {"surface": "है"}, {"surface": "।"}
+    ],
+    "annotations": {"mwes": [{"id": "m1", "tokens": ["काम", "कर"], "label": "light-verb construction"}]}
+  }
+}
