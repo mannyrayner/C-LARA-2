@@ -133,3 +133,53 @@ class ManualSegmentationEditorTests(TestCase):
         resp = self.client.get(reverse("manual-segmentation-phase-1", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, "Hello world&lt;page&gt;")
+
+    def test_phase_1_save_salvages_phase_2_for_unchanged_pages_and_invalidates_downstream(self):
+        self.project.source_text = "AaaBbb"
+        self.project.save(update_fields=["source_text", "updated_at"])
+        run_dir = self.project.artifact_dir() / "runs" / "run_seed" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        seg1_payload = {
+            "l2": "en",
+            "surface": "Aaa<page>Bbb",
+            "pages": [
+                {"surface": "Aaa", "segments": [{"surface": "Aaa"}], "annotations": {}},
+                {"surface": "Bbb", "segments": [{"surface": "Bbb"}], "annotations": {}},
+            ],
+            "annotations": {},
+        }
+        seg2_payload = {
+            "l2": "en",
+            "surface": "Aaa<page>Bbb",
+            "pages": [
+                {
+                    "surface": "Aaa",
+                    "segments": [{"surface": "Aaa", "tokens": [{"surface": "A"}, {"surface": "aa"}]}],
+                    "annotations": {},
+                },
+                {
+                    "surface": "Bbb",
+                    "segments": [{"surface": "Bbb", "tokens": [{"surface": "B"}, {"surface": "bb"}]}],
+                    "annotations": {},
+                },
+            ],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_1.json").write_text(json.dumps(seg1_payload), encoding="utf-8")
+        (run_dir / "segmentation_phase_2.json").write_text(json.dumps(seg2_payload), encoding="utf-8")
+        (run_dir / "translation.json").write_text("{}", encoding="utf-8")
+
+        resp = self.client.post(
+            reverse("manual-segmentation-phase-1", args=[self.project.pk]),
+            {"editable_surface": "Aaa<page>Bb||b"},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+
+        latest_stage_dir = self._latest_run_stage_dir()
+        salvaged_seg2 = json.loads((latest_stage_dir / "segmentation_phase_2.json").read_text(encoding="utf-8"))
+        first_page_tokens = salvaged_seg2["pages"][0]["segments"][0]["tokens"]
+        self.assertEqual(first_page_tokens, [{"surface": "A"}, {"surface": "aa"}])
+        second_page_tokens = salvaged_seg2["pages"][1]["segments"][0]["tokens"]
+        self.assertEqual(second_page_tokens, [{"surface": "Bb"}])
+        self.assertFalse((latest_stage_dir / "translation.json").exists())

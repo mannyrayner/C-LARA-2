@@ -1599,6 +1599,81 @@ def _phase2_payload_from_bar_rows(seg1_payload: dict[str, Any], rows: list[dict[
     return edited
 
 
+def _page_surface_hashes(payload: dict[str, Any]) -> list[str]:
+    hashes: list[str] = []
+    for page in payload.get("pages", []) or []:
+        hashes.append(_stable_text_hash(str((page or {}).get("surface") or "")))
+    return hashes
+
+
+def _build_phase2_seed_from_seg1(seg1_payload: dict[str, Any]) -> dict[str, Any]:
+    seed = json.loads(json.dumps(seg1_payload))
+    for page in seed.get("pages", []) or []:
+        for segment in page.get("segments", []) or []:
+            segment["tokens"] = [{"surface": str(segment.get("surface") or "")}]
+    return seed
+
+
+def _salvage_segmentation_phase_2_for_run(run_dir: Path) -> dict[str, Any] | None:
+    seg1_path = run_dir / "stages" / "segmentation_phase_1.json"
+    seg2_path = run_dir / "stages" / "segmentation_phase_2.json"
+    if not seg1_path.exists() or not seg2_path.exists():
+        return None
+    try:
+        seg1_payload = json.loads(seg1_path.read_text(encoding="utf-8"))
+        seg2_payload = json.loads(seg2_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if not isinstance(seg1_payload, dict) or not isinstance(seg2_payload, dict):
+        return None
+
+    old_hashes = _page_surface_hashes(seg2_payload)
+    new_hashes = _page_surface_hashes(seg1_payload)
+    salvaged = _build_phase2_seed_from_seg1(seg1_payload)
+    unchanged_pages = 0
+    for idx, (old_hash, new_hash) in enumerate(zip(old_hashes, new_hashes)):
+        if old_hash != new_hash:
+            continue
+        old_pages = seg2_payload.get("pages") or []
+        new_pages = salvaged.get("pages") or []
+        if idx >= len(old_pages) or idx >= len(new_pages):
+            continue
+        old_segments = (old_pages[idx] or {}).get("segments") or []
+        new_segments = (new_pages[idx] or {}).get("segments") or []
+        if len(old_segments) != len(new_segments):
+            continue
+        page_ok = True
+        for sidx, old_seg in enumerate(old_segments):
+            if str((old_seg or {}).get("surface") or "") != str((new_segments[sidx] or {}).get("surface") or ""):
+                page_ok = False
+                break
+        if not page_ok:
+            continue
+        for sidx, old_seg in enumerate(old_segments):
+            tokens = (old_seg or {}).get("tokens") or []
+            if isinstance(tokens, list) and tokens:
+                new_segments[sidx]["tokens"] = tokens
+        unchanged_pages += 1
+
+    if unchanged_pages == 0:
+        return None
+    (run_dir / "stages" / "segmentation_phase_2.json").write_text(
+        json.dumps(salvaged, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return {"unchanged_pages": unchanged_pages, "total_pages": len(new_hashes)}
+
+
+def _invalidate_downstream_stage_files(run_dir: Path, from_stage: str) -> None:
+    if from_stage not in PIPELINE_ORDER:
+        return
+    from_index = PIPELINE_ORDER.index(from_stage)
+    for stage in PIPELINE_ORDER[from_index + 1 :]:
+        path = run_dir / "stages" / f"{stage}.json"
+        if path.exists():
+            path.unlink()
+
+
 def _validate_phase2_structure(seg1_payload: dict[str, Any], edited_payload: dict[str, Any]) -> str | None:
     base_pages = seg1_payload.get("pages") or []
     edited_pages = edited_payload.get("pages") or []
@@ -1665,6 +1740,15 @@ def manual_segmentation_phase_1(request: HttpRequest, pk: int) -> HttpResponse:
                     "after_text_hash": edited_hash,
                 },
             )
+            target_run = _ensure_stage_run_dir(project)
+            salvage_info = _salvage_segmentation_phase_2_for_run(target_run)
+            _invalidate_downstream_stage_files(target_run, "segmentation_phase_2")
+            if salvage_info:
+                messages.info(
+                    request,
+                    f"Salvaged segmentation phase 2 for {salvage_info['unchanged_pages']}/"
+                    f"{salvage_info['total_pages']} unchanged pages.",
+                )
             messages.success(request, "Saved manual segmentation phase 1.")
             return redirect("manual-segmentation-phase-1", pk=project.pk)
 
@@ -1879,6 +1963,9 @@ def _resolve_run_dir(project: Project) -> Path | None:
         return latest_run_dir if latest_run_dir.stat().st_mtime >= compiled_run_dir.stat().st_mtime else compiled_run_dir
     return latest_run_dir or compiled_run_dir
 
+    if compiled_run_dir and latest_run_dir:
+        return latest_run_dir if latest_run_dir.stat().st_mtime >= compiled_run_dir.stat().st_mtime else compiled_run_dir
+    return latest_run_dir or compiled_run_dir
 
 def _has_segmentation_phase_1_output(project: Project) -> bool:
     run_dir = _resolve_run_dir(project)
@@ -2111,6 +2198,14 @@ def _run_compile_task(
         return
 
     requested_end_stage = spec.end_stage or "compile_html"
+    if requested_end_stage == "segmentation_phase_1":
+        salvage_info = _salvage_segmentation_phase_2_for_run(output_dir)
+        _invalidate_downstream_stage_files(output_dir, "segmentation_phase_2")
+        if salvage_info:
+            post_update(
+                "Salvaged segmentation_phase_2 for "
+                f"{salvage_info['unchanged_pages']}/{salvage_info['total_pages']} unchanged pages."
+            )
     html_info: dict[str, Any] | None = result.get("html") if isinstance(result, dict) else None
     compiled_rel = ""
     run_root = output_dir
@@ -2238,6 +2333,15 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
             return redirect(return_to)
     elif start_stage == "segmentation_phase_1":
         text = (project.source_text or "").strip()
+        source_run = _resolve_run_dir(project)
+        if source_run:
+            try:
+                _copy_run_artifacts(source_run, output_dir)
+                progress_log = output_dir / "stages" / "progress.jsonl"
+                if progress_log.exists():
+                    progress_log.unlink()
+            except Exception:
+                logger.exception("Failed to copy prior run artifacts from %s", source_run)
         if not text:
             source_run = _find_run_with_stage(project, "text_gen")
             if source_run:
