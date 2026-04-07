@@ -1432,11 +1432,13 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["has_segmentation_phase_1"] = _has_segmentation_phase_1_output(project)
         context["has_segmentation_phase_2"] = _find_latest_stage_file(project, "segmentation_phase_2.json") is not None
         context["has_mwe"] = _find_latest_stage_file(project, "mwe.json") is not None
+        context["has_lemma"] = _find_latest_stage_file(project, "lemma.json") is not None
         context["manual_stage_status"] = {
             "segmentation_phase_1": _manual_stage_status(project, "segmentation_phase_1"),
             "segmentation_phase_2": _manual_stage_status(project, "segmentation_phase_2"),
             "mwe": _manual_stage_status(project, "mwe"),
             "lemma": _manual_stage_status(project, "lemma"),
+            "gloss": _manual_stage_status(project, "gloss"),
             "translation": _manual_stage_status(project, "translation"),
         }
         if project.language.lower().startswith("zh"):
@@ -1963,6 +1965,112 @@ def _lemma_payload_from_rows(mwe_payload: dict[str, Any], rows: list[dict[str, A
     return payload
 
 
+def _gloss_rows(lemma_payload: dict[str, Any], gloss_payload: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    lemma_pages = lemma_payload.get("pages") or []
+    gloss_pages = gloss_payload.get("pages") or []
+    for pidx, lemma_page in enumerate(lemma_pages, start=1):
+        lemma_segments = lemma_page.get("segments") or []
+        gloss_segments = ((gloss_pages[pidx - 1] if pidx - 1 < len(gloss_pages) else {}) or {}).get("segments") or []
+        for sidx, lemma_seg in enumerate(lemma_segments, start=1):
+            gloss_seg = (gloss_segments[sidx - 1] if sidx - 1 < len(gloss_segments) else {}) or {}
+            lemma_tokens = lemma_seg.get("tokens") or []
+            gloss_tokens = gloss_seg.get("tokens") or []
+            token_rows: list[dict[str, Any]] = []
+            pending_ws = ""
+            for tidx, token in enumerate(lemma_tokens, start=1):
+                surface = str((token or {}).get("surface") or "")
+                if not surface.strip():
+                    pending_ws += surface
+                    continue
+                gloss_token = (gloss_tokens[tidx - 1] if tidx - 1 < len(gloss_tokens) else {}) or {}
+                gloss_ann = (gloss_token.get("annotations") or {}) if isinstance(gloss_token, dict) else {}
+                token_rows.append(
+                    {
+                        "token_index": tidx,
+                        "surface": surface,
+                        "leading_ws": pending_ws,
+                        "gloss": str((gloss_ann.get("gloss") or "")),
+                    }
+                )
+                pending_ws = ""
+            rows.append(
+                {
+                    "page_index": pidx,
+                    "segment_index": sidx,
+                    "source_text": str(lemma_seg.get("surface") or ""),
+                    "tokens": token_rows,
+                }
+            )
+    return rows
+
+
+def _segment_has_gloss_data(segment: dict[str, Any]) -> bool:
+    for token in (segment.get("tokens") or []):
+        ann = (token or {}).get("annotations") or {}
+        if ann.get("gloss"):
+            return True
+    return False
+
+
+def _reconcile_gloss_payload_with_lemma(lemma_payload: dict[str, Any], gloss_payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    reconciled = json.loads(json.dumps(lemma_payload))
+    changed = False
+    gloss_pages = gloss_payload.get("pages") or []
+    for pidx, page in enumerate(reconciled.get("pages") or []):
+        segs = page.get("segments") or []
+        gloss_segs = ((gloss_pages[pidx] if pidx < len(gloss_pages) else {}) or {}).get("segments") or []
+        for sidx, seg in enumerate(segs):
+            gloss_seg = (gloss_segs[sidx] if sidx < len(gloss_segs) else {}) or {}
+            if str(gloss_seg.get("surface") or "") != str(seg.get("surface") or ""):
+                continue
+            if not _segment_tokens_match(seg, gloss_seg):
+                if _segment_has_gloss_data(gloss_seg):
+                    changed = True
+                continue
+            seg_tokens = seg.get("tokens") or []
+            gloss_tokens = gloss_seg.get("tokens") or []
+            for tidx, token in enumerate(seg_tokens):
+                gloss_token = (gloss_tokens[tidx] if tidx < len(gloss_tokens) else {}) or {}
+                gloss_ann = (gloss_token.get("annotations") or {}) if isinstance(gloss_token, dict) else {}
+                token_annotations = dict(token.get("annotations") or {})
+                old_gloss = str(token_annotations.get("gloss") or "")
+                new_gloss = str(gloss_ann.get("gloss") or "")
+                if old_gloss != new_gloss:
+                    changed = True
+                if new_gloss:
+                    token_annotations["gloss"] = new_gloss
+                else:
+                    token_annotations.pop("gloss", None)
+                token["annotations"] = token_annotations
+    return reconciled, changed
+
+
+def _gloss_payload_from_rows(lemma_payload: dict[str, Any], rows: list[dict[str, Any]]) -> dict[str, Any]:
+    payload = json.loads(json.dumps(lemma_payload))
+    for row in rows:
+        page = payload["pages"][row["page_index"] - 1]
+        seg = page["segments"][row["segment_index"] - 1]
+        if str(seg.get("surface") or "") != str(row["source_text"] or ""):
+            raise ValueError("Source segment text changed; only token gloss may be edited.")
+        tokens = seg.get("tokens") or []
+        edited_tokens = {int(t.get("token_index")): t for t in (row.get("tokens") or []) if t.get("token_index")}
+        for idx, token in enumerate(tokens, start=1):
+            edited_token = edited_tokens.get(idx)
+            if not edited_token:
+                continue
+            if str((token.get("surface") or "")) != str((edited_token.get("surface") or "")):
+                raise ValueError("Token text changed; only token gloss may be edited.")
+            annotations = dict(token.get("annotations") or {})
+            gloss = str((edited_token.get("gloss") or "")).strip()
+            if gloss:
+                annotations["gloss"] = gloss
+            else:
+                annotations.pop("gloss", None)
+            token["annotations"] = annotations
+    return payload
+
+
 def _page_surface_hashes(payload: dict[str, Any]) -> list[str]:
     hashes: list[str] = []
     for page in payload.get("pages", []) or []:
@@ -2063,6 +2171,10 @@ def _manual_stage_status(project: Project, stage: str) -> dict[str, Any]:
         upstream = _find_latest_stage_file(project, "mwe.json")
         if upstream and upstream[1].stat().st_mtime > stage_path.stat().st_mtime:
             note = "upstream mwe is newer"
+    elif stage == "gloss":
+        upstream = _find_latest_stage_file(project, "lemma.json")
+        if upstream and upstream[1].stat().st_mtime > stage_path.stat().st_mtime:
+            note = "upstream lemma is newer"
     return {
         "exists": True,
         "stage": stage,
@@ -2364,6 +2476,69 @@ def manual_lemma(request: HttpRequest, pk: int) -> HttpResponse:
     return render(
         request,
         "projects/manual_lemma.html",
+        {"project": project, "rows": rows, "base_hash": base_hash},
+    )
+
+
+@login_required
+def manual_gloss(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    lemma_run = _find_run_with_stage(project, "lemma")
+    lemma_payload = _load_stage_payload(project, "lemma", run_dir=lemma_run) if lemma_run else None
+    if not lemma_payload:
+        messages.error(request, "Manual gloss editing requires lemma annotated text.")
+        return redirect("project-annotation-home", pk=project.pk)
+
+    gloss_run = _find_run_with_stage(project, "gloss") or lemma_run
+    gloss_payload = _load_stage_payload(project, "gloss", run_dir=gloss_run) if gloss_run else None
+    if not gloss_payload:
+        gloss_payload = json.loads(json.dumps(lemma_payload))
+    gloss_payload, reconciled = _reconcile_gloss_payload_with_lemma(lemma_payload, gloss_payload)
+    if reconciled:
+        target_run = _ensure_stage_run_dir(project)
+        (target_run / "stages" / "gloss.json").write_text(
+            json.dumps(gloss_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        messages.warning(
+            request,
+            "Gloss stage was out of sync with lemma and has been auto-reconciled; "
+            "aligned token-level gloss values were preserved.",
+        )
+
+    rows = _gloss_rows(lemma_payload, gloss_payload)
+    base_hash = _stable_text_hash(str(lemma_payload.get("surface") or ""))
+
+    if request.method == "POST":
+        for row in rows:
+            for token in row["tokens"]:
+                token["gloss"] = request.POST.get(
+                    f"gloss_{row['page_index']}_{row['segment_index']}_{token['token_index']}",
+                    token["gloss"],
+                )
+        try:
+            edited_payload = _gloss_payload_from_rows(lemma_payload, rows)
+        except ValueError as exc:
+            messages.error(request, str(exc))
+        else:
+            edited_hash = _stable_text_hash(str(edited_payload.get("surface") or ""))
+            if edited_hash != base_hash:
+                messages.error(request, "Text hash mismatch; only token gloss may be changed.")
+            else:
+                _save_versioned_stage_payload(
+                    project=project,
+                    stage_name="gloss",
+                    payload=edited_payload,
+                    metadata={"before_text_hash": base_hash, "after_text_hash": edited_hash},
+                )
+                target_run = _ensure_stage_run_dir(project)
+                _invalidate_downstream_stage_files(target_run, "gloss")
+                messages.success(request, "Saved manual gloss annotations.")
+                return redirect("manual-gloss", pk=project.pk)
+
+    return render(
+        request,
+        "projects/manual_gloss.html",
         {"project": project, "rows": rows, "base_hash": base_hash},
     )
 

@@ -520,3 +520,94 @@ class ManualSegmentationEditorTests(TestCase):
         resp = self.client.get(reverse("manual-lemma", args=[self.project.pk]), follow=True)
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "auto-reconciled")
+
+    def test_manual_gloss_save_and_link_visibility(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_gloss" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        lemma_payload = {
+            "l2": "en",
+            "surface": "Milo was here",
+            "pages": [
+                {
+                    "surface": "Milo was here",
+                    "segments": [
+                        {
+                            "surface": "Milo was here",
+                            "tokens": [
+                                {"surface": "Milo", "annotations": {"lemma": "Milo", "pos": "PROPN"}},
+                                {"surface": " "},
+                                {"surface": "was", "annotations": {"lemma": "be", "pos": "VERB"}},
+                            ],
+                            "annotations": {},
+                        }
+                    ],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_2.json").write_text(json.dumps(lemma_payload), encoding="utf-8")
+        (run_dir / "mwe.json").write_text(json.dumps(lemma_payload), encoding="utf-8")
+        (run_dir / "lemma.json").write_text(json.dumps(lemma_payload), encoding="utf-8")
+
+        ann = self.client.get(reverse("project-annotation-home", args=[self.project.pk]))
+        self.assertContains(ann, reverse("manual-gloss", args=[self.project.pk]))
+
+        resp = self.client.post(
+            reverse("manual-gloss", args=[self.project.pk]),
+            {"gloss_1_1_1": "Milo", "gloss_1_1_3": "was"},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        stage_dir = self._latest_run_stage_dir()
+        saved = json.loads((stage_dir / "gloss.json").read_text(encoding="utf-8"))
+        tokens = saved["pages"][0]["segments"][0]["tokens"]
+        self.assertEqual(tokens[0]["annotations"]["gloss"], "Milo")
+        self.assertEqual(tokens[2]["annotations"]["gloss"], "was")
+        self.assertNotIn("gloss", tokens[1].get("annotations", {}))
+
+    def test_manual_gloss_view_auto_reconciles_inconsistent_payload(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_gloss_reconcile" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        lemma_payload = {
+            "l2": "en",
+            "surface": "Alpha beta",
+            "pages": [
+                {
+                    "surface": "Alpha beta",
+                    "segments": [
+                        {
+                            "surface": "Alpha beta",
+                            "tokens": [{"surface": "Alpha"}, {"surface": " "}, {"surface": "beta"}],
+                            "annotations": {},
+                        }
+                    ],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        gloss_payload = {
+            "l2": "en",
+            "surface": "Alpha beta",
+            "pages": [
+                {
+                    "surface": "Alpha beta",
+                    "segments": [
+                        {
+                            "surface": "Alpha beta",
+                            "tokens": [{"surface": "Alpha beta", "annotations": {"gloss": "bad"}}],
+                            "annotations": {},
+                        }
+                    ],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        (run_dir / "lemma.json").write_text(json.dumps(lemma_payload), encoding="utf-8")
+        (run_dir / "gloss.json").write_text(json.dumps(gloss_payload), encoding="utf-8")
+
+        resp = self.client.get(reverse("manual-gloss", args=[self.project.pk]), follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "auto-reconciled")
