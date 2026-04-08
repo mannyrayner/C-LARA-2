@@ -1,0 +1,68 @@
+{% extends "projects/base.html" %}
+{% block title %}Manual lemma: {{ project.title }}{% endblock %}
+{% block content %}
+<h1>Manual lemma</h1>
+<p><a class="btn secondary" href="{% url 'project-annotation-home' project.pk %}">← Back to annotation home</a></p>
+<p>
+  Structure-only editor: token text is read-only. Edit <code>lemma</code> and <code>pos</code> on non-whitespace tokens only.
+</p>
+<p>Text hash: <code>{{ base_hash }}</code></p>
+<style>
+  .lemma-line { white-space: normal; line-height: 1.2; }
+  .lemma-gap { white-space: pre-wrap; }
+  .lemma-token {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    white-space: nowrap;
+    vertical-align: bottom;
+    margin-bottom: 0.1rem;
+  }
+  .lemma-top { margin-bottom: 0.1rem; }
+  .lemma-fields { display: inline-flex; gap: 0.25rem; }
+  .lemma-fields input {
+    width: 5.4rem;
+    font-family: "Noto Sans Devanagari", "Nirmala UI", "Mangal", "Kohinoor Devanagari", "Lohit Devanagari", sans-serif;
+    text-align: center;
+  }
+  .lemma-surface {
+    font-family: "Noto Sans Devanagari", "Nirmala UI", "Mangal", "Kohinoor Devanagari", "Lohit Devanagari", sans-serif;
+    border-bottom: 1px dotted #bbb;
+    padding: 0 0.1rem;
+    white-space: nowrap;
+    word-break: keep-all;
+    letter-spacing: normal;
+    font-variant-ligatures: normal;
+    text-rendering: optimizeLegibility;
+  }
+</style>
+
+<form method="post">
+  {% csrf_token %}
+  {% for row in rows %}
+    <div style="border:1px solid #ddd; padding:0.75rem; margin-bottom:0.75rem;">
+      <div><strong>Page {{ row.page_index }}, Segment {{ row.segment_index }}</strong></div>
+      <div class="lemma-line">
+        {% for token in row.tokens %}
+          <span class="lemma-gap">{{ token.leading_ws }}</span><span class="lemma-token"><span class="lemma-top"><span class="lemma-fields"><input
+            type="text"
+            name="lemma_{{ row.page_index }}_{{ row.segment_index }}_{{ token.token_index }}"
+            value="{{ token.lemma }}"
+            placeholder="lemma"
+            lang="{{ project.language }}" /><input
+            type="text"
+            name="pos_{{ row.page_index }}_{{ row.segment_index }}_{{ token.token_index }}"
+            value="{{ token.pos }}"
+            placeholder="pos"
+            lang="{{ project.language }}" /></span></span><span class="lemma-surface" lang="{{ project.language }}">{{ token.surface }}</span></span>
+        {% endfor %}
+      </div>
+    </div>
+  {% empty %}
+    <p>No segments available.</p>
+  {% endfor %}
+  <p>
+    <button class="btn" type="submit">Save manual lemma annotations</button>
+  </p>
+</form>
+{% endblock %}
