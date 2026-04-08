@@ -3016,6 +3016,12 @@ def _load_stage_payload(
         return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return None
+    compiled_path = Path(compiled)
+    page_one = compiled_path.with_name("page_1.html")
+    base = Path(project.artifact_root or project.artifact_dir()).resolve()
+    if (base / page_one).exists():
+        return page_one.as_posix()
+    return compiled_path.as_posix()
 
 
 def _copy_run_artifacts(src: Path, dest: Path) -> None:
