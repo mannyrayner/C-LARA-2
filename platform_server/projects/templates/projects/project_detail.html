@@ -5,6 +5,9 @@
 <p>{{ object.description }}</p>
 <p>Language: {{ object.language }} → {{ object.target_language }}</p>
 
+{% if object.compiled_path %}
+  <p><a class="btn link" href="{% url 'project-compiled' pk=object.pk path=object.compiled_path %}" target="_blank">View via server</a></p>
+{% endif %}
 <p><a class="btn" href="{% url 'project-annotation-home' object.pk %}">Linguistic annotation</a></p>
 <p><a class="btn" href="{% url 'project-images-home' object.pk %}">Images</a></p>
 <p><a class="btn" href="{% url 'project-exercises-home' object.pk %}">Exercises</a></p>
@@ -12,11 +15,6 @@
 <p><a class="btn secondary" href="{% url 'project-download-source-bundle' object.pk %}">Download source ZIP</a></p>
 <p><a class="btn secondary" href="{% url 'project-download-bundle' object.pk %}">Download compiled ZIP</a></p>
 <p><a class="btn secondary" href="{% url 'project-publish' object.pk %}">{% if object.is_published %}Unpublish{% else %}Publish{% endif %}</a></p>
-{% if object.compiled_path %}
-  <p><a class="btn link" href="{% url 'project-compiled' pk=object.pk path=object.compiled_path %}" target="_blank">View via server</a></p>
-{% endif %}
-<p><a class="btn" href="{% url 'project-images-home' object.pk %}">Images</a></p>
-<p><a class="btn" href="{% url 'project-exercises-home' object.pk %}">Exercises</a></p>
 
 <form method="post" action="{% url 'project-delete' object.pk %}" onsubmit="return confirm('Delete this project and its artifacts?');">{% csrf_token %}
   <button class="btn secondary" type="submit">Delete project</button>
