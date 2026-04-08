@@ -2,7 +2,7 @@
 {% block title %}Manual segmentation phase 1: {{ project.title }}{% endblock %}
 {% block content %}
 <h1>Manual segmentation phase 1</h1>
-<p><a class="btn secondary" href="{% url 'project-annotation-home' project.pk %}">← Back to annotation home</a></p>
+<p><a class="btn secondary" href="{% url 'manual-top-level' project.pk %}">← Back to manual annotation top level</a></p>
 <p>
   Structure-only editor. Insert/delete only <code>&lt;page&gt;</code> and <code>||</code> separators.
 </p>

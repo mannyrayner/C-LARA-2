@@ -15,6 +15,11 @@ urlpatterns = [
     path("projects/<int:pk>/", views.ProjectDetailView.as_view(), name="project-detail"),
     path("projects/<int:pk>/annotation/", views.ProjectAnnotationView.as_view(), name="project-annotation-home"),
     path(
+        "projects/<int:pk>/annotation/manual/top-level/",
+        views.manual_top_level,
+        name="manual-top-level",
+    ),
+    path(
         "projects/<int:pk>/annotation/manual/segmentation-phase-1/",
         views.manual_segmentation_phase_1,
         name="manual-segmentation-phase-1",

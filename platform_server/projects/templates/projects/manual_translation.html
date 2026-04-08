@@ -2,7 +2,7 @@
 {% block title %}Manual translation: {{ project.title }}{% endblock %}
 {% block content %}
 <h1>Manual translation</h1>
-<p><a class="btn secondary" href="{% url 'project-annotation-home' project.pk %}">← Back to annotation home</a></p>
+<p><a class="btn secondary" href="{% url 'manual-top-level' project.pk %}">← Back to manual annotation top level</a></p>
 <p>
   Structure-only editor: source text is read-only. Edit translation values only.
 </p>

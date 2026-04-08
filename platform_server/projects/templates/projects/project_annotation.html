@@ -61,75 +61,8 @@
 </form>
 <p><a class="btn secondary" href="{% url 'project-download-bundle' object.pk %}">Download self-contained ZIP (HTML + audio + images)</a></p>
 <p><a class="btn secondary" href="{% url 'project-download-source-bundle' object.pk %}">Download source ZIP (latest run annotations + image metadata)</a></p>
-<h3>Manual segmentation editor (Step 1)</h3>
-{% if has_source_text_for_manual_segmentation %}
-  <p><a class="btn secondary" href="{% url 'manual-segmentation-phase-1' object.pk %}">Manual segmentation phase 1</a></p>
-  {% with s=manual_stage_status.segmentation_phase_1 %}
-    {% if s.exists %}
-      <p><small>Latest: {{ s.updated_at }} ({{ s.provenance }}, run {{ s.run }}){% if s.note %}; {{ s.note }}{% endif %}</small></p>
-    {% endif %}
-  {% endwith %}
-{% else %}
-  <p>Manual segmentation phase 1 is unavailable until source text is present.</p>
-{% endif %}
-
-{% if has_segmentation_phase_1 %}
-  <p><a class="btn secondary" href="{% url 'manual-segmentation-phase-2' object.pk %}">Manual segmentation phase 2</a></p>
-  {% with s=manual_stage_status.segmentation_phase_2 %}
-    {% if s.exists %}
-      <p><small>Latest: {{ s.updated_at }} ({{ s.provenance }}, run {{ s.run }}){% if s.note %}; {{ s.note }}{% endif %}</small></p>
-    {% endif %}
-  {% endwith %}
-{% else %}
-  <p>Manual segmentation phase 2 is unavailable until segmentation phase 1 annotated text exists.</p>
-{% endif %}
-
-{% if has_segmentation_phase_2 %}
-  <p><a class="btn secondary" href="{% url 'manual-mwe' object.pk %}">Manual MWE</a></p>
-  {% with s=manual_stage_status.mwe %}
-    {% if s.exists %}
-      <p><small>Latest: {{ s.updated_at }} ({{ s.provenance }}, run {{ s.run }}){% if s.note %}; {{ s.note }}{% endif %}</small></p>
-    {% endif %}
-  {% endwith %}
-  {% if has_mwe %}
-    <p><a class="btn secondary" href="{% url 'manual-lemma' object.pk %}">Manual lemma</a></p>
-    {% with s=manual_stage_status.lemma %}
-      {% if s.exists %}
-        <p><small>Latest: {{ s.updated_at }} ({{ s.provenance }}, run {{ s.run }}){% if s.note %}; {{ s.note }}{% endif %}</small></p>
-      {% endif %}
-    {% endwith %}
-    {% if has_lemma %}
-      <p><a class="btn secondary" href="{% url 'manual-gloss' object.pk %}">Manual gloss</a></p>
-      {% with s=manual_stage_status.gloss %}
-        {% if s.exists %}
-          <p><small>Latest: {{ s.updated_at }} ({{ s.provenance }}, run {{ s.run }}){% if s.note %}; {{ s.note }}{% endif %}</small></p>
-        {% endif %}
-      {% endwith %}
-      {% if has_gloss %}
-        <p><a class="btn secondary" href="{% url 'manual-pinyin' object.pk %}">Manual pinyin/romanization</a></p>
-        {% with s=manual_stage_status.pinyin %}
-          {% if s.exists %}
-            <p><small>Latest: {{ s.updated_at }} ({{ s.provenance }}, run {{ s.run }}){% if s.note %}; {{ s.note }}{% endif %}</small></p>
-          {% endif %}
-        {% endwith %}
-      {% else %}
-        <p>Manual pinyin/romanization is unavailable until gloss annotated text exists.</p>
-      {% endif %}
-    {% else %}
-      <p>Manual gloss is unavailable until lemma annotated text exists.</p>
-    {% endif %}
-  {% else %}
-    <p>Manual lemma is unavailable until MWE annotated text exists.</p>
-  {% endif %}
-  <p><a class="btn secondary" href="{% url 'manual-translation' object.pk %}">Manual translation</a></p>
-  {% with s=manual_stage_status.translation %}
-    {% if s.exists %}
-      <p><small>Latest: {{ s.updated_at }} ({{ s.provenance }}, run {{ s.run }}){% if s.note %}; {{ s.note }}{% endif %}</small></p>
-    {% endif %}
-  {% endwith %}
-{% else %}
-  <p>Manual translation is unavailable until segmentation phase 2 annotated text exists.</p>
-{% endif %}
+<h3>Manual annotation editors</h3>
+<p><a class="btn secondary" href="{% url 'manual-top-level' object.pk %}">Open manual annotation top level</a></p>
 
 <p><a class="btn secondary" href="{% url 'project-publish' object.pk %}">{% if object.is_published %}Unpublish{% else %}Publish{% endif %}</a></p>
 <form method="post" action="{% url 'project-delete' object.pk %}" onsubmit="return confirm('Delete this project and its artifacts?');">{% csrf_token %}

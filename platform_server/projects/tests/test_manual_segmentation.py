@@ -287,7 +287,10 @@ class ManualSegmentationEditorTests(TestCase):
 
         resp = self.client.get(reverse("project-annotation-home", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "manual edit")
+        self.assertContains(resp, reverse("manual-top-level", args=[self.project.pk]))
+        manual = self.client.get(reverse("manual-top-level", args=[self.project.pk]))
+        self.assertEqual(manual.status_code, 200)
+        self.assertContains(manual, "manual edit")
 
     def test_phase_2_view_expands_single_token_segments_for_editability(self):
         run_dir = self.project.artifact_dir() / "runs" / "run_single_token" / "stages"
@@ -323,7 +326,9 @@ class ManualSegmentationEditorTests(TestCase):
         (run_dir / "segmentation_phase_2.json").write_text(json.dumps(seg2_payload), encoding="utf-8")
 
         ann = self.client.get(reverse("project-annotation-home", args=[self.project.pk]))
-        self.assertContains(ann, reverse("manual-translation", args=[self.project.pk]))
+        self.assertContains(ann, reverse("manual-top-level", args=[self.project.pk]))
+        manual = self.client.get(reverse("manual-top-level", args=[self.project.pk]))
+        self.assertContains(manual, reverse("manual-translation", args=[self.project.pk]))
 
         resp = self.client.post(
             reverse("manual-translation", args=[self.project.pk]),
@@ -359,7 +364,9 @@ class ManualSegmentationEditorTests(TestCase):
         (run_dir / "segmentation_phase_2.json").write_text(json.dumps(seg2_payload), encoding="utf-8")
 
         ann = self.client.get(reverse("project-annotation-home", args=[self.project.pk]))
-        self.assertContains(ann, reverse("manual-mwe", args=[self.project.pk]))
+        self.assertContains(ann, reverse("manual-top-level", args=[self.project.pk]))
+        manual = self.client.get(reverse("manual-top-level", args=[self.project.pk]))
+        self.assertContains(manual, reverse("manual-mwe", args=[self.project.pk]))
 
         resp = self.client.post(
             reverse("manual-mwe", args=[self.project.pk]),
@@ -453,7 +460,9 @@ class ManualSegmentationEditorTests(TestCase):
         (run_dir / "mwe.json").write_text(json.dumps(mwe_payload), encoding="utf-8")
 
         ann = self.client.get(reverse("project-annotation-home", args=[self.project.pk]))
-        self.assertContains(ann, reverse("manual-lemma", args=[self.project.pk]))
+        self.assertContains(ann, reverse("manual-top-level", args=[self.project.pk]))
+        manual = self.client.get(reverse("manual-top-level", args=[self.project.pk]))
+        self.assertContains(manual, reverse("manual-lemma", args=[self.project.pk]))
 
         resp = self.client.post(
             reverse("manual-lemma", args=[self.project.pk]),
@@ -551,7 +560,9 @@ class ManualSegmentationEditorTests(TestCase):
         (run_dir / "lemma.json").write_text(json.dumps(lemma_payload), encoding="utf-8")
 
         ann = self.client.get(reverse("project-annotation-home", args=[self.project.pk]))
-        self.assertContains(ann, reverse("manual-gloss", args=[self.project.pk]))
+        self.assertContains(ann, reverse("manual-top-level", args=[self.project.pk]))
+        manual = self.client.get(reverse("manual-top-level", args=[self.project.pk]))
+        self.assertContains(manual, reverse("manual-gloss", args=[self.project.pk]))
 
         resp = self.client.post(
             reverse("manual-gloss", args=[self.project.pk]),
@@ -643,7 +654,9 @@ class ManualSegmentationEditorTests(TestCase):
         (run_dir / "gloss.json").write_text(json.dumps(gloss_payload), encoding="utf-8")
 
         ann = self.client.get(reverse("project-annotation-home", args=[self.project.pk]))
-        self.assertContains(ann, reverse("manual-pinyin", args=[self.project.pk]))
+        self.assertContains(ann, reverse("manual-top-level", args=[self.project.pk]))
+        manual = self.client.get(reverse("manual-top-level", args=[self.project.pk]))
+        self.assertContains(manual, reverse("manual-pinyin", args=[self.project.pk]))
 
         resp = self.client.post(
             reverse("manual-pinyin", args=[self.project.pk]),
