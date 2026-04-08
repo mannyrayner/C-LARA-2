@@ -76,7 +76,7 @@ class GlossUnitTests(unittest.IsolatedAsyncioTestCase):
         )
 
     def test_build_prompt_mentions_translation(self) -> None:
-        template = "Gloss tokens"
+        template = "Gloss tokens into {glossing_language}"
         prompt = gloss._build_prompt(
             template,
             segment=self.sample_segment,
@@ -85,6 +85,7 @@ class GlossUnitTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertIn("translation", prompt)
         self.assertIn("Segment JSON", prompt)
+        self.assertIn("Gloss tokens into fr", prompt)
 
         log_test_case(
             "gloss:build_prompt",
@@ -240,6 +241,28 @@ class GlossUnitTests(unittest.IsolatedAsyncioTestCase):
             output={"duration_s": round(duration, 3), "prompts": len(client.prompts)},
             status="pass",
         )
+
+    def test_postprocess_removes_whitespace_gloss_and_keeps_proper_name(self) -> None:
+        text = {
+            "pages": [
+                {
+                    "segments": [
+                        {
+                            "tokens": [
+                                {"surface": " ", "annotations": {"gloss": "WRONG"}},
+                                {"surface": "Aisha", "annotations": {"pos": "PROPN", "gloss": "-"}},
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+
+        gloss._postprocess_glosses(text)
+
+        tokens = text["pages"][0]["segments"][0]["tokens"]
+        self.assertNotIn("annotations", tokens[0])
+        self.assertEqual(tokens[1]["annotations"]["gloss"], "Aisha")
 
 
 class GlossIntegrationTests(unittest.IsolatedAsyncioTestCase):
