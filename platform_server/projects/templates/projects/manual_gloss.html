@@ -8,19 +8,31 @@
 </p>
 <p>Text hash: <code>{{ base_hash }}</code></p>
 <style>
-  .gloss-line { white-space: normal; line-height: 3.2; }
+  .gloss-line { white-space: normal; line-height: 1.2; }
   .gloss-gap { white-space: pre-wrap; }
-  .gloss-token ruby { ruby-position: over; }
-  .gloss-token rt { font-size: 0.9rem; }
+  .gloss-token {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    white-space: nowrap;
+    vertical-align: bottom;
+    margin-bottom: 0.1rem;
+  }
+  .gloss-top { margin-bottom: 0.1rem; }
   .gloss-token input {
     width: 7rem;
-    font-family: monospace;
+    font-family: "Noto Sans Devanagari", "Nirmala UI", "Mangal", "Kohinoor Devanagari", "Lohit Devanagari", sans-serif;
     text-align: center;
   }
   .gloss-surface {
-    font-family: monospace;
+    font-family: "Noto Sans Devanagari", "Nirmala UI", "Mangal", "Kohinoor Devanagari", "Lohit Devanagari", sans-serif;
     border-bottom: 1px dotted #bbb;
     padding: 0 0.1rem;
+    white-space: nowrap;
+    word-break: keep-all;
+    letter-spacing: normal;
+    font-variant-ligatures: normal;
+    text-rendering: optimizeLegibility;
   }
 </style>
 
@@ -31,11 +43,12 @@
       <div><strong>Page {{ row.page_index }}, Segment {{ row.segment_index }}</strong></div>
       <div class="gloss-line">
         {% for token in row.tokens %}
-          <span class="gloss-gap">{{ token.leading_ws }}</span><span class="gloss-token"><ruby><span class="gloss-surface">{{ token.surface }}</span><rt><input
+          <span class="gloss-gap">{{ token.leading_ws }}</span><span class="gloss-token"><span class="gloss-top"><input
             type="text"
             name="gloss_{{ row.page_index }}_{{ row.segment_index }}_{{ token.token_index }}"
             value="{{ token.gloss }}"
-            placeholder="gloss" /></rt></ruby></span>
+            placeholder="gloss"
+            lang="{{ project.language }}" /></span><span class="gloss-surface" lang="{{ project.language }}">{{ token.surface }}</span></span>
         {% endfor %}
       </div>
     </div>

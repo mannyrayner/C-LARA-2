@@ -8,20 +8,32 @@
 </p>
 <p>Text hash: <code>{{ base_hash }}</code></p>
 <style>
-  .lemma-line { white-space: normal; line-height: 3.4; }
+  .lemma-line { white-space: normal; line-height: 1.2; }
   .lemma-gap { white-space: pre-wrap; }
-  .lemma-token ruby { ruby-position: over; }
-  .lemma-token rt { font-size: 0.85rem; }
+  .lemma-token {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    white-space: nowrap;
+    vertical-align: bottom;
+    margin-bottom: 0.1rem;
+  }
+  .lemma-top { margin-bottom: 0.1rem; }
   .lemma-fields { display: inline-flex; gap: 0.25rem; }
   .lemma-fields input {
     width: 5.4rem;
-    font-family: monospace;
+    font-family: "Noto Sans Devanagari", "Nirmala UI", "Mangal", "Kohinoor Devanagari", "Lohit Devanagari", sans-serif;
     text-align: center;
   }
   .lemma-surface {
-    font-family: monospace;
+    font-family: "Noto Sans Devanagari", "Nirmala UI", "Mangal", "Kohinoor Devanagari", "Lohit Devanagari", sans-serif;
     border-bottom: 1px dotted #bbb;
     padding: 0 0.1rem;
+    white-space: nowrap;
+    word-break: keep-all;
+    letter-spacing: normal;
+    font-variant-ligatures: normal;
+    text-rendering: optimizeLegibility;
   }
 </style>
 
@@ -32,15 +44,17 @@
       <div><strong>Page {{ row.page_index }}, Segment {{ row.segment_index }}</strong></div>
       <div class="lemma-line">
         {% for token in row.tokens %}
-          <span class="lemma-gap">{{ token.leading_ws }}</span><span class="lemma-token"><ruby><span class="lemma-surface">{{ token.surface }}</span><rt><span class="lemma-fields"><input
+          <span class="lemma-gap">{{ token.leading_ws }}</span><span class="lemma-token"><span class="lemma-top"><span class="lemma-fields"><input
             type="text"
             name="lemma_{{ row.page_index }}_{{ row.segment_index }}_{{ token.token_index }}"
             value="{{ token.lemma }}"
-            placeholder="lemma" /><input
+            placeholder="lemma"
+            lang="{{ project.language }}" /><input
             type="text"
             name="pos_{{ row.page_index }}_{{ row.segment_index }}_{{ token.token_index }}"
             value="{{ token.pos }}"
-            placeholder="pos" /></span></rt></ruby></span>
+            placeholder="pos"
+            lang="{{ project.language }}" /></span></span><span class="lemma-surface" lang="{{ project.language }}">{{ token.surface }}</span></span>
         {% endfor %}
       </div>
     </div>
