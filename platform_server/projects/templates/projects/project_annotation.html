@@ -59,10 +59,10 @@
     <button class="btn" type="submit">Run selected pipeline stages</button>
   </p>
 </form>
-<p><a class="btn secondary" href="{% url 'project-download-bundle' object.pk %}">Download self-contained ZIP (HTML + audio + images)</a></p>
-<p><a class="btn secondary" href="{% url 'project-download-source-bundle' object.pk %}">Download source ZIP (latest run annotations + image metadata)</a></p>
 <h3>Manual annotation editors</h3>
 <p><a class="btn secondary" href="{% url 'manual-top-level' object.pk %}">Open manual annotation top level</a></p>
+<p><a class="btn secondary" href="{% url 'project-download-bundle' object.pk %}">Download self-contained ZIP (HTML + audio + images)</a></p>
+<p><a class="btn secondary" href="{% url 'project-download-source-bundle' object.pk %}">Download source ZIP (latest run annotations + image metadata)</a></p>
 
 <p><a class="btn secondary" href="{% url 'project-publish' object.pk %}">{% if object.is_published %}Unpublish{% else %}Publish{% endif %}</a></p>
 <form method="post" action="{% url 'project-delete' object.pk %}" onsubmit="return confirm('Delete this project and its artifacts?');">{% csrf_token %}

@@ -101,10 +101,12 @@ class ManualSegmentationEditorTests(TestCase):
             version_payload["metadata"]["after_text_hash"],
         )
 
-    def test_project_detail_shows_manual_segmentation_link(self):
+    def test_project_detail_hides_manual_segmentation_links(self):
         resp = self.client.get(reverse("project-detail", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, reverse("manual-segmentation-phase-1", args=[self.project.pk]))
+        self.assertNotContains(resp, reverse("manual-segmentation-phase-1", args=[self.project.pk]))
+        self.assertNotContains(resp, reverse("manual-segmentation-phase-2", args=[self.project.pk]))
+        self.assertNotContains(resp, reverse("manual-translation", args=[self.project.pk]))
 
     def test_phase_1_handles_inconsistent_existing_surface_without_server_error(self):
         run_dir = self.project.artifact_dir() / "runs" / "run_broken" / "stages"

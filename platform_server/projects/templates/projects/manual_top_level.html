@@ -28,6 +28,12 @@
 {% endif %}
 
 {% if has_segmentation_phase_2 %}
+  <p><a class="btn secondary" href="{% url 'manual-translation' project.pk %}">Manual translation</a></p>
+  {% with s=manual_stage_status.translation %}
+    {% if s.exists %}
+      <p><small>Latest: {{ s.updated_at }} ({{ s.provenance }}, run {{ s.run }}){% if s.note %}; {{ s.note }}{% endif %}</small></p>
+    {% endif %}
+  {% endwith %}
   <p><a class="btn secondary" href="{% url 'manual-mwe' project.pk %}">Manual MWE</a></p>
   {% with s=manual_stage_status.mwe %}
     {% if s.exists %}
@@ -64,12 +70,6 @@
   {% else %}
     <p>Manual lemma is unavailable until MWE annotated text exists.</p>
   {% endif %}
-  <p><a class="btn secondary" href="{% url 'manual-translation' project.pk %}">Manual translation</a></p>
-  {% with s=manual_stage_status.translation %}
-    {% if s.exists %}
-      <p><small>Latest: {{ s.updated_at }} ({{ s.provenance }}, run {{ s.run }}){% if s.note %}; {{ s.note }}{% endif %}</small></p>
-    {% endif %}
-  {% endwith %}
 {% else %}
   <p>Manual translation is unavailable until segmentation phase 2 annotated text exists.</p>
 {% endif %}
