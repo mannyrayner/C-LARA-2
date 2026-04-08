@@ -9,6 +9,7 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
 from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -293,6 +294,10 @@ class CompileStatusViewTests(TestCase):
         self.assertContains(resp, "German")
         self.assertContains(resp, "Persian")
         self.assertContains(resp, "Old Norse")
+
+    def test_django_check_command_runs_without_import_name_errors(self):
+        # Regression guard: catches import-time NameError issues in views/urlconf.
+        call_command("check")
 
     def test_project_detail_shows_image_stage_ticks(self):
         ProjectImageStyle.objects.create(
