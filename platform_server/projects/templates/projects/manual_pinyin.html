@@ -1,0 +1,63 @@
+{% extends "projects/base.html" %}
+{% block title %}Manual pinyin/romanization: {{ project.title }}{% endblock %}
+{% block content %}
+<h1>Manual pinyin/romanization</h1>
+<p><a class="btn secondary" href="{% url 'manual-top-level' project.pk %}">← Back to manual annotation top level</a></p>
+<p>
+  Structure-only editor: token text is read-only. Edit <code>pinyin</code> on non-whitespace tokens only.
+</p>
+<p>Text hash: <code>{{ base_hash }}</code></p>
+<style>
+  .pinyin-line { white-space: normal; line-height: 1.2; }
+  .pinyin-gap { white-space: pre-wrap; }
+  .pinyin-token {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    white-space: nowrap;
+    vertical-align: bottom;
+    margin-bottom: 0.1rem;
+  }
+  .pinyin-top {
+    margin-bottom: 0.1rem;
+  }
+  .pinyin-token input {
+    width: 8rem;
+    font-family: monospace;
+    text-align: center;
+  }
+  .pinyin-surface {
+    font-family: "Noto Sans Devanagari", "Nirmala UI", "Mangal", "Kohinoor Devanagari", "Lohit Devanagari", sans-serif;
+    border-bottom: 1px dotted #bbb;
+    padding: 0 0.1rem;
+    white-space: nowrap;
+    word-break: keep-all;
+    letter-spacing: normal;
+    font-variant-ligatures: normal;
+    text-rendering: optimizeLegibility;
+  }
+</style>
+
+<form method="post">
+  {% csrf_token %}
+  {% for row in rows %}
+    <div style="border:1px solid #ddd; padding:0.75rem; margin-bottom:0.75rem;">
+      <div><strong>Page {{ row.page_index }}, Segment {{ row.segment_index }}</strong></div>
+      <div class="pinyin-line">
+        {% for token in row.tokens %}
+          <span class="pinyin-gap">{{ token.leading_ws }}</span><span class="pinyin-token"><span class="pinyin-top"><input
+            type="text"
+            name="pinyin_{{ row.page_index }}_{{ row.segment_index }}_{{ token.token_index }}"
+            value="{{ token.pinyin }}"
+            placeholder="pinyin/romanized" /></span><span class="pinyin-surface" lang="{{ project.language }}">{{ token.surface }}</span></span>
+        {% endfor %}
+      </div>
+    </div>
+  {% empty %}
+    <p>No segments available.</p>
+  {% endfor %}
+  <p>
+    <button class="btn" type="submit">Save manual pinyin/romanization annotations</button>
+  </p>
+</form>
+{% endblock %}
