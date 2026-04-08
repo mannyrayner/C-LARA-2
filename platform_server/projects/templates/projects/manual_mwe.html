@@ -24,6 +24,10 @@
     font-family: monospace;
     text-align: center;
   }
+  .mwe-token input.mwe-id-set {
+    background: #fff3cd;
+    border-color: #d39e00;
+  }
   .mwe-surface {
     font-family: "Noto Sans Devanagari", "Nirmala UI", "Mangal", "Kohinoor Devanagari", "Lohit Devanagari", sans-serif;
     border-bottom: 1px dotted #bbb;
@@ -45,6 +49,7 @@
         {% for token in row.tokens %}
           <span class="mwe-gap">{{ token.leading_ws }}</span><span class="mwe-token"><span class="mwe-top"><input
             type="text"
+            class="{% if token.mwe_id %}mwe-id-set{% endif %}"
             name="mwe_id_{{ row.page_index }}_{{ row.segment_index }}_{{ token.token_index }}"
             value="{{ token.mwe_id }}"
             placeholder="mwe id"

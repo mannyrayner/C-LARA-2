@@ -35,6 +35,7 @@ Keeping this in one document makes it easier to track cross-stage decisions.
 ### Phase A: normalization and guardrails
 - Centralize MWE ID normalization utility and apply it at MWE stage output.
 - Re-apply normalization defensively at compile boundary to protect against stale historical artifacts.
+- Keep manual-MWE save behavior aligned with pipeline behavior by normalizing edited IDs on write (including page-scoped remapping), so accidental non-unique reviewer IDs are repaired deterministically.
 - Add regression tests for page-level ID uniqueness and HTML data-attribute correctness.
 
 ### Phase B: repair policy for partially tagged MWEs
@@ -43,7 +44,7 @@ Keeping this in one document makes it easier to track cross-stage decisions.
 
 ### Phase C: observability and review support
 - Add telemetry counters for dropped/repaired MWEs.
-- Add optional review diagnostics in manual annotation editor for MWE integrity warnings.
+- Add reviewer-facing cues in the manual annotation editor (e.g., visual highlighting for non-empty `mwe_id` cells) plus optional integrity warnings.
 
 ## Open policy questions
 
