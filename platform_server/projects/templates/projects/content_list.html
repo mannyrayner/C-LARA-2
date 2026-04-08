@@ -1,0 +1,43 @@
+{% extends "projects/base.html" %}
+{% block title %}Published Content{% endblock %}
+{% block content %}
+<h1>Published Content</h1>
+<form method="get">
+  <p>
+    <label for="title">Title contains:</label>
+    <input id="title" type="text" name="title" value="{{ filters.title }}" />
+  </p>
+  <p>
+    <label for="text_language">Text language:</label>
+    <input id="text_language" type="text" name="text_language" value="{{ filters.text_language }}" placeholder="e.g. de" />
+  </p>
+  <p>
+    <label for="annotation_language">Annotation language:</label>
+    <input id="annotation_language" type="text" name="annotation_language" value="{{ filters.annotation_language }}" placeholder="e.g. en" />
+  </p>
+  <p>
+    <label for="date_posted">Date posted:</label>
+    <select id="date_posted" name="date_posted">
+      {% for value, label in date_options %}
+        <option value="{{ value }}" {% if filters.date_posted == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </p>
+  <p><button class="btn" type="submit">Search</button></p>
+</form>
+
+<h2>Results ({{ projects|length }})</h2>
+{% if projects %}
+  <ul>
+    {% for p in projects %}
+      <li>
+        <a href="{% url 'content-detail' p.pk %}">{{ p.title }}</a>
+        — {{ p.language }} → {{ p.target_language }}
+        {% if p.published_at %}(published {{ p.published_at|date:"Y-m-d H:i" }}){% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>No published content matched your filters.</p>
+{% endif %}
+{% endblock %}

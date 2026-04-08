@@ -1,0 +1,33 @@
+{
+  "input": "{\n  \"surface\": \"Alles im Supermarkt ist auf Deutsch, die Schilder, die Produkte.\",\n  \"tokens\": [\n    {\"surface\": \"Alles\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"im\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"Supermarkt\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"ist\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"auf\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"Deutsch\", \"annotations\": {}},\n    {\"surface\": \",\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"die\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"Schilder\", \"annotations\": {}},\n    {\"surface\": \",\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"die\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"Produkte\", \"annotations\": {}},\n    {\"surface\": \".\"}\n  ],\n  \"annotations\": {}\n}",
+  "output": {
+    "surface": "Alles im Supermarkt ist auf Deutsch, die Schilder, die Produkte.",
+    "tokens": [
+      {"surface": "Alles"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "im"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "Supermarkt"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "ist"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "auf"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "Deutsch"},
+      {"surface": ","},
+      {"surface": " ", "annotations": {}},
+      {"surface": "die"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "Schilder"},
+      {"surface": ","},
+      {"surface": " ", "annotations": {}},
+      {"surface": "die"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "Produkte"},
+      {"surface": "."}
+    ],
+    "annotations": {
+      "mwes": []
+    }
+  }
+}

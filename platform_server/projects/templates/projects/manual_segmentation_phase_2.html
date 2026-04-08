@@ -1,0 +1,33 @@
+{% extends "projects/base.html" %}
+{% block title %}Manual segmentation phase 2: {{ project.title }}{% endblock %}
+{% block content %}
+<h1>Manual segmentation phase 2</h1>
+<p><a class="btn secondary" href="{% url 'manual-top-level' project.pk %}">← Back to manual annotation top level</a></p>
+<p>
+  Structure-only editor: text is read-only. Edit token boundaries by inserting/removing <code>¦</code> separators.
+</p>
+<p>Text hash: <code>{{ base_hash }}</code></p>
+
+<h3>Current boundary preview</h3>
+<pre style="white-space: pre-wrap;">{{ preview }}</pre>
+
+<form method="post">
+  {% csrf_token %}
+  {% for row in token_rows %}
+    <div style="border:1px solid #ddd; padding:0.75rem; margin-bottom:0.75rem;">
+      <div><strong>Page {{ row.page_index }}, Segment {{ row.segment_index }}</strong></div>
+      <textarea rows="2" style="width:100%; font-family: monospace;" readonly>{{ row.segment_text }}</textarea>
+      <label>Editable tokenization (insert/remove <code>¦</code> separators only):</label>
+      <textarea
+        rows="2"
+        name="tokenized_text_{{ row.page_index }}_{{ row.segment_index }}"
+        style="width:100%; font-family: monospace;">{{ row.tokenized_text }}</textarea>
+    </div>
+  {% empty %}
+    <p>No segments available.</p>
+  {% endfor %}
+  <p>
+    <button class="btn" type="submit">Save phase 2 manual segmentation</button>
+  </p>
+</form>
+{% endblock %}
