@@ -15,6 +15,12 @@ class Project(models.Model):
         (INPUT_DESCRIPTION, "Description (AI-generate text)"),
         (INPUT_SOURCE, "Source text"),
     ]
+    PAGE_IMAGE_TEXT_SOURCE_SEGMENTATION = "segmentation"
+    PAGE_IMAGE_TEXT_SOURCE_TRANSLATION = "translation"
+    PAGE_IMAGE_TEXT_SOURCE_CHOICES = [
+        (PAGE_IMAGE_TEXT_SOURCE_SEGMENTATION, "Segmented source text"),
+        (PAGE_IMAGE_TEXT_SOURCE_TRANSLATION, "Concatenated page translations"),
+    ]
 
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="projects")
     title = models.CharField(max_length=200)
@@ -25,6 +31,11 @@ class Project(models.Model):
     target_language = models.CharField(max_length=16, default="fr")
     ai_model = models.CharField(max_length=64, default="gpt-4o")
     page_image_placement = models.CharField(max_length=16, default="none")
+    page_image_text_source = models.CharField(
+        max_length=32,
+        choices=PAGE_IMAGE_TEXT_SOURCE_CHOICES,
+        default=PAGE_IMAGE_TEXT_SOURCE_SEGMENTATION,
+    )
     segmentation_method = models.CharField(max_length=32, default="auto")
     romanization_method = models.CharField(max_length=32, default="auto")
     compiled_path = models.CharField(max_length=512, blank=True)

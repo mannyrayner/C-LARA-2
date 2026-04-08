@@ -291,6 +291,8 @@ class CompileStatusViewTests(TestCase):
         self.assertContains(resp, '<select name="target_language"', html=False)
         self.assertContains(resp, "English")
         self.assertContains(resp, "German")
+        self.assertContains(resp, "Persian")
+        self.assertContains(resp, "Old Norse")
 
     def test_project_detail_shows_image_stage_ticks(self):
         ProjectImageStyle.objects.create(

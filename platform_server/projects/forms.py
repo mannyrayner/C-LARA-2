@@ -37,6 +37,14 @@ class ProjectForm(forms.ModelForm):
         ("ko", "Korean"),
         ("ar", "Arabic"),
         ("ru", "Russian"),
+        ("fa", "Persian"),
+        ("nl", "Dutch"),
+        ("is", "Icelandic"),
+        ("non", "Old Norse"),
+        ("sk", "Slovak"),
+        ("iai", "Iaai"),
+        ("dre", "Drehu"),
+        ("xkk", "Kok Kaper"),
     ]
 
     class Meta:

@@ -38,6 +38,18 @@
 <p><a class="btn" href="{% url 'project-image-elements' project.pk %}">Browse/create element images</a></p>
 
 <h2>Pages</h2>
+<form method="post">
+  {% csrf_token %}
+  <p>
+    <label for="page_image_text_source">Text source for page-image generation:</label>
+    <select name="page_image_text_source" id="page_image_text_source">
+      {% for value, label in page_image_text_source_choices %}
+        <option value="{{ value }}" {% if value == selected_page_image_text_source %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn secondary" type="submit">Save page-image text source</button>
+  </p>
+</form>
 {% if pages_with_images_count %}
   <p>{{ pages_with_images_count }} page image(s) available.</p>
   <ul>

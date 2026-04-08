@@ -1,5 +1,6 @@
 from unittest.mock import patch
 import base64
+import json
 
 from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
@@ -79,6 +80,31 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertEqual(ProjectImagePage.objects.filter(project=self.project).count(), 2)
         self.assertContains(resp, "Status from elements step:")
         self.assertContains(resp, "1/1")
+
+    def test_images_home_can_switch_page_text_source_to_translation(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_translation" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        translation_payload = {
+            "pages": [
+                {"segments": [{"annotations": {"translation": "Bonjour"}}, {"annotations": {"translation": "le monde"}}]},
+                {"segments": [{"annotations": {"translation": "Deuxieme page"}}]},
+            ]
+        }
+        (run_dir / "translation.json").write_text(json.dumps(translation_payload), encoding="utf-8")
+
+        resp = self.client.post(
+            reverse("project-images-home", args=[self.project.pk]),
+            {"page_image_text_source": "translation"},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.page_image_text_source, "translation")
+        self.assertContains(resp, "Saved page-image text source")
+        page1 = ProjectImagePage.objects.get(project=self.project, page_number=1)
+        page2 = ProjectImagePage.objects.get(project=self.project, page_number=2)
+        self.assertEqual(page1.page_text, "Bonjour le monde")
+        self.assertEqual(page2.page_text, "Deuxieme page")
 
     @patch("projects.views._build_ai_client")
     def test_generate_page_images_persists_output(self, mock_build_ai_client):
