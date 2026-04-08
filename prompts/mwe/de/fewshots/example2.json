@@ -1,0 +1,30 @@
+{
+  "input": "{\n  \"surface\": \"Sarah ist ein wenig nervös, aber auch aufgeregt.\",\n  \"tokens\": [\n    {\"surface\": \"Sarah\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"ist\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"ein\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"wenig\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"nervös\", \"annotations\": {}},\n    {\"surface\": \",\"},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"aber\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"auch\", \"annotations\": {}},\n    {\"surface\": \" \", \"annotations\": {}},\n    {\"surface\": \"aufgeregt\", \"annotations\": {}},\n    {\"surface\": \".\"}\n  ],\n  \"annotations\": {}\n}",
+  "output": {
+    "surface": "Sarah ist ein wenig nervös, aber auch aufgeregt.",
+    "tokens": [
+      {"surface": "Sarah"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "ist"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "ein", "annotations": {"mwe_id": "m1"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "wenig", "annotations": {"mwe_id": "m1"}},
+      {"surface": " ", "annotations": {}},
+      {"surface": "nervös"},
+      {"surface": ","},
+      {"surface": " ", "annotations": {}},
+      {"surface": "aber"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "auch"},
+      {"surface": " ", "annotations": {}},
+      {"surface": "aufgeregt"},
+      {"surface": "."}
+    ],
+    "annotations": {
+      "mwes": [
+        {"id": "m1", "tokens": ["ein", "wenig"], "label": "feste Quantorphrase"}
+      ]
+    }
+  }
+}
