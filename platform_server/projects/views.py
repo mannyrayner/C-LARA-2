@@ -2949,6 +2949,15 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
     def get_success_url(self):  # type: ignore[override]
         return reverse("project-detail", args=[self.object.pk])
 
+    for mode, _label in ExerciseSet.FLASHCARD_MODE_CHOICES:
+        flashcard_query = project.exercise_sets.filter(exercise_type=ExerciseSet.TYPE_FLASHCARD)
+        if mode == ExerciseSet.FLASHCARD_MODE_FORM_TO_MEANING:
+            flashcard_query = flashcard_query.filter(Q(flashcard_mode=mode) | Q(flashcard_mode=""))
+        else:
+            flashcard_query = flashcard_query.filter(flashcard_mode=mode)
+        latest_flashcards_for_mode = flashcard_query.order_by("-updated_at", "-id").first()
+        if latest_flashcards_for_mode is not None:
+            latest_sets.append(latest_flashcards_for_mode)
 
 def _build_ai_client(model_name: str | None = None) -> OpenAIClient:
     config = OpenAIConfig(model=model_name or DEFAULT_MODEL)
