@@ -160,6 +160,17 @@ class SegmentationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(1, len(result["pages"]))
         self.assertEqual(2, len(result["pages"][0]["segments"]))
 
+    def test_normalize_phase1_converts_closing_page_tags(self) -> None:
+        raw = "<startoftext>Hello world.</page>Second page.</endoftext>"
+        result = segmentation._normalize_phase1_response(raw, text="Hello world.Second page.", language="en")  # type: ignore[attr-defined]
+        self.assertIn("<page>", result["surface"])
+        self.assertNotIn("</page>", result["surface"])
+
+    def test_phase1_surface_match_tolerates_whitespace_differences(self) -> None:
+        base = "A line.\n\nB line."
+        annotated = "A line. \n\n\nB line."
+        self.assertTrue(segmentation._phase1_surface_matches_text(base, annotated))  # type: ignore[attr-defined]
+
     async def test_segmentation_phase_2_adds_tokens(self) -> None:
         text = {
             "l2": "en",

@@ -238,6 +238,8 @@ def _normalize_phase1_response(raw_response: str, *, text: str, language: str) -
         annotated = raw_response.strip()
     if not annotated:
         annotated = text
+    annotated = re.sub(r"</\s*page\s*>", "<page>", annotated, flags=re.IGNORECASE)
+    annotated = re.sub(r"<\s*page\s*>", "<page>", annotated, flags=re.IGNORECASE)
 
     original_non_ws = len(re.sub(r"\s+", "", text))
     annotated_non_ws = len(re.sub(r"\s+", "", annotated))
@@ -266,16 +268,27 @@ def _normalize_phase1_response(raw_response: str, *, text: str, language: str) -
     }
 
 
+def _strip_phase1_markers(surface: str) -> str:
+    stripped = surface.replace("\r\n", "\n")
+    stripped = re.sub(r"</?\s*page\s*>", "", stripped, flags=re.IGNORECASE)
+    stripped = stripped.replace("||", "")
+    return stripped
+
+
 def _phase1_surface_matches_text(base_text: str, annotated_surface: str) -> bool:
     normalized_base = base_text.replace("\r\n", "\n")
-    normalized_annotated = annotated_surface.replace("\r\n", "\n").replace("<page>", "").replace("||", "")
-    return normalized_base == normalized_annotated
+    normalized_annotated = _strip_phase1_markers(annotated_surface)
+    if normalized_base == normalized_annotated:
+        return True
+    base_ws = re.sub(r"\s+", " ", normalized_base).strip()
+    annotated_ws = re.sub(r"\s+", " ", normalized_annotated).strip()
+    return base_ws == annotated_ws
 
 
 def _phase1_mismatch_details(base_text: str, annotated_surface: str) -> dict[str, Any]:
     normalized_base = base_text.replace("\r\n", "\n")
     normalized_annotated = annotated_surface.replace("\r\n", "\n")
-    stripped_annotated = normalized_annotated.replace("<page>", "").replace("||", "")
+    stripped_annotated = _strip_phase1_markers(normalized_annotated)
 
     min_len = min(len(normalized_base), len(stripped_annotated))
     diff_index = -1
@@ -302,6 +315,8 @@ def _phase1_mismatch_details(base_text: str, annotated_surface: str) -> dict[str
 
     nfc_base = unicodedata.normalize("NFC", normalized_base)
     nfc_annotated = unicodedata.normalize("NFC", stripped_annotated)
+    ws_base = re.sub(r"\s+", " ", normalized_base).strip()
+    ws_annotated = re.sub(r"\s+", " ", stripped_annotated).strip()
     return {
         "base_len": len(normalized_base),
         "annotated_len_with_tags": len(normalized_annotated),
@@ -314,6 +329,7 @@ def _phase1_mismatch_details(base_text: str, annotated_surface: str) -> dict[str
         "page_marker_count": normalized_annotated.count("<page>"),
         "segment_marker_count": normalized_annotated.count("||"),
         "nfc_equal_after_strip": nfc_base == nfc_annotated,
+        "whitespace_equal_after_strip": ws_base == ws_annotated,
     }
 
 
