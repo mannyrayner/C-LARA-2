@@ -188,21 +188,40 @@ async def segmentation_phase_1(
     telemetry = spec.telemetry or NullTelemetry()
     ai_client = client or OpenAIClient()
     max_attempts = 3
+    last_mismatch: dict[str, Any] = {}
     for attempt in range(1, max_attempts + 1):
         raw_response = await ai_client.chat_text(prompt, telemetry=telemetry, op_id=spec.op_id)
         normalized = _normalize_phase1_response(raw_response, text=spec.text, language=spec.language)
         if _phase1_surface_matches_text(spec.text, str(normalized.get("surface") or "")):
             return normalized
+        last_mismatch = _phase1_mismatch_details(spec.text, str(normalized.get("surface") or ""))
         telemetry.event(
             spec.op_id or "segmentation_phase_1",
             "warn",
             "segmentation_phase_1 output changed base text; retrying",
-            {"attempt": attempt, "max_attempts": max_attempts},
+            {"attempt": attempt, "max_attempts": max_attempts, "mismatch": last_mismatch},
+        )
+
+    mismatch_summary = ""
+    if last_mismatch:
+        mismatch_summary = (
+            f" last mismatch: diff_index={last_mismatch.get('diff_index')}, "
+            f"base_char={last_mismatch.get('base_char')!r}, "
+            f"annotated_char={last_mismatch.get('annotated_char')!r}, "
+            f"base_excerpt={last_mismatch.get('base_excerpt')!r}, "
+            f"annotated_excerpt={last_mismatch.get('annotated_excerpt')!r}, "
+            f"nfc_equal_after_strip={last_mismatch.get('nfc_equal_after_strip')}."
+        )
+        telemetry.event(
+            spec.op_id or "segmentation_phase_1",
+            "error",
+            "segmentation_phase_1 failed validation after retries",
+            {"max_attempts": max_attempts, "mismatch": last_mismatch},
         )
 
     raise ValueError(
         "Segmentation phase 1 failed validation: model output changed the text content "
-        f"after {max_attempts} attempts."
+        f"after {max_attempts} attempts.{mismatch_summary}"
     )
 
 
@@ -251,6 +270,51 @@ def _phase1_surface_matches_text(base_text: str, annotated_surface: str) -> bool
     normalized_base = base_text.replace("\r\n", "\n")
     normalized_annotated = annotated_surface.replace("\r\n", "\n").replace("<page>", "").replace("||", "")
     return normalized_base == normalized_annotated
+
+
+def _phase1_mismatch_details(base_text: str, annotated_surface: str) -> dict[str, Any]:
+    normalized_base = base_text.replace("\r\n", "\n")
+    normalized_annotated = annotated_surface.replace("\r\n", "\n")
+    stripped_annotated = normalized_annotated.replace("<page>", "").replace("||", "")
+
+    min_len = min(len(normalized_base), len(stripped_annotated))
+    diff_index = -1
+    for idx in range(min_len):
+        if normalized_base[idx] != stripped_annotated[idx]:
+            diff_index = idx
+            break
+    if diff_index < 0 and len(normalized_base) != len(stripped_annotated):
+        diff_index = min_len
+
+    def _char_or_empty(text: str, idx: int) -> str:
+        if idx < 0 or idx >= len(text):
+            return ""
+        return text[idx]
+
+    def _excerpt(text: str, idx: int, radius: int = 24) -> str:
+        if not text:
+            return ""
+        if idx < 0:
+            idx = 0
+        start = max(0, idx - radius)
+        end = min(len(text), idx + radius)
+        return text[start:end]
+
+    nfc_base = unicodedata.normalize("NFC", normalized_base)
+    nfc_annotated = unicodedata.normalize("NFC", stripped_annotated)
+    return {
+        "base_len": len(normalized_base),
+        "annotated_len_with_tags": len(normalized_annotated),
+        "annotated_len_without_tags": len(stripped_annotated),
+        "diff_index": diff_index,
+        "base_char": _char_or_empty(normalized_base, diff_index),
+        "annotated_char": _char_or_empty(stripped_annotated, diff_index),
+        "base_excerpt": _excerpt(normalized_base, diff_index),
+        "annotated_excerpt": _excerpt(stripped_annotated, diff_index),
+        "page_marker_count": normalized_annotated.count("<page>"),
+        "segment_marker_count": normalized_annotated.count("||"),
+        "nfc_equal_after_strip": nfc_base == nfc_annotated,
+    }
 
 
 def _extract_between_tags(text: str, start_tag: str, end_tag: str) -> str:

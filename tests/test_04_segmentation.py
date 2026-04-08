@@ -151,7 +151,7 @@ class SegmentationTests(unittest.IsolatedAsyncioTestCase):
             ]
         )
         spec = SegmentationSpec(text="Line one.")
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError, r"diff_index=.*base_excerpt=.*annotated_excerpt="):
             await segmentation.segmentation_phase_1(spec, client=client)
 
     def test_normalize_phase1_ignores_empty_page_chunks(self) -> None:
