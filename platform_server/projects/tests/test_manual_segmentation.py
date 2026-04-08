@@ -127,6 +127,29 @@ class ManualSegmentationEditorTests(TestCase):
         tokens = payload["pages"][0]["segments"][0]["tokens"]
         self.assertEqual(tokens, [{"surface": "Hello"}, {"surface": " world"}])
 
+    def test_phase_2_save_error_includes_text_mismatch_details(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_seed_error_details" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        seg1_payload = {
+            "l2": "en",
+            "surface": "Hello world",
+            "pages": [{"surface": "Hello world", "segments": [{"surface": "Hello world"}], "annotations": {}}],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_1.json").write_text(
+            json.dumps(seg1_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+        resp = self.client.post(
+            reverse("manual-segmentation-phase-2", args=[self.project.pk]),
+            {"tokenized_text_1_1": "Hallo¦ world"},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "only token separators may be inserted or removed")
+        self.assertContains(resp, "first difference at index")
+
     def test_project_detail_hides_manual_segmentation_links(self):
         resp = self.client.get(reverse("project-detail", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)

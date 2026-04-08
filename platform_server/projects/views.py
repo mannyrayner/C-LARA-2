@@ -1625,6 +1625,24 @@ def _phase2_token_bar_rows(seg1_payload: dict[str, Any], seg2_payload: dict[str,
 
 
 def _phase2_payload_from_bar_rows(seg1_payload: dict[str, Any], rows: list[dict[str, Any]]) -> dict[str, Any]:
+    def _mismatch_details(*, expected: str, actual: str) -> str:
+        limit = min(len(expected), len(actual))
+        first_diff = next((idx for idx in range(limit) if expected[idx] != actual[idx]), None)
+        if first_diff is None and len(expected) != len(actual):
+            first_diff = limit
+        if first_diff is None:
+            first_diff = 0
+        exp_char = expected[first_diff] if first_diff < len(expected) else "<eos>"
+        act_char = actual[first_diff] if first_diff < len(actual) else "<eos>"
+        exp_ctx = expected[max(0, first_diff - 12): first_diff + 12]
+        act_ctx = actual[max(0, first_diff - 12): first_diff + 12]
+        return (
+            f"first difference at index {first_diff}; "
+            f"expected char={exp_char!r} vs actual char={act_char!r}; "
+            f"expected len={len(expected)} actual len={len(actual)}; "
+            f"expected context={exp_ctx!r}; actual context={act_ctx!r}"
+        )
+
     token_map: dict[tuple[int, int], list[str]] = {}
     for row in rows:
         edited = str(row["tokenized_text"] or "").replace("\r\n", "\n").replace("\r", "\n")
@@ -1641,9 +1659,17 @@ def _phase2_payload_from_bar_rows(seg1_payload: dict[str, Any], rows: list[dict[
         if chosen is not None:
             edited = chosen
         if edited.replace("¦", "") != segment_text:
+            details = _mismatch_details(expected=segment_text, actual=edited.replace("¦", ""))
+            logger.warning(
+                "Manual phase-2 text mismatch p=%s s=%s: %s",
+                row["page_index"],
+                row["segment_index"],
+                details,
+            )
             raise ValueError(
                 f"Page {row['page_index']} segment {row['segment_index']} changes text content; "
-                "only token separators may be inserted or removed."
+                "only token separators may be inserted or removed. "
+                f"Details: {details}"
             )
         tokens = edited.split("¦")
         if any(tok == "" for tok in tokens):
@@ -2923,6 +2949,15 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
     def get_success_url(self):  # type: ignore[override]
         return reverse("project-detail", args=[self.object.pk])
 
+    for mode, _label in ExerciseSet.FLASHCARD_MODE_CHOICES:
+        flashcard_query = project.exercise_sets.filter(exercise_type=ExerciseSet.TYPE_FLASHCARD)
+        if mode == ExerciseSet.FLASHCARD_MODE_FORM_TO_MEANING:
+            flashcard_query = flashcard_query.filter(Q(flashcard_mode=mode) | Q(flashcard_mode=""))
+        else:
+            flashcard_query = flashcard_query.filter(flashcard_mode=mode)
+        latest_flashcards_for_mode = flashcard_query.order_by("-updated_at", "-id").first()
+        if latest_flashcards_for_mode is not None:
+            latest_sets.append(latest_flashcards_for_mode)
 
 def _build_ai_client(model_name: str | None = None) -> OpenAIClient:
     config = OpenAIConfig(model=model_name or DEFAULT_MODEL)
