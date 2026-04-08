@@ -8,24 +8,33 @@
 </p>
 <p>Text hash: <code>{{ base_hash }}</code></p>
 <style>
-  .pinyin-line { white-space: normal; line-height: 3.2; }
+  .pinyin-line { white-space: normal; line-height: 1.2; }
   .pinyin-gap { white-space: pre-wrap; }
-  .pinyin-token { display: inline-block; white-space: nowrap; vertical-align: bottom; }
-  .pinyin-token ruby { ruby-position: over; white-space: nowrap; }
-  .pinyin-token rt { font-size: 0.9rem; }
+  .pinyin-token {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    white-space: nowrap;
+    vertical-align: bottom;
+    margin-bottom: 0.1rem;
+  }
+  .pinyin-top {
+    margin-bottom: 0.1rem;
+  }
   .pinyin-token input {
     width: 8rem;
     font-family: monospace;
     text-align: center;
   }
   .pinyin-surface {
-    font-family: inherit;
+    font-family: "Noto Sans Devanagari", "Nirmala UI", "Mangal", "Kohinoor Devanagari", "Lohit Devanagari", sans-serif;
     border-bottom: 1px dotted #bbb;
     padding: 0 0.1rem;
     white-space: nowrap;
     word-break: keep-all;
-    unicode-bidi: plaintext;
-    direction: auto;
+    letter-spacing: normal;
+    font-variant-ligatures: normal;
+    text-rendering: optimizeLegibility;
   }
 </style>
 
@@ -36,11 +45,11 @@
       <div><strong>Page {{ row.page_index }}, Segment {{ row.segment_index }}</strong></div>
       <div class="pinyin-line">
         {% for token in row.tokens %}
-          <span class="pinyin-gap">{{ token.leading_ws }}</span><span class="pinyin-token"><ruby><span class="pinyin-surface" lang="{{ project.language }}">{{ token.surface }}</span><rt><input
+          <span class="pinyin-gap">{{ token.leading_ws }}</span><span class="pinyin-token"><span class="pinyin-top"><input
             type="text"
             name="pinyin_{{ row.page_index }}_{{ row.segment_index }}_{{ token.token_index }}"
             value="{{ token.pinyin }}"
-            placeholder="pinyin/romanized" /></rt></ruby></span>
+            placeholder="pinyin/romanized" /></span><span class="pinyin-surface" lang="{{ project.language }}">{{ token.surface }}</span></span>
         {% endfor %}
       </div>
     </div>
