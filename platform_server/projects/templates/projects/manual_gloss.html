@@ -1,0 +1,49 @@
+{% extends "projects/base.html" %}
+{% block title %}Manual gloss: {{ project.title }}{% endblock %}
+{% block content %}
+<h1>Manual gloss</h1>
+<p><a class="btn secondary" href="{% url 'project-annotation-home' project.pk %}">← Back to annotation home</a></p>
+<p>
+  Structure-only editor: token text is read-only. Edit <code>gloss</code> on non-whitespace tokens only.
+</p>
+<p>Text hash: <code>{{ base_hash }}</code></p>
+<style>
+  .gloss-line { white-space: normal; line-height: 3.2; }
+  .gloss-gap { white-space: pre-wrap; }
+  .gloss-token ruby { ruby-position: over; }
+  .gloss-token rt { font-size: 0.9rem; }
+  .gloss-token input {
+    width: 7rem;
+    font-family: monospace;
+    text-align: center;
+  }
+  .gloss-surface {
+    font-family: monospace;
+    border-bottom: 1px dotted #bbb;
+    padding: 0 0.1rem;
+  }
+</style>
+
+<form method="post">
+  {% csrf_token %}
+  {% for row in rows %}
+    <div style="border:1px solid #ddd; padding:0.75rem; margin-bottom:0.75rem;">
+      <div><strong>Page {{ row.page_index }}, Segment {{ row.segment_index }}</strong></div>
+      <div class="gloss-line">
+        {% for token in row.tokens %}
+          <span class="gloss-gap">{{ token.leading_ws }}</span><span class="gloss-token"><ruby><span class="gloss-surface">{{ token.surface }}</span><rt><input
+            type="text"
+            name="gloss_{{ row.page_index }}_{{ row.segment_index }}_{{ token.token_index }}"
+            value="{{ token.gloss }}"
+            placeholder="gloss" /></rt></ruby></span>
+        {% endfor %}
+      </div>
+    </div>
+  {% empty %}
+    <p>No segments available.</p>
+  {% endfor %}
+  <p>
+    <button class="btn" type="submit">Save manual gloss annotations</button>
+  </p>
+</form>
+{% endblock %}

@@ -1,0 +1,14 @@
+{
+  "input": "Hello, world!",
+  "output": {
+    "surface": "Hello, world!",
+    "tokens": [
+      {"surface": "Hello"},
+      {"surface": ","},
+      {"surface": " "},
+      {"surface": "world"},
+      {"surface": "!"}
+    ],
+    "annotations": {}
+  }
+}

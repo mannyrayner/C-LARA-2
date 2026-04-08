@@ -25,6 +25,11 @@ class FakeAIClient:
         self.response = response
         self.prompts: list[str] = []
 
+    async def chat_text(self, prompt: str, **_: object) -> str:
+        self.prompts.append(prompt)
+        await asyncio.sleep(0)
+        return json.dumps(self.response)
+
     async def chat_json(self, prompt: str, **_: object) -> dict:
         self.prompts.append(prompt)
         await asyncio.sleep(0)
@@ -44,6 +49,15 @@ class FakePerCallAIClient(FakeAIClient):
         self._idx += 1
         return resp
 
+    async def chat_text(self, prompt: str, **_: object) -> str:  # type: ignore[override]
+        self.prompts.append(prompt)
+        await asyncio.sleep(0)
+        resp = self._responses[self._idx]
+        self._idx += 1
+        if isinstance(resp, str):
+            return resp
+        return json.dumps(resp)
+
 
 class SegmentationTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
@@ -53,6 +67,8 @@ class SegmentationTests(unittest.IsolatedAsyncioTestCase):
         fewshots = segmentation._load_fewshots("en", prompts_root=self.prompts_root)  # type: ignore[attr-defined]
         self.assertGreaterEqual(len(fewshots), 2)
         self.assertTrue(all("input" in fs and "output" in fs for fs in fewshots))
+        zh_fewshots = segmentation._load_fewshots("zh", prompts_root=self.prompts_root)  # type: ignore[attr-defined]
+        self.assertGreaterEqual(len(zh_fewshots), 2)
 
         log_test_case(
             "segmentation:load_fewshots",
@@ -72,12 +88,13 @@ class SegmentationTests(unittest.IsolatedAsyncioTestCase):
             }
         ]
 
-        prompt = segmentation._build_prompt(template, text=text, fewshots=fewshots)  # type: ignore[attr-defined]
+        prompt = segmentation._build_prompt(template, text=text, fewshots=fewshots, language="en")  # type: ignore[attr-defined]
 
         self.assertIn("Input text:", prompt)
         self.assertIn(text.strip(), prompt)
-        self.assertIn("Example 1 input:", prompt)
-        self.assertIn(json.dumps(fewshots[0]["output"], indent=2), prompt)
+        self.assertIn("Example 1:", prompt)
+        self.assertIn("<startoftext>", prompt)
+        self.assertIn("First line.", prompt)
 
         log_test_case(
             "segmentation:build_prompt",
@@ -112,6 +129,36 @@ class SegmentationTests(unittest.IsolatedAsyncioTestCase):
             output={"pages": result["pages"]},
             status="pass",
         )
+
+    async def test_segmentation_phase_1_retries_when_text_is_changed(self) -> None:
+        client = FakePerCallAIClient(
+            [
+                {"surface": "Different text", "pages": [{"surface": "Different text", "segments": [{"surface": "Different text"}]}]},
+                {"surface": "Line one.", "pages": [{"surface": "Line one.", "segments": [{"surface": "Line one."}]}]},
+            ]
+        )
+        spec = SegmentationSpec(text="Line one.")
+        result = await segmentation.segmentation_phase_1(spec, client=client)
+        self.assertEqual("Line one.", result["surface"])
+        self.assertEqual(2, len(client.prompts))
+
+    async def test_segmentation_phase_1_fails_after_retries_if_text_changes(self) -> None:
+        client = FakePerCallAIClient(
+            [
+                {"surface": "Different 1", "pages": [{"surface": "Different 1", "segments": [{"surface": "Different 1"}]}]},
+                {"surface": "Different 2", "pages": [{"surface": "Different 2", "segments": [{"surface": "Different 2"}]}]},
+                {"surface": "Different 3", "pages": [{"surface": "Different 3", "segments": [{"surface": "Different 3"}]}]},
+            ]
+        )
+        spec = SegmentationSpec(text="Line one.")
+        with self.assertRaises(ValueError):
+            await segmentation.segmentation_phase_1(spec, client=client)
+
+    def test_normalize_phase1_ignores_empty_page_chunks(self) -> None:
+        raw = "<page>\nपहली पंक्ति।||दूसरी पंक्ति।"
+        result = segmentation._normalize_phase1_response(raw, text="पहली पंक्ति। दूसरी पंक्ति।", language="hi")  # type: ignore[attr-defined]
+        self.assertEqual(1, len(result["pages"]))
+        self.assertEqual(2, len(result["pages"][0]["segments"]))
 
     async def test_segmentation_phase_2_adds_tokens(self) -> None:
         text = {
@@ -149,6 +196,38 @@ class SegmentationTests(unittest.IsolatedAsyncioTestCase):
             output={"tokens": [t["surface"] for t in segment["tokens"]]},
             status="pass",
         )
+
+    async def test_segmentation_phase_2_preserves_surface_and_recovers_bad_tokens(self) -> None:
+        text = {
+            "l2": "hi",
+            "surface": "नमस्ते दुनिया",
+            "pages": [{"surface": "नमस्ते दुनिया", "segments": [{"surface": "नमस्ते दुनिया"}]}],
+            "annotations": {},
+        }
+        client = FakeAIClient(
+            {
+                "surface": "Few-shot examples: Hello world",
+                "tokens": [{"surface": "Few-shot"}, {"surface": "examples"}],
+                "annotations": {},
+            }
+        )
+        result = await segmentation_phase_2(SegmentationPhase2Spec(text=text, language="hi"), client=client)
+        segment = result["pages"][0]["segments"][0]
+        self.assertEqual("नमस्ते दुनिया", segment["surface"])
+        self.assertEqual(["नमस्ते", " ", "दुनिया"], [t["surface"] for t in segment["tokens"]])
+
+    async def test_segmentation_phase_2_accepts_string_tokens_from_model(self) -> None:
+        text = {
+            "l2": "hi",
+            "surface": "नमस्ते दुनिया",
+            "pages": [{"surface": "नमस्ते दुनिया", "segments": [{"surface": "नमस्ते दुनिया"}]}],
+            "annotations": {},
+        }
+        client = FakeAIClient({"tokens": ["नमस्ते", " ", "दुनिया"], "annotations": {}})
+        result = await segmentation_phase_2(SegmentationPhase2Spec(text=text, language="hi"), client=client)
+        segment = result["pages"][0]["segments"][0]
+        self.assertEqual("नमस्ते दुनिया", segment["surface"])
+        self.assertEqual(["नमस्ते", " ", "दुनिया"], [t["surface"] for t in segment["tokens"]])
 
     async def test_segmentation_phase_2_uses_jieba_for_chinese(self) -> None:
         text = {
