@@ -1,0 +1,22 @@
+{
+  "input": "क्या तुम चाय पियोगे, या कॉफी?",
+  "output": {
+    "surface": "क्या तुम चाय पियोगे, या कॉफी?",
+    "tokens": [
+      {"surface": "क्या"},
+      {"surface": " "},
+      {"surface": "तुम"},
+      {"surface": " "},
+      {"surface": "चाय"},
+      {"surface": " "},
+      {"surface": "पियोगे"},
+      {"surface": ","},
+      {"surface": " "},
+      {"surface": "या"},
+      {"surface": " "},
+      {"surface": "कॉफी"},
+      {"surface": "?"}
+    ],
+    "annotations": {}
+  }
+}
