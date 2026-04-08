@@ -3016,6 +3016,12 @@ def _load_stage_payload(
         return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return None
+    compiled_path = Path(compiled)
+    page_one = compiled_path.with_name("page_1.html")
+    base = Path(project.artifact_root or project.artifact_dir()).resolve()
+    if (base / page_one).exists():
+        return page_one.as_posix()
+    return compiled_path.as_posix()
 
 
 def _copy_run_artifacts(src: Path, dest: Path) -> None:
@@ -3432,6 +3438,19 @@ def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
     messages.success(request, "Saved language-processing options.")
     return redirect("project-detail", pk=project.pk)
 
+    return render(
+        request,
+        "projects/content_detail.html",
+        {
+            "project": project,
+            "page_one_path": page_one,
+            "comments": comments,
+            "up_count": up_count,
+            "down_count": down_count,
+            "user_rating": user_rating,
+            "published_exercise_sets": project.exercise_sets.filter(is_published=True).order_by("-updated_at"),
+        },
+    )
 
 @login_required
 def compile_monitor(request: HttpRequest, pk: int, report_id: str) -> HttpResponse:
