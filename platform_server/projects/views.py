@@ -3637,6 +3637,193 @@ def content_detail(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
 @login_required
+def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
+    segmentation_method = (request.POST.get("segmentation_method") or project.segmentation_method or "auto").strip().lower()
+    romanization_method = (request.POST.get("romanization_method") or project.romanization_method or "auto").strip().lower()
+    if segmentation_method not in SEGMENTATION_METHOD_CHOICES:
+        messages.error(request, "Unknown segmentation method option.")
+        return redirect("project-detail", pk=project.pk)
+    if romanization_method not in ROMANIZATION_METHOD_CHOICES:
+        messages.error(request, "Unknown romanization method option.")
+        return redirect("project-detail", pk=project.pk)
+    update_fields: list[str] = []
+    if segmentation_method != project.segmentation_method:
+        project.segmentation_method = segmentation_method
+        update_fields.append("segmentation_method")
+    if romanization_method != project.romanization_method:
+        project.romanization_method = romanization_method
+        update_fields.append("romanization_method")
+    if update_fields:
+        project.save(update_fields=update_fields + ["updated_at"])
+    messages.success(request, "Saved language-processing options.")
+    return redirect("project-detail", pk=project.pk)
+
+
+@login_required
+def compile_monitor(request: HttpRequest, pk: int, report_id: str) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    return_url = request.GET.get("next") or reverse("project-detail", args=[project.pk])
+    return render(
+        request,
+        "projects/compile_monitor.html",
+        {"project": project, "report_id": report_id, "return_url": return_url},
+    )
+
+
+@login_required
+def compile_status(request: HttpRequest, pk: int, report_id: str) -> JsonResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    updates = (
+        TaskUpdate.objects.filter(report_id=report_id, user=request.user)
+        .order_by("timestamp")
+        .all()
+    )
+
+    unread = [u for u in updates if not u.read]
+    messages_out = [u.message for u in unread]
+    status = "running"
+
+    for u in unread:
+        if u.status == "error":
+            status = "error"
+            break
+        if u.status == "finished":
+            status = "finished"
+
+    TaskUpdate.objects.filter(pk__in=[u.pk for u in unread]).update(read=True)
+
+    if status == "running" and unread == []:
+        # Check the latest status so the monitor can exit even if all updates
+        # have been consumed.
+        last = updates.last()
+        if last and last.status in {"error", "finished"}:
+            status = last.status
+
+    if status in {"error", "finished"} and messages_out:
+        level = messages.ERROR if status == "error" else messages.INFO
+        # Surface the last update to the project detail page when the monitor
+        # redirects after completion.
+        messages.add_message(request, level, messages_out[-1])
+
+    return JsonResponse({"messages": messages_out, "status": status, "project": project.pk})
+
+
+
+def _compiled_page_one_path(project: Project) -> str | None:
+    """Return compiled page_1 path when available."""
+
+    compiled = (project.compiled_path or "").strip()
+    if not compiled:
+        return None
+    compiled_path = Path(compiled)
+    page_one = compiled_path.with_name("page_1.html")
+    base = Path(project.artifact_root or project.artifact_dir()).resolve()
+    if (base / page_one).exists():
+        return page_one.as_posix()
+    return compiled_path.as_posix()
+
+
+@login_required
+def content_list(request: HttpRequest) -> HttpResponse:
+    """Search/browse published projects."""
+
+    title = (request.GET.get("title") or "").strip()
+    text_language = (request.GET.get("text_language") or "").strip()
+    annotation_language = (request.GET.get("annotation_language") or "").strip()
+    date_posted = (request.GET.get("date_posted") or "any").strip()
+    if date_posted not in CONTENT_DATE_FILTERS:
+        date_posted = "any"
+
+    qs = Project.objects.filter(is_published=True)
+    if title:
+        qs = qs.filter(title__icontains=title)
+    if text_language:
+        qs = qs.filter(language__iexact=text_language)
+    if annotation_language:
+        qs = qs.filter(target_language__iexact=annotation_language)
+
+    window = CONTENT_DATE_FILTERS.get(date_posted)
+    if window is not None:
+        cutoff = django_timezone.now() - window
+        qs = qs.filter(published_at__gte=cutoff)
+
+    projects = list(qs.order_by("-published_at", "-updated_at")[:200])
+    return render(
+        request,
+        "projects/content_list.html",
+        {
+            "projects": projects,
+            "filters": {
+                "title": title,
+                "text_language": text_language,
+                "annotation_language": annotation_language,
+                "date_posted": date_posted,
+            },
+            "date_options": [
+                ("any", "Any time"),
+                ("last_3_days", "Last 3 days"),
+                ("last_month", "Last month"),
+                ("last_3_months", "Last 3 months"),
+                ("last_year", "Last year"),
+            ],
+        },
+    )
+
+
+@login_required
+def content_detail(request: HttpRequest, pk: int) -> HttpResponse:
+    """Show metadata for a published project and link to page 1."""
+
+    project = get_object_or_404(Project, pk=pk, is_published=True)
+    Project.objects.filter(pk=project.pk).update(access_count=F("access_count") + 1)
+
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip().lower()
+        if action == "comment":
+            body = (request.POST.get("body") or "").strip()
+            if body:
+                ContentComment.objects.create(project=project, author=request.user, body=body)
+                messages.success(request, "Comment posted.")
+            else:
+                messages.error(request, "Comment cannot be empty.")
+        elif action == "rate":
+            value = (request.POST.get("value") or "").strip().lower()
+            note = (request.POST.get("comment") or "").strip()
+            if value in {ContentRating.VALUE_UP, ContentRating.VALUE_DOWN}:
+                ContentRating.objects.update_or_create(
+                    project=project,
+                    author=request.user,
+                    defaults={"value": value, "comment": note},
+                )
+                messages.success(request, "Rating saved.")
+            else:
+                messages.error(request, "Unknown rating value.")
+        return redirect("content-detail", pk=project.pk)
+
+    project.refresh_from_db(fields=["access_count"])
+    page_one = _compiled_page_one_path(project)
+    comments = project.content_comments.filter(is_hidden=False).select_related("author")[:100]
+    ratings = project.content_ratings.all()
+    up_count = ratings.filter(value=ContentRating.VALUE_UP).count()
+    down_count = ratings.filter(value=ContentRating.VALUE_DOWN).count()
+    user_rating = ratings.filter(author=request.user).first()
+
+    return render(
+        request,
+        "projects/content_detail.html",
+        {
+            "project": project,
+            "page_one_path": page_one,
+            "comments": comments,
+            "up_count": up_count,
+            "down_count": down_count,
+            "user_rating": user_rating,
+            "published_exercise_sets": project.exercise_sets.filter(is_published=True).order_by("-updated_at"),
+        },
+    )
+
+@login_required
 def toggle_publish(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
     project.is_published = not project.is_published
