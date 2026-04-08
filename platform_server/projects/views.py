@@ -3438,19 +3438,6 @@ def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
     messages.success(request, "Saved language-processing options.")
     return redirect("project-detail", pk=project.pk)
 
-    return render(
-        request,
-        "projects/content_detail.html",
-        {
-            "project": project,
-            "page_one_path": page_one,
-            "comments": comments,
-            "up_count": up_count,
-            "down_count": down_count,
-            "user_rating": user_rating,
-            "published_exercise_sets": project.exercise_sets.filter(is_published=True).order_by("-updated_at"),
-        },
-    )
 
 @login_required
 def compile_monitor(request: HttpRequest, pk: int, report_id: str) -> HttpResponse:

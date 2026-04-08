@@ -15,11 +15,6 @@
 {% if object.compiled_path %}
   <p><a class="btn link" href="{% url 'project-compiled' pk=object.pk path=object.compiled_path %}" target="_blank">View via server</a></p>
 {% endif %}
-{% if has_segmentation_phase_2 %}
-  <p><a class="btn secondary" href="{% url 'manual-translation' object.pk %}">Manual translation</a></p>
-{% else %}
-  <p>Manual translation becomes available after phase 2 annotated text exists.</p>
-{% endif %}
 <p><a class="btn" href="{% url 'project-images-home' object.pk %}">Images</a></p>
 <p><a class="btn" href="{% url 'project-exercises-home' object.pk %}">Exercises</a></p>
 
