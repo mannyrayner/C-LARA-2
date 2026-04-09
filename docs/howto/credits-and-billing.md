@@ -69,7 +69,7 @@ python platform_server/manage.py sync_openai_pricing
 Optional flags:
 
 ```bash
-python platform_server/manage.py sync_openai_pricing --source-url "https://openai.com/api/pricing/" --ai-model "gpt-5"
+python platform_server/manage.py sync_openai_pricing --source-url "https://developers.openai.com/api/docs/pricing" --ai-model "gpt-5"
 ```
 
 ## Notes on reliability

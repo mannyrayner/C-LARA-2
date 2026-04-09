@@ -105,3 +105,22 @@ class BillingPhaseATests(TestCase):
         row = OpenAIModelPricing.objects.get(model_name="gpt-4o-mini")
         self.assertEqual(row.status, OpenAIModelPricing.STATUS_HUMAN_REVISED)
         self.assertEqual(str(row.input_usd_per_1m), "0.200000")
+
+    def test_admin_can_save_bulk_manual_pricing_table(self):
+        self.client.login(username="billing_admin", password="pw")
+        resp = self.client.post(
+            reverse("admin-tools"),
+            {
+                "action": "save_openai_pricing_bulk",
+                "source_url": "https://developers.openai.com/api/docs/pricing",
+                "bulk_input_gpt-4o": "5.000000",
+                "bulk_output_gpt-4o": "15.000000",
+                "bulk_input_gpt-image-1": "0.000000",
+                "bulk_output_gpt-image-1": "0.040000",
+            },
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Saved manual pricing for 2 model row(s).")
+        self.assertTrue(OpenAIModelPricing.objects.filter(model_name="gpt-4o").exists())
+        self.assertTrue(OpenAIModelPricing.objects.filter(model_name="gpt-image-1").exists())

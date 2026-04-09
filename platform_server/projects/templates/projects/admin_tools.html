@@ -39,9 +39,50 @@
   <input type="hidden" name="action" value="sync_openai_pricing_ai" />
   <p>
     <label for="pricing_source_url">Source URL:</label>
-    <input id="pricing_source_url" name="source_url" type="url" value="https://openai.com/api/pricing/" style="width: 28rem;" />
+    <input id="pricing_source_url" name="source_url" type="url" value="{{ pricing_source_default }}" style="width: 28rem;" />
   </p>
   <button class="btn secondary" type="submit">AI sync pricing from source</button>
+</form>
+
+<h3>Manual pricing table for all menu models</h3>
+<p>If AI sync fails (for example due 403/robots restrictions), enter values manually below.</p>
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="save_openai_pricing_bulk" />
+  <p>
+    <label for="bulk_source_url">Reference URL:</label>
+    <input id="bulk_source_url" name="source_url" type="url" value="{{ pricing_source_default }}" style="width: 28rem;" />
+  </p>
+  <table border="1" cellpadding="6" cellspacing="0">
+    <thead>
+      <tr>
+        <th>Model</th>
+        <th>Input USD / 1M</th>
+        <th>Output USD / 1M</th>
+        <th>Current status</th>
+        <th>Age</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in pricing_matrix %}
+        <tr>
+          <td><code>{{ item.model_name }}</code></td>
+          <td><input type="text" name="bulk_input_{{ item.model_name }}" value="{{ item.input_value }}" /></td>
+          <td><input type="text" name="bulk_output_{{ item.model_name }}" value="{{ item.output_value }}" /></td>
+          <td>{% if item.row %}{{ item.row.get_status_display }}{% else %}missing{% endif %}</td>
+          <td>
+            {% if item.age_hours != None %}
+              {{ item.age_hours }}h
+              {% if item.stale %}<strong style="color:#a00;">(stale; refresh recommended)</strong>{% endif %}
+            {% else %}
+              <strong style="color:#a00;">missing</strong>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p><button class="btn" type="submit">Save manual table</button></p>
 </form>
 
 <h3>Manual pricing override/review</h3>

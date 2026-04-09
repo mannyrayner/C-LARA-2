@@ -12,7 +12,7 @@ class Command(BaseCommand):
     help = "Sync OpenAI model pricing using AI-assisted extraction from a source page."
 
     def add_arguments(self, parser):
-        parser.add_argument("--source-url", default="https://openai.com/api/pricing/")
+        parser.add_argument("--source-url", default="https://developers.openai.com/api/docs/pricing")
         parser.add_argument("--ai-model", default=getattr(settings, "OPENAI_PRICING_AI_MODEL", "gpt-5"))
 
     def handle(self, *args, **options):

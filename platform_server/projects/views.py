@@ -1042,7 +1042,30 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
     )
     adjust_credits_form = AdminAdjustCreditsForm()
     pricing_form = AdminOpenAIPricingForm()
-    pricing_rows = OpenAIModelPricing.objects.all().order_by("model_name")
+    pricing_rows_qs = OpenAIModelPricing.objects.all().order_by("model_name")
+    pricing_rows = list(pricing_rows_qs)
+    menu_models = sorted(set(AI_MODEL_CHOICES + IMAGE_MODEL_CHOICES))
+    now_ts = django_timezone.now()
+    pricing_by_model = {row.model_name: row for row in pricing_rows}
+    pricing_matrix: list[dict[str, Any]] = []
+    for model_name in menu_models:
+        row = pricing_by_model.get(model_name)
+        age_hours: float | None = None
+        stale = True
+        if row and row.last_synced_at:
+            age_delta = now_ts - row.last_synced_at
+            age_hours = round(age_delta.total_seconds() / 3600.0, 1)
+            stale = age_delta > timedelta(days=1)
+        pricing_matrix.append(
+            {
+                "model_name": model_name,
+                "row": row,
+                "input_value": row.input_usd_per_1m if row else "",
+                "output_value": row.output_usd_per_1m if row else "",
+                "age_hours": age_hours,
+                "stale": stale,
+            }
+        )
 
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
@@ -1124,7 +1147,7 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
                 messages.success(request, f"Saved pricing for {pricing_obj.model_name}.")
                 return redirect("admin-tools")
         elif action == "sync_openai_pricing_ai":
-            source_url = (request.POST.get("source_url") or "https://openai.com/api/pricing/").strip()
+            source_url = (request.POST.get("source_url") or "https://developers.openai.com/api/docs/pricing").strip()
             models_to_extract = getattr(settings, "OPENAI_PRICING_TRACKED_MODELS", AI_MODEL_CHOICES)
             try:
                 extracted = _extract_openai_pricing_with_ai(
@@ -1172,7 +1195,49 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
                     changed += 1
                 messages.success(request, f"AI pricing sync completed: {changed} model row(s) updated.")
             except Exception as exc:
-                messages.error(request, f"AI pricing sync failed: {exc}")
+                messages.error(
+                    request,
+                    f"AI pricing sync failed: {exc}. Please use the manual pricing table below.",
+                )
+            return redirect("admin-tools")
+        elif action == "save_openai_pricing_bulk":
+            source_url = (request.POST.get("source_url") or "").strip()
+            changed = 0
+            for model_name in menu_models:
+                input_raw = (request.POST.get(f"bulk_input_{model_name}") or "").strip()
+                output_raw = (request.POST.get(f"bulk_output_{model_name}") or "").strip()
+                if not input_raw or not output_raw:
+                    continue
+                row, _ = OpenAIModelPricing.objects.get_or_create(
+                    model_name=model_name,
+                    defaults={
+                        "input_usd_per_1m": input_raw,
+                        "output_usd_per_1m": output_raw,
+                        "source_url": source_url,
+                        "status": OpenAIModelPricing.STATUS_HUMAN_REVISED,
+                        "last_human_reviewed_at": django_timezone.now(),
+                    },
+                )
+                row.input_usd_per_1m = input_raw
+                row.output_usd_per_1m = output_raw
+                if source_url:
+                    row.source_url = source_url
+                row.status = OpenAIModelPricing.STATUS_HUMAN_REVISED
+                row.last_human_reviewed_at = django_timezone.now()
+                row.last_synced_at = django_timezone.now()
+                row.save(
+                    update_fields=[
+                        "input_usd_per_1m",
+                        "output_usd_per_1m",
+                        "source_url",
+                        "status",
+                        "last_human_reviewed_at",
+                        "last_synced_at",
+                        "updated_at",
+                    ]
+                )
+                changed += 1
+            messages.success(request, f"Saved manual pricing for {changed} model row(s).")
             return redirect("admin-tools")
         else:
             messages.error(request, "Unknown admin action.")
@@ -1186,6 +1251,8 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
             "adjust_credits_form": adjust_credits_form,
             "pricing_form": pricing_form,
             "pricing_rows": pricing_rows,
+            "pricing_matrix": pricing_matrix,
+            "pricing_source_default": "https://developers.openai.com/api/docs/pricing",
             "bootstrap_admin_usernames": sorted(_bootstrap_admin_usernames()),
             "current_admins": get_user_model().objects.filter(is_staff=True).order_by("username"),
         },
