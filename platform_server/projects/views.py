@@ -5037,6 +5037,74 @@ def set_project_collaborator(request: HttpRequest, pk: int) -> HttpResponse:
     messages.success(request, f"Saved collaborator '{username}' with role {role.upper()}.")
     return redirect("project-detail", pk=project.pk)
 
+
+def _copy_latest_run_files(source_project: Project, target_project: Project) -> int:
+    latest_by_rel: dict[str, Path] = {}
+    latest_mtime: dict[str, float] = {}
+    for run_dir in _iter_runs(source_project):
+        for path in run_dir.rglob("*"):
+            if not path.is_file():
+                continue
+            rel = path.relative_to(run_dir).as_posix()
+            try:
+                mtime = path.stat().st_mtime
+            except Exception:
+                continue
+            if rel not in latest_by_rel or mtime > latest_mtime[rel]:
+                latest_by_rel[rel] = path
+                latest_mtime[rel] = mtime
+
+    if not latest_by_rel:
+        return 0
+
+    target_run = _prepare_output_dir(target_project)
+    copied = 0
+    for rel, src in latest_by_rel.items():
+        dest = target_run / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dest)
+        copied += 1
+
+    source_compiled = Path(source_project.compiled_path or "")
+    if len(source_compiled.parts) >= 3 and source_compiled.parts[0] == "runs":
+        tail = Path(*source_compiled.parts[2:])
+        candidate = target_run / tail
+        if candidate.exists():
+            target_project.compiled_path = f"runs/{target_run.name}/{tail.as_posix()}"
+            target_project.save(update_fields=["compiled_path", "updated_at"])
+    return copied
+
+
+@login_required
+def clone_project(request: HttpRequest, pk: int) -> HttpResponse:
+    source_project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
+    if request.method != "POST":
+        return redirect("project-detail", pk=source_project.pk)
+
+    clone_title = _build_unique_import_title(request.user, f"{source_project.title} (Clone)")
+    clone = Project.objects.create(
+        owner=request.user,
+        title=clone_title,
+        description=source_project.description,
+        source_text=source_project.source_text,
+        input_mode=source_project.input_mode,
+        language=source_project.language,
+        target_language=source_project.target_language,
+        ai_model=source_project.ai_model,
+        page_image_placement=source_project.page_image_placement,
+        page_image_text_source=source_project.page_image_text_source,
+        segmentation_method=source_project.segmentation_method,
+        romanization_method=source_project.romanization_method,
+    )
+    _persist_project_source(clone)
+    copied_files = _copy_latest_run_files(source_project, clone)
+    messages.success(
+        request,
+        f"Cloned project '{source_project.title}' to '{clone.title}' ({copied_files} run file(s) copied).",
+    )
+    return redirect("project-detail", pk=clone.pk)
+
+
 @login_required
 def delete_project(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)

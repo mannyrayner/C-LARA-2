@@ -37,6 +37,11 @@
 <form method="post" action="{% url 'project-delete' object.pk %}" onsubmit="return confirm('Delete this project and its artifacts?');">{% csrf_token %}
   <button class="btn secondary" type="submit">Delete project</button>
 </form>
+{% if current_user_role == "owner" %}
+  <form method="post" action="{% url 'project-clone' object.pk %}" onsubmit="return confirm('Clone this project and copy latest run files?');">{% csrf_token %}
+    <button class="btn secondary" type="submit">Clone project</button>
+  </form>
+{% endif %}
 
 {% if current_user_role == "owner" %}
   <h3>Collaborators</h3>
