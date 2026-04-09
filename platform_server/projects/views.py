@@ -1629,14 +1629,19 @@ def _phase2_payload_from_bar_rows(seg1_payload: dict[str, Any], rows: list[dict[
     for row in rows:
         edited = str(row["tokenized_text"] or "").replace("\r\n", "\n")
         segment_text = str(row["segment_text"] or "").replace("\r\n", "\n")
-        edited_without_bars = edited.replace("¦", "")
-        if edited_without_bars != segment_text:
-            mismatch = _describe_text_mismatch(edited_without_bars, segment_text)
-            raise ValueError(
-                f"Page {row['page_index']} segment {row['segment_index']} changes text content; "
-                f"only token separators may be inserted or removed. {mismatch}"
-            )
         tokens = edited.split("¦")
+        edited_without_bars = "".join(tokens)
+        if edited_without_bars != segment_text:
+            reconciled_tokens = _reconcile_outer_whitespace_only_difference(tokens, segment_text)
+            if reconciled_tokens is not None:
+                tokens = reconciled_tokens
+                edited_without_bars = "".join(tokens)
+            if edited_without_bars != segment_text:
+                mismatch = _describe_text_mismatch(edited_without_bars, segment_text)
+                raise ValueError(
+                    f"Page {row['page_index']} segment {row['segment_index']} changes text content; "
+                    f"only token separators may be inserted or removed. {mismatch}"
+                )
         if any(tok == "" for tok in tokens):
             raise ValueError(
                 f"Page {row['page_index']} segment {row['segment_index']} contains an empty token "
@@ -1678,6 +1683,21 @@ def _describe_text_mismatch(edited_text: str, expected_text: str) -> str:
         f"edited_length={len(edited_text)}, expected_length={len(expected_text)}; "
         f"edited_context={edited_context!r}; expected_context={expected_context!r}"
     )
+
+
+def _reconcile_outer_whitespace_only_difference(tokens: list[str], expected_text: str) -> list[str] | None:
+    if not tokens:
+        return None
+    joined = "".join(tokens)
+    if joined.strip() != expected_text.strip():
+        return None
+    expected_leading = expected_text[: len(expected_text) - len(expected_text.lstrip())]
+    expected_trailing = expected_text[len(expected_text.rstrip()) :]
+
+    adjusted_tokens = list(tokens)
+    adjusted_tokens[0] = expected_leading + adjusted_tokens[0].lstrip()
+    adjusted_tokens[-1] = adjusted_tokens[-1].rstrip() + expected_trailing
+    return adjusted_tokens
 
 
 def _format_debug_char(ch: str) -> str:
