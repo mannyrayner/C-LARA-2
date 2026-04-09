@@ -102,6 +102,7 @@ class OpenAIClient:
                     },
                 )
                 response = await _run_with_heartbeat(self._client, kwargs, telemetry, op_id, start, heartbeat_s)
+                self._report_usage(response, model=model, operation="chat_json")
                 payload = _extract_payload(response)
                 telemetry.event(
                     op_id,
@@ -187,6 +188,7 @@ class OpenAIClient:
                     },
                 )
                 response = await _run_with_heartbeat(self._client, kwargs, telemetry, op_id, start, heartbeat_s)
+                self._report_usage(response, model=model, operation="chat_text")
                 payload = _extract_payload(response).strip()
                 telemetry.event(
                     op_id,
@@ -237,6 +239,24 @@ class OpenAIClient:
             kwargs["temperature"] = temperature
 
         return kwargs
+
+    def _report_usage(self, response: Any, *, model: str, operation: str) -> None:
+        reporter = getattr(self.config, "usage_reporter", None)
+        if reporter is None:
+            return
+        usage = _extract_usage(response)
+        if usage is None:
+            return
+        reporter(
+            {
+                "provider": "openai",
+                "model": model,
+                "operation": operation,
+                "prompt_tokens": usage["prompt_tokens"],
+                "completion_tokens": usage["completion_tokens"],
+                "total_tokens": usage["total_tokens"],
+            }
+        )
 
     async def aclose(self) -> None:
         """Close the underlying client if it exposes a close/aclose method."""
@@ -345,6 +365,30 @@ def _extract_payload(response: Any) -> str:
             message = choices[0].get("message", {})
             return message.get("content", "{}") or "{}"
     return "{}"
+
+
+def _extract_usage(response: Any) -> dict[str, int] | None:
+    usage = None
+    if hasattr(response, "usage"):
+        usage = getattr(response, "usage")
+    elif isinstance(response, dict):
+        usage = response.get("usage")
+    if usage is None:
+        return None
+
+    if isinstance(usage, dict):
+        prompt_tokens = int(usage.get("prompt_tokens", 0) or 0)
+        completion_tokens = int(usage.get("completion_tokens", 0) or 0)
+        total_tokens = int(usage.get("total_tokens", prompt_tokens + completion_tokens) or 0)
+    else:
+        prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
+        completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
+        total_tokens = int(getattr(usage, "total_tokens", prompt_tokens + completion_tokens) or 0)
+    return {
+        "prompt_tokens": max(0, prompt_tokens),
+        "completion_tokens": max(0, completion_tokens),
+        "total_tokens": max(0, total_tokens),
+    }
 
 
 def _normalize_json_text(value: Any) -> Any:
