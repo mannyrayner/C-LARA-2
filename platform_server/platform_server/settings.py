@@ -131,3 +131,5 @@ OPENAI_TOKEN_PRICING_USD_PER_1M = {
     "gpt-4o-mini": {"input": "0.15", "output": "0.60"},
     "gpt-5": {"input": "1.25", "output": "10.00"},
 }
+OPENAI_PRICING_TRACKED_MODELS = ["gpt-4o", "gpt-4o-mini", "gpt-5"]
+OPENAI_PRICING_AI_MODEL = os.environ.get("C_LARA_OPENAI_PRICING_AI_MODEL", "gpt-5")

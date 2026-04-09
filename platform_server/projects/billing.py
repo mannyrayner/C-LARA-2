@@ -7,7 +7,9 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
-from .models import AIUsageCharge, CreditAccount, CreditLedgerEntry, Project
+from django.db.models import F
+
+from .models import AIUsageCharge, CreditAccount, CreditLedgerEntry, OpenAIModelPricing, Project
 
 
 FOUR_DP = Decimal("0.0001")
@@ -70,6 +72,12 @@ def apply_credit_delta(
 
 
 def _openai_price_table() -> dict[str, dict[str, Decimal]]:
+    db_rows = list(OpenAIModelPricing.objects.all())
+    if db_rows:
+        return {
+            row.model_name: {"input": Decimal(row.input_usd_per_1m), "output": Decimal(row.output_usd_per_1m)}
+            for row in db_rows
+        }
     raw = getattr(settings, "OPENAI_TOKEN_PRICING_USD_PER_1M", {})
     table: dict[str, dict[str, Decimal]] = {}
     for model_name, prices in raw.items():
@@ -99,6 +107,7 @@ def record_openai_usage_and_charge(
     prompt_tokens: int,
     completion_tokens: int,
     total_tokens: int,
+    request_type: str = "",
 ) -> None:
     User = get_user_model()
     user = User.objects.filter(pk=user_id).first()
@@ -120,6 +129,7 @@ def record_openai_usage_and_charge(
                 "provider": "openai",
                 "model": model,
                 "operation": operation,
+                "request_type": request_type,
                 "prompt_tokens": prompt_tokens,
                 "completion_tokens": completion_tokens,
                 "total_tokens": total_tokens,
@@ -135,6 +145,7 @@ def record_openai_usage_and_charge(
         provider=AIUsageCharge.PROVIDER_OPENAI,
         model=model,
         operation=operation,
+        request_type=request_type or operation,
         prompt_tokens=max(0, int(prompt_tokens or 0)),
         completion_tokens=max(0, int(completion_tokens or 0)),
         total_tokens=max(0, int(total_tokens or 0)),
@@ -143,3 +154,5 @@ def record_openai_usage_and_charge(
         notes=notes,
         ledger_entry=ledger_entry,
     )
+    if project is not None and status == AIUsageCharge.STATUS_CHARGED:
+        Project.objects.filter(pk=project.pk).update(total_cost_usd=F("total_cost_usd") + cost)

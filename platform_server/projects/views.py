@@ -23,7 +23,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.db.models import F, Q
+from django.db.models import F, Q, Sum
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import CreateView, DetailView, ListView
 from django_q.tasks import async_task
@@ -33,6 +33,7 @@ from django.utils import timezone as django_timezone
 import mimetypes
 import tempfile
 import zipfile
+import urllib.request
 from urllib.parse import unquote
 from urllib.parse import quote
 
@@ -43,6 +44,7 @@ from pipeline.mwe import normalize_mwes
 
 from .forms import (
     AdminAdjustCreditsForm,
+    AdminOpenAIPricingForm,
     ClozeExerciseSetForm,
     DeleteCachedWordAudioForm,
     FlashcardExerciseSetForm,
@@ -64,6 +66,7 @@ from .billing import (
 )
 from .models import (
     CreditLedgerEntry,
+    OpenAIModelPricing,
     Profile,
     Project,
     ProjectImageElement,
@@ -75,6 +78,7 @@ from .models import (
     ContentRating,
     ExerciseSet,
     ExerciseItem,
+    AIUsageCharge,
 )
 
 logger = logging.getLogger(__name__)
@@ -992,6 +996,43 @@ def _audio_cache_language_choices() -> list[tuple[str, str]]:
     )
 
 
+def _extract_openai_pricing_with_ai(
+    *,
+    source_url: str,
+    models_to_extract: list[str],
+    ai_model: str | None = None,
+) -> dict[str, dict[str, str]]:
+    with urllib.request.urlopen(source_url, timeout=20) as response_fp:
+        html = response_fp.read().decode("utf-8", errors="replace")
+    html_excerpt = html[:120000]
+    model_list = ", ".join(sorted(set(models_to_extract)))
+    prompt = (
+        "Extract USD token prices per 1M tokens from the supplied OpenAI pricing HTML.\n"
+        f"Return only these models if present: {model_list}.\n"
+        "Output JSON object with shape:\n"
+        '{"prices":[{"model":"...","input_usd_per_1m":"...","output_usd_per_1m":"...","evidence":"..."}]}\n'
+        "Use decimal strings. If not found, omit the model.\n\n"
+        f"HTML SOURCE URL: {source_url}\n\nHTML:\n{html_excerpt}"
+    )
+    pricing_model = ai_model or getattr(settings, "OPENAI_PRICING_AI_MODEL", "gpt-5")
+    client = _build_ai_client(model_name=pricing_model)
+    payload = asyncio.run(client.chat_json(prompt, model=pricing_model))
+    rows = payload.get("prices") if isinstance(payload, dict) else []
+    result: dict[str, dict[str, str]] = {}
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+        model_name = str(row.get("model") or "").strip()
+        if not model_name:
+            continue
+        result[model_name] = {
+            "input": str(row.get("input_usd_per_1m") or ""),
+            "output": str(row.get("output_usd_per_1m") or ""),
+            "evidence": str(row.get("evidence") or ""),
+        }
+    return result
+
+
 @login_required
 def admin_tools(request: HttpRequest) -> HttpResponse:
     _require_admin(request.user)
@@ -1000,6 +1041,8 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
         queryset=get_user_model().objects.filter(is_staff=False).order_by("username")
     )
     adjust_credits_form = AdminAdjustCreditsForm()
+    pricing_form = AdminOpenAIPricingForm()
+    pricing_rows = OpenAIModelPricing.objects.all().order_by("model_name")
 
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
@@ -1046,6 +1089,91 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
                     f"Adjusted {user_obj.username} by ${amount:.4f}. New balance: ${entry.balance_after_usd:.4f}.",
                 )
                 return redirect("admin-tools")
+        elif action == "save_openai_pricing":
+            pricing_form = AdminOpenAIPricingForm(request.POST)
+            if pricing_form.is_valid():
+                pricing_obj, created = OpenAIModelPricing.objects.get_or_create(
+                    model_name=pricing_form.cleaned_data["model_name"],
+                    defaults={
+                        "input_usd_per_1m": pricing_form.cleaned_data["input_usd_per_1m"],
+                        "output_usd_per_1m": pricing_form.cleaned_data["output_usd_per_1m"],
+                        "source_url": pricing_form.cleaned_data.get("source_url") or "",
+                        "status": OpenAIModelPricing.STATUS_HUMAN_REVISED,
+                        "last_human_reviewed_at": django_timezone.now(),
+                        "notes": pricing_form.cleaned_data.get("notes") or "",
+                    },
+                )
+                if not created:
+                    pricing_obj.input_usd_per_1m = pricing_form.cleaned_data["input_usd_per_1m"]
+                    pricing_obj.output_usd_per_1m = pricing_form.cleaned_data["output_usd_per_1m"]
+                    pricing_obj.source_url = pricing_form.cleaned_data.get("source_url") or pricing_obj.source_url
+                    pricing_obj.status = OpenAIModelPricing.STATUS_HUMAN_REVISED
+                    pricing_obj.last_human_reviewed_at = django_timezone.now()
+                    pricing_obj.notes = pricing_form.cleaned_data.get("notes") or pricing_obj.notes
+                    pricing_obj.save(
+                        update_fields=[
+                            "input_usd_per_1m",
+                            "output_usd_per_1m",
+                            "source_url",
+                            "status",
+                            "last_human_reviewed_at",
+                            "notes",
+                            "updated_at",
+                        ]
+                    )
+                messages.success(request, f"Saved pricing for {pricing_obj.model_name}.")
+                return redirect("admin-tools")
+        elif action == "sync_openai_pricing_ai":
+            source_url = (request.POST.get("source_url") or "https://openai.com/api/pricing/").strip()
+            models_to_extract = getattr(settings, "OPENAI_PRICING_TRACKED_MODELS", AI_MODEL_CHOICES)
+            try:
+                extracted = _extract_openai_pricing_with_ai(
+                    source_url=source_url,
+                    models_to_extract=list(models_to_extract),
+                    ai_model=getattr(settings, "OPENAI_PRICING_AI_MODEL", "gpt-5"),
+                )
+                changed = 0
+                now = django_timezone.now()
+                for model_name, prices in extracted.items():
+                    input_price = prices.get("input")
+                    output_price = prices.get("output")
+                    if not input_price or not output_price:
+                        continue
+                    notes = f"AI-parsed evidence: {prices.get('evidence', '')}".strip()
+                    obj, _ = OpenAIModelPricing.objects.get_or_create(
+                        model_name=model_name,
+                        defaults={
+                            "input_usd_per_1m": input_price,
+                            "output_usd_per_1m": output_price,
+                            "source_url": source_url,
+                            "status": OpenAIModelPricing.STATUS_AI_PARSED,
+                            "last_synced_at": now,
+                            "notes": notes,
+                        },
+                    )
+                    obj.input_usd_per_1m = input_price
+                    obj.output_usd_per_1m = output_price
+                    obj.source_url = source_url
+                    obj.status = OpenAIModelPricing.STATUS_AI_PARSED
+                    obj.last_synced_at = now
+                    if notes:
+                        obj.notes = notes
+                    obj.save(
+                        update_fields=[
+                            "input_usd_per_1m",
+                            "output_usd_per_1m",
+                            "source_url",
+                            "status",
+                            "last_synced_at",
+                            "notes",
+                            "updated_at",
+                        ]
+                    )
+                    changed += 1
+                messages.success(request, f"AI pricing sync completed: {changed} model row(s) updated.")
+            except Exception as exc:
+                messages.error(request, f"AI pricing sync failed: {exc}")
+            return redirect("admin-tools")
         else:
             messages.error(request, "Unknown admin action.")
 
@@ -1056,6 +1184,8 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
             "delete_audio_form": delete_form,
             "grant_admin_form": grant_form,
             "adjust_credits_form": adjust_credits_form,
+            "pricing_form": pricing_form,
+            "pricing_rows": pricing_rows,
             "bootstrap_admin_usernames": sorted(_bootstrap_admin_usernames()),
             "current_admins": get_user_model().objects.filter(is_staff=True).order_by("username"),
         },
@@ -1504,6 +1634,17 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
             if project.page_image_placement in PAGE_IMAGE_PLACEMENT_CHOICES
             else "none"
         )
+        usage_breakdown = (
+            AIUsageCharge.objects.filter(project=project, status=AIUsageCharge.STATUS_CHARGED)
+            .values("request_type")
+            .annotate(total=Sum("cost_usd"))
+            .order_by("request_type")
+        )
+        context["project_total_cost_usd"] = project.total_cost_usd
+        context["project_cost_breakdown"] = [
+            {"request_type": row["request_type"] or "unspecified", "total": row["total"] or 0}
+            for row in usage_breakdown
+        ]
         context.update(_manual_annotation_context(project))
         if project.language.lower().startswith("zh"):
             context["segmentation_method_options"] = [("auto", "Jieba (default)"), ("jieba", "Jieba"), ("ai", "AI")]
@@ -3234,6 +3375,12 @@ def _run_compile_task(
                 report_id,
             )
 
+    current_request_type: dict[str, str] = {"value": start_stage}
+
+    def tracked_progress_cb(stage: str, status: str, timestamp: str) -> None:
+        current_request_type["value"] = stage or current_request_type["value"]
+        progress_cb(stage, status, timestamp)
+
     spec = FullPipelineSpec(
         text=text,
         text_obj=text_obj,
@@ -3244,7 +3391,7 @@ def _run_compile_task(
         audio_cache_dir=_audio_repository_dir(project.language),
         require_real_tts=True,
         persist_intermediates=True,
-        progress_callback=progress_cb,
+        progress_callback=tracked_progress_cb,
         start_stage=start_stage,
         end_stage=end_stage or "compile_html",
         page_images={},
@@ -3291,6 +3438,7 @@ def _run_compile_task(
                 prompt_tokens=int(event.get("prompt_tokens") or 0),
                 completion_tokens=int(event.get("completion_tokens") or 0),
                 total_tokens=int(event.get("total_tokens") or 0),
+                request_type=str(event.get("request_type") or current_request_type["value"] or "unknown"),
             )
         except Exception:
             logger.exception("Failed to record OpenAI usage charge for project=%s", project_id)

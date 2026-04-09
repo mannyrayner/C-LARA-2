@@ -11,6 +11,7 @@ from .models import (
     CreditAccount,
     CreditLedgerEntry,
     AIUsageCharge,
+    OpenAIModelPricing,
 )
 
 @admin.register(Project)
@@ -82,6 +83,13 @@ class CreditLedgerEntryAdmin(admin.ModelAdmin):
 
 @admin.register(AIUsageCharge)
 class AIUsageChargeAdmin(admin.ModelAdmin):
-    list_display = ("user", "project", "provider", "model", "operation", "cost_usd", "status", "created_at")
-    search_fields = ("user__username", "project__title", "model", "operation")
+    list_display = ("user", "project", "provider", "model", "operation", "request_type", "cost_usd", "status", "created_at")
+    search_fields = ("user__username", "project__title", "model", "operation", "request_type")
     list_filter = ("provider", "status")
+
+
+@admin.register(OpenAIModelPricing)
+class OpenAIModelPricingAdmin(admin.ModelAdmin):
+    list_display = ("model_name", "input_usd_per_1m", "output_usd_per_1m", "status", "last_synced_at")
+    search_fields = ("model_name", "source_url", "notes")
+    list_filter = ("status",)

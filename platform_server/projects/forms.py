@@ -8,6 +8,7 @@ from django.contrib.auth.models import User
 from django.forms import modelformset_factory
 
 from .models import (
+    OpenAIModelPricing,
     Project,
     Profile,
     ProjectImageElement,
@@ -289,3 +290,9 @@ class AdminAdjustCreditsForm(forms.Form):
         if value == Decimal("0"):
             raise forms.ValidationError("Amount must be non-zero.")
         return value
+
+
+class AdminOpenAIPricingForm(forms.ModelForm):
+    class Meta:
+        model = OpenAIModelPricing
+        fields = ["model_name", "input_usd_per_1m", "output_usd_per_1m", "source_url", "status", "notes"]

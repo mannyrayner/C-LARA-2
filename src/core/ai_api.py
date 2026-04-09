@@ -252,6 +252,7 @@ class OpenAIClient:
                 "provider": "openai",
                 "model": model,
                 "operation": operation,
+                "request_type": operation,
                 "prompt_tokens": usage["prompt_tokens"],
                 "completion_tokens": usage["completion_tokens"],
                 "total_tokens": usage["total_tokens"],
