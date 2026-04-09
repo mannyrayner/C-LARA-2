@@ -1,0 +1,107 @@
+import shutil
+
+from django.contrib.auth import get_user_model
+from django.test import Client, TestCase, override_settings
+from django.urls import reverse
+
+from projects.billing import get_user_balance_usd, record_openai_usage_and_charge
+from projects.models import AIUsageCharge, CreditLedgerEntry, OpenAIModelPricing, Project
+
+
+@override_settings(CREDITS_ENABLED=True, CREDITS_MIN_BALANCE_USD="0.0500")
+class BillingPhaseATests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="billing_user", password="pw")
+        self.admin = User.objects.create_user(username="billing_admin", password="pw", is_staff=True)
+        self.project = Project.objects.create(
+            owner=self.user,
+            title="Billing Project",
+            source_text="Hello world",
+            language="en",
+            target_language="fr",
+        )
+        self.client = Client()
+        shutil.rmtree(self.project.artifact_dir(), ignore_errors=True)
+
+    def test_compile_is_blocked_when_balance_is_below_threshold(self):
+        self.client.login(username="billing_user", password="pw")
+        resp = self.client.post(
+            reverse("project-compile", args=[self.project.pk]),
+            {"start_stage": "segmentation_phase_1", "end_stage": "segmentation_phase_1"},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Insufficient credits to start compile")
+
+    def test_admin_can_adjust_credits_and_create_ledger_entry(self):
+        self.client.login(username="billing_admin", password="pw")
+        resp = self.client.post(
+            reverse("admin-tools"),
+            {
+                "action": "adjust_credits",
+                "user": self.user.pk,
+                "amount_usd": "3.2500",
+                "reason": "Initial funding",
+            },
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Adjusted billing_user by $3.2500")
+        self.assertEqual(str(get_user_balance_usd(self.user)), "3.2500")
+        entry = CreditLedgerEntry.objects.filter(user=self.user).latest("created_at")
+        self.assertEqual(entry.entry_type, CreditLedgerEntry.ENTRY_ADMIN_ADJUST)
+        self.assertEqual(str(entry.amount_usd), "3.2500")
+        self.assertEqual(entry.metadata.get("admin_user_id"), self.admin.id)
+
+    def test_usage_charge_updates_project_total_and_request_type_breakdown(self):
+        self.client.login(username="billing_admin", password="pw")
+        self.client.post(
+            reverse("admin-tools"),
+            {
+                "action": "adjust_credits",
+                "user": self.user.pk,
+                "amount_usd": "10.0000",
+                "reason": "Funding for usage test",
+            },
+            follow=True,
+        )
+        record_openai_usage_and_charge(
+            user_id=self.user.id,
+            project_id=self.project.id,
+            model="gpt-4o-mini",
+            operation="chat_json",
+            request_type="segmentation_phase_1",
+            prompt_tokens=1000,
+            completion_tokens=500,
+            total_tokens=1500,
+        )
+        self.project.refresh_from_db()
+        self.assertGreater(self.project.total_cost_usd, 0)
+        usage = AIUsageCharge.objects.filter(project=self.project).latest("created_at")
+        self.assertEqual(usage.request_type, "segmentation_phase_1")
+
+        self.client.login(username="billing_user", password="pw")
+        resp = self.client.get(reverse("project-detail", args=[self.project.pk]))
+        self.assertContains(resp, "Project cost (USD):")
+        self.assertContains(resp, "segmentation_phase_1")
+
+    def test_admin_can_save_human_reviewed_openai_pricing_row(self):
+        self.client.login(username="billing_admin", password="pw")
+        resp = self.client.post(
+            reverse("admin-tools"),
+            {
+                "action": "save_openai_pricing",
+                "model_name": "gpt-4o-mini",
+                "input_usd_per_1m": "0.200000",
+                "output_usd_per_1m": "0.800000",
+                "source_url": "https://openai.com/api/pricing/",
+                "status": OpenAIModelPricing.STATUS_HUMAN_REVISED,
+                "notes": "Reviewed by admin.",
+            },
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        row = OpenAIModelPricing.objects.get(model_name="gpt-4o-mini")
+        self.assertEqual(row.status, OpenAIModelPricing.STATUS_HUMAN_REVISED)
+        self.assertEqual(str(row.input_usd_per_1m), "0.200000")

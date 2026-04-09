@@ -81,6 +81,36 @@ To address the concern that many teachers will not create their own API keys, us
 - Ledger model, visible balances, per-call charging, low-balance gate.
 - Admin manual recharge and adjustment tools.
 
+**Status (April 2026): initial implementation delivered.**
+
+Implemented now:
+- `CreditAccount` + immutable `CreditLedgerEntry` records.
+- `AIUsageCharge` rows linked to user/project with token usage and computed USD charge.
+- Compile gate when balance is below configured minimum.
+- Admin Tools support manual credit adjustments.
+- Project-level accumulated cost and request-type cost breakdown on project detail pages.
+- Configurable model pricing table with DB-backed overrides.
+
+### Phase A.1 (new): pricing source-of-truth governance
+
+To reduce operational risk from stale or incorrect model prices:
+- Keep a **managed pricing table** in the platform DB (`OpenAIModelPricing`) as runtime source-of-truth.
+- Allow **AI-assisted provisional extraction** from official pricing page(s).
+- Require/support **human review and manual correction** in Admin Tools.
+- Track status + provenance for each model row:
+  - `ai_parsed` vs `human_revised`,
+  - source URL,
+  - last synced timestamp,
+  - last human review timestamp,
+  - notes/evidence.
+- Support scheduled refresh via management command (e.g. daily cron):
+  - `python platform_server/manage.py sync_openai_pricing`
+
+Operational expectation:
+- AI-parsed updates are provisional.
+- Admin can inspect source links and revise values before production use.
+- If DB pricing rows are absent, system falls back to settings defaults.
+
 ### Phase B
 - User-provided API keys and policy controls per project/user.
 - Transfer workflow with limits and abuse monitoring.
