@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 
 from dataclasses import dataclass
+from typing import Any, Callable
 
 
 DEFAULT_HEARTBEAT_S = 5.0
@@ -26,3 +27,4 @@ class OpenAIConfig:
     max_retries: int = DEFAULT_MAX_RETRIES
     timeout_s: float = DEFAULT_TIMEOUT_S
     heartbeat_s: float = DEFAULT_HEARTBEAT_S
+    usage_reporter: Callable[[dict[str, Any]], None] | None = None

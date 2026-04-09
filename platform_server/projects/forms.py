@@ -1,4 +1,5 @@
 from zoneinfo import available_timezones
+from decimal import Decimal
 
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
@@ -271,3 +272,20 @@ class GrantAdminPrivilegesForm(forms.Form):
         if queryset is None:
             queryset = User.objects.filter(is_staff=False).order_by("username")
         self.fields["user"].queryset = queryset
+
+
+class AdminAdjustCreditsForm(forms.Form):
+    user = forms.ModelChoiceField(queryset=User.objects.all().order_by("username"), label="User")
+    amount_usd = forms.DecimalField(
+        max_digits=12,
+        decimal_places=4,
+        label="Amount (USD)",
+        help_text="Use positive values to recharge and negative values to deduct credits.",
+    )
+    reason = forms.CharField(max_length=255, required=False)
+
+    def clean_amount_usd(self):
+        value = Decimal(self.cleaned_data["amount_usd"])
+        if value == Decimal("0"):
+            raise forms.ValidationError("Amount must be non-zero.")
+        return value

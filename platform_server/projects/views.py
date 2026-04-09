@@ -42,6 +42,7 @@ from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pi
 from pipeline.mwe import normalize_mwes
 
 from .forms import (
+    AdminAdjustCreditsForm,
     ClozeExerciseSetForm,
     DeleteCachedWordAudioForm,
     FlashcardExerciseSetForm,
@@ -53,7 +54,16 @@ from .forms import (
     ProjectImageStyleForm,
     RegistrationForm,
 )
+from .billing import (
+    apply_credit_delta,
+    credits_enabled,
+    get_user_balance_usd,
+    has_minimum_balance_for_compile,
+    minimum_compile_balance_usd,
+    record_openai_usage_and_charge,
+)
 from .models import (
+    CreditLedgerEntry,
     Profile,
     Project,
     ProjectImageElement,
@@ -989,6 +999,7 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
     grant_form = GrantAdminPrivilegesForm(
         queryset=get_user_model().objects.filter(is_staff=False).order_by("username")
     )
+    adjust_credits_form = AdminAdjustCreditsForm()
 
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
@@ -1017,6 +1028,24 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
                 user_obj.save(update_fields=["is_staff"])
                 messages.success(request, f"{user_obj.username} now has admin privileges.")
                 return redirect("admin-tools")
+        elif action == "adjust_credits":
+            adjust_credits_form = AdminAdjustCreditsForm(request.POST)
+            if adjust_credits_form.is_valid():
+                user_obj = adjust_credits_form.cleaned_data["user"]
+                amount = adjust_credits_form.cleaned_data["amount_usd"]
+                reason = (adjust_credits_form.cleaned_data.get("reason") or "Manual admin adjustment").strip()
+                entry = apply_credit_delta(
+                    user=user_obj,
+                    amount_usd=amount,
+                    entry_type=CreditLedgerEntry.ENTRY_ADMIN_ADJUST,
+                    description=reason,
+                    metadata={"admin_user_id": request.user.id},
+                )
+                messages.success(
+                    request,
+                    f"Adjusted {user_obj.username} by ${amount:.4f}. New balance: ${entry.balance_after_usd:.4f}.",
+                )
+                return redirect("admin-tools")
         else:
             messages.error(request, "Unknown admin action.")
 
@@ -1026,6 +1055,7 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
         {
             "delete_audio_form": delete_form,
             "grant_admin_form": grant_form,
+            "adjust_credits_form": adjust_credits_form,
             "bootstrap_admin_usernames": sorted(_bootstrap_admin_usernames()),
             "current_admins": get_user_model().objects.filter(is_staff=True).order_by("username"),
         },
@@ -2968,8 +2998,11 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
         return reverse("project-detail", args=[self.object.pk])
 
 
-def _build_ai_client(model_name: str | None = None) -> OpenAIClient:
-    config = OpenAIConfig(model=model_name or DEFAULT_MODEL)
+def _build_ai_client(
+    model_name: str | None = None,
+    usage_reporter: Callable[[dict[str, Any]], None] | None = None,
+) -> OpenAIClient:
+    config = OpenAIConfig(model=model_name or DEFAULT_MODEL, usage_reporter=usage_reporter)
     return OpenAIClient(config=config)
 
 
@@ -3248,7 +3281,21 @@ def _run_compile_task(
     if chosen_model not in AI_MODEL_CHOICES:
         chosen_model = DEFAULT_MODEL
 
-    client = _build_ai_client(model_name=chosen_model)
+    def usage_reporter(event: dict[str, Any]) -> None:
+        try:
+            record_openai_usage_and_charge(
+                user_id=user_id,
+                project_id=project_id,
+                model=str(event.get("model") or chosen_model),
+                operation=str(event.get("operation") or "chat"),
+                prompt_tokens=int(event.get("prompt_tokens") or 0),
+                completion_tokens=int(event.get("completion_tokens") or 0),
+                total_tokens=int(event.get("total_tokens") or 0),
+            )
+        except Exception:
+            logger.exception("Failed to record OpenAI usage charge for project=%s", project_id)
+
+    client = _build_ai_client(model_name=chosen_model, usage_reporter=usage_reporter)
 
     try:
         result = asyncio.run(run_full_pipeline(spec, client=client))
@@ -3461,6 +3508,16 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
                 progress_log.unlink()
         except Exception:
             logger.exception("Failed to copy prior run artifacts from %s", source_run)
+
+    if credits_enabled() and not has_minimum_balance_for_compile(request.user):
+        min_required = minimum_compile_balance_usd()
+        current_balance = get_user_balance_usd(request.user)
+        messages.error(
+            request,
+            f"Insufficient credits to start compile. Current balance: ${current_balance:.4f}; "
+            f"minimum required: ${min_required:.4f}. Please contact an administrator for recharge.",
+        )
+        return redirect(return_to)
 
     task_type = f"compile_project_{project.pk}"
     report_id = str(uuid.uuid4())

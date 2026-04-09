@@ -21,6 +21,14 @@
   <button class="btn" type="submit">Grant admin</button>
 </form>
 
+<h2>Adjust user credits</h2>
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="adjust_credits" />
+  {{ adjust_credits_form.as_p }}
+  <button class="btn" type="submit">Apply credit adjustment</button>
+</form>
+
 <h2>Current admins</h2>
 <ul>
   {% for admin_user in current_admins %}
