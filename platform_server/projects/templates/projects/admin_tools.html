@@ -21,6 +21,67 @@
   <button class="btn" type="submit">Grant admin</button>
 </form>
 
+<h2>Adjust user credits</h2>
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="adjust_credits" />
+  {{ adjust_credits_form.as_p }}
+  <button class="btn" type="submit">Apply credit adjustment</button>
+</form>
+
+<h2>OpenAI pricing source of truth</h2>
+<p>
+  Current pricing rows can be provisionally synced via AI extraction and then manually revised.
+  Each row shows status (AI parsed vs human revised), source URL, and timestamps.
+</p>
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="sync_openai_pricing_ai" />
+  <p>
+    <label for="pricing_source_url">Source URL:</label>
+    <input id="pricing_source_url" name="source_url" type="url" value="https://openai.com/api/pricing/" style="width: 28rem;" />
+  </p>
+  <button class="btn secondary" type="submit">AI sync pricing from source</button>
+</form>
+
+<h3>Manual pricing override/review</h3>
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="save_openai_pricing" />
+  {{ pricing_form.as_p }}
+  <button class="btn" type="submit">Save pricing row (human-reviewed)</button>
+</form>
+
+{% if pricing_rows %}
+  <h3>Current pricing rows</h3>
+  <table border="1" cellpadding="6" cellspacing="0">
+    <thead>
+      <tr>
+        <th>Model</th>
+        <th>Input USD / 1M</th>
+        <th>Output USD / 1M</th>
+        <th>Status</th>
+        <th>Source</th>
+        <th>Last synced</th>
+        <th>Last human review</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in pricing_rows %}
+        <tr>
+          <td>{{ row.model_name }}</td>
+          <td>{{ row.input_usd_per_1m }}</td>
+          <td>{{ row.output_usd_per_1m }}</td>
+          <td>{{ row.get_status_display }}</td>
+          <td>{% if row.source_url %}<a href="{{ row.source_url }}" target="_blank">{{ row.source_url }}</a>{% else %}—{% endif %}</td>
+          <td>{{ row.last_synced_at }}</td>
+          <td>{{ row.last_human_reviewed_at|default:"—" }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endif %}
+
 <h2>Current admins</h2>
 <ul>
   {% for admin_user in current_admins %}
