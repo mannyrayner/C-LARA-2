@@ -1627,8 +1627,8 @@ def _phase2_token_bar_rows(seg1_payload: dict[str, Any], seg2_payload: dict[str,
 def _phase2_payload_from_bar_rows(seg1_payload: dict[str, Any], rows: list[dict[str, Any]]) -> dict[str, Any]:
     token_map: dict[tuple[int, int], list[str]] = {}
     for row in rows:
-        edited = str(row["tokenized_text"] or "")
-        segment_text = str(row["segment_text"] or "")
+        edited = str(row["tokenized_text"] or "").replace("\r\n", "\n")
+        segment_text = str(row["segment_text"] or "").replace("\r\n", "\n")
         if edited.replace("¦", "") != segment_text:
             raise ValueError(
                 f"Page {row['page_index']} segment {row['segment_index']} changes text content; "
