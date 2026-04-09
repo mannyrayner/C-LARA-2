@@ -996,3 +996,43 @@ class CompileStatusViewTests(TestCase):
         self.assertTrue(
             updates.filter(message__icontains="Pipeline finished successfully at stage: segmentation_phase_2.").exists()
         )
+
+
+class CloneProjectTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="cloner", password="pw")
+        self.client = Client()
+        self.client.login(username="cloner", password="pw")
+        self.project = Project.objects.create(
+            owner=self.user,
+            title="Original",
+            description="desc",
+            source_text="source",
+            language="en",
+            target_language="fr",
+        )
+
+    def test_clone_project_copies_latest_run_files(self):
+        runs_root = self.project.artifact_dir() / "runs"
+        run_old = runs_root / "run_old" / "stages"
+        run_new = runs_root / "run_new" / "stages"
+        run_old.mkdir(parents=True, exist_ok=True)
+        run_new.mkdir(parents=True, exist_ok=True)
+        (run_old / "segmentation_phase_1.json").write_text("{\"surface\":\"OLD\"}", encoding="utf-8")
+        (run_new / "segmentation_phase_1.json").write_text("{\"surface\":\"NEW\"}", encoding="utf-8")
+        old_ts = 1000
+        new_ts = 2000
+        os.utime(run_old / "segmentation_phase_1.json", (old_ts, old_ts))
+        os.utime(run_new / "segmentation_phase_1.json", (new_ts, new_ts))
+
+        resp = self.client.post(reverse("project-clone", args=[self.project.pk]), follow=True)
+        self.assertEqual(resp.status_code, 200)
+        clone = Project.objects.exclude(pk=self.project.pk).get()
+        self.assertTrue(clone.title.startswith("Original (Clone)"))
+
+        clone_runs = sorted((clone.artifact_dir() / "runs").glob("run_*"))
+        self.assertTrue(clone_runs)
+        copied_stage = clone_runs[-1] / "stages" / "segmentation_phase_1.json"
+        self.assertTrue(copied_stage.exists())
+        self.assertIn("NEW", copied_stage.read_text(encoding="utf-8"))
