@@ -1026,13 +1026,40 @@ class CloneProjectTests(TestCase):
         os.utime(run_old / "segmentation_phase_1.json", (old_ts, old_ts))
         os.utime(run_new / "segmentation_phase_1.json", (new_ts, new_ts))
 
-        resp = self.client.post(reverse("project-clone", args=[self.project.pk]), follow=True)
+        style = ProjectImageStyle.objects.create(
+            project=self.project,
+            style_brief="brief",
+            sample_image_path="images/style/style_sample_image.png",
+        )
+        self.assertIsNotNone(style.pk)
+        ProjectImageElement.objects.create(
+            project=self.project,
+            name="Milo",
+            image_path="images/elements/milo/reference.png",
+        )
+        ProjectImagePage.objects.create(
+            project=self.project,
+            page_number=1,
+            image_path="images/pages/page_001/image.png",
+        )
+        style_path = self.project.artifact_dir() / "images" / "style" / "style_sample_image.png"
+        style_path.parent.mkdir(parents=True, exist_ok=True)
+        style_path.write_bytes(b"img")
+
+        resp = self.client.post(
+            reverse("project-clone", args=[self.project.pk]),
+            {"clone_title": "My Snapshot"},
+            follow=True,
+        )
         self.assertEqual(resp.status_code, 200)
         clone = Project.objects.exclude(pk=self.project.pk).get()
-        self.assertTrue(clone.title.startswith("Original (Clone)"))
+        self.assertEqual(clone.title, "My Snapshot")
 
         clone_runs = sorted((clone.artifact_dir() / "runs").glob("run_*"))
         self.assertTrue(clone_runs)
         copied_stage = clone_runs[-1] / "stages" / "segmentation_phase_1.json"
         self.assertTrue(copied_stage.exists())
         self.assertIn("NEW", copied_stage.read_text(encoding="utf-8"))
+        self.assertTrue((clone.artifact_dir() / "images" / "style" / "style_sample_image.png").exists())
+        self.assertEqual(clone.image_elements.count(), 1)
+        self.assertEqual(clone.image_pages.count(), 1)

@@ -5075,13 +5075,70 @@ def _copy_latest_run_files(source_project: Project, target_project: Project) -> 
     return copied
 
 
+def _copy_image_assets_and_rows(source_project: Project, target_project: Project) -> None:
+    source_images = source_project.artifact_dir() / "images"
+    target_images = target_project.artifact_dir() / "images"
+    if source_images.exists():
+        shutil.copytree(source_images, target_images, dirs_exist_ok=True)
+
+    source_style = getattr(source_project, "image_style", None)
+    if source_style:
+        ProjectImageStyle.objects.update_or_create(
+            project=target_project,
+            defaults={
+                "style_brief": source_style.style_brief,
+                "expanded_style_description": source_style.expanded_style_description,
+                "representative_excerpt": source_style.representative_excerpt,
+                "sample_image_prompt": source_style.sample_image_prompt,
+                "sample_image_path": source_style.sample_image_path,
+                "sample_image_revised_prompt": source_style.sample_image_revised_prompt,
+                "sample_image_model": source_style.sample_image_model,
+                "ai_model": source_style.ai_model,
+                "status": source_style.status,
+            },
+        )
+
+    target_project.image_elements.all().delete()
+    for element in source_project.image_elements.order_by("id"):
+        ProjectImageElement.objects.create(
+            project=target_project,
+            name=element.name,
+            element_type=element.element_type,
+            page_refs=element.page_refs,
+            why_consistency_matters=element.why_consistency_matters,
+            expanded_description=element.expanded_description,
+            expanded_prompt=element.expanded_prompt,
+            image_model=element.image_model,
+            image_path=element.image_path,
+            image_revised_prompt=element.image_revised_prompt,
+            is_confirmed=element.is_confirmed,
+            ai_model=element.ai_model,
+            status=element.status,
+        )
+
+    target_project.image_pages.all().delete()
+    for page in source_project.image_pages.order_by("page_number", "id"):
+        ProjectImagePage.objects.create(
+            project=target_project,
+            page_number=page.page_number,
+            page_text=page.page_text,
+            generation_prompt=page.generation_prompt,
+            image_model=page.image_model,
+            image_path=page.image_path,
+            image_revised_prompt=page.image_revised_prompt,
+            status=page.status,
+        )
+
+
 @login_required
 def clone_project(request: HttpRequest, pk: int) -> HttpResponse:
     source_project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
     if request.method != "POST":
         return redirect("project-detail", pk=source_project.pk)
 
-    clone_title = _build_unique_import_title(request.user, f"{source_project.title} (Clone)")
+    requested_title = (request.POST.get("clone_title") or "").strip()
+    default_title = f"{source_project.title} (Clone)"
+    clone_title = _build_unique_import_title(request.user, requested_title or default_title)
     clone = Project.objects.create(
         owner=request.user,
         title=clone_title,
@@ -5098,6 +5155,7 @@ def clone_project(request: HttpRequest, pk: int) -> HttpResponse:
     )
     _persist_project_source(clone)
     copied_files = _copy_latest_run_files(source_project, clone)
+    _copy_image_assets_and_rows(source_project, clone)
     messages.success(
         request,
         f"Cloned project '{source_project.title}' to '{clone.title}' ({copied_files} run file(s) copied).",
