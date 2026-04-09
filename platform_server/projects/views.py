@@ -3495,26 +3495,39 @@ def _run_compile_task(
     if chosen_model not in AI_MODEL_CHOICES:
         chosen_model = DEFAULT_MODEL
 
+    usage_events: list[dict[str, Any]] = []
+
     def usage_reporter(event: dict[str, Any]) -> None:
+        usage_events.append(dict(event or {}))
+
+    def flush_usage_events() -> None:
+        for event in usage_events:
+            try:
+                record_openai_usage_and_charge(
+                    user_id=user_id,
+                    project_id=project_id,
+                    model=str(event.get("model") or chosen_model),
+                    operation=str(event.get("operation") or "chat"),
+                    prompt_tokens=int(event.get("prompt_tokens") or 0),
+                    completion_tokens=int(event.get("completion_tokens") or 0),
+                    total_tokens=int(event.get("total_tokens") or 0),
+                    request_type=str(event.get("request_type") or current_request_type["value"] or "unknown"),
+                )
+            except Exception:
+                logger.exception("Failed to record OpenAI usage charge for project=%s", project_id)
+
+    def _finalize_usage_events() -> None:
         try:
-            record_openai_usage_and_charge(
-                user_id=user_id,
-                project_id=project_id,
-                model=str(event.get("model") or chosen_model),
-                operation=str(event.get("operation") or "chat"),
-                prompt_tokens=int(event.get("prompt_tokens") or 0),
-                completion_tokens=int(event.get("completion_tokens") or 0),
-                total_tokens=int(event.get("total_tokens") or 0),
-                request_type=str(event.get("request_type") or current_request_type["value"] or "unknown"),
-            )
+            flush_usage_events()
         except Exception:
-            logger.exception("Failed to record OpenAI usage charge for project=%s", project_id)
+            logger.exception("Unexpected failure while finalizing usage events for project=%s", project_id)
 
     client = _build_ai_client(model_name=chosen_model, usage_reporter=usage_reporter)
 
     try:
         result = asyncio.run(run_full_pipeline(spec, client=client))
     except Exception as exc:  # pragma: no cover - surfaced through session
+        _finalize_usage_events()
         logger.exception("Compile failed for project %s", project_id)
         failure_entry = {
             "stage": "compile",
@@ -3530,6 +3543,7 @@ def _run_compile_task(
             )
         post_update(f"Compile failed: {exc}", status="error")
         return
+    _finalize_usage_events()
 
     requested_end_stage = spec.end_stage or "compile_html"
     if requested_end_stage == "segmentation_phase_1":
