@@ -1627,14 +1627,21 @@ def _phase2_token_bar_rows(seg1_payload: dict[str, Any], seg2_payload: dict[str,
 def _phase2_payload_from_bar_rows(seg1_payload: dict[str, Any], rows: list[dict[str, Any]]) -> dict[str, Any]:
     token_map: dict[tuple[int, int], list[str]] = {}
     for row in rows:
-        edited = str(row["tokenized_text"] or "")
-        segment_text = str(row["segment_text"] or "")
-        if edited.replace("¦", "") != segment_text:
-            raise ValueError(
-                f"Page {row['page_index']} segment {row['segment_index']} changes text content; "
-                "only token separators may be inserted or removed."
-            )
+        edited = str(row["tokenized_text"] or "").replace("\r\n", "\n")
+        segment_text = str(row["segment_text"] or "").replace("\r\n", "\n")
         tokens = edited.split("¦")
+        edited_without_bars = "".join(tokens)
+        if edited_without_bars != segment_text:
+            reconciled_tokens = _reconcile_outer_whitespace_only_difference(tokens, segment_text)
+            if reconciled_tokens is not None:
+                tokens = reconciled_tokens
+                edited_without_bars = "".join(tokens)
+            if edited_without_bars != segment_text:
+                mismatch = _describe_text_mismatch(edited_without_bars, segment_text)
+                raise ValueError(
+                    f"Page {row['page_index']} segment {row['segment_index']} changes text content; "
+                    f"only token separators may be inserted or removed. {mismatch}"
+                )
         if any(tok == "" for tok in tokens):
             raise ValueError(
                 f"Page {row['page_index']} segment {row['segment_index']} contains an empty token "
@@ -1649,6 +1656,54 @@ def _phase2_payload_from_bar_rows(seg1_payload: dict[str, Any], rows: list[dict[
                 token_surfaces = [str(segment.get("surface") or "")]
             segment["tokens"] = [{"surface": surface} for surface in token_surfaces]
     return edited
+
+
+def _describe_text_mismatch(edited_text: str, expected_text: str) -> str:
+    mismatch_index: int | None = None
+    for idx, (edited_char, expected_char) in enumerate(zip(edited_text, expected_text)):
+        if edited_char != expected_char:
+            mismatch_index = idx
+            break
+    if mismatch_index is None and len(edited_text) != len(expected_text):
+        mismatch_index = min(len(edited_text), len(expected_text))
+    if mismatch_index is None:
+        mismatch_index = 0
+
+    edited_char = edited_text[mismatch_index] if mismatch_index < len(edited_text) else ""
+    expected_char = expected_text[mismatch_index] if mismatch_index < len(expected_text) else ""
+
+    start = max(0, mismatch_index - 12)
+    end = mismatch_index + 13
+    edited_context = edited_text[start:end]
+    expected_context = expected_text[start:end]
+
+    return (
+        f"First mismatch at character {mismatch_index + 1}: "
+        f"edited={_format_debug_char(edited_char)}, expected={_format_debug_char(expected_char)}; "
+        f"edited_length={len(edited_text)}, expected_length={len(expected_text)}; "
+        f"edited_context={edited_context!r}; expected_context={expected_context!r}"
+    )
+
+
+def _reconcile_outer_whitespace_only_difference(tokens: list[str], expected_text: str) -> list[str] | None:
+    if not tokens:
+        return None
+    joined = "".join(tokens)
+    if joined.strip() != expected_text.strip():
+        return None
+    expected_leading = expected_text[: len(expected_text) - len(expected_text.lstrip())]
+    expected_trailing = expected_text[len(expected_text.rstrip()) :]
+
+    adjusted_tokens = list(tokens)
+    adjusted_tokens[0] = expected_leading + adjusted_tokens[0].lstrip()
+    adjusted_tokens[-1] = adjusted_tokens[-1].rstrip() + expected_trailing
+    return adjusted_tokens
+
+
+def _format_debug_char(ch: str) -> str:
+    if ch == "":
+        return "<end>"
+    return f"{ch!r} (U+{ord(ch):04X})"
 
 
 def _display_token_surfaces_for_segment(segment_text: str, raw_tokens: list[Any]) -> list[str]:
