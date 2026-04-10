@@ -1089,3 +1089,14 @@ class CloneProjectTests(TestCase):
         self.assertTrue((clone.artifact_dir() / "images" / "style" / "style_sample_image.png").exists())
         self.assertEqual(clone.image_elements.count(), 1)
         self.assertEqual(clone.image_pages.count(), 1)
+
+    def test_clone_project_can_override_glossing_language(self):
+        resp = self.client.post(
+            reverse("project-clone", args=[self.project.pk]),
+            {"clone_title": "Spanish Gloss Clone", "clone_target_language": "es"},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        clone = Project.objects.exclude(pk=self.project.pk).get()
+        self.assertEqual(clone.title, "Spanish Gloss Clone")
+        self.assertEqual(clone.target_language, "es")

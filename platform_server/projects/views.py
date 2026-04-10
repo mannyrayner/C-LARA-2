@@ -5191,8 +5191,10 @@ def clone_project(request: HttpRequest, pk: int) -> HttpResponse:
         return redirect("project-detail", pk=source_project.pk)
 
     requested_title = (request.POST.get("clone_title") or "").strip()
+    requested_target_language = (request.POST.get("clone_target_language") or "").strip()
     default_title = f"{source_project.title} (Clone)"
     clone_title = _build_unique_import_title(request.user, requested_title or default_title)
+    clone_target_language = requested_target_language or source_project.target_language
     clone = Project.objects.create(
         owner=request.user,
         title=clone_title,
@@ -5200,7 +5202,7 @@ def clone_project(request: HttpRequest, pk: int) -> HttpResponse:
         source_text=source_project.source_text,
         input_mode=source_project.input_mode,
         language=source_project.language,
-        target_language=source_project.target_language,
+        target_language=clone_target_language,
         ai_model=source_project.ai_model,
         page_image_placement=source_project.page_image_placement,
         page_image_text_source=source_project.page_image_text_source,
