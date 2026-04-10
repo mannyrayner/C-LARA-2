@@ -28,3 +28,4 @@ class OpenAIConfig:
     timeout_s: float = DEFAULT_TIMEOUT_S
     heartbeat_s: float = DEFAULT_HEARTBEAT_S
     usage_reporter: Callable[[dict[str, Any]], None] | None = None
+    detailed_telemetry: bool = False

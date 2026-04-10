@@ -243,6 +243,21 @@ class CompileStatusViewTests(TestCase):
         self.assertIn("bottom", args)
 
     @patch("projects.views.async_task")
+    def test_compile_passes_detailed_api_trace_flag(self, mock_async_task):
+        url = reverse("project-compile", args=[self.project.pk])
+        resp = self.client.post(
+            url,
+            {
+                "start_stage": "segmentation_phase_1",
+                "end_stage": "segmentation_phase_1",
+                "detailed_api_trace": "1",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        args, _kwargs = mock_async_task.call_args
+        self.assertTrue(args[-1])
+
+    @patch("projects.views.async_task")
     def test_compile_from_annotation_preserves_annotation_return_target(self, mock_async_task):
         url = reverse("project-compile", args=[self.project.pk])
         resp = self.client.post(
@@ -626,6 +641,17 @@ class CompileStatusViewTests(TestCase):
             resp,
             reverse("project-compiled", args=[self.project.pk, "runs/run_demo/html/page_1.html"]),
         )
+
+    def test_annotation_home_lists_telemetry_artifact_link(self):
+        telemetry_path = self.project.artifact_dir() / "runs" / "run_demo" / "stages" / "telemetry.jsonl"
+        telemetry_path.parent.mkdir(parents=True, exist_ok=True)
+        telemetry_path.write_text('{"type":"event"}\n', encoding="utf-8")
+        self.project.compiled_path = "runs/run_demo/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+
+        resp = self.client.get(reverse("project-annotation-home", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "runs/run_demo/stages/telemetry.jsonl")
 
     def test_project_images_home_shows_phase_1_control_only_when_needed(self):
         url = reverse("project-images-home", args=[self.project.pk])

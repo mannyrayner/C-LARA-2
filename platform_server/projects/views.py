@@ -62,6 +62,7 @@ from .billing import (
     get_user_balance_usd,
     has_minimum_balance_for_compile,
     minimum_compile_balance_usd,
+    openai_price_for_model,
     record_openai_usage_and_charge,
 )
 from .models import (
@@ -1648,6 +1649,14 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
                 url = f"{project_media_base}/{rel}"
                 stage_files.append({"path": rel, "url": url})
 
+            telemetry_rel = None
+            telemetry_path = run_dir / "stages" / "telemetry.jsonl"
+            if telemetry_path.exists():
+                telemetry_rel = telemetry_path.resolve().relative_to(base).as_posix()
+                stage_files.append(
+                    {"path": telemetry_rel, "url": f"{project_media_base}/{telemetry_rel}"}
+                )
+
             # Keep the MEDIA-relative run base stable for progress links.
             run_media_base = f"{project_media_base}/runs/{run_dir.name}"
             stage_dir = run_dir / "stages"
@@ -1689,6 +1698,7 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["compiled_media_url"] = compiled_media_url
         context["ai_models"] = AI_MODEL_CHOICES
         context["selected_ai_model"] = project.ai_model or DEFAULT_MODEL
+        context["detailed_api_trace_default"] = False
         style_obj = getattr(project, "image_style", None)
         context["style_ready"] = bool(
             style_obj and (style_obj.sample_image_path or style_obj.status == ProjectImageStyle.STATUS_APPROVED)
@@ -3209,8 +3219,13 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
 def _build_ai_client(
     model_name: str | None = None,
     usage_reporter: Callable[[dict[str, Any]], None] | None = None,
+    detailed_telemetry: bool = False,
 ) -> OpenAIClient:
-    config = OpenAIConfig(model=model_name or DEFAULT_MODEL, usage_reporter=usage_reporter)
+    config = OpenAIConfig(
+        model=model_name or DEFAULT_MODEL,
+        usage_reporter=usage_reporter,
+        detailed_telemetry=detailed_telemetry,
+    )
     return OpenAIClient(config=config)
 
 
@@ -3389,6 +3404,7 @@ def _run_compile_task(
     page_image_placement: str | None = None,
     segmentation_method: str | None = None,
     romanization_method: str | None = None,
+    detailed_api_trace: bool = False,
 ) -> None:
     project = Project.objects.get(pk=project_id)
     output_dir = Path(output_dir_str)
@@ -3496,9 +3512,35 @@ def _run_compile_task(
         chosen_model = DEFAULT_MODEL
 
     usage_events: list[dict[str, Any]] = []
+    model_pricing = openai_price_for_model(chosen_model)
 
     def usage_reporter(event: dict[str, Any]) -> None:
-        usage_events.append(dict(event or {}))
+        event_copy = dict(event or {})
+        usage_events.append(event_copy)
+        if not detailed_api_trace:
+            return
+        prompt_tokens = max(0, int(event_copy.get("prompt_tokens") or 0))
+        completion_tokens = max(0, int(event_copy.get("completion_tokens") or 0))
+        input_cost_usd = (model_pricing["input"] * prompt_tokens) / 1_000_000
+        output_cost_usd = (model_pricing["output"] * completion_tokens) / 1_000_000
+        total_cost_usd = input_cost_usd + output_cost_usd
+        telemetry.event(
+            str(event_copy.get("request_type") or current_request_type["value"] or "unknown"),
+            "info",
+            "openai.usage trace",
+            {
+                "model": str(event_copy.get("model") or chosen_model),
+                "operation": str(event_copy.get("operation") or "chat"),
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": max(0, int(event_copy.get("total_tokens") or 0)),
+                "assumed_input_usd_per_1m_tokens": str(model_pricing["input"]),
+                "assumed_output_usd_per_1m_tokens": str(model_pricing["output"]),
+                "assumed_input_cost_usd": str(round(input_cost_usd, 6)),
+                "assumed_output_cost_usd": str(round(output_cost_usd, 6)),
+                "assumed_total_cost_usd": str(round(total_cost_usd, 6)),
+            },
+        )
 
     def flush_usage_events() -> None:
         for event in usage_events:
@@ -3522,7 +3564,11 @@ def _run_compile_task(
         except Exception:
             logger.exception("Unexpected failure while finalizing usage events for project=%s", project_id)
 
-    client = _build_ai_client(model_name=chosen_model, usage_reporter=usage_reporter)
+    client = _build_ai_client(
+        model_name=chosen_model,
+        usage_reporter=usage_reporter,
+        detailed_telemetry=detailed_api_trace,
+    )
 
     try:
         result = asyncio.run(run_full_pipeline(spec, client=client))
@@ -3633,6 +3679,12 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     if PIPELINE_ORDER.index(end_stage) < PIPELINE_ORDER.index(start_stage):
         messages.error(request, "End stage must come after the selected start stage.")
         return redirect(return_to)
+    detailed_api_trace = (request.POST.get("detailed_api_trace") or "").strip().lower() in {
+        "1",
+        "true",
+        "on",
+        "yes",
+    }
 
     page_image_placement = (
         request.POST.get("page_image_placement")
@@ -3769,6 +3821,7 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         page_image_placement,
         segmentation_method,
         romanization_method,
+        detailed_api_trace,
         q_options={"sync": False},
     )
 

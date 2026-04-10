@@ -98,6 +98,13 @@ def estimate_openai_token_cost_usd(model: str, prompt_tokens: int, completion_to
     return _quantize_6(total)
 
 
+def openai_price_for_model(model: str) -> dict[str, Decimal]:
+    prices = _openai_price_table().get(model) or _openai_price_table().get("default")
+    if not prices:
+        return {"input": Decimal("0"), "output": Decimal("0")}
+    return {"input": Decimal(prices["input"]), "output": Decimal(prices["output"])}
+
+
 def record_openai_usage_and_charge(
     *,
     user_id: int,

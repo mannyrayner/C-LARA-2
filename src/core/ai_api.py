@@ -104,6 +104,17 @@ class OpenAIClient:
                 response = await _run_with_heartbeat(self._client, kwargs, telemetry, op_id, start, heartbeat_s)
                 self._report_usage(response, model=model, operation="chat_json")
                 payload = _extract_payload(response)
+                if self.config.detailed_telemetry:
+                    telemetry.event(
+                        op_id,
+                        "info",
+                        "openai.chat trace",
+                        {
+                            "request": kwargs,
+                            "response_payload": payload,
+                            "usage": _extract_usage(response) or {},
+                        },
+                    )
                 telemetry.event(
                     op_id,
                     "info",
@@ -190,6 +201,17 @@ class OpenAIClient:
                 response = await _run_with_heartbeat(self._client, kwargs, telemetry, op_id, start, heartbeat_s)
                 self._report_usage(response, model=model, operation="chat_text")
                 payload = _extract_payload(response).strip()
+                if self.config.detailed_telemetry:
+                    telemetry.event(
+                        op_id,
+                        "info",
+                        "openai.chat_text trace",
+                        {
+                            "request": kwargs,
+                            "response_payload": payload,
+                            "usage": _extract_usage(response) or {},
+                        },
+                    )
                 telemetry.event(
                     op_id,
                     "info",
