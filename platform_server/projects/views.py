@@ -38,7 +38,7 @@ from urllib.parse import unquote
 from urllib.parse import quote
 
 from core.config import DEFAULT_MODEL, OpenAIConfig
-from core.ai_api import OpenAIClient
+from core.ai_api import OpenAIClient, normalize_json_text
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 from pipeline.mwe import normalize_mwes
 
@@ -1821,6 +1821,7 @@ def _save_versioned_stage_payload(
     payload: dict[str, Any],
     metadata: dict[str, Any],
 ) -> None:
+    payload = normalize_json_text(payload)
     target_run = _ensure_stage_run_dir(project)
     stage_dir = target_run / "stages"
     stage_dir.mkdir(parents=True, exist_ok=True)
@@ -3364,7 +3365,7 @@ def _load_stage_payload(
     if not path.exists():
         return None
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return normalize_json_text(json.loads(path.read_text(encoding="utf-8")))
     except Exception:
         return None
 

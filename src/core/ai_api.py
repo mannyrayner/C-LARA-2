@@ -22,6 +22,11 @@ APIError = type("APIError", (Exception,), {})
 RateLimitError = type("RateLimitError", (Exception,), {})
 LengthFinishReasonError = type("LengthFinishReasonError", (Exception,), {})
 _MALFORMED_UNICODE_ESCAPE_RE = re.compile(r"\x00([0-9a-fA-F]{2})")
+_ESCAPED_U4_RE = re.compile(r"\\u([0-9a-fA-F]{4})")
+_ESCAPED_U8_RE = re.compile(r"\\U([0-9a-fA-F]{8})")
+_ESCAPED_X2_RE = re.compile(r"\\x([0-9a-fA-F]{2})")
+_ESCAPED_MALFORMED_U2_RE = re.compile(r"\\u0000([0-9a-fA-F]{2})")
+_CONTROL_CHAR_RE = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F]")
 
 
 def _preview_text(text: str, *, limit: int = 200) -> str:
@@ -122,7 +127,7 @@ class OpenAIClient:
                     {"elapsed_s": round(time.monotonic() - start, 3), "payload_preview": _preview_text(payload)},
                 )
                 result = json.loads(payload)
-                normalized = _normalize_json_text(result)
+                normalized = normalize_json_text(result)
                 if normalized != result:
                     telemetry.event(op_id, "warn", "normalized malformed unicode escapes in JSON response")
                 return normalized
@@ -414,7 +419,7 @@ def _extract_usage(response: Any) -> dict[str, int] | None:
     }
 
 
-def _normalize_json_text(value: Any) -> Any:
+def normalize_json_text(value: Any) -> Any:
     """Recursively repair malformed escaped-Unicode sequences in JSON values.
 
     Some model responses contain strings such as ``"C\\u0000e9line"``. After
@@ -426,9 +431,9 @@ def _normalize_json_text(value: Any) -> Any:
     if isinstance(value, str):
         return _normalize_malformed_unicode_escapes(value)
     if isinstance(value, list):
-        return [_normalize_json_text(item) for item in value]
+        return [normalize_json_text(item) for item in value]
     if isinstance(value, dict):
-        return {key: _normalize_json_text(item) for key, item in value.items()}
+        return {key: normalize_json_text(item) for key, item in value.items()}
     return value
 
 
@@ -443,9 +448,14 @@ def _normalize_malformed_unicode_escapes(text: str) -> str:
             return match.group(0)
         return chr(codepoint)
 
-    normalized = _MALFORMED_UNICODE_ESCAPE_RE.sub(_replace, text)
+    normalized = _ESCAPED_MALFORMED_U2_RE.sub(lambda m: _replace(m), text)
+    normalized = _ESCAPED_U4_RE.sub(_replace, normalized)
+    normalized = _ESCAPED_U8_RE.sub(_replace, normalized)
+    normalized = _ESCAPED_X2_RE.sub(_replace, normalized)
+    normalized = _MALFORMED_UNICODE_ESCAPE_RE.sub(_replace, normalized)
     if "\x00" in normalized:
         normalized = normalized.replace("\x00", "")
+    normalized = _CONTROL_CHAR_RE.sub("", normalized)
     return normalized
 
 
