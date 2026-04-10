@@ -298,6 +298,77 @@ class CompileStatusViewTests(TestCase):
         args, _kwargs = mock_async_task.call_args
         self.assertEqual("mwe", args[5])
 
+    @patch("projects.views.async_task")
+    def test_compile_html_compose_latest_requires_confirmation(self, mock_async_task):
+        base = self.project.artifact_dir()
+        run_translation = base / "runs" / "run_translation" / "stages"
+        run_translation.mkdir(parents=True, exist_ok=True)
+        translation_payload = {
+            "surface": "Hello",
+            "pages": [{"segments": [{"surface": "Hello", "annotations": {"translation": "Bonjour"}}]}],
+        }
+        (run_translation / "translation.json").write_text(json.dumps(translation_payload), encoding="utf-8")
+
+        with patch("projects.views.credits_enabled", return_value=False):
+            resp = self.client.post(
+                reverse("project-compile", args=[self.project.pk]),
+                {
+                    "start_stage": "compile_html",
+                    "end_stage": "compile_html",
+                    "compose_latest_upstream": "1",
+                },
+            )
+        self.assertEqual(resp.status_code, 302)
+        self.assertFalse(mock_async_task.called)
+
+    @patch("projects.views.async_task")
+    def test_compile_html_compose_latest_uses_merged_payload(self, mock_async_task):
+        base = self.project.artifact_dir()
+        run_translation = base / "runs" / "run_translation" / "stages"
+        run_audio = base / "runs" / "run_audio" / "stages"
+        run_translation.mkdir(parents=True, exist_ok=True)
+        run_audio.mkdir(parents=True, exist_ok=True)
+
+        translation_payload = {
+            "surface": "Hello",
+            "pages": [{"segments": [{"surface": "Hello", "annotations": {"translation": "Bonjour"}}]}],
+        }
+        audio_payload = {
+            "surface": "Hello",
+            "pages": [
+                {
+                    "segments": [
+                        {
+                            "surface": "Hello",
+                            "tokens": [{"surface": "Hello", "annotations": {"audio": {"path": "x.wav"}}}],
+                            "annotations": {"translation": "Old"},
+                        }
+                    ]
+                }
+            ],
+        }
+        (run_translation / "translation.json").write_text(json.dumps(translation_payload), encoding="utf-8")
+        (run_audio / "audio.json").write_text(json.dumps(audio_payload), encoding="utf-8")
+        os.utime(run_translation / "translation.json", (2_000, 2_000))
+        os.utime(run_audio / "audio.json", (1_000, 1_000))
+
+        with patch("projects.views.credits_enabled", return_value=False):
+            resp = self.client.post(
+                reverse("project-compile", args=[self.project.pk]),
+                {
+                    "start_stage": "compile_html",
+                    "end_stage": "compile_html",
+                    "compose_latest_upstream": "1",
+                    "confirm_compose_latest": "1",
+                },
+            )
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(mock_async_task.called)
+        args, _kwargs = mock_async_task.call_args
+        self.assertEqual("compile_html", args[5])
+        merged = args[9]
+        self.assertEqual("Bonjour", merged["pages"][0]["segments"][0]["annotations"]["translation"])
+
     def test_resolve_run_dir_prefers_latest_run_over_compiled_path_run(self):
         base = self.project.artifact_dir()
         older = base / "runs" / "run_old"

@@ -3403,6 +3403,142 @@ def _latest_stage_artifact(project: Project, stage: str) -> tuple[Path, Path, fl
     return run_dir, stage_path, mtime
 
 
+def _stage_payload_with_meta(project: Project, stage: str) -> dict[str, Any] | None:
+    latest = _latest_stage_artifact(project, stage)
+    if latest is None:
+        return None
+    run_dir, stage_path, mtime = latest
+    payload = _load_stage_payload(project, stage, run_dir=run_dir)
+    if payload is None:
+        return None
+    return {"stage": stage, "run": run_dir.name, "path": stage_path, "mtime": mtime, "payload": payload}
+
+
+def _segments_are_compatible(base_payload: dict[str, Any], candidate_payload: dict[str, Any]) -> bool:
+    base_pages = base_payload.get("pages") or []
+    cand_pages = candidate_payload.get("pages") or []
+    if len(base_pages) != len(cand_pages):
+        return False
+    for base_page, cand_page in zip(base_pages, cand_pages):
+        base_segments = base_page.get("segments") or []
+        cand_segments = cand_page.get("segments") or []
+        if len(base_segments) != len(cand_segments):
+            return False
+        for base_seg, cand_seg in zip(base_segments, cand_segments):
+            if str(base_seg.get("surface") or "") != str(cand_seg.get("surface") or ""):
+                return False
+    return True
+
+
+def _tokens_are_compatible(base_payload: dict[str, Any], candidate_payload: dict[str, Any]) -> bool:
+    if not _segments_are_compatible(base_payload, candidate_payload):
+        return False
+    base_pages = base_payload.get("pages") or []
+    cand_pages = candidate_payload.get("pages") or []
+    for base_page, cand_page in zip(base_pages, cand_pages):
+        for base_seg, cand_seg in zip(base_page.get("segments") or [], cand_page.get("segments") or []):
+            base_tokens = base_seg.get("tokens") or []
+            cand_tokens = cand_seg.get("tokens") or []
+            if len(base_tokens) != len(cand_tokens):
+                return False
+            for base_tok, cand_tok in zip(base_tokens, cand_tokens):
+                if str(base_tok.get("surface") or "") != str(cand_tok.get("surface") or ""):
+                    return False
+    return True
+
+
+def _apply_segment_annotation(
+    base_payload: dict[str, Any], candidate_payload: dict[str, Any], *, key: str
+) -> int:
+    applied = 0
+    for base_page, cand_page in zip(base_payload.get("pages") or [], candidate_payload.get("pages") or []):
+        for base_seg, cand_seg in zip(base_page.get("segments") or [], cand_page.get("segments") or []):
+            cand_annotations = cand_seg.get("annotations") or {}
+            if key not in cand_annotations:
+                continue
+            base_annotations = dict(base_seg.get("annotations") or {})
+            base_annotations[key] = cand_annotations[key]
+            base_seg["annotations"] = base_annotations
+            applied += 1
+    return applied
+
+
+def _apply_token_annotation(
+    base_payload: dict[str, Any], candidate_payload: dict[str, Any], *, key: str
+) -> int:
+    applied = 0
+    for base_page, cand_page in zip(base_payload.get("pages") or [], candidate_payload.get("pages") or []):
+        for base_seg, cand_seg in zip(base_page.get("segments") or [], cand_page.get("segments") or []):
+            for base_tok, cand_tok in zip(base_seg.get("tokens") or [], cand_seg.get("tokens") or []):
+                cand_annotations = cand_tok.get("annotations") or {}
+                if key not in cand_annotations:
+                    continue
+                base_annotations = dict(base_tok.get("annotations") or {})
+                base_annotations[key] = cand_annotations[key]
+                base_tok["annotations"] = base_annotations
+                applied += 1
+    return applied
+
+
+def _compose_latest_compile_payload(project: Project) -> tuple[dict[str, Any] | None, list[str]]:
+    """Build a compile-ready payload by composing latest compatible stage outputs."""
+
+    stage_meta: dict[str, dict[str, Any]] = {}
+    for stage_name in ["segmentation_phase_2", "translation", "mwe", "lemma", "gloss", "pinyin", "audio"]:
+        meta = _stage_payload_with_meta(project, stage_name)
+        if meta is not None:
+            stage_meta[stage_name] = meta
+
+    base_stage = None
+    for candidate in ["audio", "pinyin", "gloss", "lemma", "mwe", "translation", "segmentation_phase_2"]:
+        if candidate in stage_meta:
+            base_stage = candidate
+            break
+    if base_stage is None:
+        return None, ["no upstream stage payloads found"]
+
+    composed = json.loads(json.dumps(stage_meta[base_stage]["payload"]))
+    plan: list[str] = [f"base={base_stage}@{stage_meta[base_stage]['run']}"]
+
+    now_ts = datetime.now(timezone.utc).timestamp()
+
+    def _age_minutes(meta: dict[str, Any]) -> int:
+        return max(0, int((now_ts - float(meta["mtime"])) / 60))
+
+    def _add_plan(stage_name: str, note: str) -> None:
+        meta = stage_meta[stage_name]
+        plan.append(f"{stage_name}@{meta['run']} ({_age_minutes(meta)}m old): {note}")
+
+    if "translation" in stage_meta and _segments_are_compatible(composed, stage_meta["translation"]["payload"]):
+        n = _apply_segment_annotation(composed, stage_meta["translation"]["payload"], key="translation")
+        _add_plan("translation", f"applied segment translation to {n} segment(s)")
+
+    if "mwe" in stage_meta and _tokens_are_compatible(composed, stage_meta["mwe"]["payload"]):
+        n1 = _apply_segment_annotation(composed, stage_meta["mwe"]["payload"], key="mwes")
+        n2 = _apply_token_annotation(composed, stage_meta["mwe"]["payload"], key="mwe_id")
+        _add_plan("mwe", f"applied mwes/mwe_id to {n1 + n2} field(s)")
+
+    if "lemma" in stage_meta and _tokens_are_compatible(composed, stage_meta["lemma"]["payload"]):
+        n1 = _apply_token_annotation(composed, stage_meta["lemma"]["payload"], key="lemma")
+        n2 = _apply_token_annotation(composed, stage_meta["lemma"]["payload"], key="pos")
+        _add_plan("lemma", f"applied lemma/pos to {n1 + n2} token field(s)")
+
+    if "gloss" in stage_meta and _tokens_are_compatible(composed, stage_meta["gloss"]["payload"]):
+        n = _apply_token_annotation(composed, stage_meta["gloss"]["payload"], key="gloss")
+        _add_plan("gloss", f"applied gloss to {n} token(s)")
+
+    if "pinyin" in stage_meta and _tokens_are_compatible(composed, stage_meta["pinyin"]["payload"]):
+        n = _apply_token_annotation(composed, stage_meta["pinyin"]["payload"], key="pinyin")
+        _add_plan("pinyin", f"applied pinyin to {n} token(s)")
+
+    if "audio" in stage_meta and _tokens_are_compatible(composed, stage_meta["audio"]["payload"]):
+        n1 = _apply_token_annotation(composed, stage_meta["audio"]["payload"], key="audio")
+        n2 = _apply_segment_annotation(composed, stage_meta["audio"]["payload"], key="audio")
+        _add_plan("audio", f"applied audio annotations to {n1 + n2} node(s)")
+
+    return normalize_json_text(composed), plan
+
+
 def _run_compile_task(
     project_id: int,
     user_id: int,
@@ -3702,6 +3838,18 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         "on",
         "yes",
     }
+    compose_latest_upstream = (request.POST.get("compose_latest_upstream") or "").strip().lower() in {
+        "1",
+        "true",
+        "on",
+        "yes",
+    }
+    confirm_compose_latest = (request.POST.get("confirm_compose_latest") or "").strip().lower() in {
+        "1",
+        "true",
+        "on",
+        "yes",
+    }
 
     page_image_placement = (
         request.POST.get("page_image_placement")
@@ -3744,7 +3892,30 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     # argument, avoiding NameError if the start stage skips description entry.
     description: str | None = (project.description or "").strip()
 
-    if start_stage == "text_gen":
+    if start_stage == "compile_html" and compose_latest_upstream:
+        composed_payload, compose_plan = _compose_latest_compile_payload(project)
+        if composed_payload is None:
+            messages.error(
+                request,
+                "Unable to compose compile input from latest upstream stage files. "
+                "Run from an earlier stage instead.",
+            )
+            return redirect(return_to)
+        if not confirm_compose_latest:
+            messages.warning(
+                request,
+                "Compose-latest mode found a merge plan, but confirmation is required. "
+                "Re-run with 'Confirm composed input' checked."
+            )
+            for entry in compose_plan[:10]:
+                messages.info(request, f"Compose plan: {entry}")
+            return redirect(return_to)
+        text = None
+        text_obj = composed_payload
+        messages.info(request, "Compose-latest mode confirmed; compiling from merged upstream artifacts.")
+        for entry in compose_plan[:10]:
+            messages.info(request, f"Compose plan: {entry}")
+    elif start_stage == "text_gen":
         if not description:
             messages.error(request, "Please provide a description to generate text.")
             return redirect(return_to)

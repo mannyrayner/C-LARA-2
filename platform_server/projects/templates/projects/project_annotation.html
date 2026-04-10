@@ -60,6 +60,14 @@
       <input type="checkbox" name="detailed_api_trace" id="detailed_api_trace" value="1" {% if detailed_api_trace_default %}checked{% endif %} />
       Detailed API telemetry
     </label>
+    <label for="compose_latest_upstream" class="ml-2">
+      <input type="checkbox" name="compose_latest_upstream" id="compose_latest_upstream" value="1" />
+      Compose latest upstream outputs (experimental)
+    </label>
+    <label for="confirm_compose_latest" class="ml-2">
+      <input type="checkbox" name="confirm_compose_latest" id="confirm_compose_latest" value="1" />
+      Confirm composed input
+    </label>
     <button class="btn" type="submit">Run selected pipeline stages</button>
   </p>
 </form>
