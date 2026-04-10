@@ -23,7 +23,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.db.models import F, Q
+from django.db.models import F, Q, Sum
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import CreateView, DetailView, ListView
 from django_q.tasks import async_task
@@ -33,15 +33,18 @@ from django.utils import timezone as django_timezone
 import mimetypes
 import tempfile
 import zipfile
+import urllib.request
 from urllib.parse import unquote
 from urllib.parse import quote
 
 from core.config import DEFAULT_MODEL, OpenAIConfig
-from core.ai_api import OpenAIClient
+from core.ai_api import OpenAIClient, normalize_json_text
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 from pipeline.mwe import normalize_mwes
 
 from .forms import (
+    AdminAdjustCreditsForm,
+    AdminOpenAIPricingForm,
     ClozeExerciseSetForm,
     DeleteCachedWordAudioForm,
     FlashcardExerciseSetForm,
@@ -53,7 +56,18 @@ from .forms import (
     ProjectImageStyleForm,
     RegistrationForm,
 )
+from .billing import (
+    apply_credit_delta,
+    credits_enabled,
+    get_user_balance_usd,
+    has_minimum_balance_for_compile,
+    minimum_compile_balance_usd,
+    openai_price_for_model,
+    record_openai_usage_and_charge,
+)
 from .models import (
+    CreditLedgerEntry,
+    OpenAIModelPricing,
     Profile,
     Project,
     ProjectImageElement,
@@ -65,6 +79,7 @@ from .models import (
     ContentRating,
     ExerciseSet,
     ExerciseItem,
+    AIUsageCharge,
 )
 
 logger = logging.getLogger(__name__)
@@ -982,6 +997,43 @@ def _audio_cache_language_choices() -> list[tuple[str, str]]:
     )
 
 
+def _extract_openai_pricing_with_ai(
+    *,
+    source_url: str,
+    models_to_extract: list[str],
+    ai_model: str | None = None,
+) -> dict[str, dict[str, str]]:
+    with urllib.request.urlopen(source_url, timeout=20) as response_fp:
+        html = response_fp.read().decode("utf-8", errors="replace")
+    html_excerpt = html[:120000]
+    model_list = ", ".join(sorted(set(models_to_extract)))
+    prompt = (
+        "Extract USD token prices per 1M tokens from the supplied OpenAI pricing HTML.\n"
+        f"Return only these models if present: {model_list}.\n"
+        "Output JSON object with shape:\n"
+        '{"prices":[{"model":"...","input_usd_per_1m":"...","output_usd_per_1m":"...","evidence":"..."}]}\n'
+        "Use decimal strings. If not found, omit the model.\n\n"
+        f"HTML SOURCE URL: {source_url}\n\nHTML:\n{html_excerpt}"
+    )
+    pricing_model = ai_model or getattr(settings, "OPENAI_PRICING_AI_MODEL", "gpt-5")
+    client = _build_ai_client(model_name=pricing_model)
+    payload = asyncio.run(client.chat_json(prompt, model=pricing_model))
+    rows = payload.get("prices") if isinstance(payload, dict) else []
+    result: dict[str, dict[str, str]] = {}
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+        model_name = str(row.get("model") or "").strip()
+        if not model_name:
+            continue
+        result[model_name] = {
+            "input": str(row.get("input_usd_per_1m") or ""),
+            "output": str(row.get("output_usd_per_1m") or ""),
+            "evidence": str(row.get("evidence") or ""),
+        }
+    return result
+
+
 @login_required
 def admin_tools(request: HttpRequest) -> HttpResponse:
     _require_admin(request.user)
@@ -989,6 +1041,32 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
     grant_form = GrantAdminPrivilegesForm(
         queryset=get_user_model().objects.filter(is_staff=False).order_by("username")
     )
+    adjust_credits_form = AdminAdjustCreditsForm()
+    pricing_form = AdminOpenAIPricingForm()
+    pricing_rows_qs = OpenAIModelPricing.objects.all().order_by("model_name")
+    pricing_rows = list(pricing_rows_qs)
+    menu_models = sorted(set(AI_MODEL_CHOICES + IMAGE_MODEL_CHOICES))
+    now_ts = django_timezone.now()
+    pricing_by_model = {row.model_name: row for row in pricing_rows}
+    pricing_matrix: list[dict[str, Any]] = []
+    for model_name in menu_models:
+        row = pricing_by_model.get(model_name)
+        age_hours: float | None = None
+        stale = True
+        if row and row.last_synced_at:
+            age_delta = now_ts - row.last_synced_at
+            age_hours = round(age_delta.total_seconds() / 3600.0, 1)
+            stale = age_delta > timedelta(days=1)
+        pricing_matrix.append(
+            {
+                "model_name": model_name,
+                "row": row,
+                "input_value": row.input_usd_per_1m if row else "",
+                "output_value": row.output_usd_per_1m if row else "",
+                "age_hours": age_hours,
+                "stale": stale,
+            }
+        )
 
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
@@ -1017,6 +1095,151 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
                 user_obj.save(update_fields=["is_staff"])
                 messages.success(request, f"{user_obj.username} now has admin privileges.")
                 return redirect("admin-tools")
+        elif action == "adjust_credits":
+            adjust_credits_form = AdminAdjustCreditsForm(request.POST)
+            if adjust_credits_form.is_valid():
+                user_obj = adjust_credits_form.cleaned_data["user"]
+                amount = adjust_credits_form.cleaned_data["amount_usd"]
+                reason = (adjust_credits_form.cleaned_data.get("reason") or "Manual admin adjustment").strip()
+                entry = apply_credit_delta(
+                    user=user_obj,
+                    amount_usd=amount,
+                    entry_type=CreditLedgerEntry.ENTRY_ADMIN_ADJUST,
+                    description=reason,
+                    metadata={"admin_user_id": request.user.id},
+                )
+                messages.success(
+                    request,
+                    f"Adjusted {user_obj.username} by ${amount:.4f}. New balance: ${entry.balance_after_usd:.4f}.",
+                )
+                return redirect("admin-tools")
+        elif action == "save_openai_pricing":
+            pricing_form = AdminOpenAIPricingForm(request.POST)
+            if pricing_form.is_valid():
+                pricing_obj, created = OpenAIModelPricing.objects.get_or_create(
+                    model_name=pricing_form.cleaned_data["model_name"],
+                    defaults={
+                        "input_usd_per_1m": pricing_form.cleaned_data["input_usd_per_1m"],
+                        "output_usd_per_1m": pricing_form.cleaned_data["output_usd_per_1m"],
+                        "source_url": pricing_form.cleaned_data.get("source_url") or "",
+                        "status": OpenAIModelPricing.STATUS_HUMAN_REVISED,
+                        "last_human_reviewed_at": django_timezone.now(),
+                        "notes": pricing_form.cleaned_data.get("notes") or "",
+                    },
+                )
+                if not created:
+                    pricing_obj.input_usd_per_1m = pricing_form.cleaned_data["input_usd_per_1m"]
+                    pricing_obj.output_usd_per_1m = pricing_form.cleaned_data["output_usd_per_1m"]
+                    pricing_obj.source_url = pricing_form.cleaned_data.get("source_url") or pricing_obj.source_url
+                    pricing_obj.status = OpenAIModelPricing.STATUS_HUMAN_REVISED
+                    pricing_obj.last_human_reviewed_at = django_timezone.now()
+                    pricing_obj.notes = pricing_form.cleaned_data.get("notes") or pricing_obj.notes
+                    pricing_obj.save(
+                        update_fields=[
+                            "input_usd_per_1m",
+                            "output_usd_per_1m",
+                            "source_url",
+                            "status",
+                            "last_human_reviewed_at",
+                            "notes",
+                            "updated_at",
+                        ]
+                    )
+                messages.success(request, f"Saved pricing for {pricing_obj.model_name}.")
+                return redirect("admin-tools")
+        elif action == "sync_openai_pricing_ai":
+            source_url = (request.POST.get("source_url") or "https://developers.openai.com/api/docs/pricing").strip()
+            models_to_extract = getattr(settings, "OPENAI_PRICING_TRACKED_MODELS", AI_MODEL_CHOICES)
+            try:
+                extracted = _extract_openai_pricing_with_ai(
+                    source_url=source_url,
+                    models_to_extract=list(models_to_extract),
+                    ai_model=getattr(settings, "OPENAI_PRICING_AI_MODEL", "gpt-5"),
+                )
+                changed = 0
+                now = django_timezone.now()
+                for model_name, prices in extracted.items():
+                    input_price = prices.get("input")
+                    output_price = prices.get("output")
+                    if not input_price or not output_price:
+                        continue
+                    notes = f"AI-parsed evidence: {prices.get('evidence', '')}".strip()
+                    obj, _ = OpenAIModelPricing.objects.get_or_create(
+                        model_name=model_name,
+                        defaults={
+                            "input_usd_per_1m": input_price,
+                            "output_usd_per_1m": output_price,
+                            "source_url": source_url,
+                            "status": OpenAIModelPricing.STATUS_AI_PARSED,
+                            "last_synced_at": now,
+                            "notes": notes,
+                        },
+                    )
+                    obj.input_usd_per_1m = input_price
+                    obj.output_usd_per_1m = output_price
+                    obj.source_url = source_url
+                    obj.status = OpenAIModelPricing.STATUS_AI_PARSED
+                    obj.last_synced_at = now
+                    if notes:
+                        obj.notes = notes
+                    obj.save(
+                        update_fields=[
+                            "input_usd_per_1m",
+                            "output_usd_per_1m",
+                            "source_url",
+                            "status",
+                            "last_synced_at",
+                            "notes",
+                            "updated_at",
+                        ]
+                    )
+                    changed += 1
+                messages.success(request, f"AI pricing sync completed: {changed} model row(s) updated.")
+            except Exception as exc:
+                messages.error(
+                    request,
+                    f"AI pricing sync failed: {exc}. Please use the manual pricing table below.",
+                )
+            return redirect("admin-tools")
+        elif action == "save_openai_pricing_bulk":
+            source_url = (request.POST.get("source_url") or "").strip()
+            changed = 0
+            for model_name in menu_models:
+                input_raw = (request.POST.get(f"bulk_input_{model_name}") or "").strip()
+                output_raw = (request.POST.get(f"bulk_output_{model_name}") or "").strip()
+                if not input_raw or not output_raw:
+                    continue
+                row, _ = OpenAIModelPricing.objects.get_or_create(
+                    model_name=model_name,
+                    defaults={
+                        "input_usd_per_1m": input_raw,
+                        "output_usd_per_1m": output_raw,
+                        "source_url": source_url,
+                        "status": OpenAIModelPricing.STATUS_HUMAN_REVISED,
+                        "last_human_reviewed_at": django_timezone.now(),
+                    },
+                )
+                row.input_usd_per_1m = input_raw
+                row.output_usd_per_1m = output_raw
+                if source_url:
+                    row.source_url = source_url
+                row.status = OpenAIModelPricing.STATUS_HUMAN_REVISED
+                row.last_human_reviewed_at = django_timezone.now()
+                row.last_synced_at = django_timezone.now()
+                row.save(
+                    update_fields=[
+                        "input_usd_per_1m",
+                        "output_usd_per_1m",
+                        "source_url",
+                        "status",
+                        "last_human_reviewed_at",
+                        "last_synced_at",
+                        "updated_at",
+                    ]
+                )
+                changed += 1
+            messages.success(request, f"Saved manual pricing for {changed} model row(s).")
+            return redirect("admin-tools")
         else:
             messages.error(request, "Unknown admin action.")
 
@@ -1026,6 +1249,11 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
         {
             "delete_audio_form": delete_form,
             "grant_admin_form": grant_form,
+            "adjust_credits_form": adjust_credits_form,
+            "pricing_form": pricing_form,
+            "pricing_rows": pricing_rows,
+            "pricing_matrix": pricing_matrix,
+            "pricing_source_default": "https://developers.openai.com/api/docs/pricing",
             "bootstrap_admin_usernames": sorted(_bootstrap_admin_usernames()),
             "current_admins": get_user_model().objects.filter(is_staff=True).order_by("username"),
         },
@@ -1421,6 +1649,14 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
                 url = f"{project_media_base}/{rel}"
                 stage_files.append({"path": rel, "url": url})
 
+            telemetry_rel = None
+            telemetry_path = run_dir / "stages" / "telemetry.jsonl"
+            if telemetry_path.exists():
+                telemetry_rel = telemetry_path.resolve().relative_to(base).as_posix()
+                stage_files.append(
+                    {"path": telemetry_rel, "url": f"{project_media_base}/{telemetry_rel}"}
+                )
+
             # Keep the MEDIA-relative run base stable for progress links.
             run_media_base = f"{project_media_base}/runs/{run_dir.name}"
             stage_dir = run_dir / "stages"
@@ -1462,6 +1698,7 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["compiled_media_url"] = compiled_media_url
         context["ai_models"] = AI_MODEL_CHOICES
         context["selected_ai_model"] = project.ai_model or DEFAULT_MODEL
+        context["detailed_api_trace_default"] = False
         style_obj = getattr(project, "image_style", None)
         context["style_ready"] = bool(
             style_obj and (style_obj.sample_image_path or style_obj.status == ProjectImageStyle.STATUS_APPROVED)
@@ -1474,6 +1711,17 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
             if project.page_image_placement in PAGE_IMAGE_PLACEMENT_CHOICES
             else "none"
         )
+        usage_breakdown = (
+            AIUsageCharge.objects.filter(project=project, status=AIUsageCharge.STATUS_CHARGED)
+            .values("request_type")
+            .annotate(total=Sum("cost_usd"))
+            .order_by("request_type")
+        )
+        context["project_total_cost_usd"] = project.total_cost_usd
+        context["project_cost_breakdown"] = [
+            {"request_type": row["request_type"] or "unspecified", "total": row["total"] or 0}
+            for row in usage_breakdown
+        ]
         context.update(_manual_annotation_context(project))
         if project.language.lower().startswith("zh"):
             context["segmentation_method_options"] = [("auto", "Jieba (default)"), ("jieba", "Jieba"), ("ai", "AI")]
@@ -1573,6 +1821,7 @@ def _save_versioned_stage_payload(
     payload: dict[str, Any],
     metadata: dict[str, Any],
 ) -> None:
+    payload = normalize_json_text(payload)
     target_run = _ensure_stage_run_dir(project)
     stage_dir = target_run / "stages"
     stage_dir.mkdir(parents=True, exist_ok=True)
@@ -1627,14 +1876,21 @@ def _phase2_token_bar_rows(seg1_payload: dict[str, Any], seg2_payload: dict[str,
 def _phase2_payload_from_bar_rows(seg1_payload: dict[str, Any], rows: list[dict[str, Any]]) -> dict[str, Any]:
     token_map: dict[tuple[int, int], list[str]] = {}
     for row in rows:
-        edited = str(row["tokenized_text"] or "")
-        segment_text = str(row["segment_text"] or "")
-        if edited.replace("¦", "") != segment_text:
-            raise ValueError(
-                f"Page {row['page_index']} segment {row['segment_index']} changes text content; "
-                "only token separators may be inserted or removed."
-            )
+        edited = str(row["tokenized_text"] or "").replace("\r\n", "\n")
+        segment_text = str(row["segment_text"] or "").replace("\r\n", "\n")
         tokens = edited.split("¦")
+        edited_without_bars = "".join(tokens)
+        if edited_without_bars != segment_text:
+            reconciled_tokens = _reconcile_outer_whitespace_only_difference(tokens, segment_text)
+            if reconciled_tokens is not None:
+                tokens = reconciled_tokens
+                edited_without_bars = "".join(tokens)
+            if edited_without_bars != segment_text:
+                mismatch = _describe_text_mismatch(edited_without_bars, segment_text)
+                raise ValueError(
+                    f"Page {row['page_index']} segment {row['segment_index']} changes text content; "
+                    f"only token separators may be inserted or removed. {mismatch}"
+                )
         if any(tok == "" for tok in tokens):
             raise ValueError(
                 f"Page {row['page_index']} segment {row['segment_index']} contains an empty token "
@@ -1649,6 +1905,54 @@ def _phase2_payload_from_bar_rows(seg1_payload: dict[str, Any], rows: list[dict[
                 token_surfaces = [str(segment.get("surface") or "")]
             segment["tokens"] = [{"surface": surface} for surface in token_surfaces]
     return edited
+
+
+def _describe_text_mismatch(edited_text: str, expected_text: str) -> str:
+    mismatch_index: int | None = None
+    for idx, (edited_char, expected_char) in enumerate(zip(edited_text, expected_text)):
+        if edited_char != expected_char:
+            mismatch_index = idx
+            break
+    if mismatch_index is None and len(edited_text) != len(expected_text):
+        mismatch_index = min(len(edited_text), len(expected_text))
+    if mismatch_index is None:
+        mismatch_index = 0
+
+    edited_char = edited_text[mismatch_index] if mismatch_index < len(edited_text) else ""
+    expected_char = expected_text[mismatch_index] if mismatch_index < len(expected_text) else ""
+
+    start = max(0, mismatch_index - 12)
+    end = mismatch_index + 13
+    edited_context = edited_text[start:end]
+    expected_context = expected_text[start:end]
+
+    return (
+        f"First mismatch at character {mismatch_index + 1}: "
+        f"edited={_format_debug_char(edited_char)}, expected={_format_debug_char(expected_char)}; "
+        f"edited_length={len(edited_text)}, expected_length={len(expected_text)}; "
+        f"edited_context={edited_context!r}; expected_context={expected_context!r}"
+    )
+
+
+def _reconcile_outer_whitespace_only_difference(tokens: list[str], expected_text: str) -> list[str] | None:
+    if not tokens:
+        return None
+    joined = "".join(tokens)
+    if joined.strip() != expected_text.strip():
+        return None
+    expected_leading = expected_text[: len(expected_text) - len(expected_text.lstrip())]
+    expected_trailing = expected_text[len(expected_text.rstrip()) :]
+
+    adjusted_tokens = list(tokens)
+    adjusted_tokens[0] = expected_leading + adjusted_tokens[0].lstrip()
+    adjusted_tokens[-1] = adjusted_tokens[-1].rstrip() + expected_trailing
+    return adjusted_tokens
+
+
+def _format_debug_char(ch: str) -> str:
+    if ch == "":
+        return "<end>"
+    return f"{ch!r} (U+{ord(ch):04X})"
 
 
 def _display_token_surfaces_for_segment(segment_text: str, raw_tokens: list[Any]) -> list[str]:
@@ -2913,8 +3217,16 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
         return reverse("project-detail", args=[self.object.pk])
 
 
-def _build_ai_client(model_name: str | None = None) -> OpenAIClient:
-    config = OpenAIConfig(model=model_name or DEFAULT_MODEL)
+def _build_ai_client(
+    model_name: str | None = None,
+    usage_reporter: Callable[[dict[str, Any]], None] | None = None,
+    detailed_telemetry: bool = False,
+) -> OpenAIClient:
+    config = OpenAIConfig(
+        model=model_name or DEFAULT_MODEL,
+        usage_reporter=usage_reporter,
+        detailed_telemetry=detailed_telemetry,
+    )
     return OpenAIClient(config=config)
 
 
@@ -3053,7 +3365,7 @@ def _load_stage_payload(
     if not path.exists():
         return None
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return normalize_json_text(json.loads(path.read_text(encoding="utf-8")))
     except Exception:
         return None
 
@@ -3093,6 +3405,7 @@ def _run_compile_task(
     page_image_placement: str | None = None,
     segmentation_method: str | None = None,
     romanization_method: str | None = None,
+    detailed_api_trace: bool = False,
 ) -> None:
     project = Project.objects.get(pk=project_id)
     output_dir = Path(output_dir_str)
@@ -3146,6 +3459,12 @@ def _run_compile_task(
                 report_id,
             )
 
+    current_request_type: dict[str, str] = {"value": start_stage}
+
+    def tracked_progress_cb(stage: str, status: str, timestamp: str) -> None:
+        current_request_type["value"] = stage or current_request_type["value"]
+        progress_cb(stage, status, timestamp)
+
     spec = FullPipelineSpec(
         text=text,
         text_obj=text_obj,
@@ -3156,7 +3475,7 @@ def _run_compile_task(
         audio_cache_dir=_audio_repository_dir(project.language),
         require_real_tts=True,
         persist_intermediates=True,
-        progress_callback=progress_cb,
+        progress_callback=tracked_progress_cb,
         start_stage=start_stage,
         end_stage=end_stage or "compile_html",
         page_images={},
@@ -3193,11 +3512,69 @@ def _run_compile_task(
     if chosen_model not in AI_MODEL_CHOICES:
         chosen_model = DEFAULT_MODEL
 
-    client = _build_ai_client(model_name=chosen_model)
+    usage_events: list[dict[str, Any]] = []
+    model_pricing = openai_price_for_model(chosen_model)
+
+    def usage_reporter(event: dict[str, Any]) -> None:
+        event_copy = dict(event or {})
+        usage_events.append(event_copy)
+        if not detailed_api_trace:
+            return
+        prompt_tokens = max(0, int(event_copy.get("prompt_tokens") or 0))
+        completion_tokens = max(0, int(event_copy.get("completion_tokens") or 0))
+        input_cost_usd = (model_pricing["input"] * prompt_tokens) / 1_000_000
+        output_cost_usd = (model_pricing["output"] * completion_tokens) / 1_000_000
+        total_cost_usd = input_cost_usd + output_cost_usd
+        telemetry.event(
+            str(event_copy.get("request_type") or current_request_type["value"] or "unknown"),
+            "info",
+            "openai.usage trace",
+            {
+                "model": str(event_copy.get("model") or chosen_model),
+                "operation": str(event_copy.get("operation") or "chat"),
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": max(0, int(event_copy.get("total_tokens") or 0)),
+                "assumed_input_usd_per_1m_tokens": str(model_pricing["input"]),
+                "assumed_output_usd_per_1m_tokens": str(model_pricing["output"]),
+                "assumed_input_cost_usd": str(round(input_cost_usd, 6)),
+                "assumed_output_cost_usd": str(round(output_cost_usd, 6)),
+                "assumed_total_cost_usd": str(round(total_cost_usd, 6)),
+            },
+        )
+
+    def flush_usage_events() -> None:
+        for event in usage_events:
+            try:
+                record_openai_usage_and_charge(
+                    user_id=user_id,
+                    project_id=project_id,
+                    model=str(event.get("model") or chosen_model),
+                    operation=str(event.get("operation") or "chat"),
+                    prompt_tokens=int(event.get("prompt_tokens") or 0),
+                    completion_tokens=int(event.get("completion_tokens") or 0),
+                    total_tokens=int(event.get("total_tokens") or 0),
+                    request_type=str(event.get("request_type") or current_request_type["value"] or "unknown"),
+                )
+            except Exception:
+                logger.exception("Failed to record OpenAI usage charge for project=%s", project_id)
+
+    def _finalize_usage_events() -> None:
+        try:
+            flush_usage_events()
+        except Exception:
+            logger.exception("Unexpected failure while finalizing usage events for project=%s", project_id)
+
+    client = _build_ai_client(
+        model_name=chosen_model,
+        usage_reporter=usage_reporter,
+        detailed_telemetry=detailed_api_trace,
+    )
 
     try:
         result = asyncio.run(run_full_pipeline(spec, client=client))
     except Exception as exc:  # pragma: no cover - surfaced through session
+        _finalize_usage_events()
         logger.exception("Compile failed for project %s", project_id)
         failure_entry = {
             "stage": "compile",
@@ -3213,6 +3590,7 @@ def _run_compile_task(
             )
         post_update(f"Compile failed: {exc}", status="error")
         return
+    _finalize_usage_events()
 
     requested_end_stage = spec.end_stage or "compile_html"
     if requested_end_stage == "segmentation_phase_1":
@@ -3302,6 +3680,12 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     if PIPELINE_ORDER.index(end_stage) < PIPELINE_ORDER.index(start_stage):
         messages.error(request, "End stage must come after the selected start stage.")
         return redirect(return_to)
+    detailed_api_trace = (request.POST.get("detailed_api_trace") or "").strip().lower() in {
+        "1",
+        "true",
+        "on",
+        "yes",
+    }
 
     page_image_placement = (
         request.POST.get("page_image_placement")
@@ -3407,6 +3791,16 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         except Exception:
             logger.exception("Failed to copy prior run artifacts from %s", source_run)
 
+    if credits_enabled() and not has_minimum_balance_for_compile(request.user):
+        min_required = minimum_compile_balance_usd()
+        current_balance = get_user_balance_usd(request.user)
+        messages.error(
+            request,
+            f"Insufficient credits to start compile. Current balance: ${current_balance:.4f}; "
+            f"minimum required: ${min_required:.4f}. Please contact an administrator for recharge.",
+        )
+        return redirect(return_to)
+
     task_type = f"compile_project_{project.pk}"
     report_id = str(uuid.uuid4())
 
@@ -3428,6 +3822,7 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         page_image_placement,
         segmentation_method,
         romanization_method,
+        detailed_api_trace,
         q_options={"sync": False},
     )
 
@@ -4695,6 +5090,132 @@ def set_project_collaborator(request: HttpRequest, pk: int) -> HttpResponse:
     )
     messages.success(request, f"Saved collaborator '{username}' with role {role.upper()}.")
     return redirect("project-detail", pk=project.pk)
+
+
+def _copy_latest_run_files(source_project: Project, target_project: Project) -> int:
+    latest_by_rel: dict[str, Path] = {}
+    latest_mtime: dict[str, float] = {}
+    for run_dir in _iter_runs(source_project):
+        for path in run_dir.rglob("*"):
+            if not path.is_file():
+                continue
+            rel = path.relative_to(run_dir).as_posix()
+            try:
+                mtime = path.stat().st_mtime
+            except Exception:
+                continue
+            if rel not in latest_by_rel or mtime > latest_mtime[rel]:
+                latest_by_rel[rel] = path
+                latest_mtime[rel] = mtime
+
+    if not latest_by_rel:
+        return 0
+
+    target_run = _prepare_output_dir(target_project)
+    copied = 0
+    for rel, src in latest_by_rel.items():
+        dest = target_run / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dest)
+        copied += 1
+
+    source_compiled = Path(source_project.compiled_path or "")
+    if len(source_compiled.parts) >= 3 and source_compiled.parts[0] == "runs":
+        tail = Path(*source_compiled.parts[2:])
+        candidate = target_run / tail
+        if candidate.exists():
+            target_project.compiled_path = f"runs/{target_run.name}/{tail.as_posix()}"
+            target_project.save(update_fields=["compiled_path", "updated_at"])
+    return copied
+
+
+def _copy_image_assets_and_rows(source_project: Project, target_project: Project) -> None:
+    source_images = source_project.artifact_dir() / "images"
+    target_images = target_project.artifact_dir() / "images"
+    if source_images.exists():
+        shutil.copytree(source_images, target_images, dirs_exist_ok=True)
+
+    source_style = getattr(source_project, "image_style", None)
+    if source_style:
+        ProjectImageStyle.objects.update_or_create(
+            project=target_project,
+            defaults={
+                "style_brief": source_style.style_brief,
+                "expanded_style_description": source_style.expanded_style_description,
+                "representative_excerpt": source_style.representative_excerpt,
+                "sample_image_prompt": source_style.sample_image_prompt,
+                "sample_image_path": source_style.sample_image_path,
+                "sample_image_revised_prompt": source_style.sample_image_revised_prompt,
+                "sample_image_model": source_style.sample_image_model,
+                "ai_model": source_style.ai_model,
+                "status": source_style.status,
+            },
+        )
+
+    target_project.image_elements.all().delete()
+    for element in source_project.image_elements.order_by("id"):
+        ProjectImageElement.objects.create(
+            project=target_project,
+            name=element.name,
+            element_type=element.element_type,
+            page_refs=element.page_refs,
+            why_consistency_matters=element.why_consistency_matters,
+            expanded_description=element.expanded_description,
+            expanded_prompt=element.expanded_prompt,
+            image_model=element.image_model,
+            image_path=element.image_path,
+            image_revised_prompt=element.image_revised_prompt,
+            is_confirmed=element.is_confirmed,
+            ai_model=element.ai_model,
+            status=element.status,
+        )
+
+    target_project.image_pages.all().delete()
+    for page in source_project.image_pages.order_by("page_number", "id"):
+        ProjectImagePage.objects.create(
+            project=target_project,
+            page_number=page.page_number,
+            page_text=page.page_text,
+            generation_prompt=page.generation_prompt,
+            image_model=page.image_model,
+            image_path=page.image_path,
+            image_revised_prompt=page.image_revised_prompt,
+            status=page.status,
+        )
+
+
+@login_required
+def clone_project(request: HttpRequest, pk: int) -> HttpResponse:
+    source_project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
+    if request.method != "POST":
+        return redirect("project-detail", pk=source_project.pk)
+
+    requested_title = (request.POST.get("clone_title") or "").strip()
+    default_title = f"{source_project.title} (Clone)"
+    clone_title = _build_unique_import_title(request.user, requested_title or default_title)
+    clone = Project.objects.create(
+        owner=request.user,
+        title=clone_title,
+        description=source_project.description,
+        source_text=source_project.source_text,
+        input_mode=source_project.input_mode,
+        language=source_project.language,
+        target_language=source_project.target_language,
+        ai_model=source_project.ai_model,
+        page_image_placement=source_project.page_image_placement,
+        page_image_text_source=source_project.page_image_text_source,
+        segmentation_method=source_project.segmentation_method,
+        romanization_method=source_project.romanization_method,
+    )
+    _persist_project_source(clone)
+    copied_files = _copy_latest_run_files(source_project, clone)
+    _copy_image_assets_and_rows(source_project, clone)
+    messages.success(
+        request,
+        f"Cloned project '{source_project.title}' to '{clone.title}' ({copied_files} run file(s) copied).",
+    )
+    return redirect("project-detail", pk=clone.pk)
+
 
 @login_required
 def delete_project(request: HttpRequest, pk: int) -> HttpResponse:
