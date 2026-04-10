@@ -273,6 +273,31 @@ class CompileStatusViewTests(TestCase):
         self.assertIn("next=/projects/", resp.url)
         self.assertIn("/annotation/", resp.url)
 
+    @patch("projects.views.async_task")
+    def test_compile_html_uses_fresher_translation_stage_when_audio_is_stale(self, mock_async_task):
+        base = self.project.artifact_dir()
+        run_translation = base / "runs" / "run_translation" / "stages"
+        run_audio = base / "runs" / "run_audio" / "stages"
+        run_translation.mkdir(parents=True, exist_ok=True)
+        run_audio.mkdir(parents=True, exist_ok=True)
+
+        translation_payload = {"surface": "Hello", "pages": [{"segments": [{"surface": "Hello", "annotations": {"translation": "Bonjour"}}]}]}
+        audio_payload = {"surface": "Hello", "pages": [{"segments": [{"surface": "Hello", "annotations": {"translation": "Old"}}]}]}
+        (run_translation / "translation.json").write_text(json.dumps(translation_payload), encoding="utf-8")
+        (run_audio / "audio.json").write_text(json.dumps(audio_payload), encoding="utf-8")
+        os.utime(run_translation / "translation.json", (2_000, 2_000))
+        os.utime(run_audio / "audio.json", (1_000, 1_000))
+
+        with patch("projects.views.credits_enabled", return_value=False):
+            resp = self.client.post(
+                reverse("project-compile", args=[self.project.pk]),
+                {"start_stage": "compile_html", "end_stage": "compile_html"},
+            )
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(mock_async_task.called)
+        args, _kwargs = mock_async_task.call_args
+        self.assertEqual("mwe", args[5])
+
     def test_resolve_run_dir_prefers_latest_run_over_compiled_path_run(self):
         base = self.project.artifact_dir()
         older = base / "runs" / "run_old"

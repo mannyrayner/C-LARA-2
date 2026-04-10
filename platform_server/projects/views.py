@@ -3389,6 +3389,20 @@ def _copy_run_artifacts(src: Path, dest: Path) -> None:
         shutil.copytree(stage_src, dest / "stages", dirs_exist_ok=True)
 
 
+def _latest_stage_artifact(project: Project, stage: str) -> tuple[Path, Path, float] | None:
+    run_dir = _find_run_with_stage(project, stage)
+    if run_dir is None:
+        return None
+    stage_path = run_dir / "stages" / f"{stage}.json"
+    if not stage_path.exists():
+        return None
+    try:
+        mtime = stage_path.stat().st_mtime
+    except Exception:
+        return None
+    return run_dir, stage_path, mtime
+
+
 def _run_compile_task(
     project_id: int,
     user_id: int,
@@ -3671,6 +3685,7 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     start_stage = request.POST.get("start_stage") or (
         "text_gen" if project.input_mode == Project.INPUT_DESCRIPTION else "segmentation_phase_1"
     )
+    requested_start_stage = start_stage
     if start_stage not in PIPELINE_ORDER:
         messages.error(request, "Unknown start stage.")
         return redirect(return_to)
@@ -3764,24 +3779,60 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
             )
             return redirect(return_to)
     else:
-        # Start from a persisted intermediate produced by a previous run.
-        upstream_index = PIPELINE_ORDER.index(start_stage) - 1
-        upstream_stage = PIPELINE_ORDER[upstream_index]
-        source_run = _find_run_with_stage(project, upstream_stage)
-        if not source_run:
+        # Start from a persisted intermediate produced by previous runs.
+        # We choose the *freshest* upstream artifact across stages before the
+        # requested start stage, then rerun forward from the next stage. This
+        # prevents stale downstream stages (e.g. old audio) from masking newer
+        # edits in earlier stages (e.g. translation/gloss).
+        requested_start_index = PIPELINE_ORDER.index(start_stage)
+        upstream_stages = PIPELINE_ORDER[:requested_start_index]
+
+        freshest: tuple[str, Path, float] | None = None
+        for stage_name in upstream_stages:
+            latest = _latest_stage_artifact(project, stage_name)
+            if latest is None:
+                continue
+            run_dir, _stage_path, mtime = latest
+            if freshest is None or mtime > freshest[2]:
+                freshest = (stage_name, run_dir, mtime)
+
+        if freshest is None:
             messages.error(
                 request,
-                f"Cannot start at {start_stage}: missing upstream stage output ({upstream_stage}).",
+                f"Cannot start at {start_stage}: no upstream stage outputs were found.",
             )
             return redirect(return_to)
 
-        text_obj = _load_stage_payload(project, upstream_stage, run_dir=source_run)
-        if text_obj is None:
+        freshest_stage, source_run, _freshest_mtime = freshest
+        freshest_payload = _load_stage_payload(project, freshest_stage, run_dir=source_run)
+        if freshest_payload is None:
             messages.error(
                 request,
-                f"Cannot start at {start_stage}: missing upstream stage output ({upstream_stage}).",
+                f"Cannot start at {start_stage}: failed to load upstream stage output ({freshest_stage}).",
             )
             return redirect(return_to)
+
+        effective_start_stage = PIPELINE_ORDER[PIPELINE_ORDER.index(freshest_stage) + 1]
+        if PIPELINE_ORDER.index(effective_start_stage) > requested_start_index:
+            effective_start_stage = requested_start_stage
+        if effective_start_stage != requested_start_stage:
+            messages.info(
+                request,
+                f"Using fresher upstream stage '{freshest_stage}', so recompilation will start at '{effective_start_stage}'.",
+            )
+        start_stage = effective_start_stage
+
+        if start_stage == "segmentation_phase_1":
+            text = str((freshest_payload or {}).get("surface") or "").strip()
+            if not text:
+                messages.error(
+                    request,
+                    "Cannot start at segmentation_phase_1: missing text surface in upstream stage output.",
+                )
+                return redirect(return_to)
+            text_obj = None
+        else:
+            text_obj = freshest_payload
 
         try:
             _copy_run_artifacts(source_run, output_dir)
