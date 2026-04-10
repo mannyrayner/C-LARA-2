@@ -56,6 +56,10 @@
     <input type="hidden" name="segmentation_method" value="{{ selected_segmentation_method }}" />
     <input type="hidden" name="romanization_method" value="{{ selected_romanization_method }}" />
     <input type="hidden" name="return_to" value="{% url 'project-annotation-home' object.pk %}" />
+    <label for="detailed_api_trace" class="ml-2">
+      <input type="checkbox" name="detailed_api_trace" id="detailed_api_trace" value="1" {% if detailed_api_trace_default %}checked{% endif %} />
+      Detailed API telemetry
+    </label>
     <button class="btn" type="submit">Run selected pipeline stages</button>
   </p>
 </form>

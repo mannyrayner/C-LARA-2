@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from decimal import Decimal
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -45,6 +46,7 @@ class Project(models.Model):
     access_count = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
+    total_cost_usd = models.DecimalField(max_digits=12, decimal_places=4, default=Decimal("0.0000"))
 
     class Meta:
         ordering = ["-updated_at"]
@@ -105,6 +107,96 @@ class TaskUpdate(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - display helper
         return f"Update {self.report_id}: {self.message}"
+
+
+class CreditAccount(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="credit_account"
+    )
+    balance_usd = models.DecimalField(max_digits=12, decimal_places=4, default=Decimal("0.0000"))
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:  # pragma: no cover - display helper
+        return f"Credit account for {self.user.username}: ${self.balance_usd}"
+
+
+class CreditLedgerEntry(models.Model):
+    ENTRY_USAGE = "usage"
+    ENTRY_ADMIN_ADJUST = "admin_adjust"
+    ENTRY_CHOICES = [
+        (ENTRY_USAGE, "Usage charge"),
+        (ENTRY_ADMIN_ADJUST, "Admin adjustment"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="credit_ledger_entries"
+    )
+    entry_type = models.CharField(max_length=32, choices=ENTRY_CHOICES)
+    amount_usd = models.DecimalField(max_digits=12, decimal_places=4)
+    balance_after_usd = models.DecimalField(max_digits=12, decimal_places=4)
+    description = models.CharField(max_length=255, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+
+class AIUsageCharge(models.Model):
+    PROVIDER_OPENAI = "openai"
+    STATUS_CHARGED = "charged"
+    STATUS_SKIPPED = "skipped"
+    STATUS_CHOICES = [
+        (STATUS_CHARGED, "Charged"),
+        (STATUS_SKIPPED, "Skipped"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="ai_usage_charges"
+    )
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="ai_usage_charges", null=True, blank=True
+    )
+    provider = models.CharField(max_length=32, default=PROVIDER_OPENAI)
+    model = models.CharField(max_length=64, blank=True)
+    operation = models.CharField(max_length=64, blank=True)
+    request_type = models.CharField(max_length=64, blank=True, default="")
+    prompt_tokens = models.PositiveIntegerField(default=0)
+    completion_tokens = models.PositiveIntegerField(default=0)
+    total_tokens = models.PositiveIntegerField(default=0)
+    cost_usd = models.DecimalField(max_digits=12, decimal_places=6, default=Decimal("0"))
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_CHARGED)
+    notes = models.CharField(max_length=255, blank=True)
+    ledger_entry = models.ForeignKey(
+        CreditLedgerEntry, on_delete=models.SET_NULL, null=True, blank=True, related_name="usage_rows"
+    )
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+
+class OpenAIModelPricing(models.Model):
+    STATUS_AI_PARSED = "ai_parsed"
+    STATUS_HUMAN_REVISED = "human_revised"
+    STATUS_CHOICES = [
+        (STATUS_AI_PARSED, "AI parsed"),
+        (STATUS_HUMAN_REVISED, "Human revised"),
+    ]
+
+    model_name = models.CharField(max_length=64, unique=True)
+    input_usd_per_1m = models.DecimalField(max_digits=12, decimal_places=6)
+    output_usd_per_1m = models.DecimalField(max_digits=12, decimal_places=6)
+    source_url = models.URLField(blank=True)
+    status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=STATUS_AI_PARSED)
+    last_synced_at = models.DateTimeField(default=timezone.now)
+    last_human_reviewed_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["model_name"]
 
 
 class ProjectImageStyle(models.Model):
