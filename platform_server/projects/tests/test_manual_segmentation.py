@@ -101,6 +101,110 @@ class ManualSegmentationEditorTests(TestCase):
             version_payload["metadata"]["after_text_hash"],
         )
 
+    def test_phase_2_save_accepts_browser_crlf_for_multiline_segment(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_seed_multiline" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        seg1_payload = {
+            "l2": "non",
+            "surface": "Deyr fé,\ndeyja frændr,",
+            "pages": [
+                {
+                    "surface": "Deyr fé,\ndeyja frændr,",
+                    "segments": [{"surface": "Deyr fé,\ndeyja frændr,"}],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_1.json").write_text(
+            json.dumps(seg1_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+        resp = self.client.post(
+            reverse("manual-segmentation-phase-2", args=[self.project.pk]),
+            {
+                # Browsers submit textarea line breaks as CRLF.
+                "tokenized_text_1_1": "Deyr¦ ¦fé¦,\r\n¦deyja¦ ¦frændr¦,",
+            },
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Saved manual segmentation phase 2.")
+
+        stage_dir = self._latest_run_stage_dir()
+        payload = json.loads((stage_dir / "segmentation_phase_2.json").read_text(encoding="utf-8"))
+        tokens = payload["pages"][0]["segments"][0]["tokens"]
+        self.assertEqual(
+            tokens,
+            [
+                {"surface": "Deyr"},
+                {"surface": " "},
+                {"surface": "fé"},
+                {"surface": ",\n"},
+                {"surface": "deyja"},
+                {"surface": " "},
+                {"surface": "frændr"},
+                {"surface": ","},
+            ],
+        )
+
+    def test_phase_2_save_reports_precise_text_mismatch_details(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_seed_mismatch" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        seg1_payload = {
+            "l2": "en",
+            "surface": "Milo was.",
+            "pages": [{"surface": "Milo was.", "segments": [{"surface": "Milo was."}], "annotations": {}}],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_1.json").write_text(
+            json.dumps(seg1_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+        resp = self.client.post(
+            reverse("manual-segmentation-phase-2", args=[self.project.pk]),
+            {
+                "tokenized_text_1_1": "Milo¦ ¦xas.",
+            },
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "changes text content")
+        self.assertContains(resp, "First mismatch at character 6")
+        self.assertContains(resp, "edited=&#x27;x&#x27; (U+0078), expected=&#x27;w&#x27; (U+0077)")
+
+    def test_phase_2_save_reconciles_outer_whitespace_only_difference(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_seed_outer_ws" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        seg1_payload = {
+            "l2": "en",
+            "surface": "\nMilo was.",
+            "pages": [{"surface": "\nMilo was.", "segments": [{"surface": "\nMilo was."}], "annotations": {}}],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_1.json").write_text(
+            json.dumps(seg1_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+        resp = self.client.post(
+            reverse("manual-segmentation-phase-2", args=[self.project.pk]),
+            {
+                # User edits visible content and omits the initial newline.
+                "tokenized_text_1_1": "Milo¦ ¦was¦.",
+            },
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Saved manual segmentation phase 2.")
+
+        stage_dir = self._latest_run_stage_dir()
+        payload = json.loads((stage_dir / "segmentation_phase_2.json").read_text(encoding="utf-8"))
+        tokens = payload["pages"][0]["segments"][0]["tokens"]
+        self.assertEqual(tokens, [{"surface": "\nMilo"}, {"surface": " "}, {"surface": "was"}, {"surface": "."}])
+
     def test_project_detail_hides_manual_segmentation_links(self):
         resp = self.client.get(reverse("project-detail", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
