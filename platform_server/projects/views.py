@@ -1699,6 +1699,7 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["ai_models"] = AI_MODEL_CHOICES
         context["selected_ai_model"] = project.ai_model or DEFAULT_MODEL
         context["detailed_api_trace_default"] = False
+        context["language_choices"] = ProjectForm.LANGUAGE_CHOICES
         style_obj = getattr(project, "image_style", None)
         context["style_ready"] = bool(
             style_obj and (style_obj.sample_image_path or style_obj.status == ProjectImageStyle.STATUS_APPROVED)
@@ -5192,6 +5193,10 @@ def clone_project(request: HttpRequest, pk: int) -> HttpResponse:
 
     requested_title = (request.POST.get("clone_title") or "").strip()
     requested_target_language = (request.POST.get("clone_target_language") or "").strip()
+    allowed_target_languages = {code for code, _label in ProjectForm.LANGUAGE_CHOICES}
+    if requested_target_language and requested_target_language not in allowed_target_languages:
+        messages.error(request, "Unknown glossing language for clone.")
+        return redirect("project-detail", pk=source_project.pk)
     default_title = f"{source_project.title} (Clone)"
     clone_title = _build_unique_import_title(request.user, requested_title or default_title)
     clone_target_language = requested_target_language or source_project.target_language

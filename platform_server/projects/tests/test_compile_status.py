@@ -1100,3 +1100,19 @@ class CloneProjectTests(TestCase):
         clone = Project.objects.exclude(pk=self.project.pk).get()
         self.assertEqual(clone.title, "Spanish Gloss Clone")
         self.assertEqual(clone.target_language, "es")
+
+    def test_project_detail_clone_form_uses_glossing_language_menu(self):
+        resp = self.client.get(reverse("project-detail", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'name="clone_target_language"')
+        self.assertContains(resp, "<select")
+        self.assertContains(resp, "Spanish")
+
+    def test_clone_project_rejects_unknown_glossing_language(self):
+        resp = self.client.post(
+            reverse("project-clone", args=[self.project.pk]),
+            {"clone_title": "Bad Clone", "clone_target_language": "xx-invalid"},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(Project.objects.filter(title="Bad Clone").exists())
