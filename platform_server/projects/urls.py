@@ -87,6 +87,7 @@ urlpatterns = [
     ),
     path("projects/import-source-bundle/", views.import_project_source_bundle, name="project-import-source-bundle"),
     path("projects/<int:pk>/publish/", views.toggle_publish, name="project-publish"),
+    path("projects/<int:pk>/clone/", views.clone_project, name="project-clone"),
     path("projects/<int:pk>/delete/", views.delete_project, name="project-delete"),
     path("projects/<int:pk>/compiled/<path:path>", views.serve_compiled, name="project-compiled"),
 ]
