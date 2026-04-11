@@ -13,22 +13,35 @@
 <p><a class="btn secondary" href="{% url 'project-image-elements' project.pk %}">Go to Elements step</a></p>
 {% if status_notice == "done" %}
   <p><strong>Request completed.</strong> Check the messages above for details.</p>
+{% elif status_notice == "error" %}
+  <p><strong>Request finished with an error.</strong> Check the messages above for details.</p>
 {% endif %}
 
-<form method="post">
+<form method="post" id="style-form">
   {% csrf_token %}
+  <input type="hidden" name="action_intent" id="style-action-intent" value="" />
   {{ form.as_p }}
+  <p><strong>To fill “Expanded style description” and “Sample image prompt”, use:</strong></p>
   <p>
-    <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate">Generate style draft</button>
-    <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_image">Generate sample image</button>
-    <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="save">Save draft</button>
-    <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="approve">Approve style</button>
+    <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate" data-busy-label="Expanding style brief..." onclick="document.getElementById('style-action-intent').value='generate';">Expand style brief</button>
+    <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_image" data-busy-label="Generating sample image..." onclick="document.getElementById('style-action-intent').value='generate_image';">Generate sample image</button>
+    <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="save" data-busy-label="Saving draft..." onclick="document.getElementById('style-action-intent').value='save';">Save draft</button>
+    <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="approve" data-busy-label="Approving style..." onclick="document.getElementById('style-action-intent').value='approve';">Approve style</button>
   </p>
 </form>
+<p id="style-processing-indicator" style="display:none; font-weight:bold;" aria-live="polite">Processing request...</p>
 
 <h3>Current status</h3>
 <p>Status: <strong>{{ style.get_status_display }}</strong></p>
 <p>Artifacts stored at: {{ style_artifact_dir }}</p>
+{% if style_artifact_links %}
+  <p>Style artifacts:</p>
+  <ul>
+    {% for item in style_artifact_links %}
+      <li><a href="{{ item.url }}">{{ item.label }}</a> ({{ item.size }} bytes)</li>
+    {% endfor %}
+  </ul>
+{% endif %}
 
 {% if style.representative_excerpt %}
   <h3>Representative excerpt</h3>
@@ -49,4 +62,27 @@
   <h3>Sample style image</h3>
   <p><img src="{{ style_image_url }}" alt="Sample style image" style="max-width: 512px; width: 100%; height: auto;" /></p>
 {% endif %}
+<script>
+  (function () {
+    const form = document.getElementById("style-form");
+    const indicator = document.getElementById("style-processing-indicator");
+    if (!form || !indicator) return;
+
+    form.addEventListener("submit", function (event) {
+      const submitter = event.submitter || document.activeElement;
+      const busyLabel = submitter && submitter.dataset ? submitter.dataset.busyLabel : "";
+      const actionIntent = document.getElementById("style-action-intent");
+      if (actionIntent && submitter && submitter.value) {
+        actionIntent.value = submitter.value;
+      }
+      indicator.textContent = busyLabel || "Processing request...";
+      indicator.style.display = "block";
+
+      const buttons = form.querySelectorAll('button[type="submit"]');
+      buttons.forEach(function (button) {
+        button.disabled = true;
+      });
+    });
+  })();
+</script>
 {% endblock %}
