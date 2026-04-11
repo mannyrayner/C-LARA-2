@@ -842,6 +842,94 @@ def _build_page_image_prompt(
     return "\n".join(lines)
 
 
+def _truncate_for_prompt(text: str, *, max_chars: int) -> str:
+    value = str(text or "")
+    if len(value) <= max_chars:
+        return value
+    head = value[:max(0, max_chars - 48)]
+    return f"{head}\n...[truncated {len(value) - len(head)} chars]..."
+
+
+def _fit_page_image_prompt_to_limit(
+    *,
+    project: Project,
+    style: ProjectImageStyle,
+    page_number: int,
+    page_text: str,
+    full_text: str,
+    relevant_elements: list[ProjectImageElement],
+    max_chars: int = 32000,
+) -> tuple[str, dict[str, Any]]:
+    """Build a page-image prompt and iteratively trim when it exceeds limits."""
+
+    full_text_limit = max_chars
+    element_desc_limit = max_chars
+    element_prompt_limit = max_chars
+
+    def _build_with_limits() -> str:
+        trimmed_elements: list[ProjectImageElement] = []
+        for element in relevant_elements:
+            clone = ProjectImageElement(
+                name=element.name,
+                element_type=element.element_type,
+                expanded_description=_truncate_for_prompt(
+                    element.expanded_description or element.why_consistency_matters or "",
+                    max_chars=element_desc_limit,
+                ),
+                expanded_prompt=_truncate_for_prompt(
+                    element.expanded_prompt or "",
+                    max_chars=element_prompt_limit,
+                ),
+                image_path=element.image_path,
+            )
+            trimmed_elements.append(clone)
+        return _build_page_image_prompt(
+            project=project,
+            style=style,
+            page_number=page_number,
+            page_text=page_text,
+            full_text=_truncate_for_prompt(full_text, max_chars=full_text_limit),
+            relevant_elements=trimmed_elements,
+        )
+
+    prompt = _build_with_limits()
+    strategy = "none"
+    if len(prompt) > max_chars:
+        full_text_limit = 8000
+        strategy = "truncate_full_text"
+        prompt = _build_with_limits()
+    if len(prompt) > max_chars:
+        element_desc_limit = 500
+        element_prompt_limit = 500
+        strategy = "truncate_elements_500"
+        prompt = _build_with_limits()
+    if len(prompt) > max_chars:
+        element_desc_limit = 200
+        element_prompt_limit = 200
+        strategy = "truncate_elements_200"
+        prompt = _build_with_limits()
+    if len(prompt) > max_chars:
+        strategy = "hard_cut"
+        prompt = _truncate_for_prompt(prompt, max_chars=max_chars)
+
+    metadata = {
+        "max_chars": max_chars,
+        "final_length": len(prompt),
+        "strategy": strategy,
+        "trimmed": strategy != "none",
+    }
+    return prompt, metadata
+
+
+def _append_page_image_telemetry(project: Project, record: dict[str, Any]) -> None:
+    telemetry_path = _image_pages_dir(project) / "telemetry.jsonl"
+    telemetry_path.parent.mkdir(parents=True, exist_ok=True)
+    entry = dict(record)
+    entry["timestamp"] = datetime.now(timezone.utc).isoformat()
+    with telemetry_path.open("a", encoding="utf-8") as fp:
+        fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
 def _ensure_project_page_rows(project: Project) -> int:
     pages = _extract_project_pages(project)
     existing = {
@@ -899,19 +987,32 @@ def _generate_project_page_images(project: Project, *, image_model: str) -> int:
     if not page_rows:
         return 0
 
-    def _generate_one(page_obj: ProjectImagePage) -> tuple[int, str, str]:
+    def _generate_one(page_obj: ProjectImagePage) -> tuple[int, str, str, str]:
         refs = [
             element
             for element in relevant_elements
             if not element.page_refs or _page_refs_match(element.page_refs, page_obj.page_number)
         ]
-        prompt = _build_page_image_prompt(
+        prompt, prompt_meta = _fit_page_image_prompt_to_limit(
             project=project,
             style=style,
             page_number=page_obj.page_number,
             page_text=page_obj.page_text,
             full_text=full_text,
             relevant_elements=refs,
+        )
+        _append_page_image_telemetry(
+            project,
+            {
+                "event": "page_image_request",
+                "page_number": page_obj.page_number,
+                "model": image_model,
+                "prompt": prompt,
+                "prompt_meta": prompt_meta,
+                "relevant_element_count": len(refs),
+                "relevant_element_paths": [e.image_path for e in refs if e.image_path],
+                "reference_images_sent_in_request": False,
+            },
         )
         client = _build_ai_client()
         image_result = client.generate_image(prompt, model=image_model)
@@ -930,6 +1031,16 @@ def _generate_project_page_images(project: Project, *, image_model: str) -> int:
         (page_dir / "metadata.json").write_text(
             json.dumps(metadata, ensure_ascii=False, indent=2),
             encoding="utf-8",
+        )
+        _append_page_image_telemetry(
+            project,
+            {
+                "event": "page_image_response",
+                "page_number": page_obj.page_number,
+                "model": image_model,
+                "revised_prompt": metadata["revised_prompt"],
+                "image_path": rel_path,
+            },
         )
         return page_obj.pk, rel_path, metadata["revised_prompt"], prompt
 
