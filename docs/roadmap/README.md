@@ -201,13 +201,20 @@ Focus:
 
 ### 16. Credits and billing roadmap
 
-Status: **New roadmap document added.** See [roadmap/credits-and-billing.md](credits-and-billing.md).
+Status: **Phase A baseline delivered; roadmap active.** See [roadmap/credits-and-billing.md](credits-and-billing.md).
 
 Focus:
 - Per-user credit balances tied to AI/API usage cost.
 - Hard balance gate for AI calls when funds are insufficient.
 - Admin recharge, user-provided API keys, and optional user-to-user transfers.
 - Future online top-up integration (e.g., PayPal/Stripe) once accounting baseline is stable.
+
+Implemented now:
+- Credit account + immutable ledger.
+- OpenAI usage charges with token/cost records.
+- Compile low-balance gate.
+- Admin manual credit adjustments.
+- Project-level cost total and request-type breakdown.
 
 
 ### 17. Right-to-left (RTL) language support roadmap
