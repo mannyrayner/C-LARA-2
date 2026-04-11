@@ -80,6 +80,47 @@ def _build_prompt(template: str, *, description: dict[str, Any], fewshots: list[
     return "\n".join(lines)
 
 
+def _build_story_prompt(*, language: str, description: dict[str, Any] | str) -> str:
+    language_labels = {
+        "en": "English",
+        "fr": "French",
+        "de": "German",
+        "es": "Spanish",
+        "it": "Italian",
+        "pt": "Portuguese",
+        "zh": "Mandarin Chinese",
+        "ja": "Japanese",
+        "ko": "Korean",
+        "ar": "Arabic",
+        "ru": "Russian",
+    }
+    language_cap = language_labels.get(language.lower(), language.capitalize())
+    if isinstance(description, str):
+        user_prompt = description.strip()
+        if not user_prompt:
+            intro = ""
+            user_prompt = (
+                f"Write a short, quirky news story in {language_cap} suitable for use in an intermediate language class."
+            )
+        else:
+            intro = f"Write a text in {language_cap}, using the following instructions.\n\n"
+    else:
+        raw_prompt = str(description.get("prompt") or "").strip()
+        if raw_prompt:
+            intro = f"Write a text in {language_cap}, using the following instructions.\n\n"
+            user_prompt = raw_prompt
+        else:
+            intro = ""
+            user_prompt = (
+                f"Write a short, quirky news story in {language_cap} suitable for use in an intermediate language class."
+            )
+    clarification = (
+        f" Since the output will be processed by a Python script, write only the {language_cap} text.\n"
+        "Do not include any introduction, translation, explanation or similar."
+    )
+    return intro + user_prompt + clarification
+
+
 def _normalize_response(
     response: dict[str, Any], *, language: str, description: dict[str, Any] | str
 ) -> dict[str, Any]:
@@ -105,7 +146,7 @@ async def generate_text(
     *,
     client: OpenAIClient | None = None,
 ) -> dict[str, Any]:
-    """Generate a text from a description using a prompt template and few-shots."""
+    """Generate a text from a description using a concise direct prompt."""
 
     prompts_root = spec.template_path.parent.parent if spec.template_path else _default_prompts_root()
     template = (
@@ -125,8 +166,9 @@ async def generate_text(
     if isinstance(description_payload, str):
         description_payload = {"description": description_payload}
 
-    prompt = _build_prompt(template, description=description_payload, fewshots=fewshots)
+    prompt = _build_story_prompt(language=spec.language, description=description_payload)
     telemetry = spec.telemetry or NullTelemetry()
     ai_client = client or OpenAIClient()
-    response = await ai_client.chat_json(prompt, telemetry=telemetry, op_id=spec.op_id)
+    raw_text = await ai_client.chat_text(prompt, telemetry=telemetry, op_id=spec.op_id)
+    response = {"surface": raw_text, "annotations": {}, "pages": []}
     return _normalize_response(response, language=spec.language, description=description_payload)
