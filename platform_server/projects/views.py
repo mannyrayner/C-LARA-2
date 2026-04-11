@@ -585,6 +585,43 @@ def _image_elements_dir(project: Project) -> Path:
     return project.artifact_dir() / "images" / "elements"
 
 
+def _append_elements_telemetry(project: Project, record: dict[str, Any]) -> None:
+    telemetry_path = _image_elements_dir(project) / "telemetry.jsonl"
+    telemetry_path.parent.mkdir(parents=True, exist_ok=True)
+    entry = dict(record)
+    entry["timestamp"] = datetime.now(timezone.utc).isoformat()
+    with telemetry_path.open("a", encoding="utf-8") as fp:
+        fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+def _elements_artifact_links(project: Project) -> list[dict[str, str]]:
+    elements_dir = _image_elements_dir(project)
+    elements_dir.mkdir(parents=True, exist_ok=True)
+    telemetry_path = elements_dir / "telemetry.jsonl"
+    if not telemetry_path.exists():
+        telemetry_path.write_text("", encoding="utf-8")
+    files = [
+        ("elements_list.json", "Elements list"),
+        ("elements_discovery_prompt.json", "Elements discovery prompt"),
+        ("elements_discovery_response.json", "Elements discovery response"),
+        ("telemetry.jsonl", "Elements telemetry"),
+    ]
+    links: list[dict[str, str]] = []
+    for rel_name, label in files:
+        path = elements_dir / rel_name
+        if not path.exists():
+            continue
+        relpath = os.path.relpath(path, project.artifact_dir()).replace("\\", "/")
+        links.append(
+            {
+                "label": label,
+                "url": reverse("project-compiled", args=[project.pk, relpath]),
+                "size": str(path.stat().st_size),
+            }
+        )
+    return links
+
+
 def _extract_project_pages(project: Project) -> list[str]:
     if project.page_image_text_source == Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION:
         translation_pages = _extract_project_pages_from_translation(project)
@@ -703,8 +740,34 @@ def _discover_project_image_elements(
         "style_description": style_description,
         "prompt": prompt,
     }
+    _append_elements_telemetry(
+        project,
+        {
+            "type": "event",
+            "level": "info",
+            "message": "elements discovery request start",
+            "model": ai_model,
+            "pages_count": len(pages),
+            "prompt_length": len(prompt),
+            "prompt_preview": prompt[:400],
+        },
+    )
+    started = datetime.now(timezone.utc)
     client = _build_ai_client(model_name=ai_model)
     response = asyncio.run(client.chat_json(prompt, model=ai_model))
+    elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+    _append_elements_telemetry(
+        project,
+        {
+            "type": "event",
+            "level": "info",
+            "message": "elements discovery response received",
+            "model": ai_model,
+            "elapsed_s": round(elapsed_s, 3),
+            "response_keys": sorted(response.keys()) if isinstance(response, dict) else [],
+            "response_preview": str(response)[:400],
+        },
+    )
     elements = response.get("elements") or []
     raw_elements_count = len(elements) if isinstance(elements, list) else 0
     if not isinstance(elements, list):
@@ -779,7 +842,36 @@ def _expand_project_image_elements(
                 full_text or "[none]",
             ]
         )
+        _append_elements_telemetry(
+            project,
+            {
+                "type": "event",
+                "level": "info",
+                "message": "element expansion request start",
+                "model": ai_model,
+                "element_id": element.id,
+                "element_name": element.name,
+                "prompt_length": len(prompt),
+                "prompt_preview": prompt[:400],
+            },
+        )
+        started = datetime.now(timezone.utc)
         response = asyncio.run(client.chat_json(prompt, model=ai_model))
+        elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+        _append_elements_telemetry(
+            project,
+            {
+                "type": "event",
+                "level": "info",
+                "message": "element expansion response received",
+                "model": ai_model,
+                "element_id": element.id,
+                "element_name": element.name,
+                "elapsed_s": round(elapsed_s, 3),
+                "response_keys": sorted(response.keys()) if isinstance(response, dict) else [],
+                "response_preview": str(response)[:400],
+            },
+        )
         element.expanded_description = str(
             response.get("expanded_description") or element.expanded_description or ""
         ).strip()
@@ -1651,6 +1743,14 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
 
     if request.method == "POST":
         action = request.POST.get("action") or "save"
+        requested_ai_model = (request.POST.get("ai_model") or "").strip()
+        ai_model = requested_ai_model or style.ai_model or project.ai_model or DEFAULT_MODEL
+        invalid_ai_model = ai_model not in AI_MODEL_CHOICES
+        if invalid_ai_model:
+            ai_model = DEFAULT_MODEL
+        if ai_model != style.ai_model:
+            style.ai_model = ai_model
+            style.save(update_fields=["ai_model", "updated_at"])
         requested_image_model = (request.POST.get("image_model") or "").strip()
         image_model = requested_image_model or "gpt-image-1"
         invalid_image_model = image_model not in IMAGE_MODEL_CHOICES
@@ -1658,6 +1758,22 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
             image_model = "gpt-image-1"
         formset = ProjectImageElementFormSet(request.POST, queryset=queryset)
         if formset.is_valid():
+            _append_elements_telemetry(
+                project,
+                {
+                    "type": "event",
+                    "level": "info",
+                    "message": "elements action dispatch",
+                    "action": action,
+                    "ai_model": ai_model,
+                    "image_model": image_model,
+                },
+            )
+            if action in {"discover", "expand"} and requested_ai_model and invalid_ai_model:
+                messages.warning(
+                    request,
+                    f"Unknown text model '{requested_ai_model}'. Using {ai_model} instead.",
+                )
             if action == "generate_images" and requested_image_model and invalid_image_model:
                 messages.warning(
                     request,
@@ -1677,21 +1793,31 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
             if action == "discover":
                 messages.info(
                     request,
-                    f"Discovering recurring elements with {style.ai_model or DEFAULT_MODEL}.",
+                    f"Discovering recurring elements with {ai_model}.",
                 )
                 try:
                     discovered, request_payload, response_payload = _discover_project_image_elements(
-                        project, ai_model=style.ai_model or DEFAULT_MODEL
+                        project, ai_model=ai_model
                     )
                 except Exception as exc:
                     logger.exception("Failed to discover image elements for project %s", project.pk)
+                    _append_elements_telemetry(
+                        project,
+                        {
+                            "type": "event",
+                            "level": "error",
+                            "message": "elements discovery failed",
+                            "ai_model": ai_model,
+                            "error": str(exc),
+                        },
+                    )
                     messages.error(request, f"Element discovery failed: {exc}")
                 else:
                     project.image_elements.all().delete()
                     for item in discovered:
                         ProjectImageElement.objects.create(
                             project=project,
-                            ai_model=style.ai_model or DEFAULT_MODEL,
+                            ai_model=ai_model,
                             status=ProjectImageElement.STATUS_PROPOSED,
                             **item,
                         )
@@ -1716,14 +1842,24 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
             elif action == "expand":
                 messages.info(
                     request,
-                    f"Expanding element prompts with {style.ai_model or DEFAULT_MODEL}.",
+                    f"Expanding element prompts with {ai_model}.",
                 )
                 try:
                     expanded = _expand_project_image_elements(
-                        project, ai_model=style.ai_model or DEFAULT_MODEL
+                        project, ai_model=ai_model
                     )
                 except Exception as exc:
                     logger.exception("Failed to expand image elements for project %s", project.pk)
+                    _append_elements_telemetry(
+                        project,
+                        {
+                            "type": "event",
+                            "level": "error",
+                            "message": "elements expansion failed",
+                            "ai_model": ai_model,
+                            "error": str(exc),
+                        },
+                    )
                     messages.error(request, f"Element expansion failed: {exc}")
                 else:
                     _persist_image_elements_artifacts(project)
@@ -1770,7 +1906,10 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
             "style": style,
             "formset": formset,
             "elements_artifact_dir": _image_elements_dir(project),
+            "elements_artifact_links": _elements_artifact_links(project),
             "confirmed_count": project.image_elements.filter(is_confirmed=True).count(),
+            "ai_models": AI_MODEL_CHOICES,
+            "selected_ai_model": style.ai_model or project.ai_model or DEFAULT_MODEL,
             "image_models": IMAGE_MODEL_CHOICES,
             "selected_image_model": request.GET.get("image_model")
             or project.image_elements.filter(image_model__isnull=False)
