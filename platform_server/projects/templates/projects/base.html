@@ -20,6 +20,9 @@
 <nav>
   {% if user.is_authenticated %}
     Hello, {{ user.username }} |
+    {% if credits_enabled and credit_balance_usd != None %}
+      Balance: ${{ credit_balance_usd|floatformat:4 }} |
+    {% endif %}
     <a href="{% url 'profile' %}">Profile</a>
     <a href="{% url 'project-list' %}">Projects</a>
     <a href="{% url 'content-list' %}">Content</a>
