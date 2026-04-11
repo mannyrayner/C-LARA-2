@@ -7,6 +7,8 @@ Welcome! This folder collects specifications, architecture notes, and delivery r
 - **How-to**: [Quickstart](howto/quickstart.md)
 - **How-to**: [Run the Django platform locally](howto/run-django-platform.md)
 - **How-to**: [Locate compile progress logs](howto/compile-logs.md)
+- **How-to**: [Credits and billing operations](howto/credits-and-billing.md)
+- **How-to**: [Clone a project snapshot](howto/clone-project.md)
 - **ADRs**: [ADR-0001: Documentation & Structure](adr/0001-documentation-and-structure.md)
 
 ## Roadmaps and status
@@ -37,6 +39,8 @@ Implemented in the codebase today includes:
 - End-to-end text pipeline with text generation, segmentation (phase 1/2), translation, MWE, lemma, gloss, romanization (`pypinyin`/`indic_transliteration`/AI fallback), audio generation/caching, and HTML compilation.
 - Image workflow (style → recurring elements → page images) integrated with compile output so generated images can be included in final HTML.
 - Django platform with account/project flows, compile monitor/status polling, publish/content browsing pages, and self-contained ZIP export (HTML + audio + images).
+- Project cloning workflow to create a new project snapshot with copied fields and latest run-file versions.
+- Credits/billing Phase A baseline: per-user credit accounts + immutable ledger entries, low-balance compile gate, OpenAI usage charge rows with model/token accounting, admin credit adjustments, and project-level accumulated cost display.
 
 ## Immediate priorities (April 2026)
 
@@ -44,6 +48,7 @@ This summary mirrors `docs/roadmap/README.md`.
 
 1. **Adelaide deployment** with C-LARA and C-LARA-2 running safely side-by-side.
 2. **Structured manual annotation editor** so human reviewers can correct all stages without raw JSON editing.
+3. **Billing hardening**: validate pricing sync workflow and reporting before production rollout.
 
 ## Testing & CI
 
