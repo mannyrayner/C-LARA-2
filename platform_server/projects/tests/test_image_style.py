@@ -58,6 +58,10 @@ class ProjectImageStyleViewTests(TestCase):
         self.assertContains(resp, "style-processing-indicator")
         self.assertContains(resp, "Expanding style brief...")
         self.assertContains(resp, "Style telemetry")
+        self.assertContains(resp, "Generate sample image is disabled until a sample image prompt is available.")
+        self.assertContains(resp, "name=\"action\" value=\"generate_image\"")
+        self.assertContains(resp, "disabled title=\"Generate or enter a sample image prompt first\"")
+        self.assertContains(resp, "Save draft</strong> stores manual edits")
 
     @patch("projects.views._build_ai_client")
     def test_generate_style_persists_outputs_and_artifacts(self, mock_build_ai_client):
@@ -193,6 +197,18 @@ class ProjectImageStyleViewTests(TestCase):
         image_path = self.project.artifact_dir() / style.sample_image_path
         self.assertTrue(image_path.exists())
         self.assertGreater(image_path.stat().st_size, 0)
+
+    def test_generate_sample_image_button_enabled_when_prompt_exists(self):
+        ProjectImageStyle.objects.create(
+            project=self.project,
+            style_brief="storybook",
+            expanded_style_description="Expanded",
+            sample_image_prompt="Prompt exists",
+            ai_model="gpt-4o",
+        )
+        resp = self.client.get(reverse("project-image-style", args=[self.project.pk]))
+        self.assertContains(resp, "name=\"action\" value=\"generate_image\"")
+        self.assertNotContains(resp, "disabled title=\"Generate or enter a sample image prompt first\"")
 
     @patch("projects.views._build_ai_client")
     def test_generate_style_adds_completion_message(self, mock_build_ai_client):
