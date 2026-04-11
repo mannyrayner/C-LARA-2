@@ -105,7 +105,13 @@ def _build_story_prompt(*, language: str, description: dict[str, Any] | str) -> 
         else:
             intro = f"Write a text in {language_cap}, using the following instructions.\n\n"
     else:
-        raw_prompt = str(description.get("prompt") or "").strip()
+        raw_prompt = str(
+            description.get("prompt")
+            or description.get("description")
+            or description.get("text_description")
+            or description.get("instructions")
+            or ""
+        ).strip()
         if raw_prompt:
             intro = f"Write a text in {language_cap}, using the following instructions.\n\n"
             user_prompt = raw_prompt
@@ -163,9 +169,6 @@ async def generate_text(
     fewshots = _instantiate_language_vars(fewshots, language=spec.language)
 
     description_payload: dict[str, Any] | str = spec.description
-    if isinstance(description_payload, str):
-        description_payload = {"description": description_payload}
-
     prompt = _build_story_prompt(language=spec.language, description=description_payload)
     telemetry = spec.telemetry or NullTelemetry()
     ai_client = client or OpenAIClient()

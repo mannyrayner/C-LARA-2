@@ -94,6 +94,16 @@ class TextGenTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("short, quirky news story", prompt)
         self.assertIn("write only the English text", prompt)
 
+    def test_build_story_prompt_uses_description_field(self) -> None:
+        prompt = text_gen._build_story_prompt(
+            language="fr",
+            description={
+                "description": "Write a short, funny story about an elephant tightrope dancer."
+            },
+        )
+        self.assertIn("using the following instructions", prompt)
+        self.assertIn("elephant tightrope dancer", prompt)
+
 
 class TextGenIntegrationTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
