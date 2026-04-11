@@ -191,6 +191,24 @@ class AOpenAIClientUnitTests(unittest.IsolatedAsyncioTestCase):
             status="pass",
         )
 
+    async def test_03b_chat_json_missing_scope_fails_fast_without_retry(self) -> None:
+        import core.ai_api as ai_api
+
+        telemetry = RecordingTelemetry()
+        responses = [
+            ai_api.APIError(
+                "Error code: 401 - {'error': {'code': 'missing_scope', 'message': 'Missing scopes: model.request'}}"
+            )
+        ]
+        client = OpenAIClient(config=OpenAIConfig(api_key=None), client=FakeClient(responses))
+
+        with patch("core.ai_api.asyncio.sleep", new=AsyncMock()) as sleep_mock:
+            with self.assertRaises(PermissionError):
+                await client.chat_json("hi", telemetry=telemetry, op_id="op-4b")
+
+        sleep_mock.assert_not_awaited()
+        self.assertTrue(any("missing scope" in evt[2] for evt in telemetry.events))
+
     def test_04_ensure_openai_installed_raises_when_missing(self) -> None:
         import core.ai_api as ai_api
 

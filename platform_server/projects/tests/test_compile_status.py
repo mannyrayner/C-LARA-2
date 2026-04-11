@@ -243,6 +243,21 @@ class CompileStatusViewTests(TestCase):
         self.assertIn("bottom", args)
 
     @patch("projects.views.async_task")
+    def test_compile_passes_detailed_api_trace_flag(self, mock_async_task):
+        url = reverse("project-compile", args=[self.project.pk])
+        resp = self.client.post(
+            url,
+            {
+                "start_stage": "segmentation_phase_1",
+                "end_stage": "segmentation_phase_1",
+                "detailed_api_trace": "1",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        args, _kwargs = mock_async_task.call_args
+        self.assertTrue(args[-1])
+
+    @patch("projects.views.async_task")
     def test_compile_from_annotation_preserves_annotation_return_target(self, mock_async_task):
         url = reverse("project-compile", args=[self.project.pk])
         resp = self.client.post(
@@ -257,6 +272,102 @@ class CompileStatusViewTests(TestCase):
         self.assertIn("/compile/monitor/", resp.url)
         self.assertIn("next=/projects/", resp.url)
         self.assertIn("/annotation/", resp.url)
+
+    @patch("projects.views.async_task")
+    def test_compile_html_uses_fresher_translation_stage_when_audio_is_stale(self, mock_async_task):
+        base = self.project.artifact_dir()
+        run_translation = base / "runs" / "run_translation" / "stages"
+        run_audio = base / "runs" / "run_audio" / "stages"
+        run_translation.mkdir(parents=True, exist_ok=True)
+        run_audio.mkdir(parents=True, exist_ok=True)
+
+        translation_payload = {"surface": "Hello", "pages": [{"segments": [{"surface": "Hello", "annotations": {"translation": "Bonjour"}}]}]}
+        audio_payload = {"surface": "Hello", "pages": [{"segments": [{"surface": "Hello", "annotations": {"translation": "Old"}}]}]}
+        (run_translation / "translation.json").write_text(json.dumps(translation_payload), encoding="utf-8")
+        (run_audio / "audio.json").write_text(json.dumps(audio_payload), encoding="utf-8")
+        os.utime(run_translation / "translation.json", (2_000, 2_000))
+        os.utime(run_audio / "audio.json", (1_000, 1_000))
+
+        with patch("projects.views.credits_enabled", return_value=False):
+            resp = self.client.post(
+                reverse("project-compile", args=[self.project.pk]),
+                {"start_stage": "compile_html", "end_stage": "compile_html"},
+            )
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(mock_async_task.called)
+        args, _kwargs = mock_async_task.call_args
+        self.assertEqual("mwe", args[5])
+
+    @patch("projects.views.async_task")
+    def test_compile_html_compose_latest_requires_confirmation(self, mock_async_task):
+        base = self.project.artifact_dir()
+        run_translation = base / "runs" / "run_translation" / "stages"
+        run_translation.mkdir(parents=True, exist_ok=True)
+        translation_payload = {
+            "surface": "Hello",
+            "pages": [{"segments": [{"surface": "Hello", "annotations": {"translation": "Bonjour"}}]}],
+        }
+        (run_translation / "translation.json").write_text(json.dumps(translation_payload), encoding="utf-8")
+
+        with patch("projects.views.credits_enabled", return_value=False):
+            resp = self.client.post(
+                reverse("project-compile", args=[self.project.pk]),
+                {
+                    "start_stage": "compile_html",
+                    "end_stage": "compile_html",
+                    "compose_latest_upstream": "1",
+                },
+            )
+        self.assertEqual(resp.status_code, 302)
+        self.assertFalse(mock_async_task.called)
+
+    @patch("projects.views.async_task")
+    def test_compile_html_compose_latest_uses_merged_payload(self, mock_async_task):
+        base = self.project.artifact_dir()
+        run_translation = base / "runs" / "run_translation" / "stages"
+        run_audio = base / "runs" / "run_audio" / "stages"
+        run_translation.mkdir(parents=True, exist_ok=True)
+        run_audio.mkdir(parents=True, exist_ok=True)
+
+        translation_payload = {
+            "surface": "Hello",
+            "pages": [{"segments": [{"surface": "Hello", "annotations": {"translation": "Bonjour"}}]}],
+        }
+        audio_payload = {
+            "surface": "Hello",
+            "pages": [
+                {
+                    "segments": [
+                        {
+                            "surface": "Hello",
+                            "tokens": [{"surface": "Hello", "annotations": {"audio": {"path": "x.wav"}}}],
+                            "annotations": {"translation": "Old"},
+                        }
+                    ]
+                }
+            ],
+        }
+        (run_translation / "translation.json").write_text(json.dumps(translation_payload), encoding="utf-8")
+        (run_audio / "audio.json").write_text(json.dumps(audio_payload), encoding="utf-8")
+        os.utime(run_translation / "translation.json", (2_000, 2_000))
+        os.utime(run_audio / "audio.json", (1_000, 1_000))
+
+        with patch("projects.views.credits_enabled", return_value=False):
+            resp = self.client.post(
+                reverse("project-compile", args=[self.project.pk]),
+                {
+                    "start_stage": "compile_html",
+                    "end_stage": "compile_html",
+                    "compose_latest_upstream": "1",
+                    "confirm_compose_latest": "1",
+                },
+            )
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(mock_async_task.called)
+        args, _kwargs = mock_async_task.call_args
+        self.assertEqual("compile_html", args[5])
+        merged = args[9]
+        self.assertEqual("Bonjour", merged["pages"][0]["segments"][0]["annotations"]["translation"])
 
     def test_resolve_run_dir_prefers_latest_run_over_compiled_path_run(self):
         base = self.project.artifact_dir()
@@ -627,6 +738,17 @@ class CompileStatusViewTests(TestCase):
             reverse("project-compiled", args=[self.project.pk, "runs/run_demo/html/page_1.html"]),
         )
 
+    def test_annotation_home_lists_telemetry_artifact_link(self):
+        telemetry_path = self.project.artifact_dir() / "runs" / "run_demo" / "stages" / "telemetry.jsonl"
+        telemetry_path.parent.mkdir(parents=True, exist_ok=True)
+        telemetry_path.write_text('{"type":"event"}\n', encoding="utf-8")
+        self.project.compiled_path = "runs/run_demo/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+
+        resp = self.client.get(reverse("project-annotation-home", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "runs/run_demo/stages/telemetry.jsonl")
+
     def test_project_images_home_shows_phase_1_control_only_when_needed(self):
         url = reverse("project-images-home", args=[self.project.pk])
         resp_before = self.client.get(url)
@@ -996,3 +1118,97 @@ class CompileStatusViewTests(TestCase):
         self.assertTrue(
             updates.filter(message__icontains="Pipeline finished successfully at stage: segmentation_phase_2.").exists()
         )
+
+
+class CloneProjectTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="cloner", password="pw")
+        self.client = Client()
+        self.client.login(username="cloner", password="pw")
+        self.project = Project.objects.create(
+            owner=self.user,
+            title="Original",
+            description="desc",
+            source_text="source",
+            language="en",
+            target_language="fr",
+        )
+
+    def test_clone_project_copies_latest_run_files(self):
+        runs_root = self.project.artifact_dir() / "runs"
+        run_old = runs_root / "run_old" / "stages"
+        run_new = runs_root / "run_new" / "stages"
+        run_old.mkdir(parents=True, exist_ok=True)
+        run_new.mkdir(parents=True, exist_ok=True)
+        (run_old / "segmentation_phase_1.json").write_text("{\"surface\":\"OLD\"}", encoding="utf-8")
+        (run_new / "segmentation_phase_1.json").write_text("{\"surface\":\"NEW\"}", encoding="utf-8")
+        old_ts = 1000
+        new_ts = 2000
+        os.utime(run_old / "segmentation_phase_1.json", (old_ts, old_ts))
+        os.utime(run_new / "segmentation_phase_1.json", (new_ts, new_ts))
+
+        style = ProjectImageStyle.objects.create(
+            project=self.project,
+            style_brief="brief",
+            sample_image_path="images/style/style_sample_image.png",
+        )
+        self.assertIsNotNone(style.pk)
+        ProjectImageElement.objects.create(
+            project=self.project,
+            name="Milo",
+            image_path="images/elements/milo/reference.png",
+        )
+        ProjectImagePage.objects.create(
+            project=self.project,
+            page_number=1,
+            image_path="images/pages/page_001/image.png",
+        )
+        style_path = self.project.artifact_dir() / "images" / "style" / "style_sample_image.png"
+        style_path.parent.mkdir(parents=True, exist_ok=True)
+        style_path.write_bytes(b"img")
+
+        resp = self.client.post(
+            reverse("project-clone", args=[self.project.pk]),
+            {"clone_title": "My Snapshot"},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        clone = Project.objects.exclude(pk=self.project.pk).get()
+        self.assertEqual(clone.title, "My Snapshot")
+
+        clone_runs = sorted((clone.artifact_dir() / "runs").glob("run_*"))
+        self.assertTrue(clone_runs)
+        copied_stage = clone_runs[-1] / "stages" / "segmentation_phase_1.json"
+        self.assertTrue(copied_stage.exists())
+        self.assertIn("NEW", copied_stage.read_text(encoding="utf-8"))
+        self.assertTrue((clone.artifact_dir() / "images" / "style" / "style_sample_image.png").exists())
+        self.assertEqual(clone.image_elements.count(), 1)
+        self.assertEqual(clone.image_pages.count(), 1)
+
+    def test_clone_project_can_override_glossing_language(self):
+        resp = self.client.post(
+            reverse("project-clone", args=[self.project.pk]),
+            {"clone_title": "Spanish Gloss Clone", "clone_target_language": "es"},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        clone = Project.objects.exclude(pk=self.project.pk).get()
+        self.assertEqual(clone.title, "Spanish Gloss Clone")
+        self.assertEqual(clone.target_language, "es")
+
+    def test_project_detail_clone_form_uses_glossing_language_menu(self):
+        resp = self.client.get(reverse("project-detail", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'name="clone_target_language"')
+        self.assertContains(resp, "<select")
+        self.assertContains(resp, "Spanish")
+
+    def test_clone_project_rejects_unknown_glossing_language(self):
+        resp = self.client.post(
+            reverse("project-clone", args=[self.project.pk]),
+            {"clone_title": "Bad Clone", "clone_target_language": "xx-invalid"},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(Project.objects.filter(title="Bad Clone").exists())
