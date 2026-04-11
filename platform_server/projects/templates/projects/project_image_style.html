@@ -33,6 +33,14 @@
 <h3>Current status</h3>
 <p>Status: <strong>{{ style.get_status_display }}</strong></p>
 <p>Artifacts stored at: {{ style_artifact_dir }}</p>
+{% if style_artifact_links %}
+  <p>Style artifacts:</p>
+  <ul>
+    {% for item in style_artifact_links %}
+      <li><a href="{{ item.url }}">{{ item.label }}</a> ({{ item.size }} bytes)</li>
+    {% endfor %}
+  </ul>
+{% endif %}
 
 {% if style.representative_excerpt %}
   <h3>Representative excerpt</h3>

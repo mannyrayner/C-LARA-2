@@ -384,6 +384,43 @@ def _persist_image_style_artifacts(
         )
 
 
+def _append_style_telemetry(project: Project, record: dict[str, Any]) -> None:
+    telemetry_path = _image_style_dir(project) / "telemetry.jsonl"
+    telemetry_path.parent.mkdir(parents=True, exist_ok=True)
+    entry = dict(record)
+    entry["timestamp"] = datetime.now(timezone.utc).isoformat()
+    with telemetry_path.open("a", encoding="utf-8") as fp:
+        fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+def _style_artifact_links(project: Project) -> list[dict[str, str]]:
+    style_dir = _image_style_dir(project)
+    files = [
+        ("style_brief.txt", "Style brief"),
+        ("style_expansion_prompt.json", "Style expansion prompt"),
+        ("style_expansion_response.json", "Style expansion response"),
+        ("style_description.txt", "Expanded style description"),
+        ("representative_excerpt.txt", "Representative excerpt"),
+        ("sample_image_prompt.txt", "Sample image prompt"),
+        ("sample_image_revised_prompt.txt", "Sample image revised prompt"),
+        ("telemetry.jsonl", "Style telemetry"),
+    ]
+    links: list[dict[str, str]] = []
+    for rel_name, label in files:
+        path = style_dir / rel_name
+        if not path.exists():
+            continue
+        relpath = os.path.relpath(path, project.artifact_dir()).replace("\\", "/")
+        links.append(
+            {
+                "label": label,
+                "url": reverse("project-compiled", args=[project.pk, relpath]),
+                "size": str(path.stat().st_size),
+            }
+        )
+    return links
+
+
 def _extract_project_plain_text(project: Project) -> str:
     if (project.source_text or "").strip():
         return project.source_text.strip()
@@ -432,8 +469,33 @@ def _generate_project_image_style(
     ai_model: str,
 ) -> dict[str, Any]:
     request_payload = _build_style_generation_request(project, style_brief)
+    _append_style_telemetry(
+        project,
+        {
+            "type": "event",
+            "level": "info",
+            "message": "style expansion request start",
+            "model": ai_model,
+            "prompt_length": len(request_payload["prompt"]),
+            "prompt_preview": request_payload["prompt"][:400],
+        },
+    )
+    started = datetime.now(timezone.utc)
     client = _build_ai_client(model_name=ai_model)
     response = asyncio.run(client.chat_json(request_payload["prompt"], model=ai_model))
+    elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+    _append_style_telemetry(
+        project,
+        {
+            "type": "event",
+            "level": "info",
+            "message": "style expansion response received",
+            "model": ai_model,
+            "elapsed_s": round(elapsed_s, 3),
+            "response_keys": sorted(response.keys()) if isinstance(response, dict) else [],
+            "response_preview": str(response)[:400],
+        },
+    )
 
     return {
         "expanded_style_description": (
@@ -461,8 +523,21 @@ def _generate_project_style_sample_image(
     if not prompt:
         raise ValueError("Please generate or enter a sample image prompt first.")
 
+    _append_style_telemetry(
+        project,
+        {
+            "type": "event",
+            "level": "info",
+            "message": "style sample image request start",
+            "model": style.sample_image_model,
+            "prompt_length": len(prompt),
+            "prompt_preview": prompt[:400],
+        },
+    )
+    started = datetime.now(timezone.utc)
     client = _build_ai_client()
     image_result = client.generate_image(prompt, model=style.sample_image_model)
+    elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
     style_dir = _image_style_dir(project)
     style_dir.mkdir(parents=True, exist_ok=True)
     image_filename = "style_sample_image.png"
@@ -479,6 +554,16 @@ def _generate_project_style_sample_image(
         "output_format": image_result.get("output_format"),
         "path": rel_path,
     }
+    _append_style_telemetry(
+        project,
+        {
+            "type": "event",
+            "level": "info",
+            "message": "style sample image response received",
+            "elapsed_s": round(elapsed_s, 3),
+            **metadata,
+        },
+    )
     (style_dir / "style_sample_image_metadata.json").write_text(
         json.dumps(metadata, ensure_ascii=False, indent=2),
         encoding="utf-8",
@@ -1404,6 +1489,15 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
                     logger.exception(
                         "Failed to generate image style for project %s", project.pk
                     )
+                    _append_style_telemetry(
+                        project,
+                        {
+                            "type": "event",
+                            "level": "error",
+                            "message": "style expansion failed",
+                            "error": str(exc),
+                        },
+                    )
                     messages.error(request, f"Style generation failed: {exc}")
                     had_error = True
                 else:
@@ -1417,6 +1511,18 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
                     style_obj.status = ProjectImageStyle.STATUS_GENERATED
                     request_payload = generated["_request_payload"]
                     response_payload = generated["_response_payload"]
+                    if not (style_obj.expanded_style_description or "").strip():
+                        messages.warning(
+                            request,
+                            "Style expansion returned an empty expanded style description. "
+                            "Inspect style telemetry/response artifacts for details.",
+                        )
+                    if not (style_obj.sample_image_prompt or "").strip():
+                        messages.warning(
+                            request,
+                            "Style expansion returned an empty sample image prompt. "
+                            "Inspect style telemetry/response artifacts for details.",
+                        )
                     messages.success(
                         request,
                         f"Style expansion completed with {style_obj.ai_model}: prompt and excerpt are ready for review.",
@@ -1427,6 +1533,15 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
                 except Exception as exc:
                     logger.exception(
                         "Failed to generate style sample image for project %s", project.pk
+                    )
+                    _append_style_telemetry(
+                        project,
+                        {
+                            "type": "event",
+                            "level": "error",
+                            "message": "style sample image failed",
+                            "error": str(exc),
+                        },
                     )
                     messages.error(request, f"Sample image generation failed: {exc}")
                     had_error = True
@@ -1472,6 +1587,7 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
             "form": form,
             "style": style_obj,
             "style_artifact_dir": _image_style_dir(project),
+            "style_artifact_links": _style_artifact_links(project),
             "style_image_url": (
                 reverse("project-compiled", args=[project.pk, style_obj.sample_image_path])
                 if style_obj.sample_image_path

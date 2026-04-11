@@ -93,10 +93,17 @@ class ProjectImageStyleViewTests(TestCase):
         self.assertTrue((style_dir / "style_brief.txt").exists())
         self.assertTrue((style_dir / "style_expansion_prompt.json").exists())
         self.assertTrue((style_dir / "style_expansion_response.json").exists())
+        self.assertTrue((style_dir / "telemetry.jsonl").exists())
+        telemetry_lines = (style_dir / "telemetry.jsonl").read_text(encoding="utf-8").splitlines()
+        self.assertGreaterEqual(len(telemetry_lines), 2)
+        self.assertTrue(any("style expansion request start" in line for line in telemetry_lines))
+        self.assertTrue(any("style expansion response received" in line for line in telemetry_lines))
         self.assertEqual(
             (style_dir / "sample_image_prompt.txt").read_text(encoding="utf-8"),
             style.sample_image_prompt,
         )
+        resp_get = self.client.get(reverse("project-image-style", args=[self.project.pk]))
+        self.assertContains(resp_get, "Style telemetry")
 
     def test_approve_style_updates_status(self):
         style = ProjectImageStyle.objects.create(
