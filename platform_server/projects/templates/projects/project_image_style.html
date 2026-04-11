@@ -19,14 +19,14 @@
 
 <form method="post" id="style-form">
   {% csrf_token %}
-  <input type="hidden" name="action_intent" id="style-action-intent" value="save" />
+  <input type="hidden" name="action_intent" id="style-action-intent" value="" />
   {{ form.as_p }}
   <p><strong>To fill “Expanded style description” and “Sample image prompt”, use:</strong></p>
   <p>
-    <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate" data-busy-label="Expanding style brief...">Expand style brief</button>
-    <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_image" data-busy-label="Generating sample image...">Generate sample image</button>
-    <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="save" data-busy-label="Saving draft...">Save draft</button>
-    <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="approve" data-busy-label="Approving style...">Approve style</button>
+    <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate" data-busy-label="Expanding style brief..." onclick="document.getElementById('style-action-intent').value='generate';">Expand style brief</button>
+    <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_image" data-busy-label="Generating sample image..." onclick="document.getElementById('style-action-intent').value='generate_image';">Generate sample image</button>
+    <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="save" data-busy-label="Saving draft..." onclick="document.getElementById('style-action-intent').value='save';">Save draft</button>
+    <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="approve" data-busy-label="Approving style..." onclick="document.getElementById('style-action-intent').value='approve';">Approve style</button>
   </p>
 </form>
 <p id="style-processing-indicator" style="display:none; font-weight:bold;" aria-live="polite">Processing request...</p>
@@ -69,7 +69,7 @@
     if (!form || !indicator) return;
 
     form.addEventListener("submit", function (event) {
-      const submitter = event.submitter;
+      const submitter = event.submitter || document.activeElement;
       const busyLabel = submitter && submitter.dataset ? submitter.dataset.busyLabel : "";
       const actionIntent = document.getElementById("style-action-intent");
       if (actionIntent && submitter && submitter.value) {
