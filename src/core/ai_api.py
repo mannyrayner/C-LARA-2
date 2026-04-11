@@ -135,6 +135,12 @@ class OpenAIClient:
                 telemetry.event(op_id, "error", "invalid JSON response", {"payload": payload})
                 raise ValueError("OpenAI returned non-JSON content") from exc
             except (RateLimitError, APIError) as exc:
+                if _is_missing_scope_error(exc):
+                    telemetry.event(op_id, "error", "openai missing scope", {"error": str(exc)})
+                    raise PermissionError(
+                        "OpenAI API key is missing required scope 'model.request'. "
+                        "Use a key with model request permissions (and appropriate project/org role)."
+                    ) from exc
                 if attempt >= self.config.max_retries:
                     telemetry.event(op_id, "error", "openai call failed", {"error": str(exc)})
                     raise
@@ -151,6 +157,12 @@ class OpenAIClient:
                 raise
             except Exception as exc:
                 if exc.__class__.__name__ in {"RateLimitError", "APIError"}:
+                    if _is_missing_scope_error(exc):
+                        telemetry.event(op_id, "error", "openai missing scope", {"error": str(exc)})
+                        raise PermissionError(
+                            "OpenAI API key is missing required scope 'model.request'. "
+                            "Use a key with model request permissions (and appropriate project/org role)."
+                        ) from exc
                     if attempt >= self.config.max_retries:
                         telemetry.event(op_id, "error", "openai call failed", {"error": str(exc)})
                         raise
@@ -225,6 +237,12 @@ class OpenAIClient:
                 )
                 return payload
             except (RateLimitError, APIError) as exc:
+                if _is_missing_scope_error(exc):
+                    telemetry.event(op_id, "error", "openai text missing scope", {"error": str(exc)})
+                    raise PermissionError(
+                        "OpenAI API key is missing required scope 'model.request'. "
+                        "Use a key with model request permissions (and appropriate project/org role)."
+                    ) from exc
                 if attempt >= self.config.max_retries:
                     telemetry.event(op_id, "error", "openai text call failed", {"error": str(exc)})
                     raise
@@ -233,6 +251,12 @@ class OpenAIClient:
                 backoff *= 2
             except Exception as exc:
                 if exc.__class__.__name__ in {"RateLimitError", "APIError"}:
+                    if _is_missing_scope_error(exc):
+                        telemetry.event(op_id, "error", "openai text missing scope", {"error": str(exc)})
+                        raise PermissionError(
+                            "OpenAI API key is missing required scope 'model.request'. "
+                            "Use a key with model request permissions (and appropriate project/org role)."
+                        ) from exc
                     if attempt >= self.config.max_retries:
                         telemetry.event(op_id, "error", "openai text call failed", {"error": str(exc)})
                         raise
@@ -417,6 +441,11 @@ def _extract_usage(response: Any) -> dict[str, int] | None:
         "completion_tokens": max(0, completion_tokens),
         "total_tokens": max(0, total_tokens),
     }
+
+
+def _is_missing_scope_error(exc: Exception) -> bool:
+    text = str(exc or "").lower()
+    return "missing_scope" in text or "missing scopes" in text or "model.request" in text
 
 
 def normalize_json_text(value: Any) -> Any:
