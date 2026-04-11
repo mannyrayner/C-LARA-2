@@ -393,8 +393,17 @@ def _append_style_telemetry(project: Project, record: dict[str, Any]) -> None:
         fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
+def _ensure_style_telemetry_file(project: Project) -> Path:
+    telemetry_path = _image_style_dir(project) / "telemetry.jsonl"
+    telemetry_path.parent.mkdir(parents=True, exist_ok=True)
+    if not telemetry_path.exists():
+        telemetry_path.write_text("", encoding="utf-8")
+    return telemetry_path
+
+
 def _style_artifact_links(project: Project) -> list[dict[str, str]]:
     style_dir = _image_style_dir(project)
+    _ensure_style_telemetry_file(project)
     files = [
         ("style_brief.txt", "Style brief"),
         ("style_expansion_prompt.json", "Style expansion prompt"),
@@ -403,6 +412,7 @@ def _style_artifact_links(project: Project) -> list[dict[str, str]]:
         ("representative_excerpt.txt", "Representative excerpt"),
         ("sample_image_prompt.txt", "Sample image prompt"),
         ("sample_image_revised_prompt.txt", "Sample image revised prompt"),
+        ("style_status.json", "Style status"),
         ("telemetry.jsonl", "Style telemetry"),
     ]
     links: list[dict[str, str]] = []

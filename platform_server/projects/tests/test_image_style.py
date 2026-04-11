@@ -57,6 +57,7 @@ class ProjectImageStyleViewTests(TestCase):
         self.assertContains(resp, "To fill “Expanded style description” and “Sample image prompt”")
         self.assertContains(resp, "style-processing-indicator")
         self.assertContains(resp, "Expanding style brief...")
+        self.assertContains(resp, "Style telemetry")
 
     @patch("projects.views._build_ai_client")
     def test_generate_style_persists_outputs_and_artifacts(self, mock_build_ai_client):
