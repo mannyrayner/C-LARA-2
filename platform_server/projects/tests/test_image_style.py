@@ -233,3 +233,8 @@ class ProjectImageStyleViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         msgs = [m.message for m in get_messages(resp.wsgi_request)]
         self.assertTrue(any("Could not process the style request" in msg for msg in msgs))
+        self.assertTrue(any("Style form error (style_brief)" in msg for msg in msgs))
+        telemetry_path = self.project.artifact_dir() / "images" / "style" / "telemetry.jsonl"
+        self.assertTrue(telemetry_path.exists())
+        telemetry_lines = telemetry_path.read_text(encoding="utf-8").splitlines()
+        self.assertTrue(any("style form invalid" in line for line in telemetry_lines))

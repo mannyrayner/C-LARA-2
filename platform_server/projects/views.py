@@ -1578,6 +1578,23 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
             )
             notice = "error" if had_error else "done"
             return redirect(f"{reverse('project-image-style', args=[project.pk])}?notice={notice}")
+        error_payload = form.errors.get_json_data(escape_html=True)
+        _append_style_telemetry(
+            project,
+            {
+                "type": "event",
+                "level": "error",
+                "message": "style form invalid",
+                "action": action,
+                "errors": error_payload,
+            },
+        )
+        for field_name, errors in error_payload.items():
+            for err in errors:
+                messages.error(
+                    request,
+                    f"Style form error ({field_name}): {err.get('message', 'Invalid value')}",
+                )
         messages.error(
             request,
             "Could not process the style request. Please review the highlighted form fields.",
