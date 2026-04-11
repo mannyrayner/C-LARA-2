@@ -15,11 +15,11 @@ from tests.log_utils import log_test_case
 
 
 class FakeAIClient:
-    def __init__(self, response: dict) -> None:
+    def __init__(self, response: str) -> None:
         self.response = response
         self.prompts: list[str] = []
 
-    async def chat_json(self, prompt: str, **_: object) -> dict:
+    async def chat_text(self, prompt: str, **_: object) -> str:
         self.prompts.append(prompt)
         await asyncio.sleep(0)
         return self.response
@@ -68,7 +68,7 @@ class TextGenTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_generate_text_normalizes_response(self) -> None:
         description = {"title": "Rain", "l1": "fr"}
-        client = FakeAIClient({"surface": "It rains.", "annotations": {}})
+        client = FakeAIClient("It rains.")
         spec = TextGenSpec(description=description, language="en", telemetry=None)
 
         result = await text_gen.generate_text(spec, client=client)
@@ -88,6 +88,11 @@ class TextGenTests(unittest.IsolatedAsyncioTestCase):
             output={"surface": result["surface"], "l1": result["l1"], "l2": result["l2"]},
             status="pass",
         )
+
+    def test_build_story_prompt_matches_clara_style(self) -> None:
+        prompt = text_gen._build_story_prompt(language="en", description="")
+        self.assertIn("short, quirky news story", prompt)
+        self.assertIn("write only the English text", prompt)
 
 
 class TextGenIntegrationTests(unittest.IsolatedAsyncioTestCase):
