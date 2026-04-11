@@ -106,6 +106,34 @@ class ProjectImageStyleViewTests(TestCase):
         resp_get = self.client.get(reverse("project-image-style", args=[self.project.pk]))
         self.assertContains(resp_get, "Style telemetry")
 
+    @patch("projects.views._build_ai_client")
+    def test_generate_style_uses_action_intent_fallback(self, mock_build_ai_client):
+        fake_client = FakeAIClient(
+            {
+                "expanded_style_description": "Line-art storybook style.",
+                "representative_excerpt": "Celine arrives in Adelaide.",
+                "sample_image_prompt": "Line-art scene of Celine arriving.",
+            }
+        )
+        mock_build_ai_client.return_value = fake_client
+        resp = self.client.post(
+            reverse("project-image-style", args=[self.project.pk]),
+            {
+                "style_brief": "line art",
+                "expanded_style_description": "",
+                "sample_image_prompt": "",
+                "ai_model": "gpt-4o",
+                "sample_image_model": "gpt-image-1",
+                "status": "draft",
+                "action_intent": "generate",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("notice=done", resp["Location"])
+        style = ProjectImageStyle.objects.get(project=self.project)
+        self.assertEqual(style.status, ProjectImageStyle.STATUS_GENERATED)
+        self.assertTrue(style.sample_image_prompt)
+
     def test_approve_style_updates_status(self):
         style = ProjectImageStyle.objects.create(
             project=self.project,

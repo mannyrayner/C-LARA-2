@@ -1475,7 +1475,11 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
     if request.method == "POST":
-        action = request.POST.get("action") or "save"
+        action = (
+            request.POST.get("action")
+            or request.POST.get("action_intent")
+            or "save"
+        ).strip()
         form = ProjectImageStyleForm(
             request.POST,
             instance=style_obj,
@@ -1487,6 +1491,15 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
             request_payload = None
             response_payload = None
             had_error = False
+            _append_style_telemetry(
+                project,
+                {
+                    "type": "event",
+                    "level": "info",
+                    "message": "style action dispatch",
+                    "action": action,
+                },
+            )
 
             if action == "generate":
                 try:

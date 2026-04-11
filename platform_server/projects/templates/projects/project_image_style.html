@@ -19,6 +19,7 @@
 
 <form method="post" id="style-form">
   {% csrf_token %}
+  <input type="hidden" name="action_intent" id="style-action-intent" value="save" />
   {{ form.as_p }}
   <p><strong>To fill “Expanded style description” and “Sample image prompt”, use:</strong></p>
   <p>
@@ -70,6 +71,10 @@
     form.addEventListener("submit", function (event) {
       const submitter = event.submitter;
       const busyLabel = submitter && submitter.dataset ? submitter.dataset.busyLabel : "";
+      const actionIntent = document.getElementById("style-action-intent");
+      if (actionIntent && submitter && submitter.value) {
+        actionIntent.value = submitter.value;
+      }
       indicator.textContent = busyLabel || "Processing request...";
       indicator.style.display = "block";
 
