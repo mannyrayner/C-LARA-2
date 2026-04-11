@@ -53,9 +53,10 @@ class ProjectImageStyleViewTests(TestCase):
 
         style = ProjectImageStyle.objects.get(project=self.project)
         self.assertEqual(style.status, ProjectImageStyle.STATUS_DRAFT)
-        self.assertContains(resp, "Generate style draft")
+        self.assertContains(resp, "Expand style brief")
+        self.assertContains(resp, "To fill “Expanded style description” and “Sample image prompt”")
         self.assertContains(resp, "style-processing-indicator")
-        self.assertContains(resp, "Generating style draft...")
+        self.assertContains(resp, "Expanding style brief...")
 
     @patch("projects.views._build_ai_client")
     def test_generate_style_persists_outputs_and_artifacts(self, mock_build_ai_client):
@@ -81,6 +82,7 @@ class ProjectImageStyleViewTests(TestCase):
             },
         )
         self.assertEqual(resp.status_code, 302)
+        self.assertIn("notice=done", resp["Location"])
 
         style = ProjectImageStyle.objects.get(project=self.project)
         self.assertEqual(style.status, ProjectImageStyle.STATUS_GENERATED)
@@ -183,6 +185,28 @@ class ProjectImageStyleViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         msgs = [m.message for m in get_messages(resp.wsgi_request)]
         self.assertTrue(any("Style expansion completed" in msg for msg in msgs))
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_style_failure_sets_error_notice(self, mock_build_ai_client):
+        class FailingClient:
+            async def chat_json(self, prompt, **kwargs):  # noqa: ARG002
+                raise RuntimeError("boom")
+
+        mock_build_ai_client.return_value = FailingClient()
+        resp = self.client.post(
+            reverse("project-image-style", args=[self.project.pk]),
+            {
+                "style_brief": "watercolor",
+                "expanded_style_description": "",
+                "sample_image_prompt": "",
+                "ai_model": "gpt-4o",
+                "sample_image_model": "gpt-image-1",
+                "status": "draft",
+                "action": "generate",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("notice=error", resp["Location"])
 
     def test_invalid_style_submit_adds_error_message(self):
         resp = self.client.post(

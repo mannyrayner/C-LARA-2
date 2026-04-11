@@ -1391,6 +1391,7 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
             style_obj = form.save(commit=False)
             request_payload = None
             response_payload = None
+            had_error = False
 
             if action == "generate":
                 try:
@@ -1404,6 +1405,7 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
                         "Failed to generate image style for project %s", project.pk
                     )
                     messages.error(request, f"Style generation failed: {exc}")
+                    had_error = True
                 else:
                     style_obj.expanded_style_description = generated[
                         "expanded_style_description"
@@ -1427,6 +1429,7 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
                         "Failed to generate style sample image for project %s", project.pk
                     )
                     messages.error(request, f"Sample image generation failed: {exc}")
+                    had_error = True
                 else:
                     style_obj.sample_image_path = metadata["path"]
                     style_obj.sample_image_revised_prompt = metadata["revised_prompt"]
@@ -1448,7 +1451,8 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
                 request_payload=request_payload,
                 response_payload=response_payload,
             )
-            return redirect(f"{reverse('project-image-style', args=[project.pk])}?notice=done")
+            notice = "error" if had_error else "done"
+            return redirect(f"{reverse('project-image-style', args=[project.pk])}?notice={notice}")
         messages.error(
             request,
             "Could not process the style request. Please review the highlighted form fields.",
