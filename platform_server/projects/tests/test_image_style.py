@@ -54,6 +54,8 @@ class ProjectImageStyleViewTests(TestCase):
         style = ProjectImageStyle.objects.get(project=self.project)
         self.assertEqual(style.status, ProjectImageStyle.STATUS_DRAFT)
         self.assertContains(resp, "Generate style draft")
+        self.assertContains(resp, "style-processing-indicator")
+        self.assertContains(resp, "Generating style draft...")
 
     @patch("projects.views._build_ai_client")
     def test_generate_style_persists_outputs_and_artifacts(self, mock_build_ai_client):
