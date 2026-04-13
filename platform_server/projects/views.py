@@ -1325,6 +1325,19 @@ def _generate_project_page_images(
                 "reference_images_sent_in_request": False,
             },
         )
+        _append_page_image_telemetry(
+            project,
+            {
+                "event": "page_image_request",
+                "page_number": page_obj.page_number,
+                "model": image_model,
+                "prompt": prompt,
+                "prompt_meta": prompt_meta,
+                "relevant_element_count": len(refs),
+                "relevant_element_paths": [e.image_path for e in refs if e.image_path],
+                "reference_images_sent_in_request": False,
+            },
+        )
         client = _build_ai_client()
         image_result = client.generate_image(prompt, model=image_model)
         page_dir = pages_dir / f"page_{page_obj.page_number:03d}"
