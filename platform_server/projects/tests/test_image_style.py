@@ -93,6 +93,7 @@ class ProjectImageStyleViewTests(TestCase):
         self.assertEqual(style.status, ProjectImageStyle.STATUS_GENERATED)
         self.assertIn("warm watercolor storybook", style.expanded_style_description)
         self.assertTrue(fake_client.prompts)
+        self.assertIn("Do NOT include named characters", fake_client.prompts[0])
 
         style_dir = self.project.artifact_dir() / "images" / "style"
         self.assertTrue((style_dir / "style_brief.txt").exists())
@@ -137,6 +138,32 @@ class ProjectImageStyleViewTests(TestCase):
         style = ProjectImageStyle.objects.get(project=self.project)
         self.assertEqual(style.status, ProjectImageStyle.STATUS_GENERATED)
         self.assertTrue(style.sample_image_prompt)
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_style_truncates_overlong_expanded_style_description(self, mock_build_ai_client):
+        fake_client = FakeAIClient(
+            {
+                "expanded_style_description": "S" * 2600,
+                "representative_excerpt": "Excerpt",
+                "sample_image_prompt": "Sample prompt",
+            }
+        )
+        mock_build_ai_client.return_value = fake_client
+        self.client.post(
+            reverse("project-image-style", args=[self.project.pk]),
+            {
+                "style_brief": "watercolor",
+                "expanded_style_description": "",
+                "sample_image_prompt": "",
+                "ai_model": "gpt-4o",
+                "sample_image_model": "gpt-image-1",
+                "status": "draft",
+                "action": "generate",
+            },
+        )
+        style = ProjectImageStyle.objects.get(project=self.project)
+        self.assertIn("style description truncated", style.expanded_style_description)
+        self.assertLessEqual(len(style.expanded_style_description), 1400)
 
     def test_approve_style_updates_status(self):
         style = ProjectImageStyle.objects.create(

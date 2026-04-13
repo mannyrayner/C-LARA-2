@@ -482,6 +482,10 @@ def _build_style_generation_request(project: Project, style_brief: str) -> dict[
             "You are helping define a consistent illustration style for a language-learning story.",
             "Return JSON with keys: expanded_style_description, representative_excerpt, sample_image_prompt.",
             "expanded_style_description should preserve the user's brief but elaborate it in a way that fits the story content.",
+            "expanded_style_description must contain only global style guidance (medium/technique, palette, line/shape language, composition, lighting, overall mood).",
+            "Do NOT include named characters, named places, plot events, page-specific actions, or detailed props from this story.",
+            "If the user brief contains story-specific details, generalize them into reusable style principles.",
+            "Keep expanded_style_description concise (target 600-1000 characters, hard max 1400 characters).",
             "representative_excerpt should be a short excerpt or summary snippet from the story most useful for a sample image.",
             "sample_image_prompt should be a detailed prompt for a single sample image that demonstrates the style for this story.",
             f"Write expanded_style_description, representative_excerpt, and sample_image_prompt in the project language ({project.language}).",
@@ -554,9 +558,10 @@ def _generate_project_image_style(
     )
 
     return {
-        "expanded_style_description": (
-            response.get("expanded_style_description") or style_brief
-        ).strip(),
+        "expanded_style_description": _compact_style_description_for_prompt(
+            str(response.get("expanded_style_description") or style_brief).strip(),
+            max_chars=1400,
+        ),
         "representative_excerpt": (
             response.get("representative_excerpt")
             or request_payload["plain_text"][:800]
@@ -990,6 +995,14 @@ def _discover_project_image_elements(
     return normalized, request_payload, response_payload
 
 
+def _compact_style_description_for_prompt(text: str, *, max_chars: int = 1200) -> str:
+    value = str(text or "").strip()
+    if len(value) <= max_chars:
+        return value
+    keep = max(0, max_chars - 48)
+    return f"{value[:keep]}\n...[style description truncated {len(value) - keep} chars]..."
+
+
 def _expand_project_image_elements(
     project: Project,
     *,
@@ -1000,6 +1013,7 @@ def _expand_project_image_elements(
         style_description = project.image_style.expanded_style_description
     except Exception:
         style_description = ""
+    style_description = _compact_style_description_for_prompt(style_description, max_chars=1200)
     full_text = _extract_project_plain_text(project)
     count = 0
     client = _build_ai_client(model_name=ai_model)
@@ -1277,7 +1291,7 @@ def _build_page_image_prompt(
         f"Project title: {project.title}",
         f"Language: {project.language}",
         f"Page number: {page_number}",
-        f"Style description: {style.expanded_style_description or style.style_brief or '[none]'}",
+        f"Style description: {_compact_style_description_for_prompt(style.expanded_style_description or style.style_brief or '[none]', max_chars=1200)}",
         "Page text:",
         page_text or "[none]",
         "",
