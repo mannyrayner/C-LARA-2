@@ -8,6 +8,10 @@ from .models import (
     TaskUpdate,
     ExerciseSet,
     ExerciseItem,
+    CreditAccount,
+    CreditLedgerEntry,
+    AIUsageCharge,
+    OpenAIModelPricing,
 )
 
 @admin.register(Project)
@@ -62,3 +66,30 @@ class ExerciseSetAdmin(admin.ModelAdmin):
 class ExerciseItemAdmin(admin.ModelAdmin):
     list_display = ("exercise_set", "order_index", "page_number", "segment_index", "answer")
     search_fields = ("exercise_set__project__title", "prompt", "answer")
+
+
+@admin.register(CreditAccount)
+class CreditAccountAdmin(admin.ModelAdmin):
+    list_display = ("user", "balance_usd", "updated_at")
+    search_fields = ("user__username", "user__email")
+
+
+@admin.register(CreditLedgerEntry)
+class CreditLedgerEntryAdmin(admin.ModelAdmin):
+    list_display = ("user", "entry_type", "amount_usd", "balance_after_usd", "created_at")
+    search_fields = ("user__username", "description")
+    list_filter = ("entry_type",)
+
+
+@admin.register(AIUsageCharge)
+class AIUsageChargeAdmin(admin.ModelAdmin):
+    list_display = ("user", "project", "provider", "model", "operation", "request_type", "cost_usd", "status", "created_at")
+    search_fields = ("user__username", "project__title", "model", "operation", "request_type")
+    list_filter = ("provider", "status")
+
+
+@admin.register(OpenAIModelPricing)
+class OpenAIModelPricingAdmin(admin.ModelAdmin):
+    list_display = ("model_name", "input_usd_per_1m", "output_usd_per_1m", "status", "last_synced_at")
+    search_fields = ("model_name", "source_url", "notes")
+    list_filter = ("status",)

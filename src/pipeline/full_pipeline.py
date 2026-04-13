@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
-from core.ai_api import OpenAIClient
+from core.ai_api import OpenAIClient, normalize_json_text
 from core.telemetry import NullTelemetry, Telemetry
 
 from .audio import AudioSpec, annotate_audio
@@ -98,8 +98,9 @@ async def run_full_pipeline(
         if not stage_dir:
             return
         try:
+            normalized_payload = normalize_json_text(payload)
             (stage_dir / f"{stage}.json").write_text(
-                json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+                json.dumps(normalized_payload, ensure_ascii=False, indent=2), encoding="utf-8"
             )
         except Exception:
             pass
