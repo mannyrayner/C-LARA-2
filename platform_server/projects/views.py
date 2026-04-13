@@ -1076,11 +1076,45 @@ def _build_page_image_prompt(
     page_text: str,
     full_text: str,
     relevant_elements: list[ProjectImageElement],
+    discourage_text_in_image: bool = False,
 ) -> str:
+    language_instructions = {
+        "en": ("Create one story illustration page in a consistent style.", "Keep visual continuity with existing style and element references."),
+        "fr": ("Crée une illustration de page d’histoire dans un style cohérent.", "Conserve la continuité visuelle avec le style et les références d’éléments."),
+        "de": ("Erstelle eine einzelne illustrierte Geschichten-Seite in konsistentem Stil.", "Behalte visuelle Kontinuität mit Stil und Elementreferenzen bei."),
+        "es": ("Crea una ilustración de una página de historia con estilo coherente.", "Mantén continuidad visual con el estilo y las referencias de elementos."),
+        "it": ("Crea un’illustrazione di una pagina della storia con stile coerente.", "Mantieni continuità visiva con lo stile e i riferimenti degli elementi."),
+        "pt": ("Crie uma ilustração de uma página da história em estilo consistente.", "Mantenha continuidade visual com o estilo e as referências dos elementos."),
+    }
+    language_labels = {
+        "en": "English",
+        "fr": "French",
+        "de": "German",
+        "es": "Spanish",
+        "it": "Italian",
+        "pt": "Portuguese",
+        "zh": "Chinese",
+        "ja": "Japanese",
+        "ko": "Korean",
+        "ar": "Arabic",
+        "ru": "Russian",
+        "hi": "Hindi",
+    }
+    prompt_language = project.language if project.language in language_instructions else "en"
+    line1, line2 = language_instructions.get(prompt_language, language_instructions["en"])
+    no_text_line = {
+        "en": "Avoid any visible text, letters, captions, signs, logos, speech bubbles, or typographic marks in the image.",
+        "fr": "Évite tout texte visible, lettres, légendes, panneaux, logos, bulles de dialogue ou marques typographiques dans l’image.",
+        "de": "Vermeide sichtbaren Text, Buchstaben, Beschriftungen, Schilder, Logos, Sprechblasen oder typografische Zeichen im Bild.",
+        "es": "Evita texto visible, letras, rótulos, letreros, logotipos, bocadillos o marcas tipográficas en la imagen.",
+        "it": "Evita testo visibile, lettere, didascalie, cartelli, loghi, fumetti o segni tipografici nell’immagine.",
+        "pt": "Evite texto visível, letras, legendas, placas, logotipos, balões de fala ou marcas tipográficas na imagem.",
+    }.get(prompt_language, "Avoid visible text in the image.")
     lines = [
-        "Create one story illustration page in a consistent style.",
-        "Keep visual continuity with the existing style and element references.",
+        line1,
+        line2,
         "",
+        f"Prompt language: {language_labels.get(prompt_language, 'English')}",
         f"Project title: {project.title}",
         f"Language: {project.language}",
         f"Page number: {page_number}",
@@ -1091,8 +1125,10 @@ def _build_page_image_prompt(
         "Full story text for context:",
         full_text or "[none]",
         "",
-        "Relevant element references:",
     ]
+    if discourage_text_in_image:
+        lines.extend([no_text_line, ""])
+    lines.append("Relevant element references:")
     if relevant_elements:
         for element in relevant_elements:
             lines.extend(
@@ -1124,6 +1160,7 @@ def _fit_page_image_prompt_to_limit(
     page_text: str,
     full_text: str,
     relevant_elements: list[ProjectImageElement],
+    discourage_text_in_image: bool = False,
     max_chars: int = 32000,
 ) -> tuple[str, dict[str, Any]]:
     """Build a page-image prompt and iteratively trim when it exceeds limits."""
@@ -1156,6 +1193,7 @@ def _fit_page_image_prompt_to_limit(
             page_text=page_text,
             full_text=_truncate_for_prompt(full_text, max_chars=full_text_limit),
             relevant_elements=trimmed_elements,
+            discourage_text_in_image=discourage_text_in_image,
         )
 
     prompt = _build_with_limits()
@@ -1239,7 +1277,12 @@ def _persist_image_pages_artifacts(project: Project) -> None:
     )
 
 
-def _generate_project_page_images(project: Project, *, image_model: str) -> int:
+def _generate_project_page_images(
+    project: Project,
+    *,
+    image_model: str,
+    discourage_text_in_image: bool = False,
+) -> int:
     style = project.image_style
     full_text = _extract_project_plain_text(project)
     pages_dir = _image_pages_dir(project)
@@ -1266,6 +1309,21 @@ def _generate_project_page_images(project: Project, *, image_model: str) -> int:
             page_text=page_obj.page_text,
             full_text=full_text,
             relevant_elements=refs,
+            discourage_text_in_image=discourage_text_in_image,
+        )
+        _append_page_image_telemetry(
+            project,
+            {
+                "event": "page_image_request",
+                "page_number": page_obj.page_number,
+                "model": image_model,
+                "prompt": prompt,
+                "prompt_meta": prompt_meta,
+                "discourage_text_in_image": discourage_text_in_image,
+                "relevant_element_count": len(refs),
+                "relevant_element_paths": [e.image_path for e in refs if e.image_path],
+                "reference_images_sent_in_request": False,
+            },
         )
         _append_page_image_telemetry(
             project,
@@ -2015,6 +2073,12 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
 
     if request.method == "POST":
         action = request.POST.get("action") or "save"
+        discourage_text_in_image = (request.POST.get("discourage_text_in_image") or "").strip().lower() in {
+            "1",
+            "true",
+            "on",
+            "yes",
+        }
         requested_image_model = (request.POST.get("image_model") or "").strip()
         image_model = requested_image_model or "gpt-image-1"
         if image_model not in IMAGE_MODEL_CHOICES:
@@ -2031,7 +2095,11 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
                 messages.success(request, f"Synced {synced} page rows from source text.")
             elif action == "generate_images":
                 try:
-                    generated = _generate_project_page_images(project, image_model=image_model)
+                    generated = _generate_project_page_images(
+                        project,
+                        image_model=image_model,
+                        discourage_text_in_image=discourage_text_in_image,
+                    )
                 except Exception as exc:
                     logger.exception("Failed to generate page images for project %s", project.pk)
                     messages.error(request, f"Page image generation failed: {exc}")
@@ -2061,6 +2129,7 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
             "pages_artifact_dir": _image_pages_dir(project),
             "image_models": IMAGE_MODEL_CHOICES,
             "selected_image_model": request.GET.get("image_model") or "gpt-image-1",
+            "discourage_text_in_image_default": True,
             "element_count": project.image_elements.count(),
             "confirmed_element_count": project.image_elements.filter(is_confirmed=True).count(),
             "elements_with_images_count": project.image_elements.exclude(image_path="").count(),

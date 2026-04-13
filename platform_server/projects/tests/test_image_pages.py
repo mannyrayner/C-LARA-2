@@ -80,6 +80,7 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertEqual(ProjectImagePage.objects.filter(project=self.project).count(), 2)
         self.assertContains(resp, "Status from elements step:")
         self.assertContains(resp, "1/1")
+        self.assertContains(resp, "Discourage visible text in images")
 
     def test_images_home_can_switch_page_text_source_to_translation(self):
         run_dir = self.project.artifact_dir() / "runs" / "run_translation" / "stages"
@@ -158,3 +159,46 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertTrue(request_events)
         self.assertIn("prompt_meta", request_events[0])
         self.assertIn("reference_images_sent_in_request", request_events[0])
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_page_images_can_discourage_text_in_image(self, mock_build_ai_client):
+        fake_client = FakeImageClient()
+        mock_build_ai_client.return_value = fake_client
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        payload["discourage_text_in_image"] = "1"
+        resp = self.client.post(
+            reverse("project-image-pages", args=[self.project.pk]),
+            payload,
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        page = ProjectImagePage.objects.get(project=self.project, page_number=1)
+        self.assertIn("Avoid any visible text", page.generation_prompt)
+
+        telemetry_path = self.project.artifact_dir() / "images" / "pages" / "telemetry.jsonl"
+        lines = [json.loads(line) for line in telemetry_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        request_events = [line for line in lines if line.get("event") == "page_image_request"]
+        self.assertTrue(any(event.get("discourage_text_in_image") is True for event in request_events))
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_page_images_uses_localized_prompt_language(self, mock_build_ai_client):
+        fake_client = FakeImageClient()
+        mock_build_ai_client.return_value = fake_client
+        self.project.language = "fr"
+        self.project.save(update_fields=["language", "updated_at"])
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        self.client.post(
+            reverse("project-image-pages", args=[self.project.pk]),
+            payload,
+            follow=True,
+        )
+        page = ProjectImagePage.objects.get(project=self.project, page_number=1)
+        self.assertIn("Crée une illustration", page.generation_prompt)
