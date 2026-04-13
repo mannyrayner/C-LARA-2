@@ -712,106 +712,185 @@ def _discover_project_image_elements(
     ai_model: str,
 ) -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
     pages = _extract_project_pages(project)
-    style_description = ""
-    try:
-        style_description = project.image_style.expanded_style_description
-    except Exception:
-        style_description = ""
-
-    prompt = "\n".join(
+    pages_block = "\n".join(f"Page {idx}: {surface}" for idx, surface in enumerate(pages, start=1))
+    phase1_prompt = "\n".join(
         [
-            "Identify recurring visual elements that should be rendered consistently.",
-            "Return JSON with key 'elements', where each item has keys:",
-            "name, type, page_refs, why_consistency_matters.",
-            "page_refs should be a list of 1-indexed page numbers.",
-            "Only include elements that appear on at least two pages or are central recurring motifs.",
+            "Identify concrete recurring visual elements in this story.",
+            "Only include reusable visual items: characters, locations, objects, props, motifs.",
+            "Do not include style/aesthetic directions.",
+            "Return JSON with key 'elements'. Each item should have: name, type.",
+            "Keep names concise and concrete.",
             "",
             f"Project title: {project.title}",
             f"Language: {project.language}",
-            f"Approved style description: {style_description or '[none]'}",
             "Pages:",
+            pages_block or "[none]",
         ]
     )
-    for idx, page_surface in enumerate(pages, start=1):
-        prompt += f"\nPage {idx}: {page_surface}"
-
-    request_payload = {
-        "pages": pages,
-        "style_description": style_description,
-        "prompt": prompt,
-    }
     _append_elements_telemetry(
         project,
         {
             "type": "event",
             "level": "info",
-            "message": "elements discovery request start",
+            "message": "elements discovery phase_1 request start",
             "model": ai_model,
             "pages_count": len(pages),
-            "prompt_length": len(prompt),
-            "prompt_preview": prompt[:400],
+            "prompt_length": len(phase1_prompt),
+            "prompt_preview": phase1_prompt[:400],
         },
     )
     started = datetime.now(timezone.utc)
-    client = _build_ai_client(model_name=ai_model)
-    response = asyncio.run(client.chat_json(prompt, model=ai_model))
+    phase1_response = asyncio.run(_build_ai_client(model_name=ai_model).chat_json(phase1_prompt, model=ai_model))
     elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
     _append_elements_telemetry(
         project,
         {
             "type": "event",
             "level": "info",
-            "message": "elements discovery response received",
+            "message": "elements discovery phase_1 response received",
             "model": ai_model,
             "elapsed_s": round(elapsed_s, 3),
-            "response_keys": sorted(response.keys()) if isinstance(response, dict) else [],
-            "response_preview": str(response)[:400],
+            "response_keys": sorted(phase1_response.keys()) if isinstance(phase1_response, dict) else [],
+            "response_preview": str(phase1_response)[:400],
         },
     )
-    elements = response.get("elements") or []
-    raw_elements_count = len(elements) if isinstance(elements, list) else 0
-    if not isinstance(elements, list):
-        elements = []
-    normalized: list[dict[str, Any]] = []
-    skipped_non_dict = 0
-    skipped_empty_name = 0
-    for item in elements:
-        if not isinstance(item, dict):
-            skipped_non_dict += 1
-            continue
-        name = str(item.get("name") or "").strip()
-        if not name:
-            skipped_empty_name += 1
-            continue
-        refs = item.get("page_refs") or []
-        if isinstance(refs, list):
-            refs_text = ",".join(str(x) for x in refs if str(x).strip())
+
+    raw_candidates = phase1_response.get("elements") if isinstance(phase1_response, dict) else []
+    if not isinstance(raw_candidates, list):
+        raw_candidates = []
+
+    candidates: list[dict[str, str]] = []
+    for item in raw_candidates:
+        if isinstance(item, dict):
+            name = str(item.get("name") or "").strip()
+            elem_type = str(item.get("type") or "object").strip()
         else:
-            refs_text = str(refs)
+            name = str(item).strip()
+            elem_type = "object"
+        if not name:
+            continue
+        candidates.append({"name": name[:255], "element_type": elem_type[:64] or "object"})
+
+    unique_by_name: dict[str, dict[str, str]] = {}
+    for item in candidates:
+        key = item["name"].casefold()
+        if key not in unique_by_name:
+            unique_by_name[key] = item
+    candidates = list(unique_by_name.values())
+
+    def _resolve_page_refs(candidate: dict[str, str]) -> dict[str, Any]:
+        phase2_prompt = "\n".join(
+            [
+                "Find where this visual element appears in the story.",
+                "Return JSON with keys: page_refs, why_consistency_matters, type.",
+                "page_refs must be a list of 1-indexed page numbers where the element appears.",
+                "why_consistency_matters should be one concise sentence.",
+                "",
+                f"Element name: {candidate['name']}",
+                f"Proposed type: {candidate['element_type']}",
+                "Pages:",
+                pages_block or "[none]",
+            ]
+        )
+        _append_elements_telemetry(
+            project,
+            {
+                "type": "event",
+                "level": "info",
+                "message": "elements discovery phase_2 request start",
+                "model": ai_model,
+                "element_name": candidate["name"],
+                "prompt_length": len(phase2_prompt),
+                "prompt_preview": phase2_prompt[:400],
+            },
+        )
+        started_local = datetime.now(timezone.utc)
+        response_local = asyncio.run(_build_ai_client(model_name=ai_model).chat_json(phase2_prompt, model=ai_model))
+        elapsed_local_s = (datetime.now(timezone.utc) - started_local).total_seconds()
+        _append_elements_telemetry(
+            project,
+            {
+                "type": "event",
+                "level": "info",
+                "message": "elements discovery phase_2 response received",
+                "model": ai_model,
+                "element_name": candidate["name"],
+                "elapsed_s": round(elapsed_local_s, 3),
+                "response_keys": sorted(response_local.keys()) if isinstance(response_local, dict) else [],
+                "response_preview": str(response_local)[:400],
+            },
+        )
+        refs_raw = response_local.get("page_refs") if isinstance(response_local, dict) else []
+        refs: list[int] = []
+        if isinstance(refs_raw, list):
+            for ref in refs_raw:
+                try:
+                    page_num = int(ref)
+                except Exception:
+                    continue
+                if 1 <= page_num <= len(pages):
+                    refs.append(page_num)
+        refs = sorted(set(refs))
+        return {
+            "name": candidate["name"],
+            "element_type": str((response_local or {}).get("type") or candidate["element_type"])[:64],
+            "page_refs_list": refs,
+            "why_consistency_matters": str((response_local or {}).get("why_consistency_matters") or "").strip()[:2000],
+            "phase2_response": response_local,
+        }
+
+    phase2_items: list[dict[str, Any]] = []
+    if candidates:
+        max_workers = min(6, max(1, len(candidates)))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(_resolve_page_refs, item) for item in candidates]
+            for future in as_completed(futures):
+                phase2_items.append(future.result())
+
+    normalized: list[dict[str, Any]] = []
+    for item in phase2_items:
+        refs = item.get("page_refs_list") or []
+        if len(refs) < 2:
+            continue
         normalized.append(
             {
-                "name": name[:255],
-                "element_type": str(item.get("type") or "character")[:64],
-                "page_refs": refs_text[:255],
-                "why_consistency_matters": str(item.get("why_consistency_matters") or "")[:2000],
+                "name": item["name"][:255],
+                "element_type": item["element_type"][:64] or "object",
+                "page_refs": ",".join(str(x) for x in refs)[:255],
+                "why_consistency_matters": item["why_consistency_matters"][:2000],
             }
         )
+
     diagnostics = {
         "pages_count": len(pages),
-        "raw_elements_count": raw_elements_count,
+        "phase1_candidates": len(candidates),
+        "phase2_results": len(phase2_items),
         "normalized_elements_count": len(normalized),
-        "skipped_non_dict": skipped_non_dict,
-        "skipped_empty_name": skipped_empty_name,
     }
-    if isinstance(response, dict):
-        response.setdefault("_diagnostics", diagnostics)
+    response_payload = {
+        "phase_1": phase1_response,
+        "phase_2": [
+            {
+                "name": row["name"],
+                "response": row.get("phase2_response", {}),
+                "page_refs": row.get("page_refs_list", []),
+            }
+            for row in phase2_items
+        ],
+        "_diagnostics": diagnostics,
+    }
+    request_payload = {
+        "phase_1_prompt": phase1_prompt,
+        "phase_2_candidates": [row["name"] for row in candidates],
+        "pages_count": len(pages),
+    }
     if not normalized:
         logger.warning(
             "Element discovery returned no usable elements for project %s: %s",
             project.pk,
             diagnostics,
         )
-    return normalized, request_payload, response
+    return normalized, request_payload, response_payload
 
 
 def _expand_project_image_elements(
