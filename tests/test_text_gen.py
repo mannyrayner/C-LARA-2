@@ -14,11 +14,11 @@ from pipeline.text_gen import TextGenSpec
 
 
 class FakeAIClient:
-    def __init__(self, response: dict) -> None:
+    def __init__(self, response: str) -> None:
         self.response = response
         self.prompts: list[str] = []
 
-    async def chat_json(self, prompt: str, **_: object) -> dict:
+    async def chat_text(self, prompt: str, **_: object) -> str:
         self.prompts.append(prompt)
         await asyncio.sleep(0)
         return self.response
@@ -57,7 +57,7 @@ class TextGenTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_generate_text_normalizes_response(self) -> None:
         description = {"title": "Rain", "l1": "fr"}
-        client = FakeAIClient({"surface": "It rains.", "annotations": {}})
+        client = FakeAIClient("It rains.")
         spec = TextGenSpec(description=description, language="en", telemetry=None)
 
         result = await text_gen.generate_text(spec, client=client)
@@ -72,17 +72,17 @@ class TextGenTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_generate_text_instantiates_language_placeholders(self) -> None:
         description = {"title": "Morgen", "genre": "short prose"}
-        client = FakeAIClient({"surface": "Guten Morgen.", "annotations": {}})
+        client = FakeAIClient("Guten Morgen.")
         spec = TextGenSpec(description=description, language="de", telemetry=None)
 
         await text_gen.generate_text(spec, client=client)
 
         self.assertTrue(client.prompts)
-        self.assertIn("de text", client.prompts[0])
+        self.assertIn("write only the German text", client.prompts[0])
 
     async def test_generate_text_with_string_description(self) -> None:
         description = "A short story about rain."
-        client = FakeAIClient({"surface": "It rains.", "annotations": {}})
+        client = FakeAIClient("It rains.")
         spec = TextGenSpec(description=description, language="en", telemetry=None)
 
         result = await text_gen.generate_text(spec, client=client)

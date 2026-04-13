@@ -4,6 +4,24 @@
 <h1>{{ object.title }}</h1>
 <p>{{ object.description }}</p>
 <p>Language: {{ object.language }} → {{ object.target_language }}</p>
+<div style="border: 1px solid #ddd; padding: 0.75rem; margin: 0.75rem 0; background: #fafafa;">
+  <strong>Project cost (USD): ${{ project_total_cost_usd|floatformat:4 }}</strong>
+  {% if project_cost_breakdown %}
+    <table border="1" cellpadding="4" cellspacing="0" style="margin-top: 0.5rem;">
+      <thead>
+        <tr><th>Request type</th><th>Total cost (USD)</th></tr>
+      </thead>
+      <tbody>
+        {% for row in project_cost_breakdown %}
+          <tr>
+            <td>{{ row.request_type }}</td>
+            <td>${{ row.total|floatformat:6 }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</div>
 
 {% if object.compiled_path %}
   <p><a class="btn link" href="{% url 'project-compiled' pk=object.pk path=object.compiled_path %}" target="_blank">View via server</a></p>
@@ -16,9 +34,19 @@
 <p><a class="btn secondary" href="{% url 'project-download-bundle' object.pk %}">Download compiled ZIP</a></p>
 <p><a class="btn secondary" href="{% url 'project-publish' object.pk %}">{% if object.is_published %}Unpublish{% else %}Publish{% endif %}</a></p>
 
-<form method="post" action="{% url 'project-delete' object.pk %}" onsubmit="return confirm('Delete this project and its artifacts?');">{% csrf_token %}
-  <button class="btn secondary" type="submit">Delete project</button>
-</form>
+{% if current_user_role == "owner" %}
+  <form method="post" action="{% url 'project-clone' object.pk %}" onsubmit="return confirm('Clone this project and copy latest run files?');">{% csrf_token %}
+    <button class="btn secondary" type="submit">Clone project</button>
+    <label for="clone_title" class="ml-2"><strong>Clone name:</strong></label>
+    <input id="clone_title" name="clone_title" type="text" value="{{ object.title }} (Clone)" style="min-width: 20rem;" />
+    <label for="clone_target_language" class="ml-2"><strong>Glossing language:</strong></label>
+    <select id="clone_target_language" name="clone_target_language">
+      {% for value, label in language_choices %}
+        <option value="{{ value }}" {% if value == object.target_language %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </form>
+{% endif %}
 
 {% if current_user_role == "owner" %}
   <h3>Collaborators</h3>
@@ -53,4 +81,8 @@
     </p>
   </form>
 {% endif %}
+
+<form method="post" action="{% url 'project-delete' object.pk %}" onsubmit="return confirm('Delete this project and its artifacts?');">{% csrf_token %}
+  <button class="btn" type="submit" style="background:#b00020; border-color:#8a0018;">Delete project</button>
+</form>
 {% endblock %}
