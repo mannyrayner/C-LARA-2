@@ -15,6 +15,14 @@
 
 <p>Status from style step: <strong>{{ style.get_status_display }}</strong></p>
 <p>Elements artifacts stored at: {{ elements_artifact_dir }}</p>
+{% if elements_artifact_links %}
+  <p>Elements artifacts:</p>
+  <ul>
+    {% for item in elements_artifact_links %}
+      <li><a href="{{ item.url }}">{{ item.label }}</a> ({{ item.size }} bytes)</li>
+    {% endfor %}
+  </ul>
+{% endif %}
 <p>Confirmed elements: {{ confirmed_count }}</p>
 <p><em>Generation uses fan-out/fan-in (parallel API calls, then merge/save).</em></p>
 {% if status_notice == "done" %}
@@ -26,6 +34,12 @@
   {% csrf_token %}
   {{ formset.management_form }}
   <p>
+    <label for="ai_model">Text model:</label>
+    <select name="ai_model" id="ai_model" style="cursor:pointer">
+      {% for model in ai_models %}
+        <option value="{{ model }}" {% if model == selected_ai_model %}selected{% endif %}>{{ model }}</option>
+      {% endfor %}
+    </select>
     <button class="btn" style="cursor:pointer" type="submit" name="action" value="discover" data-long-action="true">Discover elements</button>
     <button class="btn" style="cursor:pointer" type="submit" name="action" value="expand" data-long-action="true">Generate expanded prompts</button>
     <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="save">Save edits</button>
