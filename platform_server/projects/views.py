@@ -2236,6 +2236,12 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
 
     if request.method == "POST":
         action = request.POST.get("action") or "save"
+        discourage_text_in_image = (request.POST.get("discourage_text_in_image") or "").strip().lower() in {
+            "1",
+            "true",
+            "on",
+            "yes",
+        }
         requested_image_model = (request.POST.get("image_model") or "").strip()
         image_model = requested_image_model or "gpt-image-1"
         if image_model not in IMAGE_MODEL_CHOICES:
@@ -2294,6 +2300,7 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
             "pages_artifact_dir": _image_pages_dir(project),
             "image_models": IMAGE_MODEL_CHOICES,
             "selected_image_model": request.GET.get("image_model") or "gpt-image-1",
+            "discourage_text_in_image_default": True,
             "element_count": project.image_elements.count(),
             "confirmed_element_count": project.image_elements.filter(is_confirmed=True).count(),
             "elements_with_images_count": project.image_elements.exclude(image_path="").count(),
