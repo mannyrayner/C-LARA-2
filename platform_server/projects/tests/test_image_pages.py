@@ -162,8 +162,13 @@ class ProjectImagePagesViewTests(TestCase):
         lines = [json.loads(line) for line in telemetry_path.read_text(encoding="utf-8").splitlines() if line.strip()]
         request_events = [line for line in lines if line.get("event") == "page_image_request"]
         self.assertTrue(request_events)
+        self.assertIn("prompt", request_events[0])
+        self.assertIn("prompt_length", request_events[0])
         self.assertIn("prompt_meta", request_events[0])
         self.assertIn("reference_images_sent_in_request", request_events[0])
+        response_events = [line for line in lines if line.get("event") == "page_image_response"]
+        self.assertTrue(response_events)
+        self.assertIn("elapsed_s", response_events[0])
 
     @patch("projects.views._build_ai_client")
     def test_generate_page_images_can_discourage_text_in_image(self, mock_build_ai_client):
