@@ -494,7 +494,12 @@ def _build_style_generation_request(project: Project, style_brief: str) -> dict[
             f"Project language: {project.language}",
             f"Target language: {project.target_language}",
             f"User style brief: {style_brief}",
-            f"Discourage visible text in final images: {getattr(project.image_style, 'discourage_text_in_images', False)}",
+            (
+                "Text policy for final images: Prefer little/no visible text, "
+                "but allow short text only when it is clearly required by the story (e.g., a meaningful sign or label)."
+                if getattr(project.image_style, "discourage_text_in_images", False)
+                else "Text policy for final images: Text is allowed when appropriate for the scene."
+            ),
             "Project text:",
             plain_text or "[No text available; rely on the description.]",
         ]
@@ -1276,13 +1281,13 @@ def _build_page_image_prompt(
     prompt_language = project.language if project.language in language_instructions else "en"
     line1, line2 = language_instructions.get(prompt_language, language_instructions["en"])
     no_text_line = {
-        "en": "Avoid any visible text, letters, captions, signs, logos, speech bubbles, or typographic marks in the image.",
-        "fr": "Évite tout texte visible, lettres, légendes, panneaux, logos, bulles de dialogue ou marques typographiques dans l’image.",
-        "de": "Vermeide sichtbaren Text, Buchstaben, Beschriftungen, Schilder, Logos, Sprechblasen oder typografische Zeichen im Bild.",
-        "es": "Evita texto visible, letras, rótulos, letreros, logotipos, bocadillos o marcas tipográficas en la imagen.",
-        "it": "Evita testo visibile, lettere, didascalie, cartelli, loghi, fumetti o segni tipografici nell’immagine.",
-        "pt": "Evite texto visível, letras, legendas, placas, logotipos, balões de fala ou marcas tipográficas na imagem.",
-    }.get(prompt_language, "Avoid visible text in the image.")
+        "en": "Prefer little or no visible text. If text is essential to the story moment (e.g., a sign), keep it very short and readable.",
+        "fr": "Privilégie peu ou pas de texte visible. Si un texte est essentiel à la scène (p. ex. un panneau), garde-le très court et lisible.",
+        "de": "Bevorzuge wenig oder keinen sichtbaren Text. Wenn Text für die Szene wesentlich ist (z. B. ein Schild), halte ihn sehr kurz und lesbar.",
+        "es": "Prefiere poco o ningún texto visible. Si el texto es esencial para la escena (p. ej., un letrero), mantenlo muy breve y legible.",
+        "it": "Preferisci poco o nessun testo visibile. Se il testo è essenziale per la scena (es. un cartello), mantienilo molto breve e leggibile.",
+        "pt": "Prefira pouco ou nenhum texto visível. Se o texto for essencial para a cena (ex.: uma placa), mantenha-o bem curto e legível.",
+    }.get(prompt_language, "Prefer minimal visible text; allow short text only when story-essential.")
     lines = [
         line1,
         line2,

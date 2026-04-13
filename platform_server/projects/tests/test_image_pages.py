@@ -189,7 +189,7 @@ class ProjectImagePagesViewTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         page = ProjectImagePage.objects.get(project=self.project, page_number=1)
-        self.assertIn("Avoid any visible text", page.generation_prompt)
+        self.assertIn("If text is essential to the story moment", page.generation_prompt)
 
         telemetry_path = self.project.artifact_dir() / "images" / "pages" / "telemetry.jsonl"
         lines = [json.loads(line) for line in telemetry_path.read_text(encoding="utf-8").splitlines() if line.strip()]

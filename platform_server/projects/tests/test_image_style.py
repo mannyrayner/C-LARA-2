@@ -94,6 +94,7 @@ class ProjectImageStyleViewTests(TestCase):
         self.assertIn("warm watercolor storybook", style.expanded_style_description)
         self.assertTrue(fake_client.prompts)
         self.assertIn("Do NOT include named characters", fake_client.prompts[0])
+        self.assertIn("Text policy for final images:", fake_client.prompts[0])
 
         style_dir = self.project.artifact_dir() / "images" / "style"
         self.assertTrue((style_dir / "style_brief.txt").exists())
