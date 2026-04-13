@@ -456,11 +456,13 @@ def _build_style_generation_request(project: Project, style_brief: str) -> dict[
             "expanded_style_description should preserve the user's brief but elaborate it in a way that fits the story content.",
             "representative_excerpt should be a short excerpt or summary snippet from the story most useful for a sample image.",
             "sample_image_prompt should be a detailed prompt for a single sample image that demonstrates the style for this story.",
+            f"Write expanded_style_description, representative_excerpt, and sample_image_prompt in the project language ({project.language}).",
             "",
             f"Project title: {project.title}",
             f"Project language: {project.language}",
             f"Target language: {project.target_language}",
             f"User style brief: {style_brief}",
+            f"Discourage visible text in final images: {getattr(project.image_style, 'discourage_text_in_images', False)}",
             "Project text:",
             plain_text or "[No text available; rely on the description.]",
         ]
@@ -720,6 +722,7 @@ def _discover_project_image_elements(
             "Do not include style/aesthetic directions.",
             "Return JSON with key 'elements'. Each item should have: name, type.",
             "Keep names concise and concrete.",
+            f"Write names and types in the story language ({project.language}).",
             "",
             f"Project title: {project.title}",
             f"Language: {project.language}",
@@ -785,6 +788,7 @@ def _discover_project_image_elements(
                 "Return JSON with keys: page_refs, why_consistency_matters, type.",
                 "page_refs must be a list of 1-indexed page numbers where the element appears.",
                 "why_consistency_matters should be one concise sentence.",
+                f"Write why_consistency_matters and type in the story language ({project.language}).",
                 "",
                 f"Element name: {candidate['name']}",
                 f"Proposed type: {candidate['element_type']}",
@@ -911,6 +915,7 @@ def _expand_project_image_elements(
             [
                 "Create an expanded visual element description for consistent illustration.",
                 "Return JSON with keys: expanded_description, expanded_prompt.",
+                f"Write expanded_description and expanded_prompt in the project language ({project.language}).",
                 "",
                 f"Element name: {element.name}",
                 f"Element type: {element.element_type}",
@@ -1320,19 +1325,6 @@ def _generate_project_page_images(
                 "prompt": prompt,
                 "prompt_meta": prompt_meta,
                 "discourage_text_in_image": discourage_text_in_image,
-                "relevant_element_count": len(refs),
-                "relevant_element_paths": [e.image_path for e in refs if e.image_path],
-                "reference_images_sent_in_request": False,
-            },
-        )
-        _append_page_image_telemetry(
-            project,
-            {
-                "event": "page_image_request",
-                "page_number": page_obj.page_number,
-                "model": image_model,
-                "prompt": prompt,
-                "prompt_meta": prompt_meta,
                 "relevant_element_count": len(refs),
                 "relevant_element_paths": [e.image_path for e in refs if e.image_path],
                 "reference_images_sent_in_request": False,
@@ -2098,7 +2090,7 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
                     generated = _generate_project_page_images(
                         project,
                         image_model=image_model,
-                        discourage_text_in_image=discourage_text_in_image,
+                        discourage_text_in_image=bool(style.discourage_text_in_images),
                     )
                 except Exception as exc:
                     logger.exception("Failed to generate page images for project %s", project.pk)

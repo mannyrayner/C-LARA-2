@@ -164,12 +164,14 @@ class ProjectImagePagesViewTests(TestCase):
     def test_generate_page_images_can_discourage_text_in_image(self, mock_build_ai_client):
         fake_client = FakeImageClient()
         mock_build_ai_client.return_value = fake_client
+        style = ProjectImageStyle.objects.get(project=self.project)
+        style.discourage_text_in_images = True
+        style.save(update_fields=["discourage_text_in_images", "updated_at"])
         self.client.get(reverse("project-image-pages", args=[self.project.pk]))
 
         payload = self._page_form_payload()
         payload["action"] = "generate_images"
         payload["image_model"] = "gpt-image-1"
-        payload["discourage_text_in_image"] = "1"
         resp = self.client.post(
             reverse("project-image-pages", args=[self.project.pk]),
             payload,

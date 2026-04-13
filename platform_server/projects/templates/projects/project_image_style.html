@@ -21,6 +21,7 @@
   {% csrf_token %}
   <input type="hidden" name="action_intent" id="style-action-intent" value="" />
   {{ form.as_p }}
+  <p><small>The “Discourage text in images” setting applies to page image generation prompts in the next stage.</small></p>
   <p><small><strong>Save draft</strong> stores manual edits to style fields. <strong>Approve style</strong> marks style as ready so the next step can proceed even before a sample image is generated.</small></p>
   <p><strong>To fill “Expanded style description” and “Sample image prompt”, use:</strong></p>
   <p>

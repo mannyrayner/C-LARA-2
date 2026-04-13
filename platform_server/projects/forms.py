@@ -120,6 +120,7 @@ class ProjectImageStyleForm(forms.ModelForm):
             "sample_image_prompt",
             "ai_model",
             "sample_image_model",
+            "discourage_text_in_images",
             "status",
         ]
         widgets = {

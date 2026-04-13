@@ -221,6 +221,7 @@ class ProjectImageStyle(models.Model):
     sample_image_path = models.CharField(max_length=512, blank=True)
     sample_image_revised_prompt = models.TextField(blank=True)
     sample_image_model = models.CharField(max_length=64, default="gpt-image-1")
+    discourage_text_in_images = models.BooleanField(default=False)
     ai_model = models.CharField(max_length=64, default="gpt-4o")
     status = models.CharField(
         max_length=32, choices=STATUS_CHOICES, default=STATUS_DRAFT
