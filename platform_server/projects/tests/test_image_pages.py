@@ -7,6 +7,7 @@ from django.contrib.messages import get_messages
 from django.test import Client, TestCase
 from django.urls import reverse
 
+from projects import views
 from projects.models import Project, ProjectImageElement, ProjectImagePage, ProjectImageStyle
 
 
@@ -189,7 +190,7 @@ class ProjectImagePagesViewTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         page = ProjectImagePage.objects.get(project=self.project, page_number=1)
-        self.assertIn("If text is essential to the story moment", page.generation_prompt)
+        self.assertIn("comic-style sound effects", page.generation_prompt)
 
         telemetry_path = self.project.artifact_dir() / "images" / "pages" / "telemetry.jsonl"
         lines = [json.loads(line) for line in telemetry_path.read_text(encoding="utf-8").splitlines() if line.strip()]
@@ -236,3 +237,28 @@ class ProjectImagePagesViewTests(TestCase):
         timeout_events = [line for line in lines if line.get("event") == "page_image_timeout"]
         self.assertTrue(timeout_events)
         self.assertTrue(all(event.get("is_timeout") is True for event in timeout_events))
+
+    def test_discourage_text_guideline_known_language_mentions_signs_and_sfx(self):
+        guideline = views._discourage_text_guideline_for_language("en")
+        self.assertIn("meaningful sign", guideline)
+        self.assertIn("comic-style sound effects", guideline)
+
+    @patch("projects.views._build_ai_client")
+    def test_discourage_text_guideline_unknown_language_uses_cached_ai_translation(self, mock_build_ai_client):
+        class FakeTranslator:
+            def __init__(self):
+                self.calls = 0
+
+            async def chat_text(self, prompt, **kwargs):  # noqa: ARG002
+                self.calls += 1
+                return "Texte minimal; autoriser seulement les panneaux importants."
+
+        fake_translator = FakeTranslator()
+        mock_build_ai_client.return_value = fake_translator
+        views._translate_discourage_text_guideline.cache_clear()
+
+        first = views._discourage_text_guideline_for_language("eo")
+        second = views._discourage_text_guideline_for_language("eo")
+        self.assertEqual(first, second)
+        self.assertIn("panneaux importants", first)
+        self.assertEqual(fake_translator.calls, 1)

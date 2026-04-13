@@ -9,6 +9,7 @@ import hashlib
 import re
 import uuid
 import asyncio
+from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -1280,14 +1281,7 @@ def _build_page_image_prompt(
     }
     prompt_language = project.language if project.language in language_instructions else "en"
     line1, line2 = language_instructions.get(prompt_language, language_instructions["en"])
-    no_text_line = {
-        "en": "Prefer little or no visible text. If text is essential to the story moment (e.g., a sign), keep it very short and readable.",
-        "fr": "Privilégie peu ou pas de texte visible. Si un texte est essentiel à la scène (p. ex. un panneau), garde-le très court et lisible.",
-        "de": "Bevorzuge wenig oder keinen sichtbaren Text. Wenn Text für die Szene wesentlich ist (z. B. ein Schild), halte ihn sehr kurz und lesbar.",
-        "es": "Prefiere poco o ningún texto visible. Si el texto es esencial para la escena (p. ej., un letrero), mantenlo muy breve y legible.",
-        "it": "Preferisci poco o nessun testo visibile. Se il testo è essenziale per la scena (es. un cartello), mantienilo molto breve e leggibile.",
-        "pt": "Prefira pouco ou nenhum texto visível. Se o texto for essencial para a cena (ex.: uma placa), mantenha-o bem curto e legível.",
-    }.get(prompt_language, "Prefer minimal visible text; allow short text only when story-essential.")
+    no_text_line = _discourage_text_guideline_for_language(prompt_language)
     lines = [
         line1,
         line2,
@@ -1320,6 +1314,57 @@ def _build_page_image_prompt(
     else:
         lines.append("- [No relevant elements with image references]")
     return "\n".join(lines)
+
+
+_DISCOURAGE_TEXT_GUIDELINES = {
+    "en": "Prefer little or no visible text. Allow short text only when story-essential (e.g., a meaningful sign, or brief comic-style sound effects like 'BANG!' or 'BOOM!').",
+    "fr": "Privilégie peu ou pas de texte visible. Autorise un texte court seulement s’il est essentiel à la scène (p. ex. un panneau important, ou une onomatopée brève de style BD comme « BANG! »).",
+    "de": "Bevorzuge wenig oder keinen sichtbaren Text. Erlaube kurzen Text nur, wenn er für die Szene wesentlich ist (z. B. ein wichtiges Schild oder ein kurzes Comic-Geräusch wie „BANG!“).",
+    "es": "Prefiere poco o ningún texto visible. Permite texto breve solo cuando sea esencial para la escena (p. ej., un letrero importante o una onomatopeya breve estilo cómic como «¡BANG!»).",
+    "it": "Preferisci poco o nessun testo visibile. Consenti testo breve solo quando è essenziale per la scena (es. un cartello importante o una breve onomatopea da fumetto come «BANG!»).",
+    "pt": "Prefira pouco ou nenhum texto visível. Permita texto curto apenas quando for essencial para a cena (ex.: uma placa importante ou uma onomatopeia curta em estilo quadrinhos como «BANG!»).",
+    "nl": "Gebruik bij voorkeur weinig of geen zichtbare tekst. Sta korte tekst alleen toe als die essentieel is voor de scène (bijv. een belangrijk bord of een kort stripachtig geluidseffect zoals ‘BANG!’).",
+    "sv": "Använd helst lite eller ingen synlig text. Tillåt kort text bara när den är viktig för scenen (t.ex. en betydelsefull skylt eller en kort serielik ljudeffekt som ”BANG!”).",
+    "no": "Bruk helst lite eller ingen synlig tekst. Tillat kort tekst bare når den er viktig for scenen (f.eks. et viktig skilt eller en kort tegneserieaktig lydeffekt som «BANG!»).",
+    "da": "Brug helst lidt eller ingen synlig tekst. Tillad kun kort tekst, når den er vigtig for scenen (fx et vigtigt skilt eller en kort tegneserieagtig lydeffekt som »BANG!«).",
+    "fi": "Suosi vähän tai ei lainkaan näkyvää tekstiä. Salli lyhyt teksti vain, kun se on kohtaukselle olennainen (esim. tärkeä kyltti tai lyhyt sarjakuvamainen ääniefekti kuten ”BANG!”).",
+    "pl": "Preferuj mało lub brak widocznego tekstu. Dopuszczaj krótki tekst tylko wtedy, gdy jest istotny dla sceny (np. ważny znak albo krótka komiksowa onomatopeja typu „BANG!”).",
+    "zh": "尽量少用或不用可见文字。只有在剧情确实需要时才使用简短文字（例如关键路牌，或简短漫画拟声词如“BANG!”）。",
+    "ja": "基本的に可視テキストは最小限または無しにしてください。物語上どうしても必要な場合のみ、短い文字を許可します（例：重要な看板、短い漫画風効果音「BANG!」）。",
+    "ko": "보이는 텍스트는 가능하면 최소화하거나 사용하지 마세요. 장면에 꼭 필요할 때만 짧은 텍스트를 허용하세요(예: 중요한 표지판, 짧은 만화식 효과음 ‘BANG!’).",
+    "ar": "يفضَّل تقليل النص الظاهر أو عدم استخدامه. يُسمح بنص قصير فقط عندما يكون ضروريًا للمشهد (مثل لافتة مهمة أو مؤثر صوتي قصير بأسلوب القصص المصورة مثل \"BANG!\").",
+    "ru": "Предпочтительно минимум или отсутствие видимого текста. Допускайте короткий текст только если он важен для сцены (например, значимая вывеска или краткая комиксная звукоподражательная вставка вроде «BANG!»).",
+    "hi": "दृश्य में टेक्स्ट बहुत कम रखें या न रखें। केवल तब छोटा टेक्स्ट दें जब वह कहानी के लिए ज़रूरी हो (जैसे महत्वपूर्ण साइनबोर्ड या कॉमिक-शैली की छोटी ध्वनि जैसे “BANG!”)।",
+}
+
+
+@lru_cache(maxsize=128)
+def _translate_discourage_text_guideline(language_code: str) -> str:
+    base = _DISCOURAGE_TEXT_GUIDELINES["en"]
+    prompt = "\n".join(
+        [
+            "Translate the following instruction into the requested language.",
+            "Keep meaning and examples intact.",
+            "Return only the translated instruction text (no quotes, no markdown).",
+            f"Language code: {language_code}",
+            f"Instruction: {base}",
+        ]
+    )
+    try:
+        translated = asyncio.run(_build_ai_client(model_name="gpt-4o-mini").chat_text(prompt, model="gpt-4o-mini"))
+    except Exception:
+        return base
+    value = str(translated or "").strip()
+    return value or base
+
+
+def _discourage_text_guideline_for_language(language_code: str) -> str:
+    code = (language_code or "").strip().lower()
+    if not code:
+        return _DISCOURAGE_TEXT_GUIDELINES["en"]
+    if code in _DISCOURAGE_TEXT_GUIDELINES:
+        return _DISCOURAGE_TEXT_GUIDELINES[code]
+    return _translate_discourage_text_guideline(code)
 
 
 def _truncate_for_prompt(text: str, *, max_chars: int) -> str:
