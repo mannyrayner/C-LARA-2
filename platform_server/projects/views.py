@@ -393,6 +393,34 @@ def _append_style_telemetry(project: Project, record: dict[str, Any]) -> None:
         fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
+def _iter_exception_chain(exc: BaseException) -> list[BaseException]:
+    chain: list[BaseException] = []
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        chain.append(current)
+        seen.add(id(current))
+        current = current.__cause__ or current.__context__
+    return chain
+
+
+def _is_timeout_exception(exc: BaseException) -> bool:
+    for current in _iter_exception_chain(exc):
+        if isinstance(current, (TimeoutError, asyncio.TimeoutError)):
+            return True
+        if "timeout" in current.__class__.__name__.lower():
+            return True
+    return False
+
+
+def _exception_telemetry_fields(exc: BaseException) -> dict[str, Any]:
+    return {
+        "error": str(exc),
+        "error_type": exc.__class__.__name__,
+        "is_timeout": _is_timeout_exception(exc),
+    }
+
+
 def _ensure_style_telemetry_file(project: Project) -> Path:
     telemetry_path = _image_style_dir(project) / "telemetry.jsonl"
     telemetry_path.parent.mkdir(parents=True, exist_ok=True)
@@ -494,7 +522,22 @@ def _generate_project_image_style(
     )
     started = datetime.now(timezone.utc)
     client = _build_ai_client(model_name=ai_model)
-    response = asyncio.run(client.chat_json(request_payload["prompt"], model=ai_model))
+    try:
+        response = asyncio.run(client.chat_json(request_payload["prompt"], model=ai_model))
+    except Exception as exc:
+        elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+        _append_style_telemetry(
+            project,
+            {
+                "type": "event",
+                "level": "error",
+                "message": "style expansion timeout" if _is_timeout_exception(exc) else "style expansion request failed",
+                "model": ai_model,
+                "elapsed_s": round(elapsed_s, 3),
+                **_exception_telemetry_fields(exc),
+            },
+        )
+        raise
     elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
     _append_style_telemetry(
         project,
@@ -548,7 +591,22 @@ def _generate_project_style_sample_image(
     )
     started = datetime.now(timezone.utc)
     client = _build_ai_client()
-    image_result = client.generate_image(prompt, model=style.sample_image_model)
+    try:
+        image_result = client.generate_image(prompt, model=style.sample_image_model)
+    except Exception as exc:
+        elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+        _append_style_telemetry(
+            project,
+            {
+                "type": "event",
+                "level": "error",
+                "message": "style sample image timeout" if _is_timeout_exception(exc) else "style sample image request failed",
+                "model": style.sample_image_model,
+                "elapsed_s": round(elapsed_s, 3),
+                **_exception_telemetry_fields(exc),
+            },
+        )
+        raise
     elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
     style_dir = _image_style_dir(project)
     style_dir.mkdir(parents=True, exist_ok=True)
@@ -743,7 +801,22 @@ def _discover_project_image_elements(
         },
     )
     started = datetime.now(timezone.utc)
-    phase1_response = asyncio.run(_build_ai_client(model_name=ai_model).chat_json(phase1_prompt, model=ai_model))
+    try:
+        phase1_response = asyncio.run(_build_ai_client(model_name=ai_model).chat_json(phase1_prompt, model=ai_model))
+    except Exception as exc:
+        elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+        _append_elements_telemetry(
+            project,
+            {
+                "type": "event",
+                "level": "error",
+                "message": "elements discovery phase_1 timeout" if _is_timeout_exception(exc) else "elements discovery phase_1 failed",
+                "model": ai_model,
+                "elapsed_s": round(elapsed_s, 3),
+                **_exception_telemetry_fields(exc),
+            },
+        )
+        raise
     elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
     _append_elements_telemetry(
         project,
@@ -809,7 +882,23 @@ def _discover_project_image_elements(
             },
         )
         started_local = datetime.now(timezone.utc)
-        response_local = asyncio.run(_build_ai_client(model_name=ai_model).chat_json(phase2_prompt, model=ai_model))
+        try:
+            response_local = asyncio.run(_build_ai_client(model_name=ai_model).chat_json(phase2_prompt, model=ai_model))
+        except Exception as exc:
+            elapsed_local_s = (datetime.now(timezone.utc) - started_local).total_seconds()
+            _append_elements_telemetry(
+                project,
+                {
+                    "type": "event",
+                    "level": "error",
+                    "message": "elements discovery phase_2 timeout" if _is_timeout_exception(exc) else "elements discovery phase_2 failed",
+                    "model": ai_model,
+                    "element_name": candidate["name"],
+                    "elapsed_s": round(elapsed_local_s, 3),
+                    **_exception_telemetry_fields(exc),
+                },
+            )
+            raise
         elapsed_local_s = (datetime.now(timezone.utc) - started_local).total_seconds()
         _append_elements_telemetry(
             project,
@@ -940,7 +1029,24 @@ def _expand_project_image_elements(
             },
         )
         started = datetime.now(timezone.utc)
-        response = asyncio.run(client.chat_json(prompt, model=ai_model))
+        try:
+            response = asyncio.run(client.chat_json(prompt, model=ai_model))
+        except Exception as exc:
+            elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+            _append_elements_telemetry(
+                project,
+                {
+                    "type": "event",
+                    "level": "error",
+                    "message": "element expansion timeout" if _is_timeout_exception(exc) else "element expansion failed",
+                    "model": ai_model,
+                    "element_id": element.id,
+                    "element_name": element.name,
+                    "elapsed_s": round(elapsed_s, 3),
+                    **_exception_telemetry_fields(exc),
+                },
+            )
+            raise
         elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
         _append_elements_telemetry(
             project,
@@ -1006,8 +1112,50 @@ def _generate_project_element_images(
     results_by_id: dict[int, dict[str, Any]] = {}
 
     def _generate_one(element_id: int, prompt_text: str) -> tuple[int, dict[str, Any]]:
+        _append_elements_telemetry(
+            project,
+            {
+                "type": "event",
+                "level": "info",
+                "message": "element image request start",
+                "model": image_model,
+                "element_id": element_id,
+                "prompt_length": len(prompt_text),
+                "prompt_preview": prompt_text[:400],
+            },
+        )
+        started = datetime.now(timezone.utc)
         client = _build_ai_client()
-        return element_id, client.generate_image(prompt_text, model=image_model)
+        try:
+            result = client.generate_image(prompt_text, model=image_model)
+        except Exception as exc:
+            elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+            _append_elements_telemetry(
+                project,
+                {
+                    "type": "event",
+                    "level": "error",
+                    "message": "element image timeout" if _is_timeout_exception(exc) else "element image request failed",
+                    "model": image_model,
+                    "element_id": element_id,
+                    "elapsed_s": round(elapsed_s, 3),
+                    **_exception_telemetry_fields(exc),
+                },
+            )
+            raise
+        elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+        _append_elements_telemetry(
+            project,
+            {
+                "type": "event",
+                "level": "info",
+                "message": "element image response received",
+                "model": image_model,
+                "element_id": element_id,
+                "elapsed_s": round(elapsed_s, 3),
+            },
+        )
+        return element_id, result
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
@@ -1330,8 +1478,23 @@ def _generate_project_page_images(
                 "reference_images_sent_in_request": False,
             },
         )
+        started = datetime.now(timezone.utc)
         client = _build_ai_client()
-        image_result = client.generate_image(prompt, model=image_model)
+        try:
+            image_result = client.generate_image(prompt, model=image_model)
+        except Exception as exc:
+            elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+            _append_page_image_telemetry(
+                project,
+                {
+                    "event": "page_image_timeout" if _is_timeout_exception(exc) else "page_image_error",
+                    "page_number": page_obj.page_number,
+                    "model": image_model,
+                    "elapsed_s": round(elapsed_s, 3),
+                    **_exception_telemetry_fields(exc),
+                },
+            )
+            raise
         page_dir = pages_dir / f"page_{page_obj.page_number:03d}"
         page_dir.mkdir(parents=True, exist_ok=True)
         image_path = page_dir / "image.png"
@@ -1739,7 +1902,7 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
                             "type": "event",
                             "level": "error",
                             "message": "style expansion failed",
-                            "error": str(exc),
+                            **_exception_telemetry_fields(exc),
                         },
                     )
                     messages.error(request, f"Style generation failed: {exc}")
@@ -1784,7 +1947,7 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
                             "type": "event",
                             "level": "error",
                             "message": "style sample image failed",
-                            "error": str(exc),
+                            **_exception_telemetry_fields(exc),
                         },
                     )
                     messages.error(request, f"Sample image generation failed: {exc}")
@@ -1937,7 +2100,7 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
                             "level": "error",
                             "message": "elements discovery failed",
                             "ai_model": ai_model,
-                            "error": str(exc),
+                            **_exception_telemetry_fields(exc),
                         },
                     )
                     messages.error(request, f"Element discovery failed: {exc}")
@@ -1986,7 +2149,7 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
                             "level": "error",
                             "message": "elements expansion failed",
                             "ai_model": ai_model,
-                            "error": str(exc),
+                            **_exception_telemetry_fields(exc),
                         },
                     )
                     messages.error(request, f"Element expansion failed: {exc}")
@@ -2094,6 +2257,14 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
                     )
                 except Exception as exc:
                     logger.exception("Failed to generate page images for project %s", project.pk)
+                    _append_page_image_telemetry(
+                        project,
+                        {
+                            "event": "page_images_generation_failed",
+                            "model": image_model,
+                            **_exception_telemetry_fields(exc),
+                        },
+                    )
                     messages.error(request, f"Page image generation failed: {exc}")
                 else:
                     messages.success(

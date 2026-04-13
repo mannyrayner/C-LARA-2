@@ -25,6 +25,11 @@ class FakeImageClient:
         }
 
 
+class TimeoutImageClient:
+    def generate_image(self, prompt, **kwargs):
+        raise TimeoutError("simulated timeout")
+
+
 class ProjectImagePagesViewTests(TestCase):
     def setUp(self):
         user_model = get_user_model()
@@ -204,3 +209,25 @@ class ProjectImagePagesViewTests(TestCase):
         )
         page = ProjectImagePage.objects.get(project=self.project, page_number=1)
         self.assertIn("Crée une illustration", page.generation_prompt)
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_page_images_logs_timeout_telemetry(self, mock_build_ai_client):
+        mock_build_ai_client.return_value = TimeoutImageClient()
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        resp = self.client.post(
+            reverse("project-image-pages", args=[self.project.pk]),
+            payload,
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        msgs = [m.message for m in get_messages(resp.wsgi_request)]
+        self.assertTrue(any("Page image generation failed" in msg for msg in msgs))
+
+        telemetry_path = self.project.artifact_dir() / "images" / "pages" / "telemetry.jsonl"
+        lines = [json.loads(line) for line in telemetry_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        timeout_events = [line for line in lines if line.get("event") == "page_image_timeout"]
+        self.assertTrue(timeout_events)
+        self.assertTrue(all(event.get("is_timeout") is True for event in timeout_events))
