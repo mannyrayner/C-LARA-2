@@ -80,6 +80,7 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertEqual(ProjectImagePage.objects.filter(project=self.project).count(), 2)
         self.assertContains(resp, "Status from elements step:")
         self.assertContains(resp, "1/1")
+        self.assertContains(resp, "Discourage visible text in images")
 
     def test_images_home_can_switch_page_text_source_to_translation(self):
         run_dir = self.project.artifact_dir() / "runs" / "run_translation" / "stages"
