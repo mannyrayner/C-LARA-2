@@ -22,6 +22,11 @@ APIError = type("APIError", (Exception,), {})
 RateLimitError = type("RateLimitError", (Exception,), {})
 LengthFinishReasonError = type("LengthFinishReasonError", (Exception,), {})
 _MALFORMED_UNICODE_ESCAPE_RE = re.compile(r"\x00([0-9a-fA-F]{2})")
+_ESCAPED_U4_RE = re.compile(r"\\u([0-9a-fA-F]{4})")
+_ESCAPED_U8_RE = re.compile(r"\\U([0-9a-fA-F]{8})")
+_ESCAPED_X2_RE = re.compile(r"\\x([0-9a-fA-F]{2})")
+_ESCAPED_MALFORMED_U2_RE = re.compile(r"\\u0000([0-9a-fA-F]{2})")
+_CONTROL_CHAR_RE = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F]")
 
 
 def _preview_text(text: str, *, limit: int = 200) -> str:
@@ -102,7 +107,19 @@ class OpenAIClient:
                     },
                 )
                 response = await _run_with_heartbeat(self._client, kwargs, telemetry, op_id, start, heartbeat_s)
+                self._report_usage(response, model=model, operation="chat_json")
                 payload = _extract_payload(response)
+                if self.config.detailed_telemetry:
+                    telemetry.event(
+                        op_id,
+                        "info",
+                        "openai.chat trace",
+                        {
+                            "request": kwargs,
+                            "response_payload": payload,
+                            "usage": _extract_usage(response) or {},
+                        },
+                    )
                 telemetry.event(
                     op_id,
                     "info",
@@ -110,7 +127,7 @@ class OpenAIClient:
                     {"elapsed_s": round(time.monotonic() - start, 3), "payload_preview": _preview_text(payload)},
                 )
                 result = json.loads(payload)
-                normalized = _normalize_json_text(result)
+                normalized = normalize_json_text(result)
                 if normalized != result:
                     telemetry.event(op_id, "warn", "normalized malformed unicode escapes in JSON response")
                 return normalized
@@ -118,6 +135,12 @@ class OpenAIClient:
                 telemetry.event(op_id, "error", "invalid JSON response", {"payload": payload})
                 raise ValueError("OpenAI returned non-JSON content") from exc
             except (RateLimitError, APIError) as exc:
+                if _is_missing_scope_error(exc):
+                    telemetry.event(op_id, "error", "openai missing scope", {"error": str(exc)})
+                    raise PermissionError(
+                        "OpenAI API key is missing required scope 'model.request'. "
+                        "Use a key with model request permissions (and appropriate project/org role)."
+                    ) from exc
                 if attempt >= self.config.max_retries:
                     telemetry.event(op_id, "error", "openai call failed", {"error": str(exc)})
                     raise
@@ -134,6 +157,12 @@ class OpenAIClient:
                 raise
             except Exception as exc:
                 if exc.__class__.__name__ in {"RateLimitError", "APIError"}:
+                    if _is_missing_scope_error(exc):
+                        telemetry.event(op_id, "error", "openai missing scope", {"error": str(exc)})
+                        raise PermissionError(
+                            "OpenAI API key is missing required scope 'model.request'. "
+                            "Use a key with model request permissions (and appropriate project/org role)."
+                        ) from exc
                     if attempt >= self.config.max_retries:
                         telemetry.event(op_id, "error", "openai call failed", {"error": str(exc)})
                         raise
@@ -187,7 +216,19 @@ class OpenAIClient:
                     },
                 )
                 response = await _run_with_heartbeat(self._client, kwargs, telemetry, op_id, start, heartbeat_s)
+                self._report_usage(response, model=model, operation="chat_text")
                 payload = _extract_payload(response).strip()
+                if self.config.detailed_telemetry:
+                    telemetry.event(
+                        op_id,
+                        "info",
+                        "openai.chat_text trace",
+                        {
+                            "request": kwargs,
+                            "response_payload": payload,
+                            "usage": _extract_usage(response) or {},
+                        },
+                    )
                 telemetry.event(
                     op_id,
                     "info",
@@ -196,6 +237,12 @@ class OpenAIClient:
                 )
                 return payload
             except (RateLimitError, APIError) as exc:
+                if _is_missing_scope_error(exc):
+                    telemetry.event(op_id, "error", "openai text missing scope", {"error": str(exc)})
+                    raise PermissionError(
+                        "OpenAI API key is missing required scope 'model.request'. "
+                        "Use a key with model request permissions (and appropriate project/org role)."
+                    ) from exc
                 if attempt >= self.config.max_retries:
                     telemetry.event(op_id, "error", "openai text call failed", {"error": str(exc)})
                     raise
@@ -204,6 +251,12 @@ class OpenAIClient:
                 backoff *= 2
             except Exception as exc:
                 if exc.__class__.__name__ in {"RateLimitError", "APIError"}:
+                    if _is_missing_scope_error(exc):
+                        telemetry.event(op_id, "error", "openai text missing scope", {"error": str(exc)})
+                        raise PermissionError(
+                            "OpenAI API key is missing required scope 'model.request'. "
+                            "Use a key with model request permissions (and appropriate project/org role)."
+                        ) from exc
                     if attempt >= self.config.max_retries:
                         telemetry.event(op_id, "error", "openai text call failed", {"error": str(exc)})
                         raise
@@ -237,6 +290,25 @@ class OpenAIClient:
             kwargs["temperature"] = temperature
 
         return kwargs
+
+    def _report_usage(self, response: Any, *, model: str, operation: str) -> None:
+        reporter = getattr(self.config, "usage_reporter", None)
+        if reporter is None:
+            return
+        usage = _extract_usage(response)
+        if usage is None:
+            return
+        reporter(
+            {
+                "provider": "openai",
+                "model": model,
+                "operation": operation,
+                "request_type": operation,
+                "prompt_tokens": usage["prompt_tokens"],
+                "completion_tokens": usage["completion_tokens"],
+                "total_tokens": usage["total_tokens"],
+            }
+        )
 
     async def aclose(self) -> None:
         """Close the underlying client if it exposes a close/aclose method."""
@@ -347,7 +419,36 @@ def _extract_payload(response: Any) -> str:
     return "{}"
 
 
-def _normalize_json_text(value: Any) -> Any:
+def _extract_usage(response: Any) -> dict[str, int] | None:
+    usage = None
+    if hasattr(response, "usage"):
+        usage = getattr(response, "usage")
+    elif isinstance(response, dict):
+        usage = response.get("usage")
+    if usage is None:
+        return None
+
+    if isinstance(usage, dict):
+        prompt_tokens = int(usage.get("prompt_tokens", 0) or 0)
+        completion_tokens = int(usage.get("completion_tokens", 0) or 0)
+        total_tokens = int(usage.get("total_tokens", prompt_tokens + completion_tokens) or 0)
+    else:
+        prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
+        completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
+        total_tokens = int(getattr(usage, "total_tokens", prompt_tokens + completion_tokens) or 0)
+    return {
+        "prompt_tokens": max(0, prompt_tokens),
+        "completion_tokens": max(0, completion_tokens),
+        "total_tokens": max(0, total_tokens),
+    }
+
+
+def _is_missing_scope_error(exc: Exception) -> bool:
+    text = str(exc or "").lower()
+    return "missing_scope" in text or "missing scopes" in text or "model.request" in text
+
+
+def normalize_json_text(value: Any) -> Any:
     """Recursively repair malformed escaped-Unicode sequences in JSON values.
 
     Some model responses contain strings such as ``"C\\u0000e9line"``. After
@@ -359,9 +460,9 @@ def _normalize_json_text(value: Any) -> Any:
     if isinstance(value, str):
         return _normalize_malformed_unicode_escapes(value)
     if isinstance(value, list):
-        return [_normalize_json_text(item) for item in value]
+        return [normalize_json_text(item) for item in value]
     if isinstance(value, dict):
-        return {key: _normalize_json_text(item) for key, item in value.items()}
+        return {key: normalize_json_text(item) for key, item in value.items()}
     return value
 
 
@@ -376,9 +477,14 @@ def _normalize_malformed_unicode_escapes(text: str) -> str:
             return match.group(0)
         return chr(codepoint)
 
-    normalized = _MALFORMED_UNICODE_ESCAPE_RE.sub(_replace, text)
+    normalized = _ESCAPED_MALFORMED_U2_RE.sub(lambda m: _replace(m), text)
+    normalized = _ESCAPED_U4_RE.sub(_replace, normalized)
+    normalized = _ESCAPED_U8_RE.sub(_replace, normalized)
+    normalized = _ESCAPED_X2_RE.sub(_replace, normalized)
+    normalized = _MALFORMED_UNICODE_ESCAPE_RE.sub(_replace, normalized)
     if "\x00" in normalized:
         normalized = normalized.replace("\x00", "")
+    normalized = _CONTROL_CHAR_RE.sub("", normalized)
     return normalized
 
 
