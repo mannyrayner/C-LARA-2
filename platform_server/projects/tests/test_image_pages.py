@@ -140,10 +140,10 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertNotIn("selected_image_generation_pivot_language", view_source)
         self.assertNotIn("project.image_generation_pivot_language", view_source)
 
-    def test_images_home_derives_pivot_language_from_target_language_for_translation_source(self):
+    def test_images_home_view_source_has_no_pivot_language_validation(self):
         view_source = inspect.getsource(views.project_images_home)
-        self.assertIn("pivot_language =", view_source)
-        self.assertIn("project.target_language", view_source)
+        self.assertNotIn("valid_pivot_languages", view_source)
+        self.assertNotIn("Unknown pivot language for image generation.", view_source)
 
     @patch("projects.views._build_ai_client")
     def test_generate_page_images_persists_output(self, mock_build_ai_client):
