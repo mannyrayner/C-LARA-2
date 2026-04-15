@@ -113,19 +113,19 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertEqual(page1.page_text, "Bonjour le monde")
         self.assertEqual(page2.page_text, "Deuxieme page")
 
-    def test_images_home_can_save_image_generation_pivot_language(self):
+    def test_images_home_defaults_page_text_source_to_segmentation(self):
+        self.project.page_image_text_source = "translation"
+        self.project.save(update_fields=["page_image_text_source", "updated_at"])
+
         resp = self.client.post(
             reverse("project-images-home", args=[self.project.pk]),
-            {
-                "page_image_text_source": "segmentation",
-                "image_generation_pivot_language": "fr",
-            },
+            {},
             follow=True,
         )
         self.assertEqual(resp.status_code, 200)
         self.project.refresh_from_db()
-        self.assertEqual(self.project.image_generation_pivot_language, "fr")
-        self.assertContains(resp, "pivot language")
+        self.assertEqual(self.project.page_image_text_source, "segmentation")
+        self.assertContains(resp, "Saved image settings")
 
     @patch("projects.views._build_ai_client")
     def test_generate_page_images_persists_output(self, mock_build_ai_client):
