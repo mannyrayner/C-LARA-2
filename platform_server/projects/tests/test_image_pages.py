@@ -7,6 +7,7 @@ from django.contrib.messages import get_messages
 from django.test import Client, TestCase
 from django.urls import reverse
 
+from projects import views
 from projects.models import Project, ProjectImageElement, ProjectImagePage, ProjectImageStyle
 
 
@@ -23,6 +24,11 @@ class FakeImageClient:
             "revised_prompt": "Page revised prompt",
             "model": kwargs.get("model", "gpt-image-1"),
         }
+
+
+class TimeoutImageClient:
+    def generate_image(self, prompt, **kwargs):
+        raise TimeoutError("simulated timeout")
 
 
 class ProjectImagePagesViewTests(TestCase):
@@ -94,17 +100,31 @@ class ProjectImagePagesViewTests(TestCase):
 
         resp = self.client.post(
             reverse("project-images-home", args=[self.project.pk]),
-            {"page_image_text_source": "translation"},
+            {"generate_page_images_from_translations": "1"},
             follow=True,
         )
         self.assertEqual(resp.status_code, 200)
         self.project.refresh_from_db()
         self.assertEqual(self.project.page_image_text_source, "translation")
-        self.assertContains(resp, "Saved page-image text source")
+        self.assertContains(resp, "Saved image settings")
         page1 = ProjectImagePage.objects.get(project=self.project, page_number=1)
         page2 = ProjectImagePage.objects.get(project=self.project, page_number=2)
         self.assertEqual(page1.page_text, "Bonjour le monde")
         self.assertEqual(page2.page_text, "Deuxieme page")
+
+    def test_images_home_defaults_page_text_source_to_segmentation(self):
+        self.project.page_image_text_source = "translation"
+        self.project.save(update_fields=["page_image_text_source", "updated_at"])
+
+        resp = self.client.post(
+            reverse("project-images-home", args=[self.project.pk]),
+            {},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.page_image_text_source, "segmentation")
+        self.assertContains(resp, "Saved image settings")
 
     @patch("projects.views._build_ai_client")
     def test_generate_page_images_persists_output(self, mock_build_ai_client):
@@ -130,3 +150,149 @@ class ProjectImagePagesViewTests(TestCase):
         msgs = [m.message for m in get_messages(resp.wsgi_request)]
         self.assertTrue(any("Generated 2 page images with gpt-image-1." in msg for msg in msgs))
         self.assertFalse(any("Generating page images" in msg for msg in msgs))
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_page_images_trims_long_prompts_and_writes_telemetry(self, mock_build_ai_client):
+        fake_client = FakeImageClient()
+        mock_build_ai_client.return_value = fake_client
+        self.project.source_text = "A" * 90000
+        self.project.save(update_fields=["source_text", "updated_at"])
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        resp = self.client.post(
+            reverse("project-image-pages", args=[self.project.pk]),
+            payload,
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        page = ProjectImagePage.objects.get(project=self.project, page_number=1)
+        self.assertLessEqual(len(page.generation_prompt), 32000)
+
+        telemetry_path = self.project.artifact_dir() / "images" / "pages" / "telemetry.jsonl"
+        self.assertTrue(telemetry_path.exists())
+        lines = [json.loads(line) for line in telemetry_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        request_events = [line for line in lines if line.get("event") == "page_image_request"]
+        self.assertTrue(request_events)
+        self.assertIn("prompt", request_events[0])
+        self.assertIn("prompt_length", request_events[0])
+        self.assertIn("prompt_meta", request_events[0])
+        self.assertIn("reference_images_sent_in_request", request_events[0])
+        response_events = [line for line in lines if line.get("event") == "page_image_response"]
+        self.assertTrue(response_events)
+        self.assertIn("elapsed_s", response_events[0])
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_page_images_can_discourage_text_in_image(self, mock_build_ai_client):
+        fake_client = FakeImageClient()
+        mock_build_ai_client.return_value = fake_client
+        style = ProjectImageStyle.objects.get(project=self.project)
+        style.discourage_text_in_images = True
+        style.save(update_fields=["discourage_text_in_images", "updated_at"])
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        resp = self.client.post(
+            reverse("project-image-pages", args=[self.project.pk]),
+            payload,
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        page = ProjectImagePage.objects.get(project=self.project, page_number=1)
+        self.assertIn("comic-style sound effects", page.generation_prompt)
+
+        telemetry_path = self.project.artifact_dir() / "images" / "pages" / "telemetry.jsonl"
+        lines = [json.loads(line) for line in telemetry_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        request_events = [line for line in lines if line.get("event") == "page_image_request"]
+        self.assertTrue(any(event.get("discourage_text_in_image") is True for event in request_events))
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_page_images_uses_localized_prompt_language(self, mock_build_ai_client):
+        fake_client = FakeImageClient()
+        mock_build_ai_client.return_value = fake_client
+        self.project.language = "fr"
+        self.project.save(update_fields=["language", "updated_at"])
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        self.client.post(
+            reverse("project-image-pages", args=[self.project.pk]),
+            payload,
+            follow=True,
+        )
+        page = ProjectImagePage.objects.get(project=self.project, page_number=1)
+        self.assertIn("Crée une illustration", page.generation_prompt)
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_page_images_uses_translation_language_when_translation_source_selected(self, mock_build_ai_client):
+        fake_client = FakeImageClient()
+        mock_build_ai_client.return_value = fake_client
+        self.project.language = "am"
+        self.project.target_language = "fr"
+        self.project.page_image_text_source = "translation"
+        self.project.save(update_fields=["language", "target_language", "page_image_text_source", "updated_at"])
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        self.client.post(
+            reverse("project-image-pages", args=[self.project.pk]),
+            payload,
+            follow=True,
+        )
+        page = ProjectImagePage.objects.get(project=self.project, page_number=1)
+        self.assertIn("Crée une illustration", page.generation_prompt)
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_page_images_logs_timeout_telemetry(self, mock_build_ai_client):
+        mock_build_ai_client.return_value = TimeoutImageClient()
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        resp = self.client.post(
+            reverse("project-image-pages", args=[self.project.pk]),
+            payload,
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        msgs = [m.message for m in get_messages(resp.wsgi_request)]
+        self.assertTrue(any("Page image generation failed" in msg for msg in msgs))
+
+        telemetry_path = self.project.artifact_dir() / "images" / "pages" / "telemetry.jsonl"
+        lines = [json.loads(line) for line in telemetry_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        timeout_events = [line for line in lines if line.get("event") == "page_image_timeout"]
+        self.assertTrue(timeout_events)
+        self.assertTrue(all(event.get("is_timeout") is True for event in timeout_events))
+
+    def test_discourage_text_guideline_known_language_mentions_signs_and_sfx(self):
+        guideline = views._discourage_text_guideline_for_language("en")
+        self.assertIn("meaningful sign", guideline)
+        self.assertIn("comic-style sound effects", guideline)
+
+    @patch("projects.views._build_ai_client")
+    def test_discourage_text_guideline_unknown_language_uses_cached_ai_translation(self, mock_build_ai_client):
+        class FakeTranslator:
+            def __init__(self):
+                self.calls = 0
+
+            async def chat_text(self, prompt, **kwargs):  # noqa: ARG002
+                self.calls += 1
+                return "Texte minimal; autoriser seulement les panneaux importants."
+
+        fake_translator = FakeTranslator()
+        mock_build_ai_client.return_value = fake_translator
+        views._translate_discourage_text_guideline.cache_clear()
+
+        first = views._discourage_text_guideline_for_language("eo")
+        second = views._discourage_text_guideline_for_language("eo")
+        self.assertEqual(first, second)
+        self.assertIn("panneaux importants", first)
+        self.assertEqual(fake_translator.calls, 1)
