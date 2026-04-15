@@ -54,8 +54,10 @@ class ProjectImageElementsViewTests(TestCase):
         resp = self.client.get(reverse("project-image-elements", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Discover elements")
+        self.assertContains(resp, "Text model:")
         self.assertContains(resp, "Generate element images")
         self.assertContains(resp, "fan-out/fan-in")
+        self.assertContains(resp, "Elements telemetry")
 
     def test_get_elements_page_shows_generated_image(self):
         ProjectImageElement.objects.create(
@@ -71,26 +73,38 @@ class ProjectImageElementsViewTests(TestCase):
 
     @patch("projects.views._build_ai_client")
     def test_discover_elements_creates_rows(self, mock_build_ai_client):
-        mock_build_ai_client.return_value = FakeAIClient(
-            [
-                {
-                    "elements": [
-                        {
-                            "name": "Celine",
-                            "type": "character",
-                            "page_refs": [1, 2],
-                            "why_consistency_matters": "Main character",
-                        },
-                        {
-                            "name": "host mother",
-                            "type": "character",
-                            "page_refs": [2, 3],
-                            "why_consistency_matters": "Recurring supporting role",
-                        },
-                    ]
-                }
-            ]
-        )
+        self.project.source_text = "Page one with Celine.\n\nPage two with host mother."
+        self.project.save(update_fields=["source_text"])
+        mock_build_ai_client.side_effect = [
+            FakeAIClient(
+                [
+                    {
+                        "elements": [
+                            {"name": "Celine", "type": "character"},
+                            {"name": "host mother", "type": "character"},
+                        ]
+                    }
+                ]
+            ),
+            FakeAIClient(
+                [
+                    {
+                        "page_refs": [1, 2],
+                        "why_consistency_matters": "Main character",
+                        "type": "character",
+                    }
+                ]
+            ),
+            FakeAIClient(
+                [
+                    {
+                        "page_refs": [1, 2],
+                        "why_consistency_matters": "Recurring supporting role",
+                        "type": "character",
+                    }
+                ]
+            ),
+        ]
 
         resp = self.client.post(
             reverse("project-image-elements", args=[self.project.pk]),
@@ -104,6 +118,11 @@ class ProjectImageElementsViewTests(TestCase):
         )
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(ProjectImageElement.objects.filter(project=self.project).count(), 2)
+        prompt_payload = (self.project.artifact_dir() / "images" / "elements" / "elements_discovery_prompt.json").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("phase_1_prompt", prompt_payload)
+        self.assertNotIn("Approved style description", prompt_payload)
 
     @patch("projects.views._build_ai_client")
     def test_expand_elements_sets_expanded_fields(self, mock_build_ai_client):
@@ -148,10 +167,50 @@ class ProjectImageElementsViewTests(TestCase):
         element.refresh_from_db()
         self.assertIn("curly hair", element.expanded_description)
         self.assertEqual(element.status, ProjectImageElement.STATUS_EXPANDED)
+        telemetry_path = self.project.artifact_dir() / "images" / "elements" / "telemetry.jsonl"
+        self.assertTrue(telemetry_path.exists())
+        telemetry_lines = telemetry_path.read_text(encoding="utf-8").splitlines()
+        self.assertTrue(any("element expansion request start" in line for line in telemetry_lines))
+
+    @patch("projects.views._build_ai_client")
+    def test_expand_elements_uses_selected_ai_model(self, mock_build_ai_client):
+        element = ProjectImageElement.objects.create(
+            project=self.project,
+            name="Host mother",
+            element_type="character",
+            page_refs="2,3",
+            why_consistency_matters="Recurring supporting role",
+            ai_model="gpt-4o",
+        )
+        mock_build_ai_client.return_value = FakeAIClient(
+            [{"expanded_description": "Expanded", "expanded_prompt": "Prompt"}]
+        )
+        self.client.post(
+            reverse("project-image-elements", args=[self.project.pk]),
+            {
+                "form-TOTAL_FORMS": "1",
+                "form-INITIAL_FORMS": "1",
+                "form-MIN_NUM_FORMS": "0",
+                "form-MAX_NUM_FORMS": "1000",
+                "form-0-id": str(element.id),
+                "form-0-name": element.name,
+                "form-0-element_type": element.element_type,
+                "form-0-page_refs": element.page_refs,
+                "form-0-why_consistency_matters": element.why_consistency_matters,
+                "form-0-expanded_description": "",
+                "form-0-expanded_prompt": "",
+                "form-0-image_model": "gpt-image-1",
+                "form-0-image_revised_prompt": "",
+                "action": "expand",
+                "ai_model": "gpt-4o-mini",
+            },
+        )
+        self.style.refresh_from_db()
+        self.assertEqual(self.style.ai_model, "gpt-4o-mini")
 
     @patch("projects.views._build_ai_client")
     def test_discover_elements_adds_processing_message(self, mock_build_ai_client):
-        mock_build_ai_client.return_value = FakeAIClient([{"elements": []}])
+        mock_build_ai_client.side_effect = [FakeAIClient([{"elements": []}])]
         resp = self.client.post(
             reverse("project-image-elements", args=[self.project.pk]),
             {
