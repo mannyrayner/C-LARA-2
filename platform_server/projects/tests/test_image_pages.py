@@ -101,7 +101,7 @@ class ProjectImagePagesViewTests(TestCase):
 
         resp = self.client.post(
             reverse("project-images-home", args=[self.project.pk]),
-            {"page_image_text_source": "translation"},
+            {"generate_page_images_from_translations": "1"},
             follow=True,
         )
         self.assertEqual(resp.status_code, 200)
@@ -231,12 +231,13 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertIn("Crée une illustration", page.generation_prompt)
 
     @patch("projects.views._build_ai_client")
-    def test_generate_page_images_uses_pivot_language_when_set(self, mock_build_ai_client):
+    def test_generate_page_images_uses_translation_language_when_translation_source_selected(self, mock_build_ai_client):
         fake_client = FakeImageClient()
         mock_build_ai_client.return_value = fake_client
         self.project.language = "am"
-        self.project.image_generation_pivot_language = "fr"
-        self.project.save(update_fields=["language", "image_generation_pivot_language", "updated_at"])
+        self.project.target_language = "fr"
+        self.project.page_image_text_source = "translation"
+        self.project.save(update_fields=["language", "target_language", "page_image_text_source", "updated_at"])
         self.client.get(reverse("project-image-pages", args=[self.project.pk]))
 
         payload = self._page_form_payload()

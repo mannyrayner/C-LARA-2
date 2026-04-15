@@ -494,7 +494,7 @@ def _build_style_generation_request(project: Project, style_brief: str) -> dict[
             "",
             f"Project title: {project.title}",
             f"Project language (source): {project.language}",
-            f"Image prompt language (pivot if set): {prompt_language}",
+            f"Image prompt language (derived from image text-source setting): {prompt_language}",
             f"Target language: {project.target_language}",
             f"User style brief: {style_brief}",
             (
@@ -1376,9 +1376,8 @@ def _discourage_text_guideline_for_language(language_code: str) -> str:
 
 
 def _image_prompt_language(project: Project) -> str:
-    pivot = (project.image_generation_pivot_language or "").strip().lower()
-    if pivot:
-        return pivot
+    if project.page_image_text_source == Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION:
+        return (project.target_language or "en").strip().lower() or "en"
     return (project.language or "en").strip().lower() or "en"
 
 
@@ -3937,8 +3936,17 @@ def manual_translation(request: HttpRequest, pk: int) -> HttpResponse:
 def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
     if request.method == "POST":
-        text_source = (request.POST.get("page_image_text_source") or "").strip()
-        pivot_language = (request.POST.get("image_generation_pivot_language") or "").strip().lower()
+        from_translations = (request.POST.get("generate_page_images_from_translations") or "").strip().lower() in {
+            "1",
+            "true",
+            "on",
+            "yes",
+        }
+        text_source = (
+            Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION
+            if from_translations
+            else Project.PAGE_IMAGE_TEXT_SOURCE_SEGMENTATION
+        )
         valid_sources = {choice[0] for choice in Project.PAGE_IMAGE_TEXT_SOURCE_CHOICES}
         valid_pivot_languages = {code for code, _label in ProjectForm.LANGUAGE_CHOICES}
         if text_source not in valid_sources:
@@ -3950,13 +3958,7 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
             project.image_generation_pivot_language = pivot_language
             project.save(update_fields=["page_image_text_source", "image_generation_pivot_language", "updated_at"])
             synced = _ensure_project_page_rows(project)
-            if pivot_language:
-                messages.success(
-                    request,
-                    f"Saved image settings (text source + pivot language '{pivot_language}') and synced {synced} page rows.",
-                )
-            else:
-                messages.success(request, f"Saved image settings and synced {synced} page rows.")
+            messages.success(request, f"Saved image settings and synced {synced} page rows.")
         return redirect("project-images-home", pk=project.pk)
 
     style = getattr(project, "image_style", None)
@@ -6261,7 +6263,6 @@ def clone_project(request: HttpRequest, pk: int) -> HttpResponse:
         target_language=clone_target_language,
         ai_model=source_project.ai_model,
         page_image_placement=source_project.page_image_placement,
-        image_generation_pivot_language=source_project.image_generation_pivot_language,
         page_image_text_source=source_project.page_image_text_source,
         segmentation_method=source_project.segmentation_method,
         romanization_method=source_project.romanization_method,

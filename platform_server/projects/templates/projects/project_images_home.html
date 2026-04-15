@@ -41,21 +41,20 @@
 <form method="post">
   {% csrf_token %}
   <p>
-    <label for="page_image_text_source">Text source for page-image generation:</label>
-    <select name="page_image_text_source" id="page_image_text_source">
-      {% for value, label in page_image_text_source_choices %}
-        <option value="{{ value }}" {% if value == selected_page_image_text_source %}selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
+    <label for="generate_page_images_from_translations">
+      <input
+        type="checkbox"
+        id="generate_page_images_from_translations"
+        name="generate_page_images_from_translations"
+        value="1"
+        {% if selected_page_image_text_source == "translation" %}checked{% endif %}
+      />
+      Generate page images from translations
+    </label>
+    <br />
+    <small>If checked, page text is taken from concatenated segment translations (pivot language = project translation language).</small>
   </p>
   <p>
-    <label for="image_generation_pivot_language">Pivot language for image prompts (optional):</label>
-    <select name="image_generation_pivot_language" id="image_generation_pivot_language">
-      <option value="">Use project language (default)</option>
-      {% for value, label in pivot_language_choices %}
-        <option value="{{ value }}" {% if value == selected_image_generation_pivot_language %}selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
     <button class="btn secondary" type="submit">Save image settings</button>
   </p>
 </form>
