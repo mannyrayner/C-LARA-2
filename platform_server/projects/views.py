@@ -2314,6 +2314,12 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
 
     if request.method == "POST":
         action = request.POST.get("action") or "save"
+        discourage_text_in_image = (request.POST.get("discourage_text_in_image") or "").strip().lower() in {
+            "1",
+            "true",
+            "on",
+            "yes",
+        }
         requested_image_model = (request.POST.get("image_model") or "").strip()
         image_model = requested_image_model or "gpt-image-1"
         if image_model not in IMAGE_MODEL_CHOICES:
@@ -2372,6 +2378,7 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
             "pages_artifact_dir": _image_pages_dir(project),
             "image_models": IMAGE_MODEL_CHOICES,
             "selected_image_model": request.GET.get("image_model") or "gpt-image-1",
+            "discourage_text_in_image_default": True,
             "element_count": project.image_elements.count(),
             "confirmed_element_count": project.image_elements.filter(is_confirmed=True).count(),
             "elements_with_images_count": project.image_elements.exclude(image_path="").count(),
@@ -3943,11 +3950,15 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
         # Note: image_generation_pivot_language was removed in migration 0022.
         # Keep this handler focused on page_image_text_source only.
         valid_sources = {choice[0] for choice in Project.PAGE_IMAGE_TEXT_SOURCE_CHOICES}
+        valid_pivot_languages = {code for code, _label in ProjectForm.LANGUAGE_CHOICES}
         if text_source not in valid_sources:
             messages.error(request, "Unknown page-image text source option.")
+        elif pivot_language and pivot_language not in valid_pivot_languages:
+            messages.error(request, "Unknown pivot language for image generation.")
         else:
             project.page_image_text_source = text_source
-            project.save(update_fields=["page_image_text_source", "updated_at"])
+            project.image_generation_pivot_language = pivot_language
+            project.save(update_fields=["page_image_text_source", "image_generation_pivot_language", "updated_at"])
             synced = _ensure_project_page_rows(project)
             messages.success(request, f"Saved image settings and synced {synced} page rows.")
         return redirect("project-images-home", pk=project.pk)
@@ -3974,6 +3985,8 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
             ),
             "page_image_text_source_choices": Project.PAGE_IMAGE_TEXT_SOURCE_CHOICES,
             "selected_page_image_text_source": project.page_image_text_source,
+            "pivot_language_choices": ProjectForm.LANGUAGE_CHOICES,
+            "selected_image_generation_pivot_language": project.image_generation_pivot_language,
         },
     )
 
@@ -5890,6 +5903,7 @@ def download_project_source_bundle(request: HttpRequest, pk: int) -> HttpRespons
             "target_language": project.target_language,
             "ai_model": project.ai_model,
             "page_image_placement": project.page_image_placement,
+            "image_generation_pivot_language": project.image_generation_pivot_language,
             "page_image_text_source": project.page_image_text_source,
             "segmentation_method": project.segmentation_method,
             "romanization_method": project.romanization_method,
@@ -5901,6 +5915,7 @@ def download_project_source_bundle(request: HttpRequest, pk: int) -> HttpRespons
             "segmentation_method": project.segmentation_method,
             "romanization_method": project.romanization_method,
             "page_image_placement": project.page_image_placement,
+            "image_generation_pivot_language": project.image_generation_pivot_language,
             "page_image_text_source": project.page_image_text_source,
         }
         zf.writestr((bundle_root / "project" / "pipeline_config.json").as_posix(), json.dumps(pipeline_config, ensure_ascii=False, indent=2))
@@ -5970,6 +5985,7 @@ def import_project_source_bundle(request: HttpRequest) -> HttpResponse:
             return redirect("project-list")
 
         title = _build_unique_import_title(request.user, metadata.get("title", "Imported project"))
+        valid_pivot_languages = {code for code, _label in ProjectForm.LANGUAGE_CHOICES}
         project = Project.objects.create(
             owner=request.user,
             title=title,
@@ -5980,6 +5996,11 @@ def import_project_source_bundle(request: HttpRequest) -> HttpResponse:
             target_language=(metadata.get("target_language") or "fr")[:16],
             ai_model=(metadata.get("ai_model") or DEFAULT_MODEL)[:64],
             page_image_placement=(metadata.get("page_image_placement") or "none")[:16],
+            image_generation_pivot_language=(
+                (metadata.get("image_generation_pivot_language") or "")
+                if (metadata.get("image_generation_pivot_language") or "") in valid_pivot_languages
+                else ""
+            )[:16],
             page_image_text_source=(
                 metadata.get("page_image_text_source")
                 if metadata.get("page_image_text_source") in {c[0] for c in Project.PAGE_IMAGE_TEXT_SOURCE_CHOICES}
