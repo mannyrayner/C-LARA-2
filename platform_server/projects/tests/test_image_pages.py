@@ -107,11 +107,25 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.project.refresh_from_db()
         self.assertEqual(self.project.page_image_text_source, "translation")
-        self.assertContains(resp, "Saved page-image text source")
+        self.assertContains(resp, "Saved image settings")
         page1 = ProjectImagePage.objects.get(project=self.project, page_number=1)
         page2 = ProjectImagePage.objects.get(project=self.project, page_number=2)
         self.assertEqual(page1.page_text, "Bonjour le monde")
         self.assertEqual(page2.page_text, "Deuxieme page")
+
+    def test_images_home_can_save_image_generation_pivot_language(self):
+        resp = self.client.post(
+            reverse("project-images-home", args=[self.project.pk]),
+            {
+                "page_image_text_source": "segmentation",
+                "image_generation_pivot_language": "fr",
+            },
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.image_generation_pivot_language, "fr")
+        self.assertContains(resp, "pivot language")
 
     @patch("projects.views._build_ai_client")
     def test_generate_page_images_persists_output(self, mock_build_ai_client):
@@ -203,6 +217,26 @@ class ProjectImagePagesViewTests(TestCase):
         mock_build_ai_client.return_value = fake_client
         self.project.language = "fr"
         self.project.save(update_fields=["language", "updated_at"])
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        self.client.post(
+            reverse("project-image-pages", args=[self.project.pk]),
+            payload,
+            follow=True,
+        )
+        page = ProjectImagePage.objects.get(project=self.project, page_number=1)
+        self.assertIn("Crée une illustration", page.generation_prompt)
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_page_images_uses_pivot_language_when_set(self, mock_build_ai_client):
+        fake_client = FakeImageClient()
+        mock_build_ai_client.return_value = fake_client
+        self.project.language = "am"
+        self.project.image_generation_pivot_language = "fr"
+        self.project.save(update_fields=["language", "image_generation_pivot_language", "updated_at"])
         self.client.get(reverse("project-image-pages", args=[self.project.pk]))
 
         payload = self._page_form_payload()

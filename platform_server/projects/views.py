@@ -478,6 +478,7 @@ def _extract_project_plain_text(project: Project) -> str:
 def _build_style_generation_request(project: Project, style_brief: str) -> dict[str, Any]:
     plain_text = _extract_project_plain_text(project)
     representative_excerpt = plain_text[:1500].strip()
+    prompt_language = _image_prompt_language(project)
     prompt = "\n".join(
         [
             "You are helping define a consistent illustration style for a language-learning story.",
@@ -489,10 +490,11 @@ def _build_style_generation_request(project: Project, style_brief: str) -> dict[
             "Keep expanded_style_description concise (target 600-1000 characters, hard max 1400 characters).",
             "representative_excerpt should be a short excerpt or summary snippet from the story most useful for a sample image.",
             "sample_image_prompt should be a detailed prompt for a single sample image that demonstrates the style for this story.",
-            f"Write expanded_style_description, representative_excerpt, and sample_image_prompt in the project language ({project.language}).",
+            f"Write expanded_style_description, representative_excerpt, and sample_image_prompt in the image prompt language ({prompt_language}).",
             "",
             f"Project title: {project.title}",
-            f"Project language: {project.language}",
+            f"Project language (source): {project.language}",
+            f"Image prompt language (pivot if set): {prompt_language}",
             f"Target language: {project.target_language}",
             f"User style brief: {style_brief}",
             (
@@ -785,6 +787,7 @@ def _discover_project_image_elements(
     ai_model: str,
 ) -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
     pages = _extract_project_pages(project)
+    prompt_language = _image_prompt_language(project)
     pages_block = "\n".join(f"Page {idx}: {surface}" for idx, surface in enumerate(pages, start=1))
     phase1_prompt = "\n".join(
         [
@@ -793,10 +796,11 @@ def _discover_project_image_elements(
             "Do not include style/aesthetic directions.",
             "Return JSON with key 'elements'. Each item should have: name, type.",
             "Keep names concise and concrete.",
-            f"Write names and types in the story language ({project.language}).",
+            f"Write names and types in the image prompt language ({prompt_language}).",
             "",
             f"Project title: {project.title}",
             f"Language: {project.language}",
+            f"Image prompt language: {prompt_language}",
             "Pages:",
             pages_block or "[none]",
         ]
@@ -875,7 +879,7 @@ def _discover_project_image_elements(
                 "Return JSON with keys: page_refs, why_consistency_matters, type.",
                 "page_refs must be a list of 1-indexed page numbers where the element appears.",
                 "why_consistency_matters should be one concise sentence.",
-                f"Write why_consistency_matters and type in the story language ({project.language}).",
+                f"Write why_consistency_matters and type in the image prompt language ({prompt_language}).",
                 "",
                 f"Element name: {candidate['name']}",
                 f"Proposed type: {candidate['element_type']}",
@@ -1014,6 +1018,7 @@ def _expand_project_image_elements(
     *,
     ai_model: str,
 ) -> int:
+    prompt_language = _image_prompt_language(project)
     style_description = ""
     try:
         style_description = project.image_style.expanded_style_description
@@ -1028,7 +1033,7 @@ def _expand_project_image_elements(
             [
                 "Create an expanded visual element description for consistent illustration.",
                 "Return JSON with keys: expanded_description, expanded_prompt.",
-                f"Write expanded_description and expanded_prompt in the project language ({project.language}).",
+                f"Write expanded_description and expanded_prompt in the image prompt language ({prompt_language}).",
                 "",
                 f"Element name: {element.name}",
                 f"Element type: {element.element_type}",
@@ -1279,7 +1284,9 @@ def _build_page_image_prompt(
         "ru": "Russian",
         "hi": "Hindi",
     }
-    prompt_language = project.language if project.language in language_instructions else "en"
+    prompt_language = _image_prompt_language(project)
+    if prompt_language not in language_instructions:
+        prompt_language = "en"
     line1, line2 = language_instructions.get(prompt_language, language_instructions["en"])
     no_text_line = _discourage_text_guideline_for_language(prompt_language)
     lines = [
@@ -1288,7 +1295,8 @@ def _build_page_image_prompt(
         "",
         f"Prompt language: {language_labels.get(prompt_language, 'English')}",
         f"Project title: {project.title}",
-        f"Language: {project.language}",
+        f"Language (source): {project.language}",
+        f"Language for image prompt text: {prompt_language}",
         f"Page number: {page_number}",
         f"Style description: {_compact_style_description_for_prompt(style.expanded_style_description or style.style_brief or '[none]', max_chars=1200)}",
         "Page text:",
@@ -1365,6 +1373,13 @@ def _discourage_text_guideline_for_language(language_code: str) -> str:
     if code in _DISCOURAGE_TEXT_GUIDELINES:
         return _DISCOURAGE_TEXT_GUIDELINES[code]
     return _translate_discourage_text_guideline(code)
+
+
+def _image_prompt_language(project: Project) -> str:
+    pivot = (project.image_generation_pivot_language or "").strip().lower()
+    if pivot:
+        return pivot
+    return (project.language or "en").strip().lower() or "en"
 
 
 def _truncate_for_prompt(text: str, *, max_chars: int) -> str:
@@ -3923,14 +3938,25 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
     if request.method == "POST":
         text_source = (request.POST.get("page_image_text_source") or "").strip()
+        pivot_language = (request.POST.get("image_generation_pivot_language") or "").strip().lower()
         valid_sources = {choice[0] for choice in Project.PAGE_IMAGE_TEXT_SOURCE_CHOICES}
+        valid_pivot_languages = {code for code, _label in ProjectForm.LANGUAGE_CHOICES}
         if text_source not in valid_sources:
             messages.error(request, "Unknown page-image text source option.")
+        elif pivot_language and pivot_language not in valid_pivot_languages:
+            messages.error(request, "Unknown pivot language for image generation.")
         else:
             project.page_image_text_source = text_source
-            project.save(update_fields=["page_image_text_source", "updated_at"])
+            project.image_generation_pivot_language = pivot_language
+            project.save(update_fields=["page_image_text_source", "image_generation_pivot_language", "updated_at"])
             synced = _ensure_project_page_rows(project)
-            messages.success(request, f"Saved page-image text source and synced {synced} page rows.")
+            if pivot_language:
+                messages.success(
+                    request,
+                    f"Saved image settings (text source + pivot language '{pivot_language}') and synced {synced} page rows.",
+                )
+            else:
+                messages.success(request, f"Saved image settings and synced {synced} page rows.")
         return redirect("project-images-home", pk=project.pk)
 
     style = getattr(project, "image_style", None)
@@ -3955,6 +3981,8 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
             ),
             "page_image_text_source_choices": Project.PAGE_IMAGE_TEXT_SOURCE_CHOICES,
             "selected_page_image_text_source": project.page_image_text_source,
+            "pivot_language_choices": ProjectForm.LANGUAGE_CHOICES,
+            "selected_image_generation_pivot_language": project.image_generation_pivot_language,
         },
     )
 
@@ -5871,6 +5899,7 @@ def download_project_source_bundle(request: HttpRequest, pk: int) -> HttpRespons
             "target_language": project.target_language,
             "ai_model": project.ai_model,
             "page_image_placement": project.page_image_placement,
+            "image_generation_pivot_language": project.image_generation_pivot_language,
             "page_image_text_source": project.page_image_text_source,
             "segmentation_method": project.segmentation_method,
             "romanization_method": project.romanization_method,
@@ -5882,6 +5911,7 @@ def download_project_source_bundle(request: HttpRequest, pk: int) -> HttpRespons
             "segmentation_method": project.segmentation_method,
             "romanization_method": project.romanization_method,
             "page_image_placement": project.page_image_placement,
+            "image_generation_pivot_language": project.image_generation_pivot_language,
             "page_image_text_source": project.page_image_text_source,
         }
         zf.writestr((bundle_root / "project" / "pipeline_config.json").as_posix(), json.dumps(pipeline_config, ensure_ascii=False, indent=2))
@@ -5951,6 +5981,7 @@ def import_project_source_bundle(request: HttpRequest) -> HttpResponse:
             return redirect("project-list")
 
         title = _build_unique_import_title(request.user, metadata.get("title", "Imported project"))
+        valid_pivot_languages = {code for code, _label in ProjectForm.LANGUAGE_CHOICES}
         project = Project.objects.create(
             owner=request.user,
             title=title,
@@ -5961,6 +5992,11 @@ def import_project_source_bundle(request: HttpRequest) -> HttpResponse:
             target_language=(metadata.get("target_language") or "fr")[:16],
             ai_model=(metadata.get("ai_model") or DEFAULT_MODEL)[:64],
             page_image_placement=(metadata.get("page_image_placement") or "none")[:16],
+            image_generation_pivot_language=(
+                (metadata.get("image_generation_pivot_language") or "")
+                if (metadata.get("image_generation_pivot_language") or "") in valid_pivot_languages
+                else ""
+            )[:16],
             page_image_text_source=(
                 metadata.get("page_image_text_source")
                 if metadata.get("page_image_text_source") in {c[0] for c in Project.PAGE_IMAGE_TEXT_SOURCE_CHOICES}
@@ -6225,6 +6261,7 @@ def clone_project(request: HttpRequest, pk: int) -> HttpResponse:
         target_language=clone_target_language,
         ai_model=source_project.ai_model,
         page_image_placement=source_project.page_image_placement,
+        image_generation_pivot_language=source_project.image_generation_pivot_language,
         page_image_text_source=source_project.page_image_text_source,
         segmentation_method=source_project.segmentation_method,
         romanization_method=source_project.romanization_method,

@@ -141,6 +141,33 @@ class ProjectImageStyleViewTests(TestCase):
         self.assertTrue(style.sample_image_prompt)
 
     @patch("projects.views._build_ai_client")
+    def test_generate_style_uses_image_generation_pivot_language_when_set(self, mock_build_ai_client):
+        fake_client = FakeAIClient(
+            {
+                "expanded_style_description": "Style en français.",
+                "representative_excerpt": "Extrait.",
+                "sample_image_prompt": "Prompt.",
+            }
+        )
+        mock_build_ai_client.return_value = fake_client
+        self.project.image_generation_pivot_language = "fr"
+        self.project.save(update_fields=["image_generation_pivot_language", "updated_at"])
+        self.client.post(
+            reverse("project-image-style", args=[self.project.pk]),
+            {
+                "style_brief": "line art",
+                "expanded_style_description": "",
+                "sample_image_prompt": "",
+                "ai_model": "gpt-4o",
+                "sample_image_model": "gpt-image-1",
+                "status": "draft",
+                "action": "generate",
+            },
+        )
+        self.assertTrue(fake_client.prompts)
+        self.assertIn("image prompt language (fr)", fake_client.prompts[0])
+
+    @patch("projects.views._build_ai_client")
     def test_generate_style_truncates_overlong_expanded_style_description(self, mock_build_ai_client):
         fake_client = FakeAIClient(
             {
