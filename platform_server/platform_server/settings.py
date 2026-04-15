@@ -58,6 +58,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "projects.context_processors.credit_balance",
             ],
         },
     },
@@ -119,3 +120,16 @@ BOOTSTRAP_ADMIN_USERNAMES = [
     for name in os.environ.get("C_LARA_BOOTSTRAP_ADMINS", "admin").split(",")
     if name.strip()
 ]
+
+CREDITS_ENABLED = os.environ.get("C_LARA_CREDITS_ENABLED", "1").lower() not in {"0", "false", "no"}
+CREDITS_MIN_BALANCE_USD = os.environ.get("C_LARA_CREDITS_MIN_BALANCE_USD", "0.0500")
+OPENAI_TOKEN_PRICING_USD_PER_1M = {
+    # Default fallback used when a model-specific entry is not configured.
+    "default": {"input": "5.00", "output": "15.00"},
+    # Override these via local settings/environment-specific patch as needed.
+    "gpt-4o": {"input": "5.00", "output": "15.00"},
+    "gpt-4o-mini": {"input": "0.15", "output": "0.60"},
+    "gpt-5": {"input": "1.25", "output": "10.00"},
+}
+OPENAI_PRICING_TRACKED_MODELS = ["gpt-4o", "gpt-4o-mini", "gpt-5", "gpt-image-1"]
+OPENAI_PRICING_AI_MODEL = os.environ.get("C_LARA_OPENAI_PRICING_AI_MODEL", "gpt-5")
