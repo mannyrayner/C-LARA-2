@@ -32,6 +32,7 @@ class Project(models.Model):
     target_language = models.CharField(max_length=16, default="fr")
     ai_model = models.CharField(max_length=64, default="gpt-4o")
     page_image_placement = models.CharField(max_length=16, default="none")
+    image_generation_pivot_language = models.CharField(max_length=16, blank=True, default="")
     page_image_text_source = models.CharField(
         max_length=32,
         choices=PAGE_IMAGE_TEXT_SOURCE_CHOICES,
