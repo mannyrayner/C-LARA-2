@@ -35,6 +35,16 @@
         <option value="{{ model }}" {% if model == selected_image_model %}selected{% endif %}>{{ model }}</option>
       {% endfor %}
     </select>
+    <label for="discourage_text_in_image" style="margin-left: 1rem;">
+      <input
+        type="checkbox"
+        id="discourage_text_in_image"
+        name="discourage_text_in_image"
+        value="1"
+        {% if discourage_text_in_image_default %}checked{% endif %}
+      />
+      Discourage visible text in images
+    </label>
     <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_images" data-long-action="true">Generate page images</button>
   </p>
 
