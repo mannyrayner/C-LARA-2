@@ -9,6 +9,7 @@ import hashlib
 import re
 import uuid
 import asyncio
+from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -23,7 +24,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.db.models import F, Q
+from django.db.models import F, Q, Sum
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import CreateView, DetailView, ListView
 from django_q.tasks import async_task
@@ -33,15 +34,18 @@ from django.utils import timezone as django_timezone
 import mimetypes
 import tempfile
 import zipfile
+import urllib.request
 from urllib.parse import unquote
 from urllib.parse import quote
 
 from core.config import DEFAULT_MODEL, OpenAIConfig
-from core.ai_api import OpenAIClient
+from core.ai_api import OpenAIClient, normalize_json_text
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 from pipeline.mwe import normalize_mwes
 
 from .forms import (
+    AdminAdjustCreditsForm,
+    AdminOpenAIPricingForm,
     ClozeExerciseSetForm,
     DeleteCachedWordAudioForm,
     FlashcardExerciseSetForm,
@@ -53,7 +57,18 @@ from .forms import (
     ProjectImageStyleForm,
     RegistrationForm,
 )
+from .billing import (
+    apply_credit_delta,
+    credits_enabled,
+    get_user_balance_usd,
+    has_minimum_balance_for_compile,
+    minimum_compile_balance_usd,
+    openai_price_for_model,
+    record_openai_usage_and_charge,
+)
 from .models import (
+    CreditLedgerEntry,
+    OpenAIModelPricing,
     Profile,
     Project,
     ProjectImageElement,
@@ -65,6 +80,7 @@ from .models import (
     ContentRating,
     ExerciseSet,
     ExerciseItem,
+    AIUsageCharge,
 )
 
 logger = logging.getLogger(__name__)
@@ -369,6 +385,81 @@ def _persist_image_style_artifacts(
         )
 
 
+def _append_style_telemetry(project: Project, record: dict[str, Any]) -> None:
+    telemetry_path = _image_style_dir(project) / "telemetry.jsonl"
+    telemetry_path.parent.mkdir(parents=True, exist_ok=True)
+    entry = dict(record)
+    entry["timestamp"] = datetime.now(timezone.utc).isoformat()
+    with telemetry_path.open("a", encoding="utf-8") as fp:
+        fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+def _iter_exception_chain(exc: BaseException) -> list[BaseException]:
+    chain: list[BaseException] = []
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        chain.append(current)
+        seen.add(id(current))
+        current = current.__cause__ or current.__context__
+    return chain
+
+
+def _is_timeout_exception(exc: BaseException) -> bool:
+    for current in _iter_exception_chain(exc):
+        if isinstance(current, (TimeoutError, asyncio.TimeoutError)):
+            return True
+        if "timeout" in current.__class__.__name__.lower():
+            return True
+    return False
+
+
+def _exception_telemetry_fields(exc: BaseException) -> dict[str, Any]:
+    return {
+        "error": str(exc),
+        "error_type": exc.__class__.__name__,
+        "is_timeout": _is_timeout_exception(exc),
+    }
+
+
+def _ensure_style_telemetry_file(project: Project) -> Path:
+    telemetry_path = _image_style_dir(project) / "telemetry.jsonl"
+    telemetry_path.parent.mkdir(parents=True, exist_ok=True)
+    if not telemetry_path.exists():
+        telemetry_path.write_text("", encoding="utf-8")
+    return telemetry_path
+
+
+def _style_artifact_links(project: Project) -> list[dict[str, str]]:
+    style_dir = _image_style_dir(project)
+    _ensure_style_telemetry_file(project)
+    files = [
+        ("style_brief.txt", "Style brief"),
+        ("style_expansion_prompt.json", "Style expansion prompt"),
+        ("style_expansion_response.json", "Style expansion response"),
+        ("style_description.txt", "Expanded style description"),
+        ("representative_excerpt.txt", "Representative excerpt"),
+        ("sample_image_prompt.txt", "Sample image prompt"),
+        ("sample_image_revised_prompt.txt", "Sample image revised prompt"),
+        ("style_status.json", "Style status"),
+        ("telemetry.jsonl", "Style telemetry"),
+    ]
+    links: list[dict[str, str]] = []
+    for rel_name, label in files:
+        path = style_dir / rel_name
+        if not path.exists():
+            continue
+        relpath = os.path.relpath(path, project.artifact_dir()).replace("\\", "/")
+        links.append(
+            {
+                "label": label,
+                "url": reverse("project-compiled", args=[project.pk, relpath]),
+                "size": str(path.stat().st_size),
+            }
+        )
+    return links
+
+
 def _extract_project_plain_text(project: Project) -> str:
     if (project.source_text or "").strip():
         return project.source_text.strip()
@@ -387,18 +478,31 @@ def _extract_project_plain_text(project: Project) -> str:
 def _build_style_generation_request(project: Project, style_brief: str) -> dict[str, Any]:
     plain_text = _extract_project_plain_text(project)
     representative_excerpt = plain_text[:1500].strip()
+    prompt_language = _image_prompt_language(project)
     prompt = "\n".join(
         [
             "You are helping define a consistent illustration style for a language-learning story.",
             "Return JSON with keys: expanded_style_description, representative_excerpt, sample_image_prompt.",
             "expanded_style_description should preserve the user's brief but elaborate it in a way that fits the story content.",
+            "expanded_style_description must contain only global style guidance (medium/technique, palette, line/shape language, composition, lighting, overall mood).",
+            "Do NOT include named characters, named places, plot events, page-specific actions, or detailed props from this story.",
+            "If the user brief contains story-specific details, generalize them into reusable style principles.",
+            "Keep expanded_style_description concise (target 600-1000 characters, hard max 1400 characters).",
             "representative_excerpt should be a short excerpt or summary snippet from the story most useful for a sample image.",
             "sample_image_prompt should be a detailed prompt for a single sample image that demonstrates the style for this story.",
+            f"Write expanded_style_description, representative_excerpt, and sample_image_prompt in the image prompt language ({prompt_language}).",
             "",
             f"Project title: {project.title}",
-            f"Project language: {project.language}",
+            f"Project language (source): {project.language}",
+            f"Image prompt language (derived from image text-source setting): {prompt_language}",
             f"Target language: {project.target_language}",
             f"User style brief: {style_brief}",
+            (
+                "Text policy for final images: Prefer little/no visible text, "
+                "but allow short text only when it is clearly required by the story (e.g., a meaningful sign or label)."
+                if getattr(project.image_style, "discourage_text_in_images", False)
+                else "Text policy for final images: Text is allowed when appropriate for the scene."
+            ),
             "Project text:",
             plain_text or "[No text available; rely on the description.]",
         ]
@@ -417,13 +521,55 @@ def _generate_project_image_style(
     ai_model: str,
 ) -> dict[str, Any]:
     request_payload = _build_style_generation_request(project, style_brief)
+    _append_style_telemetry(
+        project,
+        {
+            "type": "event",
+            "level": "info",
+            "message": "style expansion request start",
+            "model": ai_model,
+            "prompt": request_payload["prompt"],
+            "prompt_length": len(request_payload["prompt"]),
+            "prompt_preview": request_payload["prompt"][:400],
+        },
+    )
+    started = datetime.now(timezone.utc)
     client = _build_ai_client(model_name=ai_model)
-    response = asyncio.run(client.chat_json(request_payload["prompt"], model=ai_model))
+    try:
+        response = asyncio.run(client.chat_json(request_payload["prompt"], model=ai_model))
+    except Exception as exc:
+        elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+        _append_style_telemetry(
+            project,
+            {
+                "type": "event",
+                "level": "error",
+                "message": "style expansion timeout" if _is_timeout_exception(exc) else "style expansion request failed",
+                "model": ai_model,
+                "elapsed_s": round(elapsed_s, 3),
+                **_exception_telemetry_fields(exc),
+            },
+        )
+        raise
+    elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+    _append_style_telemetry(
+        project,
+        {
+            "type": "event",
+            "level": "info",
+            "message": "style expansion response received",
+            "model": ai_model,
+            "elapsed_s": round(elapsed_s, 3),
+            "response_keys": sorted(response.keys()) if isinstance(response, dict) else [],
+            "response_preview": str(response)[:400],
+        },
+    )
 
     return {
-        "expanded_style_description": (
-            response.get("expanded_style_description") or style_brief
-        ).strip(),
+        "expanded_style_description": _compact_style_description_for_prompt(
+            str(response.get("expanded_style_description") or style_brief).strip(),
+            max_chars=1400,
+        ),
         "representative_excerpt": (
             response.get("representative_excerpt")
             or request_payload["plain_text"][:800]
@@ -446,8 +592,37 @@ def _generate_project_style_sample_image(
     if not prompt:
         raise ValueError("Please generate or enter a sample image prompt first.")
 
+    _append_style_telemetry(
+        project,
+        {
+            "type": "event",
+            "level": "info",
+            "message": "style sample image request start",
+            "model": style.sample_image_model,
+            "prompt": prompt,
+            "prompt_length": len(prompt),
+            "prompt_preview": prompt[:400],
+        },
+    )
+    started = datetime.now(timezone.utc)
     client = _build_ai_client()
-    image_result = client.generate_image(prompt, model=style.sample_image_model)
+    try:
+        image_result = client.generate_image(prompt, model=style.sample_image_model)
+    except Exception as exc:
+        elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+        _append_style_telemetry(
+            project,
+            {
+                "type": "event",
+                "level": "error",
+                "message": "style sample image timeout" if _is_timeout_exception(exc) else "style sample image request failed",
+                "model": style.sample_image_model,
+                "elapsed_s": round(elapsed_s, 3),
+                **_exception_telemetry_fields(exc),
+            },
+        )
+        raise
+    elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
     style_dir = _image_style_dir(project)
     style_dir.mkdir(parents=True, exist_ok=True)
     image_filename = "style_sample_image.png"
@@ -464,6 +639,16 @@ def _generate_project_style_sample_image(
         "output_format": image_result.get("output_format"),
         "path": rel_path,
     }
+    _append_style_telemetry(
+        project,
+        {
+            "type": "event",
+            "level": "info",
+            "message": "style sample image response received",
+            "elapsed_s": round(elapsed_s, 3),
+            **metadata,
+        },
+    )
     (style_dir / "style_sample_image_metadata.json").write_text(
         json.dumps(metadata, ensure_ascii=False, indent=2),
         encoding="utf-8",
@@ -473,6 +658,43 @@ def _generate_project_style_sample_image(
 
 def _image_elements_dir(project: Project) -> Path:
     return project.artifact_dir() / "images" / "elements"
+
+
+def _append_elements_telemetry(project: Project, record: dict[str, Any]) -> None:
+    telemetry_path = _image_elements_dir(project) / "telemetry.jsonl"
+    telemetry_path.parent.mkdir(parents=True, exist_ok=True)
+    entry = dict(record)
+    entry["timestamp"] = datetime.now(timezone.utc).isoformat()
+    with telemetry_path.open("a", encoding="utf-8") as fp:
+        fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+def _elements_artifact_links(project: Project) -> list[dict[str, str]]:
+    elements_dir = _image_elements_dir(project)
+    elements_dir.mkdir(parents=True, exist_ok=True)
+    telemetry_path = elements_dir / "telemetry.jsonl"
+    if not telemetry_path.exists():
+        telemetry_path.write_text("", encoding="utf-8")
+    files = [
+        ("elements_list.json", "Elements list"),
+        ("elements_discovery_prompt.json", "Elements discovery prompt"),
+        ("elements_discovery_response.json", "Elements discovery response"),
+        ("telemetry.jsonl", "Elements telemetry"),
+    ]
+    links: list[dict[str, str]] = []
+    for rel_name, label in files:
+        path = elements_dir / rel_name
+        if not path.exists():
+            continue
+        relpath = os.path.relpath(path, project.artifact_dir()).replace("\\", "/")
+        links.append(
+            {
+                "label": label,
+                "url": reverse("project-compiled", args=[project.pk, relpath]),
+                "size": str(path.stat().st_size),
+            }
+        )
+    return links
 
 
 def _extract_project_pages(project: Project) -> list[str]:
@@ -565,80 +787,230 @@ def _discover_project_image_elements(
     ai_model: str,
 ) -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
     pages = _extract_project_pages(project)
-    style_description = ""
-    try:
-        style_description = project.image_style.expanded_style_description
-    except Exception:
-        style_description = ""
-
-    prompt = "\n".join(
+    prompt_language = _image_prompt_language(project)
+    pages_block = "\n".join(f"Page {idx}: {surface}" for idx, surface in enumerate(pages, start=1))
+    phase1_prompt = "\n".join(
         [
-            "Identify recurring visual elements that should be rendered consistently.",
-            "Return JSON with key 'elements', where each item has keys:",
-            "name, type, page_refs, why_consistency_matters.",
-            "page_refs should be a list of 1-indexed page numbers.",
-            "Only include elements that appear on at least two pages or are central recurring motifs.",
+            "Identify concrete recurring visual elements in this story.",
+            "Only include reusable visual items: characters, locations, objects, props, motifs.",
+            "Do not include style/aesthetic directions.",
+            "Return JSON with key 'elements'. Each item should have: name, type.",
+            "Keep names concise and concrete.",
+            f"Write names and types in the image prompt language ({prompt_language}).",
             "",
             f"Project title: {project.title}",
             f"Language: {project.language}",
-            f"Approved style description: {style_description or '[none]'}",
+            f"Image prompt language: {prompt_language}",
             "Pages:",
+            pages_block or "[none]",
         ]
     )
-    for idx, page_surface in enumerate(pages, start=1):
-        prompt += f"\nPage {idx}: {page_surface}"
+    _append_elements_telemetry(
+        project,
+        {
+            "type": "event",
+            "level": "info",
+            "message": "elements discovery phase_1 request start",
+            "model": ai_model,
+            "pages_count": len(pages),
+            "prompt": phase1_prompt,
+            "prompt_length": len(phase1_prompt),
+            "prompt_preview": phase1_prompt[:400],
+        },
+    )
+    started = datetime.now(timezone.utc)
+    try:
+        phase1_response = asyncio.run(_build_ai_client(model_name=ai_model).chat_json(phase1_prompt, model=ai_model))
+    except Exception as exc:
+        elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+        _append_elements_telemetry(
+            project,
+            {
+                "type": "event",
+                "level": "error",
+                "message": "elements discovery phase_1 timeout" if _is_timeout_exception(exc) else "elements discovery phase_1 failed",
+                "model": ai_model,
+                "elapsed_s": round(elapsed_s, 3),
+                **_exception_telemetry_fields(exc),
+            },
+        )
+        raise
+    elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+    _append_elements_telemetry(
+        project,
+        {
+            "type": "event",
+            "level": "info",
+            "message": "elements discovery phase_1 response received",
+            "model": ai_model,
+            "elapsed_s": round(elapsed_s, 3),
+            "response_keys": sorted(phase1_response.keys()) if isinstance(phase1_response, dict) else [],
+            "response_preview": str(phase1_response)[:400],
+        },
+    )
 
-    request_payload = {
-        "pages": pages,
-        "style_description": style_description,
-        "prompt": prompt,
-    }
-    client = _build_ai_client(model_name=ai_model)
-    response = asyncio.run(client.chat_json(prompt, model=ai_model))
-    elements = response.get("elements") or []
-    raw_elements_count = len(elements) if isinstance(elements, list) else 0
-    if not isinstance(elements, list):
-        elements = []
-    normalized: list[dict[str, Any]] = []
-    skipped_non_dict = 0
-    skipped_empty_name = 0
-    for item in elements:
-        if not isinstance(item, dict):
-            skipped_non_dict += 1
-            continue
-        name = str(item.get("name") or "").strip()
-        if not name:
-            skipped_empty_name += 1
-            continue
-        refs = item.get("page_refs") or []
-        if isinstance(refs, list):
-            refs_text = ",".join(str(x) for x in refs if str(x).strip())
+    raw_candidates = phase1_response.get("elements") if isinstance(phase1_response, dict) else []
+    if not isinstance(raw_candidates, list):
+        raw_candidates = []
+
+    candidates: list[dict[str, str]] = []
+    for item in raw_candidates:
+        if isinstance(item, dict):
+            name = str(item.get("name") or "").strip()
+            elem_type = str(item.get("type") or "object").strip()
         else:
-            refs_text = str(refs)
+            name = str(item).strip()
+            elem_type = "object"
+        if not name:
+            continue
+        candidates.append({"name": name[:255], "element_type": elem_type[:64] or "object"})
+
+    unique_by_name: dict[str, dict[str, str]] = {}
+    for item in candidates:
+        key = item["name"].casefold()
+        if key not in unique_by_name:
+            unique_by_name[key] = item
+    candidates = list(unique_by_name.values())
+
+    def _resolve_page_refs(candidate: dict[str, str]) -> dict[str, Any]:
+        phase2_prompt = "\n".join(
+            [
+                "Find where this visual element appears in the story.",
+                "Return JSON with keys: page_refs, why_consistency_matters, type.",
+                "page_refs must be a list of 1-indexed page numbers where the element appears.",
+                "why_consistency_matters should be one concise sentence.",
+                f"Write why_consistency_matters and type in the image prompt language ({prompt_language}).",
+                "",
+                f"Element name: {candidate['name']}",
+                f"Proposed type: {candidate['element_type']}",
+                "Pages:",
+                pages_block or "[none]",
+            ]
+        )
+        _append_elements_telemetry(
+            project,
+            {
+                "type": "event",
+                "level": "info",
+                "message": "elements discovery phase_2 request start",
+                "model": ai_model,
+                "element_name": candidate["name"],
+                "prompt": phase2_prompt,
+                "prompt_length": len(phase2_prompt),
+                "prompt_preview": phase2_prompt[:400],
+            },
+        )
+        started_local = datetime.now(timezone.utc)
+        try:
+            response_local = asyncio.run(_build_ai_client(model_name=ai_model).chat_json(phase2_prompt, model=ai_model))
+        except Exception as exc:
+            elapsed_local_s = (datetime.now(timezone.utc) - started_local).total_seconds()
+            _append_elements_telemetry(
+                project,
+                {
+                    "type": "event",
+                    "level": "error",
+                    "message": "elements discovery phase_2 timeout" if _is_timeout_exception(exc) else "elements discovery phase_2 failed",
+                    "model": ai_model,
+                    "element_name": candidate["name"],
+                    "elapsed_s": round(elapsed_local_s, 3),
+                    **_exception_telemetry_fields(exc),
+                },
+            )
+            raise
+        elapsed_local_s = (datetime.now(timezone.utc) - started_local).total_seconds()
+        _append_elements_telemetry(
+            project,
+            {
+                "type": "event",
+                "level": "info",
+                "message": "elements discovery phase_2 response received",
+                "model": ai_model,
+                "element_name": candidate["name"],
+                "elapsed_s": round(elapsed_local_s, 3),
+                "response_keys": sorted(response_local.keys()) if isinstance(response_local, dict) else [],
+                "response_preview": str(response_local)[:400],
+            },
+        )
+        refs_raw = response_local.get("page_refs") if isinstance(response_local, dict) else []
+        refs: list[int] = []
+        if isinstance(refs_raw, list):
+            for ref in refs_raw:
+                try:
+                    page_num = int(ref)
+                except Exception:
+                    continue
+                if 1 <= page_num <= len(pages):
+                    refs.append(page_num)
+        refs = sorted(set(refs))
+        return {
+            "name": candidate["name"],
+            "element_type": str((response_local or {}).get("type") or candidate["element_type"])[:64],
+            "page_refs_list": refs,
+            "why_consistency_matters": str((response_local or {}).get("why_consistency_matters") or "").strip()[:2000],
+            "phase2_response": response_local,
+        }
+
+    phase2_items: list[dict[str, Any]] = []
+    if candidates:
+        max_workers = min(6, max(1, len(candidates)))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(_resolve_page_refs, item) for item in candidates]
+            for future in as_completed(futures):
+                phase2_items.append(future.result())
+
+    normalized: list[dict[str, Any]] = []
+    for item in phase2_items:
+        refs = item.get("page_refs_list") or []
+        if len(refs) < 2:
+            continue
         normalized.append(
             {
-                "name": name[:255],
-                "element_type": str(item.get("type") or "character")[:64],
-                "page_refs": refs_text[:255],
-                "why_consistency_matters": str(item.get("why_consistency_matters") or "")[:2000],
+                "name": item["name"][:255],
+                "element_type": item["element_type"][:64] or "object",
+                "page_refs": ",".join(str(x) for x in refs)[:255],
+                "why_consistency_matters": item["why_consistency_matters"][:2000],
             }
         )
+
     diagnostics = {
         "pages_count": len(pages),
-        "raw_elements_count": raw_elements_count,
+        "phase1_candidates": len(candidates),
+        "phase2_results": len(phase2_items),
         "normalized_elements_count": len(normalized),
-        "skipped_non_dict": skipped_non_dict,
-        "skipped_empty_name": skipped_empty_name,
     }
-    if isinstance(response, dict):
-        response.setdefault("_diagnostics", diagnostics)
+    response_payload = {
+        "phase_1": phase1_response,
+        "phase_2": [
+            {
+                "name": row["name"],
+                "response": row.get("phase2_response", {}),
+                "page_refs": row.get("page_refs_list", []),
+            }
+            for row in phase2_items
+        ],
+        "_diagnostics": diagnostics,
+    }
+    request_payload = {
+        "phase_1_prompt": phase1_prompt,
+        "phase_2_candidates": [row["name"] for row in candidates],
+        "pages_count": len(pages),
+    }
     if not normalized:
         logger.warning(
             "Element discovery returned no usable elements for project %s: %s",
             project.pk,
             diagnostics,
         )
-    return normalized, request_payload, response
+    return normalized, request_payload, response_payload
+
+
+def _compact_style_description_for_prompt(text: str, *, max_chars: int = 1200) -> str:
+    value = str(text or "").strip()
+    if len(value) <= max_chars:
+        return value
+    keep = max(0, max_chars - 48)
+    return f"{value[:keep]}\n...[style description truncated {len(value) - keep} chars]..."
 
 
 def _expand_project_image_elements(
@@ -646,11 +1018,13 @@ def _expand_project_image_elements(
     *,
     ai_model: str,
 ) -> int:
+    prompt_language = _image_prompt_language(project)
     style_description = ""
     try:
         style_description = project.image_style.expanded_style_description
     except Exception:
         style_description = ""
+    style_description = _compact_style_description_for_prompt(style_description, max_chars=1200)
     full_text = _extract_project_plain_text(project)
     count = 0
     client = _build_ai_client(model_name=ai_model)
@@ -659,6 +1033,7 @@ def _expand_project_image_elements(
             [
                 "Create an expanded visual element description for consistent illustration.",
                 "Return JSON with keys: expanded_description, expanded_prompt.",
+                f"Write expanded_description and expanded_prompt in the image prompt language ({prompt_language}).",
                 "",
                 f"Element name: {element.name}",
                 f"Element type: {element.element_type}",
@@ -669,7 +1044,54 @@ def _expand_project_image_elements(
                 full_text or "[none]",
             ]
         )
-        response = asyncio.run(client.chat_json(prompt, model=ai_model))
+        _append_elements_telemetry(
+            project,
+            {
+                "type": "event",
+                "level": "info",
+                "message": "element expansion request start",
+                "model": ai_model,
+                "element_id": element.id,
+                "element_name": element.name,
+                "prompt": prompt,
+                "prompt_length": len(prompt),
+                "prompt_preview": prompt[:400],
+            },
+        )
+        started = datetime.now(timezone.utc)
+        try:
+            response = asyncio.run(client.chat_json(prompt, model=ai_model))
+        except Exception as exc:
+            elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+            _append_elements_telemetry(
+                project,
+                {
+                    "type": "event",
+                    "level": "error",
+                    "message": "element expansion timeout" if _is_timeout_exception(exc) else "element expansion failed",
+                    "model": ai_model,
+                    "element_id": element.id,
+                    "element_name": element.name,
+                    "elapsed_s": round(elapsed_s, 3),
+                    **_exception_telemetry_fields(exc),
+                },
+            )
+            raise
+        elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+        _append_elements_telemetry(
+            project,
+            {
+                "type": "event",
+                "level": "info",
+                "message": "element expansion response received",
+                "model": ai_model,
+                "element_id": element.id,
+                "element_name": element.name,
+                "elapsed_s": round(elapsed_s, 3),
+                "response_keys": sorted(response.keys()) if isinstance(response, dict) else [],
+                "response_preview": str(response)[:400],
+            },
+        )
         element.expanded_description = str(
             response.get("expanded_description") or element.expanded_description or ""
         ).strip()
@@ -720,8 +1142,51 @@ def _generate_project_element_images(
     results_by_id: dict[int, dict[str, Any]] = {}
 
     def _generate_one(element_id: int, prompt_text: str) -> tuple[int, dict[str, Any]]:
+        _append_elements_telemetry(
+            project,
+            {
+                "type": "event",
+                "level": "info",
+                "message": "element image request start",
+                "model": image_model,
+                "element_id": element_id,
+                "prompt": prompt_text,
+                "prompt_length": len(prompt_text),
+                "prompt_preview": prompt_text[:400],
+            },
+        )
+        started = datetime.now(timezone.utc)
         client = _build_ai_client()
-        return element_id, client.generate_image(prompt_text, model=image_model)
+        try:
+            result = client.generate_image(prompt_text, model=image_model)
+        except Exception as exc:
+            elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+            _append_elements_telemetry(
+                project,
+                {
+                    "type": "event",
+                    "level": "error",
+                    "message": "element image timeout" if _is_timeout_exception(exc) else "element image request failed",
+                    "model": image_model,
+                    "element_id": element_id,
+                    "elapsed_s": round(elapsed_s, 3),
+                    **_exception_telemetry_fields(exc),
+                },
+            )
+            raise
+        elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+        _append_elements_telemetry(
+            project,
+            {
+                "type": "event",
+                "level": "info",
+                "message": "element image response received",
+                "model": image_model,
+                "element_id": element_id,
+                "elapsed_s": round(elapsed_s, 3),
+            },
+        )
+        return element_id, result
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
@@ -795,23 +1260,55 @@ def _build_page_image_prompt(
     page_text: str,
     full_text: str,
     relevant_elements: list[ProjectImageElement],
+    discourage_text_in_image: bool = False,
 ) -> str:
+    language_instructions = {
+        "en": ("Create one story illustration page in a consistent style.", "Keep visual continuity with existing style and element references."),
+        "fr": ("Crée une illustration de page d’histoire dans un style cohérent.", "Conserve la continuité visuelle avec le style et les références d’éléments."),
+        "de": ("Erstelle eine einzelne illustrierte Geschichten-Seite in konsistentem Stil.", "Behalte visuelle Kontinuität mit Stil und Elementreferenzen bei."),
+        "es": ("Crea una ilustración de una página de historia con estilo coherente.", "Mantén continuidad visual con el estilo y las referencias de elementos."),
+        "it": ("Crea un’illustrazione di una pagina della storia con stile coerente.", "Mantieni continuità visiva con lo stile e i riferimenti degli elementi."),
+        "pt": ("Crie uma ilustração de uma página da história em estilo consistente.", "Mantenha continuidade visual com o estilo e as referências dos elementos."),
+    }
+    language_labels = {
+        "en": "English",
+        "fr": "French",
+        "de": "German",
+        "es": "Spanish",
+        "it": "Italian",
+        "pt": "Portuguese",
+        "zh": "Chinese",
+        "ja": "Japanese",
+        "ko": "Korean",
+        "ar": "Arabic",
+        "ru": "Russian",
+        "hi": "Hindi",
+    }
+    prompt_language = _image_prompt_language(project)
+    if prompt_language not in language_instructions:
+        prompt_language = "en"
+    line1, line2 = language_instructions.get(prompt_language, language_instructions["en"])
+    no_text_line = _discourage_text_guideline_for_language(prompt_language)
     lines = [
-        "Create one story illustration page in a consistent style.",
-        "Keep visual continuity with the existing style and element references.",
+        line1,
+        line2,
         "",
+        f"Prompt language: {language_labels.get(prompt_language, 'English')}",
         f"Project title: {project.title}",
-        f"Language: {project.language}",
+        f"Language (source): {project.language}",
+        f"Language for image prompt text: {prompt_language}",
         f"Page number: {page_number}",
-        f"Style description: {style.expanded_style_description or style.style_brief or '[none]'}",
+        f"Style description: {_compact_style_description_for_prompt(style.expanded_style_description or style.style_brief or '[none]', max_chars=1200)}",
         "Page text:",
         page_text or "[none]",
         "",
         "Full story text for context:",
         full_text or "[none]",
         "",
-        "Relevant element references:",
     ]
+    if discourage_text_in_image:
+        lines.extend([no_text_line, ""])
+    lines.append("Relevant element references:")
     if relevant_elements:
         for element in relevant_elements:
             lines.extend(
@@ -825,6 +1322,153 @@ def _build_page_image_prompt(
     else:
         lines.append("- [No relevant elements with image references]")
     return "\n".join(lines)
+
+
+_DISCOURAGE_TEXT_GUIDELINES = {
+    "en": "Prefer little or no visible text. Allow short text only when story-essential (e.g., a meaningful sign, or brief comic-style sound effects like 'BANG!' or 'BOOM!').",
+    "fr": "Privilégie peu ou pas de texte visible. Autorise un texte court seulement s’il est essentiel à la scène (p. ex. un panneau important, ou une onomatopée brève de style BD comme « BANG! »).",
+    "de": "Bevorzuge wenig oder keinen sichtbaren Text. Erlaube kurzen Text nur, wenn er für die Szene wesentlich ist (z. B. ein wichtiges Schild oder ein kurzes Comic-Geräusch wie „BANG!“).",
+    "es": "Prefiere poco o ningún texto visible. Permite texto breve solo cuando sea esencial para la escena (p. ej., un letrero importante o una onomatopeya breve estilo cómic como «¡BANG!»).",
+    "it": "Preferisci poco o nessun testo visibile. Consenti testo breve solo quando è essenziale per la scena (es. un cartello importante o una breve onomatopea da fumetto come «BANG!»).",
+    "pt": "Prefira pouco ou nenhum texto visível. Permita texto curto apenas quando for essencial para a cena (ex.: uma placa importante ou uma onomatopeia curta em estilo quadrinhos como «BANG!»).",
+    "nl": "Gebruik bij voorkeur weinig of geen zichtbare tekst. Sta korte tekst alleen toe als die essentieel is voor de scène (bijv. een belangrijk bord of een kort stripachtig geluidseffect zoals ‘BANG!’).",
+    "sv": "Använd helst lite eller ingen synlig text. Tillåt kort text bara när den är viktig för scenen (t.ex. en betydelsefull skylt eller en kort serielik ljudeffekt som ”BANG!”).",
+    "no": "Bruk helst lite eller ingen synlig tekst. Tillat kort tekst bare når den er viktig for scenen (f.eks. et viktig skilt eller en kort tegneserieaktig lydeffekt som «BANG!»).",
+    "da": "Brug helst lidt eller ingen synlig tekst. Tillad kun kort tekst, når den er vigtig for scenen (fx et vigtigt skilt eller en kort tegneserieagtig lydeffekt som »BANG!«).",
+    "fi": "Suosi vähän tai ei lainkaan näkyvää tekstiä. Salli lyhyt teksti vain, kun se on kohtaukselle olennainen (esim. tärkeä kyltti tai lyhyt sarjakuvamainen ääniefekti kuten ”BANG!”).",
+    "pl": "Preferuj mało lub brak widocznego tekstu. Dopuszczaj krótki tekst tylko wtedy, gdy jest istotny dla sceny (np. ważny znak albo krótka komiksowa onomatopeja typu „BANG!”).",
+    "zh": "尽量少用或不用可见文字。只有在剧情确实需要时才使用简短文字（例如关键路牌，或简短漫画拟声词如“BANG!”）。",
+    "ja": "基本的に可視テキストは最小限または無しにしてください。物語上どうしても必要な場合のみ、短い文字を許可します（例：重要な看板、短い漫画風効果音「BANG!」）。",
+    "ko": "보이는 텍스트는 가능하면 최소화하거나 사용하지 마세요. 장면에 꼭 필요할 때만 짧은 텍스트를 허용하세요(예: 중요한 표지판, 짧은 만화식 효과음 ‘BANG!’).",
+    "ar": "يفضَّل تقليل النص الظاهر أو عدم استخدامه. يُسمح بنص قصير فقط عندما يكون ضروريًا للمشهد (مثل لافتة مهمة أو مؤثر صوتي قصير بأسلوب القصص المصورة مثل \"BANG!\").",
+    "ru": "Предпочтительно минимум или отсутствие видимого текста. Допускайте короткий текст только если он важен для сцены (например, значимая вывеска или краткая комиксная звукоподражательная вставка вроде «BANG!»).",
+    "hi": "दृश्य में टेक्स्ट बहुत कम रखें या न रखें। केवल तब छोटा टेक्स्ट दें जब वह कहानी के लिए ज़रूरी हो (जैसे महत्वपूर्ण साइनबोर्ड या कॉमिक-शैली की छोटी ध्वनि जैसे “BANG!”)।",
+}
+
+
+@lru_cache(maxsize=128)
+def _translate_discourage_text_guideline(language_code: str) -> str:
+    base = _DISCOURAGE_TEXT_GUIDELINES["en"]
+    prompt = "\n".join(
+        [
+            "Translate the following instruction into the requested language.",
+            "Keep meaning and examples intact.",
+            "Return only the translated instruction text (no quotes, no markdown).",
+            f"Language code: {language_code}",
+            f"Instruction: {base}",
+        ]
+    )
+    try:
+        translated = asyncio.run(_build_ai_client(model_name="gpt-4o-mini").chat_text(prompt, model="gpt-4o-mini"))
+    except Exception:
+        return base
+    value = str(translated or "").strip()
+    return value or base
+
+
+def _discourage_text_guideline_for_language(language_code: str) -> str:
+    code = (language_code or "").strip().lower()
+    if not code:
+        return _DISCOURAGE_TEXT_GUIDELINES["en"]
+    if code in _DISCOURAGE_TEXT_GUIDELINES:
+        return _DISCOURAGE_TEXT_GUIDELINES[code]
+    return _translate_discourage_text_guideline(code)
+
+
+def _image_prompt_language(project: Project) -> str:
+    if project.page_image_text_source == Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION:
+        return (project.target_language or "en").strip().lower() or "en"
+    return (project.language or "en").strip().lower() or "en"
+
+
+def _truncate_for_prompt(text: str, *, max_chars: int) -> str:
+    value = str(text or "")
+    if len(value) <= max_chars:
+        return value
+    head = value[:max(0, max_chars - 48)]
+    return f"{head}\n...[truncated {len(value) - len(head)} chars]..."
+
+
+def _fit_page_image_prompt_to_limit(
+    *,
+    project: Project,
+    style: ProjectImageStyle,
+    page_number: int,
+    page_text: str,
+    full_text: str,
+    relevant_elements: list[ProjectImageElement],
+    discourage_text_in_image: bool = False,
+    max_chars: int = 32000,
+) -> tuple[str, dict[str, Any]]:
+    """Build a page-image prompt and iteratively trim when it exceeds limits."""
+
+    full_text_limit = max_chars
+    element_desc_limit = max_chars
+    element_prompt_limit = max_chars
+
+    def _build_with_limits() -> str:
+        trimmed_elements: list[ProjectImageElement] = []
+        for element in relevant_elements:
+            clone = ProjectImageElement(
+                name=element.name,
+                element_type=element.element_type,
+                expanded_description=_truncate_for_prompt(
+                    element.expanded_description or element.why_consistency_matters or "",
+                    max_chars=element_desc_limit,
+                ),
+                expanded_prompt=_truncate_for_prompt(
+                    element.expanded_prompt or "",
+                    max_chars=element_prompt_limit,
+                ),
+                image_path=element.image_path,
+            )
+            trimmed_elements.append(clone)
+        return _build_page_image_prompt(
+            project=project,
+            style=style,
+            page_number=page_number,
+            page_text=page_text,
+            full_text=_truncate_for_prompt(full_text, max_chars=full_text_limit),
+            relevant_elements=trimmed_elements,
+            discourage_text_in_image=discourage_text_in_image,
+        )
+
+    prompt = _build_with_limits()
+    strategy = "none"
+    if len(prompt) > max_chars:
+        full_text_limit = 8000
+        strategy = "truncate_full_text"
+        prompt = _build_with_limits()
+    if len(prompt) > max_chars:
+        element_desc_limit = 500
+        element_prompt_limit = 500
+        strategy = "truncate_elements_500"
+        prompt = _build_with_limits()
+    if len(prompt) > max_chars:
+        element_desc_limit = 200
+        element_prompt_limit = 200
+        strategy = "truncate_elements_200"
+        prompt = _build_with_limits()
+    if len(prompt) > max_chars:
+        strategy = "hard_cut"
+        prompt = _truncate_for_prompt(prompt, max_chars=max_chars)
+
+    metadata = {
+        "max_chars": max_chars,
+        "final_length": len(prompt),
+        "strategy": strategy,
+        "trimmed": strategy != "none",
+    }
+    return prompt, metadata
+
+
+def _append_page_image_telemetry(project: Project, record: dict[str, Any]) -> None:
+    telemetry_path = _image_pages_dir(project) / "telemetry.jsonl"
+    telemetry_path.parent.mkdir(parents=True, exist_ok=True)
+    entry = dict(record)
+    entry["timestamp"] = datetime.now(timezone.utc).isoformat()
+    with telemetry_path.open("a", encoding="utf-8") as fp:
+        fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
 def _ensure_project_page_rows(project: Project) -> int:
@@ -870,7 +1514,12 @@ def _persist_image_pages_artifacts(project: Project) -> None:
     )
 
 
-def _generate_project_page_images(project: Project, *, image_model: str) -> int:
+def _generate_project_page_images(
+    project: Project,
+    *,
+    image_model: str,
+    discourage_text_in_image: bool = False,
+) -> int:
     style = project.image_style
     full_text = _extract_project_plain_text(project)
     pages_dir = _image_pages_dir(project)
@@ -884,22 +1533,53 @@ def _generate_project_page_images(project: Project, *, image_model: str) -> int:
     if not page_rows:
         return 0
 
-    def _generate_one(page_obj: ProjectImagePage) -> tuple[int, str, str]:
+    def _generate_one(page_obj: ProjectImagePage) -> tuple[int, str, str, str]:
         refs = [
             element
             for element in relevant_elements
             if not element.page_refs or _page_refs_match(element.page_refs, page_obj.page_number)
         ]
-        prompt = _build_page_image_prompt(
+        prompt, prompt_meta = _fit_page_image_prompt_to_limit(
             project=project,
             style=style,
             page_number=page_obj.page_number,
             page_text=page_obj.page_text,
             full_text=full_text,
             relevant_elements=refs,
+            discourage_text_in_image=discourage_text_in_image,
         )
+        _append_page_image_telemetry(
+            project,
+            {
+                "event": "page_image_request",
+                "page_number": page_obj.page_number,
+                "model": image_model,
+                "prompt": prompt,
+                "prompt_length": len(prompt),
+                "prompt_meta": prompt_meta,
+                "discourage_text_in_image": discourage_text_in_image,
+                "relevant_element_count": len(refs),
+                "relevant_element_paths": [e.image_path for e in refs if e.image_path],
+                "reference_images_sent_in_request": False,
+            },
+        )
+        started = datetime.now(timezone.utc)
         client = _build_ai_client()
-        image_result = client.generate_image(prompt, model=image_model)
+        try:
+            image_result = client.generate_image(prompt, model=image_model)
+        except Exception as exc:
+            elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+            _append_page_image_telemetry(
+                project,
+                {
+                    "event": "page_image_timeout" if _is_timeout_exception(exc) else "page_image_error",
+                    "page_number": page_obj.page_number,
+                    "model": image_model,
+                    "elapsed_s": round(elapsed_s, 3),
+                    **_exception_telemetry_fields(exc),
+                },
+            )
+            raise
         page_dir = pages_dir / f"page_{page_obj.page_number:03d}"
         page_dir.mkdir(parents=True, exist_ok=True)
         image_path = page_dir / "image.png"
@@ -915,6 +1595,17 @@ def _generate_project_page_images(project: Project, *, image_model: str) -> int:
         (page_dir / "metadata.json").write_text(
             json.dumps(metadata, ensure_ascii=False, indent=2),
             encoding="utf-8",
+        )
+        _append_page_image_telemetry(
+            project,
+            {
+                "event": "page_image_response",
+                "page_number": page_obj.page_number,
+                "model": image_model,
+                "elapsed_s": round((datetime.now(timezone.utc) - started).total_seconds(), 3),
+                "revised_prompt": metadata["revised_prompt"],
+                "image_path": rel_path,
+            },
         )
         return page_obj.pk, rel_path, metadata["revised_prompt"], prompt
 
@@ -982,6 +1673,43 @@ def _audio_cache_language_choices() -> list[tuple[str, str]]:
     )
 
 
+def _extract_openai_pricing_with_ai(
+    *,
+    source_url: str,
+    models_to_extract: list[str],
+    ai_model: str | None = None,
+) -> dict[str, dict[str, str]]:
+    with urllib.request.urlopen(source_url, timeout=20) as response_fp:
+        html = response_fp.read().decode("utf-8", errors="replace")
+    html_excerpt = html[:120000]
+    model_list = ", ".join(sorted(set(models_to_extract)))
+    prompt = (
+        "Extract USD token prices per 1M tokens from the supplied OpenAI pricing HTML.\n"
+        f"Return only these models if present: {model_list}.\n"
+        "Output JSON object with shape:\n"
+        '{"prices":[{"model":"...","input_usd_per_1m":"...","output_usd_per_1m":"...","evidence":"..."}]}\n'
+        "Use decimal strings. If not found, omit the model.\n\n"
+        f"HTML SOURCE URL: {source_url}\n\nHTML:\n{html_excerpt}"
+    )
+    pricing_model = ai_model or getattr(settings, "OPENAI_PRICING_AI_MODEL", "gpt-5")
+    client = _build_ai_client(model_name=pricing_model)
+    payload = asyncio.run(client.chat_json(prompt, model=pricing_model))
+    rows = payload.get("prices") if isinstance(payload, dict) else []
+    result: dict[str, dict[str, str]] = {}
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+        model_name = str(row.get("model") or "").strip()
+        if not model_name:
+            continue
+        result[model_name] = {
+            "input": str(row.get("input_usd_per_1m") or ""),
+            "output": str(row.get("output_usd_per_1m") or ""),
+            "evidence": str(row.get("evidence") or ""),
+        }
+    return result
+
+
 @login_required
 def admin_tools(request: HttpRequest) -> HttpResponse:
     _require_admin(request.user)
@@ -989,6 +1717,32 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
     grant_form = GrantAdminPrivilegesForm(
         queryset=get_user_model().objects.filter(is_staff=False).order_by("username")
     )
+    adjust_credits_form = AdminAdjustCreditsForm()
+    pricing_form = AdminOpenAIPricingForm()
+    pricing_rows_qs = OpenAIModelPricing.objects.all().order_by("model_name")
+    pricing_rows = list(pricing_rows_qs)
+    menu_models = sorted(set(AI_MODEL_CHOICES + IMAGE_MODEL_CHOICES))
+    now_ts = django_timezone.now()
+    pricing_by_model = {row.model_name: row for row in pricing_rows}
+    pricing_matrix: list[dict[str, Any]] = []
+    for model_name in menu_models:
+        row = pricing_by_model.get(model_name)
+        age_hours: float | None = None
+        stale = True
+        if row and row.last_synced_at:
+            age_delta = now_ts - row.last_synced_at
+            age_hours = round(age_delta.total_seconds() / 3600.0, 1)
+            stale = age_delta > timedelta(days=1)
+        pricing_matrix.append(
+            {
+                "model_name": model_name,
+                "row": row,
+                "input_value": row.input_usd_per_1m if row else "",
+                "output_value": row.output_usd_per_1m if row else "",
+                "age_hours": age_hours,
+                "stale": stale,
+            }
+        )
 
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
@@ -1017,6 +1771,151 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
                 user_obj.save(update_fields=["is_staff"])
                 messages.success(request, f"{user_obj.username} now has admin privileges.")
                 return redirect("admin-tools")
+        elif action == "adjust_credits":
+            adjust_credits_form = AdminAdjustCreditsForm(request.POST)
+            if adjust_credits_form.is_valid():
+                user_obj = adjust_credits_form.cleaned_data["user"]
+                amount = adjust_credits_form.cleaned_data["amount_usd"]
+                reason = (adjust_credits_form.cleaned_data.get("reason") or "Manual admin adjustment").strip()
+                entry = apply_credit_delta(
+                    user=user_obj,
+                    amount_usd=amount,
+                    entry_type=CreditLedgerEntry.ENTRY_ADMIN_ADJUST,
+                    description=reason,
+                    metadata={"admin_user_id": request.user.id},
+                )
+                messages.success(
+                    request,
+                    f"Adjusted {user_obj.username} by ${amount:.4f}. New balance: ${entry.balance_after_usd:.4f}.",
+                )
+                return redirect("admin-tools")
+        elif action == "save_openai_pricing":
+            pricing_form = AdminOpenAIPricingForm(request.POST)
+            if pricing_form.is_valid():
+                pricing_obj, created = OpenAIModelPricing.objects.get_or_create(
+                    model_name=pricing_form.cleaned_data["model_name"],
+                    defaults={
+                        "input_usd_per_1m": pricing_form.cleaned_data["input_usd_per_1m"],
+                        "output_usd_per_1m": pricing_form.cleaned_data["output_usd_per_1m"],
+                        "source_url": pricing_form.cleaned_data.get("source_url") or "",
+                        "status": OpenAIModelPricing.STATUS_HUMAN_REVISED,
+                        "last_human_reviewed_at": django_timezone.now(),
+                        "notes": pricing_form.cleaned_data.get("notes") or "",
+                    },
+                )
+                if not created:
+                    pricing_obj.input_usd_per_1m = pricing_form.cleaned_data["input_usd_per_1m"]
+                    pricing_obj.output_usd_per_1m = pricing_form.cleaned_data["output_usd_per_1m"]
+                    pricing_obj.source_url = pricing_form.cleaned_data.get("source_url") or pricing_obj.source_url
+                    pricing_obj.status = OpenAIModelPricing.STATUS_HUMAN_REVISED
+                    pricing_obj.last_human_reviewed_at = django_timezone.now()
+                    pricing_obj.notes = pricing_form.cleaned_data.get("notes") or pricing_obj.notes
+                    pricing_obj.save(
+                        update_fields=[
+                            "input_usd_per_1m",
+                            "output_usd_per_1m",
+                            "source_url",
+                            "status",
+                            "last_human_reviewed_at",
+                            "notes",
+                            "updated_at",
+                        ]
+                    )
+                messages.success(request, f"Saved pricing for {pricing_obj.model_name}.")
+                return redirect("admin-tools")
+        elif action == "sync_openai_pricing_ai":
+            source_url = (request.POST.get("source_url") or "https://developers.openai.com/api/docs/pricing").strip()
+            models_to_extract = getattr(settings, "OPENAI_PRICING_TRACKED_MODELS", AI_MODEL_CHOICES)
+            try:
+                extracted = _extract_openai_pricing_with_ai(
+                    source_url=source_url,
+                    models_to_extract=list(models_to_extract),
+                    ai_model=getattr(settings, "OPENAI_PRICING_AI_MODEL", "gpt-5"),
+                )
+                changed = 0
+                now = django_timezone.now()
+                for model_name, prices in extracted.items():
+                    input_price = prices.get("input")
+                    output_price = prices.get("output")
+                    if not input_price or not output_price:
+                        continue
+                    notes = f"AI-parsed evidence: {prices.get('evidence', '')}".strip()
+                    obj, _ = OpenAIModelPricing.objects.get_or_create(
+                        model_name=model_name,
+                        defaults={
+                            "input_usd_per_1m": input_price,
+                            "output_usd_per_1m": output_price,
+                            "source_url": source_url,
+                            "status": OpenAIModelPricing.STATUS_AI_PARSED,
+                            "last_synced_at": now,
+                            "notes": notes,
+                        },
+                    )
+                    obj.input_usd_per_1m = input_price
+                    obj.output_usd_per_1m = output_price
+                    obj.source_url = source_url
+                    obj.status = OpenAIModelPricing.STATUS_AI_PARSED
+                    obj.last_synced_at = now
+                    if notes:
+                        obj.notes = notes
+                    obj.save(
+                        update_fields=[
+                            "input_usd_per_1m",
+                            "output_usd_per_1m",
+                            "source_url",
+                            "status",
+                            "last_synced_at",
+                            "notes",
+                            "updated_at",
+                        ]
+                    )
+                    changed += 1
+                messages.success(request, f"AI pricing sync completed: {changed} model row(s) updated.")
+            except Exception as exc:
+                messages.error(
+                    request,
+                    f"AI pricing sync failed: {exc}. Please use the manual pricing table below.",
+                )
+            return redirect("admin-tools")
+        elif action == "save_openai_pricing_bulk":
+            source_url = (request.POST.get("source_url") or "").strip()
+            changed = 0
+            for model_name in menu_models:
+                input_raw = (request.POST.get(f"bulk_input_{model_name}") or "").strip()
+                output_raw = (request.POST.get(f"bulk_output_{model_name}") or "").strip()
+                if not input_raw or not output_raw:
+                    continue
+                row, _ = OpenAIModelPricing.objects.get_or_create(
+                    model_name=model_name,
+                    defaults={
+                        "input_usd_per_1m": input_raw,
+                        "output_usd_per_1m": output_raw,
+                        "source_url": source_url,
+                        "status": OpenAIModelPricing.STATUS_HUMAN_REVISED,
+                        "last_human_reviewed_at": django_timezone.now(),
+                    },
+                )
+                row.input_usd_per_1m = input_raw
+                row.output_usd_per_1m = output_raw
+                if source_url:
+                    row.source_url = source_url
+                row.status = OpenAIModelPricing.STATUS_HUMAN_REVISED
+                row.last_human_reviewed_at = django_timezone.now()
+                row.last_synced_at = django_timezone.now()
+                row.save(
+                    update_fields=[
+                        "input_usd_per_1m",
+                        "output_usd_per_1m",
+                        "source_url",
+                        "status",
+                        "last_human_reviewed_at",
+                        "last_synced_at",
+                        "updated_at",
+                    ]
+                )
+                changed += 1
+            messages.success(request, f"Saved manual pricing for {changed} model row(s).")
+            return redirect("admin-tools")
         else:
             messages.error(request, "Unknown admin action.")
 
@@ -1026,6 +1925,11 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
         {
             "delete_audio_form": delete_form,
             "grant_admin_form": grant_form,
+            "adjust_credits_form": adjust_credits_form,
+            "pricing_form": pricing_form,
+            "pricing_rows": pricing_rows,
+            "pricing_matrix": pricing_matrix,
+            "pricing_source_default": "https://developers.openai.com/api/docs/pricing",
             "bootstrap_admin_usernames": sorted(_bootstrap_admin_usernames()),
             "current_admins": get_user_model().objects.filter(is_staff=True).order_by("username"),
         },
@@ -1041,7 +1945,11 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
     if request.method == "POST":
-        action = request.POST.get("action") or "save"
+        action = (
+            request.POST.get("action")
+            or request.POST.get("action_intent")
+            or "save"
+        ).strip()
         form = ProjectImageStyleForm(
             request.POST,
             instance=style_obj,
@@ -1052,6 +1960,16 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
             style_obj = form.save(commit=False)
             request_payload = None
             response_payload = None
+            had_error = False
+            _append_style_telemetry(
+                project,
+                {
+                    "type": "event",
+                    "level": "info",
+                    "message": "style action dispatch",
+                    "action": action,
+                },
+            )
 
             if action == "generate":
                 try:
@@ -1064,7 +1982,17 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
                     logger.exception(
                         "Failed to generate image style for project %s", project.pk
                     )
+                    _append_style_telemetry(
+                        project,
+                        {
+                            "type": "event",
+                            "level": "error",
+                            "message": "style expansion failed",
+                            **_exception_telemetry_fields(exc),
+                        },
+                    )
                     messages.error(request, f"Style generation failed: {exc}")
+                    had_error = True
                 else:
                     style_obj.expanded_style_description = generated[
                         "expanded_style_description"
@@ -1076,6 +2004,18 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
                     style_obj.status = ProjectImageStyle.STATUS_GENERATED
                     request_payload = generated["_request_payload"]
                     response_payload = generated["_response_payload"]
+                    if not (style_obj.expanded_style_description or "").strip():
+                        messages.warning(
+                            request,
+                            "Style expansion returned an empty expanded style description. "
+                            "Inspect style telemetry/response artifacts for details.",
+                        )
+                    if not (style_obj.sample_image_prompt or "").strip():
+                        messages.warning(
+                            request,
+                            "Style expansion returned an empty sample image prompt. "
+                            "Inspect style telemetry/response artifacts for details.",
+                        )
                     messages.success(
                         request,
                         f"Style expansion completed with {style_obj.ai_model}: prompt and excerpt are ready for review.",
@@ -1087,7 +2027,17 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
                     logger.exception(
                         "Failed to generate style sample image for project %s", project.pk
                     )
+                    _append_style_telemetry(
+                        project,
+                        {
+                            "type": "event",
+                            "level": "error",
+                            "message": "style sample image failed",
+                            **_exception_telemetry_fields(exc),
+                        },
+                    )
                     messages.error(request, f"Sample image generation failed: {exc}")
+                    had_error = True
                 else:
                     style_obj.sample_image_path = metadata["path"]
                     style_obj.sample_image_revised_prompt = metadata["revised_prompt"]
@@ -1109,7 +2059,25 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
                 request_payload=request_payload,
                 response_payload=response_payload,
             )
-            return redirect(f"{reverse('project-image-style', args=[project.pk])}?notice=done")
+            notice = "error" if had_error else "done"
+            return redirect(f"{reverse('project-image-style', args=[project.pk])}?notice={notice}")
+        error_payload = form.errors.get_json_data(escape_html=True)
+        _append_style_telemetry(
+            project,
+            {
+                "type": "event",
+                "level": "error",
+                "message": "style form invalid",
+                "action": action,
+                "errors": error_payload,
+            },
+        )
+        for field_name, errors in error_payload.items():
+            for err in errors:
+                messages.error(
+                    request,
+                    f"Style form error ({field_name}): {err.get('message', 'Invalid value')}",
+                )
         messages.error(
             request,
             "Could not process the style request. Please review the highlighted form fields.",
@@ -1129,6 +2097,7 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
             "form": form,
             "style": style_obj,
             "style_artifact_dir": _image_style_dir(project),
+            "style_artifact_links": _style_artifact_links(project),
             "style_image_url": (
                 reverse("project-compiled", args=[project.pk, style_obj.sample_image_path])
                 if style_obj.sample_image_path
@@ -1152,6 +2121,14 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
 
     if request.method == "POST":
         action = request.POST.get("action") or "save"
+        requested_ai_model = (request.POST.get("ai_model") or "").strip()
+        ai_model = requested_ai_model or style.ai_model or project.ai_model or DEFAULT_MODEL
+        invalid_ai_model = ai_model not in AI_MODEL_CHOICES
+        if invalid_ai_model:
+            ai_model = DEFAULT_MODEL
+        if ai_model != style.ai_model:
+            style.ai_model = ai_model
+            style.save(update_fields=["ai_model", "updated_at"])
         requested_image_model = (request.POST.get("image_model") or "").strip()
         image_model = requested_image_model or "gpt-image-1"
         invalid_image_model = image_model not in IMAGE_MODEL_CHOICES
@@ -1159,6 +2136,22 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
             image_model = "gpt-image-1"
         formset = ProjectImageElementFormSet(request.POST, queryset=queryset)
         if formset.is_valid():
+            _append_elements_telemetry(
+                project,
+                {
+                    "type": "event",
+                    "level": "info",
+                    "message": "elements action dispatch",
+                    "action": action,
+                    "ai_model": ai_model,
+                    "image_model": image_model,
+                },
+            )
+            if action in {"discover", "expand"} and requested_ai_model and invalid_ai_model:
+                messages.warning(
+                    request,
+                    f"Unknown text model '{requested_ai_model}'. Using {ai_model} instead.",
+                )
             if action == "generate_images" and requested_image_model and invalid_image_model:
                 messages.warning(
                     request,
@@ -1178,21 +2171,31 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
             if action == "discover":
                 messages.info(
                     request,
-                    f"Discovering recurring elements with {style.ai_model or DEFAULT_MODEL}.",
+                    f"Discovering recurring elements with {ai_model}.",
                 )
                 try:
                     discovered, request_payload, response_payload = _discover_project_image_elements(
-                        project, ai_model=style.ai_model or DEFAULT_MODEL
+                        project, ai_model=ai_model
                     )
                 except Exception as exc:
                     logger.exception("Failed to discover image elements for project %s", project.pk)
+                    _append_elements_telemetry(
+                        project,
+                        {
+                            "type": "event",
+                            "level": "error",
+                            "message": "elements discovery failed",
+                            "ai_model": ai_model,
+                            **_exception_telemetry_fields(exc),
+                        },
+                    )
                     messages.error(request, f"Element discovery failed: {exc}")
                 else:
                     project.image_elements.all().delete()
                     for item in discovered:
                         ProjectImageElement.objects.create(
                             project=project,
-                            ai_model=style.ai_model or DEFAULT_MODEL,
+                            ai_model=ai_model,
                             status=ProjectImageElement.STATUS_PROPOSED,
                             **item,
                         )
@@ -1217,14 +2220,24 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
             elif action == "expand":
                 messages.info(
                     request,
-                    f"Expanding element prompts with {style.ai_model or DEFAULT_MODEL}.",
+                    f"Expanding element prompts with {ai_model}.",
                 )
                 try:
                     expanded = _expand_project_image_elements(
-                        project, ai_model=style.ai_model or DEFAULT_MODEL
+                        project, ai_model=ai_model
                     )
                 except Exception as exc:
                     logger.exception("Failed to expand image elements for project %s", project.pk)
+                    _append_elements_telemetry(
+                        project,
+                        {
+                            "type": "event",
+                            "level": "error",
+                            "message": "elements expansion failed",
+                            "ai_model": ai_model,
+                            **_exception_telemetry_fields(exc),
+                        },
+                    )
                     messages.error(request, f"Element expansion failed: {exc}")
                 else:
                     _persist_image_elements_artifacts(project)
@@ -1271,7 +2284,10 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
             "style": style,
             "formset": formset,
             "elements_artifact_dir": _image_elements_dir(project),
+            "elements_artifact_links": _elements_artifact_links(project),
             "confirmed_count": project.image_elements.filter(is_confirmed=True).count(),
+            "ai_models": AI_MODEL_CHOICES,
+            "selected_ai_model": style.ai_model or project.ai_model or DEFAULT_MODEL,
             "image_models": IMAGE_MODEL_CHOICES,
             "selected_image_model": request.GET.get("image_model")
             or project.image_elements.filter(image_model__isnull=False)
@@ -1314,9 +2330,21 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
                 messages.success(request, f"Synced {synced} page rows from source text.")
             elif action == "generate_images":
                 try:
-                    generated = _generate_project_page_images(project, image_model=image_model)
+                    generated = _generate_project_page_images(
+                        project,
+                        image_model=image_model,
+                        discourage_text_in_image=bool(style.discourage_text_in_images),
+                    )
                 except Exception as exc:
                     logger.exception("Failed to generate page images for project %s", project.pk)
+                    _append_page_image_telemetry(
+                        project,
+                        {
+                            "event": "page_images_generation_failed",
+                            "model": image_model,
+                            **_exception_telemetry_fields(exc),
+                        },
+                    )
                     messages.error(request, f"Page image generation failed: {exc}")
                 else:
                     messages.success(
@@ -1421,6 +2449,14 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
                 url = f"{project_media_base}/{rel}"
                 stage_files.append({"path": rel, "url": url})
 
+            telemetry_rel = None
+            telemetry_path = run_dir / "stages" / "telemetry.jsonl"
+            if telemetry_path.exists():
+                telemetry_rel = telemetry_path.resolve().relative_to(base).as_posix()
+                stage_files.append(
+                    {"path": telemetry_rel, "url": f"{project_media_base}/{telemetry_rel}"}
+                )
+
             # Keep the MEDIA-relative run base stable for progress links.
             run_media_base = f"{project_media_base}/runs/{run_dir.name}"
             stage_dir = run_dir / "stages"
@@ -1462,6 +2498,8 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["compiled_media_url"] = compiled_media_url
         context["ai_models"] = AI_MODEL_CHOICES
         context["selected_ai_model"] = project.ai_model or DEFAULT_MODEL
+        context["detailed_api_trace_default"] = False
+        context["language_choices"] = ProjectForm.LANGUAGE_CHOICES
         style_obj = getattr(project, "image_style", None)
         context["style_ready"] = bool(
             style_obj and (style_obj.sample_image_path or style_obj.status == ProjectImageStyle.STATUS_APPROVED)
@@ -1474,6 +2512,17 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
             if project.page_image_placement in PAGE_IMAGE_PLACEMENT_CHOICES
             else "none"
         )
+        usage_breakdown = (
+            AIUsageCharge.objects.filter(project=project, status=AIUsageCharge.STATUS_CHARGED)
+            .values("request_type")
+            .annotate(total=Sum("cost_usd"))
+            .order_by("request_type")
+        )
+        context["project_total_cost_usd"] = project.total_cost_usd
+        context["project_cost_breakdown"] = [
+            {"request_type": row["request_type"] or "unspecified", "total": row["total"] or 0}
+            for row in usage_breakdown
+        ]
         context.update(_manual_annotation_context(project))
         if project.language.lower().startswith("zh"):
             context["segmentation_method_options"] = [("auto", "Jieba (default)"), ("jieba", "Jieba"), ("ai", "AI")]
@@ -1573,6 +2622,7 @@ def _save_versioned_stage_payload(
     payload: dict[str, Any],
     metadata: dict[str, Any],
 ) -> None:
+    payload = normalize_json_text(payload)
     target_run = _ensure_stage_run_dir(project)
     stage_dir = target_run / "stages"
     stage_dir.mkdir(parents=True, exist_ok=True)
@@ -1627,14 +2677,21 @@ def _phase2_token_bar_rows(seg1_payload: dict[str, Any], seg2_payload: dict[str,
 def _phase2_payload_from_bar_rows(seg1_payload: dict[str, Any], rows: list[dict[str, Any]]) -> dict[str, Any]:
     token_map: dict[tuple[int, int], list[str]] = {}
     for row in rows:
-        edited = str(row["tokenized_text"] or "")
-        segment_text = str(row["segment_text"] or "")
-        if edited.replace("¦", "") != segment_text:
-            raise ValueError(
-                f"Page {row['page_index']} segment {row['segment_index']} changes text content; "
-                "only token separators may be inserted or removed."
-            )
+        edited = str(row["tokenized_text"] or "").replace("\r\n", "\n")
+        segment_text = str(row["segment_text"] or "").replace("\r\n", "\n")
         tokens = edited.split("¦")
+        edited_without_bars = "".join(tokens)
+        if edited_without_bars != segment_text:
+            reconciled_tokens = _reconcile_outer_whitespace_only_difference(tokens, segment_text)
+            if reconciled_tokens is not None:
+                tokens = reconciled_tokens
+                edited_without_bars = "".join(tokens)
+            if edited_without_bars != segment_text:
+                mismatch = _describe_text_mismatch(edited_without_bars, segment_text)
+                raise ValueError(
+                    f"Page {row['page_index']} segment {row['segment_index']} changes text content; "
+                    f"only token separators may be inserted or removed. {mismatch}"
+                )
         if any(tok == "" for tok in tokens):
             raise ValueError(
                 f"Page {row['page_index']} segment {row['segment_index']} contains an empty token "
@@ -1649,6 +2706,54 @@ def _phase2_payload_from_bar_rows(seg1_payload: dict[str, Any], rows: list[dict[
                 token_surfaces = [str(segment.get("surface") or "")]
             segment["tokens"] = [{"surface": surface} for surface in token_surfaces]
     return edited
+
+
+def _describe_text_mismatch(edited_text: str, expected_text: str) -> str:
+    mismatch_index: int | None = None
+    for idx, (edited_char, expected_char) in enumerate(zip(edited_text, expected_text)):
+        if edited_char != expected_char:
+            mismatch_index = idx
+            break
+    if mismatch_index is None and len(edited_text) != len(expected_text):
+        mismatch_index = min(len(edited_text), len(expected_text))
+    if mismatch_index is None:
+        mismatch_index = 0
+
+    edited_char = edited_text[mismatch_index] if mismatch_index < len(edited_text) else ""
+    expected_char = expected_text[mismatch_index] if mismatch_index < len(expected_text) else ""
+
+    start = max(0, mismatch_index - 12)
+    end = mismatch_index + 13
+    edited_context = edited_text[start:end]
+    expected_context = expected_text[start:end]
+
+    return (
+        f"First mismatch at character {mismatch_index + 1}: "
+        f"edited={_format_debug_char(edited_char)}, expected={_format_debug_char(expected_char)}; "
+        f"edited_length={len(edited_text)}, expected_length={len(expected_text)}; "
+        f"edited_context={edited_context!r}; expected_context={expected_context!r}"
+    )
+
+
+def _reconcile_outer_whitespace_only_difference(tokens: list[str], expected_text: str) -> list[str] | None:
+    if not tokens:
+        return None
+    joined = "".join(tokens)
+    if joined.strip() != expected_text.strip():
+        return None
+    expected_leading = expected_text[: len(expected_text) - len(expected_text.lstrip())]
+    expected_trailing = expected_text[len(expected_text.rstrip()) :]
+
+    adjusted_tokens = list(tokens)
+    adjusted_tokens[0] = expected_leading + adjusted_tokens[0].lstrip()
+    adjusted_tokens[-1] = adjusted_tokens[-1].rstrip() + expected_trailing
+    return adjusted_tokens
+
+
+def _format_debug_char(ch: str) -> str:
+    if ch == "":
+        return "<end>"
+    return f"{ch!r} (U+{ord(ch):04X})"
 
 
 def _display_token_surfaces_for_segment(segment_text: str, raw_tokens: list[Any]) -> list[str]:
@@ -2824,7 +3929,17 @@ def manual_translation(request: HttpRequest, pk: int) -> HttpResponse:
 def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
     if request.method == "POST":
-        text_source = (request.POST.get("page_image_text_source") or "").strip()
+        from_translations = (request.POST.get("generate_page_images_from_translations") or "").strip().lower() in {
+            "1",
+            "true",
+            "on",
+            "yes",
+        }
+        text_source = (
+            Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION
+            if from_translations
+            else Project.PAGE_IMAGE_TEXT_SOURCE_SEGMENTATION
+        )
         valid_sources = {choice[0] for choice in Project.PAGE_IMAGE_TEXT_SOURCE_CHOICES}
         if text_source not in valid_sources:
             messages.error(request, "Unknown page-image text source option.")
@@ -2832,7 +3947,7 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
             project.page_image_text_source = text_source
             project.save(update_fields=["page_image_text_source", "updated_at"])
             synced = _ensure_project_page_rows(project)
-            messages.success(request, f"Saved page-image text source and synced {synced} page rows.")
+            messages.success(request, f"Saved image settings and synced {synced} page rows.")
         return redirect("project-images-home", pk=project.pk)
 
     style = getattr(project, "image_style", None)
@@ -2913,8 +4028,16 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
         return reverse("project-detail", args=[self.object.pk])
 
 
-def _build_ai_client(model_name: str | None = None) -> OpenAIClient:
-    config = OpenAIConfig(model=model_name or DEFAULT_MODEL)
+def _build_ai_client(
+    model_name: str | None = None,
+    usage_reporter: Callable[[dict[str, Any]], None] | None = None,
+    detailed_telemetry: bool = False,
+) -> OpenAIClient:
+    config = OpenAIConfig(
+        model=model_name or DEFAULT_MODEL,
+        usage_reporter=usage_reporter,
+        detailed_telemetry=detailed_telemetry,
+    )
     return OpenAIClient(config=config)
 
 
@@ -3053,7 +4176,7 @@ def _load_stage_payload(
     if not path.exists():
         return None
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return normalize_json_text(json.loads(path.read_text(encoding="utf-8")))
     except Exception:
         return None
 
@@ -3076,6 +4199,156 @@ def _copy_run_artifacts(src: Path, dest: Path) -> None:
         shutil.copytree(stage_src, dest / "stages", dirs_exist_ok=True)
 
 
+def _latest_stage_artifact(project: Project, stage: str) -> tuple[Path, Path, float] | None:
+    run_dir = _find_run_with_stage(project, stage)
+    if run_dir is None:
+        return None
+    stage_path = run_dir / "stages" / f"{stage}.json"
+    if not stage_path.exists():
+        return None
+    try:
+        mtime = stage_path.stat().st_mtime
+    except Exception:
+        return None
+    return run_dir, stage_path, mtime
+
+
+def _stage_payload_with_meta(project: Project, stage: str) -> dict[str, Any] | None:
+    latest = _latest_stage_artifact(project, stage)
+    if latest is None:
+        return None
+    run_dir, stage_path, mtime = latest
+    payload = _load_stage_payload(project, stage, run_dir=run_dir)
+    if payload is None:
+        return None
+    return {"stage": stage, "run": run_dir.name, "path": stage_path, "mtime": mtime, "payload": payload}
+
+
+def _segments_are_compatible(base_payload: dict[str, Any], candidate_payload: dict[str, Any]) -> bool:
+    base_pages = base_payload.get("pages") or []
+    cand_pages = candidate_payload.get("pages") or []
+    if len(base_pages) != len(cand_pages):
+        return False
+    for base_page, cand_page in zip(base_pages, cand_pages):
+        base_segments = base_page.get("segments") or []
+        cand_segments = cand_page.get("segments") or []
+        if len(base_segments) != len(cand_segments):
+            return False
+        for base_seg, cand_seg in zip(base_segments, cand_segments):
+            if str(base_seg.get("surface") or "") != str(cand_seg.get("surface") or ""):
+                return False
+    return True
+
+
+def _tokens_are_compatible(base_payload: dict[str, Any], candidate_payload: dict[str, Any]) -> bool:
+    if not _segments_are_compatible(base_payload, candidate_payload):
+        return False
+    base_pages = base_payload.get("pages") or []
+    cand_pages = candidate_payload.get("pages") or []
+    for base_page, cand_page in zip(base_pages, cand_pages):
+        for base_seg, cand_seg in zip(base_page.get("segments") or [], cand_page.get("segments") or []):
+            base_tokens = base_seg.get("tokens") or []
+            cand_tokens = cand_seg.get("tokens") or []
+            if len(base_tokens) != len(cand_tokens):
+                return False
+            for base_tok, cand_tok in zip(base_tokens, cand_tokens):
+                if str(base_tok.get("surface") or "") != str(cand_tok.get("surface") or ""):
+                    return False
+    return True
+
+
+def _apply_segment_annotation(
+    base_payload: dict[str, Any], candidate_payload: dict[str, Any], *, key: str
+) -> int:
+    applied = 0
+    for base_page, cand_page in zip(base_payload.get("pages") or [], candidate_payload.get("pages") or []):
+        for base_seg, cand_seg in zip(base_page.get("segments") or [], cand_page.get("segments") or []):
+            cand_annotations = cand_seg.get("annotations") or {}
+            if key not in cand_annotations:
+                continue
+            base_annotations = dict(base_seg.get("annotations") or {})
+            base_annotations[key] = cand_annotations[key]
+            base_seg["annotations"] = base_annotations
+            applied += 1
+    return applied
+
+
+def _apply_token_annotation(
+    base_payload: dict[str, Any], candidate_payload: dict[str, Any], *, key: str
+) -> int:
+    applied = 0
+    for base_page, cand_page in zip(base_payload.get("pages") or [], candidate_payload.get("pages") or []):
+        for base_seg, cand_seg in zip(base_page.get("segments") or [], cand_page.get("segments") or []):
+            for base_tok, cand_tok in zip(base_seg.get("tokens") or [], cand_seg.get("tokens") or []):
+                cand_annotations = cand_tok.get("annotations") or {}
+                if key not in cand_annotations:
+                    continue
+                base_annotations = dict(base_tok.get("annotations") or {})
+                base_annotations[key] = cand_annotations[key]
+                base_tok["annotations"] = base_annotations
+                applied += 1
+    return applied
+
+
+def _compose_latest_compile_payload(project: Project) -> tuple[dict[str, Any] | None, list[str]]:
+    """Build a compile-ready payload by composing latest compatible stage outputs."""
+
+    stage_meta: dict[str, dict[str, Any]] = {}
+    for stage_name in ["segmentation_phase_2", "translation", "mwe", "lemma", "gloss", "pinyin", "audio"]:
+        meta = _stage_payload_with_meta(project, stage_name)
+        if meta is not None:
+            stage_meta[stage_name] = meta
+
+    base_stage = None
+    for candidate in ["audio", "pinyin", "gloss", "lemma", "mwe", "translation", "segmentation_phase_2"]:
+        if candidate in stage_meta:
+            base_stage = candidate
+            break
+    if base_stage is None:
+        return None, ["no upstream stage payloads found"]
+
+    composed = json.loads(json.dumps(stage_meta[base_stage]["payload"]))
+    plan: list[str] = [f"base={base_stage}@{stage_meta[base_stage]['run']}"]
+
+    now_ts = datetime.now(timezone.utc).timestamp()
+
+    def _age_minutes(meta: dict[str, Any]) -> int:
+        return max(0, int((now_ts - float(meta["mtime"])) / 60))
+
+    def _add_plan(stage_name: str, note: str) -> None:
+        meta = stage_meta[stage_name]
+        plan.append(f"{stage_name}@{meta['run']} ({_age_minutes(meta)}m old): {note}")
+
+    if "translation" in stage_meta and _segments_are_compatible(composed, stage_meta["translation"]["payload"]):
+        n = _apply_segment_annotation(composed, stage_meta["translation"]["payload"], key="translation")
+        _add_plan("translation", f"applied segment translation to {n} segment(s)")
+
+    if "mwe" in stage_meta and _tokens_are_compatible(composed, stage_meta["mwe"]["payload"]):
+        n1 = _apply_segment_annotation(composed, stage_meta["mwe"]["payload"], key="mwes")
+        n2 = _apply_token_annotation(composed, stage_meta["mwe"]["payload"], key="mwe_id")
+        _add_plan("mwe", f"applied mwes/mwe_id to {n1 + n2} field(s)")
+
+    if "lemma" in stage_meta and _tokens_are_compatible(composed, stage_meta["lemma"]["payload"]):
+        n1 = _apply_token_annotation(composed, stage_meta["lemma"]["payload"], key="lemma")
+        n2 = _apply_token_annotation(composed, stage_meta["lemma"]["payload"], key="pos")
+        _add_plan("lemma", f"applied lemma/pos to {n1 + n2} token field(s)")
+
+    if "gloss" in stage_meta and _tokens_are_compatible(composed, stage_meta["gloss"]["payload"]):
+        n = _apply_token_annotation(composed, stage_meta["gloss"]["payload"], key="gloss")
+        _add_plan("gloss", f"applied gloss to {n} token(s)")
+
+    if "pinyin" in stage_meta and _tokens_are_compatible(composed, stage_meta["pinyin"]["payload"]):
+        n = _apply_token_annotation(composed, stage_meta["pinyin"]["payload"], key="pinyin")
+        _add_plan("pinyin", f"applied pinyin to {n} token(s)")
+
+    if "audio" in stage_meta and _tokens_are_compatible(composed, stage_meta["audio"]["payload"]):
+        n1 = _apply_token_annotation(composed, stage_meta["audio"]["payload"], key="audio")
+        n2 = _apply_segment_annotation(composed, stage_meta["audio"]["payload"], key="audio")
+        _add_plan("audio", f"applied audio annotations to {n1 + n2} node(s)")
+
+    return normalize_json_text(composed), plan
+
+
 def _run_compile_task(
     project_id: int,
     user_id: int,
@@ -3093,6 +4366,7 @@ def _run_compile_task(
     page_image_placement: str | None = None,
     segmentation_method: str | None = None,
     romanization_method: str | None = None,
+    detailed_api_trace: bool = False,
 ) -> None:
     project = Project.objects.get(pk=project_id)
     output_dir = Path(output_dir_str)
@@ -3146,6 +4420,12 @@ def _run_compile_task(
                 report_id,
             )
 
+    current_request_type: dict[str, str] = {"value": start_stage}
+
+    def tracked_progress_cb(stage: str, status: str, timestamp: str) -> None:
+        current_request_type["value"] = stage or current_request_type["value"]
+        progress_cb(stage, status, timestamp)
+
     spec = FullPipelineSpec(
         text=text,
         text_obj=text_obj,
@@ -3156,7 +4436,7 @@ def _run_compile_task(
         audio_cache_dir=_audio_repository_dir(project.language),
         require_real_tts=True,
         persist_intermediates=True,
-        progress_callback=progress_cb,
+        progress_callback=tracked_progress_cb,
         start_stage=start_stage,
         end_stage=end_stage or "compile_html",
         page_images={},
@@ -3193,11 +4473,69 @@ def _run_compile_task(
     if chosen_model not in AI_MODEL_CHOICES:
         chosen_model = DEFAULT_MODEL
 
-    client = _build_ai_client(model_name=chosen_model)
+    usage_events: list[dict[str, Any]] = []
+    model_pricing = openai_price_for_model(chosen_model)
+
+    def usage_reporter(event: dict[str, Any]) -> None:
+        event_copy = dict(event or {})
+        usage_events.append(event_copy)
+        if not detailed_api_trace:
+            return
+        prompt_tokens = max(0, int(event_copy.get("prompt_tokens") or 0))
+        completion_tokens = max(0, int(event_copy.get("completion_tokens") or 0))
+        input_cost_usd = (model_pricing["input"] * prompt_tokens) / 1_000_000
+        output_cost_usd = (model_pricing["output"] * completion_tokens) / 1_000_000
+        total_cost_usd = input_cost_usd + output_cost_usd
+        telemetry.event(
+            str(event_copy.get("request_type") or current_request_type["value"] or "unknown"),
+            "info",
+            "openai.usage trace",
+            {
+                "model": str(event_copy.get("model") or chosen_model),
+                "operation": str(event_copy.get("operation") or "chat"),
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": max(0, int(event_copy.get("total_tokens") or 0)),
+                "assumed_input_usd_per_1m_tokens": str(model_pricing["input"]),
+                "assumed_output_usd_per_1m_tokens": str(model_pricing["output"]),
+                "assumed_input_cost_usd": str(round(input_cost_usd, 6)),
+                "assumed_output_cost_usd": str(round(output_cost_usd, 6)),
+                "assumed_total_cost_usd": str(round(total_cost_usd, 6)),
+            },
+        )
+
+    def flush_usage_events() -> None:
+        for event in usage_events:
+            try:
+                record_openai_usage_and_charge(
+                    user_id=user_id,
+                    project_id=project_id,
+                    model=str(event.get("model") or chosen_model),
+                    operation=str(event.get("operation") or "chat"),
+                    prompt_tokens=int(event.get("prompt_tokens") or 0),
+                    completion_tokens=int(event.get("completion_tokens") or 0),
+                    total_tokens=int(event.get("total_tokens") or 0),
+                    request_type=str(event.get("request_type") or current_request_type["value"] or "unknown"),
+                )
+            except Exception:
+                logger.exception("Failed to record OpenAI usage charge for project=%s", project_id)
+
+    def _finalize_usage_events() -> None:
+        try:
+            flush_usage_events()
+        except Exception:
+            logger.exception("Unexpected failure while finalizing usage events for project=%s", project_id)
+
+    client = _build_ai_client(
+        model_name=chosen_model,
+        usage_reporter=usage_reporter,
+        detailed_telemetry=detailed_api_trace,
+    )
 
     try:
         result = asyncio.run(run_full_pipeline(spec, client=client))
     except Exception as exc:  # pragma: no cover - surfaced through session
+        _finalize_usage_events()
         logger.exception("Compile failed for project %s", project_id)
         failure_entry = {
             "stage": "compile",
@@ -3213,6 +4551,7 @@ def _run_compile_task(
             )
         post_update(f"Compile failed: {exc}", status="error")
         return
+    _finalize_usage_events()
 
     requested_end_stage = spec.end_stage or "compile_html"
     if requested_end_stage == "segmentation_phase_1":
@@ -3292,6 +4631,7 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     start_stage = request.POST.get("start_stage") or (
         "text_gen" if project.input_mode == Project.INPUT_DESCRIPTION else "segmentation_phase_1"
     )
+    requested_start_stage = start_stage
     if start_stage not in PIPELINE_ORDER:
         messages.error(request, "Unknown start stage.")
         return redirect(return_to)
@@ -3302,6 +4642,24 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     if PIPELINE_ORDER.index(end_stage) < PIPELINE_ORDER.index(start_stage):
         messages.error(request, "End stage must come after the selected start stage.")
         return redirect(return_to)
+    detailed_api_trace = (request.POST.get("detailed_api_trace") or "").strip().lower() in {
+        "1",
+        "true",
+        "on",
+        "yes",
+    }
+    compose_latest_upstream = (request.POST.get("compose_latest_upstream") or "").strip().lower() in {
+        "1",
+        "true",
+        "on",
+        "yes",
+    }
+    confirm_compose_latest = (request.POST.get("confirm_compose_latest") or "").strip().lower() in {
+        "1",
+        "true",
+        "on",
+        "yes",
+    }
 
     page_image_placement = (
         request.POST.get("page_image_placement")
@@ -3344,7 +4702,30 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     # argument, avoiding NameError if the start stage skips description entry.
     description: str | None = (project.description or "").strip()
 
-    if start_stage == "text_gen":
+    if start_stage == "compile_html" and compose_latest_upstream:
+        composed_payload, compose_plan = _compose_latest_compile_payload(project)
+        if composed_payload is None:
+            messages.error(
+                request,
+                "Unable to compose compile input from latest upstream stage files. "
+                "Run from an earlier stage instead.",
+            )
+            return redirect(return_to)
+        if not confirm_compose_latest:
+            messages.warning(
+                request,
+                "Compose-latest mode found a merge plan, but confirmation is required. "
+                "Re-run with 'Confirm composed input' checked."
+            )
+            for entry in compose_plan[:10]:
+                messages.info(request, f"Compose plan: {entry}")
+            return redirect(return_to)
+        text = None
+        text_obj = composed_payload
+        messages.info(request, "Compose-latest mode confirmed; compiling from merged upstream artifacts.")
+        for entry in compose_plan[:10]:
+            messages.info(request, f"Compose plan: {entry}")
+    elif start_stage == "text_gen":
         if not description:
             messages.error(request, "Please provide a description to generate text.")
             return redirect(return_to)
@@ -3379,24 +4760,60 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
             )
             return redirect(return_to)
     else:
-        # Start from a persisted intermediate produced by a previous run.
-        upstream_index = PIPELINE_ORDER.index(start_stage) - 1
-        upstream_stage = PIPELINE_ORDER[upstream_index]
-        source_run = _find_run_with_stage(project, upstream_stage)
-        if not source_run:
+        # Start from a persisted intermediate produced by previous runs.
+        # We choose the *freshest* upstream artifact across stages before the
+        # requested start stage, then rerun forward from the next stage. This
+        # prevents stale downstream stages (e.g. old audio) from masking newer
+        # edits in earlier stages (e.g. translation/gloss).
+        requested_start_index = PIPELINE_ORDER.index(start_stage)
+        upstream_stages = PIPELINE_ORDER[:requested_start_index]
+
+        freshest: tuple[str, Path, float] | None = None
+        for stage_name in upstream_stages:
+            latest = _latest_stage_artifact(project, stage_name)
+            if latest is None:
+                continue
+            run_dir, _stage_path, mtime = latest
+            if freshest is None or mtime > freshest[2]:
+                freshest = (stage_name, run_dir, mtime)
+
+        if freshest is None:
             messages.error(
                 request,
-                f"Cannot start at {start_stage}: missing upstream stage output ({upstream_stage}).",
+                f"Cannot start at {start_stage}: no upstream stage outputs were found.",
             )
             return redirect(return_to)
 
-        text_obj = _load_stage_payload(project, upstream_stage, run_dir=source_run)
-        if text_obj is None:
+        freshest_stage, source_run, _freshest_mtime = freshest
+        freshest_payload = _load_stage_payload(project, freshest_stage, run_dir=source_run)
+        if freshest_payload is None:
             messages.error(
                 request,
-                f"Cannot start at {start_stage}: missing upstream stage output ({upstream_stage}).",
+                f"Cannot start at {start_stage}: failed to load upstream stage output ({freshest_stage}).",
             )
             return redirect(return_to)
+
+        effective_start_stage = PIPELINE_ORDER[PIPELINE_ORDER.index(freshest_stage) + 1]
+        if PIPELINE_ORDER.index(effective_start_stage) > requested_start_index:
+            effective_start_stage = requested_start_stage
+        if effective_start_stage != requested_start_stage:
+            messages.info(
+                request,
+                f"Using fresher upstream stage '{freshest_stage}', so recompilation will start at '{effective_start_stage}'.",
+            )
+        start_stage = effective_start_stage
+
+        if start_stage == "segmentation_phase_1":
+            text = str((freshest_payload or {}).get("surface") or "").strip()
+            if not text:
+                messages.error(
+                    request,
+                    "Cannot start at segmentation_phase_1: missing text surface in upstream stage output.",
+                )
+                return redirect(return_to)
+            text_obj = None
+        else:
+            text_obj = freshest_payload
 
         try:
             _copy_run_artifacts(source_run, output_dir)
@@ -3406,6 +4823,16 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
                 progress_log.unlink()
         except Exception:
             logger.exception("Failed to copy prior run artifacts from %s", source_run)
+
+    if credits_enabled() and not has_minimum_balance_for_compile(request.user):
+        min_required = minimum_compile_balance_usd()
+        current_balance = get_user_balance_usd(request.user)
+        messages.error(
+            request,
+            f"Insufficient credits to start compile. Current balance: ${current_balance:.4f}; "
+            f"minimum required: ${min_required:.4f}. Please contact an administrator for recharge.",
+        )
+        return redirect(return_to)
 
     task_type = f"compile_project_{project.pk}"
     report_id = str(uuid.uuid4())
@@ -3428,6 +4855,7 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         page_image_placement,
         segmentation_method,
         romanization_method,
+        detailed_api_trace,
         q_options={"sync": False},
     )
 
@@ -4695,6 +6123,138 @@ def set_project_collaborator(request: HttpRequest, pk: int) -> HttpResponse:
     )
     messages.success(request, f"Saved collaborator '{username}' with role {role.upper()}.")
     return redirect("project-detail", pk=project.pk)
+
+
+def _copy_latest_run_files(source_project: Project, target_project: Project) -> int:
+    latest_by_rel: dict[str, Path] = {}
+    latest_mtime: dict[str, float] = {}
+    for run_dir in _iter_runs(source_project):
+        for path in run_dir.rglob("*"):
+            if not path.is_file():
+                continue
+            rel = path.relative_to(run_dir).as_posix()
+            try:
+                mtime = path.stat().st_mtime
+            except Exception:
+                continue
+            if rel not in latest_by_rel or mtime > latest_mtime[rel]:
+                latest_by_rel[rel] = path
+                latest_mtime[rel] = mtime
+
+    if not latest_by_rel:
+        return 0
+
+    target_run = _prepare_output_dir(target_project)
+    copied = 0
+    for rel, src in latest_by_rel.items():
+        dest = target_run / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dest)
+        copied += 1
+
+    source_compiled = Path(source_project.compiled_path or "")
+    if len(source_compiled.parts) >= 3 and source_compiled.parts[0] == "runs":
+        tail = Path(*source_compiled.parts[2:])
+        candidate = target_run / tail
+        if candidate.exists():
+            target_project.compiled_path = f"runs/{target_run.name}/{tail.as_posix()}"
+            target_project.save(update_fields=["compiled_path", "updated_at"])
+    return copied
+
+
+def _copy_image_assets_and_rows(source_project: Project, target_project: Project) -> None:
+    source_images = source_project.artifact_dir() / "images"
+    target_images = target_project.artifact_dir() / "images"
+    if source_images.exists():
+        shutil.copytree(source_images, target_images, dirs_exist_ok=True)
+
+    source_style = getattr(source_project, "image_style", None)
+    if source_style:
+        ProjectImageStyle.objects.update_or_create(
+            project=target_project,
+            defaults={
+                "style_brief": source_style.style_brief,
+                "expanded_style_description": source_style.expanded_style_description,
+                "representative_excerpt": source_style.representative_excerpt,
+                "sample_image_prompt": source_style.sample_image_prompt,
+                "sample_image_path": source_style.sample_image_path,
+                "sample_image_revised_prompt": source_style.sample_image_revised_prompt,
+                "sample_image_model": source_style.sample_image_model,
+                "ai_model": source_style.ai_model,
+                "status": source_style.status,
+            },
+        )
+
+    target_project.image_elements.all().delete()
+    for element in source_project.image_elements.order_by("id"):
+        ProjectImageElement.objects.create(
+            project=target_project,
+            name=element.name,
+            element_type=element.element_type,
+            page_refs=element.page_refs,
+            why_consistency_matters=element.why_consistency_matters,
+            expanded_description=element.expanded_description,
+            expanded_prompt=element.expanded_prompt,
+            image_model=element.image_model,
+            image_path=element.image_path,
+            image_revised_prompt=element.image_revised_prompt,
+            is_confirmed=element.is_confirmed,
+            ai_model=element.ai_model,
+            status=element.status,
+        )
+
+    target_project.image_pages.all().delete()
+    for page in source_project.image_pages.order_by("page_number", "id"):
+        ProjectImagePage.objects.create(
+            project=target_project,
+            page_number=page.page_number,
+            page_text=page.page_text,
+            generation_prompt=page.generation_prompt,
+            image_model=page.image_model,
+            image_path=page.image_path,
+            image_revised_prompt=page.image_revised_prompt,
+            status=page.status,
+        )
+
+
+@login_required
+def clone_project(request: HttpRequest, pk: int) -> HttpResponse:
+    source_project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
+    if request.method != "POST":
+        return redirect("project-detail", pk=source_project.pk)
+
+    requested_title = (request.POST.get("clone_title") or "").strip()
+    requested_target_language = (request.POST.get("clone_target_language") or "").strip()
+    allowed_target_languages = {code for code, _label in ProjectForm.LANGUAGE_CHOICES}
+    if requested_target_language and requested_target_language not in allowed_target_languages:
+        messages.error(request, "Unknown glossing language for clone.")
+        return redirect("project-detail", pk=source_project.pk)
+    default_title = f"{source_project.title} (Clone)"
+    clone_title = _build_unique_import_title(request.user, requested_title or default_title)
+    clone_target_language = requested_target_language or source_project.target_language
+    clone = Project.objects.create(
+        owner=request.user,
+        title=clone_title,
+        description=source_project.description,
+        source_text=source_project.source_text,
+        input_mode=source_project.input_mode,
+        language=source_project.language,
+        target_language=clone_target_language,
+        ai_model=source_project.ai_model,
+        page_image_placement=source_project.page_image_placement,
+        page_image_text_source=source_project.page_image_text_source,
+        segmentation_method=source_project.segmentation_method,
+        romanization_method=source_project.romanization_method,
+    )
+    _persist_project_source(clone)
+    copied_files = _copy_latest_run_files(source_project, clone)
+    _copy_image_assets_and_rows(source_project, clone)
+    messages.success(
+        request,
+        f"Cloned project '{source_project.title}' to '{clone.title}' ({copied_files} run file(s) copied).",
+    )
+    return redirect("project-detail", pk=clone.pk)
+
 
 @login_required
 def delete_project(request: HttpRequest, pk: int) -> HttpResponse:
