@@ -1,4 +1,5 @@
 from unittest.mock import patch
+import inspect
 import base64
 import json
 
@@ -126,6 +127,18 @@ class ProjectImagePagesViewTests(TestCase):
         self.project.refresh_from_db()
         self.assertEqual(self.project.page_image_text_source, "segmentation")
         self.assertContains(resp, "Saved image settings")
+
+    def test_images_home_does_not_expose_legacy_pivot_language_context(self):
+        resp = self.client.get(reverse("project-images-home", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotIn("pivot_language_choices", resp.context)
+        self.assertNotIn("selected_image_generation_pivot_language", resp.context)
+
+    def test_images_home_view_source_has_no_legacy_pivot_language_references(self):
+        view_source = inspect.getsource(views.project_images_home)
+        self.assertNotIn("valid_pivot_languages", view_source)
+        self.assertNotIn("selected_image_generation_pivot_language", view_source)
+        self.assertNotIn("project.image_generation_pivot_language", view_source)
 
     @patch("projects.views._build_ai_client")
     def test_generate_page_images_persists_output(self, mock_build_ai_client):
