@@ -3947,11 +3947,8 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
             if from_translations
             else Project.PAGE_IMAGE_TEXT_SOURCE_SEGMENTATION
         )
-        # Note: image_generation_pivot_language was removed in migration 0022.
-        # Keep this handler focused on page_image_text_source only.
-        valid_sources = {choice[0] for choice in Project.PAGE_IMAGE_TEXT_SOURCE_CHOICES}
-        valid_pivot_languages = {code for code, _label in ProjectForm.LANGUAGE_CHOICES}
-        if text_source not in valid_sources:
+        allowed_text_sources = {choice[0] for choice in Project.PAGE_IMAGE_TEXT_SOURCE_CHOICES}
+        if text_source not in allowed_text_sources:
             messages.error(request, "Unknown page-image text source option.")
         elif pivot_language and pivot_language not in valid_pivot_languages:
             messages.error(request, "Unknown pivot language for image generation.")
