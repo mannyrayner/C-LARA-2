@@ -86,6 +86,7 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertEqual(ProjectImagePage.objects.filter(project=self.project).count(), 2)
         self.assertContains(resp, "Status from elements step:")
         self.assertContains(resp, "1/1")
+        self.assertContains(resp, "Discourage visible text in images")
 
     def test_images_home_can_switch_page_text_source_to_translation(self):
         run_dir = self.project.artifact_dir() / "runs" / "run_translation" / "stages"
@@ -111,6 +112,20 @@ class ProjectImagePagesViewTests(TestCase):
         page2 = ProjectImagePage.objects.get(project=self.project, page_number=2)
         self.assertEqual(page1.page_text, "Bonjour le monde")
         self.assertEqual(page2.page_text, "Deuxieme page")
+
+    def test_images_home_can_save_image_generation_pivot_language(self):
+        resp = self.client.post(
+            reverse("project-images-home", args=[self.project.pk]),
+            {
+                "page_image_text_source": "segmentation",
+                "image_generation_pivot_language": "fr",
+            },
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.image_generation_pivot_language, "fr")
+        self.assertContains(resp, "pivot language")
 
     @patch("projects.views._build_ai_client")
     def test_generate_page_images_persists_output(self, mock_build_ai_client):
