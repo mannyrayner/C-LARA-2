@@ -3947,6 +3947,11 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
             if from_translations
             else Project.PAGE_IMAGE_TEXT_SOURCE_SEGMENTATION
         )
+        pivot_language = (
+            (project.target_language or "").strip().lower()
+            if text_source == Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION
+            else ""
+        )
         allowed_text_sources = {choice[0] for choice in Project.PAGE_IMAGE_TEXT_SOURCE_CHOICES}
         if text_source not in allowed_text_sources:
             messages.error(request, "Unknown page-image text source option.")
