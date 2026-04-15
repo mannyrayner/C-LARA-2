@@ -53,7 +53,15 @@ class ProjectImageStyleViewTests(TestCase):
 
         style = ProjectImageStyle.objects.get(project=self.project)
         self.assertEqual(style.status, ProjectImageStyle.STATUS_DRAFT)
-        self.assertContains(resp, "Generate style draft")
+        self.assertContains(resp, "Expand style brief")
+        self.assertContains(resp, "To fill “Expanded style description” and “Sample image prompt”")
+        self.assertContains(resp, "style-processing-indicator")
+        self.assertContains(resp, "Expanding style brief...")
+        self.assertContains(resp, "Style telemetry")
+        self.assertContains(resp, "Generate sample image is disabled until a sample image prompt is available.")
+        self.assertContains(resp, "name=\"action\" value=\"generate_image\"")
+        self.assertContains(resp, "disabled title=\"Generate or enter a sample image prompt first\"")
+        self.assertContains(resp, "Save draft</strong> stores manual edits")
 
     @patch("projects.views._build_ai_client")
     def test_generate_style_persists_outputs_and_artifacts(self, mock_build_ai_client):
@@ -79,20 +87,84 @@ class ProjectImageStyleViewTests(TestCase):
             },
         )
         self.assertEqual(resp.status_code, 302)
+        self.assertIn("notice=done", resp["Location"])
 
         style = ProjectImageStyle.objects.get(project=self.project)
         self.assertEqual(style.status, ProjectImageStyle.STATUS_GENERATED)
         self.assertIn("warm watercolor storybook", style.expanded_style_description)
         self.assertTrue(fake_client.prompts)
+        self.assertIn("Do NOT include named characters", fake_client.prompts[0])
+        self.assertIn("Text policy for final images:", fake_client.prompts[0])
 
         style_dir = self.project.artifact_dir() / "images" / "style"
         self.assertTrue((style_dir / "style_brief.txt").exists())
         self.assertTrue((style_dir / "style_expansion_prompt.json").exists())
         self.assertTrue((style_dir / "style_expansion_response.json").exists())
+        self.assertTrue((style_dir / "telemetry.jsonl").exists())
+        telemetry_lines = (style_dir / "telemetry.jsonl").read_text(encoding="utf-8").splitlines()
+        self.assertGreaterEqual(len(telemetry_lines), 2)
+        self.assertTrue(any("style expansion request start" in line for line in telemetry_lines))
+        self.assertTrue(any("style expansion response received" in line for line in telemetry_lines))
         self.assertEqual(
             (style_dir / "sample_image_prompt.txt").read_text(encoding="utf-8"),
             style.sample_image_prompt,
         )
+        resp_get = self.client.get(reverse("project-image-style", args=[self.project.pk]))
+        self.assertContains(resp_get, "Style telemetry")
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_style_uses_action_intent_fallback(self, mock_build_ai_client):
+        fake_client = FakeAIClient(
+            {
+                "expanded_style_description": "Line-art storybook style.",
+                "representative_excerpt": "Celine arrives in Adelaide.",
+                "sample_image_prompt": "Line-art scene of Celine arriving.",
+            }
+        )
+        mock_build_ai_client.return_value = fake_client
+        resp = self.client.post(
+            reverse("project-image-style", args=[self.project.pk]),
+            {
+                "style_brief": "line art",
+                "expanded_style_description": "",
+                "sample_image_prompt": "",
+                "ai_model": "gpt-4o",
+                "sample_image_model": "gpt-image-1",
+                "status": "draft",
+                "action_intent": "generate",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("notice=done", resp["Location"])
+        style = ProjectImageStyle.objects.get(project=self.project)
+        self.assertEqual(style.status, ProjectImageStyle.STATUS_GENERATED)
+        self.assertTrue(style.sample_image_prompt)
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_style_truncates_overlong_expanded_style_description(self, mock_build_ai_client):
+        fake_client = FakeAIClient(
+            {
+                "expanded_style_description": "S" * 2600,
+                "representative_excerpt": "Excerpt",
+                "sample_image_prompt": "Sample prompt",
+            }
+        )
+        mock_build_ai_client.return_value = fake_client
+        self.client.post(
+            reverse("project-image-style", args=[self.project.pk]),
+            {
+                "style_brief": "watercolor",
+                "expanded_style_description": "",
+                "sample_image_prompt": "",
+                "ai_model": "gpt-4o",
+                "sample_image_model": "gpt-image-1",
+                "status": "draft",
+                "action": "generate",
+            },
+        )
+        style = ProjectImageStyle.objects.get(project=self.project)
+        self.assertIn("style description truncated", style.expanded_style_description)
+        self.assertLessEqual(len(style.expanded_style_description), 1400)
 
     def test_approve_style_updates_status(self):
         style = ProjectImageStyle.objects.create(
@@ -154,6 +226,18 @@ class ProjectImageStyleViewTests(TestCase):
         self.assertTrue(image_path.exists())
         self.assertGreater(image_path.stat().st_size, 0)
 
+    def test_generate_sample_image_button_enabled_when_prompt_exists(self):
+        ProjectImageStyle.objects.create(
+            project=self.project,
+            style_brief="storybook",
+            expanded_style_description="Expanded",
+            sample_image_prompt="Prompt exists",
+            ai_model="gpt-4o",
+        )
+        resp = self.client.get(reverse("project-image-style", args=[self.project.pk]))
+        self.assertContains(resp, "name=\"action\" value=\"generate_image\"")
+        self.assertNotContains(resp, "disabled title=\"Generate or enter a sample image prompt first\"")
+
     @patch("projects.views._build_ai_client")
     def test_generate_style_adds_completion_message(self, mock_build_ai_client):
         fake_client = FakeAIClient(
@@ -182,6 +266,28 @@ class ProjectImageStyleViewTests(TestCase):
         msgs = [m.message for m in get_messages(resp.wsgi_request)]
         self.assertTrue(any("Style expansion completed" in msg for msg in msgs))
 
+    @patch("projects.views._build_ai_client")
+    def test_generate_style_failure_sets_error_notice(self, mock_build_ai_client):
+        class FailingClient:
+            async def chat_json(self, prompt, **kwargs):  # noqa: ARG002
+                raise RuntimeError("boom")
+
+        mock_build_ai_client.return_value = FailingClient()
+        resp = self.client.post(
+            reverse("project-image-style", args=[self.project.pk]),
+            {
+                "style_brief": "watercolor",
+                "expanded_style_description": "",
+                "sample_image_prompt": "",
+                "ai_model": "gpt-4o",
+                "sample_image_model": "gpt-image-1",
+                "status": "draft",
+                "action": "generate",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("notice=error", resp["Location"])
+
     def test_invalid_style_submit_adds_error_message(self):
         resp = self.client.post(
             reverse("project-image-style", args=[self.project.pk]),
@@ -199,3 +305,8 @@ class ProjectImageStyleViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         msgs = [m.message for m in get_messages(resp.wsgi_request)]
         self.assertTrue(any("Could not process the style request" in msg for msg in msgs))
+        self.assertTrue(any("Style form error (style_brief)" in msg for msg in msgs))
+        telemetry_path = self.project.artifact_dir() / "images" / "style" / "telemetry.jsonl"
+        self.assertTrue(telemetry_path.exists())
+        telemetry_lines = telemetry_path.read_text(encoding="utf-8").splitlines()
+        self.assertTrue(any("style form invalid" in line for line in telemetry_lines))
