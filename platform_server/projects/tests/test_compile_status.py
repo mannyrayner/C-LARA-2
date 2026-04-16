@@ -533,6 +533,9 @@ class CompileStatusViewTests(TestCase):
             self.assertIn(root + "stages/segmentation_phase_1.json", names)
             self.assertIn(root + "images/style.json", names)
             self.assertIn(root + "assets/images/style/sample.png", names)
+            metadata = json.loads(zf.read(root + "project/metadata.json").decode("utf-8"))
+            self.assertEqual(metadata.get("text_direction"), "ltr")
+            self.assertEqual(metadata.get("annotation_direction"), "ltr")
 
     def test_import_source_bundle_creates_new_project(self):
         bundle = io.BytesIO()
@@ -727,6 +730,14 @@ class CompileStatusViewTests(TestCase):
         self.assertContains(resp, reverse("project-annotation-home", args=[self.project.pk]))
         self.assertContains(resp, reverse("project-images-home", args=[self.project.pk]))
         self.assertContains(resp, reverse("project-exercises-home", args=[self.project.pk]))
+
+    def test_project_detail_shows_rtl_directions_for_arabic_project(self):
+        self.project.language = "ar"
+        self.project.target_language = "fa"
+        self.project.save(update_fields=["language", "target_language", "updated_at"])
+        resp = self.client.get(reverse("project-detail", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Direction: rtl (text) / rtl (annotation)")
 
     def test_project_detail_shows_view_via_server_link_when_compiled(self):
         self.project.compiled_path = "runs/run_demo/html/page_1.html"
