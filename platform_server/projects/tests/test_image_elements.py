@@ -1,4 +1,5 @@
 from unittest.mock import patch
+import asyncio
 import base64
 
 from django.contrib.auth import get_user_model
@@ -26,6 +27,29 @@ class FakeAIClient:
             ),
             "revised_prompt": "Element revised prompt",
             "model": kwargs.get("model", "gpt-image-1"),
+        }
+
+
+
+
+class UsageReportingAIClient:
+    def __init__(self, usage_reporter=None):
+        self.usage_reporter = usage_reporter
+
+    async def chat_json(self, prompt, **kwargs):
+        if self.usage_reporter:
+            self.usage_reporter(
+                {
+                    "model": kwargs.get("model", "gpt-4o-mini"),
+                    "operation": "chat_json",
+                    "prompt_tokens": 12,
+                    "completion_tokens": 8,
+                    "total_tokens": 20,
+                }
+            )
+        return {
+            "expanded_description": "Expanded element description.",
+            "expanded_prompt": "Expanded element prompt.",
         }
 
 
@@ -207,6 +231,58 @@ class ProjectImageElementsViewTests(TestCase):
         )
         self.style.refresh_from_db()
         self.assertEqual(self.style.ai_model, "gpt-4o-mini")
+
+    @patch("projects.views.record_openai_usage_and_charge")
+    @patch("projects.views._build_ai_client")
+    def test_expand_elements_records_usage_outside_async_context(
+        self, mock_build_ai_client, mock_record_openai_usage_and_charge
+    ):
+        element = ProjectImageElement.objects.create(
+            project=self.project,
+            name="Celine",
+            element_type="character",
+            page_refs="1,2",
+            why_consistency_matters="Main character",
+            ai_model="gpt-4o",
+        )
+
+        def _build_client(**kwargs):
+            return UsageReportingAIClient(usage_reporter=kwargs.get("usage_reporter"))
+
+        mock_build_ai_client.side_effect = _build_client
+
+        def _assert_sync_context(**kwargs):
+            try:
+                asyncio.get_running_loop()
+            except RuntimeError:
+                return
+            raise AssertionError("record_openai_usage_and_charge called in async context")
+
+        mock_record_openai_usage_and_charge.side_effect = _assert_sync_context
+
+        resp = self.client.post(
+            reverse("project-image-elements", args=[self.project.pk]),
+            {
+                "form-TOTAL_FORMS": "1",
+                "form-INITIAL_FORMS": "1",
+                "form-MIN_NUM_FORMS": "0",
+                "form-MAX_NUM_FORMS": "1000",
+                "form-0-id": str(element.id),
+                "form-0-name": element.name,
+                "form-0-element_type": element.element_type,
+                "form-0-page_refs": element.page_refs,
+                "form-0-why_consistency_matters": element.why_consistency_matters,
+                "form-0-expanded_description": "",
+                "form-0-expanded_prompt": "",
+                "form-0-image_model": "gpt-image-1",
+                "form-0-image_revised_prompt": "",
+                "action": "expand",
+            },
+        )
+
+        self.assertEqual(resp.status_code, 302)
+        mock_record_openai_usage_and_charge.assert_called_once()
+
 
     @patch("projects.views._build_ai_client")
     def test_discover_elements_adds_processing_message(self, mock_build_ai_client):
