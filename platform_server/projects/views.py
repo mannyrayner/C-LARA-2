@@ -1377,6 +1377,9 @@ def _discourage_text_guideline_for_language(language_code: str) -> str:
 
 def _image_prompt_language(project: Project) -> str:
     if project.page_image_text_source == Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION:
+        pivot_language = (project.image_generation_pivot_language or "").strip().lower()
+        if pivot_language:
+            return pivot_language
         return (project.target_language or "en").strip().lower() or "en"
     return (project.language or "en").strip().lower() or "en"
 
@@ -3936,6 +3939,7 @@ def manual_translation(request: HttpRequest, pk: int) -> HttpResponse:
 def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
     if request.method == "POST":
+        valid_pivot_languages = {code for code, _label in ProjectForm.LANGUAGE_CHOICES}
         from_translations = (request.POST.get("generate_page_images_from_translations") or "").strip().lower() in {
             "1",
             "true",
@@ -3955,7 +3959,7 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
         allowed_text_sources = {choice[0] for choice in Project.PAGE_IMAGE_TEXT_SOURCE_CHOICES}
         if text_source not in allowed_text_sources:
             messages.error(request, "Unknown page-image text source option.")
-        elif pivot_language and pivot_language not in valid_pivot_languages:
+        elif text_source == Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION and pivot_language not in valid_pivot_languages:
             messages.error(request, "Unknown pivot language for image generation.")
         else:
             project.page_image_text_source = text_source
