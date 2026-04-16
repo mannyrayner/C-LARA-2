@@ -4,6 +4,7 @@
 <h1>{{ object.title }}</h1>
 <p>{{ object.description }}</p>
 <p>Language: {{ object.language }} → {{ object.target_language }}</p>
+<p>Direction: {{ project_text_direction }} (text) / {{ project_annotation_direction }} (annotation)</p>
 <div style="border: 1px solid #ddd; padding: 0.75rem; margin: 0.75rem 0; background: #fafafa;">
   <strong>Project cost (USD): ${{ project_total_cost_usd|floatformat:4 }}</strong>
   {% if project_cost_breakdown %}

@@ -106,6 +106,21 @@ class CompileHTMLTests(unittest.TestCase):
             status="pass",
         )
 
+    def test_compile_html_sets_document_direction_from_language(self) -> None:
+        out_root = self.artifacts / "html"
+        rtl_text = {**self.sample_text, "l2": "ar"}
+        result = compile_html(CompileHTMLSpec(text=rtl_text, output_dir=out_root, run_id="rtl-dir"))
+
+        html_path = Path(result["html_path"])
+        page_html = html_path.read_text(encoding="utf-8")
+        self.assertIn('<html lang="ar" dir="rtl">', page_html)
+
+        run_root = Path(result["run_root"])
+        concordance_paths = list((run_root / "html").glob("concordance_*.html"))
+        self.assertTrue(concordance_paths)
+        concordance_html = concordance_paths[0].read_text(encoding="utf-8")
+        self.assertIn('<html lang="ar" dir="rtl">', concordance_html)
+
     def test_audio_copy_reuses_existing_file_when_bytes_match(self) -> None:
         out_root = self.artifacts / "html"
         alt_dir = self.artifacts / "audio_alias"
