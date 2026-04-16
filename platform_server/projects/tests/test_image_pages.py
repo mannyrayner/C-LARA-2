@@ -87,7 +87,7 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertEqual(ProjectImagePage.objects.filter(project=self.project).count(), 2)
         self.assertContains(resp, "Status from elements step:")
         self.assertContains(resp, "1/1")
-        self.assertContains(resp, "Discourage visible text in images")
+        self.assertNotContains(resp, "Discourage visible text in images")
 
     def test_images_home_can_switch_page_text_source_to_translation(self):
         run_dir = self.project.artifact_dir() / "runs" / "run_translation" / "stages"
@@ -137,6 +137,30 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertIn("pivot_language_choices", resp.context)
         self.assertIn("selected_image_generation_pivot_language", resp.context)
         self.assertEqual(resp.context["selected_image_generation_pivot_language"], self.project.image_generation_pivot_language)
+        self.assertIn("discourage_text_in_images_default", resp.context)
+        self.assertContains(resp, "Discourage visible text in images")
+
+    def test_images_home_can_toggle_discourage_text_setting(self):
+        style = ProjectImageStyle.objects.get(project=self.project)
+        self.assertFalse(style.discourage_text_in_images)
+
+        resp = self.client.post(
+            reverse("project-images-home", args=[self.project.pk]),
+            {"discourage_text_in_images": "1"},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        style.refresh_from_db()
+        self.assertTrue(style.discourage_text_in_images)
+
+        resp = self.client.post(
+            reverse("project-images-home", args=[self.project.pk]),
+            {},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        style.refresh_from_db()
+        self.assertFalse(style.discourage_text_in_images)
 
     def test_images_home_view_source_contains_pivot_language_assignment_and_validation(self):
         view_source = inspect.getsource(views.project_images_home)
