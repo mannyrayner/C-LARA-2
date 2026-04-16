@@ -33,7 +33,8 @@ class FakeAIClient:
 
 
 class UsageReportingAIClient:
-    def __init__(self, usage_reporter=None):
+    def __init__(self, *, response=None, usage_reporter=None):
+        self.response = response or {}
         self.usage_reporter = usage_reporter
 
     async def chat_json(self, prompt, **kwargs):
@@ -47,10 +48,7 @@ class UsageReportingAIClient:
                     "total_tokens": 20,
                 }
             )
-        return {
-            "expanded_description": "Expanded element description.",
-            "expanded_prompt": "Expanded element prompt.",
-        }
+        return dict(self.response)
 
 
 class ProjectImageElementsViewTests(TestCase):
@@ -247,7 +245,13 @@ class ProjectImageElementsViewTests(TestCase):
         )
 
         def _build_client(**kwargs):
-            return UsageReportingAIClient(usage_reporter=kwargs.get("usage_reporter"))
+            return UsageReportingAIClient(
+                response={
+                    "expanded_description": "Expanded element description.",
+                    "expanded_prompt": "Expanded element prompt.",
+                },
+                usage_reporter=kwargs.get("usage_reporter"),
+            )
 
         mock_build_ai_client.side_effect = _build_client
 
@@ -282,6 +286,52 @@ class ProjectImageElementsViewTests(TestCase):
 
         self.assertEqual(resp.status_code, 302)
         mock_record_openai_usage_and_charge.assert_called_once()
+
+    @patch("projects.views.record_openai_usage_and_charge")
+    @patch("projects.views._build_ai_client")
+    def test_discover_elements_records_usage_outside_async_context(
+        self, mock_build_ai_client, mock_record_openai_usage_and_charge
+    ):
+        responses = iter(
+            [
+                {"elements": [{"name": "Celine", "type": "character"}]},
+                {
+                    "page_refs": [1, 2],
+                    "why_consistency_matters": "Main character",
+                    "type": "character",
+                },
+            ]
+        )
+
+        def _build_client(**kwargs):
+            return UsageReportingAIClient(
+                response=next(responses),
+                usage_reporter=kwargs.get("usage_reporter"),
+            )
+
+        mock_build_ai_client.side_effect = _build_client
+
+        def _assert_sync_context(**kwargs):
+            try:
+                asyncio.get_running_loop()
+            except RuntimeError:
+                return
+            raise AssertionError("record_openai_usage_and_charge called in async context")
+
+        mock_record_openai_usage_and_charge.side_effect = _assert_sync_context
+
+        resp = self.client.post(
+            reverse("project-image-elements", args=[self.project.pk]),
+            {
+                "form-TOTAL_FORMS": "0",
+                "form-INITIAL_FORMS": "0",
+                "form-MIN_NUM_FORMS": "0",
+                "form-MAX_NUM_FORMS": "1000",
+                "action": "discover",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertGreaterEqual(mock_record_openai_usage_and_charge.call_count, 2)
 
 
     @patch("projects.views._build_ai_client")
