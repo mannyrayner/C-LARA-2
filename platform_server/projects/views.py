@@ -1043,7 +1043,26 @@ def _expand_project_image_elements(
     style_description = _compact_style_description_for_prompt(style_description, max_chars=1200)
     full_text = _extract_project_plain_text(project)
     count = 0
-    client = _build_billed_project_ai_client(project, model_name=ai_model, request_type="image_elements_expand")
+    usage_events: list[dict[str, Any]] = []
+
+    def usage_reporter(event: dict[str, Any]) -> None:
+        usage_events.append(dict(event or {}))
+
+    def flush_usage_events() -> None:
+        for event in usage_events:
+            record_openai_usage_and_charge(
+                user_id=project.owner_id,
+                project_id=project.id,
+                model=str(event.get("model") or ai_model),
+                operation=str(event.get("operation") or "chat"),
+                prompt_tokens=max(0, int(event.get("prompt_tokens") or 0)),
+                completion_tokens=max(0, int(event.get("completion_tokens") or 0)),
+                total_tokens=max(0, int(event.get("total_tokens") or 0)),
+                request_type="image_elements_expand",
+            )
+        usage_events.clear()
+
+    client = _build_ai_client(model_name=ai_model, usage_reporter=usage_reporter)
     for element in project.image_elements.order_by("name", "id"):
         prompt = "\n".join(
             [
@@ -1092,7 +1111,9 @@ def _expand_project_image_elements(
                     **_exception_telemetry_fields(exc),
                 },
             )
+            flush_usage_events()
             raise
+        flush_usage_events()
         elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
         _append_elements_telemetry(
             project,
