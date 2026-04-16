@@ -1307,7 +1307,16 @@ def _build_page_image_prompt(
         "",
     ]
     if discourage_text_in_image:
-        lines.extend([no_text_line, ""])
+        lines.extend(
+            [
+                "TEXT SUPPRESSION REQUIREMENTS (HIGH PRIORITY):",
+                "- Do not render readable words, sentences, subtitles, speech bubbles, labels, captions, or signage text.",
+                "- Exception: allow at most 1–3 very short words only when absolutely story-essential (for example: one critical sign or one brief comic-style sound effect).",
+                "- If any text is unavoidable, keep it tiny, low-contrast, background-only, and never central.",
+                f"- {no_text_line}",
+                "",
+            ]
+        )
     lines.append("Relevant element references:")
     if relevant_elements:
         for element in relevant_elements:
