@@ -1289,10 +1289,31 @@ def _build_page_image_prompt(
         prompt_language = "en"
     line1, line2 = language_instructions.get(prompt_language, language_instructions["en"])
     no_text_line = _discourage_text_guideline_for_language(prompt_language)
+    suppression_block_by_language = {
+        "en": [
+            "TEXT SUPPRESSION REQUIREMENTS (HIGH PRIORITY):",
+            "- Do not render readable words, sentences, subtitles, speech bubbles, labels, captions, or signage text.",
+            "- Exception: allow at most 1–3 very short words only when absolutely story-essential (for example: one critical sign or one brief comic-style sound effect).",
+            "- If any text is unavoidable, keep it tiny, low-contrast, background-only, and never central.",
+        ],
+        "fr": [
+            "EXIGENCES DE SUPPRESSION DU TEXTE (PRIORITÉ ÉLEVÉE) :",
+            "- N’affiche aucun mot lisible, aucune phrase, sous-titre, bulle, étiquette, légende ou texte d’enseigne.",
+            "- Exception : autorise au maximum 1 à 3 mots très courts, uniquement si c’est indispensable à l’histoire (par exemple une enseigne critique ou une très brève onomatopée).",
+            "- Si du texte est inévitable, il doit rester minuscule, peu contrasté, en arrière-plan, et jamais central.",
+        ],
+    }
+    suppression_block = suppression_block_by_language.get(prompt_language, suppression_block_by_language["en"])
     lines = [
         line1,
         line2,
         "",
+    ]
+    if discourage_text_in_image:
+        lines.extend(suppression_block)
+        lines.extend([f"- {no_text_line}", ""])
+    lines.extend(
+        [
         f"Prompt language: {language_labels.get(prompt_language, 'English')}",
         f"Project title: {project.title}",
         f"Language (source): {project.language}",
@@ -1302,12 +1323,11 @@ def _build_page_image_prompt(
         "Page text:",
         page_text or "[none]",
         "",
-        "Full story text for context:",
+        "Story context (brief):",
         full_text or "[none]",
         "",
-    ]
-    if discourage_text_in_image:
-        lines.extend([no_text_line, ""])
+        ]
+    )
     lines.append("Relevant element references:")
     if relevant_elements:
         for element in relevant_elements:
@@ -1377,6 +1397,9 @@ def _discourage_text_guideline_for_language(language_code: str) -> str:
 
 def _image_prompt_language(project: Project) -> str:
     if project.page_image_text_source == Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION:
+        pivot_language = (project.image_generation_pivot_language or "").strip().lower()
+        if pivot_language:
+            return pivot_language
         return (project.target_language or "en").strip().lower() or "en"
     return (project.language or "en").strip().lower() or "en"
 
@@ -1398,26 +1421,50 @@ def _fit_page_image_prompt_to_limit(
     full_text: str,
     relevant_elements: list[ProjectImageElement],
     discourage_text_in_image: bool = False,
-    max_chars: int = 32000,
+    max_chars: int = 12000,
 ) -> tuple[str, dict[str, Any]]:
     """Build a page-image prompt and iteratively trim when it exceeds limits."""
 
-    full_text_limit = max_chars
-    element_desc_limit = max_chars
-    element_prompt_limit = max_chars
+    full_text_limit = 1200
+    element_desc_limit = 600
+    element_prompt_limit = 350
+    max_relevant_elements = 3
+
+    def _element_text_for_page(text: str, page_number_value: int) -> str:
+        value = str(text or "")
+        if not value.strip():
+            return value
+        kept: list[str] = []
+        for line in value.splitlines():
+            candidate = line.strip()
+            if not candidate:
+                kept.append(line)
+                continue
+            lowered = candidate.lower()
+            if "page" not in lowered:
+                kept.append(line)
+                continue
+            page_nums = [int(n) for n in re.findall(r"\b\d+\b", candidate)]
+            if not page_nums or page_number_value in page_nums:
+                kept.append(line)
+        filtered = "\n".join(kept).strip()
+        return filtered or value
 
     def _build_with_limits() -> str:
         trimmed_elements: list[ProjectImageElement] = []
-        for element in relevant_elements:
+        for element in relevant_elements[:max_relevant_elements]:
             clone = ProjectImageElement(
                 name=element.name,
                 element_type=element.element_type,
                 expanded_description=_truncate_for_prompt(
-                    element.expanded_description or element.why_consistency_matters or "",
+                    _element_text_for_page(
+                        element.expanded_description or element.why_consistency_matters or "",
+                        page_number,
+                    ),
                     max_chars=element_desc_limit,
                 ),
                 expanded_prompt=_truncate_for_prompt(
-                    element.expanded_prompt or "",
+                    _element_text_for_page(element.expanded_prompt or "", page_number),
                     max_chars=element_prompt_limit,
                 ),
                 image_path=element.image_path,
@@ -1436,17 +1483,19 @@ def _fit_page_image_prompt_to_limit(
     prompt = _build_with_limits()
     strategy = "none"
     if len(prompt) > max_chars:
-        full_text_limit = 8000
+        full_text_limit = 800
         strategy = "truncate_full_text"
         prompt = _build_with_limits()
     if len(prompt) > max_chars:
-        element_desc_limit = 500
-        element_prompt_limit = 500
-        strategy = "truncate_elements_500"
+        element_desc_limit = 350
+        element_prompt_limit = 250
+        max_relevant_elements = 2
+        strategy = "truncate_elements_350_top2"
         prompt = _build_with_limits()
     if len(prompt) > max_chars:
         element_desc_limit = 200
         element_prompt_limit = 200
+        max_relevant_elements = 1
         strategy = "truncate_elements_200"
         prompt = _build_with_limits()
     if len(prompt) > max_chars:
@@ -2314,12 +2363,6 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
 
     if request.method == "POST":
         action = request.POST.get("action") or "save"
-        discourage_text_in_image = (request.POST.get("discourage_text_in_image") or "").strip().lower() in {
-            "1",
-            "true",
-            "on",
-            "yes",
-        }
         requested_image_model = (request.POST.get("image_model") or "").strip()
         image_model = requested_image_model or "gpt-image-1"
         if image_model not in IMAGE_MODEL_CHOICES:
@@ -2378,7 +2421,6 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
             "pages_artifact_dir": _image_pages_dir(project),
             "image_models": IMAGE_MODEL_CHOICES,
             "selected_image_model": request.GET.get("image_model") or "gpt-image-1",
-            "discourage_text_in_image_default": True,
             "element_count": project.image_elements.count(),
             "confirmed_element_count": project.image_elements.filter(is_confirmed=True).count(),
             "elements_with_images_count": project.image_elements.exclude(image_path="").count(),
@@ -3935,8 +3977,16 @@ def manual_translation(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    style = getattr(project, "image_style", None)
     if request.method == "POST":
+        valid_pivot_languages = {code for code, _label in ProjectForm.LANGUAGE_CHOICES}
         from_translations = (request.POST.get("generate_page_images_from_translations") or "").strip().lower() in {
+            "1",
+            "true",
+            "on",
+            "yes",
+        }
+        discourage_text_in_images = (request.POST.get("discourage_text_in_images") or "").strip().lower() in {
             "1",
             "true",
             "on",
@@ -3955,17 +4005,24 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
         allowed_text_sources = {choice[0] for choice in Project.PAGE_IMAGE_TEXT_SOURCE_CHOICES}
         if text_source not in allowed_text_sources:
             messages.error(request, "Unknown page-image text source option.")
-        elif pivot_language and pivot_language not in valid_pivot_languages:
+        elif text_source == Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION and pivot_language not in valid_pivot_languages:
             messages.error(request, "Unknown pivot language for image generation.")
         else:
             project.page_image_text_source = text_source
             project.image_generation_pivot_language = pivot_language
             project.save(update_fields=["page_image_text_source", "image_generation_pivot_language", "updated_at"])
+            if style is None:
+                style = ProjectImageStyle.objects.create(
+                    project=project,
+                    ai_model=project.ai_model or DEFAULT_MODEL,
+                    discourage_text_in_images=discourage_text_in_images,
+                )
+            elif style.discourage_text_in_images != discourage_text_in_images:
+                style.discourage_text_in_images = discourage_text_in_images
+                style.save(update_fields=["discourage_text_in_images", "updated_at"])
             synced = _ensure_project_page_rows(project)
             messages.success(request, f"Saved image settings and synced {synced} page rows.")
         return redirect("project-images-home", pk=project.pk)
-
-    style = getattr(project, "image_style", None)
     elements_with_images = project.image_elements.exclude(image_path="").order_by("name", "id")
     pages_with_images = project.image_pages.exclude(image_path="").order_by("page_number", "id")
     return render(
@@ -3989,6 +4046,7 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
             "selected_page_image_text_source": project.page_image_text_source,
             "pivot_language_choices": ProjectForm.LANGUAGE_CHOICES,
             "selected_image_generation_pivot_language": project.image_generation_pivot_language,
+            "discourage_text_in_images_default": bool(getattr(style, "discourage_text_in_images", False)),
         },
     )
 
