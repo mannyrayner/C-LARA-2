@@ -1289,10 +1289,31 @@ def _build_page_image_prompt(
         prompt_language = "en"
     line1, line2 = language_instructions.get(prompt_language, language_instructions["en"])
     no_text_line = _discourage_text_guideline_for_language(prompt_language)
+    suppression_block_by_language = {
+        "en": [
+            "TEXT SUPPRESSION REQUIREMENTS (HIGH PRIORITY):",
+            "- Do not render readable words, sentences, subtitles, speech bubbles, labels, captions, or signage text.",
+            "- Exception: allow at most 1–3 very short words only when absolutely story-essential (for example: one critical sign or one brief comic-style sound effect).",
+            "- If any text is unavoidable, keep it tiny, low-contrast, background-only, and never central.",
+        ],
+        "fr": [
+            "EXIGENCES DE SUPPRESSION DU TEXTE (PRIORITÉ ÉLEVÉE) :",
+            "- N’affiche aucun mot lisible, aucune phrase, sous-titre, bulle, étiquette, légende ou texte d’enseigne.",
+            "- Exception : autorise au maximum 1 à 3 mots très courts, uniquement si c’est indispensable à l’histoire (par exemple une enseigne critique ou une très brève onomatopée).",
+            "- Si du texte est inévitable, il doit rester minuscule, peu contrasté, en arrière-plan, et jamais central.",
+        ],
+    }
+    suppression_block = suppression_block_by_language.get(prompt_language, suppression_block_by_language["en"])
     lines = [
         line1,
         line2,
         "",
+    ]
+    if discourage_text_in_image:
+        lines.extend(suppression_block)
+        lines.extend([f"- {no_text_line}", ""])
+    lines.extend(
+        [
         f"Prompt language: {language_labels.get(prompt_language, 'English')}",
         f"Project title: {project.title}",
         f"Language (source): {project.language}",
@@ -1302,21 +1323,11 @@ def _build_page_image_prompt(
         "Page text:",
         page_text or "[none]",
         "",
-        "Full story text for context:",
+        "Story context (brief):",
         full_text or "[none]",
         "",
-    ]
-    if discourage_text_in_image:
-        lines.extend(
-            [
-                "TEXT SUPPRESSION REQUIREMENTS (HIGH PRIORITY):",
-                "- Do not render readable words, sentences, subtitles, speech bubbles, labels, captions, or signage text.",
-                "- Exception: allow at most 1–3 very short words only when absolutely story-essential (for example: one critical sign or one brief comic-style sound effect).",
-                "- If any text is unavoidable, keep it tiny, low-contrast, background-only, and never central.",
-                f"- {no_text_line}",
-                "",
-            ]
-        )
+        ]
+    )
     lines.append("Relevant element references:")
     if relevant_elements:
         for element in relevant_elements:
@@ -1410,26 +1421,50 @@ def _fit_page_image_prompt_to_limit(
     full_text: str,
     relevant_elements: list[ProjectImageElement],
     discourage_text_in_image: bool = False,
-    max_chars: int = 32000,
+    max_chars: int = 12000,
 ) -> tuple[str, dict[str, Any]]:
     """Build a page-image prompt and iteratively trim when it exceeds limits."""
 
-    full_text_limit = max_chars
-    element_desc_limit = max_chars
-    element_prompt_limit = max_chars
+    full_text_limit = 1200
+    element_desc_limit = 600
+    element_prompt_limit = 350
+    max_relevant_elements = 3
+
+    def _element_text_for_page(text: str, page_number_value: int) -> str:
+        value = str(text or "")
+        if not value.strip():
+            return value
+        kept: list[str] = []
+        for line in value.splitlines():
+            candidate = line.strip()
+            if not candidate:
+                kept.append(line)
+                continue
+            lowered = candidate.lower()
+            if "page" not in lowered:
+                kept.append(line)
+                continue
+            page_nums = [int(n) for n in re.findall(r"\b\d+\b", candidate)]
+            if not page_nums or page_number_value in page_nums:
+                kept.append(line)
+        filtered = "\n".join(kept).strip()
+        return filtered or value
 
     def _build_with_limits() -> str:
         trimmed_elements: list[ProjectImageElement] = []
-        for element in relevant_elements:
+        for element in relevant_elements[:max_relevant_elements]:
             clone = ProjectImageElement(
                 name=element.name,
                 element_type=element.element_type,
                 expanded_description=_truncate_for_prompt(
-                    element.expanded_description or element.why_consistency_matters or "",
+                    _element_text_for_page(
+                        element.expanded_description or element.why_consistency_matters or "",
+                        page_number,
+                    ),
                     max_chars=element_desc_limit,
                 ),
                 expanded_prompt=_truncate_for_prompt(
-                    element.expanded_prompt or "",
+                    _element_text_for_page(element.expanded_prompt or "", page_number),
                     max_chars=element_prompt_limit,
                 ),
                 image_path=element.image_path,
@@ -1448,17 +1483,19 @@ def _fit_page_image_prompt_to_limit(
     prompt = _build_with_limits()
     strategy = "none"
     if len(prompt) > max_chars:
-        full_text_limit = 8000
+        full_text_limit = 800
         strategy = "truncate_full_text"
         prompt = _build_with_limits()
     if len(prompt) > max_chars:
-        element_desc_limit = 500
-        element_prompt_limit = 500
-        strategy = "truncate_elements_500"
+        element_desc_limit = 350
+        element_prompt_limit = 250
+        max_relevant_elements = 2
+        strategy = "truncate_elements_350_top2"
         prompt = _build_with_limits()
     if len(prompt) > max_chars:
         element_desc_limit = 200
         element_prompt_limit = 200
+        max_relevant_elements = 1
         strategy = "truncate_elements_200"
         prompt = _build_with_limits()
     if len(prompt) > max_chars:

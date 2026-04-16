@@ -216,7 +216,7 @@ class ProjectImagePagesViewTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         page = ProjectImagePage.objects.get(project=self.project, page_number=1)
-        self.assertLessEqual(len(page.generation_prompt), 32000)
+        self.assertLessEqual(len(page.generation_prompt), 12000)
 
         telemetry_path = self.project.artifact_dir() / "images" / "pages" / "telemetry.jsonl"
         self.assertTrue(telemetry_path.exists())
@@ -277,9 +277,31 @@ class ProjectImagePagesViewTests(TestCase):
             follow=True,
         )
         page = ProjectImagePage.objects.get(project=self.project, page_number=1)
-        self.assertIn("TEXT SUPPRESSION REQUIREMENTS (HIGH PRIORITY):", page.generation_prompt)
-        self.assertIn("Do not render readable words, sentences", page.generation_prompt)
-        self.assertIn("comic-style sound effect", page.generation_prompt)
+        self.assertIn("EXIGENCES DE SUPPRESSION DU TEXTE (PRIORITÉ ÉLEVÉE) :", page.generation_prompt)
+        self.assertIn("N’affiche aucun mot lisible", page.generation_prompt)
+        self.assertNotIn("TEXT SUPPRESSION REQUIREMENTS (HIGH PRIORITY):", page.generation_prompt)
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_page_images_filters_element_text_to_current_page(self, mock_build_ai_client):
+        fake_client = FakeImageClient()
+        mock_build_ai_client.return_value = fake_client
+        element = ProjectImageElement.objects.get(project=self.project, name="Celine")
+        element.expanded_description = "Page 1: calm pose.\nPage 2: explosion and large poster text."
+        element.expanded_prompt = "For page 1 use calm close-up. For page 2 add giant sign text."
+        element.save(update_fields=["expanded_description", "expanded_prompt", "updated_at"])
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        self.client.post(
+            reverse("project-image-pages", args=[self.project.pk]),
+            payload,
+            follow=True,
+        )
+        page = ProjectImagePage.objects.get(project=self.project, page_number=1)
+        self.assertIn("Page 1: calm pose.", page.generation_prompt)
+        self.assertNotIn("Page 2: explosion and large poster text.", page.generation_prompt)
 
     @patch("projects.views._build_ai_client")
     def test_generate_page_images_uses_localized_prompt_language(self, mock_build_ai_client):
