@@ -40,6 +40,7 @@ from urllib.parse import quote
 
 from core.config import DEFAULT_MODEL, OpenAIConfig
 from core.ai_api import OpenAIClient, normalize_json_text
+from core.language_direction import language_direction
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 from pipeline.mwe import normalize_mwes
 
@@ -2615,6 +2616,8 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["selected_ai_model"] = project.ai_model or DEFAULT_MODEL
         context["detailed_api_trace_default"] = False
         context["language_choices"] = ProjectForm.LANGUAGE_CHOICES
+        context["project_text_direction"] = language_direction(project.language)
+        context["project_annotation_direction"] = language_direction(project.target_language)
         style_obj = getattr(project, "image_style", None)
         context["style_ready"] = bool(
             style_obj and (style_obj.sample_image_path or style_obj.status == ProjectImageStyle.STATUS_APPROVED)
@@ -6106,7 +6109,9 @@ def download_project_source_bundle(request: HttpRequest, pk: int) -> HttpRespons
             "source_text": project.source_text,
             "input_mode": project.input_mode,
             "language": project.language,
+            "text_direction": language_direction(project.language),
             "target_language": project.target_language,
+            "annotation_direction": language_direction(project.target_language),
             "ai_model": project.ai_model,
             "page_image_placement": project.page_image_placement,
             "image_generation_pivot_language": project.image_generation_pivot_language,
