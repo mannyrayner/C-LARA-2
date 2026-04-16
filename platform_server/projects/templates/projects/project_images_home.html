@@ -55,6 +55,22 @@
     <small>If checked, page text is taken from concatenated segment translations (pivot language = project translation language).</small>
   </p>
   <p>
+    <label for="discourage_text_in_images">
+      <input
+        type="checkbox"
+        id="discourage_text_in_images"
+        name="discourage_text_in_images"
+        value="1"
+        {% if discourage_text_in_images_default %}checked{% endif %}
+      />
+      Discourage visible text in images
+    </label>
+    <br />
+    <small>
+      If checked, generated prompts ask for minimal visible text in images except story-critical signs and short comic-style sound effects.
+    </small>
+  </p>
+  <p>
     <button class="btn secondary" type="submit">Save image settings</button>
   </p>
 </form>
