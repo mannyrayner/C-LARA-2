@@ -534,7 +534,7 @@ def _generate_project_image_style(
         },
     )
     started = datetime.now(timezone.utc)
-    client = _build_ai_client(model_name=ai_model)
+    client = _build_billed_project_ai_client(project, model_name=ai_model, request_type="image_style_expand")
     try:
         response = asyncio.run(client.chat_json(request_payload["prompt"], model=ai_model))
     except Exception as exc:
@@ -605,7 +605,11 @@ def _generate_project_style_sample_image(
         },
     )
     started = datetime.now(timezone.utc)
-    client = _build_ai_client()
+    client = _build_billed_project_ai_client(
+        project,
+        model_name=style.sample_image_model,
+        request_type="image_style_sample",
+    )
     try:
         image_result = client.generate_image(prompt, model=style.sample_image_model)
     except Exception as exc:
@@ -820,7 +824,13 @@ def _discover_project_image_elements(
     )
     started = datetime.now(timezone.utc)
     try:
-        phase1_response = asyncio.run(_build_ai_client(model_name=ai_model).chat_json(phase1_prompt, model=ai_model))
+        phase1_response = asyncio.run(
+            _build_billed_project_ai_client(
+                project,
+                model_name=ai_model,
+                request_type="image_elements_discovery_phase_1",
+            ).chat_json(phase1_prompt, model=ai_model)
+        )
     except Exception as exc:
         elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
         _append_elements_telemetry(
@@ -902,7 +912,13 @@ def _discover_project_image_elements(
         )
         started_local = datetime.now(timezone.utc)
         try:
-            response_local = asyncio.run(_build_ai_client(model_name=ai_model).chat_json(phase2_prompt, model=ai_model))
+            response_local = asyncio.run(
+                _build_billed_project_ai_client(
+                    project,
+                    model_name=ai_model,
+                    request_type="image_elements_discovery_phase_2",
+                ).chat_json(phase2_prompt, model=ai_model)
+            )
         except Exception as exc:
             elapsed_local_s = (datetime.now(timezone.utc) - started_local).total_seconds()
             _append_elements_telemetry(
@@ -1027,7 +1043,7 @@ def _expand_project_image_elements(
     style_description = _compact_style_description_for_prompt(style_description, max_chars=1200)
     full_text = _extract_project_plain_text(project)
     count = 0
-    client = _build_ai_client(model_name=ai_model)
+    client = _build_billed_project_ai_client(project, model_name=ai_model, request_type="image_elements_expand")
     for element in project.image_elements.order_by("name", "id"):
         prompt = "\n".join(
             [
@@ -1156,7 +1172,11 @@ def _generate_project_element_images(
             },
         )
         started = datetime.now(timezone.utc)
-        client = _build_ai_client()
+        client = _build_billed_project_ai_client(
+            project,
+            model_name=image_model,
+            request_type="image_elements_generate_image",
+        )
         try:
             result = client.generate_image(prompt_text, model=image_model)
         except Exception as exc:
@@ -1613,7 +1633,11 @@ def _generate_project_page_images(
             },
         )
         started = datetime.now(timezone.utc)
-        client = _build_ai_client()
+        client = _build_billed_project_ai_client(
+            project,
+            model_name=image_model,
+            request_type="image_pages_generate_image",
+        )
         try:
             image_result = client.generate_image(prompt, model=image_model)
         except Exception as exc:
@@ -4116,6 +4140,48 @@ def _build_ai_client(
     return OpenAIClient(config=config)
 
 
+def _billing_usage_reporter(*, user_id: int, project_id: int | None, request_type: str) -> Callable[[dict[str, Any]], None]:
+    def _report(event: dict[str, Any]) -> None:
+        payload = dict(event or {})
+        model = str(payload.get("model") or DEFAULT_MODEL)
+        operation = str(payload.get("operation") or "chat")
+        prompt_tokens = max(0, int(payload.get("prompt_tokens") or 0))
+        completion_tokens = max(0, int(payload.get("completion_tokens") or 0))
+        total_tokens = max(0, int(payload.get("total_tokens") or 0))
+        # Image API responses often do not expose token usage. We treat one image call as one output-unit.
+        if operation == "image_generate" and prompt_tokens == 0 and completion_tokens == 0 and total_tokens == 0:
+            completion_tokens = 1_000_000
+            total_tokens = 1_000_000
+        record_openai_usage_and_charge(
+            user_id=user_id,
+            project_id=project_id,
+            model=model,
+            operation=operation,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+            request_type=request_type or str(payload.get("request_type") or operation),
+        )
+
+    return _report
+
+
+def _build_billed_project_ai_client(
+    project: Project,
+    *,
+    model_name: str | None = None,
+    request_type: str,
+) -> OpenAIClient:
+    return _build_ai_client(
+        model_name=model_name,
+        usage_reporter=_billing_usage_reporter(
+            user_id=project.owner_id,
+            project_id=project.id,
+            request_type=request_type,
+        ),
+    )
+
+
 def _prepare_output_dir(project: Project) -> Path:
     base = project.artifact_dir()
     # Ensure base/source directories exist so future uploads or manual edits have
@@ -5620,7 +5686,11 @@ def generate_cloze_exercises(request: HttpRequest, pk: int) -> HttpResponse:
             )
 
             async def _run() -> list[dict[str, Any]]:
-                client = _build_ai_client(model)
+                client = _build_billed_project_ai_client(
+                    project,
+                    model_name=model,
+                    request_type="exercise_cloze_generation",
+                )
                 tasks = [
                     _generate_cloze_item(client, model, theme, cand, idx)
                     for idx, cand in enumerate(selected)
@@ -5697,7 +5767,11 @@ def generate_flashcard_exercises(request: HttpRequest, pk: int) -> HttpResponse:
             )
 
             async def _run() -> list[dict[str, Any]]:
-                client = _build_ai_client(model)
+                client = _build_billed_project_ai_client(
+                    project,
+                    model_name=model,
+                    request_type="exercise_flashcard_generation",
+                )
                 tasks = [
                     _generate_flashcard_item(client, model, theme, cand, idx, flashcard_mode)
                     for idx, cand in enumerate(selected)
