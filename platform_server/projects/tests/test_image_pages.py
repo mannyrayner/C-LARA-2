@@ -87,7 +87,7 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertEqual(ProjectImagePage.objects.filter(project=self.project).count(), 2)
         self.assertContains(resp, "Status from elements step:")
         self.assertContains(resp, "1/1")
-        self.assertContains(resp, "Discourage visible text in images")
+        self.assertNotContains(resp, "Discourage visible text in images")
 
     def test_images_home_can_switch_page_text_source_to_translation(self):
         run_dir = self.project.artifact_dir() / "runs" / "run_translation" / "stages"
@@ -108,6 +108,7 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.project.refresh_from_db()
         self.assertEqual(self.project.page_image_text_source, "translation")
+        self.assertEqual(self.project.image_generation_pivot_language, "fr")
         self.assertContains(resp, "Saved image settings")
         page1 = ProjectImagePage.objects.get(project=self.project, page_number=1)
         page2 = ProjectImagePage.objects.get(project=self.project, page_number=2)
@@ -116,7 +117,8 @@ class ProjectImagePagesViewTests(TestCase):
 
     def test_images_home_defaults_page_text_source_to_segmentation(self):
         self.project.page_image_text_source = "translation"
-        self.project.save(update_fields=["page_image_text_source", "updated_at"])
+        self.project.image_generation_pivot_language = "fr"
+        self.project.save(update_fields=["page_image_text_source", "image_generation_pivot_language", "updated_at"])
 
         resp = self.client.post(
             reverse("project-images-home", args=[self.project.pk]),
@@ -126,24 +128,50 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.project.refresh_from_db()
         self.assertEqual(self.project.page_image_text_source, "segmentation")
+        self.assertEqual(self.project.image_generation_pivot_language, "")
         self.assertContains(resp, "Saved image settings")
 
-    def test_images_home_does_not_expose_legacy_pivot_language_context(self):
+    def test_images_home_exposes_pivot_language_context(self):
         resp = self.client.get(reverse("project-images-home", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
-        self.assertNotIn("pivot_language_choices", resp.context)
-        self.assertNotIn("selected_image_generation_pivot_language", resp.context)
+        self.assertIn("pivot_language_choices", resp.context)
+        self.assertIn("selected_image_generation_pivot_language", resp.context)
+        self.assertEqual(resp.context["selected_image_generation_pivot_language"], self.project.image_generation_pivot_language)
+        self.assertIn("discourage_text_in_images_default", resp.context)
+        self.assertContains(resp, "Discourage visible text in images")
 
-    def test_images_home_view_source_has_no_legacy_pivot_language_references(self):
-        view_source = inspect.getsource(views.project_images_home)
-        self.assertNotIn("valid_pivot_languages", view_source)
-        self.assertNotIn("selected_image_generation_pivot_language", view_source)
-        self.assertNotIn("project.image_generation_pivot_language", view_source)
+    def test_images_home_can_toggle_discourage_text_setting(self):
+        style = ProjectImageStyle.objects.get(project=self.project)
+        self.assertFalse(style.discourage_text_in_images)
 
-    def test_images_home_view_source_has_no_pivot_language_validation(self):
+        resp = self.client.post(
+            reverse("project-images-home", args=[self.project.pk]),
+            {"discourage_text_in_images": "1"},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        style.refresh_from_db()
+        self.assertTrue(style.discourage_text_in_images)
+
+        resp = self.client.post(
+            reverse("project-images-home", args=[self.project.pk]),
+            {},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        style.refresh_from_db()
+        self.assertFalse(style.discourage_text_in_images)
+
+    def test_images_home_view_source_contains_pivot_language_assignment_and_validation(self):
         view_source = inspect.getsource(views.project_images_home)
-        self.assertNotIn("valid_pivot_languages", view_source)
-        self.assertNotIn("Unknown pivot language for image generation.", view_source)
+        self.assertIn("valid_pivot_languages", view_source)
+        self.assertIn("selected_image_generation_pivot_language", view_source)
+        self.assertIn("project.image_generation_pivot_language", view_source)
+
+    def test_images_home_view_source_validates_pivot_language_when_using_translations(self):
+        view_source = inspect.getsource(views.project_images_home)
+        self.assertIn("text_source == Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION", view_source)
+        self.assertIn("Unknown pivot language for image generation.", view_source)
 
     @patch("projects.views._build_ai_client")
     def test_generate_page_images_persists_output(self, mock_build_ai_client):
@@ -188,7 +216,7 @@ class ProjectImagePagesViewTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         page = ProjectImagePage.objects.get(project=self.project, page_number=1)
-        self.assertLessEqual(len(page.generation_prompt), 32000)
+        self.assertLessEqual(len(page.generation_prompt), 12000)
 
         telemetry_path = self.project.artifact_dir() / "images" / "pages" / "telemetry.jsonl"
         self.assertTrue(telemetry_path.exists())
@@ -230,6 +258,52 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertTrue(any(event.get("discourage_text_in_image") is True for event in request_events))
 
     @patch("projects.views._build_ai_client")
+    def test_generate_page_images_discourage_text_adds_strict_constraints_in_any_language(self, mock_build_ai_client):
+        fake_client = FakeImageClient()
+        mock_build_ai_client.return_value = fake_client
+        style = ProjectImageStyle.objects.get(project=self.project)
+        style.discourage_text_in_images = True
+        style.save(update_fields=["discourage_text_in_images", "updated_at"])
+        self.project.language = "fr"
+        self.project.save(update_fields=["language", "updated_at"])
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        self.client.post(
+            reverse("project-image-pages", args=[self.project.pk]),
+            payload,
+            follow=True,
+        )
+        page = ProjectImagePage.objects.get(project=self.project, page_number=1)
+        self.assertIn("EXIGENCES DE SUPPRESSION DU TEXTE (PRIORITÉ ÉLEVÉE) :", page.generation_prompt)
+        self.assertIn("N’affiche aucun mot lisible", page.generation_prompt)
+        self.assertNotIn("TEXT SUPPRESSION REQUIREMENTS (HIGH PRIORITY):", page.generation_prompt)
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_page_images_filters_element_text_to_current_page(self, mock_build_ai_client):
+        fake_client = FakeImageClient()
+        mock_build_ai_client.return_value = fake_client
+        element = ProjectImageElement.objects.get(project=self.project, name="Celine")
+        element.expanded_description = "Page 1: calm pose.\nPage 2: explosion and large poster text."
+        element.expanded_prompt = "For page 1 use calm close-up. For page 2 add giant sign text."
+        element.save(update_fields=["expanded_description", "expanded_prompt", "updated_at"])
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        self.client.post(
+            reverse("project-image-pages", args=[self.project.pk]),
+            payload,
+            follow=True,
+        )
+        page = ProjectImagePage.objects.get(project=self.project, page_number=1)
+        self.assertIn("Page 1: calm pose.", page.generation_prompt)
+        self.assertNotIn("Page 2: explosion and large poster text.", page.generation_prompt)
+
+    @patch("projects.views._build_ai_client")
     def test_generate_page_images_uses_localized_prompt_language(self, mock_build_ai_client):
         fake_client = FakeImageClient()
         mock_build_ai_client.return_value = fake_client
@@ -268,6 +342,36 @@ class ProjectImagePagesViewTests(TestCase):
         )
         page = ProjectImagePage.objects.get(project=self.project, page_number=1)
         self.assertIn("Crée une illustration", page.generation_prompt)
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_page_images_uses_pivot_language_when_present(self, mock_build_ai_client):
+        fake_client = FakeImageClient()
+        mock_build_ai_client.return_value = fake_client
+        self.project.language = "am"
+        self.project.target_language = "fr"
+        self.project.page_image_text_source = "translation"
+        self.project.image_generation_pivot_language = "de"
+        self.project.save(
+            update_fields=[
+                "language",
+                "target_language",
+                "page_image_text_source",
+                "image_generation_pivot_language",
+                "updated_at",
+            ]
+        )
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        self.client.post(
+            reverse("project-image-pages", args=[self.project.pk]),
+            payload,
+            follow=True,
+        )
+        page = ProjectImagePage.objects.get(project=self.project, page_number=1)
+        self.assertIn("Erstelle eine einzelne illustrierte Geschichten-Seite", page.generation_prompt)
 
     @patch("projects.views._build_ai_client")
     def test_generate_page_images_logs_timeout_telemetry(self, mock_build_ai_client):
