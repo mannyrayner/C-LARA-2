@@ -1,4 +1,5 @@
 from unittest.mock import patch
+import asyncio
 import base64
 
 from django.contrib.auth import get_user_model
@@ -30,6 +31,25 @@ class FakeAIClient:
             "quality": kwargs.get("quality", "medium"),
             "output_format": kwargs.get("output_format", "png"),
         }
+
+
+class UsageReportingStyleAIClient:
+    def __init__(self, response, usage_reporter=None):
+        self.response = response
+        self.usage_reporter = usage_reporter
+
+    async def chat_json(self, prompt, **kwargs):  # noqa: ARG002
+        if self.usage_reporter:
+            self.usage_reporter(
+                {
+                    "model": kwargs.get("model", "gpt-4o-mini"),
+                    "operation": "chat_json",
+                    "prompt_tokens": 15,
+                    "completion_tokens": 9,
+                    "total_tokens": 24,
+                }
+            )
+        return self.response
 
 
 class ProjectImageStyleViewTests(TestCase):
@@ -165,6 +185,44 @@ class ProjectImageStyleViewTests(TestCase):
         style = ProjectImageStyle.objects.get(project=self.project)
         self.assertIn("style description truncated", style.expanded_style_description)
         self.assertLessEqual(len(style.expanded_style_description), 1400)
+
+    @patch("projects.views.record_openai_usage_and_charge")
+    @patch("projects.views._build_ai_client")
+    def test_generate_style_records_usage_outside_async_context(
+        self, mock_build_ai_client, mock_record_openai_usage_and_charge
+    ):
+        mock_build_ai_client.side_effect = lambda **kwargs: UsageReportingStyleAIClient(
+            {
+                "expanded_style_description": "A warm watercolor style.",
+                "representative_excerpt": "Celine arrives in Adelaide.",
+                "sample_image_prompt": "Warm watercolor sample prompt.",
+            },
+            usage_reporter=kwargs.get("usage_reporter"),
+        )
+
+        def _assert_sync_context(**kwargs):  # noqa: ARG001
+            try:
+                asyncio.get_running_loop()
+            except RuntimeError:
+                return
+            raise AssertionError("record_openai_usage_and_charge called in async context")
+
+        mock_record_openai_usage_and_charge.side_effect = _assert_sync_context
+
+        resp = self.client.post(
+            reverse("project-image-style", args=[self.project.pk]),
+            {
+                "style_brief": "watercolor storybook",
+                "expanded_style_description": "",
+                "sample_image_prompt": "",
+                "ai_model": "gpt-4o",
+                "sample_image_model": "gpt-image-1",
+                "status": "draft",
+                "action": "generate",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        mock_record_openai_usage_and_charge.assert_called_once()
 
     def test_approve_style_updates_status(self):
         style = ProjectImageStyle.objects.create(

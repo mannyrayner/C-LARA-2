@@ -535,10 +535,20 @@ def _generate_project_image_style(
         },
     )
     started = datetime.now(timezone.utc)
-    client = _build_billed_project_ai_client(project, model_name=ai_model, request_type="image_style_expand")
+    usage_events: list[dict[str, Any]] = []
+    client = _build_ai_client(
+        model_name=ai_model,
+        usage_reporter=_collect_usage_event(usage_events),
+    )
     try:
         response = asyncio.run(client.chat_json(request_payload["prompt"], model=ai_model))
     except Exception as exc:
+        _flush_project_usage_events(
+            project=project,
+            events=usage_events,
+            request_type="image_style_expand",
+            default_model=ai_model,
+        )
         elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
         _append_style_telemetry(
             project,
@@ -552,6 +562,12 @@ def _generate_project_image_style(
             },
         )
         raise
+    _flush_project_usage_events(
+        project=project,
+        events=usage_events,
+        request_type="image_style_expand",
+        default_model=ai_model,
+    )
     elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
     _append_style_telemetry(
         project,
