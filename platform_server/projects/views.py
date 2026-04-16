@@ -822,16 +822,23 @@ def _discover_project_image_elements(
             "prompt_preview": phase1_prompt[:400],
         },
     )
+    phase1_usage_events: list[dict[str, Any]] = []
+    phase1_client = _build_ai_client(
+        model_name=ai_model,
+        usage_reporter=_collect_usage_event(phase1_usage_events),
+    )
     started = datetime.now(timezone.utc)
     try:
         phase1_response = asyncio.run(
-            _build_billed_project_ai_client(
-                project,
-                model_name=ai_model,
-                request_type="image_elements_discovery_phase_1",
-            ).chat_json(phase1_prompt, model=ai_model)
+            phase1_client.chat_json(phase1_prompt, model=ai_model)
         )
     except Exception as exc:
+        _flush_project_usage_events(
+            project=project,
+            events=phase1_usage_events,
+            request_type="image_elements_discovery_phase_1",
+            default_model=ai_model,
+        )
         elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
         _append_elements_telemetry(
             project,
@@ -845,6 +852,12 @@ def _discover_project_image_elements(
             },
         )
         raise
+    _flush_project_usage_events(
+        project=project,
+        events=phase1_usage_events,
+        request_type="image_elements_discovery_phase_1",
+        default_model=ai_model,
+    )
     elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
     _append_elements_telemetry(
         project,
@@ -910,16 +923,23 @@ def _discover_project_image_elements(
                 "prompt_preview": phase2_prompt[:400],
             },
         )
+        phase2_usage_events: list[dict[str, Any]] = []
+        phase2_client = _build_ai_client(
+            model_name=ai_model,
+            usage_reporter=_collect_usage_event(phase2_usage_events),
+        )
         started_local = datetime.now(timezone.utc)
         try:
             response_local = asyncio.run(
-                _build_billed_project_ai_client(
-                    project,
-                    model_name=ai_model,
-                    request_type="image_elements_discovery_phase_2",
-                ).chat_json(phase2_prompt, model=ai_model)
+                phase2_client.chat_json(phase2_prompt, model=ai_model)
             )
         except Exception as exc:
+            _flush_project_usage_events(
+                project=project,
+                events=phase2_usage_events,
+                request_type="image_elements_discovery_phase_2",
+                default_model=ai_model,
+            )
             elapsed_local_s = (datetime.now(timezone.utc) - started_local).total_seconds()
             _append_elements_telemetry(
                 project,
@@ -934,6 +954,12 @@ def _discover_project_image_elements(
                 },
             )
             raise
+        _flush_project_usage_events(
+            project=project,
+            events=phase2_usage_events,
+            request_type="image_elements_discovery_phase_2",
+            default_model=ai_model,
+        )
         elapsed_local_s = (datetime.now(timezone.utc) - started_local).total_seconds()
         _append_elements_telemetry(
             project,
@@ -1043,7 +1069,11 @@ def _expand_project_image_elements(
     style_description = _compact_style_description_for_prompt(style_description, max_chars=1200)
     full_text = _extract_project_plain_text(project)
     count = 0
-    client = _build_billed_project_ai_client(project, model_name=ai_model, request_type="image_elements_expand")
+    usage_events: list[dict[str, Any]] = []
+    client = _build_ai_client(
+        model_name=ai_model,
+        usage_reporter=_collect_usage_event(usage_events),
+    )
     for element in project.image_elements.order_by("name", "id"):
         prompt = "\n".join(
             [
@@ -1092,7 +1122,19 @@ def _expand_project_image_elements(
                     **_exception_telemetry_fields(exc),
                 },
             )
+            _flush_project_usage_events(
+                project=project,
+                events=usage_events,
+                request_type="image_elements_expand",
+                default_model=ai_model,
+            )
             raise
+        _flush_project_usage_events(
+            project=project,
+            events=usage_events,
+            request_type="image_elements_expand",
+            default_model=ai_model,
+        )
         elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
         _append_elements_telemetry(
             project,
@@ -4180,6 +4222,36 @@ def _build_billed_project_ai_client(
             request_type=request_type,
         ),
     )
+
+
+def _collect_usage_event(
+    events: list[dict[str, Any]],
+) -> Callable[[dict[str, Any]], None]:
+    def _report(event: dict[str, Any]) -> None:
+        events.append(dict(event or {}))
+
+    return _report
+
+
+def _flush_project_usage_events(
+    *,
+    project: Project,
+    events: list[dict[str, Any]],
+    request_type: str,
+    default_model: str,
+) -> None:
+    for event in events:
+        record_openai_usage_and_charge(
+            user_id=project.owner_id,
+            project_id=project.id,
+            model=str(event.get("model") or default_model),
+            operation=str(event.get("operation") or "chat"),
+            prompt_tokens=max(0, int(event.get("prompt_tokens") or 0)),
+            completion_tokens=max(0, int(event.get("completion_tokens") or 0)),
+            total_tokens=max(0, int(event.get("total_tokens") or 0)),
+            request_type=request_type,
+        )
+    events.clear()
 
 
 def _prepare_output_dir(project: Project) -> Path:
