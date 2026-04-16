@@ -5,6 +5,7 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from projects.billing import get_user_balance_usd, record_openai_usage_and_charge
+from projects import views
 from projects.models import AIUsageCharge, CreditLedgerEntry, OpenAIModelPricing, Project
 
 
@@ -85,6 +86,48 @@ class BillingPhaseATests(TestCase):
         resp = self.client.get(reverse("project-detail", args=[self.project.pk]))
         self.assertContains(resp, "Project cost (USD):")
         self.assertContains(resp, "segmentation_phase_1")
+
+    def test_image_usage_reporter_charges_using_per_call_fallback_units(self):
+        self.client.login(username="billing_admin", password="pw")
+        self.client.post(
+            reverse("admin-tools"),
+            {
+                "action": "adjust_credits",
+                "user": self.user.pk,
+                "amount_usd": "10.0000",
+                "reason": "Funding for image usage test",
+            },
+            follow=True,
+        )
+        OpenAIModelPricing.objects.update_or_create(
+            model_name="gpt-image-1",
+            defaults={
+                "input_usd_per_1m": "0.000000",
+                "output_usd_per_1m": "0.040000",
+                "status": OpenAIModelPricing.STATUS_HUMAN_REVISED,
+            },
+        )
+        reporter = views._billing_usage_reporter(
+            user_id=self.user.id,
+            project_id=self.project.id,
+            request_type="image_pages_generate_image",
+        )
+        reporter(
+            {
+                "model": "gpt-image-1",
+                "operation": "image_generate",
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "total_tokens": 0,
+            }
+        )
+
+        self.project.refresh_from_db()
+        self.assertEqual(str(self.project.total_cost_usd), "0.0400")
+        self.assertEqual(str(get_user_balance_usd(self.user)), "9.9600")
+        usage = AIUsageCharge.objects.filter(project=self.project).latest("created_at")
+        self.assertEqual(usage.request_type, "image_pages_generate_image")
+        self.assertEqual(str(usage.cost_usd), "0.040000")
 
     def test_admin_can_save_human_reviewed_openai_pricing_row(self):
         self.client.login(username="billing_admin", password="pw")

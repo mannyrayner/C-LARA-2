@@ -340,6 +340,7 @@ class OpenAIClient:
             quality=quality,
             output_format=output_format,
         )
+        self._report_usage(response, model=model, operation="image_generate")
         data = getattr(response, "data", None) or []
         if not data:
             raise ValueError("Image generation returned no images")
