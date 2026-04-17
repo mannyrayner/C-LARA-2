@@ -2755,9 +2755,10 @@ def _save_versioned_stage_payload(
     stage_name: str,
     payload: dict[str, Any],
     metadata: dict[str, Any],
+    run_dir: Path | None = None,
 ) -> None:
     payload = normalize_json_text(payload)
-    target_run = _ensure_stage_run_dir(project)
+    target_run = run_dir or _ensure_stage_run_dir(project)
     stage_dir = target_run / "stages"
     stage_dir.mkdir(parents=True, exist_ok=True)
     (stage_dir / f"{stage_name}.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -3672,6 +3673,7 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
                         stage_name="segmentation_phase_2",
                         payload=edited_payload,
                         metadata={"before_text_hash": base_hash, "after_text_hash": edited_hash, "mode": "page_oriented"},
+                        run_dir=seg1_run,
                     )
                     messages.success(request, "Saved segmentation phase 2 from page-oriented editor.")
                     return redirect("manual-page-annotation", pk=project.pk)

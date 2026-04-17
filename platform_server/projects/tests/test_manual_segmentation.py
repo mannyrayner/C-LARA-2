@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import time
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
@@ -924,6 +925,33 @@ class ManualSegmentationEditorTests(TestCase):
         seg2 = json.loads((stage_dir / "segmentation_phase_2.json").read_text(encoding="utf-8"))
         tokens = seg2["pages"][0]["segments"][0]["tokens"]
         self.assertEqual(tokens, [{"surface": "Hello"}, {"surface": " "}, {"surface": "world"}])
+
+    def test_page_oriented_phase2_save_targets_seg1_run(self):
+        seg1_run_dir = self.project.artifact_dir() / "runs" / "run_seg1_target" / "stages"
+        seg1_run_dir.mkdir(parents=True, exist_ok=True)
+        newer_unrelated_run = self.project.artifact_dir() / "runs" / "run_newer_unrelated" / "stages"
+        newer_unrelated_run.mkdir(parents=True, exist_ok=True)
+        seg1_payload = {
+            "l2": "en",
+            "surface": "Hello world",
+            "pages": [{"surface": "Hello world", "segments": [{"surface": "Hello world"}], "annotations": {}}],
+            "annotations": {},
+        }
+        (seg1_run_dir / "segmentation_phase_1.json").write_text(json.dumps(seg1_payload), encoding="utf-8")
+        # Make this run newer so _resolve_run_dir would pick it if the save were not anchored to the seg1 run.
+        (newer_unrelated_run / "translation.json").write_text(json.dumps({"surface": ""}), encoding="utf-8")
+        now = time.time()
+        os.utime(seg1_run_dir.parent, (now - 10, now - 10))
+        os.utime(newer_unrelated_run.parent, (now, now))
+
+        save = self.client.post(
+            reverse("manual-page-annotation", args=[self.project.pk]),
+            {"tokenized_text_1_1": "Hello¦ ¦world"},
+            follow=True,
+        )
+        self.assertEqual(save.status_code, 200)
+        self.assertTrue((seg1_run_dir / "segmentation_phase_2.json").exists())
+        self.assertFalse((newer_unrelated_run / "segmentation_phase_2.json").exists())
 
     def test_page_oriented_manual_annotation_save_writes_stage_payloads(self):
         run_dir = self.project.artifact_dir() / "runs" / "run_page_oriented_save" / "stages"
