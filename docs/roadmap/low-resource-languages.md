@@ -20,6 +20,70 @@ This is now tracked as a cross-language roadmap item: **`docs/roadmap/manual-ann
 
 For low-resource languages, manual editing remains the central enabling workflow and should be treated as a prerequisite for broad adoption.
 
+### 1.1 New feature: page-oriented manual annotation mode
+
+For low-resource/AI-weak workflows, teams have requested a **page-oriented editing mode** similar to earlier C-LARA behavior.
+This mode is intended for projects where annotators know in advance that annotation will be manual from the start.
+
+#### Product intent
+
+- Present **all annotation information for one page in one place**.
+- Keep editing affordances and validation semantics consistent with the normal manual editor
+  (see `docs/roadmap/manual-annotation-editor.md`).
+- Include the page image (if available) so linguistic annotation and visual context are co-located.
+- Reduce context switching between stage-specific screens.
+
+#### Core UI behavior
+
+For each page:
+
+1. Show page text/segments/content elements in logical order.
+2. Show current values for enabled annotation layers (translation, MWE, lemma, gloss, romanization, audio metadata as available).
+3. Show page image if present (top or bottom according to project setting).
+4. Provide **per-page show/hide controls** for annotation layers:
+   - toggle translation
+   - toggle MWE
+   - toggle lemma
+   - toggle gloss
+   - toggle romanization
+   - toggle audio metadata
+5. Persist editor visibility preferences per user/project (nice-to-have in first cut; required in later iteration).
+
+#### Editing and validation model
+
+This mode is a **presentation/workflow layer**, not a separate annotation format.
+
+- Save payloads must remain stage-compatible with existing validators.
+- Segmentation constraints remain unchanged:
+  - no character-level edits in segmentation views,
+  - boundaries only.
+- Annotation constraints remain unchanged:
+  - structure locked to segmentation snapshot,
+  - edit annotation fields only.
+- Cross-stage checks (especially MWE/lemma/gloss consistency) are reused exactly as in normal manual editing.
+
+#### Navigation and ergonomics
+
+- Primary navigation is page-by-page (previous/next/jump-to-page).
+- Optional quick links from validation errors to the exact page/segment/content element field.
+- Optional “focus mode” per page for dense annotation tasks.
+- Optional compact vs expanded row layout to support long morphological annotations.
+
+#### Implementation notes (first cut)
+
+- Reuse existing manual editor form components and validators wherever possible.
+- Add a page-oriented container view that composes existing annotation widgets by page.
+- Keep API contracts stable; avoid introducing parallel stage schemas.
+- Ensure compatibility with generated images and image placement settings.
+
+#### Acceptance checks (phase-in)
+
+- Annotator can complete all manual annotation for a page without leaving the page-oriented view.
+- Page image is visible on the same screen when available.
+- Show/hide controls work independently per page and layer.
+- Saved outputs pass existing structural and cross-stage validation.
+- Compile/publish behavior is unchanged relative to equivalent edits made in normal manual views.
+
 ---
 
 ## 2) Human-in-the-loop revision for AI output
