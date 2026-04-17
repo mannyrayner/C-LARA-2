@@ -40,6 +40,7 @@ from urllib.parse import quote
 
 from core.config import DEFAULT_MODEL, OpenAIConfig
 from core.ai_api import OpenAIClient, normalize_json_text
+from core.language_direction import language_direction
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 from pipeline.mwe import normalize_mwes
 
@@ -534,10 +535,20 @@ def _generate_project_image_style(
         },
     )
     started = datetime.now(timezone.utc)
-    client = _build_billed_project_ai_client(project, model_name=ai_model, request_type="image_style_expand")
+    usage_events: list[dict[str, Any]] = []
+    client = _build_ai_client(
+        model_name=ai_model,
+        usage_reporter=_collect_usage_event(usage_events),
+    )
     try:
         response = asyncio.run(client.chat_json(request_payload["prompt"], model=ai_model))
     except Exception as exc:
+        _flush_project_usage_events(
+            project=project,
+            events=usage_events,
+            request_type="image_style_expand",
+            default_model=ai_model,
+        )
         elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
         _append_style_telemetry(
             project,
@@ -551,6 +562,12 @@ def _generate_project_image_style(
             },
         )
         raise
+    _flush_project_usage_events(
+        project=project,
+        events=usage_events,
+        request_type="image_style_expand",
+        default_model=ai_model,
+    )
     elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
     _append_style_telemetry(
         project,
@@ -822,16 +839,23 @@ def _discover_project_image_elements(
             "prompt_preview": phase1_prompt[:400],
         },
     )
+    phase1_usage_events: list[dict[str, Any]] = []
+    phase1_client = _build_ai_client(
+        model_name=ai_model,
+        usage_reporter=_collect_usage_event(phase1_usage_events),
+    )
     started = datetime.now(timezone.utc)
     try:
         phase1_response = asyncio.run(
-            _build_billed_project_ai_client(
-                project,
-                model_name=ai_model,
-                request_type="image_elements_discovery_phase_1",
-            ).chat_json(phase1_prompt, model=ai_model)
+            phase1_client.chat_json(phase1_prompt, model=ai_model)
         )
     except Exception as exc:
+        _flush_project_usage_events(
+            project=project,
+            events=phase1_usage_events,
+            request_type="image_elements_discovery_phase_1",
+            default_model=ai_model,
+        )
         elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
         _append_elements_telemetry(
             project,
@@ -845,6 +869,12 @@ def _discover_project_image_elements(
             },
         )
         raise
+    _flush_project_usage_events(
+        project=project,
+        events=phase1_usage_events,
+        request_type="image_elements_discovery_phase_1",
+        default_model=ai_model,
+    )
     elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
     _append_elements_telemetry(
         project,
@@ -910,16 +940,23 @@ def _discover_project_image_elements(
                 "prompt_preview": phase2_prompt[:400],
             },
         )
+        phase2_usage_events: list[dict[str, Any]] = []
+        phase2_client = _build_ai_client(
+            model_name=ai_model,
+            usage_reporter=_collect_usage_event(phase2_usage_events),
+        )
         started_local = datetime.now(timezone.utc)
         try:
             response_local = asyncio.run(
-                _build_billed_project_ai_client(
-                    project,
-                    model_name=ai_model,
-                    request_type="image_elements_discovery_phase_2",
-                ).chat_json(phase2_prompt, model=ai_model)
+                phase2_client.chat_json(phase2_prompt, model=ai_model)
             )
         except Exception as exc:
+            _flush_project_usage_events(
+                project=project,
+                events=phase2_usage_events,
+                request_type="image_elements_discovery_phase_2",
+                default_model=ai_model,
+            )
             elapsed_local_s = (datetime.now(timezone.utc) - started_local).total_seconds()
             _append_elements_telemetry(
                 project,
@@ -934,6 +971,12 @@ def _discover_project_image_elements(
                 },
             )
             raise
+        _flush_project_usage_events(
+            project=project,
+            events=phase2_usage_events,
+            request_type="image_elements_discovery_phase_2",
+            default_model=ai_model,
+        )
         elapsed_local_s = (datetime.now(timezone.utc) - started_local).total_seconds()
         _append_elements_telemetry(
             project,
@@ -1043,7 +1086,11 @@ def _expand_project_image_elements(
     style_description = _compact_style_description_for_prompt(style_description, max_chars=1200)
     full_text = _extract_project_plain_text(project)
     count = 0
-    client = _build_billed_project_ai_client(project, model_name=ai_model, request_type="image_elements_expand")
+    usage_events: list[dict[str, Any]] = []
+    client = _build_ai_client(
+        model_name=ai_model,
+        usage_reporter=_collect_usage_event(usage_events),
+    )
     for element in project.image_elements.order_by("name", "id"):
         prompt = "\n".join(
             [
@@ -1092,7 +1139,19 @@ def _expand_project_image_elements(
                     **_exception_telemetry_fields(exc),
                 },
             )
+            _flush_project_usage_events(
+                project=project,
+                events=usage_events,
+                request_type="image_elements_expand",
+                default_model=ai_model,
+            )
             raise
+        _flush_project_usage_events(
+            project=project,
+            events=usage_events,
+            request_type="image_elements_expand",
+            default_model=ai_model,
+        )
         elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
         _append_elements_telemetry(
             project,
@@ -2573,6 +2632,8 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["selected_ai_model"] = project.ai_model or DEFAULT_MODEL
         context["detailed_api_trace_default"] = False
         context["language_choices"] = ProjectForm.LANGUAGE_CHOICES
+        context["project_text_direction"] = language_direction(project.language)
+        context["project_annotation_direction"] = language_direction(project.target_language)
         style_obj = getattr(project, "image_style", None)
         context["style_ready"] = bool(
             style_obj and (style_obj.sample_image_path or style_obj.status == ProjectImageStyle.STATUS_APPROVED)
@@ -3545,6 +3606,231 @@ def manual_top_level(request: HttpRequest, pk: int) -> HttpResponse:
 
 
 @login_required
+def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    seg1_run = _find_run_with_stage(project, "segmentation_phase_1")
+    seg1_payload = _load_stage_payload(project, "segmentation_phase_1", run_dir=seg1_run) if seg1_run else None
+    if not seg1_payload:
+        base_text = _base_text_for_segmentation_phase_1(project)
+        if not base_text.strip():
+            messages.error(request, "Page-oriented manual annotation requires source text.")
+            return redirect("project-annotation-home", pk=project.pk)
+        editable_surface = request.POST.get("editable_surface") if request.method == "POST" else base_text
+        editable_surface = _canonicalize_phase1_surface(str(editable_surface or base_text))
+        base_hash = _stable_text_hash(base_text)
+        if request.method == "POST":
+            edited_hash = _stable_text_hash(_surface_without_phase1_markers(editable_surface))
+            if edited_hash != base_hash:
+                messages.error(request, "Text hash mismatch; only <page> and || separators may be changed.")
+            else:
+                payload = _build_phase1_payload_from_surface(editable_surface, project.language)
+                _save_versioned_stage_payload(
+                    project=project,
+                    stage_name="segmentation_phase_1",
+                    payload=payload,
+                    metadata={"before_text_hash": base_hash, "after_text_hash": edited_hash, "mode": "page_oriented"},
+                )
+                messages.success(request, "Saved segmentation phase 1 from page-oriented editor.")
+                return redirect("manual-page-annotation", pk=project.pk)
+        return render(
+            request,
+            "projects/manual_page_annotation.html",
+            {"project": project, "mode": "phase1", "editable_surface": editable_surface, "base_hash": base_hash},
+        )
+
+    seg2_run = _find_run_with_stage(project, "segmentation_phase_2")
+    seg2_payload = _load_stage_payload(project, "segmentation_phase_2", run_dir=seg2_run) if seg2_run else None
+    if not seg2_payload:
+        seg2_payload = json.loads(json.dumps(seg1_payload))
+        for page in seg2_payload.get("pages", []) or []:
+            for segment in page.get("segments", []) or []:
+                pieces = re.findall(r"\S+|\s+", str(segment.get("surface") or ""))
+                segment["tokens"] = [{"surface": piece} for piece in pieces] if pieces else [{"surface": ""}]
+        token_rows = _phase2_token_bar_rows(seg1_payload, seg2_payload)
+        base_hash = _stable_text_hash(str(seg1_payload.get("surface") or ""))
+        if request.method == "POST":
+            try:
+                for row in token_rows:
+                    row["tokenized_text"] = request.POST.get(
+                        f"tokenized_text_{row['page_index']}_{row['segment_index']}",
+                        row["tokenized_text"],
+                    )
+                edited_payload = _phase2_payload_from_bar_rows(seg1_payload, token_rows)
+            except ValueError as exc:
+                messages.error(request, str(exc))
+            else:
+                error = _validate_phase2_structure(seg1_payload, edited_payload)
+                edited_hash = _stable_text_hash(str(edited_payload.get("surface") or ""))
+                if error:
+                    messages.error(request, error)
+                elif edited_hash != base_hash:
+                    messages.error(request, "Text hash mismatch; only content-element boundaries may be changed.")
+                else:
+                    _save_versioned_stage_payload(
+                        project=project,
+                        stage_name="segmentation_phase_2",
+                        payload=edited_payload,
+                        metadata={"before_text_hash": base_hash, "after_text_hash": edited_hash, "mode": "page_oriented"},
+                    )
+                    messages.success(request, "Saved segmentation phase 2 from page-oriented editor.")
+                    return redirect("manual-page-annotation", pk=project.pk)
+        return render(
+            request,
+            "projects/manual_page_annotation.html",
+            {"project": project, "mode": "phase2", "token_rows": token_rows, "base_hash": base_hash},
+        )
+
+    tr_payload = _load_stage_payload(project, "translation", run_dir=_find_run_with_stage(project, "translation")) or {}
+    tr_payload, _ = _reconcile_translation_payload_with_seg2(seg2_payload, tr_payload or json.loads(json.dumps(seg2_payload)))
+    mwe_payload = _load_stage_payload(project, "mwe", run_dir=_find_run_with_stage(project, "mwe")) or {}
+    mwe_payload, _ = _reconcile_mwe_payload_with_seg2(seg2_payload, mwe_payload or json.loads(json.dumps(seg2_payload)))
+    lemma_payload = _load_stage_payload(project, "lemma", run_dir=_find_run_with_stage(project, "lemma")) or {}
+    lemma_payload, _ = _reconcile_lemma_payload_with_mwe(mwe_payload, lemma_payload or json.loads(json.dumps(mwe_payload)))
+    gloss_payload = _load_stage_payload(project, "gloss", run_dir=_find_run_with_stage(project, "gloss")) or {}
+    gloss_payload, _ = _reconcile_gloss_payload_with_lemma(lemma_payload, gloss_payload or json.loads(json.dumps(lemma_payload)))
+    pinyin_payload = _load_stage_payload(project, "pinyin", run_dir=_find_run_with_stage(project, "pinyin")) or {}
+    pinyin_payload, _ = _reconcile_pinyin_payload_with_gloss(gloss_payload, pinyin_payload or json.loads(json.dumps(gloss_payload)))
+
+    image_by_page = {row.page_number: row.image_path for row in project.image_pages.exclude(image_path="")}
+    pages_data: list[dict[str, Any]] = []
+    for page_index, page in enumerate(seg2_payload.get("pages") or []):
+        segments_data: list[dict[str, Any]] = []
+        for segment_index, segment in enumerate(page.get("segments") or []):
+            tr_segment = (((tr_payload.get("pages") or [])[page_index].get("segments") or [])[segment_index]
+                          if page_index < len(tr_payload.get("pages") or []) and segment_index < len((((tr_payload.get("pages") or [])[page_index]).get("segments") or []))
+                          else {})
+            tokens_data: list[dict[str, Any]] = []
+            for token_index, token in enumerate(segment.get("tokens") or []):
+                mwe_token = ((((mwe_payload.get("pages") or [])[page_index].get("segments") or [])[segment_index].get("tokens") or [])[token_index]
+                             if page_index < len(mwe_payload.get("pages") or []) and segment_index < len((((mwe_payload.get("pages") or [])[page_index]).get("segments") or [])) and token_index < len(((((mwe_payload.get("pages") or [])[page_index].get("segments") or [])[segment_index]).get("tokens") or []))
+                             else {})
+                lemma_token = ((((lemma_payload.get("pages") or [])[page_index].get("segments") or [])[segment_index].get("tokens") or [])[token_index]
+                               if page_index < len(lemma_payload.get("pages") or []) and segment_index < len((((lemma_payload.get("pages") or [])[page_index]).get("segments") or [])) and token_index < len(((((lemma_payload.get("pages") or [])[page_index].get("segments") or [])[segment_index]).get("tokens") or []))
+                               else {})
+                gloss_token = ((((gloss_payload.get("pages") or [])[page_index].get("segments") or [])[segment_index].get("tokens") or [])[token_index]
+                               if page_index < len(gloss_payload.get("pages") or []) and segment_index < len((((gloss_payload.get("pages") or [])[page_index]).get("segments") or [])) and token_index < len(((((gloss_payload.get("pages") or [])[page_index].get("segments") or [])[segment_index]).get("tokens") or []))
+                               else {})
+                pinyin_token = ((((pinyin_payload.get("pages") or [])[page_index].get("segments") or [])[segment_index].get("tokens") or [])[token_index]
+                                if page_index < len(pinyin_payload.get("pages") or []) and segment_index < len((((pinyin_payload.get("pages") or [])[page_index]).get("segments") or [])) and token_index < len(((((pinyin_payload.get("pages") or [])[page_index].get("segments") or [])[segment_index]).get("tokens") or []))
+                                else {})
+                tokens_data.append(
+                    {
+                        "token_index": token_index,
+                        "surface": str(token.get("surface") or ""),
+                        "mwe_id": str(((mwe_token.get("annotations") or {}).get("mwe_id") or "")),
+                        "lemma": str(((lemma_token.get("annotations") or {}).get("lemma") or "")),
+                        "pos": str(((lemma_token.get("annotations") or {}).get("pos") or "")),
+                        "gloss": str(((gloss_token.get("annotations") or {}).get("gloss") or "")),
+                        "pinyin": str(((pinyin_token.get("annotations") or {}).get("pinyin") or "")),
+                    }
+                )
+            segments_data.append(
+                {
+                    "segment_index": segment_index,
+                    "surface": str(segment.get("surface") or ""),
+                    "translation_text": str(((tr_segment.get("annotations") or {}).get("translation") or "")),
+                    "tokens": tokens_data,
+                }
+            )
+        page_number = page_index + 1
+        image_path = image_by_page.get(page_number) or ""
+        image_url = reverse("project-compiled", args=[project.pk, image_path]) if image_path else ""
+        pages_data.append(
+            {
+                "page_index": page_index,
+                "page_number": page_number,
+                "segments": segments_data,
+                "image_path": image_path,
+                "image_url": image_url,
+            }
+        )
+
+    base_hash = _stable_text_hash(str(seg2_payload.get("surface") or ""))
+    if request.method == "POST":
+        for page in pages_data:
+            for segment in page["segments"]:
+                segment["translation_text"] = request.POST.get(
+                    f"translation_text_{page['page_index']}_{segment['segment_index']}",
+                    segment["translation_text"],
+                )
+                for token in segment["tokens"]:
+                    key = f"{page['page_index']}_{segment['segment_index']}_{token['token_index']}"
+                    token["mwe_id"] = request.POST.get(f"mwe_id_{key}", token["mwe_id"])
+                    token["lemma"] = request.POST.get(f"lemma_{key}", token["lemma"])
+                    token["pos"] = request.POST.get(f"pos_{key}", token["pos"])
+                    token["gloss"] = request.POST.get(f"gloss_{key}", token["gloss"])
+                    token["pinyin"] = request.POST.get(f"pinyin_{key}", token["pinyin"])
+
+        edited_translation = json.loads(json.dumps(seg2_payload))
+        edited_mwe = json.loads(json.dumps(seg2_payload))
+        for page in pages_data:
+            for segment in page["segments"]:
+                tseg = edited_translation["pages"][page["page_index"]]["segments"][segment["segment_index"]]
+                tseg.setdefault("annotations", {})
+                tseg["annotations"]["translation"] = segment["translation_text"]
+                for token in segment["tokens"]:
+                    tkn = edited_mwe["pages"][page["page_index"]]["segments"][segment["segment_index"]]["tokens"][token["token_index"]]
+                    tkn.setdefault("annotations", {})
+                    tkn["annotations"]["mwe_id"] = token["mwe_id"]
+
+        edited_lemma = json.loads(json.dumps(edited_mwe))
+        edited_gloss = json.loads(json.dumps(edited_lemma))
+        edited_pinyin = json.loads(json.dumps(edited_gloss))
+        for page in pages_data:
+            for segment in page["segments"]:
+                for token in segment["tokens"]:
+                    lt = edited_lemma["pages"][page["page_index"]]["segments"][segment["segment_index"]]["tokens"][token["token_index"]]
+                    lt.setdefault("annotations", {})
+                    lt["annotations"]["lemma"] = token["lemma"]
+                    lt["annotations"]["pos"] = token["pos"]
+                    gt = edited_gloss["pages"][page["page_index"]]["segments"][segment["segment_index"]]["tokens"][token["token_index"]]
+                    gt.setdefault("annotations", {})
+                    gt["annotations"]["gloss"] = token["gloss"]
+                    pt = edited_pinyin["pages"][page["page_index"]]["segments"][segment["segment_index"]]["tokens"][token["token_index"]]
+                    pt.setdefault("annotations", {})
+                    pt["annotations"]["pinyin"] = token["pinyin"]
+
+        payloads_to_save = [
+            ("translation", edited_translation),
+            ("mwe", edited_mwe),
+            ("lemma", edited_lemma),
+            ("gloss", edited_gloss),
+            ("pinyin", edited_pinyin),
+        ]
+        for stage_name, payload in payloads_to_save:
+            if _stable_text_hash(str(payload.get("surface") or "")) != base_hash:
+                messages.error(request, f"Text hash mismatch while saving {stage_name}; structure edits are not allowed.")
+                return redirect("manual-page-annotation", pk=project.pk)
+
+        for stage_name, payload in payloads_to_save:
+            _save_versioned_stage_payload(
+                project=project,
+                stage_name=stage_name,
+                payload=payload,
+                metadata={"before_text_hash": base_hash, "after_text_hash": base_hash, "mode": "page_oriented_manual"},
+            )
+        target_run = _ensure_stage_run_dir(project)
+        _invalidate_downstream_stage_files(target_run, "pinyin")
+        messages.success(request, "Saved page-oriented manual annotations (translation, MWE, lemma, gloss, pinyin).")
+        return redirect("manual-page-annotation", pk=project.pk)
+
+    return render(
+        request,
+        "projects/manual_page_annotation.html",
+        {
+            "project": project,
+            "mode": "annotation",
+            "pages": pages_data,
+            "show_translation_default": True,
+            "show_mwe_default": True,
+            "show_lemma_default": True,
+            "show_gloss_default": True,
+            "show_pinyin_default": True,
+        },
+    )
+
+
+@login_required
 def manual_segmentation_phase_1(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
     base_text = _base_text_for_segmentation_phase_1(project)
@@ -4180,6 +4466,36 @@ def _build_billed_project_ai_client(
             request_type=request_type,
         ),
     )
+
+
+def _collect_usage_event(
+    events: list[dict[str, Any]],
+) -> Callable[[dict[str, Any]], None]:
+    def _report(event: dict[str, Any]) -> None:
+        events.append(dict(event or {}))
+
+    return _report
+
+
+def _flush_project_usage_events(
+    *,
+    project: Project,
+    events: list[dict[str, Any]],
+    request_type: str,
+    default_model: str,
+) -> None:
+    for event in events:
+        record_openai_usage_and_charge(
+            user_id=project.owner_id,
+            project_id=project.id,
+            model=str(event.get("model") or default_model),
+            operation=str(event.get("operation") or "chat"),
+            prompt_tokens=max(0, int(event.get("prompt_tokens") or 0)),
+            completion_tokens=max(0, int(event.get("completion_tokens") or 0)),
+            total_tokens=max(0, int(event.get("total_tokens") or 0)),
+            request_type=request_type,
+        )
+    events.clear()
 
 
 def _prepare_output_dir(project: Project) -> Path:
@@ -6034,7 +6350,9 @@ def download_project_source_bundle(request: HttpRequest, pk: int) -> HttpRespons
             "source_text": project.source_text,
             "input_mode": project.input_mode,
             "language": project.language,
+            "text_direction": language_direction(project.language),
             "target_language": project.target_language,
+            "annotation_direction": language_direction(project.target_language),
             "ai_model": project.ai_model,
             "page_image_placement": project.page_image_placement,
             "image_generation_pivot_language": project.image_generation_pivot_language,
