@@ -35,6 +35,11 @@ urlpatterns = [
         name="manual-translation",
     ),
     path(
+        "projects/<int:pk>/annotation/manual/page-oriented/",
+        views.manual_page_annotation,
+        name="manual-page-annotation",
+    ),
+    path(
         "projects/<int:pk>/annotation/manual/mwe/",
         views.manual_mwe,
         name="manual-mwe",
