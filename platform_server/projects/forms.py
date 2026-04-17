@@ -8,6 +8,8 @@ from django.contrib.auth.models import User
 from django.forms import modelformset_factory
 
 from .models import (
+    Community,
+    CommunityMembership,
     OpenAIModelPricing,
     Project,
     Profile,
@@ -58,6 +60,8 @@ class ProjectForm(forms.ModelForm):
             "source_text",
             "language",
             "target_language",
+            "access_scope",
+            "community",
         ]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 3}),
@@ -96,6 +100,8 @@ class ProjectForm(forms.ModelForm):
 
         if description and source_text:
             self.add_error(None, "Please provide either a description or source text, not both.")
+        if cleaned.get("access_scope") == Project.ACCESS_COMMUNITY and not cleaned.get("community"):
+            self.add_error("community", "Please select a community for community-only access.")
 
         return cleaned
 
@@ -297,3 +303,23 @@ class AdminOpenAIPricingForm(forms.ModelForm):
     class Meta:
         model = OpenAIModelPricing
         fields = ["model_name", "input_usd_per_1m", "output_usd_per_1m", "source_url", "status", "notes"]
+
+
+class AdminCommunityForm(forms.ModelForm):
+    class Meta:
+        model = Community
+        fields = ["name", "language", "description", "is_active"]
+        widgets = {
+            "description": forms.Textarea(attrs={"rows": 2}),
+        }
+
+
+class AdminCommunityMembershipForm(forms.Form):
+    community = forms.ModelChoiceField(queryset=Community.objects.none(), label="Community")
+    user = forms.ModelChoiceField(queryset=User.objects.none(), label="User")
+    role = forms.ChoiceField(choices=CommunityMembership.ROLE_CHOICES, initial=CommunityMembership.ROLE_MEMBER)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["community"].queryset = Community.objects.filter(is_active=True).order_by("name")
+        self.fields["user"].queryset = User.objects.order_by("username")

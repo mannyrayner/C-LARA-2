@@ -75,6 +75,13 @@ This mode is a **presentation/workflow layer**, not a separate annotation format
 - Add a page-oriented container view that composes existing annotation widgets by page.
 - Keep API contracts stable; avoid introducing parallel stage schemas.
 - Ensure compatibility with generated images and image placement settings.
+- Current implementation detail (`projects/<id>/annotation/manual/page-oriented/`):
+  1. If `segmentation_phase_1` is missing, the user first inserts `<page>` and `||` boundaries.
+  2. If `segmentation_phase_2` is missing, the user then inserts token boundaries with `|`/`¦`.
+     - Initial token boundary suggestions now split punctuation separately (same default style as the dedicated segmentation phase 2 editor).
+  3. Once segmentation exists, the page-oriented annotation table is shown for translation/MWE/lemma/gloss/romanization.
+     - Whitespace-only tokens are intentionally hidden in this table, consistent with stage-specific annotation views.
+- Navigation note: page-oriented manual annotation remains linked from annotation home, but is no longer linked from manual top-level.
 
 #### Acceptance checks (phase-in)
 
@@ -83,6 +90,8 @@ This mode is a **presentation/workflow layer**, not a separate annotation format
 - Show/hide controls work independently per page and layer.
 - Saved outputs pass existing structural and cross-stage validation.
 - Compile/publish behavior is unchanged relative to equivalent edits made in normal manual views.
+- Phase 2 token-boundary defaults are punctuation-aware and preserve exact text hash constraints.
+- Whitespace-only tokens are not rendered as editable rows in page-oriented annotation tables.
 
 ---
 
