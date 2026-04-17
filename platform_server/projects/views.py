@@ -72,6 +72,7 @@ from .models import (
     OpenAIModelPricing,
     Profile,
     Project,
+    CommunityMembership,
     ProjectImageElement,
     ProjectImagePage,
     ProjectImageStyle,
@@ -135,6 +136,24 @@ def _get_project_for_user(*, pk: int, user, min_role: str = ProjectCollaborator.
 
 def _projects_for_user(user):
     return Project.objects.filter(Q(owner=user) | Q(collaborators__user=user)).distinct()
+
+
+def _user_community_ids(user) -> list[int]:
+    return list(
+        CommunityMembership.objects.filter(user=user, community__is_active=True).values_list("community_id", flat=True)
+    )
+
+
+def _published_projects_visible_to_user(user):
+    if user.is_staff:
+        return Project.objects.filter(is_published=True)
+    community_ids = _user_community_ids(user)
+    return Project.objects.filter(is_published=True).filter(
+        Q(access_scope=Project.ACCESS_PUBLIC)
+        | Q(owner=user)
+        | Q(collaborators__user=user)
+        | Q(access_scope=Project.ACCESS_COMMUNITY, community_id__in=community_ids)
+    ).distinct()
 
 
 def _manual_annotation_context(project: Project) -> dict[str, Any]:
@@ -5441,7 +5460,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
     if date_posted not in CONTENT_DATE_FILTERS:
         date_posted = "any"
 
-    qs = Project.objects.filter(is_published=True)
+    qs = _published_projects_visible_to_user(request.user)
     if title:
         qs = qs.filter(title__icontains=title)
     if text_language:
@@ -5481,7 +5500,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
 def content_detail(request: HttpRequest, pk: int) -> HttpResponse:
     """Show metadata for a published project and link to page 1."""
 
-    project = get_object_or_404(Project, pk=pk, is_published=True)
+    project = get_object_or_404(_published_projects_visible_to_user(request.user), pk=pk)
     Project.objects.filter(pk=project.pk).update(access_count=F("access_count") + 1)
 
     if request.method == "POST":
@@ -5628,7 +5647,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
     if date_posted not in CONTENT_DATE_FILTERS:
         date_posted = "any"
 
-    qs = Project.objects.filter(is_published=True)
+    qs = _published_projects_visible_to_user(request.user)
     if title:
         qs = qs.filter(title__icontains=title)
     if text_language:
@@ -5668,7 +5687,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
 def content_detail(request: HttpRequest, pk: int) -> HttpResponse:
     """Show metadata for a published project and link to page 1."""
 
-    project = get_object_or_404(Project, pk=pk, is_published=True)
+    project = get_object_or_404(_published_projects_visible_to_user(request.user), pk=pk)
     Project.objects.filter(pk=project.pk).update(access_count=F("access_count") + 1)
 
     if request.method == "POST":

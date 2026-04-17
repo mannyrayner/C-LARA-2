@@ -58,6 +58,8 @@ class ProjectForm(forms.ModelForm):
             "source_text",
             "language",
             "target_language",
+            "access_scope",
+            "community",
         ]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 3}),
@@ -96,6 +98,8 @@ class ProjectForm(forms.ModelForm):
 
         if description and source_text:
             self.add_error(None, "Please provide either a description or source text, not both.")
+        if cleaned.get("access_scope") == Project.ACCESS_COMMUNITY and not cleaned.get("community"):
+            self.add_error("community", "Please select a community for community-only access.")
 
         return cleaned
 
