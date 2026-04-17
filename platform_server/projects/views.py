@@ -3608,11 +3608,77 @@ def manual_top_level(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    seg1_run = _find_run_with_stage(project, "segmentation_phase_1")
+    seg1_payload = _load_stage_payload(project, "segmentation_phase_1", run_dir=seg1_run) if seg1_run else None
+    if not seg1_payload:
+        base_text = _base_text_for_segmentation_phase_1(project)
+        if not base_text.strip():
+            messages.error(request, "Page-oriented manual annotation requires source text.")
+            return redirect("project-annotation-home", pk=project.pk)
+        editable_surface = request.POST.get("editable_surface") if request.method == "POST" else base_text
+        editable_surface = _canonicalize_phase1_surface(str(editable_surface or base_text))
+        base_hash = _stable_text_hash(base_text)
+        if request.method == "POST":
+            edited_hash = _stable_text_hash(_surface_without_phase1_markers(editable_surface))
+            if edited_hash != base_hash:
+                messages.error(request, "Text hash mismatch; only <page> and || separators may be changed.")
+            else:
+                payload = _build_phase1_payload_from_surface(editable_surface, project.language)
+                _save_versioned_stage_payload(
+                    project=project,
+                    stage_name="segmentation_phase_1",
+                    payload=payload,
+                    metadata={"before_text_hash": base_hash, "after_text_hash": edited_hash, "mode": "page_oriented"},
+                )
+                messages.success(request, "Saved segmentation phase 1 from page-oriented editor.")
+                return redirect("manual-page-annotation", pk=project.pk)
+        return render(
+            request,
+            "projects/manual_page_annotation.html",
+            {"project": project, "mode": "phase1", "editable_surface": editable_surface, "base_hash": base_hash},
+        )
+
     seg2_run = _find_run_with_stage(project, "segmentation_phase_2")
     seg2_payload = _load_stage_payload(project, "segmentation_phase_2", run_dir=seg2_run) if seg2_run else None
     if not seg2_payload:
-        messages.error(request, "Page-oriented manual annotation requires segmentation phase 2 annotated text.")
-        return redirect("manual-top-level", pk=project.pk)
+        seg2_payload = json.loads(json.dumps(seg1_payload))
+        for page in seg2_payload.get("pages", []) or []:
+            for segment in page.get("segments", []) or []:
+                pieces = re.findall(r"\S+|\s+", str(segment.get("surface") or ""))
+                segment["tokens"] = [{"surface": piece} for piece in pieces] if pieces else [{"surface": ""}]
+        token_rows = _phase2_token_bar_rows(seg1_payload, seg2_payload)
+        base_hash = _stable_text_hash(str(seg1_payload.get("surface") or ""))
+        if request.method == "POST":
+            try:
+                for row in token_rows:
+                    row["tokenized_text"] = request.POST.get(
+                        f"tokenized_text_{row['page_index']}_{row['segment_index']}",
+                        row["tokenized_text"],
+                    )
+                edited_payload = _phase2_payload_from_bar_rows(seg1_payload, token_rows)
+            except ValueError as exc:
+                messages.error(request, str(exc))
+            else:
+                error = _validate_phase2_structure(seg1_payload, edited_payload)
+                edited_hash = _stable_text_hash(str(edited_payload.get("surface") or ""))
+                if error:
+                    messages.error(request, error)
+                elif edited_hash != base_hash:
+                    messages.error(request, "Text hash mismatch; only content-element boundaries may be changed.")
+                else:
+                    _save_versioned_stage_payload(
+                        project=project,
+                        stage_name="segmentation_phase_2",
+                        payload=edited_payload,
+                        metadata={"before_text_hash": base_hash, "after_text_hash": edited_hash, "mode": "page_oriented"},
+                    )
+                    messages.success(request, "Saved segmentation phase 2 from page-oriented editor.")
+                    return redirect("manual-page-annotation", pk=project.pk)
+        return render(
+            request,
+            "projects/manual_page_annotation.html",
+            {"project": project, "mode": "phase2", "token_rows": token_rows, "base_hash": base_hash},
+        )
 
     tr_payload = _load_stage_payload(project, "translation", run_dir=_find_run_with_stage(project, "translation")) or {}
     tr_payload, _ = _reconcile_translation_payload_with_seg2(seg2_payload, tr_payload or json.loads(json.dumps(seg2_payload)))
@@ -3753,6 +3819,7 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
         "projects/manual_page_annotation.html",
         {
             "project": project,
+            "mode": "annotation",
             "pages": pages_data,
             "show_translation_default": True,
             "show_mwe_default": True,

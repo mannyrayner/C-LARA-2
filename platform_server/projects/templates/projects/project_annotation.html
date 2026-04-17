@@ -73,6 +73,7 @@
 </form>
 <h3>Manual annotation editors</h3>
 <p><a class="btn secondary" href="{% url 'manual-top-level' object.pk %}">Open manual annotation top level</a></p>
+<p><a class="btn secondary" href="{% url 'manual-page-annotation' object.pk %}">Open page-oriented manual annotation</a></p>
 {% if object.compiled_path %}
   <p>
     <a class="btn link" href="{% url 'project-compiled' pk=object.pk path=object.compiled_path %}" target="_blank">View via server</a>
