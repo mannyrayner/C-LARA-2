@@ -91,6 +91,28 @@ A **lock reviewed annotations** option so later reruns avoid overwriting approve
 - Feeds corrected artifacts into compile and publish workflows.
 - Provides auditable revisions for collaborative/community projects.
 
+## Page-oriented manual annotation view (current behavior)
+
+The page-oriented view (`projects/<id>/annotation/manual/page-oriented/`) is a workflow wrapper over the same stage payloads and validators; it does **not** define a parallel schema.
+
+Current staged behavior:
+
+1. **Phase 1 fallback**: if `segmentation_phase_1` is missing, the view asks the annotator to add `<page>` / `||` boundaries.
+2. **Phase 2 fallback**: if `segmentation_phase_2` is missing, the view asks for token boundaries using `|` or `¦`.
+   - Default token suggestions are punctuation-aware (punctuation split into separate tokens, as in the dedicated segmentation-phase-2 editor).
+3. **Annotation mode**: once segmentation exists, the view presents per-page annotation fields (translation, MWE, lemma, gloss, romanization) plus page image when available.
+   - Whitespace-only tokens are hidden in annotation tables (same presentation approach as stage-specific annotation editors).
+
+Navigation/entry points:
+
+- Page-oriented mode is linked from annotation home.
+- It is intentionally **not** linked from manual annotation top-level.
+
+Persistence constraints in page-oriented mode:
+
+- Segmentation phase 2 saves are anchored to the run that contains the active segmentation phase 1 payload.
+- Stage payloads remain fully compatible with existing downstream validators and compile/publish flows.
+
 ## Delivery plan (incremental, ergonomic-first)
 
 ### Step 1 — Segmentation editor MVP (structure only)
