@@ -11,7 +11,7 @@
     <textarea name="editable_surface" rows="12" style="width:100%;">{{ editable_surface }}</textarea>
     <p><button class="btn" type="submit">Save page boundaries</button></p>
   {% elif mode == "phase2" %}
-    <p><strong>Step 2: Edit content-element boundaries using <code>¦</code> separators.</strong></p>
+    <p><strong>Step 2: Edit content-element boundaries using <code>|</code> separators (or <code>¦</code>).</strong></p>
     {% for row in token_rows %}
       <section style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0;">
         <h2>Page {{ row.page_index }}</h2>

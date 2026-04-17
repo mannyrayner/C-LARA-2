@@ -3651,10 +3651,11 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
         if request.method == "POST":
             try:
                 for row in token_rows:
-                    row["tokenized_text"] = request.POST.get(
+                    submitted = request.POST.get(
                         f"tokenized_text_{row['page_index']}_{row['segment_index']}",
                         row["tokenized_text"],
                     )
+                    row["tokenized_text"] = str(submitted).replace("|", "¦")
                 edited_payload = _phase2_payload_from_bar_rows(seg1_payload, token_rows)
             except ValueError as exc:
                 messages.error(request, str(exc))
