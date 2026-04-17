@@ -1,0 +1,87 @@
+{% extends "projects/base.html" %}
+{% block title %}Page-oriented manual annotation: {{ project.title }}{% endblock %}
+{% block content %}
+<h1>Page-oriented manual annotation (first cut)</h1>
+<p><a class="btn secondary" href="{% url 'project-annotation-home' project.pk %}">← Back to annotation home</a></p>
+
+<form method="post">
+  {% csrf_token %}
+  {% if mode == "phase1" %}
+    <p><strong>Step 1: Add <code>&lt;page&gt;</code> and <code>||</code> tags to define page and segment boundaries.</strong></p>
+    <textarea name="editable_surface" rows="12" style="width:100%;">{{ editable_surface }}</textarea>
+    <p><button class="btn" type="submit">Save page boundaries</button></p>
+  {% elif mode == "phase2" %}
+    <p><strong>Step 2: Edit content-element boundaries using <code>|</code> separators (or <code>¦</code>).</strong></p>
+    {% for row in token_rows %}
+      <section style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0;">
+        <h2>Page {{ row.page_index }}</h2>
+        <p><strong>Segment {{ row.segment_index }}</strong>: {{ row.segment_surface }}</p>
+        <textarea name="tokenized_text_{{ row.page_index }}_{{ row.segment_index }}" rows="3" style="width:100%;">{{ row.tokenized_text }}</textarea>
+      </section>
+    {% endfor %}
+    <p><button class="btn" type="submit">Save token boundaries</button></p>
+  {% else %}
+    <p><button class="btn" type="submit">Save page-oriented manual annotations</button></p>
+
+    {% for page in pages %}
+      <section style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0;">
+        <h2>Page {{ page.page_number }}</h2>
+        {% if page.image_url %}
+          <p><img src="{{ page.image_url }}" alt="Page {{ page.page_number }} image" style="max-width: 360px; height: auto;" /></p>
+        {% endif %}
+        <p>
+          <label><input type="checkbox" checked onclick="togglePageLayer({{ page.page_number }}, 'translation')"> Translation</label>
+          <label><input type="checkbox" checked onclick="togglePageLayer({{ page.page_number }}, 'mwe')"> MWE</label>
+          <label><input type="checkbox" checked onclick="togglePageLayer({{ page.page_number }}, 'lemma')"> Lemma/POS</label>
+          <label><input type="checkbox" checked onclick="togglePageLayer({{ page.page_number }}, 'gloss')"> Gloss</label>
+          <label><input type="checkbox" checked onclick="togglePageLayer({{ page.page_number }}, 'pinyin')"> Romanization</label>
+        </p>
+        {% for segment in page.segments %}
+          <div style="border-top:1px dashed #ddd; padding-top:0.5rem; margin-top:0.5rem;">
+            <p><strong>Segment {{ forloop.counter }}:</strong> {{ segment.surface }}</p>
+            <div class="layer-{{ page.page_number }}-translation">
+              <label>Translation</label>
+              <input type="text" name="translation_text_{{ page.page_index }}_{{ segment.segment_index }}" value="{{ segment.translation_text }}" style="width:100%;" />
+            </div>
+            <table border="1" cellpadding="4" cellspacing="0" style="margin-top:0.4rem; width:100%;">
+              <thead>
+                <tr>
+                  <th>Token</th>
+                  <th class="layer-{{ page.page_number }}-mwe">MWE</th>
+                  <th class="layer-{{ page.page_number }}-lemma">Lemma</th>
+                  <th class="layer-{{ page.page_number }}-lemma">POS</th>
+                  <th class="layer-{{ page.page_number }}-gloss">Gloss</th>
+                  <th class="layer-{{ page.page_number }}-pinyin">Romanization</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for token in segment.tokens %}
+                  <tr>
+                    <td><code lang="{{ project.language }}">{{ token.surface }}</code></td>
+                    <td class="layer-{{ page.page_number }}-mwe"><input type="text" name="mwe_id_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.mwe_id }}" /></td>
+                    <td class="layer-{{ page.page_number }}-lemma"><input type="text" name="lemma_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.lemma }}" /></td>
+                    <td class="layer-{{ page.page_number }}-lemma"><input type="text" name="pos_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.pos }}" /></td>
+                    <td class="layer-{{ page.page_number }}-gloss"><input type="text" name="gloss_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.gloss }}" /></td>
+                    <td class="layer-{{ page.page_number }}-pinyin"><input type="text" name="pinyin_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.pinyin }}" /></td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endfor %}
+      </section>
+    {% endfor %}
+    <p><button class="btn" type="submit">Save page-oriented manual annotations</button></p>
+  {% endif %}
+</form>
+
+{% if mode == "annotation" %}
+  <script>
+  function togglePageLayer(pageNumber, layerName) {
+    document.querySelectorAll('.layer-' + pageNumber + '-' + layerName).forEach(function (el) {
+      el.style.display = (el.style.display === 'none') ? '' : 'none';
+    });
+  }
+  </script>
+{% endif %}
+{% endblock %}

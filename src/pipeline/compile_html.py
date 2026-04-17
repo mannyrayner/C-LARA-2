@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
+from core.language_direction import language_direction
 from core.telemetry import NullTelemetry, Telemetry
 from .mwe import normalize_mwes
 
@@ -381,7 +382,7 @@ def _render_page(
     )
 
     html_doc = f"""<!DOCTYPE html>
-<html lang=\"en\" dir=\"ltr\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>Page {current}</title>\n  <link rel=\"stylesheet\" href=\"./static/clara_styles_main.css\">\n</head>\n<body>\n{''.join(header_parts)}\n{body}\n<footer>{''.join(nav)}</footer>\n<script src=\"./static/clara_scripts.js\"></script>\n</body>\n</html>\n"""
+<html lang=\"{_escape(text.get('l2') or 'en')}\" dir=\"{_escape(language_direction(text.get('l2')))}\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>Page {current}</title>\n  <link rel=\"stylesheet\" href=\"./static/clara_styles_main.css\">\n</head>\n<body>\n{''.join(header_parts)}\n{body}\n<footer>{''.join(nav)}</footer>\n<script src=\"./static/clara_scripts.js\"></script>\n</body>\n</html>\n"""
     return html_doc
 
 
@@ -434,6 +435,8 @@ def _render_concordance_page(
 ) -> str:
     lemma = entry.get("lemma") or ""
     heading = _escape(str(lemma))
+    text_language = str(text.get("l2") or "en")
+    text_direction = language_direction(text_language)
 
     def segments_for_occurrences(occurrences: Iterable[dict[str, Any]]) -> list[str]:
         seg_parts: list[str] = []
@@ -469,7 +472,7 @@ def _render_concordance_page(
     body = "\n".join(segments_for_occurrences(entry.get("occurrences", [])))
 
     html_doc = f"""<!DOCTYPE html>
-<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>Concordance: {heading}</title>\n  <link rel=\"stylesheet\" href=\"./static/clara_styles_concordance.css\">\n</head>\n<body>\n  <div class=\"concordance\" id=\"concordance_{heading}\">\n    <h1>{heading}</h1>\n    {body}\n  </div>\n  <script src=\"./static/clara_scripts.js\"></script>\n</body>\n</html>\n"""
+<html lang=\"{_escape(text_language)}\" dir=\"{_escape(text_direction)}\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>Concordance: {heading}</title>\n  <link rel=\"stylesheet\" href=\"./static/clara_styles_concordance.css\">\n</head>\n<body>\n  <div class=\"concordance\" id=\"concordance_{heading}\">\n    <h1>{heading}</h1>\n    {body}\n  </div>\n  <script src=\"./static/clara_scripts.js\"></script>\n</body>\n</html>\n"""
     return html_doc
 
 
