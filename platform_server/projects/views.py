@@ -2755,9 +2755,10 @@ def _save_versioned_stage_payload(
     stage_name: str,
     payload: dict[str, Any],
     metadata: dict[str, Any],
+    run_dir: Path | None = None,
 ) -> None:
     payload = normalize_json_text(payload)
-    target_run = _ensure_stage_run_dir(project)
+    target_run = run_dir or _ensure_stage_run_dir(project)
     stage_dir = target_run / "stages"
     stage_dir.mkdir(parents=True, exist_ok=True)
     (stage_dir / f"{stage_name}.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -2894,6 +2895,10 @@ def _display_token_surfaces_for_segment(segment_text: str, raw_tokens: list[Any]
     token_surfaces = [str((tok or {}).get("surface") or "") for tok in raw_tokens if isinstance(tok, dict)]
     if token_surfaces and "".join(token_surfaces) == segment_text and len(token_surfaces) > 1:
         return token_surfaces
+    return _default_token_surfaces_for_segment(segment_text)
+
+
+def _default_token_surfaces_for_segment(segment_text: str) -> list[str]:
     fallback = [m.group(0) for m in re.finditer(r"\w+|\s+|[^\w\s]", segment_text, flags=re.UNICODE)]
     return fallback if fallback else [segment_text]
 
@@ -3644,7 +3649,7 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
         seg2_payload = json.loads(json.dumps(seg1_payload))
         for page in seg2_payload.get("pages", []) or []:
             for segment in page.get("segments", []) or []:
-                pieces = re.findall(r"\S+|\s+", str(segment.get("surface") or ""))
+                pieces = _default_token_surfaces_for_segment(str(segment.get("surface") or ""))
                 segment["tokens"] = [{"surface": piece} for piece in pieces] if pieces else [{"surface": ""}]
         token_rows = _phase2_token_bar_rows(seg1_payload, seg2_payload)
         base_hash = _stable_text_hash(str(seg1_payload.get("surface") or ""))
@@ -3672,6 +3677,7 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
                         stage_name="segmentation_phase_2",
                         payload=edited_payload,
                         metadata={"before_text_hash": base_hash, "after_text_hash": edited_hash, "mode": "page_oriented"},
+                        run_dir=seg1_run,
                     )
                     messages.success(request, "Saved segmentation phase 2 from page-oriented editor.")
                     return redirect("manual-page-annotation", pk=project.pk)
@@ -3718,6 +3724,7 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
                     {
                         "token_index": token_index,
                         "surface": str(token.get("surface") or ""),
+                        "is_whitespace": not str(token.get("surface") or "").strip(),
                         "mwe_id": str(((mwe_token.get("annotations") or {}).get("mwe_id") or "")),
                         "lemma": str(((lemma_token.get("annotations") or {}).get("lemma") or "")),
                         "pos": str(((lemma_token.get("annotations") or {}).get("pos") or "")),
