@@ -892,6 +892,7 @@ class ManualSegmentationEditorTests(TestCase):
         resp = self.client.get(reverse("manual-page-annotation", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Step 2: Edit content-element boundaries")
+        self.assertContains(resp, "<strong>Segment 1</strong>: Hello world", html=True)
         self.assertContains(resp, "tokenized_text_1_1")
         save = self.client.post(
             reverse("manual-page-annotation", args=[self.project.pk]),
@@ -924,6 +925,37 @@ class ManualSegmentationEditorTests(TestCase):
         seg2 = json.loads((stage_dir / "segmentation_phase_2.json").read_text(encoding="utf-8"))
         tokens = seg2["pages"][0]["segments"][0]["tokens"]
         self.assertEqual(tokens, [{"surface": "Hello"}, {"surface": " "}, {"surface": "world"}])
+
+    def test_page_oriented_phase2_save_targets_run_with_phase1(self):
+        seg1_run = self.project.artifact_dir() / "runs" / "run_with_seg1"
+        seg1_stage_dir = seg1_run / "stages"
+        seg1_stage_dir.mkdir(parents=True, exist_ok=True)
+        seg1_payload = {
+            "l2": "en",
+            "surface": "Hello world",
+            "pages": [{"surface": "Hello world", "segments": [{"surface": "Hello world"}], "annotations": {}}],
+            "annotations": {},
+        }
+        (seg1_stage_dir / "segmentation_phase_1.json").write_text(json.dumps(seg1_payload), encoding="utf-8")
+
+        unrelated_run = self.project.artifact_dir() / "runs" / "run_newer_unrelated"
+        unrelated_stage_dir = unrelated_run / "stages"
+        unrelated_stage_dir.mkdir(parents=True, exist_ok=True)
+        (unrelated_stage_dir / "text_gen.json").write_text(
+            json.dumps({"surface": "placeholder", "pages": [], "annotations": {}}),
+            encoding="utf-8",
+        )
+        newer = (seg1_run.stat().st_mtime + 10, seg1_run.stat().st_mtime + 10)
+        os.utime(unrelated_run, newer)
+
+        save = self.client.post(
+            reverse("manual-page-annotation", args=[self.project.pk]),
+            {"tokenized_text_1_1": "Hello¦ ¦world"},
+            follow=True,
+        )
+        self.assertEqual(save.status_code, 200)
+        self.assertTrue((seg1_stage_dir / "segmentation_phase_2.json").exists())
+        self.assertFalse((unrelated_stage_dir / "segmentation_phase_2.json").exists())
 
     def test_page_oriented_manual_annotation_save_writes_stage_payloads(self):
         run_dir = self.project.artifact_dir() / "runs" / "run_page_oriented_save" / "stages"
