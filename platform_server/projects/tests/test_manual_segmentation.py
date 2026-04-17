@@ -822,3 +822,78 @@ class ManualSegmentationEditorTests(TestCase):
         resp = self.client.get(reverse("manual-pinyin", args=[self.project.pk]), follow=True)
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "auto-reconciled")
+
+    def test_page_oriented_manual_annotation_view_renders(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_page_oriented" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        seg2_payload = {
+            "l2": "en",
+            "surface": "Hello world",
+            "pages": [
+                {
+                    "surface": "Hello world",
+                    "segments": [
+                        {
+                            "surface": "Hello world",
+                            "tokens": [{"surface": "Hello"}, {"surface": " "}, {"surface": "world"}],
+                            "annotations": {},
+                        }
+                    ],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_2.json").write_text(json.dumps(seg2_payload), encoding="utf-8")
+        resp = self.client.get(reverse("manual-page-annotation", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Page-oriented manual annotation")
+        self.assertContains(resp, "Translation")
+        self.assertContains(resp, "Romanization")
+
+    def test_page_oriented_manual_annotation_save_writes_stage_payloads(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_page_oriented_save" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        seg2_payload = {
+            "l2": "en",
+            "surface": "Hello world",
+            "pages": [
+                {
+                    "surface": "Hello world",
+                    "segments": [
+                        {
+                            "surface": "Hello world",
+                            "tokens": [{"surface": "Hello"}, {"surface": " "}, {"surface": "world"}],
+                            "annotations": {},
+                        }
+                    ],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_2.json").write_text(json.dumps(seg2_payload), encoding="utf-8")
+        resp = self.client.post(
+            reverse("manual-page-annotation", args=[self.project.pk]),
+            {
+                "translation_text_0_0": "Bonjour le monde",
+                "mwe_id_0_0_0": "m1",
+                "mwe_id_0_0_1": "",
+                "mwe_id_0_0_2": "m1",
+                "lemma_0_0_0": "hello",
+                "pos_0_0_0": "INTJ",
+                "gloss_0_0_0": "salut",
+                "pinyin_0_0_0": "ni hao",
+            },
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        stage_dir = self._latest_run_stage_dir()
+        translation = json.loads((stage_dir / "translation.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            translation["pages"][0]["segments"][0]["annotations"].get("translation"),
+            "Bonjour le monde",
+        )
+        lemma = json.loads((stage_dir / "lemma.json").read_text(encoding="utf-8"))
+        self.assertEqual(lemma["pages"][0]["segments"][0]["tokens"][0]["annotations"].get("lemma"), "hello")
+        self.assertEqual(lemma["pages"][0]["segments"][0]["tokens"][0]["annotations"].get("pos"), "INTJ")
