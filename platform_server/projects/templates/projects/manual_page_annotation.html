@@ -7,7 +7,7 @@
 <form method="post">
   {% csrf_token %}
   {% if mode == "phase1" %}
-    <p><strong>Step 1: Add <code>&lt;page&gt;</code> tags to divide text into pages.</strong></p>
+    <p><strong>Step 1: Add <code>&lt;page&gt;</code> and <code>||</code> tags to define page and segment boundaries.</strong></p>
     <textarea name="editable_surface" rows="12" style="width:100%;">{{ editable_surface }}</textarea>
     <p><button class="btn" type="submit">Save page boundaries</button></p>
   {% elif mode == "phase2" %}
