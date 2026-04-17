@@ -2693,8 +2693,8 @@ class ProjectAnnotationView(ProjectDetailView):
     template_name = "projects/project_annotation.html"
 
 
-def _ensure_stage_run_dir(project: Project) -> Path:
-    run_dir = _resolve_run_dir(project)
+def _ensure_stage_run_dir(project: Project, preferred_run: Path | None = None) -> Path:
+    run_dir = preferred_run if preferred_run and preferred_run.exists() else _resolve_run_dir(project)
     if run_dir is None:
         run_dir = _prepare_output_dir(project)
     stage_dir = run_dir / "stages"
@@ -2755,9 +2755,10 @@ def _save_versioned_stage_payload(
     stage_name: str,
     payload: dict[str, Any],
     metadata: dict[str, Any],
-) -> None:
+    target_run: Path | None = None,
+) -> Path:
     payload = normalize_json_text(payload)
-    target_run = _ensure_stage_run_dir(project)
+    target_run = _ensure_stage_run_dir(project, preferred_run=target_run)
     stage_dir = target_run / "stages"
     stage_dir.mkdir(parents=True, exist_ok=True)
     (stage_dir / f"{stage_name}.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -2769,6 +2770,7 @@ def _save_versioned_stage_payload(
         json.dumps(version_payload, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
+    return target_run
 
 
 def _canonicalize_phase1_surface(surface: str) -> str:
@@ -3624,12 +3626,14 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
                 messages.error(request, "Text hash mismatch; only <page> and || separators may be changed.")
             else:
                 payload = _build_phase1_payload_from_surface(editable_surface, project.language)
-                _save_versioned_stage_payload(
+                target_run = _save_versioned_stage_payload(
                     project=project,
                     stage_name="segmentation_phase_1",
                     payload=payload,
                     metadata={"before_text_hash": base_hash, "after_text_hash": edited_hash, "mode": "page_oriented"},
+                    target_run=seg1_run,
                 )
+                _invalidate_downstream_stage_files(target_run, "segmentation_phase_2")
                 messages.success(request, "Saved segmentation phase 1 from page-oriented editor.")
                 return redirect("manual-page-annotation", pk=project.pk)
         return render(
@@ -3667,12 +3671,14 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
                 elif edited_hash != base_hash:
                     messages.error(request, "Text hash mismatch; only content-element boundaries may be changed.")
                 else:
-                    _save_versioned_stage_payload(
+                    target_run = _save_versioned_stage_payload(
                         project=project,
                         stage_name="segmentation_phase_2",
                         payload=edited_payload,
                         metadata={"before_text_hash": base_hash, "after_text_hash": edited_hash, "mode": "page_oriented"},
+                        target_run=seg1_run,
                     )
+                    _invalidate_downstream_stage_files(target_run, "segmentation_phase_2")
                     messages.success(request, "Saved segmentation phase 2 from page-oriented editor.")
                     return redirect("manual-page-annotation", pk=project.pk)
         return render(
