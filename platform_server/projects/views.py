@@ -45,6 +45,9 @@ from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pi
 from pipeline.mwe import normalize_mwes
 
 from .forms import (
+    AdminCommunityForm,
+    AdminCommunityMembershipForm,
+    AdminDeleteCommunityForm,
     AdminAdjustCreditsForm,
     AdminOpenAIPricingForm,
     ClozeExerciseSetForm,
@@ -68,6 +71,8 @@ from .billing import (
     record_openai_usage_and_charge,
 )
 from .models import (
+    Community,
+    CommunityMembership,
     CreditLedgerEntry,
     OpenAIModelPricing,
     Profile,
@@ -135,6 +140,24 @@ def _get_project_for_user(*, pk: int, user, min_role: str = ProjectCollaborator.
 
 def _projects_for_user(user):
     return Project.objects.filter(Q(owner=user) | Q(collaborators__user=user)).distinct()
+
+
+def _user_community_ids(user) -> list[int]:
+    return list(
+        CommunityMembership.objects.filter(user=user, community__is_active=True).values_list("community_id", flat=True)
+    )
+
+
+def _published_projects_visible_to_user(user):
+    if user.is_staff:
+        return Project.objects.filter(is_published=True)
+    community_ids = _user_community_ids(user)
+    return Project.objects.filter(is_published=True).filter(
+        Q(access_scope=Project.ACCESS_PUBLIC)
+        | Q(owner=user)
+        | Q(collaborators__user=user)
+        | Q(access_scope=Project.ACCESS_COMMUNITY, community_id__in=community_ids)
+    ).distinct()
 
 
 def _manual_annotation_context(project: Project) -> dict[str, Any]:
@@ -1849,6 +1872,9 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
     grant_form = GrantAdminPrivilegesForm(
         queryset=get_user_model().objects.filter(is_staff=False).order_by("username")
     )
+    community_form = AdminCommunityForm()
+    community_membership_form = AdminCommunityMembershipForm()
+    delete_community_form = AdminDeleteCommunityForm()
     adjust_credits_form = AdminAdjustCreditsForm()
     pricing_form = AdminOpenAIPricingForm()
     pricing_rows_qs = OpenAIModelPricing.objects.all().order_by("model_name")
@@ -1920,6 +1946,37 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
                     request,
                     f"Adjusted {user_obj.username} by ${amount:.4f}. New balance: ${entry.balance_after_usd:.4f}.",
                 )
+                return redirect("admin-tools")
+        elif action == "create_community":
+            community_form = AdminCommunityForm(request.POST)
+            if community_form.is_valid():
+                community = community_form.save()
+                messages.success(request, f"Created community {community.name}.")
+                return redirect("admin-tools")
+        elif action == "assign_community_role":
+            community_membership_form = AdminCommunityMembershipForm(request.POST)
+            if community_membership_form.is_valid():
+                community = community_membership_form.cleaned_data["community"]
+                user_obj = community_membership_form.cleaned_data["user"]
+                role = community_membership_form.cleaned_data["role"]
+                membership, created = CommunityMembership.objects.get_or_create(
+                    community=community,
+                    user=user_obj,
+                    defaults={"role": role},
+                )
+                if not created and membership.role != role:
+                    membership.role = role
+                    membership.save(update_fields=["role", "updated_at"])
+                verb = "Added" if created else "Updated"
+                messages.success(request, f"{verb} {user_obj.username} as {role} in {community.name}.")
+                return redirect("admin-tools")
+        elif action == "delete_community":
+            delete_community_form = AdminDeleteCommunityForm(request.POST)
+            if delete_community_form.is_valid():
+                community = delete_community_form.cleaned_data["community"]
+                community_name = community.name
+                community.delete()
+                messages.success(request, f"Deleted community {community_name}.")
                 return redirect("admin-tools")
         elif action == "save_openai_pricing":
             pricing_form = AdminOpenAIPricingForm(request.POST)
@@ -2051,12 +2108,30 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
         else:
             messages.error(request, "Unknown admin action.")
 
+    community_rows: list[dict[str, Any]] = []
+    for community in Community.objects.prefetch_related("memberships__user").order_by("name"):
+        members = list(community.memberships.all())
+        organisers = [m.user.username for m in members if m.role == CommunityMembership.ROLE_ORGANISER]
+        all_members = [f"{m.user.username} ({m.role})" for m in members]
+        community_rows.append(
+            {
+                "name": community.name,
+                "language": community.language,
+                "is_active": community.is_active,
+                "organisers_text": ", ".join(organisers) if organisers else "—",
+                "members_text": ", ".join(all_members) if all_members else "—",
+            }
+        )
+
     return render(
         request,
         "projects/admin_tools.html",
         {
             "delete_audio_form": delete_form,
             "grant_admin_form": grant_form,
+            "community_form": community_form,
+            "community_membership_form": community_membership_form,
+            "delete_community_form": delete_community_form,
             "adjust_credits_form": adjust_credits_form,
             "pricing_form": pricing_form,
             "pricing_rows": pricing_rows,
@@ -2064,6 +2139,7 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
             "pricing_source_default": "https://developers.openai.com/api/docs/pricing",
             "bootstrap_admin_usernames": sorted(_bootstrap_admin_usernames()),
             "current_admins": get_user_model().objects.filter(is_staff=True).order_by("username"),
+            "community_rows": community_rows,
         },
     )
 
@@ -2755,9 +2831,10 @@ def _save_versioned_stage_payload(
     stage_name: str,
     payload: dict[str, Any],
     metadata: dict[str, Any],
+    run_dir: Path | None = None,
 ) -> None:
     payload = normalize_json_text(payload)
-    target_run = _ensure_stage_run_dir(project)
+    target_run = run_dir or _ensure_stage_run_dir(project)
     stage_dir = target_run / "stages"
     stage_dir.mkdir(parents=True, exist_ok=True)
     (stage_dir / f"{stage_name}.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -2894,6 +2971,10 @@ def _display_token_surfaces_for_segment(segment_text: str, raw_tokens: list[Any]
     token_surfaces = [str((tok or {}).get("surface") or "") for tok in raw_tokens if isinstance(tok, dict)]
     if token_surfaces and "".join(token_surfaces) == segment_text and len(token_surfaces) > 1:
         return token_surfaces
+    return _default_token_surfaces_for_segment(segment_text)
+
+
+def _default_token_surfaces_for_segment(segment_text: str) -> list[str]:
     fallback = [m.group(0) for m in re.finditer(r"\w+|\s+|[^\w\s]", segment_text, flags=re.UNICODE)]
     return fallback if fallback else [segment_text]
 
@@ -3644,7 +3725,7 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
         seg2_payload = json.loads(json.dumps(seg1_payload))
         for page in seg2_payload.get("pages", []) or []:
             for segment in page.get("segments", []) or []:
-                pieces = re.findall(r"\S+|\s+", str(segment.get("surface") or ""))
+                pieces = _default_token_surfaces_for_segment(str(segment.get("surface") or ""))
                 segment["tokens"] = [{"surface": piece} for piece in pieces] if pieces else [{"surface": ""}]
         token_rows = _phase2_token_bar_rows(seg1_payload, seg2_payload)
         base_hash = _stable_text_hash(str(seg1_payload.get("surface") or ""))
@@ -3672,6 +3753,7 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
                         stage_name="segmentation_phase_2",
                         payload=edited_payload,
                         metadata={"before_text_hash": base_hash, "after_text_hash": edited_hash, "mode": "page_oriented"},
+                        run_dir=seg1_run,
                     )
                     messages.success(request, "Saved segmentation phase 2 from page-oriented editor.")
                     return redirect("manual-page-annotation", pk=project.pk)
@@ -3718,6 +3800,7 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
                     {
                         "token_index": token_index,
                         "surface": str(token.get("surface") or ""),
+                        "is_whitespace": not str(token.get("surface") or "").strip(),
                         "mwe_id": str(((mwe_token.get("annotations") or {}).get("mwe_id") or "")),
                         "lemma": str(((lemma_token.get("annotations") or {}).get("lemma") or "")),
                         "pos": str(((lemma_token.get("annotations") or {}).get("pos") or "")),
@@ -5434,7 +5517,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
     if date_posted not in CONTENT_DATE_FILTERS:
         date_posted = "any"
 
-    qs = Project.objects.filter(is_published=True)
+    qs = _published_projects_visible_to_user(request.user)
     if title:
         qs = qs.filter(title__icontains=title)
     if text_language:
@@ -5474,7 +5557,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
 def content_detail(request: HttpRequest, pk: int) -> HttpResponse:
     """Show metadata for a published project and link to page 1."""
 
-    project = get_object_or_404(Project, pk=pk, is_published=True)
+    project = get_object_or_404(_published_projects_visible_to_user(request.user), pk=pk)
     Project.objects.filter(pk=project.pk).update(access_count=F("access_count") + 1)
 
     if request.method == "POST":
@@ -5621,7 +5704,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
     if date_posted not in CONTENT_DATE_FILTERS:
         date_posted = "any"
 
-    qs = Project.objects.filter(is_published=True)
+    qs = _published_projects_visible_to_user(request.user)
     if title:
         qs = qs.filter(title__icontains=title)
     if text_language:
@@ -5661,7 +5744,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
 def content_detail(request: HttpRequest, pk: int) -> HttpResponse:
     """Show metadata for a published project and link to page 1."""
 
-    project = get_object_or_404(Project, pk=pk, is_published=True)
+    project = get_object_or_404(_published_projects_visible_to_user(request.user), pk=pk)
     Project.objects.filter(pk=project.pk).update(access_count=F("access_count") + 1)
 
     if request.method == "POST":

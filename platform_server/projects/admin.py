@@ -2,6 +2,8 @@ from django.contrib import admin
 from .models import (
     Profile,
     Project,
+    Community,
+    CommunityMembership,
     ProjectImageElement,
     ProjectImagePage,
     ProjectImageStyle,
@@ -16,9 +18,23 @@ from .models import (
 
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
-    list_display = ("title", "owner", "is_published", "updated_at")
+    list_display = ("title", "owner", "is_published", "access_scope", "community", "updated_at")
     search_fields = ("title", "owner__username")
-    list_filter = ("is_published",)
+    list_filter = ("is_published", "access_scope", "community")
+
+
+@admin.register(Community)
+class CommunityAdmin(admin.ModelAdmin):
+    list_display = ("name", "language", "is_active", "updated_at")
+    search_fields = ("name", "language", "description")
+    list_filter = ("is_active", "language")
+
+
+@admin.register(CommunityMembership)
+class CommunityMembershipAdmin(admin.ModelAdmin):
+    list_display = ("community", "user", "role", "updated_at")
+    search_fields = ("community__name", "user__username", "user__email")
+    list_filter = ("role", "community")
 
 
 @admin.register(Profile)

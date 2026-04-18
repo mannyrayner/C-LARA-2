@@ -56,6 +56,7 @@
               </thead>
               <tbody>
                 {% for token in segment.tokens %}
+                  {% if not token.is_whitespace %}
                   <tr>
                     <td><code lang="{{ project.language }}">{{ token.surface }}</code></td>
                     <td class="layer-{{ page.page_number }}-mwe"><input type="text" name="mwe_id_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.mwe_id }}" /></td>
@@ -64,6 +65,7 @@
                     <td class="layer-{{ page.page_number }}-gloss"><input type="text" name="gloss_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.gloss }}" /></td>
                     <td class="layer-{{ page.page_number }}-pinyin"><input type="text" name="pinyin_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.pinyin }}" /></td>
                   </tr>
+                  {% endif %}
                 {% endfor %}
               </tbody>
             </table>

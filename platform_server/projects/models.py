@@ -10,6 +10,15 @@ import uuid
 
 
 class Project(models.Model):
+    ACCESS_PUBLIC = "public"
+    ACCESS_PRIVATE = "private"
+    ACCESS_COMMUNITY = "community"
+    ACCESS_CHOICES = [
+        (ACCESS_PUBLIC, "Public"),
+        (ACCESS_PRIVATE, "Private (owner/collaborators)"),
+        (ACCESS_COMMUNITY, "Community members only"),
+    ]
+
     INPUT_DESCRIPTION = "description"
     INPUT_SOURCE = "source_text"
     INPUT_CHOICES = [
@@ -45,6 +54,14 @@ class Project(models.Model):
     is_published = models.BooleanField(default=False)
     published_at = models.DateTimeField(null=True, blank=True)
     access_count = models.PositiveIntegerField(default=0)
+    access_scope = models.CharField(max_length=16, choices=ACCESS_CHOICES, default=ACCESS_PUBLIC)
+    community = models.ForeignKey(
+        "Community",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="projects",
+    )
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     total_cost_usd = models.DecimalField(max_digits=12, decimal_places=4, default=Decimal("0.0000"))
@@ -331,6 +348,42 @@ class ProjectCollaborator(models.Model):
     class Meta:
         unique_together = ("project", "user")
         ordering = ["project_id", "user_id"]
+
+
+class Community(models.Model):
+    name = models.CharField(max_length=200, unique=True)
+    language = models.CharField(max_length=16, blank=True, default="")
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name", "id"]
+
+    def __str__(self) -> str:  # pragma: no cover - display helper
+        if self.language:
+            return f"{self.name} ({self.language})"
+        return self.name
+
+
+class CommunityMembership(models.Model):
+    ROLE_ORGANISER = "organiser"
+    ROLE_MEMBER = "member"
+    ROLE_CHOICES = [
+        (ROLE_ORGANISER, "Organiser"),
+        (ROLE_MEMBER, "Member"),
+    ]
+
+    community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name="memberships")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="community_memberships")
+    role = models.CharField(max_length=16, choices=ROLE_CHOICES, default=ROLE_MEMBER)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("community", "user")
+        ordering = ["community_id", "user_id"]
 
 
 class ContentComment(models.Model):
