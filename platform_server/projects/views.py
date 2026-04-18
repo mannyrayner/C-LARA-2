@@ -144,6 +144,25 @@ def _projects_for_user(user):
     return Project.objects.filter(Q(owner=user) | Q(collaborators__user=user)).distinct()
 
 
+def _default_start_stage_for_project(project: Project) -> str:
+    freshest_stage: str | None = None
+    freshest_mtime = float("-inf")
+    for stage_name in PIPELINE_ORDER:
+        latest = _latest_stage_artifact(project, stage_name)
+        if latest is None:
+            continue
+        _run_dir, _stage_path, mtime = latest
+        if mtime > freshest_mtime:
+            freshest_mtime = mtime
+            freshest_stage = stage_name
+    if freshest_stage is None:
+        return "text_gen"
+    if freshest_stage == "compile_html":
+        return "compile_html"
+    index = PIPELINE_ORDER.index(freshest_stage)
+    return PIPELINE_ORDER[index + 1] if index + 1 < len(PIPELINE_ORDER) else "compile_html"
+
+
 def _user_community_ids(user) -> list[int]:
     return list(
         CommunityMembership.objects.filter(user=user, community__is_active=True).values_list("community_id", flat=True)
@@ -2833,9 +2852,7 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["stage_files"] = stage_files
         context["progress"] = progress
         context["pipeline_stages"] = PIPELINE_ORDER
-        context["default_start_stage"] = (
-            "text_gen" if project.input_mode == Project.INPUT_DESCRIPTION else "segmentation_phase_1"
-        )
+        context["default_start_stage"] = _default_start_stage_for_project(project)
         context["compiled_uri"] = compiled_uri
         context["compiled_media_url"] = compiled_media_url
         context["ai_models"] = AI_MODEL_CHOICES
@@ -5303,9 +5320,7 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     if not return_to.startswith("/"):
         return_to = reverse("project-detail", args=[project.pk])
 
-    start_stage = request.POST.get("start_stage") or (
-        "text_gen" if project.input_mode == Project.INPUT_DESCRIPTION else "segmentation_phase_1"
-    )
+    start_stage = request.POST.get("start_stage") or _default_start_stage_for_project(project)
     requested_start_stage = start_stage
     if start_stage not in PIPELINE_ORDER:
         messages.error(request, "Unknown start stage.")
@@ -5323,18 +5338,8 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         "on",
         "yes",
     }
-    compose_latest_upstream = (request.POST.get("compose_latest_upstream") or "").strip().lower() in {
-        "1",
-        "true",
-        "on",
-        "yes",
-    }
-    confirm_compose_latest = (request.POST.get("confirm_compose_latest") or "").strip().lower() in {
-        "1",
-        "true",
-        "on",
-        "yes",
-    }
+    compose_latest_upstream = True
+    confirm_compose_latest = True
 
     page_image_placement = (
         request.POST.get("page_image_placement")

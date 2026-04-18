@@ -299,7 +299,7 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual("mwe", args[5])
 
     @patch("projects.views.async_task")
-    def test_compile_html_compose_latest_requires_confirmation(self, mock_async_task):
+    def test_compile_html_compose_latest_runs_without_confirmation_checkbox(self, mock_async_task):
         base = self.project.artifact_dir()
         run_translation = base / "runs" / "run_translation" / "stages"
         run_translation.mkdir(parents=True, exist_ok=True)
@@ -315,11 +315,10 @@ class CompileStatusViewTests(TestCase):
                 {
                     "start_stage": "compile_html",
                     "end_stage": "compile_html",
-                    "compose_latest_upstream": "1",
                 },
             )
         self.assertEqual(resp.status_code, 302)
-        self.assertFalse(mock_async_task.called)
+        self.assertTrue(mock_async_task.called)
 
     @patch("projects.views.async_task")
     def test_compile_html_compose_latest_uses_merged_payload(self, mock_async_task):
@@ -358,8 +357,6 @@ class CompileStatusViewTests(TestCase):
                 {
                     "start_stage": "compile_html",
                     "end_stage": "compile_html",
-                    "compose_latest_upstream": "1",
-                    "confirm_compose_latest": "1",
                 },
             )
         self.assertEqual(resp.status_code, 302)
@@ -368,6 +365,32 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual("compile_html", args[5])
         merged = args[9]
         self.assertEqual("Bonjour", merged["pages"][0]["segments"][0]["annotations"]["translation"])
+
+    def test_annotation_home_default_start_stage_follows_freshest_output(self):
+        project = Project.objects.create(
+            owner=self.user,
+            title="Default start stage project",
+            source_text="Hello",
+            language="en",
+            target_language="fr",
+        )
+        resp = self.client.get(reverse("project-annotation-home", args=[project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.context["default_start_stage"], "text_gen")
+        self.assertNotContains(resp, "compose_latest_upstream")
+        self.assertNotContains(resp, "confirm_compose_latest")
+
+        run_dir = project.artifact_dir() / "runs" / "run_default_start" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "segmentation_phase_1.json").write_text("{}", encoding="utf-8")
+        os.utime(run_dir / "segmentation_phase_1.json", (2_000, 2_000))
+        resp2 = self.client.get(reverse("project-annotation-home", args=[project.pk]))
+        self.assertEqual(resp2.context["default_start_stage"], "segmentation_phase_2")
+
+        (run_dir / "compile_html.json").write_text("{}", encoding="utf-8")
+        os.utime(run_dir / "compile_html.json", (3_000, 3_000))
+        resp3 = self.client.get(reverse("project-annotation-home", args=[project.pk]))
+        self.assertEqual(resp3.context["default_start_stage"], "compile_html")
 
     def test_resolve_run_dir_prefers_latest_run_over_compiled_path_run(self):
         base = self.project.artifact_dir()
