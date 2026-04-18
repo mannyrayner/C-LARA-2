@@ -2,8 +2,11 @@ from django.contrib import admin
 from .models import (
     Profile,
     Project,
+    Community,
+    CommunityMembership,
     ProjectImageElement,
     ProjectImagePage,
+    ProjectImagePageVariant,
     ProjectImageStyle,
     TaskUpdate,
     ExerciseSet,
@@ -16,9 +19,23 @@ from .models import (
 
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
-    list_display = ("title", "owner", "is_published", "updated_at")
+    list_display = ("title", "owner", "is_published", "access_scope", "community", "updated_at")
     search_fields = ("title", "owner__username")
-    list_filter = ("is_published",)
+    list_filter = ("is_published", "access_scope", "community")
+
+
+@admin.register(Community)
+class CommunityAdmin(admin.ModelAdmin):
+    list_display = ("name", "language", "is_active", "updated_at")
+    search_fields = ("name", "language", "description")
+    list_filter = ("is_active", "language")
+
+
+@admin.register(CommunityMembership)
+class CommunityMembershipAdmin(admin.ModelAdmin):
+    list_display = ("community", "user", "role", "updated_at")
+    search_fields = ("community__name", "user__username", "user__email")
+    list_filter = ("role", "community")
 
 
 @admin.register(Profile)
@@ -52,6 +69,13 @@ class ProjectImageElementAdmin(admin.ModelAdmin):
 class ProjectImagePageAdmin(admin.ModelAdmin):
     list_display = ("project", "page_number", "status", "image_model", "updated_at")
     search_fields = ("project__title", "page_number", "page_text")
+    list_filter = ("status", "image_model")
+
+
+@admin.register(ProjectImagePageVariant)
+class ProjectImagePageVariantAdmin(admin.ModelAdmin):
+    list_display = ("page", "variant_index", "status", "image_model", "updated_at")
+    search_fields = ("page__project__title", "page__page_number", "image_path")
     list_filter = ("status", "image_model")
 
 
