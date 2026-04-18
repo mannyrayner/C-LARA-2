@@ -29,6 +29,57 @@
   <button class="btn" type="submit">Apply credit adjustment</button>
 </form>
 
+<h2>Communities</h2>
+<p>Create communities and assign organiser/member roles.</p>
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="create_community" />
+  {{ community_form.as_p }}
+  <button class="btn" type="submit">Create community</button>
+</form>
+
+<h3>Assign community role</h3>
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="assign_community_role" />
+  {{ community_membership_form.as_p }}
+  <button class="btn" type="submit">Assign role</button>
+</form>
+
+<h3>Delete community</h3>
+<form method="post" onsubmit="return confirm('Delete this community and all its memberships?');">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="delete_community" />
+  {{ delete_community_form.as_p }}
+  <button class="btn" type="submit" style="background:#b00020; border-color:#8a0018;">Delete community</button>
+</form>
+
+{% if community_rows %}
+  <h3>Current communities</h3>
+  <table border="1" cellpadding="6" cellspacing="0">
+    <thead>
+      <tr>
+        <th>Community</th>
+        <th>Language</th>
+        <th>Active</th>
+        <th>Organisers</th>
+        <th>Members</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for community in community_rows %}
+        <tr>
+          <td>{{ community.name }}</td>
+          <td>{{ community.language|default:"—" }}</td>
+          <td>{{ community.is_active|yesno:"yes,no" }}</td>
+          <td>{{ community.organisers_text }}</td>
+          <td>{{ community.members_text }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endif %}
+
 <h2>OpenAI pricing source of truth</h2>
 <p>
   Current pricing rows can be provisionally synced via AI extraction and then manually revised.
