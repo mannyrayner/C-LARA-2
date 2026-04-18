@@ -77,6 +77,7 @@ from .models import (
     OpenAIModelPricing,
     Profile,
     Project,
+    CommunityMembership,
     ProjectImageElement,
     ProjectImagePage,
     ProjectImageStyle,
