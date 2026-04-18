@@ -407,6 +407,7 @@ class CompileHTMLTests(unittest.TestCase):
         content = html_path.read_text(encoding="utf-8")
         self.assertIn("generated-page-image-top", content)
         self.assertIn("../images/pages/page_001/image.png", content)
+        self.assertIn("margin: 0 0 0.75rem 0;", content)
 
 
 if __name__ == "__main__":

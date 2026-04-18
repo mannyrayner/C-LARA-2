@@ -4,10 +4,12 @@
 <h1>Page images for {{ project.title }}</h1>
 
 <p>
-  This is substep 3. It generates one image per page using page text, full-text context,
+  This is substep 3. It generates one or more images per page using page text, full-text context,
   the approved style description, and relevant element references.
 </p>
 
+<p><a href="{% url 'project-detail' project.pk %}">← Back to project</a></p>
+<p><a href="{% url 'project-images-home' project.pk %}">← Back to images home</a></p>
 <p><a href="{% url 'project-image-elements' project.pk %}">← Back to Elements step</a></p>
 <p>Status from style step: <strong>{{ style.get_status_display }}</strong></p>
 <p>
@@ -20,6 +22,7 @@
   <p><strong>Request completed.</strong> Check the messages above for details.</p>
 {% endif %}
 <p id="pages-progress" style="display:none;"><strong>Generating page images… please wait.</strong></p>
+<p><em>Generation uses fan-out/fan-in (parallel variant calls, then merge/save).</em></p>
 
 <form method="post">
   {% csrf_token %}
