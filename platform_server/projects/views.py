@@ -47,6 +47,7 @@ from pipeline.mwe import normalize_mwes
 from .forms import (
     AdminCommunityForm,
     AdminCommunityMembershipForm,
+    AdminDeleteCommunityForm,
     AdminAdjustCreditsForm,
     AdminOpenAIPricingForm,
     ClozeExerciseSetForm,
@@ -1874,6 +1875,7 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
     )
     community_form = AdminCommunityForm()
     community_membership_form = AdminCommunityMembershipForm()
+    delete_community_form = AdminDeleteCommunityForm()
     adjust_credits_form = AdminAdjustCreditsForm()
     pricing_form = AdminOpenAIPricingForm()
     pricing_rows_qs = OpenAIModelPricing.objects.all().order_by("model_name")
@@ -1968,6 +1970,14 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
                     membership.save(update_fields=["role", "updated_at"])
                 verb = "Added" if created else "Updated"
                 messages.success(request, f"{verb} {user_obj.username} as {role} in {community.name}.")
+                return redirect("admin-tools")
+        elif action == "delete_community":
+            delete_community_form = AdminDeleteCommunityForm(request.POST)
+            if delete_community_form.is_valid():
+                community = delete_community_form.cleaned_data["community"]
+                community_name = community.name
+                community.delete()
+                messages.success(request, f"Deleted community {community_name}.")
                 return redirect("admin-tools")
         elif action == "save_openai_pricing":
             pricing_form = AdminOpenAIPricingForm(request.POST)
@@ -2122,6 +2132,7 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
             "grant_admin_form": grant_form,
             "community_form": community_form,
             "community_membership_form": community_membership_form,
+            "delete_community_form": delete_community_form,
             "adjust_credits_form": adjust_credits_form,
             "pricing_form": pricing_form,
             "pricing_rows": pricing_rows,

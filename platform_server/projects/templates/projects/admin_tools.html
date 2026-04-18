@@ -46,6 +46,14 @@
   <button class="btn" type="submit">Assign role</button>
 </form>
 
+<h3>Delete community</h3>
+<form method="post" onsubmit="return confirm('Delete this community and all its memberships?');">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="delete_community" />
+  {{ delete_community_form.as_p }}
+  <button class="btn" type="submit" style="background:#b00020; border-color:#8a0018;">Delete community</button>
+</form>
+
 {% if community_rows %}
   <h3>Current communities</h3>
   <table border="1" cellpadding="6" cellspacing="0">

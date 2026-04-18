@@ -65,6 +65,13 @@ class AdminToolsViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Drehu language community")
 
+    def test_admin_tools_community_language_is_dropdown(self):
+        self.client.login(username="staffer", password="pw")
+        resp = self.client.get(reverse("admin-tools"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "name=\"language\"")
+        self.assertContains(resp, "<option value=\"en\" selected>English</option>", html=True)
+
     def test_admin_can_assign_user_as_community_organiser(self):
         self.client.login(username="staffer", password="pw")
         create = self.client.post(
@@ -94,6 +101,20 @@ class AdminToolsViewTests(TestCase):
         self.assertEqual(assign.status_code, 200)
         membership = CommunityMembership.objects.get(user=self.target_user, community_id=community_id)
         self.assertEqual(membership.role, CommunityMembership.ROLE_ORGANISER)
+
+    def test_admin_can_delete_community_from_admin_tools(self):
+        self.client.login(username="staffer", password="pw")
+        community = Community.objects.create(name="Delete me", language="en")
+        resp = self.client.post(
+            reverse("admin-tools"),
+            {
+                "action": "delete_community",
+                "community": community.pk,
+            },
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(Community.objects.filter(pk=community.pk).exists())
 
 
 @override_settings(BOOTSTRAP_ADMIN_USERNAMES=["bootstrap"])

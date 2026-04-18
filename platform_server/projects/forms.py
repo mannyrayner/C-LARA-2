@@ -313,6 +313,13 @@ class AdminCommunityForm(forms.ModelForm):
             "description": forms.Textarea(attrs={"rows": 2}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["language"] = forms.ChoiceField(
+            choices=ProjectForm.LANGUAGE_CHOICES,
+            initial=self.instance.language if getattr(self.instance, "pk", None) else "en",
+        )
+
 
 class AdminCommunityMembershipForm(forms.Form):
     community = forms.ModelChoiceField(queryset=Community.objects.none(), label="Community")
@@ -323,3 +330,11 @@ class AdminCommunityMembershipForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.fields["community"].queryset = Community.objects.filter(is_active=True).order_by("name")
         self.fields["user"].queryset = User.objects.order_by("username")
+
+
+class AdminDeleteCommunityForm(forms.Form):
+    community = forms.ModelChoiceField(queryset=Community.objects.none(), label="Community")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["community"].queryset = Community.objects.order_by("name")
