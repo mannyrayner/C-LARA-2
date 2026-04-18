@@ -314,6 +314,13 @@ class ProjectImagePage(models.Model):
     generation_prompt = models.TextField(blank=True)
     image_model = models.CharField(max_length=64, default="gpt-image-1")
     image_path = models.CharField(max_length=512, blank=True)
+    preferred_variant = models.ForeignKey(
+        "ProjectImagePageVariant",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
     image_revised_prompt = models.TextField(blank=True)
     status = models.CharField(
         max_length=32, choices=STATUS_CHOICES, default=STATUS_DRAFT
@@ -327,6 +334,36 @@ class ProjectImagePage(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - display helper
         return f"{self.project.title}: page {self.page_number}"
+
+
+class ProjectImagePageVariant(models.Model):
+    """Generated image variants for a page plus selection state in parent row."""
+
+    STATUS_DRAFT = "draft"
+    STATUS_GENERATED = "generated"
+    STATUS_APPROVED = "approved"
+    STATUS_CHOICES = [
+        (STATUS_DRAFT, "Draft"),
+        (STATUS_GENERATED, "Generated"),
+        (STATUS_APPROVED, "Approved"),
+    ]
+
+    page = models.ForeignKey(ProjectImagePage, on_delete=models.CASCADE, related_name="variants")
+    variant_index = models.PositiveIntegerField()
+    image_model = models.CharField(max_length=64, default="gpt-image-1")
+    image_path = models.CharField(max_length=512, blank=True)
+    generation_prompt = models.TextField(blank=True)
+    image_revised_prompt = models.TextField(blank=True)
+    status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=STATUS_DRAFT)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["page_id", "variant_index", "id"]
+        unique_together = ("page", "variant_index")
+
+    def __str__(self) -> str:  # pragma: no cover - display helper
+        return f"{self.page.project.title}: page {self.page.page_number} variant {self.variant_index}"
 
 
 class ProjectCollaborator(models.Model):

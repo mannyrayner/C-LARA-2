@@ -6,6 +6,7 @@ from .models import (
     CommunityMembership,
     ProjectImageElement,
     ProjectImagePage,
+    ProjectImagePageVariant,
     ProjectImageStyle,
     TaskUpdate,
     ExerciseSet,
@@ -68,6 +69,13 @@ class ProjectImageElementAdmin(admin.ModelAdmin):
 class ProjectImagePageAdmin(admin.ModelAdmin):
     list_display = ("project", "page_number", "status", "image_model", "updated_at")
     search_fields = ("project__title", "page_number", "page_text")
+    list_filter = ("status", "image_model")
+
+
+@admin.register(ProjectImagePageVariant)
+class ProjectImagePageVariantAdmin(admin.ModelAdmin):
+    list_display = ("page", "variant_index", "status", "image_model", "updated_at")
+    search_fields = ("page__project__title", "page__page_number", "image_path")
     list_filter = ("status", "image_model")
 
 

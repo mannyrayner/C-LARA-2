@@ -9,7 +9,13 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from projects import views
-from projects.models import Project, ProjectImageElement, ProjectImagePage, ProjectImageStyle
+from projects.models import (
+    Project,
+    ProjectImageElement,
+    ProjectImagePage,
+    ProjectImagePageVariant,
+    ProjectImageStyle,
+)
 
 
 class FakeImageClient:
@@ -190,13 +196,41 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
 
         page = ProjectImagePage.objects.get(project=self.project, page_number=1)
-        self.assertTrue(page.image_path.endswith("page_001/image.png"))
+        self.assertTrue(page.image_path.endswith("page_001/variant_001.png"))
         self.assertIn("Style description:", page.generation_prompt)
         self.assertIn("Reference image path: images/elements/celine/reference.png", page.generation_prompt)
+        self.assertEqual(ProjectImagePageVariant.objects.filter(page=page).count(), 1)
 
         msgs = [m.message for m in get_messages(resp.wsgi_request)]
-        self.assertTrue(any("Generated 2 page images with gpt-image-1." in msg for msg in msgs))
+        self.assertTrue(any("Generated 2 page image variant(s) with gpt-image-1." in msg for msg in msgs))
         self.assertFalse(any("Generating page images" in msg for msg in msgs))
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_multiple_variants_and_set_preferred_variant(self, mock_build_ai_client):
+        fake_client = FakeImageClient()
+        mock_build_ai_client.return_value = fake_client
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        payload["variants_per_page"] = "3"
+        resp = self.client.post(reverse("project-image-pages", args=[self.project.pk]), payload, follow=True)
+        self.assertEqual(resp.status_code, 200)
+        page = ProjectImagePage.objects.get(project=self.project, page_number=1)
+        variants = list(ProjectImagePageVariant.objects.filter(page=page).order_by("variant_index"))
+        self.assertEqual(len(variants), 3)
+        self.assertEqual(page.preferred_variant_id, variants[0].id)
+        self.assertTrue(page.image_path.endswith("page_001/variant_001.png"))
+
+        save_payload = self._page_form_payload()
+        save_payload["action"] = "set_preferred"
+        save_payload[f"preferred_variant_{page.id}"] = str(variants[2].id)
+        resp2 = self.client.post(reverse("project-image-pages", args=[self.project.pk]), save_payload, follow=True)
+        self.assertEqual(resp2.status_code, 200)
+        page.refresh_from_db()
+        self.assertEqual(page.preferred_variant_id, variants[2].id)
+        self.assertTrue(page.image_path.endswith("page_001/variant_003.png"))
 
     @patch("projects.views._build_ai_client")
     def test_generate_page_images_trims_long_prompts_and_writes_telemetry(self, mock_build_ai_client):
