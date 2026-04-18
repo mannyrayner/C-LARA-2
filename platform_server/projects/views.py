@@ -77,6 +77,7 @@ from .models import (
     OpenAIModelPricing,
     Profile,
     Project,
+    CommunityMembership,
     ProjectImageElement,
     ProjectImagePage,
     ProjectImagePageVariant,
@@ -1799,19 +1800,53 @@ def _generate_project_page_images(
             model_name=image_model,
             request_type="image_pages_generate_image",
         )
-        try:
-            image_result = client.generate_image(prompt, model=image_model)
-        except Exception as exc:
-            elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+        page_dir = pages_dir / f"page_{page_obj.page_number:03d}"
+        page_dir.mkdir(parents=True, exist_ok=True)
+        outputs: list[tuple[int, str, str, str, str]] = []
+        for variant_index in range(1, variants_per_page + 1):
+            started = datetime.now(timezone.utc)
+            try:
+                image_result = client.generate_image(prompt, model=image_model)
+            except Exception as exc:
+                elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+                _append_page_image_telemetry(
+                    project,
+                    {
+                        "event": "page_image_timeout" if _is_timeout_exception(exc) else "page_image_error",
+                        "page_number": page_obj.page_number,
+                        "variant_index": variant_index,
+                        "model": image_model,
+                        "elapsed_s": round(elapsed_s, 3),
+                        **_exception_telemetry_fields(exc),
+                    },
+                )
+                raise
+            image_path = page_dir / f"variant_{variant_index:03d}.png"
+            image_path.write_bytes(image_result["bytes"])
+            rel_path = image_path.relative_to(project.artifact_dir()).as_posix()
+            revised_prompt = image_result.get("revised_prompt") or ""
+            metadata = {
+                "page_number": page_obj.page_number,
+                "variant_index": variant_index,
+                "prompt": prompt,
+                "model": image_model,
+                "revised_prompt": revised_prompt,
+                "image_path": rel_path,
+            }
+            (page_dir / f"metadata_variant_{variant_index:03d}.json").write_text(
+                json.dumps(metadata, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
             _append_page_image_telemetry(
                 project,
                 {
-                    "event": "page_image_timeout" if _is_timeout_exception(exc) else "page_image_error",
+                    "event": "page_image_response",
                     "page_number": page_obj.page_number,
                     "variant_index": variant_index,
                     "model": image_model,
-                    "elapsed_s": round(elapsed_s, 3),
-                    **_exception_telemetry_fields(exc),
+                    "elapsed_s": round((datetime.now(timezone.utc) - started).total_seconds(), 3),
+                    "revised_prompt": revised_prompt,
+                    "image_path": rel_path,
                 },
             )
             raise
