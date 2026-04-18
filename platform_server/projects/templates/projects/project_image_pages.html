@@ -35,7 +35,10 @@
         <option value="{{ model }}" {% if model == selected_image_model %}selected{% endif %}>{{ model }}</option>
       {% endfor %}
     </select>
+    <label for="variants_per_page" class="ml-2">Variants per page:</label>
+    <input id="variants_per_page" type="number" name="variants_per_page" min="1" max="8" value="{{ default_variants_per_page }}" style="width:5rem;" />
     <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_images" data-long-action="true">Generate page images</button>
+    <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="set_preferred">Save preferred images</button>
   </p>
 
   {% if formset.forms %}
@@ -45,14 +48,24 @@
         <p><strong>Page {{ form.instance.page_number }}</strong></p>
         {{ form.as_p }}
         {% if form.instance.image_path %}
-          <p><strong>Generated page image</strong></p>
-          <p>
-            <img
-              src="{% url 'project-compiled' project.pk form.instance.image_path %}"
-              alt="Generated image for page {{ form.instance.page_number }}"
-              style="max-width: 512px; width: 100%; height: auto;"
-            />
-          </p>
+          {% if form.instance.variants_for_ui %}
+            <p><strong>Generated page image variants</strong></p>
+            {% for variant in form.instance.variants_for_ui %}
+              <div style="border:1px solid #eee; padding:0.4rem; margin:0.5rem 0;">
+                <label>
+                  <input type="radio" name="preferred_variant_{{ form.instance.id }}" value="{{ variant.id }}"
+                         {% if form.instance.preferred_variant_id == variant.id or not form.instance.preferred_variant_id and forloop.first %}checked{% endif %} />
+                  Preferred (variant {{ variant.variant_index }})
+                </label>
+                <p style="margin:0.3rem 0;"><small>Model: {{ variant.image_model }}</small></p>
+                <img
+                  src="{% url 'project-compiled' project.pk variant.image_path %}"
+                  alt="Generated image variant {{ variant.variant_index }} for page {{ form.instance.page_number }}"
+                  style="max-width: 512px; width: 100%; height: auto;"
+                />
+              </div>
+            {% endfor %}
+          {% endif %}
         {% endif %}
       </fieldset>
     {% endfor %}

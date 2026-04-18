@@ -45,6 +45,9 @@ from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pi
 from pipeline.mwe import normalize_mwes
 
 from .forms import (
+    AdminCommunityForm,
+    AdminCommunityMembershipForm,
+    AdminDeleteCommunityForm,
     AdminAdjustCreditsForm,
     AdminOpenAIPricingForm,
     ClozeExerciseSetForm,
@@ -68,12 +71,15 @@ from .billing import (
     record_openai_usage_and_charge,
 )
 from .models import (
+    Community,
+    CommunityMembership,
     CreditLedgerEntry,
     OpenAIModelPricing,
     Profile,
     Project,
     ProjectImageElement,
     ProjectImagePage,
+    ProjectImagePageVariant,
     ProjectImageStyle,
     TaskUpdate,
     ProjectCollaborator,
@@ -135,6 +141,24 @@ def _get_project_for_user(*, pk: int, user, min_role: str = ProjectCollaborator.
 
 def _projects_for_user(user):
     return Project.objects.filter(Q(owner=user) | Q(collaborators__user=user)).distinct()
+
+
+def _user_community_ids(user) -> list[int]:
+    return list(
+        CommunityMembership.objects.filter(user=user, community__is_active=True).values_list("community_id", flat=True)
+    )
+
+
+def _published_projects_visible_to_user(user):
+    if user.is_staff:
+        return Project.objects.filter(is_published=True)
+    community_ids = _user_community_ids(user)
+    return Project.objects.filter(is_published=True).filter(
+        Q(access_scope=Project.ACCESS_PUBLIC)
+        | Q(owner=user)
+        | Q(collaborators__user=user)
+        | Q(access_scope=Project.ACCESS_COMMUNITY, community_id__in=community_ids)
+    ).distinct()
 
 
 def _manual_annotation_context(project: Project) -> dict[str, Any]:
@@ -1631,6 +1655,7 @@ def _persist_image_pages_artifacts(project: Project) -> None:
             "generation_prompt",
             "image_model",
             "image_path",
+            "preferred_variant_id",
             "image_revised_prompt",
             "status",
             "updated_at",
@@ -1640,12 +1665,63 @@ def _persist_image_pages_artifacts(project: Project) -> None:
         json.dumps(rows, ensure_ascii=False, indent=2, default=str),
         encoding="utf-8",
     )
+    variants = list(
+        ProjectImagePageVariant.objects.filter(page__project=project)
+        .order_by("page__page_number", "variant_index", "id")
+        .values(
+            "id",
+            "page_id",
+            "variant_index",
+            "image_model",
+            "image_path",
+            "generation_prompt",
+            "image_revised_prompt",
+            "status",
+            "updated_at",
+        )
+    )
+    (pages_dir / "variants_list.json").write_text(
+        json.dumps(variants, ensure_ascii=False, indent=2, default=str),
+        encoding="utf-8",
+    )
+
+
+def _set_page_preferred_variant(page: ProjectImagePage, variant: ProjectImagePageVariant) -> None:
+    ProjectImagePage.objects.filter(pk=page.pk).update(
+        preferred_variant=variant,
+        image_path=variant.image_path,
+        image_revised_prompt=variant.image_revised_prompt,
+        image_model=variant.image_model,
+        generation_prompt=variant.generation_prompt,
+        status=variant.status,
+    )
+
+
+def _apply_preferred_variant_selection(project: Project, post_data) -> int:
+    changed = 0
+    pages = list(ProjectImagePage.objects.filter(project=project).order_by("page_number", "id"))
+    for page in pages:
+        requested = (post_data.get(f"preferred_variant_{page.id}") or "").strip()
+        if not requested:
+            continue
+        try:
+            preferred_id = int(requested)
+        except ValueError:
+            continue
+        variant = ProjectImagePageVariant.objects.filter(page=page, pk=preferred_id).first()
+        if not variant:
+            continue
+        if page.preferred_variant_id != variant.id or page.image_path != variant.image_path:
+            _set_page_preferred_variant(page, variant)
+            changed += 1
+    return changed
 
 
 def _generate_project_page_images(
     project: Project,
     *,
     image_model: str,
+    variants_per_page: int = 1,
     discourage_text_in_image: bool = False,
 ) -> int:
     style = project.image_style
@@ -1661,7 +1737,9 @@ def _generate_project_page_images(
     if not page_rows:
         return 0
 
-    def _generate_one(page_obj: ProjectImagePage) -> tuple[int, str, str, str]:
+    variants_per_page = max(1, min(8, int(variants_per_page or 1)))
+
+    def _generate_one(page_obj: ProjectImagePage) -> tuple[int, list[tuple[int, str, str, str, str]]]:
         refs = [
             element
             for element in relevant_elements
@@ -1691,55 +1769,62 @@ def _generate_project_page_images(
                 "reference_images_sent_in_request": False,
             },
         )
-        started = datetime.now(timezone.utc)
         client = _build_billed_project_ai_client(
             project,
             model_name=image_model,
             request_type="image_pages_generate_image",
         )
-        try:
-            image_result = client.generate_image(prompt, model=image_model)
-        except Exception as exc:
-            elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+        page_dir = pages_dir / f"page_{page_obj.page_number:03d}"
+        page_dir.mkdir(parents=True, exist_ok=True)
+        outputs: list[tuple[int, str, str, str, str]] = []
+        for variant_index in range(1, variants_per_page + 1):
+            started = datetime.now(timezone.utc)
+            try:
+                image_result = client.generate_image(prompt, model=image_model)
+            except Exception as exc:
+                elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+                _append_page_image_telemetry(
+                    project,
+                    {
+                        "event": "page_image_timeout" if _is_timeout_exception(exc) else "page_image_error",
+                        "page_number": page_obj.page_number,
+                        "variant_index": variant_index,
+                        "model": image_model,
+                        "elapsed_s": round(elapsed_s, 3),
+                        **_exception_telemetry_fields(exc),
+                    },
+                )
+                raise
+            image_path = page_dir / f"variant_{variant_index:03d}.png"
+            image_path.write_bytes(image_result["bytes"])
+            rel_path = image_path.relative_to(project.artifact_dir()).as_posix()
+            revised_prompt = image_result.get("revised_prompt") or ""
+            metadata = {
+                "page_number": page_obj.page_number,
+                "variant_index": variant_index,
+                "prompt": prompt,
+                "model": image_model,
+                "revised_prompt": revised_prompt,
+                "image_path": rel_path,
+            }
+            (page_dir / f"metadata_variant_{variant_index:03d}.json").write_text(
+                json.dumps(metadata, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
             _append_page_image_telemetry(
                 project,
                 {
-                    "event": "page_image_timeout" if _is_timeout_exception(exc) else "page_image_error",
+                    "event": "page_image_response",
                     "page_number": page_obj.page_number,
+                    "variant_index": variant_index,
                     "model": image_model,
-                    "elapsed_s": round(elapsed_s, 3),
-                    **_exception_telemetry_fields(exc),
+                    "elapsed_s": round((datetime.now(timezone.utc) - started).total_seconds(), 3),
+                    "revised_prompt": revised_prompt,
+                    "image_path": rel_path,
                 },
             )
-            raise
-        page_dir = pages_dir / f"page_{page_obj.page_number:03d}"
-        page_dir.mkdir(parents=True, exist_ok=True)
-        image_path = page_dir / "image.png"
-        image_path.write_bytes(image_result["bytes"])
-        rel_path = image_path.relative_to(project.artifact_dir()).as_posix()
-        metadata = {
-            "page_number": page_obj.page_number,
-            "prompt": prompt,
-            "model": image_model,
-            "revised_prompt": image_result.get("revised_prompt") or "",
-            "image_path": rel_path,
-        }
-        (page_dir / "metadata.json").write_text(
-            json.dumps(metadata, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-        _append_page_image_telemetry(
-            project,
-            {
-                "event": "page_image_response",
-                "page_number": page_obj.page_number,
-                "model": image_model,
-                "elapsed_s": round((datetime.now(timezone.utc) - started).total_seconds(), 3),
-                "revised_prompt": metadata["revised_prompt"],
-                "image_path": rel_path,
-            },
-        )
-        return page_obj.pk, rel_path, metadata["revised_prompt"], prompt
+            outputs.append((variant_index, rel_path, revised_prompt, prompt, ProjectImagePage.STATUS_GENERATED))
+        return page_obj.pk, outputs
 
     generated = 0
     futures = {}
@@ -1748,15 +1833,26 @@ def _generate_project_page_images(
             future = executor.submit(_generate_one, page_obj)
             futures[future] = page_obj
         for future in as_completed(futures):
-            page_pk, rel_path, revised_prompt, prompt = future.result()
-            ProjectImagePage.objects.filter(pk=page_pk).update(
-                generation_prompt=prompt,
-                image_model=image_model,
-                image_path=rel_path,
-                image_revised_prompt=revised_prompt,
-                status=ProjectImagePage.STATUS_GENERATED,
-            )
-            generated += 1
+            page_pk, outputs = future.result()
+            page_obj = ProjectImagePage.objects.get(pk=page_pk)
+            preferred_variant = page_obj.preferred_variant if page_obj.preferred_variant_id else None
+            for variant_index, rel_path, revised_prompt, prompt, status in outputs:
+                variant, _ = ProjectImagePageVariant.objects.update_or_create(
+                    page_id=page_pk,
+                    variant_index=variant_index,
+                    defaults={
+                        "image_model": image_model,
+                        "image_path": rel_path,
+                        "image_revised_prompt": revised_prompt,
+                        "generation_prompt": prompt,
+                        "status": status,
+                    },
+                )
+                generated += 1
+                if preferred_variant is None and variant_index == 1:
+                    preferred_variant = variant
+            if preferred_variant is not None:
+                _set_page_preferred_variant(page_obj, preferred_variant)
     return generated
 
 
@@ -1849,6 +1945,9 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
     grant_form = GrantAdminPrivilegesForm(
         queryset=get_user_model().objects.filter(is_staff=False).order_by("username")
     )
+    community_form = AdminCommunityForm()
+    community_membership_form = AdminCommunityMembershipForm()
+    delete_community_form = AdminDeleteCommunityForm()
     adjust_credits_form = AdminAdjustCreditsForm()
     pricing_form = AdminOpenAIPricingForm()
     pricing_rows_qs = OpenAIModelPricing.objects.all().order_by("model_name")
@@ -1920,6 +2019,37 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
                     request,
                     f"Adjusted {user_obj.username} by ${amount:.4f}. New balance: ${entry.balance_after_usd:.4f}.",
                 )
+                return redirect("admin-tools")
+        elif action == "create_community":
+            community_form = AdminCommunityForm(request.POST)
+            if community_form.is_valid():
+                community = community_form.save()
+                messages.success(request, f"Created community {community.name}.")
+                return redirect("admin-tools")
+        elif action == "assign_community_role":
+            community_membership_form = AdminCommunityMembershipForm(request.POST)
+            if community_membership_form.is_valid():
+                community = community_membership_form.cleaned_data["community"]
+                user_obj = community_membership_form.cleaned_data["user"]
+                role = community_membership_form.cleaned_data["role"]
+                membership, created = CommunityMembership.objects.get_or_create(
+                    community=community,
+                    user=user_obj,
+                    defaults={"role": role},
+                )
+                if not created and membership.role != role:
+                    membership.role = role
+                    membership.save(update_fields=["role", "updated_at"])
+                verb = "Added" if created else "Updated"
+                messages.success(request, f"{verb} {user_obj.username} as {role} in {community.name}.")
+                return redirect("admin-tools")
+        elif action == "delete_community":
+            delete_community_form = AdminDeleteCommunityForm(request.POST)
+            if delete_community_form.is_valid():
+                community = delete_community_form.cleaned_data["community"]
+                community_name = community.name
+                community.delete()
+                messages.success(request, f"Deleted community {community_name}.")
                 return redirect("admin-tools")
         elif action == "save_openai_pricing":
             pricing_form = AdminOpenAIPricingForm(request.POST)
@@ -2051,12 +2181,30 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
         else:
             messages.error(request, "Unknown admin action.")
 
+    community_rows: list[dict[str, Any]] = []
+    for community in Community.objects.prefetch_related("memberships__user").order_by("name"):
+        members = list(community.memberships.all())
+        organisers = [m.user.username for m in members if m.role == CommunityMembership.ROLE_ORGANISER]
+        all_members = [f"{m.user.username} ({m.role})" for m in members]
+        community_rows.append(
+            {
+                "name": community.name,
+                "language": community.language,
+                "is_active": community.is_active,
+                "organisers_text": ", ".join(organisers) if organisers else "—",
+                "members_text": ", ".join(all_members) if all_members else "—",
+            }
+        )
+
     return render(
         request,
         "projects/admin_tools.html",
         {
             "delete_audio_form": delete_form,
             "grant_admin_form": grant_form,
+            "community_form": community_form,
+            "community_membership_form": community_membership_form,
+            "delete_community_form": delete_community_form,
             "adjust_credits_form": adjust_credits_form,
             "pricing_form": pricing_form,
             "pricing_rows": pricing_rows,
@@ -2064,6 +2212,7 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
             "pricing_source_default": "https://developers.openai.com/api/docs/pricing",
             "bootstrap_admin_usernames": sorted(_bootstrap_admin_usernames()),
             "current_admins": get_user_model().objects.filter(is_staff=True).order_by("username"),
+            "community_rows": community_rows,
         },
     )
 
@@ -2447,6 +2596,11 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
     if request.method == "POST":
         action = request.POST.get("action") or "save"
         requested_image_model = (request.POST.get("image_model") or "").strip()
+        requested_variants_per_page = request.POST.get("variants_per_page") or "1"
+        try:
+            variants_per_page = max(1, min(8, int(requested_variants_per_page)))
+        except ValueError:
+            variants_per_page = 1
         image_model = requested_image_model or "gpt-image-1"
         if image_model not in IMAGE_MODEL_CHOICES:
             image_model = "gpt-image-1"
@@ -2465,6 +2619,7 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
                     generated = _generate_project_page_images(
                         project,
                         image_model=image_model,
+                        variants_per_page=variants_per_page,
                         discourage_text_in_image=bool(style.discourage_text_in_images),
                     )
                 except Exception as exc:
@@ -2481,10 +2636,17 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
                 else:
                     messages.success(
                         request,
-                        f"Generated {generated} page images with {image_model}.",
+                        f"Generated {generated} page image variant(s) with {image_model}.",
                     )
+            elif action == "set_preferred":
+                changed = _apply_preferred_variant_selection(project, request.POST)
+                messages.success(request, f"Updated preferred image for {changed} page(s).")
             else:
                 messages.success(request, "Saved page image prompt edits.")
+            if action in {"save", "refresh", "generate_images"}:
+                changed = _apply_preferred_variant_selection(project, request.POST)
+                if changed:
+                    messages.success(request, f"Updated preferred image for {changed} page(s).")
             _persist_image_pages_artifacts(project)
             return redirect(f"{reverse('project-image-pages', args=[project.pk])}?notice=done")
         messages.error(
@@ -2493,6 +2655,8 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
         )
     else:
         formset = ProjectImagePageFormSet(queryset=queryset)
+    for form in formset.forms:
+        setattr(form.instance, "variants_for_ui", list(form.instance.variants.order_by("variant_index", "id")))
 
     return render(
         request,
@@ -2504,6 +2668,7 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
             "pages_artifact_dir": _image_pages_dir(project),
             "image_models": IMAGE_MODEL_CHOICES,
             "selected_image_model": request.GET.get("image_model") or "gpt-image-1",
+            "default_variants_per_page": 1,
             "element_count": project.image_elements.count(),
             "confirmed_element_count": project.image_elements.filter(is_confirmed=True).count(),
             "elements_with_images_count": project.image_elements.exclude(image_path="").count(),
@@ -2755,9 +2920,10 @@ def _save_versioned_stage_payload(
     stage_name: str,
     payload: dict[str, Any],
     metadata: dict[str, Any],
+    run_dir: Path | None = None,
 ) -> None:
     payload = normalize_json_text(payload)
-    target_run = _ensure_stage_run_dir(project)
+    target_run = run_dir or _ensure_stage_run_dir(project)
     stage_dir = target_run / "stages"
     stage_dir.mkdir(parents=True, exist_ok=True)
     (stage_dir / f"{stage_name}.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -2894,6 +3060,10 @@ def _display_token_surfaces_for_segment(segment_text: str, raw_tokens: list[Any]
     token_surfaces = [str((tok or {}).get("surface") or "") for tok in raw_tokens if isinstance(tok, dict)]
     if token_surfaces and "".join(token_surfaces) == segment_text and len(token_surfaces) > 1:
         return token_surfaces
+    return _default_token_surfaces_for_segment(segment_text)
+
+
+def _default_token_surfaces_for_segment(segment_text: str) -> list[str]:
     fallback = [m.group(0) for m in re.finditer(r"\w+|\s+|[^\w\s]", segment_text, flags=re.UNICODE)]
     return fallback if fallback else [segment_text]
 
@@ -3644,7 +3814,7 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
         seg2_payload = json.loads(json.dumps(seg1_payload))
         for page in seg2_payload.get("pages", []) or []:
             for segment in page.get("segments", []) or []:
-                pieces = re.findall(r"\S+|\s+", str(segment.get("surface") or ""))
+                pieces = _default_token_surfaces_for_segment(str(segment.get("surface") or ""))
                 segment["tokens"] = [{"surface": piece} for piece in pieces] if pieces else [{"surface": ""}]
         token_rows = _phase2_token_bar_rows(seg1_payload, seg2_payload)
         base_hash = _stable_text_hash(str(seg1_payload.get("surface") or ""))
@@ -3672,6 +3842,7 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
                         stage_name="segmentation_phase_2",
                         payload=edited_payload,
                         metadata={"before_text_hash": base_hash, "after_text_hash": edited_hash, "mode": "page_oriented"},
+                        run_dir=seg1_run,
                     )
                     messages.success(request, "Saved segmentation phase 2 from page-oriented editor.")
                     return redirect("manual-page-annotation", pk=project.pk)
@@ -3718,6 +3889,7 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
                     {
                         "token_index": token_index,
                         "surface": str(token.get("surface") or ""),
+                        "is_whitespace": not str(token.get("surface") or "").strip(),
                         "mwe_id": str(((mwe_token.get("annotations") or {}).get("mwe_id") or "")),
                         "lemma": str(((lemma_token.get("annotations") or {}).get("lemma") or "")),
                         "pos": str(((lemma_token.get("annotations") or {}).get("pos") or "")),
@@ -5434,7 +5606,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
     if date_posted not in CONTENT_DATE_FILTERS:
         date_posted = "any"
 
-    qs = Project.objects.filter(is_published=True)
+    qs = _published_projects_visible_to_user(request.user)
     if title:
         qs = qs.filter(title__icontains=title)
     if text_language:
@@ -5474,7 +5646,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
 def content_detail(request: HttpRequest, pk: int) -> HttpResponse:
     """Show metadata for a published project and link to page 1."""
 
-    project = get_object_or_404(Project, pk=pk, is_published=True)
+    project = get_object_or_404(_published_projects_visible_to_user(request.user), pk=pk)
     Project.objects.filter(pk=project.pk).update(access_count=F("access_count") + 1)
 
     if request.method == "POST":
@@ -5621,7 +5793,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
     if date_posted not in CONTENT_DATE_FILTERS:
         date_posted = "any"
 
-    qs = Project.objects.filter(is_published=True)
+    qs = _published_projects_visible_to_user(request.user)
     if title:
         qs = qs.filter(title__icontains=title)
     if text_language:
@@ -5661,7 +5833,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
 def content_detail(request: HttpRequest, pk: int) -> HttpResponse:
     """Show metadata for a published project and link to page 1."""
 
-    project = get_object_or_404(Project, pk=pk, is_published=True)
+    project = get_object_or_404(_published_projects_visible_to_user(request.user), pk=pk)
     Project.objects.filter(pk=project.pk).update(access_count=F("access_count") + 1)
 
     if request.method == "POST":
@@ -6309,6 +6481,11 @@ def download_project_source_bundle(request: HttpRequest, pk: int) -> HttpRespons
     style = ProjectImageStyle.objects.filter(project=project).first()
     elements = list(ProjectImageElement.objects.filter(project=project).order_by("id").values())
     pages = list(ProjectImagePage.objects.filter(project=project).order_by("page_number", "id").values())
+    page_variants = list(
+        ProjectImagePageVariant.objects.filter(page__project=project)
+        .order_by("page__page_number", "variant_index", "id")
+        .values()
+    )
 
     style_data = None
     if style:
@@ -6331,6 +6508,9 @@ def download_project_source_bundle(request: HttpRequest, pk: int) -> HttpRespons
         if row.get("image_path"):
             image_rel_paths.add(str(row["image_path"]))
     for row in pages:
+        if row.get("image_path"):
+            image_rel_paths.add(str(row["image_path"]))
+    for row in page_variants:
         if row.get("image_path"):
             image_rel_paths.add(str(row["image_path"]))
 
@@ -6391,6 +6571,10 @@ def download_project_source_bundle(request: HttpRequest, pk: int) -> HttpRespons
         zf.writestr(
             (bundle_root / "images" / "pages.json").as_posix(),
             json.dumps(pages, ensure_ascii=False, indent=2, default=str),
+        )
+        zf.writestr(
+            (bundle_root / "images" / "page_variants.json").as_posix(),
+            json.dumps(page_variants, ensure_ascii=False, indent=2, default=str),
         )
 
         for rel in sorted(image_rel_paths):
@@ -6528,6 +6712,7 @@ def import_project_source_bundle(request: HttpRequest) -> HttpResponse:
                 )
 
         pages_payload = _safe_zip_read_json(zf, f"{root}/images/pages.json")
+        page_pk_map: dict[int, int] = {}
         if isinstance(pages_payload, list):
             for row in pages_payload:
                 if not isinstance(row, dict):
@@ -6535,7 +6720,7 @@ def import_project_source_bundle(request: HttpRequest) -> HttpResponse:
                 page_num = row.get("page_number")
                 if not isinstance(page_num, int):
                     continue
-                ProjectImagePage.objects.update_or_create(
+                page_obj, _ = ProjectImagePage.objects.update_or_create(
                     project=project,
                     page_number=page_num,
                     defaults={
@@ -6547,6 +6732,49 @@ def import_project_source_bundle(request: HttpRequest) -> HttpResponse:
                         "status": (row.get("status") or ProjectImagePage.STATUS_DRAFT)[:32],
                     },
                 )
+                raw_id = row.get("id")
+                if isinstance(raw_id, int):
+                    page_pk_map[raw_id] = page_obj.pk
+
+        variants_payload = _safe_zip_read_json(zf, f"{root}/images/page_variants.json")
+        variant_pk_map: dict[int, int] = {}
+        if isinstance(variants_payload, list):
+            for row in variants_payload:
+                if not isinstance(row, dict):
+                    continue
+                source_page_id = row.get("page_id")
+                variant_index = row.get("variant_index")
+                if not isinstance(source_page_id, int) or not isinstance(variant_index, int):
+                    continue
+                target_page_id = page_pk_map.get(source_page_id)
+                if not target_page_id:
+                    continue
+                variant_obj, _ = ProjectImagePageVariant.objects.update_or_create(
+                    page_id=target_page_id,
+                    variant_index=variant_index,
+                    defaults={
+                        "image_model": (row.get("image_model") or "gpt-image-1")[:64],
+                        "image_path": (row.get("image_path") or "")[:512],
+                        "generation_prompt": row.get("generation_prompt") or "",
+                        "image_revised_prompt": row.get("image_revised_prompt") or "",
+                        "status": (row.get("status") or ProjectImagePageVariant.STATUS_DRAFT)[:32],
+                    },
+                )
+                raw_variant_id = row.get("id")
+                if isinstance(raw_variant_id, int):
+                    variant_pk_map[raw_variant_id] = variant_obj.pk
+        if isinstance(pages_payload, list):
+            for row in pages_payload:
+                if not isinstance(row, dict):
+                    continue
+                source_page_id = row.get("id")
+                preferred_variant_id = row.get("preferred_variant_id")
+                if not isinstance(source_page_id, int) or not isinstance(preferred_variant_id, int):
+                    continue
+                target_page_id = page_pk_map.get(source_page_id)
+                target_variant_id = variant_pk_map.get(preferred_variant_id)
+                if target_page_id and target_variant_id:
+                    ProjectImagePage.objects.filter(pk=target_page_id).update(preferred_variant_id=target_variant_id)
 
         # Restore selected image files under their original relative paths.
         asset_prefix = f"{root}/assets/"
@@ -6680,8 +6908,9 @@ def _copy_image_assets_and_rows(source_project: Project, target_project: Project
         )
 
     target_project.image_pages.all().delete()
+    page_pk_map: dict[int, int] = {}
     for page in source_project.image_pages.order_by("page_number", "id"):
-        ProjectImagePage.objects.create(
+        created_page = ProjectImagePage.objects.create(
             project=target_project,
             page_number=page.page_number,
             page_text=page.page_text,
@@ -6691,6 +6920,31 @@ def _copy_image_assets_and_rows(source_project: Project, target_project: Project
             image_revised_prompt=page.image_revised_prompt,
             status=page.status,
         )
+        page_pk_map[page.pk] = created_page.pk
+    variant_pk_map: dict[int, int] = {}
+    for variant in ProjectImagePageVariant.objects.filter(page__project=source_project).order_by("page_id", "variant_index", "id"):
+        target_page_id = page_pk_map.get(variant.page_id)
+        if not target_page_id:
+            continue
+        created_variant = ProjectImagePageVariant.objects.create(
+            page_id=target_page_id,
+            variant_index=variant.variant_index,
+            image_model=variant.image_model,
+            image_path=variant.image_path,
+            generation_prompt=variant.generation_prompt,
+            image_revised_prompt=variant.image_revised_prompt,
+            status=variant.status,
+        )
+        variant_pk_map[variant.pk] = created_variant.pk
+    for source_page in source_project.image_pages.order_by("page_number", "id"):
+        target_page_id = page_pk_map.get(source_page.pk)
+        if not target_page_id:
+            continue
+        target_variant_id = (
+            variant_pk_map.get(source_page.preferred_variant_id) if source_page.preferred_variant_id else None
+        )
+        if target_variant_id:
+            ProjectImagePage.objects.filter(pk=target_page_id).update(preferred_variant_id=target_variant_id)
 
 
 @login_required
