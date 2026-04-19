@@ -766,6 +766,16 @@ def _elements_artifact_links(project: Project) -> list[dict[str, str]]:
                 "size": str(path.stat().st_size),
             }
         )
+    billing_path = project.artifact_dir() / "images" / "billing_telemetry.jsonl"
+    if billing_path.exists():
+        relpath = os.path.relpath(billing_path, project.artifact_dir()).replace("\\", "/")
+        links.append(
+            {
+                "label": "Image billing telemetry",
+                "url": reverse("project-compiled", args=[project.pk, relpath]),
+                "size": str(billing_path.stat().st_size),
+            }
+        )
     return links
 
 
