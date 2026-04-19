@@ -766,6 +766,16 @@ def _elements_artifact_links(project: Project) -> list[dict[str, str]]:
                 "size": str(path.stat().st_size),
             }
         )
+    billing_path = project.artifact_dir() / "images" / "billing_telemetry.jsonl"
+    if billing_path.exists():
+        relpath = os.path.relpath(billing_path, project.artifact_dir()).replace("\\", "/")
+        links.append(
+            {
+                "label": "Image billing telemetry",
+                "url": reverse("project-compiled", args=[project.pk, relpath]),
+                "size": str(billing_path.stat().st_size),
+            }
+        )
     return links
 
 
@@ -1650,6 +1660,15 @@ def _append_page_image_telemetry(project: Project, record: dict[str, Any]) -> No
         fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
+def _append_image_billing_telemetry(project: Project, record: dict[str, Any]) -> None:
+    telemetry_path = project.artifact_dir() / "images" / "billing_telemetry.jsonl"
+    telemetry_path.parent.mkdir(parents=True, exist_ok=True)
+    entry = dict(record)
+    entry["timestamp"] = datetime.now(timezone.utc).isoformat()
+    with telemetry_path.open("a", encoding="utf-8") as fp:
+        fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
 def _ensure_project_page_rows(project: Project) -> int:
     pages = _extract_project_pages(project)
     existing = {
@@ -1809,56 +1828,22 @@ def _generate_project_page_images(
         )
         page_dir = pages_dir / f"page_{page_obj.page_number:03d}"
         page_dir.mkdir(parents=True, exist_ok=True)
-        outputs: list[tuple[int, str, str, str, str]] = []
-        for variant_index in range(1, variants_per_page + 1):
-            started = datetime.now(timezone.utc)
-            try:
-                image_result = client.generate_image(prompt, model=image_model)
-            except Exception as exc:
-                elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
-                _append_page_image_telemetry(
-                    project,
-                    {
-                        "event": "page_image_timeout" if _is_timeout_exception(exc) else "page_image_error",
-                        "page_number": page_obj.page_number,
-                        "variant_index": variant_index,
-                        "model": image_model,
-                        "elapsed_s": round(elapsed_s, 3),
-                        **_exception_telemetry_fields(exc),
-                    },
-                )
-                raise
-            image_path = page_dir / f"variant_{variant_index:03d}.png"
-            image_path.write_bytes(image_result["bytes"])
-            rel_path = image_path.relative_to(project.artifact_dir()).as_posix()
-            revised_prompt = image_result.get("revised_prompt") or ""
-            metadata = {
-                "page_number": page_obj.page_number,
-                "variant_index": variant_index,
-                "prompt": prompt,
-                "model": image_model,
-                "revised_prompt": revised_prompt,
-                "image_path": rel_path,
-            }
-            (page_dir / f"metadata_variant_{variant_index:03d}.json").write_text(
-                json.dumps(metadata, ensure_ascii=False, indent=2),
-                encoding="utf-8",
-            )
+        try:
+            image_result = client.generate_image(prompt, model=image_model)
+        except Exception as exc:
+            elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
             _append_page_image_telemetry(
                 project,
                 {
-                    "event": "page_image_response",
+                    "event": "page_image_timeout" if _is_timeout_exception(exc) else "page_image_error",
                     "page_number": page_obj.page_number,
                     "variant_index": variant_index,
                     "model": image_model,
-                    "elapsed_s": round((datetime.now(timezone.utc) - started).total_seconds(), 3),
-                    "revised_prompt": revised_prompt,
-                    "image_path": rel_path,
+                    "elapsed_s": round(elapsed_s, 3),
+                    **_exception_telemetry_fields(exc),
                 },
             )
             raise
-        page_dir = pages_dir / f"page_{page_obj.page_number:03d}"
-        page_dir.mkdir(parents=True, exist_ok=True)
         image_path = page_dir / f"variant_{variant_index:03d}.png"
         image_path.write_bytes(image_result["bytes"])
         rel_path = image_path.relative_to(project.artifact_dir()).as_posix()
@@ -1924,6 +1909,7 @@ def _generate_project_page_images(
                 preferred_variant = variant
         if preferred_variant is not None:
             _set_page_preferred_variant(page_obj, preferred_variant)
+
     return generated
 
 
@@ -1992,27 +1978,6 @@ def _generate_requested_page_variants(
                 _set_page_preferred_variant(page, variant)
             generated += 1
 
-    for page_obj in page_rows:
-        outputs = sorted(outputs_by_page.get(page_obj.pk, []), key=lambda tup: tup[0])
-        if not outputs:
-            continue
-        preferred_variant = page_obj.preferred_variant if page_obj.preferred_variant_id else None
-        for variant_index, rel_path, revised_prompt, prompt in outputs:
-            variant, _ = ProjectImagePageVariant.objects.update_or_create(
-                page_id=page_obj.pk,
-                variant_index=variant_index,
-                defaults={
-                    "image_model": image_model,
-                    "image_path": rel_path,
-                    "image_revised_prompt": revised_prompt,
-                    "generation_prompt": prompt,
-                    "status": ProjectImagePage.STATUS_GENERATED,
-                },
-            )
-            if preferred_variant is None and variant_index == 1:
-                preferred_variant = variant
-        if preferred_variant is not None:
-            _set_page_preferred_variant(page_obj, preferred_variant)
     return generated
 
 
@@ -4774,7 +4739,8 @@ def _billing_usage_reporter(*, user_id: int, project_id: int | None, request_typ
         completion_tokens = max(0, int(payload.get("completion_tokens") or 0))
         total_tokens = max(0, int(payload.get("total_tokens") or 0))
         # Image API responses often do not expose token usage. We treat one image call as one output-unit.
-        if operation == "image_generate" and prompt_tokens == 0 and completion_tokens == 0 and total_tokens == 0:
+        fallback_applied = operation == "image_generate" and prompt_tokens == 0 and completion_tokens == 0 and total_tokens == 0
+        if fallback_applied:
             completion_tokens = 1_000_000
             total_tokens = 1_000_000
         record_openai_usage_and_charge(
@@ -4787,6 +4753,35 @@ def _billing_usage_reporter(*, user_id: int, project_id: int | None, request_typ
             total_tokens=total_tokens,
             request_type=request_type or str(payload.get("request_type") or operation),
         )
+        if project_id and "image" in (request_type or operation):
+            try:
+                project = Project.objects.filter(pk=project_id).first()
+                if project is None:
+                    return
+                usage = AIUsageCharge.objects.filter(user_id=user_id, project_id=project_id).order_by("-created_at", "-id").first()
+                user = get_user_model().objects.filter(pk=user_id).first()
+                pricing = openai_price_for_model(model)
+                _append_image_billing_telemetry(
+                    project,
+                    {
+                        "event": "billing_usage_recorded",
+                        "request_type": request_type,
+                        "operation": operation,
+                        "model": model,
+                        "prompt_tokens": prompt_tokens,
+                        "completion_tokens": completion_tokens,
+                        "total_tokens": total_tokens,
+                        "fallback_applied": fallback_applied,
+                        "price_input_usd_per_1m": str(pricing["input"]),
+                        "price_output_usd_per_1m": str(pricing["output"]),
+                        "usage_charge_id": usage.id if usage else None,
+                        "usage_status": usage.status if usage else None,
+                        "usage_cost_usd": str(usage.cost_usd) if usage else None,
+                        "balance_after_usd": str(get_user_balance_usd(user)) if user is not None else None,
+                    },
+                )
+            except Exception:
+                logger.exception("Failed to append image billing telemetry")
 
     return _report
 
