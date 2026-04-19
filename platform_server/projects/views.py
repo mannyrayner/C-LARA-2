@@ -1936,6 +1936,7 @@ def _generate_requested_page_variants(
     pages_dir = _image_pages_dir(project)
     pages_dir.mkdir(parents=True, exist_ok=True)
     generated = 0
+    page_by_id = {page.id: page for page, _count, _prompt in requests}
 
     def _generate_one(page: ProjectImagePage, variant_index: int, prompt: str) -> tuple[int, int, str, str, str]:
         started = datetime.now(timezone.utc)
@@ -1964,7 +1965,8 @@ def _generate_requested_page_variants(
         return page.id, variant_index, rel_path, revised_prompt, prompt
 
     futures = {}
-    with ThreadPoolExecutor(max_workers=min(24, sum(count for _p, count, _prompt in requests))) as executor:
+    max_workers = min(24, max(1, sum(count for _p, count, _prompt in requests)))
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
         for page, count, prompt in requests:
             max_variant = page.variants.aggregate(max_idx=Max("variant_index")).get("max_idx") or 0
             for offset in range(1, count + 1):
@@ -1983,7 +1985,9 @@ def _generate_requested_page_variants(
                     "status": ProjectImagePageVariant.STATUS_GENERATED,
                 },
             )
-            page = ProjectImagePage.objects.get(pk=page_id)
+            page = page_by_id.get(page_id)
+            if page is None:
+                page = ProjectImagePage.objects.get(pk=page_id)
             if not page.preferred_variant_id:
                 _set_page_preferred_variant(page, variant)
             generated += 1
@@ -6017,6 +6021,8 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
             if not requested:
                 messages.info(request, "No generation requests were specified.")
                 return redirect("community-organiser-review-project", community_id=community_id, project_id=project.id)
+            requested_count = sum(count for _page, count, _prompt in requested)
+            messages.info(request, f"Generating {requested_count} requested variant(s). Please wait…")
             generated = _generate_requested_page_variants(project=project, image_model=image_model, requests=requested)
             _persist_image_pages_artifacts(project)
             messages.success(request, f"Generated {generated} new variant(s) from organiser requests.")

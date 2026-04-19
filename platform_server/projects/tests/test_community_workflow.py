@@ -123,6 +123,8 @@ class CommunityWorkflowTests(TestCase):
             follow=True,
         )
         self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Generating 2 requested variant(s). Please wait")
+        self.assertContains(resp, "Generated 2 new variant(s) from organiser requests.")
         self.assertEqual(ProjectImagePageVariant.objects.filter(page=self.page).count(), 3)
 
         reviewed = client.post(

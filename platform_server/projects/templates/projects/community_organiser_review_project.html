@@ -22,7 +22,7 @@
 {% endfor %}
 
 <h3>Request new variants</h3>
-<form method="post">
+<form method="post" id="generate-requested-form">
   {% csrf_token %}
   <input type="hidden" name="action" value="generate_requested" />
   <p>
@@ -40,7 +40,8 @@
       <p><input type="text" name="request_prompt_{{ page.id }}" placeholder="Prompt update request (optional)" style="width:100%;" /></p>
     </div>
   {% endfor %}
-  <button class="btn" type="submit">Generate requested variants</button>
+  <button class="btn" type="submit" id="generate-requested-submit">Generate requested variants</button>
+  <p id="generate-requested-status" style="display:none; margin-top:0.5rem;"><em>Submitting generation request…</em></p>
 </form>
 
 <h3>Mark review complete</h3>
@@ -50,4 +51,17 @@
   <p><input type="text" name="review_note" value="{% if review %}{{ review.note }}{% endif %}" placeholder="Optional review note" style="width:100%;" /></p>
   <button class="btn secondary" type="submit">Mark reviewed</button>
 </form>
+<script>
+  (function () {
+    const form = document.getElementById("generate-requested-form");
+    const button = document.getElementById("generate-requested-submit");
+    const status = document.getElementById("generate-requested-status");
+    if (!form || !button || !status) return;
+    form.addEventListener("submit", function () {
+      button.disabled = true;
+      button.textContent = "Generating…";
+      status.style.display = "block";
+    });
+  })();
+</script>
 {% endblock %}
