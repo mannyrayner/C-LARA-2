@@ -1732,6 +1732,43 @@ def _persist_image_pages_artifacts(project: Project) -> None:
     )
 
 
+def _page_artifact_links(project: Project) -> list[dict[str, str]]:
+    pages_dir = _image_pages_dir(project)
+    pages_dir.mkdir(parents=True, exist_ok=True)
+    telemetry_path = pages_dir / "telemetry.jsonl"
+    if not telemetry_path.exists():
+        telemetry_path.write_text("", encoding="utf-8")
+    files = [
+        ("pages_list.json", "Pages list"),
+        ("variants_list.json", "Variants list"),
+        ("telemetry.jsonl", "Page images telemetry"),
+    ]
+    links: list[dict[str, str]] = []
+    for rel_name, label in files:
+        path = pages_dir / rel_name
+        if not path.exists():
+            continue
+        relpath = os.path.relpath(path, project.artifact_dir()).replace("\\", "/")
+        links.append(
+            {
+                "label": label,
+                "url": reverse("project-compiled", args=[project.pk, relpath]),
+                "size": str(path.stat().st_size),
+            }
+        )
+    billing_path = project.artifact_dir() / "images" / "billing_telemetry.jsonl"
+    if billing_path.exists():
+        relpath = os.path.relpath(billing_path, project.artifact_dir()).replace("\\", "/")
+        links.append(
+            {
+                "label": "Image billing telemetry",
+                "url": reverse("project-compiled", args=[project.pk, relpath]),
+                "size": str(billing_path.stat().st_size),
+            }
+        )
+    return links
+
+
 def _set_page_preferred_variant(page: ProjectImagePage, variant: ProjectImagePageVariant) -> None:
     ProjectImagePage.objects.filter(pk=page.pk).update(
         preferred_variant=variant,
@@ -2791,6 +2828,7 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
             "style": style,
             "formset": formset,
             "pages_artifact_dir": _image_pages_dir(project),
+            "pages_artifact_links": _page_artifact_links(project),
             "image_models": IMAGE_MODEL_CHOICES,
             "selected_image_model": request.GET.get("image_model") or "gpt-image-1",
             "default_variants_per_page": 1,
