@@ -1,3 +1,4 @@
+import json
 import shutil
 
 from django.contrib.auth import get_user_model
@@ -128,6 +129,29 @@ class BillingPhaseATests(TestCase):
         usage = AIUsageCharge.objects.filter(project=self.project).latest("created_at")
         self.assertEqual(usage.request_type, "image_pages_generate_image")
         self.assertEqual(str(usage.cost_usd), "0.040000")
+        billing_telemetry_path = self.project.artifact_dir() / "images" / "billing_telemetry.jsonl"
+        self.assertTrue(billing_telemetry_path.exists())
+        entries = [
+            json.loads(line)
+            for line in billing_telemetry_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        self.assertTrue(entries)
+        self.assertEqual(entries[-1].get("event"), "billing_usage_recorded")
+        self.assertEqual(entries[-1].get("request_type"), "image_pages_generate_image")
+        self.assertEqual(entries[-1].get("usage_status"), AIUsageCharge.STATUS_CHARGED)
+
+    def test_pricing_falls_back_to_settings_default_for_models_missing_from_db_table(self):
+        OpenAIModelPricing.objects.update_or_create(
+            model_name="gpt-4o-mini",
+            defaults={
+                "input_usd_per_1m": "0.150000",
+                "output_usd_per_1m": "0.600000",
+                "status": OpenAIModelPricing.STATUS_HUMAN_REVISED,
+            },
+        )
+        cost = estimate_openai_token_cost_usd("gpt-image-1", prompt_tokens=0, completion_tokens=1000)
+        self.assertEqual(str(cost), "0.015000")
 
     def test_pricing_falls_back_to_settings_default_for_models_missing_from_db_table(self):
         OpenAIModelPricing.objects.update_or_create(

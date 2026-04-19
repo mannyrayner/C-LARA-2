@@ -1650,6 +1650,15 @@ def _append_page_image_telemetry(project: Project, record: dict[str, Any]) -> No
         fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
+def _append_image_billing_telemetry(project: Project, record: dict[str, Any]) -> None:
+    telemetry_path = project.artifact_dir() / "images" / "billing_telemetry.jsonl"
+    telemetry_path.parent.mkdir(parents=True, exist_ok=True)
+    entry = dict(record)
+    entry["timestamp"] = datetime.now(timezone.utc).isoformat()
+    with telemetry_path.open("a", encoding="utf-8") as fp:
+        fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
 def _ensure_project_page_rows(project: Project) -> int:
     pages = _extract_project_pages(project)
     existing = {
@@ -4720,7 +4729,8 @@ def _billing_usage_reporter(*, user_id: int, project_id: int | None, request_typ
         completion_tokens = max(0, int(payload.get("completion_tokens") or 0))
         total_tokens = max(0, int(payload.get("total_tokens") or 0))
         # Image API responses often do not expose token usage. We treat one image call as one output-unit.
-        if operation == "image_generate" and prompt_tokens == 0 and completion_tokens == 0 and total_tokens == 0:
+        fallback_applied = operation == "image_generate" and prompt_tokens == 0 and completion_tokens == 0 and total_tokens == 0
+        if fallback_applied:
             completion_tokens = 1_000_000
             total_tokens = 1_000_000
         record_openai_usage_and_charge(
@@ -4733,6 +4743,35 @@ def _billing_usage_reporter(*, user_id: int, project_id: int | None, request_typ
             total_tokens=total_tokens,
             request_type=request_type or str(payload.get("request_type") or operation),
         )
+        if project_id and "image" in (request_type or operation):
+            try:
+                project = Project.objects.filter(pk=project_id).first()
+                if project is None:
+                    return
+                usage = AIUsageCharge.objects.filter(user_id=user_id, project_id=project_id).order_by("-created_at", "-id").first()
+                user = get_user_model().objects.filter(pk=user_id).first()
+                pricing = openai_price_for_model(model)
+                _append_image_billing_telemetry(
+                    project,
+                    {
+                        "event": "billing_usage_recorded",
+                        "request_type": request_type,
+                        "operation": operation,
+                        "model": model,
+                        "prompt_tokens": prompt_tokens,
+                        "completion_tokens": completion_tokens,
+                        "total_tokens": total_tokens,
+                        "fallback_applied": fallback_applied,
+                        "price_input_usd_per_1m": str(pricing["input"]),
+                        "price_output_usd_per_1m": str(pricing["output"]),
+                        "usage_charge_id": usage.id if usage else None,
+                        "usage_status": usage.status if usage else None,
+                        "usage_cost_usd": str(usage.cost_usd) if usage else None,
+                        "balance_after_usd": str(get_user_balance_usd(user)) if user is not None else None,
+                    },
+                )
+            except Exception:
+                logger.exception("Failed to append image billing telemetry")
 
     return _report
 
