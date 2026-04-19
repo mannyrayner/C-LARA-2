@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from projects.billing import get_user_balance_usd, record_openai_usage_and_charge
+from projects.billing import estimate_openai_token_cost_usd, get_user_balance_usd, record_openai_usage_and_charge
 from projects import views
 from projects.models import AIUsageCharge, CreditLedgerEntry, OpenAIModelPricing, Project
 
@@ -128,6 +128,18 @@ class BillingPhaseATests(TestCase):
         usage = AIUsageCharge.objects.filter(project=self.project).latest("created_at")
         self.assertEqual(usage.request_type, "image_pages_generate_image")
         self.assertEqual(str(usage.cost_usd), "0.040000")
+
+    def test_pricing_falls_back_to_settings_default_for_models_missing_from_db_table(self):
+        OpenAIModelPricing.objects.update_or_create(
+            model_name="gpt-4o-mini",
+            defaults={
+                "input_usd_per_1m": "0.150000",
+                "output_usd_per_1m": "0.600000",
+                "status": OpenAIModelPricing.STATUS_HUMAN_REVISED,
+            },
+        )
+        cost = estimate_openai_token_cost_usd("gpt-image-1", prompt_tokens=0, completion_tokens=1000)
+        self.assertEqual(str(cost), "0.015000")
 
     def test_admin_can_save_human_reviewed_openai_pricing_row(self):
         self.client.login(username="billing_admin", password="pw")
