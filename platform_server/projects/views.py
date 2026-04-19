@@ -1924,6 +1924,7 @@ def _generate_project_page_images(
                 preferred_variant = variant
         if preferred_variant is not None:
             _set_page_preferred_variant(page_obj, preferred_variant)
+
     return generated
 
 
@@ -1992,27 +1993,6 @@ def _generate_requested_page_variants(
                 _set_page_preferred_variant(page, variant)
             generated += 1
 
-    for page_obj in page_rows:
-        outputs = sorted(outputs_by_page.get(page_obj.pk, []), key=lambda tup: tup[0])
-        if not outputs:
-            continue
-        preferred_variant = page_obj.preferred_variant if page_obj.preferred_variant_id else None
-        for variant_index, rel_path, revised_prompt, prompt in outputs:
-            variant, _ = ProjectImagePageVariant.objects.update_or_create(
-                page_id=page_obj.pk,
-                variant_index=variant_index,
-                defaults={
-                    "image_model": image_model,
-                    "image_path": rel_path,
-                    "image_revised_prompt": revised_prompt,
-                    "generation_prompt": prompt,
-                    "status": ProjectImagePage.STATUS_GENERATED,
-                },
-            )
-            if preferred_variant is None and variant_index == 1:
-                preferred_variant = variant
-        if preferred_variant is not None:
-            _set_page_preferred_variant(page_obj, preferred_variant)
     return generated
 
 
