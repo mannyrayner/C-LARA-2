@@ -26,6 +26,9 @@
     <a href="{% url 'profile' %}">Profile</a>
     <a href="{% url 'project-list' %}">Projects</a>
     <a href="{% url 'content-list' %}">Content</a>
+    {% if user.community_memberships.exists %}
+      <a href="{% url 'community-home' %}">Community</a>
+    {% endif %}
     {% if user.is_staff %}
       <a href="{% url 'admin-tools' %}">Admin</a>
     {% endif %}

@@ -24,7 +24,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.db.models import F, Q, Sum
+from django.db.models import Count, F, Max, Q, Sum
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import CreateView, DetailView, ListView
 from django_q.tasks import async_task
@@ -72,7 +72,9 @@ from .billing import (
 )
 from .models import (
     Community,
+    CommunityImageVote,
     CommunityMembership,
+    CommunityOrganiserReview,
     CreditLedgerEntry,
     OpenAIModelPricing,
     Profile,
@@ -179,6 +181,11 @@ def _published_projects_visible_to_user(user):
         | Q(collaborators__user=user)
         | Q(access_scope=Project.ACCESS_COMMUNITY, community_id__in=community_ids)
     ).distinct()
+
+
+def _community_role_for_user(community: Community, user) -> str | None:
+    membership = CommunityMembership.objects.filter(community=community, user=user).values_list("role", flat=True).first()
+    return str(membership) if membership else None
 
 
 def _manual_annotation_context(project: Project) -> dict[str, Any]:
@@ -1920,6 +1927,91 @@ def _generate_project_page_images(
     return generated
 
 
+def _generate_requested_page_variants(
+    *,
+    project: Project,
+    image_model: str,
+    requests: list[tuple[ProjectImagePage, int, str]],
+) -> int:
+    pages_dir = _image_pages_dir(project)
+    pages_dir.mkdir(parents=True, exist_ok=True)
+    generated = 0
+
+    def _generate_one(page: ProjectImagePage, variant_index: int, prompt: str) -> tuple[int, int, str, str, str]:
+        started = datetime.now(timezone.utc)
+        client = _build_billed_project_ai_client(
+            project,
+            model_name=image_model,
+            request_type="community_generate_image_variant",
+        )
+        image_result = client.generate_image(prompt, model=image_model)
+        page_dir = pages_dir / f"page_{page.page_number:03d}"
+        page_dir.mkdir(parents=True, exist_ok=True)
+        image_path = page_dir / f"variant_{variant_index:03d}.png"
+        image_path.write_bytes(image_result["bytes"])
+        rel_path = image_path.relative_to(project.artifact_dir()).as_posix()
+        revised_prompt = image_result.get("revised_prompt") or ""
+        _append_page_image_telemetry(
+            project,
+            {
+                "event": "community_variant_response",
+                "page_number": page.page_number,
+                "variant_index": variant_index,
+                "model": image_model,
+                "elapsed_s": round((datetime.now(timezone.utc) - started).total_seconds(), 3),
+            },
+        )
+        return page.id, variant_index, rel_path, revised_prompt, prompt
+
+    futures = {}
+    with ThreadPoolExecutor(max_workers=min(24, sum(count for _p, count, _prompt in requests))) as executor:
+        for page, count, prompt in requests:
+            max_variant = page.variants.aggregate(max_idx=Max("variant_index")).get("max_idx") or 0
+            for offset in range(1, count + 1):
+                idx = max_variant + offset
+                futures[executor.submit(_generate_one, page, idx, prompt)] = page.id
+        for future in as_completed(futures):
+            page_id, variant_index, rel_path, revised_prompt, prompt = future.result()
+            variant, _ = ProjectImagePageVariant.objects.update_or_create(
+                page_id=page_id,
+                variant_index=variant_index,
+                defaults={
+                    "image_model": image_model,
+                    "image_path": rel_path,
+                    "generation_prompt": prompt,
+                    "image_revised_prompt": revised_prompt,
+                    "status": ProjectImagePageVariant.STATUS_GENERATED,
+                },
+            )
+            page = ProjectImagePage.objects.get(pk=page_id)
+            if not page.preferred_variant_id:
+                _set_page_preferred_variant(page, variant)
+            generated += 1
+
+    for page_obj in page_rows:
+        outputs = sorted(outputs_by_page.get(page_obj.pk, []), key=lambda tup: tup[0])
+        if not outputs:
+            continue
+        preferred_variant = page_obj.preferred_variant if page_obj.preferred_variant_id else None
+        for variant_index, rel_path, revised_prompt, prompt in outputs:
+            variant, _ = ProjectImagePageVariant.objects.update_or_create(
+                page_id=page_obj.pk,
+                variant_index=variant_index,
+                defaults={
+                    "image_model": image_model,
+                    "image_path": rel_path,
+                    "image_revised_prompt": revised_prompt,
+                    "generation_prompt": prompt,
+                    "status": ProjectImagePage.STATUS_GENERATED,
+                },
+            )
+            if preferred_variant is None and variant_index == 1:
+                preferred_variant = variant
+        if preferred_variant is not None:
+            _set_page_preferred_variant(page_obj, preferred_variant)
+    return generated
+
+
 def register(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         form = RegistrationForm(request.POST)
@@ -2912,6 +3004,14 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         assigned_ids.add(project.owner_id)
         User = get_user_model()
         context["available_collaborator_users"] = User.objects.exclude(id__in=assigned_ids).order_by("username")[:500]
+        eligible_communities = Community.objects.filter(
+            language__iexact=project.language,
+            memberships__user=self.request.user,
+            memberships__role=CommunityMembership.ROLE_ORGANISER,
+            is_active=True,
+        ).order_by("name")
+        context["eligible_project_communities"] = eligible_communities
+        context["can_assign_project_community"] = bool(self.request.user == project.owner and eligible_communities.exists())
         context["exercise_sets"] = project.exercise_sets.all()[:20]
         return context
 
@@ -5744,6 +5844,212 @@ def content_detail(request: HttpRequest, pk: int) -> HttpResponse:
         },
     )
 
+
+@login_required
+def community_home(request: HttpRequest) -> HttpResponse:
+    memberships = list(
+        CommunityMembership.objects.filter(user=request.user, community__is_active=True)
+        .select_related("community")
+        .order_by("community__name")
+    )
+    if not memberships:
+        raise Http404()
+    if len(memberships) == 1:
+        return redirect("community-member-home", community_id=memberships[0].community_id)
+    return render(request, "projects/community_home.html", {"memberships": memberships})
+
+
+def _require_community_member(community_id: int, user):
+    membership = (
+        CommunityMembership.objects.filter(community_id=community_id, community__is_active=True, user=user)
+        .select_related("community")
+        .first()
+    )
+    if not membership:
+        raise Http404()
+    return membership
+
+
+@login_required
+def community_member_home(request: HttpRequest, community_id: int) -> HttpResponse:
+    membership = _require_community_member(community_id, request.user)
+    projects = list(
+        Project.objects.filter(community_id=community_id).order_by("-updated_at")
+    )
+    judged_by_project = {
+        row["project_id"]: row["count"]
+        for row in CommunityImageVote.objects.filter(community_id=community_id, user=request.user)
+        .values("project_id")
+        .annotate(count=Count("id"))
+    }
+    project_rows = [
+        {"project": project, "judged_count": judged_by_project.get(project.id, 0)} for project in projects
+    ]
+    return render(
+        request,
+        "projects/community_member_home.html",
+        {
+            "community": membership.community,
+            "membership": membership,
+            "project_rows": project_rows,
+        },
+    )
+
+
+@login_required
+def community_member_judge_project(request: HttpRequest, community_id: int, project_id: int) -> HttpResponse:
+    membership = _require_community_member(community_id, request.user)
+    project = get_object_or_404(Project, pk=project_id, community_id=community_id)
+    pages = list(ProjectImagePage.objects.filter(project=project).order_by("page_number").prefetch_related("variants"))
+    if request.method == "POST":
+        saved = 0
+        for page in pages:
+            for variant in page.variants.all():
+                value = (request.POST.get(f"vote_{variant.id}") or "").strip().lower()
+                note = (request.POST.get(f"note_{variant.id}") or "").strip()
+                if value not in {CommunityImageVote.VALUE_UP, CommunityImageVote.VALUE_DOWN}:
+                    continue
+                CommunityImageVote.objects.update_or_create(
+                    community_id=community_id,
+                    project=project,
+                    page=page,
+                    variant=variant,
+                    user=request.user,
+                    defaults={"value": value, "note": note},
+                )
+                saved += 1
+        messages.success(request, f"Saved {saved} image judgement(s).")
+        return redirect("community-member-judge-project", community_id=community_id, project_id=project.id)
+
+    existing_votes = {
+        vote.variant_id: vote
+        for vote in CommunityImageVote.objects.filter(community_id=community_id, project=project, user=request.user)
+    }
+    page_rows = [
+        {
+            "page": page,
+            "variant_rows": [{"variant": variant, "vote": existing_votes.get(variant.id)} for variant in page.variants.all()],
+        }
+        for page in pages
+    ]
+    return render(
+        request,
+        "projects/community_member_judge_project.html",
+        {
+            "community": membership.community,
+            "membership": membership,
+            "project": project,
+            "page_rows": page_rows,
+        },
+    )
+
+
+@login_required
+def community_organiser_home(request: HttpRequest, community_id: int) -> HttpResponse:
+    membership = _require_community_member(community_id, request.user)
+    if membership.role != CommunityMembership.ROLE_ORGANISER:
+        raise Http404()
+    projects = list(Project.objects.filter(community_id=community_id).order_by("-updated_at"))
+    review_by_project = {
+        row.project_id: row
+        for row in CommunityOrganiserReview.objects.filter(
+            community_id=community_id,
+            organiser=request.user,
+        )
+    }
+    summary_rows: list[dict[str, Any]] = []
+    for project in projects:
+        latest_vote = (
+            CommunityImageVote.objects.filter(community_id=community_id, project=project)
+            .order_by("-updated_at")
+            .first()
+        )
+        review = review_by_project.get(project.id)
+        up_to_date = bool(review and (latest_vote is None or review.updated_at >= latest_vote.updated_at))
+        summary_rows.append(
+            {"project": project, "review": review, "latest_vote": latest_vote, "up_to_date": up_to_date}
+        )
+    return render(
+        request,
+        "projects/community_organiser_home.html",
+        {"community": membership.community, "membership": membership, "summary_rows": summary_rows},
+    )
+
+
+@login_required
+def community_organiser_review_project(request: HttpRequest, community_id: int, project_id: int) -> HttpResponse:
+    membership = _require_community_member(community_id, request.user)
+    if membership.role != CommunityMembership.ROLE_ORGANISER:
+        raise Http404()
+    project = get_object_or_404(Project, pk=project_id, community_id=community_id)
+    pages = list(ProjectImagePage.objects.filter(project=project).order_by("page_number").prefetch_related("variants"))
+
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+        if action == "mark_reviewed":
+            note = (request.POST.get("review_note") or "").strip()
+            CommunityOrganiserReview.objects.update_or_create(
+                community_id=community_id,
+                project=project,
+                organiser=request.user,
+                defaults={"note": note},
+            )
+            messages.success(request, "Marked review as up to date.")
+            return redirect("community-organiser-review-project", community_id=community_id, project_id=project.id)
+        if action == "generate_requested":
+            requested: list[tuple[ProjectImagePage, int, str]] = []
+            image_model = (request.POST.get("image_model") or "gpt-image-1").strip()
+            if image_model not in IMAGE_MODEL_CHOICES:
+                image_model = "gpt-image-1"
+            for page in pages:
+                count_raw = (request.POST.get(f"request_count_{page.id}") or "").strip()
+                prompt_update = (request.POST.get(f"request_prompt_{page.id}") or "").strip()
+                try:
+                    count = int(count_raw or "0")
+                except ValueError:
+                    count = 0
+                count = max(0, min(8, count))
+                if count <= 0:
+                    continue
+                base_prompt = page.generation_prompt or page.page_text
+                final_prompt = f"{base_prompt}\n\nCommunity organiser request: {prompt_update}" if prompt_update else base_prompt
+                requested.append((page, count, final_prompt))
+            if not requested:
+                messages.info(request, "No generation requests were specified.")
+                return redirect("community-organiser-review-project", community_id=community_id, project_id=project.id)
+            generated = _generate_requested_page_variants(project=project, image_model=image_model, requests=requested)
+            _persist_image_pages_artifacts(project)
+            messages.success(request, f"Generated {generated} new variant(s) from organiser requests.")
+            return redirect("community-organiser-review-project", community_id=community_id, project_id=project.id)
+
+    vote_rows: list[dict[str, Any]] = []
+    for page in pages:
+        for variant in page.variants.order_by("variant_index"):
+            votes = list(
+                CommunityImageVote.objects.filter(community_id=community_id, project=project, variant=variant)
+                .select_related("user")
+                .order_by("-updated_at")
+            )
+            up = sum(1 for vote in votes if vote.value == CommunityImageVote.VALUE_UP)
+            down = sum(1 for vote in votes if vote.value == CommunityImageVote.VALUE_DOWN)
+            vote_rows.append({"page": page, "variant": variant, "votes": votes, "up": up, "down": down})
+    review = CommunityOrganiserReview.objects.filter(
+        community_id=community_id, project=project, organiser=request.user
+    ).first()
+    return render(
+        request,
+        "projects/community_organiser_review_project.html",
+        {
+            "community": membership.community,
+            "membership": membership,
+            "project": project,
+            "pages": pages,
+            "vote_rows": vote_rows,
+            "review": review,
+            "image_models": IMAGE_MODEL_CHOICES,
+        },
+    )
+
 @login_required
 def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
@@ -6876,6 +7182,49 @@ def set_project_collaborator(request: HttpRequest, pk: int) -> HttpResponse:
         defaults={"role": role},
     )
     messages.success(request, f"Saved collaborator '{username}' with role {role.upper()}.")
+    return redirect("project-detail", pk=project.pk)
+
+
+@login_required
+def set_project_community(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
+    if request.method != "POST":
+        return redirect("project-detail", pk=project.pk)
+
+    action = (request.POST.get("action") or "").strip()
+    if action == "clear":
+        project.community = None
+        if project.access_scope == Project.ACCESS_COMMUNITY:
+            project.access_scope = Project.ACCESS_PRIVATE
+            project.save(update_fields=["community", "access_scope", "updated_at"])
+        else:
+            project.save(update_fields=["community", "updated_at"])
+        messages.success(request, "Project is no longer assigned to a community.")
+        return redirect("project-detail", pk=project.pk)
+
+    community_id = request.POST.get("community_id")
+    try:
+        community_id_int = int(community_id or "")
+    except ValueError:
+        messages.error(request, "Unknown community.")
+        return redirect("project-detail", pk=project.pk)
+
+    community = Community.objects.filter(pk=community_id_int, is_active=True).first()
+    if not community:
+        messages.error(request, "Unknown community.")
+        return redirect("project-detail", pk=project.pk)
+    if (community.language or "").lower() != (project.language or "").lower():
+        messages.error(request, "Project language must match community language.")
+        return redirect("project-detail", pk=project.pk)
+    role = _community_role_for_user(community, request.user)
+    if role != CommunityMembership.ROLE_ORGANISER:
+        messages.error(request, "You must be a community organiser to assign this project.")
+        return redirect("project-detail", pk=project.pk)
+
+    project.community = community
+    project.access_scope = Project.ACCESS_COMMUNITY
+    project.save(update_fields=["community", "access_scope", "updated_at"])
+    messages.success(request, f"Assigned project to community {community.name}.")
     return redirect("project-detail", pk=project.pk)
 
 

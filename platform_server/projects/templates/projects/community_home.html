@@ -1,0 +1,17 @@
+{% extends "projects/base.html" %}
+{% block title %}Communities{% endblock %}
+{% block content %}
+<h1>Communities</h1>
+<p>Select where you want to work.</p>
+<ul>
+  {% for membership in memberships %}
+    <li>
+      <strong>{{ membership.community.name }}</strong> ({{ membership.role }})
+      <a class="btn secondary" href="{% url 'community-member-home' membership.community.id %}">Member page</a>
+      {% if membership.role == "organiser" %}
+        <a class="btn secondary" href="{% url 'community-organiser-home' membership.community.id %}">Organiser page</a>
+      {% endif %}
+    </li>
+  {% endfor %}
+</ul>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "projects/base.html" %}
+{% block title %}Community member · {{ community.name }}{% endblock %}
+{% block content %}
+<h1>{{ community.name }} · member page</h1>
+{% if membership.role == "organiser" %}
+  <p><a class="btn secondary" href="{% url 'community-organiser-home' community.id %}">Switch to organiser page</a></p>
+{% endif %}
+<ul>
+  {% for row in project_rows %}
+    <li>
+      <a href="{% url 'community-member-judge-project' community.id row.project.id %}">{{ row.project.title }}</a>
+      — your judgements: {{ row.judged_count }}
+    </li>
+  {% empty %}
+    <li>No community projects assigned yet.</li>
+  {% endfor %}
+</ul>
+{% endblock %}

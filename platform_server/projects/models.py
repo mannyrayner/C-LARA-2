@@ -423,6 +423,45 @@ class CommunityMembership(models.Model):
         ordering = ["community_id", "user_id"]
 
 
+class CommunityImageVote(models.Model):
+    VALUE_UP = "up"
+    VALUE_DOWN = "down"
+    VALUE_CHOICES = [
+        (VALUE_UP, "Thumbs up"),
+        (VALUE_DOWN, "Thumbs down"),
+    ]
+
+    community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name="image_votes")
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="community_image_votes")
+    page = models.ForeignKey(ProjectImagePage, on_delete=models.CASCADE, related_name="community_image_votes")
+    variant = models.ForeignKey(ProjectImagePageVariant, on_delete=models.CASCADE, related_name="community_image_votes")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="community_image_votes")
+    value = models.CharField(max_length=8, choices=VALUE_CHOICES)
+    note = models.TextField(blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("user", "variant")
+        ordering = ["-updated_at", "-id"]
+
+
+class CommunityOrganiserReview(models.Model):
+    community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name="organiser_reviews")
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="community_organiser_reviews")
+    organiser = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="community_organiser_reviews",
+    )
+    note = models.TextField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("community", "project", "organiser")
+        ordering = ["-updated_at", "-id"]
+
+
 class ContentComment(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="content_comments")
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="content_comments")

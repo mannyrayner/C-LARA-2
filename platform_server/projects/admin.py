@@ -4,6 +4,8 @@ from .models import (
     Project,
     Community,
     CommunityMembership,
+    CommunityImageVote,
+    CommunityOrganiserReview,
     ProjectImageElement,
     ProjectImagePage,
     ProjectImagePageVariant,
@@ -36,6 +38,20 @@ class CommunityMembershipAdmin(admin.ModelAdmin):
     list_display = ("community", "user", "role", "updated_at")
     search_fields = ("community__name", "user__username", "user__email")
     list_filter = ("role", "community")
+
+
+@admin.register(CommunityImageVote)
+class CommunityImageVoteAdmin(admin.ModelAdmin):
+    list_display = ("community", "project", "page", "variant", "user", "value", "updated_at")
+    search_fields = ("community__name", "project__title", "user__username", "note")
+    list_filter = ("value", "community")
+
+
+@admin.register(CommunityOrganiserReview)
+class CommunityOrganiserReviewAdmin(admin.ModelAdmin):
+    list_display = ("community", "project", "organiser", "updated_at")
+    search_fields = ("community__name", "project__title", "organiser__username", "note")
+    list_filter = ("community",)
 
 
 @admin.register(Profile)

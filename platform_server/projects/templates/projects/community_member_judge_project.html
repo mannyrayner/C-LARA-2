@@ -1,0 +1,24 @@
+{% extends "projects/base.html" %}
+{% block title %}Judge images · {{ project.title }}{% endblock %}
+{% block content %}
+<h1>Judge images: {{ project.title }}</h1>
+<p><a class="btn secondary" href="{% url 'community-member-home' community.id %}">← Back to community member page</a></p>
+<form method="post">
+  {% csrf_token %}
+  {% for row in page_rows %}
+    <section style="border:1px solid #ddd; margin:0.8rem 0; padding:0.7rem;">
+      <h2>Page {{ row.page.page_number }}</h2>
+      {% for vr in row.variant_rows %}
+          <div style="border-top:1px dashed #ddd; margin-top:0.4rem; padding-top:0.4rem;">
+            <p><strong>Variant {{ vr.variant.variant_index }}</strong></p>
+            <p><img src="{% url 'project-compiled' project.id vr.variant.image_path %}" style="max-width: 340px; height: auto;" /></p>
+            <label><input type="radio" name="vote_{{ vr.variant.id }}" value="up" {% if vr.vote and vr.vote.value == "up" %}checked{% endif %}/> 👍</label>
+            <label><input type="radio" name="vote_{{ vr.variant.id }}" value="down" {% if vr.vote and vr.vote.value == "down" %}checked{% endif %}/> 👎</label>
+            <p><input type="text" name="note_{{ vr.variant.id }}" value="{% if vr.vote %}{{ vr.vote.note }}{% endif %}" placeholder="Optional note" style="width:100%;" /></p>
+          </div>
+      {% endfor %}
+    </section>
+  {% endfor %}
+  <button class="btn" type="submit">Save judgements</button>
+</form>
+{% endblock %}
