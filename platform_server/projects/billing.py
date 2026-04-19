@@ -71,13 +71,7 @@ def apply_credit_delta(
     )
 
 
-def _openai_price_table() -> dict[str, dict[str, Decimal]]:
-    db_rows = list(OpenAIModelPricing.objects.all())
-    if db_rows:
-        return {
-            row.model_name: {"input": Decimal(row.input_usd_per_1m), "output": Decimal(row.output_usd_per_1m)}
-            for row in db_rows
-        }
+def _settings_openai_price_table() -> dict[str, dict[str, Decimal]]:
     raw = getattr(settings, "OPENAI_TOKEN_PRICING_USD_PER_1M", {})
     table: dict[str, dict[str, Decimal]] = {}
     for model_name, prices in raw.items():
@@ -85,6 +79,14 @@ def _openai_price_table() -> dict[str, dict[str, Decimal]]:
             "input": Decimal(str((prices or {}).get("input", "0"))),
             "output": Decimal(str((prices or {}).get("output", "0"))),
         }
+    return table
+
+
+def _openai_price_table() -> dict[str, dict[str, Decimal]]:
+    table = _settings_openai_price_table()
+    db_rows = list(OpenAIModelPricing.objects.all())
+    for row in db_rows:
+        table[row.model_name] = {"input": Decimal(row.input_usd_per_1m), "output": Decimal(row.output_usd_per_1m)}
     return table
 
 
