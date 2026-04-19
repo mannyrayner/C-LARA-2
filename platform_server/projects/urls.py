@@ -11,6 +11,19 @@ urlpatterns = [
     path("", views.ProjectListView.as_view(), name="project-list"),
     path("content/", views.content_list, name="content-list"),
     path("content/<int:pk>/", views.content_detail, name="content-detail"),
+    path("communities/", views.community_home, name="community-home"),
+    path("communities/<int:community_id>/member/", views.community_member_home, name="community-member-home"),
+    path(
+        "communities/<int:community_id>/member/projects/<int:project_id>/judge/",
+        views.community_member_judge_project,
+        name="community-member-judge-project",
+    ),
+    path("communities/<int:community_id>/organiser/", views.community_organiser_home, name="community-organiser-home"),
+    path(
+        "communities/<int:community_id>/organiser/projects/<int:project_id>/review/",
+        views.community_organiser_review_project,
+        name="community-organiser-review-project",
+    ),
     path("projects/new/", views.ProjectCreateView.as_view(), name="project-create"),
     path("projects/<int:pk>/", views.ProjectDetailView.as_view(), name="project-detail"),
     path("projects/<int:pk>/annotation/", views.ProjectAnnotationView.as_view(), name="project-annotation-home"),
@@ -73,6 +86,7 @@ urlpatterns = [
     path("exercise-sets/<int:set_id>/publish/", views.publish_exercise_set, name="exercise-set-publish"),
     path("content/<int:pk>/exercises/", views.published_exercises_for_project, name="content-exercises"),
     path("projects/<int:pk>/collaborators/", views.set_project_collaborator, name="project-collaborators"),
+    path("projects/<int:pk>/community/", views.set_project_community, name="project-community"),
     path("projects/<int:pk>/compile/", views.compile_project, name="project-compile"),
     path(
         "projects/<int:pk>/compile/monitor/<uuid:report_id>/",

@@ -28,7 +28,6 @@
 {% endif %}
 
 {% if has_segmentation_phase_2 %}
-  <p><a class="btn secondary" href="{% url 'manual-page-annotation' project.pk %}">Page-oriented manual annotation (first cut)</a></p>
   <p><a class="btn secondary" href="{% url 'manual-translation' project.pk %}">Manual translation</a></p>
   {% with s=manual_stage_status.translation %}
     {% if s.exists %}

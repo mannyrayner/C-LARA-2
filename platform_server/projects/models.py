@@ -10,6 +10,15 @@ import uuid
 
 
 class Project(models.Model):
+    ACCESS_PUBLIC = "public"
+    ACCESS_PRIVATE = "private"
+    ACCESS_COMMUNITY = "community"
+    ACCESS_CHOICES = [
+        (ACCESS_PUBLIC, "Public"),
+        (ACCESS_PRIVATE, "Private (owner/collaborators)"),
+        (ACCESS_COMMUNITY, "Community members only"),
+    ]
+
     INPUT_DESCRIPTION = "description"
     INPUT_SOURCE = "source_text"
     INPUT_CHOICES = [
@@ -45,6 +54,14 @@ class Project(models.Model):
     is_published = models.BooleanField(default=False)
     published_at = models.DateTimeField(null=True, blank=True)
     access_count = models.PositiveIntegerField(default=0)
+    access_scope = models.CharField(max_length=16, choices=ACCESS_CHOICES, default=ACCESS_PUBLIC)
+    community = models.ForeignKey(
+        "Community",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="projects",
+    )
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     total_cost_usd = models.DecimalField(max_digits=12, decimal_places=4, default=Decimal("0.0000"))
@@ -297,6 +314,13 @@ class ProjectImagePage(models.Model):
     generation_prompt = models.TextField(blank=True)
     image_model = models.CharField(max_length=64, default="gpt-image-1")
     image_path = models.CharField(max_length=512, blank=True)
+    preferred_variant = models.ForeignKey(
+        "ProjectImagePageVariant",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
     image_revised_prompt = models.TextField(blank=True)
     status = models.CharField(
         max_length=32, choices=STATUS_CHOICES, default=STATUS_DRAFT
@@ -310,6 +334,36 @@ class ProjectImagePage(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - display helper
         return f"{self.project.title}: page {self.page_number}"
+
+
+class ProjectImagePageVariant(models.Model):
+    """Generated image variants for a page plus selection state in parent row."""
+
+    STATUS_DRAFT = "draft"
+    STATUS_GENERATED = "generated"
+    STATUS_APPROVED = "approved"
+    STATUS_CHOICES = [
+        (STATUS_DRAFT, "Draft"),
+        (STATUS_GENERATED, "Generated"),
+        (STATUS_APPROVED, "Approved"),
+    ]
+
+    page = models.ForeignKey(ProjectImagePage, on_delete=models.CASCADE, related_name="variants")
+    variant_index = models.PositiveIntegerField()
+    image_model = models.CharField(max_length=64, default="gpt-image-1")
+    image_path = models.CharField(max_length=512, blank=True)
+    generation_prompt = models.TextField(blank=True)
+    image_revised_prompt = models.TextField(blank=True)
+    status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=STATUS_DRAFT)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["page_id", "variant_index", "id"]
+        unique_together = ("page", "variant_index")
+
+    def __str__(self) -> str:  # pragma: no cover - display helper
+        return f"{self.page.project.title}: page {self.page.page_number} variant {self.variant_index}"
 
 
 class ProjectCollaborator(models.Model):
@@ -331,6 +385,81 @@ class ProjectCollaborator(models.Model):
     class Meta:
         unique_together = ("project", "user")
         ordering = ["project_id", "user_id"]
+
+
+class Community(models.Model):
+    name = models.CharField(max_length=200, unique=True)
+    language = models.CharField(max_length=16, blank=True, default="")
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name", "id"]
+
+    def __str__(self) -> str:  # pragma: no cover - display helper
+        if self.language:
+            return f"{self.name} ({self.language})"
+        return self.name
+
+
+class CommunityMembership(models.Model):
+    ROLE_ORGANISER = "organiser"
+    ROLE_MEMBER = "member"
+    ROLE_CHOICES = [
+        (ROLE_ORGANISER, "Organiser"),
+        (ROLE_MEMBER, "Member"),
+    ]
+
+    community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name="memberships")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="community_memberships")
+    role = models.CharField(max_length=16, choices=ROLE_CHOICES, default=ROLE_MEMBER)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("community", "user")
+        ordering = ["community_id", "user_id"]
+
+
+class CommunityImageVote(models.Model):
+    VALUE_UP = "up"
+    VALUE_DOWN = "down"
+    VALUE_CHOICES = [
+        (VALUE_UP, "Thumbs up"),
+        (VALUE_DOWN, "Thumbs down"),
+    ]
+
+    community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name="image_votes")
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="community_image_votes")
+    page = models.ForeignKey(ProjectImagePage, on_delete=models.CASCADE, related_name="community_image_votes")
+    variant = models.ForeignKey(ProjectImagePageVariant, on_delete=models.CASCADE, related_name="community_image_votes")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="community_image_votes")
+    value = models.CharField(max_length=8, choices=VALUE_CHOICES)
+    note = models.TextField(blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("user", "variant")
+        ordering = ["-updated_at", "-id"]
+
+
+class CommunityOrganiserReview(models.Model):
+    community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name="organiser_reviews")
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="community_organiser_reviews")
+    organiser = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="community_organiser_reviews",
+    )
+    note = models.TextField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("community", "project", "organiser")
+        ordering = ["-updated_at", "-id"]
 
 
 class ContentComment(models.Model):
