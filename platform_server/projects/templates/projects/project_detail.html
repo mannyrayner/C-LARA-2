@@ -4,6 +4,7 @@
 <h1>{{ object.title }}</h1>
 <p>{{ object.description }}</p>
 <p>Language: {{ object.language }} → {{ object.target_language }}</p>
+<p>Access: {{ object.get_access_scope_display }}{% if object.community %} ({{ object.community.name }}){% endif %}</p>
 <p>Direction: {{ project_text_direction }} (text) / {{ project_annotation_direction }} (annotation)</p>
 <div style="border: 1px solid #ddd; padding: 0.75rem; margin: 0.75rem 0; background: #fafafa;">
   <strong>Project cost (USD): ${{ project_total_cost_usd|floatformat:4 }}</strong>
@@ -50,6 +51,29 @@
 {% endif %}
 
 {% if current_user_role == "owner" %}
+  <h3>Community assignment</h3>
+  {% if object.community %}
+    <p>Assigned community: <strong>{{ object.community.name }}</strong></p>
+    <form method="post" action="{% url 'project-community' object.pk %}">{% csrf_token %}
+      <input type="hidden" name="action" value="clear" />
+      <button class="btn secondary" type="submit">Remove from community</button>
+    </form>
+  {% elif can_assign_project_community %}
+    <form method="post" action="{% url 'project-community' object.pk %}">{% csrf_token %}
+      <p>
+        <label for="community_id">Assign to community:</label>
+        <select id="community_id" name="community_id">
+          {% for c in eligible_project_communities %}
+            <option value="{{ c.id }}">{{ c.name }} ({{ c.language }})</option>
+          {% endfor %}
+        </select>
+        <button class="btn secondary" type="submit">Assign</button>
+      </p>
+    </form>
+  {% else %}
+    <p><small>No eligible communities (must match language and you must be an organiser).</small></p>
+  {% endif %}
+
   <h3>Collaborators</h3>
   {% if collaborators %}
     <ul>

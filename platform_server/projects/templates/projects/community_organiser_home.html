@@ -1,0 +1,20 @@
+{% extends "projects/base.html" %}
+{% block title %}Community organiser · {{ community.name }}{% endblock %}
+{% block content %}
+<h1>{{ community.name }} · organiser page</h1>
+<p><a class="btn secondary" href="{% url 'community-member-home' community.id %}">Member page</a></p>
+<ul>
+  {% for row in summary_rows %}
+    <li>
+      <a href="{% url 'community-organiser-review-project' community.id row.project.id %}">{{ row.project.title }}</a>
+      {% if row.review %}
+        — reviewed at {{ row.review.updated_at }}{% if row.up_to_date %} (up to date){% else %} (new votes pending){% endif %}
+      {% else %}
+        — not reviewed yet
+      {% endif %}
+    </li>
+  {% empty %}
+    <li>No projects assigned to this community.</li>
+  {% endfor %}
+</ul>
+{% endblock %}

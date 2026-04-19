@@ -10,6 +10,7 @@
 </p>
 
 <p><a href="{% url 'project-detail' project.pk %}">← Back to project</a></p>
+<p><a href="{% url 'project-images-home' project.pk %}">← Back to images home</a></p>
 <p><a class="btn secondary" href="{% url 'project-image-elements' project.pk %}">Go to Elements step</a></p>
 {% if status_notice == "done" %}
   <p><strong>Request completed.</strong> Check the messages above for details.</p>

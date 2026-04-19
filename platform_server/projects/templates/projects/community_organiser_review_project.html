@@ -1,0 +1,67 @@
+{% extends "projects/base.html" %}
+{% block title %}Review images · {{ project.title }}{% endblock %}
+{% block content %}
+<h1>Review image judgements: {{ project.title }}</h1>
+<p><a class="btn secondary" href="{% url 'community-organiser-home' community.id %}">← Back to organiser page</a></p>
+
+<h3>Vote summary</h3>
+{% for row in vote_rows %}
+  <section style="border:1px solid #ddd; margin:0.6rem 0; padding:0.6rem;">
+    <p><strong>Page {{ row.page.page_number }}, variant {{ row.variant.variant_index }}</strong> — 👍 {{ row.up }} / 👎 {{ row.down }}</p>
+    <p><img src="{% url 'project-compiled' project.id row.variant.image_path %}" style="max-width:300px;height:auto;" /></p>
+    <p><small>Prompt:</small></p>
+    <pre>{{ row.variant.generation_prompt }}</pre>
+    {% if row.votes %}
+      <ul>
+      {% for vote in row.votes %}
+        <li>{{ vote.user.username }}: {{ vote.value }} {% if vote.note %}— {{ vote.note }}{% endif %}</li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+  </section>
+{% endfor %}
+
+<h3>Request new variants</h3>
+<form method="post" id="generate-requested-form">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="generate_requested" />
+  <p>
+    <label for="image_model">Image model:</label>
+    <select name="image_model" id="image_model">
+      {% for model in image_models %}
+        <option value="{{ model }}">{{ model }}</option>
+      {% endfor %}
+    </select>
+  </p>
+  {% for page in pages %}
+    <div style="border-top:1px dashed #ddd; margin-top:0.5rem; padding-top:0.5rem;">
+      <strong>Page {{ page.page_number }}</strong>
+      <p>New variants: <input type="number" min="0" max="8" name="request_count_{{ page.id }}" value="0" /></p>
+      <p><input type="text" name="request_prompt_{{ page.id }}" placeholder="Prompt update request (optional)" style="width:100%;" /></p>
+    </div>
+  {% endfor %}
+  <button class="btn" type="submit" id="generate-requested-submit">Generate requested variants</button>
+  <p id="generate-requested-status" style="display:none; margin-top:0.5rem;"><em>Submitting generation request…</em></p>
+</form>
+
+<h3>Mark review complete</h3>
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="mark_reviewed" />
+  <p><input type="text" name="review_note" value="{% if review %}{{ review.note }}{% endif %}" placeholder="Optional review note" style="width:100%;" /></p>
+  <button class="btn secondary" type="submit">Mark reviewed</button>
+</form>
+<script>
+  (function () {
+    const form = document.getElementById("generate-requested-form");
+    const button = document.getElementById("generate-requested-submit");
+    const status = document.getElementById("generate-requested-status");
+    if (!form || !button || !status) return;
+    form.addEventListener("submit", function () {
+      button.disabled = true;
+      button.textContent = "Generating…";
+      status.style.display = "block";
+    });
+  })();
+</script>
+{% endblock %}
