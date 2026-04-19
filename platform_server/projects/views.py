@@ -4738,6 +4738,10 @@ def _billing_usage_reporter(*, user_id: int, project_id: int | None, request_typ
         prompt_tokens = max(0, int(payload.get("prompt_tokens") or 0))
         completion_tokens = max(0, int(payload.get("completion_tokens") or 0))
         total_tokens = max(0, int(payload.get("total_tokens") or 0))
+        used_total_tokens_as_completion = False
+        if operation == "image_generate" and completion_tokens == 0 and total_tokens > 0:
+            completion_tokens = total_tokens
+            used_total_tokens_as_completion = True
         # Image API responses often do not expose token usage. We treat one image call as one output-unit.
         fallback_applied = operation == "image_generate" and prompt_tokens == 0 and completion_tokens == 0 and total_tokens == 0
         if fallback_applied:
@@ -4772,6 +4776,7 @@ def _billing_usage_reporter(*, user_id: int, project_id: int | None, request_typ
                         "completion_tokens": completion_tokens,
                         "total_tokens": total_tokens,
                         "fallback_applied": fallback_applied,
+                        "used_total_tokens_as_completion": used_total_tokens_as_completion,
                         "price_input_usd_per_1m": str(pricing["input"]),
                         "price_output_usd_per_1m": str(pricing["output"]),
                         "usage_charge_id": usage.id if usage else None,

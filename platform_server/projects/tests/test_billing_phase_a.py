@@ -153,6 +153,52 @@ class BillingPhaseATests(TestCase):
         cost = estimate_openai_token_cost_usd("gpt-image-1", prompt_tokens=0, completion_tokens=1000)
         self.assertEqual(str(cost), "0.015000")
 
+    def test_image_usage_reporter_uses_total_tokens_when_completion_tokens_missing(self):
+        self.client.login(username="billing_admin", password="pw")
+        self.client.post(
+            reverse("admin-tools"),
+            {
+                "action": "adjust_credits",
+                "user": self.user.pk,
+                "amount_usd": "10.0000",
+                "reason": "Funding for image total-token test",
+            },
+            follow=True,
+        )
+        OpenAIModelPricing.objects.update_or_create(
+            model_name="gpt-image-1",
+            defaults={
+                "input_usd_per_1m": "0.000000",
+                "output_usd_per_1m": "2.500000",
+                "status": OpenAIModelPricing.STATUS_HUMAN_REVISED,
+            },
+        )
+        reporter = views._billing_usage_reporter(
+            user_id=self.user.id,
+            project_id=self.project.id,
+            request_type="image_elements_generate_image",
+        )
+        reporter(
+            {
+                "model": "gpt-image-1",
+                "operation": "image_generate",
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "total_tokens": 1247,
+            }
+        )
+
+        usage = AIUsageCharge.objects.filter(project=self.project).latest("created_at")
+        self.assertGreater(usage.cost_usd, 0)
+        self.assertLess(get_user_balance_usd(self.user), 10)
+        billing_telemetry_path = self.project.artifact_dir() / "images" / "billing_telemetry.jsonl"
+        entries = [
+            json.loads(line)
+            for line in billing_telemetry_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        self.assertTrue(entries[-1].get("used_total_tokens_as_completion"))
+
     def test_admin_can_save_human_reviewed_openai_pricing_row(self):
         self.client.login(username="billing_admin", password="pw")
         resp = self.client.post(
