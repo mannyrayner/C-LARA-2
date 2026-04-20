@@ -5884,29 +5884,6 @@ def content_list(request: HttpRequest) -> HttpResponse:
         annotation_language = manual_annotation_language
         date_posted = manual_date_posted
 
-    nl_query = (request.GET.get("nl_query") or "").strip()
-    dialogue_language = (request.GET.get("dialogue_language") or "").strip()
-    if not dialogue_language:
-        try:
-            dialogue_language = request.user.profile.dialogue_language or "en"
-        except Exception:
-            dialogue_language = "en"
-
-    nl_plan: dict[str, Any] = {}
-    if nl_query:
-        nl_plan = _parse_nl_content_request(nl_query=nl_query, dialogue_language=dialogue_language)
-
-    if not title:
-        title = str(nl_plan.get("title") or "").strip()
-    if not text_language:
-        text_language = _normalize_language_filter(str(nl_plan.get("text_language") or ""))
-    if not annotation_language:
-        annotation_language = _normalize_language_filter(str(nl_plan.get("annotation_language") or ""))
-    if date_posted == "any":
-        nl_date = str(nl_plan.get("date_posted") or "").strip()
-        if nl_date in CONTENT_DATE_FILTERS:
-            date_posted = nl_date
-
     qs = _published_projects_visible_to_user(request.user)
     if title:
         qs = qs.filter(title__icontains=title)
@@ -5938,12 +5915,13 @@ def content_list(request: HttpRequest) -> HttpResponse:
                     project.title or "",
                     project.discovery_summary or "",
                     " ".join(project.discovery_keywords or []),
+                    " ".join(project.discovery_keywords_en or []),
                 ]
             ).lower()
             for kw in requested_keywords:
                 if kw and kw in searchable:
                     score += 2
-                    reasons.append(f"Keyword '{kw}' matched metadata.")
+                    reasons.append(f"Keyword '{kw}' matched metadata keywords.")
             if requested_level and requested_level in (project.discovery_level or "").lower():
                 score += 3
                 reasons.append(f"Level matched ({project.discovery_level}).")
@@ -6383,29 +6361,6 @@ def content_list(request: HttpRequest) -> HttpResponse:
         annotation_language = manual_annotation_language
         date_posted = manual_date_posted
 
-    nl_query = (request.GET.get("nl_query") or "").strip()
-    dialogue_language = (request.GET.get("dialogue_language") or "").strip()
-    if not dialogue_language:
-        try:
-            dialogue_language = request.user.profile.dialogue_language or "en"
-        except Exception:
-            dialogue_language = "en"
-
-    nl_plan: dict[str, Any] = {}
-    if nl_query:
-        nl_plan = _parse_nl_content_request(nl_query=nl_query, dialogue_language=dialogue_language)
-
-    if not title:
-        title = str(nl_plan.get("title") or "").strip()
-    if not text_language:
-        text_language = _normalize_language_filter(str(nl_plan.get("text_language") or ""))
-    if not annotation_language:
-        annotation_language = _normalize_language_filter(str(nl_plan.get("annotation_language") or ""))
-    if date_posted == "any":
-        nl_date = str(nl_plan.get("date_posted") or "").strip()
-        if nl_date in CONTENT_DATE_FILTERS:
-            date_posted = nl_date
-
     qs = _published_projects_visible_to_user(request.user)
     if title:
         qs = qs.filter(title__icontains=title)
@@ -6437,12 +6392,13 @@ def content_list(request: HttpRequest) -> HttpResponse:
                     project.title or "",
                     project.discovery_summary or "",
                     " ".join(project.discovery_keywords or []),
+                    " ".join(project.discovery_keywords_en or []),
                 ]
             ).lower()
             for kw in requested_keywords:
                 if kw and kw in searchable:
                     score += 2
-                    reasons.append(f"Keyword '{kw}' matched metadata.")
+                    reasons.append(f"Keyword '{kw}' matched metadata keywords.")
             if requested_level and requested_level in (project.discovery_level or "").lower():
                 score += 3
                 reasons.append(f"Level matched ({project.discovery_level}).")
@@ -6571,7 +6527,7 @@ def set_project_discovery_metadata(request: HttpRequest, pk: int) -> HttpRespons
     if form.is_valid():
         updated = form.save(commit=False)
         updated.discovery_metadata_updated_at = django_timezone.now()
-        updated.save(update_fields=["discovery_summary", "discovery_keywords", "discovery_level", "discovery_word_count", "discovery_metadata_updated_at", "updated_at"])
+        updated.save(update_fields=["discovery_summary", "discovery_keywords", "discovery_keywords_en", "discovery_level", "discovery_word_count", "discovery_metadata_updated_at", "updated_at"])
         messages.success(request, "Saved discovery metadata.")
     else:
         messages.error(request, "Could not save discovery metadata. Please review the fields.")

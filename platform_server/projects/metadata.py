@@ -159,6 +159,31 @@ def _generate_keywords_with_ai(project: Project, text: str, title: str) -> list[
     return []
 
 
+def _translate_keywords_to_english_with_ai(project: Project, keywords: list[str]) -> list[str]:
+    if not keywords:
+        return []
+    if not (getattr(settings, "OPENAI_API_KEY", "") or os.environ.get("OPENAI_API_KEY")):
+        return []
+    prompt = (
+        "Translate the following discovery keywords into concise English equivalents. "
+        "Return JSON as an array of strings only, preserving keyword order.\n\n"
+        f"Keywords: {keywords}"
+    )
+    try:
+        response = _run_billed_chat_text(
+            project=project,
+            prompt=prompt,
+            request_type="discovery_keywords_translate_en",
+            temperature=0.0,
+        )
+        parsed = _parse_keywords_response((response or "").strip())
+        if parsed:
+            return parsed[: len(keywords)]
+    except Exception:
+        logger.exception("AI keyword translation failed; falling back to source keywords")
+    return []
+
+
 def _parse_keywords_response(response: str) -> list[str]:
     text = (response or "").strip()
     if not text:
@@ -220,20 +245,32 @@ def build_project_discovery_metadata(project: Project) -> dict[str, Any]:
     words = _tokenize_words(text_for_analysis)
     summary = _generate_summary_with_ai(project, text_for_analysis, project.title) or _fallback_summary(text_for_analysis, project.title)
     keywords = _generate_keywords_with_ai(project, text_for_analysis, project.title) or _extract_keywords(text_for_analysis or project.title)
+    if (project.language or "").lower().startswith("en"):
+        keywords_en = list(keywords)
+    else:
+        keywords_en = _translate_keywords_to_english_with_ai(project, keywords) or list(keywords)
     return {
         "discovery_summary": summary,
         "discovery_keywords": keywords,
+        "discovery_keywords_en": keywords_en,
         "discovery_level": _estimate_level_from_text(text_for_analysis),
         "discovery_word_count": len(words),
     }
 
 
 def update_project_discovery_metadata(project: Project, *, force: bool = False) -> bool:
-    if not force and project.discovery_summary and project.discovery_keywords and project.discovery_word_count > 0:
+    if (
+        not force
+        and project.discovery_summary
+        and project.discovery_keywords
+        and project.discovery_keywords_en
+        and project.discovery_word_count > 0
+    ):
         return False
     payload = build_project_discovery_metadata(project)
     project.discovery_summary = payload["discovery_summary"]
     project.discovery_keywords = payload["discovery_keywords"]
+    project.discovery_keywords_en = payload.get("discovery_keywords_en") or []
     project.discovery_level = payload["discovery_level"]
     project.discovery_word_count = payload["discovery_word_count"]
     project.discovery_metadata_updated_at = timezone.now()
@@ -241,6 +278,7 @@ def update_project_discovery_metadata(project: Project, *, force: bool = False) 
         update_fields=[
             "discovery_summary",
             "discovery_keywords",
+            "discovery_keywords_en",
             "discovery_level",
             "discovery_word_count",
             "discovery_metadata_updated_at",

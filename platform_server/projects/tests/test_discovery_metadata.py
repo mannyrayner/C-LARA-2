@@ -50,6 +50,7 @@ class DiscoveryMetadataTests(TestCase):
         self.project.refresh_from_db()
         self.assertEqual(self.project.discovery_summary, "Manual summary")
         self.assertEqual(self.project.discovery_keywords, ["dialogue", "beginner", "story"])
+        self.assertEqual(self.project.discovery_keywords_en, [])
         self.assertEqual(self.project.discovery_level, "A1-A2")
         self.assertEqual(self.project.discovery_word_count, 42)
 
@@ -58,6 +59,7 @@ class DiscoveryMetadataTests(TestCase):
         self.project.published_at = self.project.created_at
         self.project.discovery_summary = ""
         self.project.discovery_keywords = []
+        self.project.discovery_keywords_en = []
         self.project.discovery_level = ""
         self.project.discovery_word_count = 0
         self.project.save(
@@ -66,6 +68,7 @@ class DiscoveryMetadataTests(TestCase):
                 "published_at",
                 "discovery_summary",
                 "discovery_keywords",
+                "discovery_keywords_en",
                 "discovery_level",
                 "discovery_word_count",
                 "updated_at",
@@ -76,6 +79,7 @@ class DiscoveryMetadataTests(TestCase):
         self.project.refresh_from_db()
         self.assertTrue(self.project.discovery_summary)
         self.assertTrue(self.project.discovery_keywords)
+        self.assertTrue(self.project.discovery_keywords_en)
         self.assertGreater(self.project.discovery_word_count, 0)
 
     def test_metadata_prefers_latest_text_gen_surface_over_initial_description(self):
@@ -97,14 +101,17 @@ class DiscoveryMetadataTests(TestCase):
         self.assertIn("village", [kw.lower() for kw in self.project.discovery_keywords])
 
     @patch("projects.metadata._generate_keywords_with_ai")
+    @patch("projects.metadata._translate_keywords_to_english_with_ai")
     @patch("projects.metadata._generate_summary_with_ai")
-    def test_publish_uses_ai_summary_and_keywords_when_available(self, mock_ai_summary, mock_ai_keywords):
+    def test_publish_uses_ai_summary_and_keywords_when_available(self, mock_ai_summary, mock_ai_translate, mock_ai_keywords):
         mock_ai_summary.return_value = "A concise AI summary with punctuation."
         mock_ai_keywords.return_value = ["milo", "forest", "mink"]
+        mock_ai_translate.return_value = []
         self.client.get(reverse("project-publish", args=[self.project.pk]), follow=True)
         self.project.refresh_from_db()
         self.assertEqual(self.project.discovery_summary, "A concise AI summary with punctuation.")
         self.assertEqual(self.project.discovery_keywords, ["milo", "forest", "mink"])
+        self.assertEqual(self.project.discovery_keywords_en, ["milo", "forest", "mink"])
         self.assertTrue(mock_ai_summary.called)
         self.assertTrue(mock_ai_keywords.called)
 
@@ -143,3 +150,17 @@ class DiscoveryMetadataTests(TestCase):
         response = "milo, forest, safe, clever mink"
         parsed = metadata._parse_keywords_response(response)
         self.assertEqual(parsed, ["milo", "forest", "safe", "clever mink"])
+
+    @patch("projects.metadata._generate_keywords_with_ai")
+    @patch("projects.metadata._translate_keywords_to_english_with_ai")
+    @patch("projects.metadata._generate_summary_with_ai")
+    def test_non_english_project_stores_english_keyword_translations(self, mock_ai_summary, mock_ai_translate, mock_ai_keywords):
+        self.project.language = "fr"
+        self.project.save(update_fields=["language", "updated_at"])
+        mock_ai_summary.return_value = "Résumé."
+        mock_ai_keywords.return_value = ["éléphant", "funambule", "cirque"]
+        mock_ai_translate.return_value = ["elephant", "tightrope walker", "circus"]
+        self.client.get(reverse("project-publish", args=[self.project.pk]), follow=True)
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.discovery_keywords, ["éléphant", "funambule", "cirque"])
+        self.assertEqual(self.project.discovery_keywords_en, ["elephant", "tightrope walker", "circus"])

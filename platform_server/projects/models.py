@@ -55,6 +55,7 @@ class Project(models.Model):
     published_at = models.DateTimeField(null=True, blank=True)
     discovery_summary = models.TextField(blank=True, default="")
     discovery_keywords = models.JSONField(default=list, blank=True)
+    discovery_keywords_en = models.JSONField(default=list, blank=True)
     discovery_level = models.CharField(max_length=16, blank=True, default="")
     discovery_word_count = models.PositiveIntegerField(default=0)
     discovery_metadata_updated_at = models.DateTimeField(null=True, blank=True)

@@ -24,6 +24,7 @@ class ContentNaturalLanguageTests(TestCase):
             published_at=timezone.now(),
             discovery_summary="A short adventure in a village market.",
             discovery_keywords=["village", "adventure", "market"],
+            discovery_keywords_en=["village", "adventure", "market"],
             discovery_level="B1-B2",
         )
         self.other = Project.objects.create(
@@ -36,6 +37,7 @@ class ContentNaturalLanguageTests(TestCase):
             published_at=timezone.now(),
             discovery_summary="Shopping in a supermarket.",
             discovery_keywords=["supermarket", "shopping"],
+            discovery_keywords_en=["supermarket", "shopping"],
             discovery_level="A2",
         )
 
@@ -57,8 +59,29 @@ class ContentNaturalLanguageTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Village Adventure")
         self.assertNotContains(resp, "Sarah im Supermarkt")
-        self.assertContains(resp, "Keyword &#x27;village&#x27; matched metadata.")
+        self.assertContains(resp, "Keyword &#x27;village&#x27; matched metadata keywords.")
         self.assertContains(resp, "Level matched (B1-B2).")
+
+    @patch("projects.views._parse_nl_content_request")
+    def test_content_list_matches_against_english_keywords_for_cross_lingual_search(self, mock_parse):
+        self.project.discovery_keywords = ["éléphant", "funambule"]
+        self.project.discovery_keywords_en = ["elephant", "tightrope walker"]
+        self.project.save(update_fields=["discovery_keywords", "discovery_keywords_en", "updated_at"])
+        mock_parse.return_value = {
+            "title": "",
+            "text_language": "",
+            "annotation_language": "",
+            "date_posted": "any",
+            "level": "",
+            "keywords": ["elephant"],
+            "max_results": 5,
+        }
+        resp = self.client.get(
+            reverse("content-list"),
+            {"nl_query": "I am looking for an elephant story", "dialogue_language": "en"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Village Adventure")
 
     def test_content_list_renders_language_dropdowns(self):
         resp = self.client.get(reverse("content-list"))
