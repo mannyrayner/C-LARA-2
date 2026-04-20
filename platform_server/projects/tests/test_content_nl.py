@@ -68,7 +68,7 @@ class ContentNaturalLanguageTests(TestCase):
         self.project.discovery_keywords_en = ["elephant", "tightrope walker"]
         self.project.save(update_fields=["discovery_keywords", "discovery_keywords_en", "updated_at"])
         mock_parse.return_value = {
-            "title": "",
+            "title": "story",
             "text_language": "",
             "annotation_language": "",
             "date_posted": "any",
@@ -82,6 +82,7 @@ class ContentNaturalLanguageTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Village Adventure")
+        self.assertContains(resp, "Keyword &#x27;elephant&#x27; matched metadata keywords.")
 
     def test_content_list_renders_language_dropdowns(self):
         resp = self.client.get(reverse("content-list"))

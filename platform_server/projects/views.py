@@ -5885,8 +5885,9 @@ def content_list(request: HttpRequest) -> HttpResponse:
         date_posted = manual_date_posted
 
     qs = _published_projects_visible_to_user(request.user)
-    if title:
-        qs = qs.filter(title__icontains=title)
+    title_hard_filter = manual_title if nl_query else title
+    if title_hard_filter:
+        qs = qs.filter(title__icontains=title_hard_filter)
     if text_language:
         qs = qs.filter(language__iexact=text_language)
     if annotation_language:
@@ -6362,8 +6363,9 @@ def content_list(request: HttpRequest) -> HttpResponse:
         date_posted = manual_date_posted
 
     qs = _published_projects_visible_to_user(request.user)
-    if title:
-        qs = qs.filter(title__icontains=title)
+    title_hard_filter = manual_title if nl_query else title
+    if title_hard_filter:
+        qs = qs.filter(title__icontains=title_hard_filter)
     if text_language:
         qs = qs.filter(language__iexact=text_language)
     if annotation_language:
