@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.test import Client, TestCase
 from django.urls import reverse
+from unittest.mock import patch
 
 from projects.models import Project
 
@@ -91,3 +92,18 @@ class DiscoveryMetadataTests(TestCase):
         # Prompt-only terms from description should not dominate when generated surface exists.
         self.assertNotIn("mountain", [kw.lower() for kw in self.project.discovery_keywords])
         self.assertIn("village", [kw.lower() for kw in self.project.discovery_keywords])
+
+    @patch("projects.metadata._generate_summary_with_ai")
+    def test_publish_uses_ai_summary_when_available(self, mock_ai_summary):
+        mock_ai_summary.return_value = "A concise AI summary with punctuation."
+        self.client.get(reverse("project-publish", args=[self.project.pk]), follow=True)
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.discovery_summary, "A concise AI summary with punctuation.")
+        self.assertTrue(mock_ai_summary.called)
+
+    def test_project_detail_renders_keywords_as_comma_separated_text(self):
+        self.project.discovery_keywords = ["milo", "forest", "safe"]
+        self.project.save(update_fields=["discovery_keywords", "updated_at"])
+        resp = self.client.get(reverse("project-detail", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'value="milo, forest, safe"')

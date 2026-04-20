@@ -44,7 +44,29 @@
   {% if current_user_role == "owner" and discovery_metadata_form %}
     <form method="post" action="{% url 'project-discovery-metadata' object.pk %}">
       {% csrf_token %}
-      {{ discovery_metadata_form.as_p }}
+      <p>
+        <label for="id_discovery_summary">Discovery summary:</label><br />
+        <textarea id="id_discovery_summary" name="discovery_summary" rows="3" style="width:100%;">{{ object.discovery_summary }}</textarea>
+      </p>
+      <p>
+        <label for="id_discovery_keywords">Discovery keywords:</label><br />
+        <input
+          id="id_discovery_keywords"
+          name="discovery_keywords"
+          type="text"
+          value="{% if object.discovery_keywords %}{{ object.discovery_keywords|join:', ' }}{% endif %}"
+          style="width:100%;"
+        />
+        <small>Comma-separated keywords</small>
+      </p>
+      <p>
+        <label for="id_discovery_level">Estimated level:</label><br />
+        <input id="id_discovery_level" name="discovery_level" type="text" value="{{ object.discovery_level }}" />
+      </p>
+      <p>
+        <label for="id_discovery_word_count">Length (words):</label><br />
+        <input id="id_discovery_word_count" name="discovery_word_count" type="number" min="0" value="{{ object.discovery_word_count }}" />
+      </p>
       <button class="btn secondary" type="submit" name="action" value="save">Save metadata</button>
       <button class="btn secondary" type="submit" name="action" value="regenerate">Regenerate metadata</button>
     </form>

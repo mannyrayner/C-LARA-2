@@ -1,15 +1,21 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from django.conf import settings
 from django.utils import timezone
+
+from core.ai_api import OpenAIClient
+from core.config import DEFAULT_MODEL, OpenAIConfig
 
 from .models import Project
 
+logger = logging.getLogger(__name__)
 
 _STOPWORDS = {
     "a",
@@ -62,6 +68,36 @@ def _extract_keywords(text: str, *, max_keywords: int = 8) -> list[str]:
     return [word for word, _count in counts.most_common(max_keywords)]
 
 
+def _fallback_summary(text: str, title: str) -> str:
+    sentences = [chunk.strip() for chunk in re.split(r"(?<=[.!?])\s+", text or "") if chunk.strip()]
+    if not sentences:
+        return title
+    summary = " ".join(sentences[:2]).strip()
+    return summary[:400]
+
+
+def _generate_summary_with_ai(text: str, title: str) -> str:
+    api_key = getattr(settings, "OPENAI_API_KEY", None) or ""
+    if not api_key:
+        return ""
+    prompt = (
+        "Write a short discovery summary (max 45 words) for this learner text. "
+        "Keep punctuation and proper names. Return plain text only.\n\n"
+        f"Title: {title}\n\nText:\n{text[:6000]}"
+    )
+    try:
+        client = OpenAIClient(
+            config=OpenAIConfig(
+                model=DEFAULT_MODEL,
+            )
+        )
+        response = client.generate_text(prompt, model=DEFAULT_MODEL, temperature=0.2)
+        return (response or "").strip()[:400]
+    except Exception:
+        logger.exception("AI summary generation failed; falling back to heuristic summary")
+        return ""
+
+
 def _latest_text_gen_surface(project: Project) -> str:
     runs_root = project.artifact_dir() / "runs"
     if not runs_root.exists():
@@ -91,12 +127,7 @@ def build_project_discovery_metadata(project: Project) -> dict[str, Any]:
     description = (project.description or "").strip()
     text_for_analysis = source or description
     words = _tokenize_words(text_for_analysis)
-    summary_source_words = words or _tokenize_words(project.title)
-    summary = " ".join(summary_source_words[:48]).strip()
-    if len(summary_source_words) > 48:
-        summary += "…"
-    if not summary:
-        summary = project.title
+    summary = _generate_summary_with_ai(text_for_analysis, project.title) or _fallback_summary(text_for_analysis, project.title)
     return {
         "discovery_summary": summary,
         "discovery_keywords": _extract_keywords(text_for_analysis or project.title),
