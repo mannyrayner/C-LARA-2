@@ -107,14 +107,38 @@ class ProjectForm(forms.ModelForm):
 
 
 TIMEZONE_CHOICES = [(tz, tz) for tz in sorted(available_timezones())]
+LANGUAGE_CHOICES = ProjectForm.LANGUAGE_CHOICES
 
 
 class ProfileForm(forms.ModelForm):
     timezone = forms.ChoiceField(choices=TIMEZONE_CHOICES)
+    dialogue_language = forms.ChoiceField(choices=LANGUAGE_CHOICES, label="Dialogue language")
 
     class Meta:
         model = Profile
-        fields = ["timezone"]
+        fields = ["timezone", "dialogue_language"]
+
+
+class ProjectDiscoveryMetadataForm(forms.ModelForm):
+    class Meta:
+        model = Project
+        fields = ["discovery_summary", "discovery_keywords", "discovery_level", "discovery_word_count"]
+        widgets = {
+            "discovery_summary": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    discovery_keywords = forms.CharField(required=False, help_text="Comma-separated keywords")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        keywords = self.instance.discovery_keywords if getattr(self.instance, "pk", None) else []
+        self.fields["discovery_keywords"].initial = ", ".join(keywords or [])
+
+    def clean_discovery_keywords(self):
+        raw = (self.cleaned_data.get("discovery_keywords") or "").strip()
+        if not raw:
+            return []
+        return [part.strip() for part in raw.split(",") if part.strip()]
 
 
 class ProjectImageStyleForm(forms.ModelForm):
