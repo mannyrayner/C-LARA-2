@@ -5791,14 +5791,24 @@ def _compiled_page_one_path(project: Project) -> str | None:
     return compiled_path.as_posix()
 
 
-def _parse_nl_content_request(*, nl_query: str, dialogue_language: str) -> dict[str, Any]:
+def _parse_nl_content_request(
+    *,
+    nl_query: str,
+    dialogue_language: str,
+    previous_query: str = "",
+    previous_plan: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    prev_plan = previous_plan or {}
     prompt = (
         f"User language for this request: {dialogue_language}. "
-        "Convert the user request into JSON filters for published content discovery. "
+        "Convert the user request into JSON filters for published content discovery, using prior turn context if relevant. "
+        "If the user asks to change language/topic, update or clear previous filters accordingly. "
         "Return only a JSON object with keys: title, text_language, annotation_language, date_posted, level, keywords, max_results. "
         "date_posted must be one of: any, last_3_days, last_month, last_3_months, last_year. "
         "keywords must be an array of short strings. If unknown, use empty strings/arrays.\n\n"
-        f"User request: {nl_query}"
+        f"Previous user request: {previous_query}\n"
+        f"Previous interpreted filters: {prev_plan}\n\n"
+        f"Current user request: {nl_query}"
     )
     try:
         client = _build_ai_client(model_name="gpt-4o-mini")
@@ -5831,12 +5841,48 @@ def _normalize_language_filter(raw: str) -> str:
 def content_list(request: HttpRequest) -> HttpResponse:
     """Search/browse published projects, with optional natural-language discovery."""
 
-    title = (request.GET.get("title") or "").strip()
-    text_language = _normalize_language_filter(request.GET.get("text_language") or "")
-    annotation_language = _normalize_language_filter(request.GET.get("annotation_language") or "")
-    date_posted = (request.GET.get("date_posted") or "any").strip()
-    if date_posted not in CONTENT_DATE_FILTERS:
-        date_posted = "any"
+    manual_title = (request.GET.get("title") or "").strip()
+    manual_text_language = _normalize_language_filter(request.GET.get("text_language") or "")
+    manual_annotation_language = _normalize_language_filter(request.GET.get("annotation_language") or "")
+    manual_date_posted = (request.GET.get("date_posted") or "any").strip()
+    if manual_date_posted not in CONTENT_DATE_FILTERS:
+        manual_date_posted = "any"
+
+    nl_query = (request.GET.get("nl_query") or "").strip()
+    dialogue_language = (request.GET.get("dialogue_language") or "").strip()
+    if not dialogue_language:
+        try:
+            dialogue_language = request.user.profile.dialogue_language or "en"
+        except Exception:
+            dialogue_language = "en"
+
+    nl_plan: dict[str, Any] = {}
+    if nl_query:
+        prev_query = str(request.session.get("content_nl_last_query") or "")
+        prev_plan = request.session.get("content_nl_last_plan") or {}
+        if not isinstance(prev_plan, dict):
+            prev_plan = {}
+        nl_plan = _parse_nl_content_request(
+            nl_query=nl_query,
+            dialogue_language=dialogue_language,
+            previous_query=prev_query,
+            previous_plan=prev_plan,
+        )
+        request.session["content_nl_last_query"] = nl_query
+        request.session["content_nl_last_plan"] = nl_plan
+
+    if nl_query:
+        title = str(nl_plan.get("title") or "").strip()
+        text_language = _normalize_language_filter(str(nl_plan.get("text_language") or ""))
+        annotation_language = _normalize_language_filter(str(nl_plan.get("annotation_language") or ""))
+        date_posted = str(nl_plan.get("date_posted") or "any").strip()
+        if date_posted not in CONTENT_DATE_FILTERS:
+            date_posted = "any"
+    else:
+        title = manual_title
+        text_language = manual_text_language
+        annotation_language = manual_annotation_language
+        date_posted = manual_date_posted
 
     nl_query = (request.GET.get("nl_query") or "").strip()
     dialogue_language = (request.GET.get("dialogue_language") or "").strip()
@@ -6294,12 +6340,48 @@ def _compiled_page_one_path(project: Project) -> str | None:
 def content_list(request: HttpRequest) -> HttpResponse:
     """Search/browse published projects, with optional natural-language discovery."""
 
-    title = (request.GET.get("title") or "").strip()
-    text_language = _normalize_language_filter(request.GET.get("text_language") or "")
-    annotation_language = _normalize_language_filter(request.GET.get("annotation_language") or "")
-    date_posted = (request.GET.get("date_posted") or "any").strip()
-    if date_posted not in CONTENT_DATE_FILTERS:
-        date_posted = "any"
+    manual_title = (request.GET.get("title") or "").strip()
+    manual_text_language = _normalize_language_filter(request.GET.get("text_language") or "")
+    manual_annotation_language = _normalize_language_filter(request.GET.get("annotation_language") or "")
+    manual_date_posted = (request.GET.get("date_posted") or "any").strip()
+    if manual_date_posted not in CONTENT_DATE_FILTERS:
+        manual_date_posted = "any"
+
+    nl_query = (request.GET.get("nl_query") or "").strip()
+    dialogue_language = (request.GET.get("dialogue_language") or "").strip()
+    if not dialogue_language:
+        try:
+            dialogue_language = request.user.profile.dialogue_language or "en"
+        except Exception:
+            dialogue_language = "en"
+
+    nl_plan: dict[str, Any] = {}
+    if nl_query:
+        prev_query = str(request.session.get("content_nl_last_query") or "")
+        prev_plan = request.session.get("content_nl_last_plan") or {}
+        if not isinstance(prev_plan, dict):
+            prev_plan = {}
+        nl_plan = _parse_nl_content_request(
+            nl_query=nl_query,
+            dialogue_language=dialogue_language,
+            previous_query=prev_query,
+            previous_plan=prev_plan,
+        )
+        request.session["content_nl_last_query"] = nl_query
+        request.session["content_nl_last_plan"] = nl_plan
+
+    if nl_query:
+        title = str(nl_plan.get("title") or "").strip()
+        text_language = _normalize_language_filter(str(nl_plan.get("text_language") or ""))
+        annotation_language = _normalize_language_filter(str(nl_plan.get("annotation_language") or ""))
+        date_posted = str(nl_plan.get("date_posted") or "any").strip()
+        if date_posted not in CONTENT_DATE_FILTERS:
+            date_posted = "any"
+    else:
+        title = manual_title
+        text_language = manual_text_language
+        annotation_language = manual_annotation_language
+        date_posted = manual_date_posted
 
     nl_query = (request.GET.get("nl_query") or "").strip()
     dialogue_language = (request.GET.get("dialogue_language") or "").strip()
