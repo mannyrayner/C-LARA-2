@@ -5791,9 +5791,37 @@ def _compiled_page_one_path(project: Project) -> str | None:
     return compiled_path.as_posix()
 
 
+def _parse_nl_content_request(*, nl_query: str, dialogue_language: str) -> dict[str, Any]:
+    prompt = (
+        f"User language for this request: {dialogue_language}. "
+        "Convert the user request into JSON filters for published content discovery. "
+        "Return only a JSON object with keys: title, text_language, annotation_language, date_posted, level, keywords, max_results. "
+        "date_posted must be one of: any, last_3_days, last_month, last_3_months, last_year. "
+        "keywords must be an array of short strings. If unknown, use empty strings/arrays.\n\n"
+        f"User request: {nl_query}"
+    )
+    try:
+        client = _build_ai_client(model_name="gpt-4o-mini")
+        payload = asyncio.run(client.chat_json(prompt, model="gpt-4o-mini"))
+    except Exception:
+        logger.exception("NL content parsing failed; falling back to plain filters")
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    return {
+        "title": str(payload.get("title") or "").strip(),
+        "text_language": str(payload.get("text_language") or "").strip(),
+        "annotation_language": str(payload.get("annotation_language") or "").strip(),
+        "date_posted": str(payload.get("date_posted") or "").strip(),
+        "level": str(payload.get("level") or "").strip(),
+        "keywords": [str(item).strip() for item in (payload.get("keywords") or []) if str(item).strip()],
+        "max_results": int(payload.get("max_results") or 12),
+    }
+
+
 @login_required
 def content_list(request: HttpRequest) -> HttpResponse:
-    """Search/browse published projects."""
+    """Search/browse published projects, with optional natural-language discovery."""
 
     title = (request.GET.get("title") or "").strip()
     text_language = (request.GET.get("text_language") or "").strip()
@@ -5801,6 +5829,29 @@ def content_list(request: HttpRequest) -> HttpResponse:
     date_posted = (request.GET.get("date_posted") or "any").strip()
     if date_posted not in CONTENT_DATE_FILTERS:
         date_posted = "any"
+
+    nl_query = (request.GET.get("nl_query") or "").strip()
+    dialogue_language = (request.GET.get("dialogue_language") or "").strip()
+    if not dialogue_language:
+        try:
+            dialogue_language = request.user.profile.dialogue_language or "en"
+        except Exception:
+            dialogue_language = "en"
+
+    nl_plan: dict[str, Any] = {}
+    if nl_query:
+        nl_plan = _parse_nl_content_request(nl_query=nl_query, dialogue_language=dialogue_language)
+
+    if not title:
+        title = str(nl_plan.get("title") or "").strip()
+    if not text_language:
+        text_language = str(nl_plan.get("text_language") or "").strip()
+    if not annotation_language:
+        annotation_language = str(nl_plan.get("annotation_language") or "").strip()
+    if date_posted == "any":
+        nl_date = str(nl_plan.get("date_posted") or "").strip()
+        if nl_date in CONTENT_DATE_FILTERS:
+            date_posted = nl_date
 
     qs = _published_projects_visible_to_user(request.user)
     if title:
@@ -5815,18 +5866,58 @@ def content_list(request: HttpRequest) -> HttpResponse:
         cutoff = django_timezone.now() - window
         qs = qs.filter(published_at__gte=cutoff)
 
-    projects = list(qs.order_by("-published_at", "-updated_at")[:200])
+    projects = list(qs.order_by("-published_at", "-updated_at")[:300])
+    result_rows: list[dict[str, Any]] = []
+    if nl_query:
+        requested_keywords = [str(k).strip().lower() for k in (nl_plan.get("keywords") or []) if str(k).strip()]
+        requested_level = str(nl_plan.get("level") or "").strip().lower()
+        scored: list[tuple[int, list[str], Project]] = []
+        for project in projects:
+            score = 0
+            reasons: list[str] = []
+            searchable = " ".join(
+                [
+                    project.title or "",
+                    project.discovery_summary or "",
+                    " ".join(project.discovery_keywords or []),
+                ]
+            ).lower()
+            for kw in requested_keywords:
+                if kw and kw in searchable:
+                    score += 2
+                    reasons.append(f"Keyword '{kw}' matched metadata.")
+            if requested_level and requested_level in (project.discovery_level or "").lower():
+                score += 3
+                reasons.append(f"Level matched ({project.discovery_level}).")
+            if not reasons and (title or text_language or annotation_language):
+                reasons.append("Matched structured filters.")
+            scored.append((score, reasons, project))
+
+        scored.sort(key=lambda tup: (tup[0], tup[2].published_at or tup[2].updated_at), reverse=True)
+        max_results = max(1, min(50, int(nl_plan.get("max_results") or 12)))
+        for score, reasons, project in scored[:max_results]:
+            if score == 0 and requested_keywords and requested_level:
+                continue
+            result_rows.append({"project": project, "score": score, "reasons": reasons[:3]})
+    else:
+        result_rows = [{"project": p, "score": 0, "reasons": []} for p in projects[:200]]
+
     return render(
         request,
         "projects/content_list.html",
         {
-            "projects": projects,
+            "projects": [row["project"] for row in result_rows],
+            "result_rows": result_rows,
             "filters": {
                 "title": title,
                 "text_language": text_language,
                 "annotation_language": annotation_language,
                 "date_posted": date_posted,
+                "nl_query": nl_query,
+                "dialogue_language": dialogue_language,
             },
+            "nl_plan": nl_plan,
+            "dialogue_language_choices": ProjectForm.LANGUAGE_CHOICES,
             "date_options": [
                 ("any", "Any time"),
                 ("last_3_days", "Last 3 days"),
@@ -6188,7 +6279,7 @@ def _compiled_page_one_path(project: Project) -> str | None:
 
 @login_required
 def content_list(request: HttpRequest) -> HttpResponse:
-    """Search/browse published projects."""
+    """Search/browse published projects, with optional natural-language discovery."""
 
     title = (request.GET.get("title") or "").strip()
     text_language = (request.GET.get("text_language") or "").strip()
@@ -6196,6 +6287,29 @@ def content_list(request: HttpRequest) -> HttpResponse:
     date_posted = (request.GET.get("date_posted") or "any").strip()
     if date_posted not in CONTENT_DATE_FILTERS:
         date_posted = "any"
+
+    nl_query = (request.GET.get("nl_query") or "").strip()
+    dialogue_language = (request.GET.get("dialogue_language") or "").strip()
+    if not dialogue_language:
+        try:
+            dialogue_language = request.user.profile.dialogue_language or "en"
+        except Exception:
+            dialogue_language = "en"
+
+    nl_plan: dict[str, Any] = {}
+    if nl_query:
+        nl_plan = _parse_nl_content_request(nl_query=nl_query, dialogue_language=dialogue_language)
+
+    if not title:
+        title = str(nl_plan.get("title") or "").strip()
+    if not text_language:
+        text_language = str(nl_plan.get("text_language") or "").strip()
+    if not annotation_language:
+        annotation_language = str(nl_plan.get("annotation_language") or "").strip()
+    if date_posted == "any":
+        nl_date = str(nl_plan.get("date_posted") or "").strip()
+        if nl_date in CONTENT_DATE_FILTERS:
+            date_posted = nl_date
 
     qs = _published_projects_visible_to_user(request.user)
     if title:
@@ -6210,18 +6324,58 @@ def content_list(request: HttpRequest) -> HttpResponse:
         cutoff = django_timezone.now() - window
         qs = qs.filter(published_at__gte=cutoff)
 
-    projects = list(qs.order_by("-published_at", "-updated_at")[:200])
+    projects = list(qs.order_by("-published_at", "-updated_at")[:300])
+    result_rows: list[dict[str, Any]] = []
+    if nl_query:
+        requested_keywords = [str(k).strip().lower() for k in (nl_plan.get("keywords") or []) if str(k).strip()]
+        requested_level = str(nl_plan.get("level") or "").strip().lower()
+        scored: list[tuple[int, list[str], Project]] = []
+        for project in projects:
+            score = 0
+            reasons: list[str] = []
+            searchable = " ".join(
+                [
+                    project.title or "",
+                    project.discovery_summary or "",
+                    " ".join(project.discovery_keywords or []),
+                ]
+            ).lower()
+            for kw in requested_keywords:
+                if kw and kw in searchable:
+                    score += 2
+                    reasons.append(f"Keyword '{kw}' matched metadata.")
+            if requested_level and requested_level in (project.discovery_level or "").lower():
+                score += 3
+                reasons.append(f"Level matched ({project.discovery_level}).")
+            if not reasons and (title or text_language or annotation_language):
+                reasons.append("Matched structured filters.")
+            scored.append((score, reasons, project))
+
+        scored.sort(key=lambda tup: (tup[0], tup[2].published_at or tup[2].updated_at), reverse=True)
+        max_results = max(1, min(50, int(nl_plan.get("max_results") or 12)))
+        for score, reasons, project in scored[:max_results]:
+            if score == 0 and requested_keywords and requested_level:
+                continue
+            result_rows.append({"project": project, "score": score, "reasons": reasons[:3]})
+    else:
+        result_rows = [{"project": p, "score": 0, "reasons": []} for p in projects[:200]]
+
     return render(
         request,
         "projects/content_list.html",
         {
-            "projects": projects,
+            "projects": [row["project"] for row in result_rows],
+            "result_rows": result_rows,
             "filters": {
                 "title": title,
                 "text_language": text_language,
                 "annotation_language": annotation_language,
                 "date_posted": date_posted,
+                "nl_query": nl_query,
+                "dialogue_language": dialogue_language,
             },
+            "nl_plan": nl_plan,
+            "dialogue_language_choices": ProjectForm.LANGUAGE_CHOICES,
             "date_options": [
                 ("any", "Any time"),
                 ("last_3_days", "Last 3 days"),
