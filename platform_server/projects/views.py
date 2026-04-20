@@ -117,6 +117,16 @@ CONTENT_DATE_FILTERS = {
     "last_3_months": timedelta(days=90),
     "last_year": timedelta(days=365),
 }
+CONTENT_DATE_ALIASES = {
+    "today": "last_3_days",
+    "last_7_days": "last_month",
+    "week": "last_month",
+    "month": "last_month",
+    "3_months": "last_3_months",
+    "past_year": "last_year",
+    "year": "last_year",
+}
+CEFR_LEVEL_ORDER = ["A1", "A2", "B1", "B2", "C1", "C2"]
 
 
 
@@ -5830,8 +5840,8 @@ def _parse_nl_content_request(
         "title": title,
         "text_language": str(payload.get("text_language") or "").strip(),
         "annotation_language": str(payload.get("annotation_language") or "").strip(),
-        "date_posted": str(payload.get("date_posted") or "").strip(),
-        "level": str(payload.get("level") or "").strip(),
+        "date_posted": _normalize_date_posted_filter(str(payload.get("date_posted") or "").strip()),
+        "level": _normalize_cefr_level_expression(str(payload.get("level") or "").strip(), max_levels=3),
         "keywords": [str(item).strip() for item in (payload.get("keywords") or []) if str(item).strip()],
         "max_results": int(payload.get("max_results") or 12),
     }
@@ -5868,6 +5878,49 @@ def _normalize_language_filter(raw: str) -> str:
     return by_label.get(value, value)
 
 
+def _normalize_date_posted_filter(raw: str) -> str:
+    value = (raw or "").strip().lower()
+    if not value:
+        return "any"
+    if value in CONTENT_DATE_FILTERS:
+        return value
+    return CONTENT_DATE_ALIASES.get(value, "any")
+
+
+def _normalize_cefr_level_expression(raw: str, *, max_levels: int = 3) -> str:
+    value = (raw or "").strip().upper()
+    if not value:
+        return ""
+    aliases = {
+        "BEGINNER": "A1/A2",
+        "ELEMENTARY": "A1/A2",
+        "INTERMEDIATE": "B1/B2",
+        "UPPER INTERMEDIATE": "B2/C1",
+        "ADVANCED": "C1/C2",
+    }
+    if value in aliases:
+        value = aliases[value]
+    tokens = re.findall(r"[ABC][12]", value.replace("-", "/"))
+    if not tokens:
+        return ""
+    deduped: list[str] = []
+    for token in tokens:
+        if token in CEFR_LEVEL_ORDER and token not in deduped:
+            deduped.append(token)
+    if not deduped:
+        return ""
+    indices = sorted(CEFR_LEVEL_ORDER.index(token) for token in deduped[:max_levels])
+    return "/".join(CEFR_LEVEL_ORDER[idx] for idx in indices)
+
+
+def _cefr_overlap(project_level: str, requested_level: str) -> bool:
+    project_levels = set(_normalize_cefr_level_expression(project_level, max_levels=2).split("/")) - {""}
+    requested_levels = set(_normalize_cefr_level_expression(requested_level, max_levels=3).split("/")) - {""}
+    if not requested_levels:
+        return False
+    return bool(project_levels.intersection(requested_levels))
+
+
 def _profile_memory_payload_for_nl(profile: Profile, *, nl_query: str, nl_plan: dict[str, Any]) -> dict[str, Any]:
     compact_plan = {
         "title": str(nl_plan.get("title") or "").strip(),
@@ -5891,9 +5944,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
     manual_title = (request.GET.get("title") or "").strip()
     manual_text_language = _normalize_language_filter(request.GET.get("text_language") or "")
     manual_annotation_language = _normalize_language_filter(request.GET.get("annotation_language") or "")
-    manual_date_posted = (request.GET.get("date_posted") or "any").strip()
-    if manual_date_posted not in CONTENT_DATE_FILTERS:
-        manual_date_posted = "any"
+    manual_date_posted = _normalize_date_posted_filter(request.GET.get("date_posted") or "any")
 
     nl_query = (request.GET.get("nl_query") or "").strip()
     dialogue_language = (request.GET.get("dialogue_language") or "").strip()
@@ -5945,9 +5996,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
         title = str(nl_plan.get("title") or "").strip()
         text_language = _normalize_language_filter(str(nl_plan.get("text_language") or ""))
         annotation_language = _normalize_language_filter(str(nl_plan.get("annotation_language") or ""))
-        date_posted = str(nl_plan.get("date_posted") or "any").strip()
-        if date_posted not in CONTENT_DATE_FILTERS:
-            date_posted = "any"
+        date_posted = _normalize_date_posted_filter(str(nl_plan.get("date_posted") or "any"))
     else:
         title = manual_title
         text_language = manual_text_language
@@ -5976,7 +6025,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
     result_rows: list[dict[str, Any]] = []
     if nl_query:
         requested_keywords = [str(k).strip().lower() for k in (nl_plan.get("keywords") or []) if str(k).strip()]
-        requested_level = str(nl_plan.get("level") or "").strip().lower()
+        requested_level = _normalize_cefr_level_expression(str(nl_plan.get("level") or "").strip(), max_levels=3)
         scored: list[tuple[int, list[str], Project]] = []
         for project in projects:
             score = 0
@@ -5993,7 +6042,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
                 if kw and kw in searchable:
                     score += 2
                     reasons.append(f"Keyword '{kw}' matched metadata keywords.")
-            if requested_level and requested_level in (project.discovery_level or "").lower():
+            if requested_level and _cefr_overlap(project.discovery_level or "", requested_level):
                 score += 3
                 reasons.append(f"Level matched ({project.discovery_level}).")
             if not reasons and (manual_title or manual_text_language or manual_annotation_language):
@@ -6392,9 +6441,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
     manual_title = (request.GET.get("title") or "").strip()
     manual_text_language = _normalize_language_filter(request.GET.get("text_language") or "")
     manual_annotation_language = _normalize_language_filter(request.GET.get("annotation_language") or "")
-    manual_date_posted = (request.GET.get("date_posted") or "any").strip()
-    if manual_date_posted not in CONTENT_DATE_FILTERS:
-        manual_date_posted = "any"
+    manual_date_posted = _normalize_date_posted_filter(request.GET.get("date_posted") or "any")
 
     nl_query = (request.GET.get("nl_query") or "").strip()
     dialogue_language = (request.GET.get("dialogue_language") or "").strip()
@@ -6446,9 +6493,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
         title = str(nl_plan.get("title") or "").strip()
         text_language = _normalize_language_filter(str(nl_plan.get("text_language") or ""))
         annotation_language = _normalize_language_filter(str(nl_plan.get("annotation_language") or ""))
-        date_posted = str(nl_plan.get("date_posted") or "any").strip()
-        if date_posted not in CONTENT_DATE_FILTERS:
-            date_posted = "any"
+        date_posted = _normalize_date_posted_filter(str(nl_plan.get("date_posted") or "any"))
     else:
         title = manual_title
         text_language = manual_text_language
@@ -6477,7 +6522,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
     result_rows: list[dict[str, Any]] = []
     if nl_query:
         requested_keywords = [str(k).strip().lower() for k in (nl_plan.get("keywords") or []) if str(k).strip()]
-        requested_level = str(nl_plan.get("level") or "").strip().lower()
+        requested_level = _normalize_cefr_level_expression(str(nl_plan.get("level") or "").strip(), max_levels=3)
         scored: list[tuple[int, list[str], Project]] = []
         for project in projects:
             score = 0
@@ -6494,7 +6539,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
                 if kw and kw in searchable:
                     score += 2
                     reasons.append(f"Keyword '{kw}' matched metadata keywords.")
-            if requested_level and requested_level in (project.discovery_level or "").lower():
+            if requested_level and _cefr_overlap(project.discovery_level or "", requested_level):
                 score += 3
                 reasons.append(f"Level matched ({project.discovery_level}).")
             if not reasons and (manual_title or manual_text_language or manual_annotation_language):
@@ -6621,6 +6666,7 @@ def set_project_discovery_metadata(request: HttpRequest, pk: int) -> HttpRespons
     form = ProjectDiscoveryMetadataForm(request.POST, instance=project)
     if form.is_valid():
         updated = form.save(commit=False)
+        updated.discovery_level = _normalize_cefr_level_expression(updated.discovery_level or "", max_levels=2)
         updated.discovery_metadata_updated_at = django_timezone.now()
         updated.save(update_fields=["discovery_summary", "discovery_keywords", "discovery_keywords_en", "discovery_level", "discovery_word_count", "discovery_metadata_updated_at", "updated_at"])
         messages.success(request, "Saved discovery metadata.")

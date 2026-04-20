@@ -114,6 +114,16 @@ class ContentNaturalLanguageTests(TestCase):
         self.assertEqual(views._sanitize_nl_title_hint("stories"), "")
         self.assertEqual(views._sanitize_nl_title_hint("Elephant tightrope dancer"), "Elephant tightrope dancer")
 
+    def test_cefr_level_normalization_helper(self):
+        self.assertEqual(views._normalize_cefr_level_expression("intermediate"), "B1/B2")
+        self.assertEqual(views._normalize_cefr_level_expression("A1-A2-B1"), "A1/A2/B1")
+        self.assertEqual(views._normalize_cefr_level_expression("B2"), "B2")
+
+    def test_date_posted_normalization_helper(self):
+        self.assertEqual(views._normalize_date_posted_filter("last_7_days"), "last_month")
+        self.assertEqual(views._normalize_date_posted_filter("past_year"), "last_year")
+        self.assertEqual(views._normalize_date_posted_filter("nonsense"), "any")
+
     @patch("projects.views._parse_nl_content_request")
     def test_content_list_persists_compact_memory_on_profile(self, mock_parse):
         mock_parse.return_value = {

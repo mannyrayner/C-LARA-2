@@ -45,6 +45,7 @@ _STOPWORDS = {
     "were",
     "with",
 }
+_CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
 
 
 def _tokenize_words(text: str) -> list[str]:
@@ -58,10 +59,38 @@ def _estimate_level_from_text(text: str) -> str:
     sentence_chunks = [chunk.strip() for chunk in re.split(r"[.!?]+", text or "") if chunk.strip()]
     avg_sentence_len = len(words) / max(1, len(sentence_chunks))
     if len(words) < 120 and avg_sentence_len < 10:
-        return "A1-A2"
+        return "A1/A2"
     if len(words) < 500 and avg_sentence_len < 18:
-        return "B1-B2"
-    return "C1+"
+        return "B1/B2"
+    return "C1/C2"
+
+
+def _normalize_cefr_level(raw: str, *, max_levels: int = 2) -> str:
+    value = (raw or "").strip().upper()
+    if not value:
+        return ""
+    aliases = {
+        "BEGINNER": "A1/A2",
+        "ELEMENTARY": "A1/A2",
+        "INTERMEDIATE": "B1/B2",
+        "UPPER INTERMEDIATE": "B2/C1",
+        "ADVANCED": "C1/C2",
+    }
+    if value in aliases:
+        value = aliases[value]
+    tokens = re.findall(r"[ABC][12]", value.replace("-", "/"))
+    if not tokens:
+        return ""
+    deduped: list[str] = []
+    for token in tokens:
+        if token in _CEFR_LEVELS and token not in deduped:
+            deduped.append(token)
+    if not deduped:
+        return ""
+    deduped = deduped[:max_levels]
+    indices = sorted(_CEFR_LEVELS.index(token) for token in deduped)
+    normalized = [_CEFR_LEVELS[idx] for idx in indices]
+    return "/".join(normalized)
 
 
 def _extract_keywords(text: str, *, max_keywords: int = 8) -> list[str]:
@@ -253,7 +282,7 @@ def build_project_discovery_metadata(project: Project) -> dict[str, Any]:
         "discovery_summary": summary,
         "discovery_keywords": keywords,
         "discovery_keywords_en": keywords_en,
-        "discovery_level": _estimate_level_from_text(text_for_analysis),
+        "discovery_level": _normalize_cefr_level(_estimate_level_from_text(text_for_analysis), max_levels=2),
         "discovery_word_count": len(words),
     }
 

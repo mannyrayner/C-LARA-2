@@ -32,6 +32,7 @@ class DiscoveryMetadataTests(TestCase):
         self.assertGreater(self.project.discovery_word_count, 0)
         self.assertTrue(self.project.discovery_summary)
         self.assertTrue(self.project.discovery_level)
+        self.assertRegex(self.project.discovery_level, r"^(A1|A2|B1|B2|C1|C2)(/(A1|A2|B1|B2|C1|C2))?$")
         self.assertIsNotNone(self.project.discovery_metadata_updated_at)
 
     def test_owner_can_edit_discovery_metadata(self):
@@ -51,7 +52,7 @@ class DiscoveryMetadataTests(TestCase):
         self.assertEqual(self.project.discovery_summary, "Manual summary")
         self.assertEqual(self.project.discovery_keywords, ["dialogue", "beginner", "story"])
         self.assertEqual(self.project.discovery_keywords_en, [])
-        self.assertEqual(self.project.discovery_level, "A1-A2")
+        self.assertEqual(self.project.discovery_level, "A1/A2")
         self.assertEqual(self.project.discovery_word_count, 42)
 
     def test_backfill_command_updates_published_projects_missing_metadata(self):
