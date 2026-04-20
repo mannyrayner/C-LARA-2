@@ -99,6 +99,7 @@ class Profile(models.Model):
         get_user_model(), on_delete=models.CASCADE, related_name="profile"
     )
     timezone = models.CharField(max_length=64, default="UTC")
+    dialogue_language = models.CharField(max_length=16, default="en")
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self) -> str:  # pragma: no cover - display helper
