@@ -5819,13 +5819,21 @@ def _parse_nl_content_request(*, nl_query: str, dialogue_language: str) -> dict[
     }
 
 
+def _normalize_language_filter(raw: str) -> str:
+    value = (raw or "").strip().lower()
+    if not value:
+        return ""
+    by_label = {label.lower(): code for code, label in ProjectForm.LANGUAGE_CHOICES}
+    return by_label.get(value, value)
+
+
 @login_required
 def content_list(request: HttpRequest) -> HttpResponse:
     """Search/browse published projects, with optional natural-language discovery."""
 
     title = (request.GET.get("title") or "").strip()
-    text_language = (request.GET.get("text_language") or "").strip()
-    annotation_language = (request.GET.get("annotation_language") or "").strip()
+    text_language = _normalize_language_filter(request.GET.get("text_language") or "")
+    annotation_language = _normalize_language_filter(request.GET.get("annotation_language") or "")
     date_posted = (request.GET.get("date_posted") or "any").strip()
     if date_posted not in CONTENT_DATE_FILTERS:
         date_posted = "any"
@@ -5845,9 +5853,9 @@ def content_list(request: HttpRequest) -> HttpResponse:
     if not title:
         title = str(nl_plan.get("title") or "").strip()
     if not text_language:
-        text_language = str(nl_plan.get("text_language") or "").strip()
+        text_language = _normalize_language_filter(str(nl_plan.get("text_language") or ""))
     if not annotation_language:
-        annotation_language = str(nl_plan.get("annotation_language") or "").strip()
+        annotation_language = _normalize_language_filter(str(nl_plan.get("annotation_language") or ""))
     if date_posted == "any":
         nl_date = str(nl_plan.get("date_posted") or "").strip()
         if nl_date in CONTENT_DATE_FILTERS:
@@ -5867,6 +5875,10 @@ def content_list(request: HttpRequest) -> HttpResponse:
         qs = qs.filter(published_at__gte=cutoff)
 
     projects = list(qs.order_by("-published_at", "-updated_at")[:300])
+    if text_language:
+        projects = [p for p in projects if (p.language or "").lower().startswith(text_language)]
+    if annotation_language:
+        projects = [p for p in projects if (p.target_language or "").lower().startswith(annotation_language)]
     result_rows: list[dict[str, Any]] = []
     if nl_query:
         requested_keywords = [str(k).strip().lower() for k in (nl_plan.get("keywords") or []) if str(k).strip()]
@@ -5918,6 +5930,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
             },
             "nl_plan": nl_plan,
             "dialogue_language_choices": ProjectForm.LANGUAGE_CHOICES,
+            "language_choices": ProjectForm.LANGUAGE_CHOICES,
             "date_options": [
                 ("any", "Any time"),
                 ("last_3_days", "Last 3 days"),
@@ -6282,8 +6295,8 @@ def content_list(request: HttpRequest) -> HttpResponse:
     """Search/browse published projects, with optional natural-language discovery."""
 
     title = (request.GET.get("title") or "").strip()
-    text_language = (request.GET.get("text_language") or "").strip()
-    annotation_language = (request.GET.get("annotation_language") or "").strip()
+    text_language = _normalize_language_filter(request.GET.get("text_language") or "")
+    annotation_language = _normalize_language_filter(request.GET.get("annotation_language") or "")
     date_posted = (request.GET.get("date_posted") or "any").strip()
     if date_posted not in CONTENT_DATE_FILTERS:
         date_posted = "any"
@@ -6303,9 +6316,9 @@ def content_list(request: HttpRequest) -> HttpResponse:
     if not title:
         title = str(nl_plan.get("title") or "").strip()
     if not text_language:
-        text_language = str(nl_plan.get("text_language") or "").strip()
+        text_language = _normalize_language_filter(str(nl_plan.get("text_language") or ""))
     if not annotation_language:
-        annotation_language = str(nl_plan.get("annotation_language") or "").strip()
+        annotation_language = _normalize_language_filter(str(nl_plan.get("annotation_language") or ""))
     if date_posted == "any":
         nl_date = str(nl_plan.get("date_posted") or "").strip()
         if nl_date in CONTENT_DATE_FILTERS:
@@ -6325,6 +6338,10 @@ def content_list(request: HttpRequest) -> HttpResponse:
         qs = qs.filter(published_at__gte=cutoff)
 
     projects = list(qs.order_by("-published_at", "-updated_at")[:300])
+    if text_language:
+        projects = [p for p in projects if (p.language or "").lower().startswith(text_language)]
+    if annotation_language:
+        projects = [p for p in projects if (p.target_language or "").lower().startswith(annotation_language)]
     result_rows: list[dict[str, Any]] = []
     if nl_query:
         requested_keywords = [str(k).strip().lower() for k in (nl_plan.get("keywords") or []) if str(k).strip()]
@@ -6376,6 +6393,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
             },
             "nl_plan": nl_plan,
             "dialogue_language_choices": ProjectForm.LANGUAGE_CHOICES,
+            "language_choices": ProjectForm.LANGUAGE_CHOICES,
             "date_options": [
                 ("any", "Any time"),
                 ("last_3_days", "Last 3 days"),

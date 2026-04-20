@@ -26,6 +26,18 @@ class ContentNaturalLanguageTests(TestCase):
             discovery_keywords=["village", "adventure", "market"],
             discovery_level="B1-B2",
         )
+        self.other = Project.objects.create(
+            owner=self.user,
+            title="Sarah im Supermarkt",
+            source_text="Story text",
+            language="de",
+            target_language="en",
+            is_published=True,
+            published_at=timezone.now(),
+            discovery_summary="Shopping in a supermarket.",
+            discovery_keywords=["supermarket", "shopping"],
+            discovery_level="A2",
+        )
 
     @patch("projects.views._parse_nl_content_request")
     def test_content_list_supports_nl_query_and_justifications(self, mock_parse):
@@ -44,5 +56,12 @@ class ContentNaturalLanguageTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Village Adventure")
+        self.assertNotContains(resp, "Sarah im Supermarkt")
         self.assertContains(resp, "Keyword &#x27;village&#x27; matched metadata.")
         self.assertContains(resp, "Level matched (B1-B2).")
+
+    def test_content_list_renders_language_dropdowns(self):
+        resp = self.client.get(reverse("content-list"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, '<select id="text_language" name="text_language">', html=False)
+        self.assertContains(resp, '<select id="annotation_language" name="annotation_language">', html=False)
