@@ -98,6 +98,15 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertContains(resp, "1/1")
         self.assertNotContains(resp, "Discourage visible text in images")
 
+    def test_get_pages_view_shows_billing_telemetry_link_when_present(self):
+        billing_path = self.project.artifact_dir() / "images" / "billing_telemetry.jsonl"
+        billing_path.parent.mkdir(parents=True, exist_ok=True)
+        billing_path.write_text('{"event":"billing_usage_recorded"}\n', encoding="utf-8")
+        resp = self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Image billing telemetry")
+        self.assertContains(resp, "/compiled/images/billing_telemetry.jsonl")
+
     def test_images_home_can_switch_page_text_source_to_translation(self):
         run_dir = self.project.artifact_dir() / "runs" / "run_translation" / "stages"
         run_dir.mkdir(parents=True, exist_ok=True)
