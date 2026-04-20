@@ -79,23 +79,38 @@ def _fallback_summary(text: str, title: str) -> str:
     return summary[:400]
 
 
-def _metadata_usage_reporter(*, project: Project, request_type: str):
-    def _report(event: dict[str, Any]) -> None:
+def _run_billed_chat_text(
+    *,
+    project: Project,
+    prompt: str,
+    request_type: str,
+    temperature: float | None,
+) -> str:
+    usage_events: list[dict[str, Any]] = []
+
+    def _collect(event: dict[str, Any]) -> None:
+        usage_events.append(dict(event or {}))
+
+    client = OpenAIClient(
+        config=OpenAIConfig(
+            model=DEFAULT_MODEL,
+            usage_reporter=_collect,
+        )
+    )
+    response = asyncio.run(client.chat_text(prompt, model=DEFAULT_MODEL, temperature=temperature))
+    for event in usage_events:
         payload = dict(event or {})
-        model = str(payload.get("model") or DEFAULT_MODEL)
-        operation = str(payload.get("operation") or "chat")
         record_openai_usage_and_charge(
             user_id=project.owner_id,
             project_id=project.id,
-            model=model,
-            operation=operation,
+            model=str(payload.get("model") or DEFAULT_MODEL),
+            operation=str(payload.get("operation") or "chat_text"),
             prompt_tokens=max(0, int(payload.get("prompt_tokens") or 0)),
             completion_tokens=max(0, int(payload.get("completion_tokens") or 0)),
             total_tokens=max(0, int(payload.get("total_tokens") or 0)),
             request_type=request_type,
         )
-
-    return _report
+    return response or ""
 
 
 def _generate_summary_with_ai(project: Project, text: str, title: str) -> str:
@@ -107,13 +122,12 @@ def _generate_summary_with_ai(project: Project, text: str, title: str) -> str:
         f"Title: {title}\n\nText:\n{text[:6000]}"
     )
     try:
-        client = OpenAIClient(
-            config=OpenAIConfig(
-                model=DEFAULT_MODEL,
-                usage_reporter=_metadata_usage_reporter(project=project, request_type="discovery_summary_generate"),
-            )
+        response = _run_billed_chat_text(
+            project=project,
+            prompt=prompt,
+            request_type="discovery_summary_generate",
+            temperature=0.2,
         )
-        response = asyncio.run(client.chat_text(prompt, model=DEFAULT_MODEL, temperature=0.2))
         return (response or "").strip()[:400]
     except Exception:
         logger.exception("AI summary generation failed; falling back to heuristic summary")
@@ -130,13 +144,13 @@ def _generate_keywords_with_ai(project: Project, text: str, title: str) -> list[
         f"Title: {title}\n\nText:\n{text[:6000]}"
     )
     try:
-        client = OpenAIClient(
-            config=OpenAIConfig(
-                model=DEFAULT_MODEL,
-                usage_reporter=_metadata_usage_reporter(project=project, request_type="discovery_keywords_generate"),
-            )
+        response = _run_billed_chat_text(
+            project=project,
+            prompt=prompt,
+            request_type="discovery_keywords_generate",
+            temperature=0.1,
         )
-        response = (asyncio.run(client.chat_text(prompt, model=DEFAULT_MODEL, temperature=0.1)) or "").strip()
+        response = (response or "").strip()
         parsed = json.loads(response)
         if isinstance(parsed, list):
             cleaned = [str(item).strip() for item in parsed if str(item).strip()]
