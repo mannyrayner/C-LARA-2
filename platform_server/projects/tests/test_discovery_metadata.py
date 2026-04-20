@@ -123,8 +123,8 @@ class DiscoveryMetadataTests(TestCase):
         self.client.get(reverse("project-publish", args=[self.project.pk]), follow=True)
         summary_args = mock_ai_summary.call_args[0]
         keyword_args = mock_ai_keywords.call_args[0]
-        self.assertIn(surface, summary_args[0])
-        self.assertIn(surface, keyword_args[0])
+        self.assertIn(surface, summary_args[1])
+        self.assertIn(surface, keyword_args[1])
 
     def test_project_detail_renders_keywords_as_comma_separated_text(self):
         self.project.discovery_keywords = ["milo", "forest", "safe"]

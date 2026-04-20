@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -14,6 +15,7 @@ from django.utils import timezone
 from core.ai_api import OpenAIClient
 from core.config import DEFAULT_MODEL, OpenAIConfig
 
+from .billing import record_openai_usage_and_charge
 from .models import Project
 
 logger = logging.getLogger(__name__)
@@ -77,7 +79,26 @@ def _fallback_summary(text: str, title: str) -> str:
     return summary[:400]
 
 
-def _generate_summary_with_ai(text: str, title: str) -> str:
+def _metadata_usage_reporter(*, project: Project, request_type: str):
+    def _report(event: dict[str, Any]) -> None:
+        payload = dict(event or {})
+        model = str(payload.get("model") or DEFAULT_MODEL)
+        operation = str(payload.get("operation") or "chat")
+        record_openai_usage_and_charge(
+            user_id=project.owner_id,
+            project_id=project.id,
+            model=model,
+            operation=operation,
+            prompt_tokens=max(0, int(payload.get("prompt_tokens") or 0)),
+            completion_tokens=max(0, int(payload.get("completion_tokens") or 0)),
+            total_tokens=max(0, int(payload.get("total_tokens") or 0)),
+            request_type=request_type,
+        )
+
+    return _report
+
+
+def _generate_summary_with_ai(project: Project, text: str, title: str) -> str:
     if not (getattr(settings, "OPENAI_API_KEY", "") or os.environ.get("OPENAI_API_KEY")):
         return ""
     prompt = (
@@ -89,16 +110,17 @@ def _generate_summary_with_ai(text: str, title: str) -> str:
         client = OpenAIClient(
             config=OpenAIConfig(
                 model=DEFAULT_MODEL,
+                usage_reporter=_metadata_usage_reporter(project=project, request_type="discovery_summary_generate"),
             )
         )
-        response = client.generate_text(prompt, model=DEFAULT_MODEL, temperature=0.2)
+        response = asyncio.run(client.chat_text(prompt, model=DEFAULT_MODEL, temperature=0.2))
         return (response or "").strip()[:400]
     except Exception:
         logger.exception("AI summary generation failed; falling back to heuristic summary")
         return ""
 
 
-def _generate_keywords_with_ai(text: str, title: str) -> list[str]:
+def _generate_keywords_with_ai(project: Project, text: str, title: str) -> list[str]:
     if not (getattr(settings, "OPENAI_API_KEY", "") or os.environ.get("OPENAI_API_KEY")):
         return []
     prompt = (
@@ -111,9 +133,10 @@ def _generate_keywords_with_ai(text: str, title: str) -> list[str]:
         client = OpenAIClient(
             config=OpenAIConfig(
                 model=DEFAULT_MODEL,
+                usage_reporter=_metadata_usage_reporter(project=project, request_type="discovery_keywords_generate"),
             )
         )
-        response = (client.generate_text(prompt, model=DEFAULT_MODEL, temperature=0.1) or "").strip()
+        response = (asyncio.run(client.chat_text(prompt, model=DEFAULT_MODEL, temperature=0.1)) or "").strip()
         parsed = json.loads(response)
         if isinstance(parsed, list):
             cleaned = [str(item).strip() for item in parsed if str(item).strip()]
@@ -152,8 +175,8 @@ def build_project_discovery_metadata(project: Project) -> dict[str, Any]:
     description = (project.description or "").strip()
     text_for_analysis = source or description
     words = _tokenize_words(text_for_analysis)
-    summary = _generate_summary_with_ai(text_for_analysis, project.title) or _fallback_summary(text_for_analysis, project.title)
-    keywords = _generate_keywords_with_ai(text_for_analysis, project.title) or _extract_keywords(text_for_analysis or project.title)
+    summary = _generate_summary_with_ai(project, text_for_analysis, project.title) or _fallback_summary(text_for_analysis, project.title)
+    keywords = _generate_keywords_with_ai(project, text_for_analysis, project.title) or _extract_keywords(text_for_analysis or project.title)
     return {
         "discovery_summary": summary,
         "discovery_keywords": keywords,
