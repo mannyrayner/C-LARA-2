@@ -18,6 +18,14 @@
   <strong>{{ confirmed_element_count }}</strong> confirmed.
 </p>
 <p>Page image artifacts stored at: {{ pages_artifact_dir }}</p>
+{% if pages_artifact_links %}
+  <p>Page image artifacts:</p>
+  <ul>
+    {% for item in pages_artifact_links %}
+      <li><a href="{{ item.url }}">{{ item.label }}</a> ({{ item.size }} bytes)</li>
+    {% endfor %}
+  </ul>
+{% endif %}
 {% if status_notice == "done" %}
   <p><strong>Request completed.</strong> Check the messages above for details.</p>
 {% endif %}
