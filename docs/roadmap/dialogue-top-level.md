@@ -118,6 +118,86 @@ The first part of **Phase A (Discovery assistant)** is now implemented in the Dj
 
 This is still read-only discovery behavior (no autonomous write actions), aligned with the intended risk profile of Phase A.
 
+## Phase B progress summary (early personalization + memory)
+
+Initial Phase B capabilities are now in place:
+
+- Per-user profile controls now include:
+  - dialogue language selection,
+  - a personalization-memory enable/disable toggle,
+  - an explicit action to clear stored dialogue memory.
+- The system stores a compact cross-session memory payload for discovery conversations
+  (for example, recent NL query and interpreted filter plan) when memory is enabled.
+- The discovery flow can reuse that compact memory as prior-turn context to improve
+  continuity while keeping payload size bounded.
+
+Current limitations (intentional for this first version):
+
+- Memory scope is narrow and discovery-oriented (not full workflow memory yet).
+- Adaptive behavior is conservative and transparent-first; no autonomous write operations.
+- Memory inspection is basic and should evolve toward richer user-facing controls.
+
+## Sketch plan for Phase C (guided project construction + modification)
+
+Phase C should move from read-only discovery into **guided, confirmation-first project actions**.
+The goal is to keep dialogue natural while safely mapping user intent onto existing project UX.
+
+### Proposed interaction sequence
+
+1. **Start new project / return to existing project**
+   - Detect intent: create vs continue.
+   - If creating, collect and confirm required parameters:
+     - project title,
+     - text language + annotation language,
+     - text source mode:
+       - user-supplied source text, or
+       - AI-generated text from user description.
+   - If resuming, identify the target project explicitly and confirm context.
+
+2. **Invoke AI annotation pipeline**
+   - Ask for confirmation before potentially expensive multi-step operations.
+   - Explain pipeline stages in plain language when needed.
+   - Provide progress/status summaries and expected next actions.
+
+3. **Invoke AI image generation**
+   - Confirm intent and scope (whole project vs selected pages/elements).
+   - Explain relevant style/options in non-technical language with defaults shown.
+   - Surface costs/credits expectations before execution where possible.
+
+4. **Render/compile to HTML and handoff**
+   - Run compile/render flow.
+   - Explain where output is available (links, project resources, downloadable artifacts).
+   - Offer optional “show me where this is in the UI” guidance.
+
+5. **Assist with annotation correction**
+   - Dual mode support:
+     - guided explanation of manual annotation editor, and/or
+     - interpretation of NL editing commands mapped to concrete editor actions.
+   - When references are ambiguous, ask targeted clarification questions (page/span/token).
+
+### UX style principles for Phase C
+
+- **Confirmation before action** for expensive/destructive steps.
+- **Clarify ambiguity early** with focused follow-up questions.
+- **Always show assumptions** and provide easy correction paths.
+- **Ground references in project resources** (pages, segments, links, artifacts).
+
+Illustrative prompts:
+
+- Confirmation:
+  - “Okay, you want to create a text in English with glosses in French, and I’ll
+    generate the text for you based on a short description you give me. Correct?”
+- Clarification:
+  - “You said the gloss for ‘go away’ is wrong. Could you check the text pane and
+    tell me which page this is on?”
+
+### Why this is harder (and worth it)
+
+Compared with content discovery, Phase C requires stronger intent disambiguation,
+state tracking, and safe action orchestration across multiple project subsystems.
+But it should deliver significantly higher user value by reducing friction in core
+create/annotate/image/compile workflows for non-expert users.
+
 ## Delivery phases
 
 ### Phase A — Discovery assistant
