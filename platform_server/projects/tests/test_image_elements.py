@@ -81,6 +81,15 @@ class ProjectImageElementsViewTests(TestCase):
         self.assertContains(resp, "fan-out/fan-in")
         self.assertContains(resp, "Elements telemetry")
 
+    def test_get_elements_page_shows_billing_telemetry_link_when_present(self):
+        billing_path = self.project.artifact_dir() / "images" / "billing_telemetry.jsonl"
+        billing_path.parent.mkdir(parents=True, exist_ok=True)
+        billing_path.write_text('{"event":"billing_usage_recorded"}\n', encoding="utf-8")
+        resp = self.client.get(reverse("project-image-elements", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Image billing telemetry")
+        self.assertContains(resp, "/compiled/images/billing_telemetry.jsonl")
+
     def test_get_elements_page_shows_generated_image(self):
         ProjectImageElement.objects.create(
             project=self.project,
