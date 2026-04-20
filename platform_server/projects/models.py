@@ -53,6 +53,11 @@ class Project(models.Model):
     artifact_root = models.CharField(max_length=512, blank=True)
     is_published = models.BooleanField(default=False)
     published_at = models.DateTimeField(null=True, blank=True)
+    discovery_summary = models.TextField(blank=True, default="")
+    discovery_keywords = models.JSONField(default=list, blank=True)
+    discovery_level = models.CharField(max_length=16, blank=True, default="")
+    discovery_word_count = models.PositiveIntegerField(default=0)
+    discovery_metadata_updated_at = models.DateTimeField(null=True, blank=True)
     access_count = models.PositiveIntegerField(default=0)
     access_scope = models.CharField(max_length=16, choices=ACCESS_CHOICES, default=ACCESS_PUBLIC)
     community = models.ForeignKey(
@@ -94,6 +99,7 @@ class Profile(models.Model):
         get_user_model(), on_delete=models.CASCADE, related_name="profile"
     )
     timezone = models.CharField(max_length=64, default="UTC")
+    dialogue_language = models.CharField(max_length=16, default="en")
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self) -> str:  # pragma: no cover - display helper
