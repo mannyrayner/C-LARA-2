@@ -1,3 +1,5 @@
+import json
+
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.test import Client, TestCase
@@ -93,13 +95,36 @@ class DiscoveryMetadataTests(TestCase):
         self.assertNotIn("mountain", [kw.lower() for kw in self.project.discovery_keywords])
         self.assertIn("village", [kw.lower() for kw in self.project.discovery_keywords])
 
+    @patch("projects.metadata._generate_keywords_with_ai")
     @patch("projects.metadata._generate_summary_with_ai")
-    def test_publish_uses_ai_summary_when_available(self, mock_ai_summary):
+    def test_publish_uses_ai_summary_and_keywords_when_available(self, mock_ai_summary, mock_ai_keywords):
         mock_ai_summary.return_value = "A concise AI summary with punctuation."
+        mock_ai_keywords.return_value = ["milo", "forest", "mink"]
         self.client.get(reverse("project-publish", args=[self.project.pk]), follow=True)
         self.project.refresh_from_db()
         self.assertEqual(self.project.discovery_summary, "A concise AI summary with punctuation.")
+        self.assertEqual(self.project.discovery_keywords, ["milo", "forest", "mink"])
         self.assertTrue(mock_ai_summary.called)
+        self.assertTrue(mock_ai_keywords.called)
+
+    @patch("projects.metadata._generate_keywords_with_ai")
+    @patch("projects.metadata._generate_summary_with_ai")
+    def test_ai_summary_and_keywords_receive_text_gen_surface(self, mock_ai_summary, mock_ai_keywords):
+        mock_ai_summary.return_value = "Summary from AI."
+        mock_ai_keywords.return_value = ["lina", "dragon", "village"]
+        self.project.description = "Prompt text only."
+        self.project.source_text = ""
+        self.project.save(update_fields=["description", "source_text", "updated_at"])
+        stage_dir = self.project.artifact_dir() / "runs" / "run_demo" / "stages"
+        stage_dir.mkdir(parents=True, exist_ok=True)
+        surface = "Lina meets a dragon in the village square."
+        (stage_dir / "text_gen.json").write_text(json.dumps({"surface": surface}), encoding="utf-8")
+
+        self.client.get(reverse("project-publish", args=[self.project.pk]), follow=True)
+        summary_args = mock_ai_summary.call_args[0]
+        keyword_args = mock_ai_keywords.call_args[0]
+        self.assertIn(surface, summary_args[0])
+        self.assertIn(surface, keyword_args[0])
 
     def test_project_detail_renders_keywords_as_comma_separated_text(self):
         self.project.discovery_keywords = ["milo", "forest", "safe"]

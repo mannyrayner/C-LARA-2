@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from collections import Counter
 from pathlib import Path
@@ -77,8 +78,7 @@ def _fallback_summary(text: str, title: str) -> str:
 
 
 def _generate_summary_with_ai(text: str, title: str) -> str:
-    api_key = getattr(settings, "OPENAI_API_KEY", None) or ""
-    if not api_key:
+    if not (getattr(settings, "OPENAI_API_KEY", "") or os.environ.get("OPENAI_API_KEY")):
         return ""
     prompt = (
         "Write a short discovery summary (max 45 words) for this learner text. "
@@ -96,6 +96,31 @@ def _generate_summary_with_ai(text: str, title: str) -> str:
     except Exception:
         logger.exception("AI summary generation failed; falling back to heuristic summary")
         return ""
+
+
+def _generate_keywords_with_ai(text: str, title: str) -> list[str]:
+    if not (getattr(settings, "OPENAI_API_KEY", "") or os.environ.get("OPENAI_API_KEY")):
+        return []
+    prompt = (
+        "Return 6 to 10 concise discovery keywords for this learner text. "
+        "Avoid prepositions, determiners and pronouns. Prefer topic-bearing nouns and short noun phrases. "
+        "Return JSON as an array of strings only.\n\n"
+        f"Title: {title}\n\nText:\n{text[:6000]}"
+    )
+    try:
+        client = OpenAIClient(
+            config=OpenAIConfig(
+                model=DEFAULT_MODEL,
+            )
+        )
+        response = (client.generate_text(prompt, model=DEFAULT_MODEL, temperature=0.1) or "").strip()
+        parsed = json.loads(response)
+        if isinstance(parsed, list):
+            cleaned = [str(item).strip() for item in parsed if str(item).strip()]
+            return cleaned[:10]
+    except Exception:
+        logger.exception("AI keyword generation failed; falling back to heuristic keywords")
+    return []
 
 
 def _latest_text_gen_surface(project: Project) -> str:
@@ -128,9 +153,10 @@ def build_project_discovery_metadata(project: Project) -> dict[str, Any]:
     text_for_analysis = source or description
     words = _tokenize_words(text_for_analysis)
     summary = _generate_summary_with_ai(text_for_analysis, project.title) or _fallback_summary(text_for_analysis, project.title)
+    keywords = _generate_keywords_with_ai(text_for_analysis, project.title) or _extract_keywords(text_for_analysis or project.title)
     return {
         "discovery_summary": summary,
-        "discovery_keywords": _extract_keywords(text_for_analysis or project.title),
+        "discovery_keywords": keywords,
         "discovery_level": _estimate_level_from_text(text_for_analysis),
         "discovery_word_count": len(words),
     }
