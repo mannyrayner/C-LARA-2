@@ -151,13 +151,42 @@ def _generate_keywords_with_ai(project: Project, text: str, title: str) -> list[
             temperature=0.1,
         )
         response = (response or "").strip()
-        parsed = json.loads(response)
-        if isinstance(parsed, list):
-            cleaned = [str(item).strip() for item in parsed if str(item).strip()]
-            return cleaned[:10]
+        parsed = _parse_keywords_response(response)
+        if parsed:
+            return parsed[:10]
     except Exception:
         logger.exception("AI keyword generation failed; falling back to heuristic keywords")
     return []
+
+
+def _parse_keywords_response(response: str) -> list[str]:
+    text = (response or "").strip()
+    if not text:
+        return []
+    # 1) Try strict JSON array first.
+    try:
+        parsed = json.loads(text)
+        if isinstance(parsed, list):
+            cleaned = [str(item).strip() for item in parsed if str(item).strip()]
+            if cleaned:
+                return cleaned
+    except Exception:
+        pass
+    # 2) Try to recover array embedded in markdown/text.
+    m = re.search(r"\[[\s\S]*\]", text)
+    if m:
+        try:
+            parsed = json.loads(m.group(0))
+            if isinstance(parsed, list):
+                cleaned = [str(item).strip() for item in parsed if str(item).strip()]
+                if cleaned:
+                    return cleaned
+        except Exception:
+            pass
+    # 3) Fall back to comma/newline separated text.
+    stripped = re.sub(r"^```(?:json)?|```$", "", text, flags=re.MULTILINE).strip()
+    parts = [part.strip(" -•\t\r\n\"'") for part in re.split(r"[,;\n]+", stripped)]
+    return [part for part in parts if part]
 
 
 def _latest_text_gen_surface(project: Project) -> str:

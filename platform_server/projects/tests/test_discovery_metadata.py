@@ -6,6 +6,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from unittest.mock import patch
 
+from projects import metadata
 from projects.models import Project
 
 
@@ -132,3 +133,13 @@ class DiscoveryMetadataTests(TestCase):
         resp = self.client.get(reverse("project-detail", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'value="milo, forest, safe"')
+
+    def test_parse_keywords_response_accepts_markdown_embedded_json(self):
+        response = 'Here are keywords:\n```json\n["milo", "forest", "safe"]\n```'
+        parsed = metadata._parse_keywords_response(response)
+        self.assertEqual(parsed, ["milo", "forest", "safe"])
+
+    def test_parse_keywords_response_accepts_plain_comma_list(self):
+        response = "milo, forest, safe, clever mink"
+        parsed = metadata._parse_keywords_response(response)
+        self.assertEqual(parsed, ["milo", "forest", "safe", "clever mink"])
