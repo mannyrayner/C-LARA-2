@@ -53,6 +53,11 @@ class Project(models.Model):
     artifact_root = models.CharField(max_length=512, blank=True)
     is_published = models.BooleanField(default=False)
     published_at = models.DateTimeField(null=True, blank=True)
+    discovery_summary = models.TextField(blank=True, default="")
+    discovery_keywords = models.JSONField(default=list, blank=True)
+    discovery_level = models.CharField(max_length=16, blank=True, default="")
+    discovery_word_count = models.PositiveIntegerField(default=0)
+    discovery_metadata_updated_at = models.DateTimeField(null=True, blank=True)
     access_count = models.PositiveIntegerField(default=0)
     access_scope = models.CharField(max_length=16, choices=ACCESS_CHOICES, default=ACCESS_PUBLIC)
     community = models.ForeignKey(
