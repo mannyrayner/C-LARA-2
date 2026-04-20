@@ -55,12 +55,14 @@ from .forms import (
     FlashcardExerciseSetForm,
     GrantAdminPrivilegesForm,
     ProfileForm,
+    ProjectDiscoveryMetadataForm,
     ProjectForm,
     ProjectImageElementFormSet,
     ProjectImagePageFormSet,
     ProjectImageStyleForm,
     RegistrationForm,
 )
+from .metadata import update_project_discovery_metadata
 from .billing import (
     apply_credit_delta,
     credits_enabled,
@@ -764,6 +766,16 @@ def _elements_artifact_links(project: Project) -> list[dict[str, str]]:
                 "label": label,
                 "url": reverse("project-compiled", args=[project.pk, relpath]),
                 "size": str(path.stat().st_size),
+            }
+        )
+    billing_path = project.artifact_dir() / "images" / "billing_telemetry.jsonl"
+    if billing_path.exists():
+        relpath = os.path.relpath(billing_path, project.artifact_dir()).replace("\\", "/")
+        links.append(
+            {
+                "label": "Image billing telemetry",
+                "url": reverse("project-compiled", args=[project.pk, relpath]),
+                "size": str(billing_path.stat().st_size),
             }
         )
     return links
@@ -1650,6 +1662,15 @@ def _append_page_image_telemetry(project: Project, record: dict[str, Any]) -> No
         fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
+def _append_image_billing_telemetry(project: Project, record: dict[str, Any]) -> None:
+    telemetry_path = project.artifact_dir() / "images" / "billing_telemetry.jsonl"
+    telemetry_path.parent.mkdir(parents=True, exist_ok=True)
+    entry = dict(record)
+    entry["timestamp"] = datetime.now(timezone.utc).isoformat()
+    with telemetry_path.open("a", encoding="utf-8") as fp:
+        fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
 def _ensure_project_page_rows(project: Project) -> int:
     pages = _extract_project_pages(project)
     existing = {
@@ -1711,6 +1732,43 @@ def _persist_image_pages_artifacts(project: Project) -> None:
         json.dumps(variants, ensure_ascii=False, indent=2, default=str),
         encoding="utf-8",
     )
+
+
+def _page_artifact_links(project: Project) -> list[dict[str, str]]:
+    pages_dir = _image_pages_dir(project)
+    pages_dir.mkdir(parents=True, exist_ok=True)
+    telemetry_path = pages_dir / "telemetry.jsonl"
+    if not telemetry_path.exists():
+        telemetry_path.write_text("", encoding="utf-8")
+    files = [
+        ("pages_list.json", "Pages list"),
+        ("variants_list.json", "Variants list"),
+        ("telemetry.jsonl", "Page images telemetry"),
+    ]
+    links: list[dict[str, str]] = []
+    for rel_name, label in files:
+        path = pages_dir / rel_name
+        if not path.exists():
+            continue
+        relpath = os.path.relpath(path, project.artifact_dir()).replace("\\", "/")
+        links.append(
+            {
+                "label": label,
+                "url": reverse("project-compiled", args=[project.pk, relpath]),
+                "size": str(path.stat().st_size),
+            }
+        )
+    billing_path = project.artifact_dir() / "images" / "billing_telemetry.jsonl"
+    if billing_path.exists():
+        relpath = os.path.relpath(billing_path, project.artifact_dir()).replace("\\", "/")
+        links.append(
+            {
+                "label": "Image billing telemetry",
+                "url": reverse("project-compiled", args=[project.pk, relpath]),
+                "size": str(billing_path.stat().st_size),
+            }
+        )
+    return links
 
 
 def _set_page_preferred_variant(page: ProjectImagePage, variant: ProjectImagePageVariant) -> None:
@@ -1809,56 +1867,22 @@ def _generate_project_page_images(
         )
         page_dir = pages_dir / f"page_{page_obj.page_number:03d}"
         page_dir.mkdir(parents=True, exist_ok=True)
-        outputs: list[tuple[int, str, str, str, str]] = []
-        for variant_index in range(1, variants_per_page + 1):
-            started = datetime.now(timezone.utc)
-            try:
-                image_result = client.generate_image(prompt, model=image_model)
-            except Exception as exc:
-                elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
-                _append_page_image_telemetry(
-                    project,
-                    {
-                        "event": "page_image_timeout" if _is_timeout_exception(exc) else "page_image_error",
-                        "page_number": page_obj.page_number,
-                        "variant_index": variant_index,
-                        "model": image_model,
-                        "elapsed_s": round(elapsed_s, 3),
-                        **_exception_telemetry_fields(exc),
-                    },
-                )
-                raise
-            image_path = page_dir / f"variant_{variant_index:03d}.png"
-            image_path.write_bytes(image_result["bytes"])
-            rel_path = image_path.relative_to(project.artifact_dir()).as_posix()
-            revised_prompt = image_result.get("revised_prompt") or ""
-            metadata = {
-                "page_number": page_obj.page_number,
-                "variant_index": variant_index,
-                "prompt": prompt,
-                "model": image_model,
-                "revised_prompt": revised_prompt,
-                "image_path": rel_path,
-            }
-            (page_dir / f"metadata_variant_{variant_index:03d}.json").write_text(
-                json.dumps(metadata, ensure_ascii=False, indent=2),
-                encoding="utf-8",
-            )
+        try:
+            image_result = client.generate_image(prompt, model=image_model)
+        except Exception as exc:
+            elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
             _append_page_image_telemetry(
                 project,
                 {
-                    "event": "page_image_response",
+                    "event": "page_image_timeout" if _is_timeout_exception(exc) else "page_image_error",
                     "page_number": page_obj.page_number,
                     "variant_index": variant_index,
                     "model": image_model,
-                    "elapsed_s": round((datetime.now(timezone.utc) - started).total_seconds(), 3),
-                    "revised_prompt": revised_prompt,
-                    "image_path": rel_path,
+                    "elapsed_s": round(elapsed_s, 3),
+                    **_exception_telemetry_fields(exc),
                 },
             )
             raise
-        page_dir = pages_dir / f"page_{page_obj.page_number:03d}"
-        page_dir.mkdir(parents=True, exist_ok=True)
         image_path = page_dir / f"variant_{variant_index:03d}.png"
         image_path.write_bytes(image_result["bytes"])
         rel_path = image_path.relative_to(project.artifact_dir()).as_posix()
@@ -1924,6 +1948,7 @@ def _generate_project_page_images(
                 preferred_variant = variant
         if preferred_variant is not None:
             _set_page_preferred_variant(page_obj, preferred_variant)
+
     return generated
 
 
@@ -1992,27 +2017,6 @@ def _generate_requested_page_variants(
                 _set_page_preferred_variant(page, variant)
             generated += 1
 
-    for page_obj in page_rows:
-        outputs = sorted(outputs_by_page.get(page_obj.pk, []), key=lambda tup: tup[0])
-        if not outputs:
-            continue
-        preferred_variant = page_obj.preferred_variant if page_obj.preferred_variant_id else None
-        for variant_index, rel_path, revised_prompt, prompt in outputs:
-            variant, _ = ProjectImagePageVariant.objects.update_or_create(
-                page_id=page_obj.pk,
-                variant_index=variant_index,
-                defaults={
-                    "image_model": image_model,
-                    "image_path": rel_path,
-                    "image_revised_prompt": revised_prompt,
-                    "generation_prompt": prompt,
-                    "status": ProjectImagePage.STATUS_GENERATED,
-                },
-            )
-            if preferred_variant is None and variant_index == 1:
-                preferred_variant = variant
-        if preferred_variant is not None:
-            _set_page_preferred_variant(page_obj, preferred_variant)
     return generated
 
 
@@ -2826,6 +2830,7 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
             "style": style,
             "formset": formset,
             "pages_artifact_dir": _image_pages_dir(project),
+            "pages_artifact_links": _page_artifact_links(project),
             "image_models": IMAGE_MODEL_CHOICES,
             "selected_image_model": request.GET.get("image_model") or "gpt-image-1",
             "default_variants_per_page": 1,
@@ -3004,6 +3009,8 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["collaborators"] = collaborators
         context["collaborator_role_choices"] = ProjectCollaborator.ROLE_CHOICES
         context["current_user_role"] = _project_role_for_user(project, self.request.user)
+        if context["current_user_role"] == ProjectCollaborator.ROLE_OWNER:
+            context["discovery_metadata_form"] = ProjectDiscoveryMetadataForm(instance=project)
         assigned_ids = {c.user_id for c in collaborators}
         assigned_ids.add(project.owner_id)
         User = get_user_model()
@@ -4773,8 +4780,13 @@ def _billing_usage_reporter(*, user_id: int, project_id: int | None, request_typ
         prompt_tokens = max(0, int(payload.get("prompt_tokens") or 0))
         completion_tokens = max(0, int(payload.get("completion_tokens") or 0))
         total_tokens = max(0, int(payload.get("total_tokens") or 0))
+        used_total_tokens_as_completion = False
+        if operation == "image_generate" and completion_tokens == 0 and total_tokens > 0:
+            completion_tokens = total_tokens
+            used_total_tokens_as_completion = True
         # Image API responses often do not expose token usage. We treat one image call as one output-unit.
-        if operation == "image_generate" and prompt_tokens == 0 and completion_tokens == 0 and total_tokens == 0:
+        fallback_applied = operation == "image_generate" and prompt_tokens == 0 and completion_tokens == 0 and total_tokens == 0
+        if fallback_applied:
             completion_tokens = 1_000_000
             total_tokens = 1_000_000
         record_openai_usage_and_charge(
@@ -4787,6 +4799,36 @@ def _billing_usage_reporter(*, user_id: int, project_id: int | None, request_typ
             total_tokens=total_tokens,
             request_type=request_type or str(payload.get("request_type") or operation),
         )
+        if project_id and "image" in (request_type or operation):
+            try:
+                project = Project.objects.filter(pk=project_id).first()
+                if project is None:
+                    return
+                usage = AIUsageCharge.objects.filter(user_id=user_id, project_id=project_id).order_by("-created_at", "-id").first()
+                user = get_user_model().objects.filter(pk=user_id).first()
+                pricing = openai_price_for_model(model)
+                _append_image_billing_telemetry(
+                    project,
+                    {
+                        "event": "billing_usage_recorded",
+                        "request_type": request_type,
+                        "operation": operation,
+                        "model": model,
+                        "prompt_tokens": prompt_tokens,
+                        "completion_tokens": completion_tokens,
+                        "total_tokens": total_tokens,
+                        "fallback_applied": fallback_applied,
+                        "used_total_tokens_as_completion": used_total_tokens_as_completion,
+                        "price_input_usd_per_1m": str(pricing["input"]),
+                        "price_output_usd_per_1m": str(pricing["output"]),
+                        "usage_charge_id": usage.id if usage else None,
+                        "usage_status": usage.status if usage else None,
+                        "usage_cost_usd": str(usage.cost_usd) if usage else None,
+                        "balance_after_usd": str(get_user_balance_usd(user)) if user is not None else None,
+                    },
+                )
+            except Exception:
+                logger.exception("Failed to append image billing telemetry")
 
     return _report
 
@@ -6250,8 +6292,35 @@ def toggle_publish(request: HttpRequest, pk: int) -> HttpResponse:
     if project.is_published and project.published_at is None:
         project.published_at = django_timezone.now()
     project.save(update_fields=["is_published", "published_at", "updated_at"])
+    metadata_updated = False
+    if project.is_published:
+        metadata_updated = update_project_discovery_metadata(project, force=False)
     state = "published" if project.is_published else "unpublished"
-    messages.info(request, f"Project {state}.")
+    if metadata_updated:
+        messages.info(request, f"Project {state}. Discovery metadata generated.")
+    else:
+        messages.info(request, f"Project {state}.")
+    return redirect("project-detail", pk=project.pk)
+
+
+@login_required
+def set_project_discovery_metadata(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
+    if request.method != "POST":
+        return redirect("project-detail", pk=project.pk)
+    action = (request.POST.get("action") or "save").strip().lower()
+    if action == "regenerate":
+        update_project_discovery_metadata(project, force=True)
+        messages.success(request, "Regenerated discovery metadata.")
+        return redirect("project-detail", pk=project.pk)
+    form = ProjectDiscoveryMetadataForm(request.POST, instance=project)
+    if form.is_valid():
+        updated = form.save(commit=False)
+        updated.discovery_metadata_updated_at = django_timezone.now()
+        updated.save(update_fields=["discovery_summary", "discovery_keywords", "discovery_level", "discovery_word_count", "discovery_metadata_updated_at", "updated_at"])
+        messages.success(request, "Saved discovery metadata.")
+    else:
+        messages.error(request, "Could not save discovery metadata. Please review the fields.")
     return redirect("project-detail", pk=project.pk)
 
 
