@@ -101,6 +101,23 @@ Focus on high-frequency tasks where guidance is most valuable:
 4. Compile/publish status checks and next-step guidance.
 5. “Show me the UI for this” handoff.
 
+## Current implementation status (April 2026)
+
+The first part of **Phase A (Discovery assistant)** is now implemented in the Django platform:
+
+- Published content discovery supports a **natural-language request** (`nl_query`) plus explicit structured filters.
+- The system stores and uses discovery metadata on projects:
+  - summary,
+  - original-language keywords,
+  - English keyword variants for cross-lingual matching,
+  - estimated level,
+  - word count.
+- Search ranking now uses both original and English keywords, which improves cross-lingual queries (for example, searching in English for content whose source text is French/German/Italian).
+- The parser now avoids generic title hints (e.g. `"story"`) and prevents broad over-acceptance by excluding zero-score results when semantic constraints are present.
+- Dialogue language is user-configurable via profile (`dialogue_language`) and used when interpreting natural-language requests.
+
+This is still read-only discovery behavior (no autonomous write actions), aligned with the intended risk profile of Phase A.
+
 ## Delivery phases
 
 ### Phase A — Discovery assistant
