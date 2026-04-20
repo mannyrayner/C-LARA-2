@@ -35,6 +35,43 @@
 <p><a class="btn secondary" href="{% url 'project-download-source-bundle' object.pk %}">Download source ZIP</a></p>
 <p><a class="btn secondary" href="{% url 'project-download-bundle' object.pk %}">Download compiled ZIP</a></p>
 <p><a class="btn secondary" href="{% url 'project-publish' object.pk %}">{% if object.is_published %}Unpublish{% else %}Publish{% endif %}</a></p>
+<div style="border: 1px solid #ddd; padding: 0.75rem; margin: 0.75rem 0; background: #fafafa;">
+  <strong>Discovery metadata</strong>
+  <p><strong>Summary:</strong> {{ object.discovery_summary|default:"(none)" }}</p>
+  <p><strong>Keywords:</strong> {% if object.discovery_keywords %}{{ object.discovery_keywords|join:", " }}{% else %}(none){% endif %}</p>
+  <p><strong>Estimated level:</strong> {{ object.discovery_level|default:"unknown" }}</p>
+  <p><strong>Length:</strong> {{ object.discovery_word_count }} words</p>
+  {% if current_user_role == "owner" and discovery_metadata_form %}
+    <form method="post" action="{% url 'project-discovery-metadata' object.pk %}">
+      {% csrf_token %}
+      <p>
+        <label for="id_discovery_summary">Discovery summary:</label><br />
+        <textarea id="id_discovery_summary" name="discovery_summary" rows="3" style="width:100%;">{{ object.discovery_summary }}</textarea>
+      </p>
+      <p>
+        <label for="id_discovery_keywords">Discovery keywords:</label><br />
+        <input
+          id="id_discovery_keywords"
+          name="discovery_keywords"
+          type="text"
+          value="{% if object.discovery_keywords %}{{ object.discovery_keywords|join:', ' }}{% endif %}"
+          style="width:100%;"
+        />
+        <small>Comma-separated keywords</small>
+      </p>
+      <p>
+        <label for="id_discovery_level">Estimated level:</label><br />
+        <input id="id_discovery_level" name="discovery_level" type="text" value="{{ object.discovery_level }}" />
+      </p>
+      <p>
+        <label for="id_discovery_word_count">Length (words):</label><br />
+        <input id="id_discovery_word_count" name="discovery_word_count" type="number" min="0" value="{{ object.discovery_word_count }}" />
+      </p>
+      <button class="btn secondary" type="submit" name="action" value="save">Save metadata</button>
+      <button class="btn secondary" type="submit" name="action" value="regenerate">Regenerate metadata</button>
+    </form>
+  {% endif %}
+</div>
 
 {% if current_user_role == "owner" %}
   <form method="post" action="{% url 'project-clone' object.pk %}" onsubmit="return confirm('Clone this project and copy latest run files?');">{% csrf_token %}
