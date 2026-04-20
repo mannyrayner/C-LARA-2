@@ -55,12 +55,14 @@ from .forms import (
     FlashcardExerciseSetForm,
     GrantAdminPrivilegesForm,
     ProfileForm,
+    ProjectDiscoveryMetadataForm,
     ProjectForm,
     ProjectImageElementFormSet,
     ProjectImagePageFormSet,
     ProjectImageStyleForm,
     RegistrationForm,
 )
+from .metadata import update_project_discovery_metadata
 from .billing import (
     apply_credit_delta,
     credits_enabled,
@@ -3007,6 +3009,8 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["collaborators"] = collaborators
         context["collaborator_role_choices"] = ProjectCollaborator.ROLE_CHOICES
         context["current_user_role"] = _project_role_for_user(project, self.request.user)
+        if context["current_user_role"] == ProjectCollaborator.ROLE_OWNER:
+            context["discovery_metadata_form"] = ProjectDiscoveryMetadataForm(instance=project)
         assigned_ids = {c.user_id for c in collaborators}
         assigned_ids.add(project.owner_id)
         User = get_user_model()
@@ -6288,8 +6292,35 @@ def toggle_publish(request: HttpRequest, pk: int) -> HttpResponse:
     if project.is_published and project.published_at is None:
         project.published_at = django_timezone.now()
     project.save(update_fields=["is_published", "published_at", "updated_at"])
+    metadata_updated = False
+    if project.is_published:
+        metadata_updated = update_project_discovery_metadata(project, force=False)
     state = "published" if project.is_published else "unpublished"
-    messages.info(request, f"Project {state}.")
+    if metadata_updated:
+        messages.info(request, f"Project {state}. Discovery metadata generated.")
+    else:
+        messages.info(request, f"Project {state}.")
+    return redirect("project-detail", pk=project.pk)
+
+
+@login_required
+def set_project_discovery_metadata(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
+    if request.method != "POST":
+        return redirect("project-detail", pk=project.pk)
+    action = (request.POST.get("action") or "save").strip().lower()
+    if action == "regenerate":
+        update_project_discovery_metadata(project, force=True)
+        messages.success(request, "Regenerated discovery metadata.")
+        return redirect("project-detail", pk=project.pk)
+    form = ProjectDiscoveryMetadataForm(request.POST, instance=project)
+    if form.is_valid():
+        updated = form.save(commit=False)
+        updated.discovery_metadata_updated_at = django_timezone.now()
+        updated.save(update_fields=["discovery_summary", "discovery_keywords", "discovery_level", "discovery_word_count", "discovery_metadata_updated_at", "updated_at"])
+        messages.success(request, "Saved discovery metadata.")
+    else:
+        messages.error(request, "Could not save discovery metadata. Please review the fields.")
     return redirect("project-detail", pk=project.pk)
 
 
