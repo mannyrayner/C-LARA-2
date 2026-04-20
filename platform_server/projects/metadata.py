@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import re
 from collections import Counter
+from pathlib import Path
 from typing import Any
 
 from django.utils import timezone
@@ -60,8 +62,32 @@ def _extract_keywords(text: str, *, max_keywords: int = 8) -> list[str]:
     return [word for word, _count in counts.most_common(max_keywords)]
 
 
+def _latest_text_gen_surface(project: Project) -> str:
+    runs_root = project.artifact_dir() / "runs"
+    if not runs_root.exists():
+        return ""
+    candidates: list[Path] = []
+    for run_dir in runs_root.iterdir():
+        if not run_dir.is_dir():
+            continue
+        path = run_dir / "stages" / "text_gen.json"
+        if path.exists():
+            candidates.append(path)
+    if not candidates:
+        return ""
+    latest = max(candidates, key=lambda p: p.stat().st_mtime)
+    try:
+        payload = json.loads(latest.read_text(encoding="utf-8"))
+    except Exception:
+        return ""
+    if not isinstance(payload, dict):
+        return ""
+    return str(payload.get("surface") or "").strip()
+
+
 def build_project_discovery_metadata(project: Project) -> dict[str, Any]:
-    source = (project.source_text or "").strip()
+    generated_surface = _latest_text_gen_surface(project)
+    source = generated_surface or (project.source_text or "").strip()
     description = (project.description or "").strip()
     text_for_analysis = source or description
     words = _tokenize_words(text_for_analysis)

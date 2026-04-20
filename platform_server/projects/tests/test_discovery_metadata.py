@@ -73,3 +73,21 @@ class DiscoveryMetadataTests(TestCase):
         self.assertTrue(self.project.discovery_summary)
         self.assertTrue(self.project.discovery_keywords)
         self.assertGreater(self.project.discovery_word_count, 0)
+
+    def test_metadata_prefers_latest_text_gen_surface_over_initial_description(self):
+        self.project.description = "Write a story about a dragon and a mountain village."
+        self.project.source_text = ""
+        self.project.save(update_fields=["description", "source_text", "updated_at"])
+        stage_dir = self.project.artifact_dir() / "runs" / "run_demo" / "stages"
+        stage_dir.mkdir(parents=True, exist_ok=True)
+        (stage_dir / "text_gen.json").write_text(
+            '{"surface": "Lina visits the village. She meets a dragon near the river."}',
+            encoding="utf-8",
+        )
+
+        self.client.get(reverse("project-publish", args=[self.project.pk]), follow=True)
+        self.project.refresh_from_db()
+        self.assertGreater(self.project.discovery_word_count, 0)
+        # Prompt-only terms from description should not dominate when generated surface exists.
+        self.assertNotIn("mountain", [kw.lower() for kw in self.project.discovery_keywords])
+        self.assertIn("village", [kw.lower() for kw in self.project.discovery_keywords])
