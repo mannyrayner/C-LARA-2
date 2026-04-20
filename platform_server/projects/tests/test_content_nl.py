@@ -5,6 +5,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from projects import views
 from projects.models import Project
 
 
@@ -83,6 +84,34 @@ class ContentNaturalLanguageTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Village Adventure")
         self.assertContains(resp, "Keyword &#x27;elephant&#x27; matched metadata keywords.")
+        self.assertNotContains(resp, "Sarah im Supermarkt")
+
+    @patch("projects.views._parse_nl_content_request")
+    def test_content_list_drops_zero_score_results_for_semantic_nl_queries(self, mock_parse):
+        self.project.discovery_keywords = ["éléphant", "funambule"]
+        self.project.discovery_keywords_en = ["elephant", "tightrope walker"]
+        self.project.save(update_fields=["discovery_keywords", "discovery_keywords_en", "updated_at"])
+        mock_parse.return_value = {
+            "title": "story",
+            "text_language": "",
+            "annotation_language": "",
+            "date_posted": "any",
+            "level": "",
+            "keywords": ["elephant"],
+            "max_results": 10,
+        }
+        resp = self.client.get(
+            reverse("content-list"),
+            {"nl_query": "I want a story about elephants", "dialogue_language": "en"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Village Adventure")
+        self.assertNotContains(resp, "Sarah im Supermarkt")
+
+    def test_sanitize_nl_title_hint_discards_generic_story_terms(self):
+        self.assertEqual(views._sanitize_nl_title_hint("story"), "")
+        self.assertEqual(views._sanitize_nl_title_hint("stories"), "")
+        self.assertEqual(views._sanitize_nl_title_hint("Elephant tightrope dancer"), "Elephant tightrope dancer")
 
     def test_content_list_renders_language_dropdowns(self):
         resp = self.client.get(reverse("content-list"))

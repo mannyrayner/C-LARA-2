@@ -5818,8 +5818,10 @@ def _parse_nl_content_request(
         return {}
     if not isinstance(payload, dict):
         return {}
+    raw_title = str(payload.get("title") or "").strip()
+    title = _sanitize_nl_title_hint(raw_title)
     return {
-        "title": str(payload.get("title") or "").strip(),
+        "title": title,
         "text_language": str(payload.get("text_language") or "").strip(),
         "annotation_language": str(payload.get("annotation_language") or "").strip(),
         "date_posted": str(payload.get("date_posted") or "").strip(),
@@ -5827,6 +5829,29 @@ def _parse_nl_content_request(
         "keywords": [str(item).strip() for item in (payload.get("keywords") or []) if str(item).strip()],
         "max_results": int(payload.get("max_results") or 12),
     }
+
+
+def _sanitize_nl_title_hint(raw_title: str) -> str:
+    """Drop generic/non-specific NL title hints so they don't over-filter results."""
+    value = (raw_title or "").strip()
+    if not value:
+        return ""
+    generic = {
+        "story",
+        "stories",
+        "text",
+        "texts",
+        "article",
+        "articles",
+        "book",
+        "books",
+        "content",
+        "something",
+        "anything",
+    }
+    if value.lower() in generic:
+        return ""
+    return value
 
 
 def _normalize_language_filter(raw: str) -> str:
@@ -5926,14 +5951,14 @@ def content_list(request: HttpRequest) -> HttpResponse:
             if requested_level and requested_level in (project.discovery_level or "").lower():
                 score += 3
                 reasons.append(f"Level matched ({project.discovery_level}).")
-            if not reasons and (title or text_language or annotation_language):
+            if not reasons and (manual_title or manual_text_language or manual_annotation_language):
                 reasons.append("Matched structured filters.")
             scored.append((score, reasons, project))
 
         scored.sort(key=lambda tup: (tup[0], tup[2].published_at or tup[2].updated_at), reverse=True)
         max_results = max(1, min(50, int(nl_plan.get("max_results") or 12)))
         for score, reasons, project in scored[:max_results]:
-            if score == 0 and requested_keywords and requested_level:
+            if score == 0 and (requested_keywords or requested_level or title):
                 continue
             result_rows.append({"project": project, "score": score, "reasons": reasons[:3]})
     else:
@@ -6404,14 +6429,14 @@ def content_list(request: HttpRequest) -> HttpResponse:
             if requested_level and requested_level in (project.discovery_level or "").lower():
                 score += 3
                 reasons.append(f"Level matched ({project.discovery_level}).")
-            if not reasons and (title or text_language or annotation_language):
+            if not reasons and (manual_title or manual_text_language or manual_annotation_language):
                 reasons.append("Matched structured filters.")
             scored.append((score, reasons, project))
 
         scored.sort(key=lambda tup: (tup[0], tup[2].published_at or tup[2].updated_at), reverse=True)
         max_results = max(1, min(50, int(nl_plan.get("max_results") or 12)))
         for score, reasons, project in scored[:max_results]:
-            if score == 0 and requested_keywords and requested_level:
+            if score == 0 and (requested_keywords or requested_level or title):
                 continue
             result_rows.append({"project": project, "score": score, "reasons": reasons[:3]})
     else:
