@@ -1,0 +1,165 @@
+from unittest.mock import patch
+
+from django.contrib.auth import get_user_model
+from django.test import Client, TestCase
+from django.urls import reverse
+from django.utils import timezone
+
+from projects import views
+from projects.models import Profile, Project
+
+
+class ContentNaturalLanguageTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="nl_user", password="pw")
+        Profile.objects.create(user=self.user, timezone="UTC", dialogue_language="en")
+        self.client = Client()
+        self.client.login(username="nl_user", password="pw")
+        self.project = Project.objects.create(
+            owner=self.user,
+            title="Village Adventure",
+            source_text="Story text",
+            language="fr",
+            target_language="en",
+            is_published=True,
+            published_at=timezone.now(),
+            discovery_summary="A short adventure in a village market.",
+            discovery_keywords=["village", "adventure", "market"],
+            discovery_keywords_en=["village", "adventure", "market"],
+            discovery_level="B1-B2",
+        )
+        self.other = Project.objects.create(
+            owner=self.user,
+            title="Sarah im Supermarkt",
+            source_text="Story text",
+            language="de",
+            target_language="en",
+            is_published=True,
+            published_at=timezone.now(),
+            discovery_summary="Shopping in a supermarket.",
+            discovery_keywords=["supermarket", "shopping"],
+            discovery_keywords_en=["supermarket", "shopping"],
+            discovery_level="A2",
+        )
+
+    @patch("projects.views._parse_nl_content_request")
+    def test_content_list_supports_nl_query_and_justifications(self, mock_parse):
+        mock_parse.return_value = {
+            "title": "",
+            "text_language": "fr",
+            "annotation_language": "en",
+            "date_posted": "any",
+            "level": "B1-B2",
+            "keywords": ["village"],
+            "max_results": 5,
+        }
+        resp = self.client.get(
+            reverse("content-list"),
+            {"nl_query": "Find me an intermediate French village story", "dialogue_language": "en"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Village Adventure")
+        self.assertNotContains(resp, "Sarah im Supermarkt")
+        self.assertContains(resp, "Keyword &#x27;village&#x27; matched metadata keywords.")
+        self.assertContains(resp, "Level matched (B1-B2).")
+
+    @patch("projects.views._parse_nl_content_request")
+    def test_content_list_matches_against_english_keywords_for_cross_lingual_search(self, mock_parse):
+        self.project.discovery_keywords = ["éléphant", "funambule"]
+        self.project.discovery_keywords_en = ["elephant", "tightrope walker"]
+        self.project.save(update_fields=["discovery_keywords", "discovery_keywords_en", "updated_at"])
+        mock_parse.return_value = {
+            "title": "story",
+            "text_language": "",
+            "annotation_language": "",
+            "date_posted": "any",
+            "level": "",
+            "keywords": ["elephant"],
+            "max_results": 5,
+        }
+        resp = self.client.get(
+            reverse("content-list"),
+            {"nl_query": "I am looking for an elephant story", "dialogue_language": "en"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Village Adventure")
+        self.assertContains(resp, "Keyword &#x27;elephant&#x27; matched metadata keywords.")
+        self.assertNotContains(resp, "Sarah im Supermarkt")
+
+    @patch("projects.views._parse_nl_content_request")
+    def test_content_list_drops_zero_score_results_for_semantic_nl_queries(self, mock_parse):
+        self.project.discovery_keywords = ["éléphant", "funambule"]
+        self.project.discovery_keywords_en = ["elephant", "tightrope walker"]
+        self.project.save(update_fields=["discovery_keywords", "discovery_keywords_en", "updated_at"])
+        mock_parse.return_value = {
+            "title": "story",
+            "text_language": "",
+            "annotation_language": "",
+            "date_posted": "any",
+            "level": "",
+            "keywords": ["elephant"],
+            "max_results": 10,
+        }
+        resp = self.client.get(
+            reverse("content-list"),
+            {"nl_query": "I want a story about elephants", "dialogue_language": "en"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Village Adventure")
+        self.assertNotContains(resp, "Sarah im Supermarkt")
+
+    def test_sanitize_nl_title_hint_discards_generic_story_terms(self):
+        self.assertEqual(views._sanitize_nl_title_hint("story"), "")
+        self.assertEqual(views._sanitize_nl_title_hint("stories"), "")
+        self.assertEqual(views._sanitize_nl_title_hint("Elephant tightrope dancer"), "Elephant tightrope dancer")
+
+    @patch("projects.views._parse_nl_content_request")
+    def test_content_list_persists_compact_memory_on_profile(self, mock_parse):
+        mock_parse.return_value = {
+            "title": "",
+            "text_language": "",
+            "annotation_language": "",
+            "date_posted": "any",
+            "level": "",
+            "keywords": ["village"],
+            "max_results": 10,
+        }
+        self.client.get(
+            reverse("content-list"),
+            {"nl_query": "Find me a village story", "dialogue_language": "en"},
+        )
+        profile_obj = Profile.objects.get(user=self.user)
+        self.assertEqual(profile_obj.dialogue_memory.get("last_nl_query"), "Find me a village story")
+        self.assertEqual(profile_obj.dialogue_memory.get("last_nl_plan", {}).get("keywords"), ["village"])
+
+    @patch("projects.views._parse_nl_content_request")
+    def test_content_list_uses_profile_memory_as_previous_context(self, mock_parse):
+        profile_obj = Profile.objects.get(user=self.user)
+        profile_obj.dialogue_memory = {
+            "last_nl_query": "Earlier query",
+            "last_nl_plan": {"keywords": ["elephant"], "date_posted": "any"},
+        }
+        profile_obj.save(update_fields=["dialogue_memory", "updated_at"])
+        mock_parse.return_value = {
+            "title": "",
+            "text_language": "",
+            "annotation_language": "",
+            "date_posted": "any",
+            "level": "",
+            "keywords": ["elephant"],
+            "max_results": 10,
+        }
+        self.client.get(
+            reverse("content-list"),
+            {"nl_query": "Current query", "dialogue_language": "en"},
+        )
+        kwargs = mock_parse.call_args.kwargs
+        self.assertEqual(kwargs.get("previous_query"), "Earlier query")
+        self.assertEqual(kwargs.get("previous_plan"), {"keywords": ["elephant"], "date_posted": "any"})
+
+    def test_content_list_renders_language_dropdowns(self):
+        resp = self.client.get(reverse("content-list"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, '<select id="text_language" name="text_language">', html=False)
+        self.assertContains(resp, '<select id="annotation_language" name="annotation_language">', html=False)

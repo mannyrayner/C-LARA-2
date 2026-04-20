@@ -4,16 +4,38 @@
 <h1>Published Content</h1>
 <form method="get">
   <p>
+    <label for="nl_query"><strong>Natural-language request:</strong></label><br />
+    <textarea id="nl_query" name="nl_query" rows="3" style="width:100%;" placeholder="e.g. Show me intermediate French stories about travel">{{ filters.nl_query }}</textarea>
+  </p>
+  <p>
+    <label for="dialogue_language">Dialogue language:</label>
+    <select id="dialogue_language" name="dialogue_language">
+      {% for value, label in dialogue_language_choices %}
+        <option value="{{ value }}" {% if filters.dialogue_language == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </p>
+  <p>
     <label for="title">Title contains:</label>
     <input id="title" type="text" name="title" value="{{ filters.title }}" />
   </p>
   <p>
     <label for="text_language">Text language:</label>
-    <input id="text_language" type="text" name="text_language" value="{{ filters.text_language }}" placeholder="e.g. de" />
+    <select id="text_language" name="text_language">
+      <option value="">(Any)</option>
+      {% for value, label in language_choices %}
+        <option value="{{ value }}" {% if filters.text_language == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
   </p>
   <p>
     <label for="annotation_language">Annotation language:</label>
-    <input id="annotation_language" type="text" name="annotation_language" value="{{ filters.annotation_language }}" placeholder="e.g. en" />
+    <select id="annotation_language" name="annotation_language">
+      <option value="">(Any)</option>
+      {% for value, label in language_choices %}
+        <option value="{{ value }}" {% if filters.annotation_language == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
   </p>
   <p>
     <label for="date_posted">Date posted:</label>
@@ -26,15 +48,29 @@
   <p><button class="btn" type="submit">Search</button></p>
 </form>
 
-<h2>Results ({{ projects|length }})</h2>
-{% if projects %}
+{% if nl_plan %}
+  <h3>Interpreted request</h3>
+  <p><small>{{ nl_plan }}</small></p>
+{% endif %}
+
+<h2>Results ({{ result_rows|length }})</h2>
+{% if result_rows %}
   <ul>
-    {% for p in projects %}
+    {% for row in result_rows %}
+      {% with p=row.project %}
       <li>
         <a href="{% url 'content-detail' p.pk %}">{{ p.title }}</a>
         — {{ p.language }} → {{ p.target_language }}
         {% if p.published_at %}(published {{ p.published_at|date:"Y-m-d H:i" }}){% endif %}
+        {% if row.reasons %}
+          <ul>
+            {% for reason in row.reasons %}
+              <li><small>{{ reason }}</small></li>
+            {% endfor %}
+          </ul>
+        {% endif %}
       </li>
+      {% endwith %}
     {% endfor %}
   </ul>
 {% else %}
