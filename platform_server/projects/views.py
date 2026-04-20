@@ -2040,6 +2040,12 @@ def profile(request: HttpRequest) -> HttpResponse:
     profile_obj, _ = Profile.objects.get_or_create(user=request.user)
 
     if request.method == "POST":
+        action = (request.POST.get("memory_action") or "").strip().lower()
+        if action == "clear":
+            profile_obj.dialogue_memory = {}
+            profile_obj.save(update_fields=["dialogue_memory", "updated_at"])
+            messages.success(request, "Dialogue memory cleared.")
+            return redirect("profile")
         form = ProfileForm(request.POST, instance=profile_obj)
         if form.is_valid():
             form.save()
@@ -5862,6 +5868,22 @@ def _normalize_language_filter(raw: str) -> str:
     return by_label.get(value, value)
 
 
+def _profile_memory_payload_for_nl(profile: Profile, *, nl_query: str, nl_plan: dict[str, Any]) -> dict[str, Any]:
+    compact_plan = {
+        "title": str(nl_plan.get("title") or "").strip(),
+        "text_language": str(nl_plan.get("text_language") or "").strip(),
+        "annotation_language": str(nl_plan.get("annotation_language") or "").strip(),
+        "date_posted": str(nl_plan.get("date_posted") or "").strip(),
+        "level": str(nl_plan.get("level") or "").strip(),
+        "keywords": [str(k).strip() for k in (nl_plan.get("keywords") or []) if str(k).strip()][:8],
+    }
+    return {
+        "last_nl_query": (nl_query or "").strip()[:500],
+        "last_nl_plan": compact_plan,
+        "updated_at": django_timezone.now().isoformat(),
+    }
+
+
 @login_required
 def content_list(request: HttpRequest) -> HttpResponse:
     """Search/browse published projects, with optional natural-language discovery."""
@@ -5883,8 +5905,24 @@ def content_list(request: HttpRequest) -> HttpResponse:
 
     nl_plan: dict[str, Any] = {}
     if nl_query:
+        profile_obj: Profile | None = None
+        try:
+            profile_obj = request.user.profile
+        except Exception:
+            profile_obj = None
         prev_query = str(request.session.get("content_nl_last_query") or "")
         prev_plan = request.session.get("content_nl_last_plan") or {}
+        if (
+            profile_obj
+            and profile_obj.dialogue_memory_enabled
+            and isinstance(profile_obj.dialogue_memory, dict)
+        ):
+            mem_prev_query = str(profile_obj.dialogue_memory.get("last_nl_query") or "")
+            mem_prev_plan = profile_obj.dialogue_memory.get("last_nl_plan") or {}
+            if mem_prev_query:
+                prev_query = mem_prev_query
+            if isinstance(mem_prev_plan, dict) and mem_prev_plan:
+                prev_plan = mem_prev_plan
         if not isinstance(prev_plan, dict):
             prev_plan = {}
         nl_plan = _parse_nl_content_request(
@@ -5895,6 +5933,13 @@ def content_list(request: HttpRequest) -> HttpResponse:
         )
         request.session["content_nl_last_query"] = nl_query
         request.session["content_nl_last_plan"] = nl_plan
+        if profile_obj and profile_obj.dialogue_memory_enabled:
+            profile_obj.dialogue_memory = _profile_memory_payload_for_nl(
+                profile_obj,
+                nl_query=nl_query,
+                nl_plan=nl_plan,
+            )
+            profile_obj.save(update_fields=["dialogue_memory", "updated_at"])
 
     if nl_query:
         title = str(nl_plan.get("title") or "").strip()
@@ -6361,8 +6406,24 @@ def content_list(request: HttpRequest) -> HttpResponse:
 
     nl_plan: dict[str, Any] = {}
     if nl_query:
+        profile_obj: Profile | None = None
+        try:
+            profile_obj = request.user.profile
+        except Exception:
+            profile_obj = None
         prev_query = str(request.session.get("content_nl_last_query") or "")
         prev_plan = request.session.get("content_nl_last_plan") or {}
+        if (
+            profile_obj
+            and profile_obj.dialogue_memory_enabled
+            and isinstance(profile_obj.dialogue_memory, dict)
+        ):
+            mem_prev_query = str(profile_obj.dialogue_memory.get("last_nl_query") or "")
+            mem_prev_plan = profile_obj.dialogue_memory.get("last_nl_plan") or {}
+            if mem_prev_query:
+                prev_query = mem_prev_query
+            if isinstance(mem_prev_plan, dict) and mem_prev_plan:
+                prev_plan = mem_prev_plan
         if not isinstance(prev_plan, dict):
             prev_plan = {}
         nl_plan = _parse_nl_content_request(
@@ -6373,6 +6434,13 @@ def content_list(request: HttpRequest) -> HttpResponse:
         )
         request.session["content_nl_last_query"] = nl_query
         request.session["content_nl_last_plan"] = nl_plan
+        if profile_obj and profile_obj.dialogue_memory_enabled:
+            profile_obj.dialogue_memory = _profile_memory_payload_for_nl(
+                profile_obj,
+                nl_query=nl_query,
+                nl_plan=nl_plan,
+            )
+            profile_obj.save(update_fields=["dialogue_memory", "updated_at"])
 
     if nl_query:
         title = str(nl_plan.get("title") or "").strip()

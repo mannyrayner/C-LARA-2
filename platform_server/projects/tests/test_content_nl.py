@@ -6,13 +6,14 @@ from django.urls import reverse
 from django.utils import timezone
 
 from projects import views
-from projects.models import Project
+from projects.models import Profile, Project
 
 
 class ContentNaturalLanguageTests(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="nl_user", password="pw")
+        Profile.objects.create(user=self.user, timezone="UTC", dialogue_language="en")
         self.client = Client()
         self.client.login(username="nl_user", password="pw")
         self.project = Project.objects.create(
@@ -112,6 +113,50 @@ class ContentNaturalLanguageTests(TestCase):
         self.assertEqual(views._sanitize_nl_title_hint("story"), "")
         self.assertEqual(views._sanitize_nl_title_hint("stories"), "")
         self.assertEqual(views._sanitize_nl_title_hint("Elephant tightrope dancer"), "Elephant tightrope dancer")
+
+    @patch("projects.views._parse_nl_content_request")
+    def test_content_list_persists_compact_memory_on_profile(self, mock_parse):
+        mock_parse.return_value = {
+            "title": "",
+            "text_language": "",
+            "annotation_language": "",
+            "date_posted": "any",
+            "level": "",
+            "keywords": ["village"],
+            "max_results": 10,
+        }
+        self.client.get(
+            reverse("content-list"),
+            {"nl_query": "Find me a village story", "dialogue_language": "en"},
+        )
+        profile_obj = Profile.objects.get(user=self.user)
+        self.assertEqual(profile_obj.dialogue_memory.get("last_nl_query"), "Find me a village story")
+        self.assertEqual(profile_obj.dialogue_memory.get("last_nl_plan", {}).get("keywords"), ["village"])
+
+    @patch("projects.views._parse_nl_content_request")
+    def test_content_list_uses_profile_memory_as_previous_context(self, mock_parse):
+        profile_obj = Profile.objects.get(user=self.user)
+        profile_obj.dialogue_memory = {
+            "last_nl_query": "Earlier query",
+            "last_nl_plan": {"keywords": ["elephant"], "date_posted": "any"},
+        }
+        profile_obj.save(update_fields=["dialogue_memory", "updated_at"])
+        mock_parse.return_value = {
+            "title": "",
+            "text_language": "",
+            "annotation_language": "",
+            "date_posted": "any",
+            "level": "",
+            "keywords": ["elephant"],
+            "max_results": 10,
+        }
+        self.client.get(
+            reverse("content-list"),
+            {"nl_query": "Current query", "dialogue_language": "en"},
+        )
+        kwargs = mock_parse.call_args.kwargs
+        self.assertEqual(kwargs.get("previous_query"), "Earlier query")
+        self.assertEqual(kwargs.get("previous_plan"), {"keywords": ["elephant"], "date_posted": "any"})
 
     def test_content_list_renders_language_dropdowns(self):
         resp = self.client.get(reverse("content-list"))

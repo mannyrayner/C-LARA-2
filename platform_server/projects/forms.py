@@ -113,10 +113,15 @@ LANGUAGE_CHOICES = ProjectForm.LANGUAGE_CHOICES
 class ProfileForm(forms.ModelForm):
     timezone = forms.ChoiceField(choices=TIMEZONE_CHOICES)
     dialogue_language = forms.ChoiceField(choices=LANGUAGE_CHOICES, label="Dialogue language")
+    dialogue_memory_enabled = forms.BooleanField(
+        required=False,
+        label="Enable dialogue personalization memory",
+        help_text="Store a compact summary of your latest discovery preferences across sessions.",
+    )
 
     class Meta:
         model = Profile
-        fields = ["timezone", "dialogue_language"]
+        fields = ["timezone", "dialogue_language", "dialogue_memory_enabled"]
 
 
 class ProjectDiscoveryMetadataForm(forms.ModelForm):
