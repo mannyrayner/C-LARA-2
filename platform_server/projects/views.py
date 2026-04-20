@@ -5884,6 +5884,29 @@ def content_list(request: HttpRequest) -> HttpResponse:
         annotation_language = manual_annotation_language
         date_posted = manual_date_posted
 
+    nl_query = (request.GET.get("nl_query") or "").strip()
+    dialogue_language = (request.GET.get("dialogue_language") or "").strip()
+    if not dialogue_language:
+        try:
+            dialogue_language = request.user.profile.dialogue_language or "en"
+        except Exception:
+            dialogue_language = "en"
+
+    nl_plan: dict[str, Any] = {}
+    if nl_query:
+        nl_plan = _parse_nl_content_request(nl_query=nl_query, dialogue_language=dialogue_language)
+
+    if not title:
+        title = str(nl_plan.get("title") or "").strip()
+    if not text_language:
+        text_language = _normalize_language_filter(str(nl_plan.get("text_language") or ""))
+    if not annotation_language:
+        annotation_language = _normalize_language_filter(str(nl_plan.get("annotation_language") or ""))
+    if date_posted == "any":
+        nl_date = str(nl_plan.get("date_posted") or "").strip()
+        if nl_date in CONTENT_DATE_FILTERS:
+            date_posted = nl_date
+
     qs = _published_projects_visible_to_user(request.user)
     if title:
         qs = qs.filter(title__icontains=title)
@@ -6359,6 +6382,29 @@ def content_list(request: HttpRequest) -> HttpResponse:
         text_language = manual_text_language
         annotation_language = manual_annotation_language
         date_posted = manual_date_posted
+
+    nl_query = (request.GET.get("nl_query") or "").strip()
+    dialogue_language = (request.GET.get("dialogue_language") or "").strip()
+    if not dialogue_language:
+        try:
+            dialogue_language = request.user.profile.dialogue_language or "en"
+        except Exception:
+            dialogue_language = "en"
+
+    nl_plan: dict[str, Any] = {}
+    if nl_query:
+        nl_plan = _parse_nl_content_request(nl_query=nl_query, dialogue_language=dialogue_language)
+
+    if not title:
+        title = str(nl_plan.get("title") or "").strip()
+    if not text_language:
+        text_language = _normalize_language_filter(str(nl_plan.get("text_language") or ""))
+    if not annotation_language:
+        annotation_language = _normalize_language_filter(str(nl_plan.get("annotation_language") or ""))
+    if date_posted == "any":
+        nl_date = str(nl_plan.get("date_posted") or "").strip()
+        if nl_date in CONTENT_DATE_FILTERS:
+            date_posted = nl_date
 
     qs = _published_projects_visible_to_user(request.user)
     if title:
