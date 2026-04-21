@@ -5,6 +5,7 @@ from django.core.management import call_command
 from django.test import Client, TestCase
 from django.urls import reverse
 
+from projects import views
 from projects.models import Profile, Project
 
 
@@ -117,3 +118,17 @@ class ProjectDialogueEntryTests(TestCase):
         self.project.refresh_from_db()
         self.assertTrue(self.project.discovery_keywords)
         self.assertTrue(self.project.discovery_keywords_en)
+
+    def test_postprocess_project_open_plan_maps_language_mentions_to_filter(self):
+        parsed = {
+            "title": "German project",
+            "text_language": "non",
+            "annotation_language": "",
+            "keywords": [],
+        }
+        normalized = views._postprocess_project_open_plan(
+            nl_query="Where is my German project?",
+            parsed=parsed,
+        )
+        self.assertEqual(normalized["text_language"], "de")
+        self.assertEqual(normalized["title"], "")

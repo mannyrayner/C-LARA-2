@@ -17,6 +17,7 @@ from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
+from django.core.management import call_command
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
@@ -2357,6 +2358,19 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
                 )
                 changed += 1
             messages.success(request, f"Saved manual pricing for {changed} model row(s).")
+            return redirect("admin-tools")
+        elif action == "backfill_project_discovery_keywords":
+            force = bool(request.POST.get("force_backfill_keywords"))
+            try:
+                call_command(
+                    "backfill_project_discovery_keywords",
+                    admin_username=request.user.username,
+                    force=force,
+                )
+                msg = "Backfill started for discovery keywords (forced)." if force else "Backfill started for missing/stale discovery keywords."
+                messages.success(request, msg)
+            except Exception as exc:
+                messages.error(request, f"Keyword backfill failed: {exc}")
             return redirect("admin-tools")
         else:
             messages.error(request, "Unknown admin action.")
@@ -5995,6 +6009,7 @@ def _parse_nl_project_open_request(
         f"User language for this request: {dialogue_language}. "
         "Interpret the request for opening an existing project. "
         "Return only JSON keys: title, text_language, annotation_language, keywords. "
+        "Language mentions (e.g., German, Old Norse, French) usually refer to text_language, not title. "
         "Use prior turn context if relevant and use empty strings/arrays for unknown values.\n\n"
         f"Previous user request: {previous_query}\n"
         f"Previous interpreted filters: {prev_plan}\n\n"
@@ -6008,12 +6023,13 @@ def _parse_nl_project_open_request(
         return {}
     if not isinstance(payload, dict):
         return {}
-    return {
+    parsed = {
         "title": str(payload.get("title") or "").strip(),
         "text_language": _normalize_language_filter(str(payload.get("text_language") or "")),
         "annotation_language": _normalize_language_filter(str(payload.get("annotation_language") or "")),
         "keywords": [str(k).strip().lower() for k in (payload.get("keywords") or []) if str(k).strip()],
     }
+    return _postprocess_project_open_plan(nl_query=nl_query, parsed=parsed)
 
 
 def _parse_nl_project_create_request(
@@ -6077,6 +6093,30 @@ def _sanitize_nl_title_hint(raw_title: str) -> str:
     if value.lower() in generic:
         return ""
     return value
+
+
+def _language_mentions_in_text(text: str) -> list[str]:
+    lowered = (text or "").lower()
+    mentions: list[str] = []
+    for code, label in ProjectForm.LANGUAGE_CHOICES:
+        if re.search(rf"\b{re.escape(str(code).lower())}\b", lowered) or re.search(
+            rf"\b{re.escape(str(label).lower())}\b",
+            lowered,
+        ):
+            mentions.append(str(code))
+    return mentions
+
+
+def _postprocess_project_open_plan(*, nl_query: str, parsed: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(parsed)
+    mentions = _language_mentions_in_text(nl_query)
+    if mentions:
+        normalized["text_language"] = mentions[0]
+    title = str(normalized.get("title") or "").strip()
+    lowered = title.lower()
+    if "project" in lowered and (len(title.split()) <= 3 or mentions):
+        normalized["title"] = ""
+    return normalized
 
 
 def _normalize_language_filter(raw: str) -> str:
