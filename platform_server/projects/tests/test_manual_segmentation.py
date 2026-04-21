@@ -242,6 +242,25 @@ class ManualSegmentationEditorTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, "Hello world&lt;page&gt;")
 
+    def test_phase_1_editor_reconstructs_separators_from_pages_when_surface_has_none(self):
+        self.project.source_text = "Hello world"
+        self.project.save(update_fields=["source_text", "updated_at"])
+        run_dir = self.project.artifact_dir() / "runs" / "run_surface_plain" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "l2": "en",
+            # Auto phase-1 output may keep plain text here without marker syntax.
+            "surface": "Hello world",
+            "pages": [{"surface": "Hello world", "segments": [{"surface": "Hello"}, {"surface": " world"}], "annotations": {}}],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_1.json").write_text(json.dumps(payload), encoding="utf-8")
+
+        resp = self.client.get(reverse("manual-segmentation-phase-1", args=[self.project.pk]), follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, "inconsistent with base text")
+        self.assertContains(resp, "Hello|| world")
+
     def test_phase_1_save_salvages_phase_2_for_unchanged_pages_and_invalidates_downstream(self):
         self.project.source_text = "AaaBbb"
         self.project.save(update_fields=["source_text", "updated_at"])

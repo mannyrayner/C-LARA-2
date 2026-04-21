@@ -102,8 +102,8 @@
     <pre style="white-space:pre-wrap;">{{ annotation_plain_text }}</pre>
   </details>
 {% endif %}
-{% if annotation_segmentation_output_href %}
-  <p><a class="btn secondary" href="{{ annotation_segmentation_output_href }}" target="_blank">Open segmentation output (JSON)</a></p>
+{% if annotation_segmentation_review_href %}
+  <p><a class="btn secondary" href="{{ annotation_segmentation_review_href }}">Review/edit segmentation</a></p>
 {% endif %}
 {% if object.compiled_path %}
   <p>

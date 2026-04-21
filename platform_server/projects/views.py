@@ -3135,10 +3135,7 @@ class ProjectAnnotationView(ProjectDetailView):
         project: Project = context["object"]
         context["annotation_dialogue_plan"] = _annotation_dialogue_plan(project)
         context["annotation_plain_text"] = _base_text_for_segmentation_phase_1(project).strip()
-        seg_output = _latest_stage_relative_path(project, "segmentation_phase_2.json")
-        context["annotation_segmentation_output_href"] = (
-            reverse("project-compiled", args=[project.pk, seg_output]) if seg_output else None
-        )
+        context["annotation_segmentation_review_href"] = reverse("manual-segmentation-phase-1", args=[project.pk])
         return context
 
 
@@ -3146,10 +3143,7 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
     has_plain_text = bool(_base_text_for_segmentation_phase_1(project).strip())
     latest_segmentation = _find_latest_stage_file(project, "segmentation_phase_2.json")
     has_segmented = latest_segmentation is not None
-    segmentation_href: str | None = None
-    if latest_segmentation is not None:
-        seg_rel = latest_segmentation[1].resolve().relative_to(project.artifact_dir().resolve()).as_posix()
-        segmentation_href = reverse("project-compiled", args=[project.pk, seg_rel])
+    segmentation_review_href = reverse("manual-segmentation-phase-1", args=[project.pk])
     compiled_href: str | None = None
     compiled_page = _compiled_page_one_path(project)
     if compiled_page:
@@ -3214,12 +3208,12 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                 *(
                     [
                         {
-                            "label": "Open segmentation output (JSON)",
-                            "description": "Inspect the latest page/segment/token structure.",
-                            "href": segmentation_href,
+                            "label": "Review/edit segmentation",
+                            "description": "Open manual segmentation view to inspect and adjust boundaries.",
+                            "href": segmentation_review_href,
                         }
                     ]
-                    if segmentation_href
+                    if has_segmented
                     else []
                 ),
             ],
@@ -3242,12 +3236,12 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
             *(
                 [
                     {
-                        "label": "Open segmentation output (JSON)",
-                        "description": "Inspect the latest page/segment/token structure.",
-                        "href": segmentation_href,
+                        "label": "Review/edit segmentation",
+                        "description": "Open manual segmentation view to inspect and adjust boundaries.",
+                        "href": segmentation_review_href,
                     }
                 ]
-                if segmentation_href
+                if has_segmented
                 else []
             ),
             {
@@ -3257,19 +3251,6 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
             },
         ],
     }
-
-
-def _latest_stage_relative_path(project: Project, stage_filename: str) -> str | None:
-    latest = _find_latest_stage_file(project, stage_filename)
-    if latest is None:
-        return None
-    _run_dir, stage_path = latest
-    try:
-        return stage_path.resolve().relative_to(project.artifact_dir().resolve()).as_posix()
-    except Exception:
-        return None
-
-
 def _ensure_stage_run_dir(project: Project) -> Path:
     run_dir = _resolve_run_dir(project)
     if run_dir is None:
@@ -3292,6 +3273,18 @@ def _base_text_for_segmentation_phase_1(project: Project) -> str:
 
 def _surface_without_phase1_markers(surface: str) -> str:
     return surface.replace("<page>\n", "").replace("<page>", "").replace("||", "")
+
+
+def _phase1_surface_from_payload(payload: dict[str, Any]) -> str:
+    """Reconstruct editable phase-1 surface from page/segment structure."""
+
+    pages = payload.get("pages") or []
+    page_surfaces: list[str] = []
+    for page in pages:
+        segments = page.get("segments") or []
+        seg_surfaces = [str((seg or {}).get("surface") or "") for seg in segments]
+        page_surfaces.append("||".join(seg_surfaces))
+    return "<page>".join(page_surfaces)
 
 
 def _build_phase1_payload_from_surface(surface: str, language: str) -> dict[str, Any]:
@@ -4426,7 +4419,11 @@ def manual_segmentation_phase_1(request: HttpRequest, pk: int) -> HttpResponse:
     run_dir = _find_run_with_stage(project, "segmentation_phase_1") or _resolve_run_dir(project)
     current_payload = _load_stage_payload(project, "segmentation_phase_1", run_dir=run_dir) if run_dir else None
     current_surface = _canonicalize_phase1_surface(str((current_payload or {}).get("surface") or base_text))
-    if _surface_without_phase1_markers(current_surface) != base_text:
+    if isinstance(current_payload, dict):
+        reconstructed = _canonicalize_phase1_surface(_phase1_surface_from_payload(current_payload))
+        if reconstructed and _stable_text_hash(_surface_without_phase1_markers(reconstructed)) == _stable_text_hash(base_text):
+            current_surface = reconstructed
+    if _stable_text_hash(_surface_without_phase1_markers(current_surface)) != _stable_text_hash(base_text):
         messages.warning(
             request,
             "The existing segmentation output is inconsistent with base text. "

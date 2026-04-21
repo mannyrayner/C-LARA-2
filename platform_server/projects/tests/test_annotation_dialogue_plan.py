@@ -75,9 +75,9 @@ class AnnotationDialoguePlanTests(TestCase):
             resp,
             reverse("project-compiled", args=[project.pk, "runs/run_demo/html/page_1.html"]),
         )
-        self.assertContains(resp, "Open segmentation output (JSON)")
+        self.assertContains(resp, "Review/edit segmentation")
 
-    def test_annotation_home_shows_prominent_segmentation_output_control(self):
+    def test_annotation_home_shows_prominent_segmentation_review_control(self):
         project = Project.objects.create(
             owner=self.user,
             title="Segmented",
@@ -94,5 +94,5 @@ class AnnotationDialoguePlanTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(
             resp,
-            reverse("project-compiled", args=[project.pk, "runs/run_seg/stages/segmentation_phase_2.json"]),
+            reverse("manual-segmentation-phase-1", args=[project.pk]),
         )
