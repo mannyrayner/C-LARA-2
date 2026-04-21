@@ -82,6 +82,8 @@ class ProjectImageStyleViewTests(TestCase):
         self.assertContains(resp, "name=\"action\" value=\"generate_image\"")
         self.assertContains(resp, "disabled title=\"Generate or enter a sample image prompt first\"")
         self.assertContains(resp, "Save draft</strong> stores manual edits")
+        self.assertContains(resp, "Dialogue assistant suggestion")
+        self.assertContains(resp, "Step 1: provide a style brief")
 
     @patch("projects.views._build_ai_client")
     def test_generate_style_persists_outputs_and_artifacts(self, mock_build_ai_client):
