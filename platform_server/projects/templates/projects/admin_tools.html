@@ -13,6 +13,20 @@
   <button class="btn" type="submit">Delete cache</button>
 </form>
 
+<h2>Backfill project discovery keywords</h2>
+<p>Run admin-only maintenance backfill for missing/stale project discovery keyword metadata.</p>
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="backfill_project_discovery_keywords" />
+  <p>
+    <label for="force_backfill_keywords">
+      <input type="checkbox" id="force_backfill_keywords" name="force_backfill_keywords" value="1" />
+      Force regenerate for all projects
+    </label>
+  </p>
+  <button class="btn secondary" type="submit">Run discovery keyword backfill</button>
+</form>
+
 <h2>Give another user admin privileges</h2>
 <form method="post">
   {% csrf_token %}
