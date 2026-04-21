@@ -242,6 +242,170 @@ class ManualSegmentationEditorTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, "Hello world&lt;page&gt;")
 
+    def test_phase_1_editor_reconstructs_separators_from_pages_when_surface_has_none(self):
+        self.project.source_text = "Hello world"
+        self.project.save(update_fields=["source_text", "updated_at"])
+        run_dir = self.project.artifact_dir() / "runs" / "run_surface_plain" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "l2": "en",
+            # Auto phase-1 output may keep plain text here without marker syntax.
+            "surface": "Hello world",
+            "pages": [{"surface": "Hello world", "segments": [{"surface": "Hello"}, {"surface": " world"}], "annotations": {}}],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_1.json").write_text(json.dumps(payload), encoding="utf-8")
+
+        resp = self.client.get(reverse("manual-segmentation-phase-1", args=[self.project.pk]), follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, "inconsistent with base text")
+        self.assertContains(resp, "Hello|| world")
+
+    def test_phase_1_editor_tolerates_page_boundary_newline_variants(self):
+        self.project.source_text = "A.\n\nB."
+        self.project.save(update_fields=["source_text", "updated_at"])
+        run_dir = self.project.artifact_dir() / "runs" / "run_boundary_ws" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "l2": "en",
+            "surface": "<page>\nA.\n<page>\nB.",
+            "pages": [
+                {"surface": "\nA.\n", "segments": [{"surface": "\nA.\n"}], "annotations": {}},
+                {"surface": "\nB.", "segments": [{"surface": "\nB."}], "annotations": {}},
+            ],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_1.json").write_text(json.dumps(payload), encoding="utf-8")
+
+        resp = self.client.get(reverse("manual-segmentation-phase-1", args=[self.project.pk]), follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, "inconsistent with base text")
+        self.assertContains(resp, "A.")
+        self.assertContains(resp, "&lt;page&gt;")
+
+    def test_phase_1_editor_tolerates_mixed_page_marker_patterns_without_warning(self):
+        self.project.source_text = (
+            "Milo was a clever mink with shiny brown fur. One day, he discovered he had superpowers. "
+            "Milo could run very fast and jump very high. People wanted to catch him and turn him into a fur coat, "
+            "but Milo was too smart for them. He used his speed to escape the traps. "
+            "He found a quiet forest and made it his new home. In the forest, Milo helped other animals. "
+            "He felt happy and free, knowing he was safe. Milo’s life was now full of adventures, "
+            "with new friends and a safe place to live."
+        )
+        self.project.save(update_fields=["source_text", "updated_at"])
+        run_dir = self.project.artifact_dir() / "runs" / "run_marker_mix" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "l2": "en",
+            "surface": (
+                "<page>Milo was a clever mink with shiny brown fur.|| One day, he discovered he had superpowers."
+                "|| Milo could run very fast and jump very high.<page>\n<page>People wanted to catch him and turn him into a fur coat,"
+                "|| but Milo was too smart for them.|| He used his speed to escape the traps."
+                "|| He found a quiet forest and made it his new home.<page>\n<page>In the forest, Milo helped other animals."
+                "|| He felt happy and free, knowing he was safe.|| Milo’s life was now full of adventures,"
+                "|| with new friends and a safe place to live.<page>"
+            ),
+            "pages": [
+                {
+                    "surface": "Milo was a clever mink with shiny brown fur.|| One day, he discovered he had superpowers.|| Milo could run very fast and jump very high.",
+                    "segments": [
+                        {"surface": "Milo was a clever mink with shiny brown fur."},
+                        {"surface": " One day, he discovered he had superpowers."},
+                        {"surface": " Milo could run very fast and jump very high."},
+                    ],
+                    "annotations": {},
+                },
+                {
+                    "surface": "People wanted to catch him and turn him into a fur coat,|| but Milo was too smart for them.|| He used his speed to escape the traps.|| He found a quiet forest and made it his new home.",
+                    "segments": [
+                        {"surface": "People wanted to catch him and turn him into a fur coat,"},
+                        {"surface": " but Milo was too smart for them."},
+                        {"surface": " He used his speed to escape the traps."},
+                        {"surface": " He found a quiet forest and made it his new home."},
+                    ],
+                    "annotations": {},
+                },
+                {
+                    "surface": "In the forest, Milo helped other animals.|| He felt happy and free, knowing he was safe.|| Milo’s life was now full of adventures,|| with new friends and a safe place to live.",
+                    "segments": [
+                        {"surface": "In the forest, Milo helped other animals."},
+                        {"surface": " He felt happy and free, knowing he was safe."},
+                        {"surface": " Milo’s life was now full of adventures,"},
+                        {"surface": " with new friends and a safe place to live."},
+                    ],
+                    "annotations": {},
+                },
+            ],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_1.json").write_text(json.dumps(payload), encoding="utf-8")
+
+        resp = self.client.get(reverse("manual-segmentation-phase-1", args=[self.project.pk]), follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, "inconsistent with base text")
+        self.assertContains(resp, "Milo was a clever mink")
+
+    def test_phase_1_editor_tolerates_extra_blank_lines_between_page_markers(self):
+        self.project.source_text = (
+            "Milo was a clever mink with shiny brown fur. One day, he discovered he had superpowers. "
+            "Milo could run very fast and jump very high. People wanted to catch him and turn him into a fur coat, "
+            "but Milo was too smart for them. He used his speed to escape the traps. "
+            "He found a quiet forest and made it his new home. In the forest, Milo helped other animals. "
+            "He felt happy and free, knowing he was safe. Milo’s life was now full of adventures, "
+            "with new friends and a safe place to live."
+        )
+        self.project.save(update_fields=["source_text", "updated_at"])
+        run_dir = self.project.artifact_dir() / "runs" / "run_marker_blanklines" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "l2": "en",
+            "surface": (
+                "<page>\nMilo was a clever mink with shiny brown fur.|| One day, he discovered he had superpowers."
+                "|| Milo could run very fast and jump very high.\n<page>\n\n<page>\nPeople wanted to catch him and turn him into a fur coat,"
+                "|| but Milo was too smart for them.|| He used his speed to escape the traps.\n<page>\n\n<page>\nHe found a quiet forest and made it his new home."
+                "|| In the forest, Milo helped other animals.|| He felt happy and free,|| knowing he was safe."
+                "|| Milo’s life was now full of adventures,|| with new friends and a safe place to live.\n<page>"
+            ),
+            "pages": [
+                {
+                    "surface": "\nMilo was a clever mink with shiny brown fur.|| One day, he discovered he had superpowers.|| Milo could run very fast and jump very high.\n",
+                    "segments": [
+                        {"surface": "\nMilo was a clever mink with shiny brown fur."},
+                        {"surface": " One day, he discovered he had superpowers."},
+                        {"surface": " Milo could run very fast and jump very high.\n"},
+                    ],
+                    "annotations": {},
+                },
+                {
+                    "surface": "\nPeople wanted to catch him and turn him into a fur coat,|| but Milo was too smart for them.|| He used his speed to escape the traps.\n",
+                    "segments": [
+                        {"surface": "\nPeople wanted to catch him and turn him into a fur coat,"},
+                        {"surface": " but Milo was too smart for them."},
+                        {"surface": " He used his speed to escape the traps.\n"},
+                    ],
+                    "annotations": {},
+                },
+                {
+                    "surface": "\nHe found a quiet forest and made it his new home.|| In the forest, Milo helped other animals.|| He felt happy and free,|| knowing he was safe.|| Milo’s life was now full of adventures,|| with new friends and a safe place to live.\n",
+                    "segments": [
+                        {"surface": "\nHe found a quiet forest and made it his new home."},
+                        {"surface": " In the forest, Milo helped other animals."},
+                        {"surface": " He felt happy and free,"},
+                        {"surface": " knowing he was safe."},
+                        {"surface": " Milo’s life was now full of adventures,"},
+                        {"surface": " with new friends and a safe place to live.\n"},
+                    ],
+                    "annotations": {},
+                },
+            ],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_1.json").write_text(json.dumps(payload), encoding="utf-8")
+
+        resp = self.client.get(reverse("manual-segmentation-phase-1", args=[self.project.pk]), follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, "inconsistent with base text")
+
     def test_phase_1_save_salvages_phase_2_for_unchanged_pages_and_invalidates_downstream(self):
         self.project.source_text = "AaaBbb"
         self.project.save(update_fields=["source_text", "updated_at"])
