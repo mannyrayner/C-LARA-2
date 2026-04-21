@@ -50,6 +50,7 @@ class AnnotationDialoguePlanTests(TestCase):
         self.assertContains(resp, "Run segmentation_phase_1 → segmentation_phase_2")
         self.assertContains(resp, "Show plain text")
         self.assertContains(resp, "This is plain text.")
+        self.assertContains(resp, "Show current plain text")
 
     def test_annotation_home_open_compiled_html_points_to_compiled_output(self):
         project = Project.objects.create(
@@ -73,4 +74,25 @@ class AnnotationDialoguePlanTests(TestCase):
         self.assertContains(
             resp,
             reverse("project-compiled", args=[project.pk, "runs/run_demo/html/page_1.html"]),
+        )
+        self.assertContains(resp, "Open segmentation output (JSON)")
+
+    def test_annotation_home_shows_prominent_segmentation_output_control(self):
+        project = Project.objects.create(
+            owner=self.user,
+            title="Segmented",
+            source_text="One. Two.",
+            input_mode=Project.INPUT_SOURCE,
+            language="en",
+            target_language="fr",
+        )
+        seg_file = project.artifact_dir() / "runs" / "run_seg" / "stages" / "segmentation_phase_2.json"
+        seg_file.parent.mkdir(parents=True, exist_ok=True)
+        seg_file.write_text("{}", encoding="utf-8")
+
+        resp = self.client.get(reverse("project-annotation-home", args=[project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(
+            resp,
+            reverse("project-compiled", args=[project.pk, "runs/run_seg/stages/segmentation_phase_2.json"]),
         )

@@ -102,6 +102,9 @@
     <pre style="white-space:pre-wrap;">{{ annotation_plain_text }}</pre>
   </details>
 {% endif %}
+{% if annotation_segmentation_output_href %}
+  <p><a class="btn secondary" href="{{ annotation_segmentation_output_href }}" target="_blank">Open segmentation output (JSON)</a></p>
+{% endif %}
 {% if object.compiled_path %}
   <p>
     <a class="btn link" href="{% url 'project-compiled' pk=object.pk path=object.compiled_path %}" target="_blank">View via server</a>

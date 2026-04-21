@@ -3135,12 +3135,21 @@ class ProjectAnnotationView(ProjectDetailView):
         project: Project = context["object"]
         context["annotation_dialogue_plan"] = _annotation_dialogue_plan(project)
         context["annotation_plain_text"] = _base_text_for_segmentation_phase_1(project).strip()
+        seg_output = _latest_stage_relative_path(project, "segmentation_phase_2.json")
+        context["annotation_segmentation_output_href"] = (
+            reverse("project-compiled", args=[project.pk, seg_output]) if seg_output else None
+        )
         return context
 
 
 def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
     has_plain_text = bool(_base_text_for_segmentation_phase_1(project).strip())
-    has_segmented = _find_latest_stage_file(project, "segmentation_phase_2.json") is not None
+    latest_segmentation = _find_latest_stage_file(project, "segmentation_phase_2.json")
+    has_segmented = latest_segmentation is not None
+    segmentation_href: str | None = None
+    if latest_segmentation is not None:
+        seg_rel = latest_segmentation[1].resolve().relative_to(project.artifact_dir().resolve()).as_posix()
+        segmentation_href = reverse("project-compiled", args=[project.pk, seg_rel])
     compiled_href: str | None = None
     compiled_page = _compiled_page_one_path(project)
     if compiled_page:
@@ -3178,6 +3187,11 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                     "start_stage": "segmentation_phase_1",
                     "end_stage": "compile_html",
                 },
+                {
+                    "label": "Show current plain text",
+                    "description": "Review the generated/source text before segmentation.",
+                    "href": "#plain-text-preview",
+                },
             ],
         }
 
@@ -3197,6 +3211,17 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                     "description": "Go to image pages/elements generation controls.",
                     "href": reverse("project-image-pages", args=[project.pk]),
                 },
+                *(
+                    [
+                        {
+                            "label": "Open segmentation output (JSON)",
+                            "description": "Inspect the latest page/segment/token structure.",
+                            "href": segmentation_href,
+                        }
+                    ]
+                    if segmentation_href
+                    else []
+                ),
             ],
         }
 
@@ -3214,8 +3239,35 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                 "description": "Make targeted corrections to segmentation, glosses, lemma, etc.",
                 "href": reverse("manual-top-level", args=[project.pk]),
             },
+            *(
+                [
+                    {
+                        "label": "Open segmentation output (JSON)",
+                        "description": "Inspect the latest page/segment/token structure.",
+                        "href": segmentation_href,
+                    }
+                ]
+                if segmentation_href
+                else []
+            ),
+            {
+                "label": "Show current plain text",
+                "description": "Review the plain text currently feeding annotation.",
+                "href": "#plain-text-preview",
+            },
         ],
     }
+
+
+def _latest_stage_relative_path(project: Project, stage_filename: str) -> str | None:
+    latest = _find_latest_stage_file(project, stage_filename)
+    if latest is None:
+        return None
+    _run_dir, stage_path = latest
+    try:
+        return stage_path.resolve().relative_to(project.artifact_dir().resolve()).as_posix()
+    except Exception:
+        return None
 
 
 def _ensure_stage_run_dir(project: Project) -> Path:
@@ -6158,6 +6210,7 @@ def _parse_nl_project_create_request(
         "Interpret this as a new-project setup request. "
         "Return only JSON keys: title, language, target_language, input_mode, description, source_text, keywords. "
         "input_mode must be one of: description, source_text. "
+        "Default target_language to the user language unless the user explicitly requests a different glossing/annotation language. "
         "Use prior turn context if relevant. Use empty strings/arrays for unknown values.\n\n"
         f"Previous user request: {previous_query}\n"
         f"Previous interpreted setup: {prev_plan}\n\n"
@@ -6174,10 +6227,24 @@ def _parse_nl_project_create_request(
     input_mode = str(payload.get("input_mode") or "").strip().lower()
     if input_mode not in {Project.INPUT_DESCRIPTION, Project.INPUT_SOURCE}:
         input_mode = ""
+    language = _normalize_language_filter(str(payload.get("language") or ""))
+    target_language = _normalize_language_filter(str(payload.get("target_language") or ""))
+    dialogue_lang = _normalize_language_filter(dialogue_language)
+    if not target_language:
+        target_language = dialogue_lang
+    if (
+        language
+        and target_language
+        and language == target_language
+        and dialogue_lang
+        and dialogue_lang != language
+        and not re.search(r"\b(same|identical|monolingual)\b", nl_query.lower())
+    ):
+        target_language = dialogue_lang
     return {
         "title": str(payload.get("title") or "").strip(),
-        "language": _normalize_language_filter(str(payload.get("language") or "")),
-        "target_language": _normalize_language_filter(str(payload.get("target_language") or "")),
+        "language": language,
+        "target_language": target_language,
         "input_mode": input_mode,
         "description": str(payload.get("description") or "").strip(),
         "source_text": str(payload.get("source_text") or "").strip(),
