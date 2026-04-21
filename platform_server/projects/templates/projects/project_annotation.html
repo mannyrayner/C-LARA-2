@@ -62,6 +62,8 @@
     <button class="btn secondary" type="submit">Save language options</button>
   </p>
 </form>
+<p><a class="btn secondary" href="{{ annotation_image_workflow_href }}">Generate images</a></p>
+<h3>Power-user pipeline controls</h3>
 <form method="post" action="{% url 'project-compile' object.pk %}">{% csrf_token %}
   <p><label for="start_stage">Start from stage:</label>
     <select name="start_stage" id="start_stage">

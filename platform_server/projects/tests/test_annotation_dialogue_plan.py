@@ -96,3 +96,9 @@ class AnnotationDialoguePlanTests(TestCase):
             resp,
             reverse("manual-segmentation-phase-1", args=[project.pk]),
         )
+        self.assertContains(
+            resp,
+            f"{reverse('manual-segmentation-phase-1', args=[project.pk])}?return_to={reverse('project-annotation-home', args=[project.pk])}",
+        )
+        self.assertContains(resp, reverse("project-image-pages", args=[project.pk]))
+        self.assertContains(resp, "Power-user pipeline controls")

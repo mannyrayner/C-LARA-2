@@ -3133,9 +3133,12 @@ class ProjectAnnotationView(ProjectDetailView):
     def get_context_data(self, **kwargs):  # type: ignore[override]
         context = super().get_context_data(**kwargs)
         project: Project = context["object"]
+        annotation_home = reverse("project-annotation-home", args=[project.pk])
+        seg_review = reverse("manual-segmentation-phase-1", args=[project.pk])
         context["annotation_dialogue_plan"] = _annotation_dialogue_plan(project)
         context["annotation_plain_text"] = _base_text_for_segmentation_phase_1(project).strip()
-        context["annotation_segmentation_review_href"] = reverse("manual-segmentation-phase-1", args=[project.pk])
+        context["annotation_segmentation_review_href"] = f"{seg_review}?return_to={quote(annotation_home)}"
+        context["annotation_image_workflow_href"] = reverse("project-image-pages", args=[project.pk])
         return context
 
 
@@ -3300,6 +3303,20 @@ def _phase1_comparison_hash(text: str) -> str:
     normalized = str(text or "").replace("\r\n", "\n")
     normalized = re.sub(r"\s+", " ", normalized).strip()
     return _stable_text_hash(normalized)
+
+
+def _annotation_return_to(request: HttpRequest, project: Project, *, default_manual: bool = False) -> str:
+    default = (
+        reverse("manual-top-level", args=[project.pk])
+        if default_manual
+        else reverse("project-annotation-home", args=[project.pk])
+    )
+    candidate = str(request.POST.get("return_to") or request.GET.get("return_to") or "").strip()
+    if not candidate:
+        return default
+    if candidate.startswith(f"/projects/{project.pk}/annotation/"):
+        return candidate
+    return default
 
 
 def _phase1_surface_from_payload(payload: dict[str, Any]) -> str:
@@ -4438,10 +4455,11 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 def manual_segmentation_phase_1(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    return_to = _annotation_return_to(request, project, default_manual=True)
     base_text = _base_text_for_segmentation_phase_1(project)
     if not base_text.strip():
         messages.error(request, "Manual segmentation phase 1 requires source text.")
-        return redirect("project-annotation-home", pk=project.pk)
+        return redirect(return_to)
 
     run_dir = _find_run_with_stage(project, "segmentation_phase_1") or _resolve_run_dir(project)
     current_payload = _load_stage_payload(project, "segmentation_phase_1", run_dir=run_dir) if run_dir else None
@@ -4489,13 +4507,15 @@ def manual_segmentation_phase_1(request: HttpRequest, pk: int) -> HttpResponse:
                     f"{salvage_info['total_pages']} unchanged pages.",
                 )
             messages.success(request, "Saved manual segmentation phase 1.")
-            return redirect("manual-segmentation-phase-1", pk=project.pk)
+            return redirect(f"{reverse('manual-segmentation-phase-1', args=[project.pk])}?return_to={quote(return_to)}")
 
     return render(
         request,
         "projects/manual_segmentation_phase_1.html",
         {
             "project": project,
+            "back_href": return_to,
+            "return_to": return_to,
             "read_only_surface": current_surface,
             "editable_surface": editable_surface,
             "base_hash": base_hash,

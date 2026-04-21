@@ -41,6 +41,14 @@ class ManualSegmentationEditorTests(TestCase):
         self.assertContains(resp, "||</code> separators")
         self.assertContains(resp, "readonly")
 
+    def test_phase_1_editor_back_link_prefers_return_to_annotation_home(self):
+        ann_home = reverse("project-annotation-home", args=[self.project.pk])
+        resp = self.client.get(
+            f"{reverse('manual-segmentation-phase-1', args=[self.project.pk])}?return_to={ann_home}"
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, f'href="{ann_home}"', html=False)
+
     def test_phase_1_save_writes_versioned_payload_with_hash_metadata(self):
         resp = self.client.post(
             reverse("manual-segmentation-phase-1", args=[self.project.pk]),
