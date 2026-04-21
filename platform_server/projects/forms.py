@@ -107,14 +107,52 @@ class ProjectForm(forms.ModelForm):
 
 
 TIMEZONE_CHOICES = [(tz, tz) for tz in sorted(available_timezones())]
+LANGUAGE_CHOICES = ProjectForm.LANGUAGE_CHOICES
 
 
 class ProfileForm(forms.ModelForm):
     timezone = forms.ChoiceField(choices=TIMEZONE_CHOICES)
+    dialogue_language = forms.ChoiceField(choices=LANGUAGE_CHOICES, label="Dialogue language")
+    dialogue_memory_enabled = forms.BooleanField(
+        required=False,
+        label="Enable dialogue personalization memory",
+        help_text="Store a compact summary of your latest discovery preferences across sessions.",
+    )
 
     class Meta:
         model = Profile
-        fields = ["timezone"]
+        fields = ["timezone", "dialogue_language", "dialogue_memory_enabled"]
+
+
+class ProjectDiscoveryMetadataForm(forms.ModelForm):
+    class Meta:
+        model = Project
+        fields = ["discovery_summary", "discovery_keywords", "discovery_keywords_en", "discovery_level", "discovery_word_count"]
+        widgets = {
+            "discovery_summary": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    discovery_keywords = forms.CharField(required=False, help_text="Comma-separated keywords")
+    discovery_keywords_en = forms.CharField(required=False, help_text="Comma-separated English keywords")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        keywords = self.instance.discovery_keywords if getattr(self.instance, "pk", None) else []
+        keywords_en = self.instance.discovery_keywords_en if getattr(self.instance, "pk", None) else []
+        self.fields["discovery_keywords"].initial = ", ".join(keywords or [])
+        self.fields["discovery_keywords_en"].initial = ", ".join(keywords_en or [])
+
+    def clean_discovery_keywords(self):
+        raw = (self.cleaned_data.get("discovery_keywords") or "").strip()
+        if not raw:
+            return []
+        return [part.strip() for part in raw.split(",") if part.strip()]
+
+    def clean_discovery_keywords_en(self):
+        raw = (self.cleaned_data.get("discovery_keywords_en") or "").strip()
+        if not raw:
+            return []
+        return [part.strip() for part in raw.split(",") if part.strip()]
 
 
 class ProjectImageStyleForm(forms.ModelForm):
