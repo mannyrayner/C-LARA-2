@@ -3134,13 +3134,18 @@ class ProjectAnnotationView(ProjectDetailView):
         context = super().get_context_data(**kwargs)
         project: Project = context["object"]
         context["annotation_dialogue_plan"] = _annotation_dialogue_plan(project)
+        context["annotation_plain_text"] = _base_text_for_segmentation_phase_1(project).strip()
         return context
 
 
 def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
     has_plain_text = bool(_base_text_for_segmentation_phase_1(project).strip())
     has_segmented = _find_latest_stage_file(project, "segmentation_phase_2.json") is not None
-    has_html = bool((project.compiled_path or "").strip()) or _find_latest_stage_file(project, "compile_html.json") is not None
+    compiled_href: str | None = None
+    compiled_page = _compiled_page_one_path(project)
+    if compiled_page:
+        compiled_href = reverse("project-compiled", args=[project.pk, compiled_page])
+    has_html = bool(compiled_href) or _find_latest_stage_file(project, "compile_html.json") is not None
 
     if not has_plain_text:
         return {
@@ -3202,7 +3207,7 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
             {
                 "label": "Open compiled HTML",
                 "description": "View the latest compiled output.",
-                "href": reverse("project-detail", args=[project.pk]),
+                "href": compiled_href or reverse("project-detail", args=[project.pk]),
             },
             {
                 "label": "Open manual annotation editor",
@@ -4934,7 +4939,14 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
         form.instance.owner = self.request.user
         messages.info(self.request, "Project created. Compile when ready.")
         response = super().form_valid(form)
+        _reset_project_artifacts(self.object)
         _persist_project_source(self.object)
+        if (self.object.language or "").strip().lower() == (self.object.target_language or "").strip().lower():
+            messages.warning(
+                self.request,
+                "Glossing language is currently the same as text language. "
+                "This is usually unintended; consider setting it to your interaction language.",
+            )
         return response
 
     def get_success_url(self):  # type: ignore[override]
@@ -4985,7 +4997,9 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
 
     def get_initial(self):  # type: ignore[override]
         initial = super().get_initial()
-        nl_query, _dialogue_language, nl_plan = self._resolve_nl_create_plan()
+        nl_query, dialogue_language, nl_plan = self._resolve_nl_create_plan()
+        if dialogue_language:
+            initial.setdefault("target_language", dialogue_language)
         if nl_query:
             for key in ("title", "language", "target_language", "input_mode", "description", "source_text"):
                 value = nl_plan.get(key)
@@ -5157,6 +5171,23 @@ def _persist_project_source(project: Project) -> None:
     except Exception:
         # Best-effort persistence; failures should not block UI flows.
         pass
+
+
+def _reset_project_artifacts(project: Project) -> None:
+    """Remove stale artifacts when a freshly-created project reuses an old id.
+
+    In local/dev environments it's common to recreate the database without
+    cleaning MEDIA_ROOT. If ids restart from 1, a new project can inherit
+    previous run artifacts from an unrelated historical project.
+    """
+
+    base = project.artifact_dir()
+    if not base.exists():
+        return
+    try:
+        shutil.rmtree(base)
+    except Exception:
+        logger.exception("Failed to clear stale artifact directory for new project %s", project.pk)
 
 
 def _resolve_run_dir(project: Project) -> Path | None:
