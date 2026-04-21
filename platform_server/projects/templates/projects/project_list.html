@@ -3,6 +3,33 @@
 {% block content %}
 <h1>Your projects</h1>
 <p><a class="btn" href="{% url 'project-create' %}">New project</a></p>
+<form method="get" action="{% url 'project-list' %}" style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0;">
+  <p><strong>Dialogue: find/open existing project</strong></p>
+  <p>
+    <label for="nl_open_query">Natural-language request:</label><br />
+    <input id="nl_open_query" type="text" name="nl_open_query" value="{{ nl_open_query }}" style="width:100%;" />
+  </p>
+  <p>
+    <label for="dialogue_language">Dialogue language:</label>
+    <select id="dialogue_language" name="dialogue_language">
+      {% for value, label in dialogue_language_choices %}
+        <option value="{{ value }}" {% if dialogue_language == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn secondary" type="submit">Interpret</button>
+  </p>
+</form>
+{% if nl_open_plan %}
+  <p><strong>Interpreted request:</strong> {{ nl_open_plan }}</p>
+  <p><strong>Suggested projects:</strong></p>
+  <ul>
+    {% for project in suggested_projects %}
+      <li><a href="{% url 'project-detail' project.pk %}">{{ project.title }}</a> — {{ project.language }} → {{ project.target_language }}</li>
+    {% empty %}
+      <li>No matching projects found from interpreted filters.</li>
+    {% endfor %}
+  </ul>
+{% endif %}
 <form method="post" action="{% url 'project-import-source-bundle' %}" enctype="multipart/form-data">
   {% csrf_token %}
   <p>

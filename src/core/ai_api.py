@@ -297,7 +297,11 @@ class OpenAIClient:
             return
         usage = _extract_usage(response)
         if usage is None:
-            return
+            # Image responses may omit usage fields. Emit a zero-usage event so
+            # downstream billing fallback logic can still account for the call.
+            if operation != "image_generate":
+                return
+            usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
         reporter(
             {
                 "provider": "openai",

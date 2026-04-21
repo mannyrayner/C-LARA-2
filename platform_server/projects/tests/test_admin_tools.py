@@ -1,5 +1,6 @@
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
@@ -115,6 +116,21 @@ class AdminToolsViewTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         self.assertFalse(Community.objects.filter(pk=community.pk).exists())
+
+    @patch("projects.views.call_command")
+    def test_admin_tools_can_trigger_discovery_keyword_backfill(self, mock_call_command):
+        self.client.login(username="staffer", password="pw")
+        resp = self.client.post(
+            reverse("admin-tools"),
+            {"action": "backfill_project_discovery_keywords", "force_backfill_keywords": "1"},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        mock_call_command.assert_called_once_with(
+            "backfill_project_discovery_keywords",
+            admin_username="staffer",
+            force=True,
+        )
 
 
 @override_settings(BOOTSTRAP_ADMIN_USERNAMES=["bootstrap"])
