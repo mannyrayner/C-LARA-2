@@ -62,6 +62,8 @@
     <button class="btn secondary" type="submit">Save language options</button>
   </p>
 </form>
+<p><a class="btn secondary" href="{{ annotation_image_workflow_href }}">Generate images</a></p>
+<h3>Power-user pipeline controls</h3>
 <form method="post" action="{% url 'project-compile' object.pk %}">{% csrf_token %}
   <p><label for="start_stage">Start from stage:</label>
     <select name="start_stage" id="start_stage">
@@ -95,6 +97,16 @@
 <h3>Manual annotation editors</h3>
 <p><a class="btn secondary" href="{% url 'manual-top-level' object.pk %}">Open manual annotation top level</a></p>
 <p><a class="btn secondary" href="{% url 'manual-page-annotation' object.pk %}">Open page-oriented manual annotation</a></p>
+{% if annotation_plain_text %}
+  <p><a class="btn secondary" href="#plain-text-preview">Show plain text</a></p>
+  <details id="plain-text-preview" style="margin:0.75rem 0;">
+    <summary>Plain text source</summary>
+    <pre style="white-space:pre-wrap;">{{ annotation_plain_text }}</pre>
+  </details>
+{% endif %}
+{% if annotation_segmentation_review_href %}
+  <p><a class="btn secondary" href="{{ annotation_segmentation_review_href }}">Review/edit segmentation</a></p>
+{% endif %}
 {% if object.compiled_path %}
   <p>
     <a class="btn link" href="{% url 'project-compiled' pk=object.pk path=object.compiled_path %}" target="_blank">View via server</a>
