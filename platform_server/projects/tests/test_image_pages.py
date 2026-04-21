@@ -163,6 +163,28 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertContains(resp, "Compile HTML now")
         self.assertContains(resp, reverse("project-annotation-home", args=[self.project.pk]))
 
+    def test_images_home_treats_empty_style_record_as_no_style_data(self):
+        style = ProjectImageStyle.objects.get(project=self.project)
+        style.style_brief = ""
+        style.expanded_style_description = ""
+        style.sample_image_prompt = ""
+        style.sample_image_path = ""
+        style.status = ProjectImageStyle.STATUS_DRAFT
+        style.save(
+            update_fields=[
+                "style_brief",
+                "expanded_style_description",
+                "sample_image_prompt",
+                "sample_image_path",
+                "status",
+                "updated_at",
+            ]
+        )
+        resp = self.client.get(reverse("project-images-home", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "No style data yet.")
+        self.assertNotContains(resp, "Style data exists")
+
     def test_images_home_exposes_pivot_language_context(self):
         resp = self.client.get(reverse("project-images-home", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)

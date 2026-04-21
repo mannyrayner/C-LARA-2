@@ -4985,12 +4985,30 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
         return redirect("project-images-home", pk=project.pk)
     elements_with_images = project.image_elements.exclude(image_path="").order_by("name", "id")
     pages_with_images = project.image_pages.exclude(image_path="").order_by("page_number", "id")
+    style_has_content = bool(
+        style
+        and (
+            (style.style_brief or "").strip()
+            or (style.expanded_style_description or "").strip()
+            or (style.sample_image_prompt or "").strip()
+            or (style.sample_image_path or "").strip()
+        )
+    )
+    style_ready = bool(
+        style
+        and (
+            (style.sample_image_path or "").strip()
+            or style.status in {ProjectImageStyle.STATUS_GENERATED, ProjectImageStyle.STATUS_APPROVED}
+        )
+    )
     return render(
         request,
         "projects/project_images_home.html",
         {
             "project": project,
             "style": style,
+            "style_has_content": style_has_content,
+            "style_ready": style_ready,
             "elements_with_images_count": elements_with_images.count(),
             "sample_elements_with_images": elements_with_images[:5],
             "pages_with_images_count": pages_with_images.count(),

@@ -6,7 +6,7 @@
 
 <div style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0; background:#fafafa;">
   <strong>Dialogue assistant suggestion</strong>
-  {% if not style %}
+  {% if not style_has_content %}
     <p><strong>Suggested next step: create/confirm image style</strong></p>
     <p>Start with a style definition and sample image, then move to reusable elements and page images.</p>
     <p><a class="btn secondary" href="{% url 'project-image-style' project.pk %}">Open image style workflow</a></p>
@@ -47,8 +47,8 @@
 {% endif %}
 
 <h2>Style</h2>
-{% if style %}
-  <p>Style record exists{% if style.sample_image_path %}; sample image is available{% endif %}.</p>
+{% if style_has_content %}
+  <p>Style data exists{% if style_ready %}; sample image is available{% endif %}.</p>
 {% else %}
   <p>No style data yet.</p>
 {% endif %}
