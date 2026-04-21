@@ -2878,7 +2878,26 @@ class ProjectListView(LoginRequiredMixin, ListView):
         nl_plan: dict[str, Any] = {}
         suggested_projects: list[Project] = []
         if nl_query:
-            nl_plan = _parse_nl_project_open_request(nl_query=nl_query, dialogue_language=dialogue_language)
+            prev_query = ""
+            prev_plan: dict[str, Any] = {}
+            try:
+                profile_obj = self.request.user.profile
+            except Exception:
+                profile_obj = None
+            if (
+                profile_obj
+                and profile_obj.dialogue_memory_enabled
+                and isinstance(profile_obj.dialogue_memory, dict)
+            ):
+                section_payload = _profile_memory_section(profile_obj, "project_open")
+                prev_query = str(section_payload.get("last_nl_query") or "")
+                prev_plan = section_payload.get("last_nl_plan") if isinstance(section_payload.get("last_nl_plan"), dict) else {}
+            nl_plan = _parse_nl_project_open_request(
+                nl_query=nl_query,
+                dialogue_language=dialogue_language,
+                previous_query=prev_query,
+                previous_plan=prev_plan,
+            )
             queryset = list(context["object_list"])
             title_filter = str(nl_plan.get("title") or "").strip()
             text_language = _normalize_language_filter(str(nl_plan.get("text_language") or ""))
@@ -2896,8 +2915,16 @@ class ProjectListView(LoginRequiredMixin, ListView):
                     for p in queryset
                     if any(kw in (p.title or "").lower() for kw in keywords)
                     or any(kw in (p.description or "").lower() for kw in keywords)
+                    or any(kw in " ".join(p.discovery_keywords or []).lower() for kw in keywords)
+                    or any(kw in " ".join(p.discovery_keywords_en or []).lower() for kw in keywords)
                 ]
             suggested_projects = queryset[:8]
+            if profile_obj and profile_obj.dialogue_memory_enabled:
+                _update_profile_memory_section(
+                    profile_obj,
+                    "project_open",
+                    _profile_memory_payload_for_nl(nl_query=nl_query, nl_plan=nl_plan),
+                )
         context.update(
             {
                 "nl_open_query": nl_query,
@@ -4817,25 +4844,10 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
     def get_success_url(self):  # type: ignore[override]
         return reverse("project-detail", args=[self.object.pk])
 
-    def get_initial(self):  # type: ignore[override]
-        initial = super().get_initial()
-        nl_query = (self.request.GET.get("nl_new_query") or "").strip()
-        dialogue_language = (self.request.GET.get("dialogue_language") or "").strip()
-        if not dialogue_language:
-            try:
-                dialogue_language = self.request.user.profile.dialogue_language or "en"
-            except Exception:
-                dialogue_language = "en"
-        if nl_query:
-            nl_plan = _parse_nl_project_create_request(nl_query=nl_query, dialogue_language=dialogue_language)
-            for key in ("title", "language", "target_language", "input_mode", "description", "source_text"):
-                value = nl_plan.get(key)
-                if value:
-                    initial[key] = value
-        return initial
-
-    def get_context_data(self, **kwargs):  # type: ignore[override]
-        context = super().get_context_data(**kwargs)
+    def _resolve_nl_create_plan(self) -> tuple[str, str, dict[str, Any]]:
+        cached = getattr(self.request, "_nl_create_plan_cache", None)
+        if isinstance(cached, tuple) and len(cached) == 3:
+            return cached  # type: ignore[return-value]
         nl_query = (self.request.GET.get("nl_new_query") or "").strip()
         dialogue_language = (self.request.GET.get("dialogue_language") or "").strip()
         if not dialogue_language:
@@ -4845,7 +4857,49 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
                 dialogue_language = "en"
         nl_plan: dict[str, Any] = {}
         if nl_query:
-            nl_plan = _parse_nl_project_create_request(nl_query=nl_query, dialogue_language=dialogue_language)
+            prev_query = ""
+            prev_plan: dict[str, Any] = {}
+            try:
+                profile_obj = self.request.user.profile
+            except Exception:
+                profile_obj = None
+            if (
+                profile_obj
+                and profile_obj.dialogue_memory_enabled
+                and isinstance(profile_obj.dialogue_memory, dict)
+            ):
+                section_payload = _profile_memory_section(profile_obj, "project_create")
+                prev_query = str(section_payload.get("last_nl_query") or "")
+                prev_plan = section_payload.get("last_nl_plan") if isinstance(section_payload.get("last_nl_plan"), dict) else {}
+            nl_plan = _parse_nl_project_create_request(
+                nl_query=nl_query,
+                dialogue_language=dialogue_language,
+                previous_query=prev_query,
+                previous_plan=prev_plan,
+            )
+            if profile_obj and profile_obj.dialogue_memory_enabled:
+                _update_profile_memory_section(
+                    profile_obj,
+                    "project_create",
+                    _profile_memory_payload_for_nl(nl_query=nl_query, nl_plan=nl_plan),
+                )
+        result = (nl_query, dialogue_language, nl_plan)
+        setattr(self.request, "_nl_create_plan_cache", result)
+        return result
+
+    def get_initial(self):  # type: ignore[override]
+        initial = super().get_initial()
+        nl_query, _dialogue_language, nl_plan = self._resolve_nl_create_plan()
+        if nl_query:
+            for key in ("title", "language", "target_language", "input_mode", "description", "source_text"):
+                value = nl_plan.get(key)
+                if value:
+                    initial[key] = value
+        return initial
+
+    def get_context_data(self, **kwargs):  # type: ignore[override]
+        context = super().get_context_data(**kwargs)
+        nl_query, dialogue_language, nl_plan = self._resolve_nl_create_plan()
         context.update(
             {
                 "nl_new_query": nl_query,
@@ -5929,13 +5983,22 @@ def _parse_nl_content_request(
     }
 
 
-def _parse_nl_project_open_request(*, nl_query: str, dialogue_language: str) -> dict[str, Any]:
+def _parse_nl_project_open_request(
+    *,
+    nl_query: str,
+    dialogue_language: str,
+    previous_query: str = "",
+    previous_plan: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    prev_plan = previous_plan or {}
     prompt = (
         f"User language for this request: {dialogue_language}. "
         "Interpret the request for opening an existing project. "
         "Return only JSON keys: title, text_language, annotation_language, keywords. "
-        "Use empty strings/arrays for unknown values.\n\n"
-        f"User request: {nl_query}"
+        "Use prior turn context if relevant and use empty strings/arrays for unknown values.\n\n"
+        f"Previous user request: {previous_query}\n"
+        f"Previous interpreted filters: {prev_plan}\n\n"
+        f"Current user request: {nl_query}"
     )
     try:
         client = _build_ai_client(model_name="gpt-4o-mini")
@@ -5953,14 +6016,23 @@ def _parse_nl_project_open_request(*, nl_query: str, dialogue_language: str) -> 
     }
 
 
-def _parse_nl_project_create_request(*, nl_query: str, dialogue_language: str) -> dict[str, Any]:
+def _parse_nl_project_create_request(
+    *,
+    nl_query: str,
+    dialogue_language: str,
+    previous_query: str = "",
+    previous_plan: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    prev_plan = previous_plan or {}
     prompt = (
         f"User language for this request: {dialogue_language}. "
         "Interpret this as a new-project setup request. "
-        "Return only JSON keys: title, language, target_language, input_mode, description, source_text. "
+        "Return only JSON keys: title, language, target_language, input_mode, description, source_text, keywords. "
         "input_mode must be one of: description, source_text. "
-        "Use empty strings for unknown values.\n\n"
-        f"User request: {nl_query}"
+        "Use prior turn context if relevant. Use empty strings/arrays for unknown values.\n\n"
+        f"Previous user request: {previous_query}\n"
+        f"Previous interpreted setup: {prev_plan}\n\n"
+        f"Current user request: {nl_query}"
     )
     try:
         client = _build_ai_client(model_name="gpt-4o-mini")
@@ -5980,6 +6052,7 @@ def _parse_nl_project_create_request(*, nl_query: str, dialogue_language: str) -
         "input_mode": input_mode,
         "description": str(payload.get("description") or "").strip(),
         "source_text": str(payload.get("source_text") or "").strip(),
+        "keywords": [str(k).strip().lower() for k in (payload.get("keywords") or []) if str(k).strip()],
     }
 
 
@@ -6057,7 +6130,7 @@ def _cefr_overlap(project_level: str, requested_level: str) -> bool:
     return bool(project_levels.intersection(requested_levels))
 
 
-def _profile_memory_payload_for_nl(profile: Profile, *, nl_query: str, nl_plan: dict[str, Any]) -> dict[str, Any]:
+def _profile_memory_payload_for_nl(*, nl_query: str, nl_plan: dict[str, Any]) -> dict[str, Any]:
     compact_plan = {
         "title": str(nl_plan.get("title") or "").strip(),
         "text_language": str(nl_plan.get("text_language") or "").strip(),
@@ -6071,6 +6144,20 @@ def _profile_memory_payload_for_nl(profile: Profile, *, nl_query: str, nl_plan: 
         "last_nl_plan": compact_plan,
         "updated_at": django_timezone.now().isoformat(),
     }
+
+
+def _profile_memory_section(profile: Profile, section: str) -> dict[str, Any]:
+    memory = profile.dialogue_memory if isinstance(profile.dialogue_memory, dict) else {}
+    payload = memory.get(section) or {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _update_profile_memory_section(profile: Profile, section: str, payload: dict[str, Any]) -> None:
+    memory = profile.dialogue_memory if isinstance(profile.dialogue_memory, dict) else {}
+    merged = dict(memory)
+    merged[section] = dict(payload)
+    profile.dialogue_memory = merged
+    profile.save(update_fields=["dialogue_memory", "updated_at"])
 
 
 @login_required
@@ -6104,8 +6191,9 @@ def content_list(request: HttpRequest) -> HttpResponse:
             and profile_obj.dialogue_memory_enabled
             and isinstance(profile_obj.dialogue_memory, dict)
         ):
-            mem_prev_query = str(profile_obj.dialogue_memory.get("last_nl_query") or "")
-            mem_prev_plan = profile_obj.dialogue_memory.get("last_nl_plan") or {}
+            section_payload = _profile_memory_section(profile_obj, "content_search")
+            mem_prev_query = str(section_payload.get("last_nl_query") or "")
+            mem_prev_plan = section_payload.get("last_nl_plan") or {}
             if mem_prev_query:
                 prev_query = mem_prev_query
             if isinstance(mem_prev_plan, dict) and mem_prev_plan:
@@ -6121,12 +6209,14 @@ def content_list(request: HttpRequest) -> HttpResponse:
         request.session["content_nl_last_query"] = nl_query
         request.session["content_nl_last_plan"] = nl_plan
         if profile_obj and profile_obj.dialogue_memory_enabled:
-            profile_obj.dialogue_memory = _profile_memory_payload_for_nl(
+            _update_profile_memory_section(
                 profile_obj,
+                "content_search",
+                _profile_memory_payload_for_nl(
                 nl_query=nl_query,
                 nl_plan=nl_plan,
+                ),
             )
-            profile_obj.save(update_fields=["dialogue_memory", "updated_at"])
 
     if nl_query:
         title = str(nl_plan.get("title") or "").strip()
@@ -6601,8 +6691,9 @@ def content_list(request: HttpRequest) -> HttpResponse:
             and profile_obj.dialogue_memory_enabled
             and isinstance(profile_obj.dialogue_memory, dict)
         ):
-            mem_prev_query = str(profile_obj.dialogue_memory.get("last_nl_query") or "")
-            mem_prev_plan = profile_obj.dialogue_memory.get("last_nl_plan") or {}
+            section_payload = _profile_memory_section(profile_obj, "content_search")
+            mem_prev_query = str(section_payload.get("last_nl_query") or "")
+            mem_prev_plan = section_payload.get("last_nl_plan") or {}
             if mem_prev_query:
                 prev_query = mem_prev_query
             if isinstance(mem_prev_plan, dict) and mem_prev_plan:
@@ -6618,12 +6709,14 @@ def content_list(request: HttpRequest) -> HttpResponse:
         request.session["content_nl_last_query"] = nl_query
         request.session["content_nl_last_plan"] = nl_plan
         if profile_obj and profile_obj.dialogue_memory_enabled:
-            profile_obj.dialogue_memory = _profile_memory_payload_for_nl(
+            _update_profile_memory_section(
                 profile_obj,
+                "content_search",
+                _profile_memory_payload_for_nl(
                 nl_query=nl_query,
                 nl_plan=nl_plan,
+                ),
             )
-            profile_obj.save(update_fields=["dialogue_memory", "updated_at"])
 
     if nl_query:
         title = str(nl_plan.get("title") or "").strip()

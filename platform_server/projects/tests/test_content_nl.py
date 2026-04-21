@@ -140,15 +140,18 @@ class ContentNaturalLanguageTests(TestCase):
             {"nl_query": "Find me a village story", "dialogue_language": "en"},
         )
         profile_obj = Profile.objects.get(user=self.user)
-        self.assertEqual(profile_obj.dialogue_memory.get("last_nl_query"), "Find me a village story")
-        self.assertEqual(profile_obj.dialogue_memory.get("last_nl_plan", {}).get("keywords"), ["village"])
+        section = profile_obj.dialogue_memory.get("content_search", {})
+        self.assertEqual(section.get("last_nl_query"), "Find me a village story")
+        self.assertEqual(section.get("last_nl_plan", {}).get("keywords"), ["village"])
 
     @patch("projects.views._parse_nl_content_request")
     def test_content_list_uses_profile_memory_as_previous_context(self, mock_parse):
         profile_obj = Profile.objects.get(user=self.user)
         profile_obj.dialogue_memory = {
-            "last_nl_query": "Earlier query",
-            "last_nl_plan": {"keywords": ["elephant"], "date_posted": "any"},
+            "content_search": {
+                "last_nl_query": "Earlier query",
+                "last_nl_plan": {"keywords": ["elephant"], "date_posted": "any"},
+            }
         }
         profile_obj.save(update_fields=["dialogue_memory", "updated_at"])
         mock_parse.return_value = {
