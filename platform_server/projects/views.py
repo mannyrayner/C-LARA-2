@@ -3272,7 +3272,29 @@ def _base_text_for_segmentation_phase_1(project: Project) -> str:
 
 
 def _surface_without_phase1_markers(surface: str) -> str:
-    return surface.replace("<page>\n", "").replace("<page>", "").replace("||", "")
+    text = str(surface or "").replace("\r\n", "\n")
+    text = text.replace("<page>\n", "\n").replace("<page>", "")
+    return text.replace("||", "")
+
+
+def _phase1_comparison_hash(text: str) -> str:
+    """Hash text with tolerant normalization for phase-1 boundary whitespace."""
+
+    normalized = str(text or "").replace("\r\n", "\n")
+    normalized = normalized.lstrip("\n").rstrip("\n")
+    return _stable_text_hash(normalized)
+
+
+def _phase1_surface_from_payload(payload: dict[str, Any]) -> str:
+    """Reconstruct editable phase-1 surface from page/segment structure."""
+
+    pages = payload.get("pages") or []
+    page_surfaces: list[str] = []
+    for page in pages:
+        segments = page.get("segments") or []
+        seg_surfaces = [str((seg or {}).get("surface") or "") for seg in segments]
+        page_surfaces.append("||".join(seg_surfaces))
+    return "<page>".join(page_surfaces)
 
 
 def _phase1_surface_from_payload(payload: dict[str, Any]) -> str:
@@ -4419,11 +4441,12 @@ def manual_segmentation_phase_1(request: HttpRequest, pk: int) -> HttpResponse:
     run_dir = _find_run_with_stage(project, "segmentation_phase_1") or _resolve_run_dir(project)
     current_payload = _load_stage_payload(project, "segmentation_phase_1", run_dir=run_dir) if run_dir else None
     current_surface = _canonicalize_phase1_surface(str((current_payload or {}).get("surface") or base_text))
+    base_cmp_hash = _phase1_comparison_hash(base_text)
     if isinstance(current_payload, dict):
         reconstructed = _canonicalize_phase1_surface(_phase1_surface_from_payload(current_payload))
-        if reconstructed and _stable_text_hash(_surface_without_phase1_markers(reconstructed)) == _stable_text_hash(base_text):
+        if reconstructed and _phase1_comparison_hash(_surface_without_phase1_markers(reconstructed)) == base_cmp_hash:
             current_surface = reconstructed
-    if _stable_text_hash(_surface_without_phase1_markers(current_surface)) != _stable_text_hash(base_text):
+    if _phase1_comparison_hash(_surface_without_phase1_markers(current_surface)) != base_cmp_hash:
         messages.warning(
             request,
             "The existing segmentation output is inconsistent with base text. "
@@ -4436,10 +4459,11 @@ def manual_segmentation_phase_1(request: HttpRequest, pk: int) -> HttpResponse:
 
     if request.method == "POST":
         editable_surface = _canonicalize_phase1_surface(request.POST.get("editable_surface") or "")
-        edited_hash = _stable_text_hash(_surface_without_phase1_markers(editable_surface))
-        if edited_hash != base_hash:
+        edited_surface_plain = _surface_without_phase1_markers(editable_surface)
+        if _phase1_comparison_hash(edited_surface_plain) != base_cmp_hash:
             messages.error(request, "Text hash mismatch; only <page> and || separators may be changed.")
         else:
+            edited_hash = base_hash
             payload = _build_phase1_payload_from_surface(editable_surface, project.language)
             _save_versioned_stage_payload(
                 project=project,
