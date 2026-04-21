@@ -3138,15 +3138,18 @@ class ProjectAnnotationView(ProjectDetailView):
         context["annotation_dialogue_plan"] = _annotation_dialogue_plan(project)
         context["annotation_plain_text"] = _base_text_for_segmentation_phase_1(project).strip()
         context["annotation_segmentation_review_href"] = f"{seg_review}?return_to={quote(annotation_home)}"
-        context["annotation_image_workflow_href"] = reverse("project-image-pages", args=[project.pk])
         return context
 
 
 def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
+    annotation_home = reverse("project-annotation-home", args=[project.pk])
     has_plain_text = bool(_base_text_for_segmentation_phase_1(project).strip())
     latest_segmentation = _find_latest_stage_file(project, "segmentation_phase_2.json")
     has_segmented = latest_segmentation is not None
-    segmentation_review_href = reverse("manual-segmentation-phase-1", args=[project.pk])
+    segmentation_review_href = (
+        f"{reverse('manual-segmentation-phase-1', args=[project.pk])}?return_to={quote(annotation_home)}"
+    )
+    image_workflow_href = reverse("project-image-pages", args=[project.pk])
     compiled_href: str | None = None
     compiled_page = _compiled_page_one_path(project)
     if compiled_page:
@@ -3185,6 +3188,11 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                     "end_stage": "compile_html",
                 },
                 {
+                    "label": "Open image workflow",
+                    "description": "Generate style, elements, and page images.",
+                    "href": image_workflow_href,
+                },
+                {
                     "label": "Show current plain text",
                     "description": "Review the generated/source text before segmentation.",
                     "href": "#plain-text-preview",
@@ -3206,7 +3214,7 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                 {
                     "label": "Open image workflow",
                     "description": "Go to image pages/elements generation controls.",
-                    "href": reverse("project-image-pages", args=[project.pk]),
+                    "href": image_workflow_href,
                 },
                 *(
                     [
@@ -3230,6 +3238,17 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                 "label": "Open compiled HTML",
                 "description": "View the latest compiled output.",
                 "href": compiled_href or reverse("project-detail", args=[project.pk]),
+            },
+            {
+                "label": "Compile HTML now",
+                "description": "Run pipeline compilation to refresh HTML using default stage settings.",
+                "start_stage": _default_start_stage_for_project(project),
+                "end_stage": "compile_html",
+            },
+            {
+                "label": "Open image workflow",
+                "description": "Generate style, elements, and page images.",
+                "href": image_workflow_href,
             },
             {
                 "label": "Open manual annotation editor",

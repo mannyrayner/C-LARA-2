@@ -76,6 +76,7 @@ class AnnotationDialoguePlanTests(TestCase):
             reverse("project-compiled", args=[project.pk, "runs/run_demo/html/page_1.html"]),
         )
         self.assertContains(resp, "Review/edit segmentation")
+        self.assertContains(resp, "Compile HTML now")
 
     def test_annotation_home_shows_prominent_segmentation_review_control(self):
         project = Project.objects.create(
