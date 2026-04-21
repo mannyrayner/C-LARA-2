@@ -3273,8 +3273,25 @@ def _base_text_for_segmentation_phase_1(project: Project) -> str:
 
 def _surface_without_phase1_markers(surface: str) -> str:
     text = str(surface or "").replace("\r\n", "\n")
-    text = text.replace("<page>\n", "\n").replace("<page>", "")
-    return text.replace("||", "")
+    marker = "\uFFF0"
+    marked = text.replace("<page>", f"{marker}P{marker}").replace("||", f"{marker}S{marker}")
+    parts = marked.split(marker)
+    out: list[str] = []
+    pending_boundary = False
+    for part in parts:
+        if part in {"P", "S"}:
+            pending_boundary = True
+            continue
+        if part == "":
+            continue
+        if pending_boundary and out:
+            prev = out[-1][-1] if out[-1] else ""
+            next_char = part[0]
+            if prev and next_char and (not prev.isspace()) and (not next_char.isspace()):
+                out.append(" ")
+        out.append(part)
+        pending_boundary = False
+    return "".join(out)
 
 
 def _phase1_comparison_hash(text: str) -> str:
@@ -3283,18 +3300,6 @@ def _phase1_comparison_hash(text: str) -> str:
     normalized = str(text or "").replace("\r\n", "\n")
     normalized = normalized.lstrip("\n").rstrip("\n")
     return _stable_text_hash(normalized)
-
-
-def _phase1_surface_from_payload(payload: dict[str, Any]) -> str:
-    """Reconstruct editable phase-1 surface from page/segment structure."""
-
-    pages = payload.get("pages") or []
-    page_surfaces: list[str] = []
-    for page in pages:
-        segments = page.get("segments") or []
-        seg_surfaces = [str((seg or {}).get("surface") or "") for seg in segments]
-        page_surfaces.append("||".join(seg_surfaces))
-    return "<page>".join(page_surfaces)
 
 
 def _phase1_surface_from_payload(payload: dict[str, Any]) -> str:
