@@ -9,6 +9,14 @@ from projects import views
 from projects.models import Profile, Project
 
 
+class _StubProjectCreateClient:
+    def __init__(self, payload):
+        self.payload = payload
+
+    async def chat_json(self, _prompt, model=None):
+        return self.payload
+
+
 class ProjectDialogueEntryTests(TestCase):
     def setUp(self):
         User = get_user_model()
@@ -132,3 +140,22 @@ class ProjectDialogueEntryTests(TestCase):
         )
         self.assertEqual(normalized["text_language"], "de")
         self.assertEqual(normalized["title"], "")
+
+    @patch("projects.views._build_ai_client")
+    def test_nl_project_create_prefers_dialogue_language_for_gloss_when_not_explicit(self, mock_build_client):
+        mock_build_client.return_value = _StubProjectCreateClient(
+            {
+                "title": "Draft",
+                "language": "en",
+                "target_language": "en",
+                "input_mode": "description",
+                "description": "draft",
+                "source_text": "",
+            }
+        )
+        plan = views._parse_nl_project_create_request(
+            nl_query="Create an English project from a short description",
+            dialogue_language="de",
+        )
+        self.assertEqual(plan.get("language"), "en")
+        self.assertEqual(plan.get("target_language"), "de")
