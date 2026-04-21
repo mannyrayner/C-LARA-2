@@ -3133,14 +3133,28 @@ class ProjectAnnotationView(ProjectDetailView):
     def get_context_data(self, **kwargs):  # type: ignore[override]
         context = super().get_context_data(**kwargs)
         project: Project = context["object"]
+        annotation_home = reverse("project-annotation-home", args=[project.pk])
+        seg_review = reverse("manual-segmentation-phase-1", args=[project.pk])
         context["annotation_dialogue_plan"] = _annotation_dialogue_plan(project)
+        context["annotation_plain_text"] = _base_text_for_segmentation_phase_1(project).strip()
+        context["annotation_segmentation_review_href"] = f"{seg_review}?return_to={quote(annotation_home)}"
         return context
 
 
 def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
+    annotation_home = reverse("project-annotation-home", args=[project.pk])
     has_plain_text = bool(_base_text_for_segmentation_phase_1(project).strip())
-    has_segmented = _find_latest_stage_file(project, "segmentation_phase_2.json") is not None
-    has_html = bool((project.compiled_path or "").strip()) or _find_latest_stage_file(project, "compile_html.json") is not None
+    latest_segmentation = _find_latest_stage_file(project, "segmentation_phase_2.json")
+    has_segmented = latest_segmentation is not None
+    segmentation_review_href = (
+        f"{reverse('manual-segmentation-phase-1', args=[project.pk])}?return_to={quote(annotation_home)}"
+    )
+    image_workflow_href = reverse("project-image-pages", args=[project.pk])
+    compiled_href: str | None = None
+    compiled_page = _compiled_page_one_path(project)
+    if compiled_page:
+        compiled_href = reverse("project-compiled", args=[project.pk, compiled_page])
+    has_html = bool(compiled_href) or _find_latest_stage_file(project, "compile_html.json") is not None
 
     if not has_plain_text:
         return {
@@ -3173,6 +3187,16 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                     "start_stage": "segmentation_phase_1",
                     "end_stage": "compile_html",
                 },
+                {
+                    "label": "Open image workflow",
+                    "description": "Generate style, elements, and page images.",
+                    "href": image_workflow_href,
+                },
+                {
+                    "label": "Show current plain text",
+                    "description": "Review the generated/source text before segmentation.",
+                    "href": "#plain-text-preview",
+                },
             ],
         }
 
@@ -3190,8 +3214,19 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                 {
                     "label": "Open image workflow",
                     "description": "Go to image pages/elements generation controls.",
-                    "href": reverse("project-image-pages", args=[project.pk]),
+                    "href": image_workflow_href,
                 },
+                *(
+                    [
+                        {
+                            "label": "Review/edit segmentation",
+                            "description": "Open manual segmentation view to inspect and adjust boundaries.",
+                            "href": segmentation_review_href,
+                        }
+                    ]
+                    if has_segmented
+                    else []
+                ),
             ],
         }
 
@@ -3202,17 +3237,42 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
             {
                 "label": "Open compiled HTML",
                 "description": "View the latest compiled output.",
-                "href": reverse("project-detail", args=[project.pk]),
+                "href": compiled_href or reverse("project-detail", args=[project.pk]),
+            },
+            {
+                "label": "Compile HTML now",
+                "description": "Run pipeline compilation to refresh HTML using default stage settings.",
+                "start_stage": _default_start_stage_for_project(project),
+                "end_stage": "compile_html",
+            },
+            {
+                "label": "Open image workflow",
+                "description": "Generate style, elements, and page images.",
+                "href": image_workflow_href,
             },
             {
                 "label": "Open manual annotation editor",
                 "description": "Make targeted corrections to segmentation, glosses, lemma, etc.",
                 "href": reverse("manual-top-level", args=[project.pk]),
             },
+            *(
+                [
+                    {
+                        "label": "Review/edit segmentation",
+                        "description": "Open manual segmentation view to inspect and adjust boundaries.",
+                        "href": segmentation_review_href,
+                    }
+                ]
+                if has_segmented
+                else []
+            ),
+            {
+                "label": "Show current plain text",
+                "description": "Review the plain text currently feeding annotation.",
+                "href": "#plain-text-preview",
+            },
         ],
     }
-
-
 def _ensure_stage_run_dir(project: Project) -> Path:
     run_dir = _resolve_run_dir(project)
     if run_dir is None:
@@ -3234,7 +3294,60 @@ def _base_text_for_segmentation_phase_1(project: Project) -> str:
 
 
 def _surface_without_phase1_markers(surface: str) -> str:
-    return surface.replace("<page>\n", "").replace("<page>", "").replace("||", "")
+    text = str(surface or "").replace("\r\n", "\n")
+    marker = "\uFFF0"
+    marked = text.replace("<page>", f"{marker}P{marker}").replace("||", f"{marker}S{marker}")
+    parts = marked.split(marker)
+    out: list[str] = []
+    pending_boundary = False
+    for part in parts:
+        if part in {"P", "S"}:
+            pending_boundary = True
+            continue
+        if part == "":
+            continue
+        if pending_boundary and out:
+            prev = out[-1][-1] if out[-1] else ""
+            next_char = part[0]
+            if prev and next_char and (not prev.isspace()) and (not next_char.isspace()):
+                out.append(" ")
+        out.append(part)
+        pending_boundary = False
+    return "".join(out)
+
+
+def _phase1_comparison_hash(text: str) -> str:
+    """Hash text with tolerant normalization for phase-1 boundary whitespace."""
+
+    normalized = str(text or "").replace("\r\n", "\n")
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    return _stable_text_hash(normalized)
+
+
+def _annotation_return_to(request: HttpRequest, project: Project, *, default_manual: bool = False) -> str:
+    default = (
+        reverse("manual-top-level", args=[project.pk])
+        if default_manual
+        else reverse("project-annotation-home", args=[project.pk])
+    )
+    candidate = str(request.POST.get("return_to") or request.GET.get("return_to") or "").strip()
+    if not candidate:
+        return default
+    if candidate.startswith(f"/projects/{project.pk}/annotation/"):
+        return candidate
+    return default
+
+
+def _phase1_surface_from_payload(payload: dict[str, Any]) -> str:
+    """Reconstruct editable phase-1 surface from page/segment structure."""
+
+    pages = payload.get("pages") or []
+    page_surfaces: list[str] = []
+    for page in pages:
+        segments = page.get("segments") or []
+        seg_surfaces = [str((seg or {}).get("surface") or "") for seg in segments]
+        page_surfaces.append("||".join(seg_surfaces))
+    return "<page>".join(page_surfaces)
 
 
 def _build_phase1_payload_from_surface(surface: str, language: str) -> dict[str, Any]:
@@ -4361,15 +4474,21 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 def manual_segmentation_phase_1(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    return_to = _annotation_return_to(request, project, default_manual=True)
     base_text = _base_text_for_segmentation_phase_1(project)
     if not base_text.strip():
         messages.error(request, "Manual segmentation phase 1 requires source text.")
-        return redirect("project-annotation-home", pk=project.pk)
+        return redirect(return_to)
 
     run_dir = _find_run_with_stage(project, "segmentation_phase_1") or _resolve_run_dir(project)
     current_payload = _load_stage_payload(project, "segmentation_phase_1", run_dir=run_dir) if run_dir else None
     current_surface = _canonicalize_phase1_surface(str((current_payload or {}).get("surface") or base_text))
-    if _surface_without_phase1_markers(current_surface) != base_text:
+    base_cmp_hash = _phase1_comparison_hash(base_text)
+    if isinstance(current_payload, dict):
+        reconstructed = _canonicalize_phase1_surface(_phase1_surface_from_payload(current_payload))
+        if reconstructed and _phase1_comparison_hash(_surface_without_phase1_markers(reconstructed)) == base_cmp_hash:
+            current_surface = reconstructed
+    if _phase1_comparison_hash(_surface_without_phase1_markers(current_surface)) != base_cmp_hash:
         messages.warning(
             request,
             "The existing segmentation output is inconsistent with base text. "
@@ -4382,10 +4501,11 @@ def manual_segmentation_phase_1(request: HttpRequest, pk: int) -> HttpResponse:
 
     if request.method == "POST":
         editable_surface = _canonicalize_phase1_surface(request.POST.get("editable_surface") or "")
-        edited_hash = _stable_text_hash(_surface_without_phase1_markers(editable_surface))
-        if edited_hash != base_hash:
+        edited_surface_plain = _surface_without_phase1_markers(editable_surface)
+        if _phase1_comparison_hash(edited_surface_plain) != base_cmp_hash:
             messages.error(request, "Text hash mismatch; only <page> and || separators may be changed.")
         else:
+            edited_hash = base_hash
             payload = _build_phase1_payload_from_surface(editable_surface, project.language)
             _save_versioned_stage_payload(
                 project=project,
@@ -4406,13 +4526,15 @@ def manual_segmentation_phase_1(request: HttpRequest, pk: int) -> HttpResponse:
                     f"{salvage_info['total_pages']} unchanged pages.",
                 )
             messages.success(request, "Saved manual segmentation phase 1.")
-            return redirect("manual-segmentation-phase-1", pk=project.pk)
+            return redirect(f"{reverse('manual-segmentation-phase-1', args=[project.pk])}?return_to={quote(return_to)}")
 
     return render(
         request,
         "projects/manual_segmentation_phase_1.html",
         {
             "project": project,
+            "back_href": return_to,
+            "return_to": return_to,
             "read_only_surface": current_surface,
             "editable_surface": editable_surface,
             "base_hash": base_hash,
@@ -4934,7 +5056,14 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
         form.instance.owner = self.request.user
         messages.info(self.request, "Project created. Compile when ready.")
         response = super().form_valid(form)
+        _reset_project_artifacts(self.object)
         _persist_project_source(self.object)
+        if (self.object.language or "").strip().lower() == (self.object.target_language or "").strip().lower():
+            messages.warning(
+                self.request,
+                "Glossing language is currently the same as text language. "
+                "This is usually unintended; consider setting it to your interaction language.",
+            )
         return response
 
     def get_success_url(self):  # type: ignore[override]
@@ -4985,7 +5114,9 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
 
     def get_initial(self):  # type: ignore[override]
         initial = super().get_initial()
-        nl_query, _dialogue_language, nl_plan = self._resolve_nl_create_plan()
+        nl_query, dialogue_language, nl_plan = self._resolve_nl_create_plan()
+        if dialogue_language:
+            initial.setdefault("target_language", dialogue_language)
         if nl_query:
             for key in ("title", "language", "target_language", "input_mode", "description", "source_text"):
                 value = nl_plan.get(key)
@@ -5157,6 +5288,23 @@ def _persist_project_source(project: Project) -> None:
     except Exception:
         # Best-effort persistence; failures should not block UI flows.
         pass
+
+
+def _reset_project_artifacts(project: Project) -> None:
+    """Remove stale artifacts when a freshly-created project reuses an old id.
+
+    In local/dev environments it's common to recreate the database without
+    cleaning MEDIA_ROOT. If ids restart from 1, a new project can inherit
+    previous run artifacts from an unrelated historical project.
+    """
+
+    base = project.artifact_dir()
+    if not base.exists():
+        return
+    try:
+        shutil.rmtree(base)
+    except Exception:
+        logger.exception("Failed to clear stale artifact directory for new project %s", project.pk)
 
 
 def _resolve_run_dir(project: Project) -> Path | None:
@@ -6127,6 +6275,7 @@ def _parse_nl_project_create_request(
         "Interpret this as a new-project setup request. "
         "Return only JSON keys: title, language, target_language, input_mode, description, source_text, keywords. "
         "input_mode must be one of: description, source_text. "
+        "Default target_language to the user language unless the user explicitly requests a different glossing/annotation language. "
         "Use prior turn context if relevant. Use empty strings/arrays for unknown values.\n\n"
         f"Previous user request: {previous_query}\n"
         f"Previous interpreted setup: {prev_plan}\n\n"
@@ -6143,10 +6292,24 @@ def _parse_nl_project_create_request(
     input_mode = str(payload.get("input_mode") or "").strip().lower()
     if input_mode not in {Project.INPUT_DESCRIPTION, Project.INPUT_SOURCE}:
         input_mode = ""
+    language = _normalize_language_filter(str(payload.get("language") or ""))
+    target_language = _normalize_language_filter(str(payload.get("target_language") or ""))
+    dialogue_lang = _normalize_language_filter(dialogue_language)
+    if not target_language:
+        target_language = dialogue_lang
+    if (
+        language
+        and target_language
+        and language == target_language
+        and dialogue_lang
+        and dialogue_lang != language
+        and not re.search(r"\b(same|identical|monolingual)\b", nl_query.lower())
+    ):
+        target_language = dialogue_lang
     return {
         "title": str(payload.get("title") or "").strip(),
-        "language": _normalize_language_filter(str(payload.get("language") or "")),
-        "target_language": _normalize_language_filter(str(payload.get("target_language") or "")),
+        "language": language,
+        "target_language": target_language,
         "input_mode": input_mode,
         "description": str(payload.get("description") or "").strip(),
         "source_text": str(payload.get("source_text") or "").strip(),
