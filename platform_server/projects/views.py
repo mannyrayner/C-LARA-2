@@ -3298,7 +3298,7 @@ def _phase1_comparison_hash(text: str) -> str:
     """Hash text with tolerant normalization for phase-1 boundary whitespace."""
 
     normalized = str(text or "").replace("\r\n", "\n")
-    normalized = normalized.lstrip("\n").rstrip("\n")
+    normalized = re.sub(r"\s+", " ", normalized).strip()
     return _stable_text_hash(normalized)
 
 
