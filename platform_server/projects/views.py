@@ -3130,6 +3130,88 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
 class ProjectAnnotationView(ProjectDetailView):
     template_name = "projects/project_annotation.html"
 
+    def get_context_data(self, **kwargs):  # type: ignore[override]
+        context = super().get_context_data(**kwargs)
+        project: Project = context["object"]
+        context["annotation_dialogue_plan"] = _annotation_dialogue_plan(project)
+        return context
+
+
+def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
+    has_plain_text = bool(_base_text_for_segmentation_phase_1(project).strip())
+    has_segmented = _find_latest_stage_file(project, "segmentation_phase_2.json") is not None
+    has_html = bool((project.compiled_path or "").strip()) or _find_latest_stage_file(project, "compile_html.json") is not None
+
+    if not has_plain_text:
+        return {
+            "title": "Suggested next step: create a first plain-text draft",
+            "summary": "You do not yet have base text to annotate. I can generate a draft from your description and show it for approval.",
+            "choices": [
+                {
+                    "label": "Generate plain text draft",
+                    "description": "Runs text generation only.",
+                    "start_stage": "text_gen",
+                    "end_stage": "text_gen",
+                }
+            ],
+        }
+
+    if has_plain_text and not has_segmented:
+        return {
+            "title": "Suggested next step: split into pages/segments or preview HTML",
+            "summary": "You already have plain text. Common next actions are segmentation for structured annotation, or a quick HTML preview.",
+            "choices": [
+                {
+                    "label": "Split into pages and segments (recommended)",
+                    "description": "Runs segmentation phases to prepare annotation-ready structure.",
+                    "start_stage": "segmentation_phase_1",
+                    "end_stage": "segmentation_phase_2",
+                },
+                {
+                    "label": "Render HTML preview now",
+                    "description": "Compiles to HTML so you can review quickly before detailed annotation.",
+                    "start_stage": "segmentation_phase_1",
+                    "end_stage": "compile_html",
+                },
+            ],
+        }
+
+    if has_plain_text and has_segmented and not has_html:
+        return {
+            "title": "Suggested next step: render HTML or move to images",
+            "summary": "You already have segmented text. You can compile to HTML now, or continue to image workflow.",
+            "choices": [
+                {
+                    "label": "Render HTML now (recommended)",
+                    "description": "Compile the current annotations into browsable HTML.",
+                    "start_stage": "translation",
+                    "end_stage": "compile_html",
+                },
+                {
+                    "label": "Open image workflow",
+                    "description": "Go to image pages/elements generation controls.",
+                    "href": reverse("project-image-pages", args=[project.pk]),
+                },
+            ],
+        }
+
+    return {
+        "title": "HTML is available — review and revise",
+        "summary": "You can open the latest HTML now and then request corrections if anything looks wrong.",
+        "choices": [
+            {
+                "label": "Open compiled HTML",
+                "description": "View the latest compiled output.",
+                "href": reverse("project-detail", args=[project.pk]),
+            },
+            {
+                "label": "Open manual annotation editor",
+                "description": "Make targeted corrections to segmentation, glosses, lemma, etc.",
+                "href": reverse("manual-top-level", args=[project.pk]),
+            },
+        ],
+    }
+
 
 def _ensure_stage_run_dir(project: Project) -> Path:
     run_dir = _resolve_run_dir(project)

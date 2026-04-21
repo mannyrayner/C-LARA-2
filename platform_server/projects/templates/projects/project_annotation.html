@@ -5,6 +5,35 @@
 <p><a class="btn secondary" href="{% url 'project-detail' object.pk %}">← Back to project</a></p>
 <p>{{ object.description }}</p>
 <p>Language: {{ object.language }} → {{ object.target_language }}</p>
+{% if annotation_dialogue_plan %}
+  <div style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0; background:#fafafa;">
+    <strong>Dialogue assistant suggestion</strong>
+    <p><strong>{{ annotation_dialogue_plan.title }}</strong></p>
+    <p>{{ annotation_dialogue_plan.summary }}</p>
+    <ul>
+      {% for choice in annotation_dialogue_plan.choices %}
+        <li style="margin-bottom: 0.5rem;">
+          <p><strong>{{ choice.label }}</strong> — {{ choice.description }}</p>
+          {% if choice.start_stage and choice.end_stage %}
+            <form method="post" action="{% url 'project-compile' object.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="start_stage" value="{{ choice.start_stage }}" />
+              <input type="hidden" name="end_stage" value="{{ choice.end_stage }}" />
+              <input type="hidden" name="ai_model" value="{{ selected_ai_model }}" />
+              <input type="hidden" name="page_image_placement" value="{{ selected_page_image_placement }}" />
+              <input type="hidden" name="segmentation_method" value="{{ selected_segmentation_method }}" />
+              <input type="hidden" name="romanization_method" value="{{ selected_romanization_method }}" />
+              <input type="hidden" name="return_to" value="{% url 'project-annotation-home' object.pk %}" />
+              <button class="btn secondary" type="submit">Run {{ choice.start_stage }} → {{ choice.end_stage }}</button>
+            </form>
+          {% elif choice.href %}
+            <a class="btn secondary" href="{{ choice.href }}">{{ choice.label }}</a>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
 <form method="post" action="{% url 'project-image-placement' object.pk %}">{% csrf_token %}
   <p>
     <label for="page_image_placement">Page image placement:</label>
