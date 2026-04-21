@@ -3134,13 +3134,27 @@ class ProjectAnnotationView(ProjectDetailView):
         context = super().get_context_data(**kwargs)
         project: Project = context["object"]
         context["annotation_dialogue_plan"] = _annotation_dialogue_plan(project)
+        context["annotation_plain_text"] = _base_text_for_segmentation_phase_1(project).strip()
+        seg_output = _latest_stage_relative_path(project, "segmentation_phase_2.json")
+        context["annotation_segmentation_output_href"] = (
+            reverse("project-compiled", args=[project.pk, seg_output]) if seg_output else None
+        )
         return context
 
 
 def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
     has_plain_text = bool(_base_text_for_segmentation_phase_1(project).strip())
-    has_segmented = _find_latest_stage_file(project, "segmentation_phase_2.json") is not None
-    has_html = bool((project.compiled_path or "").strip()) or _find_latest_stage_file(project, "compile_html.json") is not None
+    latest_segmentation = _find_latest_stage_file(project, "segmentation_phase_2.json")
+    has_segmented = latest_segmentation is not None
+    segmentation_href: str | None = None
+    if latest_segmentation is not None:
+        seg_rel = latest_segmentation[1].resolve().relative_to(project.artifact_dir().resolve()).as_posix()
+        segmentation_href = reverse("project-compiled", args=[project.pk, seg_rel])
+    compiled_href: str | None = None
+    compiled_page = _compiled_page_one_path(project)
+    if compiled_page:
+        compiled_href = reverse("project-compiled", args=[project.pk, compiled_page])
+    has_html = bool(compiled_href) or _find_latest_stage_file(project, "compile_html.json") is not None
 
     if not has_plain_text:
         return {
@@ -3173,6 +3187,11 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                     "start_stage": "segmentation_phase_1",
                     "end_stage": "compile_html",
                 },
+                {
+                    "label": "Show current plain text",
+                    "description": "Review the generated/source text before segmentation.",
+                    "href": "#plain-text-preview",
+                },
             ],
         }
 
@@ -3192,6 +3211,17 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                     "description": "Go to image pages/elements generation controls.",
                     "href": reverse("project-image-pages", args=[project.pk]),
                 },
+                *(
+                    [
+                        {
+                            "label": "Open segmentation output (JSON)",
+                            "description": "Inspect the latest page/segment/token structure.",
+                            "href": segmentation_href,
+                        }
+                    ]
+                    if segmentation_href
+                    else []
+                ),
             ],
         }
 
@@ -3202,15 +3232,42 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
             {
                 "label": "Open compiled HTML",
                 "description": "View the latest compiled output.",
-                "href": reverse("project-detail", args=[project.pk]),
+                "href": compiled_href or reverse("project-detail", args=[project.pk]),
             },
             {
                 "label": "Open manual annotation editor",
                 "description": "Make targeted corrections to segmentation, glosses, lemma, etc.",
                 "href": reverse("manual-top-level", args=[project.pk]),
             },
+            *(
+                [
+                    {
+                        "label": "Open segmentation output (JSON)",
+                        "description": "Inspect the latest page/segment/token structure.",
+                        "href": segmentation_href,
+                    }
+                ]
+                if segmentation_href
+                else []
+            ),
+            {
+                "label": "Show current plain text",
+                "description": "Review the plain text currently feeding annotation.",
+                "href": "#plain-text-preview",
+            },
         ],
     }
+
+
+def _latest_stage_relative_path(project: Project, stage_filename: str) -> str | None:
+    latest = _find_latest_stage_file(project, stage_filename)
+    if latest is None:
+        return None
+    _run_dir, stage_path = latest
+    try:
+        return stage_path.resolve().relative_to(project.artifact_dir().resolve()).as_posix()
+    except Exception:
+        return None
 
 
 def _ensure_stage_run_dir(project: Project) -> Path:
@@ -4934,7 +4991,14 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
         form.instance.owner = self.request.user
         messages.info(self.request, "Project created. Compile when ready.")
         response = super().form_valid(form)
+        _reset_project_artifacts(self.object)
         _persist_project_source(self.object)
+        if (self.object.language or "").strip().lower() == (self.object.target_language or "").strip().lower():
+            messages.warning(
+                self.request,
+                "Glossing language is currently the same as text language. "
+                "This is usually unintended; consider setting it to your interaction language.",
+            )
         return response
 
     def get_success_url(self):  # type: ignore[override]
@@ -4985,7 +5049,9 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
 
     def get_initial(self):  # type: ignore[override]
         initial = super().get_initial()
-        nl_query, _dialogue_language, nl_plan = self._resolve_nl_create_plan()
+        nl_query, dialogue_language, nl_plan = self._resolve_nl_create_plan()
+        if dialogue_language:
+            initial.setdefault("target_language", dialogue_language)
         if nl_query:
             for key in ("title", "language", "target_language", "input_mode", "description", "source_text"):
                 value = nl_plan.get(key)
@@ -5157,6 +5223,23 @@ def _persist_project_source(project: Project) -> None:
     except Exception:
         # Best-effort persistence; failures should not block UI flows.
         pass
+
+
+def _reset_project_artifacts(project: Project) -> None:
+    """Remove stale artifacts when a freshly-created project reuses an old id.
+
+    In local/dev environments it's common to recreate the database without
+    cleaning MEDIA_ROOT. If ids restart from 1, a new project can inherit
+    previous run artifacts from an unrelated historical project.
+    """
+
+    base = project.artifact_dir()
+    if not base.exists():
+        return
+    try:
+        shutil.rmtree(base)
+    except Exception:
+        logger.exception("Failed to clear stale artifact directory for new project %s", project.pk)
 
 
 def _resolve_run_dir(project: Project) -> Path | None:
@@ -6127,6 +6210,7 @@ def _parse_nl_project_create_request(
         "Interpret this as a new-project setup request. "
         "Return only JSON keys: title, language, target_language, input_mode, description, source_text, keywords. "
         "input_mode must be one of: description, source_text. "
+        "Default target_language to the user language unless the user explicitly requests a different glossing/annotation language. "
         "Use prior turn context if relevant. Use empty strings/arrays for unknown values.\n\n"
         f"Previous user request: {previous_query}\n"
         f"Previous interpreted setup: {prev_plan}\n\n"
@@ -6143,10 +6227,24 @@ def _parse_nl_project_create_request(
     input_mode = str(payload.get("input_mode") or "").strip().lower()
     if input_mode not in {Project.INPUT_DESCRIPTION, Project.INPUT_SOURCE}:
         input_mode = ""
+    language = _normalize_language_filter(str(payload.get("language") or ""))
+    target_language = _normalize_language_filter(str(payload.get("target_language") or ""))
+    dialogue_lang = _normalize_language_filter(dialogue_language)
+    if not target_language:
+        target_language = dialogue_lang
+    if (
+        language
+        and target_language
+        and language == target_language
+        and dialogue_lang
+        and dialogue_lang != language
+        and not re.search(r"\b(same|identical|monolingual)\b", nl_query.lower())
+    ):
+        target_language = dialogue_lang
     return {
         "title": str(payload.get("title") or "").strip(),
-        "language": _normalize_language_filter(str(payload.get("language") or "")),
-        "target_language": _normalize_language_filter(str(payload.get("target_language") or "")),
+        "language": language,
+        "target_language": target_language,
         "input_mode": input_mode,
         "description": str(payload.get("description") or "").strip(),
         "source_text": str(payload.get("source_text") or "").strip(),
