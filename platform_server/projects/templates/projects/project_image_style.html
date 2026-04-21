@@ -3,11 +3,27 @@
 {% block content %}
 <h1>Image style for {{ project.title }}</h1>
 
-<p>
-  This is the first version of the initial <strong>Style</strong> substep. It stores the
-  style brief, generates an expanded style description, and prepares a sample image
-  prompt that can later be passed to an image model.
-</p>
+<div style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0; background:#fafafa;">
+  <strong>Dialogue assistant suggestion</strong>
+  {% if not style.style_brief %}
+    <p><strong>Step 1: provide a style brief</strong></p>
+    <p>Describe the visual style you want (for example: watercolor, comic, realistic, cinematic, etc.).</p>
+    <p>Then use <strong>Expand style brief</strong> to generate a fuller style description and starter image prompt.</p>
+  {% elif not style.expanded_style_description or not style.sample_image_prompt %}
+    <p><strong>Step 2: expand style details</strong></p>
+    <p>Use <strong>Expand style brief</strong> to generate the expanded style description and sample image prompt.</p>
+  {% elif not style.sample_image_path %}
+    <p><strong>Step 3: generate a sample style image</strong></p>
+    <p>Use <strong>Generate sample image</strong>, review the result, then approve style when satisfied.</p>
+  {% elif style.status != "approved" %}
+    <p><strong>Step 4: approve style and move to elements</strong></p>
+    <p>Your sample style image exists. Approve style, then continue to reusable visual elements.</p>
+  {% else %}
+    <p><strong>Style approved — next step: elements</strong></p>
+    <p>Continue to the elements step to build consistent character/object references.</p>
+    <p><a class="btn secondary" href="{% url 'project-image-elements' project.pk %}">Open elements workflow</a></p>
+  {% endif %}
+</div>
 
 <p><a href="{% url 'project-detail' project.pk %}">← Back to project</a></p>
 <p><a href="{% url 'project-images-home' project.pk %}">← Back to images home</a></p>
@@ -21,14 +37,29 @@
 <form method="post" id="style-form">
   {% csrf_token %}
   <input type="hidden" name="action_intent" id="style-action-intent" value="" />
-  {{ form.as_p }}
-  <p><small>The “Discourage text in images” setting applies to page image generation prompts in the next stage.</small></p>
-  <p><small><strong>Save draft</strong> stores manual edits to style fields. <strong>Approve style</strong> marks style as ready so the next step can proceed even before a sample image is generated.</small></p>
-  <p><strong>To fill “Expanded style description” and “Sample image prompt”, use:</strong></p>
+  <h3>1) Style brief</h3>
+  <p>{{ form.style_brief.label_tag }} {{ form.style_brief }}</p>
   <p>
     <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate" data-busy-label="Expanding style brief..." onclick="document.getElementById('style-action-intent').value='generate';">Expand style brief</button>
-    <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_image" data-busy-label="Generating sample image..." onclick="document.getElementById('style-action-intent').value='generate_image';" {% if not style.sample_image_prompt %}disabled title="Generate or enter a sample image prompt first"{% endif %}>Generate sample image</button>
     <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="save" data-busy-label="Saving draft..." onclick="document.getElementById('style-action-intent').value='save';">Save draft</button>
+  </p>
+
+  <h3>2) Expanded style + sample prompt</h3>
+  <p><strong>To fill “Expanded style description” and “Sample image prompt”, use:</strong></p>
+  <p>{{ form.expanded_style_description.label_tag }} {{ form.expanded_style_description }}</p>
+  <p>{{ form.sample_image_prompt.label_tag }} {{ form.sample_image_prompt }}</p>
+  <p>
+    <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_image" data-busy-label="Generating sample image..." onclick="document.getElementById('style-action-intent').value='generate_image';" {% if not style.sample_image_prompt %}disabled title="Generate or enter a sample image prompt first"{% endif %}>Generate sample image</button>
+  </p>
+
+  <h3>3) Settings and approval</h3>
+  <p>{{ form.ai_model.label_tag }} {{ form.ai_model }}</p>
+  <p>{{ form.sample_image_model.label_tag }} {{ form.sample_image_model }}</p>
+  <p>{{ form.discourage_text_in_images.label_tag }} {{ form.discourage_text_in_images }}</p>
+  <p>{{ form.status.label_tag }} {{ form.status }}</p>
+  <p><small>The “Discourage text in images” setting applies to page image generation prompts in the next stage.</small></p>
+  <p><small><strong>Save draft</strong> stores manual edits to style fields. <strong>Approve style</strong> marks style as ready so the next step can proceed even before a sample image is generated.</small></p>
+  <p>
     <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="approve" data-busy-label="Approving style..." onclick="document.getElementById('style-action-intent').value='approve';">Approve style</button>
   </p>
 </form>
