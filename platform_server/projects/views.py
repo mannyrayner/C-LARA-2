@@ -17,6 +17,7 @@ from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
+from django.core.management import call_command
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
@@ -55,12 +56,14 @@ from .forms import (
     FlashcardExerciseSetForm,
     GrantAdminPrivilegesForm,
     ProfileForm,
+    ProjectDiscoveryMetadataForm,
     ProjectForm,
     ProjectImageElementFormSet,
     ProjectImagePageFormSet,
     ProjectImageStyleForm,
     RegistrationForm,
 )
+from .metadata import update_project_discovery_metadata
 from .billing import (
     apply_credit_delta,
     credits_enabled,
@@ -115,6 +118,16 @@ CONTENT_DATE_FILTERS = {
     "last_3_months": timedelta(days=90),
     "last_year": timedelta(days=365),
 }
+CONTENT_DATE_ALIASES = {
+    "today": "last_3_days",
+    "last_7_days": "last_month",
+    "week": "last_month",
+    "month": "last_month",
+    "3_months": "last_3_months",
+    "past_year": "last_year",
+    "year": "last_year",
+}
+CEFR_LEVEL_ORDER = ["A1", "A2", "B1", "B2", "C1", "C2"]
 
 
 
@@ -764,6 +777,16 @@ def _elements_artifact_links(project: Project) -> list[dict[str, str]]:
                 "label": label,
                 "url": reverse("project-compiled", args=[project.pk, relpath]),
                 "size": str(path.stat().st_size),
+            }
+        )
+    billing_path = project.artifact_dir() / "images" / "billing_telemetry.jsonl"
+    if billing_path.exists():
+        relpath = os.path.relpath(billing_path, project.artifact_dir()).replace("\\", "/")
+        links.append(
+            {
+                "label": "Image billing telemetry",
+                "url": reverse("project-compiled", args=[project.pk, relpath]),
+                "size": str(billing_path.stat().st_size),
             }
         )
     return links
@@ -1650,6 +1673,15 @@ def _append_page_image_telemetry(project: Project, record: dict[str, Any]) -> No
         fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
+def _append_image_billing_telemetry(project: Project, record: dict[str, Any]) -> None:
+    telemetry_path = project.artifact_dir() / "images" / "billing_telemetry.jsonl"
+    telemetry_path.parent.mkdir(parents=True, exist_ok=True)
+    entry = dict(record)
+    entry["timestamp"] = datetime.now(timezone.utc).isoformat()
+    with telemetry_path.open("a", encoding="utf-8") as fp:
+        fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
 def _ensure_project_page_rows(project: Project) -> int:
     pages = _extract_project_pages(project)
     existing = {
@@ -1711,6 +1743,43 @@ def _persist_image_pages_artifacts(project: Project) -> None:
         json.dumps(variants, ensure_ascii=False, indent=2, default=str),
         encoding="utf-8",
     )
+
+
+def _page_artifact_links(project: Project) -> list[dict[str, str]]:
+    pages_dir = _image_pages_dir(project)
+    pages_dir.mkdir(parents=True, exist_ok=True)
+    telemetry_path = pages_dir / "telemetry.jsonl"
+    if not telemetry_path.exists():
+        telemetry_path.write_text("", encoding="utf-8")
+    files = [
+        ("pages_list.json", "Pages list"),
+        ("variants_list.json", "Variants list"),
+        ("telemetry.jsonl", "Page images telemetry"),
+    ]
+    links: list[dict[str, str]] = []
+    for rel_name, label in files:
+        path = pages_dir / rel_name
+        if not path.exists():
+            continue
+        relpath = os.path.relpath(path, project.artifact_dir()).replace("\\", "/")
+        links.append(
+            {
+                "label": label,
+                "url": reverse("project-compiled", args=[project.pk, relpath]),
+                "size": str(path.stat().st_size),
+            }
+        )
+    billing_path = project.artifact_dir() / "images" / "billing_telemetry.jsonl"
+    if billing_path.exists():
+        relpath = os.path.relpath(billing_path, project.artifact_dir()).replace("\\", "/")
+        links.append(
+            {
+                "label": "Image billing telemetry",
+                "url": reverse("project-compiled", args=[project.pk, relpath]),
+                "size": str(billing_path.stat().st_size),
+            }
+        )
+    return links
 
 
 def _set_page_preferred_variant(page: ProjectImagePage, variant: ProjectImagePageVariant) -> None:
@@ -1809,56 +1878,22 @@ def _generate_project_page_images(
         )
         page_dir = pages_dir / f"page_{page_obj.page_number:03d}"
         page_dir.mkdir(parents=True, exist_ok=True)
-        outputs: list[tuple[int, str, str, str, str]] = []
-        for variant_index in range(1, variants_per_page + 1):
-            started = datetime.now(timezone.utc)
-            try:
-                image_result = client.generate_image(prompt, model=image_model)
-            except Exception as exc:
-                elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
-                _append_page_image_telemetry(
-                    project,
-                    {
-                        "event": "page_image_timeout" if _is_timeout_exception(exc) else "page_image_error",
-                        "page_number": page_obj.page_number,
-                        "variant_index": variant_index,
-                        "model": image_model,
-                        "elapsed_s": round(elapsed_s, 3),
-                        **_exception_telemetry_fields(exc),
-                    },
-                )
-                raise
-            image_path = page_dir / f"variant_{variant_index:03d}.png"
-            image_path.write_bytes(image_result["bytes"])
-            rel_path = image_path.relative_to(project.artifact_dir()).as_posix()
-            revised_prompt = image_result.get("revised_prompt") or ""
-            metadata = {
-                "page_number": page_obj.page_number,
-                "variant_index": variant_index,
-                "prompt": prompt,
-                "model": image_model,
-                "revised_prompt": revised_prompt,
-                "image_path": rel_path,
-            }
-            (page_dir / f"metadata_variant_{variant_index:03d}.json").write_text(
-                json.dumps(metadata, ensure_ascii=False, indent=2),
-                encoding="utf-8",
-            )
+        try:
+            image_result = client.generate_image(prompt, model=image_model)
+        except Exception as exc:
+            elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
             _append_page_image_telemetry(
                 project,
                 {
-                    "event": "page_image_response",
+                    "event": "page_image_timeout" if _is_timeout_exception(exc) else "page_image_error",
                     "page_number": page_obj.page_number,
                     "variant_index": variant_index,
                     "model": image_model,
-                    "elapsed_s": round((datetime.now(timezone.utc) - started).total_seconds(), 3),
-                    "revised_prompt": revised_prompt,
-                    "image_path": rel_path,
+                    "elapsed_s": round(elapsed_s, 3),
+                    **_exception_telemetry_fields(exc),
                 },
             )
             raise
-        page_dir = pages_dir / f"page_{page_obj.page_number:03d}"
-        page_dir.mkdir(parents=True, exist_ok=True)
         image_path = page_dir / f"variant_{variant_index:03d}.png"
         image_path.write_bytes(image_result["bytes"])
         rel_path = image_path.relative_to(project.artifact_dir()).as_posix()
@@ -1924,6 +1959,7 @@ def _generate_project_page_images(
                 preferred_variant = variant
         if preferred_variant is not None:
             _set_page_preferred_variant(page_obj, preferred_variant)
+
     return generated
 
 
@@ -1992,27 +2028,6 @@ def _generate_requested_page_variants(
                 _set_page_preferred_variant(page, variant)
             generated += 1
 
-    for page_obj in page_rows:
-        outputs = sorted(outputs_by_page.get(page_obj.pk, []), key=lambda tup: tup[0])
-        if not outputs:
-            continue
-        preferred_variant = page_obj.preferred_variant if page_obj.preferred_variant_id else None
-        for variant_index, rel_path, revised_prompt, prompt in outputs:
-            variant, _ = ProjectImagePageVariant.objects.update_or_create(
-                page_id=page_obj.pk,
-                variant_index=variant_index,
-                defaults={
-                    "image_model": image_model,
-                    "image_path": rel_path,
-                    "image_revised_prompt": revised_prompt,
-                    "generation_prompt": prompt,
-                    "status": ProjectImagePage.STATUS_GENERATED,
-                },
-            )
-            if preferred_variant is None and variant_index == 1:
-                preferred_variant = variant
-        if preferred_variant is not None:
-            _set_page_preferred_variant(page_obj, preferred_variant)
     return generated
 
 
@@ -2036,6 +2051,12 @@ def profile(request: HttpRequest) -> HttpResponse:
     profile_obj, _ = Profile.objects.get_or_create(user=request.user)
 
     if request.method == "POST":
+        action = (request.POST.get("memory_action") or "").strip().lower()
+        if action == "clear":
+            profile_obj.dialogue_memory = {}
+            profile_obj.save(update_fields=["dialogue_memory", "updated_at"])
+            messages.success(request, "Dialogue memory cleared.")
+            return redirect("profile")
         form = ProfileForm(request.POST, instance=profile_obj)
         if form.is_valid():
             form.save()
@@ -2337,6 +2358,19 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
                 )
                 changed += 1
             messages.success(request, f"Saved manual pricing for {changed} model row(s).")
+            return redirect("admin-tools")
+        elif action == "backfill_project_discovery_keywords":
+            force = bool(request.POST.get("force_backfill_keywords"))
+            try:
+                call_command(
+                    "backfill_project_discovery_keywords",
+                    admin_username=request.user.username,
+                    force=force,
+                )
+                msg = "Backfill started for discovery keywords (forced)." if force else "Backfill started for missing/stale discovery keywords."
+                messages.success(request, msg)
+            except Exception as exc:
+                messages.error(request, f"Keyword backfill failed: {exc}")
             return redirect("admin-tools")
         else:
             messages.error(request, "Unknown admin action.")
@@ -2826,6 +2860,7 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
             "style": style,
             "formset": formset,
             "pages_artifact_dir": _image_pages_dir(project),
+            "pages_artifact_links": _page_artifact_links(project),
             "image_models": IMAGE_MODEL_CHOICES,
             "selected_image_model": request.GET.get("image_model") or "gpt-image-1",
             "default_variants_per_page": 1,
@@ -2844,6 +2879,76 @@ class ProjectListView(LoginRequiredMixin, ListView):
     def get_queryset(self):  # type: ignore[override]
         _ensure_bootstrap_admin(self.request.user)
         return _projects_for_user(self.request.user)
+
+    def get_context_data(self, **kwargs):  # type: ignore[override]
+        context = super().get_context_data(**kwargs)
+        nl_query = (self.request.GET.get("nl_open_query") or "").strip()
+        dialogue_language = (self.request.GET.get("dialogue_language") or "").strip()
+        if not dialogue_language:
+            try:
+                dialogue_language = self.request.user.profile.dialogue_language or "en"
+            except Exception:
+                dialogue_language = "en"
+        nl_plan: dict[str, Any] = {}
+        suggested_projects: list[Project] = []
+        if nl_query:
+            prev_query = ""
+            prev_plan: dict[str, Any] = {}
+            try:
+                profile_obj = self.request.user.profile
+            except Exception:
+                profile_obj = None
+            if (
+                profile_obj
+                and profile_obj.dialogue_memory_enabled
+                and isinstance(profile_obj.dialogue_memory, dict)
+            ):
+                section_payload = _profile_memory_section(profile_obj, "project_open")
+                prev_query = str(section_payload.get("last_nl_query") or "")
+                prev_plan = section_payload.get("last_nl_plan") if isinstance(section_payload.get("last_nl_plan"), dict) else {}
+            nl_plan = _parse_nl_project_open_request(
+                nl_query=nl_query,
+                dialogue_language=dialogue_language,
+                previous_query=prev_query,
+                previous_plan=prev_plan,
+            )
+            queryset = list(context["object_list"])
+            title_filter = str(nl_plan.get("title") or "").strip()
+            text_language = _normalize_language_filter(str(nl_plan.get("text_language") or ""))
+            annotation_language = _normalize_language_filter(str(nl_plan.get("annotation_language") or ""))
+            keywords = [str(k).strip().lower() for k in (nl_plan.get("keywords") or []) if str(k).strip()]
+            if title_filter:
+                queryset = [p for p in queryset if title_filter.lower() in (p.title or "").lower()]
+            if text_language:
+                queryset = [p for p in queryset if (p.language or "").lower().startswith(text_language)]
+            if annotation_language:
+                queryset = [p for p in queryset if (p.target_language or "").lower().startswith(annotation_language)]
+            if keywords:
+                queryset = [
+                    p
+                    for p in queryset
+                    if any(kw in (p.title or "").lower() for kw in keywords)
+                    or any(kw in (p.description or "").lower() for kw in keywords)
+                    or any(kw in " ".join(p.discovery_keywords or []).lower() for kw in keywords)
+                    or any(kw in " ".join(p.discovery_keywords_en or []).lower() for kw in keywords)
+                ]
+            suggested_projects = queryset[:8]
+            if profile_obj and profile_obj.dialogue_memory_enabled:
+                _update_profile_memory_section(
+                    profile_obj,
+                    "project_open",
+                    _profile_memory_payload_for_nl(nl_query=nl_query, nl_plan=nl_plan),
+                )
+        context.update(
+            {
+                "nl_open_query": nl_query,
+                "nl_open_plan": nl_plan,
+                "dialogue_language": dialogue_language,
+                "suggested_projects": suggested_projects,
+                "dialogue_language_choices": ProjectForm.LANGUAGE_CHOICES,
+            }
+        )
+        return context
 
 
 class ProjectDetailView(LoginRequiredMixin, DetailView):
@@ -3004,6 +3109,8 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["collaborators"] = collaborators
         context["collaborator_role_choices"] = ProjectCollaborator.ROLE_CHOICES
         context["current_user_role"] = _project_role_for_user(project, self.request.user)
+        if context["current_user_role"] == ProjectCollaborator.ROLE_OWNER:
+            context["discovery_metadata_form"] = ProjectDiscoveryMetadataForm(instance=project)
         assigned_ids = {c.user_id for c in collaborators}
         assigned_ids.add(project.owner_id)
         User = get_user_model()
@@ -3022,6 +3129,88 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
 
 class ProjectAnnotationView(ProjectDetailView):
     template_name = "projects/project_annotation.html"
+
+    def get_context_data(self, **kwargs):  # type: ignore[override]
+        context = super().get_context_data(**kwargs)
+        project: Project = context["object"]
+        context["annotation_dialogue_plan"] = _annotation_dialogue_plan(project)
+        return context
+
+
+def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
+    has_plain_text = bool(_base_text_for_segmentation_phase_1(project).strip())
+    has_segmented = _find_latest_stage_file(project, "segmentation_phase_2.json") is not None
+    has_html = bool((project.compiled_path or "").strip()) or _find_latest_stage_file(project, "compile_html.json") is not None
+
+    if not has_plain_text:
+        return {
+            "title": "Suggested next step: create a first plain-text draft",
+            "summary": "You do not yet have base text to annotate. I can generate a draft from your description and show it for approval.",
+            "choices": [
+                {
+                    "label": "Generate plain text draft",
+                    "description": "Runs text generation only.",
+                    "start_stage": "text_gen",
+                    "end_stage": "text_gen",
+                }
+            ],
+        }
+
+    if has_plain_text and not has_segmented:
+        return {
+            "title": "Suggested next step: split into pages/segments or preview HTML",
+            "summary": "You already have plain text. Common next actions are segmentation for structured annotation, or a quick HTML preview.",
+            "choices": [
+                {
+                    "label": "Split into pages and segments (recommended)",
+                    "description": "Runs segmentation phases to prepare annotation-ready structure.",
+                    "start_stage": "segmentation_phase_1",
+                    "end_stage": "segmentation_phase_2",
+                },
+                {
+                    "label": "Render HTML preview now",
+                    "description": "Compiles to HTML so you can review quickly before detailed annotation.",
+                    "start_stage": "segmentation_phase_1",
+                    "end_stage": "compile_html",
+                },
+            ],
+        }
+
+    if has_plain_text and has_segmented and not has_html:
+        return {
+            "title": "Suggested next step: render HTML or move to images",
+            "summary": "You already have segmented text. You can compile to HTML now, or continue to image workflow.",
+            "choices": [
+                {
+                    "label": "Render HTML now (recommended)",
+                    "description": "Compile the current annotations into browsable HTML.",
+                    "start_stage": "translation",
+                    "end_stage": "compile_html",
+                },
+                {
+                    "label": "Open image workflow",
+                    "description": "Go to image pages/elements generation controls.",
+                    "href": reverse("project-image-pages", args=[project.pk]),
+                },
+            ],
+        }
+
+    return {
+        "title": "HTML is available — review and revise",
+        "summary": "You can open the latest HTML now and then request corrections if anything looks wrong.",
+        "choices": [
+            {
+                "label": "Open compiled HTML",
+                "description": "View the latest compiled output.",
+                "href": reverse("project-detail", args=[project.pk]),
+            },
+            {
+                "label": "Open manual annotation editor",
+                "description": "Make targeted corrections to segmentation, glosses, lemma, etc.",
+                "href": reverse("manual-top-level", args=[project.pk]),
+            },
+        ],
+    }
 
 
 def _ensure_stage_run_dir(project: Project) -> Path:
@@ -4751,6 +4940,72 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
     def get_success_url(self):  # type: ignore[override]
         return reverse("project-detail", args=[self.object.pk])
 
+    def _resolve_nl_create_plan(self) -> tuple[str, str, dict[str, Any]]:
+        cached = getattr(self.request, "_nl_create_plan_cache", None)
+        if isinstance(cached, tuple) and len(cached) == 3:
+            return cached  # type: ignore[return-value]
+        nl_query = (self.request.GET.get("nl_new_query") or "").strip()
+        dialogue_language = (self.request.GET.get("dialogue_language") or "").strip()
+        if not dialogue_language:
+            try:
+                dialogue_language = self.request.user.profile.dialogue_language or "en"
+            except Exception:
+                dialogue_language = "en"
+        nl_plan: dict[str, Any] = {}
+        if nl_query:
+            prev_query = ""
+            prev_plan: dict[str, Any] = {}
+            try:
+                profile_obj = self.request.user.profile
+            except Exception:
+                profile_obj = None
+            if (
+                profile_obj
+                and profile_obj.dialogue_memory_enabled
+                and isinstance(profile_obj.dialogue_memory, dict)
+            ):
+                section_payload = _profile_memory_section(profile_obj, "project_create")
+                prev_query = str(section_payload.get("last_nl_query") or "")
+                prev_plan = section_payload.get("last_nl_plan") if isinstance(section_payload.get("last_nl_plan"), dict) else {}
+            nl_plan = _parse_nl_project_create_request(
+                nl_query=nl_query,
+                dialogue_language=dialogue_language,
+                previous_query=prev_query,
+                previous_plan=prev_plan,
+            )
+            if profile_obj and profile_obj.dialogue_memory_enabled:
+                _update_profile_memory_section(
+                    profile_obj,
+                    "project_create",
+                    _profile_memory_payload_for_nl(nl_query=nl_query, nl_plan=nl_plan),
+                )
+        result = (nl_query, dialogue_language, nl_plan)
+        setattr(self.request, "_nl_create_plan_cache", result)
+        return result
+
+    def get_initial(self):  # type: ignore[override]
+        initial = super().get_initial()
+        nl_query, _dialogue_language, nl_plan = self._resolve_nl_create_plan()
+        if nl_query:
+            for key in ("title", "language", "target_language", "input_mode", "description", "source_text"):
+                value = nl_plan.get(key)
+                if value:
+                    initial[key] = value
+        return initial
+
+    def get_context_data(self, **kwargs):  # type: ignore[override]
+        context = super().get_context_data(**kwargs)
+        nl_query, dialogue_language, nl_plan = self._resolve_nl_create_plan()
+        context.update(
+            {
+                "nl_new_query": nl_query,
+                "nl_new_plan": nl_plan,
+                "dialogue_language": dialogue_language,
+                "dialogue_language_choices": ProjectForm.LANGUAGE_CHOICES,
+            }
+        )
+        return context
+
 
 def _build_ai_client(
     model_name: str | None = None,
@@ -4773,8 +5028,13 @@ def _billing_usage_reporter(*, user_id: int, project_id: int | None, request_typ
         prompt_tokens = max(0, int(payload.get("prompt_tokens") or 0))
         completion_tokens = max(0, int(payload.get("completion_tokens") or 0))
         total_tokens = max(0, int(payload.get("total_tokens") or 0))
+        used_total_tokens_as_completion = False
+        if operation == "image_generate" and completion_tokens == 0 and total_tokens > 0:
+            completion_tokens = total_tokens
+            used_total_tokens_as_completion = True
         # Image API responses often do not expose token usage. We treat one image call as one output-unit.
-        if operation == "image_generate" and prompt_tokens == 0 and completion_tokens == 0 and total_tokens == 0:
+        fallback_applied = operation == "image_generate" and prompt_tokens == 0 and completion_tokens == 0 and total_tokens == 0
+        if fallback_applied:
             completion_tokens = 1_000_000
             total_tokens = 1_000_000
         record_openai_usage_and_charge(
@@ -4787,6 +5047,36 @@ def _billing_usage_reporter(*, user_id: int, project_id: int | None, request_typ
             total_tokens=total_tokens,
             request_type=request_type or str(payload.get("request_type") or operation),
         )
+        if project_id and "image" in (request_type or operation):
+            try:
+                project = Project.objects.filter(pk=project_id).first()
+                if project is None:
+                    return
+                usage = AIUsageCharge.objects.filter(user_id=user_id, project_id=project_id).order_by("-created_at", "-id").first()
+                user = get_user_model().objects.filter(pk=user_id).first()
+                pricing = openai_price_for_model(model)
+                _append_image_billing_telemetry(
+                    project,
+                    {
+                        "event": "billing_usage_recorded",
+                        "request_type": request_type,
+                        "operation": operation,
+                        "model": model,
+                        "prompt_tokens": prompt_tokens,
+                        "completion_tokens": completion_tokens,
+                        "total_tokens": total_tokens,
+                        "fallback_applied": fallback_applied,
+                        "used_total_tokens_as_completion": used_total_tokens_as_completion,
+                        "price_input_usd_per_1m": str(pricing["input"]),
+                        "price_output_usd_per_1m": str(pricing["output"]),
+                        "usage_charge_id": usage.id if usage else None,
+                        "usage_status": usage.status if usage else None,
+                        "usage_cost_usd": str(usage.cost_usd) if usage else None,
+                        "balance_after_usd": str(get_user_balance_usd(user)) if user is not None else None,
+                    },
+                )
+            except Exception:
+                logger.exception("Failed to append image billing telemetry")
 
     return _report
 
@@ -5749,20 +6039,322 @@ def _compiled_page_one_path(project: Project) -> str | None:
     return compiled_path.as_posix()
 
 
+def _parse_nl_content_request(
+    *,
+    nl_query: str,
+    dialogue_language: str,
+    previous_query: str = "",
+    previous_plan: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    prev_plan = previous_plan or {}
+    prompt = (
+        f"User language for this request: {dialogue_language}. "
+        "Convert the user request into JSON filters for published content discovery, using prior turn context if relevant. "
+        "If the user asks to change language/topic, update or clear previous filters accordingly. "
+        "Return only a JSON object with keys: title, text_language, annotation_language, date_posted, level, keywords, max_results. "
+        "date_posted must be one of: any, last_3_days, last_month, last_3_months, last_year. "
+        "keywords must be an array of short strings. If unknown, use empty strings/arrays.\n\n"
+        f"Previous user request: {previous_query}\n"
+        f"Previous interpreted filters: {prev_plan}\n\n"
+        f"Current user request: {nl_query}"
+    )
+    try:
+        client = _build_ai_client(model_name="gpt-4o-mini")
+        payload = asyncio.run(client.chat_json(prompt, model="gpt-4o-mini"))
+    except Exception:
+        logger.exception("NL content parsing failed; falling back to plain filters")
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    raw_title = str(payload.get("title") or "").strip()
+    title = _sanitize_nl_title_hint(raw_title)
+    return {
+        "title": title,
+        "text_language": str(payload.get("text_language") or "").strip(),
+        "annotation_language": str(payload.get("annotation_language") or "").strip(),
+        "date_posted": _normalize_date_posted_filter(str(payload.get("date_posted") or "").strip()),
+        "level": _normalize_cefr_level_expression(str(payload.get("level") or "").strip(), max_levels=3),
+        "keywords": [str(item).strip() for item in (payload.get("keywords") or []) if str(item).strip()],
+        "max_results": int(payload.get("max_results") or 12),
+    }
+
+
+def _parse_nl_project_open_request(
+    *,
+    nl_query: str,
+    dialogue_language: str,
+    previous_query: str = "",
+    previous_plan: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    prev_plan = previous_plan or {}
+    prompt = (
+        f"User language for this request: {dialogue_language}. "
+        "Interpret the request for opening an existing project. "
+        "Return only JSON keys: title, text_language, annotation_language, keywords. "
+        "Language mentions (e.g., German, Old Norse, French) usually refer to text_language, not title. "
+        "Use prior turn context if relevant and use empty strings/arrays for unknown values.\n\n"
+        f"Previous user request: {previous_query}\n"
+        f"Previous interpreted filters: {prev_plan}\n\n"
+        f"Current user request: {nl_query}"
+    )
+    try:
+        client = _build_ai_client(model_name="gpt-4o-mini")
+        payload = asyncio.run(client.chat_json(prompt, model="gpt-4o-mini"))
+    except Exception:
+        logger.exception("NL project-open parsing failed")
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    parsed = {
+        "title": str(payload.get("title") or "").strip(),
+        "text_language": _normalize_language_filter(str(payload.get("text_language") or "")),
+        "annotation_language": _normalize_language_filter(str(payload.get("annotation_language") or "")),
+        "keywords": [str(k).strip().lower() for k in (payload.get("keywords") or []) if str(k).strip()],
+    }
+    return _postprocess_project_open_plan(nl_query=nl_query, parsed=parsed)
+
+
+def _parse_nl_project_create_request(
+    *,
+    nl_query: str,
+    dialogue_language: str,
+    previous_query: str = "",
+    previous_plan: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    prev_plan = previous_plan or {}
+    prompt = (
+        f"User language for this request: {dialogue_language}. "
+        "Interpret this as a new-project setup request. "
+        "Return only JSON keys: title, language, target_language, input_mode, description, source_text, keywords. "
+        "input_mode must be one of: description, source_text. "
+        "Use prior turn context if relevant. Use empty strings/arrays for unknown values.\n\n"
+        f"Previous user request: {previous_query}\n"
+        f"Previous interpreted setup: {prev_plan}\n\n"
+        f"Current user request: {nl_query}"
+    )
+    try:
+        client = _build_ai_client(model_name="gpt-4o-mini")
+        payload = asyncio.run(client.chat_json(prompt, model="gpt-4o-mini"))
+    except Exception:
+        logger.exception("NL project-create parsing failed")
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    input_mode = str(payload.get("input_mode") or "").strip().lower()
+    if input_mode not in {Project.INPUT_DESCRIPTION, Project.INPUT_SOURCE}:
+        input_mode = ""
+    return {
+        "title": str(payload.get("title") or "").strip(),
+        "language": _normalize_language_filter(str(payload.get("language") or "")),
+        "target_language": _normalize_language_filter(str(payload.get("target_language") or "")),
+        "input_mode": input_mode,
+        "description": str(payload.get("description") or "").strip(),
+        "source_text": str(payload.get("source_text") or "").strip(),
+        "keywords": [str(k).strip().lower() for k in (payload.get("keywords") or []) if str(k).strip()],
+    }
+
+
+def _sanitize_nl_title_hint(raw_title: str) -> str:
+    """Drop generic/non-specific NL title hints so they don't over-filter results."""
+    value = (raw_title or "").strip()
+    if not value:
+        return ""
+    generic = {
+        "story",
+        "stories",
+        "text",
+        "texts",
+        "article",
+        "articles",
+        "book",
+        "books",
+        "content",
+        "something",
+        "anything",
+    }
+    if value.lower() in generic:
+        return ""
+    return value
+
+
+def _language_mentions_in_text(text: str) -> list[str]:
+    lowered = (text or "").lower()
+    mentions: list[str] = []
+    for code, label in ProjectForm.LANGUAGE_CHOICES:
+        if re.search(rf"\b{re.escape(str(code).lower())}\b", lowered) or re.search(
+            rf"\b{re.escape(str(label).lower())}\b",
+            lowered,
+        ):
+            mentions.append(str(code))
+    return mentions
+
+
+def _postprocess_project_open_plan(*, nl_query: str, parsed: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(parsed)
+    mentions = _language_mentions_in_text(nl_query)
+    if mentions:
+        normalized["text_language"] = mentions[0]
+    title = str(normalized.get("title") or "").strip()
+    lowered = title.lower()
+    if "project" in lowered and (len(title.split()) <= 3 or mentions):
+        normalized["title"] = ""
+    return normalized
+
+
+def _normalize_language_filter(raw: str) -> str:
+    value = (raw or "").strip().lower()
+    if not value:
+        return ""
+    by_label = {label.lower(): code for code, label in ProjectForm.LANGUAGE_CHOICES}
+    return by_label.get(value, value)
+
+
+def _normalize_date_posted_filter(raw: str) -> str:
+    value = (raw or "").strip().lower()
+    if not value:
+        return "any"
+    if value in CONTENT_DATE_FILTERS:
+        return value
+    return CONTENT_DATE_ALIASES.get(value, "any")
+
+
+def _normalize_cefr_level_expression(raw: str, *, max_levels: int = 3) -> str:
+    value = (raw or "").strip().upper()
+    if not value:
+        return ""
+    aliases = {
+        "BEGINNER": "A1/A2",
+        "ELEMENTARY": "A1/A2",
+        "INTERMEDIATE": "B1/B2",
+        "UPPER INTERMEDIATE": "B2/C1",
+        "ADVANCED": "C1/C2",
+    }
+    if value in aliases:
+        value = aliases[value]
+    tokens = re.findall(r"[ABC][12]", value.replace("-", "/"))
+    if not tokens:
+        return ""
+    deduped: list[str] = []
+    for token in tokens:
+        if token in CEFR_LEVEL_ORDER and token not in deduped:
+            deduped.append(token)
+    if not deduped:
+        return ""
+    indices = sorted(CEFR_LEVEL_ORDER.index(token) for token in deduped[:max_levels])
+    return "/".join(CEFR_LEVEL_ORDER[idx] for idx in indices)
+
+
+def _cefr_overlap(project_level: str, requested_level: str) -> bool:
+    project_levels = set(_normalize_cefr_level_expression(project_level, max_levels=2).split("/")) - {""}
+    requested_levels = set(_normalize_cefr_level_expression(requested_level, max_levels=3).split("/")) - {""}
+    if not requested_levels:
+        return False
+    return bool(project_levels.intersection(requested_levels))
+
+
+def _profile_memory_payload_for_nl(*, nl_query: str, nl_plan: dict[str, Any]) -> dict[str, Any]:
+    compact_plan = {
+        "title": str(nl_plan.get("title") or "").strip(),
+        "text_language": str(nl_plan.get("text_language") or "").strip(),
+        "annotation_language": str(nl_plan.get("annotation_language") or "").strip(),
+        "date_posted": str(nl_plan.get("date_posted") or "").strip(),
+        "level": str(nl_plan.get("level") or "").strip(),
+        "keywords": [str(k).strip() for k in (nl_plan.get("keywords") or []) if str(k).strip()][:8],
+    }
+    return {
+        "last_nl_query": (nl_query or "").strip()[:500],
+        "last_nl_plan": compact_plan,
+        "updated_at": django_timezone.now().isoformat(),
+    }
+
+
+def _profile_memory_section(profile: Profile, section: str) -> dict[str, Any]:
+    memory = profile.dialogue_memory if isinstance(profile.dialogue_memory, dict) else {}
+    payload = memory.get(section) or {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _update_profile_memory_section(profile: Profile, section: str, payload: dict[str, Any]) -> None:
+    memory = profile.dialogue_memory if isinstance(profile.dialogue_memory, dict) else {}
+    merged = dict(memory)
+    merged[section] = dict(payload)
+    profile.dialogue_memory = merged
+    profile.save(update_fields=["dialogue_memory", "updated_at"])
+
+
 @login_required
 def content_list(request: HttpRequest) -> HttpResponse:
-    """Search/browse published projects."""
+    """Search/browse published projects, with optional natural-language discovery."""
 
-    title = (request.GET.get("title") or "").strip()
-    text_language = (request.GET.get("text_language") or "").strip()
-    annotation_language = (request.GET.get("annotation_language") or "").strip()
-    date_posted = (request.GET.get("date_posted") or "any").strip()
-    if date_posted not in CONTENT_DATE_FILTERS:
-        date_posted = "any"
+    manual_title = (request.GET.get("title") or "").strip()
+    manual_text_language = _normalize_language_filter(request.GET.get("text_language") or "")
+    manual_annotation_language = _normalize_language_filter(request.GET.get("annotation_language") or "")
+    manual_date_posted = _normalize_date_posted_filter(request.GET.get("date_posted") or "any")
+
+    nl_query = (request.GET.get("nl_query") or "").strip()
+    dialogue_language = (request.GET.get("dialogue_language") or "").strip()
+    if not dialogue_language:
+        try:
+            dialogue_language = request.user.profile.dialogue_language or "en"
+        except Exception:
+            dialogue_language = "en"
+
+    nl_plan: dict[str, Any] = {}
+    if nl_query:
+        profile_obj: Profile | None = None
+        try:
+            profile_obj = request.user.profile
+        except Exception:
+            profile_obj = None
+        prev_query = str(request.session.get("content_nl_last_query") or "")
+        prev_plan = request.session.get("content_nl_last_plan") or {}
+        if (
+            profile_obj
+            and profile_obj.dialogue_memory_enabled
+            and isinstance(profile_obj.dialogue_memory, dict)
+        ):
+            section_payload = _profile_memory_section(profile_obj, "content_search")
+            mem_prev_query = str(section_payload.get("last_nl_query") or "")
+            mem_prev_plan = section_payload.get("last_nl_plan") or {}
+            if mem_prev_query:
+                prev_query = mem_prev_query
+            if isinstance(mem_prev_plan, dict) and mem_prev_plan:
+                prev_plan = mem_prev_plan
+        if not isinstance(prev_plan, dict):
+            prev_plan = {}
+        nl_plan = _parse_nl_content_request(
+            nl_query=nl_query,
+            dialogue_language=dialogue_language,
+            previous_query=prev_query,
+            previous_plan=prev_plan,
+        )
+        request.session["content_nl_last_query"] = nl_query
+        request.session["content_nl_last_plan"] = nl_plan
+        if profile_obj and profile_obj.dialogue_memory_enabled:
+            _update_profile_memory_section(
+                profile_obj,
+                "content_search",
+                _profile_memory_payload_for_nl(
+                nl_query=nl_query,
+                nl_plan=nl_plan,
+                ),
+            )
+
+    if nl_query:
+        title = str(nl_plan.get("title") or "").strip()
+        text_language = _normalize_language_filter(str(nl_plan.get("text_language") or ""))
+        annotation_language = _normalize_language_filter(str(nl_plan.get("annotation_language") or ""))
+        date_posted = _normalize_date_posted_filter(str(nl_plan.get("date_posted") or "any"))
+    else:
+        title = manual_title
+        text_language = manual_text_language
+        annotation_language = manual_annotation_language
+        date_posted = manual_date_posted
 
     qs = _published_projects_visible_to_user(request.user)
-    if title:
-        qs = qs.filter(title__icontains=title)
+    title_hard_filter = manual_title if nl_query else title
+    if title_hard_filter:
+        qs = qs.filter(title__icontains=title_hard_filter)
     if text_language:
         qs = qs.filter(language__iexact=text_language)
     if annotation_language:
@@ -5773,18 +6365,64 @@ def content_list(request: HttpRequest) -> HttpResponse:
         cutoff = django_timezone.now() - window
         qs = qs.filter(published_at__gte=cutoff)
 
-    projects = list(qs.order_by("-published_at", "-updated_at")[:200])
+    projects = list(qs.order_by("-published_at", "-updated_at")[:300])
+    if text_language:
+        projects = [p for p in projects if (p.language or "").lower().startswith(text_language)]
+    if annotation_language:
+        projects = [p for p in projects if (p.target_language or "").lower().startswith(annotation_language)]
+    result_rows: list[dict[str, Any]] = []
+    if nl_query:
+        requested_keywords = [str(k).strip().lower() for k in (nl_plan.get("keywords") or []) if str(k).strip()]
+        requested_level = _normalize_cefr_level_expression(str(nl_plan.get("level") or "").strip(), max_levels=3)
+        scored: list[tuple[int, list[str], Project]] = []
+        for project in projects:
+            score = 0
+            reasons: list[str] = []
+            searchable = " ".join(
+                [
+                    project.title or "",
+                    project.discovery_summary or "",
+                    " ".join(project.discovery_keywords or []),
+                    " ".join(project.discovery_keywords_en or []),
+                ]
+            ).lower()
+            for kw in requested_keywords:
+                if kw and kw in searchable:
+                    score += 2
+                    reasons.append(f"Keyword '{kw}' matched metadata keywords.")
+            if requested_level and _cefr_overlap(project.discovery_level or "", requested_level):
+                score += 3
+                reasons.append(f"Level matched ({project.discovery_level}).")
+            if not reasons and (manual_title or manual_text_language or manual_annotation_language):
+                reasons.append("Matched structured filters.")
+            scored.append((score, reasons, project))
+
+        scored.sort(key=lambda tup: (tup[0], tup[2].published_at or tup[2].updated_at), reverse=True)
+        max_results = max(1, min(50, int(nl_plan.get("max_results") or 12)))
+        for score, reasons, project in scored[:max_results]:
+            if score == 0 and (requested_keywords or requested_level or title):
+                continue
+            result_rows.append({"project": project, "score": score, "reasons": reasons[:3]})
+    else:
+        result_rows = [{"project": p, "score": 0, "reasons": []} for p in projects[:200]]
+
     return render(
         request,
         "projects/content_list.html",
         {
-            "projects": projects,
+            "projects": [row["project"] for row in result_rows],
+            "result_rows": result_rows,
             "filters": {
                 "title": title,
                 "text_language": text_language,
                 "annotation_language": annotation_language,
                 "date_posted": date_posted,
+                "nl_query": nl_query,
+                "dialogue_language": dialogue_language,
             },
+            "nl_plan": nl_plan,
+            "dialogue_language_choices": ProjectForm.LANGUAGE_CHOICES,
+            "language_choices": ProjectForm.LANGUAGE_CHOICES,
             "date_options": [
                 ("any", "Any time"),
                 ("last_3_days", "Last 3 days"),
@@ -6146,18 +6784,77 @@ def _compiled_page_one_path(project: Project) -> str | None:
 
 @login_required
 def content_list(request: HttpRequest) -> HttpResponse:
-    """Search/browse published projects."""
+    """Search/browse published projects, with optional natural-language discovery."""
 
-    title = (request.GET.get("title") or "").strip()
-    text_language = (request.GET.get("text_language") or "").strip()
-    annotation_language = (request.GET.get("annotation_language") or "").strip()
-    date_posted = (request.GET.get("date_posted") or "any").strip()
-    if date_posted not in CONTENT_DATE_FILTERS:
-        date_posted = "any"
+    manual_title = (request.GET.get("title") or "").strip()
+    manual_text_language = _normalize_language_filter(request.GET.get("text_language") or "")
+    manual_annotation_language = _normalize_language_filter(request.GET.get("annotation_language") or "")
+    manual_date_posted = _normalize_date_posted_filter(request.GET.get("date_posted") or "any")
+
+    nl_query = (request.GET.get("nl_query") or "").strip()
+    dialogue_language = (request.GET.get("dialogue_language") or "").strip()
+    if not dialogue_language:
+        try:
+            dialogue_language = request.user.profile.dialogue_language or "en"
+        except Exception:
+            dialogue_language = "en"
+
+    nl_plan: dict[str, Any] = {}
+    if nl_query:
+        profile_obj: Profile | None = None
+        try:
+            profile_obj = request.user.profile
+        except Exception:
+            profile_obj = None
+        prev_query = str(request.session.get("content_nl_last_query") or "")
+        prev_plan = request.session.get("content_nl_last_plan") or {}
+        if (
+            profile_obj
+            and profile_obj.dialogue_memory_enabled
+            and isinstance(profile_obj.dialogue_memory, dict)
+        ):
+            section_payload = _profile_memory_section(profile_obj, "content_search")
+            mem_prev_query = str(section_payload.get("last_nl_query") or "")
+            mem_prev_plan = section_payload.get("last_nl_plan") or {}
+            if mem_prev_query:
+                prev_query = mem_prev_query
+            if isinstance(mem_prev_plan, dict) and mem_prev_plan:
+                prev_plan = mem_prev_plan
+        if not isinstance(prev_plan, dict):
+            prev_plan = {}
+        nl_plan = _parse_nl_content_request(
+            nl_query=nl_query,
+            dialogue_language=dialogue_language,
+            previous_query=prev_query,
+            previous_plan=prev_plan,
+        )
+        request.session["content_nl_last_query"] = nl_query
+        request.session["content_nl_last_plan"] = nl_plan
+        if profile_obj and profile_obj.dialogue_memory_enabled:
+            _update_profile_memory_section(
+                profile_obj,
+                "content_search",
+                _profile_memory_payload_for_nl(
+                nl_query=nl_query,
+                nl_plan=nl_plan,
+                ),
+            )
+
+    if nl_query:
+        title = str(nl_plan.get("title") or "").strip()
+        text_language = _normalize_language_filter(str(nl_plan.get("text_language") or ""))
+        annotation_language = _normalize_language_filter(str(nl_plan.get("annotation_language") or ""))
+        date_posted = _normalize_date_posted_filter(str(nl_plan.get("date_posted") or "any"))
+    else:
+        title = manual_title
+        text_language = manual_text_language
+        annotation_language = manual_annotation_language
+        date_posted = manual_date_posted
 
     qs = _published_projects_visible_to_user(request.user)
-    if title:
-        qs = qs.filter(title__icontains=title)
+    title_hard_filter = manual_title if nl_query else title
+    if title_hard_filter:
+        qs = qs.filter(title__icontains=title_hard_filter)
     if text_language:
         qs = qs.filter(language__iexact=text_language)
     if annotation_language:
@@ -6168,18 +6865,64 @@ def content_list(request: HttpRequest) -> HttpResponse:
         cutoff = django_timezone.now() - window
         qs = qs.filter(published_at__gte=cutoff)
 
-    projects = list(qs.order_by("-published_at", "-updated_at")[:200])
+    projects = list(qs.order_by("-published_at", "-updated_at")[:300])
+    if text_language:
+        projects = [p for p in projects if (p.language or "").lower().startswith(text_language)]
+    if annotation_language:
+        projects = [p for p in projects if (p.target_language or "").lower().startswith(annotation_language)]
+    result_rows: list[dict[str, Any]] = []
+    if nl_query:
+        requested_keywords = [str(k).strip().lower() for k in (nl_plan.get("keywords") or []) if str(k).strip()]
+        requested_level = _normalize_cefr_level_expression(str(nl_plan.get("level") or "").strip(), max_levels=3)
+        scored: list[tuple[int, list[str], Project]] = []
+        for project in projects:
+            score = 0
+            reasons: list[str] = []
+            searchable = " ".join(
+                [
+                    project.title or "",
+                    project.discovery_summary or "",
+                    " ".join(project.discovery_keywords or []),
+                    " ".join(project.discovery_keywords_en or []),
+                ]
+            ).lower()
+            for kw in requested_keywords:
+                if kw and kw in searchable:
+                    score += 2
+                    reasons.append(f"Keyword '{kw}' matched metadata keywords.")
+            if requested_level and _cefr_overlap(project.discovery_level or "", requested_level):
+                score += 3
+                reasons.append(f"Level matched ({project.discovery_level}).")
+            if not reasons and (manual_title or manual_text_language or manual_annotation_language):
+                reasons.append("Matched structured filters.")
+            scored.append((score, reasons, project))
+
+        scored.sort(key=lambda tup: (tup[0], tup[2].published_at or tup[2].updated_at), reverse=True)
+        max_results = max(1, min(50, int(nl_plan.get("max_results") or 12)))
+        for score, reasons, project in scored[:max_results]:
+            if score == 0 and (requested_keywords or requested_level or title):
+                continue
+            result_rows.append({"project": project, "score": score, "reasons": reasons[:3]})
+    else:
+        result_rows = [{"project": p, "score": 0, "reasons": []} for p in projects[:200]]
+
     return render(
         request,
         "projects/content_list.html",
         {
-            "projects": projects,
+            "projects": [row["project"] for row in result_rows],
+            "result_rows": result_rows,
             "filters": {
                 "title": title,
                 "text_language": text_language,
                 "annotation_language": annotation_language,
                 "date_posted": date_posted,
+                "nl_query": nl_query,
+                "dialogue_language": dialogue_language,
             },
+            "nl_plan": nl_plan,
+            "dialogue_language_choices": ProjectForm.LANGUAGE_CHOICES,
+            "language_choices": ProjectForm.LANGUAGE_CHOICES,
             "date_options": [
                 ("any", "Any time"),
                 ("last_3_days", "Last 3 days"),
@@ -6250,8 +6993,36 @@ def toggle_publish(request: HttpRequest, pk: int) -> HttpResponse:
     if project.is_published and project.published_at is None:
         project.published_at = django_timezone.now()
     project.save(update_fields=["is_published", "published_at", "updated_at"])
+    metadata_updated = False
+    if project.is_published:
+        metadata_updated = update_project_discovery_metadata(project, force=False)
     state = "published" if project.is_published else "unpublished"
-    messages.info(request, f"Project {state}.")
+    if metadata_updated:
+        messages.info(request, f"Project {state}. Discovery metadata generated.")
+    else:
+        messages.info(request, f"Project {state}.")
+    return redirect("project-detail", pk=project.pk)
+
+
+@login_required
+def set_project_discovery_metadata(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
+    if request.method != "POST":
+        return redirect("project-detail", pk=project.pk)
+    action = (request.POST.get("action") or "save").strip().lower()
+    if action == "regenerate":
+        update_project_discovery_metadata(project, force=True)
+        messages.success(request, "Regenerated discovery metadata.")
+        return redirect("project-detail", pk=project.pk)
+    form = ProjectDiscoveryMetadataForm(request.POST, instance=project)
+    if form.is_valid():
+        updated = form.save(commit=False)
+        updated.discovery_level = _normalize_cefr_level_expression(updated.discovery_level or "", max_levels=2)
+        updated.discovery_metadata_updated_at = django_timezone.now()
+        updated.save(update_fields=["discovery_summary", "discovery_keywords", "discovery_keywords_en", "discovery_level", "discovery_word_count", "discovery_metadata_updated_at", "updated_at"])
+        messages.success(request, "Saved discovery metadata.")
+    else:
+        messages.error(request, "Could not save discovery metadata. Please review the fields.")
     return redirect("project-detail", pk=project.pk)
 
 
