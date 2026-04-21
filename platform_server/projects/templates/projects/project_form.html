@@ -32,6 +32,12 @@
   <p>{{ form.source_text.label_tag }} {{ form.source_text }}</p>
   <p>{{ form.language.label_tag }} {{ form.language }}</p>
   <p>{{ form.target_language.label_tag }} {{ form.target_language }}</p>
+  {% if form.language.value == form.target_language.value %}
+    <p style="color:#8a6d3b;">
+      ⚠️ Glossing language currently matches text language.
+      This is usually not what you want; a better default is your interaction language ({{ dialogue_language }}).
+    </p>
+  {% endif %}
   <p>{{ form.access_scope.label_tag }} {{ form.access_scope }}</p>
   <p>{{ form.community.label_tag }} {{ form.community }}</p>
   {% if form.non_field_errors %}<div class="messages">{{ form.non_field_errors }}</div>{% endif %}
