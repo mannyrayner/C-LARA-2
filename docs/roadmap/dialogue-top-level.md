@@ -198,6 +198,111 @@ state tracking, and safe action orchestration across multiple project subsystems
 But it should deliver significantly higher user value by reducing friction in core
 create/annotate/image/compile workflows for non-expert users.
 
+## Explicit operation inventory for dialogue support (first version)
+
+This section lists the underlying C-LARA-2 operations the dialogue layer should
+explicitly support in the first implementation pass, with notes on expected UX behavior.
+
+### 1) Create project
+
+- Core operation:
+  - Create a new project record.
+- Required user inputs:
+  - project title,
+  - text language,
+  - annotation/gloss language,
+  - input mode:
+    - AI-generated text from user description, or
+    - user-supplied source text.
+- First-version dialogue behavior:
+  - Prompt for missing required fields.
+  - Confirm interpreted settings before creation.
+  - If AI-generated mode is selected, ask for concise generation brief.
+  - If source-text mode is selected, ask user to paste/provide source text.
+
+### 2) Find and open existing project
+
+- Core operation:
+  - Search user-visible projects, disambiguate, open target project context.
+- First-version dialogue behavior:
+  - Resolve references like “my French project from yesterday”.
+  - If ambiguous, present top candidates and ask user to choose.
+  - Confirm current active project after selection.
+
+### 3) Perform AI-based annotation (AI-supported text languages)
+
+- Core operation:
+  - Invoke linguistic annotation pipeline stages for supported languages.
+- Dependencies:
+  - language support availability and required models.
+- First-version dialogue behavior:
+  - Explain pipeline in simple terms.
+  - Confirm execution before running potentially costly steps.
+  - Provide progress updates and post-run summary.
+
+### 4) Perform manual annotation (non-AI-supported text languages)
+
+- Core operation:
+  - Route user to manual annotation workflows when AI annotation is unavailable.
+- First-version dialogue behavior:
+  - Detect unsupported AI language path and switch strategy automatically.
+  - Explain why manual path is needed.
+  - Offer “show me where in UI” handoff with step-by-step guidance.
+
+### 5) Perform AI-based image generation (image pipeline)
+
+- Core operation:
+  - Run image pipeline stages (style/elements/pages generation) per project.
+- Reference:
+  - `docs/roadmap/linguistic-pipeline.md`.
+- First-version dialogue behavior:
+  - Confirm scope (full project vs targeted pages/elements).
+  - Explain defaults and optional style controls.
+  - Surface cost/credit implications before execution where feasible.
+
+### 6) Render to HTML form
+
+- Core operation:
+  - Compile/render project outputs to browsable HTML artifacts.
+- Reference:
+  - `docs/roadmap/linguistic-pipeline.md`.
+- First-version dialogue behavior:
+  - Trigger render step and summarize status/result.
+  - Provide direct guidance on where to open rendered output.
+
+### 7) Manual revision of annotations from user-reported errors
+
+- Core operation:
+  - Support correction workflows via manual annotation editor.
+- Reference:
+  - `docs/roadmap/manual-annotation-editor.md`.
+- First-version dialogue behavior:
+  - Interpret error reports in natural language and ask clarifying questions
+    (page, segment, token, gloss/lemma/POS dimension).
+  - Either:
+    - guide user through manual UI edits, or
+    - translate NL correction intent into explicit editor actions (confirmation-first).
+
+### 8) Community image reviewing (members + organisers)
+
+- Core operation:
+  - Support community review workflows for images.
+- Reference:
+  - `docs/roadmap/low-resource-languages.md`.
+- First-version dialogue behavior:
+  - Check role/permissions (member vs organiser).
+  - Explain available review actions and constraints.
+  - Route user to the correct community review UI and summarize outcomes.
+
+### Notes on first-version exposure model
+
+- Keep operation set explicit and bounded (the list above), with unsupported actions
+  acknowledged clearly by the assistant.
+- Prefer confirmation-first execution for any costly, state-changing, or destructive step.
+- Keep transparent mapping from NL request to concrete C-LARA-2 operation names so users
+  can correct misunderstandings quickly.
+- Treat this inventory as versioned: expand/refine after observing real usage patterns.
+
 ## Delivery phases
 
 ### Phase A — Discovery assistant
