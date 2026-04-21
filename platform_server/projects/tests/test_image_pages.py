@@ -147,7 +147,21 @@ class ProjectImagePagesViewTests(TestCase):
         self.project.refresh_from_db()
         self.assertEqual(self.project.page_image_text_source, "segmentation")
         self.assertEqual(self.project.image_generation_pivot_language, "")
-        self.assertContains(resp, "Saved image settings")
+
+    def test_images_home_shows_compile_html_suggestion_when_page_images_exist(self):
+        ProjectImagePage.objects.create(
+            project=self.project,
+            page_number=1,
+            page_text="Page one text.",
+            generation_prompt="Prompt",
+            image_path="images/pages/page_001/image.png",
+            status=ProjectImagePage.STATUS_GENERATED,
+        )
+        resp = self.client.get(reverse("project-images-home", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Dialogue assistant suggestion")
+        self.assertContains(resp, "Compile HTML now")
+        self.assertContains(resp, reverse("project-annotation-home", args=[self.project.pk]))
 
     def test_images_home_exposes_pivot_language_context(self):
         resp = self.client.get(reverse("project-images-home", args=[self.project.pk]))

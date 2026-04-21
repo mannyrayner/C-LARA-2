@@ -3149,7 +3149,7 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
     segmentation_review_href = (
         f"{reverse('manual-segmentation-phase-1', args=[project.pk])}?return_to={quote(annotation_home)}"
     )
-    image_workflow_href = reverse("project-image-pages", args=[project.pk])
+    image_workflow_href = reverse("project-images-home", args=[project.pk])
     compiled_href: str | None = None
     compiled_page = _compiled_page_one_path(project)
     if compiled_page:
