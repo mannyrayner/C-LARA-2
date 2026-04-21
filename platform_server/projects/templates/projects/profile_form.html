@@ -11,4 +11,22 @@
   </table>
   <button class="btn" type="submit">Save profile</button>
 </form>
+
+<h2>Dialogue memory</h2>
+<p>
+  {% if form.instance.dialogue_memory_enabled %}
+    Personalization memory is enabled.
+  {% else %}
+    Personalization memory is disabled.
+  {% endif %}
+</p>
+{% if form.instance.dialogue_memory %}
+  <pre style="white-space: pre-wrap;">{{ form.instance.dialogue_memory }}</pre>
+{% else %}
+  <p><em>No stored memory yet.</em></p>
+{% endif %}
+<form method="post">
+  {% csrf_token %}
+  <button class="btn secondary" type="submit" name="memory_action" value="clear">Clear dialogue memory</button>
+</form>
 {% endblock %}
