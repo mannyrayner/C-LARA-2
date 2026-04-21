@@ -198,6 +198,94 @@ state tracking, and safe action orchestration across multiple project subsystems
 But it should deliver significantly higher user value by reducing friction in core
 create/annotate/image/compile workflows for non-expert users.
 
+## Detailed proposal: Phase C step 2 (“Invoke AI annotation pipeline”)
+
+This section refines the Phase C plan for a user-friendly annotation experience,
+with explicit safeguards against confusion and overload.
+
+### Design goals
+
+1. **Avoid dead ends**: users should always see clear next options.
+2. **Avoid overload**: default to short, plain-language choices and only expand detail on request.
+3. **Keep control visible**: assistant proposes; user approves before meaningful state changes.
+
+### Dialogue strategy (progressive disclosure)
+
+- Start with a brief state summary:
+  - “You currently have X, but not Y.”
+- Offer 1–2 common next actions (recommended first), not the full pipeline menu.
+- Include a simple “show advanced options” escape hatch for power users.
+- For each proposed action:
+  - state what will happen,
+  - state expected output artifact,
+  - ask for explicit approval.
+
+### State-aware suggestion matrix (first implementation)
+
+#### Case A — No compiled output yet, no generated plain text
+
+- Suggested default:
+  - “Create draft plain text from your initial description.”
+- Confirmation prompt:
+  - “I can generate a first plain-text draft and show it to you before we continue. Proceed?”
+- Alternative:
+  - “Skip generation for now and show project setup options.”
+
+#### Case B — Plain text exists, but no segmented/pages representation
+
+- Suggested options:
+  1. Segment into pages/segments (recommended),
+  2. Render directly to HTML first (faster preview path).
+- Confirmation prompt:
+  - “Would you like me to split this into pages and segments first, or render a quick HTML preview now?”
+
+#### Case C — Plain text + segmented text exist
+
+- Suggested options:
+  1. Continue with page image generation (if user wants visual output),
+  2. Render to HTML now (if user wants text-first review).
+- Confirmation prompt:
+  - “Next step could be creating page images, or rendering HTML immediately. Which do you prefer?”
+
+#### Case D — HTML already exists
+
+- Suggested default:
+  - Show/open HTML and switch to revision loop.
+- Confirmation prompt:
+  - “I can open the latest HTML now. After you review it, I can help apply corrections. Open it?”
+
+### UX copy guidelines for unsophisticated users
+
+- Avoid stage names unless user asks (“segmentation_phase_1”, etc.).
+- Prefer plain labels:
+  - “split into pages” instead of “segmentation pipeline”,
+  - “make web version” instead of “compile HTML”.
+- Keep prompts short and concrete:
+  - one recommendation,
+  - one alternative,
+  - one question.
+
+### Safety + confidence policy
+
+- Require confirmation for:
+  - AI generation calls,
+  - long-running multi-stage operations,
+  - operations with likely credit/cost impact.
+- If user intent is ambiguous:
+  - ask one focused clarification question,
+  - do not ask multiple abstract questions at once.
+
+### Proposed first rollout scope
+
+Phase C step 2 can be rolled out in three small increments:
+
+1. **State detection + recommended next step only**  
+   (no automatic execution; just guidance + confirmation prompts).
+2. **Confirmed execution wrappers for 2–3 common actions**  
+   (text generation, segmentation, HTML render).
+3. **Revision handoff loop from rendered HTML**  
+   (open output + guided correction entry to manual editor paths).
+
 ## Explicit operation inventory for dialogue support (first version)
 
 This section lists the underlying C-LARA-2 operations the dialogue layer should
