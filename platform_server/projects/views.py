@@ -2866,6 +2866,49 @@ class ProjectListView(LoginRequiredMixin, ListView):
         _ensure_bootstrap_admin(self.request.user)
         return _projects_for_user(self.request.user)
 
+    def get_context_data(self, **kwargs):  # type: ignore[override]
+        context = super().get_context_data(**kwargs)
+        nl_query = (self.request.GET.get("nl_open_query") or "").strip()
+        dialogue_language = (self.request.GET.get("dialogue_language") or "").strip()
+        if not dialogue_language:
+            try:
+                dialogue_language = self.request.user.profile.dialogue_language or "en"
+            except Exception:
+                dialogue_language = "en"
+        nl_plan: dict[str, Any] = {}
+        suggested_projects: list[Project] = []
+        if nl_query:
+            nl_plan = _parse_nl_project_open_request(nl_query=nl_query, dialogue_language=dialogue_language)
+            queryset = list(context["object_list"])
+            title_filter = str(nl_plan.get("title") or "").strip()
+            text_language = _normalize_language_filter(str(nl_plan.get("text_language") or ""))
+            annotation_language = _normalize_language_filter(str(nl_plan.get("annotation_language") or ""))
+            keywords = [str(k).strip().lower() for k in (nl_plan.get("keywords") or []) if str(k).strip()]
+            if title_filter:
+                queryset = [p for p in queryset if title_filter.lower() in (p.title or "").lower()]
+            if text_language:
+                queryset = [p for p in queryset if (p.language or "").lower().startswith(text_language)]
+            if annotation_language:
+                queryset = [p for p in queryset if (p.target_language or "").lower().startswith(annotation_language)]
+            if keywords:
+                queryset = [
+                    p
+                    for p in queryset
+                    if any(kw in (p.title or "").lower() for kw in keywords)
+                    or any(kw in (p.description or "").lower() for kw in keywords)
+                ]
+            suggested_projects = queryset[:8]
+        context.update(
+            {
+                "nl_open_query": nl_query,
+                "nl_open_plan": nl_plan,
+                "dialogue_language": dialogue_language,
+                "suggested_projects": suggested_projects,
+                "dialogue_language_choices": ProjectForm.LANGUAGE_CHOICES,
+            }
+        )
+        return context
+
 
 class ProjectDetailView(LoginRequiredMixin, DetailView):
     model = Project
@@ -4774,6 +4817,45 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
     def get_success_url(self):  # type: ignore[override]
         return reverse("project-detail", args=[self.object.pk])
 
+    def get_initial(self):  # type: ignore[override]
+        initial = super().get_initial()
+        nl_query = (self.request.GET.get("nl_new_query") or "").strip()
+        dialogue_language = (self.request.GET.get("dialogue_language") or "").strip()
+        if not dialogue_language:
+            try:
+                dialogue_language = self.request.user.profile.dialogue_language or "en"
+            except Exception:
+                dialogue_language = "en"
+        if nl_query:
+            nl_plan = _parse_nl_project_create_request(nl_query=nl_query, dialogue_language=dialogue_language)
+            for key in ("title", "language", "target_language", "input_mode", "description", "source_text"):
+                value = nl_plan.get(key)
+                if value:
+                    initial[key] = value
+        return initial
+
+    def get_context_data(self, **kwargs):  # type: ignore[override]
+        context = super().get_context_data(**kwargs)
+        nl_query = (self.request.GET.get("nl_new_query") or "").strip()
+        dialogue_language = (self.request.GET.get("dialogue_language") or "").strip()
+        if not dialogue_language:
+            try:
+                dialogue_language = self.request.user.profile.dialogue_language or "en"
+            except Exception:
+                dialogue_language = "en"
+        nl_plan: dict[str, Any] = {}
+        if nl_query:
+            nl_plan = _parse_nl_project_create_request(nl_query=nl_query, dialogue_language=dialogue_language)
+        context.update(
+            {
+                "nl_new_query": nl_query,
+                "nl_new_plan": nl_plan,
+                "dialogue_language": dialogue_language,
+                "dialogue_language_choices": ProjectForm.LANGUAGE_CHOICES,
+            }
+        )
+        return context
+
 
 def _build_ai_client(
     model_name: str | None = None,
@@ -5844,6 +5926,60 @@ def _parse_nl_content_request(
         "level": _normalize_cefr_level_expression(str(payload.get("level") or "").strip(), max_levels=3),
         "keywords": [str(item).strip() for item in (payload.get("keywords") or []) if str(item).strip()],
         "max_results": int(payload.get("max_results") or 12),
+    }
+
+
+def _parse_nl_project_open_request(*, nl_query: str, dialogue_language: str) -> dict[str, Any]:
+    prompt = (
+        f"User language for this request: {dialogue_language}. "
+        "Interpret the request for opening an existing project. "
+        "Return only JSON keys: title, text_language, annotation_language, keywords. "
+        "Use empty strings/arrays for unknown values.\n\n"
+        f"User request: {nl_query}"
+    )
+    try:
+        client = _build_ai_client(model_name="gpt-4o-mini")
+        payload = asyncio.run(client.chat_json(prompt, model="gpt-4o-mini"))
+    except Exception:
+        logger.exception("NL project-open parsing failed")
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    return {
+        "title": str(payload.get("title") or "").strip(),
+        "text_language": _normalize_language_filter(str(payload.get("text_language") or "")),
+        "annotation_language": _normalize_language_filter(str(payload.get("annotation_language") or "")),
+        "keywords": [str(k).strip().lower() for k in (payload.get("keywords") or []) if str(k).strip()],
+    }
+
+
+def _parse_nl_project_create_request(*, nl_query: str, dialogue_language: str) -> dict[str, Any]:
+    prompt = (
+        f"User language for this request: {dialogue_language}. "
+        "Interpret this as a new-project setup request. "
+        "Return only JSON keys: title, language, target_language, input_mode, description, source_text. "
+        "input_mode must be one of: description, source_text. "
+        "Use empty strings for unknown values.\n\n"
+        f"User request: {nl_query}"
+    )
+    try:
+        client = _build_ai_client(model_name="gpt-4o-mini")
+        payload = asyncio.run(client.chat_json(prompt, model="gpt-4o-mini"))
+    except Exception:
+        logger.exception("NL project-create parsing failed")
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    input_mode = str(payload.get("input_mode") or "").strip().lower()
+    if input_mode not in {Project.INPUT_DESCRIPTION, Project.INPUT_SOURCE}:
+        input_mode = ""
+    return {
+        "title": str(payload.get("title") or "").strip(),
+        "language": _normalize_language_filter(str(payload.get("language") or "")),
+        "target_language": _normalize_language_filter(str(payload.get("target_language") or "")),
+        "input_mode": input_mode,
+        "description": str(payload.get("description") or "").strip(),
+        "source_text": str(payload.get("source_text") or "").strip(),
     }
 
 
