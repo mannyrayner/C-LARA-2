@@ -3297,6 +3297,18 @@ def _phase1_surface_from_payload(payload: dict[str, Any]) -> str:
     return "<page>".join(page_surfaces)
 
 
+def _phase1_surface_from_payload(payload: dict[str, Any]) -> str:
+    """Reconstruct editable phase-1 surface from page/segment structure."""
+
+    pages = payload.get("pages") or []
+    page_surfaces: list[str] = []
+    for page in pages:
+        segments = page.get("segments") or []
+        seg_surfaces = [str((seg or {}).get("surface") or "") for seg in segments]
+        page_surfaces.append("||".join(seg_surfaces))
+    return "<page>".join(page_surfaces)
+
+
 def _build_phase1_payload_from_surface(surface: str, language: str) -> dict[str, Any]:
     pages: list[dict[str, Any]] = []
     for page_raw in surface.split("<page>"):
