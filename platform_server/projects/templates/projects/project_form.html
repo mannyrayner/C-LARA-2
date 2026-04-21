@@ -2,6 +2,25 @@
 {% block title %}New project{% endblock %}
 {% block content %}
 <h1>New project</h1>
+<form method="get" action="{% url 'project-create' %}" style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0;">
+  <p><strong>Dialogue: create new project</strong></p>
+  <p>
+    <label for="nl_new_query">Natural-language request:</label><br />
+    <input id="nl_new_query" type="text" name="nl_new_query" value="{{ nl_new_query }}" style="width:100%;" />
+  </p>
+  <p>
+    <label for="dialogue_language">Dialogue language:</label>
+    <select id="dialogue_language" name="dialogue_language">
+      {% for value, label in dialogue_language_choices %}
+        <option value="{{ value }}" {% if dialogue_language == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn secondary" type="submit">Interpret</button>
+  </p>
+</form>
+{% if nl_new_plan %}
+  <p><strong>Interpreted project setup:</strong> {{ nl_new_plan }}</p>
+{% endif %}
 <form method="post">{% csrf_token %}
   {% if form.errors %}
     <div class="messages">{{ form.errors }}</div>
