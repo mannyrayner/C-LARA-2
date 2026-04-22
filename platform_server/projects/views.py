@@ -808,6 +808,13 @@ def _extract_project_pages(project: Project) -> list[str]:
     plain_text = _extract_project_plain_text(project)
     if not plain_text:
         return []
+    inline_pages = [
+        chunk.strip()
+        for chunk in re.split(r"(?i)<\s*page\s*/?\s*>", plain_text)
+        if chunk and chunk.strip()
+    ]
+    if len(inline_pages) > 1:
+        return inline_pages
     chunks = [chunk.strip() for chunk in plain_text.split("\n\n") if chunk.strip()]
     return chunks or [plain_text]
 
@@ -1093,9 +1100,10 @@ def _discover_project_image_elements(
                 phase2_items.append(future.result())
 
     normalized: list[dict[str, Any]] = []
+    min_refs_required = 2 if len(pages) > 1 else 1
     for item in phase2_items:
         refs = item.get("page_refs_list") or []
-        if len(refs) < 2:
+        if len(refs) < min_refs_required:
             continue
         normalized.append(
             {
