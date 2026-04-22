@@ -76,6 +76,7 @@ class AnnotationDialoguePlanTests(TestCase):
             reverse("project-compiled", args=[project.pk, "runs/run_demo/html/page_1.html"]),
         )
         self.assertContains(resp, "Review/edit segmentation")
+        self.assertContains(resp, "Open page-by-page manual editor")
         self.assertContains(resp, "Compile HTML now")
 
     def test_annotation_home_shows_prominent_segmentation_review_control(self):
@@ -101,5 +102,6 @@ class AnnotationDialoguePlanTests(TestCase):
             resp,
             f"{reverse('manual-segmentation-phase-1', args=[project.pk])}?return_to={reverse('project-annotation-home', args=[project.pk])}",
         )
+        self.assertContains(resp, reverse("manual-page-annotation", args=[project.pk]))
         self.assertContains(resp, reverse("project-images-home", args=[project.pk]))
         self.assertContains(resp, "Power-user pipeline controls")

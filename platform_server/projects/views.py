@@ -3168,6 +3168,7 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
         f"{reverse('manual-segmentation-phase-1', args=[project.pk])}?return_to={quote(annotation_home)}"
     )
     image_workflow_href = reverse("project-images-home", args=[project.pk])
+    page_by_page_manual_href = reverse("manual-page-annotation", args=[project.pk])
     compiled_href: str | None = None
     compiled_page = _compiled_page_one_path(project)
     if compiled_page:
@@ -3240,6 +3241,11 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                             "label": "Review/edit segmentation",
                             "description": "Open manual segmentation view to inspect and adjust boundaries.",
                             "href": segmentation_review_href,
+                        },
+                        {
+                            "label": "Open page-by-page manual editor",
+                            "description": "Edit translation and word-level annotations page by page.",
+                            "href": page_by_page_manual_href,
                         }
                     ]
                     if has_segmented
@@ -3262,6 +3268,11 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                 "description": "Run pipeline compilation to refresh HTML using default stage settings.",
                 "start_stage": _default_start_stage_for_project(project),
                 "end_stage": "compile_html",
+            },
+            {
+                "label": "Open page-by-page manual editor",
+                "description": "Edit translation and word-level annotations page by page.",
+                "href": page_by_page_manual_href,
             },
             {
                 "label": "Open image workflow",
