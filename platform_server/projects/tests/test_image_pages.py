@@ -98,6 +98,12 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertContains(resp, "1/1")
         self.assertNotContains(resp, "Discourage visible text in images")
 
+    def test_images_home_shows_shared_model_controls(self):
+        resp = self.client.get(reverse("project-images-home", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Style AI model:")
+        self.assertContains(resp, "Image model (style/elements/pages):")
+
     def test_get_pages_view_shows_billing_telemetry_link_when_present(self):
         billing_path = self.project.artifact_dir() / "images" / "billing_telemetry.jsonl"
         billing_path.parent.mkdir(parents=True, exist_ok=True)

@@ -71,6 +71,22 @@
 <form method="post">
   {% csrf_token %}
   <p>
+    <label for="style_ai_model">Style AI model:</label>
+    <select id="style_ai_model" name="style_ai_model">
+      {% for model in ai_model_choices %}
+        <option value="{{ model }}" {% if model == selected_style_ai_model %}selected{% endif %}>{{ model }}</option>
+      {% endfor %}
+    </select>
+  </p>
+  <p>
+    <label for="style_image_model">Image model (style/elements/pages):</label>
+    <select id="style_image_model" name="style_image_model">
+      {% for model in image_model_choices %}
+        <option value="{{ model }}" {% if model == selected_style_image_model %}selected{% endif %}>{{ model }}</option>
+      {% endfor %}
+    </select>
+  </p>
+  <p>
     <label for="generate_page_images_from_translations">
       <input
         type="checkbox"

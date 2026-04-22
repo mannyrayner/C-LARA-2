@@ -2420,13 +2420,22 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
     if request.method == "POST":
+        form_data = request.POST.copy()
+        if "ai_model" not in form_data:
+            form_data["ai_model"] = style_obj.ai_model or project.ai_model or DEFAULT_MODEL
+        if "sample_image_model" not in form_data:
+            form_data["sample_image_model"] = style_obj.sample_image_model or "gpt-image-1"
+        if "status" not in form_data:
+            form_data["status"] = style_obj.status or ProjectImageStyle.STATUS_DRAFT
+        if "discourage_text_in_images" not in form_data and style_obj.discourage_text_in_images:
+            form_data["discourage_text_in_images"] = "on"
         action = (
-            request.POST.get("action")
-            or request.POST.get("action_intent")
+            form_data.get("action")
+            or form_data.get("action_intent")
             or "save"
         ).strip()
         form = ProjectImageStyleForm(
-            request.POST,
+            form_data,
             instance=style_obj,
             ai_model_choices=AI_MODEL_CHOICES,
             image_model_choices=IMAGE_MODEL_CHOICES,
@@ -4938,8 +4947,14 @@ def manual_translation(request: HttpRequest, pk: int) -> HttpResponse:
 def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
     style = getattr(project, "image_style", None)
+    valid_ai_models = set(AI_MODEL_CHOICES)
+    valid_image_models = set(IMAGE_MODEL_CHOICES)
     if request.method == "POST":
         valid_pivot_languages = {code for code, _label in ProjectForm.LANGUAGE_CHOICES}
+        requested_style_ai_model = str(request.POST.get("style_ai_model") or (style.ai_model if style else project.ai_model) or "").strip()
+        requested_style_image_model = str(
+            request.POST.get("style_image_model") or (style.sample_image_model if style else "gpt-image-1") or ""
+        ).strip()
         from_translations = (request.POST.get("generate_page_images_from_translations") or "").strip().lower() in {
             "1",
             "true",
@@ -4963,7 +4978,11 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
             else ""
         )
         allowed_text_sources = {choice[0] for choice in Project.PAGE_IMAGE_TEXT_SOURCE_CHOICES}
-        if text_source not in allowed_text_sources:
+        if requested_style_ai_model not in valid_ai_models:
+            messages.error(request, "Unknown style AI model.")
+        elif requested_style_image_model not in valid_image_models:
+            messages.error(request, "Unknown image model.")
+        elif text_source not in allowed_text_sources:
             messages.error(request, "Unknown page-image text source option.")
         elif text_source == Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION and pivot_language not in valid_pivot_languages:
             messages.error(request, "Unknown pivot language for image generation.")
@@ -4974,12 +4993,23 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
             if style is None:
                 style = ProjectImageStyle.objects.create(
                     project=project,
-                    ai_model=project.ai_model or DEFAULT_MODEL,
+                    ai_model=requested_style_ai_model or project.ai_model or DEFAULT_MODEL,
+                    sample_image_model=requested_style_image_model or "gpt-image-1",
                     discourage_text_in_images=discourage_text_in_images,
                 )
-            elif style.discourage_text_in_images != discourage_text_in_images:
-                style.discourage_text_in_images = discourage_text_in_images
-                style.save(update_fields=["discourage_text_in_images", "updated_at"])
+            else:
+                update_fields: list[str] = []
+                if style.discourage_text_in_images != discourage_text_in_images:
+                    style.discourage_text_in_images = discourage_text_in_images
+                    update_fields.append("discourage_text_in_images")
+                if style.ai_model != requested_style_ai_model:
+                    style.ai_model = requested_style_ai_model
+                    update_fields.append("ai_model")
+                if style.sample_image_model != requested_style_image_model:
+                    style.sample_image_model = requested_style_image_model
+                    update_fields.append("sample_image_model")
+                if update_fields:
+                    style.save(update_fields=[*update_fields, "updated_at"])
             synced = _ensure_project_page_rows(project)
             messages.success(request, f"Saved image settings and synced {synced} page rows.")
         return redirect("project-images-home", pk=project.pk)
@@ -5025,6 +5055,10 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
             "pivot_language_choices": ProjectForm.LANGUAGE_CHOICES,
             "selected_image_generation_pivot_language": project.image_generation_pivot_language,
             "discourage_text_in_images_default": bool(getattr(style, "discourage_text_in_images", False)),
+            "ai_model_choices": AI_MODEL_CHOICES,
+            "image_model_choices": IMAGE_MODEL_CHOICES,
+            "selected_style_ai_model": (getattr(style, "ai_model", "") or project.ai_model or DEFAULT_MODEL),
+            "selected_style_image_model": (getattr(style, "sample_image_model", "") or "gpt-image-1"),
         },
     )
 

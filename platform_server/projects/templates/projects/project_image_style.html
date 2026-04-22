@@ -51,13 +51,13 @@
   <p>
     <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_image" data-busy-label="Generating sample image..." onclick="document.getElementById('style-action-intent').value='generate_image';" {% if not style.sample_image_prompt %}disabled title="Generate or enter a sample image prompt first"{% endif %}>Generate sample image</button>
   </p>
+  {% if style_image_url %}
+    <p><img src="{{ style_image_url }}" alt="Sample style image" style="max-width: 512px; width: 100%; height: auto;" /></p>
+  {% endif %}
 
   <h3>3) Settings and approval</h3>
-  <p>{{ form.ai_model.label_tag }} {{ form.ai_model }}</p>
-  <p>{{ form.sample_image_model.label_tag }} {{ form.sample_image_model }}</p>
-  <p>{{ form.discourage_text_in_images.label_tag }} {{ form.discourage_text_in_images }}</p>
-  <p>{{ form.status.label_tag }} {{ form.status }}</p>
-  <p><small>The “Discourage text in images” setting applies to page image generation prompts in the next stage.</small></p>
+  <p><small>Model choices and “discourage text in images” are configured on <a href="{% url 'project-images-home' project.pk %}">images home</a>.</small></p>
+  <input type="hidden" name="status" value="{{ style.status }}" />
   <p><small><strong>Save draft</strong> stores manual edits to style fields. <strong>Approve style</strong> marks style as ready so the next step can proceed even before a sample image is generated.</small></p>
   <p>
     <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="approve" data-busy-label="Approving style..." onclick="document.getElementById('style-action-intent').value='approve';">Approve style</button>
@@ -95,10 +95,6 @@
   <pre>{{ style.sample_image_revised_prompt }}</pre>
 {% endif %}
 
-{% if style_image_url %}
-  <h3>Sample style image</h3>
-  <p><img src="{{ style_image_url }}" alt="Sample style image" style="max-width: 512px; width: 100%; height: auto;" /></p>
-{% endif %}
 <script>
   (function () {
     const form = document.getElementById("style-form");
