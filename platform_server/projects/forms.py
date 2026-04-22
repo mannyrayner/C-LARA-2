@@ -225,7 +225,7 @@ ProjectImageElementFormSet = modelformset_factory(
     ProjectImageElement,
     form=ProjectImageElementForm,
     can_delete=True,
-    extra=0,
+    extra=1,
 )
 
 

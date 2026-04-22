@@ -417,6 +417,7 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual(self.project.page_image_placement, "top")
 
     def test_project_create_form_uses_language_dropdowns_with_clear_labels(self):
+        Profile.objects.update_or_create(user=self.user, defaults={"timezone": "UTC", "dialogue_language": "de"})
         resp = self.client.get(reverse("project-create"))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Text language")
@@ -427,6 +428,7 @@ class CompileStatusViewTests(TestCase):
         self.assertContains(resp, "German")
         self.assertContains(resp, "Persian")
         self.assertContains(resp, "Old Norse")
+        self.assertContains(resp, '<option value="de" selected>German</option>', html=False)
 
     def test_project_detail_shows_image_stage_ticks(self):
         ProjectImageStyle.objects.create(
