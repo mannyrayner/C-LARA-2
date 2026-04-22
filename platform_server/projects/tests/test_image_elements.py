@@ -75,8 +75,10 @@ class ProjectImageElementsViewTests(TestCase):
     def test_get_elements_page(self):
         resp = self.client.get(reverse("project-image-elements", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Dialogue assistant suggestion")
         self.assertContains(resp, "Discover elements")
-        self.assertContains(resp, "Text model:")
+        self.assertContains(resp, "1) Discover + expand")
+        self.assertContains(resp, "Using text model:")
         self.assertContains(resp, "Generate element images")
         self.assertContains(resp, "fan-out/fan-in")
         self.assertContains(resp, "Elements telemetry")

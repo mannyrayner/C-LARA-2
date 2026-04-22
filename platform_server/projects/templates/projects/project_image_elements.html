@@ -4,11 +4,6 @@
 <h1>Image elements for {{ project.title }}</h1>
 
 <p>
-  This is the first text-focused version of the <strong>Elements</strong> substep. It identifies recurring
-  visual elements, links them to pages, and generates expanded descriptions/prompts for user review.
-</p>
-
-<p>
   <a href="{% url 'project-detail' project.pk %}">← Back to project</a>
 </p>
 <p>
@@ -17,7 +12,27 @@
 <p>
   <a href="{% url 'project-image-style' project.pk %}">← Back to Style step</a>
 </p>
-<p><a class="btn secondary" href="{% url 'project-image-pages' project.pk %}">Go to Page images step</a></p>
+
+<div style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0; background:#fafafa;">
+  <strong>Dialogue assistant suggestion</strong>
+  {% if not elements_count %}
+    <p><strong>Step 1: discover recurring elements</strong></p>
+    <p>Start by finding the key characters/objects that should stay visually consistent.</p>
+  {% elif confirmed_count == 0 %}
+    <p><strong>Step 2: review and confirm elements</strong></p>
+    <p>Edit names/types/page references as needed, then confirm selected elements.</p>
+  {% elif elements_with_prompts_count < elements_count %}
+    <p><strong>Step 3: generate expanded prompts</strong></p>
+    <p>Generate richer element descriptions/prompts to prepare image generation.</p>
+  {% elif elements_with_images_count < confirmed_count %}
+    <p><strong>Step 4: generate element images</strong></p>
+    <p>Generate one reference image per confirmed element.</p>
+  {% else %}
+    <p><strong>Elements ready — next step: page images</strong></p>
+    <p>Now move on to page image generation using the style + element references.</p>
+    <p><a class="btn secondary" href="{% url 'project-image-pages' project.pk %}">Open page images workflow</a></p>
+  {% endif %}
+</div>
 
 <p>Status from style step: <strong>{{ style.get_status_display }}</strong></p>
 <p>Elements artifacts stored at: {{ elements_artifact_dir }}</p>
@@ -39,27 +54,22 @@
 <form method="post">
   {% csrf_token %}
   {{ formset.management_form }}
+  <input type="hidden" name="ai_model" value="{{ selected_ai_model }}" />
+  <input type="hidden" name="image_model" value="{{ selected_image_model }}" />
+  <h3>1) Discover + expand</h3>
+  <p><small>Using text model: <strong>{{ selected_ai_model }}</strong> (change on <a href="{% url 'project-images-home' project.pk %}">images home</a>).</small></p>
   <p>
-    <label for="ai_model">Text model:</label>
-    <select name="ai_model" id="ai_model" style="cursor:pointer">
-      {% for model in ai_models %}
-        <option value="{{ model }}" {% if model == selected_ai_model %}selected{% endif %}>{{ model }}</option>
-      {% endfor %}
-    </select>
     <button class="btn" style="cursor:pointer" type="submit" name="action" value="discover" data-long-action="true">Discover elements</button>
     <button class="btn" style="cursor:pointer" type="submit" name="action" value="expand" data-long-action="true">Generate expanded prompts</button>
     <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="save">Save edits</button>
+  </p>
+  <h3>2) Confirmation</h3>
+  <p>
     <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="confirm">Confirm selected</button>
   </p>
-  <h3>Element image generation</h3>
-  <p>Use this control after prompts are expanded to generate one reference image per element.</p>
+  <h3>3) Element image generation</h3>
+  <p><small>Using image model: <strong>{{ selected_image_model }}</strong> (shared for style/elements/pages; change on <a href="{% url 'project-images-home' project.pk %}">images home</a>).</small></p>
   <p>
-    <label for="image_model">Image model:</label>
-    <select name="image_model" id="image_model" style="cursor:pointer">
-      {% for model in image_models %}
-        <option value="{{ model }}" {% if model == selected_image_model %}selected{% endif %}>{{ model }}</option>
-      {% endfor %}
-    </select>
     <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_images" data-long-action="true">Generate element images</button>
   </p>
 
