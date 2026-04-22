@@ -1032,12 +1032,6 @@ def _discover_project_image_elements(
                 phase2_client.chat_json(phase2_prompt, model=ai_model)
             )
         except Exception as exc:
-            _flush_project_usage_events(
-                project=project,
-                events=phase2_usage_events,
-                request_type="image_elements_discovery_phase_2",
-                default_model=ai_model,
-            )
             elapsed_local_s = (datetime.now(timezone.utc) - started_local).total_seconds()
             _append_elements_telemetry(
                 project,
@@ -1052,12 +1046,6 @@ def _discover_project_image_elements(
                 },
             )
             raise
-        _flush_project_usage_events(
-            project=project,
-            events=phase2_usage_events,
-            request_type="image_elements_discovery_phase_2",
-            default_model=ai_model,
-        )
         elapsed_local_s = (datetime.now(timezone.utc) - started_local).total_seconds()
         _append_elements_telemetry(
             project,
@@ -1089,6 +1077,7 @@ def _discover_project_image_elements(
             "page_refs_list": refs,
             "why_consistency_matters": str((response_local or {}).get("why_consistency_matters") or "").strip()[:2000],
             "phase2_response": response_local,
+            "phase2_usage_events": phase2_usage_events,
         }
 
     phase2_items: list[dict[str, Any]] = []
@@ -1097,7 +1086,14 @@ def _discover_project_image_elements(
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [executor.submit(_resolve_page_refs, item) for item in candidates]
             for future in as_completed(futures):
-                phase2_items.append(future.result())
+                item = future.result()
+                _flush_project_usage_events(
+                    project=project,
+                    events=item.get("phase2_usage_events", []),
+                    request_type="image_elements_discovery_phase_2",
+                    default_model=ai_model,
+                )
+                phase2_items.append(item)
 
     normalized: list[dict[str, Any]] = []
     min_refs_required = 2 if len(pages) > 1 else 1
