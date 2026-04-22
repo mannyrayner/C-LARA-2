@@ -3,6 +3,9 @@
 {% block content %}
 <h1>Image style for {{ project.title }}</h1>
 
+<p><a href="{% url 'project-detail' project.pk %}">← Back to project</a></p>
+<p><a href="{% url 'project-images-home' project.pk %}">← Back to images home</a></p>
+
 <div style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0; background:#fafafa;">
   <strong>Dialogue assistant suggestion</strong>
   {% if not style.style_brief %}
@@ -25,9 +28,6 @@
   {% endif %}
 </div>
 
-<p><a href="{% url 'project-detail' project.pk %}">← Back to project</a></p>
-<p><a href="{% url 'project-images-home' project.pk %}">← Back to images home</a></p>
-<p><a class="btn secondary" href="{% url 'project-image-elements' project.pk %}">Go to Elements step</a></p>
 {% if status_notice == "done" %}
   <p><strong>Request completed.</strong> Check the messages above for details.</p>
 {% elif status_notice == "error" %}
@@ -55,10 +55,8 @@
     <p><img src="{{ style_image_url }}" alt="Sample style image" style="max-width: 512px; width: 100%; height: auto;" /></p>
   {% endif %}
 
-  <h3>3) Settings and approval</h3>
-  <p><small>Model choices and “discourage text in images” are configured on <a href="{% url 'project-images-home' project.pk %}">images home</a>.</small></p>
+  <h3>3) Approval</h3>
   <input type="hidden" name="status" value="{{ style.status }}" />
-  <p><small><strong>Save draft</strong> stores manual edits to style fields. <strong>Approve style</strong> marks style as ready so the next step can proceed even before a sample image is generated.</small></p>
   <p>
     <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="approve" data-busy-label="Approving style..." onclick="document.getElementById('style-action-intent').value='approve';">Approve style</button>
   </p>
