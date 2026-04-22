@@ -12,6 +12,7 @@
 <p>
   <a href="{% url 'project-image-style' project.pk %}">← Back to Style step</a>
 </p>
+<p>Status from style step: <strong>{{ style.get_status_display }}</strong></p>
 
 <div style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0; background:#fafafa;">
   <strong>Dialogue assistant suggestion</strong>
@@ -34,18 +35,6 @@
   {% endif %}
 </div>
 
-<p>Status from style step: <strong>{{ style.get_status_display }}</strong></p>
-<p>Elements artifacts stored at: {{ elements_artifact_dir }}</p>
-{% if elements_artifact_links %}
-  <p>Elements artifacts:</p>
-  <ul>
-    {% for item in elements_artifact_links %}
-      <li><a href="{{ item.url }}">{{ item.label }}</a> ({{ item.size }} bytes)</li>
-    {% endfor %}
-  </ul>
-{% endif %}
-<p>Confirmed elements: {{ confirmed_count }}</p>
-<p><em>Generation uses fan-out/fan-in (parallel API calls, then merge/save).</em></p>
 {% if status_notice == "done" %}
   <p><strong>Request completed.</strong> Check the messages above for details.</p>
 {% endif %}
@@ -60,17 +49,16 @@
   <p><small>Using text model: <strong>{{ selected_ai_model }}</strong> (change on <a href="{% url 'project-images-home' project.pk %}">images home</a>).</small></p>
   <p>
     <button class="btn" style="cursor:pointer" type="submit" name="action" value="discover" data-long-action="true">Discover elements</button>
-    <button class="btn" style="cursor:pointer" type="submit" name="action" value="expand" data-long-action="true">Generate expanded prompts</button>
-    <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="save">Save edits</button>
+    <button class="btn" style="cursor:pointer" type="submit" name="action" value="expand" data-long-action="true" {% if not elements_count %}disabled title="Discover elements first"{% endif %}>Generate expanded prompts</button>
+    <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="save" {% if not elements_count %}disabled title="No elements to save yet"{% endif %}>Save edits</button>
   </p>
-  <h3>2) Confirmation</h3>
+  <h3>2) Confirm + generate images</h3>
   <p>
-    <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="confirm">Confirm selected</button>
+    <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="confirm" {% if not elements_count %}disabled title="Discover elements first"{% endif %}>Confirm selected</button>
   </p>
-  <h3>3) Element image generation</h3>
   <p><small>Using image model: <strong>{{ selected_image_model }}</strong> (shared for style/elements/pages; change on <a href="{% url 'project-images-home' project.pk %}">images home</a>).</small></p>
   <p>
-    <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_images" data-long-action="true">Generate element images</button>
+    <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_images" data-long-action="true" {% if not confirmed_count %}disabled title="Confirm at least one element first"{% elif confirmed_with_prompts_count < confirmed_count %}disabled title="Generate prompts for confirmed elements first"{% endif %}>Generate element images</button>
   </p>
 
   {% if formset.forms %}
@@ -95,6 +83,18 @@
     <p>No elements yet. Click <strong>Discover elements</strong> to generate an initial list.</p>
   {% endif %}
 </form>
+
+<p>Elements artifacts stored at: {{ elements_artifact_dir }}</p>
+{% if elements_artifact_links %}
+  <p>Elements artifacts:</p>
+  <ul>
+    {% for item in elements_artifact_links %}
+      <li><a href="{{ item.url }}">{{ item.label }}</a> ({{ item.size }} bytes)</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+<p>Confirmed elements: {{ confirmed_count }}</p>
+<p><em>Generation uses fan-out/fan-in (parallel API calls, then merge/save).</em></p>
 <script>
   (function () {
     const form = document.querySelector("form");

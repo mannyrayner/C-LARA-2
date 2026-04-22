@@ -2770,6 +2770,7 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
             "elements_artifact_dir": _image_elements_dir(project),
             "elements_artifact_links": _elements_artifact_links(project),
             "confirmed_count": project.image_elements.filter(is_confirmed=True).count(),
+            "confirmed_with_prompts_count": project.image_elements.filter(is_confirmed=True).exclude(expanded_prompt="").count(),
             "elements_count": project.image_elements.count(),
             "elements_with_prompts_count": project.image_elements.exclude(expanded_prompt="").count(),
             "elements_with_images_count": project.image_elements.exclude(image_path="").count(),
