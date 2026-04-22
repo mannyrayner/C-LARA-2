@@ -2614,7 +2614,7 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
             style.ai_model = ai_model
             style.save(update_fields=["ai_model", "updated_at"])
         requested_image_model = (request.POST.get("image_model") or "").strip()
-        image_model = requested_image_model or "gpt-image-1"
+        image_model = requested_image_model or style.sample_image_model or "gpt-image-1"
         invalid_image_model = image_model not in IMAGE_MODEL_CHOICES
         if invalid_image_model:
             image_model = "gpt-image-1"
@@ -2770,10 +2770,14 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
             "elements_artifact_dir": _image_elements_dir(project),
             "elements_artifact_links": _elements_artifact_links(project),
             "confirmed_count": project.image_elements.filter(is_confirmed=True).count(),
+            "elements_count": project.image_elements.count(),
+            "elements_with_prompts_count": project.image_elements.exclude(expanded_prompt="").count(),
+            "elements_with_images_count": project.image_elements.exclude(image_path="").count(),
             "ai_models": AI_MODEL_CHOICES,
             "selected_ai_model": style.ai_model or project.ai_model or DEFAULT_MODEL,
             "image_models": IMAGE_MODEL_CHOICES,
             "selected_image_model": request.GET.get("image_model")
+            or style.sample_image_model
             or project.image_elements.filter(image_model__isnull=False)
             .exclude(image_model="")
             .values_list("image_model", flat=True)
