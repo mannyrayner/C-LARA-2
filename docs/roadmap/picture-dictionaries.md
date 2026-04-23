@@ -142,6 +142,12 @@ Future variants:
 - Create dictionary as standard project pattern (one page per entry).
 - Add organiser commands: compile/add/remove/add-from-text.
 - Reuse existing image pipeline for entry images.
+- First-cut compile semantics:
+  - run linguistic pipeline from `segmentation_phase_2` to `compile_html`,
+  - run dictionary-targeted image generation using shared style if available,
+  - default image options for dictionaries:
+    - **no-context** (do not pass full story context or element context),
+    - **missing-only** (generate only for pages currently missing an image).
 
 ## Phase B
 - Add optional `picture_gloss` pipeline stage.
@@ -169,3 +175,10 @@ Future variants:
 - Projects can optionally enable picture glossing without breaking existing flows.
 - Compiled HTML displays picture glosses when available.
 - At least one picture-based exercise type is functional end-to-end.
+
+---
+
+## Cross-reference
+
+- Image-pipeline details and dictionary-specific image options are tracked in:
+  - [image-generation-pipeline.md](image-generation-pipeline.md)

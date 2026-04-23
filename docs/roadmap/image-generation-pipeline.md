@@ -144,6 +144,18 @@ Once style and element references are approved, the system:
 4. stores it and presents it in a grid or page-by-page editor,
 5. allows regeneration of one page or a subset of pages.
 
+### 3.5 Picture dictionary mode (Phase A cross-over)
+
+For picture dictionary projects (see [picture-dictionaries.md](picture-dictionaries.md)), image generation should support:
+
+- **No-context mode**: do not inject full-story context or element context into per-page prompts.
+- **Missing-only mode**: generate page images only where image_path is currently missing.
+
+Rationale:
+- dictionaries are lexical inventories, not narratives,
+- context-lite prompts reduce unnecessary variability and cost,
+- missing-only generation avoids regenerating already accepted entry images.
+
 ## 4. Stage 1: style generation
 
 ### 4.1 Inputs

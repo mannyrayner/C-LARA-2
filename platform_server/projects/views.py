@@ -1833,17 +1833,24 @@ def _generate_project_page_images(
     image_model: str,
     variants_per_page: int = 1,
     discourage_text_in_image: bool = False,
+    include_full_text: bool = True,
+    include_elements: bool = True,
+    missing_only: bool = False,
 ) -> int:
     style = project.image_style
-    full_text = _extract_project_plain_text(project)
+    full_text = _extract_project_plain_text(project) if include_full_text else ""
     pages_dir = _image_pages_dir(project)
     pages_dir.mkdir(parents=True, exist_ok=True)
     page_rows = list(project.image_pages.order_by("page_number", "id"))
-    relevant_elements = [
-        element
-        for element in project.image_elements.order_by("name", "id")
-        if element.image_path
-    ]
+    if missing_only:
+        page_rows = [row for row in page_rows if not row.image_path]
+    relevant_elements = []
+    if include_elements:
+        relevant_elements = [
+            element
+            for element in project.image_elements.order_by("name", "id")
+            if element.image_path
+        ]
     if not page_rows:
         return 0
 
@@ -6879,8 +6886,12 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                 result = picture_dictionary_compile(dictionary=picture_dictionary)
                 messages.success(
                     request,
-                    f"Compiled picture dictionary: pages={result['pages']}, page rows synced={result['page_rows_synced']}.",
+                    "Compiled picture dictionary: "
+                    f"pages={result['pages']}, page rows synced={result['page_rows_synced']}, "
+                    f"annotation pipeline={result.get('annotation_run')}, generated images={result.get('generated_images', 0)}.",
                 )
+                if result.get("image_generation_note"):
+                    messages.info(request, result["image_generation_note"])
             elif action == "add":
                 added = picture_dictionary_add_words(dictionary=picture_dictionary, words=words)
                 messages.success(request, f"Added {added} word(s) to picture dictionary.")

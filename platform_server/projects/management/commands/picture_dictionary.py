@@ -56,9 +56,15 @@ class Command(BaseCommand):
             result = compile_picture_dictionary(dictionary=dictionary)
             self.stdout.write(
                 self.style.SUCCESS(
-                    f"Compiled dictionary project {dictionary.project_id}: pages={result['pages']}, page_rows_synced={result['page_rows_synced']}"
+                    "Compiled dictionary project "
+                    f"{dictionary.project_id}: pages={result['pages']}, "
+                    f"page_rows_synced={result['page_rows_synced']}, "
+                    f"annotation_run={result.get('annotation_run')}, "
+                    f"generated_images={result.get('generated_images')}"
                 )
             )
+            if result.get("image_generation_note"):
+                self.stdout.write(result["image_generation_note"])
             return
 
         words = [part.strip() for part in str(options.get("words") or "").split(",") if part.strip()]

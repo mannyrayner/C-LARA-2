@@ -270,9 +270,63 @@ def compile_picture_dictionary(*, dictionary: PictureDictionary) -> dict[str, in
     ProjectImagePage.objects.filter(project=dictionary.project, page_number__gt=len(entries)).delete()
     _write_segmentation_phase_1(dictionary, entries)
     _write_dictionary_annotation_stages(dictionary, entries)
+    annotation_run = "skipped"
+    generated_images = 0
+    image_generation_note = ""
+    try:
+        from .views import _run_compile_task
+
+        run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        seg1_payload = _dictionary_stage_payload(dictionary, entries, "segmentation_phase_1")
+        _run_compile_task(
+            project_id=dictionary.project.id,
+            user_id=dictionary.organiser_id,
+            output_dir_str=str(run_dir),
+            project_root_str=str(dictionary.project.artifact_dir()),
+            start_stage="segmentation_phase_2",
+            timezone_name="UTC",
+            description=None,
+            text=dictionary.project.source_text,
+            text_obj=seg1_payload,
+            report_id=None,
+            task_type=f"picture_dictionary_compile_{dictionary.project.id}",
+            ai_model=dictionary.project.ai_model,
+            end_stage="compile_html",
+            page_image_placement=dictionary.project.page_image_placement or "none",
+            segmentation_method=dictionary.project.segmentation_method or "auto",
+            romanization_method=dictionary.project.romanization_method or "auto",
+            detailed_api_trace=False,
+        )
+        annotation_run = "ok"
+    except Exception:
+        annotation_run = "error"
+
+    try:
+        style = getattr(dictionary.project, "image_style", None)
+        if style and style.status == "approved":
+            from .views import _generate_project_page_images
+
+            generated_images = _generate_project_page_images(
+                dictionary.project,
+                image_model=style.sample_image_model or "gpt-image-1",
+                variants_per_page=1,
+                discourage_text_in_image=bool(style.discourage_text_in_images),
+                include_full_text=False,
+                include_elements=False,
+                missing_only=True,
+            )
+        else:
+            image_generation_note = "Image generation skipped (style missing or not approved)."
+    except Exception:
+        image_generation_note = "Image generation failed."
+
     return {
         "pages": len(entries),
         "page_rows_synced": len(entries),
+        "annotation_run": annotation_run,
+        "generated_images": generated_images,
+        "image_generation_note": image_generation_note,
     }
 
 
