@@ -10,6 +10,11 @@
     Dictionary project:
     <a href="{% url 'project-detail' picture_dictionary.project.id %}">{{ picture_dictionary.project.title }}</a>
   </p>
+  {% if picture_dictionary_compile_info %}
+    <p>
+      Last dictionary compile: {{ picture_dictionary_compile_info.updated_at }} ({{ picture_dictionary_compile_info.entry_count }} entries).
+    </p>
+  {% endif %}
   <p>
     <a class="btn secondary" href="{% url 'manual-page-annotation' picture_dictionary.project.id %}">Review dictionary content (page-oriented editor)</a>
   </p>
@@ -20,7 +25,7 @@
   {% csrf_token %}
   <p>
     <button class="btn secondary" type="submit" name="picture_dictionary_action" value="ensure">Ensure dictionary</button>
-    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="compile">Compile dictionary</button>
+    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="compile">Compile dictionary (sync pages + stages)</button>
   </p>
   <p>
     <label for="picture_dictionary_words">Words (comma or newline separated):</label><br />
@@ -28,7 +33,6 @@
   </p>
   <p>
     <button class="btn secondary" type="submit" name="picture_dictionary_action" value="add">Add words</button>
-    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="remove">Remove words</button>
   </p>
   <p>
     <label for="source_project_id">Add words from community project:</label>

@@ -6846,6 +6846,18 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
     dictionary_entries = list(
         picture_dictionary.entries.filter(is_active=True).order_by("id") if picture_dictionary else []
     )
+    picture_dictionary_compile_info: dict[str, Any] | None = None
+    if picture_dictionary:
+        seg1_path = picture_dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages" / "segmentation_phase_1.json"
+        if seg1_path.exists():
+            try:
+                payload = json.loads(seg1_path.read_text(encoding="utf-8"))
+            except Exception:
+                payload = {}
+            picture_dictionary_compile_info = {
+                "updated_at": datetime.fromtimestamp(seg1_path.stat().st_mtime, tz=timezone.utc).isoformat(),
+                "entry_count": int(((payload.get("metadata") or {}).get("entry_count") or 0)),
+            }
 
     if request.method == "POST":
         action = (request.POST.get("picture_dictionary_action") or "").strip()
@@ -6932,6 +6944,7 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             "summary_rows": summary_rows,
             "picture_dictionary": picture_dictionary,
             "dictionary_entries": dictionary_entries,
+            "picture_dictionary_compile_info": picture_dictionary_compile_info,
             "community_projects": projects,
         },
     )

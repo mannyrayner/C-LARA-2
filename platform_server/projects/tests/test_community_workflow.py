@@ -123,6 +123,7 @@ class CommunityWorkflowTests(TestCase):
         self.assertContains(page, "Picture dictionary (Phase A)")
         self.assertContains(page, "Ensure dictionary")
         self.assertContains(page, "Add from text")
+        self.assertNotContains(page, "Remove words")
 
         ensure = client.post(
             reverse("community-organiser-home", args=[self.community.id]),
@@ -154,6 +155,12 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(add_from_text.status_code, 200)
         dictionary.refresh_from_db()
         self.assertIn("Antarctica", dictionary.project.source_text)
+        compile_dictionary = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {"picture_dictionary_action": "compile"},
+            follow=True,
+        )
+        self.assertEqual(compile_dictionary.status_code, 200)
 
         dictionary_entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
         self.assertTrue(dictionary_entries)
@@ -165,6 +172,7 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(remove_selected.status_code, 200)
         dictionary_entries[0].refresh_from_db()
         self.assertFalse(dictionary_entries[0].is_active)
+        self.assertContains(remove_selected, "Last dictionary compile:")
 
     @patch("projects.views._build_ai_client")
     def test_organiser_review_can_generate_requested_variants_and_mark_reviewed(self, mock_build_ai_client):
