@@ -235,3 +235,13 @@ Focus:
 - ID-scope policy and deterministic normalization across pages/stages.
 - MWE integrity across mwe → lemma → gloss → compile HTML.
 - Regression testing and diagnostics for inconsistent model output.
+
+
+### 19. Picture dictionaries roadmap
+
+Status: **New roadmap document added.** See [roadmap/picture-dictionaries.md](picture-dictionaries.md).
+
+Focus:
+- Community-owned shared picture dictionaries keyed by lexical identity (lemma/POS).
+- Optional picture-gloss pipeline stage building on lemma output.
+- HTML interaction and exercise extensions using dictionary-backed image glosses.
