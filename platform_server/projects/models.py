@@ -471,6 +471,23 @@ class CommunityOrganiserReview(models.Model):
         ordering = ["-updated_at", "-id"]
 
 
+class PictureDictionary(models.Model):
+    community = models.OneToOneField(Community, on_delete=models.CASCADE, related_name="picture_dictionary")
+    project = models.OneToOneField(Project, on_delete=models.CASCADE, related_name="picture_dictionary")
+    organiser = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="managed_picture_dictionaries",
+    )
+    language = models.CharField(max_length=16, blank=True, default="")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["community_id"]
+
+
 class ContentComment(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="content_comments")
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="content_comments")
