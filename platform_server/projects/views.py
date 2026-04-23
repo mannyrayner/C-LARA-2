@@ -5772,6 +5772,8 @@ def _run_compile_task(
 
     if project.community_id:
         picture_glosses: dict[str, dict[str, str]] = {}
+        picture_gloss_dir = output_dir / "html" / "picture_glosses"
+        picture_gloss_dir.mkdir(parents=True, exist_ok=True)
         dictionary = (
             PictureDictionary.objects.select_related("project")
             .filter(community_id=project.community_id, is_active=True)
@@ -5799,11 +5801,14 @@ def _run_compile_task(
     if placement in {"top", "bottom"}:
         page_images: dict[int, dict[str, str]] = {}
         expected_paths: list[str] = []
-        for row in project.image_pages.order_by("page_number"):
-            if not row.image_path:
+        for row in project.image_pages.select_related("preferred_variant").order_by("page_number"):
+            resolved_image_path = row.image_path or (
+                row.preferred_variant.image_path if row.preferred_variant_id and row.preferred_variant else ""
+            )
+            if not resolved_image_path:
                 expected_paths.append(f"page {row.page_number}: [no image_path set]")
                 continue
-            abs_path = (project.artifact_dir() / row.image_path).resolve()
+            abs_path = (project.artifact_dir() / resolved_image_path).resolve()
             rel_path = os.path.relpath(abs_path, output_dir / "html").replace("\\", "/")
             expected_paths.append(f"page {row.page_number}: {abs_path} (exists={abs_path.exists()})")
             if abs_path.exists():
