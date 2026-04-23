@@ -8,7 +8,6 @@ from django.core.exceptions import PermissionDenied
 from django.db import transaction
 
 from .models import Community, CommunityMembership, PictureDictionary, Project
-from .views import _ensure_project_page_rows
 
 
 def _normalise_word(word: str) -> str:
@@ -116,6 +115,8 @@ def add_words_from_text(*, dictionary: PictureDictionary, text: str) -> int:
 
 
 def compile_picture_dictionary(*, dictionary: PictureDictionary) -> dict[str, int]:
+    from .views import _ensure_project_page_rows
+
     pages_synced = _ensure_project_page_rows(dictionary.project)
     return {
         "pages": len(_entry_pages(dictionary.project)),

@@ -17,6 +17,7 @@ from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
+from django.core.exceptions import PermissionDenied
 from django.core.management import call_command
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -78,6 +79,7 @@ from .models import (
     CommunityImageVote,
     CommunityMembership,
     CommunityOrganiserReview,
+    PictureDictionary,
     CreditLedgerEntry,
     OpenAIModelPricing,
     Profile,
@@ -94,6 +96,13 @@ from .models import (
     ExerciseSet,
     ExerciseItem,
     AIUsageCharge,
+)
+from .picture_dictionary import (
+    add_words as picture_dictionary_add_words,
+    add_words_from_text as picture_dictionary_add_words_from_text,
+    compile_picture_dictionary as picture_dictionary_compile,
+    ensure_picture_dictionary_for_community,
+    remove_words as picture_dictionary_remove_words,
 )
 
 logger = logging.getLogger(__name__)
@@ -6826,7 +6835,64 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
     membership = _require_community_member(community_id, request.user)
     if membership.role != CommunityMembership.ROLE_ORGANISER:
         raise Http404()
+    community = membership.community
     projects = list(Project.objects.filter(community_id=community_id).order_by("-updated_at"))
+    picture_dictionary = (
+        PictureDictionary.objects.select_related("project")
+        .filter(community_id=community_id, is_active=True)
+        .first()
+    )
+
+    if request.method == "POST":
+        action = (request.POST.get("picture_dictionary_action") or "").strip()
+        if action:
+            try:
+                picture_dictionary = ensure_picture_dictionary_for_community(
+                    community=community,
+                    organiser=request.user,
+                )
+            except PermissionDenied:
+                raise Http404()
+
+            words_raw = str(request.POST.get("picture_dictionary_words") or "")
+            words = [word.strip() for word in re.split(r"[,\n]", words_raw) if word.strip()]
+
+            if action == "ensure":
+                messages.success(request, "Picture dictionary is ready.")
+            elif action == "compile":
+                result = picture_dictionary_compile(dictionary=picture_dictionary)
+                messages.success(
+                    request,
+                    f"Compiled picture dictionary: pages={result['pages']}, page rows synced={result['page_rows_synced']}.",
+                )
+            elif action == "add":
+                added = picture_dictionary_add_words(dictionary=picture_dictionary, words=words)
+                messages.success(request, f"Added {added} word(s) to picture dictionary.")
+            elif action == "remove":
+                removed = picture_dictionary_remove_words(dictionary=picture_dictionary, words=words)
+                messages.success(request, f"Removed {removed} word(s) from picture dictionary.")
+            elif action == "add_from_text":
+                source_project_id_raw = (request.POST.get("source_project_id") or "").strip()
+                try:
+                    source_project_id = int(source_project_id_raw)
+                except ValueError:
+                    source_project_id = 0
+                source_project = next((row for row in projects if row.id == source_project_id), None)
+                if not source_project:
+                    messages.error(request, "Please choose a valid community project for add-from-text.")
+                else:
+                    added = picture_dictionary_add_words_from_text(
+                        dictionary=picture_dictionary,
+                        text=source_project.source_text or "",
+                    )
+                    messages.success(
+                        request,
+                        f"Added {added} word(s) from project “{source_project.title}”.",
+                    )
+            else:
+                messages.error(request, f"Unknown picture dictionary action: {action}")
+            return redirect("community-organiser-home", community_id=community_id)
+
     review_by_project = {
         row.project_id: row
         for row in CommunityOrganiserReview.objects.filter(
@@ -6849,7 +6915,13 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
     return render(
         request,
         "projects/community_organiser_home.html",
-        {"community": membership.community, "membership": membership, "summary_rows": summary_rows},
+        {
+            "community": community,
+            "membership": membership,
+            "summary_rows": summary_rows,
+            "picture_dictionary": picture_dictionary,
+            "community_projects": projects,
+        },
     )
 
 
