@@ -37,6 +37,7 @@ class CompileHTMLSpec:
     telemetry: Telemetry | None = None
     op_id: str | None = None
     title: str | None = None
+    picture_glosses: dict[str, dict[str, str]] | None = None
 
 
 def _is_lexical(surface: str) -> bool:
@@ -470,9 +471,21 @@ def _render_concordance_page(
         return seg_parts
 
     body = "\n".join(segments_for_occurrences(entry.get("occurrences", [])))
+    picture_gloss = entry.get("picture_gloss") or {}
+    picture_path = str(picture_gloss.get("image_path") or "").strip()
+    picture_surface = str(picture_gloss.get("surface") or "").strip()
+    picture_html = ""
+    if picture_path:
+        alt_text = picture_surface or str(lemma) or "Picture gloss"
+        picture_html = (
+            '<figure class="picture-gloss-block">'
+            f'<img src="{_escape(picture_path)}" alt="{_escape(alt_text)}" '
+            'style="width: min(360px, 100%); height: auto; display: block; margin: 0 0 0.5rem 0;" />'
+            "</figure>"
+        )
 
     html_doc = f"""<!DOCTYPE html>
-<html lang=\"{_escape(text_language)}\" dir=\"{_escape(text_direction)}\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>Concordance: {heading}</title>\n  <link rel=\"stylesheet\" href=\"./static/clara_styles_concordance.css\">\n</head>\n<body>\n  <div class=\"concordance\" id=\"concordance_{heading}\">\n    <h1>{heading}</h1>\n    {body}\n  </div>\n  <script src=\"./static/clara_scripts.js\"></script>\n</body>\n</html>\n"""
+<html lang=\"{_escape(text_language)}\" dir=\"{_escape(text_direction)}\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>Concordance: {heading}</title>\n  <link rel=\"stylesheet\" href=\"./static/clara_styles_concordance.css\">\n</head>\n<body>\n  <div class=\"concordance\" id=\"concordance_{heading}\">\n    <h1>{heading}</h1>\n    {picture_html}\n    {body}\n  </div>\n  <script src=\"./static/clara_scripts.js\"></script>\n</body>\n</html>\n"""
     return html_doc
 
 
@@ -719,10 +732,14 @@ def compile_html(spec: CompileHTMLSpec) -> dict[str, Any]:
         page_paths.append(page_path)
 
     concordance = _build_concordance(normalized_text, token_info)
+    picture_glosses = spec.picture_glosses or {}
     for entry in concordance:
         lemma_key = entry.get("lemma")
         if not lemma_key:
             continue
+        picture_gloss = picture_glosses.get(str(lemma_key).casefold())
+        if picture_gloss:
+            entry["picture_gloss"] = picture_gloss
         conc_html = _render_concordance_page(
             entry=entry, text=normalized_text, token_ids=token_ids, resolver=resolver
         )
