@@ -409,6 +409,28 @@ class CompileHTMLTests(unittest.TestCase):
         self.assertIn("../images/pages/page_001/image.png", content)
         self.assertIn("margin: 0 0 0.75rem 0;", content)
 
+    def test_concordance_can_embed_picture_gloss_image_for_lemma(self) -> None:
+        out_root = self.artifacts / "html"
+        result = compile_html(
+            CompileHTMLSpec(
+                text=self.sample_text,
+                output_dir=out_root,
+                run_id="picture-gloss",
+                picture_glosses={
+                    "world": {
+                        "image_path": "../images/dictionary/world.png",
+                        "surface": "world",
+                    }
+                },
+            )
+        )
+        html_root = Path(result["run_root"]) / "html"
+        concordance_path = html_root / "concordance_world.html"
+        self.assertTrue(concordance_path.exists())
+        concordance_html = concordance_path.read_text(encoding="utf-8")
+        self.assertIn('class="picture-gloss-block"', concordance_html)
+        self.assertIn('src="../images/dictionary/world.png"', concordance_html)
+
 
 if __name__ == "__main__":
     unittest.main()

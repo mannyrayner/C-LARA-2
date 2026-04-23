@@ -80,6 +80,7 @@ from .models import (
     CommunityMembership,
     CommunityOrganiserReview,
     PictureDictionary,
+    PictureDictionaryEntry,
     CreditLedgerEntry,
     OpenAIModelPricing,
     Profile,
@@ -5763,10 +5764,36 @@ def _run_compile_task(
         start_stage=start_stage,
         end_stage=end_stage or "compile_html",
         page_images={},
+        picture_glosses={},
         segmentation_method=_resolve_segmentation_method(project.language, segmentation_method or project.segmentation_method),
         romanization_method=_resolve_romanization_method(project.language, romanization_method or project.romanization_method),
         telemetry=telemetry,
     )
+
+    if project.community_id:
+        picture_glosses: dict[str, dict[str, str]] = {}
+        dictionary = (
+            PictureDictionary.objects.select_related("project")
+            .filter(community_id=project.community_id, is_active=True)
+            .first()
+        )
+        if dictionary:
+            for entry in PictureDictionaryEntry.objects.filter(
+                dictionary=dictionary,
+                is_active=True,
+            ).exclude(image_path=""):
+                lemma_key = (entry.lemma or entry.surface or "").strip().casefold()
+                if not lemma_key or lemma_key in picture_glosses:
+                    continue
+                abs_path = (dictionary.project.artifact_dir() / entry.image_path).resolve()
+                if not abs_path.exists():
+                    continue
+                rel_path = os.path.relpath(abs_path, output_dir / "html").replace("\\", "/")
+                picture_glosses[lemma_key] = {
+                    "image_path": rel_path,
+                    "surface": entry.surface or entry.lemma or "",
+                }
+        spec.picture_glosses = picture_glosses
 
     placement = (page_image_placement or "none").strip().lower()
     if placement in {"top", "bottom"}:
