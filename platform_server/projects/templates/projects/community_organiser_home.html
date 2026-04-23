@@ -25,7 +25,11 @@
   {% csrf_token %}
   <p>
     <button class="btn secondary" type="submit" name="picture_dictionary_action" value="ensure">Ensure dictionary</button>
-    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="compile">Compile dictionary (sync pages + stages)</button>
+    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="compile">Compile dictionary (sync pages + annotation + images)</button>
+  </p>
+  <p>
+    <label for="picture_dictionary_style_brief">Style brief (used if style is missing):</label><br />
+    <textarea id="picture_dictionary_style_brief" name="picture_dictionary_style_brief" rows="3" style="width: 100%;"></textarea>
   </p>
   <p>
     <label for="picture_dictionary_words">Words (comma or newline separated):</label><br />

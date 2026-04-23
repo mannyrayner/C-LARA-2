@@ -123,6 +123,7 @@ class CommunityWorkflowTests(TestCase):
         self.assertContains(page, "Picture dictionary (Phase A)")
         self.assertContains(page, "Ensure dictionary")
         self.assertContains(page, "Add from text")
+        self.assertContains(page, "Style brief (used if style is missing)")
         self.assertNotContains(page, "Remove words")
 
         ensure = client.post(
@@ -155,12 +156,33 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(add_from_text.status_code, 200)
         dictionary.refresh_from_db()
         self.assertIn("Antarctica", dictionary.project.source_text)
-        compile_dictionary = client.post(
+        compile_missing_style = client.post(
             reverse("community-organiser-home", args=[self.community.id]),
             {"picture_dictionary_action": "compile"},
             follow=True,
         )
+        self.assertEqual(compile_missing_style.status_code, 200)
+        self.assertContains(compile_missing_style, "Style is missing. Enter a style brief and compile again.")
+
+        with patch("projects.views._generate_project_image_style") as mock_generate_style:
+            mock_generate_style.return_value = {
+                "expanded_style_description": "Watercolor style.",
+                "representative_excerpt": "Frida sings in Antarctica.",
+                "sample_image_prompt": "A watercolor penguin scene.",
+                "_request_payload": {"prompt": "style prompt"},
+                "_response_payload": {"expanded_style_description": "Watercolor style."},
+            }
+            compile_dictionary = client.post(
+                reverse("community-organiser-home", args=[self.community.id]),
+                {
+                    "picture_dictionary_action": "compile",
+                    "picture_dictionary_style_brief": "Soft watercolor, pastel palette.",
+                },
+                follow=True,
+            )
         self.assertEqual(compile_dictionary.status_code, 200)
+        self.assertContains(compile_dictionary, "Created dictionary image style from the provided style brief.")
+        self.assertContains(compile_dictionary, "Compiling picture dictionary now. This may take a while.")
 
         dictionary_entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
         self.assertTrue(dictionary_entries)

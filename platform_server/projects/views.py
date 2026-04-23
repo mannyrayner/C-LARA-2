@@ -6883,6 +6883,57 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             if action == "ensure":
                 messages.success(request, "Picture dictionary is ready.")
             elif action == "compile":
+                style = getattr(picture_dictionary.project, "image_style", None)
+                style_usable = bool(
+                    style
+                    and (
+                        (style.style_brief or "").strip()
+                        or (style.expanded_style_description or "").strip()
+                    )
+                    and style.status in {ProjectImageStyle.STATUS_GENERATED, ProjectImageStyle.STATUS_APPROVED}
+                )
+                if not style_usable:
+                    style_brief = (request.POST.get("picture_dictionary_style_brief") or "").strip()
+                    if not style_brief:
+                        messages.error(
+                            request,
+                            "Style is missing. Enter a style brief and compile again.",
+                        )
+                        return redirect("community-organiser-home", community_id=community_id)
+                    style, _ = ProjectImageStyle.objects.get_or_create(
+                        project=picture_dictionary.project,
+                        defaults={"ai_model": picture_dictionary.project.ai_model or DEFAULT_MODEL},
+                    )
+                    style.style_brief = style_brief
+                    try:
+                        generated = _generate_project_image_style(
+                            picture_dictionary.project,
+                            style_brief,
+                            ai_model=style.ai_model or picture_dictionary.project.ai_model or DEFAULT_MODEL,
+                        )
+                    except Exception as exc:
+                        logger.exception(
+                            "Failed to generate fallback style for picture dictionary compile on project %s",
+                            picture_dictionary.project_id,
+                        )
+                        messages.error(
+                            request,
+                            f"Could not generate style from brief: {exc}",
+                        )
+                        return redirect("community-organiser-home", community_id=community_id)
+                    style.expanded_style_description = generated.get("expanded_style_description", "")
+                    style.representative_excerpt = generated.get("representative_excerpt", "")
+                    style.sample_image_prompt = generated.get("sample_image_prompt", "")
+                    style.status = ProjectImageStyle.STATUS_GENERATED
+                    style.save()
+                    _persist_image_style_artifacts(
+                        picture_dictionary.project,
+                        style,
+                        request_payload=generated.get("_request_payload"),
+                        response_payload=generated.get("_response_payload"),
+                    )
+                    messages.success(request, "Created dictionary image style from the provided style brief.")
+                messages.info(request, "Compiling picture dictionary now. This may take a while.")
                 result = picture_dictionary_compile(dictionary=picture_dictionary)
                 messages.success(
                     request,

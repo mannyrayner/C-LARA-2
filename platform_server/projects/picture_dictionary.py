@@ -304,7 +304,15 @@ def compile_picture_dictionary(*, dictionary: PictureDictionary) -> dict[str, in
 
     try:
         style = getattr(dictionary.project, "image_style", None)
-        if style and style.status == "approved":
+        style_usable = bool(
+            style
+            and (
+                (style.style_brief or "").strip()
+                or (style.expanded_style_description or "").strip()
+            )
+            and style.status in {"generated", "approved"}
+        )
+        if style_usable:
             from .views import _generate_project_page_images
 
             generated_images = _generate_project_page_images(
