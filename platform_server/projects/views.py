@@ -1855,6 +1855,9 @@ def _generate_project_page_images(
     if not page_rows:
         return 0
 
+    usage_events: list[dict[str, Any]] = []
+    usage_reporter = _collect_usage_event(usage_events)
+
     variants_per_page = max(1, min(8, int(variants_per_page or 1)))
     prompt_by_page: dict[int, str] = {}
     for page_obj in page_rows:
@@ -1893,10 +1896,9 @@ def _generate_project_page_images(
     def _generate_one_variant(page_obj: ProjectImagePage, variant_index: int) -> tuple[int, int, str, str, str, str]:
         prompt = prompt_by_page[page_obj.pk]
         started = datetime.now(timezone.utc)
-        client = _build_billed_project_ai_client(
-            project,
+        client = _build_ai_client(
             model_name=image_model,
-            request_type="image_pages_generate_image",
+            usage_reporter=usage_reporter,
         )
         page_dir = pages_dir / f"page_{page_obj.page_number:03d}"
         page_dir.mkdir(parents=True, exist_ok=True)
@@ -1982,6 +1984,14 @@ def _generate_project_page_images(
         if preferred_variant is not None:
             _set_page_preferred_variant(page_obj, preferred_variant)
 
+    billing_reporter = _billing_usage_reporter(
+        user_id=project.owner_id,
+        project_id=project.id,
+        request_type="image_pages_generate_image",
+    )
+    for event in usage_events:
+        billing_reporter(event)
+
     return generated
 
 
@@ -1995,13 +2005,14 @@ def _generate_requested_page_variants(
     pages_dir.mkdir(parents=True, exist_ok=True)
     generated = 0
     page_by_id = {page.id: page for page, _count, _prompt in requests}
+    usage_events: list[dict[str, Any]] = []
+    usage_reporter = _collect_usage_event(usage_events)
 
     def _generate_one(page: ProjectImagePage, variant_index: int, prompt: str) -> tuple[int, int, str, str, str]:
         started = datetime.now(timezone.utc)
-        client = _build_billed_project_ai_client(
-            project,
+        client = _build_ai_client(
             model_name=image_model,
-            request_type="community_generate_image_variant",
+            usage_reporter=usage_reporter,
         )
         image_result = client.generate_image(prompt, model=image_model)
         page_dir = pages_dir / f"page_{page.page_number:03d}"
@@ -2049,6 +2060,14 @@ def _generate_requested_page_variants(
             if not page.preferred_variant_id:
                 _set_page_preferred_variant(page, variant)
             generated += 1
+
+    billing_reporter = _billing_usage_reporter(
+        user_id=project.owner_id,
+        project_id=project.id,
+        request_type="community_generate_image_variant",
+    )
+    for event in usage_events:
+        billing_reporter(event)
 
     return generated
 
