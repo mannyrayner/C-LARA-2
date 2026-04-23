@@ -2,318 +2,320 @@
 
 This roadmap covers production deployment strategy for C-LARA-2, with special emphasis on:
 
-1. Near-term dual-running with existing C-LARA on the Adelaide Uni server.
-2. Future migration of C-LARA project data into C-LARA-2.
-3. Portability to a new host (likely AWS Sydney) with export/import support.
+1. Immediate deployment on a dedicated AWS host.
+2. Controlled transition away from Adelaide infrastructure before access ends.
+3. Temporary side-by-side hosting of C-LARA and C-LARA-2 on AWS.
+4. Preservation of legacy published materials from LARA and C-LARA.
+5. Migration of C-LARA project data into C-LARA-2.
+6. Repeatable backup/export/import for future relocations.
 
-## Priorities and timeline
+## Why this roadmap changed (date-specific)
 
-- **Priority A (urgent, target: before end of April 2026):** safe Adelaide deployment with C-LARA and C-LARA-2 running concurrently.
-- **Priority B (next):** migration tooling from C-LARA data model to C-LARA-2 data model.
-- **Priority C (next):** full backup/export/import path for relocation to a different server (e.g. AWS Sydney).
+- As of **April 23, 2026**, we are assuming Adelaide server access may end on **May 8, 2026**.
+- Therefore, the previous Adelaide-first sequence is replaced by an **AWS-first** sequence.
+- Adelaide work is now limited to safe transition support and extraction of anything we still need before access ends.
 
-Design requirement: Priority A decisions must be **upward-compatible** with B and C.
+Design requirement: short-term actions must remain compatible with long-term portability and migration.
 
-Decision rule: if a short-term Adelaide workaround conflicts with migration/relocation portability, choose the portable option or document an explicit deprecation path.
+Decision rule: if a transition shortcut conflicts with portability/recovery/migration quality, choose the portable option.
 
 ---
 
-## 1) Adelaide dual-run deployment (urgent)
+## 1) Immediate priority: AWS production-capable deployment
 
 ### Goals
-- Deploy C-LARA-2 without disrupting the existing C-LARA service.
-- Keep operational separation while allowing shared infrastructure where safe.
-- Enable rollback with minimal risk.
+- Stand up C-LARA-2 on dedicated AWS infrastructure as the primary path forward.
+- Support a crossover period where **C-LARA and C-LARA-2 both run on AWS**.
+- Host read-only legacy compiled content from the original LARA project.
+- Reach operational readiness quickly without sacrificing reproducibility and rollback.
+- Keep the deployment model simple enough for a small team to run.
 
-### Known current baseline (from existing C-LARA ops)
-- Current production URL: `https://c-lara.unisa.edu.au/`.
-- Reverse proxy: **Nginx**.
-- C-LARA code root: `<root>/C-LARA`, exposed as `$CLARA`.
-- Typical restart sequence:
-  - `sudo systemctl restart gunicorn`
-  - `sudo systemctl restart djangoq.service`
-  - `sudo systemctl restart nginx`
-- Existing app Makefile includes `migrate`, `runserver`, `qcluster`.
+### Recommended baseline architecture (AWS)
 
-### Recommended C-LARA-2 target shape on Adelaide
+#### Region and network
+- Region: **ap-southeast-2 (Sydney)** by default.
+- VPC with:
+  - 1 public subnet (for reverse proxy / ingress),
+  - 1 private subnet (for app/worker and DB access patterns where possible).
+- Security groups:
+  - inbound 80/443 to web tier,
+  - SSH restricted to trusted admin IPs or SSM-only management,
+  - DB port only from app/worker security group.
 
-#### Hostname and routing
-- Keep C-LARA unchanged at `https://c-lara.unisa.edu.au/`.
-- Deploy C-LARA-2 at `https://c-lara-2.unisa.edu.au/` (preferred, clear separation).
-- Nginx should use separate server blocks and upstreams for C-LARA and C-LARA-2.
+#### Compute and storage
+- Start with one EC2 instance for app + worker (cost/simplicity), with a clear path to split later.
+- Use EBS gp3 volumes with snapshot policy enabled.
+- Host-level separation of app, worker, and data directories.
+- Plan storage layout to include:
+  - active C-LARA-2 media/artifacts,
+  - temporary C-LARA crossover data,
+  - read-only legacy compiled HTML content (~9 GB baseline, plus growth headroom).
 
-#### Filesystem layout and environment variables
-- Keep C-LARA at `<root>/C-LARA` with `$CLARA`.
-- Place C-LARA-2 at `<root>/C-LARA-2`.
-- Use an env var name without hyphens, e.g.:
-  - `$CLARA2` (recommended) or `$CLARA_2`.
-  - **Do not** use `$C-LARA-2` (invalid shell variable syntax).
+#### Data layer
+- Prefer managed PostgreSQL (RDS) for operational safety (backups, patching, snapshots).
+- If RDS cannot be provisioned immediately, use local PostgreSQL as temporary fallback and schedule migration to RDS.
 
-#### Process isolation
-- Use distinct systemd units:
-  - `gunicorn-clara.service` (existing C-LARA),
-  - `djangoq-clara.service` (existing C-LARA),
-  - `gunicorn-clara2.service` (new),
-  - `djangoq-clara2.service` (new).
-- Keep separate sockets/pids/log files for each service to simplify debugging.
+#### Edge and TLS
+- DNS in Route 53.
+- TLS via AWS Certificate Manager (if fronted by ALB) or certbot on host (if Nginx terminates TLS directly).
+- Keep hostname stable for users once cutover occurs.
 
-#### Runtime/data isolation
-- Separate DB names (or at minimum separate DB schemas/users) for C-LARA vs C-LARA-2.
-- Separate media/artifact roots:
-  - C-LARA: existing media root,
-  - C-LARA-2: dedicated media root (no shared writes).
-- Separate secrets/config files:
-  - `<root>/C-LARA/.env` (or equivalent),
-  - `<root>/C-LARA-2/.env` (or equivalent).
+#### Runtime model
+- Nginx + gunicorn + django-q (systemd units), separate service identities and logs.
+- Dedicated Python venv for C-LARA-2.
+- Dedicated Python venv and systemd services for C-LARA during crossover period.
+- Environment values in `.env` file or parameter store/secret manager (preferred for secrets).
 
-### Part 1 implementation plan (detailed)
-
-#### Phase 1 — discovery + freeze (very short, high impact)
-1. Export and snapshot current C-LARA deployment config:
-   - Nginx site config,
-   - `gunicorn`/`djangoq` systemd unit files,
-   - current venv path and python package lock/freeze,
-   - DB connection settings and backup routine.
-2. Create rollback bookmarks:
-   - git commit/tag currently deployed for C-LARA,
-   - copy of active service files,
-   - DB backup timestamp recorded in runbook.
-
-#### Phase 2 — install C-LARA-2 side-by-side
-1. Provision `<root>/C-LARA-2` and dedicated venv.
-2. Install dependencies from pinned lock constraints (see “Python package hygiene” below).
-3. Configure C-LARA-2 `.env` with separate DB/media/secret values.
-4. Run:
-   - migrations,
-   - static collection (if applicable),
-   - smoke startup via `runserver` and `qcluster`.
-
-#### Phase 3 — wire production services
-1. Add `gunicorn-clara2.service` and `djangoq-clara2.service`.
-2. Add Nginx `server_name c-lara-2.unisa.edu.au` with TLS and proxy upstream.
-3. Start/restart C-LARA-2 services, then Nginx.
-4. Validate:
-   - health page/login/project list,
-   - compile monitor + worker execution,
-   - artifact serving and media writes.
-
-#### Phase 4 — post-cutover validation + rollback drill
-1. Execute smoke script for critical flows (compile, image generation, exercises, publish/content page).
-2. Confirm C-LARA remains unaffected.
-3. Run a rollback dry-run:
-   - stop clara2 services,
-   - disable clara2 server block,
-   - verify C-LARA only mode still healthy.
-
-### Python package hygiene (explicit fix for prior “messy installs”)
-- Maintain a dedicated venv per app (`C-LARA` and `C-LARA-2` must not share site-packages).
-- Pin dependencies using a lock file workflow (`requirements.txt` + lock, or `pip-tools`/`uv` lock).
-- Update process:
-  1. change dependency file in repo,
-  2. rebuild venv from lock,
-  3. restart relevant app services,
-  4. record package diff in deployment log.
-- Avoid manual `pip install` on production except as emergency hotfix, and log any emergency action.
-
-### Operational checklist
-- Health endpoints for app and worker.
-- Log separation and rotation per app.
-- Resource limits/monitoring to avoid one app starving the other.
-- Staging dry-run before production cutover.
-- One-command rollback procedure.
-
-### Information still needed to complete Part 1 precisely
-To turn this from roadmap to exact executable runbook, we still need:
-1. Current Nginx site config for `c-lara.unisa.edu.au`.
-2. Current systemd unit files for C-LARA (`gunicorn` + `djangoq`).
-3. Exact Python/venv path used by current C-LARA.
-4. Current DB engine/version and backup command(s).
-5. TLS certificate provisioning method (certbot/manual/institutional proxy).
-6. File ownership/user model (which Unix user runs app, worker, and nginx).
-7. Existing log locations and rotation policy.
-8. Any firewall/SELinux/AppArmor/network policy constraints on Adelaide hosts.
-
-### How to collect this information (operator checklist)
-If you are not a deployment specialist, use this as a copy/paste checklist for whoever has shell access to the Adelaide host.
-
-> Run these commands on the Adelaide server and save outputs in a dated text file (e.g. `deploy-discovery-2026-04-02.txt`).
-
-#### 1) Nginx config for current site
-- Commands:
-  - `sudo nginx -T | less`
-  - `sudo nginx -T | grep -n "server_name"`
-  - `sudo ls -l /etc/nginx/sites-enabled /etc/nginx/conf.d`
-- What to capture:
-  - `server_name` entries for `c-lara.unisa.edu.au`,
-  - `location` and `proxy_pass` blocks,
-  - TLS certificate/key file paths,
-  - include-file structure.
-
-#### 2) Systemd service definitions (gunicorn + djangoq)
-- Commands:
-  - `systemctl list-unit-files | grep -E "gunicorn|djangoq|qcluster"`
-  - `sudo systemctl cat gunicorn`
-  - `sudo systemctl cat djangoq.service`
-  - `sudo systemctl status gunicorn djangoq.service --no-pager`
-- What to capture:
-  - `ExecStart`, `WorkingDirectory`, `User`, `Group`,
-  - environment file references,
-  - restart policy/timeouts.
-
-#### 3) Python and venv path currently in use
-- Commands:
-  - `sudo systemctl cat gunicorn | grep -E "ExecStart|Environment|WorkingDirectory"`
-  - `ps aux | grep -E "gunicorn|manage.py|qcluster" | grep -v grep`
-  - `which python3 && python3 --version`
-- What to capture:
-  - absolute venv/bin/python path used by services,
-  - package environment location,
-  - Python version.
-
-#### 4) DB engine/version + backup method
-- Commands (adapt to your DB):
-  - PostgreSQL: `psql --version`, `sudo -u postgres psql -c "\l"`
-  - MariaDB/MySQL: `mysql --version`, `mysql -e "SHOW DATABASES;"`
-  - Find backup jobs: `sudo crontab -l`, `sudo ls -l /etc/cron*`, `sudo systemctl list-timers --all`
-- What to capture:
-  - DB type/version,
-  - database name/user for C-LARA,
-  - actual backup command/script path and schedule,
-  - backup destination + retention policy.
-
-#### 5) TLS certificate provisioning method
-- Commands:
-  - `sudo nginx -T | grep -E "ssl_certificate|ssl_certificate_key|ssl_trusted_certificate"`
-  - `sudo certbot certificates` (if certbot is used)
-  - `sudo ls -l /etc/letsencrypt/live 2>/dev/null || true`
-- What to capture:
-  - whether certs are from certbot, institutional reverse proxy, or manual files,
-  - renewal mechanism and owner.
-
-#### 6) File ownership and runtime user model
-- Commands:
-  - `id`
-  - `ps -eo user,group,cmd | grep -E "nginx|gunicorn|qcluster|djangoq" | grep -v grep`
-  - `sudo ls -ld <root>/C-LARA <root>/C-LARA-2 2>/dev/null || true`
-- What to capture:
-  - Unix users/groups running web/app/worker,
-  - ownership/permissions on code, media, log directories.
-
-#### 7) Logs and log rotation
-- Commands:
-  - `sudo find /var/log -maxdepth 2 -type f | grep -E "nginx|gunicorn|django|qcluster|djangoq"`
-  - `sudo ls -l /etc/logrotate.d`
-  - `sudo sed -n '1,200p' /etc/logrotate.d/nginx`
-- What to capture:
-  - active log file locations,
-  - rotation frequency/retention,
-  - whether app logs are journal-only or file-based.
-
-#### 8) Network and host security constraints
-- Commands:
-  - Firewall: `sudo ufw status verbose` or `sudo firewall-cmd --list-all`
-  - SELinux: `getenforce` (if present)
-  - AppArmor: `sudo aa-status` (if present)
-  - Listening ports: `sudo ss -tulpn | head -n 200`
-- What to capture:
-  - inbound allowed ports,
-  - mandatory access control mode (SELinux/AppArmor),
-  - any proxy/network rules that affect new hostnames or services.
-
-### Minimal handover format (recommended)
-For each of the 8 items above, record:
-1. **Current value** (exact config/service/command output),
-2. **Where found** (file path or command),
-3. **Owner/contact** (who can approve changes),
-4. **Risk if changed** (short note).
-
-This turns the discovery output into a practical deployment runbook input.
-
-### Acceptance criteria
-- Both apps reachable and stable under expected load.
-- Existing C-LARA behavior unchanged.
-- C-LARA-2 compile/publish/content flows operational.
+#### Legacy content hosting model (explicit requirement)
+- Host original LARA compiled HTML directories as **read-only static content**.
+- Keep legacy content operationally separate from active app write paths.
+- Serve legacy content under a stable URL prefix (for example `/lara-legacy/`) so links can be documented and tested.
+- Source material status:
+  - legacy compiled HTML/audio/image directories are already downloaded to a local laptop,
+  - current known size is approximately **9 GB**,
+  - content is non-editable but must remain publicly accessible.
 
 ---
 
-## 2) Data migration from C-LARA to C-LARA-2
+## 2) Concrete AWS provisioning plan (next step after this document)
 
-### Reality
-Formats are different, but conceptual entities are similar (users, projects, annotations, media).
+This is the immediate planning/execution track.
+
+### Phase P0 — decisions to lock (same day)
+1. Confirm AWS account and IAM access model.
+2. Confirm region (`ap-southeast-2`) and target hostname.
+3. Choose DB mode: RDS now (preferred) vs temporary local PostgreSQL.
+4. Choose access model: bastion SSH vs AWS SSM Session Manager.
+5. Confirm crossover hosting scope: C-LARA + C-LARA-2 + legacy LARA static content.
+
+### Phase P1 — infrastructure bootstrap (day 1)
+1. Create VPC/subnets/security groups.
+2. Provision EC2 instance with fixed Elastic IP (or ALB if used).
+3. Attach EBS volumes and enable scheduled snapshots.
+4. Provision DB (RDS PostgreSQL preferred) and secure network path.
+5. Configure DNS records for target hostname.
+
+### Phase P2 — host hardening and base software (day 1–2)
+1. Patch OS packages.
+2. Install and configure: Nginx, Python runtime, systemd units, PostgreSQL client tools.
+3. Configure firewall and fail2ban (if host-exposed SSH is used).
+4. Set up CloudWatch agent (or equivalent) for logs/metrics.
+
+### Phase P3 — application deploy (day 2)
+1. Clone C-LARA-2 into `/srv/C-LARA-2` (or equivalent stable path).
+2. Build dedicated venv from pinned dependencies.
+3. Configure `.env` with dedicated secrets, DB settings, storage paths.
+4. Run Django migrations.
+5. Collect static assets (if required).
+6. Start and enable systemd services:
+   - `gunicorn-clara2.service`
+   - `djangoq-clara2.service`
+   - `nginx.service`
+7. Deploy C-LARA in parallel (temporary crossover track) with separate services and env:
+   - `gunicorn-clara.service`
+   - `djangoq-clara.service`
+8. Import legacy LARA compiled directories to dedicated read-only path, then wire Nginx static route.
+
+### Phase P4 — production readiness checks (day 2–3)
+1. Smoke test critical flows:
+   - login,
+   - project list/load,
+   - compile/worker execution,
+   - media/artifact read-write.
+2. Smoke test crossover scope:
+   - C-LARA login/basic project access,
+   - C-LARA-2 login/basic project access,
+   - legacy LARA static content URLs and media playback.
+3. Verify backups:
+   - DB snapshot + restore test,
+   - media backup + restore test.
+4. Verify observability:
+   - app and worker logs,
+   - uptime/latency/error alerting.
+5. Run rollback drill to previous known-good deploy artifact.
+
+### Phase P5 — DNS cutover and stabilization
+1. Lower DNS TTL before cutover.
+2. Switch production hostname to AWS target.
+3. Monitor error rates and job queue behavior for 24–48 hours.
+4. Keep rollback option ready until stabilization criteria are met.
+
+---
+
+## 3) Adelaide transition plan (time-boxed until May 8, 2026)
+
+### Goals
+- Extract configuration and operational knowledge from Adelaide.
+- Avoid significant new investment in Adelaide-specific architecture.
+- Preserve ability to operate C-LARA while C-LARA-2 AWS cutover completes.
+
+### Actions to complete before access ends
+1. Capture current C-LARA operational baseline:
+   - Nginx config,
+   - systemd units,
+   - Python/venv details,
+   - DB backup scripts and schedules,
+   - TLS management details.
+2. Take final verified backups and record restore procedure.
+3. Export any deployment scripts/runbooks that only exist on server.
+4. Record ownership/permissions and service users for reference.
+5. Inventory resource usage from Adelaide to seed AWS sizing estimates:
+   - CPU and memory utilization patterns,
+   - disk occupancy and growth,
+   - request/traffic pattern snapshots,
+   - queue/job throughput for compile workloads.
+
+### Explicit non-goals
+- Do not build complex new dual-run architecture on Adelaide unless absolutely required for short-term continuity.
+- Do not introduce ad-hoc package installs that are not reflected in reproducible deployment definitions.
+
+---
+
+## 4) Data migration from C-LARA to C-LARA-2
 
 ### Strategy
-- Build an explicit **migration pipeline** (extract → transform → validate → import), not ad-hoc scripts.
-- Preserve provenance and traceability per migrated record.
+- Implement explicit migration pipeline: **extract → transform → validate → import**.
+- Preserve provenance and traceability for each migrated record.
+- Make migration rerunnable and idempotent.
 
 ### Migration phases
 1. **Schema mapping spec**
    - map legacy entities to C-LARA-2 models,
-   - define lossless/lossy fields,
-   - define defaults where no legacy equivalent exists.
+   - define lossless/lossy mappings,
+   - define defaults for missing legacy fields.
 2. **Read-only extractor** from C-LARA.
 3. **Transform + validator**
    - structural checks,
    - referential integrity,
    - media path checks,
-   - language/annotation consistency checks.
+   - language/annotation consistency.
 4. **Importer** into C-LARA-2 (idempotent, resumable).
 5. **Reconciliation report**
    - counts, mismatches, warnings, manual-fix queue.
 
-### Key requirement
-- Migration tooling should be reusable for future host moves (ties into section 3).
+### Additional migration inventory already available
+- Hundreds of C-LARA projects have already been downloaded locally as source packages.
+- These local exports should be treated as a migration seed set for dry runs and validation before any production import.
+- Keep a manifest (project identifier, export timestamp, checksum) for traceability.
 
 ---
 
-## 3) Portability to alternate hosting (e.g. AWS Sydney)
+## 5) Legacy and crossover hosting requirements
+
+### Legacy LARA compiled content
+- Preserve and host legacy compiled HTML content from original LARA as read-only.
+- Maintain audio/image asset integrity and path stability.
+- Create a published index page so users can discover available legacy materials.
+
+### C-LARA + C-LARA-2 crossover period
+- Plan for a substantial period where both systems are publicly accessible on the same AWS host or AWS environment.
+- Keep clear URL separation and service isolation to reduce regression risk.
+- Define explicit retirement criteria for C-LARA once C-LARA-2 adoption and migration reach agreed thresholds.
+
+---
+
+## 6) Cost planning and estimation (initial placeholder, to refine)
+
+### Why this is included now
+- Cost questions are immediate and unavoidable for AWS provisioning decisions.
+- Estimates should be iterative: start with coarse ranges, then tighten using Adelaide measurements and AWS telemetry.
+
+### Cost components to estimate
+1. Compute (EC2 instance hours, optional ALB).
+2. Database (RDS instance/storage/backup, or temporary self-managed DB cost).
+3. Storage (EBS volumes + snapshots; S3 if used for backup bundles).
+4. Data transfer (egress to users, inter-service transfer where relevant).
+5. Monitoring/logging (CloudWatch metrics/log ingestion/retention).
+6. DNS/TLS supporting services (Route 53, certificate operations where applicable).
+
+### Practical estimation method
+1. **Baseline from Adelaide (immediate):**
+   - collect current CPU/RAM/disk usage, traffic shape, and queue/job volumes;
+   - use this as lower-bound sizing for crossover AWS workloads.
+2. **Adjust for crossover scope:**
+   - include simultaneous C-LARA + C-LARA-2 runtime overhead;
+   - include legacy static content hosting and transfer demand.
+3. **Build three scenarios:**
+   - conservative (low traffic),
+   - expected,
+   - peak/headroom.
+4. **Use AWS Pricing Calculator** for each scenario and record assumptions in-repo.
+5. **Run 2-week measurement loop post-deploy:**
+   - compare estimated vs observed cost and resize where needed.
+
+### Immediate data to collect for first-pass estimate
+- From Adelaide: 30-day CPU/RAM peaks, average/peak request rates, queue throughput, and disk growth.
+- From local archives: exact size of legacy LARA static package (currently ~9 GB), plus size of C-LARA source exports.
+- From product owners: expected user concurrency and growth assumptions for next 6–12 months.
+
+---
+
+## 7) Backup/export/import portability
 
 ### Goals
-- Minimize lock-in to Adelaide-specific environment.
-- Make full-system relocation routine and testable.
+- Make relocation routine and testable.
+- Ensure disaster recovery is practical under time pressure.
 
-### Export/import capability
-Implement platform-level backup bundles containing:
-- database dump,
-- media/artifacts archive,
-- configuration snapshot (non-secret),
-- migration/version metadata.
+### Backup bundle definition
+Each backup bundle should contain:
+- DB dump/snapshot metadata,
+- media/artifact archive,
+- non-secret config snapshot,
+- app version + migration metadata,
+- restore instructions and checksum manifest.
 
-Import process should:
-- restore DB/media,
-- run migrations,
-- verify checksums/referential integrity,
-- run smoke tests automatically.
-
-### Environment packaging
-- Prefer reproducible deployment (containerized or scripted systemd setup).
-- Keep all required env vars documented.
-- Maintain infrastructure runbook for:
-  - Adelaide deployment,
-  - AWS deployment,
-  - restore-from-backup.
+### Restore/import process
+1. Restore DB/media.
+2. Apply migrations.
+3. Verify checksums and referential integrity.
+4. Run smoke tests automatically.
+5. Emit signed run report (timestamp, operator, outcome).
 
 ---
 
-## Cross-cutting constraints
+## 8) Operational standards (cross-cutting)
 
-- **Security:** secret handling, least-privilege DB users, audited admin actions.
-- **Observability:** unified metrics/logging for app + worker + DB + queue.
-- **Data durability:** regular automated backups, retention policy, restore drills.
-- **Compatibility:** URLs and artifact paths should remain stable where possible to avoid breaking published content links.
+- **Security:** least-privilege IAM and DB users, secret rotation policy, audited admin actions.
+- **Observability:** logs + metrics for app/worker/DB/host, with alert thresholds.
+- **Durability:** automated backups with retention policy and periodic restore drills.
+- **Reproducibility:** pinned Python dependencies; no unlogged production hotfix installs.
+- **Compatibility:** stable URL/artifact strategy to avoid breaking published links.
 
 ---
 
-## Incremental delivery plan
+## 9) Rescheduled milestones (AWS-first)
 
-### Milestone A (before end of April 2026)
-- Dual-run deployment live on Adelaide with rollback plan and runbook.
-- Smoke tests + monitoring in place.
+### Milestone A — AWS foundation (target: by April 30, 2026)
+- AWS infra baseline provisioned (network, compute, DB, DNS plan).
+- Base security/monitoring controls enabled.
 
-### Milestone B
-- C-LARA → C-LARA-2 migration spec + first migration dry-run on sample dataset.
+### Milestone B — AWS app readiness (target: by May 3, 2026)
+- C-LARA-2 and C-LARA deployed on AWS with services running.
+- Smoke tests passing; backup and restore drills executed.
+- Legacy LARA static content hosted read-only and verified.
 
-### Milestone C
-- Full export/import tooling validated by moving a staging snapshot to AWS Sydney environment.
+### Milestone C — Production cutover (target: by May 6, 2026)
+- DNS cutover completed.
+- 24–48h stabilization with rollback readiness.
 
-### Milestone D
-- Production migration + optional cutover from Adelaide to alternate host, with rollback-ready plan.
+### Milestone D — Adelaide wrap-up (no later than May 8, 2026)
+- Final Adelaide backups and runbook capture complete.
+- Decommission/hand-off checklist completed.
+
+### Milestone E — Migration tooling progress (following cutover)
+- C-LARA → C-LARA-2 mapping spec and first dry-run on sample data.
+
+---
+
+## 10) Immediate inputs needed to execute provisioning plan
+
+To start Phase P0/P1 immediately, confirm:
+1. AWS account/project owner and who can approve cost/security settings.
+2. Preferred hostname for C-LARA-2 production on AWS.
+3. Whether RDS PostgreSQL is approved for day-1 use.
+4. Preferred operations access model (SSM-only recommended).
+5. Budget envelope (monthly target + hard cap).
+6. Crossover policy for C-LARA duration and retirement criteria.
+7. URL strategy for legacy read-only LARA hosting.
+
+Once these items are confirmed, we can produce a concrete, command-level provisioning runbook and a first-pass cost estimate.
