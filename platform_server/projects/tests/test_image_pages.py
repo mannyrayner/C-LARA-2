@@ -10,6 +10,9 @@ from django.urls import reverse
 
 from projects import views
 from projects.models import (
+    Community,
+    PictureDictionary,
+    PictureDictionaryEntry,
     Project,
     ProjectImageElement,
     ProjectImagePage,
@@ -98,6 +101,12 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertContains(resp, "1/1")
         self.assertNotContains(resp, "Discourage visible text in images")
 
+    def test_images_home_shows_shared_model_controls(self):
+        resp = self.client.get(reverse("project-images-home", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Style AI model:")
+        self.assertContains(resp, "Image model (style/elements/pages):")
+
     def test_get_pages_view_shows_billing_telemetry_link_when_present(self):
         billing_path = self.project.artifact_dir() / "images" / "billing_telemetry.jsonl"
         billing_path.parent.mkdir(parents=True, exist_ok=True)
@@ -147,7 +156,43 @@ class ProjectImagePagesViewTests(TestCase):
         self.project.refresh_from_db()
         self.assertEqual(self.project.page_image_text_source, "segmentation")
         self.assertEqual(self.project.image_generation_pivot_language, "")
-        self.assertContains(resp, "Saved image settings")
+
+    def test_images_home_shows_compile_html_suggestion_when_page_images_exist(self):
+        ProjectImagePage.objects.create(
+            project=self.project,
+            page_number=1,
+            page_text="Page one text.",
+            generation_prompt="Prompt",
+            image_path="images/pages/page_001/image.png",
+            status=ProjectImagePage.STATUS_GENERATED,
+        )
+        resp = self.client.get(reverse("project-images-home", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Dialogue assistant suggestion")
+        self.assertContains(resp, "Compile HTML now")
+        self.assertContains(resp, reverse("project-annotation-home", args=[self.project.pk]))
+
+    def test_images_home_treats_empty_style_record_as_no_style_data(self):
+        style = ProjectImageStyle.objects.get(project=self.project)
+        style.style_brief = ""
+        style.expanded_style_description = ""
+        style.sample_image_prompt = ""
+        style.sample_image_path = ""
+        style.status = ProjectImageStyle.STATUS_DRAFT
+        style.save(
+            update_fields=[
+                "style_brief",
+                "expanded_style_description",
+                "sample_image_prompt",
+                "sample_image_path",
+                "status",
+                "updated_at",
+            ]
+        )
+        resp = self.client.get(reverse("project-images-home", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "No style data yet.")
+        self.assertNotContains(resp, "Style data exists")
 
     def test_images_home_exposes_pivot_language_context(self):
         resp = self.client.get(reverse("project-images-home", args=[self.project.pk]))
@@ -216,6 +261,70 @@ class ProjectImagePagesViewTests(TestCase):
         msgs = [m.message for m in get_messages(resp.wsgi_request)]
         self.assertTrue(any("Generated 2 page image variant(s) with gpt-image-1." in msg for msg in msgs))
         self.assertFalse(any("Generating page images" in msg for msg in msgs))
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_page_images_uses_dictionary_mode_prompt_for_dictionary_project(self, mock_build_ai_client):
+        fake_client = FakeImageClient()
+        mock_build_ai_client.return_value = fake_client
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+        dictionary = PictureDictionary.objects.create(
+            community=Community.objects.create(name="Dict Community", language=self.project.language),
+            project=self.project,
+            organiser=self.user,
+            language=self.project.language,
+        )
+        page1 = ProjectImagePage.objects.get(project=self.project, page_number=1)
+        PictureDictionaryEntry.objects.create(
+            dictionary=dictionary,
+            surface="chat",
+            lemma="chat",
+            pos="NOUN",
+            is_active=True,
+            current_page_number=page1.page_number,
+        )
+        page1.page_text = "chat"
+        page1.save(update_fields=["page_text", "updated_at"])
+
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        resp = self.client.post(reverse("project-image-pages", args=[self.project.pk]), payload, follow=True)
+        self.assertEqual(resp.status_code, 200)
+        page1.refresh_from_db()
+        self.assertIn("Create one picture-dictionary illustration.", page1.generation_prompt)
+        self.assertIn("Target lemma: chat", page1.generation_prompt)
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_page_images_uses_dictionary_mode_prompt_with_surface_fallback(self, mock_build_ai_client):
+        fake_client = FakeImageClient()
+        mock_build_ai_client.return_value = fake_client
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+        dictionary = PictureDictionary.objects.create(
+            community=Community.objects.create(name="Dict Community 2", language=self.project.language),
+            project=self.project,
+            organiser=self.user,
+            language=self.project.language,
+        )
+        page1 = ProjectImagePage.objects.get(project=self.project, page_number=1)
+        page1.page_text = "chat"
+        page1.save(update_fields=["page_text", "updated_at"])
+        PictureDictionaryEntry.objects.create(
+            dictionary=dictionary,
+            surface="chat",
+            lemma="chat",
+            pos="NOUN",
+            is_active=True,
+            current_page_number=None,
+        )
+
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        resp = self.client.post(reverse("project-image-pages", args=[self.project.pk]), payload, follow=True)
+        self.assertEqual(resp.status_code, 200)
+        page1.refresh_from_db()
+        self.assertIn("Create one picture-dictionary illustration.", page1.generation_prompt)
+        self.assertIn("Target lemma: chat", page1.generation_prompt)
 
     @patch("projects.views._build_ai_client")
     def test_generate_multiple_variants_and_set_preferred_variant(self, mock_build_ai_client):

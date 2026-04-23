@@ -17,6 +17,7 @@ from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
+from django.core.exceptions import PermissionDenied
 from django.core.management import call_command
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -78,6 +79,8 @@ from .models import (
     CommunityImageVote,
     CommunityMembership,
     CommunityOrganiserReview,
+    PictureDictionary,
+    PictureDictionaryEntry,
     CreditLedgerEntry,
     OpenAIModelPricing,
     Profile,
@@ -94,6 +97,14 @@ from .models import (
     ExerciseSet,
     ExerciseItem,
     AIUsageCharge,
+)
+from .picture_dictionary import (
+    add_lemma_pos_entries as picture_dictionary_add_lemma_pos_entries,
+    add_words as picture_dictionary_add_words,
+    compile_picture_dictionary as picture_dictionary_compile,
+    ensure_picture_dictionary_for_community,
+    remove_entries_by_ids as picture_dictionary_remove_entries_by_ids,
+    remove_words as picture_dictionary_remove_words,
 )
 
 logger = logging.getLogger(__name__)
@@ -808,6 +819,13 @@ def _extract_project_pages(project: Project) -> list[str]:
     plain_text = _extract_project_plain_text(project)
     if not plain_text:
         return []
+    inline_pages = [
+        chunk.strip()
+        for chunk in re.split(r"(?i)<\s*page\s*/?\s*>", plain_text)
+        if chunk and chunk.strip()
+    ]
+    if len(inline_pages) > 1:
+        return inline_pages
     chunks = [chunk.strip() for chunk in plain_text.split("\n\n") if chunk.strip()]
     return chunks or [plain_text]
 
@@ -1025,12 +1043,6 @@ def _discover_project_image_elements(
                 phase2_client.chat_json(phase2_prompt, model=ai_model)
             )
         except Exception as exc:
-            _flush_project_usage_events(
-                project=project,
-                events=phase2_usage_events,
-                request_type="image_elements_discovery_phase_2",
-                default_model=ai_model,
-            )
             elapsed_local_s = (datetime.now(timezone.utc) - started_local).total_seconds()
             _append_elements_telemetry(
                 project,
@@ -1045,12 +1057,6 @@ def _discover_project_image_elements(
                 },
             )
             raise
-        _flush_project_usage_events(
-            project=project,
-            events=phase2_usage_events,
-            request_type="image_elements_discovery_phase_2",
-            default_model=ai_model,
-        )
         elapsed_local_s = (datetime.now(timezone.utc) - started_local).total_seconds()
         _append_elements_telemetry(
             project,
@@ -1082,6 +1088,7 @@ def _discover_project_image_elements(
             "page_refs_list": refs,
             "why_consistency_matters": str((response_local or {}).get("why_consistency_matters") or "").strip()[:2000],
             "phase2_response": response_local,
+            "phase2_usage_events": phase2_usage_events,
         }
 
     phase2_items: list[dict[str, Any]] = []
@@ -1090,12 +1097,20 @@ def _discover_project_image_elements(
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [executor.submit(_resolve_page_refs, item) for item in candidates]
             for future in as_completed(futures):
-                phase2_items.append(future.result())
+                item = future.result()
+                _flush_project_usage_events(
+                    project=project,
+                    events=item.get("phase2_usage_events", []),
+                    request_type="image_elements_discovery_phase_2",
+                    default_model=ai_model,
+                )
+                phase2_items.append(item)
 
     normalized: list[dict[str, Any]] = []
+    min_refs_required = 2 if len(pages) > 1 else 1
     for item in phase2_items:
         refs = item.get("page_refs_list") or []
-        if len(refs) < 2:
+        if len(refs) < min_refs_required:
             continue
         normalized.append(
             {
@@ -1414,6 +1429,7 @@ def _build_page_image_prompt(
     full_text: str,
     relevant_elements: list[ProjectImageElement],
     discourage_text_in_image: bool = False,
+    dictionary_entry: PictureDictionaryEntry | None = None,
 ) -> str:
     language_instructions = {
         "en": ("Create one story illustration page in a consistent style.", "Keep visual continuity with existing style and element references."),
@@ -1442,6 +1458,25 @@ def _build_page_image_prompt(
         prompt_language = "en"
     line1, line2 = language_instructions.get(prompt_language, language_instructions["en"])
     no_text_line = _discourage_text_guideline_for_language(prompt_language)
+    if dictionary_entry is not None:
+        lemma = (dictionary_entry.lemma or page_text or "").strip()
+        pos = (dictionary_entry.pos or "").strip() or "unspecified"
+        return "\n".join(
+            [
+                "Create one picture-dictionary illustration.",
+                f"Target lemma: {lemma}",
+                f"Target POS: {pos}",
+                f"Prompt language: {language_labels.get(prompt_language, 'English')}",
+                f"Language (source): {project.language}",
+                f"Style description: {_compact_style_description_for_prompt(style.expanded_style_description or style.style_brief or '[none]', max_chars=1200)}",
+                "Render a clear visual scene for the target lemma itself (not a generic story page).",
+                "Do not focus on words, captions, typography, book pages, or signage text.",
+                f"{no_text_line}",
+                "If the lemma is a noun, make the object/animal/person visually central and unambiguous.",
+                "If the lemma is a verb, depict the action in progress with clear actors/objects.",
+                "If the lemma is an adjective, depict a concrete object/scene where the property is visually obvious.",
+            ]
+        )
     suppression_block_by_language = {
         "en": [
             "TEXT SUPPRESSION REQUIREMENTS (HIGH PRIORITY):",
@@ -1573,6 +1608,7 @@ def _fit_page_image_prompt_to_limit(
     page_text: str,
     full_text: str,
     relevant_elements: list[ProjectImageElement],
+    dictionary_entry: PictureDictionaryEntry | None = None,
     discourage_text_in_image: bool = False,
     max_chars: int = 12000,
 ) -> tuple[str, dict[str, Any]]:
@@ -1630,6 +1666,7 @@ def _fit_page_image_prompt_to_limit(
             page_text=page_text,
             full_text=_truncate_for_prompt(full_text, max_chars=full_text_limit),
             relevant_elements=trimmed_elements,
+            dictionary_entry=dictionary_entry,
             discourage_text_in_image=discourage_text_in_image,
         )
 
@@ -1819,19 +1856,39 @@ def _generate_project_page_images(
     image_model: str,
     variants_per_page: int = 1,
     discourage_text_in_image: bool = False,
+    include_full_text: bool = True,
+    include_elements: bool = True,
+    missing_only: bool = False,
 ) -> int:
     style = project.image_style
-    full_text = _extract_project_plain_text(project)
+    dictionary = getattr(project, "picture_dictionary", None)
+    dictionary_entry_by_page: dict[int, PictureDictionaryEntry] = {}
+    dictionary_entry_by_surface: dict[str, PictureDictionaryEntry] = {}
+    if dictionary:
+        for entry in dictionary.entries.filter(is_active=True):
+            surface_key = (entry.surface or entry.lemma or "").strip().casefold()
+            if surface_key and surface_key not in dictionary_entry_by_surface:
+                dictionary_entry_by_surface[surface_key] = entry
+            if entry.current_page_number and entry.current_page_number not in dictionary_entry_by_page:
+                dictionary_entry_by_page[entry.current_page_number] = entry
+    full_text = _extract_project_plain_text(project) if include_full_text else ""
     pages_dir = _image_pages_dir(project)
     pages_dir.mkdir(parents=True, exist_ok=True)
     page_rows = list(project.image_pages.order_by("page_number", "id"))
-    relevant_elements = [
-        element
-        for element in project.image_elements.order_by("name", "id")
-        if element.image_path
-    ]
+    if missing_only:
+        page_rows = [row for row in page_rows if not row.image_path]
+    relevant_elements = []
+    if include_elements:
+        relevant_elements = [
+            element
+            for element in project.image_elements.order_by("name", "id")
+            if element.image_path
+        ]
     if not page_rows:
         return 0
+
+    usage_events: list[dict[str, Any]] = []
+    usage_reporter = _collect_usage_event(usage_events)
 
     variants_per_page = max(1, min(8, int(variants_per_page or 1)))
     prompt_by_page: dict[int, str] = {}
@@ -1841,6 +1898,9 @@ def _generate_project_page_images(
             for element in relevant_elements
             if not element.page_refs or _page_refs_match(element.page_refs, page_obj.page_number)
         ]
+        dictionary_entry = dictionary_entry_by_page.get(page_obj.page_number)
+        if dictionary_entry is None:
+            dictionary_entry = dictionary_entry_by_surface.get((page_obj.page_text or "").strip().casefold())
         prompt, prompt_meta = _fit_page_image_prompt_to_limit(
             project=project,
             style=style,
@@ -1849,6 +1909,7 @@ def _generate_project_page_images(
             full_text=full_text,
             relevant_elements=refs,
             discourage_text_in_image=discourage_text_in_image,
+            dictionary_entry=dictionary_entry,
         )
         prompt_by_page[page_obj.pk] = prompt
         _append_page_image_telemetry(
@@ -1865,16 +1926,16 @@ def _generate_project_page_images(
                 "relevant_element_count": len(refs),
                 "relevant_element_paths": [e.image_path for e in refs if e.image_path],
                 "reference_images_sent_in_request": False,
+                "dictionary_mode": dictionary_entry is not None,
             },
         )
 
     def _generate_one_variant(page_obj: ProjectImagePage, variant_index: int) -> tuple[int, int, str, str, str, str]:
         prompt = prompt_by_page[page_obj.pk]
         started = datetime.now(timezone.utc)
-        client = _build_billed_project_ai_client(
-            project,
+        client = _build_ai_client(
             model_name=image_model,
-            request_type="image_pages_generate_image",
+            usage_reporter=usage_reporter,
         )
         page_dir = pages_dir / f"page_{page_obj.page_number:03d}"
         page_dir.mkdir(parents=True, exist_ok=True)
@@ -1960,6 +2021,14 @@ def _generate_project_page_images(
         if preferred_variant is not None:
             _set_page_preferred_variant(page_obj, preferred_variant)
 
+    billing_reporter = _billing_usage_reporter(
+        user_id=project.owner_id,
+        project_id=project.id,
+        request_type="image_pages_generate_image",
+    )
+    for event in usage_events:
+        billing_reporter(event)
+
     return generated
 
 
@@ -1973,13 +2042,14 @@ def _generate_requested_page_variants(
     pages_dir.mkdir(parents=True, exist_ok=True)
     generated = 0
     page_by_id = {page.id: page for page, _count, _prompt in requests}
+    usage_events: list[dict[str, Any]] = []
+    usage_reporter = _collect_usage_event(usage_events)
 
     def _generate_one(page: ProjectImagePage, variant_index: int, prompt: str) -> tuple[int, int, str, str, str]:
         started = datetime.now(timezone.utc)
-        client = _build_billed_project_ai_client(
-            project,
+        client = _build_ai_client(
             model_name=image_model,
-            request_type="community_generate_image_variant",
+            usage_reporter=usage_reporter,
         )
         image_result = client.generate_image(prompt, model=image_model)
         page_dir = pages_dir / f"page_{page.page_number:03d}"
@@ -2027,6 +2097,14 @@ def _generate_requested_page_variants(
             if not page.preferred_variant_id:
                 _set_page_preferred_variant(page, variant)
             generated += 1
+
+    billing_reporter = _billing_usage_reporter(
+        user_id=project.owner_id,
+        project_id=project.id,
+        request_type="community_generate_image_variant",
+    )
+    for event in usage_events:
+        billing_reporter(event)
 
     return generated
 
@@ -2420,13 +2498,22 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
     if request.method == "POST":
+        form_data = request.POST.copy()
+        if "ai_model" not in form_data:
+            form_data["ai_model"] = style_obj.ai_model or project.ai_model or DEFAULT_MODEL
+        if "sample_image_model" not in form_data:
+            form_data["sample_image_model"] = style_obj.sample_image_model or "gpt-image-1"
+        if "status" not in form_data:
+            form_data["status"] = style_obj.status or ProjectImageStyle.STATUS_DRAFT
+        if "discourage_text_in_images" not in form_data and style_obj.discourage_text_in_images:
+            form_data["discourage_text_in_images"] = "on"
         action = (
-            request.POST.get("action")
-            or request.POST.get("action_intent")
+            form_data.get("action")
+            or form_data.get("action_intent")
             or "save"
         ).strip()
         form = ProjectImageStyleForm(
-            request.POST,
+            form_data,
             instance=style_obj,
             ai_model_choices=AI_MODEL_CHOICES,
             image_model_choices=IMAGE_MODEL_CHOICES,
@@ -2605,7 +2692,7 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
             style.ai_model = ai_model
             style.save(update_fields=["ai_model", "updated_at"])
         requested_image_model = (request.POST.get("image_model") or "").strip()
-        image_model = requested_image_model or "gpt-image-1"
+        image_model = requested_image_model or style.sample_image_model or "gpt-image-1"
         invalid_image_model = image_model not in IMAGE_MODEL_CHOICES
         if invalid_image_model:
             image_model = "gpt-image-1"
@@ -2761,10 +2848,15 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
             "elements_artifact_dir": _image_elements_dir(project),
             "elements_artifact_links": _elements_artifact_links(project),
             "confirmed_count": project.image_elements.filter(is_confirmed=True).count(),
+            "confirmed_with_prompts_count": project.image_elements.filter(is_confirmed=True).exclude(expanded_prompt="").count(),
+            "elements_count": project.image_elements.count(),
+            "elements_with_prompts_count": project.image_elements.exclude(expanded_prompt="").count(),
+            "elements_with_images_count": project.image_elements.exclude(image_path="").count(),
             "ai_models": AI_MODEL_CHOICES,
             "selected_ai_model": style.ai_model or project.ai_model or DEFAULT_MODEL,
             "image_models": IMAGE_MODEL_CHOICES,
             "selected_image_model": request.GET.get("image_model")
+            or style.sample_image_model
             or project.image_elements.filter(image_model__isnull=False)
             .exclude(image_model="")
             .values_list("image_model", flat=True)
@@ -3133,14 +3225,29 @@ class ProjectAnnotationView(ProjectDetailView):
     def get_context_data(self, **kwargs):  # type: ignore[override]
         context = super().get_context_data(**kwargs)
         project: Project = context["object"]
+        annotation_home = reverse("project-annotation-home", args=[project.pk])
+        seg_review = reverse("manual-segmentation-phase-1", args=[project.pk])
         context["annotation_dialogue_plan"] = _annotation_dialogue_plan(project)
+        context["annotation_plain_text"] = _base_text_for_segmentation_phase_1(project).strip()
+        context["annotation_segmentation_review_href"] = f"{seg_review}?return_to={quote(annotation_home)}"
         return context
 
 
 def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
+    annotation_home = reverse("project-annotation-home", args=[project.pk])
     has_plain_text = bool(_base_text_for_segmentation_phase_1(project).strip())
-    has_segmented = _find_latest_stage_file(project, "segmentation_phase_2.json") is not None
-    has_html = bool((project.compiled_path or "").strip()) or _find_latest_stage_file(project, "compile_html.json") is not None
+    latest_segmentation = _find_latest_stage_file(project, "segmentation_phase_2.json")
+    has_segmented = latest_segmentation is not None
+    segmentation_review_href = (
+        f"{reverse('manual-segmentation-phase-1', args=[project.pk])}?return_to={quote(annotation_home)}"
+    )
+    image_workflow_href = reverse("project-images-home", args=[project.pk])
+    page_by_page_manual_href = reverse("manual-page-annotation", args=[project.pk])
+    compiled_href: str | None = None
+    compiled_page = _compiled_page_one_path(project)
+    if compiled_page:
+        compiled_href = reverse("project-compiled", args=[project.pk, compiled_page])
+    has_html = bool(compiled_href) or _find_latest_stage_file(project, "compile_html.json") is not None
 
     if not has_plain_text:
         return {
@@ -3173,6 +3280,16 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                     "start_stage": "segmentation_phase_1",
                     "end_stage": "compile_html",
                 },
+                {
+                    "label": "Open image workflow",
+                    "description": "Generate style, elements, and page images.",
+                    "href": image_workflow_href,
+                },
+                {
+                    "label": "Show current plain text",
+                    "description": "Review the generated/source text before segmentation.",
+                    "href": "#plain-text-preview",
+                },
             ],
         }
 
@@ -3190,8 +3307,24 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                 {
                     "label": "Open image workflow",
                     "description": "Go to image pages/elements generation controls.",
-                    "href": reverse("project-image-pages", args=[project.pk]),
+                    "href": image_workflow_href,
                 },
+                *(
+                    [
+                        {
+                            "label": "Review/edit segmentation",
+                            "description": "Open manual segmentation view to inspect and adjust boundaries.",
+                            "href": segmentation_review_href,
+                        },
+                        {
+                            "label": "Open page-by-page manual editor",
+                            "description": "Edit translation and word-level annotations page by page.",
+                            "href": page_by_page_manual_href,
+                        }
+                    ]
+                    if has_segmented
+                    else []
+                ),
             ],
         }
 
@@ -3202,17 +3335,47 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
             {
                 "label": "Open compiled HTML",
                 "description": "View the latest compiled output.",
-                "href": reverse("project-detail", args=[project.pk]),
+                "href": compiled_href or reverse("project-detail", args=[project.pk]),
+            },
+            {
+                "label": "Compile HTML now",
+                "description": "Run pipeline compilation to refresh HTML using default stage settings.",
+                "start_stage": _default_start_stage_for_project(project),
+                "end_stage": "compile_html",
+            },
+            {
+                "label": "Open page-by-page manual editor",
+                "description": "Edit translation and word-level annotations page by page.",
+                "href": page_by_page_manual_href,
+            },
+            {
+                "label": "Open image workflow",
+                "description": "Generate style, elements, and page images.",
+                "href": image_workflow_href,
             },
             {
                 "label": "Open manual annotation editor",
                 "description": "Make targeted corrections to segmentation, glosses, lemma, etc.",
                 "href": reverse("manual-top-level", args=[project.pk]),
             },
+            *(
+                [
+                    {
+                        "label": "Review/edit segmentation",
+                        "description": "Open manual segmentation view to inspect and adjust boundaries.",
+                        "href": segmentation_review_href,
+                    }
+                ]
+                if has_segmented
+                else []
+            ),
+            {
+                "label": "Show current plain text",
+                "description": "Review the plain text currently feeding annotation.",
+                "href": "#plain-text-preview",
+            },
         ],
     }
-
-
 def _ensure_stage_run_dir(project: Project) -> Path:
     run_dir = _resolve_run_dir(project)
     if run_dir is None:
@@ -3234,7 +3397,60 @@ def _base_text_for_segmentation_phase_1(project: Project) -> str:
 
 
 def _surface_without_phase1_markers(surface: str) -> str:
-    return surface.replace("<page>\n", "").replace("<page>", "").replace("||", "")
+    text = str(surface or "").replace("\r\n", "\n")
+    marker = "\uFFF0"
+    marked = text.replace("<page>", f"{marker}P{marker}").replace("||", f"{marker}S{marker}")
+    parts = marked.split(marker)
+    out: list[str] = []
+    pending_boundary = False
+    for part in parts:
+        if part in {"P", "S"}:
+            pending_boundary = True
+            continue
+        if part == "":
+            continue
+        if pending_boundary and out:
+            prev = out[-1][-1] if out[-1] else ""
+            next_char = part[0]
+            if prev and next_char and (not prev.isspace()) and (not next_char.isspace()):
+                out.append(" ")
+        out.append(part)
+        pending_boundary = False
+    return "".join(out)
+
+
+def _phase1_comparison_hash(text: str) -> str:
+    """Hash text with tolerant normalization for phase-1 boundary whitespace."""
+
+    normalized = str(text or "").replace("\r\n", "\n")
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    return _stable_text_hash(normalized)
+
+
+def _annotation_return_to(request: HttpRequest, project: Project, *, default_manual: bool = False) -> str:
+    default = (
+        reverse("manual-top-level", args=[project.pk])
+        if default_manual
+        else reverse("project-annotation-home", args=[project.pk])
+    )
+    candidate = str(request.POST.get("return_to") or request.GET.get("return_to") or "").strip()
+    if not candidate:
+        return default
+    if candidate.startswith(f"/projects/{project.pk}/annotation/"):
+        return candidate
+    return default
+
+
+def _phase1_surface_from_payload(payload: dict[str, Any]) -> str:
+    """Reconstruct editable phase-1 surface from page/segment structure."""
+
+    pages = payload.get("pages") or []
+    page_surfaces: list[str] = []
+    for page in pages:
+        segments = page.get("segments") or []
+        seg_surfaces = [str((seg or {}).get("surface") or "") for seg in segments]
+        page_surfaces.append("||".join(seg_surfaces))
+    return "<page>".join(page_surfaces)
 
 
 def _build_phase1_payload_from_surface(surface: str, language: str) -> dict[str, Any]:
@@ -4361,15 +4577,21 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 def manual_segmentation_phase_1(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    return_to = _annotation_return_to(request, project, default_manual=True)
     base_text = _base_text_for_segmentation_phase_1(project)
     if not base_text.strip():
         messages.error(request, "Manual segmentation phase 1 requires source text.")
-        return redirect("project-annotation-home", pk=project.pk)
+        return redirect(return_to)
 
     run_dir = _find_run_with_stage(project, "segmentation_phase_1") or _resolve_run_dir(project)
     current_payload = _load_stage_payload(project, "segmentation_phase_1", run_dir=run_dir) if run_dir else None
     current_surface = _canonicalize_phase1_surface(str((current_payload or {}).get("surface") or base_text))
-    if _surface_without_phase1_markers(current_surface) != base_text:
+    base_cmp_hash = _phase1_comparison_hash(base_text)
+    if isinstance(current_payload, dict):
+        reconstructed = _canonicalize_phase1_surface(_phase1_surface_from_payload(current_payload))
+        if reconstructed and _phase1_comparison_hash(_surface_without_phase1_markers(reconstructed)) == base_cmp_hash:
+            current_surface = reconstructed
+    if _phase1_comparison_hash(_surface_without_phase1_markers(current_surface)) != base_cmp_hash:
         messages.warning(
             request,
             "The existing segmentation output is inconsistent with base text. "
@@ -4382,10 +4604,11 @@ def manual_segmentation_phase_1(request: HttpRequest, pk: int) -> HttpResponse:
 
     if request.method == "POST":
         editable_surface = _canonicalize_phase1_surface(request.POST.get("editable_surface") or "")
-        edited_hash = _stable_text_hash(_surface_without_phase1_markers(editable_surface))
-        if edited_hash != base_hash:
+        edited_surface_plain = _surface_without_phase1_markers(editable_surface)
+        if _phase1_comparison_hash(edited_surface_plain) != base_cmp_hash:
             messages.error(request, "Text hash mismatch; only <page> and || separators may be changed.")
         else:
+            edited_hash = base_hash
             payload = _build_phase1_payload_from_surface(editable_surface, project.language)
             _save_versioned_stage_payload(
                 project=project,
@@ -4406,13 +4629,15 @@ def manual_segmentation_phase_1(request: HttpRequest, pk: int) -> HttpResponse:
                     f"{salvage_info['total_pages']} unchanged pages.",
                 )
             messages.success(request, "Saved manual segmentation phase 1.")
-            return redirect("manual-segmentation-phase-1", pk=project.pk)
+            return redirect(f"{reverse('manual-segmentation-phase-1', args=[project.pk])}?return_to={quote(return_to)}")
 
     return render(
         request,
         "projects/manual_segmentation_phase_1.html",
         {
             "project": project,
+            "back_href": return_to,
+            "return_to": return_to,
             "read_only_surface": current_surface,
             "editable_surface": editable_surface,
             "base_hash": base_hash,
@@ -4816,8 +5041,14 @@ def manual_translation(request: HttpRequest, pk: int) -> HttpResponse:
 def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
     style = getattr(project, "image_style", None)
+    valid_ai_models = set(AI_MODEL_CHOICES)
+    valid_image_models = set(IMAGE_MODEL_CHOICES)
     if request.method == "POST":
         valid_pivot_languages = {code for code, _label in ProjectForm.LANGUAGE_CHOICES}
+        requested_style_ai_model = str(request.POST.get("style_ai_model") or (style.ai_model if style else project.ai_model) or "").strip()
+        requested_style_image_model = str(
+            request.POST.get("style_image_model") or (style.sample_image_model if style else "gpt-image-1") or ""
+        ).strip()
         from_translations = (request.POST.get("generate_page_images_from_translations") or "").strip().lower() in {
             "1",
             "true",
@@ -4841,7 +5072,11 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
             else ""
         )
         allowed_text_sources = {choice[0] for choice in Project.PAGE_IMAGE_TEXT_SOURCE_CHOICES}
-        if text_source not in allowed_text_sources:
+        if requested_style_ai_model not in valid_ai_models:
+            messages.error(request, "Unknown style AI model.")
+        elif requested_style_image_model not in valid_image_models:
+            messages.error(request, "Unknown image model.")
+        elif text_source not in allowed_text_sources:
             messages.error(request, "Unknown page-image text source option.")
         elif text_source == Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION and pivot_language not in valid_pivot_languages:
             messages.error(request, "Unknown pivot language for image generation.")
@@ -4852,23 +5087,52 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
             if style is None:
                 style = ProjectImageStyle.objects.create(
                     project=project,
-                    ai_model=project.ai_model or DEFAULT_MODEL,
+                    ai_model=requested_style_ai_model or project.ai_model or DEFAULT_MODEL,
+                    sample_image_model=requested_style_image_model or "gpt-image-1",
                     discourage_text_in_images=discourage_text_in_images,
                 )
-            elif style.discourage_text_in_images != discourage_text_in_images:
-                style.discourage_text_in_images = discourage_text_in_images
-                style.save(update_fields=["discourage_text_in_images", "updated_at"])
+            else:
+                update_fields: list[str] = []
+                if style.discourage_text_in_images != discourage_text_in_images:
+                    style.discourage_text_in_images = discourage_text_in_images
+                    update_fields.append("discourage_text_in_images")
+                if style.ai_model != requested_style_ai_model:
+                    style.ai_model = requested_style_ai_model
+                    update_fields.append("ai_model")
+                if style.sample_image_model != requested_style_image_model:
+                    style.sample_image_model = requested_style_image_model
+                    update_fields.append("sample_image_model")
+                if update_fields:
+                    style.save(update_fields=[*update_fields, "updated_at"])
             synced = _ensure_project_page_rows(project)
             messages.success(request, f"Saved image settings and synced {synced} page rows.")
         return redirect("project-images-home", pk=project.pk)
     elements_with_images = project.image_elements.exclude(image_path="").order_by("name", "id")
     pages_with_images = project.image_pages.exclude(image_path="").order_by("page_number", "id")
+    style_has_content = bool(
+        style
+        and (
+            (style.style_brief or "").strip()
+            or (style.expanded_style_description or "").strip()
+            or (style.sample_image_prompt or "").strip()
+            or (style.sample_image_path or "").strip()
+        )
+    )
+    style_ready = bool(
+        style
+        and (
+            (style.sample_image_path or "").strip()
+            or style.status in {ProjectImageStyle.STATUS_GENERATED, ProjectImageStyle.STATUS_APPROVED}
+        )
+    )
     return render(
         request,
         "projects/project_images_home.html",
         {
             "project": project,
             "style": style,
+            "style_has_content": style_has_content,
+            "style_ready": style_ready,
             "elements_with_images_count": elements_with_images.count(),
             "sample_elements_with_images": elements_with_images[:5],
             "pages_with_images_count": pages_with_images.count(),
@@ -4885,6 +5149,10 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
             "pivot_language_choices": ProjectForm.LANGUAGE_CHOICES,
             "selected_image_generation_pivot_language": project.image_generation_pivot_language,
             "discourage_text_in_images_default": bool(getattr(style, "discourage_text_in_images", False)),
+            "ai_model_choices": AI_MODEL_CHOICES,
+            "image_model_choices": IMAGE_MODEL_CHOICES,
+            "selected_style_ai_model": (getattr(style, "ai_model", "") or project.ai_model or DEFAULT_MODEL),
+            "selected_style_image_model": (getattr(style, "sample_image_model", "") or "gpt-image-1"),
         },
     )
 
@@ -4934,7 +5202,14 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
         form.instance.owner = self.request.user
         messages.info(self.request, "Project created. Compile when ready.")
         response = super().form_valid(form)
+        _reset_project_artifacts(self.object)
         _persist_project_source(self.object)
+        if (self.object.language or "").strip().lower() == (self.object.target_language or "").strip().lower():
+            messages.warning(
+                self.request,
+                "Glossing language is currently the same as text language. "
+                "This is usually unintended; consider setting it to your interaction language.",
+            )
         return response
 
     def get_success_url(self):  # type: ignore[override]
@@ -4985,7 +5260,9 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
 
     def get_initial(self):  # type: ignore[override]
         initial = super().get_initial()
-        nl_query, _dialogue_language, nl_plan = self._resolve_nl_create_plan()
+        nl_query, dialogue_language, nl_plan = self._resolve_nl_create_plan()
+        if dialogue_language:
+            initial.setdefault("target_language", dialogue_language)
         if nl_query:
             for key in ("title", "language", "target_language", "input_mode", "description", "source_text"):
                 value = nl_plan.get(key)
@@ -5157,6 +5434,23 @@ def _persist_project_source(project: Project) -> None:
     except Exception:
         # Best-effort persistence; failures should not block UI flows.
         pass
+
+
+def _reset_project_artifacts(project: Project) -> None:
+    """Remove stale artifacts when a freshly-created project reuses an old id.
+
+    In local/dev environments it's common to recreate the database without
+    cleaning MEDIA_ROOT. If ids restart from 1, a new project can inherit
+    previous run artifacts from an unrelated historical project.
+    """
+
+    base = project.artifact_dir()
+    if not base.exists():
+        return
+    try:
+        shutil.rmtree(base)
+    except Exception:
+        logger.exception("Failed to clear stale artifact directory for new project %s", project.pk)
 
 
 def _resolve_run_dir(project: Project) -> Path | None:
@@ -5435,6 +5729,64 @@ def _compose_latest_compile_payload(project: Project) -> tuple[dict[str, Any] | 
     return normalize_json_text(composed), plan
 
 
+def _build_picture_glosses_for_compile(*, project: Project, output_dir: Path) -> dict[str, dict[str, str]]:
+    if not project.community_id:
+        return {}
+    picture_glosses: dict[str, dict[str, str]] = {}
+    picture_gloss_dir = output_dir / "html" / "picture_glosses"
+    picture_gloss_dir.mkdir(parents=True, exist_ok=True)
+    dictionary = (
+        PictureDictionary.objects.select_related("project")
+        .filter(community_id=project.community_id, is_active=True)
+        .first()
+    )
+    if not dictionary:
+        return {}
+    for entry in PictureDictionaryEntry.objects.filter(
+        dictionary=dictionary,
+        is_active=True,
+    ):
+        lemma_key = (entry.lemma or entry.surface or "").strip().casefold()
+        if not lemma_key or lemma_key in picture_glosses:
+            continue
+        resolved_image_path = (entry.image_path or "").strip()
+        if not resolved_image_path:
+            page_qs = ProjectImagePage.objects.select_related("preferred_variant").filter(project=dictionary.project)
+            if entry.current_page_number:
+                page = page_qs.filter(page_number=entry.current_page_number).first()
+            else:
+                page = page_qs.filter(page_text=entry.surface).order_by("page_number").first()
+            if page:
+                resolved_image_path = (page.image_path or "").strip()
+                if not resolved_image_path and page.preferred_variant_id and page.preferred_variant:
+                    resolved_image_path = (page.preferred_variant.image_path or "").strip()
+            if resolved_image_path:
+                entry.image_path = resolved_image_path
+                entry.save(update_fields=["image_path", "updated_at"])
+        if not resolved_image_path:
+            continue
+        abs_path = (dictionary.project.artifact_dir() / resolved_image_path).resolve()
+        if not abs_path.exists():
+            continue
+        if dictionary.project_id == project.id:
+            rel_path = os.path.relpath(abs_path, output_dir / "html").replace("\\", "/")
+        else:
+            digest = hashlib.sha1(
+                f"{dictionary.project_id}:{entry.id}:{abs_path}".encode("utf-8")
+            ).hexdigest()[:12]
+            safe_lemma = re.sub(r"[^a-z0-9_-]+", "_", lemma_key).strip("_") or "lemma"
+            suffix = abs_path.suffix or ".png"
+            staged_path = picture_gloss_dir / f"{safe_lemma}_{digest}{suffix}"
+            if not staged_path.exists():
+                shutil.copy2(abs_path, staged_path)
+            rel_path = os.path.relpath(staged_path, output_dir / "html").replace("\\", "/")
+        picture_glosses[lemma_key] = {
+            "image_path": rel_path,
+            "surface": entry.surface or entry.lemma or "",
+        }
+    return picture_glosses
+
+
 def _run_compile_task(
     project_id: int,
     user_id: int,
@@ -5471,13 +5823,10 @@ def _run_compile_task(
         report_uuid = uuid.UUID(report_id) if report_id else uuid.uuid4()
     except Exception:
         report_uuid = uuid.uuid4()
-    post_update, _ = _make_task_callback(
-        task_type or f"compile_project_{project_id}", user_id, report_uuid
-    )
+    post_update, _ = _make_task_callback(task_type or f"compile_project_{project_id}", user_id, report_uuid)
     telemetry_log = output_dir / "stages" / "telemetry.jsonl"
     telemetry = _TaskTelemetry(log_path=telemetry_log, post_update=post_update)
     post_update(f"Telemetry log file: {telemetry_log}")
-    logger.info("Compile telemetry log file: %s", telemetry_log)
 
     def progress_cb(stage: str, status: str, timestamp: str) -> None:
         try:
@@ -5487,24 +5836,24 @@ def _run_compile_task(
             local_timestamp = dt.astimezone(ZoneInfo(tz_name)).isoformat()
         except Exception:
             local_timestamp = timestamp
-
         entry = {"stage": stage, "status": status, "timestamp": local_timestamp}
+        logger.info(
+            "Compile progress project=%s stage=%s status=%s timestamp=%s",
+            project_id,
+            stage,
+            status,
+            local_timestamp,
+        )
         try:
             with progress_log.open("a", encoding="utf-8") as fp:
                 fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
         except Exception:
             logger.exception("Failed to append progress entry; progress_log=%s", progress_log)
-
         try:
             display_ts, _ = _format_timestamp(local_timestamp, tz_name)
             post_update(f"{stage}: {status} @ {display_ts}")
         except Exception:
-            logger.exception(
-                "Failed to persist task update; stage=%s status=%s report_id=%s",
-                stage,
-                status,
-                report_id,
-            )
+            logger.exception("Failed to persist task update; stage=%s status=%s report_id=%s", stage, status, report_id)
 
     current_request_type: dict[str, str] = {"value": start_stage}
 
@@ -5512,188 +5861,206 @@ def _run_compile_task(
         current_request_type["value"] = stage or current_request_type["value"]
         progress_cb(stage, status, timestamp)
 
-    spec = FullPipelineSpec(
-        text=text,
-        text_obj=text_obj,
-        description=description,
-        language=project.language,
-        target_language=project.target_language,
-        output_dir=output_dir,
-        audio_cache_dir=_audio_repository_dir(project.language),
-        require_real_tts=True,
-        persist_intermediates=True,
-        progress_callback=tracked_progress_cb,
-        start_stage=start_stage,
-        end_stage=end_stage or "compile_html",
-        page_images={},
-        segmentation_method=_resolve_segmentation_method(project.language, segmentation_method or project.segmentation_method),
-        romanization_method=_resolve_romanization_method(project.language, romanization_method or project.romanization_method),
-        telemetry=telemetry,
-    )
-
-    placement = (page_image_placement or "none").strip().lower()
-    if placement in {"top", "bottom"}:
-        page_images: dict[int, dict[str, str]] = {}
-        expected_paths: list[str] = []
-        for row in project.image_pages.order_by("page_number"):
-            if not row.image_path:
-                expected_paths.append(f"page {row.page_number}: [no image_path set]")
-                continue
-            abs_path = (project.artifact_dir() / row.image_path).resolve()
-            rel_path = os.path.relpath(abs_path, output_dir / "html").replace("\\", "/")
-            expected_paths.append(f"page {row.page_number}: {abs_path} (exists={abs_path.exists()})")
-            if abs_path.exists():
-                page_images[row.page_number] = {"path": rel_path, "placement": placement}
-        spec.page_images = page_images
-        if not page_images:
-            logger.warning(
-                "Page image placement is '%s' but no source images were resolved for compile input. Expected references: %s",
-                placement,
-                "; ".join(expected_paths) if expected_paths else "[no ProjectImagePage rows found]",
-            )
-            post_update(
-                "Warning: page image placement is enabled but no page images were found for compile input."
-            )
-
-    chosen_model = ai_model or project.ai_model or DEFAULT_MODEL
-    if chosen_model not in AI_MODEL_CHOICES:
-        chosen_model = DEFAULT_MODEL
-
-    usage_events: list[dict[str, Any]] = []
-    model_pricing = openai_price_for_model(chosen_model)
-
-    def usage_reporter(event: dict[str, Any]) -> None:
-        event_copy = dict(event or {})
-        usage_events.append(event_copy)
-        if not detailed_api_trace:
-            return
-        prompt_tokens = max(0, int(event_copy.get("prompt_tokens") or 0))
-        completion_tokens = max(0, int(event_copy.get("completion_tokens") or 0))
-        input_cost_usd = (model_pricing["input"] * prompt_tokens) / 1_000_000
-        output_cost_usd = (model_pricing["output"] * completion_tokens) / 1_000_000
-        total_cost_usd = input_cost_usd + output_cost_usd
-        telemetry.event(
-            str(event_copy.get("request_type") or current_request_type["value"] or "unknown"),
-            "info",
-            "openai.usage trace",
-            {
-                "model": str(event_copy.get("model") or chosen_model),
-                "operation": str(event_copy.get("operation") or "chat"),
-                "prompt_tokens": prompt_tokens,
-                "completion_tokens": completion_tokens,
-                "total_tokens": max(0, int(event_copy.get("total_tokens") or 0)),
-                "assumed_input_usd_per_1m_tokens": str(model_pricing["input"]),
-                "assumed_output_usd_per_1m_tokens": str(model_pricing["output"]),
-                "assumed_input_cost_usd": str(round(input_cost_usd, 6)),
-                "assumed_output_cost_usd": str(round(output_cost_usd, 6)),
-                "assumed_total_cost_usd": str(round(total_cost_usd, 6)),
-            },
-        )
-
-    def flush_usage_events() -> None:
-        for event in usage_events:
-            try:
-                record_openai_usage_and_charge(
-                    user_id=user_id,
-                    project_id=project_id,
-                    model=str(event.get("model") or chosen_model),
-                    operation=str(event.get("operation") or "chat"),
-                    prompt_tokens=int(event.get("prompt_tokens") or 0),
-                    completion_tokens=int(event.get("completion_tokens") or 0),
-                    total_tokens=int(event.get("total_tokens") or 0),
-                    request_type=str(event.get("request_type") or current_request_type["value"] or "unknown"),
-                )
-            except Exception:
-                logger.exception("Failed to record OpenAI usage charge for project=%s", project_id)
-
-    def _finalize_usage_events() -> None:
-        try:
-            flush_usage_events()
-        except Exception:
-            logger.exception("Unexpected failure while finalizing usage events for project=%s", project_id)
-
-    client = _build_ai_client(
-        model_name=chosen_model,
-        usage_reporter=usage_reporter,
-        detailed_telemetry=detailed_api_trace,
-    )
-
     try:
-        result = asyncio.run(run_full_pipeline(spec, client=client))
-    except Exception as exc:  # pragma: no cover - surfaced through session
+        post_update(
+            "Compile task started. "
+            f"start_stage={start_stage}, end_stage={end_stage or 'compile_html'}, output_dir={output_dir}"
+        )
+        spec = FullPipelineSpec(
+            text=text,
+            text_obj=text_obj,
+            description=description,
+            language=project.language,
+            target_language=project.target_language,
+            output_dir=output_dir,
+            audio_cache_dir=_audio_repository_dir(project.language),
+            require_real_tts=True,
+            persist_intermediates=True,
+            progress_callback=tracked_progress_cb,
+            start_stage=start_stage,
+            end_stage=end_stage or "compile_html",
+            page_images={},
+            picture_glosses={},
+            segmentation_method=_resolve_segmentation_method(project.language, segmentation_method or project.segmentation_method),
+            romanization_method=_resolve_romanization_method(project.language, romanization_method or project.romanization_method),
+            telemetry=telemetry,
+        )
+        post_update("Pipeline spec initialized.")
+        try:
+            spec.picture_glosses = _build_picture_glosses_for_compile(project=project, output_dir=output_dir)
+            post_update(f"Prepared picture gloss map: {len(spec.picture_glosses)} lemma image(s).")
+        except Exception as gloss_exc:
+            logger.exception("Failed to build picture gloss map for project %s; continuing without picture glosses", project_id)
+            spec.picture_glosses = {}
+            post_update(f"Warning: picture gloss map build failed ({gloss_exc}). Continuing without picture glosses.")
+
+        placement = (page_image_placement or "none").strip().lower()
+        if placement in {"top", "bottom"}:
+            page_images: dict[int, dict[str, str]] = {}
+            expected_paths: list[str] = []
+            for row in project.image_pages.select_related("preferred_variant").order_by("page_number"):
+                resolved_image_path = row.image_path or (
+                    row.preferred_variant.image_path if row.preferred_variant_id and row.preferred_variant else ""
+                )
+                if not resolved_image_path:
+                    expected_paths.append(f"page {row.page_number}: [no image_path set]")
+                    continue
+                abs_path = (project.artifact_dir() / resolved_image_path).resolve()
+                rel_path = os.path.relpath(abs_path, output_dir / "html").replace("\\", "/")
+                expected_paths.append(f"page {row.page_number}: {abs_path} (exists={abs_path.exists()})")
+                if abs_path.exists():
+                    page_images[row.page_number] = {"path": rel_path, "placement": placement}
+            spec.page_images = page_images
+            post_update(f"Resolved compile page images: {len(page_images)} page image reference(s).")
+            if not page_images:
+                logger.warning(
+                    "Page image placement is '%s' but no source images were resolved for compile input. Expected references: %s",
+                    placement,
+                    "; ".join(expected_paths) if expected_paths else "[no ProjectImagePage rows found]",
+                )
+                post_update("Warning: page image placement is enabled but no page images were found for compile input.")
+
+        chosen_model = ai_model or project.ai_model or DEFAULT_MODEL
+        if chosen_model not in AI_MODEL_CHOICES:
+            chosen_model = DEFAULT_MODEL
+        usage_events: list[dict[str, Any]] = []
+        model_pricing = openai_price_for_model(chosen_model)
+
+        def usage_reporter(event: dict[str, Any]) -> None:
+            event_copy = dict(event or {})
+            usage_events.append(event_copy)
+            if not detailed_api_trace:
+                return
+            prompt_tokens = max(0, int(event_copy.get("prompt_tokens") or 0))
+            completion_tokens = max(0, int(event_copy.get("completion_tokens") or 0))
+            input_cost_usd = (model_pricing["input"] * prompt_tokens) / 1_000_000
+            output_cost_usd = (model_pricing["output"] * completion_tokens) / 1_000_000
+            total_cost_usd = input_cost_usd + output_cost_usd
+            telemetry.event(
+                str(event_copy.get("request_type") or current_request_type["value"] or "unknown"),
+                "info",
+                "openai.usage trace",
+                {
+                    "model": str(event_copy.get("model") or chosen_model),
+                    "operation": str(event_copy.get("operation") or "chat"),
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "total_tokens": max(0, int(event_copy.get("total_tokens") or 0)),
+                    "assumed_input_usd_per_1m_tokens": str(model_pricing["input"]),
+                    "assumed_output_usd_per_1m_tokens": str(model_pricing["output"]),
+                    "assumed_input_cost_usd": str(round(input_cost_usd, 6)),
+                    "assumed_output_cost_usd": str(round(output_cost_usd, 6)),
+                    "assumed_total_cost_usd": str(round(total_cost_usd, 6)),
+                },
+            )
+
+        def flush_usage_events() -> None:
+            for event in usage_events:
+                try:
+                    record_openai_usage_and_charge(
+                        user_id=user_id,
+                        project_id=project_id,
+                        model=str(event.get("model") or chosen_model),
+                        operation=str(event.get("operation") or "chat"),
+                        prompt_tokens=int(event.get("prompt_tokens") or 0),
+                        completion_tokens=int(event.get("completion_tokens") or 0),
+                        total_tokens=int(event.get("total_tokens") or 0),
+                        request_type=str(event.get("request_type") or current_request_type["value"] or "unknown"),
+                    )
+                except Exception:
+                    logger.exception("Failed to record OpenAI usage charge for project=%s", project_id)
+
+        def _finalize_usage_events() -> None:
+            try:
+                flush_usage_events()
+            except Exception:
+                logger.exception("Unexpected failure while finalizing usage events for project=%s", project_id)
+
+        post_update(f"Building AI client: model={chosen_model}.")
+        client = _build_ai_client(
+            model_name=chosen_model,
+            usage_reporter=usage_reporter,
+            detailed_telemetry=detailed_api_trace,
+        )
+        post_update("Running full pipeline.")
+        try:
+            result = asyncio.run(run_full_pipeline(spec, client=client))
+        except Exception as exc:
+            _finalize_usage_events()
+            logger.exception("Compile failed for project %s", project_id)
+            failure_entry = {
+                "stage": "compile",
+                "status": "error",
+                "timestamp": datetime.now(ZoneInfo(tz_name)).isoformat(),
+            }
+            try:
+                with progress_log.open("a", encoding="utf-8") as fp:
+                    fp.write(json.dumps(failure_entry, ensure_ascii=False) + "\n")
+            except Exception:
+                logger.exception("Failed to append compile failure entry; progress_log=%s", progress_log)
+            post_update(f"Compile failed: {exc}", status="error")
+            return
         _finalize_usage_events()
-        logger.exception("Compile failed for project %s", project_id)
-        failure_entry = {
+        post_update("Pipeline returned; finalizing compile outputs.")
+
+        requested_end_stage = spec.end_stage or "compile_html"
+        if requested_end_stage == "segmentation_phase_1":
+            salvage_info = _salvage_segmentation_phase_2_for_run(output_dir)
+            _invalidate_downstream_stage_files(output_dir, "segmentation_phase_2")
+            if salvage_info:
+                post_update(
+                    "Salvaged segmentation_phase_2 for "
+                    f"{salvage_info['unchanged_pages']}/{salvage_info['total_pages']} unchanged pages."
+                )
+        html_info: dict[str, Any] | None = result.get("html") if isinstance(result, dict) else None
+        compiled_rel = ""
+        if html_info:
+            index_path = html_info.get("index_path") or html_info.get("html_path")
+            if index_path:
+                html_path = Path(index_path).resolve()
+                try:
+                    compiled_rel = html_path.relative_to(project_root).as_posix()
+                except Exception:
+                    compiled_rel = html_path.as_posix()
+            if placement in {"top", "bottom"} and spec.page_images:
+                post_update(
+                    f"Attached {len(spec.page_images)} generated page image reference(s) to compile input ({placement})."
+                )
+        update_fields = ["artifact_root", "updated_at"]
+        if compiled_rel:
+            project.compiled_path = compiled_rel.replace("\\", "/")
+            update_fields.append("compiled_path")
+        elif requested_end_stage == "compile_html":
+            project.compiled_path = ""
+            update_fields.append("compiled_path")
+        project.artifact_root = str(project_root).replace("\\", "/")
+        project.save(update_fields=update_fields)
+
+        final_status = "success" if (compiled_rel or requested_end_stage != "compile_html") else "error"
+        completion_entry = {
             "stage": "compile",
-            "status": "error",
+            "status": final_status,
             "timestamp": datetime.now(ZoneInfo(tz_name)).isoformat(),
         }
         try:
             with progress_log.open("a", encoding="utf-8") as fp:
-                fp.write(json.dumps(failure_entry, ensure_ascii=False) + "\n")
+                fp.write(json.dumps(completion_entry, ensure_ascii=False) + "\n")
         except Exception:
-            logger.exception(
-                "Failed to append compile failure entry; progress_log=%s", progress_log
-            )
-        post_update(f"Compile failed: {exc}", status="error")
-        return
-    _finalize_usage_events()
+            logger.exception("Failed to append compile completion entry; progress_log=%s", progress_log)
 
-    requested_end_stage = spec.end_stage or "compile_html"
-    if requested_end_stage == "segmentation_phase_1":
-        salvage_info = _salvage_segmentation_phase_2_for_run(output_dir)
-        _invalidate_downstream_stage_files(output_dir, "segmentation_phase_2")
-        if salvage_info:
-            post_update(
-                "Salvaged segmentation_phase_2 for "
-                f"{salvage_info['unchanged_pages']}/{salvage_info['total_pages']} unchanged pages."
-            )
-    html_info: dict[str, Any] | None = result.get("html") if isinstance(result, dict) else None
-    compiled_rel = ""
-    run_root = output_dir
-    if html_info:
-        run_root = Path(html_info.get("run_root", output_dir)).resolve()
-        index_path = html_info.get("index_path") or html_info.get("html_path")
-        if index_path:
-            html_path = Path(index_path).resolve()
-            try:
-                compiled_rel = html_path.relative_to(project_root).as_posix()
-            except Exception:
-                compiled_rel = html_path.as_posix()
-        if placement in {"top", "bottom"} and spec.page_images:
-            post_update(
-                f"Attached {len(spec.page_images)} generated page image reference(s) to compile input ({placement})."
-            )
-    update_fields = ["artifact_root", "updated_at"]
-    if compiled_rel:
-        project.compiled_path = compiled_rel.replace("\\", "/")
-        update_fields.append("compiled_path")
-    elif requested_end_stage == "compile_html":
-        # compile_html was requested but no HTML was produced; clear compiled path.
-        project.compiled_path = ""
-        update_fields.append("compiled_path")
-    project.artifact_root = str(project_root).replace("\\", "/")
-    project.save(update_fields=update_fields)
-
-    final_status = "success" if (compiled_rel or requested_end_stage != "compile_html") else "error"
-    completion_entry = {
-        "stage": "compile",
-        "status": final_status,
-        "timestamp": datetime.now(ZoneInfo(tz_name)).isoformat(),
-    }
-    try:
-        with progress_log.open("a", encoding="utf-8") as fp:
-            fp.write(json.dumps(completion_entry, ensure_ascii=False) + "\n")
-    except Exception:
-        logger.exception("Failed to append compile completion entry; progress_log=%s", progress_log)
-
-    if compiled_rel:
-        outcome_message = "Project compiled to HTML."
-    elif requested_end_stage != "compile_html":
-        outcome_message = f"Pipeline finished successfully at stage: {requested_end_stage}."
-    else:
-        outcome_message = "Compilation finished but no HTML was produced."
-    post_update(outcome_message, status="finished" if final_status == "success" else "error")
+        if compiled_rel:
+            outcome_message = "Project compiled to HTML."
+        elif requested_end_stage != "compile_html":
+            outcome_message = f"Pipeline finished successfully at stage: {requested_end_stage}."
+        else:
+            outcome_message = "Compilation finished but no HTML was produced."
+        post_update(outcome_message, status="finished" if final_status == "success" else "error")
+    except Exception as exc:
+        logger.exception("Unhandled compile task exception for project %s", project_id)
+        try:
+            post_update(f"Compile task crashed unexpectedly: {exc}", status="error")
+        except Exception:
+            logger.exception("Failed to post unexpected-crash update for project %s", project_id)
 
 
 @login_required
@@ -6127,6 +6494,7 @@ def _parse_nl_project_create_request(
         "Interpret this as a new-project setup request. "
         "Return only JSON keys: title, language, target_language, input_mode, description, source_text, keywords. "
         "input_mode must be one of: description, source_text. "
+        "Default target_language to the user language unless the user explicitly requests a different glossing/annotation language. "
         "Use prior turn context if relevant. Use empty strings/arrays for unknown values.\n\n"
         f"Previous user request: {previous_query}\n"
         f"Previous interpreted setup: {prev_plan}\n\n"
@@ -6143,10 +6511,24 @@ def _parse_nl_project_create_request(
     input_mode = str(payload.get("input_mode") or "").strip().lower()
     if input_mode not in {Project.INPUT_DESCRIPTION, Project.INPUT_SOURCE}:
         input_mode = ""
+    language = _normalize_language_filter(str(payload.get("language") or ""))
+    target_language = _normalize_language_filter(str(payload.get("target_language") or ""))
+    dialogue_lang = _normalize_language_filter(dialogue_language)
+    if not target_language:
+        target_language = dialogue_lang
+    if (
+        language
+        and target_language
+        and language == target_language
+        and dialogue_lang
+        and dialogue_lang != language
+        and not re.search(r"\b(same|identical|monolingual)\b", nl_query.lower())
+    ):
+        target_language = dialogue_lang
     return {
         "title": str(payload.get("title") or "").strip(),
-        "language": _normalize_language_filter(str(payload.get("language") or "")),
-        "target_language": _normalize_language_filter(str(payload.get("target_language") or "")),
+        "language": language,
+        "target_language": target_language,
         "input_mode": input_mode,
         "description": str(payload.get("description") or "").strip(),
         "source_text": str(payload.get("source_text") or "").strip(),
@@ -6591,7 +6973,166 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
     membership = _require_community_member(community_id, request.user)
     if membership.role != CommunityMembership.ROLE_ORGANISER:
         raise Http404()
+    community = membership.community
     projects = list(Project.objects.filter(community_id=community_id).order_by("-updated_at"))
+    picture_dictionary = (
+        PictureDictionary.objects.select_related("project")
+        .filter(community_id=community_id, is_active=True)
+        .first()
+    )
+    dictionary_entries = list(
+        picture_dictionary.entries.filter(is_active=True).order_by("id") if picture_dictionary else []
+    )
+    picture_dictionary_compile_info: dict[str, Any] | None = None
+    if picture_dictionary:
+        seg1_path = picture_dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages" / "segmentation_phase_1.json"
+        if seg1_path.exists():
+            try:
+                payload = json.loads(seg1_path.read_text(encoding="utf-8"))
+            except Exception:
+                payload = {}
+            picture_dictionary_compile_info = {
+                "updated_at": datetime.fromtimestamp(seg1_path.stat().st_mtime, tz=timezone.utc).isoformat(),
+                "entry_count": int(((payload.get("metadata") or {}).get("entry_count") or 0)),
+            }
+
+    if request.method == "POST":
+        action = (request.POST.get("picture_dictionary_action") or "").strip()
+        if action:
+            try:
+                picture_dictionary = ensure_picture_dictionary_for_community(
+                    community=community,
+                    organiser=request.user,
+                )
+            except PermissionDenied:
+                raise Http404()
+
+            words_raw = str(request.POST.get("picture_dictionary_words") or "")
+            words = [word.strip() for word in re.split(r"[,\n]", words_raw) if word.strip()]
+
+            if action == "ensure":
+                messages.success(request, "Picture dictionary is ready.")
+            elif action == "compile":
+                style = getattr(picture_dictionary.project, "image_style", None)
+                style_usable = bool(
+                    style
+                    and (
+                        (style.style_brief or "").strip()
+                        or (style.expanded_style_description or "").strip()
+                    )
+                    and style.status in {ProjectImageStyle.STATUS_GENERATED, ProjectImageStyle.STATUS_APPROVED}
+                )
+                if not style_usable:
+                    style_brief = (request.POST.get("picture_dictionary_style_brief") or "").strip()
+                    if not style_brief:
+                        messages.error(
+                            request,
+                            "Style is missing. Enter a style brief and compile again.",
+                        )
+                        return redirect("community-organiser-home", community_id=community_id)
+                    style, _ = ProjectImageStyle.objects.get_or_create(
+                        project=picture_dictionary.project,
+                        defaults={"ai_model": picture_dictionary.project.ai_model or DEFAULT_MODEL},
+                    )
+                    style.style_brief = style_brief
+                    try:
+                        generated = _generate_project_image_style(
+                            picture_dictionary.project,
+                            style_brief,
+                            ai_model=style.ai_model or picture_dictionary.project.ai_model or DEFAULT_MODEL,
+                        )
+                    except Exception as exc:
+                        logger.exception(
+                            "Failed to generate fallback style for picture dictionary compile on project %s",
+                            picture_dictionary.project_id,
+                        )
+                        messages.error(
+                            request,
+                            f"Could not generate style from brief: {exc}",
+                        )
+                        return redirect("community-organiser-home", community_id=community_id)
+                    style.expanded_style_description = generated.get("expanded_style_description", "")
+                    style.representative_excerpt = generated.get("representative_excerpt", "")
+                    style.sample_image_prompt = generated.get("sample_image_prompt", "")
+                    style.status = ProjectImageStyle.STATUS_GENERATED
+                    style.save()
+                    _persist_image_style_artifacts(
+                        picture_dictionary.project,
+                        style,
+                        request_payload=generated.get("_request_payload"),
+                        response_payload=generated.get("_response_payload"),
+                    )
+                    messages.success(request, "Created dictionary image style from the provided style brief.")
+                messages.info(request, "Compiling picture dictionary now. This may take a while.")
+                result = picture_dictionary_compile(dictionary=picture_dictionary)
+                messages.success(
+                    request,
+                    "Compiled picture dictionary: "
+                    f"pages={result['pages']}, page rows synced={result['page_rows_synced']}, "
+                    f"annotation pipeline={result.get('annotation_run')}, generated images={result.get('generated_images', 0)}.",
+                )
+                if result.get("annotation_error"):
+                    messages.error(request, f"Annotation pipeline failed: {result.get('annotation_error')}")
+                if result.get("image_generation_note"):
+                    messages.info(request, result["image_generation_note"])
+            elif action == "add":
+                added = picture_dictionary_add_words(dictionary=picture_dictionary, words=words)
+                messages.success(request, f"Added {added} word(s) to picture dictionary.")
+            elif action == "remove":
+                removed = picture_dictionary_remove_words(dictionary=picture_dictionary, words=words)
+                messages.success(request, f"Removed {removed} word(s) from picture dictionary.")
+            elif action == "remove_selected":
+                selected_ids = [int(value) for value in request.POST.getlist("remove_entry") if str(value).isdigit()]
+                removed = picture_dictionary_remove_entries_by_ids(
+                    dictionary=picture_dictionary,
+                    entry_ids=selected_ids,
+                )
+                messages.success(request, f"Removed {removed} selected dictionary entr{'y' if removed == 1 else 'ies'}.")
+            elif action == "add_from_text":
+                source_project_id_raw = (request.POST.get("source_project_id") or "").strip()
+                try:
+                    source_project_id = int(source_project_id_raw)
+                except ValueError:
+                    source_project_id = 0
+                source_project = next((row for row in projects if row.id == source_project_id), None)
+                if not source_project:
+                    messages.error(request, "Please choose a valid community project for add-from-text.")
+                else:
+                    lemma_run = _find_run_with_stage(source_project, "lemma")
+                    lemma_payload = _load_stage_payload(source_project, "lemma", run_dir=lemma_run) if lemma_run else None
+                    if not lemma_payload:
+                        messages.error(
+                            request,
+                            "Add from text requires lemma annotations. Run the source project through the lemma stage first.",
+                        )
+                        return redirect("community-organiser-home", community_id=community_id)
+                    lemma_pos_pairs: list[tuple[str, str]] = []
+                    seen_pairs: set[tuple[str, str]] = set()
+                    for page in lemma_payload.get("pages") or []:
+                        for segment in page.get("segments") or []:
+                            for token in segment.get("tokens") or []:
+                                ann = token.get("annotations") or {}
+                                lemma = str(ann.get("lemma") or "").strip()
+                                pos = str(ann.get("pos") or "").strip().upper()
+                                if not lemma:
+                                    continue
+                                key = (lemma.casefold(), pos)
+                                if key in seen_pairs:
+                                    continue
+                                seen_pairs.add(key)
+                                lemma_pos_pairs.append((lemma, pos))
+                    added = picture_dictionary_add_lemma_pos_entries(
+                        dictionary=picture_dictionary,
+                        lemma_pos_pairs=lemma_pos_pairs,
+                    )
+                    messages.success(
+                        request,
+                        f"Added {added} lemma/POS entr{'y' if added == 1 else 'ies'} from project “{source_project.title}”.",
+                    )
+            else:
+                messages.error(request, f"Unknown picture dictionary action: {action}")
+            return redirect("community-organiser-home", community_id=community_id)
+
     review_by_project = {
         row.project_id: row
         for row in CommunityOrganiserReview.objects.filter(
@@ -6614,7 +7155,15 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
     return render(
         request,
         "projects/community_organiser_home.html",
-        {"community": membership.community, "membership": membership, "summary_rows": summary_rows},
+        {
+            "community": community,
+            "membership": membership,
+            "summary_rows": summary_rows,
+            "picture_dictionary": picture_dictionary,
+            "dictionary_entries": dictionary_entries,
+            "picture_dictionary_compile_info": picture_dictionary_compile_info,
+            "community_projects": projects,
+        },
     )
 
 

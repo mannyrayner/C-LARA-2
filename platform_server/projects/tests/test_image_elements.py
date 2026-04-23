@@ -75,8 +75,12 @@ class ProjectImageElementsViewTests(TestCase):
     def test_get_elements_page(self):
         resp = self.client.get(reverse("project-image-elements", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Dialogue assistant suggestion")
         self.assertContains(resp, "Discover elements")
-        self.assertContains(resp, "Text model:")
+        self.assertContains(resp, "1) Discover elements")
+        self.assertContains(resp, "2) Edit elements list")
+        self.assertContains(resp, "3) Generate expanded prompts")
+        self.assertContains(resp, "Using text model:")
         self.assertContains(resp, "Generate element images")
         self.assertContains(resp, "fan-out/fan-in")
         self.assertContains(resp, "Elements telemetry")
@@ -154,6 +158,54 @@ class ProjectImageElementsViewTests(TestCase):
         )
         self.assertIn("phase_1_prompt", prompt_payload)
         self.assertNotIn("Approved style description", prompt_payload)
+
+    @patch("projects.views._build_ai_client")
+    def test_discover_elements_splits_inline_page_markers(self, mock_build_ai_client):
+        self.project.source_text = "Frida sings.<page>Frida bows."
+        self.project.save(update_fields=["source_text"])
+        mock_build_ai_client.side_effect = [
+            FakeAIClient([{"elements": [{"name": "Frida", "type": "character"}]}]),
+            FakeAIClient([{"page_refs": [1, 2], "why_consistency_matters": "Recurring lead", "type": "character"}]),
+        ]
+
+        resp = self.client.post(
+            reverse("project-image-elements", args=[self.project.pk]),
+            {
+                "form-TOTAL_FORMS": "0",
+                "form-INITIAL_FORMS": "0",
+                "form-MIN_NUM_FORMS": "0",
+                "form-MAX_NUM_FORMS": "1000",
+                "action": "discover",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(ProjectImageElement.objects.filter(project=self.project).count(), 1)
+        response_payload = (self.project.artifact_dir() / "images" / "elements" / "elements_discovery_response.json").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('"pages_count": 2', response_payload)
+
+    @patch("projects.views._build_ai_client")
+    def test_discover_elements_allows_single_page_projects(self, mock_build_ai_client):
+        self.project.source_text = "Frida sings in Antarctica."
+        self.project.save(update_fields=["source_text"])
+        mock_build_ai_client.side_effect = [
+            FakeAIClient([{"elements": [{"name": "Frida", "type": "character"}]}]),
+            FakeAIClient([{"page_refs": [1], "why_consistency_matters": "Main visual anchor", "type": "character"}]),
+        ]
+
+        resp = self.client.post(
+            reverse("project-image-elements", args=[self.project.pk]),
+            {
+                "form-TOTAL_FORMS": "0",
+                "form-INITIAL_FORMS": "0",
+                "form-MIN_NUM_FORMS": "0",
+                "form-MAX_NUM_FORMS": "1000",
+                "action": "discover",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(ProjectImageElement.objects.filter(project=self.project).count(), 1)
 
     @patch("projects.views._build_ai_client")
     def test_expand_elements_sets_expanded_fields(self, mock_build_ai_client):
