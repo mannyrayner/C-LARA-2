@@ -2,13 +2,14 @@
 {% block title %}Manual segmentation phase 1: {{ project.title }}{% endblock %}
 {% block content %}
 <h1>Manual segmentation phase 1</h1>
-<p><a class="btn secondary" href="{% url 'manual-top-level' project.pk %}">← Back to manual annotation top level</a></p>
+<p><a class="btn secondary" href="{{ back_href }}">← Back</a></p>
 <p>
   Structure-only editor. Insert/delete only <code>&lt;page&gt;</code> and <code>||</code> separators.
 </p>
 <p>Base text length: {{ base_text_length }} characters. Text hash: <code>{{ base_hash }}</code></p>
 <form method="post">
   {% csrf_token %}
+  <input type="hidden" name="return_to" value="{{ return_to }}" />
   <p><strong>Read-only segmentation text (with current separators)</strong></p>
   <p>
     <textarea rows="10" style="width:100%; font-family: monospace;" readonly>{{ read_only_surface }}</textarea>

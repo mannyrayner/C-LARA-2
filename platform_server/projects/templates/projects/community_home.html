@@ -5,7 +5,7 @@
 <p>Select where you want to work.</p>
 <ul>
   {% for membership in memberships %}
-    <li>
+    <li style="margin-bottom: 0.75rem; line-height: 1.5;">
       <strong>{{ membership.community.name }}</strong> ({{ membership.role }})
       <a class="btn secondary" href="{% url 'community-member-home' membership.community.id %}">Member page</a>
       {% if membership.role == "organiser" %}
