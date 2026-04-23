@@ -5770,32 +5770,7 @@ def _run_compile_task(
         telemetry=telemetry,
     )
 
-    if project.community_id:
-        picture_glosses: dict[str, dict[str, str]] = {}
-        picture_gloss_dir = output_dir / "html" / "picture_glosses"
-        picture_gloss_dir.mkdir(parents=True, exist_ok=True)
-        dictionary = (
-            PictureDictionary.objects.select_related("project")
-            .filter(community_id=project.community_id, is_active=True)
-            .first()
-        )
-        if dictionary:
-            for entry in PictureDictionaryEntry.objects.filter(
-                dictionary=dictionary,
-                is_active=True,
-            ).exclude(image_path=""):
-                lemma_key = (entry.lemma or entry.surface or "").strip().casefold()
-                if not lemma_key or lemma_key in picture_glosses:
-                    continue
-                abs_path = (dictionary.project.artifact_dir() / entry.image_path).resolve()
-                if not abs_path.exists():
-                    continue
-                rel_path = os.path.relpath(abs_path, output_dir / "html").replace("\\", "/")
-                picture_glosses[lemma_key] = {
-                    "image_path": rel_path,
-                    "surface": entry.surface or entry.lemma or "",
-                }
-        spec.picture_glosses = picture_glosses
+    spec.picture_glosses = _build_picture_glosses_for_compile(project=project, output_dir=output_dir)
 
     placement = (page_image_placement or "none").strip().lower()
     if placement in {"top", "bottom"}:
@@ -5858,6 +5833,48 @@ def _run_compile_task(
                 "assumed_total_cost_usd": str(round(total_cost_usd, 6)),
             },
         )
+
+
+def _build_picture_glosses_for_compile(*, project: Project, output_dir: Path) -> dict[str, dict[str, str]]:
+    if not project.community_id:
+        return {}
+    picture_glosses: dict[str, dict[str, str]] = {}
+    picture_gloss_dir = output_dir / "html" / "picture_glosses"
+    picture_gloss_dir.mkdir(parents=True, exist_ok=True)
+    dictionary = (
+        PictureDictionary.objects.select_related("project")
+        .filter(community_id=project.community_id, is_active=True)
+        .first()
+    )
+    if not dictionary:
+        return {}
+    for entry in PictureDictionaryEntry.objects.filter(
+        dictionary=dictionary,
+        is_active=True,
+    ).exclude(image_path=""):
+        lemma_key = (entry.lemma or entry.surface or "").strip().casefold()
+        if not lemma_key or lemma_key in picture_glosses:
+            continue
+        abs_path = (dictionary.project.artifact_dir() / entry.image_path).resolve()
+        if not abs_path.exists():
+            continue
+        if dictionary.project_id == project.id:
+            rel_path = os.path.relpath(abs_path, output_dir / "html").replace("\\", "/")
+        else:
+            digest = hashlib.sha1(
+                f"{dictionary.project_id}:{entry.id}:{abs_path}".encode("utf-8")
+            ).hexdigest()[:12]
+            safe_lemma = re.sub(r"[^a-z0-9_-]+", "_", lemma_key).strip("_") or "lemma"
+            suffix = abs_path.suffix or ".png"
+            staged_path = picture_gloss_dir / f"{safe_lemma}_{digest}{suffix}"
+            if not staged_path.exists():
+                shutil.copy2(abs_path, staged_path)
+            rel_path = os.path.relpath(staged_path, output_dir / "html").replace("\\", "/")
+        picture_glosses[lemma_key] = {
+            "image_path": rel_path,
+            "surface": entry.surface or entry.lemma or "",
+        }
+    return picture_glosses
 
     def flush_usage_events() -> None:
         for event in usage_events:

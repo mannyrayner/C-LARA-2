@@ -1,9 +1,12 @@
+from pathlib import Path
+
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase
 
-from projects.models import Community, CommunityMembership, PictureDictionary, PictureDictionaryEntry
+from projects.models import Community, CommunityMembership, PictureDictionary, PictureDictionaryEntry, Project
+from projects.views import _build_picture_glosses_for_compile
 
 
 class PictureDictionaryCommandTests(TestCase):
@@ -124,3 +127,42 @@ class PictureDictionaryCommandTests(TestCase):
         for stage_name in ("lemma", "gloss", "romanization", "pinyin"):
             stage_path = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages" / f"{stage_name}.json"
             self.assertNotIn("chat", stage_path.read_text(encoding="utf-8"))
+
+    def test_cross_project_picture_glosses_are_staged_into_compile_html_dir(self):
+        call_command(
+            "picture_dictionary",
+            "ensure",
+            community_id=self.community.id,
+            organiser=self.organiser.username,
+        )
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        entry = PictureDictionaryEntry.objects.create(
+            dictionary=dictionary,
+            surface="femme",
+            lemma="femme",
+            pos="NOUN",
+            is_active=True,
+        )
+        image_rel = "images/pages/page_002/variant_001.png"
+        image_abs = dictionary.project.artifact_dir() / image_rel
+        image_abs.parent.mkdir(parents=True, exist_ok=True)
+        image_abs.write_bytes(b"fake-image")
+        entry.image_path = image_rel
+        entry.save(update_fields=["image_path", "updated_at"])
+
+        toy_project = Project.objects.create(
+            owner=self.organiser,
+            title="Toy French Text",
+            source_text="La femme parle.",
+            language="fr",
+            target_language="en",
+            community=self.community,
+        )
+        output_dir = toy_project.artifact_dir() / "runs" / "run_test_cross_project_gloss"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        glosses = _build_picture_glosses_for_compile(project=toy_project, output_dir=output_dir)
+        self.assertIn("femme", glosses)
+        rel_path = glosses["femme"]["image_path"]
+        self.assertTrue(rel_path.startswith("picture_glosses/"))
+        staged = output_dir / "html" / Path(rel_path)
+        self.assertTrue(staged.exists())
