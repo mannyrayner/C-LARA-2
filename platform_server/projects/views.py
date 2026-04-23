@@ -1862,13 +1862,15 @@ def _generate_project_page_images(
 ) -> int:
     style = project.image_style
     dictionary = getattr(project, "picture_dictionary", None)
-    dictionary_entry_by_page = {}
+    dictionary_entry_by_page: dict[int, PictureDictionaryEntry] = {}
+    dictionary_entry_by_surface: dict[str, PictureDictionaryEntry] = {}
     if dictionary:
-        dictionary_entry_by_page = {
-            entry.current_page_number: entry
-            for entry in dictionary.entries.filter(is_active=True)
-            if entry.current_page_number
-        }
+        for entry in dictionary.entries.filter(is_active=True):
+            surface_key = (entry.surface or entry.lemma or "").strip().casefold()
+            if surface_key and surface_key not in dictionary_entry_by_surface:
+                dictionary_entry_by_surface[surface_key] = entry
+            if entry.current_page_number and entry.current_page_number not in dictionary_entry_by_page:
+                dictionary_entry_by_page[entry.current_page_number] = entry
     full_text = _extract_project_plain_text(project) if include_full_text else ""
     pages_dir = _image_pages_dir(project)
     pages_dir.mkdir(parents=True, exist_ok=True)
@@ -1896,6 +1898,9 @@ def _generate_project_page_images(
             for element in relevant_elements
             if not element.page_refs or _page_refs_match(element.page_refs, page_obj.page_number)
         ]
+        dictionary_entry = dictionary_entry_by_page.get(page_obj.page_number)
+        if dictionary_entry is None:
+            dictionary_entry = dictionary_entry_by_surface.get((page_obj.page_text or "").strip().casefold())
         prompt, prompt_meta = _fit_page_image_prompt_to_limit(
             project=project,
             style=style,
@@ -1904,7 +1909,7 @@ def _generate_project_page_images(
             full_text=full_text,
             relevant_elements=refs,
             discourage_text_in_image=discourage_text_in_image,
-            dictionary_entry=dictionary_entry_by_page.get(page_obj.page_number),
+            dictionary_entry=dictionary_entry,
         )
         prompt_by_page[page_obj.pk] = prompt
         _append_page_image_telemetry(
@@ -1921,6 +1926,7 @@ def _generate_project_page_images(
                 "relevant_element_count": len(refs),
                 "relevant_element_paths": [e.image_path for e in refs if e.image_path],
                 "reference_images_sent_in_request": False,
+                "dictionary_mode": dictionary_entry is not None,
             },
         )
 

@@ -295,6 +295,38 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertIn("Target lemma: chat", page1.generation_prompt)
 
     @patch("projects.views._build_ai_client")
+    def test_generate_page_images_uses_dictionary_mode_prompt_with_surface_fallback(self, mock_build_ai_client):
+        fake_client = FakeImageClient()
+        mock_build_ai_client.return_value = fake_client
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+        dictionary = PictureDictionary.objects.create(
+            community=Community.objects.create(name="Dict Community 2", language=self.project.language),
+            project=self.project,
+            organiser=self.user,
+            language=self.project.language,
+        )
+        page1 = ProjectImagePage.objects.get(project=self.project, page_number=1)
+        page1.page_text = "chat"
+        page1.save(update_fields=["page_text", "updated_at"])
+        PictureDictionaryEntry.objects.create(
+            dictionary=dictionary,
+            surface="chat",
+            lemma="chat",
+            pos="NOUN",
+            is_active=True,
+            current_page_number=None,
+        )
+
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        resp = self.client.post(reverse("project-image-pages", args=[self.project.pk]), payload, follow=True)
+        self.assertEqual(resp.status_code, 200)
+        page1.refresh_from_db()
+        self.assertIn("Create one picture-dictionary illustration.", page1.generation_prompt)
+        self.assertIn("Target lemma: chat", page1.generation_prompt)
+
+    @patch("projects.views._build_ai_client")
     def test_generate_multiple_variants_and_set_preferred_variant(self, mock_build_ai_client):
         fake_client = FakeImageClient()
         mock_build_ai_client.return_value = fake_client
