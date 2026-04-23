@@ -76,6 +76,9 @@ class PictureDictionaryCommandTests(TestCase):
         self.assertTrue(seg1_path.exists())
         payload = seg1_path.read_text(encoding="utf-8")
         self.assertIn('"source": "picture_dictionary"', payload)
+        for stage_name in ("segmentation_phase_2", "mwe", "lemma", "gloss", "romanization", "pinyin"):
+            stage_path = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages" / f"{stage_name}.json"
+            self.assertTrue(stage_path.exists())
 
     def test_non_organiser_cannot_manage_dictionary(self):
         with self.assertRaises(CommandError):
@@ -111,3 +114,13 @@ class PictureDictionaryCommandTests(TestCase):
         )
         entry.refresh_from_db()
         self.assertFalse(entry.is_active)
+        call_command(
+            "picture_dictionary",
+            "compile",
+            community_id=self.community.id,
+            organiser=self.organiser.username,
+        )
+        dictionary.refresh_from_db()
+        for stage_name in ("lemma", "gloss", "romanization", "pinyin"):
+            stage_path = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages" / f"{stage_name}.json"
+            self.assertNotIn("chat", stage_path.read_text(encoding="utf-8"))

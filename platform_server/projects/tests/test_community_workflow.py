@@ -132,6 +132,10 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(ensure.status_code, 200)
         dictionary = PictureDictionary.objects.get(community=self.community)
         self.assertEqual(dictionary.organiser_id, self.organiser.id)
+        self.assertContains(
+            ensure,
+            reverse("manual-page-annotation", args=[dictionary.project.id]),
+        )
 
         add_words = client.post(
             reverse("community-organiser-home", args=[self.community.id]),

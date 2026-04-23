@@ -10,6 +10,9 @@
     Dictionary project:
     <a href="{% url 'project-detail' picture_dictionary.project.id %}">{{ picture_dictionary.project.title }}</a>
   </p>
+  <p>
+    <a class="btn secondary" href="{% url 'manual-page-annotation' picture_dictionary.project.id %}">Review dictionary content (page-oriented editor)</a>
+  </p>
 {% else %}
   <p>No picture dictionary exists yet for this community.</p>
 {% endif %}

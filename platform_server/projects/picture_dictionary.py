@@ -188,6 +188,47 @@ def _write_segmentation_phase_1(dictionary: PictureDictionary, entries: list[Pic
     (run_dir / "segmentation_phase_1.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def _dictionary_stage_payload(dictionary: PictureDictionary, entries: list[PictureDictionaryEntry], stage_name: str) -> dict:
+    pages = []
+    for entry in entries:
+        pages.append(
+            {
+                "surface": entry.surface,
+                "segments": [
+                    {
+                        "surface": entry.surface,
+                        "tokens": [{"surface": entry.surface}],
+                        "annotations": {},
+                    }
+                ],
+                "annotations": {},
+            }
+        )
+    return {
+        "l2": dictionary.project.language,
+        "surface": "<page>".join(entry.surface for entry in entries),
+        "pages": pages,
+        "annotations": {},
+        "metadata": {
+            "source": "picture_dictionary",
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "entry_count": len(entries),
+            "stage": stage_name,
+        },
+    }
+
+
+def _write_dictionary_annotation_stages(dictionary: PictureDictionary, entries: list[PictureDictionaryEntry]) -> None:
+    run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    for stage_name in ("segmentation_phase_2", "mwe", "lemma", "gloss", "romanization", "pinyin"):
+        payload = _dictionary_stage_payload(dictionary, entries, stage_name)
+        (run_dir / f"{stage_name}.json").write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+
 def compile_picture_dictionary(*, dictionary: PictureDictionary) -> dict[str, int]:
     _bootstrap_registry_from_project_source(dictionary)
     entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
@@ -228,6 +269,7 @@ def compile_picture_dictionary(*, dictionary: PictureDictionary) -> dict[str, in
 
     ProjectImagePage.objects.filter(project=dictionary.project, page_number__gt=len(entries)).delete()
     _write_segmentation_phase_1(dictionary, entries)
+    _write_dictionary_annotation_stages(dictionary, entries)
     return {
         "pages": len(entries),
         "page_rows_synced": len(entries),
