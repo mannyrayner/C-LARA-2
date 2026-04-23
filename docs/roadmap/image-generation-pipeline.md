@@ -156,6 +156,12 @@ Rationale:
 - context-lite prompts reduce unnecessary variability and cost,
 - missing-only generation avoids regenerating already accepted entry images.
 
+Operational notes (current behaviour):
+- Dictionary compile now checks style usability before attempting image generation.
+- A style is considered usable when it has generated/approved status plus non-empty style text.
+- If no usable style is present, organisers must provide a short style brief in compile UI so style artifacts can be generated first.
+- Compile UI should show an explicit "compilation in progress" message for better long-running job feedback.
+
 ## 4. Stage 1: style generation
 
 ### 4.1 Inputs

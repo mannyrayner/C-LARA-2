@@ -62,6 +62,8 @@ Provide explicit organiser-facing commands/actions.
 ## 4.1 Compile dictionary
 - Build/refresh dictionary artifacts and indexes.
 - Validate canonical keys and detect conflicts/duplicates.
+- If no usable image style exists yet, require an organiser-provided **style brief** at compile time and auto-generate style artifacts before image generation starts.
+- Show explicit organiser feedback that compilation has started (long-running action), then report annotation/image outcomes.
 
 ## 4.2 Add given words
 - Input: explicit word list (optionally with lemma/POS hints).
@@ -148,6 +150,9 @@ Future variants:
   - default image options for dictionaries:
     - **no-context** (do not pass full story context or element context),
     - **missing-only** (generate only for pages currently missing an image).
+  - style readiness:
+    - treat style as usable when generated or approved and containing style text,
+    - if style is missing/unusable, compile must stop with a clear message unless a style brief is supplied.
 
 ## Phase B
 - Add optional `picture_gloss` pipeline stage.
