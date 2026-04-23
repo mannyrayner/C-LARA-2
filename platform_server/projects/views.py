@@ -5765,6 +5765,13 @@ def _run_compile_task(
         except Exception:
             local_timestamp = timestamp
         entry = {"stage": stage, "status": status, "timestamp": local_timestamp}
+        logger.info(
+            "Compile progress project=%s stage=%s status=%s timestamp=%s",
+            project_id,
+            stage,
+            status,
+            local_timestamp,
+        )
         try:
             with progress_log.open("a", encoding="utf-8") as fp:
                 fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
@@ -6992,6 +6999,8 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                     f"pages={result['pages']}, page rows synced={result['page_rows_synced']}, "
                     f"annotation pipeline={result.get('annotation_run')}, generated images={result.get('generated_images', 0)}.",
                 )
+                if result.get("annotation_error"):
+                    messages.error(request, f"Annotation pipeline failed: {result.get('annotation_error')}")
                 if result.get("image_generation_note"):
                     messages.info(request, result["image_generation_note"])
             elif action == "add":

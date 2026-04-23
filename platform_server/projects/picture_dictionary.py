@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,6 +18,8 @@ from .models import (
     Project,
     ProjectImagePage,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _normalise_word(word: str) -> str:
@@ -267,7 +270,7 @@ def _write_dictionary_annotation_stages(dictionary: PictureDictionary, entries: 
         )
 
 
-def compile_picture_dictionary(*, dictionary: PictureDictionary) -> dict[str, int]:
+def compile_picture_dictionary(*, dictionary: PictureDictionary) -> dict[str, object]:
     _bootstrap_registry_from_project_source(dictionary)
     entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
     _sync_project_source_from_registry(dictionary)
@@ -309,6 +312,7 @@ def compile_picture_dictionary(*, dictionary: PictureDictionary) -> dict[str, in
     _write_segmentation_phase_1(dictionary, entries)
     _write_dictionary_annotation_stages(dictionary, entries)
     annotation_run = "skipped"
+    annotation_error = ""
     generated_images = 0
     image_generation_note = ""
     try:
@@ -337,8 +341,13 @@ def compile_picture_dictionary(*, dictionary: PictureDictionary) -> dict[str, in
             detailed_api_trace=False,
         )
         annotation_run = "ok"
-    except Exception:
+    except Exception as exc:
         annotation_run = "error"
+        annotation_error = str(exc)
+        logger.exception(
+            "Picture dictionary annotation compile failed for dictionary project %s",
+            dictionary.project_id,
+        )
 
     try:
         style = getattr(dictionary.project, "image_style", None)
@@ -371,6 +380,7 @@ def compile_picture_dictionary(*, dictionary: PictureDictionary) -> dict[str, in
         "pages": len(entries),
         "page_rows_synced": len(entries),
         "annotation_run": annotation_run,
+        "annotation_error": annotation_error,
         "generated_images": generated_images,
         "image_generation_note": image_generation_note,
     }

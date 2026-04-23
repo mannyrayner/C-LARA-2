@@ -1,5 +1,6 @@
 import base64
 import json
+import shutil
 
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
@@ -148,6 +149,10 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(add_words.status_code, 200)
         dictionary.refresh_from_db()
         self.assertIn("Frida", dictionary.project.source_text)
+
+        runs_dir = self.project.artifact_dir() / "runs"
+        if runs_dir.exists():
+            shutil.rmtree(runs_dir)
 
         add_from_text = client.post(
             reverse("community-organiser-home", args=[self.community.id]),
