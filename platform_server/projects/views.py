@@ -5708,11 +5708,27 @@ def _build_picture_glosses_for_compile(*, project: Project, output_dir: Path) ->
     for entry in PictureDictionaryEntry.objects.filter(
         dictionary=dictionary,
         is_active=True,
-    ).exclude(image_path=""):
+    ):
         lemma_key = (entry.lemma or entry.surface or "").strip().casefold()
         if not lemma_key or lemma_key in picture_glosses:
             continue
-        abs_path = (dictionary.project.artifact_dir() / entry.image_path).resolve()
+        resolved_image_path = (entry.image_path or "").strip()
+        if not resolved_image_path:
+            page_qs = ProjectImagePage.objects.select_related("preferred_variant").filter(project=dictionary.project)
+            if entry.current_page_number:
+                page = page_qs.filter(page_number=entry.current_page_number).first()
+            else:
+                page = page_qs.filter(page_text=entry.surface).order_by("page_number").first()
+            if page:
+                resolved_image_path = (page.image_path or "").strip()
+                if not resolved_image_path and page.preferred_variant_id and page.preferred_variant:
+                    resolved_image_path = (page.preferred_variant.image_path or "").strip()
+            if resolved_image_path:
+                entry.image_path = resolved_image_path
+                entry.save(update_fields=["image_path", "updated_at"])
+        if not resolved_image_path:
+            continue
+        abs_path = (dictionary.project.artifact_dir() / resolved_image_path).resolve()
         if not abs_path.exists():
             continue
         if dictionary.project_id == project.id:

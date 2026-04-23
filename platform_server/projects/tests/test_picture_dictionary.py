@@ -166,3 +166,45 @@ class PictureDictionaryCommandTests(TestCase):
         self.assertTrue(rel_path.startswith("picture_glosses/"))
         staged = output_dir / "html" / Path(rel_path)
         self.assertTrue(staged.exists())
+
+    def test_cross_project_picture_glosses_fallback_to_dictionary_page_image_path(self):
+        call_command(
+            "picture_dictionary",
+            "ensure",
+            community_id=self.community.id,
+            organiser=self.organiser.username,
+        )
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        entry = PictureDictionaryEntry.objects.create(
+            dictionary=dictionary,
+            surface="chat",
+            lemma="chat",
+            pos="NOUN",
+            is_active=True,
+            current_page_number=1,
+        )
+        dictionary.project.image_pages.create(
+            page_number=1,
+            page_text="chat",
+            generation_prompt="chat",
+            image_model="gpt-image-1",
+            image_path="images/pages/page_001/variant_001.png",
+        )
+        image_abs = dictionary.project.artifact_dir() / "images/pages/page_001/variant_001.png"
+        image_abs.parent.mkdir(parents=True, exist_ok=True)
+        image_abs.write_bytes(b"fake-image")
+
+        toy_project = Project.objects.create(
+            owner=self.organiser,
+            title="Toy French Text 2",
+            source_text="Le chat dort.",
+            language="fr",
+            target_language="en",
+            community=self.community,
+        )
+        output_dir = toy_project.artifact_dir() / "runs" / "run_test_fallback_gloss"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        glosses = _build_picture_glosses_for_compile(project=toy_project, output_dir=output_dir)
+        self.assertIn("chat", glosses)
+        entry.refresh_from_db()
+        self.assertEqual(entry.image_path, "images/pages/page_001/variant_001.png")
