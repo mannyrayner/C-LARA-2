@@ -5790,17 +5790,7 @@ def _run_compile_task(
                 abs_path = (dictionary.project.artifact_dir() / entry.image_path).resolve()
                 if not abs_path.exists():
                     continue
-                if dictionary.project_id == project.id:
-                    rel_path = os.path.relpath(abs_path, output_dir / "html").replace("\\", "/")
-                else:
-                    digest = hashlib.sha1(
-                        f"{dictionary.project_id}:{entry.id}:{abs_path}".encode("utf-8")
-                    ).hexdigest()[:12]
-                    suffix = abs_path.suffix or ".png"
-                    staged_path = picture_gloss_dir / f"{lemma_key}_{digest}{suffix}"
-                    if not staged_path.exists():
-                        shutil.copy2(abs_path, staged_path)
-                    rel_path = os.path.relpath(staged_path, output_dir / "html").replace("\\", "/")
+                rel_path = os.path.relpath(abs_path, output_dir / "html").replace("\\", "/")
                 picture_glosses[lemma_key] = {
                     "image_path": rel_path,
                     "surface": entry.surface or entry.lemma or "",
