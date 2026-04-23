@@ -3,7 +3,7 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase
 
-from projects.models import Community, CommunityMembership, PictureDictionary
+from projects.models import Community, CommunityMembership, PictureDictionary, PictureDictionaryEntry
 
 
 class PictureDictionaryCommandTests(TestCase):
@@ -72,6 +72,10 @@ class PictureDictionaryCommandTests(TestCase):
             organiser=self.organiser.username,
         )
         self.assertEqual(dictionary.project.image_pages.count(), 6)
+        seg1_path = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages" / "segmentation_phase_1.json"
+        self.assertTrue(seg1_path.exists())
+        payload = seg1_path.read_text(encoding="utf-8")
+        self.assertIn('"source": "picture_dictionary"', payload)
 
     def test_non_organiser_cannot_manage_dictionary(self):
         with self.assertRaises(CommandError):
@@ -81,3 +85,29 @@ class PictureDictionaryCommandTests(TestCase):
                 community_id=self.community.id,
                 organiser=self.member.username,
             )
+
+    def test_remove_keeps_registry_and_marks_entries_inactive(self):
+        call_command(
+            "picture_dictionary",
+            "ensure",
+            community_id=self.community.id,
+            organiser=self.organiser.username,
+        )
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        call_command(
+            "picture_dictionary",
+            "add",
+            community_id=self.community.id,
+            organiser=self.organiser.username,
+            words="chat, chien",
+        )
+        entry = PictureDictionaryEntry.objects.get(dictionary=dictionary, surface="chat")
+        call_command(
+            "picture_dictionary",
+            "remove",
+            community_id=self.community.id,
+            organiser=self.organiser.username,
+            words="chat",
+        )
+        entry.refresh_from_db()
+        self.assertFalse(entry.is_active)

@@ -37,6 +37,20 @@
     </select>
     <button class="btn secondary" type="submit" name="picture_dictionary_action" value="add_from_text">Add from text</button>
   </p>
+  {% if dictionary_entries %}
+    <p><strong>Current entries (select to delete):</strong></p>
+    <div style="max-height: 12rem; overflow: auto; border: 1px solid #ddd; padding: 0.5rem; margin-bottom: 0.5rem;">
+      {% for entry in dictionary_entries %}
+        <label style="display: block;">
+          <input type="checkbox" name="remove_entry" value="{{ entry.id }}" />
+          {{ entry.surface }}{% if entry.lemma %} (lemma: {{ entry.lemma }}){% endif %}{% if entry.pos %} [{{ entry.pos }}]{% endif %}
+        </label>
+      {% endfor %}
+    </div>
+    <p>
+      <button class="btn secondary" type="submit" name="picture_dictionary_action" value="remove_selected">Remove selected entries</button>
+    </p>
+  {% endif %}
 </form>
 
 <ul>

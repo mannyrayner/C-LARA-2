@@ -488,6 +488,21 @@ class PictureDictionary(models.Model):
         ordering = ["community_id"]
 
 
+class PictureDictionaryEntry(models.Model):
+    dictionary = models.ForeignKey(PictureDictionary, on_delete=models.CASCADE, related_name="entries")
+    surface = models.CharField(max_length=255)
+    lemma = models.CharField(max_length=255, blank=True, default="")
+    pos = models.CharField(max_length=64, blank=True, default="")
+    image_path = models.CharField(max_length=512, blank=True, default="")
+    current_page_number = models.PositiveIntegerField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["id"]
+        indexes = [models.Index(fields=["dictionary", "is_active"])]
+
 class ContentComment(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="content_comments")
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="content_comments")

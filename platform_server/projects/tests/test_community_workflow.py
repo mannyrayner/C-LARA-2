@@ -151,6 +151,17 @@ class CommunityWorkflowTests(TestCase):
         dictionary.refresh_from_db()
         self.assertIn("Antarctica", dictionary.project.source_text)
 
+        dictionary_entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
+        self.assertTrue(dictionary_entries)
+        remove_selected = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {"picture_dictionary_action": "remove_selected", "remove_entry": [str(dictionary_entries[0].id)]},
+            follow=True,
+        )
+        self.assertEqual(remove_selected.status_code, 200)
+        dictionary_entries[0].refresh_from_db()
+        self.assertFalse(dictionary_entries[0].is_active)
+
     @patch("projects.views._build_ai_client")
     def test_organiser_review_can_generate_requested_variants_and_mark_reviewed(self, mock_build_ai_client):
         self.project.community = self.community

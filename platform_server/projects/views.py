@@ -102,6 +102,7 @@ from .picture_dictionary import (
     add_words_from_text as picture_dictionary_add_words_from_text,
     compile_picture_dictionary as picture_dictionary_compile,
     ensure_picture_dictionary_for_community,
+    remove_entries_by_ids as picture_dictionary_remove_entries_by_ids,
     remove_words as picture_dictionary_remove_words,
 )
 
@@ -6842,6 +6843,9 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
         .filter(community_id=community_id, is_active=True)
         .first()
     )
+    dictionary_entries = list(
+        picture_dictionary.entries.filter(is_active=True).order_by("id") if picture_dictionary else []
+    )
 
     if request.method == "POST":
         action = (request.POST.get("picture_dictionary_action") or "").strip()
@@ -6871,6 +6875,13 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             elif action == "remove":
                 removed = picture_dictionary_remove_words(dictionary=picture_dictionary, words=words)
                 messages.success(request, f"Removed {removed} word(s) from picture dictionary.")
+            elif action == "remove_selected":
+                selected_ids = [int(value) for value in request.POST.getlist("remove_entry") if str(value).isdigit()]
+                removed = picture_dictionary_remove_entries_by_ids(
+                    dictionary=picture_dictionary,
+                    entry_ids=selected_ids,
+                )
+                messages.success(request, f"Removed {removed} selected dictionary entr{'y' if removed == 1 else 'ies'}.")
             elif action == "add_from_text":
                 source_project_id_raw = (request.POST.get("source_project_id") or "").strip()
                 try:
@@ -6920,6 +6931,7 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             "membership": membership,
             "summary_rows": summary_rows,
             "picture_dictionary": picture_dictionary,
+            "dictionary_entries": dictionary_entries,
             "community_projects": projects,
         },
     )
