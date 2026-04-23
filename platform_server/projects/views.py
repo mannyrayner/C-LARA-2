@@ -1429,6 +1429,7 @@ def _build_page_image_prompt(
     full_text: str,
     relevant_elements: list[ProjectImageElement],
     discourage_text_in_image: bool = False,
+    dictionary_entry: PictureDictionaryEntry | None = None,
 ) -> str:
     language_instructions = {
         "en": ("Create one story illustration page in a consistent style.", "Keep visual continuity with existing style and element references."),
@@ -1457,6 +1458,25 @@ def _build_page_image_prompt(
         prompt_language = "en"
     line1, line2 = language_instructions.get(prompt_language, language_instructions["en"])
     no_text_line = _discourage_text_guideline_for_language(prompt_language)
+    if dictionary_entry is not None:
+        lemma = (dictionary_entry.lemma or page_text or "").strip()
+        pos = (dictionary_entry.pos or "").strip() or "unspecified"
+        return "\n".join(
+            [
+                "Create one picture-dictionary illustration.",
+                f"Target lemma: {lemma}",
+                f"Target POS: {pos}",
+                f"Prompt language: {language_labels.get(prompt_language, 'English')}",
+                f"Language (source): {project.language}",
+                f"Style description: {_compact_style_description_for_prompt(style.expanded_style_description or style.style_brief or '[none]', max_chars=1200)}",
+                "Render a clear visual scene for the target lemma itself (not a generic story page).",
+                "Do not focus on words, captions, typography, book pages, or signage text.",
+                f"{no_text_line}",
+                "If the lemma is a noun, make the object/animal/person visually central and unambiguous.",
+                "If the lemma is a verb, depict the action in progress with clear actors/objects.",
+                "If the lemma is an adjective, depict a concrete object/scene where the property is visually obvious.",
+            ]
+        )
     suppression_block_by_language = {
         "en": [
             "TEXT SUPPRESSION REQUIREMENTS (HIGH PRIORITY):",
@@ -1588,6 +1608,7 @@ def _fit_page_image_prompt_to_limit(
     page_text: str,
     full_text: str,
     relevant_elements: list[ProjectImageElement],
+    dictionary_entry: PictureDictionaryEntry | None = None,
     discourage_text_in_image: bool = False,
     max_chars: int = 12000,
 ) -> tuple[str, dict[str, Any]]:
@@ -1645,6 +1666,7 @@ def _fit_page_image_prompt_to_limit(
             page_text=page_text,
             full_text=_truncate_for_prompt(full_text, max_chars=full_text_limit),
             relevant_elements=trimmed_elements,
+            dictionary_entry=dictionary_entry,
             discourage_text_in_image=discourage_text_in_image,
         )
 
@@ -1839,6 +1861,14 @@ def _generate_project_page_images(
     missing_only: bool = False,
 ) -> int:
     style = project.image_style
+    dictionary = getattr(project, "picture_dictionary", None)
+    dictionary_entry_by_page = {}
+    if dictionary:
+        dictionary_entry_by_page = {
+            entry.current_page_number: entry
+            for entry in dictionary.entries.filter(is_active=True)
+            if entry.current_page_number
+        }
     full_text = _extract_project_plain_text(project) if include_full_text else ""
     pages_dir = _image_pages_dir(project)
     pages_dir.mkdir(parents=True, exist_ok=True)
@@ -1874,6 +1904,7 @@ def _generate_project_page_images(
             full_text=full_text,
             relevant_elements=refs,
             discourage_text_in_image=discourage_text_in_image,
+            dictionary_entry=dictionary_entry_by_page.get(page_obj.page_number),
         )
         prompt_by_page[page_obj.pk] = prompt
         _append_page_image_telemetry(

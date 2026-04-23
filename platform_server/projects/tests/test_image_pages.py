@@ -10,6 +10,9 @@ from django.urls import reverse
 
 from projects import views
 from projects.models import (
+    Community,
+    PictureDictionary,
+    PictureDictionaryEntry,
     Project,
     ProjectImageElement,
     ProjectImagePage,
@@ -258,6 +261,38 @@ class ProjectImagePagesViewTests(TestCase):
         msgs = [m.message for m in get_messages(resp.wsgi_request)]
         self.assertTrue(any("Generated 2 page image variant(s) with gpt-image-1." in msg for msg in msgs))
         self.assertFalse(any("Generating page images" in msg for msg in msgs))
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_page_images_uses_dictionary_mode_prompt_for_dictionary_project(self, mock_build_ai_client):
+        fake_client = FakeImageClient()
+        mock_build_ai_client.return_value = fake_client
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+        dictionary = PictureDictionary.objects.create(
+            community=Community.objects.create(name="Dict Community", language=self.project.language),
+            project=self.project,
+            organiser=self.user,
+            language=self.project.language,
+        )
+        page1 = ProjectImagePage.objects.get(project=self.project, page_number=1)
+        PictureDictionaryEntry.objects.create(
+            dictionary=dictionary,
+            surface="chat",
+            lemma="chat",
+            pos="NOUN",
+            is_active=True,
+            current_page_number=page1.page_number,
+        )
+        page1.page_text = "chat"
+        page1.save(update_fields=["page_text", "updated_at"])
+
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        resp = self.client.post(reverse("project-image-pages", args=[self.project.pk]), payload, follow=True)
+        self.assertEqual(resp.status_code, 200)
+        page1.refresh_from_db()
+        self.assertIn("Create one picture-dictionary illustration.", page1.generation_prompt)
+        self.assertIn("Target lemma: chat", page1.generation_prompt)
 
     @patch("projects.views._build_ai_client")
     def test_generate_multiple_variants_and_set_preferred_variant(self, mock_build_ai_client):
