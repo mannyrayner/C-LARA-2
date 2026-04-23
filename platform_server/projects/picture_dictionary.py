@@ -7,7 +7,7 @@ from typing import Iterable
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 
-from .models import Community, CommunityMembership, PictureDictionary, Project
+from .models import Community, CommunityMembership, PictureDictionary, Project, ProjectImagePage
 
 
 def _normalise_word(word: str) -> str:
@@ -15,14 +15,18 @@ def _normalise_word(word: str) -> str:
 
 
 def _entry_pages(project: Project) -> list[str]:
-    pages = [chunk.strip() for chunk in re.split(r"(?i)<\s*page\s*/?\s*>", project.source_text or "") if chunk.strip()]
+    source_text = project.source_text or ""
+    if re.search(r"(?i)<\s*page\s*/?\s*>", source_text):
+        pages = [chunk.strip() for chunk in re.split(r"(?i)<\s*page\s*/?\s*>", source_text) if chunk.strip()]
+        return pages
+    pages = [line.strip() for line in source_text.splitlines() if line.strip()]
     return pages
 
 
 def _set_entry_pages(project: Project, pages: Iterable[str]) -> None:
     normalized = [_normalise_word(page) for page in pages]
     normalized = [page for page in normalized if page]
-    project.source_text = "<page>".join(normalized)
+    project.source_text = "\n".join(normalized)
     project.input_mode = Project.INPUT_SOURCE
     project.save(update_fields=["source_text", "input_mode", "updated_at"])
 
@@ -115,12 +119,25 @@ def add_words_from_text(*, dictionary: PictureDictionary, text: str) -> int:
 
 
 def compile_picture_dictionary(*, dictionary: PictureDictionary) -> dict[str, int]:
-    from .views import _ensure_project_page_rows
-
-    pages_synced = _ensure_project_page_rows(dictionary.project)
+    entries = _entry_pages(dictionary.project)
+    for idx, entry in enumerate(entries, start=1):
+        existing = ProjectImagePage.objects.filter(project=dictionary.project, page_number=idx).first()
+        if existing:
+            if existing.page_text != entry:
+                existing.page_text = entry
+                existing.save(update_fields=["page_text", "updated_at"])
+        else:
+            ProjectImagePage.objects.create(
+                project=dictionary.project,
+                page_number=idx,
+                page_text=entry,
+                generation_prompt=entry,
+                image_model="gpt-image-1",
+            )
+    ProjectImagePage.objects.filter(project=dictionary.project, page_number__gt=len(entries)).delete()
     return {
-        "pages": len(_entry_pages(dictionary.project)),
-        "page_rows_synced": pages_synced,
+        "pages": len(entries),
+        "page_rows_synced": len(entries),
     }
 
 

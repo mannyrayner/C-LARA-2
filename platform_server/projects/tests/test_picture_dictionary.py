@@ -42,8 +42,7 @@ class PictureDictionaryCommandTests(TestCase):
             words="Pinguin, Oper, Pinguin",
         )
         dictionary.refresh_from_db()
-        self.assertIn("Pinguin", dictionary.project.source_text)
-        self.assertIn("Oper", dictionary.project.source_text)
+        self.assertEqual(dictionary.project.source_text, "Pinguin\nOper")
 
         call_command(
             "picture_dictionary",
@@ -72,6 +71,7 @@ class PictureDictionaryCommandTests(TestCase):
             community_id=self.community.id,
             organiser=self.organiser.username,
         )
+        self.assertEqual(dictionary.project.image_pages.count(), 6)
 
     def test_non_organiser_cannot_manage_dictionary(self):
         with self.assertRaises(CommandError):
