@@ -5751,13 +5751,10 @@ def _run_compile_task(
         report_uuid = uuid.UUID(report_id) if report_id else uuid.uuid4()
     except Exception:
         report_uuid = uuid.uuid4()
-    post_update, _ = _make_task_callback(
-        task_type or f"compile_project_{project_id}", user_id, report_uuid
-    )
+    post_update, _ = _make_task_callback(task_type or f"compile_project_{project_id}", user_id, report_uuid)
     telemetry_log = output_dir / "stages" / "telemetry.jsonl"
     telemetry = _TaskTelemetry(log_path=telemetry_log, post_update=post_update)
     post_update(f"Telemetry log file: {telemetry_log}")
-    logger.info("Compile telemetry log file: %s", telemetry_log)
 
     def progress_cb(stage: str, status: str, timestamp: str) -> None:
         try:
@@ -5767,24 +5764,17 @@ def _run_compile_task(
             local_timestamp = dt.astimezone(ZoneInfo(tz_name)).isoformat()
         except Exception:
             local_timestamp = timestamp
-
         entry = {"stage": stage, "status": status, "timestamp": local_timestamp}
         try:
             with progress_log.open("a", encoding="utf-8") as fp:
                 fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
         except Exception:
             logger.exception("Failed to append progress entry; progress_log=%s", progress_log)
-
         try:
             display_ts, _ = _format_timestamp(local_timestamp, tz_name)
             post_update(f"{stage}: {status} @ {display_ts}")
         except Exception:
-            logger.exception(
-                "Failed to persist task update; stage=%s status=%s report_id=%s",
-                stage,
-                status,
-                report_id,
-            )
+            logger.exception("Failed to persist task update; stage=%s status=%s report_id=%s", stage, status, report_id)
 
     current_request_type: dict[str, str] = {"value": start_stage}
 
@@ -5792,236 +5782,206 @@ def _run_compile_task(
         current_request_type["value"] = stage or current_request_type["value"]
         progress_cb(stage, status, timestamp)
 
-    spec = FullPipelineSpec(
-        text=text,
-        text_obj=text_obj,
-        description=description,
-        language=project.language,
-        target_language=project.target_language,
-        output_dir=output_dir,
-        audio_cache_dir=_audio_repository_dir(project.language),
-        require_real_tts=True,
-        persist_intermediates=True,
-        progress_callback=tracked_progress_cb,
-        start_stage=start_stage,
-        end_stage=end_stage or "compile_html",
-        page_images={},
-        picture_glosses={},
-        segmentation_method=_resolve_segmentation_method(project.language, segmentation_method or project.segmentation_method),
-        romanization_method=_resolve_romanization_method(project.language, romanization_method or project.romanization_method),
-        telemetry=telemetry,
-    )
-
-    spec.picture_glosses = _build_picture_glosses_for_compile(project=project, output_dir=output_dir)
-
-    placement = (page_image_placement or "none").strip().lower()
-    if placement in {"top", "bottom"}:
-        page_images: dict[int, dict[str, str]] = {}
-        expected_paths: list[str] = []
-        for row in project.image_pages.select_related("preferred_variant").order_by("page_number"):
-            resolved_image_path = row.image_path or (
-                row.preferred_variant.image_path if row.preferred_variant_id and row.preferred_variant else ""
-            )
-            if not resolved_image_path:
-                expected_paths.append(f"page {row.page_number}: [no image_path set]")
-                continue
-            abs_path = (project.artifact_dir() / resolved_image_path).resolve()
-            rel_path = os.path.relpath(abs_path, output_dir / "html").replace("\\", "/")
-            expected_paths.append(f"page {row.page_number}: {abs_path} (exists={abs_path.exists()})")
-            if abs_path.exists():
-                page_images[row.page_number] = {"path": rel_path, "placement": placement}
-        spec.page_images = page_images
-        if not page_images:
-            logger.warning(
-                "Page image placement is '%s' but no source images were resolved for compile input. Expected references: %s",
-                placement,
-                "; ".join(expected_paths) if expected_paths else "[no ProjectImagePage rows found]",
-            )
-            post_update(
-                "Warning: page image placement is enabled but no page images were found for compile input."
-            )
-
-    chosen_model = ai_model or project.ai_model or DEFAULT_MODEL
-    if chosen_model not in AI_MODEL_CHOICES:
-        chosen_model = DEFAULT_MODEL
-
-    usage_events: list[dict[str, Any]] = []
-    model_pricing = openai_price_for_model(chosen_model)
-
-    def usage_reporter(event: dict[str, Any]) -> None:
-        event_copy = dict(event or {})
-        usage_events.append(event_copy)
-        if not detailed_api_trace:
-            return
-        prompt_tokens = max(0, int(event_copy.get("prompt_tokens") or 0))
-        completion_tokens = max(0, int(event_copy.get("completion_tokens") or 0))
-        input_cost_usd = (model_pricing["input"] * prompt_tokens) / 1_000_000
-        output_cost_usd = (model_pricing["output"] * completion_tokens) / 1_000_000
-        total_cost_usd = input_cost_usd + output_cost_usd
-        telemetry.event(
-            str(event_copy.get("request_type") or current_request_type["value"] or "unknown"),
-            "info",
-            "openai.usage trace",
-            {
-                "model": str(event_copy.get("model") or chosen_model),
-                "operation": str(event_copy.get("operation") or "chat"),
-                "prompt_tokens": prompt_tokens,
-                "completion_tokens": completion_tokens,
-                "total_tokens": max(0, int(event_copy.get("total_tokens") or 0)),
-                "assumed_input_usd_per_1m_tokens": str(model_pricing["input"]),
-                "assumed_output_usd_per_1m_tokens": str(model_pricing["output"]),
-                "assumed_input_cost_usd": str(round(input_cost_usd, 6)),
-                "assumed_output_cost_usd": str(round(output_cost_usd, 6)),
-                "assumed_total_cost_usd": str(round(total_cost_usd, 6)),
-            },
-        )
-
-
-def _build_picture_glosses_for_compile(*, project: Project, output_dir: Path) -> dict[str, dict[str, str]]:
-    if not project.community_id:
-        return {}
-    picture_glosses: dict[str, dict[str, str]] = {}
-    picture_gloss_dir = output_dir / "html" / "picture_glosses"
-    picture_gloss_dir.mkdir(parents=True, exist_ok=True)
-    dictionary = (
-        PictureDictionary.objects.select_related("project")
-        .filter(community_id=project.community_id, is_active=True)
-        .first()
-    )
-    if not dictionary:
-        return {}
-    for entry in PictureDictionaryEntry.objects.filter(
-        dictionary=dictionary,
-        is_active=True,
-    ).exclude(image_path=""):
-        lemma_key = (entry.lemma or entry.surface or "").strip().casefold()
-        if not lemma_key or lemma_key in picture_glosses:
-            continue
-        abs_path = (dictionary.project.artifact_dir() / entry.image_path).resolve()
-        if not abs_path.exists():
-            continue
-        if dictionary.project_id == project.id:
-            rel_path = os.path.relpath(abs_path, output_dir / "html").replace("\\", "/")
-        else:
-            digest = hashlib.sha1(
-                f"{dictionary.project_id}:{entry.id}:{abs_path}".encode("utf-8")
-            ).hexdigest()[:12]
-            safe_lemma = re.sub(r"[^a-z0-9_-]+", "_", lemma_key).strip("_") or "lemma"
-            suffix = abs_path.suffix or ".png"
-            staged_path = picture_gloss_dir / f"{safe_lemma}_{digest}{suffix}"
-            if not staged_path.exists():
-                shutil.copy2(abs_path, staged_path)
-            rel_path = os.path.relpath(staged_path, output_dir / "html").replace("\\", "/")
-        picture_glosses[lemma_key] = {
-            "image_path": rel_path,
-            "surface": entry.surface or entry.lemma or "",
-        }
-    return picture_glosses
-
-    def flush_usage_events() -> None:
-        for event in usage_events:
-            try:
-                record_openai_usage_and_charge(
-                    user_id=user_id,
-                    project_id=project_id,
-                    model=str(event.get("model") or chosen_model),
-                    operation=str(event.get("operation") or "chat"),
-                    prompt_tokens=int(event.get("prompt_tokens") or 0),
-                    completion_tokens=int(event.get("completion_tokens") or 0),
-                    total_tokens=int(event.get("total_tokens") or 0),
-                    request_type=str(event.get("request_type") or current_request_type["value"] or "unknown"),
-                )
-            except Exception:
-                logger.exception("Failed to record OpenAI usage charge for project=%s", project_id)
-
-    def _finalize_usage_events() -> None:
-        try:
-            flush_usage_events()
-        except Exception:
-            logger.exception("Unexpected failure while finalizing usage events for project=%s", project_id)
-
-    client = _build_ai_client(
-        model_name=chosen_model,
-        usage_reporter=usage_reporter,
-        detailed_telemetry=detailed_api_trace,
-    )
-
     try:
-        result = asyncio.run(run_full_pipeline(spec, client=client))
-    except Exception as exc:  # pragma: no cover - surfaced through session
+        post_update(
+            "Compile task started. "
+            f"start_stage={start_stage}, end_stage={end_stage or 'compile_html'}, output_dir={output_dir}"
+        )
+        spec = FullPipelineSpec(
+            text=text,
+            text_obj=text_obj,
+            description=description,
+            language=project.language,
+            target_language=project.target_language,
+            output_dir=output_dir,
+            audio_cache_dir=_audio_repository_dir(project.language),
+            require_real_tts=True,
+            persist_intermediates=True,
+            progress_callback=tracked_progress_cb,
+            start_stage=start_stage,
+            end_stage=end_stage or "compile_html",
+            page_images={},
+            picture_glosses={},
+            segmentation_method=_resolve_segmentation_method(project.language, segmentation_method or project.segmentation_method),
+            romanization_method=_resolve_romanization_method(project.language, romanization_method or project.romanization_method),
+            telemetry=telemetry,
+        )
+        post_update("Pipeline spec initialized.")
+        try:
+            spec.picture_glosses = _build_picture_glosses_for_compile(project=project, output_dir=output_dir)
+            post_update(f"Prepared picture gloss map: {len(spec.picture_glosses)} lemma image(s).")
+        except Exception as gloss_exc:
+            logger.exception("Failed to build picture gloss map for project %s; continuing without picture glosses", project_id)
+            spec.picture_glosses = {}
+            post_update(f"Warning: picture gloss map build failed ({gloss_exc}). Continuing without picture glosses.")
+
+        placement = (page_image_placement or "none").strip().lower()
+        if placement in {"top", "bottom"}:
+            page_images: dict[int, dict[str, str]] = {}
+            expected_paths: list[str] = []
+            for row in project.image_pages.select_related("preferred_variant").order_by("page_number"):
+                resolved_image_path = row.image_path or (
+                    row.preferred_variant.image_path if row.preferred_variant_id and row.preferred_variant else ""
+                )
+                if not resolved_image_path:
+                    expected_paths.append(f"page {row.page_number}: [no image_path set]")
+                    continue
+                abs_path = (project.artifact_dir() / resolved_image_path).resolve()
+                rel_path = os.path.relpath(abs_path, output_dir / "html").replace("\\", "/")
+                expected_paths.append(f"page {row.page_number}: {abs_path} (exists={abs_path.exists()})")
+                if abs_path.exists():
+                    page_images[row.page_number] = {"path": rel_path, "placement": placement}
+            spec.page_images = page_images
+            post_update(f"Resolved compile page images: {len(page_images)} page image reference(s).")
+            if not page_images:
+                logger.warning(
+                    "Page image placement is '%s' but no source images were resolved for compile input. Expected references: %s",
+                    placement,
+                    "; ".join(expected_paths) if expected_paths else "[no ProjectImagePage rows found]",
+                )
+                post_update("Warning: page image placement is enabled but no page images were found for compile input.")
+
+        chosen_model = ai_model or project.ai_model or DEFAULT_MODEL
+        if chosen_model not in AI_MODEL_CHOICES:
+            chosen_model = DEFAULT_MODEL
+        usage_events: list[dict[str, Any]] = []
+        model_pricing = openai_price_for_model(chosen_model)
+
+        def usage_reporter(event: dict[str, Any]) -> None:
+            event_copy = dict(event or {})
+            usage_events.append(event_copy)
+            if not detailed_api_trace:
+                return
+            prompt_tokens = max(0, int(event_copy.get("prompt_tokens") or 0))
+            completion_tokens = max(0, int(event_copy.get("completion_tokens") or 0))
+            input_cost_usd = (model_pricing["input"] * prompt_tokens) / 1_000_000
+            output_cost_usd = (model_pricing["output"] * completion_tokens) / 1_000_000
+            total_cost_usd = input_cost_usd + output_cost_usd
+            telemetry.event(
+                str(event_copy.get("request_type") or current_request_type["value"] or "unknown"),
+                "info",
+                "openai.usage trace",
+                {
+                    "model": str(event_copy.get("model") or chosen_model),
+                    "operation": str(event_copy.get("operation") or "chat"),
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "total_tokens": max(0, int(event_copy.get("total_tokens") or 0)),
+                    "assumed_input_usd_per_1m_tokens": str(model_pricing["input"]),
+                    "assumed_output_usd_per_1m_tokens": str(model_pricing["output"]),
+                    "assumed_input_cost_usd": str(round(input_cost_usd, 6)),
+                    "assumed_output_cost_usd": str(round(output_cost_usd, 6)),
+                    "assumed_total_cost_usd": str(round(total_cost_usd, 6)),
+                },
+            )
+
+        def flush_usage_events() -> None:
+            for event in usage_events:
+                try:
+                    record_openai_usage_and_charge(
+                        user_id=user_id,
+                        project_id=project_id,
+                        model=str(event.get("model") or chosen_model),
+                        operation=str(event.get("operation") or "chat"),
+                        prompt_tokens=int(event.get("prompt_tokens") or 0),
+                        completion_tokens=int(event.get("completion_tokens") or 0),
+                        total_tokens=int(event.get("total_tokens") or 0),
+                        request_type=str(event.get("request_type") or current_request_type["value"] or "unknown"),
+                    )
+                except Exception:
+                    logger.exception("Failed to record OpenAI usage charge for project=%s", project_id)
+
+        def _finalize_usage_events() -> None:
+            try:
+                flush_usage_events()
+            except Exception:
+                logger.exception("Unexpected failure while finalizing usage events for project=%s", project_id)
+
+        post_update(f"Building AI client: model={chosen_model}.")
+        client = _build_ai_client(
+            model_name=chosen_model,
+            usage_reporter=usage_reporter,
+            detailed_telemetry=detailed_api_trace,
+        )
+        post_update("Running full pipeline.")
+        try:
+            result = asyncio.run(run_full_pipeline(spec, client=client))
+        except Exception as exc:
+            _finalize_usage_events()
+            logger.exception("Compile failed for project %s", project_id)
+            failure_entry = {
+                "stage": "compile",
+                "status": "error",
+                "timestamp": datetime.now(ZoneInfo(tz_name)).isoformat(),
+            }
+            try:
+                with progress_log.open("a", encoding="utf-8") as fp:
+                    fp.write(json.dumps(failure_entry, ensure_ascii=False) + "\n")
+            except Exception:
+                logger.exception("Failed to append compile failure entry; progress_log=%s", progress_log)
+            post_update(f"Compile failed: {exc}", status="error")
+            return
         _finalize_usage_events()
-        logger.exception("Compile failed for project %s", project_id)
-        failure_entry = {
+        post_update("Pipeline returned; finalizing compile outputs.")
+
+        requested_end_stage = spec.end_stage or "compile_html"
+        if requested_end_stage == "segmentation_phase_1":
+            salvage_info = _salvage_segmentation_phase_2_for_run(output_dir)
+            _invalidate_downstream_stage_files(output_dir, "segmentation_phase_2")
+            if salvage_info:
+                post_update(
+                    "Salvaged segmentation_phase_2 for "
+                    f"{salvage_info['unchanged_pages']}/{salvage_info['total_pages']} unchanged pages."
+                )
+        html_info: dict[str, Any] | None = result.get("html") if isinstance(result, dict) else None
+        compiled_rel = ""
+        if html_info:
+            index_path = html_info.get("index_path") or html_info.get("html_path")
+            if index_path:
+                html_path = Path(index_path).resolve()
+                try:
+                    compiled_rel = html_path.relative_to(project_root).as_posix()
+                except Exception:
+                    compiled_rel = html_path.as_posix()
+            if placement in {"top", "bottom"} and spec.page_images:
+                post_update(
+                    f"Attached {len(spec.page_images)} generated page image reference(s) to compile input ({placement})."
+                )
+        update_fields = ["artifact_root", "updated_at"]
+        if compiled_rel:
+            project.compiled_path = compiled_rel.replace("\\", "/")
+            update_fields.append("compiled_path")
+        elif requested_end_stage == "compile_html":
+            project.compiled_path = ""
+            update_fields.append("compiled_path")
+        project.artifact_root = str(project_root).replace("\\", "/")
+        project.save(update_fields=update_fields)
+
+        final_status = "success" if (compiled_rel or requested_end_stage != "compile_html") else "error"
+        completion_entry = {
             "stage": "compile",
-            "status": "error",
+            "status": final_status,
             "timestamp": datetime.now(ZoneInfo(tz_name)).isoformat(),
         }
         try:
             with progress_log.open("a", encoding="utf-8") as fp:
-                fp.write(json.dumps(failure_entry, ensure_ascii=False) + "\n")
+                fp.write(json.dumps(completion_entry, ensure_ascii=False) + "\n")
         except Exception:
-            logger.exception(
-                "Failed to append compile failure entry; progress_log=%s", progress_log
-            )
-        post_update(f"Compile failed: {exc}", status="error")
-        return
-    _finalize_usage_events()
+            logger.exception("Failed to append compile completion entry; progress_log=%s", progress_log)
 
-    requested_end_stage = spec.end_stage or "compile_html"
-    if requested_end_stage == "segmentation_phase_1":
-        salvage_info = _salvage_segmentation_phase_2_for_run(output_dir)
-        _invalidate_downstream_stage_files(output_dir, "segmentation_phase_2")
-        if salvage_info:
-            post_update(
-                "Salvaged segmentation_phase_2 for "
-                f"{salvage_info['unchanged_pages']}/{salvage_info['total_pages']} unchanged pages."
-            )
-    html_info: dict[str, Any] | None = result.get("html") if isinstance(result, dict) else None
-    compiled_rel = ""
-    run_root = output_dir
-    if html_info:
-        run_root = Path(html_info.get("run_root", output_dir)).resolve()
-        index_path = html_info.get("index_path") or html_info.get("html_path")
-        if index_path:
-            html_path = Path(index_path).resolve()
-            try:
-                compiled_rel = html_path.relative_to(project_root).as_posix()
-            except Exception:
-                compiled_rel = html_path.as_posix()
-        if placement in {"top", "bottom"} and spec.page_images:
-            post_update(
-                f"Attached {len(spec.page_images)} generated page image reference(s) to compile input ({placement})."
-            )
-    update_fields = ["artifact_root", "updated_at"]
-    if compiled_rel:
-        project.compiled_path = compiled_rel.replace("\\", "/")
-        update_fields.append("compiled_path")
-    elif requested_end_stage == "compile_html":
-        # compile_html was requested but no HTML was produced; clear compiled path.
-        project.compiled_path = ""
-        update_fields.append("compiled_path")
-    project.artifact_root = str(project_root).replace("\\", "/")
-    project.save(update_fields=update_fields)
-
-    final_status = "success" if (compiled_rel or requested_end_stage != "compile_html") else "error"
-    completion_entry = {
-        "stage": "compile",
-        "status": final_status,
-        "timestamp": datetime.now(ZoneInfo(tz_name)).isoformat(),
-    }
-    try:
-        with progress_log.open("a", encoding="utf-8") as fp:
-            fp.write(json.dumps(completion_entry, ensure_ascii=False) + "\n")
-    except Exception:
-        logger.exception("Failed to append compile completion entry; progress_log=%s", progress_log)
-
-    if compiled_rel:
-        outcome_message = "Project compiled to HTML."
-    elif requested_end_stage != "compile_html":
-        outcome_message = f"Pipeline finished successfully at stage: {requested_end_stage}."
-    else:
-        outcome_message = "Compilation finished but no HTML was produced."
-    post_update(outcome_message, status="finished" if final_status == "success" else "error")
+        if compiled_rel:
+            outcome_message = "Project compiled to HTML."
+        elif requested_end_stage != "compile_html":
+            outcome_message = f"Pipeline finished successfully at stage: {requested_end_stage}."
+        else:
+            outcome_message = "Compilation finished but no HTML was produced."
+        post_update(outcome_message, status="finished" if final_status == "success" else "error")
+    except Exception as exc:
+        logger.exception("Unhandled compile task exception for project %s", project_id)
+        try:
+            post_update(f"Compile task crashed unexpectedly: {exc}", status="error")
+        except Exception:
+            logger.exception("Failed to post unexpected-crash update for project %s", project_id)
 
 
 @login_required
