@@ -4,6 +4,36 @@
 <h1>Images — {{ project.title }}</h1>
 <p><a class="btn secondary" href="{% url 'project-detail' project.pk %}">← Back to project</a></p>
 
+<div style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0; background:#fafafa;">
+  <strong>Dialogue assistant suggestion</strong>
+  {% if not style_has_content %}
+    <p><strong>Suggested next step: create/confirm image style</strong></p>
+    <p>Start with a style definition and sample image, then move to reusable elements and page images.</p>
+    <p><a class="btn secondary" href="{% url 'project-image-style' project.pk %}">Open image style workflow</a></p>
+  {% elif not elements_with_images_count %}
+    <p><strong>Suggested next step: generate key elements</strong></p>
+    <p>Create element images so characters/objects remain consistent across pages.</p>
+    <p><a class="btn secondary" href="{% url 'project-image-elements' project.pk %}">Open image elements workflow</a></p>
+  {% elif not pages_with_images_count %}
+    <p><strong>Suggested next step: generate page images</strong></p>
+    <p>Generate images for each page now that style and elements are in place.</p>
+    <p><a class="btn secondary" href="{% url 'project-image-pages' project.pk %}">Open page images workflow</a></p>
+  {% else %}
+    <p><strong>Suggested next step: recompile HTML with current images</strong></p>
+    <p>You now have page images; compile HTML to include image placement in the rendered text.</p>
+    <form method="post" action="{% url 'project-compile' project.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="start_stage" value="compile_html" />
+      <input type="hidden" name="end_stage" value="compile_html" />
+      <input type="hidden" name="ai_model" value="{{ selected_ai_model }}" />
+      <input type="hidden" name="page_image_placement" value="{{ selected_page_image_placement }}" />
+      <input type="hidden" name="return_to" value="{% url 'project-images-home' project.pk %}" />
+      <button class="btn secondary" type="submit">Compile HTML now</button>
+    </form>
+    <p><a class="btn secondary" href="{% url 'project-annotation-home' project.pk %}">Back to annotation home</a></p>
+  {% endif %}
+</div>
+
 {% if not has_segmentation_phase_1 %}
   <h2>Prepare page segmentation</h2>
   <p>Before generating page images, segment the text into pages (phase 1).</p>
@@ -17,8 +47,8 @@
 {% endif %}
 
 <h2>Style</h2>
-{% if style %}
-  <p>Style record exists{% if style.sample_image_path %}; sample image is available{% endif %}.</p>
+{% if style_has_content %}
+  <p>Style data exists{% if style_ready %}; sample image is available{% endif %}.</p>
 {% else %}
   <p>No style data yet.</p>
 {% endif %}
@@ -40,6 +70,22 @@
 <h2>Pages</h2>
 <form method="post">
   {% csrf_token %}
+  <p>
+    <label for="style_ai_model">Style AI model:</label>
+    <select id="style_ai_model" name="style_ai_model">
+      {% for model in ai_model_choices %}
+        <option value="{{ model }}" {% if model == selected_style_ai_model %}selected{% endif %}>{{ model }}</option>
+      {% endfor %}
+    </select>
+  </p>
+  <p>
+    <label for="style_image_model">Image model (style/elements/pages):</label>
+    <select id="style_image_model" name="style_image_model">
+      {% for model in image_model_choices %}
+        <option value="{{ model }}" {% if model == selected_style_image_model %}selected{% endif %}>{{ model }}</option>
+      {% endfor %}
+    </select>
+  </p>
   <p>
     <label for="generate_page_images_from_translations">
       <input
