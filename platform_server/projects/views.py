@@ -99,8 +99,8 @@ from .models import (
     AIUsageCharge,
 )
 from .picture_dictionary import (
+    add_lemma_pos_entries as picture_dictionary_add_lemma_pos_entries,
     add_words as picture_dictionary_add_words,
-    add_words_from_text as picture_dictionary_add_words_from_text,
     compile_picture_dictionary as picture_dictionary_compile,
     ensure_picture_dictionary_for_community,
     remove_entries_by_ids as picture_dictionary_remove_entries_by_ids,
@@ -7017,13 +7017,36 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                 if not source_project:
                     messages.error(request, "Please choose a valid community project for add-from-text.")
                 else:
-                    added = picture_dictionary_add_words_from_text(
+                    lemma_run = _find_run_with_stage(source_project, "lemma")
+                    lemma_payload = _load_stage_payload(source_project, "lemma", run_dir=lemma_run) if lemma_run else None
+                    if not lemma_payload:
+                        messages.error(
+                            request,
+                            "Add from text requires lemma annotations. Run the source project through the lemma stage first.",
+                        )
+                        return redirect("community-organiser-home", community_id=community_id)
+                    lemma_pos_pairs: list[tuple[str, str]] = []
+                    seen_pairs: set[tuple[str, str]] = set()
+                    for page in lemma_payload.get("pages") or []:
+                        for segment in page.get("segments") or []:
+                            for token in segment.get("tokens") or []:
+                                ann = token.get("annotations") or {}
+                                lemma = str(ann.get("lemma") or "").strip()
+                                pos = str(ann.get("pos") or "").strip().upper()
+                                if not lemma:
+                                    continue
+                                key = (lemma.casefold(), pos)
+                                if key in seen_pairs:
+                                    continue
+                                seen_pairs.add(key)
+                                lemma_pos_pairs.append((lemma, pos))
+                    added = picture_dictionary_add_lemma_pos_entries(
                         dictionary=picture_dictionary,
-                        text=source_project.source_text or "",
+                        lemma_pos_pairs=lemma_pos_pairs,
                     )
                     messages.success(
                         request,
-                        f"Added {added} word(s) from project “{source_project.title}”.",
+                        f"Added {added} lemma/POS entr{'y' if added == 1 else 'ies'} from project “{source_project.title}”.",
                     )
             else:
                 messages.error(request, f"Unknown picture dictionary action: {action}")

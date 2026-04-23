@@ -168,6 +168,44 @@ def add_words_from_text(*, dictionary: PictureDictionary, text: str) -> int:
     return add_words(dictionary=dictionary, words=extract_pictureable_words(text))
 
 
+def add_lemma_pos_entries(*, dictionary: PictureDictionary, lemma_pos_pairs: Iterable[tuple[str, str]]) -> int:
+    _bootstrap_registry_from_project_source(dictionary)
+    existing: dict[tuple[str, str], PictureDictionaryEntry] = {}
+    for entry in dictionary.entries.order_by("id"):
+        lemma_key = _normalise_word(entry.lemma or entry.surface).casefold()
+        pos_key = _normalise_word(entry.pos).upper()
+        existing[(lemma_key, pos_key)] = entry
+
+    added = 0
+    for lemma_raw, pos_raw in lemma_pos_pairs:
+        lemma = _normalise_word(lemma_raw)
+        pos = _normalise_word(pos_raw).upper()
+        if not lemma:
+            continue
+        key = (lemma.casefold(), pos)
+        row = existing.get(key)
+        if row and row.is_active:
+            continue
+        if row and not row.is_active:
+            row.is_active = True
+            row.surface = lemma
+            row.lemma = lemma
+            row.pos = pos
+            row.save(update_fields=["is_active", "surface", "lemma", "pos", "updated_at"])
+        else:
+            created = PictureDictionaryEntry.objects.create(
+                dictionary=dictionary,
+                surface=lemma,
+                lemma=lemma,
+                pos=pos,
+                is_active=True,
+            )
+            existing[key] = created
+        added += 1
+    _sync_project_source_from_registry(dictionary)
+    return added
+
+
 def _write_segmentation_phase_1(dictionary: PictureDictionary, entries: list[PictureDictionaryEntry]) -> None:
     run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages"
     run_dir.mkdir(parents=True, exist_ok=True)

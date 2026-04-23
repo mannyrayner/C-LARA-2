@@ -1,4 +1,5 @@
 import base64
+import json
 
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
@@ -148,6 +149,34 @@ class CommunityWorkflowTests(TestCase):
         dictionary.refresh_from_db()
         self.assertIn("Frida", dictionary.project.source_text)
 
+        add_from_text = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {"picture_dictionary_action": "add_from_text", "source_project_id": str(self.project.id)},
+            follow=True,
+        )
+        self.assertEqual(add_from_text.status_code, 200)
+        self.assertContains(add_from_text, "Add from text requires lemma annotations.")
+
+        lemma_run = self.project.artifact_dir() / "runs" / "run_lemma_source" / "stages"
+        lemma_run.mkdir(parents=True, exist_ok=True)
+        lemma_payload = {
+            "l2": "iai",
+            "surface": "Frida sings in Antarctica.",
+            "pages": [
+                {
+                    "segments": [
+                        {
+                            "tokens": [
+                                {"surface": "Frida", "annotations": {"lemma": "Frida", "pos": "PROPN"}},
+                                {"surface": "sings", "annotations": {"lemma": "sing", "pos": "VERB"}},
+                                {"surface": "Antarctica", "annotations": {"lemma": "Antarctica", "pos": "PROPN"}},
+                            ]
+                        }
+                    ]
+                }
+            ],
+        }
+        (lemma_run / "lemma.json").write_text(json.dumps(lemma_payload), encoding="utf-8")
         add_from_text = client.post(
             reverse("community-organiser-home", args=[self.community.id]),
             {"picture_dictionary_action": "add_from_text", "source_project_id": str(self.project.id)},
