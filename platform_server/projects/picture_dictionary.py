@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
@@ -270,10 +271,23 @@ def _write_dictionary_annotation_stages(dictionary: PictureDictionary, entries: 
         )
 
 
-def compile_picture_dictionary(*, dictionary: PictureDictionary) -> dict[str, object]:
+def compile_picture_dictionary(
+    *,
+    dictionary: PictureDictionary,
+    progress_callback: Callable[[str], None] | None = None,
+    compile_task_report_id: str | None = None,
+    compile_task_user_id: int | None = None,
+    compile_task_type: str | None = None,
+) -> dict[str, object]:
+    def _post_progress(message: str) -> None:
+        if progress_callback:
+            progress_callback(message)
+
     _bootstrap_registry_from_project_source(dictionary)
     entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
     _sync_project_source_from_registry(dictionary)
+    _post_progress(f"Dictionary text compilation started for {len(entries)} image entr{'y' if len(entries) == 1 else 'ies'}.")
+    _post_progress("Text phase 1/3: syncing dictionary entries to image pages.")
 
     for idx, entry in enumerate(entries, start=1):
         existing = ProjectImagePage.objects.filter(project=dictionary.project, page_number=idx).first()
@@ -309,6 +323,7 @@ def compile_picture_dictionary(*, dictionary: PictureDictionary) -> dict[str, ob
             entry.save(update_fields=["image_path", "current_page_number", "updated_at"])
 
     ProjectImagePage.objects.filter(project=dictionary.project, page_number__gt=len(entries)).delete()
+    _post_progress("Text phase 2/3: writing segmentation and annotation stage artifacts.")
     _write_segmentation_phase_1(dictionary, entries)
     _write_dictionary_annotation_stages(dictionary, entries)
     annotation_run = "skipped"
@@ -318,12 +333,13 @@ def compile_picture_dictionary(*, dictionary: PictureDictionary) -> dict[str, ob
     try:
         from .views import _run_compile_task
 
+        _post_progress("Text phase 3/3: running annotation pipeline (segmentation phase 2 to compile HTML).")
         run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
         run_dir.mkdir(parents=True, exist_ok=True)
         seg1_payload = _dictionary_stage_payload(dictionary, entries, "segmentation_phase_1")
         _run_compile_task(
             project_id=dictionary.project.id,
-            user_id=dictionary.organiser_id,
+            user_id=compile_task_user_id or dictionary.organiser_id,
             output_dir_str=str(run_dir),
             project_root_str=str(dictionary.project.artifact_dir()),
             start_stage="segmentation_phase_2",
@@ -331,8 +347,8 @@ def compile_picture_dictionary(*, dictionary: PictureDictionary) -> dict[str, ob
             description=None,
             text=dictionary.project.source_text,
             text_obj=seg1_payload,
-            report_id=None,
-            task_type=f"picture_dictionary_compile_{dictionary.project.id}",
+            report_id=compile_task_report_id,
+            task_type=compile_task_type or f"picture_dictionary_compile_{dictionary.project.id}",
             ai_model=dictionary.project.ai_model,
             end_stage="compile_html",
             page_image_placement=dictionary.project.page_image_placement or "none",
@@ -349,6 +365,7 @@ def compile_picture_dictionary(*, dictionary: PictureDictionary) -> dict[str, ob
             dictionary.project_id,
         )
 
+    _post_progress(f"Dictionary image compilation started for {len(entries)} image entr{'y' if len(entries) == 1 else 'ies'}.")
     try:
         style = getattr(dictionary.project, "image_style", None)
         style_usable = bool(
