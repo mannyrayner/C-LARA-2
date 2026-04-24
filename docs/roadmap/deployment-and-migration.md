@@ -88,6 +88,23 @@ This is the immediate planning/execution track.
 4. Choose access model: bastion SSH vs AWS SSM Session Manager.
 5. Confirm crossover hosting scope: C-LARA + C-LARA-2 + legacy LARA static content.
 
+### Phase P0 decision log (updated Friday, April 24, 2026)
+
+Status summary:
+- ✅ AWS account access confirmed.
+- ✅ IAM admin model established for day-to-day use:
+  - account alias sign-in URL set and tested,
+  - dedicated IAM user in `Admin` group,
+  - MFA enabled,
+  - root retained for emergency-only use.
+- ✅ Region confirmed as `ap-southeast-2`.
+- ✅ DB direction agreed: PostgreSQL on AWS via RDS (preferred path), consistent with prior stable PostgreSQL operations on Adelaide.
+- ✅ Access direction agreed: AWS SSM Session Manager (preferred over bastion SSH for routine administration).
+- ✅ Crossover scope confirmed: C-LARA + C-LARA-2 + legacy read-only LARA static content.
+
+Execution note:
+- P1 provisioning work intentionally deferred to Saturday, April 25, 2026 due to end-of-day timing.
+
 ### Phase P1 — infrastructure bootstrap (day 1)
 1. Create VPC/subnets/security groups.
 2. Provision EC2 instance with fixed Elastic IP (or ALB if used).
@@ -319,3 +336,9 @@ To start Phase P0/P1 immediately, confirm:
 7. URL strategy for legacy read-only LARA hosting.
 
 Once these items are confirmed, we can produce a concrete, command-level provisioning runbook and a first-pass cost estimate.
+
+## 11) Current status snapshot (as of Friday, April 24, 2026)
+
+- **P0:** functionally complete; decisions and sign-in/access setup validated.
+- **Next action:** begin P1 infrastructure bootstrap on Saturday, April 25, 2026.
+- **Primary open implementation tasks:** VPC/subnets/security groups, EC2 baseline host, RDS PostgreSQL creation, and DNS setup.
