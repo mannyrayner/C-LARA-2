@@ -6984,7 +6984,10 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
         picture_dictionary.entries.filter(is_active=True).order_by("id") if picture_dictionary else []
     )
     picture_dictionary_compile_info: dict[str, Any] | None = None
+    picture_dictionary_style_brief = ""
     if picture_dictionary:
+        style = getattr(picture_dictionary.project, "image_style", None)
+        picture_dictionary_style_brief = ((style.style_brief or "").strip() if style else "")
         seg1_path = picture_dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages" / "segmentation_phase_1.json"
         if seg1_path.exists():
             try:
@@ -7013,6 +7016,11 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             if action == "ensure":
                 messages.success(request, "Picture dictionary is ready.")
             elif action == "compile":
+                compile_updates: list[str] = []
+
+                def _record_compile_update(message: str) -> None:
+                    compile_updates.append(message)
+
                 style = getattr(picture_dictionary.project, "image_style", None)
                 style_usable = bool(
                     style
@@ -7063,14 +7071,20 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                         response_payload=generated.get("_response_payload"),
                     )
                     messages.success(request, "Created dictionary image style from the provided style brief.")
-                messages.info(request, "Compiling picture dictionary now. This may take a while.")
-                result = picture_dictionary_compile(dictionary=picture_dictionary)
+                messages.info(request, "Picture dictionary compilation started. This may take a while.")
+                result = picture_dictionary_compile(
+                    dictionary=picture_dictionary,
+                    progress_callback=_record_compile_update,
+                )
+                for update in compile_updates:
+                    messages.info(request, update)
                 messages.success(
                     request,
                     "Compiled picture dictionary: "
                     f"pages={result['pages']}, page rows synced={result['page_rows_synced']}, "
                     f"annotation pipeline={result.get('annotation_run')}, generated images={result.get('generated_images', 0)}.",
                 )
+                messages.success(request, "Picture dictionary compilation complete.")
                 if result.get("annotation_error"):
                     messages.error(request, f"Annotation pipeline failed: {result.get('annotation_error')}")
                 if result.get("image_generation_note"):
@@ -7162,6 +7176,7 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             "picture_dictionary": picture_dictionary,
             "dictionary_entries": dictionary_entries,
             "picture_dictionary_compile_info": picture_dictionary_compile_info,
+            "picture_dictionary_style_brief": picture_dictionary_style_brief,
             "community_projects": projects,
         },
     )
