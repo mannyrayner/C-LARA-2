@@ -6063,6 +6063,47 @@ def _run_compile_task(
             logger.exception("Failed to post unexpected-crash update for project %s", project_id)
 
 
+def _run_picture_dictionary_compile_task(dictionary_id: int, user_id: int, report_id: str) -> None:
+    task_type = f"picture_dictionary_compile_{dictionary_id}"
+    try:
+        report_uuid = uuid.UUID(report_id)
+    except Exception:
+        report_uuid = uuid.uuid4()
+    post_update, _ = _make_task_callback(task_type, user_id, report_uuid)
+    try:
+        dictionary = (
+            PictureDictionary.objects.select_related("project")
+            .filter(pk=dictionary_id, is_active=True)
+            .first()
+        )
+        if not dictionary:
+            post_update("Picture dictionary compile failed: dictionary not found.", status="error")
+            return
+
+        post_update("Picture dictionary compilation started.", status="running")
+        result = picture_dictionary_compile(
+            dictionary=dictionary,
+            progress_callback=lambda message: post_update(message, status="running"),
+            compile_task_report_id=report_id,
+            compile_task_user_id=user_id,
+            compile_task_type=task_type,
+        )
+        post_update(
+            "Compiled picture dictionary: "
+            f"pages={result['pages']}, page rows synced={result['page_rows_synced']}, "
+            f"annotation pipeline={result.get('annotation_run')}, generated images={result.get('generated_images', 0)}.",
+            status="running",
+        )
+        if result.get("annotation_error"):
+            post_update(f"Annotation pipeline failed: {result.get('annotation_error')}", status="running")
+        if result.get("image_generation_note"):
+            post_update(str(result.get("image_generation_note")), status="running")
+        post_update("Picture dictionary compilation complete.", status="finished")
+    except Exception as exc:
+        logger.exception("Unhandled picture dictionary compile task exception for dictionary %s", dictionary_id)
+        post_update(f"Picture dictionary compile task crashed unexpectedly: {exc}", status="error")
+
+
 @login_required
 def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
@@ -7071,24 +7112,18 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                         response_payload=generated.get("_response_payload"),
                     )
                     messages.success(request, "Created dictionary image style from the provided style brief.")
-                messages.info(request, "Picture dictionary compilation started. This may take a while.")
-                result = picture_dictionary_compile(
-                    dictionary=picture_dictionary,
-                    progress_callback=_record_compile_update,
+                report_id = str(uuid.uuid4())
+                async_task(
+                    _run_picture_dictionary_compile_task,
+                    picture_dictionary.id,
+                    request.user.id,
+                    report_id,
+                    q_options={"sync": False},
                 )
-                for update in compile_updates:
-                    messages.info(request, update)
-                messages.success(
-                    request,
-                    "Compiled picture dictionary: "
-                    f"pages={result['pages']}, page rows synced={result['page_rows_synced']}, "
-                    f"annotation pipeline={result.get('annotation_run')}, generated images={result.get('generated_images', 0)}.",
-                )
-                messages.success(request, "Picture dictionary compilation complete.")
-                if result.get("annotation_error"):
-                    messages.error(request, f"Annotation pipeline failed: {result.get('annotation_error')}")
-                if result.get("image_generation_note"):
-                    messages.info(request, result["image_generation_note"])
+                messages.info(request, "Picture dictionary compilation started. Opening live status monitor.")
+                monitor_url = reverse("project-compile-monitor", args=[picture_dictionary.project.id, report_id])
+                return_to = reverse("community-organiser-home", args=[community_id])
+                return redirect(f"{monitor_url}?next={quote(return_to, safe='/')}")
             elif action == "add":
                 added = picture_dictionary_add_words(dictionary=picture_dictionary, words=words)
                 messages.success(request, f"Added {added} word(s) to picture dictionary.")

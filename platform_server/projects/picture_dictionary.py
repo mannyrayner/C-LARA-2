@@ -275,6 +275,9 @@ def compile_picture_dictionary(
     *,
     dictionary: PictureDictionary,
     progress_callback: Callable[[str], None] | None = None,
+    compile_task_report_id: str | None = None,
+    compile_task_user_id: int | None = None,
+    compile_task_type: str | None = None,
 ) -> dict[str, object]:
     def _post_progress(message: str) -> None:
         if progress_callback:
@@ -336,7 +339,7 @@ def compile_picture_dictionary(
         seg1_payload = _dictionary_stage_payload(dictionary, entries, "segmentation_phase_1")
         _run_compile_task(
             project_id=dictionary.project.id,
-            user_id=dictionary.organiser_id,
+            user_id=compile_task_user_id or dictionary.organiser_id,
             output_dir_str=str(run_dir),
             project_root_str=str(dictionary.project.artifact_dir()),
             start_stage="segmentation_phase_2",
@@ -344,8 +347,8 @@ def compile_picture_dictionary(
             description=None,
             text=dictionary.project.source_text,
             text_obj=seg1_payload,
-            report_id=None,
-            task_type=f"picture_dictionary_compile_{dictionary.project.id}",
+            report_id=compile_task_report_id,
+            task_type=compile_task_type or f"picture_dictionary_compile_{dictionary.project.id}",
             ai_model=dictionary.project.ai_model,
             end_stage="compile_html",
             page_image_placement=dictionary.project.page_image_placement or "none",

@@ -16,6 +16,7 @@ from projects.models import (
     Project,
     ProjectImagePage,
     ProjectImagePageVariant,
+    TaskUpdate,
 )
 
 
@@ -198,7 +199,9 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(compile_missing_style.status_code, 200)
         self.assertContains(compile_missing_style, "Style is missing. Enter a style brief and compile again.")
 
-        with patch("projects.views._generate_project_image_style") as mock_generate_style:
+        with patch("projects.views._generate_project_image_style") as mock_generate_style, patch(
+            "projects.views.async_task"
+        ) as mock_async_task:
             mock_generate_style.return_value = {
                 "expanded_style_description": "Watercolor style.",
                 "representative_excerpt": "Frida sings in Antarctica.",
@@ -212,19 +215,25 @@ class CommunityWorkflowTests(TestCase):
                     "picture_dictionary_action": "compile",
                     "picture_dictionary_style_brief": "Soft watercolor, pastel palette.",
                 },
-                follow=True,
             )
-        self.assertEqual(compile_dictionary.status_code, 200)
-        self.assertContains(compile_dictionary, "Created dictionary image style from the provided style brief.")
-        self.assertContains(compile_dictionary, "Picture dictionary compilation started. This may take a while.")
-        self.assertContains(compile_dictionary, "Dictionary text compilation started for")
-        self.assertContains(compile_dictionary, "Text phase 1/3: syncing dictionary entries to image pages.")
-        self.assertContains(compile_dictionary, "Text phase 2/3: writing segmentation and annotation stage artifacts.")
-        self.assertContains(compile_dictionary, "Text phase 3/3: running annotation pipeline")
-        self.assertContains(compile_dictionary, "Dictionary image compilation started for")
-        self.assertContains(compile_dictionary, "Picture dictionary compilation complete.")
-        self.assertContains(compile_dictionary, "Current style brief:")
-        self.assertContains(compile_dictionary, "Soft watercolor, pastel palette.")
+        self.assertEqual(compile_dictionary.status_code, 302)
+        self.assertIn("/compile/monitor/", compile_dictionary["Location"])
+        self.assertTrue(mock_async_task.called)
+        scheduled = mock_async_task.call_args
+        self.assertEqual(scheduled.args[0].__name__, "_run_picture_dictionary_compile_task")
+        self.assertEqual(scheduled.args[1], dictionary.id)
+        self.assertEqual(scheduled.args[2], self.organiser.id)
+        report_id = scheduled.args[3]
+
+        scheduled.args[0](*scheduled.args[1:4])
+        self.assertTrue(
+            TaskUpdate.objects.filter(report_id=report_id, user=self.organiser, message__icontains="Text phase 1/3").exists()
+        )
+        status = client.get(reverse("project-compile-status", args=[dictionary.project.id, report_id]))
+        self.assertEqual(status.status_code, 200)
+        payload = status.json()
+        self.assertIn("messages", payload)
+        self.assertTrue(any("Picture dictionary compilation complete." in msg for msg in payload["messages"]))
 
         dictionary_entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
         self.assertTrue(dictionary_entries)
