@@ -7057,6 +7057,11 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             if action == "ensure":
                 messages.success(request, "Picture dictionary is ready.")
             elif action == "compile":
+                compile_updates: list[str] = []
+
+                def _record_compile_update(message: str) -> None:
+                    compile_updates.append(message)
+
                 style = getattr(picture_dictionary.project, "image_style", None)
                 style_usable = bool(
                     style
