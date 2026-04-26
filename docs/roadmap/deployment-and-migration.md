@@ -112,6 +112,25 @@ Execution note:
 4. Provision DB (RDS PostgreSQL preferred) and secure network path.
 5. Configure DNS records for target hostname.
 
+### Phase P1 progress log (updated Sunday, April 26, 2026)
+
+Status summary:
+- ✅ VPC/subnets/security groups created.
+  - Dedicated private subnets prepared for DB placement.
+  - Security groups split by role (`clara2-web-sg` and `clara2-db-sg`) with DB ingress restricted to app SG.
+- ✅ EC2 app host provisioned with fixed Elastic IP.
+  - Instance: `clara2-app-01`
+  - Elastic IP associated and DNS-resolvable.
+- ✅ EBS baseline in place.
+  - Root gp3 volume configured and encrypted.
+  - Snapshot policy setup remains part of immediate hardening follow-up in P2.
+- ✅ RDS PostgreSQL provisioned on private subnets with secure network path.
+  - DB subnet group uses private subnets only.
+  - Public access disabled and connectivity from EC2 validated on port 5432.
+- ✅ DNS record created for AWS host target.
+  - `c-lara-2.c-lara.org` A record points to AWS Elastic IP.
+  - Operational DNS currently managed at authoritative WordPress nameservers.
+
 ### Phase P2 — host hardening and base software (day 1–2)
 1. Patch OS packages.
 2. Install and configure: Nginx, Python runtime, systemd units, PostgreSQL client tools.
