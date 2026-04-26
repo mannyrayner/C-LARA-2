@@ -58,6 +58,7 @@ class FullPipelineSpec:
     start_stage: str = "segmentation_phase_1"
     end_stage: str = "compile_html"
     page_images: dict[int, dict[str, str]] | None = None
+    picture_glosses: dict[str, dict[str, str]] | None = None
     segmentation_method: str = "auto"
     romanization_method: str = "auto"
     require_real_tts: bool = False
@@ -306,7 +307,13 @@ async def run_full_pipeline(
                             annotations["generated_image"] = image_meta
             _progress("compile_html", "start")
             html_result = compile_html(
-                CompileHTMLSpec(text=current, output_dir=spec.output_dir, telemetry=telemetry, op_id=stage_op_id)
+                CompileHTMLSpec(
+                    text=current,
+                    output_dir=spec.output_dir,
+                    telemetry=telemetry,
+                    op_id=stage_op_id,
+                    picture_glosses=spec.picture_glosses,
+                )
             )
             _persist("compile_html", html_result or {})
             _progress("compile_html", "done")

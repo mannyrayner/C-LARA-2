@@ -17,6 +17,7 @@ from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
+from django.core.exceptions import PermissionDenied
 from django.core.management import call_command
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -78,6 +79,8 @@ from .models import (
     CommunityImageVote,
     CommunityMembership,
     CommunityOrganiserReview,
+    PictureDictionary,
+    PictureDictionaryEntry,
     CreditLedgerEntry,
     OpenAIModelPricing,
     Profile,
@@ -94,6 +97,14 @@ from .models import (
     ExerciseSet,
     ExerciseItem,
     AIUsageCharge,
+)
+from .picture_dictionary import (
+    add_lemma_pos_entries as picture_dictionary_add_lemma_pos_entries,
+    add_words as picture_dictionary_add_words,
+    compile_picture_dictionary as picture_dictionary_compile,
+    ensure_picture_dictionary_for_community,
+    remove_entries_by_ids as picture_dictionary_remove_entries_by_ids,
+    remove_words as picture_dictionary_remove_words,
 )
 
 logger = logging.getLogger(__name__)
@@ -1418,6 +1429,7 @@ def _build_page_image_prompt(
     full_text: str,
     relevant_elements: list[ProjectImageElement],
     discourage_text_in_image: bool = False,
+    dictionary_entry: PictureDictionaryEntry | None = None,
 ) -> str:
     language_instructions = {
         "en": ("Create one story illustration page in a consistent style.", "Keep visual continuity with existing style and element references."),
@@ -1446,6 +1458,25 @@ def _build_page_image_prompt(
         prompt_language = "en"
     line1, line2 = language_instructions.get(prompt_language, language_instructions["en"])
     no_text_line = _discourage_text_guideline_for_language(prompt_language)
+    if dictionary_entry is not None:
+        lemma = (dictionary_entry.lemma or page_text or "").strip()
+        pos = (dictionary_entry.pos or "").strip() or "unspecified"
+        return "\n".join(
+            [
+                "Create one picture-dictionary illustration.",
+                f"Target lemma: {lemma}",
+                f"Target POS: {pos}",
+                f"Prompt language: {language_labels.get(prompt_language, 'English')}",
+                f"Language (source): {project.language}",
+                f"Style description: {_compact_style_description_for_prompt(style.expanded_style_description or style.style_brief or '[none]', max_chars=1200)}",
+                "Render a clear visual scene for the target lemma itself (not a generic story page).",
+                "Do not focus on words, captions, typography, book pages, or signage text.",
+                f"{no_text_line}",
+                "If the lemma is a noun, make the object/animal/person visually central and unambiguous.",
+                "If the lemma is a verb, depict the action in progress with clear actors/objects.",
+                "If the lemma is an adjective, depict a concrete object/scene where the property is visually obvious.",
+            ]
+        )
     suppression_block_by_language = {
         "en": [
             "TEXT SUPPRESSION REQUIREMENTS (HIGH PRIORITY):",
@@ -1577,6 +1608,7 @@ def _fit_page_image_prompt_to_limit(
     page_text: str,
     full_text: str,
     relevant_elements: list[ProjectImageElement],
+    dictionary_entry: PictureDictionaryEntry | None = None,
     discourage_text_in_image: bool = False,
     max_chars: int = 12000,
 ) -> tuple[str, dict[str, Any]]:
@@ -1634,6 +1666,7 @@ def _fit_page_image_prompt_to_limit(
             page_text=page_text,
             full_text=_truncate_for_prompt(full_text, max_chars=full_text_limit),
             relevant_elements=trimmed_elements,
+            dictionary_entry=dictionary_entry,
             discourage_text_in_image=discourage_text_in_image,
         )
 
@@ -1823,19 +1856,39 @@ def _generate_project_page_images(
     image_model: str,
     variants_per_page: int = 1,
     discourage_text_in_image: bool = False,
+    include_full_text: bool = True,
+    include_elements: bool = True,
+    missing_only: bool = False,
 ) -> int:
     style = project.image_style
-    full_text = _extract_project_plain_text(project)
+    dictionary = getattr(project, "picture_dictionary", None)
+    dictionary_entry_by_page: dict[int, PictureDictionaryEntry] = {}
+    dictionary_entry_by_surface: dict[str, PictureDictionaryEntry] = {}
+    if dictionary:
+        for entry in dictionary.entries.filter(is_active=True):
+            surface_key = (entry.surface or entry.lemma or "").strip().casefold()
+            if surface_key and surface_key not in dictionary_entry_by_surface:
+                dictionary_entry_by_surface[surface_key] = entry
+            if entry.current_page_number and entry.current_page_number not in dictionary_entry_by_page:
+                dictionary_entry_by_page[entry.current_page_number] = entry
+    full_text = _extract_project_plain_text(project) if include_full_text else ""
     pages_dir = _image_pages_dir(project)
     pages_dir.mkdir(parents=True, exist_ok=True)
     page_rows = list(project.image_pages.order_by("page_number", "id"))
-    relevant_elements = [
-        element
-        for element in project.image_elements.order_by("name", "id")
-        if element.image_path
-    ]
+    if missing_only:
+        page_rows = [row for row in page_rows if not row.image_path]
+    relevant_elements = []
+    if include_elements:
+        relevant_elements = [
+            element
+            for element in project.image_elements.order_by("name", "id")
+            if element.image_path
+        ]
     if not page_rows:
         return 0
+
+    usage_events: list[dict[str, Any]] = []
+    usage_reporter = _collect_usage_event(usage_events)
 
     variants_per_page = max(1, min(8, int(variants_per_page or 1)))
     prompt_by_page: dict[int, str] = {}
@@ -1845,6 +1898,9 @@ def _generate_project_page_images(
             for element in relevant_elements
             if not element.page_refs or _page_refs_match(element.page_refs, page_obj.page_number)
         ]
+        dictionary_entry = dictionary_entry_by_page.get(page_obj.page_number)
+        if dictionary_entry is None:
+            dictionary_entry = dictionary_entry_by_surface.get((page_obj.page_text or "").strip().casefold())
         prompt, prompt_meta = _fit_page_image_prompt_to_limit(
             project=project,
             style=style,
@@ -1853,6 +1909,7 @@ def _generate_project_page_images(
             full_text=full_text,
             relevant_elements=refs,
             discourage_text_in_image=discourage_text_in_image,
+            dictionary_entry=dictionary_entry,
         )
         prompt_by_page[page_obj.pk] = prompt
         _append_page_image_telemetry(
@@ -1869,16 +1926,16 @@ def _generate_project_page_images(
                 "relevant_element_count": len(refs),
                 "relevant_element_paths": [e.image_path for e in refs if e.image_path],
                 "reference_images_sent_in_request": False,
+                "dictionary_mode": dictionary_entry is not None,
             },
         )
 
     def _generate_one_variant(page_obj: ProjectImagePage, variant_index: int) -> tuple[int, int, str, str, str, str]:
         prompt = prompt_by_page[page_obj.pk]
         started = datetime.now(timezone.utc)
-        client = _build_billed_project_ai_client(
-            project,
+        client = _build_ai_client(
             model_name=image_model,
-            request_type="image_pages_generate_image",
+            usage_reporter=usage_reporter,
         )
         page_dir = pages_dir / f"page_{page_obj.page_number:03d}"
         page_dir.mkdir(parents=True, exist_ok=True)
@@ -1964,6 +2021,14 @@ def _generate_project_page_images(
         if preferred_variant is not None:
             _set_page_preferred_variant(page_obj, preferred_variant)
 
+    billing_reporter = _billing_usage_reporter(
+        user_id=project.owner_id,
+        project_id=project.id,
+        request_type="image_pages_generate_image",
+    )
+    for event in usage_events:
+        billing_reporter(event)
+
     return generated
 
 
@@ -1977,13 +2042,14 @@ def _generate_requested_page_variants(
     pages_dir.mkdir(parents=True, exist_ok=True)
     generated = 0
     page_by_id = {page.id: page for page, _count, _prompt in requests}
+    usage_events: list[dict[str, Any]] = []
+    usage_reporter = _collect_usage_event(usage_events)
 
     def _generate_one(page: ProjectImagePage, variant_index: int, prompt: str) -> tuple[int, int, str, str, str]:
         started = datetime.now(timezone.utc)
-        client = _build_billed_project_ai_client(
-            project,
+        client = _build_ai_client(
             model_name=image_model,
-            request_type="community_generate_image_variant",
+            usage_reporter=usage_reporter,
         )
         image_result = client.generate_image(prompt, model=image_model)
         page_dir = pages_dir / f"page_{page.page_number:03d}"
@@ -2031,6 +2097,14 @@ def _generate_requested_page_variants(
             if not page.preferred_variant_id:
                 _set_page_preferred_variant(page, variant)
             generated += 1
+
+    billing_reporter = _billing_usage_reporter(
+        user_id=project.owner_id,
+        project_id=project.id,
+        request_type="community_generate_image_variant",
+    )
+    for event in usage_events:
+        billing_reporter(event)
 
     return generated
 
@@ -5655,6 +5729,64 @@ def _compose_latest_compile_payload(project: Project) -> tuple[dict[str, Any] | 
     return normalize_json_text(composed), plan
 
 
+def _build_picture_glosses_for_compile(*, project: Project, output_dir: Path) -> dict[str, dict[str, str]]:
+    if not project.community_id:
+        return {}
+    picture_glosses: dict[str, dict[str, str]] = {}
+    picture_gloss_dir = output_dir / "html" / "picture_glosses"
+    picture_gloss_dir.mkdir(parents=True, exist_ok=True)
+    dictionary = (
+        PictureDictionary.objects.select_related("project")
+        .filter(community_id=project.community_id, is_active=True)
+        .first()
+    )
+    if not dictionary:
+        return {}
+    for entry in PictureDictionaryEntry.objects.filter(
+        dictionary=dictionary,
+        is_active=True,
+    ):
+        lemma_key = (entry.lemma or entry.surface or "").strip().casefold()
+        if not lemma_key or lemma_key in picture_glosses:
+            continue
+        resolved_image_path = (entry.image_path or "").strip()
+        if not resolved_image_path:
+            page_qs = ProjectImagePage.objects.select_related("preferred_variant").filter(project=dictionary.project)
+            if entry.current_page_number:
+                page = page_qs.filter(page_number=entry.current_page_number).first()
+            else:
+                page = page_qs.filter(page_text=entry.surface).order_by("page_number").first()
+            if page:
+                resolved_image_path = (page.image_path or "").strip()
+                if not resolved_image_path and page.preferred_variant_id and page.preferred_variant:
+                    resolved_image_path = (page.preferred_variant.image_path or "").strip()
+            if resolved_image_path:
+                entry.image_path = resolved_image_path
+                entry.save(update_fields=["image_path", "updated_at"])
+        if not resolved_image_path:
+            continue
+        abs_path = (dictionary.project.artifact_dir() / resolved_image_path).resolve()
+        if not abs_path.exists():
+            continue
+        if dictionary.project_id == project.id:
+            rel_path = os.path.relpath(abs_path, output_dir / "html").replace("\\", "/")
+        else:
+            digest = hashlib.sha1(
+                f"{dictionary.project_id}:{entry.id}:{abs_path}".encode("utf-8")
+            ).hexdigest()[:12]
+            safe_lemma = re.sub(r"[^a-z0-9_-]+", "_", lemma_key).strip("_") or "lemma"
+            suffix = abs_path.suffix or ".png"
+            staged_path = picture_gloss_dir / f"{safe_lemma}_{digest}{suffix}"
+            if not staged_path.exists():
+                shutil.copy2(abs_path, staged_path)
+            rel_path = os.path.relpath(staged_path, output_dir / "html").replace("\\", "/")
+        picture_glosses[lemma_key] = {
+            "image_path": rel_path,
+            "surface": entry.surface or entry.lemma or "",
+        }
+    return picture_glosses
+
+
 def _run_compile_task(
     project_id: int,
     user_id: int,
@@ -5691,13 +5823,10 @@ def _run_compile_task(
         report_uuid = uuid.UUID(report_id) if report_id else uuid.uuid4()
     except Exception:
         report_uuid = uuid.uuid4()
-    post_update, _ = _make_task_callback(
-        task_type or f"compile_project_{project_id}", user_id, report_uuid
-    )
+    post_update, _ = _make_task_callback(task_type or f"compile_project_{project_id}", user_id, report_uuid)
     telemetry_log = output_dir / "stages" / "telemetry.jsonl"
     telemetry = _TaskTelemetry(log_path=telemetry_log, post_update=post_update)
     post_update(f"Telemetry log file: {telemetry_log}")
-    logger.info("Compile telemetry log file: %s", telemetry_log)
 
     def progress_cb(stage: str, status: str, timestamp: str) -> None:
         try:
@@ -5707,24 +5836,24 @@ def _run_compile_task(
             local_timestamp = dt.astimezone(ZoneInfo(tz_name)).isoformat()
         except Exception:
             local_timestamp = timestamp
-
         entry = {"stage": stage, "status": status, "timestamp": local_timestamp}
+        logger.info(
+            "Compile progress project=%s stage=%s status=%s timestamp=%s",
+            project_id,
+            stage,
+            status,
+            local_timestamp,
+        )
         try:
             with progress_log.open("a", encoding="utf-8") as fp:
                 fp.write(json.dumps(entry, ensure_ascii=False) + "\n")
         except Exception:
             logger.exception("Failed to append progress entry; progress_log=%s", progress_log)
-
         try:
             display_ts, _ = _format_timestamp(local_timestamp, tz_name)
             post_update(f"{stage}: {status} @ {display_ts}")
         except Exception:
-            logger.exception(
-                "Failed to persist task update; stage=%s status=%s report_id=%s",
-                stage,
-                status,
-                report_id,
-            )
+            logger.exception("Failed to persist task update; stage=%s status=%s report_id=%s", stage, status, report_id)
 
     current_request_type: dict[str, str] = {"value": start_stage}
 
@@ -5732,188 +5861,247 @@ def _run_compile_task(
         current_request_type["value"] = stage or current_request_type["value"]
         progress_cb(stage, status, timestamp)
 
-    spec = FullPipelineSpec(
-        text=text,
-        text_obj=text_obj,
-        description=description,
-        language=project.language,
-        target_language=project.target_language,
-        output_dir=output_dir,
-        audio_cache_dir=_audio_repository_dir(project.language),
-        require_real_tts=True,
-        persist_intermediates=True,
-        progress_callback=tracked_progress_cb,
-        start_stage=start_stage,
-        end_stage=end_stage or "compile_html",
-        page_images={},
-        segmentation_method=_resolve_segmentation_method(project.language, segmentation_method or project.segmentation_method),
-        romanization_method=_resolve_romanization_method(project.language, romanization_method or project.romanization_method),
-        telemetry=telemetry,
-    )
-
-    placement = (page_image_placement or "none").strip().lower()
-    if placement in {"top", "bottom"}:
-        page_images: dict[int, dict[str, str]] = {}
-        expected_paths: list[str] = []
-        for row in project.image_pages.order_by("page_number"):
-            if not row.image_path:
-                expected_paths.append(f"page {row.page_number}: [no image_path set]")
-                continue
-            abs_path = (project.artifact_dir() / row.image_path).resolve()
-            rel_path = os.path.relpath(abs_path, output_dir / "html").replace("\\", "/")
-            expected_paths.append(f"page {row.page_number}: {abs_path} (exists={abs_path.exists()})")
-            if abs_path.exists():
-                page_images[row.page_number] = {"path": rel_path, "placement": placement}
-        spec.page_images = page_images
-        if not page_images:
-            logger.warning(
-                "Page image placement is '%s' but no source images were resolved for compile input. Expected references: %s",
-                placement,
-                "; ".join(expected_paths) if expected_paths else "[no ProjectImagePage rows found]",
-            )
-            post_update(
-                "Warning: page image placement is enabled but no page images were found for compile input."
-            )
-
-    chosen_model = ai_model or project.ai_model or DEFAULT_MODEL
-    if chosen_model not in AI_MODEL_CHOICES:
-        chosen_model = DEFAULT_MODEL
-
-    usage_events: list[dict[str, Any]] = []
-    model_pricing = openai_price_for_model(chosen_model)
-
-    def usage_reporter(event: dict[str, Any]) -> None:
-        event_copy = dict(event or {})
-        usage_events.append(event_copy)
-        if not detailed_api_trace:
-            return
-        prompt_tokens = max(0, int(event_copy.get("prompt_tokens") or 0))
-        completion_tokens = max(0, int(event_copy.get("completion_tokens") or 0))
-        input_cost_usd = (model_pricing["input"] * prompt_tokens) / 1_000_000
-        output_cost_usd = (model_pricing["output"] * completion_tokens) / 1_000_000
-        total_cost_usd = input_cost_usd + output_cost_usd
-        telemetry.event(
-            str(event_copy.get("request_type") or current_request_type["value"] or "unknown"),
-            "info",
-            "openai.usage trace",
-            {
-                "model": str(event_copy.get("model") or chosen_model),
-                "operation": str(event_copy.get("operation") or "chat"),
-                "prompt_tokens": prompt_tokens,
-                "completion_tokens": completion_tokens,
-                "total_tokens": max(0, int(event_copy.get("total_tokens") or 0)),
-                "assumed_input_usd_per_1m_tokens": str(model_pricing["input"]),
-                "assumed_output_usd_per_1m_tokens": str(model_pricing["output"]),
-                "assumed_input_cost_usd": str(round(input_cost_usd, 6)),
-                "assumed_output_cost_usd": str(round(output_cost_usd, 6)),
-                "assumed_total_cost_usd": str(round(total_cost_usd, 6)),
-            },
-        )
-
-    def flush_usage_events() -> None:
-        for event in usage_events:
-            try:
-                record_openai_usage_and_charge(
-                    user_id=user_id,
-                    project_id=project_id,
-                    model=str(event.get("model") or chosen_model),
-                    operation=str(event.get("operation") or "chat"),
-                    prompt_tokens=int(event.get("prompt_tokens") or 0),
-                    completion_tokens=int(event.get("completion_tokens") or 0),
-                    total_tokens=int(event.get("total_tokens") or 0),
-                    request_type=str(event.get("request_type") or current_request_type["value"] or "unknown"),
-                )
-            except Exception:
-                logger.exception("Failed to record OpenAI usage charge for project=%s", project_id)
-
-    def _finalize_usage_events() -> None:
-        try:
-            flush_usage_events()
-        except Exception:
-            logger.exception("Unexpected failure while finalizing usage events for project=%s", project_id)
-
-    client = _build_ai_client(
-        model_name=chosen_model,
-        usage_reporter=usage_reporter,
-        detailed_telemetry=detailed_api_trace,
-    )
-
     try:
-        result = asyncio.run(run_full_pipeline(spec, client=client))
-    except Exception as exc:  # pragma: no cover - surfaced through session
+        post_update(
+            "Compile task started. "
+            f"start_stage={start_stage}, end_stage={end_stage or 'compile_html'}, output_dir={output_dir}"
+        )
+        spec = FullPipelineSpec(
+            text=text,
+            text_obj=text_obj,
+            description=description,
+            language=project.language,
+            target_language=project.target_language,
+            output_dir=output_dir,
+            audio_cache_dir=_audio_repository_dir(project.language),
+            require_real_tts=True,
+            persist_intermediates=True,
+            progress_callback=tracked_progress_cb,
+            start_stage=start_stage,
+            end_stage=end_stage or "compile_html",
+            page_images={},
+            picture_glosses={},
+            segmentation_method=_resolve_segmentation_method(project.language, segmentation_method or project.segmentation_method),
+            romanization_method=_resolve_romanization_method(project.language, romanization_method or project.romanization_method),
+            telemetry=telemetry,
+        )
+        post_update("Pipeline spec initialized.")
+        try:
+            spec.picture_glosses = _build_picture_glosses_for_compile(project=project, output_dir=output_dir)
+            post_update(f"Prepared picture gloss map: {len(spec.picture_glosses)} lemma image(s).")
+        except Exception as gloss_exc:
+            logger.exception("Failed to build picture gloss map for project %s; continuing without picture glosses", project_id)
+            spec.picture_glosses = {}
+            post_update(f"Warning: picture gloss map build failed ({gloss_exc}). Continuing without picture glosses.")
+
+        placement = (page_image_placement or "none").strip().lower()
+        if placement in {"top", "bottom"}:
+            page_images: dict[int, dict[str, str]] = {}
+            expected_paths: list[str] = []
+            for row in project.image_pages.select_related("preferred_variant").order_by("page_number"):
+                resolved_image_path = row.image_path or (
+                    row.preferred_variant.image_path if row.preferred_variant_id and row.preferred_variant else ""
+                )
+                if not resolved_image_path:
+                    expected_paths.append(f"page {row.page_number}: [no image_path set]")
+                    continue
+                abs_path = (project.artifact_dir() / resolved_image_path).resolve()
+                rel_path = os.path.relpath(abs_path, output_dir / "html").replace("\\", "/")
+                expected_paths.append(f"page {row.page_number}: {abs_path} (exists={abs_path.exists()})")
+                if abs_path.exists():
+                    page_images[row.page_number] = {"path": rel_path, "placement": placement}
+            spec.page_images = page_images
+            post_update(f"Resolved compile page images: {len(page_images)} page image reference(s).")
+            if not page_images:
+                logger.warning(
+                    "Page image placement is '%s' but no source images were resolved for compile input. Expected references: %s",
+                    placement,
+                    "; ".join(expected_paths) if expected_paths else "[no ProjectImagePage rows found]",
+                )
+                post_update("Warning: page image placement is enabled but no page images were found for compile input.")
+
+        chosen_model = ai_model or project.ai_model or DEFAULT_MODEL
+        if chosen_model not in AI_MODEL_CHOICES:
+            chosen_model = DEFAULT_MODEL
+        usage_events: list[dict[str, Any]] = []
+        model_pricing = openai_price_for_model(chosen_model)
+
+        def usage_reporter(event: dict[str, Any]) -> None:
+            event_copy = dict(event or {})
+            usage_events.append(event_copy)
+            if not detailed_api_trace:
+                return
+            prompt_tokens = max(0, int(event_copy.get("prompt_tokens") or 0))
+            completion_tokens = max(0, int(event_copy.get("completion_tokens") or 0))
+            input_cost_usd = (model_pricing["input"] * prompt_tokens) / 1_000_000
+            output_cost_usd = (model_pricing["output"] * completion_tokens) / 1_000_000
+            total_cost_usd = input_cost_usd + output_cost_usd
+            telemetry.event(
+                str(event_copy.get("request_type") or current_request_type["value"] or "unknown"),
+                "info",
+                "openai.usage trace",
+                {
+                    "model": str(event_copy.get("model") or chosen_model),
+                    "operation": str(event_copy.get("operation") or "chat"),
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "total_tokens": max(0, int(event_copy.get("total_tokens") or 0)),
+                    "assumed_input_usd_per_1m_tokens": str(model_pricing["input"]),
+                    "assumed_output_usd_per_1m_tokens": str(model_pricing["output"]),
+                    "assumed_input_cost_usd": str(round(input_cost_usd, 6)),
+                    "assumed_output_cost_usd": str(round(output_cost_usd, 6)),
+                    "assumed_total_cost_usd": str(round(total_cost_usd, 6)),
+                },
+            )
+
+        def flush_usage_events() -> None:
+            for event in usage_events:
+                try:
+                    record_openai_usage_and_charge(
+                        user_id=user_id,
+                        project_id=project_id,
+                        model=str(event.get("model") or chosen_model),
+                        operation=str(event.get("operation") or "chat"),
+                        prompt_tokens=int(event.get("prompt_tokens") or 0),
+                        completion_tokens=int(event.get("completion_tokens") or 0),
+                        total_tokens=int(event.get("total_tokens") or 0),
+                        request_type=str(event.get("request_type") or current_request_type["value"] or "unknown"),
+                    )
+                except Exception:
+                    logger.exception("Failed to record OpenAI usage charge for project=%s", project_id)
+
+        def _finalize_usage_events() -> None:
+            try:
+                flush_usage_events()
+            except Exception:
+                logger.exception("Unexpected failure while finalizing usage events for project=%s", project_id)
+
+        post_update(f"Building AI client: model={chosen_model}.")
+        client = _build_ai_client(
+            model_name=chosen_model,
+            usage_reporter=usage_reporter,
+            detailed_telemetry=detailed_api_trace,
+        )
+        post_update("Running full pipeline.")
+        try:
+            result = asyncio.run(run_full_pipeline(spec, client=client))
+        except Exception as exc:
+            _finalize_usage_events()
+            logger.exception("Compile failed for project %s", project_id)
+            failure_entry = {
+                "stage": "compile",
+                "status": "error",
+                "timestamp": datetime.now(ZoneInfo(tz_name)).isoformat(),
+            }
+            try:
+                with progress_log.open("a", encoding="utf-8") as fp:
+                    fp.write(json.dumps(failure_entry, ensure_ascii=False) + "\n")
+            except Exception:
+                logger.exception("Failed to append compile failure entry; progress_log=%s", progress_log)
+            post_update(f"Compile failed: {exc}", status="error")
+            return
         _finalize_usage_events()
-        logger.exception("Compile failed for project %s", project_id)
-        failure_entry = {
+        post_update("Pipeline returned; finalizing compile outputs.")
+
+        requested_end_stage = spec.end_stage or "compile_html"
+        if requested_end_stage == "segmentation_phase_1":
+            salvage_info = _salvage_segmentation_phase_2_for_run(output_dir)
+            _invalidate_downstream_stage_files(output_dir, "segmentation_phase_2")
+            if salvage_info:
+                post_update(
+                    "Salvaged segmentation_phase_2 for "
+                    f"{salvage_info['unchanged_pages']}/{salvage_info['total_pages']} unchanged pages."
+                )
+        html_info: dict[str, Any] | None = result.get("html") if isinstance(result, dict) else None
+        compiled_rel = ""
+        if html_info:
+            index_path = html_info.get("index_path") or html_info.get("html_path")
+            if index_path:
+                html_path = Path(index_path).resolve()
+                try:
+                    compiled_rel = html_path.relative_to(project_root).as_posix()
+                except Exception:
+                    compiled_rel = html_path.as_posix()
+            if placement in {"top", "bottom"} and spec.page_images:
+                post_update(
+                    f"Attached {len(spec.page_images)} generated page image reference(s) to compile input ({placement})."
+                )
+        update_fields = ["artifact_root", "updated_at"]
+        if compiled_rel:
+            project.compiled_path = compiled_rel.replace("\\", "/")
+            update_fields.append("compiled_path")
+        elif requested_end_stage == "compile_html":
+            project.compiled_path = ""
+            update_fields.append("compiled_path")
+        project.artifact_root = str(project_root).replace("\\", "/")
+        project.save(update_fields=update_fields)
+
+        final_status = "success" if (compiled_rel or requested_end_stage != "compile_html") else "error"
+        completion_entry = {
             "stage": "compile",
-            "status": "error",
+            "status": final_status,
             "timestamp": datetime.now(ZoneInfo(tz_name)).isoformat(),
         }
         try:
             with progress_log.open("a", encoding="utf-8") as fp:
-                fp.write(json.dumps(failure_entry, ensure_ascii=False) + "\n")
+                fp.write(json.dumps(completion_entry, ensure_ascii=False) + "\n")
         except Exception:
-            logger.exception(
-                "Failed to append compile failure entry; progress_log=%s", progress_log
-            )
-        post_update(f"Compile failed: {exc}", status="error")
-        return
-    _finalize_usage_events()
+            logger.exception("Failed to append compile completion entry; progress_log=%s", progress_log)
 
-    requested_end_stage = spec.end_stage or "compile_html"
-    if requested_end_stage == "segmentation_phase_1":
-        salvage_info = _salvage_segmentation_phase_2_for_run(output_dir)
-        _invalidate_downstream_stage_files(output_dir, "segmentation_phase_2")
-        if salvage_info:
-            post_update(
-                "Salvaged segmentation_phase_2 for "
-                f"{salvage_info['unchanged_pages']}/{salvage_info['total_pages']} unchanged pages."
-            )
-    html_info: dict[str, Any] | None = result.get("html") if isinstance(result, dict) else None
-    compiled_rel = ""
-    run_root = output_dir
-    if html_info:
-        run_root = Path(html_info.get("run_root", output_dir)).resolve()
-        index_path = html_info.get("index_path") or html_info.get("html_path")
-        if index_path:
-            html_path = Path(index_path).resolve()
-            try:
-                compiled_rel = html_path.relative_to(project_root).as_posix()
-            except Exception:
-                compiled_rel = html_path.as_posix()
-        if placement in {"top", "bottom"} and spec.page_images:
-            post_update(
-                f"Attached {len(spec.page_images)} generated page image reference(s) to compile input ({placement})."
-            )
-    update_fields = ["artifact_root", "updated_at"]
-    if compiled_rel:
-        project.compiled_path = compiled_rel.replace("\\", "/")
-        update_fields.append("compiled_path")
-    elif requested_end_stage == "compile_html":
-        # compile_html was requested but no HTML was produced; clear compiled path.
-        project.compiled_path = ""
-        update_fields.append("compiled_path")
-    project.artifact_root = str(project_root).replace("\\", "/")
-    project.save(update_fields=update_fields)
+        if compiled_rel:
+            outcome_message = "Project compiled to HTML."
+        elif requested_end_stage != "compile_html":
+            outcome_message = f"Pipeline finished successfully at stage: {requested_end_stage}."
+        else:
+            outcome_message = "Compilation finished but no HTML was produced."
+        post_update(outcome_message, status="finished" if final_status == "success" else "error")
+    except Exception as exc:
+        logger.exception("Unhandled compile task exception for project %s", project_id)
+        try:
+            post_update(f"Compile task crashed unexpectedly: {exc}", status="error")
+        except Exception:
+            logger.exception("Failed to post unexpected-crash update for project %s", project_id)
 
-    final_status = "success" if (compiled_rel or requested_end_stage != "compile_html") else "error"
-    completion_entry = {
-        "stage": "compile",
-        "status": final_status,
-        "timestamp": datetime.now(ZoneInfo(tz_name)).isoformat(),
-    }
+
+def _run_picture_dictionary_compile_task(dictionary_id: int, user_id: int, report_id: str) -> None:
+    task_type = f"picture_dictionary_compile_{dictionary_id}"
     try:
-        with progress_log.open("a", encoding="utf-8") as fp:
-            fp.write(json.dumps(completion_entry, ensure_ascii=False) + "\n")
+        report_uuid = uuid.UUID(report_id)
     except Exception:
-        logger.exception("Failed to append compile completion entry; progress_log=%s", progress_log)
+        report_uuid = uuid.uuid4()
+    post_update, _ = _make_task_callback(task_type, user_id, report_uuid)
+    try:
+        dictionary = (
+            PictureDictionary.objects.select_related("project")
+            .filter(pk=dictionary_id, is_active=True)
+            .first()
+        )
+        if not dictionary:
+            post_update("Picture dictionary compile failed: dictionary not found.", status="error")
+            return
 
-    if compiled_rel:
-        outcome_message = "Project compiled to HTML."
-    elif requested_end_stage != "compile_html":
-        outcome_message = f"Pipeline finished successfully at stage: {requested_end_stage}."
-    else:
-        outcome_message = "Compilation finished but no HTML was produced."
-    post_update(outcome_message, status="finished" if final_status == "success" else "error")
+        post_update("Picture dictionary compilation started.", status="running")
+        result = picture_dictionary_compile(
+            dictionary=dictionary,
+            progress_callback=lambda message: post_update(message, status="running"),
+            compile_task_report_id=report_id,
+            compile_task_user_id=user_id,
+            compile_task_type=task_type,
+        )
+        post_update(
+            "Compiled picture dictionary: "
+            f"pages={result['pages']}, page rows synced={result['page_rows_synced']}, "
+            f"annotation pipeline={result.get('annotation_run')}, generated images={result.get('generated_images', 0)}.",
+            status="running",
+        )
+        if result.get("annotation_error"):
+            post_update(f"Annotation pipeline failed: {result.get('annotation_error')}", status="running")
+        if result.get("image_generation_note"):
+            post_update(str(result.get("image_generation_note")), status="running")
+        post_update("Picture dictionary compilation complete.", status="finished")
+    except Exception as exc:
+        logger.exception("Unhandled picture dictionary compile task exception for dictionary %s", dictionary_id)
+        post_update(f"Picture dictionary compile task crashed unexpectedly: {exc}", status="error")
 
 
 @login_required
@@ -6826,7 +7014,174 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
     membership = _require_community_member(community_id, request.user)
     if membership.role != CommunityMembership.ROLE_ORGANISER:
         raise Http404()
+    community = membership.community
     projects = list(Project.objects.filter(community_id=community_id).order_by("-updated_at"))
+    picture_dictionary = (
+        PictureDictionary.objects.select_related("project")
+        .filter(community_id=community_id, is_active=True)
+        .first()
+    )
+    dictionary_entries = list(
+        picture_dictionary.entries.filter(is_active=True).order_by("id") if picture_dictionary else []
+    )
+    picture_dictionary_compile_info: dict[str, Any] | None = None
+    picture_dictionary_style_brief = ""
+    if picture_dictionary:
+        style = getattr(picture_dictionary.project, "image_style", None)
+        picture_dictionary_style_brief = ((style.style_brief or "").strip() if style else "")
+        seg1_path = picture_dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages" / "segmentation_phase_1.json"
+        if seg1_path.exists():
+            try:
+                payload = json.loads(seg1_path.read_text(encoding="utf-8"))
+            except Exception:
+                payload = {}
+            picture_dictionary_compile_info = {
+                "updated_at": datetime.fromtimestamp(seg1_path.stat().st_mtime, tz=timezone.utc).isoformat(),
+                "entry_count": int(((payload.get("metadata") or {}).get("entry_count") or 0)),
+            }
+
+    if request.method == "POST":
+        action = (request.POST.get("picture_dictionary_action") or "").strip()
+        if action:
+            try:
+                picture_dictionary = ensure_picture_dictionary_for_community(
+                    community=community,
+                    organiser=request.user,
+                )
+            except PermissionDenied:
+                raise Http404()
+
+            words_raw = str(request.POST.get("picture_dictionary_words") or "")
+            words = [word.strip() for word in re.split(r"[,\n]", words_raw) if word.strip()]
+
+            if action == "ensure":
+                messages.success(request, "Picture dictionary is ready.")
+            elif action == "compile":
+                compile_updates: list[str] = []
+
+                def _record_compile_update(message: str) -> None:
+                    compile_updates.append(message)
+
+                style = getattr(picture_dictionary.project, "image_style", None)
+                style_usable = bool(
+                    style
+                    and (
+                        (style.style_brief or "").strip()
+                        or (style.expanded_style_description or "").strip()
+                    )
+                    and style.status in {ProjectImageStyle.STATUS_GENERATED, ProjectImageStyle.STATUS_APPROVED}
+                )
+                if not style_usable:
+                    style_brief = (request.POST.get("picture_dictionary_style_brief") or "").strip()
+                    if not style_brief:
+                        messages.error(
+                            request,
+                            "Style is missing. Enter a style brief and compile again.",
+                        )
+                        return redirect("community-organiser-home", community_id=community_id)
+                    style, _ = ProjectImageStyle.objects.get_or_create(
+                        project=picture_dictionary.project,
+                        defaults={"ai_model": picture_dictionary.project.ai_model or DEFAULT_MODEL},
+                    )
+                    style.style_brief = style_brief
+                    try:
+                        generated = _generate_project_image_style(
+                            picture_dictionary.project,
+                            style_brief,
+                            ai_model=style.ai_model or picture_dictionary.project.ai_model or DEFAULT_MODEL,
+                        )
+                    except Exception as exc:
+                        logger.exception(
+                            "Failed to generate fallback style for picture dictionary compile on project %s",
+                            picture_dictionary.project_id,
+                        )
+                        messages.error(
+                            request,
+                            f"Could not generate style from brief: {exc}",
+                        )
+                        return redirect("community-organiser-home", community_id=community_id)
+                    style.expanded_style_description = generated.get("expanded_style_description", "")
+                    style.representative_excerpt = generated.get("representative_excerpt", "")
+                    style.sample_image_prompt = generated.get("sample_image_prompt", "")
+                    style.status = ProjectImageStyle.STATUS_GENERATED
+                    style.save()
+                    _persist_image_style_artifacts(
+                        picture_dictionary.project,
+                        style,
+                        request_payload=generated.get("_request_payload"),
+                        response_payload=generated.get("_response_payload"),
+                    )
+                    messages.success(request, "Created dictionary image style from the provided style brief.")
+                report_id = str(uuid.uuid4())
+                async_task(
+                    _run_picture_dictionary_compile_task,
+                    picture_dictionary.id,
+                    request.user.id,
+                    report_id,
+                    q_options={"sync": False},
+                )
+                messages.info(request, "Picture dictionary compilation started. Opening live status monitor.")
+                monitor_url = reverse("project-compile-monitor", args=[picture_dictionary.project.id, report_id])
+                return_to = reverse("community-organiser-home", args=[community_id])
+                return redirect(f"{monitor_url}?next={quote(return_to, safe='/')}")
+            elif action == "add":
+                added = picture_dictionary_add_words(dictionary=picture_dictionary, words=words)
+                messages.success(request, f"Added {added} word(s) to picture dictionary.")
+            elif action == "remove":
+                removed = picture_dictionary_remove_words(dictionary=picture_dictionary, words=words)
+                messages.success(request, f"Removed {removed} word(s) from picture dictionary.")
+            elif action == "remove_selected":
+                selected_ids = [int(value) for value in request.POST.getlist("remove_entry") if str(value).isdigit()]
+                removed = picture_dictionary_remove_entries_by_ids(
+                    dictionary=picture_dictionary,
+                    entry_ids=selected_ids,
+                )
+                messages.success(request, f"Removed {removed} selected dictionary entr{'y' if removed == 1 else 'ies'}.")
+            elif action == "add_from_text":
+                source_project_id_raw = (request.POST.get("source_project_id") or "").strip()
+                try:
+                    source_project_id = int(source_project_id_raw)
+                except ValueError:
+                    source_project_id = 0
+                source_project = next((row for row in projects if row.id == source_project_id), None)
+                if not source_project:
+                    messages.error(request, "Please choose a valid community project for add-from-text.")
+                else:
+                    lemma_run = _find_run_with_stage(source_project, "lemma")
+                    lemma_payload = _load_stage_payload(source_project, "lemma", run_dir=lemma_run) if lemma_run else None
+                    if not lemma_payload:
+                        messages.error(
+                            request,
+                            "Add from text requires lemma annotations. Run the source project through the lemma stage first.",
+                        )
+                        return redirect("community-organiser-home", community_id=community_id)
+                    lemma_pos_pairs: list[tuple[str, str]] = []
+                    seen_pairs: set[tuple[str, str]] = set()
+                    for page in lemma_payload.get("pages") or []:
+                        for segment in page.get("segments") or []:
+                            for token in segment.get("tokens") or []:
+                                ann = token.get("annotations") or {}
+                                lemma = str(ann.get("lemma") or "").strip()
+                                pos = str(ann.get("pos") or "").strip().upper()
+                                if not lemma:
+                                    continue
+                                key = (lemma.casefold(), pos)
+                                if key in seen_pairs:
+                                    continue
+                                seen_pairs.add(key)
+                                lemma_pos_pairs.append((lemma, pos))
+                    added = picture_dictionary_add_lemma_pos_entries(
+                        dictionary=picture_dictionary,
+                        lemma_pos_pairs=lemma_pos_pairs,
+                    )
+                    messages.success(
+                        request,
+                        f"Added {added} lemma/POS entr{'y' if added == 1 else 'ies'} from project “{source_project.title}”.",
+                    )
+            else:
+                messages.error(request, f"Unknown picture dictionary action: {action}")
+            return redirect("community-organiser-home", community_id=community_id)
+
     review_by_project = {
         row.project_id: row
         for row in CommunityOrganiserReview.objects.filter(
@@ -6849,7 +7204,16 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
     return render(
         request,
         "projects/community_organiser_home.html",
-        {"community": membership.community, "membership": membership, "summary_rows": summary_rows},
+        {
+            "community": community,
+            "membership": membership,
+            "summary_rows": summary_rows,
+            "picture_dictionary": picture_dictionary,
+            "dictionary_entries": dictionary_entries,
+            "picture_dictionary_compile_info": picture_dictionary_compile_info,
+            "picture_dictionary_style_brief": picture_dictionary_style_brief,
+            "community_projects": projects,
+        },
     )
 
 
