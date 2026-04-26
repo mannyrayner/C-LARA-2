@@ -337,8 +337,31 @@ To start Phase P0/P1 immediately, confirm:
 
 Once these items are confirmed, we can produce a concrete, command-level provisioning runbook and a first-pass cost estimate.
 
-## 11) Current status snapshot (as of Friday, April 24, 2026)
+## 11) Current status snapshot (as of Sunday, April 26, 2026)
 
-- **P0:** functionally complete; decisions and sign-in/access setup validated.
-- **Next action:** begin P1 infrastructure bootstrap on Saturday, April 25, 2026.
-- **Primary open implementation tasks:** VPC/subnets/security groups, EC2 baseline host, RDS PostgreSQL creation, and DNS setup.
+### What is complete
+- **P0:** complete (IAM/admin model, MFA, region, DB direction, access model, and crossover scope all confirmed).
+- **P1 core infrastructure bootstrap:** complete.
+  - VPC networking prepared with dedicated private subnets and private DB subnet group.
+  - EC2 application host launched and bound to fixed Elastic IP.
+  - RDS PostgreSQL instance (`database-1`) created in private subnets.
+  - EC2 → RDS connectivity validated on port 5432.
+  - DNS for `c-lara-2.c-lara.org` created at current authoritative DNS provider and resolving to AWS Elastic IP.
+- **Initial database bootstrap:** complete.
+  - `clara2` database created.
+  - `clara2_app` role created and granted database-level privileges.
+
+### Important implementation notes from the last two days
+- First AWS account attempt ran into permissions-boundary lock issues; we restarted with a fresh AWS account and documented root/IAM access setup more carefully.
+- Route 53 hosted zone was created in AWS, but `c-lara.org` remains delegated to WordPress nameservers for now; operational DNS changes are being performed at the current authoritative provider to avoid disruption.
+
+### Next actions (in order)
+1. Start **P2** host hardening/base software setup on EC2 (Nginx, Python runtime, system packages, logging/monitoring baseline).
+2. Begin **P3** application deployment:
+   - clone repo,
+   - create venv and install dependencies,
+   - configure `.env` for RDS and runtime settings,
+   - run migrations/static setup,
+   - stand up `gunicorn-clara2.service` and `djangoq-clara2.service`.
+3. Configure TLS for `c-lara-2.c-lara.org` and validate end-to-end HTTPS access.
+4. Proceed to crossover tracks (C-LARA side-by-side deployment and legacy read-only content hosting) once C-LARA-2 baseline is healthy.
