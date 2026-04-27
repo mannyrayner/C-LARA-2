@@ -174,12 +174,20 @@ Status summary:
 Status summary:
 - ✅ Deployment directory initialized on EC2 host.
   - `/srv/C-LARA-2` created and ownership set to `ubuntu:ubuntu`.
+- ✅ Repository cloned and Python environment bootstrapped.
+  - `/srv/C-LARA-2` pulled from GitHub.
+  - `.venv` created and dependencies installed (including `gunicorn` and `psycopg`).
+- ✅ Runtime hardening prep completed for app services.
+  - `/etc/clara2.env` created with deployment env vars and secured.
+  - CloudWatch + firewall/fail2ban baseline already in place from P2.
+- ✅ Parameterized settings support merged upstream and pulled on server.
+  - Single `settings.py` now supports SQLite (local) and PostgreSQL (AWS) via env vars.
+  - PostgreSQL engine/host resolution validated in Django shell.
 - 🟡 Remaining P3 deployment steps are next:
-  - repository clone,
-  - venv + dependency install,
-  - `.env` configuration for RDS/runtime,
-  - migrations/static,
-  - systemd service wiring and validation.
+  - run Django migrations against PostgreSQL-backed settings,
+  - rerun `check`/`collectstatic` under PostgreSQL configuration,
+  - configure `gunicorn-clara2.service` and `djangoq-clara2.service`,
+  - wire Nginx reverse proxy to gunicorn socket and run end-to-end smoke test.
 
 ### Phase P4 — production readiness checks (day 2–3)
 1. Smoke test critical flows:
@@ -404,7 +412,9 @@ Once these items are confirmed, we can produce a concrete, command-level provisi
   - UFW/fail2ban configured and active.
   - CloudWatch agent configured and running.
 - **P3 application deploy:** started.
-  - Deployment directory initialized at `/srv/C-LARA-2`.
+  - Repo cloned; venv/dependencies installed.
+  - PostgreSQL-aware settings pulled and validated.
+  - Service env file prepared; production service wiring pending.
 
 ### Important implementation notes from the last two days
 - First AWS account attempt ran into permissions-boundary lock issues; we restarted with a fresh AWS account and documented root/IAM access setup more carefully.
@@ -412,10 +422,8 @@ Once these items are confirmed, we can produce a concrete, command-level provisi
 
 ### Next actions (in order)
 1. Continue **P3** application deployment:
-   - clone repo,
-   - create venv and install dependencies,
-   - configure `.env` for RDS and runtime settings,
-   - run migrations/static setup,
-   - stand up `gunicorn-clara2.service` and `djangoq-clara2.service`.
+   - run migrations/static setup against PostgreSQL config,
+   - stand up `gunicorn-clara2.service` and `djangoq-clara2.service`,
+   - complete Nginx reverse-proxy wiring and smoke tests.
 2. Configure TLS for `c-lara-2.c-lara.org` and validate end-to-end HTTPS access.
 3. Proceed to crossover tracks (C-LARA side-by-side deployment and legacy read-only content hosting) once C-LARA-2 baseline is healthy.
