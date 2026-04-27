@@ -66,12 +66,29 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "platform_server.wsgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+USE_POSTGRES = os.environ.get("POSTGRES_HOST") or os.environ.get("DJANGO_DB_ENGINE", "").lower() in {
+    "postgres",
+    "postgresql",
 }
+
+if USE_POSTGRES:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.environ.get("POSTGRES_DB", "clara2"),
+            "USER": os.environ.get("POSTGRES_USER", "clara2_app"),
+            "PASSWORD": os.environ.get("POSTGRES_PASSWORD", ""),
+            "HOST": os.environ.get("POSTGRES_HOST", ""),
+            "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+        }
+    }
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = []
 
@@ -133,3 +150,4 @@ OPENAI_TOKEN_PRICING_USD_PER_1M = {
 }
 OPENAI_PRICING_TRACKED_MODELS = ["gpt-4o", "gpt-4o-mini", "gpt-5", "gpt-image-1"]
 OPENAI_PRICING_AI_MODEL = os.environ.get("C_LARA_OPENAI_PRICING_AI_MODEL", "gpt-5")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
