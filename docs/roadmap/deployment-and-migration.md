@@ -146,10 +146,13 @@ Status summary:
   - Nginx, Python tooling, build dependencies, and PostgreSQL client installed.
 - ✅ Nginx service enabled and verified healthy.
   - Local HTTP check on `localhost` returns `200 OK`.
-- 🟡 Firewall/fail2ban hardening not yet applied.
-  - This is the next hardening task before public cutover readiness.
-- 🟡 CloudWatch/log shipping baseline not yet configured.
-  - To be completed before production stabilization window.
+- ✅ Firewall/fail2ban hardening applied.
+  - UFW enabled with `deny incoming` / `allow outgoing`.
+  - Explicit inbound allow rules set for OpenSSH and Nginx (80/443).
+  - Fail2ban installed and active with `sshd` jail.
+- ✅ CloudWatch/log shipping baseline configured.
+  - CloudWatch agent installed, configured, and running.
+  - Baseline system metrics and Nginx access/error log collection enabled.
 
 ### Phase P3 — application deploy (day 2)
 1. Clone C-LARA-2 into `/srv/C-LARA-2` (or equivalent stable path).
@@ -165,6 +168,18 @@ Status summary:
    - `gunicorn-clara.service`
    - `djangoq-clara.service`
 8. Import legacy LARA compiled directories to dedicated read-only path, then wire Nginx static route.
+
+### Phase P3 progress log (updated Monday, April 27, 2026)
+
+Status summary:
+- ✅ Deployment directory initialized on EC2 host.
+  - `/srv/C-LARA-2` created and ownership set to `ubuntu:ubuntu`.
+- 🟡 Remaining P3 deployment steps are next:
+  - repository clone,
+  - venv + dependency install,
+  - `.env` configuration for RDS/runtime,
+  - migrations/static,
+  - systemd service wiring and validation.
 
 ### Phase P4 — production readiness checks (day 2–3)
 1. Smoke test critical flows:
@@ -370,7 +385,7 @@ To start Phase P0/P1 immediately, confirm:
 
 Once these items are confirmed, we can produce a concrete, command-level provisioning runbook and a first-pass cost estimate.
 
-## 11) Current status snapshot (as of Sunday, April 26, 2026)
+## 11) Current status snapshot (as of Monday, April 27, 2026)
 
 ### What is complete
 - **P0:** complete (IAM/admin model, MFA, region, DB direction, access model, and crossover scope all confirmed).
@@ -383,20 +398,24 @@ Once these items are confirmed, we can produce a concrete, command-level provisi
 - **Initial database bootstrap:** complete.
   - `clara2` database created.
   - `clara2_app` role created and granted database-level privileges.
+- **P2 host hardening/base software:** complete.
+  - OS updates and reboot performed.
+  - Nginx + runtime dependencies installed and verified.
+  - UFW/fail2ban configured and active.
+  - CloudWatch agent configured and running.
+- **P3 application deploy:** started.
+  - Deployment directory initialized at `/srv/C-LARA-2`.
 
 ### Important implementation notes from the last two days
 - First AWS account attempt ran into permissions-boundary lock issues; we restarted with a fresh AWS account and documented root/IAM access setup more carefully.
 - Route 53 hosted zone was created in AWS, but `c-lara.org` remains delegated to WordPress nameservers for now; operational DNS changes are being performed at the current authoritative provider to avoid disruption.
 
 ### Next actions (in order)
-1. Finish remaining **P2** hardening items:
-   - firewall/fail2ban,
-   - CloudWatch/log shipping baseline.
-2. Begin **P3** application deployment:
+1. Continue **P3** application deployment:
    - clone repo,
    - create venv and install dependencies,
    - configure `.env` for RDS and runtime settings,
    - run migrations/static setup,
    - stand up `gunicorn-clara2.service` and `djangoq-clara2.service`.
-3. Configure TLS for `c-lara-2.c-lara.org` and validate end-to-end HTTPS access.
-4. Proceed to crossover tracks (C-LARA side-by-side deployment and legacy read-only content hosting) once C-LARA-2 baseline is healthy.
+2. Configure TLS for `c-lara-2.c-lara.org` and validate end-to-end HTTPS access.
+3. Proceed to crossover tracks (C-LARA side-by-side deployment and legacy read-only content hosting) once C-LARA-2 baseline is healthy.
