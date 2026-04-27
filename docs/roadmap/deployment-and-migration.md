@@ -137,6 +137,20 @@ Status summary:
 3. Configure firewall and fail2ban (if host-exposed SSH is used).
 4. Set up CloudWatch agent (or equivalent) for logs/metrics.
 
+### Phase P2 progress log (updated Monday, April 27, 2026)
+
+Status summary:
+- ✅ OS package index/update and upgrade completed.
+  - Kernel updated and instance rebooted to load current AWS kernel.
+- ✅ Base runtime packages installed.
+  - Nginx, Python tooling, build dependencies, and PostgreSQL client installed.
+- ✅ Nginx service enabled and verified healthy.
+  - Local HTTP check on `localhost` returns `200 OK`.
+- 🟡 Firewall/fail2ban hardening not yet applied.
+  - This is the next hardening task before public cutover readiness.
+- 🟡 CloudWatch/log shipping baseline not yet configured.
+  - To be completed before production stabilization window.
+
 ### Phase P3 — application deploy (day 2)
 1. Clone C-LARA-2 into `/srv/C-LARA-2` (or equivalent stable path).
 2. Build dedicated venv from pinned dependencies.
@@ -375,7 +389,9 @@ Once these items are confirmed, we can produce a concrete, command-level provisi
 - Route 53 hosted zone was created in AWS, but `c-lara.org` remains delegated to WordPress nameservers for now; operational DNS changes are being performed at the current authoritative provider to avoid disruption.
 
 ### Next actions (in order)
-1. Start **P2** host hardening/base software setup on EC2 (Nginx, Python runtime, system packages, logging/monitoring baseline).
+1. Finish remaining **P2** hardening items:
+   - firewall/fail2ban,
+   - CloudWatch/log shipping baseline.
 2. Begin **P3** application deployment:
    - clone repo,
    - create venv and install dependencies,
