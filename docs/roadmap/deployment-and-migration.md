@@ -405,7 +405,7 @@ Once these items are confirmed, we can produce a concrete, command-level provisi
   - DNS for `c-lara-2.c-lara.org` created at current authoritative DNS provider and resolving to AWS Elastic IP.
 - **Initial database bootstrap:** complete.
   - `clara2` database created.
-  - `clara2_app` role created and granted database-level privileges.
+  - PostgreSQL credentials aligned with Secrets Manager (`username=postgres`) and validated for app connectivity.
 - **P2 host hardening/base software:** complete.
   - OS updates and reboot performed.
   - Nginx + runtime dependencies installed and verified.
