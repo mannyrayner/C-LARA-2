@@ -53,5 +53,10 @@ python manage.py runserver
 
 ## Notes
 - The current UI is the advanced/technical workspace; a minimal guided UI for non-technical users will be layered on later.
-- The dev server uses SQLite at `platform_server/db.sqlite3`; media assets (compiled HTML/audio) are under `platform_server/media/`.
+- The default local setup uses SQLite at `platform_server/db.sqlite3`; media assets (compiled HTML/audio) are under `platform_server/media/`.
+- To run against PostgreSQL (for example on AWS), set `POSTGRES_HOST` (or `DJANGO_DB_ENGINE=postgres`) and provide:
+  - `POSTGRES_DB`
+  - `POSTGRES_USER`
+  - `POSTGRES_PASSWORD`
+  - `POSTGRES_PORT` (optional, default `5432`)
 - Pipelines require real AI/TTS credentials; without them, compilation will raise an error instead of falling back to stub output.
