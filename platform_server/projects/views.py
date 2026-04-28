@@ -1165,7 +1165,7 @@ def _expand_project_image_elements(
     project: Project,
     *,
     ai_model: str,
-) -> int:
+) -> dict[str, Any]:
     prompt_language = _image_prompt_language(project)
     style_description = ""
     try:
@@ -1174,7 +1174,9 @@ def _expand_project_image_elements(
         style_description = ""
     style_description = _compact_style_description_for_prompt(style_description, max_chars=1200)
     full_text = _extract_project_plain_text(project)
-    count = 0
+    expanded_count = 0
+    failed_count = 0
+    failed_elements: list[dict[str, Any]] = []
     usage_events: list[dict[str, Any]] = []
     client = _build_ai_client(
         model_name=ai_model,
@@ -1228,13 +1230,27 @@ def _expand_project_image_elements(
                     **_exception_telemetry_fields(exc),
                 },
             )
+            logger.exception(
+                "Element expansion failed for project %s element %s (%s)",
+                project.pk,
+                element.id,
+                element.name,
+            )
             _flush_project_usage_events(
                 project=project,
                 events=usage_events,
                 request_type="image_elements_expand",
                 default_model=ai_model,
             )
-            raise
+            failed_count += 1
+            failed_elements.append(
+                {
+                    "element_id": element.id,
+                    "element_name": element.name,
+                    "error": str(exc),
+                }
+            )
+            continue
         _flush_project_usage_events(
             project=project,
             events=usage_events,
@@ -1273,8 +1289,25 @@ def _expand_project_image_elements(
                 "updated_at",
             ]
         )
-        count += 1
-    return count
+        expanded_count += 1
+
+    _append_elements_telemetry(
+        project,
+        {
+            "type": "event",
+            "level": "info" if failed_count == 0 else "warning",
+            "message": "element expansion completed",
+            "model": ai_model,
+            "expanded_count": expanded_count,
+            "failed_count": failed_count,
+            "failed_elements": failed_elements[:10],
+        },
+    )
+    return {
+        "expanded_count": expanded_count,
+        "failed_count": failed_count,
+        "failed_elements": failed_elements,
+    }
 
 
 def _generate_project_element_images(
@@ -2785,7 +2818,7 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
                     f"Expanding element prompts with {ai_model}.",
                 )
                 try:
-                    expanded = _expand_project_image_elements(
+                    expand_result = _expand_project_image_elements(
                         project, ai_model=ai_model
                     )
                 except Exception as exc:
@@ -2803,7 +2836,25 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
                     messages.error(request, f"Element expansion failed: {exc}")
                 else:
                     _persist_image_elements_artifacts(project)
-                    messages.success(request, f"Expanded prompts for {expanded} elements.")
+                    expanded = int(expand_result.get("expanded_count", 0))
+                    failed = int(expand_result.get("failed_count", 0))
+                    if failed:
+                        failed_elements = expand_result.get("failed_elements") or []
+                        names_preview = ", ".join(str(item.get("element_name") or "?") for item in failed_elements[:5])
+                        if names_preview:
+                            messages.warning(
+                                request,
+                                f"Expanded prompts for {expanded} elements; {failed} failed ({names_preview}). "
+                                "Check images/elements/telemetry.jsonl and server logs for details.",
+                            )
+                        else:
+                            messages.warning(
+                                request,
+                                f"Expanded prompts for {expanded} elements; {failed} failed. "
+                                "Check images/elements/telemetry.jsonl and server logs for details.",
+                            )
+                    else:
+                        messages.success(request, f"Expanded prompts for {expanded} elements.")
             elif action == "confirm":
                 confirmed = 0
                 for element in project.image_elements.all():
