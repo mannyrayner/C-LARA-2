@@ -60,3 +60,4 @@ python manage.py runserver
   - `POSTGRES_PASSWORD`
   - `POSTGRES_PORT` (optional, default `5432`)
 - Pipelines require real AI/TTS credentials; without them, compilation will raise an error instead of falling back to stub output.
+- For production server operations (deploy/restart/logs/env/permissions/TLS), see `docs/howto/server-admin-tasks.md`.
