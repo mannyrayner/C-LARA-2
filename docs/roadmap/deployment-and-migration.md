@@ -169,25 +169,30 @@ Status summary:
    - `djangoq-clara.service`
 8. Import legacy LARA compiled directories to dedicated read-only path, then wire Nginx static route.
 
-### Phase P3 progress log (updated Monday, April 27, 2026)
+### Phase P3 progress log (updated Tuesday, April 28, 2026)
 
 Status summary:
 - ✅ Deployment directory initialized on EC2 host.
   - `/srv/C-LARA-2` created and ownership set to `ubuntu:ubuntu`.
 - ✅ Repository cloned and Python environment bootstrapped.
   - `/srv/C-LARA-2` pulled from GitHub.
-  - `.venv` created and dependencies installed (including `gunicorn` and `psycopg`).
+  - `.venv` created and dependencies installed (including `gunicorn`, `psycopg`, and additional runtime deps required by compile flows).
 - ✅ Runtime hardening prep completed for app services.
   - `/etc/clara2.env` created with deployment env vars and secured.
   - CloudWatch + firewall/fail2ban baseline already in place from P2.
 - ✅ Parameterized settings support merged upstream and pulled on server.
   - Single `settings.py` now supports SQLite (local) and PostgreSQL (AWS) via env vars.
   - PostgreSQL engine/host resolution validated in Django shell.
-- 🟡 Remaining P3 deployment steps are next:
-  - run Django migrations against PostgreSQL-backed settings,
-  - rerun `check`/`collectstatic` under PostgreSQL configuration,
-  - configure `gunicorn-clara2.service` and `djangoq-clara2.service`,
-  - wire Nginx reverse proxy to gunicorn socket and run end-to-end smoke test.
+- ✅ App services wired and stable.
+  - `gunicorn-clara2.service` and `djangoq-clara2.service` created, enabled, and running.
+  - Gunicorn socket moved to `/run/gunicorn-clara2/gunicorn.sock` with working ownership/permissions for nginx proxying.
+- ✅ Nginx reverse proxy + TLS completed.
+  - Nginx site configured for `c-lara-2.c-lara.org` and reverse proxy to gunicorn socket.
+  - Let's Encrypt certificate issued and auto-renew validated (`certbot renew --dry-run`).
+- ✅ Functional smoke tests in production-like path have started passing.
+  - Login/register/logout flow working (logout converted to POST and validated).
+  - Project create and compile validated after media permission reset.
+  - Non-trivial Hindi project (~2K words, 10 images) imports, compiles, and opens in manual editor.
 
 ### Phase P4 — production readiness checks (day 2–3)
 1. Smoke test critical flows:
@@ -393,7 +398,7 @@ To start Phase P0/P1 immediately, confirm:
 
 Once these items are confirmed, we can produce a concrete, command-level provisioning runbook and a first-pass cost estimate.
 
-## 11) Current status snapshot (as of Monday, April 27, 2026)
+## 11) Current status snapshot (as of Tuesday, April 28, 2026)
 
 ### What is complete
 - **P0:** complete (IAM/admin model, MFA, region, DB direction, access model, and crossover scope all confirmed).
@@ -411,19 +416,28 @@ Once these items are confirmed, we can produce a concrete, command-level provisi
   - Nginx + runtime dependencies installed and verified.
   - UFW/fail2ban configured and active.
   - CloudWatch agent configured and running.
-- **P3 application deploy:** started.
-  - Repo cloned; venv/dependencies installed.
-  - PostgreSQL-aware settings pulled and validated.
-  - Service env file prepared; production service wiring pending.
+- **P3 application deploy:** complete.
+  - Repo cloned; venv/dependencies installed and refreshed.
+  - PostgreSQL-aware settings validated under production env file.
+  - `gunicorn-clara2.service` + `djangoq-clara2.service` deployed and stable.
+  - Nginx reverse proxy configured to unix socket and serving app traffic.
+  - HTTPS enabled with certbot-managed Let's Encrypt certificate.
+- **P4 production readiness checks:** in progress.
+  - Core smoke flows now passing (login/logout, project creation, compile, editor open).
+  - Hindi import/compile flow validated after transliteration dependency + media permission fixes.
 
 ### Important implementation notes from the last two days
 - First AWS account attempt ran into permissions-boundary lock issues; we restarted with a fresh AWS account and documented root/IAM access setup more carefully.
 - Route 53 hosted zone was created in AWS, but `c-lara.org` remains delegated to WordPress nameservers for now; operational DNS changes are being performed at the current authoritative provider to avoid disruption.
 
 ### Next actions (in order)
-1. Continue **P3** application deployment:
-   - run migrations/static setup against PostgreSQL config,
-   - stand up `gunicorn-clara2.service` and `djangoq-clara2.service`,
-   - complete Nginx reverse-proxy wiring and smoke tests.
-2. Configure TLS for `c-lara-2.c-lara.org` and validate end-to-end HTTPS access.
-3. Proceed to crossover tracks (C-LARA side-by-side deployment and legacy read-only content hosting) once C-LARA-2 baseline is healthy.
+1. Finish **P4** production-readiness checks:
+   - execute broader smoke pass across more languages/content sizes,
+   - verify backup/restore drills for DB + media,
+   - capture and review service/queue error rates under sustained use.
+2. Proceed to crossover tracks once stability window is confirmed:
+   - C-LARA side-by-side deployment,
+   - legacy LARA read-only hosting cutover checks.
+3. Prepare **P5** stabilization guardrails:
+   - finalize rollback checklist,
+   - maintain 24–48h monitoring watch after any major cutover changes.
