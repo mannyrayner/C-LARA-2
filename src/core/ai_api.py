@@ -388,10 +388,30 @@ def _ensure_openai_installed():
     project_root = Path(__file__).resolve().parents[2]
     original_sys_path = sys.path.copy()
     filtered_path: list[str] = []
+    project_source_roots = {
+        project_root,
+        project_root / "src",
+        project_root / "platform_server",
+    }
+
     for entry in original_sys_path:
         try:
-            if Path(entry).resolve().is_relative_to(project_root):
-                continue
+            resolved = Path(entry).resolve()
+            if resolved.is_relative_to(project_root):
+                # Keep virtualenv/site-package paths even when the venv lives
+                # inside the repo (common in deployments like /srv/C-LARA-2/.venv).
+                parts = set(resolved.parts)
+                if (
+                    "site-packages" in parts
+                    or "dist-packages" in parts
+                    or ".venv" in parts
+                ):
+                    filtered_path.append(entry)
+                    continue
+
+                # Only remove project source roots that can shadow installed deps.
+                if resolved in project_source_roots:
+                    continue
         except Exception:
             # If the path cannot be resolved, keep it as-is.
             pass
