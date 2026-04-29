@@ -501,7 +501,12 @@ class PictureDictionaryEntry(models.Model):
 
     class Meta:
         ordering = ["id"]
-        indexes = [models.Index(fields=["dictionary", "is_active"])]
+        indexes = [
+            models.Index(
+                fields=["dictionary", "is_active"],
+                name="picdictentry_dict_active_idx",
+            )
+        ]
 
 class ContentComment(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="content_comments")
