@@ -3045,7 +3045,8 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
             "element_count": project.image_elements.count(),
             "confirmed_element_count": project.image_elements.filter(is_confirmed=True).count(),
             "elements_with_images_count": project.image_elements.exclude(image_path="").count(),
-            "status_notice": request.GET.get("notice"),
+            "status_notice": status_notice,
+            "expansion_report_id": report_id,
         },
     )
 
