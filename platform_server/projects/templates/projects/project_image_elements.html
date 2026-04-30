@@ -40,15 +40,16 @@
 {% endif %}
 <p id="elements-progress" style="display:none;"><strong>Processing request… this may take a while for many elements.</strong></p>
 
-<form method="post">
+<form method="post" id="elements-form">
   {% csrf_token %}
   {{ formset.management_form }}
   <input type="hidden" name="ai_model" value="{{ selected_ai_model }}" />
   <input type="hidden" name="image_model" value="{{ selected_image_model }}" />
+  <input type="hidden" name="action_intent" id="elements-action-intent" value="" />
   <h3>1) Discover elements</h3>
   <p><small>Using text model: <strong>{{ selected_ai_model }}</strong> (change on <a href="{% url 'project-images-home' project.pk %}">images home</a>).</small></p>
   <p>
-    <button class="btn" style="cursor:pointer" type="submit" name="action" value="discover" data-long-action="true">Discover elements</button>
+    <button class="btn" style="cursor:pointer" type="submit" name="action" value="discover" data-long-action="true" data-busy-label="Discovering elements...">Discover elements</button>
   </p>
   <h3>2) Edit elements list</h3>
   <p><small>Review discovered rows, remove irrelevant items, and add new elements in the blank row.</small></p>
@@ -57,7 +58,7 @@
   </p>
   <h3>3) Generate expanded prompts</h3>
   <p>
-    <button class="btn" style="cursor:pointer" type="submit" name="action" value="expand" data-long-action="true" {% if not elements_count %}disabled title="Discover elements first"{% endif %}>Generate expanded prompts</button>
+    <button class="btn" style="cursor:pointer" type="submit" name="action" value="expand" data-long-action="true" data-busy-label="Generating expanded prompts..." {% if not elements_count %}disabled title="Discover elements first"{% endif %}>Generate expanded prompts</button>
   </p>
   <h3>4) Confirm + generate images</h3>
   <p>
@@ -65,7 +66,7 @@
   </p>
   <p><small>Using image model: <strong>{{ selected_image_model }}</strong> (shared for style/elements/pages; change on <a href="{% url 'project-images-home' project.pk %}">images home</a>).</small></p>
   <p>
-    <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_images" data-long-action="true" {% if not confirmed_count %}disabled title="Confirm at least one element first"{% elif confirmed_with_prompts_count < confirmed_count %}disabled title="Generate prompts for confirmed elements first"{% endif %}>Generate element images</button>
+    <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_images" data-long-action="true" data-busy-label="Generating element images..." {% if not confirmed_count %}disabled title="Confirm at least one element first"{% elif confirmed_with_prompts_count < confirmed_count %}disabled title="Generate prompts for confirmed elements first"{% endif %}>Generate element images</button>
   </p>
 
   {% if formset.forms %}
@@ -104,22 +105,26 @@
 <p><em>Generation uses fan-out/fan-in (parallel API calls, then merge/save).</em></p>
 <script>
   (function () {
-    const form = document.querySelector("form");
+    const form = document.getElementById("elements-form");
     const progress = document.getElementById("elements-progress");
     if (!form || !progress) return;
+
     form.addEventListener("submit", function (event) {
-      const submitter = event.submitter;
+      const submitter = event.submitter || document.activeElement;
       if (!submitter || submitter.dataset.longAction !== "true") return;
-      if (submitter.name && submitter.value) {
-        const hidden = document.createElement("input");
-        hidden.type = "hidden";
-        hidden.name = submitter.name;
-        hidden.value = submitter.value;
-        form.appendChild(hidden);
+
+      const busyLabel = submitter.dataset.busyLabel || "Processing request...";
+      const actionIntent = document.getElementById("elements-action-intent");
+      if (actionIntent && submitter.value) {
+        actionIntent.value = submitter.value;
       }
+      progress.innerHTML = `<strong>${busyLabel}</strong>`;
       progress.style.display = "block";
-      submitter.disabled = true;
-      submitter.textContent = "Processing…";
+
+      const buttons = form.querySelectorAll('button[type="submit"]');
+      buttons.forEach(function (button) {
+        button.disabled = true;
+      });
     });
   })();
 </script>
