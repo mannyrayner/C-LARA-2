@@ -3249,7 +3249,7 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["selected_page_image_placement"] = (
             project.page_image_placement
             if project.page_image_placement in PAGE_IMAGE_PLACEMENT_CHOICES
-            else "none"
+            else "top"
         )
         usage_breakdown = (
             AIUsageCharge.objects.filter(project=project, status=AIUsageCharge.STATUS_CHARGED)
@@ -5227,7 +5227,7 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
             "selected_page_image_placement": (
                 project.page_image_placement
                 if project.page_image_placement in PAGE_IMAGE_PLACEMENT_CHOICES
-                else "none"
+                else "top"
             ),
             "page_image_text_source_choices": Project.PAGE_IMAGE_TEXT_SOURCE_CHOICES,
             "selected_page_image_text_source": project.page_image_text_source,
