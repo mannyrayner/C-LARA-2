@@ -1337,7 +1337,7 @@ def _run_expand_elements_task(project_id: int, user_id: int, ai_model: str, repo
         _persist_image_elements_artifacts(project)
         expanded = int(expand_result.get("expanded_count", 0))
         failed = int(expand_result.get("failed_count", 0))
-        status = "done" if failed == 0 else "warning"
+        status = "finished"
         TaskUpdate.objects.create(
             report_id=report_id,
             user=user,
@@ -2747,7 +2747,8 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
                 if style_obj.sample_image_path
                 else None
             ),
-            "status_notice": request.GET.get("notice"),
+            "status_notice": status_notice,
+            "expansion_report_id": report_id,
         },
     )
 
@@ -2875,7 +2876,8 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
                     request,
                     f"Started element prompt expansion with {ai_model}. Tracking id: {report_id}.",
                 )
-                messages.info(request, "Refresh this page after a short delay to see completion messages.")
+                messages.info(request, "Expansion is running in the background; this page will refresh automatically.")
+                return redirect(f"{reverse('project-image-elements', args=[project.pk])}?notice=running&report_id={report_id}")
             elif action == "confirm":
                 confirmed = 0
                 for element in project.image_elements.all():
@@ -2910,6 +2912,15 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
     else:
         formset = ProjectImageElementFormSet(queryset=queryset)
 
+    status_notice = request.GET.get("notice")
+    report_id = (request.GET.get("report_id") or "").strip()
+    if report_id:
+        latest = TaskUpdate.objects.filter(report_id=report_id, user=request.user).order_by("-timestamp").first()
+        if latest and latest.status == "finished":
+            status_notice = "done"
+        elif latest and latest.status == "error":
+            status_notice = "error"
+
     return render(
         request,
         "projects/project_image_elements.html",
@@ -2934,7 +2945,8 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
             .values_list("image_model", flat=True)
             .first()
             or "gpt-image-1",
-            "status_notice": request.GET.get("notice"),
+            "status_notice": status_notice,
+            "expansion_report_id": report_id,
         },
     )
 
@@ -3031,7 +3043,8 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
             "element_count": project.image_elements.count(),
             "confirmed_element_count": project.image_elements.filter(is_confirmed=True).count(),
             "elements_with_images_count": project.image_elements.exclude(image_path="").count(),
-            "status_notice": request.GET.get("notice"),
+            "status_notice": status_notice,
+            "expansion_report_id": report_id,
         },
     )
 

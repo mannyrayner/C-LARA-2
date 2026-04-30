@@ -1,5 +1,12 @@
 {% extends "projects/base.html" %}
-{% block title %}Image elements: {{ project.title }}{% endblock %}
+{% block title %}Image elements: {{ project.title }}{% if status_notice == "running" and expansion_report_id %}
+<script>
+  window.setTimeout(function () {
+    window.location.href = "{% url 'project-image-elements' project.pk %}?notice=running&report_id={{ expansion_report_id }}";
+  }, 3000);
+</script>
+{% endif %}
+{% endblock %}
 {% block content %}
 <h1>Image elements for {{ project.title }}</h1>
 
@@ -37,6 +44,10 @@
 
 {% if status_notice == "done" %}
   <p><strong>Request completed.</strong> Check the messages above for details.</p>
+{% elif status_notice == "running" %}
+  <p><strong>Request is still running.</strong> This page will refresh automatically.</p>
+{% elif status_notice == "error" %}
+  <p><strong>Request finished with an error.</strong> Check the messages above for details.</p>
 {% endif %}
 <form method="post" id="elements-form">
   {% csrf_token %}
@@ -128,4 +139,11 @@
     });
   })();
 </script>
+{% if status_notice == "running" and expansion_report_id %}
+<script>
+  window.setTimeout(function () {
+    window.location.href = "{% url 'project-image-elements' project.pk %}?notice=running&report_id={{ expansion_report_id }}";
+  }, 3000);
+</script>
+{% endif %}
 {% endblock %}
