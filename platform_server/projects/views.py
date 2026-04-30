@@ -2734,6 +2734,7 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
         )
 
     status_notice = request.GET.get("notice")
+    report_id = (request.GET.get("report_id") or "").strip()
 
     return render(
         request,
@@ -3029,6 +3030,7 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
         setattr(form.instance, "variants_for_ui", list(form.instance.variants.order_by("variant_index", "id")))
 
     status_notice = request.GET.get("notice")
+    report_id = (request.GET.get("report_id") or "").strip()
 
     return render(
         request,
