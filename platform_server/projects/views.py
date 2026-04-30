@@ -2817,11 +2817,22 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
                     request,
                     f"Expanding element prompts with {ai_model}.",
                 )
+                expansion_started = datetime.now(timezone.utc)
+                _append_elements_telemetry(
+                    project,
+                    {
+                        "type": "event",
+                        "level": "info",
+                        "message": "elements expansion run start",
+                        "ai_model": ai_model,
+                    },
+                )
                 try:
                     expand_result = _expand_project_image_elements(
                         project, ai_model=ai_model
                     )
                 except Exception as exc:
+                    elapsed_s = (datetime.now(timezone.utc) - expansion_started).total_seconds()
                     logger.exception("Failed to expand image elements for project %s", project.pk)
                     _append_elements_telemetry(
                         project,
@@ -2830,11 +2841,23 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
                             "level": "error",
                             "message": "elements expansion failed",
                             "ai_model": ai_model,
+                            "elapsed_s": round(elapsed_s, 3),
                             **_exception_telemetry_fields(exc),
                         },
                     )
-                    messages.error(request, f"Element expansion failed: {exc}")
+                    messages.error(request, f"Element expansion failed after {elapsed_s:.1f}s: {exc}")
                 else:
+                    elapsed_s = (datetime.now(timezone.utc) - expansion_started).total_seconds()
+                    _append_elements_telemetry(
+                        project,
+                        {
+                            "type": "event",
+                            "level": "info",
+                            "message": "elements expansion run complete",
+                            "ai_model": ai_model,
+                            "elapsed_s": round(elapsed_s, 3),
+                        },
+                    )
                     _persist_image_elements_artifacts(project)
                     expanded = int(expand_result.get("expanded_count", 0))
                     failed = int(expand_result.get("failed_count", 0))
@@ -2854,7 +2877,7 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
                                 "Check images/elements/telemetry.jsonl and server logs for details.",
                             )
                     else:
-                        messages.success(request, f"Expanded prompts for {expanded} elements.")
+                        messages.success(request, f"Expanded prompts for {expanded} elements in {elapsed_s:.1f}s.")
             elif action == "confirm":
                 confirmed = 0
                 for element in project.image_elements.all():
