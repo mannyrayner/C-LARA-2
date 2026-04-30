@@ -29,12 +29,12 @@
 {% if status_notice == "done" %}
   <p><strong>Request completed.</strong> Check the messages above for details.</p>
 {% endif %}
-<p id="pages-progress" style="display:none;"><strong>Generating page images… please wait.</strong></p>
 <p><em>Generation uses fan-out/fan-in (parallel variant calls, then merge/save).</em></p>
 
-<form method="post">
+<form method="post" id="pages-form">
   {% csrf_token %}
   {{ formset.management_form }}
+  <input type="hidden" name="action_intent" id="pages-action-intent" value="" />
   <p>
     <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="refresh">Sync pages from text</button>
     <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="save">Save edits</button>
@@ -48,9 +48,11 @@
     </select>
     <label for="variants_per_page" class="ml-2">Variants per page:</label>
     <input id="variants_per_page" type="number" name="variants_per_page" min="1" max="8" value="{{ default_variants_per_page }}" style="width:5rem;" />
-    <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_images" data-long-action="true">Generate page images</button>
+    <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_images" data-long-action="true" data-busy-label="Generating page images...">Generate page images</button>
     <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="set_preferred">Save preferred images</button>
   </p>
+
+  <p id="pages-progress" style="display:none; font-weight:bold;" aria-live="polite">Processing request...</p>
 
   {% if formset.forms %}
     {% for form in formset.forms %}
@@ -86,22 +88,26 @@
 </form>
 <script>
   (function () {
-    const form = document.querySelector("form");
+    const form = document.getElementById("pages-form");
     const progress = document.getElementById("pages-progress");
     if (!form || !progress) return;
+
     form.addEventListener("submit", function (event) {
-      const submitter = event.submitter;
+      const submitter = event.submitter || document.activeElement;
       if (!submitter || submitter.dataset.longAction !== "true") return;
-      if (submitter.name && submitter.value) {
-        const hidden = document.createElement("input");
-        hidden.type = "hidden";
-        hidden.name = submitter.name;
-        hidden.value = submitter.value;
-        form.appendChild(hidden);
+
+      const busyLabel = submitter.dataset.busyLabel || "Processing request...";
+      const actionIntent = document.getElementById("pages-action-intent");
+      if (actionIntent && submitter.value) {
+        actionIntent.value = submitter.value;
       }
+      progress.innerHTML = `<strong>${busyLabel}</strong>`;
       progress.style.display = "block";
-      submitter.disabled = true;
-      submitter.textContent = "Processing…";
+
+      const buttons = form.querySelectorAll('button[type="submit"]');
+      buttons.forEach(function (button) {
+        button.disabled = true;
+      });
     });
   })();
 </script>
