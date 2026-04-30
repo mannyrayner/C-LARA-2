@@ -2931,7 +2931,7 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
     queryset = ProjectImagePage.objects.filter(project=project).order_by("page_number", "id")
 
     if request.method == "POST":
-        action = request.POST.get("action") or "save"
+        action = request.POST.get("action") or request.POST.get("action_intent") or "save"
         requested_image_model = (request.POST.get("image_model") or "").strip()
         requested_variants_per_page = request.POST.get("variants_per_page") or "1"
         try:
