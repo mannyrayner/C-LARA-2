@@ -2733,6 +2733,8 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
             image_model_choices=IMAGE_MODEL_CHOICES,
         )
 
+    status_notice = request.GET.get("notice")
+
     return render(
         request,
         "projects/project_image_style.html",
@@ -2748,7 +2750,6 @@ def project_image_style(request: HttpRequest, pk: int) -> HttpResponse:
                 else None
             ),
             "status_notice": status_notice,
-            "expansion_report_id": report_id,
         },
     )
 
