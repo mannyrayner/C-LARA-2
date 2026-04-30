@@ -2947,7 +2947,6 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
             .first()
             or "gpt-image-1",
             "status_notice": status_notice,
-            "expansion_report_id": report_id,
         },
     )
 
@@ -3028,6 +3027,8 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
         formset = ProjectImagePageFormSet(queryset=queryset)
     for form in formset.forms:
         setattr(form.instance, "variants_for_ui", list(form.instance.variants.order_by("variant_index", "id")))
+
+    status_notice = request.GET.get("notice")
 
     return render(
         request,
