@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import logging
 import os
 import random
@@ -1309,6 +1310,54 @@ def _expand_project_image_elements(
         "failed_elements": failed_elements,
     }
 
+
+
+
+def _running_tests() -> bool:
+    argv = " ".join(sys.argv).lower()
+    return "pytest" in argv or "manage.py test" in argv or " test" in argv
+
+
+def _run_expand_elements_task(project_id: int, user_id: int, ai_model: str, report_id: str) -> None:
+    try:
+        project = Project.objects.get(pk=project_id)
+        user = get_user_model().objects.filter(pk=user_id).first()
+        TaskUpdate.objects.create(
+            report_id=report_id,
+            user=user,
+            task_type=f"image_elements_expand_{project_id}",
+            message=f"Started element prompt expansion with {ai_model}.",
+            status="running",
+        )
+        expansion_started = datetime.now(timezone.utc)
+        _append_elements_telemetry(project, {"type":"event","level":"info","message":"elements expansion run start","ai_model":ai_model,"report_id":report_id})
+        expand_result = _expand_project_image_elements(project, ai_model=ai_model)
+        elapsed_s = (datetime.now(timezone.utc) - expansion_started).total_seconds()
+        _append_elements_telemetry(project, {"type":"event","level":"info","message":"elements expansion run complete","ai_model":ai_model,"elapsed_s":round(elapsed_s,3),"report_id":report_id})
+        _persist_image_elements_artifacts(project)
+        expanded = int(expand_result.get("expanded_count", 0))
+        failed = int(expand_result.get("failed_count", 0))
+        status = "done" if failed == 0 else "warning"
+        TaskUpdate.objects.create(
+            report_id=report_id,
+            user=user,
+            task_type=f"image_elements_expand_{project_id}",
+            message=f"Expanded prompts for {expanded} elements; {failed} failed in {elapsed_s:.1f}s.",
+            status=status,
+        )
+    except Exception as exc:
+        logger.exception("Async element expansion failed for project %s", project_id)
+        project = Project.objects.filter(pk=project_id).first()
+        if project:
+            _append_elements_telemetry(project, {"type":"event","level":"error","message":"elements expansion failed","ai_model":ai_model,"report_id":report_id,**_exception_telemetry_fields(exc)})
+        user = get_user_model().objects.filter(pk=user_id).first()
+        TaskUpdate.objects.create(
+            report_id=report_id,
+            user=user,
+            task_type=f"image_elements_expand_{project_id}",
+            message=f"Element expansion failed: {exc}",
+            status="error",
+        )
 
 def _generate_project_element_images(
     project: Project,
@@ -2715,7 +2764,7 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
     queryset = ProjectImageElement.objects.filter(project=project).order_by("name", "id")
 
     if request.method == "POST":
-        action = request.POST.get("action") or "save"
+        action = request.POST.get("action") or request.POST.get("action_intent") or "save"
         requested_ai_model = (request.POST.get("ai_model") or "").strip()
         ai_model = requested_ai_model or style.ai_model or project.ai_model or DEFAULT_MODEL
         invalid_ai_model = ai_model not in AI_MODEL_CHOICES
@@ -2813,48 +2862,20 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
                             "images/elements/elements_discovery_response.json for details.",
                         )
             elif action == "expand":
+                report_id = str(uuid.uuid4())
+                async_task(
+                    _run_expand_elements_task,
+                    project.pk,
+                    request.user.id,
+                    ai_model,
+                    report_id,
+                    q_options={"sync": _running_tests()},
+                )
                 messages.info(
                     request,
-                    f"Expanding element prompts with {ai_model}.",
+                    f"Started element prompt expansion with {ai_model}. Tracking id: {report_id}.",
                 )
-                try:
-                    expand_result = _expand_project_image_elements(
-                        project, ai_model=ai_model
-                    )
-                except Exception as exc:
-                    logger.exception("Failed to expand image elements for project %s", project.pk)
-                    _append_elements_telemetry(
-                        project,
-                        {
-                            "type": "event",
-                            "level": "error",
-                            "message": "elements expansion failed",
-                            "ai_model": ai_model,
-                            **_exception_telemetry_fields(exc),
-                        },
-                    )
-                    messages.error(request, f"Element expansion failed: {exc}")
-                else:
-                    _persist_image_elements_artifacts(project)
-                    expanded = int(expand_result.get("expanded_count", 0))
-                    failed = int(expand_result.get("failed_count", 0))
-                    if failed:
-                        failed_elements = expand_result.get("failed_elements") or []
-                        names_preview = ", ".join(str(item.get("element_name") or "?") for item in failed_elements[:5])
-                        if names_preview:
-                            messages.warning(
-                                request,
-                                f"Expanded prompts for {expanded} elements; {failed} failed ({names_preview}). "
-                                "Check images/elements/telemetry.jsonl and server logs for details.",
-                            )
-                        else:
-                            messages.warning(
-                                request,
-                                f"Expanded prompts for {expanded} elements; {failed} failed. "
-                                "Check images/elements/telemetry.jsonl and server logs for details.",
-                            )
-                    else:
-                        messages.success(request, f"Expanded prompts for {expanded} elements.")
+                messages.info(request, "Refresh this page after a short delay to see completion messages.")
             elif action == "confirm":
                 confirmed = 0
                 for element in project.image_elements.all():
@@ -2931,7 +2952,7 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
     queryset = ProjectImagePage.objects.filter(project=project).order_by("page_number", "id")
 
     if request.method == "POST":
-        action = request.POST.get("action") or "save"
+        action = request.POST.get("action") or request.POST.get("action_intent") or "save"
         requested_image_model = (request.POST.get("image_model") or "").strip()
         requested_variants_per_page = request.POST.get("variants_per_page") or "1"
         try:
