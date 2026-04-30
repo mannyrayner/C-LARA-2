@@ -45,6 +45,7 @@
   {{ formset.management_form }}
   <input type="hidden" name="ai_model" value="{{ selected_ai_model }}" />
   <input type="hidden" name="image_model" value="{{ selected_image_model }}" />
+  <input type="hidden" name="action_intent" id="elements-action-intent" value="" />
   <h3>1) Discover elements</h3>
   <p><small>Using text model: <strong>{{ selected_ai_model }}</strong> (change on <a href="{% url 'project-images-home' project.pk %}">images home</a>).</small></p>
   <p>
@@ -113,6 +114,10 @@
       if (!submitter || submitter.dataset.longAction !== "true") return;
 
       const busyLabel = submitter.dataset.busyLabel || "Processing request...";
+      const actionIntent = document.getElementById("elements-action-intent");
+      if (actionIntent && submitter.value) {
+        actionIntent.value = submitter.value;
+      }
       progress.innerHTML = `<strong>${busyLabel}</strong>`;
       progress.style.display = "block";
 

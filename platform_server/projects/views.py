@@ -2715,7 +2715,7 @@ def project_image_elements(request: HttpRequest, pk: int) -> HttpResponse:
     queryset = ProjectImageElement.objects.filter(project=project).order_by("name", "id")
 
     if request.method == "POST":
-        action = request.POST.get("action") or "save"
+        action = request.POST.get("action") or request.POST.get("action_intent") or "save"
         requested_ai_model = (request.POST.get("ai_model") or "").strip()
         ai_model = requested_ai_model or style.ai_model or project.ai_model or DEFAULT_MODEL
         invalid_ai_model = ai_model not in AI_MODEL_CHOICES
