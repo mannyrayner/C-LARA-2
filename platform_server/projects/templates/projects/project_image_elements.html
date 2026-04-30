@@ -38,8 +38,6 @@
 {% if status_notice == "done" %}
   <p><strong>Request completed.</strong> Check the messages above for details.</p>
 {% endif %}
-<p id="elements-progress" style="display:none;"><strong>Processing request… this may take a while for many elements.</strong></p>
-
 <form method="post" id="elements-form">
   {% csrf_token %}
   {{ formset.management_form }}
@@ -68,6 +66,8 @@
   <p>
     <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_images" data-long-action="true" data-busy-label="Generating element images..." {% if not confirmed_count %}disabled title="Confirm at least one element first"{% elif confirmed_with_prompts_count < confirmed_count %}disabled title="Generate prompts for confirmed elements first"{% endif %}>Generate element images</button>
   </p>
+
+  <p id="elements-progress" style="display:none; font-weight:bold;" aria-live="polite">Processing request...</p>
 
   {% if formset.forms %}
     {% for form in formset.forms %}
