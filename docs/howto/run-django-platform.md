@@ -61,3 +61,28 @@ python manage.py runserver
   - `POSTGRES_PORT` (optional, default `5432`)
 - Pipelines require real AI/TTS credentials; without them, compilation will raise an error instead of falling back to stub output.
 - For production server operations (deploy/restart/logs/env/permissions/TLS), see `docs/howto/server-admin-tasks.md`.
+
+
+## AWS timeout checklist for image generation/expansion
+
+If long-running image requests intermittently fail with **502 Bad Gateway** or a generic internal error, check these in order:
+
+1. **Confirm where the timeout occurs**
+   - Review `images/elements/telemetry.jsonl` for events such as `elements expansion run start`, `element expansion timeout`, `elements expansion failed`, and elapsed seconds.
+   - Compare with application logs (`gunicorn`/`uvicorn`) and reverse-proxy logs (`nginx`) for matching timestamps.
+
+2. **Reverse proxy timeouts (nginx)**
+   - Verify `proxy_read_timeout`, `proxy_send_timeout`, and `send_timeout` are long enough for expansion jobs on your hardware/network.
+   - If these are shorter than the expansion runtime, nginx may return 502/504 before Django finishes.
+
+3. **Application server timeouts (gunicorn/uvicorn)**
+   - For gunicorn, verify `timeout` and `graceful-timeout` are high enough.
+   - Ensure worker count is appropriate so one long request does not starve other requests.
+
+4. **OpenAI/API latency variability**
+   - Element expansion performs one model call per element; total latency can vary significantly with element count and provider response times.
+   - Intermittent success/failure is often a symptom of runtime being near infrastructure timeout thresholds.
+
+5. **Stabilization options**
+   - Short term: raise proxy/app-server timeouts.
+   - Medium term: move long expansion jobs to background tasks with polling/status UI so web requests stay short.
