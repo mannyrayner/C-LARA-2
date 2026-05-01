@@ -1,0 +1,9 @@
+{
+  "input": "Segna le MWE nella frase tokenizzata:\nLui | si | rende | conto | di | tutto | .",
+  "output": {
+    "mwes": [
+      {"tokens": ["si", "rende", "conto", "di"]}
+    ],
+    "notes": "'rendersi conto di' è una costruzione lessicalizzata."
+  }
+}
