@@ -1,4 +1,4 @@
 {
-  "input": "<start>He closed the window before the storm arrived.</end>",
-  "output": "<start>Il a fermé la fenêtre avant que l'orage n'arrive.</end>"
+  "input": "<start>The train left just before sunrise.</end>",
+  "output": "<start>A natural translation of this sentence in {glossing_language}.</end>"
 }

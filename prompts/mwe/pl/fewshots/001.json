@@ -1,0 +1,9 @@
+{
+  "input": "Oznacz MWE w zdaniu tokenizowanym:\nOn | bierze | pod | uwagę | wszystkie | opcje | .",
+  "output": {
+    "mwes": [
+      {"tokens": ["bierze", "pod", "uwagę"]}
+    ],
+    "notes": "'brać pod uwagę' to utrwalone połączenie czasownikowe."
+  }
+}

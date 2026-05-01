@@ -1,4 +1,4 @@
 {
-  "input": "<start>She learned to cook by watching her grandmother.</end>",
-  "output": "<start>Elle a appris à cuisiner en regardant sa grand-mère.</end>"
+  "input": "<start>They brought warm clothes because the weather changed quickly.</end>",
+  "output": "<start>A natural translation of this sentence in {glossing_language}.</end>"
 }

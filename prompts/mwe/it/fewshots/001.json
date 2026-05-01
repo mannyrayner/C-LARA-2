@@ -1,0 +1,14 @@
+{
+  "input": "{\n  \"surface\": \"Dopo la telefonata, lui si rende conto di tutto.\",\n  \"tokens\": [\n    {\"surface\": \"Dopo\"}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"la\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"telefonata\", \"annotations\": {}}, {\"surface\": \",\"}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"lui\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"si\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"rende\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"conto\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"di\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"tutto\", \"annotations\": {}}, {\"surface\": \".\"}\n  ],\n  \"annotations\": {}\n}",
+  "output": {
+    "surface": "Dopo la telefonata, lui si rende conto di tutto.",
+    "tokens": [
+      {"surface": "Dopo"}, {"surface": " ", "annotations": {}}, {"surface": "la"}, {"surface": " ", "annotations": {}}, {"surface": "telefonata"}, {"surface": ","}, {"surface": " ", "annotations": {}}, {"surface": "lui"}, {"surface": " ", "annotations": {}}, {"surface": "si", "annotations": {"mwe_id": "m1"}}, {"surface": " ", "annotations": {}}, {"surface": "rende", "annotations": {"mwe_id": "m1"}}, {"surface": " ", "annotations": {}}, {"surface": "conto", "annotations": {"mwe_id": "m1"}}, {"surface": " ", "annotations": {}}, {"surface": "di", "annotations": {"mwe_id": "m1"}}, {"surface": " ", "annotations": {}}, {"surface": "tutto"}, {"surface": "."}
+    ],
+    "annotations": {
+      "mwes": [
+        {"id": "m1", "tokens": ["si", "rende", "conto", "di"], "label": "verbo pronominale con preposizione"}
+      ]
+    }
+  }
+}
