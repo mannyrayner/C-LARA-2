@@ -1,0 +1,9 @@
+{
+  "input": "Marker MWE i setningen:\nHun | ga | seg | av | gårde | tidlig | .",
+  "output": {
+    "mwes": [
+      {"tokens": ["ga", "seg", "av", "gårde"]}
+    ],
+    "notes": "'ga seg av gårde' fungerer som et fast uttrykk."
+  }
+}
