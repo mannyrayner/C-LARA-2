@@ -1,0 +1,9 @@
+{
+  "input": "Kan du [tagge] MWE'er i denne tokeniserede sætning?\nHan | ser | frem | til | ferien | .",
+  "output": {
+    "mwes": [
+      {"tokens": ["ser", "frem", "til"]}
+    ],
+    "notes": "'ser frem til' er et fast leksikaliseret mønster."
+  }
+}
