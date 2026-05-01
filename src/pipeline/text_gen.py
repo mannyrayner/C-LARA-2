@@ -82,17 +82,24 @@ def _build_prompt(template: str, *, description: dict[str, Any], fewshots: list[
 
 def _build_story_prompt(*, language: str, description: dict[str, Any] | str) -> str:
     language_labels = {
-        "en": "English",
-        "fr": "French",
+        "ar": "Arabic",
+        "da": "Danish",
         "de": "German",
+        "en": "English",
         "es": "Spanish",
+        "fa": "Persian",
+        "fr": "French",
+        "hi": "Hindi",
         "it": "Italian",
-        "pt": "Portuguese",
-        "zh": "Mandarin Chinese",
         "ja": "Japanese",
         "ko": "Korean",
-        "ar": "Arabic",
+        "nl": "Dutch",
+        "no": "Norwegian",
+        "pl": "Polish",
+        "pt": "Portuguese",
         "ru": "Russian",
+        "sv": "Swedish",
+        "zh": "Mandarin Chinese",
     }
     language_cap = language_labels.get(language.lower(), language.capitalize())
     if isinstance(description, str):
