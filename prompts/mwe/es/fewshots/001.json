@@ -1,0 +1,9 @@
+{
+  "input": "Marca las MWE en esta oración tokenizada:\nElla | se | dio | cuenta | de | todo | .",
+  "output": {
+    "mwes": [
+      {"tokens": ["se", "dio", "cuenta", "de"]}
+    ],
+    "notes": "'darse cuenta de' es un patrón lexicalizado."
+  }
+}
