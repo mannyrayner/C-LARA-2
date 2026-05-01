@@ -1534,6 +1534,11 @@ def _build_page_image_prompt(
         "ar": "Arabic",
         "ru": "Russian",
         "hi": "Hindi",
+        "da": "Danish",
+        "nl": "Dutch",
+        "no": "Norwegian",
+        "pl": "Polish",
+        "sv": "Swedish",
     }
     prompt_language = _image_prompt_language(project)
     if prompt_language not in language_instructions:
