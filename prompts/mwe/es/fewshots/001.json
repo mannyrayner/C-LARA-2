@@ -1,9 +1,14 @@
 {
-  "input": "Marca las MWE en esta oración tokenizada:\nElla | se | dio | cuenta | de | todo | .",
+  "input": "{\n  \"surface\": \"Cuando oye la noticia, ella se da cuenta de su error.\",\n  \"tokens\": [\n    {\"surface\": \"Cuando\"}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"oye\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"la\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"noticia\", \"annotations\": {}}, {\"surface\": \",\"}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"ella\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"se\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"da\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"cuenta\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"de\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"su\", \"annotations\": {}}, {\"surface\": \" \", \"annotations\": {}}, {\"surface\": \"error\", \"annotations\": {}}, {\"surface\": \".\"}\n  ],\n  \"annotations\": {}\n}",
   "output": {
-    "mwes": [
-      {"tokens": ["se", "dio", "cuenta", "de"]}
+    "surface": "Cuando oye la noticia, ella se da cuenta de su error.",
+    "tokens": [
+      {"surface": "Cuando"}, {"surface": " ", "annotations": {}}, {"surface": "oye"}, {"surface": " ", "annotations": {}}, {"surface": "la"}, {"surface": " ", "annotations": {}}, {"surface": "noticia"}, {"surface": ","}, {"surface": " ", "annotations": {}}, {"surface": "ella"}, {"surface": " ", "annotations": {}}, {"surface": "se", "annotations": {"mwe_id": "m1"}}, {"surface": " ", "annotations": {}}, {"surface": "da", "annotations": {"mwe_id": "m1"}}, {"surface": " ", "annotations": {}}, {"surface": "cuenta", "annotations": {"mwe_id": "m1"}}, {"surface": " ", "annotations": {}}, {"surface": "de", "annotations": {"mwe_id": "m1"}}, {"surface": " ", "annotations": {}}, {"surface": "su"}, {"surface": " ", "annotations": {}}, {"surface": "error"}, {"surface": "."}
     ],
-    "notes": "'darse cuenta de' es un patrón lexicalizado."
+    "annotations": {
+      "mwes": [
+        {"id": "m1", "tokens": ["se", "da", "cuenta", "de"], "label": "verbo pronominal con preposición"}
+      ]
+    }
   }
 }
