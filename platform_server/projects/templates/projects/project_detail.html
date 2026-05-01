@@ -6,6 +6,19 @@
 <p>Language: {{ object.language }} → {{ object.target_language }}</p>
 <p>Access: {{ object.get_access_scope_display }}{% if object.community %} ({{ object.community.name }}){% endif %}</p>
 <p>Direction: {{ project_text_direction }} (text) / {{ project_annotation_direction }} (annotation)</p>
+{% if current_user_role == "owner" %}
+  <form method="post" action="{% url 'project-target-language' object.pk %}" onsubmit="return confirm('Change glossing language and clear existing translation/gloss outputs?');">
+    {% csrf_token %}
+    <label for="id_target_language"><strong>Glossing language:</strong></label>
+    <select id="id_target_language" name="target_language">
+      {% for value, label in language_choices %}
+        <option value="{{ value }}" {% if value == object.target_language %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn secondary" type="submit">Update glossing language</button>
+    <small>(This clears existing translation and gloss stage files.)</small>
+  </form>
+{% endif %}
 <div style="border: 1px solid #ddd; padding: 0.75rem; margin: 0.75rem 0; background: #fafafa;">
   <strong>Project cost (USD): ${{ project_total_cost_usd|floatformat:4 }}</strong>
   {% if project_cost_breakdown %}

@@ -1534,6 +1534,11 @@ def _build_page_image_prompt(
         "ar": "Arabic",
         "ru": "Russian",
         "hi": "Hindi",
+        "da": "Danish",
+        "nl": "Dutch",
+        "no": "Norwegian",
+        "pl": "Polish",
+        "sv": "Swedish",
     }
     prompt_language = _image_prompt_language(project)
     if prompt_language not in language_instructions:
@@ -7715,6 +7720,37 @@ def set_project_discovery_metadata(request: HttpRequest, pk: int) -> HttpRespons
 
 
 @login_required
+def set_project_target_language(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
+    if request.method != "POST":
+        return redirect("project-detail", pk=project.pk)
+    new_target_language = (request.POST.get("target_language") or "").strip().lower()
+    allowed_target_languages = {code for code, _label in ProjectForm.LANGUAGE_CHOICES}
+    if new_target_language not in allowed_target_languages:
+        messages.error(request, "Unknown glossing language.")
+        return redirect("project-detail", pk=project.pk)
+    if new_target_language == (project.target_language or "").strip().lower():
+        messages.info(request, "Glossing language unchanged.")
+        return redirect("project-detail", pk=project.pk)
+
+    removed_files = 0
+    for run_dir in _iter_runs(project):
+        for stage_name in ("translation", "gloss"):
+            stage_path = run_dir / "stages" / f"{stage_name}.json"
+            if stage_path.exists():
+                stage_path.unlink()
+                removed_files += 1
+
+    project.target_language = new_target_language
+    project.save(update_fields=["target_language", "updated_at"])
+    messages.success(
+        request,
+        f"Glossing language changed to {new_target_language}. Removed {removed_files} translation/gloss stage file(s).",
+    )
+    return redirect("project-detail", pk=project.pk)
+
+
+@login_required
 @xframe_options_sameorigin
 def serve_compiled(request: HttpRequest, pk: int, path: str) -> HttpResponse:
     """Serve compiled artifacts from a project's run directory.
@@ -7742,6 +7778,18 @@ def serve_compiled(request: HttpRequest, pk: int, path: str) -> HttpResponse:
     content_type, _ = mimetypes.guess_type(unquote(str(file_path)))
     with open(file_path, "rb") as fp:
         data = fp.read()
+    if (content_type or "").startswith("text/html"):
+        try:
+            html_text = data.decode("utf-8")
+            back_href = reverse("project-detail", args=[project.pk])
+            back_block = (
+                f'<div style="padding:0.5rem 1rem;background:#f6f6f6;border-bottom:1px solid #ddd;">'
+                f'<a href="{back_href}">&#x2190; Back to project</a></div>'
+            )
+            html_text = html_text.replace("<body>", f"<body>\n{back_block}", 1)
+            data = html_text.encode("utf-8")
+        except Exception:
+            pass
     return HttpResponse(data, content_type=content_type or "application/octet-stream")
 
 
