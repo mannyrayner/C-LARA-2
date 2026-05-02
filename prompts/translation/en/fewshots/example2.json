@@ -1,4 +1,6 @@
 {
+  "text_language": "{text_language}",
+  "glossing_language": "{glossing_language}",
   "input": "<start>They brought warm clothes because the weather changed quickly.</end>",
   "output": "<start>A natural translation of this sentence in {glossing_language}.</end>"
 }

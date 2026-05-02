@@ -1,4 +1,6 @@
 {
+  "text_language": "{text_language}",
+  "glossing_language": "{glossing_language}",
   "input": "<start>The train left just before sunrise.</end>",
   "output": "<start>A natural translation of this sentence in {glossing_language}.</end>"
 }
