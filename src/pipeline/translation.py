@@ -132,12 +132,14 @@ def _build_prompt(
     lines: list[str] = [template_text, ""]
 
     if fewshots:
-        lines.append(
-            f"Here are some examples showing {source_language} glossed with {target_language}."
-        )
+        lines.append("Here are example translation pairs.")
         lines.append("")
         for idx, example in enumerate(fewshots, start=1):
-            lines.append(f"Example {idx} input:")
+            example_text_language = str(example.get("text_language") or source_language).strip()
+            example_glossing_language = str(example.get("glossing_language") or target_language).strip()
+            lines.append(
+                f"Example {idx} ({example_text_language} -> {example_glossing_language}) input:"
+            )
             lines.append(example.get("input", "").strip())
             lines.append("Example output:")
             lines.append(example.get("output", "").strip())
@@ -199,8 +201,20 @@ async def translate(
             )
         elif isinstance(output_obj, str):
             output_translation = output_obj
+        example_source_language = str(item.get("text_language") or spec.language) if isinstance(item, dict) else spec.language
+        example_target_language = str(item.get("glossing_language") or spec.target_language) if isinstance(item, dict) else spec.target_language
         normalized_fewshots.append(
             {
+                "text_language": _instantiate_language_vars(
+                    example_source_language,
+                    source_language=spec.language,
+                    target_language=spec.target_language,
+                ),
+                "glossing_language": _instantiate_language_vars(
+                    example_target_language,
+                    source_language=spec.language,
+                    target_language=spec.target_language,
+                ),
                 "input": _instantiate_language_vars(
                     input_surface, source_language=spec.language, target_language=spec.target_language
                 ),
