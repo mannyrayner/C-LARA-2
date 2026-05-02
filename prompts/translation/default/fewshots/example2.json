@@ -1,6 +1,6 @@
 {
-  "text_language": "{text_language}",
-  "glossing_language": "{glossing_language}",
-  "input": "<start>Another sample in {text_language}.</end>",
-  "output": "<start>Another translation in {glossing_language}.</end>"
+  "source_language": "en",
+  "target_language": "fr",
+  "input": "<start>They brought warm clothes because the weather changed quickly.</end>",
+  "output": "<start>Ils ont apporté des vêtements chauds parce que le temps a vite changé.</end>"
 }
