@@ -164,6 +164,36 @@ class AudioTests(unittest.TestCase):
             status="pass",
         )
 
+    def test_case_variants_share_audio_and_both_are_annotated(self) -> None:
+        engine = FakeTTSEngine()
+        case_text = {
+            "l2": "fr",
+            "surface": "Mélange mélange",
+            "pages": [
+                {
+                    "surface": "Mélange mélange",
+                    "segments": [
+                        {
+                            "surface": "Mélange mélange",
+                            "tokens": [
+                                {"surface": "Mélange", "annotations": {"pos": "VERB"}},
+                                {"surface": " "},
+                                {"surface": "mélange", "annotations": {"pos": "VERB"}},
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+
+        annotated = asyncio.run(
+            audio.annotate_audio(audio.AudioSpec(text=case_text, language="fr", cache_dir=self.cache_dir), tts_engine=engine)
+        )
+        tokens = [t for t in annotated["pages"][0]["segments"][0]["tokens"] if t["surface"].strip()]
+        token_audio = [t.get("annotations", {}).get("audio") for t in tokens]
+        self.assertTrue(all(a and a.get("path") for a in token_audio))
+        self.assertEqual(token_audio[0]["path"], token_audio[1]["path"])
+
 
 
     def test_audio_filenames_include_surface_and_pos_for_debugging(self) -> None:

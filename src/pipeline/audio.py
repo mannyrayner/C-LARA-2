@@ -236,6 +236,12 @@ def _audio_filename(*, level: str, language: str, voice: str | None, text: str, 
     return f"{language_slug}_{base}_{digest}.wav"
 
 
+def _audio_request_key(*, level: str, language: str, voice: str | None, text: str, pos: str | None = None) -> str:
+    """Stable cache key for deduplicating synthesis requests."""
+
+    return f"{level}:{language}:{voice or 'default'}:{pos or ''}:{text.strip().lower()}"
+
+
 def _tts_language_hint(language: str | None) -> str | None:
     """Return a human-friendly language hint for multilingual TTS engines."""
 
@@ -368,7 +374,13 @@ async def annotate_audio(
             request_list = list(token_audio_requests)
             request_keys: list[str] = []
             for req_surface, req_level, req_pos in request_list:
-                req_key = f"{req_level}:{spec.language}:{spec.voice or 'default'}:{req_pos or ''}:{req_surface.strip().lower()}"
+                req_key = _audio_request_key(
+                    level=req_level,
+                    language=spec.language,
+                    voice=spec.voice,
+                    text=req_surface,
+                    pos=req_pos,
+                )
                 unique_requests[req_key] = (req_surface, req_level, req_pos)
                 request_keys.append(req_key)
             segment_plans.append(
@@ -457,13 +469,6 @@ async def annotate_audio(
         for plan in page_plans:
             segment = plan["segment"]
             mwe_surface_text = plan["mwe_surfaces"]
-            resolved_audio: dict[tuple[str, str, str | None], Path] = {}
-            for req_key in plan["request_keys"]:
-                req_surface, req_level, req_pos = unique_requests[req_key]
-                maybe_path = key_to_path.get(req_key)
-                if maybe_path:
-                    resolved_audio[(req_surface, req_level, req_pos)] = maybe_path
-
             tokens_out: list[dict[str, Any]] = []
             for token in segment.get("tokens", []):
                 surface = token.get("surface", "")
@@ -471,7 +476,14 @@ async def annotate_audio(
 
                 if _is_word_token(surface):
                     audio_surface = mwe_surface_text.get(annotations.get("mwe_id"), surface)
-                    audio_path = resolved_audio.get((audio_surface, "token", annotations.get("pos")))
+                    audio_key = _audio_request_key(
+                        level="token",
+                        language=spec.language,
+                        voice=spec.voice,
+                        text=audio_surface,
+                        pos=annotations.get("pos"),
+                    )
+                    audio_path = key_to_path.get(audio_key)
                     if audio_path:
                         annotations["audio"] = _audio_annotation(
                             audio_path, surface=audio_surface, spec=spec, level="token", engine=engine
@@ -483,7 +495,14 @@ async def annotate_audio(
                     tokens_out.append(dict(token))
 
             seg_annotations = dict(segment.get("annotations", {}))
-            seg_audio = resolved_audio.get((segment.get("surface", ""), "segment", None))
+            seg_audio_key = _audio_request_key(
+                level="segment",
+                language=spec.language,
+                voice=spec.voice,
+                text=segment.get("surface", ""),
+                pos=None,
+            )
+            seg_audio = key_to_path.get(seg_audio_key)
             if seg_audio:
                 seg_annotations["audio"] = _audio_annotation(
                     seg_audio,
