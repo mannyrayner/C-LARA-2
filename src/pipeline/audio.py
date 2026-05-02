@@ -14,6 +14,7 @@ import struct
 import wave
 import os
 import re
+import time
 import contextlib
 from dataclasses import dataclass
 from pathlib import Path
@@ -235,6 +236,12 @@ def _audio_filename(*, level: str, language: str, voice: str | None, text: str, 
     return f"{language_slug}_{base}_{digest}.wav"
 
 
+def _audio_request_key(*, level: str, language: str, voice: str | None, text: str, pos: str | None = None) -> str:
+    """Stable cache key for deduplicating synthesis requests."""
+
+    return f"{level}:{language}:{voice or 'default'}:{pos or ''}:{text.strip().lower()}"
+
+
 def _tts_language_hint(language: str | None) -> str | None:
     """Return a human-friendly language hint for multilingual TTS engines."""
 
@@ -331,58 +338,13 @@ async def annotate_audio(
     op_id = spec.op_id or "audio"
     concat_cache: dict[str, Path] = {}
     synth_semaphore = asyncio.Semaphore(8)
+    fallback_lock = asyncio.Lock()
 
-    cache: dict[str, Path] = {}
-
-    async def ensure_audio(text: str, level: str, *, pos: str | None = None) -> Path | None:
-        nonlocal engine
-        normalized = text.strip()
-        if not normalized:
-            return None
-
-        key = f"{level}:{spec.language}:{spec.voice or 'default'}:{pos or ''}:{normalized.lower()}"
-        if key in cache:
-            return cache[key]
-
-        filename = _audio_filename(level=level, language=spec.language, voice=spec.voice, text=normalized, pos=pos)
-        output_path = cache_dir / filename
-
-        if not output_path.exists():
-            telemetry.event(op_id, "info", f"synthesizing audio for {level}")
-            try:
-                async with synth_semaphore:
-                    await asyncio.to_thread(
-                        engine.synthesize_to_path,
-                        normalized,
-                        output_path,
-                        voice=spec.voice,
-                        language=spec.language,
-                    )
-                    await asyncio.to_thread(_validate_wav, output_path)
-            except Exception as exc:
-                if spec.require_real_tts or tts_engine is not None:
-                    raise
-                telemetry.event(op_id, "warn", f"primary TTS failed ({exc}); using stub")
-                # Fall back to deterministic stub for reliable audio.
-                engine = SimpleTTSEngine()
-                async with synth_semaphore:
-                    await asyncio.to_thread(
-                        engine.synthesize_to_path,
-                        normalized,
-                        output_path,
-                        voice=spec.voice,
-                        language=spec.language,
-                    )
-                    await asyncio.to_thread(_validate_wav, output_path)
-
-        cache[key] = output_path
-        return output_path
-
-    new_pages: list[dict[str, Any]] = []
-    for page in spec.text.get("pages", []):
-        new_segments: list[dict[str, Any]] = []
-        segment_audio_paths: list[Path] = []
-        for segment in page.get("segments", []):
+    segment_plans: list[dict[str, Any]] = []
+    unique_requests: dict[str, tuple[str, str, str | None]] = {}
+    pages = spec.text.get("pages", [])
+    for page_idx, page in enumerate(pages):
+        for seg_idx, segment in enumerate(page.get("segments", [])):
             # Collect MWE spans up front so we can synthesize a single audio
             # clip per expression and reuse it across member tokens.
             mwe_surfaces: dict[str, list[str]] = {}
@@ -410,14 +372,103 @@ async def annotate_audio(
                 token_audio_requests.add((segment_surface, "segment", None))
 
             request_list = list(token_audio_requests)
-            resolved_paths = await asyncio.gather(
-                *(ensure_audio(req_surface, req_level, pos=req_pos) for req_surface, req_level, req_pos in request_list)
+            request_keys: list[str] = []
+            for req_surface, req_level, req_pos in request_list:
+                req_key = _audio_request_key(
+                    level=req_level,
+                    language=spec.language,
+                    voice=spec.voice,
+                    text=req_surface,
+                    pos=req_pos,
+                )
+                unique_requests[req_key] = (req_surface, req_level, req_pos)
+                request_keys.append(req_key)
+            segment_plans.append(
+                {
+                    "page_idx": page_idx,
+                    "seg_idx": seg_idx,
+                    "segment": segment,
+                    "mwe_surfaces": mwe_surface_text,
+                    "request_keys": request_keys,
+                }
             )
-            resolved_audio: dict[tuple[str, str, str | None], Path] = {}
-            for (req_surface, req_level, req_pos), maybe_path in zip(request_list, resolved_paths):
-                if maybe_path:
-                    resolved_audio[(req_surface, req_level, req_pos)] = maybe_path
 
+    generated_count = 0
+    total_count = len(unique_requests)
+    progress_lock = asyncio.Lock()
+    key_to_path: dict[str, Path] = {}
+    progress_started = time.monotonic()
+
+    async def synthesize_request(req_key: str, text: str, level: str, pos: str | None) -> None:
+        nonlocal engine, generated_count
+        normalized = text.strip()
+        if not normalized:
+            return
+
+        filename = _audio_filename(level=level, language=spec.language, voice=spec.voice, text=normalized, pos=pos)
+        output_path = cache_dir / filename
+
+        if not output_path.exists():
+            telemetry.event(op_id, "info", f"synthesizing audio for {level}")
+            try:
+                async with synth_semaphore:
+                    await asyncio.to_thread(
+                        engine.synthesize_to_path,
+                        normalized,
+                        output_path,
+                        voice=spec.voice,
+                        language=spec.language,
+                    )
+                    await asyncio.to_thread(_validate_wav, output_path)
+            except Exception as exc:
+                if spec.require_real_tts or tts_engine is not None:
+                    raise
+                async with fallback_lock:
+                    telemetry.event(op_id, "warn", f"primary TTS failed ({exc}); using stub")
+                    # Fall back to deterministic stub for reliable audio.
+                    engine = SimpleTTSEngine()
+                async with synth_semaphore:
+                    await asyncio.to_thread(
+                        engine.synthesize_to_path,
+                        normalized,
+                        output_path,
+                        voice=spec.voice,
+                        language=spec.language,
+                    )
+                    await asyncio.to_thread(_validate_wav, output_path)
+
+        key_to_path[req_key] = output_path
+        async with progress_lock:
+            generated_count += 1
+            if generated_count == 1 or generated_count == total_count or generated_count % 10 == 0:
+                telemetry.event(
+                    op_id,
+                    "info",
+                    "audio synthesis progress",
+                    {"generated": generated_count, "total": total_count},
+                )
+                telemetry.heartbeat(
+                    op_id,
+                    time.monotonic() - progress_started,
+                    note=f"audio files generated {generated_count}/{total_count}",
+                )
+
+    if unique_requests:
+        await asyncio.gather(
+            *(
+                synthesize_request(req_key, req_surface, req_level, req_pos)
+                for req_key, (req_surface, req_level, req_pos) in unique_requests.items()
+            )
+        )
+
+    new_pages: list[dict[str, Any]] = []
+    for page_idx, page in enumerate(pages):
+        new_segments: list[dict[str, Any]] = []
+        segment_audio_paths: list[Path] = []
+        page_plans = [pl for pl in segment_plans if pl["page_idx"] == page_idx]
+        for plan in page_plans:
+            segment = plan["segment"]
+            mwe_surface_text = plan["mwe_surfaces"]
             tokens_out: list[dict[str, Any]] = []
             for token in segment.get("tokens", []):
                 surface = token.get("surface", "")
@@ -425,7 +476,14 @@ async def annotate_audio(
 
                 if _is_word_token(surface):
                     audio_surface = mwe_surface_text.get(annotations.get("mwe_id"), surface)
-                    audio_path = resolved_audio.get((audio_surface, "token", annotations.get("pos")))
+                    audio_key = _audio_request_key(
+                        level="token",
+                        language=spec.language,
+                        voice=spec.voice,
+                        text=audio_surface,
+                        pos=annotations.get("pos"),
+                    )
+                    audio_path = key_to_path.get(audio_key)
                     if audio_path:
                         annotations["audio"] = _audio_annotation(
                             audio_path, surface=audio_surface, spec=spec, level="token", engine=engine
@@ -437,7 +495,14 @@ async def annotate_audio(
                     tokens_out.append(dict(token))
 
             seg_annotations = dict(segment.get("annotations", {}))
-            seg_audio = resolved_audio.get((segment.get("surface", ""), "segment", None))
+            seg_audio_key = _audio_request_key(
+                level="segment",
+                language=spec.language,
+                voice=spec.voice,
+                text=segment.get("surface", ""),
+                pos=None,
+            )
+            seg_audio = key_to_path.get(seg_audio_key)
             if seg_audio:
                 seg_annotations["audio"] = _audio_annotation(
                     seg_audio,
