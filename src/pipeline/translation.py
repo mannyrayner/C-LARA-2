@@ -132,12 +132,18 @@ def _build_prompt(
     lines: list[str] = [template_text, ""]
 
     if fewshots:
-        lines.append("Here are format examples.")
+        lines.append(
+            f"Here are some examples showing {source_language} glossed with {target_language}."
+        )
         lines.append("")
         for idx, example in enumerate(fewshots, start=1):
+            ex_source = str(
+                example.get("source_language")
+                or example.get("text_language")
+                or source_language
+            )
             ex_target = str(example.get("target_language") or target_language)
-            lines.append(f"Example {idx} (if target language is {ex_target}):")
-            lines.append(f"Example {idx} input:")
+            lines.append(f"Example {idx} ({ex_source} -> {ex_target}) input:")
             lines.append(example.get("input", "").strip())
             lines.append("Example output:")
             lines.append(example.get("output", "").strip())
@@ -199,9 +205,19 @@ async def translate(
             )
         elif isinstance(output_obj, str):
             output_translation = output_obj
-        example_target_language = str(item.get("target_language") or "").strip().lower() if isinstance(item, dict) else ""
+        example_source_language = (
+            str(item.get("source_language") or item.get("text_language") or "").strip().lower()
+            if isinstance(item, dict)
+            else ""
+        )
+        example_target_language = (
+            str(item.get("target_language") or item.get("glossing_language") or "").strip().lower()
+            if isinstance(item, dict)
+            else ""
+        )
         normalized_fewshots.append(
             {
+                "source_language": example_source_language,
                 "target_language": example_target_language,
                 "input": _instantiate_language_vars(
                     input_surface, source_language=spec.language, target_language=spec.target_language
