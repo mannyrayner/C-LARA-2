@@ -1,4 +1,6 @@
 {
-  "input": "<start>He closed the window before the storm arrived.</end>",
-  "output": "<start>Il a fermé la fenêtre avant que l'orage n'arrive.</end>"
+  "source_language": "en",
+  "target_language": "de",
+  "input": "<start>The train left just before sunrise.</end>",
+  "output": "<start>Der Zug fuhr kurz vor Sonnenaufgang ab.</end>"
 }
