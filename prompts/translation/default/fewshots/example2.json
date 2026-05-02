@@ -1,4 +1,6 @@
 {
-  "input": "<start>Another sample in {text_language}.</end>",
-  "output": "<start>Another translation in {glossing_language}.</end>"
+  "text_language": "de",
+  "glossing_language": "en",
+  "input": "<start>Sie hat den Zug verpasst.</end>",
+  "output": "<start>She missed the train.</end>"
 }

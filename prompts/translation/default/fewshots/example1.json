@@ -1,4 +1,6 @@
 {
-  "input": "<start>Sample sentence in {text_language}.</end>",
-  "output": "<start>Sample translation in {glossing_language}.</end>"
+  "text_language": "en",
+  "glossing_language": "fr",
+  "input": "<start>He bought a car.</end>",
+  "output": "<start>Il a acheté une voiture.</end>"
 }
