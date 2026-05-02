@@ -75,11 +75,11 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
         prompt = translation._build_prompt(
             template,
             segment_surface="Guten Tag",
-            fewshots=[{"input": "<start>Hallo</end>", "output": "<start>Hello</end>"}],
+            fewshots=[{"text_language": "de", "glossing_language": "en", "input": "<start>Hallo</end>", "output": "<start>Hello</end>"}],
             source_language="de",
             target_language="en",
         )
-        self.assertIn("Here are some examples showing de glossed with en.", prompt)
+        self.assertIn("Example 1 (de -> en) input:", prompt)
         self.assertIn("<start>Guten Tag</end>", prompt)
 
     async def test_translate_normalizes_response_and_sets_l1(self) -> None:
