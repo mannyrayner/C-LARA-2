@@ -138,10 +138,11 @@ def _build_prompt(
             example_text_language = str(example.get("text_language") or source_language).strip()
             example_glossing_language = str(example.get("glossing_language") or target_language).strip()
             lines.append(
-                f"Example {idx} ({example_text_language} -> {example_glossing_language}) input:"
+                f"Example {idx}: if {example_text_language} is the text language and {example_glossing_language} is the glossing language, a typical input/output pair is:"
             )
+            lines.append("Input:")
             lines.append(example.get("input", "").strip())
-            lines.append("Example output:")
+            lines.append("Output:")
             lines.append(example.get("output", "").strip())
             lines.append("")
 

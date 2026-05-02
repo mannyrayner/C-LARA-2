@@ -79,7 +79,7 @@ class TranslationTests(unittest.IsolatedAsyncioTestCase):
             source_language="de",
             target_language="en",
         )
-        self.assertIn("Example 1 (de -> en) input:", prompt)
+        self.assertIn("Example 1: if de is the text language and en is the glossing language, a typical input/output pair is:", prompt)
         self.assertIn("<start>Guten Tag</end>", prompt)
 
     async def test_translate_normalizes_response_and_sets_l1(self) -> None:
