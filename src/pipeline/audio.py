@@ -14,6 +14,7 @@ import struct
 import wave
 import os
 import re
+import time
 import contextlib
 from dataclasses import dataclass
 from pathlib import Path
@@ -384,6 +385,7 @@ async def annotate_audio(
     total_count = len(unique_requests)
     progress_lock = asyncio.Lock()
     key_to_path: dict[str, Path] = {}
+    progress_started = time.monotonic()
 
     async def synthesize_request(req_key: str, text: str, level: str, pos: str | None) -> None:
         nonlocal engine, generated_count
@@ -432,6 +434,11 @@ async def annotate_audio(
                     "info",
                     "audio synthesis progress",
                     {"generated": generated_count, "total": total_count},
+                )
+                telemetry.heartbeat(
+                    op_id,
+                    time.monotonic() - progress_started,
+                    note=f"audio files generated {generated_count}/{total_count}",
                 )
 
     if unique_requests:
