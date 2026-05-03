@@ -3,6 +3,11 @@
 {% block content %}
   <h1>Issue suggestions</h1>
   <p>Admin review list for submitted issue suggestions.</p>
+  <h2>Prepared text for Codex</h2>
+  <p>Copy/paste this into Codex when asking for issue-tracking updates based on current suggestions.</p>
+  <p>
+    <textarea rows="22" readonly style="width:100%; font-family: monospace;">{{ codex_prompt_text }}</textarea>
+  </p>
   <table border="1" cellpadding="6" cellspacing="0">
     <thead>
       <tr>
