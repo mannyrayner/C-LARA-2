@@ -2253,11 +2253,52 @@ def submit_issue_suggestion(request: HttpRequest) -> HttpResponse:
 @login_required
 def admin_issue_suggestions(request: HttpRequest) -> HttpResponse:
     _require_admin(request.user)
-    suggestions = IssueSuggestion.objects.select_related("submitter").order_by("-submitted_at", "-id")
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+        if action == "clear_displayed":
+            raw_ids = (request.POST.get("displayed_suggestion_ids") or "").strip()
+            displayed_ids = [int(token) for token in raw_ids.split(",") if token.strip().isdigit()]
+            if displayed_ids:
+                deleted_count, _ = IssueSuggestion.objects.filter(id__in=displayed_ids).delete()
+                messages.success(request, f"Removed {deleted_count} displayed issue suggestion(s).")
+            else:
+                messages.info(request, "No displayed issue suggestions were selected for removal.")
+            return redirect("admin-issue-suggestions")
+    suggestions = list(IssueSuggestion.objects.select_related("submitter").order_by("-submitted_at", "-id"))
+    displayed_suggestion_ids = ",".join(str(suggestion.id) for suggestion in suggestions)
+    intro_lines = [
+        "Please process the following human issue suggestions collected in the C-LARA-2 platform admin UI.",
+        "These suggestions come from user submissions stored at /admin-tools/issue-suggestions/.",
+        "Follow guidance in docs/roadmap/issue-tracking-and-human-suggestions.md.",
+        "Use your best judgement to decide how each item should be handled.",
+        "Assign a priority to each suggestion (including very low if a suggestion seems unimportant, incorrect, or out of scope).",
+        "If a suggestion appears well grounded, generally rewrite and clarify it based on your understanding of the docs and codebase.",
+        "Prepare output intended for docs/issues; in some cases updating existing docs/issues files may be preferable to adding a new file.",
+    ]
+    suggestion_lines: list[str] = []
+    for index, suggestion in enumerate(suggestions, start=1):
+        suggestion_lines.extend(
+            [
+                "",
+                f"Suggestion {index}",
+                f"- id: {suggestion.id}",
+                f"- submitted_at: {suggestion.submitted_at.isoformat()}",
+                f"- submitter: {suggestion.submitter.username}",
+                f"- status: {suggestion.status} ({suggestion.get_status_display()})",
+                f"- title: {suggestion.title}",
+                "- description:",
+                suggestion.description.strip() or "(empty)",
+            ]
+        )
+    codex_prompt_text = "\n".join(intro_lines + suggestion_lines)
     return render(
         request,
         "projects/admin_issue_suggestions.html",
-        {"suggestions": suggestions},
+        {
+            "suggestions": suggestions,
+            "codex_prompt_text": codex_prompt_text,
+            "displayed_suggestion_ids": displayed_suggestion_ids,
+        },
     )
 
 

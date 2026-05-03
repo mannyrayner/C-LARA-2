@@ -3,6 +3,17 @@
 {% block content %}
   <h1>Issue suggestions</h1>
   <p>Admin review list for submitted issue suggestions.</p>
+  <h2>Prepared text for Codex</h2>
+  <p>Copy/paste this into Codex when asking for issue-tracking updates based on current suggestions.</p>
+  <p>
+    <textarea rows="22" readonly style="width:100%; font-family: monospace;">{{ codex_prompt_text }}</textarea>
+  </p>
+  <form method="post" onsubmit="return confirm('Remove the currently displayed issue suggestions?');">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="clear_displayed" />
+    <input type="hidden" name="displayed_suggestion_ids" value="{{ displayed_suggestion_ids }}" />
+    <button class="btn" type="submit">Remove currently displayed issue suggestions</button>
+  </form>
   <table border="1" cellpadding="6" cellspacing="0">
     <thead>
       <tr>
