@@ -1,0 +1,20 @@
+{% extends "projects/base.html" %}
+{% block title %}Submit issue suggestion{% endblock %}
+{% block content %}
+  <h1>Submit an issue suggestion</h1>
+  <p>Use this form to suggest possible issues. Please keep it simple: title + description.</p>
+  <form method="post">
+    {% csrf_token %}
+    <p>
+      <label for="{{ form.title.id_for_label }}">Title</label><br />
+      {{ form.title }}
+      {% for error in form.title.errors %}<br /><span style="color:#b00020;">{{ error }}</span>{% endfor %}
+    </p>
+    <p>
+      <label for="{{ form.description.id_for_label }}">Description</label><br />
+      {{ form.description }}
+      {% for error in form.description.errors %}<br /><span style="color:#b00020;">{{ error }}</span>{% endfor %}
+    </p>
+    <button type="submit" class="btn">Submit suggestion</button>
+  </form>
+{% endblock %}
