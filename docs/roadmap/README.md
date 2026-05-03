@@ -252,6 +252,6 @@ Status: **New roadmap document added.** See [roadmap/issue-tracking-and-human-su
 
 Focus:
 - Lightweight issue states (`reported`, `active`, `closed`) and explicit priorities.
-- Repository-native, human-readable issue registry under version control.
-- Human suggestion capture + admin export command + Codex-mediated incorporation loop.
+- Repository-native, Codex-first issue JSON store (one file per issue + focus index).
+- Human-facing platform issue browser + suggestion capture + admin export + Codex-mediated incorporation loop.
 
