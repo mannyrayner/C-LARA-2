@@ -245,3 +245,13 @@ Focus:
 - Community-owned shared picture dictionaries keyed by lexical identity (lemma/POS).
 - Optional picture-gloss pipeline stage building on lemma output.
 - HTML interaction and exercise extensions using dictionary-backed image glosses.
+
+### 20. Issue tracking and human-suggestion loop roadmap
+
+Status: **New roadmap document added.** See [roadmap/issue-tracking-and-human-suggestions.md](issue-tracking-and-human-suggestions.md).
+
+Focus:
+- Lightweight issue states (`reported`, `active`, `closed`) and explicit priorities.
+- Repository-native, human-readable issue registry under version control.
+- Human suggestion capture + admin export command + Codex-mediated incorporation loop.
+
