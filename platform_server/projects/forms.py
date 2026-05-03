@@ -16,6 +16,7 @@ from .models import (
     ProjectImageElement,
     ProjectImagePage,
     ProjectImageStyle,
+    IssueSuggestion,
 )
 
 
@@ -257,6 +258,16 @@ ProjectImagePageFormSet = modelformset_factory(
     can_delete=False,
     extra=0,
 )
+
+
+class IssueSuggestionForm(forms.ModelForm):
+    class Meta:
+        model = IssueSuggestion
+        fields = ["title", "description"]
+        widgets = {
+            "title": forms.TextInput(attrs={"style": "width: 100%;"}),
+            "description": forms.Textarea(attrs={"rows": 6}),
+        }
 
 
 class ClozeExerciseSetForm(forms.Form):
