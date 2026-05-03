@@ -53,6 +53,8 @@ Each issue JSON entry should include:
 - Last updated date.
 - Origin (`human-suggestion`, `ai-discovered`, `migration`, etc.).
 - Optional notes/history links.
+- Optional deadline (empty/null by default).
+- Optional dependency list of other issue IDs (empty by default).
 
 ## Repository representation (agreed direction)
 
@@ -62,6 +64,7 @@ Codex readability is the primary requirement for canonical data. Human readabili
 
 - `docs/issues/issues/ISSUE-XXXX.json`: **one JSON file per issue**.
 - `docs/issues/index.json`: JSON index of issues currently in focus (most important/currently prioritized).
+- `docs/issues/index-archive/`: timestamped snapshots of past `index.json` versions.
 - `docs/issues/README.md`: short conventions/spec note.
 
 ### Why this format
@@ -69,12 +72,13 @@ Codex readability is the primary requirement for canonical data. Human readabili
 - Per-issue JSON makes updates localized and conflict-resistant in Git.
 - Codex can quickly parse/validate deterministic JSON.
 - The focus index gives Codex a fast entry point for the issues that matter most right now.
-- The platform issue browser can render the same JSON data for humans with sorting/filter/search.
+- Timestamped archived index snapshots make priority evolution auditable over time.
+- The platform issue browser can render the same JSON data for humans with sorting/filter/search, including historical focus snapshots.
 
 ### Ownership rule
 
 - Direct edits to canonical issue JSON are performed by Codex in PRs.
-- Humans influence index composition and issue changes through the suggestion pipeline.
+- Humans influence index composition, index-archive continuity, and issue changes through the suggestion pipeline.
 
 ## Human suggestion mechanism
 
@@ -87,6 +91,7 @@ Add a platform entry point where human users/admins can submit a short suggestio
 - optional severity hint
 - optional related project/content link
 - optional proposal to add/remove/re-rank items in the focus index
+- optional proposal to adjust deadline/dependency metadata
 
 Suggestions are stored in the platform database with timestamps and an internal status:
 
@@ -113,7 +118,9 @@ Properties:
 4. Codex updates `docs/issues/issues/*.json` and, when relevant, `docs/issues/index.json`:
    - creates new issues,
    - updates states/priorities,
+   - updates deadline/dependency metadata,
    - updates focus-index membership/order,
+   - writes an index snapshot to `docs/issues/index-archive/` when focus priorities change,
    - merges duplicates,
    - records rationale in notes/changelog.
 5. Changes are reviewed via normal PR workflow and merged.
@@ -126,13 +133,14 @@ This preserves AI control of repository mutations while keeping humans in the lo
 ### Phase A: Documentation + conventions (current step)
 
 - Add and refine this roadmap document.
-- Confirm JSON conventions for per-issue files and the focus index.
+- Confirm JSON conventions for per-issue files, deadline/dependency fields, focus index, and index-archive snapshots.
 
 ### Phase B: Repo issue registry baseline
 
 - Create `docs/issues/README.md`.
 - Create starter `docs/issues/index.json` template.
-- Create `docs/issues/issues/` with starter issue JSON template.
+- Create `docs/issues/index-archive/` with timestamp naming convention (e.g. `index-YYYYMMDD-HHMMSSZ.json`).
+- Create `docs/issues/issues/` with starter issue JSON template (including empty deadline/dependency defaults).
 - Add simple validation script/tests for schema and allowed state/priority values.
 
 ### Phase C: Platform suggestion capture + issue browser
@@ -141,6 +149,7 @@ This preserves AI control of repository mutations while keeping humans in the lo
 - Add admin/UI form for submitting suggestions.
 - Add list view for admins.
 - Add issue browser view that reads/parses `docs/issues/` JSON and supports search/filter.
+- Add priority-evolution views over `index-archive/` (timeline + diffs + query interface).
 
 ### Phase D: Export + incorporation loop
 
@@ -152,6 +161,9 @@ This preserves AI control of repository mutations while keeping humans in the lo
 
 - Exact JSON schema versioning approach (`schema_version` field or external schema file)?
 - Should `index.json` be strictly ordered or grouped by bands (e.g. now/next/later)?
+- Exact rule for automatic importance escalation as deadlines approach (or keep fully manual)?
+- Should dependency links be soft references or schema-validated against existing issue IDs?
+- How frequently should index snapshots be persisted (every change vs debounced checkpoints)?
 - How strict should duplicate detection be during incorporation?
 - Should priorities be mandatory at creation time?
 - Should `closed` require a closure reason taxonomy?
@@ -160,5 +172,6 @@ This preserves AI control of repository mutations while keeping humans in the lo
 
 - Humans can submit suggestions without touching Git.
 - Admin can export pending suggestions in one command.
-- Codex can reliably turn export docs into reviewed issue JSON updates.
-- C-LARA-2 issue browser gives humans readable/searchable access to the same canonical issue data.
+- Codex can reliably turn export docs into reviewed issue JSON updates (including deadlines and dependencies).
+- C-LARA-2 issue browser gives humans readable/searchable access to canonical issue data and historical focus snapshots.
+- Priority evolution is inspectable via timestamped `index-archive` history.
