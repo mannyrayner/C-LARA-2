@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "issue_id": "ISSUE-0001",
+  "title": "Template issue: replace or remove",
+  "state": "reported",
+  "priority": "P2",
+  "created_at": "2026-05-03T00:00:00Z",
+  "updated_at": "2026-05-03T00:00:00Z",
+  "origin": "template",
+  "notes": "Starter template issue for Phase B baseline.",
+  "deadline": null,
+  "dependencies": []
+}
