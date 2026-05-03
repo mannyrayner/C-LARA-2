@@ -226,6 +226,30 @@ class OpenAIModelPricing(models.Model):
         ordering = ["model_name"]
 
 
+class IssueSuggestion(models.Model):
+    STATUS_NEW = "new"
+    STATUS_EXPORTED = "exported"
+    STATUS_INCORPORATED = "incorporated"
+    STATUS_CHOICES = [
+        (STATUS_NEW, "New"),
+        (STATUS_EXPORTED, "Exported"),
+        (STATUS_INCORPORATED, "Incorporated"),
+    ]
+
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    submitter = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="issue_suggestions",
+    )
+    submitted_at = models.DateTimeField(default=timezone.now, db_index=True)
+    status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=STATUS_NEW, db_index=True)
+
+    class Meta:
+        ordering = ["-submitted_at", "-id"]
+
+
 class ProjectImageStyle(models.Model):
     """Project-scoped artifacts for the initial image style substep."""
 

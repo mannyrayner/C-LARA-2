@@ -58,6 +58,7 @@ from .forms import (
     FlashcardExerciseSetForm,
     GrantAdminPrivilegesForm,
     ProfileForm,
+    IssueSuggestionForm,
     ProjectDiscoveryMetadataForm,
     ProjectForm,
     ProjectImageElementFormSet,
@@ -98,6 +99,7 @@ from .models import (
     ExerciseSet,
     ExerciseItem,
     AIUsageCharge,
+    IssueSuggestion,
 )
 from .picture_dictionary import (
     add_lemma_pos_entries as picture_dictionary_add_lemma_pos_entries,
@@ -2231,6 +2233,32 @@ def profile(request: HttpRequest) -> HttpResponse:
         form = ProfileForm(instance=profile_obj)
 
     return render(request, "projects/profile_form.html", {"form": form})
+
+
+@login_required
+def submit_issue_suggestion(request: HttpRequest) -> HttpResponse:
+    if request.method == "POST":
+        form = IssueSuggestionForm(request.POST)
+        if form.is_valid():
+            suggestion = form.save(commit=False)
+            suggestion.submitter = request.user
+            suggestion.save()
+            messages.success(request, "Thanks — your issue suggestion has been submitted.")
+            return redirect("issue-suggestion-submit")
+    else:
+        form = IssueSuggestionForm()
+    return render(request, "projects/issue_suggestion_submit.html", {"form": form})
+
+
+@login_required
+def admin_issue_suggestions(request: HttpRequest) -> HttpResponse:
+    _require_admin(request.user)
+    suggestions = IssueSuggestion.objects.select_related("submitter").order_by("-submitted_at", "-id")
+    return render(
+        request,
+        "projects/admin_issue_suggestions.html",
+        {"suggestions": suggestions},
+    )
 
 
 def _audio_cache_language_choices() -> list[tuple[str, str]]:
