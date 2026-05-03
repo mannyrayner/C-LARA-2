@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "issue_id": "ISSUE-0001",
-  "title": "Template issue: replace or remove",
+  "title": "Support hosted compiled legacy content registration in C-LARA-2",
   "state": "reported",
   "priority": "P2",
-  "created_at": "2026-05-03T00:00:00Z",
-  "updated_at": "2026-05-03T00:00:00Z",
-  "origin": "template",
-  "notes": "Starter template issue for Phase B baseline.",
+  "created_at": "2026-05-03T08:13:34Z",
+  "updated_at": "2026-05-03T08:13:34Z",
+  "origin": "human-suggestion",
+  "notes": "Suggestion #1 from admin export (submitted by mannyrayner on 2026-05-03). Add a mechanism similar to legacy C-LARA where precompiled external or server-hosted content can be registered as C-LARA-2 content via metadata fields (at minimum: content URL, text language, glossing language, publication date). Clarify security and ownership constraints for off-server URLs.",
   "deadline": null,
   "dependencies": []
 }
