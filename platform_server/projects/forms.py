@@ -265,6 +265,7 @@ class IssueSuggestionForm(forms.ModelForm):
         model = IssueSuggestion
         fields = ["title", "description"]
         widgets = {
+            "title": forms.TextInput(attrs={"style": "width: 100%;"}),
             "description": forms.Textarea(attrs={"rows": 6}),
         }
 
