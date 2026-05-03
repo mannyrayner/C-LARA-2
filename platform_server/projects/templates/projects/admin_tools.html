@@ -4,7 +4,8 @@
 <h1>Admin tools</h1>
 
 <p>These commands are visible only to users with admin privileges.</p>
-<p><a class="btn secondary" href="{% url 'admin-issue-suggestions' %}">Issue suggestions</a></p>
+<h2>Issue suggestions</h2>
+<p><a class="btn" href="{% url 'admin-issue-suggestions' %}">Review currently stored issue suggestions</a></p>
 
 <h2>Delete cached word audio for language</h2>
 <form method="post">
@@ -25,7 +26,7 @@
       Force regenerate for all projects
     </label>
   </p>
-  <button class="btn secondary" type="submit">Run discovery keyword backfill</button>
+  <button class="btn" type="submit">Run discovery keyword backfill</button>
 </form>
 
 <h2>Give another user admin privileges</h2>
@@ -107,7 +108,7 @@
     <label for="pricing_source_url">Source URL:</label>
     <input id="pricing_source_url" name="source_url" type="url" value="{{ pricing_source_default }}" style="width: 28rem;" />
   </p>
-  <button class="btn secondary" type="submit">AI sync pricing from source</button>
+  <button class="btn" type="submit">AI sync pricing from source</button>
 </form>
 
 <h3>Manual pricing table for all menu models</h3>
