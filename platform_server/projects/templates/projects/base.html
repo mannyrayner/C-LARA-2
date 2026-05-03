@@ -34,7 +34,6 @@
     {% endif %}
     {% if user.is_staff %}
       <a href="{% url 'admin-tools' %}">Admin</a>
-      <a href="{% url 'admin-issue-suggestions' %}">Issue suggestions</a>
     {% endif %}
     <form method="post" action="{% url 'logout' %}">
       {% csrf_token %}

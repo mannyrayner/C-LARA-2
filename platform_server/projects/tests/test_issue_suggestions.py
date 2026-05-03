@@ -43,3 +43,6 @@ class IssueSuggestionTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Issue suggestions")
         self.assertContains(response, "Title")
+        self.assertContains(response, "Prepared text for Codex")
+        self.assertContains(response, "docs/roadmap/issue-tracking-and-human-suggestions.md")
+        self.assertContains(response, "Suggestion 1")
