@@ -253,5 +253,5 @@ Status: **New roadmap document added.** See [roadmap/issue-tracking-and-human-su
 Focus:
 - Lightweight issue states (`reported`, `active`, `closed`) and explicit priorities.
 - Repository-native, Codex-first issue JSON store (one file per issue + focus index + timestamped index archive).
-- Deadline/dependency-aware issues with human-facing browser + suggestion capture + admin export + Codex-mediated incorporation loop.
+- Deadline/dependency-aware issues with human-facing browser + simple user suggestion capture + admin export + Codex-mediated incorporation loop.
 

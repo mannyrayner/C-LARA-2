@@ -84,16 +84,21 @@ Codex readability is the primary requirement for canonical data. Human readabili
 
 ### Submission path
 
-Add a platform entry point where human users/admins can submit a short suggestion:
+Add a platform entry point where authenticated users (not just admins) can submit a short suggestion.
 
-- summary/title
-- description
-- optional severity hint
-- optional related project/content link
-- optional proposal to add/remove/re-rank items in the focus index
-- optional proposal to adjust deadline/dependency metadata
+Submission form should be intentionally minimal:
 
-Suggestions are stored in the platform database with timestamps and an internal status:
+- title (plain text)
+- description (plain text)
+
+System-attached metadata (automatic, not user-entered):
+
+- `submitter_user_id`
+- `submitted_at` timestamp
+
+Downstream enrichment (priority, dependencies, focus-index impact, deduplication) is handled by Codex/admin workflows during incorporation.
+
+Suggestions are stored in the platform database with submitter/timestamp metadata and an internal status:
 
 - `new`
 - `exported`
@@ -145,9 +150,9 @@ This preserves AI control of repository mutations while keeping humans in the lo
 
 ### Phase C: Platform suggestion capture + issue browser
 
-- Add DB model for issue suggestions.
-- Add admin/UI form for submitting suggestions.
-- Add list view for admins.
+- Add DB model for issue suggestions with `title`, `description`, `submitter_user_id`, `submitted_at`, and workflow status fields.
+- Add simple authenticated user submission form (title + description only).
+- Add admin moderation/review list view (and optional AI-assisted triage queue).
 - Add issue browser view that reads/parses `docs/issues/` JSON and supports search/filter.
 - Add priority-evolution views over `index-archive/` (timeline + diffs + query interface).
 
@@ -170,7 +175,7 @@ This preserves AI control of repository mutations while keeping humans in the lo
 
 ## Success criteria
 
-- Humans can submit suggestions without touching Git.
+- Authenticated users can submit suggestions without touching Git, using a minimal low-friction form.
 - Admin can export pending suggestions in one command.
 - Codex can reliably turn export docs into reviewed issue JSON updates (including deadlines and dependencies).
 - C-LARA-2 issue browser gives humans readable/searchable access to canonical issue data and historical focus snapshots.
