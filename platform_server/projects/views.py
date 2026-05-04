@@ -2253,7 +2253,19 @@ def submit_issue_suggestion(request: HttpRequest) -> HttpResponse:
 @login_required
 def admin_issue_suggestions(request: HttpRequest) -> HttpResponse:
     _require_admin(request.user)
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+        if action == "clear_displayed":
+            raw_ids = (request.POST.get("displayed_suggestion_ids") or "").strip()
+            displayed_ids = [int(token) for token in raw_ids.split(",") if token.strip().isdigit()]
+            if displayed_ids:
+                deleted_count, _ = IssueSuggestion.objects.filter(id__in=displayed_ids).delete()
+                messages.success(request, f"Removed {deleted_count} displayed issue suggestion(s).")
+            else:
+                messages.info(request, "No displayed issue suggestions were selected for removal.")
+            return redirect("admin-issue-suggestions")
     suggestions = list(IssueSuggestion.objects.select_related("submitter").order_by("-submitted_at", "-id"))
+    displayed_suggestion_ids = ",".join(str(suggestion.id) for suggestion in suggestions)
     intro_lines = [
         "Please process the following human issue suggestions collected in the C-LARA-2 platform admin UI.",
         "These suggestions come from user submissions stored at /admin-tools/issue-suggestions/.",
@@ -2282,7 +2294,11 @@ def admin_issue_suggestions(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "projects/admin_issue_suggestions.html",
-        {"suggestions": suggestions, "codex_prompt_text": codex_prompt_text},
+        {
+            "suggestions": suggestions,
+            "codex_prompt_text": codex_prompt_text,
+            "displayed_suggestion_ids": displayed_suggestion_ids,
+        },
     )
 
 
