@@ -2236,6 +2236,25 @@ def profile(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
+def issues_home(request: HttpRequest) -> HttpResponse:
+    overview_path = Path(settings.BASE_DIR).resolve().parent / "docs" / "issues" / "overview.md"
+    if overview_path.exists():
+        overview_text = overview_path.read_text(encoding="utf-8")
+        overview_missing = False
+    else:
+        overview_text = (
+            "No issue overview file has been generated yet.\n\n"
+            "Expected path: docs/issues/overview.md"
+        )
+        overview_missing = True
+    return render(
+        request,
+        "projects/issues_home.html",
+        {"overview_text": overview_text, "overview_missing": overview_missing},
+    )
+
+
+@login_required
 def submit_issue_suggestion(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         form = IssueSuggestionForm(request.POST)
@@ -2274,6 +2293,7 @@ def admin_issue_suggestions(request: HttpRequest) -> HttpResponse:
         "Assign a priority to each suggestion (including very low if a suggestion seems unimportant, incorrect, or out of scope).",
         "If a suggestion appears well grounded, generally rewrite and clarify it based on your understanding of the docs and codebase.",
         "Prepare output intended for docs/issues; in some cases updating existing docs/issues files may be preferable to adding a new file.",
+        "Also regenerate docs/issues/overview.md per the overview guidance in docs/roadmap/issue-tracking-and-human-suggestions.md.",
     ]
     suggestion_lines: list[str] = []
     for index, suggestion in enumerate(suggestions, start=1):

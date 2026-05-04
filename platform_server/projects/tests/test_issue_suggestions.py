@@ -26,6 +26,14 @@ class IssueSuggestionTests(TestCase):
         self.assertEqual(suggestion.submitter, self.user)
         self.assertEqual(suggestion.status, IssueSuggestion.STATUS_NEW)
 
+    def test_authenticated_user_can_open_issues_overview_page(self):
+        client = Client()
+        client.login(username="suggest_user", password="pw")
+        response = client.get(reverse("issues-home"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Issues")
+        self.assertContains(response, "Suggest an issue")
+
     def test_non_admin_cannot_open_admin_suggestion_list(self):
         client = Client()
         client.login(username="suggest_user", password="pw")
