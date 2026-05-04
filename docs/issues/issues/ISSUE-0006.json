@@ -1,13 +1,15 @@
 {
   "schema_version": 1,
   "issue_id": "ISSUE-0006",
-  "title": "Recover and re-export truncated admin suggestion #5 before triage",
+  "title": "Investigate segmentation_phase_2 token-span failures and rerun-path correctness",
   "state": "reported",
-  "priority": "P3",
+  "priority": "P1",
   "created_at": "2026-05-03T23:11:10Z",
-  "updated_at": "2026-05-04T00:00:00Z",
+  "updated_at": "2026-05-03T23:11:10Z",
   "origin": "human-suggestion",
-  "notes": "Suggestion #5 from admin export (submitted by mannyrayner on 2026-05-03) arrived truncated in the provided handoff (metadata without title/description body). This item is tracked at very low priority until the full suggestion text is recovered via admin export and can be correctly deduplicated, clarified, and prioritized.",
+  "notes": "Suggestion #5 from admin export (submitted by mannyrayner on 2026-05-03). Investigate frequent segmentation_phase_2 errors where lexical tokens are over-extended (sometimes covering an entire segment). Triage two hypotheses in parallel: (1) prompt template and/or few-shot examples are incorrect, potentially language-dependent; (2) rerun orchestration across annotation phases can skip or trivialize segmentation_phase_2. Add targeted diagnostics to distinguish prompt-quality failures from pipeline-execution failures.",
   "deadline": null,
-  "dependencies": []
+  "dependencies": [
+    "ISSUE-0003"
+  ]
 }
