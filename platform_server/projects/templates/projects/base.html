@@ -28,13 +28,12 @@
     <a href="{% url 'profile' %}">Profile</a>
     <a href="{% url 'project-list' %}">Projects</a>
     <a href="{% url 'content-list' %}">Content</a>
-    <a href="{% url 'issue-suggestion-submit' %}">Suggest issue</a>
+    <a href="{% url 'issues-home' %}">Issues</a>
     {% if user.community_memberships.exists %}
       <a href="{% url 'community-home' %}">Community</a>
     {% endif %}
     {% if user.is_staff %}
       <a href="{% url 'admin-tools' %}">Admin</a>
-      <a href="{% url 'admin-issue-suggestions' %}">Issue suggestions</a>
     {% endif %}
     <form method="post" action="{% url 'logout' %}">
       {% csrf_token %}

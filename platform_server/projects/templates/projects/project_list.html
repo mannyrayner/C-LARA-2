@@ -3,7 +3,6 @@
 {% block content %}
 <h1>Your projects</h1>
 <p><a class="btn" href="{% url 'project-create' %}">New project</a></p>
-<p><a class="btn secondary" href="{% url 'issue-suggestion-submit' %}">Suggest an issue</a></p>
 <form method="get" action="{% url 'project-list' %}" style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0;">
   <p><strong>Dialogue: find/open existing project</strong></p>
   <p>
