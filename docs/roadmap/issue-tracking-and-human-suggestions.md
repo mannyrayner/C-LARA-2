@@ -128,8 +128,29 @@ Properties:
    - writes an index snapshot to `docs/issues/index-archive/` when focus priorities change,
    - merges duplicates,
    - records rationale in notes/changelog.
-5. Changes are reviewed via normal PR workflow and merged.
-6. Suggestions included in accepted update are marked `incorporated`.
+5. Codex also refreshes `docs/issues/overview.md` so humans can quickly understand:
+   - what changed recently (completed or materially updated issues),
+   - what is highest priority in the near term,
+   - any notable shifts in priority/focus since the last overview refresh.
+6. Changes are reviewed via normal PR workflow and merged.
+7. Suggestions included in accepted update are marked `incorporated`.
+
+### Overview file guidance (`docs/issues/overview.md`)
+
+The overview file is a human-facing summary (Markdown preferred) regenerated periodically by Codex.
+
+Recommended structure:
+
+- Title with refresh timestamp.
+- Short "Recent progress" section (bullet points, concise, action-oriented).
+- "Near-term priorities" section ordered by urgency/importance.
+- Optional "Notes/risks" section for blockers, dependencies, or uncertainty.
+
+Authoring guidance for Codex:
+
+- Use judgement: summarize rather than copy raw suggestion text verbatim.
+- Prefer clarity over completeness; link or reference concrete issue IDs where helpful.
+- Keep it brief enough for project members to read quickly.
 
 This preserves AI control of repository mutations while keeping humans in the loop through structured inputs and PR review.
 
