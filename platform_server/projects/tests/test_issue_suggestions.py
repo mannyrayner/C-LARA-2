@@ -18,6 +18,8 @@ class IssueSuggestionTests(TestCase):
         response = client.get(reverse("issues-home"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Open current issues overview")
+        self.assertContains(response, "Suggest an issue")
+        self.assertContains(response, reverse("issue-suggestion-submit"))
         self.assertContains(response, "https://github.com/mannyrayner/C-LARA-2/blob/main/docs/issues/overview.md")
         self.assertContains(response, 'target="_blank"')
         self.assertNotContains(response, "## Focus order")
