@@ -3,7 +3,7 @@ theme:
   name: material
 nav:
   - Home: docs/README.md
-  - Issues overview: docs/issues/index.md
+  - Issues overview: docs/issues/overview.md
   - How-to:
       - Dev setup: docs/howto/dev-setup.md
       - Linting & formatting: docs/howto/linting-formatting.md
