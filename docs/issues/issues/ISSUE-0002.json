@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "issue_id": "ISSUE-0002",
+  "title": "Support migration of legacy C-LARA projects into importable C-LARA-2 bundles",
+  "state": "reported",
+  "priority": "P1",
+  "created_at": "2026-05-03T21:32:31Z",
+  "updated_at": "2026-05-03T21:32:31Z",
+  "origin": "human-suggestion",
+  "notes": "Suggestion #2 from admin export (submitted by mannyrayner on 2026-05-03). Add an end-to-end migration path from legacy C-LARA projects to C-LARA-2 import zipfiles. Proposed split: (1) minimal legacy C-LARA export that emits a C-LARA-2-oriented bundle with hierarchical JSON (text/pages/segments/content elements), ideally reusing the pre-HTML internal representation; (2) C-LARA-2 conversion tooling that transforms that bundle into a standard project zip accepted by current import flows. Include format/version metadata, deterministic validation, and clear diagnostics for unsupported legacy fields.",
+  "deadline": null,
+  "dependencies": []
+}
