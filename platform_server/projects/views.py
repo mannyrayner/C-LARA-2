@@ -112,6 +112,8 @@ from .picture_dictionary import (
 
 logger = logging.getLogger(__name__)
 
+ISSUES_OVERVIEW_URL = "https://github.com/mannyrayner/C-LARA-2/blob/main/docs/issues/overview.md"
+
 AI_MODEL_CHOICES = [
     "gpt-4o",
     "gpt-4o-mini",
@@ -2233,6 +2235,15 @@ def profile(request: HttpRequest) -> HttpResponse:
         form = ProfileForm(instance=profile_obj)
 
     return render(request, "projects/profile_form.html", {"form": form})
+
+
+@login_required
+def issues_home(request: HttpRequest) -> HttpResponse:
+    return render(
+        request,
+        "projects/issues_home.html",
+        {"issues_overview_url": ISSUES_OVERVIEW_URL},
+    )
 
 
 @login_required

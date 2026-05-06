@@ -28,6 +28,7 @@
     <a href="{% url 'profile' %}">Profile</a>
     <a href="{% url 'project-list' %}">Projects</a>
     <a href="{% url 'content-list' %}">Content</a>
+    <a href="{% url 'issues-home' %}">Issues</a>
     <a href="{% url 'issue-suggestion-submit' %}">Suggest issue</a>
     {% if user.community_memberships.exists %}
       <a href="{% url 'community-home' %}">Community</a>

@@ -1,0 +1,21 @@
+{% extends "projects/base.html" %}
+{% block title %}Issues · C-LARA-2{% endblock %}
+{% block content %}
+  <h1>Issues</h1>
+  <p>
+    The current issue overview is maintained in the C-LARA-2 GitHub repository so it reflects
+    the latest accepted repository state. Open it there to see the formatted overview and use
+    its links to inspect individual issue records.
+  </p>
+  <p>
+    <a class="btn" href="{{ issues_overview_url }}" target="_blank" rel="noopener noreferrer">
+      Open current issues overview
+    </a>
+  </p>
+  <p>
+    <small>
+      Link opens in a new tab:
+      <a href="{{ issues_overview_url }}" target="_blank" rel="noopener noreferrer">{{ issues_overview_url }}</a>
+    </small>
+  </p>
+{% endblock %}
