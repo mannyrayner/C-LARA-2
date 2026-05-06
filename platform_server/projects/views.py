@@ -2322,6 +2322,7 @@ def admin_issue_suggestions(request: HttpRequest) -> HttpResponse:
         "If a new-issue suggestion appears well grounded, generally rewrite and clarify it based on your understanding of the docs and codebase.",
         "For update suggestions, update the referenced docs/issues entry or related index/overview files as appropriate.",
         "Prepare output intended for docs/issues; in some cases updating existing docs/issues files may be preferable to adding a new file.",
+        "Also regenerate docs/issues/overview.md per the overview guidance in docs/roadmap/issue-tracking-and-human-suggestions.md.",
     ]
     suggestion_lines: list[str] = []
     if suggestions:
