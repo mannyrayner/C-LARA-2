@@ -125,7 +125,9 @@ Properties:
    - updates states/priorities,
    - updates deadline/dependency metadata,
    - updates focus-index membership/order,
+   - removes closed issues from the active focus index,
    - writes an index snapshot to `docs/issues/index-archive/` when focus priorities change,
+   - regenerates `docs/issues/overview.md`, including a completed-issues section ordered by completion date with most recent completions first,
    - merges duplicates,
    - records rationale in notes/changelog.
 5. Codex also refreshes `docs/issues/overview.md` so humans can quickly understand:
@@ -193,6 +195,7 @@ This preserves AI control of repository mutations while keeping humans in the lo
 - How strict should duplicate detection be during incorporation?
 - Should priorities be mandatory at creation time?
 - Should `closed` require a closure reason taxonomy?
+- Should a future schema add an explicit `closed_at` field, or is `updated_at` sufficient as the completion date for closed issues?
 
 ## Success criteria
 
