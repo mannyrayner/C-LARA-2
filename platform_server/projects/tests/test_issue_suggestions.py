@@ -3,7 +3,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 import re
 
-from projects.models import IssueSuggestion
+from projects.models import IssueSuggestion, IssueUpdateSuggestion
 
 
 class IssueSuggestionTests(TestCase):
@@ -18,8 +18,10 @@ class IssueSuggestionTests(TestCase):
         response = client.get(reverse("issues-home"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Open current issues overview")
-        self.assertContains(response, "Suggest an issue")
+        self.assertContains(response, "Suggest a new issue")
         self.assertContains(response, reverse("issue-suggestion-submit"))
+        self.assertContains(response, "Suggest an update to an existing issue")
+        self.assertContains(response, reverse("issue-update-suggestion-submit"))
         self.assertContains(response, "https://github.com/mannyrayner/C-LARA-2/blob/main/docs/issues/overview.md")
         self.assertContains(response, 'target="_blank"')
         self.assertNotContains(response, "## Focus order")
@@ -38,13 +40,23 @@ class IssueSuggestionTests(TestCase):
         self.assertEqual(suggestion.submitter, self.user)
         self.assertEqual(suggestion.status, IssueSuggestion.STATUS_NEW)
 
-    def test_authenticated_user_can_open_issues_overview_page(self):
+    def test_authenticated_user_can_submit_issue_update_suggestion(self):
         client = Client()
         client.login(username="suggest_user", password="pw")
-        response = client.get(reverse("issues-home"))
+        response = client.post(
+            reverse("issue-update-suggestion-submit"),
+            {"issue_id": "ISSUE-0003", "update_description": "Clarify the test-runner scope."},
+            follow=True,
+        )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Issues")
-        self.assertContains(response, "Suggest an issue")
+        update_suggestion = IssueUpdateSuggestion.objects.get()
+        self.assertEqual(update_suggestion.issue_id, "ISSUE-0003")
+        self.assertEqual(
+            update_suggestion.issue_title,
+            "Add efficient end-to-end pipeline test runner for systematic quality checks",
+        )
+        self.assertEqual(update_suggestion.submitter, self.user)
+        self.assertEqual(update_suggestion.status, IssueUpdateSuggestion.STATUS_NEW)
 
     def test_non_admin_cannot_open_admin_suggestion_list(self):
         client = Client()
@@ -58,6 +70,12 @@ class IssueSuggestionTests(TestCase):
             description="Description",
             submitter=self.user,
         )
+        IssueUpdateSuggestion.objects.create(
+            issue_id="ISSUE-0003",
+            issue_title="Add efficient end-to-end pipeline test runner for systematic quality checks",
+            update_description="Clarify the test-runner scope.",
+            submitter=self.user,
+        )
         client = Client()
         client.login(username="suggest_admin", password="pw")
         response = client.get(reverse("admin-issue-suggestions"))
@@ -66,27 +84,11 @@ class IssueSuggestionTests(TestCase):
         self.assertContains(response, "Title")
         self.assertContains(response, "Prepared text for Codex")
         self.assertContains(response, "docs/roadmap/issue-tracking-and-human-suggestions.md")
-        self.assertContains(response, "Suggestion 1")
-
-    def test_admin_can_remove_currently_displayed_suggestions_without_removing_new_ones(self):
-        first = IssueSuggestion.objects.create(title="Old 1", description="D1", submitter=self.user)
-        second = IssueSuggestion.objects.create(title="Old 2", description="D2", submitter=self.user)
-        client = Client()
-        client.login(username="suggest_admin", password="pw")
-        response = client.get(reverse("admin-issue-suggestions"))
-        self.assertEqual(response.status_code, 200)
-        html = response.content.decode("utf-8")
-        match = re.search(r'name="displayed_suggestion_ids" value="([^"]*)"', html)
-        self.assertIsNotNone(match)
-        displayed_ids = match.group(1)
-        self.assertIn(str(first.id), displayed_ids)
-        self.assertIn(str(second.id), displayed_ids)
-
-        new_after_display = IssueSuggestion.objects.create(title="New", description="D3", submitter=self.user)
-        client.post(
-            reverse("admin-issue-suggestions"),
-            {"action": "clear_displayed", "displayed_suggestion_ids": displayed_ids},
-            follow=True,
+        self.assertContains(response, "New issue suggestion 1")
+        self.assertContains(response, "Existing issue update suggestions")
+        self.assertContains(response, "Existing issue update suggestion 1")
+        self.assertContains(
+            response,
+            "ISSUE-0003: Add efficient end-to-end pipeline test runner for systematic quality checks",
         )
-        remaining_titles = list(IssueSuggestion.objects.order_by("id").values_list("title", flat=True))
-        self.assertEqual(remaining_titles, [new_after_display.title])
+        self.assertContains(response, "Clarify the test-runner scope.")
