@@ -83,6 +83,7 @@ class IssueSuggestionTests(TestCase):
         self.assertContains(response, "Issue suggestions")
         self.assertContains(response, "Title")
         self.assertContains(response, "Prepared text for Codex")
+        self.assertContains(response, "Remove currently displayed issue suggestions")
         self.assertContains(response, "docs/roadmap/issue-tracking-and-human-suggestions.md")
         self.assertContains(response, "New issue suggestion 1")
         self.assertContains(response, "Existing issue update suggestions")
@@ -92,3 +93,30 @@ class IssueSuggestionTests(TestCase):
             "ISSUE-0003: Add efficient end-to-end pipeline test runner for systematic quality checks",
         )
         self.assertContains(response, "Clarify the test-runner scope.")
+
+    def test_admin_can_remove_displayed_suggestions(self):
+        IssueSuggestion.objects.create(
+            title="Title",
+            description="Description",
+            submitter=self.user,
+        )
+        IssueUpdateSuggestion.objects.create(
+            issue_id="ISSUE-0003",
+            issue_title="Add efficient end-to-end pipeline test runner for systematic quality checks",
+            update_description="Clarify the test-runner scope.",
+            submitter=self.user,
+        )
+        client = Client()
+        client.login(username="suggest_admin", password="pw")
+        response = client.post(
+            reverse("admin-issue-suggestions"),
+            {"action": "remove_displayed_issue_suggestions"},
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Removed 2 issue suggestions.")
+        self.assertEqual(IssueSuggestion.objects.count(), 0)
+        self.assertEqual(IssueUpdateSuggestion.objects.count(), 0)
+        self.assertContains(response, "No new issue suggestions yet.")
+        self.assertContains(response, "No existing issue update suggestions yet.")
+

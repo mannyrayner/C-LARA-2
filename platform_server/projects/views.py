@@ -2300,14 +2300,14 @@ def admin_issue_suggestions(request: HttpRequest) -> HttpResponse:
     _require_admin(request.user)
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
-        if action == "clear_displayed":
-            raw_ids = (request.POST.get("displayed_suggestion_ids") or "").strip()
-            displayed_ids = [int(token) for token in raw_ids.split(",") if token.strip().isdigit()]
-            if displayed_ids:
-                deleted_count, _ = IssueSuggestion.objects.filter(id__in=displayed_ids).delete()
-                messages.success(request, f"Removed {deleted_count} displayed issue suggestion(s).")
-            else:
-                messages.info(request, "No displayed issue suggestions were selected for removal.")
+        if action == "remove_displayed_issue_suggestions":
+            new_issue_count, _ = IssueSuggestion.objects.all().delete()
+            update_count, _ = IssueUpdateSuggestion.objects.all().delete()
+            total_count = new_issue_count + update_count
+            messages.success(
+                request,
+                f"Removed {total_count} issue suggestion{'s' if total_count != 1 else ''}.",
+            )
             return redirect("admin-issue-suggestions")
     suggestions = list(IssueSuggestion.objects.select_related("submitter").order_by("-submitted_at", "-id"))
     update_suggestions = list(
