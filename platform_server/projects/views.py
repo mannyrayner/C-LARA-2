@@ -59,6 +59,7 @@ from .forms import (
     GrantAdminPrivilegesForm,
     ProfileForm,
     IssueSuggestionForm,
+    IssueUpdateSuggestionForm,
     ProjectDiscoveryMetadataForm,
     ProjectForm,
     ProjectImageElementFormSet,
@@ -100,6 +101,7 @@ from .models import (
     ExerciseItem,
     AIUsageCharge,
     IssueSuggestion,
+    IssueUpdateSuggestion,
 )
 from .picture_dictionary import (
     add_lemma_pos_entries as picture_dictionary_add_lemma_pos_entries,
@@ -111,6 +113,20 @@ from .picture_dictionary import (
 )
 
 logger = logging.getLogger(__name__)
+
+ISSUES_OVERVIEW_URL = "https://github.com/mannyrayner/C-LARA-2/blob/main/docs/issues/overview.md"
+
+
+def _issue_registry_choices() -> list[tuple[str, str]]:
+    issues_dir = settings.ROOT_DIR / "docs" / "issues" / "issues"
+    choices: list[tuple[str, str]] = []
+    for path in sorted(issues_dir.glob("ISSUE-*.json")):
+        data = json.loads(path.read_text(encoding="utf-8"))
+        issue_id = data.get("issue_id") or path.stem
+        title = data.get("title") or "Untitled issue"
+        choices.append((issue_id, f"{issue_id}: {title}"))
+    return choices
+
 
 AI_MODEL_CHOICES = [
     "gpt-4o",
@@ -2236,6 +2252,35 @@ def profile(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
+def issues_home(request: HttpRequest) -> HttpResponse:
+    return render(
+        request,
+        "projects/issues_home.html",
+        {"issues_overview_url": ISSUES_OVERVIEW_URL},
+    )
+
+
+@login_required
+def submit_issue_update_suggestion(request: HttpRequest) -> HttpResponse:
+    issue_choices = _issue_registry_choices()
+    issue_title_by_id = {
+        issue_id: label.removeprefix(f"{issue_id}: ") for issue_id, label in issue_choices
+    }
+    if request.method == "POST":
+        form = IssueUpdateSuggestionForm(request.POST, issue_choices=issue_choices)
+        if form.is_valid():
+            update_suggestion = form.save(commit=False)
+            update_suggestion.submitter = request.user
+            update_suggestion.issue_title = issue_title_by_id.get(update_suggestion.issue_id, "")
+            update_suggestion.save()
+            messages.success(request, "Thanks — your issue update suggestion has been submitted.")
+            return redirect("issues-home")
+    else:
+        form = IssueUpdateSuggestionForm(issue_choices=issue_choices)
+    return render(request, "projects/issue_update_suggestion_submit.html", {"form": form})
+
+
+@login_required
 def submit_issue_suggestion(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         form = IssueSuggestionForm(request.POST)
@@ -2253,22 +2298,39 @@ def submit_issue_suggestion(request: HttpRequest) -> HttpResponse:
 @login_required
 def admin_issue_suggestions(request: HttpRequest) -> HttpResponse:
     _require_admin(request.user)
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+        if action == "remove_displayed_issue_suggestions":
+            new_issue_count, _ = IssueSuggestion.objects.all().delete()
+            update_count, _ = IssueUpdateSuggestion.objects.all().delete()
+            total_count = new_issue_count + update_count
+            messages.success(
+                request,
+                f"Removed {total_count} issue suggestion{'s' if total_count != 1 else ''}.",
+            )
+            return redirect("admin-issue-suggestions")
     suggestions = list(IssueSuggestion.objects.select_related("submitter").order_by("-submitted_at", "-id"))
+    update_suggestions = list(
+        IssueUpdateSuggestion.objects.select_related("submitter").order_by("-submitted_at", "-id")
+    )
     intro_lines = [
         "Please process the following human issue suggestions collected in the C-LARA-2 platform admin UI.",
         "These suggestions come from user submissions stored at /admin-tools/issue-suggestions/.",
         "Follow guidance in docs/roadmap/issue-tracking-and-human-suggestions.md.",
         "Use your best judgement to decide how each item should be handled.",
-        "Assign a priority to each suggestion (including very low if a suggestion seems unimportant, incorrect, or out of scope).",
-        "If a suggestion appears well grounded, generally rewrite and clarify it based on your understanding of the docs and codebase.",
+        "Assign a priority to each new-issue suggestion (including very low if a suggestion seems unimportant, incorrect, or out of scope).",
+        "If a new-issue suggestion appears well grounded, generally rewrite and clarify it based on your understanding of the docs and codebase.",
+        "For update suggestions, update the referenced docs/issues entry or related index/overview files as appropriate.",
         "Prepare output intended for docs/issues; in some cases updating existing docs/issues files may be preferable to adding a new file.",
     ]
     suggestion_lines: list[str] = []
+    if suggestions:
+        suggestion_lines.append("\nNew issue suggestions")
     for index, suggestion in enumerate(suggestions, start=1):
         suggestion_lines.extend(
             [
                 "",
-                f"Suggestion {index}",
+                f"New issue suggestion {index}",
                 f"- id: {suggestion.id}",
                 f"- submitted_at: {suggestion.submitted_at.isoformat()}",
                 f"- submitter: {suggestion.submitter.username}",
@@ -2278,11 +2340,34 @@ def admin_issue_suggestions(request: HttpRequest) -> HttpResponse:
                 suggestion.description.strip() or "(empty)",
             ]
         )
+    if update_suggestions:
+        suggestion_lines.append("\nExisting issue update suggestions")
+    for index, update_suggestion in enumerate(update_suggestions, start=1):
+        issue_label = update_suggestion.issue_id
+        if update_suggestion.issue_title:
+            issue_label = f"{issue_label}: {update_suggestion.issue_title}"
+        suggestion_lines.extend(
+            [
+                "",
+                f"Existing issue update suggestion {index}",
+                f"- id: {update_suggestion.id}",
+                f"- submitted_at: {update_suggestion.submitted_at.isoformat()}",
+                f"- submitter: {update_suggestion.submitter.username}",
+                f"- status: {update_suggestion.status} ({update_suggestion.get_status_display()})",
+                f"- issue: {issue_label}",
+                "- requested_update:",
+                update_suggestion.update_description.strip() or "(empty)",
+            ]
+        )
     codex_prompt_text = "\n".join(intro_lines + suggestion_lines)
     return render(
         request,
         "projects/admin_issue_suggestions.html",
-        {"suggestions": suggestions, "codex_prompt_text": codex_prompt_text},
+        {
+            "suggestions": suggestions,
+            "update_suggestions": update_suggestions,
+            "codex_prompt_text": codex_prompt_text,
+        },
     )
 
 
