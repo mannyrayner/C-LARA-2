@@ -250,6 +250,31 @@ class IssueSuggestion(models.Model):
         ordering = ["-submitted_at", "-id"]
 
 
+class IssueUpdateSuggestion(models.Model):
+    STATUS_NEW = "new"
+    STATUS_EXPORTED = "exported"
+    STATUS_INCORPORATED = "incorporated"
+    STATUS_CHOICES = [
+        (STATUS_NEW, "New"),
+        (STATUS_EXPORTED, "Exported"),
+        (STATUS_INCORPORATED, "Incorporated"),
+    ]
+
+    issue_id = models.CharField(max_length=32, db_index=True)
+    issue_title = models.CharField(max_length=300, blank=True)
+    update_description = models.TextField()
+    submitter = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="issue_update_suggestions",
+    )
+    submitted_at = models.DateTimeField(default=timezone.now, db_index=True)
+    status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=STATUS_NEW, db_index=True)
+
+    class Meta:
+        ordering = ["-submitted_at", "-id"]
+
+
 class ProjectImageStyle(models.Model):
     """Project-scoped artifacts for the initial image style substep."""
 
