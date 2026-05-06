@@ -11,6 +11,18 @@ class IssueSuggestionTests(TestCase):
         self.user = user_model.objects.create_user(username="suggest_user", password="pw")
         self.admin = user_model.objects.create_user(username="suggest_admin", password="pw", is_staff=True)
 
+    def test_authenticated_user_can_open_issues_home(self):
+        client = Client()
+        client.login(username="suggest_user", password="pw")
+        response = client.get(reverse("issues-home"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Open current issues overview")
+        self.assertContains(response, "Suggest an issue")
+        self.assertContains(response, reverse("issue-suggestion-submit"))
+        self.assertContains(response, "https://github.com/mannyrayner/C-LARA-2/blob/main/docs/issues/overview.md")
+        self.assertContains(response, 'target="_blank"')
+        self.assertNotContains(response, "## Focus order")
+
     def test_authenticated_user_can_submit_suggestion(self):
         client = Client()
         client.login(username="suggest_user", password="pw")

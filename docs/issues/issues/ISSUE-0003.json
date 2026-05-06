@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "issue_id": "ISSUE-0003",
+  "title": "Add efficient end-to-end pipeline test runner for systematic quality checks",
+  "state": "reported",
+  "priority": "P1",
+  "created_at": "2026-05-03T21:46:10Z",
+  "updated_at": "2026-05-03T21:46:10Z",
+  "origin": "human-suggestion",
+  "notes": "Suggestion #3 from admin export (submitted by mannyrayner on 2026-05-03). Provide an admin-oriented command or workflow that runs full pipeline processing (text generation, linguistic annotation, image generation, rendering) on test texts without stepping through the UI. Include reproducible run configuration, persisted per-phase artifacts/logs, and summary reporting so annotation regressions are easier to detect than with unit tests alone. Design the runner so future AI-based phase reviewers can be plugged in and can optionally stop downstream stages when quality gates fail.",
+  "deadline": null,
+  "dependencies": []
+}
