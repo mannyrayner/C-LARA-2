@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "issue_id": "ISSUE-0009",
+  "title": "Validate source project bundle stage artifacts before export and import",
+  "state": "reported",
+  "priority": "P1",
+  "created_at": "2026-05-06T12:02:30Z",
+  "updated_at": "2026-05-06T12:02:30Z",
+  "origin": "human-suggestion",
+  "notes": "Suggestion #1 from admin export (submitted by mannyrayner on 2026-05-06). Source project bundle export can produce unusable zipfiles when the latest run folder only contains compile_html stage artifacts, for example after rerunning linguistic annotation with both start and end stage set to compile_html. Export should validate that all required stage files are present before creating the zip. If earlier phases have been run but are absent from the current run folder, the UI should direct the user to rerun from audio through compile_html (or otherwise regenerate the missing current-run stage artifacts). If required phases have never been run, export should fail with an informative error. Import of source project zipfiles should also validate required stages and fail early with a clear diagnostic when stage files are missing.",
+  "deadline": null,
+  "dependencies": []
+}
