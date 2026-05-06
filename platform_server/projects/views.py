@@ -112,6 +112,8 @@ from .picture_dictionary import (
 
 logger = logging.getLogger(__name__)
 
+ISSUES_OVERVIEW_URL = "https://github.com/mannyrayner/C-LARA-2/blob/main/docs/issues/overview.md"
+
 AI_MODEL_CHOICES = [
     "gpt-4o",
     "gpt-4o-mini",
@@ -2237,20 +2239,10 @@ def profile(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def issues_home(request: HttpRequest) -> HttpResponse:
-    overview_path = Path(settings.BASE_DIR).resolve().parent / "docs" / "issues" / "overview.md"
-    if overview_path.exists():
-        overview_text = overview_path.read_text(encoding="utf-8")
-        overview_missing = False
-    else:
-        overview_text = (
-            "No issue overview file has been generated yet.\n\n"
-            "Expected path: docs/issues/overview.md"
-        )
-        overview_missing = True
     return render(
         request,
         "projects/issues_home.html",
-        {"overview_text": overview_text, "overview_missing": overview_missing},
+        {"issues_overview_url": ISSUES_OVERVIEW_URL},
     )
 
 
