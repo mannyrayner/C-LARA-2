@@ -8,6 +8,12 @@
   <p>
     <textarea rows="22" readonly style="width:100%; font-family: monospace;">{{ codex_prompt_text }}</textarea>
   </p>
+  <form method="post" onsubmit="return confirm('Remove the currently displayed issue suggestions?');">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="clear_displayed" />
+    <input type="hidden" name="displayed_suggestion_ids" value="{{ displayed_suggestion_ids }}" />
+    <button class="btn" type="submit">Remove currently displayed issue suggestions</button>
+  </form>
   <table border="1" cellpadding="6" cellspacing="0">
     <thead>
       <tr>

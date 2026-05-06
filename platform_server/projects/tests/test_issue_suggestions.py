@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
+import re
 
 from projects.models import IssueSuggestion, IssueUpdateSuggestion
 
