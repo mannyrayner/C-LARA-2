@@ -115,6 +115,21 @@ from .picture_dictionary import (
 logger = logging.getLogger(__name__)
 
 ISSUES_OVERVIEW_URL = "https://github.com/mannyrayner/C-LARA-2/blob/main/docs/issues/overview.md"
+SOURCE_BUNDLE_REQUIRED_STAGES = [
+    "segmentation_phase_1",
+    "segmentation_phase_2",
+    "translation",
+    "mwe",
+    "lemma",
+    "gloss",
+    "pinyin",
+    "audio",
+    "compile_html",
+]
+SOURCE_BUNDLE_REGEN_START_STAGE = "audio"
+SOURCE_BUNDLE_REGEN_UPSTREAM_STAGES = SOURCE_BUNDLE_REQUIRED_STAGES[
+    : SOURCE_BUNDLE_REQUIRED_STAGES.index(SOURCE_BUNDLE_REGEN_START_STAGE)
+]
 
 
 def _issue_registry_choices() -> list[tuple[str, str]]:
@@ -5729,6 +5744,103 @@ def _write_tree_to_zip(zip_file: zipfile.ZipFile, source_dir: Path, zip_root: Pa
     return count
 
 
+def _missing_source_bundle_stages(stages_dir: Path) -> list[str]:
+    return [
+        stage
+        for stage in SOURCE_BUNDLE_REQUIRED_STAGES
+        if not (stages_dir / f"{stage}.json").exists()
+    ]
+
+
+def _missing_source_bundle_zip_stages(names: list[str], stage_prefix: str) -> list[str]:
+    available = {
+        Path(name).name.removesuffix(".json")
+        for name in names
+        if name.startswith(stage_prefix) and name.endswith(".json")
+    }
+    return [stage for stage in SOURCE_BUNDLE_REQUIRED_STAGES if stage not in available]
+
+
+def _refresh_source_bundle_stages_for_export(
+    *, project: Project, user: Any, current_run_dir: Path, missing_stages: list[str]
+) -> tuple[Path | None, str | None]:
+    source_run = _find_run_with_stage(project, "pinyin")
+    if source_run is None:
+        return (
+            None,
+            "Source bundle export needs complete stage artifacts, but no pinyin stage was found. "
+            "Run linguistic annotation through pinyin/audio/compile_html before exporting.",
+        )
+
+    upstream_missing = [
+        stage
+        for stage in SOURCE_BUNDLE_REGEN_UPSTREAM_STAGES
+        if not (source_run / "stages" / f"{stage}.json").exists()
+    ]
+    if upstream_missing:
+        return (
+            None,
+            "Source bundle export cannot auto-regenerate missing stage artifacts because "
+            f"the latest upstream run ({source_run.name}) is missing: {', '.join(upstream_missing)}. "
+            "Run the full linguistic annotation pipeline before exporting.",
+        )
+
+    pinyin_payload = _load_stage_payload(project, "pinyin", run_dir=source_run)
+    if pinyin_payload is None:
+        return (
+            None,
+            "Source bundle export found a pinyin stage, but could not read it. "
+            "Run linguistic annotation from pinyin or earlier before exporting.",
+        )
+
+    output_dir = _prepare_output_dir(project).resolve()
+    try:
+        _copy_run_artifacts(source_run, output_dir)
+        progress_log = output_dir / "stages" / "progress.jsonl"
+        if progress_log.exists():
+            progress_log.unlink()
+    except Exception:
+        logger.exception("Failed to copy source-bundle upstream artifacts from %s", source_run)
+        return (None, "Could not prepare prior stage artifacts for source bundle export.")
+
+    report_id = str(uuid.uuid4())
+    _run_compile_task(
+        project.pk,
+        user.id,
+        str(output_dir),
+        str(project.artifact_dir().resolve()),
+        SOURCE_BUNDLE_REGEN_START_STAGE,
+        None,
+        project.description or "",
+        None,
+        pinyin_payload,
+        report_id,
+        f"source_bundle_refresh_{project.pk}",
+        project.ai_model or DEFAULT_MODEL,
+        "compile_html",
+        project.page_image_placement,
+        project.segmentation_method,
+        project.romanization_method,
+        False,
+    )
+
+    remaining_missing = _missing_source_bundle_stages(output_dir / "stages")
+    if remaining_missing:
+        return (
+            None,
+            "Automatic source bundle stage regeneration did not produce all required stages. "
+            f"Still missing: {', '.join(remaining_missing)}.",
+        )
+    logger.info(
+        "Refreshed source bundle stages for project=%s current_run=%s output_run=%s initially_missing=%s",
+        project.pk,
+        current_run_dir,
+        output_dir,
+        missing_stages,
+    )
+    return (output_dir, None)
+
+
 def _safe_zip_read_json(zf: zipfile.ZipFile, member: str) -> dict[str, Any] | None:
     try:
         with zf.open(member, "r") as fp:
@@ -8480,6 +8592,25 @@ def download_project_source_bundle(request: HttpRequest, pk: int) -> HttpRespons
         messages.error(request, "Latest run does not contain stage artifacts to export.")
         return redirect("project-detail", pk=project.pk)
 
+    missing_stages = _missing_source_bundle_stages(stages_dir)
+    if missing_stages:
+        refreshed_run_dir, refresh_error = _refresh_source_bundle_stages_for_export(
+            project=project,
+            user=request.user,
+            current_run_dir=run_dir,
+            missing_stages=missing_stages,
+        )
+        if refresh_error or refreshed_run_dir is None:
+            messages.error(request, refresh_error or "Could not refresh source bundle stage artifacts.")
+            return redirect("project-detail", pk=project.pk)
+        run_dir = refreshed_run_dir
+        stages_dir = run_dir / "stages"
+        messages.info(
+            request,
+            "Missing source bundle stage artifacts were regenerated automatically by rerunning "
+            "the pipeline from audio through compile_html before export.",
+        )
+
     safe_title = slugify(project.title) or f"project-{project.pk}"
     bundle_root = Path(f"{safe_title}-source-bundle")
     artifact_root = project.artifact_dir().resolve()
@@ -8629,6 +8760,16 @@ def import_project_source_bundle(request: HttpRequest) -> HttpResponse:
             messages.error(request, "Bundle is missing project metadata.")
             return redirect("project-list")
 
+        stage_prefix = f"{root}/stages/"
+        missing_stages = _missing_source_bundle_zip_stages(names, stage_prefix)
+        if missing_stages:
+            messages.error(
+                request,
+                "Source bundle is missing required stage artifacts: "
+                f"{', '.join(missing_stages)}. Re-export the project after regenerating source bundle stages.",
+            )
+            return redirect("project-list")
+
         title = _build_unique_import_title(request.user, metadata.get("title", "Imported project"))
         valid_pivot_languages = {code for code, _label in ProjectForm.LANGUAGE_CHOICES}
         project = Project.objects.create(
@@ -8670,9 +8811,8 @@ def import_project_source_bundle(request: HttpRequest) -> HttpResponse:
         _safe_write(f"{root}/text/source_text.txt", artifact_root / "source" / "source_text.txt")
         _safe_write(f"{root}/text/description.txt", artifact_root / "source" / "description.txt")
 
-        # Restore latest run stages if available.
+        # Restore latest run stages.
         run_dir = artifact_root / "runs" / f"run_imported_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
-        stage_prefix = f"{root}/stages/"
         stage_names = [n for n in names if n.startswith(stage_prefix) and n.endswith(".json")]
         if stage_names:
             for member_name in stage_names:

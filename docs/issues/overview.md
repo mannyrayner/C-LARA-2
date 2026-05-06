@@ -1,6 +1,6 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-06T12:02:30Z_
+_Last updated: 2026-05-06T12:40:51Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
@@ -8,7 +8,7 @@ This document summarizes the current issue registry for quick human review. Cano
 
 1. **[ISSUE-0003](issues/ISSUE-0003.json) (P1)** — Add efficient end-to-end pipeline test runner for systematic quality checks.
 2. **[ISSUE-0002](issues/ISSUE-0002.json) (P1)** — Support migration of legacy C-LARA projects into importable C-LARA-2 bundles.
-3. **[ISSUE-0009](issues/ISSUE-0009.json) (P1)** — Validate source project bundle stage artifacts before export and import.
+3. **[ISSUE-0009](issues/ISSUE-0009.json) (P1)** — Auto-regenerate and validate source project bundle stage artifacts before export/import.
 4. **[ISSUE-0006](issues/ISSUE-0006.json) (P1)** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness.
 5. **[ISSUE-0008](issues/ISSUE-0008.json) (P1)** — Write an initial AI-authored C-LARA-2 technical report in LaTeX.
 6. **[ISSUE-0005](issues/ISSUE-0005.json) (P2)** — Tune segmentation_phase_1 prompting to improve segment granularity by genre.
@@ -25,7 +25,7 @@ This document summarizes the current issue registry for quick human review. Cano
 
 ## Dependency highlights
 
-- [ISSUE-0009](issues/ISSUE-0009.json) has no tracked issue dependencies, but should be coordinated with source project bundle export/import work.
+- [ISSUE-0009](issues/ISSUE-0009.json) is active and has no tracked issue dependencies; implementation should auto-regenerate missing current-run stages from audio through compile_html when upstream artifacts are available, then validate export/import bundles.
 - [ISSUE-0008](issues/ISSUE-0008.json) has no tracked issue dependencies, but has a target deadline of 2026-06-15 for a usable initial LaTeX report.
 - [ISSUE-0004](issues/ISSUE-0004.json) depends on [ISSUE-0003](issues/ISSUE-0003.json).
 - [ISSUE-0005](issues/ISSUE-0005.json) depends on [ISSUE-0003](issues/ISSUE-0003.json) and [ISSUE-0004](issues/ISSUE-0004.json).
