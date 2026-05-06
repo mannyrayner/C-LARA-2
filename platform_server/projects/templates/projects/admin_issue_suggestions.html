@@ -2,7 +2,7 @@
 {% block title %}Issue suggestions{% endblock %}
 {% block content %}
   <h1>Issue suggestions</h1>
-  <p>Admin review list for submitted issue suggestions.</p>
+  <p>Admin review list for submitted new-issue and existing-issue update suggestions.</p>
   <h2>Prepared text for Codex</h2>
   <p>Copy/paste this into Codex when asking for issue-tracking updates based on current suggestions.</p>
   <p>
@@ -28,7 +28,33 @@
           <td>{{ suggestion.description|linebreaksbr }}</td>
         </tr>
       {% empty %}
-        <tr><td colspan="5">No issue suggestions yet.</td></tr>
+        <tr><td colspan="5">No new issue suggestions yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Existing issue update suggestions</h2>
+  <table border="1" cellpadding="6" cellspacing="0">
+    <thead>
+      <tr>
+        <th>Submitted</th>
+        <th>User</th>
+        <th>Status</th>
+        <th>Issue</th>
+        <th>Requested update</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for suggestion in update_suggestions %}
+        <tr>
+          <td>{{ suggestion.submitted_at }}</td>
+          <td>{{ suggestion.submitter.username }}</td>
+          <td>{{ suggestion.get_status_display }}</td>
+          <td>{{ suggestion.issue_id }}{% if suggestion.issue_title %}: {{ suggestion.issue_title }}{% endif %}</td>
+          <td>{{ suggestion.update_description|linebreaksbr }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">No existing issue update suggestions yet.</td></tr>
       {% endfor %}
     </tbody>
   </table>
