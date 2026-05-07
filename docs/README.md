@@ -10,6 +10,7 @@ Welcome! This folder collects specifications, architecture notes, and delivery r
 - **How-to**: [Credits and billing operations](howto/credits-and-billing.md)
 - **How-to**: [Clone a project snapshot](howto/clone-project.md)
 - **ADRs**: [ADR-0001: Documentation & Structure](adr/0001-documentation-and-structure.md)
+- **Issues**: [Current issues overview](issues/overview.md)
 
 ## Roadmaps and status
 

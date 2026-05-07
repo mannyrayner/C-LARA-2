@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "issue_id": "ISSUE-0008",
+  "title": "Write an initial AI-authored C-LARA-2 technical report in LaTeX",
+  "state": "reported",
+  "priority": "P2",
+  "created_at": "2026-05-06T08:36:24Z",
+  "updated_at": "2026-05-07T03:12:39Z",
+  "origin": "human-suggestion",
+  "notes": "Suggestion #8 from admin export (submitted by mannyrayner on 2026-05-06), reprioritized on 2026-05-07. Prepare a detailed initial C-LARA-2 technical report reflecting project status around late May or early June 2026, suitable for citation in the EuroCALL 2026 paper submission cycle and related publications. The report should follow the C-LARA-2 AI-assisted workflow: AI authorship with humans providing suggestions/review. Start by evaluating whether Codex can draft the report unaided; if useful, investigate a workflow where ChatGPT-5.x provides suggestions to Codex. Use LaTeX as the likely output format for consistency with earlier reports. Priority is currently P2 because the report should ideally say substantial things about ISSUE-0003 and the emerging issue-tracking/human-suggestion mechanism, both of which are still maturing and are central examples of making the platform aware of its temporal context.",
+  "deadline": "2026-06-15T00:00:00Z",
+  "dependencies": [
+    "ISSUE-0003"
+  ]
+}
