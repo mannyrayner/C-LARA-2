@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-05-03T21:58:21Z",
+  "description": "Current focus issues in priority order (highest focus first).",
+  "focus_issue_ids": [
+    "ISSUE-0003",
+    "ISSUE-0002",
+    "ISSUE-0004",
+    "ISSUE-0001"
+  ]
+}
