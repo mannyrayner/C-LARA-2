@@ -59,6 +59,7 @@ from .forms import (
     GrantAdminPrivilegesForm,
     ProfileForm,
     IssueSuggestionForm,
+    IssueUpdateSuggestionForm,
     ProjectDiscoveryMetadataForm,
     ProjectForm,
     ProjectImageElementFormSet,
@@ -100,6 +101,7 @@ from .models import (
     ExerciseItem,
     AIUsageCharge,
     IssueSuggestion,
+    IssueUpdateSuggestion,
 )
 from .picture_dictionary import (
     add_lemma_pos_entries as picture_dictionary_add_lemma_pos_entries,
@@ -111,6 +113,35 @@ from .picture_dictionary import (
 )
 
 logger = logging.getLogger(__name__)
+
+ISSUES_OVERVIEW_URL = "https://github.com/mannyrayner/C-LARA-2/blob/main/docs/issues/overview.md"
+SOURCE_BUNDLE_REQUIRED_STAGES = [
+    "segmentation_phase_1",
+    "segmentation_phase_2",
+    "translation",
+    "mwe",
+    "lemma",
+    "gloss",
+    "pinyin",
+    "audio",
+    "compile_html",
+]
+SOURCE_BUNDLE_REGEN_START_STAGE = "audio"
+SOURCE_BUNDLE_REGEN_UPSTREAM_STAGES = SOURCE_BUNDLE_REQUIRED_STAGES[
+    : SOURCE_BUNDLE_REQUIRED_STAGES.index(SOURCE_BUNDLE_REGEN_START_STAGE)
+]
+
+
+def _issue_registry_choices() -> list[tuple[str, str]]:
+    issues_dir = settings.ROOT_DIR / "docs" / "issues" / "issues"
+    choices: list[tuple[str, str]] = []
+    for path in sorted(issues_dir.glob("ISSUE-*.json")):
+        data = json.loads(path.read_text(encoding="utf-8"))
+        issue_id = data.get("issue_id") or path.stem
+        title = data.get("title") or "Untitled issue"
+        choices.append((issue_id, f"{issue_id}: {title}"))
+    return choices
+
 
 AI_MODEL_CHOICES = [
     "gpt-4o",
@@ -2236,6 +2267,35 @@ def profile(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
+def issues_home(request: HttpRequest) -> HttpResponse:
+    return render(
+        request,
+        "projects/issues_home.html",
+        {"issues_overview_url": ISSUES_OVERVIEW_URL},
+    )
+
+
+@login_required
+def submit_issue_update_suggestion(request: HttpRequest) -> HttpResponse:
+    issue_choices = _issue_registry_choices()
+    issue_title_by_id = {
+        issue_id: label.removeprefix(f"{issue_id}: ") for issue_id, label in issue_choices
+    }
+    if request.method == "POST":
+        form = IssueUpdateSuggestionForm(request.POST, issue_choices=issue_choices)
+        if form.is_valid():
+            update_suggestion = form.save(commit=False)
+            update_suggestion.submitter = request.user
+            update_suggestion.issue_title = issue_title_by_id.get(update_suggestion.issue_id, "")
+            update_suggestion.save()
+            messages.success(request, "Thanks — your issue update suggestion has been submitted.")
+            return redirect("issues-home")
+    else:
+        form = IssueUpdateSuggestionForm(issue_choices=issue_choices)
+    return render(request, "projects/issue_update_suggestion_submit.html", {"form": form})
+
+
+@login_required
 def submit_issue_suggestion(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         form = IssueSuggestionForm(request.POST)
@@ -2253,22 +2313,39 @@ def submit_issue_suggestion(request: HttpRequest) -> HttpResponse:
 @login_required
 def admin_issue_suggestions(request: HttpRequest) -> HttpResponse:
     _require_admin(request.user)
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+        if action == "remove_displayed_issue_suggestions":
+            new_issue_count, _ = IssueSuggestion.objects.all().delete()
+            update_count, _ = IssueUpdateSuggestion.objects.all().delete()
+            total_count = new_issue_count + update_count
+            messages.success(
+                request,
+                f"Removed {total_count} issue suggestion{'s' if total_count != 1 else ''}.",
+            )
+            return redirect("admin-issue-suggestions")
     suggestions = list(IssueSuggestion.objects.select_related("submitter").order_by("-submitted_at", "-id"))
+    update_suggestions = list(
+        IssueUpdateSuggestion.objects.select_related("submitter").order_by("-submitted_at", "-id")
+    )
     intro_lines = [
         "Please process the following human issue suggestions collected in the C-LARA-2 platform admin UI.",
         "These suggestions come from user submissions stored at /admin-tools/issue-suggestions/.",
         "Follow guidance in docs/roadmap/issue-tracking-and-human-suggestions.md.",
         "Use your best judgement to decide how each item should be handled.",
-        "Assign a priority to each suggestion (including very low if a suggestion seems unimportant, incorrect, or out of scope).",
-        "If a suggestion appears well grounded, generally rewrite and clarify it based on your understanding of the docs and codebase.",
+        "Assign a priority to each new-issue suggestion (including very low if a suggestion seems unimportant, incorrect, or out of scope).",
+        "If a new-issue suggestion appears well grounded, generally rewrite and clarify it based on your understanding of the docs and codebase.",
+        "For update suggestions, update the referenced docs/issues entry or related index/overview files as appropriate.",
         "Prepare output intended for docs/issues; in some cases updating existing docs/issues files may be preferable to adding a new file.",
     ]
     suggestion_lines: list[str] = []
+    if suggestions:
+        suggestion_lines.append("\nNew issue suggestions")
     for index, suggestion in enumerate(suggestions, start=1):
         suggestion_lines.extend(
             [
                 "",
-                f"Suggestion {index}",
+                f"New issue suggestion {index}",
                 f"- id: {suggestion.id}",
                 f"- submitted_at: {suggestion.submitted_at.isoformat()}",
                 f"- submitter: {suggestion.submitter.username}",
@@ -2278,11 +2355,34 @@ def admin_issue_suggestions(request: HttpRequest) -> HttpResponse:
                 suggestion.description.strip() or "(empty)",
             ]
         )
+    if update_suggestions:
+        suggestion_lines.append("\nExisting issue update suggestions")
+    for index, update_suggestion in enumerate(update_suggestions, start=1):
+        issue_label = update_suggestion.issue_id
+        if update_suggestion.issue_title:
+            issue_label = f"{issue_label}: {update_suggestion.issue_title}"
+        suggestion_lines.extend(
+            [
+                "",
+                f"Existing issue update suggestion {index}",
+                f"- id: {update_suggestion.id}",
+                f"- submitted_at: {update_suggestion.submitted_at.isoformat()}",
+                f"- submitter: {update_suggestion.submitter.username}",
+                f"- status: {update_suggestion.status} ({update_suggestion.get_status_display()})",
+                f"- issue: {issue_label}",
+                "- requested_update:",
+                update_suggestion.update_description.strip() or "(empty)",
+            ]
+        )
     codex_prompt_text = "\n".join(intro_lines + suggestion_lines)
     return render(
         request,
         "projects/admin_issue_suggestions.html",
-        {"suggestions": suggestions, "codex_prompt_text": codex_prompt_text},
+        {
+            "suggestions": suggestions,
+            "update_suggestions": update_suggestions,
+            "codex_prompt_text": codex_prompt_text,
+        },
     )
 
 
@@ -5643,6 +5743,103 @@ def _write_tree_to_zip(zip_file: zipfile.ZipFile, source_dir: Path, zip_root: Pa
     return count
 
 
+def _missing_source_bundle_stages(stages_dir: Path) -> list[str]:
+    return [
+        stage
+        for stage in SOURCE_BUNDLE_REQUIRED_STAGES
+        if not (stages_dir / f"{stage}.json").exists()
+    ]
+
+
+def _missing_source_bundle_zip_stages(names: list[str], stage_prefix: str) -> list[str]:
+    available = {
+        Path(name).name.removesuffix(".json")
+        for name in names
+        if name.startswith(stage_prefix) and name.endswith(".json")
+    }
+    return [stage for stage in SOURCE_BUNDLE_REQUIRED_STAGES if stage not in available]
+
+
+def _refresh_source_bundle_stages_for_export(
+    *, project: Project, user: Any, current_run_dir: Path, missing_stages: list[str]
+) -> tuple[Path | None, str | None]:
+    source_run = _find_run_with_stage(project, "pinyin")
+    if source_run is None:
+        return (
+            None,
+            "Source bundle export needs complete stage artifacts, but no pinyin stage was found. "
+            "Run linguistic annotation through pinyin/audio/compile_html before exporting.",
+        )
+
+    upstream_missing = [
+        stage
+        for stage in SOURCE_BUNDLE_REGEN_UPSTREAM_STAGES
+        if not (source_run / "stages" / f"{stage}.json").exists()
+    ]
+    if upstream_missing:
+        return (
+            None,
+            "Source bundle export cannot auto-regenerate missing stage artifacts because "
+            f"the latest upstream run ({source_run.name}) is missing: {', '.join(upstream_missing)}. "
+            "Run the full linguistic annotation pipeline before exporting.",
+        )
+
+    pinyin_payload = _load_stage_payload(project, "pinyin", run_dir=source_run)
+    if pinyin_payload is None:
+        return (
+            None,
+            "Source bundle export found a pinyin stage, but could not read it. "
+            "Run linguistic annotation from pinyin or earlier before exporting.",
+        )
+
+    output_dir = _prepare_output_dir(project).resolve()
+    try:
+        _copy_run_artifacts(source_run, output_dir)
+        progress_log = output_dir / "stages" / "progress.jsonl"
+        if progress_log.exists():
+            progress_log.unlink()
+    except Exception:
+        logger.exception("Failed to copy source-bundle upstream artifacts from %s", source_run)
+        return (None, "Could not prepare prior stage artifacts for source bundle export.")
+
+    report_id = str(uuid.uuid4())
+    _run_compile_task(
+        project.pk,
+        user.id,
+        str(output_dir),
+        str(project.artifact_dir().resolve()),
+        SOURCE_BUNDLE_REGEN_START_STAGE,
+        None,
+        project.description or "",
+        None,
+        pinyin_payload,
+        report_id,
+        f"source_bundle_refresh_{project.pk}",
+        project.ai_model or DEFAULT_MODEL,
+        "compile_html",
+        project.page_image_placement,
+        project.segmentation_method,
+        project.romanization_method,
+        False,
+    )
+
+    remaining_missing = _missing_source_bundle_stages(output_dir / "stages")
+    if remaining_missing:
+        return (
+            None,
+            "Automatic source bundle stage regeneration did not produce all required stages. "
+            f"Still missing: {', '.join(remaining_missing)}.",
+        )
+    logger.info(
+        "Refreshed source bundle stages for project=%s current_run=%s output_run=%s initially_missing=%s",
+        project.pk,
+        current_run_dir,
+        output_dir,
+        missing_stages,
+    )
+    return (output_dir, None)
+
+
 def _safe_zip_read_json(zf: zipfile.ZipFile, member: str) -> dict[str, Any] | None:
     try:
         with zf.open(member, "r") as fp:
@@ -8394,6 +8591,25 @@ def download_project_source_bundle(request: HttpRequest, pk: int) -> HttpRespons
         messages.error(request, "Latest run does not contain stage artifacts to export.")
         return redirect("project-detail", pk=project.pk)
 
+    missing_stages = _missing_source_bundle_stages(stages_dir)
+    if missing_stages:
+        refreshed_run_dir, refresh_error = _refresh_source_bundle_stages_for_export(
+            project=project,
+            user=request.user,
+            current_run_dir=run_dir,
+            missing_stages=missing_stages,
+        )
+        if refresh_error or refreshed_run_dir is None:
+            messages.error(request, refresh_error or "Could not refresh source bundle stage artifacts.")
+            return redirect("project-detail", pk=project.pk)
+        run_dir = refreshed_run_dir
+        stages_dir = run_dir / "stages"
+        messages.info(
+            request,
+            "Missing source bundle stage artifacts were regenerated automatically by rerunning "
+            "the pipeline from audio through compile_html before export.",
+        )
+
     safe_title = slugify(project.title) or f"project-{project.pk}"
     bundle_root = Path(f"{safe_title}-source-bundle")
     artifact_root = project.artifact_dir().resolve()
@@ -8543,6 +8759,16 @@ def import_project_source_bundle(request: HttpRequest) -> HttpResponse:
             messages.error(request, "Bundle is missing project metadata.")
             return redirect("project-list")
 
+        stage_prefix = f"{root}/stages/"
+        missing_stages = _missing_source_bundle_zip_stages(names, stage_prefix)
+        if missing_stages:
+            messages.error(
+                request,
+                "Source bundle is missing required stage artifacts: "
+                f"{', '.join(missing_stages)}. Re-export the project after regenerating source bundle stages.",
+            )
+            return redirect("project-list")
+
         title = _build_unique_import_title(request.user, metadata.get("title", "Imported project"))
         valid_pivot_languages = {code for code, _label in ProjectForm.LANGUAGE_CHOICES}
         project = Project.objects.create(
@@ -8584,9 +8810,8 @@ def import_project_source_bundle(request: HttpRequest) -> HttpResponse:
         _safe_write(f"{root}/text/source_text.txt", artifact_root / "source" / "source_text.txt")
         _safe_write(f"{root}/text/description.txt", artifact_root / "source" / "description.txt")
 
-        # Restore latest run stages if available.
+        # Restore latest run stages.
         run_dir = artifact_root / "runs" / f"run_imported_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
-        stage_prefix = f"{root}/stages/"
         stage_names = [n for n in names if n.startswith(stage_prefix) and n.endswith(".json")]
         if stage_names:
             for member_name in stage_names:
