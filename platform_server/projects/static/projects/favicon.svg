@@ -9,11 +9,11 @@
     fill="#17252b"
   />
 
-  <!-- Pen nib starts inside the C and pokes out toward the upper-right corner. -->
-  <g transform="rotate(38 39 24)">
-    <path d="M34 10h10l8 27-13 11-13-11 8-27Z" fill="#17252b"/>
-    <path d="M39 15v22" stroke="#eef4f2" stroke-width="3" stroke-linecap="round"/>
-    <circle cx="39" cy="31" r="2.6" fill="#eef4f2"/>
-    <path d="M34 48h10l-5 8-5-8Z" fill="#17252b"/>
+  <!-- Smaller nib, rotated to point cleanly toward the upper-right corner. -->
+  <g>
+    <path d="M32 34 39 19 54 9 47 25Z" fill="#17252b"/>
+    <path d="M36 31 48 15" stroke="#eef4f2" stroke-width="2.4" stroke-linecap="round"/>
+    <circle cx="43" cy="22" r="2.2" fill="#eef4f2"/>
+    <path d="M30 36 35 31 38 39Z" fill="#17252b"/>
   </g>
 </svg>
