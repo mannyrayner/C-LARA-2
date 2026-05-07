@@ -1,32 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
   <title id="title">C-LARA favicon</title>
-  <desc id="desc">C-LARA logo mark with a pen nib over an open book.</desc>
-  <rect width="64" height="64" fill="#eef4f2"/>
+  <desc id="desc">A bold C with a fountain pen nib pointing to the upper right.</desc>
+  <rect width="64" height="64" rx="12" fill="#eef4f2"/>
 
-  <!-- Open book / page lines from the C-LARA project mark. -->
-  <g fill="none" stroke="#17252b" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M7 38c7 0 13 1.8 20 6"/>
-    <path d="M7 43c8 .3 15 2.1 22 6"/>
-    <path d="M37 44c7-4 13-6 20-6"/>
-    <path d="M35 49c7-4 14-5.7 22-6"/>
-    <path d="M14 35l17 10"/>
-    <path d="M50 35L33 45"/>
-  </g>
-
-  <!-- Large C and fountain pen nib. -->
+  <!-- Large simple C, optimized for tiny browser-tab rendering. -->
   <path
-    d="M30 10c-9 0-16 7-16 16s7 16 16 16c4.1 0 7.8-1.5 10.7-4l-5.1-5.3A8.8 8.8 0 0 1 30 34c-4.7 0-8.5-3.6-8.5-8S25.3 18 30 18c2.1 0 4 .7 5.6 2l5.1-5.3A15.8 15.8 0 0 0 30 10Z"
+    d="M34 9c-14 0-25 10.7-25 24s11 24 25 24c7.3 0 13.9-3 18.4-7.8l-8.1-8.2A14.2 14.2 0 0 1 34 45c-7.3 0-13-5.3-13-12s5.7-12 13-12c4 0 7.5 1.5 10 4l8.1-8.2C47.5 12 41 9 34 9Z"
     fill="#17252b"
   />
-  <g transform="rotate(-41 40 23)">
-    <path d="M37 8h10l7 24-12 10-12-10 7-24Z" fill="#17252b"/>
-    <path d="M42 12v19" stroke="#eef4f2" stroke-width="2.4" stroke-linecap="round"/>
-    <circle cx="42" cy="25" r="2.1" fill="#eef4f2"/>
-    <path d="M38 42h8l-4 7-4-7Z" fill="#17252b"/>
-  </g>
 
-  <!-- Compact C-LARA lettering, simplified for favicon scale. -->
-  <g fill="#17252b" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="9.5" letter-spacing="1.2">
-    <text x="6" y="59">C·LARA</text>
+  <!-- Pen nib starts inside the C and pokes out toward the upper-right corner. -->
+  <g transform="rotate(38 39 24)">
+    <path d="M34 10h10l8 27-13 11-13-11 8-27Z" fill="#17252b"/>
+    <path d="M39 15v22" stroke="#eef4f2" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="39" cy="31" r="2.6" fill="#eef4f2"/>
+    <path d="M34 48h10l-5 8-5-8Z" fill="#17252b"/>
   </g>
 </svg>
