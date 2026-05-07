@@ -18,6 +18,7 @@ class IssueSuggestionTests(TestCase):
         response = client.get(reverse("issues-home"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Open current issues overview")
+        self.assertContains(response, "projects/favicon.svg")
         self.assertContains(response, "Suggest a new issue")
         self.assertContains(response, reverse("issue-suggestion-submit"))
         self.assertContains(response, "Suggest an update to an existing issue")

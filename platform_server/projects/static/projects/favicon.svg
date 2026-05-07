@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">C-LARA-2 favicon</title>
+  <desc id="desc">Blue book with a gold C and language sparkle.</desc>
+  <rect width="64" height="64" rx="14" fill="#0b4f8a"/>
+  <path d="M18 13h25a7 7 0 0 1 7 7v31H22a8 8 0 0 0-8 8V17a4 4 0 0 1 4-4Z" fill="#ffffff" opacity="0.94"/>
+  <path d="M22 13h24a4 4 0 0 1 4 4v34H22a8 8 0 0 0-8 8V21a8 8 0 0 1 8-8Z" fill="#e8f3ff"/>
+  <path d="M25 21c-6 0-10 4.6-10 11s4 11 10 11c4 0 7.2-1.8 9-4.9l-5.1-3c-.8 1.4-2 2.2-3.8 2.2-2.8 0-4.6-2.2-4.6-5.3s1.8-5.3 4.6-5.3c1.8 0 3 .8 3.8 2.2l5.1-3C32.2 22.8 29 21 25 21Z" fill="#0b4f8a"/>
+  <path d="M42 19l1.8 5.1L49 26l-5.2 1.9L42 33l-1.8-5.1L35 26l5.2-1.9L42 19Z" fill="#f7c948"/>
+  <path d="M36 44h9" stroke="#0b4f8a" stroke-width="4" stroke-linecap="round"/>
+  <path d="M36 52h13" stroke="#0b4f8a" stroke-width="4" stroke-linecap="round"/>
+</svg>
