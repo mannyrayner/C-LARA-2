@@ -1,0 +1,20 @@
+{% extends "projects/base.html" %}
+{% block title %}Submit issue update suggestion{% endblock %}
+{% block content %}
+  <h1>Submit an issue update suggestion</h1>
+  <p>Choose an existing issue and describe the update you think should be made.</p>
+  <form method="post">
+    {% csrf_token %}
+    <p>
+      <label for="{{ form.issue_id.id_for_label }}">Issue to update</label><br />
+      {{ form.issue_id }}
+      {% for error in form.issue_id.errors %}<br /><span style="color:#b00020;">{{ error }}</span>{% endfor %}
+    </p>
+    <p>
+      <label for="{{ form.update_description.id_for_label }}">Suggested update</label><br />
+      {{ form.update_description }}
+      {% for error in form.update_description.errors %}<br /><span style="color:#b00020;">{{ error }}</span>{% endfor %}
+    </p>
+    <button type="submit" class="btn">Submit update suggestion</button>
+  </form>
+{% endblock %}

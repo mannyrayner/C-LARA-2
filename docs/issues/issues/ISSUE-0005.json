@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "issue_id": "ISSUE-0005",
+  "title": "Tune segmentation_phase_1 prompting to improve segment granularity by genre",
+  "state": "reported",
+  "priority": "P2",
+  "created_at": "2026-05-04T00:19:24Z",
+  "updated_at": "2026-05-04T00:19:24Z",
+  "origin": "human-suggestion",
+  "notes": "Suggestion #6 from admin export (submitted by mannyrayner on 2026-05-04). Investigate segmentation_phase_1 output quality, especially overly short segments. Review and revise prompt template plus few-shot examples, with explicit default heuristics aligned with legacy C-LARA behavior (prose: sentence-level segments by default; poetry: line-level segments by default). Add evaluation examples and acceptance checks so changes can be measured against current behavior.",
+  "deadline": null,
+  "dependencies": [
+    "ISSUE-0003",
+    "ISSUE-0004"
+  ]
+}

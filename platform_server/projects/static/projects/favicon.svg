@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">C-LARA favicon</title>
+  <desc id="desc">A bold C with a fountain pen nib pointing to the upper right.</desc>
+  <rect width="64" height="64" rx="12" fill="#eef4f2"/>
+
+  <!-- Large simple C, optimized for tiny browser-tab rendering. -->
+  <path
+    d="M34 9c-14 0-25 10.7-25 24s11 24 25 24c7.3 0 13.9-3 18.4-7.8l-8.1-8.2A14.2 14.2 0 0 1 34 45c-7.3 0-13-5.3-13-12s5.7-12 13-12c4 0 7.5 1.5 10 4l8.1-8.2C47.5 12 41 9 34 9Z"
+    fill="#17252b"
+  />
+
+  <!-- Pen nib starts inside the C and pokes out toward the upper-right corner. -->
+  <g transform="rotate(38 39 24)">
+    <path d="M34 10h10l8 27-13 11-13-11 8-27Z" fill="#17252b"/>
+    <path d="M39 15v22" stroke="#eef4f2" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="39" cy="31" r="2.6" fill="#eef4f2"/>
+    <path d="M34 48h10l-5 8-5-8Z" fill="#17252b"/>
+  </g>
+</svg>

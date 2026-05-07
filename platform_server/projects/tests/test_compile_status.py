@@ -531,7 +531,8 @@ class CompileStatusViewTests(TestCase):
         run_dir = self.project.artifact_dir() / "runs" / "run_source"
         stages_dir = run_dir / "stages"
         stages_dir.mkdir(parents=True, exist_ok=True)
-        (stages_dir / "segmentation_phase_1.json").write_text('{"ok": true}', encoding="utf-8")
+        for stage in views.SOURCE_BUNDLE_REQUIRED_STAGES:
+            (stages_dir / f"{stage}.json").write_text('{"ok": true}', encoding="utf-8")
         (self.project.artifact_dir() / "source").mkdir(parents=True, exist_ok=True)
         (self.project.artifact_dir() / "source" / "source_text.txt").write_text("Hello", encoding="utf-8")
 
@@ -562,6 +563,41 @@ class CompileStatusViewTests(TestCase):
             self.assertEqual(metadata.get("text_direction"), "ltr")
             self.assertEqual(metadata.get("annotation_direction"), "ltr")
 
+
+    def test_download_source_bundle_auto_refreshes_missing_current_run_stages(self):
+        base = self.project.artifact_dir() / "runs"
+        upstream_stages = base / "run_upstream" / "stages"
+        upstream_stages.mkdir(parents=True, exist_ok=True)
+        for stage in views.SOURCE_BUNDLE_REGEN_UPSTREAM_STAGES:
+            upstream_stages.joinpath(f"{stage}.json").write_text('{"pages":[]}', encoding="utf-8")
+
+        latest_stages = base / "run_compile_only" / "stages"
+        latest_stages.mkdir(parents=True, exist_ok=True)
+        latest_stages.joinpath("compile_html.json").write_text('{"pages":[]}', encoding="utf-8")
+        self.project.compiled_path = "runs/run_compile_only/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+
+        def fake_run_compile_task(*args, **_kwargs):
+            output_dir = Path(args[2])
+            stages_dir = output_dir / "stages"
+            stages_dir.mkdir(parents=True, exist_ok=True)
+            stages_dir.joinpath("audio.json").write_text('{"pages":[]}', encoding="utf-8")
+            stages_dir.joinpath("compile_html.json").write_text('{"pages":[]}', encoding="utf-8")
+
+        with patch("projects.views._run_compile_task", side_effect=fake_run_compile_task) as mock_run:
+            resp = self.client.get(reverse("project-download-source-bundle", args=[self.project.pk]))
+
+        self.assertEqual(resp.status_code, 200)
+        mock_run.assert_called_once()
+        self.assertEqual(mock_run.call_args.args[4], "audio")
+        self.assertEqual(mock_run.call_args.args[12], "compile_html")
+        payload = b"".join(resp.streaming_content)
+        with zipfile.ZipFile(io.BytesIO(payload), "r") as zf:
+            names = set(zf.namelist())
+            root = next(name.split("/")[0] for name in names if name.endswith("manifest.json")) + "/"
+            for stage in views.SOURCE_BUNDLE_REQUIRED_STAGES:
+                self.assertIn(root + f"stages/{stage}.json", names)
+
     def test_import_source_bundle_creates_new_project(self):
         bundle = io.BytesIO()
         with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -584,7 +620,8 @@ class CompileStatusViewTests(TestCase):
                 ),
             )
             zf.writestr(f"{root}/text/source_text.txt", "नमस्ते दुनिया")
-            zf.writestr(f"{root}/stages/translation.json", '{"pages":[]}')
+            for stage in views.SOURCE_BUNDLE_REQUIRED_STAGES:
+                zf.writestr(f"{root}/stages/{stage}.json", '{"pages":[]}')
         bundle.seek(0)
 
         upload = SimpleUploadedFile("source_bundle.zip", bundle.getvalue(), content_type="application/zip")
@@ -615,11 +652,37 @@ class CompileStatusViewTests(TestCase):
                     }
                 ),
             )
+            for stage in views.SOURCE_BUNDLE_REQUIRED_STAGES:
+                zf.writestr(f"{root}/stages/{stage}.json", '{"pages":[]}')
         upload = SimpleUploadedFile("source_bundle.zip", bundle.getvalue(), content_type="application/zip")
         resp = self.client.post(reverse("project-import-source-bundle"), {"source_bundle": upload})
         self.assertEqual(resp.status_code, 302)
         imported = Project.objects.exclude(pk=self.project.pk).get()
         self.assertEqual("Test Project (2)", imported.title)
+
+    def test_import_source_bundle_rejects_missing_required_stages(self):
+        bundle = io.BytesIO()
+        with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as zf:
+            root = "imported-source-bundle"
+            zf.writestr(
+                f"{root}/project/metadata.json",
+                json.dumps(
+                    {
+                        "title": "Incomplete Story",
+                        "source_text": "hello",
+                        "input_mode": "source_text",
+                        "language": "en",
+                        "target_language": "fr",
+                    }
+                ),
+            )
+            zf.writestr(f"{root}/stages/compile_html.json", '{"pages":[]}')
+        upload = SimpleUploadedFile("source_bundle.zip", bundle.getvalue(), content_type="application/zip")
+        resp = self.client.post(reverse("project-import-source-bundle"), {"source_bundle": upload}, follow=True)
+        self.assertEqual(resp.status_code, 200)
+        messages = [str(message) for message in get_messages(resp.wsgi_request)]
+        self.assertTrue(any("Source bundle is missing required stage artifacts" in message for message in messages))
+        self.assertFalse(Project.objects.filter(title="Incomplete Story").exists())
 
     def test_generate_cloze_exercises_creates_set(self):
         run_dir = self.project.artifact_dir() / "runs" / "run_exercise" / "stages"

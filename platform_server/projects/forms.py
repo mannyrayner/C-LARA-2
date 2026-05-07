@@ -17,6 +17,7 @@ from .models import (
     ProjectImagePage,
     ProjectImageStyle,
     IssueSuggestion,
+    IssueUpdateSuggestion,
 )
 
 
@@ -268,6 +269,25 @@ class IssueSuggestionForm(forms.ModelForm):
             "title": forms.TextInput(attrs={"style": "width: 100%;"}),
             "description": forms.Textarea(attrs={"rows": 6}),
         }
+
+
+class IssueUpdateSuggestionForm(forms.ModelForm):
+    issue_id = forms.ChoiceField(choices=[])
+
+    class Meta:
+        model = IssueUpdateSuggestion
+        fields = ["issue_id", "update_description"]
+        labels = {
+            "issue_id": "Issue to update",
+            "update_description": "Suggested update",
+        }
+        widgets = {
+            "update_description": forms.Textarea(attrs={"rows": 8}),
+        }
+
+    def __init__(self, *args, issue_choices=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["issue_id"].choices = issue_choices or []
 
 
 class ClozeExerciseSetForm(forms.Form):
