@@ -70,8 +70,8 @@ from .forms import (
 from .metadata import update_project_discovery_metadata
 from .legacy_clara_import import (
     LegacyClaraImportError,
+    find_legacy_clara_bundle_root,
     import_legacy_clara_bundle,
-    is_legacy_clara_bundle,
     legacy_clara_bundle_title,
 )
 from .billing import (
@@ -8761,13 +8761,14 @@ def import_project_source_bundle(request: HttpRequest) -> HttpResponse:
             return redirect("project-list")
 
         root = Path(names[0]).parts[0]
-        if is_legacy_clara_bundle(names, root):
+        legacy_root = find_legacy_clara_bundle_root(names)
+        if legacy_root is not None:
             try:
-                base_title = legacy_clara_bundle_title(zf, root)
+                base_title = legacy_clara_bundle_title(zf, legacy_root)
                 result = import_legacy_clara_bundle(
                     zf=zf,
                     names=names,
-                    root=root,
+                    root=legacy_root,
                     user=request.user,
                     unique_title=_build_unique_import_title(request.user, base_title),
                 )

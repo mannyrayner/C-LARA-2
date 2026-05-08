@@ -772,6 +772,63 @@ class CompileStatusViewTests(TestCase):
         style = ProjectImageStyle.objects.get(project=imported)
         self.assertEqual(style.sample_image_path, "legacy_clara/images/style.png")
 
+
+    def test_import_legacy_clara_json_bundle_accepts_flat_zip_layout(self):
+        bundle = io.BytesIO()
+        annotated_text = {
+            "l2_language": "mandarin",
+            "l1_language": "english",
+            "pages": [
+                {
+                    "segments": [
+                        {
+                            "content_elements": [
+                                {
+                                    "type": "Word",
+                                    "content": "熊猫",
+                                    "annotations": {
+                                        "gloss": "panda",
+                                        "lemma": "熊猫",
+                                        "pos": "NOUN",
+                                        "pinyin": "xióng māo",
+                                        "tts": {
+                                            "engine_id": "google",
+                                            "language_id": "cmn-CN",
+                                            "voice_id": "default",
+                                            "file_path": "audio/default_panda.mp3",
+                                        },
+                                    },
+                                }
+                            ],
+                            "annotations": {"translated": "Panda.", "mwes": [], "page_number": 1},
+                        }
+                    ],
+                    "annotations": {"title": "Flat Panda"},
+                }
+            ],
+        }
+        with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("annotated_text.json", json.dumps(annotated_text, ensure_ascii=False))
+            zf.writestr("metadata.json", json.dumps({"simple_clara_type": "create_text"}))
+            zf.writestr("audio/default_panda.mp3", b"fake mp3 bytes")
+        bundle.seek(0)
+
+        upload = SimpleUploadedFile("flat_legacy_clara.zip", bundle.getvalue(), content_type="application/zip")
+        resp = self.client.post(reverse("project-import-source-bundle"), {"source_bundle": upload})
+        self.assertEqual(resp.status_code, 302)
+
+        imported = Project.objects.exclude(pk=self.project.pk).get()
+        self.assertEqual(imported.title, "Flat Panda")
+        self.assertEqual(imported.language, "zh")
+        self.assertTrue((imported.artifact_dir() / "legacy_clara" / "metadata.json").exists())
+        self.assertTrue((imported.artifact_dir() / "legacy_clara" / "audio" / "default_panda.mp3").exists())
+        pinyin_path = next((imported.artifact_dir() / "runs").rglob("pinyin.json"))
+        pinyin_payload = json.loads(pinyin_path.read_text(encoding="utf-8"))
+        self.assertEqual(
+            pinyin_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"]["pinyin"],
+            "xióng māo",
+        )
+
     def test_import_source_bundle_adds_suffix_when_title_conflicts_for_same_user(self):
         bundle = io.BytesIO()
         with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as zf:

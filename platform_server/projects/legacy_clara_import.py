@@ -1,7 +1,7 @@
 """Import support for legacy C-LARA JSON export bundles.
 
-Legacy C-LARA exports are ZIP files rooted at one directory containing
-``annotated_text.json`` plus optional ``audio/`` and ``images/`` folders.  This
+Legacy C-LARA exports are ZIP files, either flat or rooted at one directory,
+containing ``annotated_text.json`` plus optional ``audio/`` and ``images/`` folders.  This
 module converts that hierarchical representation into C-LARA-2 project records
 and stage artifacts so the imported project can be inspected and rerun using the
 normal C-LARA-2 tooling.
@@ -66,17 +66,35 @@ class LegacyClaraImportError(ValueError):
     """Raised when a ZIP file is not a valid legacy C-LARA JSON bundle."""
 
 
+def find_legacy_clara_bundle_root(names: list[str]) -> str | None:
+    """Return the legacy bundle root, supporting both flat and rooted ZIPs."""
+
+    if is_legacy_clara_bundle(names, ""):
+        return ""
+
+    candidate_roots = []
+    for name in names:
+        parts = PurePosixPath(name).parts
+        if parts:
+            candidate_roots.append(parts[0])
+    for root in dict.fromkeys(candidate_roots):
+        if root and is_legacy_clara_bundle(names, root):
+            return root
+    return None
+
+
 def is_legacy_clara_bundle(names: list[str], root: str) -> bool:
     """Return ``True`` if ``names`` look like a legacy C-LARA JSON export."""
 
-    required = {f"{root}/{LEGACY_CLARA_ANNOTATED_TEXT}", f"{root}/{LEGACY_CLARA_METADATA}"}
-    return required.issubset(set(names))
+    name_set = set(names)
+    required = {_bundle_member(root, LEGACY_CLARA_ANNOTATED_TEXT), _bundle_member(root, LEGACY_CLARA_METADATA)}
+    return required.issubset(name_set)
 
 
 def legacy_clara_bundle_title(zf: zipfile.ZipFile, root: str) -> str:
     """Return a best-effort title for a legacy C-LARA JSON export."""
 
-    annotated = _read_json(zf, f"{root}/{LEGACY_CLARA_ANNOTATED_TEXT}")
+    annotated = _read_json(zf, _bundle_member(root, LEGACY_CLARA_ANNOTATED_TEXT))
     if isinstance(annotated, dict):
         return _title_from_annotated_text(annotated)
     return "Imported legacy C-LARA project"
@@ -92,8 +110,8 @@ def import_legacy_clara_bundle(
 ) -> LegacyClaraImportResult:
     """Import a legacy C-LARA JSON export as a new C-LARA-2 project."""
 
-    annotated = _read_json(zf, f"{root}/{LEGACY_CLARA_ANNOTATED_TEXT}")
-    legacy_metadata = _read_json(zf, f"{root}/{LEGACY_CLARA_METADATA}")
+    annotated = _read_json(zf, _bundle_member(root, LEGACY_CLARA_ANNOTATED_TEXT))
+    legacy_metadata = _read_json(zf, _bundle_member(root, LEGACY_CLARA_METADATA))
     if not isinstance(annotated, dict):
         raise LegacyClaraImportError("Legacy C-LARA bundle has unreadable annotated_text.json.")
     if not isinstance(legacy_metadata, dict):
@@ -162,6 +180,13 @@ def import_legacy_clara_bundle(
     return LegacyClaraImportResult(project=project, diagnostics=diagnostics)
 
 
+def _bundle_member(root: str, relpath: str) -> str:
+    """Return a POSIX ZIP member path under ``root`` or at archive top level."""
+
+    rel = relpath.strip("/")
+    return f"{root}/{rel}" if root else rel
+
+
 def _read_json(zf: zipfile.ZipFile, member: str) -> Any:
     try:
         with zf.open(member, "r") as fp:
@@ -218,7 +243,7 @@ def _segment_surface(segment: dict[str, Any]) -> str:
 
 def _image_placement_from_metadata(zf: zipfile.ZipFile, root: str) -> str:
     try:
-        image_metadata = _read_json(zf, f"{root}/images/metadata.json")
+        image_metadata = _read_json(zf, _bundle_member(root, "images/metadata.json"))
     except LegacyClaraImportError:
         return "none"
     if isinstance(image_metadata, list):
@@ -231,11 +256,13 @@ def _image_placement_from_metadata(zf: zipfile.ZipFile, root: str) -> str:
 
 
 def _copy_legacy_tree(zf: zipfile.ZipFile, names: list[str], root: str, target_root: Path) -> None:
-    prefix = f"{root}/"
+    prefix = f"{root}/" if root else ""
     for member_name in names:
-        if not member_name.startswith(prefix) or member_name.endswith("/"):
+        if member_name.endswith("/"):
             continue
-        rel_posix = member_name[len(prefix) :]
+        if prefix and not member_name.startswith(prefix):
+            continue
+        rel_posix = member_name[len(prefix) :] if prefix else member_name
         rel = PurePosixPath(rel_posix)
         if rel.is_absolute() or ".." in rel.parts:
             continue
@@ -378,7 +405,7 @@ def _restore_legacy_image_records(
     *, project: Project, zf: zipfile.ZipFile, root: str, artifact_root: Path, text: dict[str, Any]
 ) -> None:
     try:
-        image_metadata = _read_json(zf, f"{root}/images/metadata.json")
+        image_metadata = _read_json(zf, _bundle_member(root, "images/metadata.json"))
     except LegacyClaraImportError:
         return
     if not isinstance(image_metadata, list):
