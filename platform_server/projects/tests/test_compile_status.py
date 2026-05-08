@@ -636,6 +636,142 @@ class CompileStatusViewTests(TestCase):
         stage_files = list((imported.artifact_dir() / "runs").rglob("translation.json"))
         self.assertTrue(stage_files)
 
+
+    def test_import_legacy_clara_json_bundle_creates_project_with_pinyin_audio_and_images(self):
+        bundle = io.BytesIO()
+        root = "DepressedPandaJSON"
+        annotated_text = {
+            "l2_language": "mandarin",
+            "l1_language": "english",
+            "pages": [
+                {
+                    "segments": [
+                        {
+                            "content_elements": [
+                                {"type": "Markup", "content": "<h1>", "annotations": {}},
+                                {
+                                    "type": "Word",
+                                    "content": "熊猫",
+                                    "annotations": {
+                                        "gloss": "panda",
+                                        "lemma": "熊猫",
+                                        "pos": "NOUN",
+                                        "pinyin": "xióng māo",
+                                        "tts": {
+                                            "engine_id": "google",
+                                            "language_id": "cmn-CN",
+                                            "voice_id": "default",
+                                            "file_path": "audio/default_panda.mp3",
+                                        },
+                                    },
+                                },
+                                {"type": "NonWordText", "content": "。", "annotations": {}},
+                            ],
+                            "annotations": {
+                                "translated": "Panda.",
+                                "mwes": [],
+                                "tts": {
+                                    "engine_id": "google",
+                                    "language_id": "cmn-CN",
+                                    "voice_id": "cmn-CN-Wavenet-C",
+                                    "file_path": "audio/segment_panda.mp3",
+                                },
+                                "page_number": 1,
+                                "segment_uid": "seg_panda_1",
+                            },
+                        },
+                        {
+                            "content_elements": [
+                                {
+                                    "type": "Image",
+                                    "content": {
+                                        "src": "page_1.png",
+                                        "thumbnail_src": "page_1_thumbnail.png",
+                                        "width": 512,
+                                        "height": 512,
+                                    },
+                                    "annotations": {},
+                                }
+                            ],
+                            "annotations": {"mwes": [], "page_number": 1, "segment_uid": "seg_panda_img"},
+                        },
+                    ],
+                    "annotations": {
+                        "title": "熊猫独白",
+                        "tts": {
+                            "engine_id": "google",
+                            "language_id": "cmn-CN",
+                            "voice_id": "cmn-CN-Wavenet-C",
+                            "file_path": "audio/segment_panda.mp3",
+                        },
+                    },
+                }
+            ],
+            "annotations": {"voice": "google_cmn-CN"},
+        }
+        image_metadata = [
+            {
+                "image_file_path": "page_1.png",
+                "thumbnail_file_path": "page_1_thumbnail.png",
+                "image_name": "page_1",
+                "page": 1,
+                "position": "bottom",
+                "image_type": "page",
+                "user_prompt": "",
+                "content_description": "",
+            },
+            {
+                "image_file_path": "style.png",
+                "thumbnail_file_path": "style_thumbnail.png",
+                "image_name": "style",
+                "page": 1,
+                "position": "bottom",
+                "image_type": "style",
+                "advice": "Create a style inspired by traditional Chinese pen and ink art.",
+            },
+        ]
+        with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr(f"{root}/annotated_text.json", json.dumps(annotated_text, ensure_ascii=False))
+            zf.writestr(
+                f"{root}/metadata.json",
+                json.dumps({"simple_clara_type": "create_text_and_image", "audio_type_for_words": "tts"}),
+            )
+            zf.writestr(f"{root}/audio/default_panda.mp3", b"fake mp3 bytes")
+            zf.writestr(f"{root}/audio/segment_panda.mp3", b"fake segment mp3 bytes")
+            zf.writestr(f"{root}/audio/metadata.json", json.dumps({"words": [], "segments": []}))
+            zf.writestr(f"{root}/images/page_1.png", b"fake image bytes")
+            zf.writestr(f"{root}/images/page_1_thumbnail.png", b"fake thumbnail bytes")
+            zf.writestr(f"{root}/images/style.png", b"fake style bytes")
+            zf.writestr(f"{root}/images/metadata.json", json.dumps(image_metadata))
+        bundle.seek(0)
+
+        upload = SimpleUploadedFile("legacy_clara.zip", bundle.getvalue(), content_type="application/zip")
+        resp = self.client.post(reverse("project-import-source-bundle"), {"source_bundle": upload})
+        self.assertEqual(resp.status_code, 302)
+
+        imported = Project.objects.exclude(pk=self.project.pk).get()
+        self.assertEqual(imported.title, "熊猫独白")
+        self.assertEqual(imported.language, "zh")
+        self.assertEqual(imported.target_language, "en")
+        self.assertEqual(imported.page_image_placement, "bottom")
+        self.assertIn("熊猫。", imported.source_text)
+
+        pinyin_path = next((imported.artifact_dir() / "runs").rglob("pinyin.json"))
+        pinyin_payload = json.loads(pinyin_path.read_text(encoding="utf-8"))
+        token = pinyin_payload["pages"][0]["segments"][0]["tokens"][0]
+        self.assertEqual(token["annotations"]["pinyin"], "xióng māo")
+        self.assertEqual(token["annotations"]["gloss"], "panda")
+        self.assertEqual(pinyin_payload["pages"][0]["segments"][0]["annotations"]["translation"], "Panda.")
+        self.assertTrue(Path(token["annotations"]["audio"]["path"]).exists())
+
+        self.assertTrue((imported.artifact_dir() / "legacy_clara" / "annotated_text.json").exists())
+        self.assertTrue((imported.artifact_dir() / "legacy_clara" / "audio" / "default_panda.mp3").exists())
+        self.assertTrue((imported.artifact_dir() / "legacy_clara" / "images" / "page_1.png").exists())
+        image_page = ProjectImagePage.objects.get(project=imported, page_number=1)
+        self.assertEqual(image_page.image_path, "legacy_clara/images/page_1.png")
+        style = ProjectImageStyle.objects.get(project=imported)
+        self.assertEqual(style.sample_image_path, "legacy_clara/images/style.png")
+
     def test_import_source_bundle_adds_suffix_when_title_conflicts_for_same_user(self):
         bundle = io.BytesIO()
         with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as zf:
