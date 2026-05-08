@@ -68,6 +68,12 @@ from .forms import (
     RegistrationForm,
 )
 from .metadata import update_project_discovery_metadata
+from .legacy_clara_import import (
+    LegacyClaraImportError,
+    find_legacy_clara_bundle_root,
+    import_legacy_clara_bundle,
+    legacy_clara_bundle_title,
+)
 from .billing import (
     apply_credit_delta,
     credits_enabled,
@@ -8755,6 +8761,27 @@ def import_project_source_bundle(request: HttpRequest) -> HttpResponse:
             return redirect("project-list")
 
         root = Path(names[0]).parts[0]
+        legacy_root = find_legacy_clara_bundle_root(names)
+        if legacy_root is not None:
+            try:
+                base_title = legacy_clara_bundle_title(zf, legacy_root)
+                result = import_legacy_clara_bundle(
+                    zf=zf,
+                    names=names,
+                    root=legacy_root,
+                    user=request.user,
+                    unique_title=_build_unique_import_title(request.user, base_title),
+                )
+            except LegacyClaraImportError as exc:
+                messages.error(request, str(exc))
+                return redirect("project-list")
+            _persist_project_source(result.project)
+            detail = ""
+            if result.diagnostics:
+                detail = f" Import diagnostics: {'; '.join(result.diagnostics[:3])}"
+            messages.success(request, f"Imported legacy C-LARA bundle as new project '{result.project.title}'.{detail}")
+            return redirect("project-detail", pk=result.project.pk)
+
         metadata = _safe_zip_read_json(zf, f"{root}/project/metadata.json")
         if not metadata:
             messages.error(request, "Bundle is missing project metadata.")
