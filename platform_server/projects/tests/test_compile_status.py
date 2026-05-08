@@ -754,6 +754,8 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual(imported.language, "zh")
         self.assertEqual(imported.target_language, "en")
         self.assertEqual(imported.page_image_placement, "bottom")
+        self.assertEqual(imported.segmentation_method, "auto")
+        self.assertEqual(imported.romanization_method, "auto")
         self.assertIn("熊猫。", imported.source_text)
 
         pinyin_path = next((imported.artifact_dir() / "runs").rglob("pinyin.json"))
@@ -771,6 +773,18 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual(image_page.image_path, "legacy_clara/images/page_1.png")
         style = ProjectImageStyle.objects.get(project=imported)
         self.assertEqual(style.sample_image_path, "legacy_clara/images/style.png")
+
+        with patch("projects.views.credits_enabled", return_value=False), patch("projects.views.async_task") as mock_async_task:
+            compile_resp = self.client.post(
+                reverse("project-compile", args=[imported.pk]),
+                {"start_stage": "compile_html", "end_stage": "compile_html"},
+            )
+        self.assertEqual(compile_resp.status_code, 302)
+        self.assertTrue(mock_async_task.called)
+        compile_args, _compile_kwargs = mock_async_task.call_args
+        self.assertEqual("compile_html", compile_args[5])
+        self.assertEqual("auto", compile_args[15])
+        self.assertEqual("auto", compile_args[16])
 
 
     def test_import_legacy_clara_json_bundle_accepts_flat_zip_layout(self):
@@ -828,6 +842,37 @@ class CompileStatusViewTests(TestCase):
             pinyin_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"]["pinyin"],
             "xióng māo",
         )
+
+    @patch("projects.views.async_task")
+    def test_compile_normalizes_legacy_import_processing_method(self, mock_async_task):
+        self.project.language = "zh"
+        self.project.segmentation_method = "legacy_clara_import"
+        self.project.romanization_method = "legacy_clara_import"
+        self.project.save(update_fields=["language", "segmentation_method", "romanization_method"])
+        stages = self.project.artifact_dir() / "runs" / "run_legacy" / "stages"
+        stages.mkdir(parents=True, exist_ok=True)
+        stages.joinpath("audio.json").write_text('{"pages":[]}', encoding="utf-8")
+        stages.joinpath("compile_html.json").write_text('{"pages":[]}', encoding="utf-8")
+
+        with patch("projects.views.credits_enabled", return_value=False):
+            resp = self.client.post(
+                reverse("project-compile", args=[self.project.pk]),
+                {
+                    "start_stage": "compile_html",
+                    "end_stage": "compile_html",
+                    "segmentation_method": "legacy_clara_import",
+                    "romanization_method": "legacy_clara_import",
+                },
+            )
+
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(mock_async_task.called)
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.segmentation_method, "auto")
+        self.assertEqual(self.project.romanization_method, "auto")
+        args, _kwargs = mock_async_task.call_args
+        self.assertEqual("auto", args[15])
+        self.assertEqual("auto", args[16])
 
     def test_import_source_bundle_adds_suffix_when_title_conflicts_for_same_user(self):
         bundle = io.BytesIO()

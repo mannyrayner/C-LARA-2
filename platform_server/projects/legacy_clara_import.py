@@ -135,8 +135,12 @@ def import_legacy_clara_bundle(
         ai_model=DEFAULT_MODEL[:64],
         page_image_placement=_image_placement_from_metadata(zf, root)[:16],
         page_image_text_source=Project.PAGE_IMAGE_TEXT_SOURCE_SEGMENTATION,
-        segmentation_method="legacy_clara_import",
-        romanization_method="legacy_clara_import",
+        # Keep project-level processing settings valid so users can rerun later
+        # stages (for example compile_html -> compile_html) from the imported
+        # artifacts without tripping the normal form validation. The stage
+        # artifacts and import summary below retain legacy provenance.
+        segmentation_method="auto",
+        romanization_method="auto",
     )
 
     artifact_root = project.artifact_dir().resolve()

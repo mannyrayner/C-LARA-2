@@ -162,6 +162,7 @@ IMAGE_MODEL_CHOICES = [
 PAGE_IMAGE_PLACEMENT_CHOICES = ["none", "top", "bottom"]
 SEGMENTATION_METHOD_CHOICES = ["auto", "jieba", "ai"]
 ROMANIZATION_METHOD_CHOICES = ["auto", "pypinyin", "indic_transliteration", "ai"]
+LEGACY_IMPORT_PROCESSING_METHOD = "legacy_clara_import"
 CONTENT_DATE_FILTERS = {
     "any": None,
     "last_3_days": timedelta(days=3),
@@ -291,6 +292,17 @@ def _require_admin(user) -> None:
     _ensure_bootstrap_admin(user)
     if not user.is_staff:
         raise Http404()
+
+
+def _normalize_processing_method_choice(method: str | None, valid_choices: list[str]) -> str:
+    """Normalize stored processing options while preserving validation for bad user input."""
+
+    normalized = (method or "auto").strip().lower()
+    if normalized == LEGACY_IMPORT_PROCESSING_METHOD:
+        return "auto"
+    if normalized in valid_choices:
+        return normalized
+    return normalized
 
 
 def _resolve_segmentation_method(language: str, configured: str | None) -> str:
@@ -6511,8 +6523,12 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         project.ai_model = ai_model
         project.save(update_fields=["ai_model", "updated_at"])
 
-    segmentation_method = (request.POST.get("segmentation_method") or project.segmentation_method or "auto").strip().lower()
-    romanization_method = (request.POST.get("romanization_method") or project.romanization_method or "auto").strip().lower()
+    segmentation_method = _normalize_processing_method_choice(
+        request.POST.get("segmentation_method") or project.segmentation_method, SEGMENTATION_METHOD_CHOICES
+    )
+    romanization_method = _normalize_processing_method_choice(
+        request.POST.get("romanization_method") or project.romanization_method, ROMANIZATION_METHOD_CHOICES
+    )
     if segmentation_method not in SEGMENTATION_METHOD_CHOICES:
         messages.error(request, "Unknown segmentation method option.")
         return redirect(return_to)
@@ -6713,8 +6729,12 @@ def set_page_image_placement(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
-    segmentation_method = (request.POST.get("segmentation_method") or project.segmentation_method or "auto").strip().lower()
-    romanization_method = (request.POST.get("romanization_method") or project.romanization_method or "auto").strip().lower()
+    segmentation_method = _normalize_processing_method_choice(
+        request.POST.get("segmentation_method") or project.segmentation_method, SEGMENTATION_METHOD_CHOICES
+    )
+    romanization_method = _normalize_processing_method_choice(
+        request.POST.get("romanization_method") or project.romanization_method, ROMANIZATION_METHOD_CHOICES
+    )
     if segmentation_method not in SEGMENTATION_METHOD_CHOICES:
         messages.error(request, "Unknown segmentation method option.")
         return redirect("project-detail", pk=project.pk)
@@ -7647,8 +7667,12 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
 @login_required
 def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
-    segmentation_method = (request.POST.get("segmentation_method") or project.segmentation_method or "auto").strip().lower()
-    romanization_method = (request.POST.get("romanization_method") or project.romanization_method or "auto").strip().lower()
+    segmentation_method = _normalize_processing_method_choice(
+        request.POST.get("segmentation_method") or project.segmentation_method, SEGMENTATION_METHOD_CHOICES
+    )
+    romanization_method = _normalize_processing_method_choice(
+        request.POST.get("romanization_method") or project.romanization_method, ROMANIZATION_METHOD_CHOICES
+    )
     if segmentation_method not in SEGMENTATION_METHOD_CHOICES:
         messages.error(request, "Unknown segmentation method option.")
         return redirect("project-detail", pk=project.pk)
