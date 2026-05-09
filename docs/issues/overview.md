@@ -1,19 +1,19 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-09T04:47:51Z_
+_Last updated: 2026-05-09T05:30:00Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
 ## Recent progress
 
-- **[ISSUE-0011](issues/ISSUE-0011.json)** has been added as a high-priority, time-sensitive request for image-based language games, initially image/word multiple-choice flashcards for Kok Kaper community use before early June 2026.
+- **[ISSUE-0011](issues/ISSUE-0011.json)** has been refined with a picture-dictionary-centred plan: first agree the workflow with Sophie, then build image/word flashcards from approved dictionary entries for Kok Kaper community use before early June 2026.
 - **[ISSUE-0012](issues/ISSUE-0012.json)** has been added for two project-creation default changes: AI generation from a description by default, and page image placement set to `top` by default.
 - The focus index now places the image-game work alongside the other P1 near-term items because of the early-June community deadline.
 
 ## Near-term priorities
 
 1. **[ISSUE-0003](issues/ISSUE-0003.json) (P1)** — Add an efficient end-to-end pipeline test runner so quality regressions can be reproduced and measured systematically.
-2. **[ISSUE-0011](issues/ISSUE-0011.json) (P1, deadline 2026-06-01)** — Add image-based language games, starting with image-to-word and word-to-image flashcards for Kok Kaper community review sessions.
+2. **[ISSUE-0011](issues/ISSUE-0011.json) (P1, deadline 2026-06-01)** — Agree and implement a picture-dictionary-centred image-game workflow, starting with image-to-word and word-to-image flashcards for Kok Kaper community review sessions.
 3. **[ISSUE-0010](issues/ISSUE-0010.json) (P1)** — Import a representative legacy C-LARA corpus, gather importer diagnostics from real archives, and add batch import tooling for a folder of legacy ZIPs.
 4. **[ISSUE-0006](issues/ISSUE-0006.json) (P2)** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness, preferably using ISSUE-0003 diagnostics where possible.
 5. **[ISSUE-0008](issues/ISSUE-0008.json) (P2, deadline 2026-06-15)** — Write an initial AI-authored C-LARA-2 technical report in LaTeX.
@@ -30,6 +30,6 @@ This document summarizes the current issue registry for quick human review. Cano
 
 ## Notes and risks
 
-- **Kok Kaper timing:** ISSUE-0011 should be scoped tightly for the first delivery: image/word multiple-choice flashcards using existing image assets, with broader game mechanics left for later issues if needed.
+- **Kok Kaper timing:** ISSUE-0011 should be scoped tightly for the first delivery: picture-dictionary maintenance improvements plus image/word multiple-choice flashcards from approved entries, with broader game mechanics left for later issues if needed.
 - **Default-change safety:** ISSUE-0012 is likely small but user-visible; confirm that imports, existing projects, and explicit user selections are not affected by the changed creation defaults.
 - **Dependency highlights:** ISSUE-0010 depends on completed ISSUE-0002; ISSUE-0004, ISSUE-0005, ISSUE-0006, ISSUE-0007, and ISSUE-0008 all depend directly or indirectly on ISSUE-0003.
