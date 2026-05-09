@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "issue_id": "ISSUE-0008",
-  "title": "Write an initial AI-authored C-LARA-2 technical report in LaTeX",
+  "title": "Write C-LARA-2 technical report and academic papers",
   "state": "reported",
-  "priority": "P2",
+  "priority": "P1",
   "created_at": "2026-05-06T08:36:24Z",
-  "updated_at": "2026-05-07T03:12:39Z",
+  "updated_at": "2026-05-09T06:00:00Z",
   "origin": "human-suggestion",
-  "notes": "Suggestion #8 from admin export (submitted by mannyrayner on 2026-05-06), reprioritized on 2026-05-07. Prepare a detailed initial C-LARA-2 technical report reflecting project status around late May or early June 2026, suitable for citation in the EuroCALL 2026 paper submission cycle and related publications. The report should follow the C-LARA-2 AI-assisted workflow: AI authorship with humans providing suggestions/review. Start by evaluating whether Codex can draft the report unaided; if useful, investigate a workflow where ChatGPT-5.x provides suggestions to Codex. Use LaTeX as the likely output format for consistency with earlier reports. Priority is currently P2 because the report should ideally say substantial things about ISSUE-0003 and the emerging issue-tracking/human-suggestion mechanism, both of which are still maturing and are central examples of making the platform aware of its temporal context.",
+  "notes": "Suggestion #8 from admin export (submitted by mannyrayner on 2026-05-06), reprioritized on 2026-05-07 and expanded on 2026-05-09. Prepare a detailed initial C-LARA-2 technical report reflecting project status around late May or mid-June 2026, suitable as the source document for related academic publications. See docs/roadmap/reports-and-papers.md for the roadmap and target list. Current prioritized outputs are: (1) a long internal LaTeX technical report by mid-June 2026; (2) a EuroCALL 2026 paper, already accepted, with a mid-August 2026 deadline; (3) a possible ALTA 2026 paper, pending fit and deadline confirmation. The report should follow the C-LARA-2 AI-assisted workflow: Codex authorship with humans providing suggestions/review, and optional ChatGPT-5.x critique. A central theme should be that C-LARA-2 is not merely AI-written code: Codex has co-produced code, tests, roadmap documents, issue records, and operational documentation in one repository, which may be an important reason it can maintain architectural context over a rapidly growing complex platform. Priority is now P1 because the internal report and accepted EuroCALL paper are active writing targets.",
   "deadline": "2026-06-15T00:00:00Z",
   "dependencies": [
     "ISSUE-0003"
