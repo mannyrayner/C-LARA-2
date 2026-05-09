@@ -15,6 +15,7 @@ The most important points to preserve are:
 3. **Documentation and tests appear to be part of the mechanism, not just by-products.** The working hypothesis is that maintaining code, tests, and docs in the same AI-authored GitHub bundle helps the AI preserve a coherent overview of a complex architecture with many interacting features.
 4. **The project should be compared with adjacent AI-assisted software efforts.** We need a literature and grey-literature search covering academic papers, preprints, blog posts, and developer-community discussions about AI coding agents, agentic software engineering, self-documenting repositories, and human-in-the-loop AI development.
 5. **The C-LARA-2 angle should be precise.** We should avoid a vague “AI helped us code” story and instead foreground the repo-native, documentation-and-tests-first workflow: Codex acts as an implementation agent, documentation maintainer, test author, issue triager, and architectural memory, while humans provide direction and review.
+6. **The strongest version of the C-LARA-2 claim is “AI-authored repository”, not “AI-assisted coding”.** In this project, Codex does not merely write most implementation patches; it writes all repository content that is committed, including source code, tests, docs, roadmap updates, issue JSON, and PR text. Humans supply goals, constraints, criticism, and acceptance decisions, but the committed artifact is AI-authored end to end. This is unusual and should be stated explicitly, while still being careful about human intellectual contribution and responsibility.
 
 The discussion trace available here records the user's side of the exchange rather than a complete transcript of ChatGPT-5.5's answers. The summary above therefore captures the planning implications we want to preserve for C-LARA-2 writing work.
 
@@ -41,6 +42,15 @@ The discussion trace available here records the user's side of the exchange rath
 - **Status:** possible target.
 - **Deadline:** to be confirmed.
 - **Purpose:** consider a more computational-linguistics/NLP-oriented paper, potentially emphasising multilingual annotation, low-resource language workflows, evaluation, or the AI-assisted engineering methodology if it fits the call.
+
+### Proposed split between EuroCALL and ALTA
+
+Subject to agreement from the co-authors and other people concerned, the long internal report should act as the master document, and the conference papers should split its material roughly as follows:
+
+- **EuroCALL 2026:** focus on the user-facing half of the story: C-LARA-2 as a CALL platform for creating, reviewing, publishing, importing, and reusing multimodal language-learning materials. Likely examples include the core authoring pipeline, image generation, legacy C-LARA import, picture dictionaries, Kok Kaper language-game planning, and community workflows.
+- **ALTA 2026:** focus on the implementor-facing half of the story: C-LARA-2 as an AI-authored, repo-native software engineering experiment with multilingual NLP/CALL functionality. Likely examples include the annotation pipeline, evaluation/test strategy, issue-suggestion loop, roadmap-as-memory, and comparison with projects such as CodePrism.
+
+There will naturally be overlap: EuroCALL needs enough implementation detail to make the platform credible, and ALTA needs enough user-facing motivation to explain why the engineering choices matter.
 
 ## 3) Core thesis to develop
 
@@ -102,7 +112,29 @@ The comparison question should be narrow:
 
 > Which projects, if any, are organised like C-LARA-2, where the AI agent writes and maintains code, tests, documentation, roadmap/issue records, and architectural explanations as an integrated repository bundle?
 
-## 6) Workflow for producing the report and papers
+## 6) Closest known comparator: CodePrism
+
+Of the currently known comparison points, **CodePrism** looks like the closest match and deserves focused investigation.
+
+Current public materials describe CodePrism as an experimental, 100% AI-generated code-intelligence MCP server. Its GitHub README says that every line of code, documentation, tests, and configuration is AI-written, and that human-written code contributions are not accepted. The project site describes it as a graph-powered code-intelligence tool that turns multi-language repositories into a navigable knowledge graph for AI assistants, with an MCP-native interface.
+
+Why CodePrism matters for C-LARA-2 comparison:
+
+- It appears to share the rare **AI-authored repository** property: not just code generation, but AI generation of code, tests, documentation, and configuration.
+- It is itself a tool for AI code understanding, whereas C-LARA-2 is an end-user CALL platform built through an AI-authored repository process. This makes the comparison especially interesting: CodePrism is AI-generated infrastructure for code intelligence; C-LARA-2 is AI-generated research/application software with extensive domain functionality.
+- Its README foregrounds AI-only development as a deliberate experiment, including claims about consistency, speed, quality, documentation, and testing. These claims are close to the C-LARA-2 hypothesis and should be compared carefully rather than treated as background.
+- It may provide a useful foil for the role of humans: CodePrism public materials appear to emphasise no human code contributions, while C-LARA-2 emphasises humans as domain experts, reviewers, planners, and acceptance authorities even though the committed repo content is AI-authored.
+
+Near-term CodePrism questions:
+
+1. What is the actual development process behind CodePrism, and how are prompts, issues, and human decisions managed?
+2. Are its tests and documentation generated before, during, or after implementation?
+3. How does it prevent drift or incoherence as the repository grows?
+4. How much human review occurs, and at what level?
+5. Are there published writeups, blog posts, talks, or discussions about its development methodology?
+6. Can C-LARA-2 use CodePrism itself, or learn from its graph-based repository-understanding approach, for future AI context management?
+
+## 7) Workflow for producing the report and papers
 
 1. **Inventory the repo state.** Summarise current code size, app structure, major features, tests, and roadmap/issue files.
 2. **Draft the internal report in LaTeX.** Codex should produce the initial draft, using repository docs as primary evidence.
@@ -111,10 +143,11 @@ The comparison question should be narrow:
 5. **Extract paper versions.** Derive the EuroCALL and possible ALTA submissions from the internal report rather than starting from scratch.
 6. **Keep repo documentation synchronized.** Any claims about process or functionality should be checked against current roadmap/issues/tests.
 
-## 7) Near-term action items
+## 8) Near-term action items
 
 - Update [ISSUE-0008](../issues/issues/ISSUE-0008.json) to link this roadmap and list the current writing targets.
 - Gather current repository metrics and feature inventory.
 - Create a report outline in LaTeX.
 - Start a related-work bibliography, including both academic and grey-literature sources.
-- Decide which parts of the internal report should feed the EuroCALL 2026 paper versus a possible ALTA 2026 paper.
+- Investigate CodePrism in detail as the closest currently known comparator.
+- Confirm with co-authors whether the EuroCALL 2026 paper should focus on the user-facing half of the report and the possible ALTA 2026 paper on the implementor-facing half.

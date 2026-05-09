@@ -1,12 +1,12 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-09T06:00:00Z_
+_Last updated: 2026-05-09T06:30:00Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
 ## Recent progress
 
-- **[ISSUE-0008](issues/ISSUE-0008.json)** has been expanded and reprioritized to P1, with a new [reports and academic papers roadmap](../roadmap/reports-and-papers.md) covering the internal report, EuroCALL 2026 paper, and possible ALTA 2026 paper.
+- **[ISSUE-0008](issues/ISSUE-0008.json)** has been expanded with the CodePrism comparison point and a proposed split where EuroCALL 2026 focuses on user-facing C-LARA-2 material and possible ALTA 2026 work focuses on implementor-facing AI-authored repository methodology.
 - **[ISSUE-0011](issues/ISSUE-0011.json)** remains a high-priority, time-sensitive image-game task centred on picture dictionaries and Kok Kaper community use before early June 2026.
 - The focus index now places the writing/reporting work immediately after the three most urgent implementation/process items because the internal-report target is mid-June and the EuroCALL paper is already accepted.
 
@@ -30,7 +30,7 @@ This document summarizes the current issue registry for quick human review. Cano
 
 ## Notes and risks
 
-- **Writing scope:** ISSUE-0008 should use the internal report as the master source, then derive the EuroCALL 2026 paper and possible ALTA 2026 paper from it to avoid duplicated effort.
-- **C-LARA-2 software-engineering claim:** the reports roadmap foregrounds the hypothesis that Codex-authored docs and tests, not only code, help maintain architectural coherence across the growing repository.
+- **Writing scope:** ISSUE-0008 should use the internal report as the master source, then, subject to co-author approval, split it into a user-facing EuroCALL 2026 paper and an implementor-facing ALTA 2026 paper to avoid duplicated effort.
+- **C-LARA-2 software-engineering claim:** the reports roadmap foregrounds the hypothesis that full AI authorship of committed repo content, including docs and tests rather than only code, helps maintain architectural coherence; CodePrism is the closest currently known comparator.
 - **Kok Kaper timing:** ISSUE-0011 should be scoped tightly for the first delivery: picture-dictionary maintenance improvements plus image/word multiple-choice flashcards from approved entries, with broader game mechanics left for later issues if needed.
 - **Dependency highlights:** ISSUE-0010 depends on completed ISSUE-0002; ISSUE-0004, ISSUE-0005, ISSUE-0006, ISSUE-0007, and ISSUE-0008 all depend directly or indirectly on ISSUE-0003.
