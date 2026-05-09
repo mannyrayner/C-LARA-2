@@ -1,35 +1,36 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-07T03:12:39Z_
+_Last updated: 2026-05-09T06:30:00Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
-## Active focus order (from `index.json`)
+## Recent progress
 
-1. **[ISSUE-0003](issues/ISSUE-0003.json) (P1)** — Add efficient end-to-end pipeline test runner for systematic quality checks.
-2. **[ISSUE-0002](issues/ISSUE-0002.json) (P1)** — Support migration of legacy C-LARA projects into importable C-LARA-2 bundles.
-3. **[ISSUE-0006](issues/ISSUE-0006.json) (P2)** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness.
-4. **[ISSUE-0008](issues/ISSUE-0008.json) (P2)** — Write an initial AI-authored C-LARA-2 technical report in LaTeX.
-5. **[ISSUE-0005](issues/ISSUE-0005.json) (P2)** — Tune segmentation_phase_1 prompting to improve segment granularity by genre.
-6. **[ISSUE-0004](issues/ISSUE-0004.json) (P2)** — Introduce AI-based review gates for phase outputs with extensible evaluator architecture.
-7. **[ISSUE-0007](issues/ISSUE-0007.json) (P2)** — Use LLM prompt-construction indirection for page-image generation prompts.
-8. **[ISSUE-0001](issues/ISSUE-0001.json) (P2)** — Support hosted compiled legacy content registration in C-LARA-2.
+- **[ISSUE-0008](issues/ISSUE-0008.json)** has been expanded with the CodePrism comparison point and a proposed split where EuroCALL 2026 focuses on user-facing C-LARA-2 material and possible ALTA 2026 work focuses on implementor-facing AI-authored repository methodology.
+- **[ISSUE-0011](issues/ISSUE-0011.json)** remains a high-priority, time-sensitive image-game task centred on picture dictionaries and Kok Kaper community use before early June 2026.
+- The focus index now places the writing/reporting work immediately after the three most urgent implementation/process items because the internal-report target is mid-June and the EuroCALL paper is already accepted.
 
-## Completed issues (most recent first)
+## Near-term priorities
 
-1. **[ISSUE-0009](issues/ISSUE-0009.json) (completed 2026-05-06)** — Auto-regenerate and validate source project bundle stage artifacts before export/import.
+1. **[ISSUE-0003](issues/ISSUE-0003.json) (P1)** — Add an efficient end-to-end pipeline test runner so quality regressions can be reproduced and measured systematically.
+2. **[ISSUE-0011](issues/ISSUE-0011.json) (P1, deadline 2026-06-01)** — Agree and implement a picture-dictionary-centred image-game workflow, starting with image-to-word and word-to-image flashcards for Kok Kaper community review sessions.
+3. **[ISSUE-0010](issues/ISSUE-0010.json) (P1)** — Import a representative legacy C-LARA corpus, gather importer diagnostics from real archives, and add batch import tooling for a folder of legacy ZIPs.
+4. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, deadline 2026-06-15)** — Draft the long C-LARA-2 internal technical report and use it as the source for the accepted EuroCALL 2026 paper and possible ALTA 2026 submission.
+5. **[ISSUE-0006](issues/ISSUE-0006.json) (P2)** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness, preferably using ISSUE-0003 diagnostics where possible.
+6. **[ISSUE-0005](issues/ISSUE-0005.json) (P2)** — Tune segmentation_phase_1 prompting so prose and poetry segment granularity better matches expected legacy behavior.
+7. **[ISSUE-0004](issues/ISSUE-0004.json) (P2)** — Introduce AI-based review gates with a pluggable evaluator architecture after the test-runner foundation is available.
+8. **[ISSUE-0007](issues/ISSUE-0007.json) (P2)** — Improve page-image generation by routing prompt construction through an LLM-backed indirection layer.
+9. **[ISSUE-0001](issues/ISSUE-0001.json) (P2)** — Support registration of hosted compiled legacy content in C-LARA-2; ISSUE-0010 should provide useful imported legacy material for this work.
+10. **[ISSUE-0012](issues/ISSUE-0012.json) (P2)** — Adjust project creation defaults for AI text generation and top page-image placement.
 
-## Priority distribution (active issues)
+## Completed issues
 
-- **P1:** [ISSUE-0002](issues/ISSUE-0002.json), [ISSUE-0003](issues/ISSUE-0003.json)
-- **P2:** [ISSUE-0001](issues/ISSUE-0001.json), [ISSUE-0004](issues/ISSUE-0004.json), [ISSUE-0005](issues/ISSUE-0005.json), [ISSUE-0006](issues/ISSUE-0006.json), [ISSUE-0007](issues/ISSUE-0007.json), [ISSUE-0008](issues/ISSUE-0008.json)
-- **P3:** none
-- **P0:** none
+1. **[ISSUE-0002](issues/ISSUE-0002.json) (completed 2026-05-09)** — Support migration of legacy C-LARA projects into C-LARA-2 through direct import of supported legacy JSON export ZIP bundles.
+2. **[ISSUE-0009](issues/ISSUE-0009.json) (completed 2026-05-06)** — Auto-regenerate and validate source project bundle stage artifacts before export/import.
 
-## Dependency highlights
+## Notes and risks
 
-- [ISSUE-0006](issues/ISSUE-0006.json) depends on [ISSUE-0003](issues/ISSUE-0003.json); it should be more efficient once the end-to-end test runner and artifact review harness are in place.
-- [ISSUE-0008](issues/ISSUE-0008.json) depends on [ISSUE-0003](issues/ISSUE-0003.json) and has a target deadline of 2026-06-15 for a usable initial LaTeX report; the report should emphasize the end-to-end testing work and the emerging issue-tracking/human-suggestion loop as temporal-context mechanisms.
-- [ISSUE-0004](issues/ISSUE-0004.json) depends on [ISSUE-0003](issues/ISSUE-0003.json).
-- [ISSUE-0005](issues/ISSUE-0005.json) depends on [ISSUE-0003](issues/ISSUE-0003.json) and [ISSUE-0004](issues/ISSUE-0004.json).
-- [ISSUE-0007](issues/ISSUE-0007.json) depends on [ISSUE-0003](issues/ISSUE-0003.json) and [ISSUE-0004](issues/ISSUE-0004.json).
+- **Writing scope:** ISSUE-0008 should use the internal report as the master source, then, subject to co-author approval, split it into a user-facing EuroCALL 2026 paper and an implementor-facing ALTA 2026 paper to avoid duplicated effort.
+- **C-LARA-2 software-engineering claim:** the reports roadmap foregrounds the hypothesis that full AI authorship of committed repo content, including docs and tests rather than only code, helps maintain architectural coherence; CodePrism is the closest currently known comparator.
+- **Kok Kaper timing:** ISSUE-0011 should be scoped tightly for the first delivery: picture-dictionary maintenance improvements plus image/word multiple-choice flashcards from approved entries, with broader game mechanics left for later issues if needed.
+- **Dependency highlights:** ISSUE-0010 depends on completed ISSUE-0002; ISSUE-0004, ISSUE-0005, ISSUE-0006, ISSUE-0007, and ISSUE-0008 all depend directly or indirectly on ISSUE-0003.

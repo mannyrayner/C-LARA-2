@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "issue_id": "ISSUE-0010",
+  "title": "Import a representative legacy C-LARA project corpus and add batch import tooling",
+  "state": "reported",
+  "priority": "P1",
+  "created_at": "2026-05-09T00:37:55Z",
+  "updated_at": "2026-05-09T00:37:55Z",
+  "origin": "human-suggestion",
+  "notes": "Suggestion #9 from admin export (submitted by mannyrayner on 2026-05-09). Now that supported legacy C-LARA JSON ZIP import is available, import a substantial representative corpus of legacy projects into C-LARA-2. Start manually with roughly a dozen legacy ZIPs to exercise the existing importer against real data, collect diagnostics, and identify unsupported legacy fields or media/reference edge cases. Use the imported corpus as test material for ISSUE-0001 hosted compiled legacy content registration. After the initial manual pass, add an admin-oriented batch import mechanism that accepts a server-side folder of legacy project ZIPs, previews/selects which archives to import, runs the existing legacy importer for each selected archive, and reports per-project success/failure diagnostics without aborting the whole batch.",
+  "deadline": null,
+  "dependencies": [
+    "ISSUE-0002"
+  ]
+}
