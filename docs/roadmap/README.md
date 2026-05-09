@@ -116,7 +116,7 @@ Status: **New roadmap document added.** See [roadmap/deployment-and-migration.md
 
 Priorities:
 - Urgent: Adelaide dual-run deployment with existing C-LARA (target before end of April 2026).
-- Next: structured migration tooling from C-LARA data to C-LARA-2 data model.
+- Done for supported legacy JSON exports: structured import from legacy C-LARA data to the C-LARA-2 data model.
 - Next: host portability and backup export/import workflows (likely AWS Sydney target).
 
 Key constraint: the urgent Adelaide deployment approach must remain upward-compatible with migration and relocation work.
@@ -177,16 +177,19 @@ Focus:
 
 ### 14. Source project export/import bundles roadmap
 
-Status: **Initial implementation delivered.** See [roadmap/source-project-bundles.md](source-project-bundles.md).
+Status: **Initial implementation delivered, with legacy C-LARA JSON import support.** See [roadmap/source-project-bundles.md](source-project-bundles.md).
 
 Focus:
 - ZIP export/import of editable source artifacts from latest (or selected) runs.
+- Direct import of supported legacy C-LARA JSON export bundles into normal C-LARA-2 projects.
 - Full preservation of text annotations and image-pipeline metadata/provenance.
 - Server↔laptop portability for debugging, handover, backup, and migration workflows.
 
 Implemented now:
 - Export source bundle from project detail.
 - Import source bundle from project list, always creating a new project.
+- Import supported legacy C-LARA JSON ZIP bundles (flat or single-root layouts with `annotated_text.json` and `metadata.json`) through the same import flow.
+- Convert legacy annotations, pinyin, glossary/lemma data, audio references, and image metadata into C-LARA-2 artifacts while preserving original legacy files under `legacy_clara/`.
 - Imported project title is kept when unique for that user, otherwise suffixed (`(2)`, `(3)`, ...).
 
 ### 15. Conventional UX roadmap (project workspace IA)
