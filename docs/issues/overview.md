@@ -1,13 +1,13 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-10T01:02:50Z_
+_Last updated: 2026-05-10T02:00:00Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
 ## Recent progress
 
 - **[ISSUE-0003](issues/ISSUE-0003.json)** has been refined: the first useful pipeline test runner should use the representative legacy corpus from **[ISSUE-0010](issues/ISSUE-0010.json)** as an evaluation set, comparing C-LARA-2 reruns against imported legacy outputs.
-- **[ISSUE-0010](issues/ISSUE-0010.json)** remains the near-term prerequisite for that comparison work, since it supplies real legacy projects and preserved legacy artifacts.
+- **[ISSUE-0010](issues/ISSUE-0010.json)** is now active: a first cut of the metadata aggregation command and admin-only searchable Import from ZIP view has been implemented; multi-bundle batch import remains future work.
 - **[ISSUE-0008](issues/ISSUE-0008.json)** remains a P1 writing/reporting task, with CodePrism as the closest known comparator and a proposed EuroCALL/ALTA split.
 
 ## Near-term priorities
@@ -33,5 +33,5 @@ This document summarizes the current issue registry for quick human review. Cano
 - **Legacy corpus dependency:** ISSUE-0003 now depends on ISSUE-0010 for its first high-value evaluation corpus; the runner can be designed earlier, but legacy-vs-C-LARA-2 comparisons need enough imported material to be useful.
 - **Gross-difference review:** exact comparison is inappropriate for stages like translation and glossing, so ISSUE-0003 should support AI-assisted judgement of whether differences are problematic, while still using deterministic structural checks where possible.
 - **Segmentation triage:** ISSUE-0003 should at least support ISSUE-0006 by detecting clear segmentation_phase_2 token-span failures in legacy-vs-C-LARA-2 comparisons.
-- **Adelaide corpus usability:** ISSUE-0010 should include the metadata aggregation script early, since project-number directory names make manual bundle selection impractical without title/language/owner metadata.
+- **Adelaide corpus usability:** ISSUE-0010 now has a first-cut metadata aggregation command and searchable admin import view; the next step is to run it on the real Adelaide corpus and import representative projects.
 - **Writing scope:** ISSUE-0008 should use the internal report as the master source, then, subject to co-author approval, split it into a user-facing EuroCALL 2026 paper and an implementor-facing ALTA 2026 paper to avoid duplicated effort.

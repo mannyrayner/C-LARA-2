@@ -4,13 +4,15 @@ import io
 import json
 import uuid
 import zipfile
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
+from django.core.management import call_command
 from django.utils import timezone
 
 from projects import views
@@ -635,6 +637,79 @@ class CompileStatusViewTests(TestCase):
 
         stage_files = list((imported.artifact_dir() / "runs").rglob("translation.json"))
         self.assertTrue(stage_files)
+
+
+    def test_import_zip_view_admin_can_search_and_import_legacy_bundle_library(self):
+        User = get_user_model()
+        admin = User.objects.create_user(username="zip_admin", password="pw", is_staff=True)
+        self.client.logout()
+        self.client.login(username="zip_admin", password="pw")
+
+        tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmpdir.cleanup)
+        tmp_root = Path(tmpdir.name)
+        library_root = tmp_root / "legacy_library"
+        bundle_dir = library_root / "9"
+        bundle_dir.mkdir(parents=True, exist_ok=True)
+        annotated_text = {
+            "l2_language": "german",
+            "l1_language": "english",
+            "pages": [
+                {
+                    "segments": [
+                        {
+                            "content_elements": [
+                                {"type": "Word", "content": "Salve", "annotations": {"gloss": "hello", "lemma": "salve"}},
+                                {"type": "NonWordText", "content": "!", "annotations": {}},
+                            ],
+                            "annotations": {"translated": "Hello!", "mwes": [], "page_number": 1},
+                        }
+                    ],
+                    "annotations": {"title": "Ørberg's Deutsch"},
+                }
+            ],
+        }
+        (bundle_dir / "annotated_text.json").write_text(json.dumps(annotated_text), encoding="utf-8")
+        (bundle_dir / "metadata.json").write_text(
+            json.dumps(
+                {
+                    "id": 9,
+                    "title": "Ørberg's Deutsch",
+                    "l2": "german",
+                    "l1": "english",
+                    "owner_username": "jeremiahmcpadden",
+                    "size_bytes": 4044,
+                    "sha256": "d32ff4d5ab8a69d4d0d9766dde66b54569e9533f94f5176830cd3b5c8e395367",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        with override_settings(
+            LEGACY_CLARA_BUNDLE_LIBRARY_ROOT=str(library_root),
+            PIPELINE_OUTPUT_ROOT=tmp_root / "users",
+        ):
+            call_command("build_legacy_bundle_metadata", str(library_root), verbosity=0)
+            resp = self.client.get(reverse("project-import-zip"), {"title": "Deutsch", "owner": "jeremiah"})
+            self.assertEqual(resp.status_code, 200)
+            self.assertContains(resp, "Ørberg&#x27;s Deutsch")
+            self.assertContains(resp, "jeremiahmcpadden")
+
+            resp = self.client.post(
+                reverse("project-import-zip"),
+                {"import_mode": "server_bundle", "bundle_key": "9"},
+            )
+            self.assertEqual(resp.status_code, 302)
+            imported = Project.objects.get(owner=admin, title="Ørberg's Deutsch")
+            self.assertEqual(imported.language, "de")
+            self.assertEqual(imported.target_language, "en")
+            self.assertTrue((imported.artifact_dir() / "legacy_clara" / "annotated_text.json").exists())
+
+    def test_import_zip_view_hides_legacy_library_from_non_admin(self):
+        resp = self.client.get(reverse("project-import-zip"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Upload a local ZIP")
+        self.assertNotContains(resp, "Import from configured legacy bundle library")
 
 
     def test_import_legacy_clara_json_bundle_creates_project_with_pinyin_audio_and_images(self):
