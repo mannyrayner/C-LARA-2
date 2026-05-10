@@ -116,7 +116,7 @@ Status: **New roadmap document added.** See [roadmap/deployment-and-migration.md
 
 Priorities:
 - Urgent: Adelaide dual-run deployment with existing C-LARA (target before end of April 2026).
-- Next: structured migration tooling from C-LARA data to C-LARA-2 data model.
+- Done for supported legacy JSON exports: structured import from legacy C-LARA data to the C-LARA-2 data model.
 - Next: host portability and backup export/import workflows (likely AWS Sydney target).
 
 Key constraint: the urgent Adelaide deployment approach must remain upward-compatible with migration and relocation work.
@@ -177,16 +177,19 @@ Focus:
 
 ### 14. Source project export/import bundles roadmap
 
-Status: **Initial implementation delivered.** See [roadmap/source-project-bundles.md](source-project-bundles.md).
+Status: **Initial implementation delivered, with legacy C-LARA JSON import support.** See [roadmap/source-project-bundles.md](source-project-bundles.md).
 
 Focus:
 - ZIP export/import of editable source artifacts from latest (or selected) runs.
+- Direct import of supported legacy C-LARA JSON export bundles into normal C-LARA-2 projects.
 - Full preservation of text annotations and image-pipeline metadata/provenance.
 - Server↔laptop portability for debugging, handover, backup, and migration workflows.
 
 Implemented now:
 - Export source bundle from project detail.
 - Import source bundle from project list, always creating a new project.
+- Import supported legacy C-LARA JSON ZIP bundles (flat or single-root layouts with `annotated_text.json` and `metadata.json`) through the same import flow.
+- Convert legacy annotations, pinyin, glossary/lemma data, audio references, and image metadata into C-LARA-2 artifacts while preserving original legacy files under `legacy_clara/`.
 - Imported project title is kept when unique for that user, otherwise suffixed (`(2)`, `(3)`, ...).
 
 ### 15. Conventional UX roadmap (project workspace IA)
@@ -254,4 +257,13 @@ Focus:
 - Lightweight issue states (`reported`, `active`, `closed`) and explicit priorities.
 - Repository-native, Codex-first issue JSON store (one file per issue + focus index + timestamped index archive).
 - Deadline/dependency-aware issues with human-facing browser + simple user suggestion capture + admin export + Codex-mediated incorporation loop.
+
+### 21. Reports and academic papers roadmap
+
+Status: **New roadmap document added.** See [roadmap/reports-and-papers.md](reports-and-papers.md).
+
+Focus:
+- Long internal C-LARA-2 technical report by mid-June 2026, tracked by [ISSUE-0008](../issues/issues/ISSUE-0008.json).
+- EuroCALL 2026 paper preparation, accepted with a mid-August 2026 deadline.
+- Possible ALTA 2026 paper and related-work positioning around AI-assisted, repo-native software/documentation/test co-development.
 
