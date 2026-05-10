@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "issue_id": "ISSUE-0012",
+  "title": "Adjust project creation defaults for AI generation and page images",
+  "state": "reported",
+  "priority": "P2",
+  "created_at": "2026-05-09T04:44:21Z",
+  "updated_at": "2026-05-09T04:44:21Z",
+  "origin": "human-suggestion",
+  "notes": "Suggestion #2 from admin export (submitted by mannyrayner on 2026-05-09). Change two project-creation defaults to better match expected current usage: make the default new-project input mode generate text from a description using AI rather than supplying source text manually, and set the default page image placement to top rather than none. Verify that these defaults apply in the project creation UI without changing existing projects or import flows, and update any form tests that assume the old defaults.",
+  "deadline": null,
+  "dependencies": []
+}
