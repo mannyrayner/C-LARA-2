@@ -1,18 +1,18 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-10T00:43:34Z_
+_Last updated: 2026-05-10T01:02:50Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
 ## Recent progress
 
-- **[ISSUE-0010](issues/ISSUE-0010.json)** has been refined with a concrete Adelaide legacy-corpus import plan: first generate a global metadata file from per-bundle `metadata.json` files, then add an admin-only searchable import mode for that corpus.
+- **[ISSUE-0003](issues/ISSUE-0003.json)** has been refined: the first useful pipeline test runner should use the representative legacy corpus from **[ISSUE-0010](issues/ISSUE-0010.json)** as an evaluation set, comparing C-LARA-2 reruns against imported legacy outputs.
+- **[ISSUE-0010](issues/ISSUE-0010.json)** remains the near-term prerequisite for that comparison work, since it supplies real legacy projects and preserved legacy artifacts.
 - **[ISSUE-0008](issues/ISSUE-0008.json)** remains a P1 writing/reporting task, with CodePrism as the closest known comparator and a proposed EuroCALL/ALTA split.
-- **[ISSUE-0011](issues/ISSUE-0011.json)** remains a high-priority, time-sensitive image-game task centred on picture dictionaries and Kok Kaper community use before early June 2026.
 
 ## Near-term priorities
 
-1. **[ISSUE-0003](issues/ISSUE-0003.json) (P1)** — Add an efficient end-to-end pipeline test runner so quality regressions can be reproduced and measured systematically.
+1. **[ISSUE-0003](issues/ISSUE-0003.json) (P1)** — Add an efficient end-to-end pipeline test runner; first target legacy-vs-C-LARA-2 comparisons over the imported corpus from ISSUE-0010, with AI-assisted gross-difference review where exact matching is inappropriate.
 2. **[ISSUE-0011](issues/ISSUE-0011.json) (P1, deadline 2026-06-01)** — Agree and implement a picture-dictionary-centred image-game workflow, starting with image-to-word and word-to-image flashcards for Kok Kaper community review sessions.
 3. **[ISSUE-0010](issues/ISSUE-0010.json) (P1)** — Import a representative legacy C-LARA corpus, starting with metadata aggregation for the Adelaide bundle folder and an admin-only searchable ZIP-import mode that can later grow into multi-bundle batch import with heartbeat progress.
 4. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, deadline 2026-06-15)** — Draft the long C-LARA-2 internal technical report and use it as the source for the accepted EuroCALL 2026 paper and possible ALTA 2026 submission.
@@ -30,8 +30,8 @@ This document summarizes the current issue registry for quick human review. Cano
 
 ## Notes and risks
 
+- **Legacy corpus dependency:** ISSUE-0003 now depends on ISSUE-0010 for its first high-value evaluation corpus; the runner can be designed earlier, but legacy-vs-C-LARA-2 comparisons need enough imported material to be useful.
+- **Gross-difference review:** exact comparison is inappropriate for stages like translation and glossing, so ISSUE-0003 should support AI-assisted judgement of whether differences are problematic, while still using deterministic structural checks where possible.
+- **Segmentation triage:** ISSUE-0003 should at least support ISSUE-0006 by detecting clear segmentation_phase_2 token-span failures in legacy-vs-C-LARA-2 comparisons.
 - **Adelaide corpus usability:** ISSUE-0010 should include the metadata aggregation script early, since project-number directory names make manual bundle selection impractical without title/language/owner metadata.
-- **Batch-import path:** the searchable admin-only import view should reuse the single-ZIP importer and be structured so later multi-select imports can add heartbeat-style progress and per-bundle diagnostics without a redesign.
 - **Writing scope:** ISSUE-0008 should use the internal report as the master source, then, subject to co-author approval, split it into a user-facing EuroCALL 2026 paper and an implementor-facing ALTA 2026 paper to avoid duplicated effort.
-- **Kok Kaper timing:** ISSUE-0011 should be scoped tightly for the first delivery: picture-dictionary maintenance improvements plus image/word multiple-choice flashcards from approved entries, with broader game mechanics left for later issues if needed.
-- **Dependency highlights:** ISSUE-0010 depends on completed ISSUE-0002; ISSUE-0004, ISSUE-0005, ISSUE-0006, ISSUE-0007, and ISSUE-0008 all depend directly or indirectly on ISSUE-0003.
