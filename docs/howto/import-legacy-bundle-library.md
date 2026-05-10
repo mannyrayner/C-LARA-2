@@ -35,21 +35,71 @@ Choose a server-side location readable by the Django process, for example:
 
 ```bash
 sudo mkdir -p /srv/c-lara/legacy-bundles/adelaide
-sudo chown -R <django-user>:<django-group> /srv/c-lara/legacy-bundles
 ```
+
+### Determine the Django user/group
+
+On the current AWS deployment, the repo is expected to live at `/srv/C-LARA-2`, the app environment file at `/etc/clara2.env`, and the services are named `gunicorn-clara2` and `djangoq-clara2` (see [server-admin-tasks.md](server-admin-tasks.md)). The existing media-permissions runbook uses `ubuntu:www-data`, so those are plausible values, but check the live server before running `chown`.
+
+Useful checks on the server:
+
+```bash
+# Check whether systemd explicitly sets a service user/group.
+sudo systemctl show gunicorn-clara2 -p User -p Group
+sudo systemctl show djangoq-clara2 -p User -p Group
+
+# Check the actual running processes.
+ps -eo user,group,comm,args | grep -E 'gunicorn|qcluster|manage.py' | grep -v grep
+
+# Check ownership used by existing C-LARA-2 media files.
+stat -c '%U:%G %n' /srv/C-LARA-2/platform_server/media
+```
+
+If these commands show `ubuntu` and `www-data`, use:
+
+```bash
+sudo chown -R ubuntu:www-data /srv/c-lara/legacy-bundles
+sudo find /srv/c-lara/legacy-bundles -type d -exec chmod 2775 {} \;
+sudo find /srv/c-lara/legacy-bundles -type f -exec chmod 664 {} \;
+```
+
+If the commands show a different service user or group, substitute those values. The key requirement is that the web service and any background worker that may import bundles can read the folder and files.
+
+### Copy from your laptop
 
 From your laptop, copy the downloaded bundle directory tree to the server. For example:
 
 ```bash
 rsync -av --progress /path/on/laptop/adelaide_legacy_bundles/ \
-  <server-user>@<server-host>:/srv/c-lara/legacy-bundles/adelaide/
+  <ssh-user>@c-lara-2.c-lara.org:/srv/c-lara/legacy-bundles/adelaide/
 ```
 
 Replace:
 
 - `/path/on/laptop/adelaide_legacy_bundles/` with the folder on your laptop;
-- `<server-user>` and `<server-host>` with your SSH details;
+- `<ssh-user>` with the Linux/SSH account you use to administer the AWS host;
 - `/srv/c-lara/legacy-bundles/adelaide/` with the chosen server path.
+
+Do **not** infer the SSH username from the website URL. `https://c-lara-2.c-lara.org/` is the browser URL for the web application; SSH uses a separate Linux account. For the AWS setup documented elsewhere in this repo, `ubuntu` is a common candidate, so the command may be:
+
+```bash
+rsync -av --progress /path/on/laptop/adelaide_legacy_bundles/ \
+  ubuntu@c-lara-2.c-lara.org:/srv/c-lara/legacy-bundles/adelaide/
+```
+
+If DNS/SSH is configured differently, your server admin notes may instead specify another host or user. Use the same `<ssh-user>@<ssh-host>` pair that you use for normal server maintenance.
+
+### Passwords and SSH keys
+
+You should **not** use your C-LARA-2 web-app password, Django admin password, or GitHub password for `rsync`/SSH. `rsync` over SSH authenticates to the server's Linux account.
+
+Typical AWS hosts use SSH keys. In that case:
+
+- you may not be prompted for a password at all;
+- you may be prompted for your local SSH private-key passphrase, if your key has one;
+- if you see `Permission denied (publickey)`, your laptop is not using an SSH key accepted by the AWS account.
+
+If the server has password-based SSH enabled, use the password for the Linux account named by `<ssh-user>`. If you do not know that password or key, ask whoever administers the AWS host rather than guessing.
 
 After copying, verify on the server that the top-level directory contains numbered bundle directories, each with its own `metadata.json`:
 
