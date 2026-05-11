@@ -179,6 +179,14 @@ Status: **Core legacy JSON import delivered; follow-ups only as needed.**
 - Track unsupported legacy fields as specific issues with examples rather than reopening the broad migration task.
 - Consider batch/admin tooling for importing many legacy JSON export bundles.
 
+### Phase E — legacy migration follow-ups
+
+Status: **Core legacy JSON import delivered; follow-ups only as needed.**
+
+- Add regression fixtures for additional real legacy C-LARA archives when they become available.
+- Track unsupported legacy fields as specific issues with examples rather than reopening the broad migration task.
+- Consider batch/admin tooling for importing many legacy JSON export bundles.
+
 ## Success criteria
 
 - Users can reliably move editable projects between server and local environments.
