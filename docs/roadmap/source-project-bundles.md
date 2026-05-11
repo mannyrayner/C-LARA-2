@@ -169,6 +169,15 @@ Status: **Partly delivered.**
 
 - CLI/admin automation for batch export/import.
 - Nightly backup/export pipelines and restore drills.
+- Document and preserve deployment-transfer runbooks for large legacy corpora, including AWS security-group inbound SSH rules, explicit EC2 `.pem` key usage, and resumable `rsync` options such as `--partial --append-verify`.
+
+### Phase E — legacy migration follow-ups
+
+Status: **Core legacy JSON import delivered; follow-ups only as needed.**
+
+- Add regression fixtures for additional real legacy C-LARA archives when they become available.
+- Track unsupported legacy fields as specific issues with examples rather than reopening the broad migration task.
+- Consider batch/admin tooling for importing many legacy JSON export bundles.
 
 ### Phase E — legacy migration follow-ups
 

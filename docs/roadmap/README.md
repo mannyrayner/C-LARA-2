@@ -183,7 +183,7 @@ Focus:
 - ZIP export/import of editable source artifacts from latest (or selected) runs.
 - Direct import of supported legacy C-LARA JSON export bundles into normal C-LARA-2 projects.
 - Full preservation of text annotations and image-pipeline metadata/provenance.
-- Server↔laptop portability for debugging, handover, backup, and migration workflows.
+- Server↔laptop portability for debugging, handover, backup, and migration workflows, including documented AWS/SSH transfer details for large legacy corpus uploads.
 
 Implemented now:
 - Export source bundle from project detail.
@@ -191,6 +191,7 @@ Implemented now:
 - Import supported legacy C-LARA JSON ZIP bundles (flat or single-root layouts with `annotated_text.json` and `metadata.json`) through the same import flow.
 - Convert legacy annotations, pinyin, glossary/lemma data, audio references, and image metadata into C-LARA-2 artifacts while preserving original legacy files under `legacy_clara/`.
 - Imported project title is kept when unique for that user, otherwise suffixed (`(2)`, `(3)`, ...).
+- Adelaide legacy corpus folder has been transferred to AWS; the operational runbook records the need for inbound SSH security-policy access and explicit EC2 `.pem` key use with `rsync`.
 
 ### 15. Conventional UX roadmap (project workspace IA)
 

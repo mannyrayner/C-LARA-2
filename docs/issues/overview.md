@@ -1,20 +1,20 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-10T02:00:00Z_
+_Last updated: 2026-05-11T08:48:54Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
 ## Recent progress
 
 - **[ISSUE-0003](issues/ISSUE-0003.json)** has been refined: the first useful pipeline test runner should use the representative legacy corpus from **[ISSUE-0010](issues/ISSUE-0010.json)** as an evaluation set, comparing C-LARA-2 reruns against imported legacy outputs.
-- **[ISSUE-0010](issues/ISSUE-0010.json)** is now active: a first cut of the metadata aggregation command and admin-only searchable Import from ZIP view has been implemented; multi-bundle batch import remains future work.
+- **[ISSUE-0010](issues/ISSUE-0010.json)** is now active: a first cut of the metadata aggregation command and admin-only searchable Import from ZIP view has been implemented, and the Adelaide legacy folder has been uploaded to AWS after resolving the SSH security-rule and EC2 `.pem` key requirements; multi-bundle batch import remains future work.
 - **[ISSUE-0008](issues/ISSUE-0008.json)** remains a P1 writing/reporting task, with CodePrism as the closest known comparator and a proposed EuroCALL/ALTA split.
 
 ## Near-term priorities
 
 1. **[ISSUE-0003](issues/ISSUE-0003.json) (P1)** — Add an efficient end-to-end pipeline test runner; first target legacy-vs-C-LARA-2 comparisons over the imported corpus from ISSUE-0010, with AI-assisted gross-difference review where exact matching is inappropriate.
 2. **[ISSUE-0011](issues/ISSUE-0011.json) (P1, deadline 2026-06-01)** — Agree and implement a picture-dictionary-centred image-game workflow, starting with image-to-word and word-to-image flashcards for Kok Kaper community review sessions.
-3. **[ISSUE-0010](issues/ISSUE-0010.json) (P1)** — Import a representative legacy C-LARA corpus, starting with metadata aggregation for the Adelaide bundle folder and an admin-only searchable ZIP-import mode that can later grow into multi-bundle batch import with heartbeat progress.
+3. **[ISSUE-0010](issues/ISSUE-0010.json) (P1)** — Import a representative legacy C-LARA corpus from the now-uploaded AWS Adelaide folder, starting by building server-side metadata, configuring the import view, and importing representative projects before growing into multi-bundle batch import with heartbeat progress.
 4. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, deadline 2026-06-15)** — Draft the long C-LARA-2 internal technical report and use it as the source for the accepted EuroCALL 2026 paper and possible ALTA 2026 submission.
 5. **[ISSUE-0006](issues/ISSUE-0006.json) (P2)** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness, preferably using ISSUE-0003 diagnostics where possible.
 6. **[ISSUE-0005](issues/ISSUE-0005.json) (P2)** — Tune segmentation_phase_1 prompting so prose and poetry segment granularity better matches expected legacy behavior.
@@ -33,5 +33,5 @@ This document summarizes the current issue registry for quick human review. Cano
 - **Legacy corpus dependency:** ISSUE-0003 now depends on ISSUE-0010 for its first high-value evaluation corpus; the runner can be designed earlier, but legacy-vs-C-LARA-2 comparisons need enough imported material to be useful.
 - **Gross-difference review:** exact comparison is inappropriate for stages like translation and glossing, so ISSUE-0003 should support AI-assisted judgement of whether differences are problematic, while still using deterministic structural checks where possible.
 - **Segmentation triage:** ISSUE-0003 should at least support ISSUE-0006 by detecting clear segmentation_phase_2 token-span failures in legacy-vs-C-LARA-2 comparisons.
-- **Adelaide corpus usability:** ISSUE-0010 now has a first-cut metadata aggregation command and searchable admin import view; the next step is to run it on the real Adelaide corpus and import representative projects.
+- **Adelaide corpus usability:** ISSUE-0010 now has a first-cut metadata aggregation command, searchable admin import view, and verified AWS upload of the legacy folder. Preserve the operational lesson that large corpus transfer may require both EC2 inbound SSH-rule changes and explicit `.pem` key usage. The next step is to build metadata on AWS and import representative projects.
 - **Writing scope:** ISSUE-0008 should use the internal report as the master source, then, subject to co-author approval, split it into a user-facing EuroCALL 2026 paper and an implementor-facing ALTA 2026 paper to avoid duplicated effort.

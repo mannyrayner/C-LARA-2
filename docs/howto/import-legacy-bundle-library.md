@@ -74,6 +74,17 @@ rsync -av --progress /path/on/laptop/adelaide_legacy_bundles/ \
   <ssh-user>@c-lara-2.c-lara.org:/srv/c-lara/legacy-bundles/adelaide/
 ```
 
+For the Adelaide corpus upload that was successfully completed on AWS, the working command used the EC2 private-key file explicitly and enabled safer resume behaviour for a large transfer:
+
+```bash
+rsync -avh --progress --partial --append-verify \
+  -e "ssh -i /home/CLARA2/EC2KeyPairForClara2.pem" \
+  /home/CLARADownloadedProjectsFromServer_v2/ \
+  ubuntu@c-lara-2.c-lara.org:/srv/c-lara/legacy-bundles/adelaide/
+```
+
+Keep the private key on the uploading machine only; do not commit it to this repository. SSH will usually reject an overly readable key, so if needed run `chmod 600 /home/CLARA2/EC2KeyPairForClara2.pem` before retrying.
+
 Replace:
 
 - `/path/on/laptop/adelaide_legacy_bundles/` with the folder on your laptop;
@@ -120,8 +131,8 @@ ssh -vvv -o ConnectTimeout=10 ubuntu@c-lara-2.c-lara.org
 Interpret the results as follows:
 
 - If hostname lookup fails or returns an unexpected IP address, use the real SSH hostname/IP from the AWS console or server-admin notes instead of `c-lara-2.c-lara.org`. The browser hostname and SSH hostname are not guaranteed to be the same.
-- If `nc` or `ssh` times out, check the AWS security group/firewall. The instance must allow inbound TCP port 22 from your current public IP address, or you must connect through the documented VPN/bastion host. Home and university networks can also block outbound SSH; try a different network or ask your network admin.
-- If `ssh -vvv` reaches the server and then says `Permission denied (publickey)`, port 22 is reachable and the remaining problem is SSH credentials/keys. See the next section.
+- If `nc` or `ssh` times out, check the AWS security group/firewall. The instance must allow inbound TCP port 22 from your current public IP address, or you must connect through the documented VPN/bastion host. This was the cause of the first Adelaide upload failure: the EC2 inbound security rule had to be adjusted before `rsync` could connect. Prefer a narrow rule for your current IP address rather than opening SSH broadly. Home and university networks can also block outbound SSH; try a different network or ask your network admin.
+- If `ssh -vvv` reaches the server and then says `Permission denied (publickey)`, port 22 is reachable and the remaining problem is SSH credentials/keys. For the Adelaide AWS upload, the fix was to pass the EC2 key with `-e "ssh -i /home/CLARA2/EC2KeyPairForClara2.pem"`. See the next section.
 - If SSH uses a non-standard port, include it in both SSH and `rsync`. For example:
 
 ```bash
