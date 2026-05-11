@@ -747,7 +747,7 @@ class CompileStatusViewTests(TestCase):
             encoding="utf-8",
         )
         with zipfile.ZipFile(bundle_dir / "source.zip", "w") as zf:
-            zf.writestr("annotated_text.json", json.dumps(annotated_text))
+            zf.writestr("AdelaideJSON/annotated_text.json", json.dumps(annotated_text))
 
         with override_settings(
             LEGACY_CLARA_BUNDLE_LIBRARY_ROOT=str(library_root),

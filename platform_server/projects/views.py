@@ -13,7 +13,7 @@ import asyncio
 from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
@@ -8895,25 +8895,20 @@ def _zip_directory_to_spooled_file(directory: Path):
     return spool
 
 
+def _metadata_arcnames_for_legacy_source_zip(names: list[str]) -> list[str]:
+    """Return sidecar metadata locations for a legacy source.zip, if needed."""
 
-def _metadata_arcname_for_legacy_source_zip(names: list[str]) -> str | None:
-    """Return where sidecar legacy metadata should be injected, if needed."""
+    if any(PurePosixPath(name).name == "metadata.json" for name in names):
+        return []
 
-    name_set = set(names)
-    if "metadata.json" in name_set or any(name.endswith("/metadata.json") for name in names):
-        return None
-    if "annotated_text.json" in name_set:
-        return "metadata.json"
-
-    roots = []
+    arcnames: list[str] = []
     for name in names:
-        parts = Path(name).parts
-        if len(parts) == 2 and parts[1] == "annotated_text.json":
-            roots.append(parts[0])
-    unique_roots = list(dict.fromkeys(roots))
-    if len(unique_roots) == 1:
-        return f"{unique_roots[0]}/metadata.json"
-    return None
+        path = PurePosixPath(name)
+        if path.name != "annotated_text.json":
+            continue
+        parent = path.parent.as_posix()
+        arcnames.append("metadata.json" if parent == "." else f"{parent}/metadata.json")
+    return list(dict.fromkeys(arcnames))
 
 
 def _zip_with_sidecar_legacy_metadata(zip_path: Path, metadata_path: Path):
@@ -8922,14 +8917,16 @@ def _zip_with_sidecar_legacy_metadata(zip_path: Path, metadata_path: Path):
     spool = tempfile.SpooledTemporaryFile(max_size=20 * 1024 * 1024)
     with zipfile.ZipFile(zip_path) as source_zf:
         names = source_zf.namelist()
-        metadata_arcname = _metadata_arcname_for_legacy_source_zip(names)
-        if metadata_arcname is None or not metadata_path.exists():
+        metadata_arcnames = _metadata_arcnames_for_legacy_source_zip(names)
+        if not metadata_arcnames or not metadata_path.exists():
             spool.write(zip_path.read_bytes())
         else:
+            metadata_text = metadata_path.read_text(encoding="utf-8")
             with zipfile.ZipFile(spool, "w", zipfile.ZIP_DEFLATED) as target_zf:
                 for info in source_zf.infolist():
                     target_zf.writestr(info, source_zf.read(info.filename))
-                target_zf.writestr(metadata_arcname, metadata_path.read_text(encoding="utf-8"))
+                for metadata_arcname in metadata_arcnames:
+                    target_zf.writestr(metadata_arcname, metadata_text)
     spool.seek(0)
     return spool
 
@@ -8991,7 +8988,10 @@ def _import_open_project_source_zip(
 
     metadata = _safe_zip_read_json(zf, f"{root}/project/metadata.json")
     if not metadata:
-        messages.error(request, "Bundle is missing project metadata.")
+        legacy_hint = ""
+        if any(PurePosixPath(name).name == "annotated_text.json" for name in names):
+            legacy_hint = " The ZIP looks like a legacy C-LARA export because it contains annotated_text.json, but metadata.json was not found beside it."
+        messages.error(request, f"Bundle is missing project metadata.{legacy_hint}")
         return redirect(error_redirect)
 
     stage_prefix = f"{root}/stages/"
