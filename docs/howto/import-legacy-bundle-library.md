@@ -186,11 +186,18 @@ For production, add these variables to the same place where the C-LARA-2 service
 
 ## Step 3: build the global metadata file
 
-On the server, from the repository root, run:
+On the server, from the repository root, run the command as a Linux user that can write to the library root. On the current AWS setup this is normally `ubuntu`:
 
 ```bash
-cd /path/to/C-LARA-2/platform_server
-python manage.py build_legacy_bundle_metadata /srv/c-lara/legacy-bundles/adelaide
+cd /srv/C-LARA-2/platform_server
+/srv/C-LARA-2/.venv/bin/python manage.py build_legacy_bundle_metadata /srv/c-lara/legacy-bundles/adelaide
+```
+
+If you are logged in as a different administration account, explicitly run the command as `ubuntu` rather than relying on the active shell user:
+
+```bash
+cd /srv/C-LARA-2/platform_server
+sudo -u ubuntu /srv/C-LARA-2/.venv/bin/python manage.py build_legacy_bundle_metadata /srv/c-lara/legacy-bundles/adelaide
 ```
 
 This creates:
@@ -281,7 +288,47 @@ Try clearing all filters first. If the list is still empty, inspect the global m
 python -m json.tool /srv/c-lara/legacy-bundles/adelaide/legacy_bundle_metadata.json | head -80
 ```
 
-### Permission denied or missing files
+### Permission denied while building `legacy_bundle_metadata.json`
+
+If Step 3 fails with an error like this:
+
+```text
+PermissionError: [Errno 13] Permission denied: '/srv/c-lara/legacy-bundles/adelaide/legacy_bundle_metadata.json'
+```
+
+the management command has successfully read the bundle directories, but the Linux user running `python manage.py ...` cannot create or overwrite the global metadata file in the library root. The most common gotcha is fixing ownership for `ubuntu:www-data` but then running the command as a different user that is neither `ubuntu` nor a member of `www-data`.
+
+Check the actual command user, group membership, path permissions, and any existing metadata file:
+
+```bash
+whoami
+id
+namei -l /srv/c-lara/legacy-bundles/adelaide/legacy_bundle_metadata.json
+ls -ld /srv/c-lara /srv/c-lara/legacy-bundles /srv/c-lara/legacy-bundles/adelaide
+ls -l /srv/c-lara/legacy-bundles/adelaide/legacy_bundle_metadata.json 2>/dev/null || true
+```
+
+For the expected AWS deployment, repair the directory tree and then run the command as `ubuntu`:
+
+```bash
+sudo chown -R ubuntu:www-data /srv/c-lara/legacy-bundles
+sudo find /srv/c-lara/legacy-bundles -type d -exec chmod 2775 {} \;
+sudo find /srv/c-lara/legacy-bundles -type f -exec chmod 664 {} \;
+
+cd /srv/C-LARA-2/platform_server
+sudo -u ubuntu /srv/C-LARA-2/.venv/bin/python manage.py build_legacy_bundle_metadata /srv/c-lara/legacy-bundles/adelaide
+```
+
+If the metadata file already exists with awkward ownership or mode, remove it or repair it explicitly, then rerun the command:
+
+```bash
+sudo rm -f /srv/c-lara/legacy-bundles/adelaide/legacy_bundle_metadata.json
+# or:
+sudo chown ubuntu:www-data /srv/c-lara/legacy-bundles/adelaide/legacy_bundle_metadata.json
+sudo chmod 664 /srv/c-lara/legacy-bundles/adelaide/legacy_bundle_metadata.json
+```
+
+### Permission denied or missing files during import
 
 Ensure the OS user running Django can read the bundle library:
 

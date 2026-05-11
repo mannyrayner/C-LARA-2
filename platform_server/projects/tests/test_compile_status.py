@@ -12,7 +12,7 @@ from django.contrib.messages import get_messages
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
-from django.core.management import call_command
+from django.core.management import call_command, CommandError
 from django.utils import timezone
 
 from projects import views
@@ -710,6 +710,23 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Upload a local ZIP")
         self.assertNotContains(resp, "Import from configured legacy bundle library")
+
+    def test_build_legacy_bundle_metadata_reports_write_permission_error(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            library_root = Path(tmpdir) / "legacy_library"
+            bundle_dir = library_root / "9"
+            bundle_dir.mkdir(parents=True)
+            (bundle_dir / "metadata.json").write_text(
+                json.dumps({"id": 9, "title": "Permission Example"}),
+                encoding="utf-8",
+            )
+
+            with patch(
+                "projects.management.commands.build_legacy_bundle_metadata.Path.write_text",
+                side_effect=PermissionError("blocked"),
+            ):
+                with self.assertRaisesMessage(CommandError, "sudo -u ubuntu"):
+                    call_command("build_legacy_bundle_metadata", str(library_root), verbosity=0)
 
 
     def test_import_legacy_clara_json_bundle_creates_project_with_pinyin_audio_and_images(self):

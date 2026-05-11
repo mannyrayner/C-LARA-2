@@ -65,6 +65,14 @@ class Command(BaseCommand):
             "bundle_count": len(bundles),
             "bundles": bundles,
         }
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        try:
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        except PermissionError as exc:
+            raise CommandError(
+                f"Could not write metadata file {output}: {exc}. "
+                "Run the command as a user that can write to the bundle root "
+                "(for example, sudo -u ubuntu on the AWS deployment), "
+                "or repair the directory/file ownership and permissions."
+            ) from exc
         self.stdout.write(self.style.SUCCESS(f"Wrote {len(bundles)} bundle metadata entries to {output}"))
