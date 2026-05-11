@@ -1,10 +1,127 @@
 # Picture dictionaries roadmap
 
-## 1) Concept and scope
+This document is deliberately split into two parts:
+
+1. **Part A: user-level plan** — a short, plain-language description intended for linguists, community organisers, and reviewers such as Sophie.
+2. **Part B: implementation notes** — more detailed technical guidance for developers and project maintainers.
+
+---
+
+# Part A — User-level plan
+
+## A1) Main idea
+
+A **picture dictionary** should be the central shared resource for community vocabulary work.
+
+For a community such as Kok Kaper, the picture dictionary is the place where organisers and linguists collect words, attach or generate pictures, review whether the pictures are appropriate, and then reuse the approved material in several ways:
+
+- **picture glossing** in C-LARA texts: when a learner clicks/taps a word, an image can appear as part of the glossing support;
+- **picture flashcards**: learners can practise matching images and words;
+- **future language games**: later activities can reuse the same approved word/image entries.
+
+The important point is that the dictionary is the trusted source. Games and glosses should draw from the dictionary instead of creating separate word/image lists.
+
+## A2) Who the first version is for
+
+The first version needs to work well for two kinds of users.
+
+### Sophie / linguist / community organiser
+
+Sophie needs a practical preparation and review workspace where she can:
+
+- add new words to the community picture dictionary;
+- generate images for words that do not yet have pictures;
+- regenerate or replace unsuitable images;
+- approve entries that are ready for community use;
+- prepare a simple flashcard activity before a visit or review session;
+- note problems reported by community members.
+
+### Community members / learners
+
+Community members need a simple, non-technical experience where they can:
+
+- see a picture and choose the right word;
+- see a word and choose the right picture;
+- use large, clear buttons and images suitable for a tablet, laptop, or projected session;
+- optionally flag when a picture or card seems wrong.
+
+The first version should avoid exposing project-internal details to community members.
+
+## A3) First concrete activity: picture flashcards
+
+The initial language-game feature should be **multiple-choice picture flashcards** in both directions:
+
+1. **Image → word**: show an image and ask the learner to choose the matching word from alternatives.
+2. **Word → image**: show a word and ask the learner to choose the matching image from alternatives.
+
+Flashcards should normally use only entries that have been approved or marked ready for games. Distractors should come from the same picture dictionary. AI can help rank or filter distractors, but the curated dictionary should remain the source of the possible answers.
+
+## A4) Picture dictionary workflow
+
+The Community Organiser picture-dictionary interface should be the main place for routine work.
+
+Organisers should be able to:
+
+1. add words;
+2. add candidate words from an existing text/project;
+3. generate images only for newly added or missing-image words;
+4. regenerate images for selected entries;
+5. approve, reject, or exclude entries from games;
+6. build or preview a flashcard deck;
+7. open the learner-facing flashcard activity.
+
+There can still be an advanced link to the underlying C-LARA-2 project for debugging or expert work, but routine dictionary work should not require navigating to that project.
+
+## A5) Proposed delivery sequence
+
+Because discussion and development time are limited, delivery should be staged.
+
+### Step 1 — Agree the user workflow with Sophie
+
+Before implementation, confirm the practical details:
+
+- how many words are needed for the first useful Kok Kaper deck;
+- whether the first session will use laptop, tablet, or projector;
+- whether community members should see only the community-language word, or also a gloss/translation;
+- whether audio is needed in the first version or can wait;
+- what kinds of image/card problems Sophie wants to record.
+
+### Step 2 — Make picture-dictionary maintenance easier
+
+Move routine operations into the Community Organiser picture-dictionary interface, especially generating images only for new or missing-image entries.
+
+### Step 3 — Build the minimal flashcard activity
+
+Create image-to-word and word-to-image multiple-choice flashcards from approved picture-dictionary entries.
+
+### Step 4 — Add review and feedback loops
+
+Allow Sophie to preview decks and allow simple problem reports such as “wrong picture”, “wrong word”, or “bad distractor”.
+
+### Step 5 — Generalise for other communities
+
+Once the Kok Kaper workflow is stable, reuse it for similar communities, especially New Caledonian communities where there is direct contact.
+
+## A6) What should wait until later
+
+The first version should stay small. The following are useful, but should not block the initial Kok Kaper flashcards:
+
+- many different game types;
+- detailed learner analytics;
+- adaptive difficulty;
+- fully conversational AI control of every operation;
+- complex sense-disambiguation workflows.
+
+---
+
+# Part B — Implementation notes
+
+## B1) Existing concept and scope
 
 A **picture dictionary** is a shared lexical resource that links lexical entries to images.
 
 Each entry minimally contains:
+
 - surface form(s),
 - lemma,
 - part of speech (POS),
@@ -12,174 +129,254 @@ Each entry minimally contains:
 - one or more associated images,
 - optional metadata (source, curation status, notes, difficulty level, tags).
 
-The primary goal is to support:
-1. richer reading support ("picture glosses" for lexical items), and
-2. picture-based exercise types.
+The primary goals are:
 
----
+1. richer reading support ("picture glosses" for lexical items),
+2. picture-based exercise/game types,
+3. reusable community curation of word/image material.
 
-## 2) Pragmatic first implementation in C-LARA-2
+## B2) Project-as-dictionary implementation pattern
 
-### 2.1 Project-as-dictionary pattern
+The current pragmatic implementation realises a picture dictionary using existing project infrastructure:
 
-The fastest path is to realise a picture dictionary using existing project infrastructure:
 - one project per dictionary,
 - one page per lexical entry,
 - existing lemma/POS annotation to disambiguate entries,
 - existing image-generation pipeline for dictionary images.
 
-This keeps v1 low-risk by reusing current storage, UI, and generation components.
+This keeps the first implementation low-risk by reusing current storage, UI, and generation components. However, the project should be treated as a backing implementation detail. The user-facing object is the community picture dictionary.
 
-### 2.2 Lexical entry identity
+## B3) Lexical entry identity
 
 For lookup and deduplication, use a canonical key such as:
 
 `(language, lemma, pos)`
 
-with optional refinement later (e.g. sense id) if ambiguity requires it.
+with optional refinement later, for example a sense identifier, if ambiguity requires it.
 
----
-
-## 3) Ownership, governance, and sharing model
+## B4) Ownership, governance, and sharing model
 
 Picture dictionaries are community-level shared resources.
 
 - **Owner role:** community organiser.
 - **Visibility:** available to members of the associated language community.
-- **Edit permissions:** organiser-managed (initially organiser-only; later optionally delegated editors).
+- **Edit permissions:** organiser-managed, initially organiser-only; later optionally delegated editors.
 
 Auditability requirements:
+
 - who added/removed entries,
-- when entry images were (re)generated,
+- when entry images were generated or regenerated,
+- who approved/rejected entries or images,
 - provenance of bulk imports.
 
----
+## B5) Entry readiness and curation states
 
-## 4) Organiser operations
+Picture games and picture glossing should not blindly use every dictionary entry. The implementation should distinguish at least these practical states, either explicitly or by inferred flags:
 
-Provide explicit organiser-facing commands/actions.
+- **candidate** — entry added but not reviewed;
+- **needs image** — no usable image yet;
+- **image generated** — image exists but has not been approved;
+- **approved / game-ready** — entry can be used in flashcards and picture glossing;
+- **excluded from games** — entry remains in the dictionary but is not used as a card or distractor;
+- **needs review** — entry or image has been flagged by Sophie/community members.
 
-## 4.1 Compile dictionary
+For the first implementation, a simple boolean or status field is acceptable if it supports safe deck construction.
+
+## B6) Organiser operations
+
+Provide explicit organiser-facing commands/actions from the Community Organiser picture-dictionary interface.
+
+### B6.1 Compile/refresh dictionary
+
 - Build/refresh dictionary artifacts and indexes.
 - Validate canonical keys and detect conflicts/duplicates.
 - If no usable image style exists yet, require an organiser-provided **style brief** at compile time and auto-generate style artifacts before image generation starts.
-- Show explicit organiser feedback that compilation has started (long-running action), then report annotation/image outcomes.
+- Show explicit organiser feedback that compilation has started as a long-running action, then report annotation/image outcomes.
 
-## 4.2 Add given words
-- Input: explicit word list (optionally with lemma/POS hints).
-- Behaviour: create missing entries and queue image generation as needed.
+### B6.2 Add given words
 
-## 4.3 Remove given words
+- Input: explicit word list, optionally with lemma/POS hints.
+- Behaviour: create missing entries without forcing immediate full-dictionary regeneration.
+
+### B6.3 Remove or deactivate given words
+
 - Input: explicit word list or canonical keys.
-- Behaviour: remove entries (or soft-delete with recovery window in later versions).
+- Behaviour: remove entries, or preferably soft-delete/deactivate them for audit and recovery.
 
-## 4.4 Add words from text (only if missing)
+### B6.4 Add words from text/project
+
 - Input: source text/project.
 - Behaviour:
-  1. run/consume lemma+POS analysis,
+  1. run or consume lemma+POS analysis,
   2. extract candidate `(lemma, pos)` pairs,
-  3. add only missing entries.
+  3. add only missing entries,
+  4. allow organiser review before making them game-ready.
 
-Suggested v1 filter for pictureability:
-- exclude function words by POS (DET, AUX, PART, etc.),
+Suggested first-version filter for pictureability:
+
+- exclude function words by POS (`DET`, `AUX`, `PART`, etc.),
 - exclude very high-frequency stop items,
-- optionally whitelist concrete POS classes first (NOUN, VERB, ADJ),
-- allow organiser review before commit.
+- optionally whitelist concrete POS classes first (`NOUN`, `VERB`, `ADJ`),
+- allow organiser review before commit or before game use.
 
----
+### B6.5 Generate images for new/missing entries
 
-## 5) New linguistic pipeline stage: picture glossing
+This should be a first-class action.
 
-Introduce an optional pipeline stage, e.g. `picture_gloss`.
+- Default scope: entries with no usable image.
+- Optional scope: selected entries only.
+- Avoid regenerating already-approved images unless explicitly requested.
+- Preserve per-entry diagnostics from the image-generation run.
+
+### B6.6 Regenerate selected images
+
+- Allow organisers to regenerate images for entries that were rejected, flagged, or judged culturally inappropriate.
+- Keep old image/provenance where useful for audit/debugging.
+
+### B6.7 Approve/reject entries and images
+
+- Let organisers mark entries as approved/game-ready.
+- Let organisers exclude entries from games even if they remain useful in the dictionary.
+- Record simple review notes where possible.
+
+## B7) Picture glossing pipeline stage
+
+Introduce or refine an optional pipeline stage, e.g. `picture_gloss`.
 
 Preconditions:
+
 1. lemma stage output exists,
 2. a suitable picture dictionary is configured for the project/language,
-3. dictionary index lookup is available for `(language, lemma, pos)`.
+3. dictionary index lookup is available for `(language, lemma, pos)`,
+4. matching dictionary entries are approved or otherwise allowed for glossing.
 
 Output:
+
 - annotation payload linking tokens to picture-gloss candidates,
-- confidence/status flags (exact match, fallback match, unresolved).
+- confidence/status flags (exact match, fallback match, unresolved),
+- reference to the dictionary entry/image used.
 
 Failure handling:
+
 - unresolved items should not block compilation,
 - fallback to existing behaviour (audio/concordance only).
 
----
-
-## 6) Rendering and learner UX
+## B8) Rendering and learner UX for picture glosses
 
 If a lexical item has a picture gloss, HTML interaction should be enhanced:
+
 - click/tap lexical item,
 - show image gloss in the same interaction surface as existing lexical support,
 - keep current audio + concordance behaviour, now augmented by picture.
 
 Design principle:
+
 - picture glosses are additive, not disruptive; existing lexical UX remains intact.
 
----
-
-## 7) Exercise extensions using picture dictionaries
+## B9) Flashcard/game generation from picture dictionaries
 
 Picture dictionaries enable new exercise families.
 
-## 7.1 Image → word multiple-choice
-- learner sees an image,
-- chooses correct word from distractors.
+### B9.1 Image → word multiple-choice
 
-## 7.2 Word → image multiple-choice
-- learner sees a word,
-- chooses correct image from distractors.
+- Learner sees an image.
+- Learner chooses the correct word from distractors.
 
-Future variants:
-- typed response instead of MCQ,
+### B9.2 Word → image multiple-choice
+
+- Learner sees a word.
+- Learner chooses the correct image from distractors.
+
+### B9.3 Deck construction
+
+For each target item:
+
+1. select an eligible approved/game-ready dictionary entry;
+2. select the prompt image or prompt word;
+3. generate a candidate distractor pool from the same dictionary;
+4. prefer distractors with compatible POS, difficulty, tags, or semantic domain where available;
+5. optionally use AI to rank/filter candidate distractors;
+6. persist the deck/card snapshot so review sessions are stable even if the dictionary later changes.
+
+AI should be used as a ranker/filter over curated dictionary candidates, not as the only source of answers.
+
+### B9.4 Review/session modes
+
+Consider three modes:
+
+- **Practice mode:** learner-friendly play with simple feedback.
+- **Review mode:** Sophie/community organisers can mark card-level issues such as bad image, wrong word, bad distractor, or culturally inappropriate content.
+- **Session/demo mode:** large uncluttered UI for in-person community visits.
+
+### B9.5 Future variants
+
+- typed response instead of multiple choice,
 - graded distractors by semantic similarity,
-- adaptive difficulty via learner history.
+- adaptive difficulty via learner history,
+- audio-first or audio-supported cards.
 
----
+## B10) Natural-language help
 
-## 8) Suggested phased delivery
+Natural-language help should support the picture-dictionary and game workflows, but it should not block the flashcard MVP.
 
-## Phase A (quick win)
-- Create dictionary as standard project pattern (one page per entry).
-- Add organiser commands: compile/add/remove/add-from-text.
-- Reuse existing image pipeline for entry images.
-- First-cut compile semantics:
-  - run linguistic pipeline from `segmentation_phase_2` to `compile_html`,
-  - run dictionary-targeted image generation using shared style if available,
-  - default image options for dictionaries:
-    - **no-context** (do not pass full story context or element context),
-    - **missing-only** (generate only for pages currently missing an image).
-  - style readiness:
-    - treat style as usable when generated or approved and containing style text,
-    - if style is missing/unusable, compile must stop with a clear message unless a style brief is supplied.
+Initial read-only help should answer questions such as:
 
-## Phase B
-- Add optional `picture_gloss` pipeline stage.
-- Wire lookup outputs into compiled HTML interaction.
+- “How do I add new words?”
+- “How do I generate images for words I just added?”
+- “Why is this word not appearing in the flashcard game?”
+- “How do I replace a bad picture?”
+- “How do I prepare a game for a community session?”
 
-## Phase C
-- Add picture-based exercise generators and runtime handlers.
-- Improve filtering/disambiguation and governance tooling.
+Later, the dialogue layer can safely execute selected operations with confirmation, following the broader dialogue roadmap.
 
----
+## B11) Suggested implementation phases
 
-## 9) Open questions
+### Phase A — User workflow agreement
 
-1. Should v1 allow only one image per `(lemma, pos)`, or multiple ranked images?
-2. How should we handle polysemy beyond POS (sense-level disambiguation)?
-3. Should dictionary entries be soft-deleted for audit/recovery?
-4. Should organiser operations be synchronous (small sets) and queued (bulk)?
-5. How should communities discover/reuse dictionaries across projects?
+- Confirm the first Kok Kaper workflow with Sophie.
+- Decide first-session constraints: device, deck size, display language(s), audio needs, and feedback categories.
 
----
+### Phase B — Picture-dictionary UX consolidation
 
-## 10) Success criteria
+- Make routine dictionary operations available from the Community Organiser interface.
+- Keep “open backing project” as an advanced/debug action.
+- Add missing-only image generation as a first-class action.
 
-- Organisers can build and maintain a usable dictionary with low friction.
+### Phase C — Minimal flashcards
+
+- Generate image→word and word→image multiple-choice cards from approved dictionary entries.
+- Use same-dictionary distractors with deterministic fallback and optional AI ranking.
+- Provide a simple learner-facing play screen.
+
+### Phase D — Review and feedback loop
+
+- Add organiser deck preview.
+- Add card-level problem reporting.
+- Feed reported issues back into dictionary review status.
+
+### Phase E — Generalisation
+
+- Reuse the workflow for other communities, especially New Caledonian communities where there is direct contact.
+- Add configuration for community-specific display conventions and optional audio.
+
+## B12) Open questions
+
+1. Should the first version require explicit approval before an entry can appear in games, or allow all entries with images unless excluded?
+2. Should v1 allow only one image per `(lemma, pos)`, or multiple ranked images?
+3. How should we handle polysemy beyond POS (sense-level disambiguation)?
+4. Should dictionary entries be soft-deleted for audit/recovery?
+5. Should organiser operations be synchronous for small sets and queued for bulk sets?
+6. How should communities discover/reuse dictionaries across projects?
+7. What is the minimum useful flashcard deck size for the first Kok Kaper session?
+
+## B13) Success criteria
+
+- Sophie/community organisers can build and maintain a usable dictionary with low friction.
+- Newly added words can get images without regenerating the whole dictionary.
 - Projects can optionally enable picture glossing without breaking existing flows.
 - Compiled HTML displays picture glosses when available.
-- At least one picture-based exercise type is functional end-to-end.
+- Image→word and word→image flashcards work end-to-end from approved dictionary entries.
+- Community feedback can identify problematic images/cards for later review.
 
 ---
 
@@ -187,3 +384,5 @@ Future variants:
 
 - Image-pipeline details and dictionary-specific image options are tracked in:
   - [image-generation-pipeline.md](image-generation-pipeline.md)
+- Dialogue/NL-help details are tracked in:
+  - [dialogue-top-level.md](dialogue-top-level.md)
