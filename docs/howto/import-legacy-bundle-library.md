@@ -89,6 +89,56 @@ rsync -av --progress /path/on/laptop/adelaide_legacy_bundles/ \
 
 If DNS/SSH is configured differently, your server admin notes may instead specify another host or user. Use the same `<ssh-user>@<ssh-host>` pair that you use for normal server maintenance.
 
+### If `rsync` times out on port 22
+
+A failure like this means `rsync` could not even open the SSH connection to the server:
+
+```text
+ssh: connect to host c-lara-2.c-lara.org port 22: Connection timed out
+rsync: connection unexpectedly closed (0 bytes received so far) [sender]
+rsync error: error in rsync protocol data stream (code 12)
+```
+
+In this case, the `rsync` error code is only a follow-on symptom. Debug SSH connectivity first; do not spend time changing C-LARA-2 passwords or Django settings yet. A timeout is different from `Permission denied (publickey)`: a timeout usually means that traffic to TCP port 22 is blocked, routed to the wrong host, or not being answered.
+
+Run these checks from the same laptop/WSL shell where `rsync` failed:
+
+```bash
+# Confirm that the hostname resolves to the IP address you expect.
+getent hosts c-lara-2.c-lara.org
+# If getent is not available, try one of these instead.
+nslookup c-lara-2.c-lara.org
+dig c-lara-2.c-lara.org
+
+# Check whether TCP port 22 is reachable at all.
+nc -vz -w 10 c-lara-2.c-lara.org 22
+
+# Ask SSH for verbose connection diagnostics.
+ssh -vvv -o ConnectTimeout=10 ubuntu@c-lara-2.c-lara.org
+```
+
+Interpret the results as follows:
+
+- If hostname lookup fails or returns an unexpected IP address, use the real SSH hostname/IP from the AWS console or server-admin notes instead of `c-lara-2.c-lara.org`. The browser hostname and SSH hostname are not guaranteed to be the same.
+- If `nc` or `ssh` times out, check the AWS security group/firewall. The instance must allow inbound TCP port 22 from your current public IP address, or you must connect through the documented VPN/bastion host. Home and university networks can also block outbound SSH; try a different network or ask your network admin.
+- If `ssh -vvv` reaches the server and then says `Permission denied (publickey)`, port 22 is reachable and the remaining problem is SSH credentials/keys. See the next section.
+- If SSH uses a non-standard port, include it in both SSH and `rsync`. For example:
+
+```bash
+ssh -p <ssh-port> ubuntu@<ssh-host>
+rsync -av --progress -e 'ssh -p <ssh-port>' CLARADownloadedProjectsFromServer_v2/ \
+  ubuntu@<ssh-host>:/srv/c-lara/legacy-bundles/adelaide/
+```
+
+If you have access to the AWS host through another route, also check on the server that SSH is running and listening:
+
+```bash
+sudo systemctl status ssh
+sudo ss -tlnp | grep ':22'
+```
+
+After plain `ssh ubuntu@<ssh-host>` succeeds, retry the original `rsync` command.
+
 ### Passwords and SSH keys
 
 You should **not** use your C-LARA-2 web-app password, Django admin password, or GitHub password for `rsync`/SSH. `rsync` over SSH authenticates to the server's Linux account.
