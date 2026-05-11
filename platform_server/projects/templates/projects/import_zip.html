@@ -25,6 +25,26 @@
   {% if legacy_error %}
     <p><strong>Library unavailable:</strong> {{ legacy_error }}</p>
   {% endif %}
+  {% if legacy_library_diagnostics %}
+    <details style="margin:0.75rem 0;">
+      <summary>Legacy library diagnostics</summary>
+      <dl>
+        <dt>Django setting LEGACY_CLARA_BUNDLE_LIBRARY_ROOT</dt>
+        <dd><code>{{ legacy_library_diagnostics.root_setting|default:"(empty)" }}</code></dd>
+        <dt>Django setting LEGACY_CLARA_BUNDLE_LIBRARY_METADATA</dt>
+        <dd><code>{{ legacy_library_diagnostics.metadata_setting }}</code></dd>
+        <dt>Resolved root path</dt>
+        <dd><code>{{ legacy_library_diagnostics.root_path|default:"(none)" }}</code> — exists: {{ legacy_library_diagnostics.root_exists }}, directory: {{ legacy_library_diagnostics.root_is_dir }}</dd>
+        <dt>Resolved metadata path</dt>
+        <dd><code>{{ legacy_library_diagnostics.metadata_path|default:"(none)" }}</code> — exists: {{ legacy_library_diagnostics.metadata_exists }}</dd>
+        <dt>Environment variable visible to this web process</dt>
+        <dd><code>C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT</code>: {{ legacy_library_diagnostics.env_root_present }}; <code>C_LARA_LEGACY_BUNDLE_LIBRARY_METADATA</code>: {{ legacy_library_diagnostics.env_metadata_present }}</dd>
+        <dt>Web process ID</dt>
+        <dd><code>{{ legacy_library_diagnostics.process_pid }}</code></dd>
+      </dl>
+      <p><small>If the root setting is empty after running <code>export C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT=...</code> in an SSH shell, add the variable to the service environment file used by Gunicorn/Django and restart the web service; an interactive shell export does not change an already-running web process.</small></p>
+    </details>
+  {% endif %}
   <form method="get" action="{% url 'project-import-zip' %}">
     <p>
       <label for="title">Title contains:</label>

@@ -8778,6 +8778,25 @@ def _legacy_bundle_library_metadata_path() -> Path | None:
     return path.resolve()
 
 
+def _legacy_bundle_library_diagnostics() -> dict[str, Any]:
+    root_setting = getattr(settings, "LEGACY_CLARA_BUNDLE_LIBRARY_ROOT", "") or ""
+    metadata_setting = getattr(settings, "LEGACY_CLARA_BUNDLE_LIBRARY_METADATA", "legacy_bundle_metadata.json") or "legacy_bundle_metadata.json"
+    root = _legacy_bundle_library_root()
+    metadata_path = _legacy_bundle_library_metadata_path()
+    return {
+        "root_setting": root_setting,
+        "metadata_setting": metadata_setting,
+        "root_path": str(root) if root is not None else "",
+        "root_exists": bool(root and root.exists()),
+        "root_is_dir": bool(root and root.is_dir()),
+        "metadata_path": str(metadata_path) if metadata_path is not None else "",
+        "metadata_exists": bool(metadata_path and metadata_path.exists()),
+        "env_root_present": "C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT" in os.environ,
+        "env_metadata_present": "C_LARA_LEGACY_BUNDLE_LIBRARY_METADATA" in os.environ,
+        "process_pid": os.getpid(),
+    }
+
+
 def _load_legacy_bundle_library() -> tuple[list[dict[str, Any]], str | None]:
     root = _legacy_bundle_library_root()
     metadata_path = _legacy_bundle_library_metadata_path()
@@ -9192,6 +9211,7 @@ def import_project_zip(request: HttpRequest) -> HttpResponse:
             "legacy_error": legacy_error,
             "legacy_query": legacy_query,
             "legacy_library_configured": _legacy_bundle_library_root() is not None,
+            "legacy_library_diagnostics": _legacy_bundle_library_diagnostics() if request.user.is_staff else None,
         },
     )
 

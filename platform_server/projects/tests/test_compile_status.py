@@ -711,6 +711,22 @@ class CompileStatusViewTests(TestCase):
         self.assertContains(resp, "Upload a local ZIP")
         self.assertNotContains(resp, "Import from configured legacy bundle library")
 
+    def test_import_zip_view_admin_shows_legacy_library_diagnostics_when_unconfigured(self):
+        User = get_user_model()
+        User.objects.create_user(username="diag_admin", password="pw", is_staff=True)
+        self.client.logout()
+        self.client.login(username="diag_admin", password="pw")
+
+        with override_settings(LEGACY_CLARA_BUNDLE_LIBRARY_ROOT=""):
+            resp = self.client.get(reverse("project-import-zip"))
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Library unavailable:")
+        self.assertContains(resp, "Legacy bundle library root is not configured.")
+        self.assertContains(resp, "Legacy library diagnostics")
+        self.assertContains(resp, "Django setting LEGACY_CLARA_BUNDLE_LIBRARY_ROOT")
+        self.assertContains(resp, "interactive shell export does not change an already-running web process")
+
     def test_build_legacy_bundle_metadata_reports_write_permission_error(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             library_root = Path(tmpdir) / "legacy_library"

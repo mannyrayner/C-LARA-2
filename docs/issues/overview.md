@@ -1,6 +1,6 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-11T13:28:55Z_
+_Last updated: 2026-05-11T13:56:06Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
@@ -37,4 +37,5 @@ This document summarizes the current issue registry for quick human review. Cano
 - **Adelaide corpus usability:** ISSUE-0010 now has a first-cut metadata aggregation command, searchable admin import view, and verified AWS upload of the legacy folder. Preserve the operational lesson that large corpus transfer may require both EC2 inbound SSH-rule changes and explicit `.pem` key usage. The next step is to build metadata on AWS and import representative projects.
 - **Compiled LARA corpus staging:** ISSUE-0001 should reuse the same large-folder transfer runbook, but target `/srv/c-lara/legacy-compiled/lara/` rather than `/srv/c-lara/legacy-bundles/adelaide/` so compiled hosted content is not mixed with importable C-LARA source bundles.
 - **Metadata-build permissions:** ISSUE-0010 also records that Step 3 must be run by a user that can write the metadata file, normally `ubuntu` on AWS; if permissions were repaired for `ubuntu:www-data` but the active shell is another user, use `sudo -u ubuntu /srv/C-LARA-2/.venv/bin/python manage.py build_legacy_bundle_metadata ...` and inspect path ownership with `namei -l`.
+- **Service-environment visibility:** ISSUE-0010 now also records that `export C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT=...` in an SSH shell is not enough for the website; configure the Gunicorn/Django service environment, restart services, and use the admin-only diagnostics panel on `projects/import-zip/` to confirm the running web process sees the setting.
 - **Writing scope:** ISSUE-0008 should use the internal report as the master source, then, subject to co-author approval, split it into a user-facing EuroCALL 2026 paper and an implementor-facing ALTA 2026 paper to avoid duplicated effort.

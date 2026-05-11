@@ -182,7 +182,21 @@ Optionally set the metadata filename/path. If omitted, C-LARA-2 uses `legacy_bun
 export C_LARA_LEGACY_BUNDLE_LIBRARY_METADATA=legacy_bundle_metadata.json
 ```
 
-For production, add these variables to the same place where the C-LARA-2 service environment is configured, then restart the Django application service. The important point is that the running web process must see these variables.
+For production, add these variables to the same place where the C-LARA-2 service environment is configured, then restart the Django application service. The important point is that the running web process must see these variables. Running `export C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT=...` in an SSH shell only affects commands started from that shell; it does **not** update an already-running Gunicorn/Django process.
+
+On the current AWS setup, check `/etc/clara2.env` first. If that is the service environment file, add or update these lines there:
+
+```bash
+C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT=/srv/c-lara/legacy-bundles/adelaide
+C_LARA_LEGACY_BUNDLE_LIBRARY_METADATA=legacy_bundle_metadata.json
+```
+
+Then restart the web service, and the background worker if it also needs the setting:
+
+```bash
+sudo systemctl restart gunicorn-clara2
+sudo systemctl restart djangoq-clara2
+```
 
 ## Step 3: build the global metadata file
 
@@ -261,13 +275,41 @@ Imported projects are normal C-LARA-2 projects and can be inspected from the pro
 
 ### The admin library section says the root is not configured
 
-Check that the running Django process has:
+If the Import from ZIP page says:
 
-```bash
-echo $C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT
+```text
+Library unavailable: Legacy bundle library root is not configured.
 ```
 
-If you added the variable to a service environment file, restart the web service.
+but `legacy_bundle_metadata.json` exists on disk, the most likely cause is that the environment variable was exported only in your interactive SSH shell. The website is served by the already-running Gunicorn/Django service, which has its own environment and will not see that shell export.
+
+Use the new admin-only **Legacy library diagnostics** expander on the Import from ZIP page. If `Django setting LEGACY_CLARA_BUNDLE_LIBRARY_ROOT` is empty, configure the service environment file and restart Gunicorn. On the AWS deployment this is probably:
+
+```bash
+sudoedit /etc/clara2.env
+# Add or update:
+# C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT=/srv/c-lara/legacy-bundles/adelaide
+# C_LARA_LEGACY_BUNDLE_LIBRARY_METADATA=legacy_bundle_metadata.json
+
+sudo systemctl restart gunicorn-clara2
+sudo systemctl restart djangoq-clara2
+```
+
+Useful checks:
+
+```bash
+# Shows variables in your current shell only; this is not enough for the website.
+echo "$C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT"
+
+# Shows whether systemd knows about the service environment file.
+sudo systemctl cat gunicorn-clara2
+sudo systemctl show gunicorn-clara2 -p Environment -p EnvironmentFiles
+
+# After restart, inspect recent service logs if the page still reports an empty setting.
+sudo journalctl -u gunicorn-clara2 -n 80 --no-pager
+```
+
+If the diagnostics show the root setting is present but the metadata path is missing, rebuild the metadata file or check `C_LARA_LEGACY_BUNDLE_LIBRARY_METADATA`.
 
 ### The metadata file is missing
 
