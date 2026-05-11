@@ -767,6 +767,40 @@ class CompileStatusViewTests(TestCase):
             self.assertTrue((imported.artifact_dir() / "legacy_clara" / "metadata.json").exists())
             self.assertTrue((imported.artifact_dir() / "legacy_clara" / "annotated_text.json").exists())
 
+    def test_import_zip_view_admin_missing_metadata_message_includes_trace(self):
+        User = get_user_model()
+        User.objects.create_user(username="trace_admin", password="pw", is_staff=True)
+        self.client.logout()
+        self.client.login(username="trace_admin", password="pw")
+
+        tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmpdir.cleanup)
+        tmp_root = Path(tmpdir.name)
+        library_root = tmp_root / "legacy_library"
+        bundle_dir = library_root / "2"
+        bundle_dir.mkdir(parents=True, exist_ok=True)
+        (bundle_dir / "metadata.json").write_text(
+            json.dumps({"id": 2, "title": "Trace Legacy"}),
+            encoding="utf-8",
+        )
+        with zipfile.ZipFile(bundle_dir / "source.zip", "w") as zf:
+            zf.writestr("too/deep/annotated_text.json", json.dumps({"pages": []}))
+
+        with override_settings(LEGACY_CLARA_BUNDLE_LIBRARY_ROOT=str(library_root)):
+            call_command("build_legacy_bundle_metadata", str(library_root), verbosity=0)
+            resp = self.client.post(
+                reverse("project-import-zip"),
+                {"import_mode": "server_bundle", "bundle_key": "2"},
+            )
+
+        self.assertEqual(resp.status_code, 302)
+        message_text = "\n".join(str(message) for message in get_messages(resp.wsgi_request))
+        self.assertIn("Bundle is missing project metadata.", message_text)
+        self.assertIn("Import trace:", message_text)
+        self.assertIn("selected_import_path", message_text)
+        self.assertIn("too/deep/annotated_text.json", message_text)
+        self.assertIn("too/deep/metadata.json", message_text)
+
     def test_import_zip_view_hides_legacy_library_from_non_admin(self):
         resp = self.client.get(reverse("project-import-zip"))
         self.assertEqual(resp.status_code, 200)

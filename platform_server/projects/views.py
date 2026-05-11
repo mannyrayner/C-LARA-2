@@ -8911,6 +8911,41 @@ def _metadata_arcnames_for_legacy_source_zip(names: list[str]) -> list[str]:
     return list(dict.fromkeys(arcnames))
 
 
+def _legacy_zip_trace(names: list[str], *, limit: int = 20) -> dict[str, Any]:
+    annotated = [name for name in names if PurePosixPath(name).name == "annotated_text.json"]
+    metadata = [name for name in names if PurePosixPath(name).name == "metadata.json"]
+    return {
+        "entry_count": len(names),
+        "first_entries": names[:limit],
+        "annotated_text_entries": annotated[:limit],
+        "metadata_entries": metadata[:limit],
+        "legacy_root_detected": find_legacy_clara_bundle_root(names),
+    }
+
+
+def _format_legacy_import_trace(trace: dict[str, Any] | None) -> str:
+    if not trace:
+        return ""
+
+    parts = []
+    for key in (
+        "selected_import_path",
+        "selected_import_path_type",
+        "source_zip_path",
+        "sidecar_metadata_path",
+        "sidecar_metadata_exists",
+        "injected_metadata_entries",
+        "entry_count",
+        "annotated_text_entries",
+        "metadata_entries",
+        "legacy_root_detected",
+        "first_entries",
+    ):
+        if key in trace:
+            parts.append(f"{key}={trace[key]}")
+    return " Import trace: " + "; ".join(parts) if parts else ""
+
+
 def _zip_with_sidecar_legacy_metadata(zip_path: Path, metadata_path: Path):
     """Copy a legacy source.zip to a spool, adding sibling metadata.json if needed."""
 
@@ -8918,6 +8953,13 @@ def _zip_with_sidecar_legacy_metadata(zip_path: Path, metadata_path: Path):
     with zipfile.ZipFile(zip_path) as source_zf:
         names = source_zf.namelist()
         metadata_arcnames = _metadata_arcnames_for_legacy_source_zip(names)
+        trace = {
+            **_legacy_zip_trace(names),
+            "source_zip_path": str(zip_path),
+            "sidecar_metadata_path": str(metadata_path),
+            "sidecar_metadata_exists": metadata_path.exists(),
+            "injected_metadata_entries": metadata_arcnames if metadata_path.exists() else [],
+        }
         if not metadata_arcnames or not metadata_path.exists():
             spool.write(zip_path.read_bytes())
         else:
@@ -8927,28 +8969,45 @@ def _zip_with_sidecar_legacy_metadata(zip_path: Path, metadata_path: Path):
                     target_zf.writestr(info, source_zf.read(info.filename))
                 for metadata_arcname in metadata_arcnames:
                     target_zf.writestr(metadata_arcname, metadata_text)
+            trace.update(_legacy_zip_trace(names + metadata_arcnames))
     spool.seek(0)
-    return spool
+    return spool, trace
 
 
 def _open_server_bundle_for_import(import_path: Path):
-    """Return a spooled ZIP for a configured server-side bundle path."""
+    """Return a spooled ZIP and trace data for a configured server-side bundle path."""
+
+    base_trace = {
+        "selected_import_path": str(import_path),
+        "selected_import_path_type": "directory" if import_path.is_dir() else "file",
+    }
 
     if import_path.is_dir():
         zip_candidates = sorted(import_path.glob("*.zip"), key=lambda p: (p.name != "source.zip", p.name))
         metadata_path = import_path / "metadata.json"
         if zip_candidates and metadata_path.exists():
-            return _zip_with_sidecar_legacy_metadata(zip_candidates[0], metadata_path)
-        return _zip_directory_to_spooled_file(import_path)
+            spool, trace = _zip_with_sidecar_legacy_metadata(zip_candidates[0], metadata_path)
+            trace.update(base_trace)
+            return spool, trace
+        spool = _zip_directory_to_spooled_file(import_path)
+        with zipfile.ZipFile(spool) as zf:
+            trace = {**base_trace, **_legacy_zip_trace(zf.namelist())}
+        spool.seek(0)
+        return spool, trace
 
     metadata_path = import_path.with_name("metadata.json")
     if import_path.suffix.lower() == ".zip" and metadata_path.exists():
-        return _zip_with_sidecar_legacy_metadata(import_path, metadata_path)
+        spool, trace = _zip_with_sidecar_legacy_metadata(import_path, metadata_path)
+        trace.update(base_trace)
+        return spool, trace
 
     spool = tempfile.SpooledTemporaryFile(max_size=20 * 1024 * 1024)
     spool.write(import_path.read_bytes())
     spool.seek(0)
-    return spool
+    with zipfile.ZipFile(spool) as zf:
+        trace = {**base_trace, **_legacy_zip_trace(zf.namelist())}
+    spool.seek(0)
+    return spool, trace
 
 
 def _import_open_project_source_zip(
@@ -8956,6 +9015,7 @@ def _import_open_project_source_zip(
     zf: zipfile.ZipFile,
     *,
     error_redirect: str = "project-list",
+    import_trace: dict[str, Any] | None = None,
 ) -> HttpResponse:
     """Import an already opened source/legacy ZIP and redirect to the created project."""
 
@@ -8991,7 +9051,7 @@ def _import_open_project_source_zip(
         legacy_hint = ""
         if any(PurePosixPath(name).name == "annotated_text.json" for name in names):
             legacy_hint = " The ZIP looks like a legacy C-LARA export because it contains annotated_text.json, but metadata.json was not found beside it."
-        messages.error(request, f"Bundle is missing project metadata.{legacy_hint}")
+        messages.error(request, f"Bundle is missing project metadata.{legacy_hint}{_format_legacy_import_trace(import_trace or _legacy_zip_trace(names))}")
         return redirect(error_redirect)
 
     stage_prefix = f"{root}/stages/"
@@ -9240,10 +9300,10 @@ def import_project_zip(request: HttpRequest) -> HttpResponse:
                 messages.error(request, "Selected legacy bundle path is missing or unsafe.")
                 return redirect("project-import-zip")
             try:
-                spool = _open_server_bundle_for_import(import_path)
+                spool, import_trace = _open_server_bundle_for_import(import_path)
                 with spool:
                     with zipfile.ZipFile(spool) as zf:
-                        return _import_open_project_source_zip(request, zf, error_redirect="project-import-zip")
+                        return _import_open_project_source_zip(request, zf, error_redirect="project-import-zip", import_trace=import_trace)
             except Exception as exc:  # noqa: BLE001
                 messages.error(request, f"Could not import selected legacy bundle: {exc}")
                 return redirect("project-import-zip")

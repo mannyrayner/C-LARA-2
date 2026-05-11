@@ -395,6 +395,8 @@ Common causes are:
 5. **The bundle is incomplete or has an unexpected shape.** Each selected bundle should contain either a flat/rooted legacy ZIP with both `annotated_text.json` and `metadata.json`, or an Adelaide-style directory with sibling `metadata.json` and `source.zip` where `source.zip` contains flat or single-root `annotated_text.json`. If an `rsync` was interrupted, run it again and then verify the copied directory.
 6. **There is not enough temporary or media storage.** Server-side imports create a temporary ZIP and then write project artifacts under the C-LARA-2 media/project area. Check available space if failures happen only on larger bundles.
 
+If the page still reports `Bundle is missing project metadata`, copy the full `Import trace` appended to the error message. It records what the web process actually selected and opened: selected import path, source ZIP path, sidecar metadata path and existence, metadata entries injected into the temporary ZIP, `annotated_text.json` entries, `metadata.json` entries, detected legacy root, and the first ZIP entries.
+
 Useful server-side checks:
 
 ```bash
