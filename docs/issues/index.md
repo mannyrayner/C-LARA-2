@@ -1,6 +1,6 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-11T08:48:54Z_
+_Last updated: 2026-05-11T09:17:04Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
@@ -9,6 +9,7 @@ This document summarizes the current issue registry for quick human review. Cano
 - **[ISSUE-0003](issues/ISSUE-0003.json)** has been refined: the first useful pipeline test runner should use the representative legacy corpus from **[ISSUE-0010](issues/ISSUE-0010.json)** as an evaluation set, comparing C-LARA-2 reruns against imported legacy outputs.
 - **[ISSUE-0010](issues/ISSUE-0010.json)** is now active: a first cut of the metadata aggregation command and admin-only searchable Import from ZIP view has been implemented, and the Adelaide legacy folder has been uploaded to AWS after resolving the SSH security-rule and EC2 `.pem` key requirements; multi-bundle batch import remains future work.
 - **[ISSUE-0008](issues/ISSUE-0008.json)** remains a P1 writing/reporting task, with CodePrism as the closest known comparator and a proposed EuroCALL/ALTA split.
+- **[ISSUE-0001](issues/ISSUE-0001.json)** now has a concrete AWS staging plan for the compiled legacy LARA corpus: copy `/home/LARALegacyFromServer/` to a sister server directory such as `/srv/c-lara/legacy-compiled/lara/` using the same `.pem`-based `rsync` pattern as the Adelaide upload.
 
 ## Near-term priorities
 
@@ -20,7 +21,7 @@ This document summarizes the current issue registry for quick human review. Cano
 6. **[ISSUE-0005](issues/ISSUE-0005.json) (P2)** — Tune segmentation_phase_1 prompting so prose and poetry segment granularity better matches expected legacy behavior.
 7. **[ISSUE-0004](issues/ISSUE-0004.json) (P2)** — Introduce AI-based review gates with a pluggable evaluator architecture after the test-runner foundation is available.
 8. **[ISSUE-0007](issues/ISSUE-0007.json) (P2)** — Improve page-image generation by routing prompt construction through an LLM-backed indirection layer.
-9. **[ISSUE-0001](issues/ISSUE-0001.json) (P2)** — Support registration of hosted compiled legacy content in C-LARA-2; ISSUE-0010 should provide useful imported legacy material for this work.
+9. **[ISSUE-0001](issues/ISSUE-0001.json) (P2)** — Support registration of hosted compiled legacy content in C-LARA-2; start by staging `/home/LARALegacyFromServer/` on AWS under a sister directory to the C-LARA bundle library, then use ISSUE-0010 imported material as complementary test content.
 10. **[ISSUE-0012](issues/ISSUE-0012.json) (P2)** — Adjust project creation defaults for AI text generation and top page-image placement.
 
 ## Completed issues
@@ -34,4 +35,5 @@ This document summarizes the current issue registry for quick human review. Cano
 - **Gross-difference review:** exact comparison is inappropriate for stages like translation and glossing, so ISSUE-0003 should support AI-assisted judgement of whether differences are problematic, while still using deterministic structural checks where possible.
 - **Segmentation triage:** ISSUE-0003 should at least support ISSUE-0006 by detecting clear segmentation_phase_2 token-span failures in legacy-vs-C-LARA-2 comparisons.
 - **Adelaide corpus usability:** ISSUE-0010 now has a first-cut metadata aggregation command, searchable admin import view, and verified AWS upload of the legacy folder. Preserve the operational lesson that large corpus transfer may require both EC2 inbound SSH-rule changes and explicit `.pem` key usage. The next step is to build metadata on AWS and import representative projects.
+- **Compiled LARA corpus staging:** ISSUE-0001 should reuse the same large-folder transfer runbook, but target `/srv/c-lara/legacy-compiled/lara/` rather than `/srv/c-lara/legacy-bundles/adelaide/` so compiled hosted content is not mixed with importable C-LARA source bundles.
 - **Writing scope:** ISSUE-0008 should use the internal report as the master source, then, subject to co-author approval, split it into a user-facing EuroCALL 2026 paper and an implementor-facing ALTA 2026 paper to avoid duplicated effort.
