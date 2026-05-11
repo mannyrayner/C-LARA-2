@@ -109,6 +109,7 @@ urlpatterns = [
         name="project-download-source-bundle",
     ),
     path("projects/import-source-bundle/", views.import_project_source_bundle, name="project-import-source-bundle"),
+    path("projects/import-zip/", views.import_project_zip, name="project-import-zip"),
     path("projects/<int:pk>/publish/", views.toggle_publish, name="project-publish"),
     path("projects/<int:pk>/discovery-metadata/", views.set_project_discovery_metadata, name="project-discovery-metadata"),
     path("projects/<int:pk>/target-language/", views.set_project_target_language, name="project-target-language"),
