@@ -229,6 +229,55 @@ sudo chown -R <django-user>:<django-group> /srv/c-lara/legacy-bundles
 sudo chmod -R u+rwX /srv/c-lara/legacy-bundles
 ```
 
+### Importing a selected server bundle fails
+
+If the bundle appears in the admin picker but the import fails after you click **Import selected bundle**, the picker and the importer have reached different stages of the workflow:
+
+- the picker only needs to read the global `legacy_bundle_metadata.json`;
+- the importer must also read the selected bundle directory, create a temporary ZIP from it, unpack that ZIP safely, and convert the legacy JSON into C-LARA-2 project artifacts.
+
+Common causes are:
+
+1. **The metadata file is stale.** If you moved, renamed, or re-synced bundle directories after building `legacy_bundle_metadata.json`, rebuild it so the recorded `bundle_dir` values match the current filesystem.
+2. **The configured root points at the wrong level.** `C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT` should point at the directory whose immediate children are the numbered bundle directories, not at one individual bundle and not at the parent folder above the collection. For example, the root should normally contain paths like `9/metadata.json`, `10/metadata.json`, and so on.
+3. **The metadata path is outside the configured root.** The import UI rejects metadata files and bundle paths that resolve outside `C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT`, even if the OS could read them. Keep the global metadata file inside the library root, or set `C_LARA_LEGACY_BUNDLE_LIBRARY_METADATA` to a relative path such as `legacy_bundle_metadata.json` or `metadata/all_bundles.json`.
+4. **Django can read the metadata file but not the bundle contents.** This can happen if `metadata.json` files are readable but audio, image, or nested JSON files were copied with more restrictive permissions. Re-run the ownership and permissions commands from Step 1, then retry.
+5. **The bundle is incomplete or has an unexpected shape.** Each selected bundle should contain at least `metadata.json` and the legacy content files expected by the importer, typically including `annotated_text.json`. If an `rsync` was interrupted, run it again and then verify the copied directory.
+6. **There is not enough temporary or media storage.** Server-side imports create a temporary ZIP and then write project artifacts under the C-LARA-2 media/project area. Check available space if failures happen only on larger bundles.
+
+Useful server-side checks:
+
+```bash
+# Confirm that the configured root is the collection directory.
+find /srv/c-lara/legacy-bundles/adelaide -maxdepth 2 -name metadata.json | head
+
+# Confirm that the global metadata points to bundle directories below that root.
+python - <<'PY'
+import json
+from pathlib import Path
+root = Path('/srv/c-lara/legacy-bundles/adelaide')
+metadata = root / 'legacy_bundle_metadata.json'
+data = json.loads(metadata.read_text(encoding='utf-8'))
+for bundle in data.get('bundles', [])[:10]:
+    bundle_dir = bundle.get('bundle_dir') or bundle.get('path')
+    print(bundle.get('id'), bundle.get('title'), bundle_dir, (root / bundle_dir).exists() if bundle_dir else 'no path')
+PY
+
+# Check for the files that the converter normally needs.
+find /srv/c-lara/legacy-bundles/adelaide -maxdepth 2 \
+  \( -name metadata.json -o -name annotated_text.json \) | head -40
+
+# Check disk space for temporary files and project media.
+df -h /tmp /srv/C-LARA-2/platform_server/media
+```
+
+After fixing any of these issues, rebuild the metadata file and reload the Import from ZIP page:
+
+```bash
+cd /path/to/C-LARA-2/platform_server
+python manage.py build_legacy_bundle_metadata /srv/c-lara/legacy-bundles/adelaide
+```
+
 ### You only have the bundle library on your laptop
 
 Either copy it to the server with `rsync` as described above, or use the local upload section to import one ZIP at a time from your laptop.
