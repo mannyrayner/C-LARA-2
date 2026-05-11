@@ -8895,6 +8895,65 @@ def _zip_directory_to_spooled_file(directory: Path):
     return spool
 
 
+
+def _metadata_arcname_for_legacy_source_zip(names: list[str]) -> str | None:
+    """Return where sidecar legacy metadata should be injected, if needed."""
+
+    name_set = set(names)
+    if "metadata.json" in name_set or any(name.endswith("/metadata.json") for name in names):
+        return None
+    if "annotated_text.json" in name_set:
+        return "metadata.json"
+
+    roots = []
+    for name in names:
+        parts = Path(name).parts
+        if len(parts) == 2 and parts[1] == "annotated_text.json":
+            roots.append(parts[0])
+    unique_roots = list(dict.fromkeys(roots))
+    if len(unique_roots) == 1:
+        return f"{unique_roots[0]}/metadata.json"
+    return None
+
+
+def _zip_with_sidecar_legacy_metadata(zip_path: Path, metadata_path: Path):
+    """Copy a legacy source.zip to a spool, adding sibling metadata.json if needed."""
+
+    spool = tempfile.SpooledTemporaryFile(max_size=20 * 1024 * 1024)
+    with zipfile.ZipFile(zip_path) as source_zf:
+        names = source_zf.namelist()
+        metadata_arcname = _metadata_arcname_for_legacy_source_zip(names)
+        if metadata_arcname is None or not metadata_path.exists():
+            spool.write(zip_path.read_bytes())
+        else:
+            with zipfile.ZipFile(spool, "w", zipfile.ZIP_DEFLATED) as target_zf:
+                for info in source_zf.infolist():
+                    target_zf.writestr(info, source_zf.read(info.filename))
+                target_zf.writestr(metadata_arcname, metadata_path.read_text(encoding="utf-8"))
+    spool.seek(0)
+    return spool
+
+
+def _open_server_bundle_for_import(import_path: Path):
+    """Return a spooled ZIP for a configured server-side bundle path."""
+
+    if import_path.is_dir():
+        zip_candidates = sorted(import_path.glob("*.zip"), key=lambda p: (p.name != "source.zip", p.name))
+        metadata_path = import_path / "metadata.json"
+        if zip_candidates and metadata_path.exists():
+            return _zip_with_sidecar_legacy_metadata(zip_candidates[0], metadata_path)
+        return _zip_directory_to_spooled_file(import_path)
+
+    metadata_path = import_path.with_name("metadata.json")
+    if import_path.suffix.lower() == ".zip" and metadata_path.exists():
+        return _zip_with_sidecar_legacy_metadata(import_path, metadata_path)
+
+    spool = tempfile.SpooledTemporaryFile(max_size=20 * 1024 * 1024)
+    spool.write(import_path.read_bytes())
+    spool.seek(0)
+    return spool
+
+
 def _import_open_project_source_zip(
     request: HttpRequest,
     zf: zipfile.ZipFile,
@@ -9181,13 +9240,10 @@ def import_project_zip(request: HttpRequest) -> HttpResponse:
                 messages.error(request, "Selected legacy bundle path is missing or unsafe.")
                 return redirect("project-import-zip")
             try:
-                if import_path.is_dir():
-                    spool = _zip_directory_to_spooled_file(import_path)
-                    with spool:
-                        with zipfile.ZipFile(spool) as zf:
-                            return _import_open_project_source_zip(request, zf, error_redirect="project-import-zip")
-                with zipfile.ZipFile(import_path) as zf:
-                    return _import_open_project_source_zip(request, zf, error_redirect="project-import-zip")
+                spool = _open_server_bundle_for_import(import_path)
+                with spool:
+                    with zipfile.ZipFile(spool) as zf:
+                        return _import_open_project_source_zip(request, zf, error_redirect="project-import-zip")
             except Exception as exc:  # noqa: BLE001
                 messages.error(request, f"Could not import selected legacy bundle: {exc}")
                 return redirect("project-import-zip")

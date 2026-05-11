@@ -705,6 +705,68 @@ class CompileStatusViewTests(TestCase):
             self.assertEqual(imported.target_language, "en")
             self.assertTrue((imported.artifact_dir() / "legacy_clara" / "annotated_text.json").exists())
 
+    def test_import_zip_view_admin_imports_source_zip_with_sidecar_metadata(self):
+        User = get_user_model()
+        admin = User.objects.create_user(username="sidecar_admin", password="pw", is_staff=True)
+        self.client.logout()
+        self.client.login(username="sidecar_admin", password="pw")
+
+        tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmpdir.cleanup)
+        tmp_root = Path(tmpdir.name)
+        library_root = tmp_root / "legacy_library"
+        bundle_dir = library_root / "1"
+        bundle_dir.mkdir(parents=True, exist_ok=True)
+        annotated_text = {
+            "l2_language": "german",
+            "l1_language": "english",
+            "pages": [
+                {
+                    "segments": [
+                        {
+                            "content_elements": [
+                                {"type": "Word", "content": "Hallo", "annotations": {"gloss": "hello", "lemma": "hallo"}},
+                            ],
+                            "annotations": {"translated": "Hello", "mwes": [], "page_number": 1},
+                        }
+                    ],
+                    "annotations": {"title": "Sidecar Legacy"},
+                }
+            ],
+        }
+        (bundle_dir / "metadata.json").write_text(
+            json.dumps(
+                {
+                    "id": 1,
+                    "title": "Sidecar Legacy",
+                    "l2": "german",
+                    "l1": "english",
+                    "owner_username": "legacyowner",
+                }
+            ),
+            encoding="utf-8",
+        )
+        with zipfile.ZipFile(bundle_dir / "source.zip", "w") as zf:
+            zf.writestr("annotated_text.json", json.dumps(annotated_text))
+
+        with override_settings(
+            LEGACY_CLARA_BUNDLE_LIBRARY_ROOT=str(library_root),
+            PIPELINE_OUTPUT_ROOT=tmp_root / "users",
+        ):
+            call_command("build_legacy_bundle_metadata", str(library_root), verbosity=0)
+            metadata = json.loads((library_root / "legacy_bundle_metadata.json").read_text(encoding="utf-8"))
+            self.assertEqual(metadata["bundles"][0]["import_relative_path"], "1/source.zip")
+
+            resp = self.client.post(
+                reverse("project-import-zip"),
+                {"import_mode": "server_bundle", "bundle_key": "1"},
+            )
+
+            self.assertEqual(resp.status_code, 302)
+            imported = Project.objects.get(owner=admin, title="Sidecar Legacy")
+            self.assertTrue((imported.artifact_dir() / "legacy_clara" / "metadata.json").exists())
+            self.assertTrue((imported.artifact_dir() / "legacy_clara" / "annotated_text.json").exists())
+
     def test_import_zip_view_hides_legacy_library_from_non_admin(self):
         resp = self.client.get(reverse("project-import-zip"))
         self.assertEqual(resp.status_code, 200)

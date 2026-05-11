@@ -220,7 +220,7 @@ This creates:
 /srv/c-lara/legacy-bundles/adelaide/legacy_bundle_metadata.json
 ```
 
-The command scans immediate child directories, reads each child `metadata.json`, and writes a global file with a `bundles` list. It also records import paths so the web UI can import the selected bundle.
+The command scans immediate child directories, reads each child `metadata.json`, and writes a global file with a `bundles` list. If a child directory contains a ZIP such as `source.zip`, the metadata records that ZIP as the import payload while keeping the sibling `metadata.json` path. The admin import flow treats this as one legacy bundle: it opens `source.zip` and injects the sibling `metadata.json` into the temporary import ZIP when the inner ZIP contains `annotated_text.json` but no metadata file of its own.
 
 If you want to write the global metadata file somewhere else inside the same library root, use:
 
@@ -250,7 +250,7 @@ export C_LARA_LEGACY_BUNDLE_LIBRARY_METADATA=metadata/all_bundles.json
 7. Select a bundle from the menu.
 8. Click **Import selected bundle**.
 
-The selected bundle is imported as a new C-LARA-2 project using the same source/legacy ZIP importer as the ordinary upload flow.
+The selected bundle is imported as a new C-LARA-2 project using the same source/legacy ZIP importer as the ordinary upload flow. For Adelaide-style directories containing `metadata.json` plus `source.zip`, the server-side importer combines those two files in memory before invoking the legacy importer; it does not require you to manually unzip or repackage each directory.
 
 ## What gets imported
 
@@ -384,7 +384,7 @@ sudo chmod -R u+rwX /srv/c-lara/legacy-bundles
 If the bundle appears in the admin picker but the import fails after you click **Import selected bundle**, the picker and the importer have reached different stages of the workflow:
 
 - the picker only needs to read the global `legacy_bundle_metadata.json`;
-- the importer must also read the selected bundle directory, create a temporary ZIP from it, unpack that ZIP safely, and convert the legacy JSON into C-LARA-2 project artifacts.
+- the importer must also read the selected bundle directory or selected `source.zip`, combine a sibling `metadata.json` with the ZIP when needed, unpack that temporary ZIP safely, and convert the legacy JSON into C-LARA-2 project artifacts.
 
 Common causes are:
 
@@ -392,7 +392,7 @@ Common causes are:
 2. **The configured root points at the wrong level.** `C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT` should point at the directory whose immediate children are the numbered bundle directories, not at one individual bundle and not at the parent folder above the collection. For example, the root should normally contain paths like `9/metadata.json`, `10/metadata.json`, and so on.
 3. **The metadata path is outside the configured root.** The import UI rejects metadata files and bundle paths that resolve outside `C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT`, even if the OS could read them. Keep the global metadata file inside the library root, or set `C_LARA_LEGACY_BUNDLE_LIBRARY_METADATA` to a relative path such as `legacy_bundle_metadata.json` or `metadata/all_bundles.json`.
 4. **Django can read the metadata file but not the bundle contents.** This can happen if `metadata.json` files are readable but audio, image, or nested JSON files were copied with more restrictive permissions. Re-run the ownership and permissions commands from Step 1, then retry.
-5. **The bundle is incomplete or has an unexpected shape.** Each selected bundle should contain at least `metadata.json` and the legacy content files expected by the importer, typically including `annotated_text.json`. If an `rsync` was interrupted, run it again and then verify the copied directory.
+5. **The bundle is incomplete or has an unexpected shape.** Each selected bundle should contain either a flat/rooted legacy ZIP with both `annotated_text.json` and `metadata.json`, or an Adelaide-style directory with sibling `metadata.json` and `source.zip` where `source.zip` contains `annotated_text.json`. If an `rsync` was interrupted, run it again and then verify the copied directory.
 6. **There is not enough temporary or media storage.** Server-side imports create a temporary ZIP and then write project artifacts under the C-LARA-2 media/project area. Check available space if failures happen only on larger bundles.
 
 Useful server-side checks:
