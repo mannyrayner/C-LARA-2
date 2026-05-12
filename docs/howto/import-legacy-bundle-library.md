@@ -372,12 +372,69 @@ sudo chmod 664 /srv/c-lara/legacy-bundles/adelaide/legacy_bundle_metadata.json
 
 ### Permission denied or missing files during import
 
-Ensure the OS user running Django can read the bundle library:
+Ensure the OS user running Django can read the bundle library. On the current AWS deployment this is normally `ubuntu:www-data`, but confirm the live service user/group as described in Step 1. A safe repair is:
 
 ```bash
-sudo chown -R <django-user>:<django-group> /srv/c-lara/legacy-bundles
-sudo chmod -R u+rwX /srv/c-lara/legacy-bundles
+sudo chown -R ubuntu:www-data /srv/c-lara/legacy-bundles
+sudo find /srv/c-lara/legacy-bundles -type d -exec chmod 2775 {} \;
+sudo find /srv/c-lara/legacy-bundles -type f -exec chmod 664 {} \;
 ```
+
+If your service runs under a different user/group, substitute those values. The important details are:
+
+- every parent directory must have execute permission for the web-service user or group;
+- every bundle directory and `source.zip` file must be readable by the web-service user or group;
+- if the importer writes derived files near the library, the target directory must also be writable.
+
+Use these checks to verify the exact path the web process is trying to read:
+
+```bash
+# Show ownership/mode on each path component.
+namei -l /srv/c-lara/legacy-bundles/adelaide/1/source.zip
+
+# Check as the likely web-service users. One of these should succeed, depending on deployment.
+sudo -u ubuntu test -r /srv/c-lara/legacy-bundles/adelaide/1/source.zip && echo 'ubuntu can read source.zip'
+sudo -u www-data test -r /srv/c-lara/legacy-bundles/adelaide/1/source.zip && echo 'www-data can read source.zip'
+
+# Verify that the ZIP itself is readable and structurally valid.
+zipinfo -1 /srv/c-lara/legacy-bundles/adelaide/1/source.zip | head -40
+unzip -t /srv/c-lara/legacy-bundles/adelaide/1/source.zip | tail
+```
+
+### `project_dir/metadata.json` is reported as unreadable
+
+If the error is:
+
+```text
+Legacy C-LARA project_dir bundle has unreadable project_dir/metadata.json
+```
+
+then the web process has already opened `source.zip` and listed `project_dir/metadata.json`. That means ordinary filesystem permissions on `/srv/c-lara/legacy-bundles/adelaide` are probably **not** the only issue. The importer currently expects `project_dir/metadata.json` inside the ZIP to be valid UTF-8 JSON. The word "unreadable" can therefore mean either "could not open it from the ZIP" or "opened it, but it was not JSON".
+
+Check the file inside the ZIP directly on the server:
+
+```bash
+# Confirm that the entry exists and inspect ZIP-internal metadata.
+zipinfo -l /srv/c-lara/legacy-bundles/adelaide/1/source.zip project_dir/metadata.json
+
+# Print the first bytes/lines so you can see whether it looks like JSON.
+unzip -p /srv/c-lara/legacy-bundles/adelaide/1/source.zip project_dir/metadata.json | head -40
+
+# Validate it as JSON. If this fails, the importer needs to support this legacy metadata format.
+unzip -p /srv/c-lara/legacy-bundles/adelaide/1/source.zip project_dir/metadata.json \
+  | python3 -m json.tool | head -40
+```
+
+If `zipinfo` or `unzip -p` fails when run as your admin user, repair or recopy the ZIP. If they succeed but `python3 -m json.tool` fails, copy the first few non-sensitive lines of the output/error into the issue discussion; the file is present, but it is not in the JSON shape the importer currently expects.
+
+You can also test as the web-service user to rule out OS permissions completely:
+
+```bash
+sudo -u ubuntu unzip -p /srv/c-lara/legacy-bundles/adelaide/1/source.zip project_dir/metadata.json | head -5
+sudo -u www-data unzip -p /srv/c-lara/legacy-bundles/adelaide/1/source.zip project_dir/metadata.json | head -5
+```
+
+If these commands work as the service user, do not keep changing `chmod`; the next fix is in the importer/parser.
 
 ### Importing a selected server bundle fails
 
