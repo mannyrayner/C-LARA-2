@@ -767,6 +767,55 @@ class CompileStatusViewTests(TestCase):
             self.assertTrue((imported.artifact_dir() / "legacy_clara" / "metadata.json").exists())
             self.assertTrue((imported.artifact_dir() / "legacy_clara" / "annotated_text.json").exists())
 
+    def test_import_zip_view_admin_imports_project_dir_legacy_source_zip(self):
+        User = get_user_model()
+        admin = User.objects.create_user(username="project_dir_admin", password="pw", is_staff=True)
+        self.client.logout()
+        self.client.login(username="project_dir_admin", password="pw")
+
+        tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmpdir.cleanup)
+        tmp_root = Path(tmpdir.name)
+        library_root = tmp_root / "legacy_library"
+        bundle_dir = library_root / "1"
+        bundle_dir.mkdir(parents=True, exist_ok=True)
+        (bundle_dir / "metadata.json").write_text(
+            json.dumps(
+                {
+                    "id": 1,
+                    "title": "Project Dir Legacy",
+                    "l2": "german",
+                    "l1": "english",
+                    "owner_username": "legacyowner",
+                }
+            ),
+            encoding="utf-8",
+        )
+        with zipfile.ZipFile(bundle_dir / "source.zip", "w") as zf:
+            zf.writestr("metadata.json", json.dumps({"title": "Project Dir Legacy", "l2": "german", "l1": "english"}))
+            zf.writestr("project_dir/metadata.json", json.dumps({"title": "Project Dir Legacy"}))
+            zf.writestr("project_dir/plain/plain.txt", "Hallo Welt")
+            zf.writestr("audio/metadata.json", "[]")
+            zf.writestr("images/metadata.json", "[]")
+
+        with override_settings(
+            LEGACY_CLARA_BUNDLE_LIBRARY_ROOT=str(library_root),
+            PIPELINE_OUTPUT_ROOT=tmp_root / "users",
+        ):
+            call_command("build_legacy_bundle_metadata", str(library_root), verbosity=0)
+            resp = self.client.post(
+                reverse("project-import-zip"),
+                {"import_mode": "server_bundle", "bundle_key": "1"},
+            )
+
+            self.assertEqual(resp.status_code, 302)
+            imported = Project.objects.get(owner=admin, title="Project Dir Legacy")
+            self.assertEqual(imported.source_text, "Hallo Welt")
+            self.assertEqual(imported.language, "de")
+            self.assertEqual(imported.target_language, "en")
+            self.assertTrue((imported.artifact_dir() / "legacy_clara" / "project_dir" / "metadata.json").exists())
+            self.assertTrue(list((imported.artifact_dir() / "runs").rglob("legacy_import_summary.json")))
+
     def test_import_zip_view_admin_missing_metadata_message_includes_trace(self):
         User = get_user_model()
         User.objects.create_user(username="trace_admin", password="pw", is_staff=True)

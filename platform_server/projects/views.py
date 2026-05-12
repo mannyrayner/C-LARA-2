@@ -72,7 +72,10 @@ from .legacy_clara_import import (
     LegacyClaraImportError,
     find_legacy_clara_bundle_root,
     import_legacy_clara_bundle,
+    import_legacy_clara_project_dir_bundle,
+    is_legacy_clara_project_dir_bundle,
     legacy_clara_bundle_title,
+    legacy_clara_project_dir_bundle_title,
 )
 from .billing import (
     apply_credit_delta,
@@ -9044,6 +9047,25 @@ def _import_open_project_source_zip(
         if result.diagnostics:
             detail = f" Import diagnostics: {'; '.join(result.diagnostics[:3])}"
         messages.success(request, f"Imported legacy C-LARA bundle as new project '{result.project.title}'.{detail}")
+        return redirect("project-detail", pk=result.project.pk)
+
+    if is_legacy_clara_project_dir_bundle(names):
+        try:
+            base_title = legacy_clara_project_dir_bundle_title(zf)
+            result = import_legacy_clara_project_dir_bundle(
+                zf=zf,
+                names=names,
+                user=request.user,
+                unique_title=_build_unique_import_title(request.user, base_title),
+            )
+        except LegacyClaraImportError as exc:
+            messages.error(request, f"{exc}{_format_legacy_import_trace(import_trace or _legacy_zip_trace(names))}")
+            return redirect(error_redirect)
+        _persist_project_source(result.project)
+        detail = ""
+        if result.diagnostics:
+            detail = f" Import diagnostics: {'; '.join(result.diagnostics[:3])}"
+        messages.success(request, f"Imported legacy C-LARA project_dir bundle as new project '{result.project.title}'.{detail}")
         return redirect("project-detail", pk=result.project.pk)
 
     metadata = _safe_zip_read_json(zf, f"{root}/project/metadata.json")

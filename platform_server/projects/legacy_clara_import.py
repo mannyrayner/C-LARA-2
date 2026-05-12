@@ -91,6 +91,29 @@ def is_legacy_clara_bundle(names: list[str], root: str) -> bool:
     return required.issubset(name_set)
 
 
+def is_legacy_clara_project_dir_bundle(names: list[str]) -> bool:
+    """Return True for legacy source.zip exports containing project_dir/ artifacts."""
+
+    name_set = set(names)
+    return "metadata.json" in name_set and "project_dir/metadata.json" in name_set
+
+
+def legacy_clara_project_dir_bundle_title(zf: zipfile.ZipFile) -> str:
+    """Return a best-effort title for a legacy project_dir export."""
+
+    metadata = _read_optional_json(zf, "metadata.json")
+    if isinstance(metadata, dict):
+        for key in ("title", "name", "project_title"):
+            if metadata.get(key):
+                return str(metadata[key])
+    project_metadata = _read_optional_json(zf, "project_dir/metadata.json")
+    if isinstance(project_metadata, dict):
+        for key in ("title", "name", "project_title"):
+            if project_metadata.get(key):
+                return str(project_metadata[key])
+    return "Imported legacy C-LARA project"
+
+
 def legacy_clara_bundle_title(zf: zipfile.ZipFile, root: str) -> str:
     """Return a best-effort title for a legacy C-LARA JSON export."""
 
@@ -184,6 +207,92 @@ def import_legacy_clara_bundle(
     return LegacyClaraImportResult(project=project, diagnostics=diagnostics)
 
 
+def import_legacy_clara_project_dir_bundle(
+    *,
+    zf: zipfile.ZipFile,
+    names: list[str],
+    user: Any,
+    unique_title: str,
+) -> LegacyClaraImportResult:
+    """Import a legacy C-LARA source.zip with project_dir/ artifacts."""
+
+    legacy_metadata = _read_optional_json(zf, "metadata.json")
+    project_metadata = _read_optional_json(zf, "project_dir/metadata.json")
+    if not isinstance(legacy_metadata, dict):
+        raise LegacyClaraImportError("Legacy C-LARA project_dir bundle has unreadable metadata.json.")
+    if not isinstance(project_metadata, dict):
+        raise LegacyClaraImportError("Legacy C-LARA project_dir bundle has unreadable project_dir/metadata.json.")
+
+    diagnostics: list[str] = [
+        "Imported from legacy C-LARA project_dir/source.zip layout; detailed annotations may need regeneration."
+    ]
+    source_text = _legacy_project_dir_source_text(zf, names)
+    if not source_text.strip():
+        diagnostics.append("Could not find readable source text under project_dir/plain or related text folders.")
+        source_text = legacy_clara_project_dir_bundle_title(zf)
+    annotated = _annotated_text_from_plain_text(
+        source_text,
+        title=legacy_clara_project_dir_bundle_title(zf),
+        l2=legacy_metadata.get("l2") or legacy_metadata.get("language") or project_metadata.get("l2_language"),
+        l1=legacy_metadata.get("l1") or legacy_metadata.get("target_language") or project_metadata.get("l1_language"),
+    )
+
+    title = unique_title or legacy_clara_project_dir_bundle_title(zf)
+    language = _normalize_language(legacy_metadata.get("l2") or project_metadata.get("l2_language"), fallback="en")
+    target_language = _normalize_language(legacy_metadata.get("l1") or project_metadata.get("l1_language"), fallback="fr")
+
+    project = Project.objects.create(
+        owner=user,
+        title=title[:200] or "Imported legacy C-LARA project",
+        description="Imported from a legacy C-LARA project_dir/source.zip export bundle.",
+        source_text=source_text[:1000000],
+        input_mode=Project.INPUT_SOURCE,
+        language=language[:16],
+        target_language=target_language[:16],
+        ai_model=DEFAULT_MODEL[:64],
+        page_image_placement=_image_placement_from_metadata(zf, "")[:16],
+        page_image_text_source=Project.PAGE_IMAGE_TEXT_SOURCE_SEGMENTATION,
+        segmentation_method="auto",
+        romanization_method="auto",
+    )
+
+    artifact_root = project.artifact_dir().resolve()
+    if artifact_root.exists():
+        shutil.rmtree(artifact_root)
+    legacy_root = artifact_root / LEGACY_CLARA_ROOT
+    legacy_root.mkdir(parents=True, exist_ok=True)
+    _copy_legacy_tree(zf, names, "", legacy_root)
+
+    stages_text, conversion_diagnostics = _convert_annotated_text(annotated, artifact_root=artifact_root)
+    diagnostics.extend(conversion_diagnostics)
+
+    run_dir = artifact_root / "runs" / f"run_legacy_clara_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
+    stages_dir = run_dir / "stages"
+    stages_dir.mkdir(parents=True, exist_ok=True)
+    for stage_name in LEGACY_CLARA_STAGE_NAMES:
+        (stages_dir / f"{stage_name}.json").write_text(
+            json.dumps(stages_text, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    (run_dir / "legacy_import_summary.json").write_text(
+        json.dumps(
+            {
+                "source_format": "legacy_clara_project_dir_export",
+                "stage_names": LEGACY_CLARA_STAGE_NAMES,
+                "diagnostics": diagnostics,
+                "metadata": legacy_metadata,
+                "project_dir_metadata": project_metadata,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    _restore_legacy_image_records(project=project, zf=zf, root="", artifact_root=artifact_root, text=stages_text)
+    return LegacyClaraImportResult(project=project, diagnostics=diagnostics)
+
+
 def _bundle_member(root: str, relpath: str) -> str:
     """Return a POSIX ZIP member path under ``root`` or at archive top level."""
 
@@ -197,6 +306,69 @@ def _read_json(zf: zipfile.ZipFile, member: str) -> Any:
             return json.loads(fp.read().decode("utf-8"))
     except Exception as exc:
         raise LegacyClaraImportError(f"Could not read {member} from legacy C-LARA bundle.") from exc
+
+
+def _read_optional_json(zf: zipfile.ZipFile, member: str) -> Any:
+    try:
+        with zf.open(member, "r") as fp:
+            return json.loads(fp.read().decode("utf-8"))
+    except Exception:
+        return None
+
+
+def _read_text_member(zf: zipfile.ZipFile, member: str) -> str:
+    with zf.open(member, "r") as fp:
+        data = fp.read()
+    for encoding in ("utf-8", "utf-8-sig", "latin-1"):
+        try:
+            return data.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return data.decode("utf-8", errors="replace")
+
+
+def _legacy_project_dir_source_text(zf: zipfile.ZipFile, names: list[str]) -> str:
+    prefixes = (
+        "project_dir/plain/",
+        "project_dir/segmented/",
+        "project_dir/segmented_with_images/",
+        "project_dir/summary/",
+    )
+    candidates = [
+        name
+        for name in names
+        if not name.endswith("/")
+        and any(name.startswith(prefix) for prefix in prefixes)
+        and PurePosixPath(name).name not in {"metadata.json", ".DS_Store"}
+    ]
+    for name in sorted(candidates, key=lambda item: (not item.startswith("project_dir/plain/"), item)):
+        try:
+            text = _read_text_member(zf, name).strip()
+        except Exception:
+            continue
+        if text:
+            return text
+    return ""
+
+
+def _annotated_text_from_plain_text(source_text: str, *, title: str, l2: Any, l1: Any) -> dict[str, Any]:
+    return {
+        "l2_language": l2 or "english",
+        "l1_language": l1 or "english",
+        "pages": [
+            {
+                "annotations": {"title": title},
+                "segments": [
+                    {
+                        "annotations": {"translated": "", "mwes": [], "page_number": 1},
+                        "content_elements": [
+                            {"type": "NonWordText", "content": source_text, "annotations": {}},
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
 
 
 def _normalize_language(value: Any, *, fallback: str) -> str:

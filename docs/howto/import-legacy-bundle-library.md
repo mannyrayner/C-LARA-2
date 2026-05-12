@@ -254,9 +254,9 @@ The selected bundle is imported as a new C-LARA-2 project using the same source/
 
 ## What gets imported
 
-For supported legacy JSON bundles, C-LARA-2 imports:
+For supported legacy bundles, C-LARA-2 imports:
 
-- `annotated_text.json` and `metadata.json`;
+- `annotated_text.json` and `metadata.json` for legacy JSON exports, or root `metadata.json` plus `project_dir/metadata.json` for legacy `project_dir`/`source.zip` exports;
 - legacy audio/image files under the new project's `legacy_clara/` artifact folder;
 - converted C-LARA-2 stage JSON artifacts;
 - available image/style/page metadata;
@@ -392,10 +392,10 @@ Common causes are:
 2. **The configured root points at the wrong level.** `C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT` should point at the directory whose immediate children are the numbered bundle directories, not at one individual bundle and not at the parent folder above the collection. For example, the root should normally contain paths like `9/metadata.json`, `10/metadata.json`, and so on.
 3. **The metadata path is outside the configured root.** The import UI rejects metadata files and bundle paths that resolve outside `C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT`, even if the OS could read them. Keep the global metadata file inside the library root, or set `C_LARA_LEGACY_BUNDLE_LIBRARY_METADATA` to a relative path such as `legacy_bundle_metadata.json` or `metadata/all_bundles.json`.
 4. **Django can read the metadata file but not the bundle contents.** This can happen if `metadata.json` files are readable but audio, image, or nested JSON files were copied with more restrictive permissions. Re-run the ownership and permissions commands from Step 1, then retry.
-5. **The bundle is incomplete or has an unexpected shape.** Each selected bundle should contain either a flat/rooted legacy ZIP with both `annotated_text.json` and `metadata.json`, or an Adelaide-style directory with sibling `metadata.json` and `source.zip` where `source.zip` contains flat or single-root `annotated_text.json`. If an `rsync` was interrupted, run it again and then verify the copied directory.
+5. **The bundle is incomplete or has an unexpected shape.** Each selected bundle should contain one of the supported shapes: a flat/rooted legacy JSON ZIP with both `annotated_text.json` and `metadata.json`; an Adelaide-style directory with sibling `metadata.json` and `source.zip` where `source.zip` contains flat or single-root `annotated_text.json`; or an Adelaide-style `source.zip` with root `metadata.json`, `project_dir/metadata.json`, and text artifacts under folders such as `project_dir/plain/`. If an `rsync` was interrupted, run it again and then verify the copied directory.
 6. **There is not enough temporary or media storage.** Server-side imports create a temporary ZIP and then write project artifacts under the C-LARA-2 media/project area. Check available space if failures happen only on larger bundles.
 
-If the page still reports `Bundle is missing project metadata`, copy the full `Import trace` appended to the error message. It records what the web process actually selected and opened: selected import path, source ZIP path, sidecar metadata path and existence, metadata entries injected into the temporary ZIP, `annotated_text.json` entries, `metadata.json` entries, detected legacy root, and the first ZIP entries.
+If the page still reports `Bundle is missing project metadata`, copy the full `Import trace` appended to the error message. It records what the web process actually selected and opened: selected import path, source ZIP path, sidecar metadata path and existence, metadata entries injected into the temporary ZIP, `annotated_text.json` entries, `metadata.json` entries, detected legacy root, and the first ZIP entries. If the trace shows `project_dir/metadata.json` but no `annotated_text.json`, the bundle is a legacy `project_dir` export and should be handled by the `project_dir` importer.
 
 Useful server-side checks:
 

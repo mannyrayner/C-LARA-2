@@ -1,6 +1,6 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-11T22:43:44Z_
+_Last updated: 2026-05-11T23:13:22Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
@@ -40,4 +40,5 @@ This document summarizes the current issue registry for quick human review. Cano
 - **Service-environment visibility:** ISSUE-0010 now also records that `export C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT=...` in an SSH shell is not enough for the website; configure the Gunicorn/Django service environment, restart services, and use the admin-only diagnostics panel on `projects/import-zip/` to confirm the running web process sees the setting.
 - **Adelaide source.zip shape:** ISSUE-0010 now records that real Adelaide directories use sibling `metadata.json` plus `source.zip`; server-side import combines those in memory when `source.zip` has flat or single-root `annotated_text.json` but no internal metadata, instead of treating the inner ZIP as a native C-LARA-2 source bundle.
 - **Import trace for remaining failures:** ISSUE-0010 now surfaces an `Import trace` on the missing-project-metadata error path, including selected path, source ZIP path, sidecar metadata status, injected metadata entries, annotated/metadata ZIP entries, detected legacy root, and first ZIP entries.
+- **Legacy project_dir source.zip support:** ISSUE-0010 now also handles the traced Adelaide layout with root `metadata.json`, `project_dir/metadata.json`, and text/media artifacts under `project_dir/*`, preserving the original tree and creating C-LARA-2 stage artifacts from the best available plain text.
 - **Writing scope:** ISSUE-0008 should use the internal report as the master source, then, subject to co-author approval, split it into a user-facing EuroCALL 2026 paper and an implementor-facing ALTA 2026 paper to avoid duplicated effort.
