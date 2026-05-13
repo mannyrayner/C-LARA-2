@@ -1117,6 +1117,38 @@ class CompileStatusViewTests(TestCase):
             "xióng māo",
         )
 
+    def test_import_legacy_clara_json_bundle_maps_kok_kaper_language(self):
+        bundle = io.BytesIO()
+        annotated_text = {
+            "l2_language": "Kok Kaper",
+            "l1_language": "English",
+            "pages": [
+                {
+                    "segments": [
+                        {
+                            "content_elements": [
+                                {"type": "Word", "content": "Ngat", "annotations": {"gloss": "I"}},
+                            ],
+                            "annotations": {"translated": "I", "mwes": [], "page_number": 1},
+                        }
+                    ],
+                    "annotations": {"title": "Kok Kaper sample"},
+                }
+            ],
+        }
+        with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("annotated_text.json", json.dumps(annotated_text, ensure_ascii=False))
+            zf.writestr("metadata.json", json.dumps({"simple_clara_type": "create_text"}))
+        bundle.seek(0)
+
+        upload = SimpleUploadedFile("kok_kaper_legacy.zip", bundle.getvalue(), content_type="application/zip")
+        resp = self.client.post(reverse("project-import-source-bundle"), {"source_bundle": upload})
+        self.assertEqual(resp.status_code, 302)
+
+        imported = Project.objects.exclude(pk=self.project.pk).get()
+        self.assertEqual(imported.language, "xkk")
+        self.assertEqual(imported.target_language, "en")
+
     @patch("projects.views.async_task")
     def test_compile_normalizes_legacy_import_processing_method(self, mock_async_task):
         self.project.language = "zh"
