@@ -30,14 +30,7 @@
     {% endfor %}
   </ul>
 {% endif %}
-<form method="post" action="{% url 'project-import-source-bundle' %}" enctype="multipart/form-data">
-  {% csrf_token %}
-  <p>
-    <label for="source_bundle">Import source ZIP:</label>
-    <input type="file" id="source_bundle" name="source_bundle" accept=".zip,application/zip" required />
-    <button class="btn secondary" type="submit">Import as new project</button>
-  </p>
-</form>
+<p><a class="btn secondary" href="{% url 'project-import-zip' %}">Import from ZIP</a></p>
 <ul>
   {% for project in object_list %}
     <li>
