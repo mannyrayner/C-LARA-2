@@ -151,3 +151,12 @@ OPENAI_TOKEN_PRICING_USD_PER_1M = {
 OPENAI_PRICING_TRACKED_MODELS = ["gpt-4o", "gpt-4o-mini", "gpt-5", "gpt-image-1"]
 OPENAI_PRICING_AI_MODEL = os.environ.get("C_LARA_OPENAI_PRICING_AI_MODEL", "gpt-5")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+
+# Optional admin-only legacy C-LARA corpus import support.
+# Point this at a server-side folder containing numbered legacy bundle directories
+# and a global metadata JSON file produced by the
+# build_legacy_bundle_metadata management command.
+LEGACY_CLARA_BUNDLE_LIBRARY_ROOT = os.environ.get("C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT", "")
+LEGACY_CLARA_BUNDLE_LIBRARY_METADATA = os.environ.get(
+    "C_LARA_LEGACY_BUNDLE_LIBRARY_METADATA", "legacy_bundle_metadata.json"
+)
