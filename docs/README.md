@@ -34,6 +34,7 @@ Welcome! This folder collects specifications, architecture notes, and delivery r
 - **RTL support roadmap (new)**: [roadmap/rtl-support.md](roadmap/rtl-support.md)
 - **MWE strategy roadmap (new)**: [roadmap/mwe-strategy.md](roadmap/mwe-strategy.md)
 - **Reports and academic papers roadmap (new)**: [roadmap/reports-and-papers.md](roadmap/reports-and-papers.md)
+- **Efficiency and stage-artifact persistence roadmap (new)**: [roadmap/efficiency-and-stage-artifacts.md](roadmap/efficiency-and-stage-artifacts.md)
 
 ## Current implementation snapshot
 

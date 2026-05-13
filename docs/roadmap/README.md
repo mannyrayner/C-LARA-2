@@ -268,3 +268,12 @@ Focus:
 - EuroCALL 2026 paper preparation, accepted with a mid-August 2026 deadline.
 - Possible ALTA 2026 paper and related-work positioning around AI-assisted, repo-native software/documentation/test co-development.
 
+### 22. Efficiency and stage-artifact persistence roadmap
+
+Status: **New roadmap document added.** See [roadmap/efficiency-and-stage-artifacts.md](efficiency-and-stage-artifacts.md).
+
+Focus:
+- Centralize pipeline stage artifact read/write operations behind a format-independent API.
+- Preserve JSON compatibility while benchmarking faster internal formats for large imported projects.
+- Explore trusted admin-only binary/pickle-like migration artifacts for the one-off Adelaide corpus, without weakening safety for normal user uploads or source-bundle interchange.
+- Record artifact read/write timings and expose project/run-level diagnostics so performance decisions are evidence-based.
