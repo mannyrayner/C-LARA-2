@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "issue_id": "ISSUE-0011",
+  "title": "Add image-based language games for community use",
+  "state": "reported",
+  "priority": "P1",
+  "created_at": "2026-05-09T04:47:51Z",
+  "updated_at": "2026-05-09T05:30:00Z",
+  "origin": "human-suggestion",
+  "notes": "Suggestion #3 from admin export (submitted by mannyrayner on 2026-05-09), refined by planning discussion on 2026-05-09. Add image-based language games, with Kok Kaper Indigenous community work as the immediate use case and a target of having the initial version stable before Sophie's next visit in early June 2026. Use the community picture dictionary as the central curated resource for both picture glossing and games. Start with image-based flashcards in both directions: (1) show an image and ask the learner to choose the matching word from alternatives; (2) show a word and ask the learner to choose the matching image from alternatives. Before implementation, agree the user-level workflow with Sophie. The first implementation should keep routine operations in the Community Organiser picture-dictionary interface, support generating images just for newly added/missing-image words, use approved/game-ready dictionary entries for flashcards, choose distractors from the same dictionary with optional AI ranking/filtering, and provide simple learner-facing play plus a lightweight review/feedback path for bad images, wrong words, or bad distractors.",
+  "deadline": "2026-06-01T00:00:00Z",
+  "dependencies": []
+}
