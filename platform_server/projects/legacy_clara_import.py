@@ -8,6 +8,7 @@ normal C-LARA-2 tooling.
 """
 from __future__ import annotations
 
+import copy
 import json
 import shutil
 from dataclasses import dataclass, field
@@ -180,10 +181,11 @@ def import_legacy_clara_bundle(
     _copy_legacy_tree(zf, names, root, legacy_root)
     stages_text, conversion_diagnostics = _convert_annotated_text(annotated, artifact_root=artifact_root)
     diagnostics.extend(conversion_diagnostics)
+    stage_payloads = _legacy_stage_payloads(stages_text)
 
     run_dir = artifact_root / "runs" / f"run_legacy_clara_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
     for stage_name in LEGACY_CLARA_STAGE_NAMES:
-        write_stage_artifact(run_dir, stage_name, stages_text)
+        write_stage_artifact(run_dir, stage_name, stage_payloads.get(stage_name, stages_text))
     (run_dir / "legacy_import_summary.json").write_text(
         json.dumps(
             {
@@ -261,10 +263,11 @@ def import_legacy_clara_project_dir_bundle(
 
     stages_text, conversion_diagnostics = _convert_annotated_text(annotated, artifact_root=artifact_root)
     diagnostics.extend(conversion_diagnostics)
+    stage_payloads = _legacy_stage_payloads(stages_text)
 
     run_dir = artifact_root / "runs" / f"run_legacy_clara_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
     for stage_name in LEGACY_CLARA_STAGE_NAMES:
-        write_stage_artifact(run_dir, stage_name, stages_text)
+        write_stage_artifact(run_dir, stage_name, stage_payloads.get(stage_name, stages_text))
     (run_dir / "legacy_import_summary.json").write_text(
         json.dumps(
             {
@@ -521,6 +524,88 @@ def _convert_annotated_text(text: dict[str, Any], *, artifact_root: Path) -> tup
         },
     }
     return converted, diagnostics
+
+
+def _legacy_stage_payloads(converted: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Return stage-specific payloads for converted legacy annotations.
+
+    Later legacy-derived stages keep the rich annotation payload, but the two
+    segmentation stages should look like normal C-LARA-2 segmentation outputs:
+    phase 1 has only page/segment surfaces, while phase 2 adds token surfaces
+    without token-level linguistic/audio annotations.
+    """
+
+    return {
+        "segmentation_phase_1": _legacy_segmentation_phase_1_payload(converted),
+        "segmentation_phase_2": _legacy_segmentation_phase_2_payload(converted),
+    }
+
+
+def _legacy_segmentation_phase_1_payload(converted: dict[str, Any]) -> dict[str, Any]:
+    payload = _legacy_stage_payload_base(converted)
+    pages: list[dict[str, Any]] = []
+    for page in converted.get("pages", []) or []:
+        if not isinstance(page, dict):
+            continue
+        segments: list[dict[str, Any]] = []
+        for segment in page.get("segments", []) or []:
+            if not isinstance(segment, dict):
+                continue
+            segments.append({"surface": str(segment.get("surface") or ""), "annotations": {}})
+        pages.append(
+            {
+                "surface": str(page.get("surface") or ""),
+                "segments": segments,
+                "annotations": {},
+            }
+        )
+    payload["pages"] = pages
+    return payload
+
+
+def _legacy_segmentation_phase_2_payload(converted: dict[str, Any]) -> dict[str, Any]:
+    payload = _legacy_stage_payload_base(converted)
+    pages: list[dict[str, Any]] = []
+    for page in converted.get("pages", []) or []:
+        if not isinstance(page, dict):
+            continue
+        segments: list[dict[str, Any]] = []
+        for segment in page.get("segments", []) or []:
+            if not isinstance(segment, dict):
+                continue
+            tokens: list[dict[str, Any]] = []
+            for token in segment.get("tokens", []) or []:
+                if not isinstance(token, dict):
+                    continue
+                token_out = {"surface": str(token.get("surface") or "")}
+                if token.get("kind"):
+                    token_out["kind"] = token.get("kind")
+                tokens.append(token_out)
+            segments.append(
+                {
+                    "surface": str(segment.get("surface") or ""),
+                    "tokens": tokens,
+                    "annotations": {},
+                }
+            )
+        pages.append(
+            {
+                "surface": str(page.get("surface") or ""),
+                "segments": segments,
+                "annotations": {},
+            }
+        )
+    payload["pages"] = pages
+    return payload
+
+
+def _legacy_stage_payload_base(converted: dict[str, Any]) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    for key in ("l2", "l1", "title", "surface"):
+        if key in converted:
+            payload[key] = copy.deepcopy(converted[key])
+    payload["annotations"] = {"legacy_clara_import": True}
+    return payload
 
 
 def _convert_annotations(annotations: dict[str, Any], *, artifact_root: Path, level: str) -> dict[str, Any]:

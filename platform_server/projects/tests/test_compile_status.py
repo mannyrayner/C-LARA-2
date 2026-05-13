@@ -1019,6 +1019,27 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual(pinyin_payload["pages"][0]["segments"][0]["annotations"]["translation"], "Panda.")
         self.assertTrue(Path(token["annotations"]["audio"]["path"]).exists())
 
+        seg1_path = next((imported.artifact_dir() / "runs").rglob("segmentation_phase_1.json"))
+        seg2_path = next((imported.artifact_dir() / "runs").rglob("segmentation_phase_2.json"))
+        seg1_payload = json.loads(seg1_path.read_text(encoding="utf-8"))
+        seg2_payload = json.loads(seg2_path.read_text(encoding="utf-8"))
+
+        def _contains_key(value, key):
+            if isinstance(value, dict):
+                return key in value or any(_contains_key(child, key) for child in value.values())
+            if isinstance(value, list):
+                return any(_contains_key(child, key) for child in value)
+            return False
+
+        self.assertFalse(_contains_key(seg1_payload, "tokens"))
+        self.assertFalse(_contains_key(seg1_payload, "audio"))
+        self.assertFalse(_contains_key(seg1_payload, "tts"))
+        seg2_token = seg2_payload["pages"][0]["segments"][0]["tokens"][0]
+        self.assertEqual(seg2_token, {"surface": "熊猫"})
+        self.assertNotIn("annotations", seg2_token)
+        self.assertFalse(_contains_key(seg2_payload, "audio"))
+        self.assertFalse(_contains_key(seg2_payload, "tts"))
+
         self.assertTrue((imported.artifact_dir() / "legacy_clara" / "annotated_text.json").exists())
         self.assertTrue((imported.artifact_dir() / "legacy_clara" / "audio" / "default_panda.mp3").exists())
         self.assertTrue((imported.artifact_dir() / "legacy_clara" / "images" / "page_1.png").exists())
