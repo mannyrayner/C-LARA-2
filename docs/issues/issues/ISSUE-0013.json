@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "issue_id": "ISSUE-0013",
+  "title": "Improve stage artifact persistence performance and timeout resilience",
+  "state": "reported",
+  "priority": "P1",
+  "created_at": "2026-05-13T01:12:11Z",
+  "updated_at": "2026-05-13T01:12:11Z",
+  "origin": "human-suggestion",
+  "notes": "Suggestion #1 from admin export (submitted by mannyrayner on 2026-05-13), split out from the ISSUE-0010 follow-up. Imported legacy C-LARA projects can now be created on the AWS server, but pipeline compilation there is much slower than expected and sometimes fails with `Read timeout` or `Internal error`, especially for large imported projects with large intermediate stage artifacts. Investigate whether repeated reading, writing, and parsing of large JSON stage files is a bottleneck or timeout trigger. Design a generic stage-artifact persistence layer with central read/write operations so the on-disk representation can be changed or optimized without rewriting pipeline logic. Evaluate options such as more efficient JSON handling, compression, caching, SQLite, MessagePack, or pickle-like internal caches. Be cautious with pickle: it must not be used to load untrusted user-uploaded files unless there is a clear trust boundary and safety story. Preserve human-inspectable/exportable JSON where needed for source-bundle interchange, manual debugging, and legacy migration provenance, possibly by keeping JSON as the interchange format while using a faster internal representation/cache for server-side pipeline reruns. Include benchmarks on large imported legacy projects, timeout instrumentation, and regression tests ensuring existing JSON source-bundle import/export remains compatible.",
+  "deadline": null,
+  "dependencies": []
+}
