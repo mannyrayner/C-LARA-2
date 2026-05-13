@@ -46,6 +46,7 @@ from core.ai_api import OpenAIClient, normalize_json_text
 from core.language_direction import language_direction
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 from pipeline.mwe import normalize_mwes
+from pipeline.stage_artifacts import read_stage_artifact, stage_artifact_path, write_stage_artifact
 
 from .forms import (
     AdminCommunityForm,
@@ -3766,7 +3767,7 @@ def _save_versioned_stage_payload(
     target_run = run_dir or _ensure_stage_run_dir(project)
     stage_dir = target_run / "stages"
     stage_dir.mkdir(parents=True, exist_ok=True)
-    (stage_dir / f"{stage_name}.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    write_stage_artifact(target_run, stage_name, payload)
     versions_dir = stage_dir / "manual_versions"
     versions_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
@@ -4476,13 +4477,11 @@ def _build_phase2_seed_from_seg1(seg1_payload: dict[str, Any]) -> dict[str, Any]
 
 
 def _salvage_segmentation_phase_2_for_run(run_dir: Path) -> dict[str, Any] | None:
-    seg1_path = run_dir / "stages" / "segmentation_phase_1.json"
-    seg2_path = run_dir / "stages" / "segmentation_phase_2.json"
-    if not seg1_path.exists() or not seg2_path.exists():
+    if not stage_artifact_path(run_dir, "segmentation_phase_1").exists() or not stage_artifact_path(run_dir, "segmentation_phase_2").exists():
         return None
     try:
-        seg1_payload = json.loads(seg1_path.read_text(encoding="utf-8"))
-        seg2_payload = json.loads(seg2_path.read_text(encoding="utf-8"))
+        seg1_payload = read_stage_artifact(run_dir, "segmentation_phase_1")
+        seg2_payload = read_stage_artifact(run_dir, "segmentation_phase_2")
     except Exception:
         return None
     if not isinstance(seg1_payload, dict) or not isinstance(seg2_payload, dict):
@@ -4518,10 +4517,7 @@ def _salvage_segmentation_phase_2_for_run(run_dir: Path) -> dict[str, Any] | Non
 
     if unchanged_pages == 0:
         return None
-    (run_dir / "stages" / "segmentation_phase_2.json").write_text(
-        json.dumps(salvaged, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+    write_stage_artifact(run_dir, "segmentation_phase_2", salvaged)
     return {"unchanged_pages": unchanged_pages, "total_pages": len(new_hashes)}
 
 
@@ -4530,7 +4526,7 @@ def _invalidate_downstream_stage_files(run_dir: Path, from_stage: str) -> None:
         return
     from_index = PIPELINE_ORDER.index(from_stage)
     for stage in PIPELINE_ORDER[from_index + 1 :]:
-        path = run_dir / "stages" / f"{stage}.json"
+        path = stage_artifact_path(run_dir, stage)
         if path.exists():
             path.unlink()
 
@@ -4937,10 +4933,7 @@ def manual_segmentation_phase_2(request: HttpRequest, pk: int) -> HttpResponse:
     seg2_payload, reconciled = _reconcile_phase2_payload_with_seg1(seg1_payload, seg2_payload)
     if reconciled:
         target_run = _ensure_stage_run_dir(project)
-        (target_run / "stages" / "segmentation_phase_2.json").write_text(
-            json.dumps(seg2_payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        write_stage_artifact(target_run, "segmentation_phase_2", seg2_payload)
         messages.warning(
             request,
             "Segmentation phase 2 was out of sync with phase 1 and has been auto-reconciled; "
@@ -5004,10 +4997,7 @@ def manual_mwe(request: HttpRequest, pk: int) -> HttpResponse:
     mwe_payload, reconciled = _reconcile_mwe_payload_with_seg2(seg2_payload, mwe_payload)
     if reconciled:
         target_run = _ensure_stage_run_dir(project)
-        (target_run / "stages" / "mwe.json").write_text(
-            json.dumps(mwe_payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        write_stage_artifact(target_run, "mwe", mwe_payload)
         messages.warning(
             request,
             "MWE stage was out of sync with segmentation phase 2 and has been auto-reconciled; "
@@ -5067,10 +5057,7 @@ def manual_lemma(request: HttpRequest, pk: int) -> HttpResponse:
     lemma_payload, reconciled = _reconcile_lemma_payload_with_mwe(mwe_payload, lemma_payload)
     if reconciled:
         target_run = _ensure_stage_run_dir(project)
-        (target_run / "stages" / "lemma.json").write_text(
-            json.dumps(lemma_payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        write_stage_artifact(target_run, "lemma", lemma_payload)
         messages.warning(
             request,
             "Lemma stage was out of sync with MWE and has been auto-reconciled; "
@@ -5134,10 +5121,7 @@ def manual_gloss(request: HttpRequest, pk: int) -> HttpResponse:
     gloss_payload, reconciled = _reconcile_gloss_payload_with_lemma(lemma_payload, gloss_payload)
     if reconciled:
         target_run = _ensure_stage_run_dir(project)
-        (target_run / "stages" / "gloss.json").write_text(
-            json.dumps(gloss_payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        write_stage_artifact(target_run, "gloss", gloss_payload)
         messages.warning(
             request,
             "Gloss stage was out of sync with lemma and has been auto-reconciled; "
@@ -5197,10 +5181,7 @@ def manual_pinyin(request: HttpRequest, pk: int) -> HttpResponse:
     pinyin_payload, reconciled = _reconcile_pinyin_payload_with_gloss(gloss_payload, pinyin_payload)
     if reconciled:
         target_run = _ensure_stage_run_dir(project)
-        (target_run / "stages" / "pinyin.json").write_text(
-            json.dumps(pinyin_payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        write_stage_artifact(target_run, "pinyin", pinyin_payload)
         messages.warning(
             request,
             "Pinyin/romanization stage was out of sync with gloss and has been auto-reconciled; "
@@ -5260,10 +5241,7 @@ def manual_translation(request: HttpRequest, pk: int) -> HttpResponse:
     tr_payload, reconciled = _reconcile_translation_payload_with_seg2(seg2_payload, tr_payload)
     if reconciled:
         target_run = _ensure_stage_run_dir(project)
-        (target_run / "stages" / "translation.json").write_text(
-            json.dumps(tr_payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        write_stage_artifact(target_run, "translation", tr_payload)
         messages.warning(
             request,
             "Translation stage was out of sync with segmentation phase 2 and has been auto-reconciled; "
@@ -5918,11 +5896,11 @@ def _load_stage_payload(
         run_dir = _find_run_with_stage(project, stage) or _resolve_run_dir(project)
     if not run_dir:
         return None
-    path = run_dir / "stages" / f"{stage}.json"
+    path = stage_artifact_path(run_dir, stage)
     if not path.exists():
         return None
     try:
-        return normalize_json_text(json.loads(path.read_text(encoding="utf-8")))
+        return normalize_json_text(read_stage_artifact(run_dir, stage))
     except Exception:
         return None
 
@@ -5949,7 +5927,7 @@ def _latest_stage_artifact(project: Project, stage: str) -> tuple[Path, Path, fl
     run_dir = _find_run_with_stage(project, stage)
     if run_dir is None:
         return None
-    stage_path = run_dir / "stages" / f"{stage}.json"
+    stage_path = stage_artifact_path(run_dir, stage)
     if not stage_path.exists():
         return None
     try:
@@ -7403,10 +7381,11 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
     if picture_dictionary:
         style = getattr(picture_dictionary.project, "image_style", None)
         picture_dictionary_style_brief = ((style.style_brief or "").strip() if style else "")
-        seg1_path = picture_dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages" / "segmentation_phase_1.json"
+        seg1_run = picture_dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
+        seg1_path = stage_artifact_path(seg1_run, "segmentation_phase_1")
         if seg1_path.exists():
             try:
-                payload = json.loads(seg1_path.read_text(encoding="utf-8"))
+                payload = read_stage_artifact(seg1_run, "segmentation_phase_1")
             except Exception:
                 payload = {}
             picture_dictionary_compile_info = {
@@ -8020,7 +7999,7 @@ def set_project_target_language(request: HttpRequest, pk: int) -> HttpResponse:
     removed_files = 0
     for run_dir in _iter_runs(project):
         for stage_name in ("translation", "gloss"):
-            stage_path = run_dir / "stages" / f"{stage_name}.json"
+            stage_path = stage_artifact_path(run_dir, stage_name)
             if stage_path.exists():
                 stage_path.unlink()
                 removed_files += 1
@@ -8081,10 +8060,10 @@ def _extract_segment_candidates_for_cloze(run_dir: Path) -> list[dict[str, Any]]
     stage_names = ["gloss", "lemma", "mwe", "translation", "segmentation_phase_2"]
     payload = None
     for stage in stage_names:
-        path = run_dir / "stages" / f"{stage}.json"
+        path = stage_artifact_path(run_dir, stage)
         if path.exists():
             try:
-                payload = json.loads(path.read_text(encoding="utf-8"))
+                payload = read_stage_artifact(run_dir, stage)
                 break
             except Exception:
                 continue
@@ -8123,10 +8102,10 @@ def _extract_token_candidates_for_flashcards(run_dir: Path) -> list[dict[str, An
     stage_names = ["gloss", "lemma", "mwe", "translation", "segmentation_phase_2"]
     payload = None
     for stage in stage_names:
-        path = run_dir / "stages" / f"{stage}.json"
+        path = stage_artifact_path(run_dir, stage)
         if path.exists():
             try:
-                payload = json.loads(path.read_text(encoding="utf-8"))
+                payload = read_stage_artifact(run_dir, stage)
                 break
             except Exception:
                 continue

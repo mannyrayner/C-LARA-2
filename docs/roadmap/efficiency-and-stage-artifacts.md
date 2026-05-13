@@ -243,10 +243,11 @@ This UI should be treated as an advanced testing control until benchmarks justif
 - Add lightweight diagnostics to run summaries or admin views.
 - Benchmark representative projects, especially large imported legacy projects.
 
-### Phase C — compact JSON and/or compressed JSON
+### Phase C — compact JSON, compressed JSON, and early MessagePack trial
 
 - Add a low-risk first alternative such as compact JSON or gzip-compressed JSON.
-- Make it selectable for test projects/runs.
+- Try a data-only MessagePack-style format at this early stage too, rather than postponing all binary formats until after JSON variants, because it may give a clearer performance baseline while avoiding pickle's code-execution trust issue.
+- Make each candidate selectable for test projects/runs.
 - Confirm source-bundle export can still produce compatible JSON.
 
 ### Phase D — trusted binary migration experiment

@@ -17,6 +17,7 @@ from typing import Any
 import zipfile
 
 from core.config import DEFAULT_MODEL
+from pipeline.stage_artifacts import write_stage_artifact
 
 from .models import Project, ProjectImagePage, ProjectImageStyle
 
@@ -181,13 +182,8 @@ def import_legacy_clara_bundle(
     diagnostics.extend(conversion_diagnostics)
 
     run_dir = artifact_root / "runs" / f"run_legacy_clara_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
-    stages_dir = run_dir / "stages"
-    stages_dir.mkdir(parents=True, exist_ok=True)
     for stage_name in LEGACY_CLARA_STAGE_NAMES:
-        (stages_dir / f"{stage_name}.json").write_text(
-            json.dumps(stages_text, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        write_stage_artifact(run_dir, stage_name, stages_text)
     (run_dir / "legacy_import_summary.json").write_text(
         json.dumps(
             {
@@ -267,13 +263,8 @@ def import_legacy_clara_project_dir_bundle(
     diagnostics.extend(conversion_diagnostics)
 
     run_dir = artifact_root / "runs" / f"run_legacy_clara_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
-    stages_dir = run_dir / "stages"
-    stages_dir.mkdir(parents=True, exist_ok=True)
     for stage_name in LEGACY_CLARA_STAGE_NAMES:
-        (stages_dir / f"{stage_name}.json").write_text(
-            json.dumps(stages_text, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        write_stage_artifact(run_dir, stage_name, stages_text)
     (run_dir / "legacy_import_summary.json").write_text(
         json.dumps(
             {
