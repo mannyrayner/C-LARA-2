@@ -277,3 +277,12 @@ Focus:
 - Preserve JSON compatibility while benchmarking faster internal formats for large imported projects.
 - Explore trusted admin-only binary/pickle-like migration artifacts for the one-off Adelaide corpus, without weakening safety for normal user uploads or source-bundle interchange.
 - Record artifact read/write timings and expose project/run-level diagnostics so performance decisions are evidence-based.
+
+### 23. Mobile access roadmap
+
+Status: **New roadmap document added.** See [roadmap/mobile-access.md](mobile-access.md).
+
+Focus:
+- Treat phones and tablets as first-class access devices for learner-facing flows.
+- Start with browsing published/compiled texts, then extend to content browsing and exercises.
+- Defer complex author/admin workflows until the core mobile reading and practice experience is stable.
