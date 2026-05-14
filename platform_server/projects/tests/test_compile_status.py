@@ -996,6 +996,17 @@ class CompileStatusViewTests(TestCase):
             zf.writestr(f"{root}/images/page_1_thumbnail.png", b"fake thumbnail bytes")
             zf.writestr(f"{root}/images/style.png", b"fake style bytes")
             zf.writestr(f"{root}/images/metadata.json", json.dumps(image_metadata))
+            coherent_root = f"{root}/coherent_images_v2_project_dir"
+            zf.writestr(f"{coherent_root}/style/expanded_description.txt", "Ink-wash style with soft bamboo textures.")
+            zf.writestr(f"{coherent_root}/style/image.jpg", b"fake coherent style image")
+            zf.writestr(
+                f"{coherent_root}/elements/elements.json",
+                json.dumps([{"name": "Panda", "element_type": "character", "pages": [1]}]),
+            )
+            zf.writestr(f"{coherent_root}/elements/Panda/expanded_description.txt", "A gentle panda with expressive eyes.")
+            zf.writestr(f"{coherent_root}/elements/Panda/image.jpg", b"fake coherent element image")
+            zf.writestr(f"{coherent_root}/pages/page_1/expanded_description.txt", "Panda sitting beneath bamboo.")
+            zf.writestr(f"{coherent_root}/pages/page_1/image.jpg", b"fake coherent page image")
         bundle.seek(0)
 
         upload = SimpleUploadedFile("legacy_clara.zip", bundle.getvalue(), content_type="application/zip")
@@ -1044,9 +1055,15 @@ class CompileStatusViewTests(TestCase):
         self.assertTrue((imported.artifact_dir() / "legacy_clara" / "audio" / "default_panda.mp3").exists())
         self.assertTrue((imported.artifact_dir() / "legacy_clara" / "images" / "page_1.png").exists())
         image_page = ProjectImagePage.objects.get(project=imported, page_number=1)
-        self.assertEqual(image_page.image_path, "legacy_clara/images/page_1.png")
+        self.assertEqual(image_page.image_path, "legacy_clara/coherent_images_v2_project_dir/pages/page_1/image.jpg")
+        self.assertEqual(image_page.generation_prompt, "Panda sitting beneath bamboo.")
         style = ProjectImageStyle.objects.get(project=imported)
-        self.assertEqual(style.sample_image_path, "legacy_clara/images/style.png")
+        self.assertEqual(style.sample_image_path, "legacy_clara/coherent_images_v2_project_dir/style/image.jpg")
+        self.assertEqual(style.expanded_style_description, "Ink-wash style with soft bamboo textures.")
+        element = ProjectImageElement.objects.get(project=imported, name="Panda")
+        self.assertEqual(element.expanded_description, "A gentle panda with expressive eyes.")
+        self.assertEqual(element.image_path, "legacy_clara/coherent_images_v2_project_dir/elements/Panda/image.jpg")
+        self.assertTrue(element.is_confirmed)
 
         with patch("projects.views.credits_enabled", return_value=False), patch("projects.views.async_task") as mock_async_task:
             compile_resp = self.client.post(

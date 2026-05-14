@@ -20,11 +20,12 @@ import zipfile
 from core.config import DEFAULT_MODEL
 from pipeline.stage_artifacts import write_stage_artifact
 
-from .models import Project, ProjectImagePage, ProjectImageStyle
+from .models import Project, ProjectImageElement, ProjectImagePage, ProjectImageStyle
 
 LEGACY_CLARA_ANNOTATED_TEXT = "annotated_text.json"
 LEGACY_CLARA_METADATA = "metadata.json"
 LEGACY_CLARA_ROOT = "legacy_clara"
+LEGACY_CLARA_COHERENT_IMAGES_DIR = "coherent_images_v2_project_dir"
 
 LEGACY_CLARA_STAGE_NAMES = [
     "segmentation_phase_1",
@@ -205,6 +206,14 @@ def import_legacy_clara_bundle(
     )
 
     _restore_legacy_image_records(project=project, zf=zf, root=root, artifact_root=artifact_root, text=stages_text)
+    _restore_legacy_coherent_image_records(
+        project=project,
+        zf=zf,
+        names=names,
+        root=root,
+        artifact_root=artifact_root,
+        text=stages_text,
+    )
     return LegacyClaraImportResult(project=project, diagnostics=diagnostics)
 
 
@@ -287,6 +296,14 @@ def import_legacy_clara_project_dir_bundle(
     )
 
     _restore_legacy_image_records(project=project, zf=zf, root="", artifact_root=artifact_root, text=stages_text)
+    _restore_legacy_coherent_image_records(
+        project=project,
+        zf=zf,
+        names=names,
+        root="",
+        artifact_root=artifact_root,
+        text=stages_text,
+    )
     return LegacyClaraImportResult(project=project, diagnostics=diagnostics)
 
 
@@ -697,6 +714,300 @@ def _restore_legacy_image_records(
                     "status": ProjectImagePage.STATUS_APPROVED,
                 },
             )
+
+
+
+def _restore_legacy_coherent_image_records(
+    *, project: Project, zf: zipfile.ZipFile, names: list[str], root: str, artifact_root: Path, text: dict[str, Any]
+) -> None:
+    """Restore C-LARA coherent-images-v2 intermediates into C-LARA-2 image records.
+
+    Newer legacy JSON exports may include ``coherent_images_v2_project_dir``.
+    The directory has the same conceptual artifacts as the C-LARA-2 image
+    pipeline (style, recurring elements, and page images), so import the useful
+    editable records while still preserving the original directory under
+    ``legacy_clara/`` via ``_copy_legacy_tree``.
+    """
+
+    coherent_prefix = _bundle_member(root, LEGACY_CLARA_COHERENT_IMAGES_DIR)
+    prefix_with_slash = f"{coherent_prefix}/"
+    if not any(name.startswith(prefix_with_slash) for name in names):
+        return
+
+    _restore_legacy_coherent_style(project=project, zf=zf, root=root, artifact_root=artifact_root)
+    _restore_legacy_coherent_elements(project=project, zf=zf, names=names, root=root, artifact_root=artifact_root)
+    _restore_legacy_coherent_pages(project=project, zf=zf, names=names, root=root, artifact_root=artifact_root, text=text)
+
+
+def _restore_legacy_coherent_style(*, project: Project, zf: zipfile.ZipFile, root: str, artifact_root: Path) -> None:
+    style_prefix = _bundle_member(root, f"{LEGACY_CLARA_COHERENT_IMAGES_DIR}/style")
+    expanded_description = _read_optional_text(zf, f"{style_prefix}/expanded_description.txt")
+    image_member = _first_existing_member(
+        zf,
+        [
+            f"{style_prefix}/image.jpg",
+            f"{style_prefix}/image.jpeg",
+            f"{style_prefix}/image.png",
+        ],
+    )
+    if not expanded_description and not image_member:
+        return
+
+    style, _created = ProjectImageStyle.objects.get_or_create(
+        project=project,
+        defaults={
+            "style_brief": "Legacy C-LARA imported coherent image style",
+            "ai_model": DEFAULT_MODEL,
+            "status": ProjectImageStyle.STATUS_APPROVED,
+        },
+    )
+    if expanded_description:
+        style.expanded_style_description = expanded_description
+        if not style.style_brief:
+            style.style_brief = expanded_description[:500]
+    if image_member:
+        style.sample_image_path = _relative_member_path(image_member, root)
+    if not style.status or style.status == ProjectImageStyle.STATUS_DRAFT:
+        style.status = ProjectImageStyle.STATUS_APPROVED
+    style.save(
+        update_fields=[
+            "style_brief",
+            "expanded_style_description",
+            "sample_image_path",
+            "status",
+            "updated_at",
+        ]
+    )
+
+
+def _restore_legacy_coherent_elements(
+    *, project: Project, zf: zipfile.ZipFile, names: list[str], root: str, artifact_root: Path
+) -> None:
+    elements_prefix = _bundle_member(root, f"{LEGACY_CLARA_COHERENT_IMAGES_DIR}/elements")
+    element_dirs = _direct_child_dirs(names, elements_prefix)
+    element_rows = _legacy_coherent_element_rows(_read_optional_json(zf, f"{elements_prefix}/elements.json"))
+
+    rows_by_dir: dict[str, dict[str, Any]] = {}
+    rows_without_dir: list[dict[str, Any]] = []
+    for row in element_rows:
+        explicit_dir = _coherent_row_dir(row)
+        if explicit_dir:
+            rows_by_dir[_normalise_lookup_key(explicit_dir)] = row
+        else:
+            rows_without_dir.append(row)
+
+    used_dirs: set[str] = set()
+    for child_dir in sorted(element_dirs):
+        row = rows_by_dir.get(_normalise_lookup_key(child_dir)) or _best_row_for_dir(child_dir, rows_without_dir)
+        if row is not None:
+            used_dirs.add(_normalise_lookup_key(child_dir))
+        _upsert_legacy_coherent_element(
+            project=project,
+            zf=zf,
+            root=root,
+            elements_prefix=elements_prefix,
+            child_dir=child_dir,
+            row=row or {},
+        )
+
+    # If elements.json lists entries whose directories were not present or whose
+    # names do not match directory names, still create editable C-LARA-2 element
+    # rows from the metadata.
+    for row in element_rows:
+        explicit_dir = _coherent_row_dir(row)
+        lookup = _normalise_lookup_key(explicit_dir or _coherent_row_name(row))
+        if lookup and lookup in used_dirs:
+            continue
+        _upsert_legacy_coherent_element(
+            project=project,
+            zf=zf,
+            root=root,
+            elements_prefix=elements_prefix,
+            child_dir=explicit_dir or "",
+            row=row,
+        )
+
+
+def _upsert_legacy_coherent_element(
+    *,
+    project: Project,
+    zf: zipfile.ZipFile,
+    root: str,
+    elements_prefix: str,
+    child_dir: str,
+    row: dict[str, Any],
+) -> None:
+    name = _coherent_row_name(row) or child_dir or "Element"
+    expanded_description = ""
+    image_member = ""
+    if child_dir:
+        element_prefix = f"{elements_prefix}/{child_dir}"
+        expanded_description = _read_optional_text(zf, f"{element_prefix}/expanded_description.txt")
+        image_member = _first_existing_member(
+            zf,
+            [
+                f"{element_prefix}/image.jpg",
+                f"{element_prefix}/image.jpeg",
+                f"{element_prefix}/image.png",
+            ],
+        )
+    expanded_description = expanded_description or str(
+        row.get("expanded_description") or row.get("description") or row.get("prompt") or ""
+    )
+    image_path = _relative_member_path(image_member, root) if image_member else str(row.get("image_path") or "")
+    page_refs = _coherent_page_refs(row)
+    element_type = str(row.get("element_type") or row.get("type") or "character")[:64]
+    ProjectImageElement.objects.update_or_create(
+        project=project,
+        name=str(name)[:255],
+        defaults={
+            "element_type": element_type,
+            "page_refs": page_refs[:255],
+            "expanded_description": expanded_description,
+            "expanded_prompt": expanded_description,
+            "image_path": image_path[:512],
+            "is_confirmed": bool(image_path or expanded_description),
+            "ai_model": DEFAULT_MODEL,
+            "status": ProjectImageElement.STATUS_CONFIRMED if image_path else ProjectImageElement.STATUS_EXPANDED,
+        },
+    )
+
+
+def _restore_legacy_coherent_pages(
+    *, project: Project, zf: zipfile.ZipFile, names: list[str], root: str, artifact_root: Path, text: dict[str, Any]
+) -> None:
+    pages_prefix = _bundle_member(root, f"{LEGACY_CLARA_COHERENT_IMAGES_DIR}/pages")
+    for child_dir in sorted(_direct_child_dirs(names, pages_prefix)):
+        page_number = _page_number_from_name(child_dir)
+        if page_number is None:
+            continue
+        page_prefix = f"{pages_prefix}/{child_dir}"
+        expanded_description = _read_optional_text(zf, f"{page_prefix}/expanded_description.txt")
+        image_member = _first_existing_member(
+            zf,
+            [
+                f"{page_prefix}/image.jpg",
+                f"{page_prefix}/image.jpeg",
+                f"{page_prefix}/image.png",
+            ],
+        )
+        if not expanded_description and not image_member:
+            continue
+        defaults = {
+            "page_text": _page_text(text, page_number),
+            "generation_prompt": expanded_description,
+            "status": ProjectImagePage.STATUS_APPROVED if image_member else ProjectImagePage.STATUS_GENERATED,
+        }
+        if image_member:
+            defaults["image_path"] = _relative_member_path(image_member, root)
+        ProjectImagePage.objects.update_or_create(
+            project=project,
+            page_number=page_number,
+            defaults=defaults,
+        )
+
+
+def _legacy_coherent_element_rows(payload: Any) -> list[dict[str, Any]]:
+    if isinstance(payload, dict):
+        for key in ("elements", "items", "characters"):
+            if isinstance(payload.get(key), list):
+                return _legacy_coherent_element_rows(payload[key])
+        return [dict(payload)] if payload else []
+    if not isinstance(payload, list):
+        return []
+    rows: list[dict[str, Any]] = []
+    for item in payload:
+        if isinstance(item, dict):
+            rows.append(dict(item))
+        elif item:
+            rows.append({"name": str(item)})
+    return rows
+
+
+def _coherent_row_name(row: dict[str, Any]) -> str:
+    for key in ("name", "element_name", "id", "label"):
+        value = str(row.get(key) or "").strip()
+        if value:
+            return value
+    return ""
+
+
+def _coherent_row_dir(row: dict[str, Any]) -> str:
+    for key in ("directory", "dir", "folder", "folder_name", "relative_path"):
+        value = str(row.get(key) or "").strip().replace("\\", "/").strip("/")
+        if value:
+            return PurePosixPath(value).parts[-1]
+    return ""
+
+
+def _coherent_page_refs(row: dict[str, Any]) -> str:
+    for key in ("page_refs", "pages", "page_numbers", "appears_on_pages"):
+        value = row.get(key)
+        if isinstance(value, list):
+            return ", ".join(str(item) for item in value)
+        if value:
+            return str(value)
+    return ""
+
+
+def _direct_child_dirs(names: list[str], prefix: str) -> set[str]:
+    prefix_with_slash = f"{prefix}/"
+    children: set[str] = set()
+    for name in names:
+        if not name.startswith(prefix_with_slash):
+            continue
+        rel = name[len(prefix_with_slash) :]
+        parts = PurePosixPath(rel).parts
+        if len(parts) >= 2:
+            children.add(parts[0])
+    children.discard("elements.json")
+    return children
+
+
+def _best_row_for_dir(child_dir: str, rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    child_key = _normalise_lookup_key(child_dir)
+    for row in rows:
+        if _normalise_lookup_key(_coherent_row_name(row)) == child_key:
+            return row
+    return None
+
+
+def _normalise_lookup_key(value: str) -> str:
+    return "".join(ch.lower() for ch in str(value or "") if ch.isalnum())
+
+
+def _page_number_from_name(value: str) -> int | None:
+    digits = "".join(ch for ch in str(value or "") if ch.isdigit())
+    if not digits:
+        return None
+    try:
+        return int(digits)
+    except ValueError:
+        return None
+
+
+def _read_optional_text(zf: zipfile.ZipFile, member: str) -> str:
+    try:
+        with zf.open(member, "r") as fp:
+            return fp.read().decode("utf-8").strip()
+    except Exception:
+        return ""
+
+
+def _first_existing_member(zf: zipfile.ZipFile, candidates: list[str]) -> str:
+    names = set(zf.namelist())
+    for candidate in candidates:
+        if candidate in names:
+            return candidate
+    return ""
+
+
+def _relative_member_path(member: str, root: str) -> str:
+    if not member:
+        return ""
+    prefix = f"{root}/" if root else ""
+    rel = member[len(prefix) :] if prefix and member.startswith(prefix) else member
+    return (PurePosixPath(LEGACY_CLARA_ROOT) / PurePosixPath(rel)).as_posix()
 
 
 def _relative_to_artifact_root(path_str: str, artifact_root: Path) -> str:
