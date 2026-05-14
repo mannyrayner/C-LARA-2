@@ -1,0 +1,85 @@
+{% extends "projects/base.html" %}
+{% block title %}Import from ZIP{% endblock %}
+{% block content %}
+<h1>Import from ZIP</h1>
+<p><a href="{% url 'project-list' %}">← Back to projects</a></p>
+
+<section style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0;">
+  <h2>Upload a local ZIP</h2>
+  <p>Import a C-LARA-2 source bundle or a supported legacy C-LARA JSON export ZIP as a new project.</p>
+  <form method="post" action="{% url 'project-import-zip' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="hidden" name="import_mode" value="upload" />
+    <p>
+      <label for="source_bundle">ZIP file:</label>
+      <input type="file" id="source_bundle" name="source_bundle" accept=".zip,application/zip" required />
+      <button class="btn secondary" type="submit">Import as new project</button>
+    </p>
+  </form>
+</section>
+
+{% if user.is_staff %}
+<section style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0;">
+  <h2>Import from configured legacy bundle library</h2>
+  <p>This admin-only option reads a server-side metadata file for a folder of legacy bundle directories.</p>
+  {% if legacy_error %}
+    <p><strong>Library unavailable:</strong> {{ legacy_error }}</p>
+  {% endif %}
+  {% if legacy_library_diagnostics %}
+    <details style="margin:0.75rem 0;">
+      <summary>Legacy library diagnostics</summary>
+      <dl>
+        <dt>Django setting LEGACY_CLARA_BUNDLE_LIBRARY_ROOT</dt>
+        <dd><code>{{ legacy_library_diagnostics.root_setting|default:"(empty)" }}</code></dd>
+        <dt>Django setting LEGACY_CLARA_BUNDLE_LIBRARY_METADATA</dt>
+        <dd><code>{{ legacy_library_diagnostics.metadata_setting }}</code></dd>
+        <dt>Resolved root path</dt>
+        <dd><code>{{ legacy_library_diagnostics.root_path|default:"(none)" }}</code> — exists: {{ legacy_library_diagnostics.root_exists }}, directory: {{ legacy_library_diagnostics.root_is_dir }}</dd>
+        <dt>Resolved metadata path</dt>
+        <dd><code>{{ legacy_library_diagnostics.metadata_path|default:"(none)" }}</code> — exists: {{ legacy_library_diagnostics.metadata_exists }}</dd>
+        <dt>Environment variable visible to this web process</dt>
+        <dd><code>C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT</code>: {{ legacy_library_diagnostics.env_root_present }}; <code>C_LARA_LEGACY_BUNDLE_LIBRARY_METADATA</code>: {{ legacy_library_diagnostics.env_metadata_present }}</dd>
+        <dt>Web process ID</dt>
+        <dd><code>{{ legacy_library_diagnostics.process_pid }}</code></dd>
+      </dl>
+      <p><small>If the root setting is empty after running <code>export C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT=...</code> in an SSH shell, add the variable to the service environment file used by Gunicorn/Django and restart the web service; an interactive shell export does not change an already-running web process.</small></p>
+    </details>
+  {% endif %}
+  <form method="get" action="{% url 'project-import-zip' %}">
+    <p>
+      <label for="title">Title contains:</label>
+      <input id="title" type="text" name="title" value="{{ legacy_query.title }}" />
+      <label for="owner">Owner/user contains:</label>
+      <input id="owner" type="text" name="owner" value="{{ legacy_query.owner }}" />
+    </p>
+    <p>
+      <label for="l2">Source/L2 language:</label>
+      <input id="l2" type="text" name="l2" value="{{ legacy_query.l2 }}" />
+      <label for="l1">Target/L1 language:</label>
+      <input id="l1" type="text" name="l1" value="{{ legacy_query.l1 }}" />
+      <button class="btn secondary" type="submit">Search bundles</button>
+    </p>
+  </form>
+
+  {% if legacy_rows %}
+    <form method="post" action="{% url 'project-import-zip' %}">
+      {% csrf_token %}
+      <input type="hidden" name="import_mode" value="server_bundle" />
+      <p>
+        <label for="bundle_key">Bundle:</label><br />
+        <select id="bundle_key" name="bundle_key" style="width:100%;" size="12" required>
+          {% for row in legacy_rows %}
+            <option value="{% firstof row.id row.directory_name row.relative_path row.import_relative_path row.zip_relative_path %}">
+              {% firstof row.title "Untitled" %} — {% firstof row.owner_username row.userid row.user_id "unknown owner" %} — {% firstof row.l2 row.source_language row.language "?" %} → {% firstof row.l1 row.target_language "?" %} — #{% firstof row.id row.directory_name %}
+            </option>
+          {% endfor %}
+        </select>
+      </p>
+      <p><button class="btn secondary" type="submit">Import selected bundle</button></p>
+    </form>
+  {% elif not legacy_error %}
+    <p>No bundles match the current filters.</p>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}
