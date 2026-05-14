@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 import re
 from collections.abc import Callable
@@ -10,6 +9,7 @@ from typing import Iterable
 
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
+from pipeline.stage_artifacts import write_stage_artifact
 
 from .models import (
     Community,
@@ -227,7 +227,7 @@ def _write_segmentation_phase_1(dictionary: PictureDictionary, entries: list[Pic
             "entry_count": len(entries),
         },
     }
-    (run_dir / "segmentation_phase_1.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    write_stage_artifact(run_dir.parent, "segmentation_phase_1", payload)
 
 
 def _dictionary_stage_payload(dictionary: PictureDictionary, entries: list[PictureDictionaryEntry], stage_name: str) -> dict:
@@ -265,10 +265,7 @@ def _write_dictionary_annotation_stages(dictionary: PictureDictionary, entries: 
     run_dir.mkdir(parents=True, exist_ok=True)
     for stage_name in ("segmentation_phase_2", "mwe", "lemma", "gloss", "romanization", "pinyin"):
         payload = _dictionary_stage_payload(dictionary, entries, stage_name)
-        (run_dir / f"{stage_name}.json").write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        write_stage_artifact(run_dir.parent, stage_name, payload)
 
 
 def compile_picture_dictionary(
