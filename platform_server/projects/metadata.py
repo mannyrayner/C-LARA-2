@@ -14,6 +14,7 @@ from django.utils import timezone
 
 from core.ai_api import OpenAIClient
 from core.config import DEFAULT_MODEL, OpenAIConfig
+from pipeline.stage_artifacts import read_stage_artifact, stage_artifact_path
 
 from .billing import record_openai_usage_and_charge
 from .models import Project
@@ -251,14 +252,14 @@ def _latest_text_gen_surface(project: Project) -> str:
     for run_dir in runs_root.iterdir():
         if not run_dir.is_dir():
             continue
-        path = run_dir / "stages" / "text_gen.json"
+        path = stage_artifact_path(run_dir, "text_gen")
         if path.exists():
             candidates.append(path)
     if not candidates:
         return ""
     latest = max(candidates, key=lambda p: p.stat().st_mtime)
     try:
-        payload = json.loads(latest.read_text(encoding="utf-8"))
+        payload = read_stage_artifact(latest.parent.parent, "text_gen")
     except Exception:
         return ""
     if not isinstance(payload, dict):

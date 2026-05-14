@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -18,6 +17,7 @@ from .lemma import LemmaSpec, annotate_lemmas
 from .mwe import MWESpec, annotate_mwes
 from .pinyin import PinyinSpec, annotate_pinyin
 from .segmentation import SegmentationPhase2Spec, SegmentationSpec, segmentation_phase_1, segmentation_phase_2
+from .stage_artifacts import write_stage_artifact
 from .text_gen import TextGenSpec, generate_text
 from .translation import TranslationSpec, translate
 
@@ -99,10 +99,7 @@ async def run_full_pipeline(
         if not stage_dir:
             return
         try:
-            normalized_payload = normalize_json_text(payload)
-            (stage_dir / f"{stage}.json").write_text(
-                json.dumps(normalized_payload, ensure_ascii=False, indent=2), encoding="utf-8"
-            )
+            write_stage_artifact(stage_dir.parent, stage, payload, normalize=normalize_json_text)
         except Exception:
             pass
 
