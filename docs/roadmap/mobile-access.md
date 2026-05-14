@@ -1,12 +1,13 @@
 # Roadmap: mobile access
 
-Many C-LARA-2 users will access the platform from phones and tablets rather than desktop or laptop browsers. Mobile access should therefore be a first-class delivery goal, starting with the lowest-risk learner-facing use cases and then extending to selected creation and review workflows.
+Many C-LARA-2 users will access the platform from phones and tablets rather than desktop or laptop browsers. Mobile access should therefore be a first-class delivery goal, starting with the lowest-risk learner-facing use cases, then supporting default-driven content creation, and finally exploring selected review/editing workflows where small screens are not too painful.
 
 ## Goals
 
 - Make published/compiled texts readable and usable on common mobile devices.
 - Support learner exercises on touch screens with accessible controls and clear feedback.
 - Preserve the full desktop workflow while progressively improving responsive layouts.
+- Support simple content creation on mobile when authors are happy to accept default system choices.
 - Avoid requiring a native app for the initial rollout; a responsive web experience should cover the core use cases.
 - Keep mobile performance acceptable on ordinary networks by controlling page weight, media preloading, and image/audio loading behavior.
 
@@ -24,14 +25,22 @@ Primary mobile support should target learners first:
 
 ### Teachers and project authors
 
-Some creation/review work may also be practical on tablets or large phones, but should come after the browsing path:
+Default-driven content creation may be quite practical on phones and tablets. If the author is satisfied with the platform's standard choices, a mobile-friendly creation flow can be very short:
 
-- Review project status and published content.
-- Make small metadata edits.
+- Give an initial description of the text to generate.
+- Specify the desired image style, or choose from a small set of presets.
+- Confirm language/level defaults and start an automatic end-to-end generation job.
+- Leave the job running in the background while C-LARA-2 handles the slow pipeline work.
+- Receive an in-app/email/push-style notification when the draft text, images, audio, annotations, compiled HTML, and exercises are ready to review.
+
+Other creation/review work may also be practical on tablets or large phones, but should be introduced after the browsing path and simple generation path:
+
+- Review project status and generation progress.
 - Preview compiled pages and exercises before publishing.
+- Make small metadata edits.
 - Perform simple regeneration or publish/unpublish actions where the risk of accidental destructive changes is low.
 
-Full manual annotation, bulk import, image-pipeline repair, and large JSON/artifact inspection should remain desktop-first until the editing UI is explicitly redesigned for small screens.
+The harder part is editing the generated result, especially linguistic annotations. Dense token-level correction of segmentation, lemmas, glosses, MWEs, translations, or alignment on a small screen could be painful and error-prone. Full manual annotation, bulk import, image-pipeline repair, and large JSON/artifact inspection should remain desktop-first until the editing UI is explicitly redesigned for small screens.
 
 ### Administrators
 
@@ -39,7 +48,7 @@ Admin workflows may be technically accessible on mobile but are not an initial t
 
 ## Initial development path: browsing compiled texts first
 
-The first mobile milestone should focus narrowly on browsing compiled texts because this is the most common learner-facing case and carries the least risk to project data.
+The first mobile milestone should focus narrowly on browsing compiled texts because this is the most common learner-facing case and carries the least risk to project data. Once mobile reading is reliable, the next major creation milestone should be a default-driven background generation flow rather than a full mobile annotation editor.
 
 ### Phase 1: mobile audit for compiled output
 
@@ -71,15 +80,38 @@ The first mobile milestone should focus narrowly on browsing compiled texts beca
 - Avoid hover-only explanations; every hint, feedback note, and media control must be touch accessible.
 - Preserve exercise state across accidental orientation changes or page reloads where practical.
 
-### Phase 5: selected author workflows
+### Phase 5: default-driven mobile creation
 
-After mobile browsing and exercises are stable, evaluate a limited authoring subset:
+After mobile browsing and exercises are stable, implement a simple creation path for authors who accept defaults:
+
+- Start from a compact prompt form asking for content description, target language, learner level, and image style/preset.
+- Show the defaults that will be used for segmentation, linguistic annotation, audio, image generation, exercise generation, and compilation without requiring the author to configure every stage.
+- Submit the request as a background task so the user can safely close the browser or continue using the site.
+- Provide a progress/status page suitable for mobile, including queued/running/failed/completed states and the currently active pipeline stage.
+- Notify the user when the project is ready for review, using the notification channels supported by the platform.
+- Open the completed project directly in a mobile preview/review flow.
+
+### Phase 6: selected author workflows
+
+After mobile browsing, exercises, and default-driven generation are stable, evaluate a limited authoring subset:
 
 - Project dashboard summaries.
 - Preview compiled output.
 - Publish/unpublish toggles with confirmation for risky actions.
 - Small metadata edits.
 - Review-only views for generated exercises and images.
+
+## Mobile annotation/editing possibilities
+
+Mobile annotation editing should not be dismissed entirely, but it needs a different design from the desktop manual editor. Promising angles include:
+
+- **Triage rather than full editing:** mark a page, segment, token, image, or exercise item as problematic for later desktop review.
+- **Single-decision correction cards:** present one small issue at a time, such as choosing between two glosses or accepting/rejecting an MWE analysis.
+- **Voice-assisted comments:** let reviewers dictate notes about a bad translation, annotation, or image rather than editing the structured artifact directly.
+- **Swipe/tap quality review:** support lightweight approve/reject/needs-work gestures for generated pages, images, audio, or exercise items.
+- **Tablet-first editing experiments:** test larger-screen layouts before attempting phone-sized linguistic annotation.
+
+These workflows should complement, not replace, the desktop manual annotation editor. Mobile edits must have strong undo, clear provenance, and safe validation because accidental taps are more likely on small screens.
 
 ## UX and accessibility requirements
 

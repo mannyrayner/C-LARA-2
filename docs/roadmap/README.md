@@ -284,5 +284,5 @@ Status: **New roadmap document added.** See [roadmap/mobile-access.md](mobile-ac
 
 Focus:
 - Treat phones and tablets as first-class access devices for learner-facing flows.
-- Start with browsing published/compiled texts, then extend to content browsing and exercises.
-- Defer complex author/admin workflows until the core mobile reading and practice experience is stable.
+- Start with browsing published/compiled texts, then extend to content browsing, exercises, and default-driven background content creation.
+- Treat dense linguistic annotation editing as the difficult mobile case, while exploring lightweight triage/review angles.
