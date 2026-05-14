@@ -94,14 +94,16 @@ The crucial distinction remains:
 
 MWE correction is now the main known pain point.
 
-The problem is that MWE status is not isolated in one field. A single conceptual correction can require coordinated edits across:
+The problem is that MWE status is not isolated in one field. C-LARA-2 currently marks an MWE occurrence by adding a unique occurrence ID to every participating token's MWE annotation, for example `annotations.mwe_id = "p1m1"`, and by recording the matching group in the segment-level MWE list, for example `segment.annotations.mwes = [{"id": "p1m1", "tokens": ["blieb", "stehen"], "label": ""}]`. The internal ID is useful because it uniquely identifies this occurrence of the MWE inside the project, but the UI should normally display it with a friendlier label such as **MWE-1**, while still retaining the stable underlying ID.
 
-- token-level MWE IDs in the MWE stage;
-- segment-level MWE group summaries in the MWE stage;
+A single conceptual correction can require coordinated edits across:
+
+- token-level `mwe_id` annotations in the MWE stage;
+- segment-level `annotations.mwes` group summaries in the MWE stage;
 - lemma/POS choices that may have been made under the assumption that the words form one lexical unit;
 - gloss choices that may also have been made under the same assumption.
 
-Today, removing an MWE or creating a new MWE can require manually editing many fields. This is error-prone and discouraging, even though the underlying stage-specific editors work.
+Today, removing an MWE or creating a new MWE can require manually editing many fields. This is error-prone and discouraging, even though the underlying stage-specific editors work. Since manual editing is expensive, the UX must also make it very hard for users to lose reviewed edits or half-finished corrections.
 
 ### Proposed quick-fix operation: remove MWE status
 
@@ -109,8 +111,8 @@ Goal: let an annotator designate a group of words currently tagged as an MWE and
 
 Proposed behavior:
 
-1. User selects an existing MWE group, or selects the token span corresponding to it.
-2. UI shows a confirmation dialog summarizing the affected page, segment, tokens, current MWE ID(s), lemma(s), and gloss(es).
+1. User selects an existing displayed MWE group label such as **MWE-1**. Internally this resolves to the stable MWE occurrence ID, e.g. `p1m1`, and therefore identifies all tokens carrying that `mwe_id`.
+2. UI highlights the affected tokens and shows a confirmation dialog summarizing the affected page, segment, token surfaces, internal MWE ID(s), lemma(s), and gloss(es).
 3. The system asks an AI helper, with the relevant local stage context, to propose a coordinated patch that:
    - removes the relevant MWE IDs from the MWE stage token annotations;
    - removes or updates the segment-level MWE group summary;
@@ -127,10 +129,10 @@ Goal: let an annotator designate a group of words currently not tagged as an MWE
 Proposed behavior:
 
 1. User selects a contiguous token span, or a small set of tokens if non-contiguous MWEs are eventually supported.
-2. UI checks that the selection is valid for the current stage policy.
+2. UI checks that the selection is valid for the current stage policy and previews the future display label, e.g. **MWE-2**.
 3. The system asks an AI helper, with the relevant page/segment context, to propose a coordinated patch that:
-   - creates a stable MWE ID and group summary in the MWE stage;
-   - tags the selected tokens with that MWE ID;
+   - creates a stable internal MWE occurrence ID and segment-level group summary in the MWE stage;
+   - tags the selected tokens with that `mwe_id`;
    - proposes lemma/POS treatment for the MWE as a lexical unit;
    - proposes gloss treatment for the MWE as a lexical unit;
    - preserves token surfaces and segmentation boundaries.
@@ -146,6 +148,7 @@ Proposed behavior:
 - Validation must enforce text/structure immutability and cross-stage consistency after the patch.
 - The UI should show human-readable diffs, not raw JSON patches, by default.
 - Every accepted quick fix should be saved as an auditable version/checkpoint.
+- Draft patch state should be recoverable if the browser is closed, the server returns an error, or validation fails after a long editing session.
 
 ## Recommended architecture
 
@@ -158,6 +161,8 @@ The implemented editors should be extended with a reusable **cross-stage patch l
 - Add a typed patch representation for coordinated operations across MWE, lemma, and gloss.
 - Add AI-assisted patch proposal functions that produce candidate changes for review.
 - Add diff rendering for cross-stage patches at token/span granularity.
+- Add draft/autosave storage for in-progress manual edits and proposed quick-fix patches.
+- Apply accepted cross-stage patches atomically: either all affected stage files are updated and versioned, or none are.
 
 ## Human-in-the-loop revision flow
 
@@ -167,9 +172,11 @@ The implemented editors should be extended with a reusable **cross-stage patch l
 4. Save reviewed stage output.
 5. Continue with downstream pipeline stages.
 
-### Key feature
+### Key features
 
-A **lock reviewed annotations** option so later reruns avoid overwriting approved manual edits unless explicitly forced.
+- A **lock reviewed annotations** option so later reruns avoid overwriting approved manual edits unless explicitly forced.
+- **Draft preservation** for expensive manual edits: autosave in-progress form state, warn before navigation with unsaved changes, and keep recoverable drafts after failed validation or transient server/API errors.
+- **Atomic multi-stage saves** for MWE quick fixes so users never end up with MWE, lemma, and gloss stages only partially updated.
 
 ## Integration points
 
@@ -215,8 +222,9 @@ Persistence constraints in page-oriented mode:
 ### Next Step 1 — MWE quick-fix design spike
 
 - Define the typed patch format for cross-stage MWE/lemma/gloss edits.
+- Define how internal MWE occurrence IDs such as `p1m1` are mapped to user-facing labels such as **MWE-1**.
 - Define selection models for:
-  - existing MWE group selection;
+  - existing MWE group selection by displayed MWE label/internal `mwe_id`;
   - token-span selection for new MWE creation.
 - Define validation rules for removing and creating MWEs.
 - Draft prompts for AI-assisted patch proposal.
@@ -224,7 +232,7 @@ Persistence constraints in page-oriented mode:
 
 ### Next Step 2 — Remove MWE status quick fix
 
-- Add UI affordance to select an existing MWE group and choose **Remove MWE status**.
+- Add UI affordance to select an existing MWE group by displayed label, highlight all tokens with the corresponding internal `mwe_id`, and choose **Remove MWE status**.
 - Ask AI for a coordinated patch over MWE, lemma, and gloss artifacts.
 - Render the proposed patch as a structured diff.
 - Allow accept/edit/cancel.
@@ -232,7 +240,7 @@ Persistence constraints in page-oriented mode:
 
 ### Next Step 3 — Treat words as MWE quick fix
 
-- Add UI affordance to select tokens and choose **Treat as MWE**.
+- Add UI affordance to select tokens, preview a display label/internal occurrence ID, and choose **Treat as MWE**.
 - Ask AI for MWE ID/group, lemma/POS, and gloss proposals.
 - Render the proposed patch as a structured diff.
 - Allow accept/edit/cancel.
@@ -255,6 +263,7 @@ Persistence constraints in page-oriented mode:
 - Editors can complete and correct projects end-to-end without raw JSON surgery.
 - Invalid structures are blocked with actionable diagnostics.
 - Manual edits remain stable across pipeline reruns unless explicitly overridden.
+- Users do not lose expensive manual editing work because drafts, failed saves, and accepted checkpoints are recoverable.
 - Segmentation edits never alter text characters.
 - Annotation edits never alter segmentation structure.
 - Page-oriented all-stage editing is the normal broad review route.
