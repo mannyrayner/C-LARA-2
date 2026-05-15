@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
@@ -84,7 +85,6 @@ class PictureDictionaryCommandTests(TestCase):
         for stage_name in ("segmentation_phase_2", "mwe", "lemma", "gloss", "romanization", "pinyin"):
             stage_path = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages" / f"{stage_name}.json"
             self.assertTrue(stage_path.exists())
-
 
     def test_import_project_as_dictionary_copy_filters_untranslated_pages_and_supports_picture_glossing(self):
         source = Project.objects.create(
@@ -183,6 +183,11 @@ class PictureDictionaryCommandTests(TestCase):
         filtered_stage = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages" / "segmentation_phase_1.json"
         self.assertTrue(filtered_stage.exists())
         self.assertNotIn("Title page", filtered_stage.read_text(encoding="utf-8"))
+        summary_path = dictionary.project.artifact_dir() / "picture_dictionary_import" / "summary.json"
+        self.assertTrue(summary_path.exists())
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        self.assertEqual(summary["entries_created"], 2)
+        self.assertEqual(summary["page_map"], {"2": 1, "3": 2})
 
         toy_project = Project.objects.create(
             owner=self.organiser,
