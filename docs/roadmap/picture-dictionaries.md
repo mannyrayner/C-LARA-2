@@ -23,6 +23,8 @@ The important point is that the dictionary is the trusted source. Games and glos
 
 ## A2) Who the first version is for
 
+The first version can start from a concrete approved seed project: the migrated legacy C-LARA project **50 words in Kok Kaper**, which contains one Kok Kaper word and one community-approved illustration per page. This gives a low-risk path to an initial dictionary because the lexical/image pairs already exist and have been seen by the community.
+
 The first version needs to work well for two kinds of users.
 
 ### Sophie / linguist / community organiser
@@ -60,15 +62,18 @@ Flashcards should normally use only entries that have been approved or marked re
 
 The Community Organiser picture-dictionary interface should be the main place for routine work.
 
+For the Kok Kaper MVP, the first organiser action should be able to register or import **50 words in Kok Kaper** directly as a community picture dictionary. The conversion should keep the existing project/page/image structure where possible, but add the metadata needed for dictionary ownership, lexical entry identity, readiness/game-use flags, and provenance.
+
 Organisers should be able to:
 
-1. add words;
-2. add candidate words from an existing text/project;
-3. generate images only for newly added or missing-image words;
-4. regenerate images for selected entries;
-5. approve, reject, or exclude entries from games;
-6. build or preview a flashcard deck;
-7. open the learner-facing flashcard activity.
+1. create a dictionary from a suitable one-word-per-page project such as **50 words in Kok Kaper**;
+2. add words;
+3. add candidate words from an existing text/project;
+4. generate images only for newly added or missing-image words;
+5. regenerate images for selected entries;
+6. approve, reject, or exclude entries from games;
+7. build or preview a flashcard deck;
+8. open the learner-facing flashcard activity.
 
 There can still be an advanced link to the underlying C-LARA-2 project for debugging or expert work, but routine dictionary work should not require navigating to that project.
 
@@ -86,19 +91,23 @@ Before implementation, confirm the practical details:
 - whether audio is needed in the first version or can wait;
 - what kinds of image/card problems Sophie wants to record.
 
-### Step 2 — Make picture-dictionary maintenance easier
+### Step 2 — Seed the first dictionary from the approved Kok Kaper project
+
+Add a direct import/registration path from a suitable one-word-per-page C-LARA-2 project into a community picture dictionary. The immediate target is **50 words in Kok Kaper**, migrated from legacy C-LARA to the AWS C-LARA-2 server. The conversion should be deliberately minimal: preserve the existing word/page/image material, add dictionary metadata and curation flags, and make the result available in the Community Organiser dictionary interface.
+
+### Step 3 — Make picture-dictionary maintenance easier
 
 Move routine operations into the Community Organiser picture-dictionary interface, especially generating images only for new or missing-image entries.
 
-### Step 3 — Build the minimal flashcard activity
+### Step 4 — Build the minimal flashcard activity
 
 Create image-to-word and word-to-image multiple-choice flashcards from approved picture-dictionary entries.
 
-### Step 4 — Add review and feedback loops
+### Step 5 — Add review and feedback loops
 
 Allow Sophie to preview decks and allow simple problem reports such as “wrong picture”, “wrong word”, or “bad distractor”.
 
-### Step 5 — Generalise for other communities
+### Step 6 — Generalise for other communities
 
 Once the Kok Kaper workflow is stable, reuse it for similar communities, especially New Caledonian communities where there is direct contact.
 
@@ -146,6 +155,19 @@ The current pragmatic implementation realises a picture dictionary using existin
 
 This keeps the first implementation low-risk by reusing current storage, UI, and generation components. However, the project should be treated as a backing implementation detail. The user-facing object is the community picture dictionary.
 
+### B2.1 Legacy/project-to-dictionary seed import
+
+The first Kok Kaper implementation should include a narrow import/registration path for a project that already has dictionary-like structure:
+
+- source project: **50 words in Kok Kaper**, now migrated from legacy C-LARA to the AWS C-LARA-2 server;
+- expected layout: one lexical item per page, with an accompanying illustration for each item;
+- conversion goal: create or register a community picture dictionary without rebuilding the content from scratch;
+- preservation rule: keep the existing project/page/image assets and provenance as far as possible;
+- added metadata: community/language ownership, dictionary entry keys, source project reference, readiness/game-use state, and import timestamp;
+- validation: flag pages that do not contain exactly one usable lexical item or one usable image for organiser review rather than silently including bad entries.
+
+This seed-import path should be intentionally smaller than general arbitrary-project extraction. General extraction can still use the broader "add words from text/project" workflow, but the approved Kok Kaper word list gives a faster, safer route to the first community game.
+
 ## B3) Lexical entry identity
 
 For lookup and deduplication, use a canonical key such as:
@@ -185,6 +207,13 @@ For the first implementation, a simple boolean or status field is acceptable if 
 ## B6) Organiser operations
 
 Provide explicit organiser-facing commands/actions from the Community Organiser picture-dictionary interface.
+
+### B6.0 Create from a dictionary-like project
+
+- Input: a C-LARA-2 project whose pages already correspond to dictionary entries, initially **50 words in Kok Kaper**.
+- Behaviour: register the project as a picture dictionary or create a dictionary backing project with minimal structural changes.
+- Add community/language metadata, source-project provenance, readiness defaults, and game eligibility flags.
+- Validate one-entry/one-image assumptions and send exceptions to organiser review.
 
 ### B6.1 Compile/refresh dictionary
 
@@ -336,25 +365,31 @@ Later, the dialogue layer can safely execute selected operations with confirmati
 - Confirm the first Kok Kaper workflow with Sophie.
 - Decide first-session constraints: device, deck size, display language(s), audio needs, and feedback categories.
 
-### Phase B — Picture-dictionary UX consolidation
+### Phase B — Seed import from 50 words in Kok Kaper
+
+- Add a direct create/register action for dictionary-like projects, starting with **50 words in Kok Kaper**.
+- Preserve existing word/image material and add community dictionary metadata plus readiness/game flags.
+- Report any page that fails the one-word/one-image assumption for organiser review.
+
+### Phase C — Picture-dictionary UX consolidation
 
 - Make routine dictionary operations available from the Community Organiser interface.
 - Keep “open backing project” as an advanced/debug action.
 - Add missing-only image generation as a first-class action.
 
-### Phase C — Minimal flashcards
+### Phase D — Minimal flashcards
 
 - Generate image→word and word→image multiple-choice cards from approved dictionary entries.
 - Use same-dictionary distractors with deterministic fallback and optional AI ranking.
 - Provide a simple learner-facing play screen.
 
-### Phase D — Review and feedback loop
+### Phase E — Review and feedback loop
 
 - Add organiser deck preview.
 - Add card-level problem reporting.
 - Feed reported issues back into dictionary review status.
 
-### Phase E — Generalisation
+### Phase F — Generalisation
 
 - Reuse the workflow for other communities, especially New Caledonian communities where there is direct contact.
 - Add configuration for community-specific display conventions and optional audio.
@@ -368,6 +403,7 @@ Later, the dialogue layer can safely execute selected operations with confirmati
 5. Should organiser operations be synchronous for small sets and queued for bulk sets?
 6. How should communities discover/reuse dictionaries across projects?
 7. What is the minimum useful flashcard deck size for the first Kok Kaper session?
+8. Should imported entries from **50 words in Kok Kaper** be marked game-ready by default because the community has already approved them, or should Sophie explicitly approve them in C-LARA-2?
 
 ## B13) Success criteria
 
