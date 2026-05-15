@@ -313,12 +313,89 @@ class PictureDictionaryCommandTests(TestCase):
         )
         output_dir = toy_project.artifact_dir() / "runs" / "run_test_cross_project_gloss"
         output_dir.mkdir(parents=True, exist_ok=True)
-        glosses = _build_picture_glosses_for_compile(project=toy_project, output_dir=output_dir)
+        diagnostics: list[str] = []
+        glosses = _build_picture_glosses_for_compile(
+            project=toy_project,
+            output_dir=output_dir,
+            diagnostics=diagnostics,
+        )
         self.assertIn("femme", glosses)
+        self.assertTrue(any("active_entries=1" in message and "mapped=1" in message for message in diagnostics))
+        self.assertTrue(any("mapped sample" in message for message in diagnostics))
         rel_path = glosses["femme"]["image_path"]
         self.assertTrue(rel_path.startswith("picture_glosses/"))
         staged = output_dir / "html" / Path(rel_path)
         self.assertTrue(staged.exists())
+
+    def test_picture_gloss_diagnostics_report_missing_and_duplicate_entries(self):
+        call_command(
+            "picture_dictionary",
+            "ensure",
+            community_id=self.community.id,
+            organiser=self.organiser.username,
+        )
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        image_rel = "images/pages/page_001/variant_001.png"
+        image_abs = dictionary.project.artifact_dir() / image_rel
+        image_abs.parent.mkdir(parents=True, exist_ok=True)
+        image_abs.write_bytes(b"fake-image")
+        PictureDictionaryEntry.objects.create(
+            dictionary=dictionary,
+            surface="eins",
+            lemma="eins",
+            image_path=image_rel,
+            is_active=True,
+        )
+        PictureDictionaryEntry.objects.create(
+            dictionary=dictionary,
+            surface="eins duplicate",
+            lemma="eins",
+            image_path=image_rel,
+            is_active=True,
+        )
+        PictureDictionaryEntry.objects.create(
+            dictionary=dictionary,
+            surface="zwei",
+            lemma="zwei",
+            is_active=True,
+        )
+        PictureDictionaryEntry.objects.create(
+            dictionary=dictionary,
+            surface="drei",
+            lemma="drei",
+            image_path="images/pages/page_003/missing.png",
+            is_active=True,
+        )
+        toy_project = Project.objects.create(
+            owner=self.organiser,
+            title="Toy diagnostics text",
+            source_text="eins zwei drei",
+            language="de",
+            target_language="en",
+            community=self.community,
+        )
+        output_dir = toy_project.artifact_dir() / "runs" / "run_test_gloss_diagnostics"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        diagnostics: list[str] = []
+
+        glosses = _build_picture_glosses_for_compile(
+            project=toy_project,
+            output_dir=output_dir,
+            diagnostics=diagnostics,
+        )
+
+        self.assertEqual(list(glosses.keys()), ["eins"])
+        summary = "\n".join(diagnostics)
+        self.assertIn("active_entries=4", summary)
+        self.assertIn("mapped=1", summary)
+        self.assertIn("entry_image_paths_before_fallback=3", summary)
+        self.assertIn("entry_page_numbers=0", summary)
+        self.assertIn("dictionary_pages=0", summary)
+        self.assertIn("duplicate_lemma=1", summary)
+        self.assertIn("missing_image_path=1", summary)
+        self.assertIn("missing_image_file=1", summary)
+        self.assertIn("missing_image_path sample", summary)
+        self.assertIn("missing_image_file sample", summary)
 
     def test_cross_project_picture_glosses_fallback_to_dictionary_page_image_path(self):
         call_command(
@@ -357,7 +434,16 @@ class PictureDictionaryCommandTests(TestCase):
         )
         output_dir = toy_project.artifact_dir() / "runs" / "run_test_fallback_gloss"
         output_dir.mkdir(parents=True, exist_ok=True)
-        glosses = _build_picture_glosses_for_compile(project=toy_project, output_dir=output_dir)
+        diagnostics: list[str] = []
+        glosses = _build_picture_glosses_for_compile(
+            project=toy_project,
+            output_dir=output_dir,
+            diagnostics=diagnostics,
+        )
         self.assertIn("chat", glosses)
+        self.assertTrue(any("entry_image_paths_before_fallback=0" in message for message in diagnostics))
+        self.assertTrue(any("dictionary_pages=1" in message for message in diagnostics))
+        self.assertTrue(any("page_image_paths=1" in message for message in diagnostics))
+        self.assertTrue(any("page_fallbacks=1" in message for message in diagnostics))
         entry.refresh_from_db()
         self.assertEqual(entry.image_path, "images/pages/page_001/variant_001.png")

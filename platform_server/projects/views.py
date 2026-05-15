@@ -6074,8 +6074,18 @@ def _compose_latest_compile_payload(project: Project) -> tuple[dict[str, Any] | 
     return normalize_json_text(composed), plan
 
 
-def _build_picture_glosses_for_compile(*, project: Project, output_dir: Path) -> dict[str, dict[str, str]]:
+def _build_picture_glosses_for_compile(
+    *,
+    project: Project,
+    output_dir: Path,
+    diagnostics: list[str] | None = None,
+) -> dict[str, dict[str, str]]:
+    def _record(message: str) -> None:
+        if diagnostics is not None:
+            diagnostics.append(message)
+
     if not project.community_id:
+        _record("Picture gloss diagnostics: project has no community; no dictionary lookup attempted.")
         return {}
     picture_glosses: dict[str, dict[str, str]] = {}
     picture_gloss_dir = output_dir / "html" / "picture_glosses"
@@ -6086,32 +6096,71 @@ def _build_picture_glosses_for_compile(*, project: Project, output_dir: Path) ->
         .first()
     )
     if not dictionary:
+        _record(f"Picture gloss diagnostics: no active picture dictionary for community_id={project.community_id}.")
         return {}
-    for entry in PictureDictionaryEntry.objects.filter(
-        dictionary=dictionary,
-        is_active=True,
-    ):
+
+    entries = list(
+        PictureDictionaryEntry.objects.filter(
+            dictionary=dictionary,
+            is_active=True,
+        ).order_by("id")
+    )
+    entry_image_path_count = sum(1 for entry in entries if (entry.image_path or "").strip())
+    entry_page_number_count = sum(1 for entry in entries if entry.current_page_number)
+    dictionary_pages = list(
+        ProjectImagePage.objects.select_related("preferred_variant")
+        .filter(project=dictionary.project)
+        .order_by("page_number", "id")
+    )
+    page_image_path_count = sum(1 for page in dictionary_pages if (page.image_path or "").strip())
+    page_preferred_variant_count = sum(1 for page in dictionary_pages if page.preferred_variant_id)
+    page_preferred_variant_image_count = sum(
+        1
+        for page in dictionary_pages
+        if page.preferred_variant_id and page.preferred_variant and (page.preferred_variant.image_path or "").strip()
+    )
+    page_by_number = {page.page_number: page for page in dictionary_pages}
+    page_by_text: dict[str, ProjectImagePage] = {}
+    for page in dictionary_pages:
+        page_text_key = (page.page_text or "").strip().casefold()
+        if page_text_key and page_text_key not in page_by_text:
+            page_by_text[page_text_key] = page
+    missing_lemma: list[str] = []
+    duplicate_lemma: list[str] = []
+    missing_image_path: list[str] = []
+    missing_image_file: list[str] = []
+    mapped_samples: list[str] = []
+    page_fallback_count = 0
+    for entry in entries:
         lemma_key = (entry.lemma or entry.surface or "").strip().casefold()
-        if not lemma_key or lemma_key in picture_glosses:
+        label = f"entry_id={entry.id}, surface={entry.surface!r}, lemma={entry.lemma!r}, page={entry.current_page_number}"
+        if not lemma_key:
+            missing_lemma.append(label)
+            continue
+        if lemma_key in picture_glosses:
+            duplicate_lemma.append(label)
             continue
         resolved_image_path = (entry.image_path or "").strip()
         if not resolved_image_path:
-            page_qs = ProjectImagePage.objects.select_related("preferred_variant").filter(project=dictionary.project)
+            page = None
             if entry.current_page_number:
-                page = page_qs.filter(page_number=entry.current_page_number).first()
-            else:
-                page = page_qs.filter(page_text=entry.surface).order_by("page_number").first()
+                page = page_by_number.get(entry.current_page_number)
+            if page is None:
+                page = page_by_text.get((entry.surface or "").strip().casefold())
             if page:
                 resolved_image_path = (page.image_path or "").strip()
                 if not resolved_image_path and page.preferred_variant_id and page.preferred_variant:
                     resolved_image_path = (page.preferred_variant.image_path or "").strip()
             if resolved_image_path:
+                page_fallback_count += 1
                 entry.image_path = resolved_image_path
                 entry.save(update_fields=["image_path", "updated_at"])
         if not resolved_image_path:
+            missing_image_path.append(label)
             continue
         abs_path = (dictionary.project.artifact_dir() / resolved_image_path).resolve()
         if not abs_path.exists():
+            missing_image_file.append(f"{label}, image_path={resolved_image_path!r}, abs={abs_path}")
             continue
         if dictionary.project_id == project.id:
             rel_path = os.path.relpath(abs_path, output_dir / "html").replace("\\", "/")
@@ -6129,6 +6178,32 @@ def _build_picture_glosses_for_compile(*, project: Project, output_dir: Path) ->
             "image_path": rel_path,
             "surface": entry.surface or entry.lemma or "",
         }
+        if len(mapped_samples) < 5:
+            mapped_samples.append(f"{lemma_key}->{rel_path}")
+
+    _record(
+        "Picture gloss diagnostics: "
+        f"community_id={project.community_id}, dictionary_id={dictionary.id}, "
+        f"dictionary_project_id={dictionary.project_id}, active_entries={len(entries)}, "
+        f"entry_image_paths_before_fallback={entry_image_path_count}, entry_page_numbers={entry_page_number_count}, "
+        f"dictionary_pages={len(dictionary_pages)}, page_image_paths={page_image_path_count}, "
+        f"page_preferred_variants={page_preferred_variant_count}, "
+        f"page_preferred_variant_images={page_preferred_variant_image_count}, "
+        f"entry_image_paths_after_fallback={entry_image_path_count + page_fallback_count}, "
+        f"mapped={len(picture_glosses)}, page_fallbacks={page_fallback_count}, "
+        f"missing_lemma={len(missing_lemma)}, duplicate_lemma={len(duplicate_lemma)}, "
+        f"missing_image_path={len(missing_image_path)}, missing_image_file={len(missing_image_file)}."
+    )
+
+    def _sample(label: str, values: list[str]) -> None:
+        if values:
+            _record(f"Picture gloss diagnostics {label} sample: " + "; ".join(values[:5]))
+
+    _sample("mapped", mapped_samples)
+    _sample("missing_lemma", missing_lemma)
+    _sample("duplicate_lemma", duplicate_lemma)
+    _sample("missing_image_path", missing_image_path)
+    _sample("missing_image_file", missing_image_file)
     return picture_glosses
 
 
@@ -6232,8 +6307,15 @@ def _run_compile_task(
         )
         post_update("Pipeline spec initialized.")
         try:
-            spec.picture_glosses = _build_picture_glosses_for_compile(project=project, output_dir=output_dir)
+            picture_gloss_diagnostics: list[str] = []
+            spec.picture_glosses = _build_picture_glosses_for_compile(
+                project=project,
+                output_dir=output_dir,
+                diagnostics=picture_gloss_diagnostics,
+            )
             post_update(f"Prepared picture gloss map: {len(spec.picture_glosses)} lemma image(s).")
+            for diagnostic in picture_gloss_diagnostics:
+                post_update(diagnostic)
         except Exception as gloss_exc:
             logger.exception("Failed to build picture gloss map for project %s; continuing without picture glosses", project_id)
             spec.picture_glosses = {}
