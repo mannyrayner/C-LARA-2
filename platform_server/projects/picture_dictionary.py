@@ -362,10 +362,15 @@ def import_project_as_picture_dictionary(
         "diagnostics": diagnostics,
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
+    # Keep the JSON dependency local to the summary-write path. This makes the
+    # organiser import robust if a deployment accidentally has an older module
+    # body loaded without the module-level import after a hot reload.
+    import json as summary_json
+
     summary_dir = target_project.artifact_dir() / "picture_dictionary_import"
     summary_dir.mkdir(parents=True, exist_ok=True)
     (summary_dir / "summary.json").write_text(
-        json.dumps(summary, ensure_ascii=False, indent=2),
+        summary_json.dumps(summary, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
     _sync_project_source_from_registry(dictionary)
