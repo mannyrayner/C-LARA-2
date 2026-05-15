@@ -4,12 +4,13 @@ from django.core.exceptions import PermissionDenied
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 
-from projects.models import Community, PictureDictionary
+from projects.models import Community, PictureDictionary, Project
 from projects.picture_dictionary import (
     add_words,
     add_words_from_text,
     compile_picture_dictionary,
     ensure_picture_dictionary_for_community,
+    import_project_as_picture_dictionary,
     load_text_argument,
     remove_words,
 )
@@ -19,12 +20,13 @@ class Command(BaseCommand):
     help = "Manage community picture dictionaries (first-cut Phase A tooling)."
 
     def add_arguments(self, parser):
-        parser.add_argument("action", choices=["ensure", "compile", "add", "remove", "add-from-text"])
+        parser.add_argument("action", choices=["ensure", "compile", "add", "remove", "add-from-text", "import-project"])
         parser.add_argument("--community-id", type=int, required=True)
         parser.add_argument("--organiser", required=True, help="Username of community organiser")
         parser.add_argument("--words", default="", help="Comma-separated words")
         parser.add_argument("--text", default="", help="Source text for add-from-text")
         parser.add_argument("--text-file", default="", help="UTF-8 file path for add-from-text")
+        parser.add_argument("--source-project-id", type=int, help="Community project to import as a dictionary copy")
 
     def handle(self, *args, **options):
         action = options["action"]
@@ -36,6 +38,31 @@ class Command(BaseCommand):
         organiser = User.objects.filter(username=options["organiser"]).first()
         if not organiser:
             raise CommandError("Unknown organiser user")
+
+        if action == "import-project":
+            source_project_id = options.get("source_project_id")
+            if not source_project_id:
+                raise CommandError("import-project requires --source-project-id")
+            source_project = Project.objects.filter(pk=source_project_id, community=community).first()
+            if not source_project:
+                raise CommandError("Unknown source project for this community")
+            try:
+                dictionary, summary = import_project_as_picture_dictionary(
+                    community=community,
+                    organiser=organiser,
+                    source_project=source_project,
+                )
+            except (PermissionDenied, ValueError) as exc:
+                raise CommandError(str(exc)) from exc
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Imported project {source_project.id} as dictionary project {dictionary.project_id}: "
+                    f"entries={summary.get('entries_created', 0)}"
+                )
+            )
+            for diagnostic in summary.get("diagnostics", []):
+                self.stdout.write(str(diagnostic))
+            return
 
         try:
             dictionary = ensure_picture_dictionary_for_community(community=community, organiser=organiser)
