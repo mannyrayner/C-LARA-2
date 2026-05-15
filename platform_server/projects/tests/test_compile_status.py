@@ -566,6 +566,56 @@ class CompileStatusViewTests(TestCase):
             self.assertEqual(metadata.get("annotation_direction"), "ltr")
 
 
+    def test_import_zip_view_round_trips_clara2_source_bundle_with_image_style(self):
+        shutil.rmtree(self.project.artifact_dir(), ignore_errors=True)
+        self.addCleanup(lambda: shutil.rmtree(self.project.artifact_dir(), ignore_errors=True))
+        run_dir = self.project.artifact_dir() / "runs" / "run_source"
+        stages_dir = run_dir / "stages"
+        stages_dir.mkdir(parents=True, exist_ok=True)
+        for stage in views.SOURCE_BUNDLE_REQUIRED_STAGES:
+            (stages_dir / f"{stage}.json").write_text('{"pages":[]}', encoding="utf-8")
+        (self.project.artifact_dir() / "source").mkdir(parents=True, exist_ok=True)
+        (self.project.artifact_dir() / "source" / "source_text.txt").write_text("Hello", encoding="utf-8")
+
+        ProjectImageStyle.objects.create(
+            project=self.project,
+            style_brief="flat colors",
+            expanded_style_description="A flat, high-contrast visual style.",
+            representative_excerpt="Hello",
+            sample_image_prompt="Draw a greeting.",
+            sample_image_path="images/style/sample.png",
+            sample_image_revised_prompt="Draw a warm greeting.",
+            sample_image_model="gpt-image-1",
+            discourage_text_in_images=True,
+            ai_model="gpt-4o",
+            status=ProjectImageStyle.STATUS_APPROVED,
+        )
+        img_path = self.project.artifact_dir() / "images" / "style" / "sample.png"
+        img_path.parent.mkdir(parents=True, exist_ok=True)
+        img_path.write_bytes(b"png")
+
+        self.project.compiled_path = "runs/run_source/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+
+        export_resp = self.client.get(reverse("project-download-source-bundle", args=[self.project.pk]))
+        self.assertEqual(export_resp.status_code, 200)
+        payload = b"".join(export_resp.streaming_content)
+        upload = SimpleUploadedFile("source_bundle.zip", payload, content_type="application/zip")
+
+        import_resp = self.client.post(reverse("project-import-zip"), {"source_bundle": upload})
+        self.assertEqual(import_resp.status_code, 302)
+
+        imported = Project.objects.exclude(pk=self.project.pk).get()
+        self.assertEqual(imported.title, "Test Project (2)")
+        imported_style = ProjectImageStyle.objects.get(project=imported)
+        self.assertEqual(imported_style.style_brief, "flat colors")
+        self.assertEqual(imported_style.expanded_style_description, "A flat, high-contrast visual style.")
+        self.assertEqual(imported_style.representative_excerpt, "Hello")
+        self.assertEqual(imported_style.sample_image_prompt, "Draw a greeting.")
+        self.assertEqual(imported_style.sample_image_path, "images/style/sample.png")
+        self.assertTrue(imported_style.discourage_text_in_images)
+        self.assertTrue((imported.artifact_dir() / "images" / "style" / "sample.png").exists())
+
     def test_download_source_bundle_auto_refreshes_missing_current_run_stages(self):
         base = self.project.artifact_dir() / "runs"
         upstream_stages = base / "run_upstream" / "stages"

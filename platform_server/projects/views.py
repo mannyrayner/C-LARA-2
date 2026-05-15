@@ -8765,6 +8765,7 @@ def download_project_source_bundle(request: HttpRequest, pk: int) -> HttpRespons
             "sample_image_path": style.sample_image_path,
             "sample_image_revised_prompt": style.sample_image_revised_prompt,
             "sample_image_model": style.sample_image_model,
+            "discourage_text_in_images": style.discourage_text_in_images,
             "ai_model": style.ai_model,
             "status": style.status,
         }
@@ -9250,10 +9251,22 @@ def _import_open_project_source_zip(
             project=project,
             defaults={
                 "style_brief": style_payload.get("style_brief") or "",
-                "style_text": style_payload.get("style_text") or "",
-                "source": (style_payload.get("source") or "ai")[:32],
+                "expanded_style_description": (
+                    style_payload.get("expanded_style_description")
+                    or style_payload.get("style_text")
+                    or ""
+                ),
+                "representative_excerpt": style_payload.get("representative_excerpt") or "",
+                "sample_image_prompt": style_payload.get("sample_image_prompt") or "",
+                "sample_image_path": (style_payload.get("sample_image_path") or "")[:512],
+                "sample_image_revised_prompt": style_payload.get("sample_image_revised_prompt") or "",
+                "sample_image_model": (
+                    style_payload.get("sample_image_model")
+                    or style_payload.get("image_model")
+                    or "gpt-image-1"
+                )[:64],
+                "discourage_text_in_images": bool(style_payload.get("discourage_text_in_images")),
                 "ai_model": (style_payload.get("ai_model") or DEFAULT_MODEL)[:64],
-                "image_model": (style_payload.get("image_model") or "gpt-image-1")[:64],
                 "status": (style_payload.get("status") or ProjectImageStyle.STATUS_APPROVED)[:32],
             },
         )
@@ -9376,11 +9389,16 @@ def import_project_source_bundle(request: HttpRequest) -> HttpResponse:
 
     try:
         zf = zipfile.ZipFile(upload)
-    except Exception:
+    except zipfile.BadZipFile:
         messages.error(request, "Could not read ZIP file.")
         return redirect("project-import-zip")
-    with zf:
-        return _import_open_project_source_zip(request, zf, error_redirect="project-import-zip")
+    try:
+        with zf:
+            return _import_open_project_source_zip(request, zf, error_redirect="project-import-zip")
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Failed to import uploaded source bundle")
+        messages.error(request, f"Could not import ZIP file: {exc}")
+        return redirect("project-import-zip")
 
 
 @login_required
@@ -9433,8 +9451,12 @@ def import_project_zip(request: HttpRequest) -> HttpResponse:
         try:
             with zipfile.ZipFile(upload) as zf:
                 return _import_open_project_source_zip(request, zf, error_redirect="project-import-zip")
-        except Exception:
+        except zipfile.BadZipFile:
             messages.error(request, "Could not read ZIP file.")
+            return redirect("project-import-zip")
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Failed to import uploaded project ZIP")
+            messages.error(request, f"Could not import ZIP file: {exc}")
             return redirect("project-import-zip")
 
     return render(
