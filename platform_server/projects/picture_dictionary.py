@@ -137,6 +137,24 @@ def _first_glossed_or_translated_token(page: dict) -> dict | None:
     return None
 
 
+def _page_import_image_path(page: dict) -> str:
+    annotations = page.get("annotations") or {}
+    generated_image = annotations.get("generated_image") or {}
+    if isinstance(generated_image, dict):
+        path = str(generated_image.get("path") or "").strip()
+        if path:
+            return path
+    legacy_images = annotations.get("legacy_clara_images") or []
+    if isinstance(legacy_images, list):
+        for image in legacy_images:
+            if not isinstance(image, dict):
+                continue
+            path = str(image.get("path") or image.get("image_path") or "").strip()
+            if path:
+                return path
+    return ""
+
+
 def _extract_dictionary_seed_pages(source_project: Project) -> tuple[list[dict], list[str]]:
     payload = None
     for stage_name in ("gloss", "lemma", "translation", "segmentation_phase_2", "segmentation_phase_1"):
@@ -176,6 +194,7 @@ def _extract_dictionary_seed_pages(source_project: Project) -> tuple[list[dict],
                 "pos": _normalise_word(annotations.get("pos") or "").upper(),
                 "gloss": _non_null_text(annotations.get("gloss")),
                 "translation": _non_null_text(annotations.get("translation")),
+                "image_path": _page_import_image_path(page),
                 "image_page": image_pages.get(old_page_number),
             }
         )
@@ -287,7 +306,7 @@ def import_project_as_picture_dictionary(
     created_entries: list[PictureDictionaryEntry] = []
     for new_page_number, row in enumerate(retained_pages, start=1):
         image_page = row.get("image_page")
-        image_path = getattr(image_page, "image_path", "") if image_page else ""
+        image_path = (getattr(image_page, "image_path", "") if image_page else "") or str(row.get("image_path") or "")
         entry = PictureDictionaryEntry.objects.create(
             dictionary=dictionary,
             surface=str(row["surface"]),
@@ -620,6 +639,74 @@ def _write_imported_dictionary_annotation_stages(dictionary: PictureDictionary, 
         write_stage_artifact(run_dir.parent, stage_name, payload)
 
 
+def _index_existing_dictionary_annotations(dictionary: PictureDictionary) -> dict[tuple[str, str], dict]:
+    run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
+    try:
+        payload = read_stage_artifact(run_dir, "gloss")
+    except Exception:
+        return {}
+    indexed: dict[tuple[str, str], dict] = {}
+    for page_number, page in enumerate(payload.get("pages") or [], start=1):
+        if not isinstance(page, dict):
+            continue
+        for segment in page.get("segments") or []:
+            if not isinstance(segment, dict):
+                continue
+            for token in segment.get("tokens") or []:
+                if not isinstance(token, dict):
+                    continue
+                surface = _normalise_word(token.get("surface") or "")
+                if not surface:
+                    continue
+                annotations = token.get("annotations") or {}
+                row = {
+                    "surface": surface,
+                    "lemma": _normalise_word(annotations.get("lemma") or surface),
+                    "pos": _normalise_word(annotations.get("pos") or "").upper(),
+                    "gloss": _non_null_text(annotations.get("gloss")),
+                    "translation": _non_null_text(annotations.get("translation")),
+                }
+                indexed[("page", str(page_number))] = row
+                indexed[("surface", surface.casefold())] = row
+                lemma = _normalise_word(annotations.get("lemma") or "")
+                if lemma:
+                    indexed[("lemma", lemma.casefold())] = row
+    return indexed
+
+
+def _manual_rows_from_entries(dictionary: PictureDictionary, entries: list[PictureDictionaryEntry]) -> list[dict]:
+    existing = _index_existing_dictionary_annotations(dictionary)
+    rows: list[dict] = []
+    for entry in entries:
+        prior = None
+        if entry.current_page_number:
+            prior = existing.get(("page", str(entry.current_page_number)))
+        if prior is None:
+            prior = existing.get(("surface", (entry.surface or "").casefold()))
+        if prior is None and entry.lemma:
+            prior = existing.get(("lemma", entry.lemma.casefold()))
+        prior = prior or {}
+        rows.append(
+            {
+                "old_page_number": entry.current_page_number or len(rows) + 1,
+                "surface": entry.surface,
+                "lemma": entry.lemma or prior.get("lemma") or entry.surface,
+                "pos": entry.pos or prior.get("pos") or "",
+                "gloss": prior.get("gloss") or "",
+                "translation": prior.get("translation") or "",
+                "image_path": entry.image_path or "",
+            }
+        )
+    return rows
+
+
+def _rows_have_manual_glosses(rows: list[dict]) -> bool:
+    return bool(rows) and all(
+        (row.get("lemma") or row.get("surface")) and (row.get("gloss") or row.get("translation"))
+        for row in rows
+    )
+
+
 def compile_picture_dictionary(
     *,
     dictionary: PictureDictionary,
@@ -673,46 +760,54 @@ def compile_picture_dictionary(
 
     ProjectImagePage.objects.filter(project=dictionary.project, page_number__gt=len(entries)).delete()
     _post_progress("Text phase 2/3: writing segmentation and annotation stage artifacts.")
+    manual_rows = _manual_rows_from_entries(dictionary, entries)
+    manual_annotations_complete = _rows_have_manual_glosses(manual_rows)
     _write_segmentation_phase_1(dictionary, entries)
-    _write_dictionary_annotation_stages(dictionary, entries)
-    annotation_run = "skipped"
+    if manual_annotations_complete:
+        _write_imported_dictionary_annotation_stages(dictionary, manual_rows)
+    else:
+        _write_dictionary_annotation_stages(dictionary, entries)
+    annotation_run = "manual" if manual_annotations_complete else "skipped"
     annotation_error = ""
     generated_images = 0
     image_generation_note = ""
-    try:
-        from .views import _run_compile_task
+    if manual_annotations_complete:
+        _post_progress("Text phase 3/3: using existing manual lemma/gloss annotations; AI annotation skipped.")
+    else:
+        try:
+            from .views import _run_compile_task
 
-        _post_progress("Text phase 3/3: running annotation pipeline (segmentation phase 2 to compile HTML).")
-        run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
-        run_dir.mkdir(parents=True, exist_ok=True)
-        seg1_payload = _dictionary_stage_payload(dictionary, entries, "segmentation_phase_1")
-        _run_compile_task(
-            project_id=dictionary.project.id,
-            user_id=compile_task_user_id or dictionary.organiser_id,
-            output_dir_str=str(run_dir),
-            project_root_str=str(dictionary.project.artifact_dir()),
-            start_stage="segmentation_phase_2",
-            timezone_name="UTC",
-            description=None,
-            text=dictionary.project.source_text,
-            text_obj=seg1_payload,
-            report_id=compile_task_report_id,
-            task_type=compile_task_type or f"picture_dictionary_compile_{dictionary.project.id}",
-            ai_model=dictionary.project.ai_model,
-            end_stage="compile_html",
-            page_image_placement=dictionary.project.page_image_placement or "none",
-            segmentation_method=dictionary.project.segmentation_method or "auto",
-            romanization_method=dictionary.project.romanization_method or "auto",
-            detailed_api_trace=False,
-        )
-        annotation_run = "ok"
-    except Exception as exc:
-        annotation_run = "error"
-        annotation_error = str(exc)
-        logger.exception(
-            "Picture dictionary annotation compile failed for dictionary project %s",
-            dictionary.project_id,
-        )
+            _post_progress("Text phase 3/3: running annotation pipeline (segmentation phase 2 to compile HTML).")
+            run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
+            run_dir.mkdir(parents=True, exist_ok=True)
+            seg1_payload = _dictionary_stage_payload(dictionary, entries, "segmentation_phase_1")
+            _run_compile_task(
+                project_id=dictionary.project.id,
+                user_id=compile_task_user_id or dictionary.organiser_id,
+                output_dir_str=str(run_dir),
+                project_root_str=str(dictionary.project.artifact_dir()),
+                start_stage="segmentation_phase_2",
+                timezone_name="UTC",
+                description=None,
+                text=dictionary.project.source_text,
+                text_obj=seg1_payload,
+                report_id=compile_task_report_id,
+                task_type=compile_task_type or f"picture_dictionary_compile_{dictionary.project.id}",
+                ai_model=dictionary.project.ai_model,
+                end_stage="compile_html",
+                page_image_placement=dictionary.project.page_image_placement or "none",
+                segmentation_method=dictionary.project.segmentation_method or "auto",
+                romanization_method=dictionary.project.romanization_method or "auto",
+                detailed_api_trace=False,
+            )
+            annotation_run = "ok"
+        except Exception as exc:
+            annotation_run = "error"
+            annotation_error = str(exc)
+            logger.exception(
+                "Picture dictionary annotation compile failed for dictionary project %s",
+                dictionary.project_id,
+            )
 
     _post_progress(f"Dictionary image compilation started for {len(entries)} image entr{'y' if len(entries) == 1 else 'ies'}.")
     try:

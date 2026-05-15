@@ -149,7 +149,7 @@ class PictureDictionaryCommandTests(TestCase):
                             "annotations": {},
                         }
                     ],
-                    "annotations": {},
+                    "annotations": {"generated_image": {"path": "images/pages/page_003/variant_001.png"}},
                 },
             ],
             "annotations": {},
@@ -160,14 +160,15 @@ class PictureDictionaryCommandTests(TestCase):
             image_path = source.artifact_dir() / rel
             image_path.parent.mkdir(parents=True, exist_ok=True)
             image_path.write_bytes(f"fake-{word}".encode("utf-8"))
-            ProjectImagePage.objects.create(
-                project=source,
-                page_number=page_number,
-                page_text=word,
-                generation_prompt=word,
-                image_path=rel,
-                status=ProjectImagePage.STATUS_APPROVED,
-            )
+            if page_number == 2:
+                ProjectImagePage.objects.create(
+                    project=source,
+                    page_number=page_number,
+                    page_text=word,
+                    generation_prompt=word,
+                    image_path=rel,
+                    status=ProjectImagePage.STATUS_APPROVED,
+                )
 
         call_command(
             "picture_dictionary",
@@ -186,6 +187,8 @@ class PictureDictionaryCommandTests(TestCase):
         self.assertEqual(dictionary.project.image_pages.count(), 2)
         copied_image = dictionary.project.artifact_dir() / entries[0].image_path
         self.assertTrue(copied_image.exists())
+        annotation_image = dictionary.project.artifact_dir() / entries[1].image_path
+        self.assertTrue(annotation_image.exists())
         filtered_stage = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages" / "segmentation_phase_1.json"
         self.assertTrue(filtered_stage.exists())
         self.assertNotIn("50 words in Kok Kaper", filtered_stage.read_text(encoding="utf-8"))
@@ -197,6 +200,22 @@ class PictureDictionaryCommandTests(TestCase):
             for token in segment["tokens"]
         ]
         self.assertEqual([token["annotations"].get("gloss") for token in tokens], ["cat", "dog"])
+
+        call_command(
+            "picture_dictionary",
+            "compile",
+            community_id=self.community.id,
+            organiser=self.organiser.username,
+        )
+        compiled_gloss = read_stage_artifact(dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary", "gloss")
+        compiled_tokens = [
+            token
+            for page in compiled_gloss["pages"]
+            for segment in page["segments"]
+            for token in segment["tokens"]
+        ]
+        self.assertEqual([token["annotations"].get("gloss") for token in compiled_tokens], ["cat", "dog"])
+
         summary_path = dictionary.project.artifact_dir() / "picture_dictionary_import" / "summary.json"
         self.assertTrue(summary_path.exists())
         summary = json.loads(summary_path.read_text(encoding="utf-8"))
