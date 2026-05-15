@@ -42,7 +42,7 @@
     <button class="btn secondary" type="submit" name="picture_dictionary_action" value="add">Add words</button>
   </p>
   <p>
-    <label for="source_project_id">Add words from community project:</label>
+    <label for="source_project_id">Community project:</label>
     <select id="source_project_id" name="source_project_id">
       <option value="">Select project…</option>
       {% for project in community_projects %}
@@ -50,6 +50,9 @@
       {% endfor %}
     </select>
     <button class="btn secondary" type="submit" name="picture_dictionary_action" value="add_from_text">Add from text</button>
+    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="import_from_project" onclick="return confirm('Import the selected project as a modified picture-dictionary copy? This replaces the current dictionary project for this community.');">Import as dictionary copy</button>
+    <br />
+    <small>Import keeps pages with non-null translations and discards title/cover pages without translations.</small>
   </p>
   {% if dictionary_entries %}
     <p><strong>Current entries (select to delete):</strong></p>

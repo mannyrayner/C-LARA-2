@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
@@ -5,7 +6,9 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase
 
-from projects.models import Community, CommunityMembership, PictureDictionary, PictureDictionaryEntry, Project
+from pipeline.stage_artifacts import read_stage_artifact, write_stage_artifact
+
+from projects.models import Community, CommunityMembership, PictureDictionary, PictureDictionaryEntry, Project, ProjectImagePage
 from projects.views import _build_picture_glosses_for_compile
 
 
@@ -82,6 +85,156 @@ class PictureDictionaryCommandTests(TestCase):
         for stage_name in ("segmentation_phase_2", "mwe", "lemma", "gloss", "romanization", "pinyin"):
             stage_path = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages" / f"{stage_name}.json"
             self.assertTrue(stage_path.exists())
+
+    def test_import_project_as_dictionary_copy_filters_untranslated_pages_and_supports_picture_glossing(self):
+        source = Project.objects.create(
+            owner=self.organiser,
+            title="50 words in Kok Kaper",
+            source_text="50 words in Kok Kaper\nKatze\nHund",
+            language="de",
+            target_language="en",
+            community=self.community,
+            access_scope=Project.ACCESS_COMMUNITY,
+        )
+        run_dir = source.artifact_dir() / "runs" / "run_import_seed"
+        payload = {
+            "l2": "de",
+            "l1": "en",
+            "surface": "50 words in Kok Kaper<page>Katze<page>Hund",
+            "pages": [
+                {
+                    "surface": "50 words in Kok Kaper",
+                    "segments": [
+                        {
+                            "surface": "50 words in Kok Kaper",
+                            "tokens": [
+                                {"surface": "50"},
+                                {"surface": "words"},
+                                {"surface": "in"},
+                                {"surface": "Kok"},
+                                {"surface": "Kaper"},
+                            ],
+                            "annotations": {"translation": "50 words in Kok Kaper"},
+                        }
+                    ],
+                    "annotations": {},
+                },
+                {
+                    "surface": "Katze",
+                    "segments": [
+                        {
+                            "surface": "Katze",
+                            "tokens": [
+                                {
+                                    "surface": "Katze",
+                                    "annotations": {"lemma": "Katze", "pos": "NOUN", "gloss": "cat"},
+                                }
+                            ],
+                            "annotations": {},
+                        }
+                    ],
+                    "annotations": {},
+                },
+                {
+                    "surface": "Hund",
+                    "segments": [
+                        {
+                            "surface": "Hund",
+                            "tokens": [
+                                {
+                                    "surface": "Hund",
+                                    "annotations": {"lemma": "Hund", "pos": "NOUN", "gloss": "dog"},
+                                }
+                            ],
+                            "annotations": {},
+                        }
+                    ],
+                    "annotations": {"generated_image": {"path": "images/pages/page_003/variant_001.png"}},
+                },
+            ],
+            "annotations": {},
+        }
+        write_stage_artifact(run_dir, "gloss", payload)
+        for page_number, word in [(2, "Katze"), (3, "Hund")]:
+            rel = f"images/pages/page_{page_number:03d}/variant_001.png"
+            image_path = source.artifact_dir() / rel
+            image_path.parent.mkdir(parents=True, exist_ok=True)
+            image_path.write_bytes(f"fake-{word}".encode("utf-8"))
+            if page_number == 2:
+                ProjectImagePage.objects.create(
+                    project=source,
+                    page_number=page_number,
+                    page_text=word,
+                    generation_prompt=word,
+                    image_path=rel,
+                    status=ProjectImagePage.STATUS_APPROVED,
+                )
+
+        call_command(
+            "picture_dictionary",
+            "import-project",
+            community_id=self.community.id,
+            organiser=self.organiser.username,
+            source_project_id=source.id,
+        )
+
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        self.assertNotEqual(dictionary.project_id, source.id)
+        entries = list(dictionary.entries.filter(is_active=True).order_by("current_page_number"))
+        self.assertEqual([entry.surface for entry in entries], ["Katze", "Hund"])
+        self.assertEqual([entry.current_page_number for entry in entries], [1, 2])
+        self.assertNotIn("50", dictionary.project.source_text)
+        self.assertEqual(dictionary.project.image_pages.count(), 2)
+        copied_image = dictionary.project.artifact_dir() / entries[0].image_path
+        self.assertTrue(copied_image.exists())
+        annotation_image = dictionary.project.artifact_dir() / entries[1].image_path
+        self.assertTrue(annotation_image.exists())
+        filtered_stage = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages" / "segmentation_phase_1.json"
+        self.assertTrue(filtered_stage.exists())
+        self.assertNotIn("50 words in Kok Kaper", filtered_stage.read_text(encoding="utf-8"))
+        imported_gloss = read_stage_artifact(dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary", "gloss")
+        tokens = [
+            token
+            for page in imported_gloss["pages"]
+            for segment in page["segments"]
+            for token in segment["tokens"]
+        ]
+        self.assertEqual([token["annotations"].get("gloss") for token in tokens], ["cat", "dog"])
+
+        call_command(
+            "picture_dictionary",
+            "compile",
+            community_id=self.community.id,
+            organiser=self.organiser.username,
+        )
+        compiled_gloss = read_stage_artifact(dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary", "gloss")
+        compiled_tokens = [
+            token
+            for page in compiled_gloss["pages"]
+            for segment in page["segments"]
+            for token in segment["tokens"]
+        ]
+        self.assertEqual([token["annotations"].get("gloss") for token in compiled_tokens], ["cat", "dog"])
+
+        summary_path = dictionary.project.artifact_dir() / "picture_dictionary_import" / "summary.json"
+        self.assertTrue(summary_path.exists())
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        self.assertEqual(summary["entries_created"], 2)
+        self.assertEqual(summary["page_map"], {"2": 1, "3": 2})
+
+        toy_project = Project.objects.create(
+            owner=self.organiser,
+            title="Toy German Text",
+            source_text="Die Katze schläft.",
+            language="de",
+            target_language="en",
+            community=self.community,
+        )
+        output_dir = toy_project.artifact_dir() / "runs" / "run_test_imported_dictionary_gloss"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        glosses = _build_picture_glosses_for_compile(project=toy_project, output_dir=output_dir)
+        self.assertIn("katze", glosses)
+        self.assertTrue((output_dir / "html" / glosses["katze"]["image_path"]).exists())
 
     def test_non_organiser_cannot_manage_dictionary(self):
         with self.assertRaises(CommandError):
@@ -160,12 +313,89 @@ class PictureDictionaryCommandTests(TestCase):
         )
         output_dir = toy_project.artifact_dir() / "runs" / "run_test_cross_project_gloss"
         output_dir.mkdir(parents=True, exist_ok=True)
-        glosses = _build_picture_glosses_for_compile(project=toy_project, output_dir=output_dir)
+        diagnostics: list[str] = []
+        glosses = _build_picture_glosses_for_compile(
+            project=toy_project,
+            output_dir=output_dir,
+            diagnostics=diagnostics,
+        )
         self.assertIn("femme", glosses)
+        self.assertTrue(any("active_entries=1" in message and "mapped=1" in message for message in diagnostics))
+        self.assertTrue(any("mapped sample" in message for message in diagnostics))
         rel_path = glosses["femme"]["image_path"]
         self.assertTrue(rel_path.startswith("picture_glosses/"))
         staged = output_dir / "html" / Path(rel_path)
         self.assertTrue(staged.exists())
+
+    def test_picture_gloss_diagnostics_report_missing_and_duplicate_entries(self):
+        call_command(
+            "picture_dictionary",
+            "ensure",
+            community_id=self.community.id,
+            organiser=self.organiser.username,
+        )
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        image_rel = "images/pages/page_001/variant_001.png"
+        image_abs = dictionary.project.artifact_dir() / image_rel
+        image_abs.parent.mkdir(parents=True, exist_ok=True)
+        image_abs.write_bytes(b"fake-image")
+        PictureDictionaryEntry.objects.create(
+            dictionary=dictionary,
+            surface="eins",
+            lemma="eins",
+            image_path=image_rel,
+            is_active=True,
+        )
+        PictureDictionaryEntry.objects.create(
+            dictionary=dictionary,
+            surface="eins duplicate",
+            lemma="eins",
+            image_path=image_rel,
+            is_active=True,
+        )
+        PictureDictionaryEntry.objects.create(
+            dictionary=dictionary,
+            surface="zwei",
+            lemma="zwei",
+            is_active=True,
+        )
+        PictureDictionaryEntry.objects.create(
+            dictionary=dictionary,
+            surface="drei",
+            lemma="drei",
+            image_path="images/pages/page_003/missing.png",
+            is_active=True,
+        )
+        toy_project = Project.objects.create(
+            owner=self.organiser,
+            title="Toy diagnostics text",
+            source_text="eins zwei drei",
+            language="de",
+            target_language="en",
+            community=self.community,
+        )
+        output_dir = toy_project.artifact_dir() / "runs" / "run_test_gloss_diagnostics"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        diagnostics: list[str] = []
+
+        glosses = _build_picture_glosses_for_compile(
+            project=toy_project,
+            output_dir=output_dir,
+            diagnostics=diagnostics,
+        )
+
+        self.assertEqual(list(glosses.keys()), ["eins"])
+        summary = "\n".join(diagnostics)
+        self.assertIn("active_entries=4", summary)
+        self.assertIn("mapped=1", summary)
+        self.assertIn("entry_image_paths_before_fallback=3", summary)
+        self.assertIn("entry_page_numbers=0", summary)
+        self.assertIn("dictionary_pages=0", summary)
+        self.assertIn("duplicate_lemma=1", summary)
+        self.assertIn("missing_image_path=1", summary)
+        self.assertIn("missing_image_file=1", summary)
+        self.assertIn("missing_image_path sample", summary)
+        self.assertIn("missing_image_file sample", summary)
 
     def test_cross_project_picture_glosses_fallback_to_dictionary_page_image_path(self):
         call_command(
@@ -204,7 +434,16 @@ class PictureDictionaryCommandTests(TestCase):
         )
         output_dir = toy_project.artifact_dir() / "runs" / "run_test_fallback_gloss"
         output_dir.mkdir(parents=True, exist_ok=True)
-        glosses = _build_picture_glosses_for_compile(project=toy_project, output_dir=output_dir)
+        diagnostics: list[str] = []
+        glosses = _build_picture_glosses_for_compile(
+            project=toy_project,
+            output_dir=output_dir,
+            diagnostics=diagnostics,
+        )
         self.assertIn("chat", glosses)
+        self.assertTrue(any("entry_image_paths_before_fallback=0" in message for message in diagnostics))
+        self.assertTrue(any("dictionary_pages=1" in message for message in diagnostics))
+        self.assertTrue(any("page_image_paths=1" in message for message in diagnostics))
+        self.assertTrue(any("page_fallbacks=1" in message for message in diagnostics))
         entry.refresh_from_db()
         self.assertEqual(entry.image_path, "images/pages/page_001/variant_001.png")
