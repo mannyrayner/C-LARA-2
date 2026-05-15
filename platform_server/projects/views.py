@@ -118,6 +118,7 @@ from .picture_dictionary import (
     add_words as picture_dictionary_add_words,
     compile_picture_dictionary as picture_dictionary_compile,
     ensure_picture_dictionary_for_community,
+    import_project_as_picture_dictionary,
     remove_entries_by_ids as picture_dictionary_remove_entries_by_ids,
     remove_words as picture_dictionary_remove_words,
 )
@@ -7396,6 +7397,40 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
     if request.method == "POST":
         action = (request.POST.get("picture_dictionary_action") or "").strip()
         if action:
+            if action == "import_from_project":
+                source_project_id_raw = (request.POST.get("source_project_id") or "").strip()
+                try:
+                    source_project_id = int(source_project_id_raw)
+                except ValueError:
+                    source_project_id = 0
+                source_project = next((row for row in projects if row.id == source_project_id), None)
+                if not source_project:
+                    messages.error(request, "Please choose a valid community project to import as a picture dictionary.")
+                else:
+                    try:
+                        picture_dictionary, summary = import_project_as_picture_dictionary(
+                            community=community,
+                            organiser=request.user,
+                            source_project=source_project,
+                        )
+                    except ValueError as exc:
+                        messages.error(request, str(exc))
+                    except PermissionDenied:
+                        raise Http404()
+                    else:
+                        messages.success(
+                            request,
+                            "Imported “%s” as a picture dictionary copy with %s entr%s."
+                            % (
+                                source_project.title,
+                                summary.get("entries_created", 0),
+                                "y" if summary.get("entries_created") == 1 else "ies",
+                            ),
+                        )
+                        for diagnostic in summary.get("diagnostics", []):
+                            messages.info(request, str(diagnostic))
+                return redirect("community-organiser-home", community_id=community_id)
+
             try:
                 picture_dictionary = ensure_picture_dictionary_for_community(
                     community=community,

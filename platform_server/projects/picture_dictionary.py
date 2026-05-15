@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
+import shutil
 from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
@@ -9,7 +10,7 @@ from typing import Iterable
 
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from pipeline.stage_artifacts import write_stage_artifact
+from pipeline.stage_artifacts import read_stage_artifact, stage_artifact_path, write_stage_artifact
 
 from .models import (
     Community,
@@ -18,6 +19,8 @@ from .models import (
     PictureDictionaryEntry,
     Project,
     ProjectImagePage,
+    ProjectImagePageVariant,
+    ProjectImageStyle,
 )
 
 logger = logging.getLogger(__name__)
@@ -61,6 +64,312 @@ def _require_organiser(community: Community, user) -> None:
     ).exists()
     if not is_organiser:
         raise PermissionDenied("User must be a community organiser to manage picture dictionaries.")
+
+
+def _unique_project_title(owner, base_title: str) -> str:
+    candidate = (base_title or "Picture dictionary").strip() or "Picture dictionary"
+    if len(candidate) > 200:
+        candidate = candidate[:200].rstrip()
+    if not Project.objects.filter(owner=owner, title=candidate).exists():
+        return candidate
+    root = candidate[:190].rstrip()
+    for idx in range(2, 200):
+        titled = f"{root} ({idx})"
+        if not Project.objects.filter(owner=owner, title=titled).exists():
+            return titled
+    return f"{root} ({datetime.now(timezone.utc).strftime('%H%M%S')})"[:200]
+
+
+def _latest_stage_payload(project: Project, stage_name: str) -> dict | None:
+    runs_root = project.artifact_dir() / "runs"
+    if not runs_root.exists():
+        return None
+    newest_run: Path | None = None
+    newest_mtime = float("-inf")
+    for run_dir in runs_root.iterdir():
+        if not run_dir.is_dir():
+            continue
+        candidate = stage_artifact_path(run_dir, stage_name)
+        if not candidate.exists():
+            continue
+        mtime = candidate.stat().st_mtime
+        if mtime > newest_mtime:
+            newest_run = run_dir
+            newest_mtime = mtime
+    if newest_run is None:
+        return None
+    try:
+        payload = read_stage_artifact(newest_run, stage_name)
+    except Exception:
+        logger.exception("Could not read %s stage for project %s", stage_name, project.pk)
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _non_null_text(value: object) -> str:
+    text = str(value or "").strip()
+    if not text or text.casefold() in {"none", "null"}:
+        return ""
+    return text
+
+
+def _token_surface_is_word(surface: str) -> bool:
+    return bool(re.search(r"\w", surface or "", flags=re.UNICODE))
+
+
+def _page_has_non_null_translation(page: dict) -> bool:
+    for segment in page.get("segments") or []:
+        if not isinstance(segment, dict):
+            continue
+        if _non_null_text((segment.get("annotations") or {}).get("translation")):
+            return True
+        for token in segment.get("tokens") or []:
+            if not isinstance(token, dict):
+                continue
+            if _non_null_text((token.get("annotations") or {}).get("translation")):
+                return True
+    return False
+
+
+def _first_translated_token(page: dict) -> dict | None:
+    fallback: dict | None = None
+    for segment in page.get("segments") or []:
+        if not isinstance(segment, dict):
+            continue
+        for token in segment.get("tokens") or []:
+            if not isinstance(token, dict):
+                continue
+            surface = _normalise_word(token.get("surface") or "")
+            if not surface or not _token_surface_is_word(surface):
+                continue
+            if fallback is None:
+                fallback = token
+            if _non_null_text((token.get("annotations") or {}).get("translation")):
+                return token
+    return fallback
+
+
+def _extract_dictionary_seed_pages(source_project: Project) -> tuple[list[dict], list[str]]:
+    payload = None
+    for stage_name in ("gloss", "lemma", "translation", "segmentation_phase_2", "segmentation_phase_1"):
+        payload = _latest_stage_payload(source_project, stage_name)
+        if payload and payload.get("pages"):
+            break
+    diagnostics: list[str] = []
+    if not payload:
+        diagnostics.append("No stage payload with pages was found on the source project.")
+        return [], diagnostics
+
+    source_pages = list(payload.get("pages") or [])
+    image_pages = {
+        row.page_number: row
+        for row in source_project.image_pages.select_related("preferred_variant").order_by("page_number", "id")
+    }
+    retained: list[dict] = []
+    discarded_without_translation = 0
+    discarded_without_word = 0
+    for old_page_number, page in enumerate(source_pages, start=1):
+        if not isinstance(page, dict):
+            continue
+        if not _page_has_non_null_translation(page):
+            discarded_without_translation += 1
+            continue
+        token = _first_translated_token(page)
+        surface = _normalise_word((token or {}).get("surface") or page.get("surface") or "")
+        if not surface:
+            discarded_without_word += 1
+            continue
+        annotations = (token or {}).get("annotations") or {}
+        retained.append(
+            {
+                "old_page_number": old_page_number,
+                "surface": surface,
+                "lemma": _normalise_word(annotations.get("lemma") or surface),
+                "pos": _normalise_word(annotations.get("pos") or "").upper(),
+                "translation": _non_null_text(annotations.get("translation")),
+                "image_page": image_pages.get(old_page_number),
+            }
+        )
+    diagnostics.append(f"Retained {len(retained)} page(s) with non-null translations.")
+    if discarded_without_translation:
+        diagnostics.append(f"Discarded {discarded_without_translation} page(s) without non-null translations.")
+    if discarded_without_word:
+        diagnostics.append(f"Discarded {discarded_without_word} translated page(s) without a usable word surface.")
+    return retained, diagnostics
+
+
+def _copy_project_artifacts(source_project: Project, target_project: Project) -> None:
+    source_root = source_project.artifact_dir()
+    target_root = target_project.artifact_dir()
+    if target_root.exists():
+        shutil.rmtree(target_root)
+    if source_root.exists():
+        shutil.copytree(source_root, target_root, dirs_exist_ok=True)
+    else:
+        target_root.mkdir(parents=True, exist_ok=True)
+
+
+def _copy_project_image_style(source_project: Project, target_project: Project) -> None:
+    style = getattr(source_project, "image_style", None)
+    if not style:
+        return
+    ProjectImageStyle.objects.update_or_create(
+        project=target_project,
+        defaults={
+            "style_brief": style.style_brief,
+            "expanded_style_description": style.expanded_style_description,
+            "representative_excerpt": style.representative_excerpt,
+            "sample_image_prompt": style.sample_image_prompt,
+            "sample_image_path": style.sample_image_path,
+            "sample_image_revised_prompt": style.sample_image_revised_prompt,
+            "sample_image_model": style.sample_image_model,
+            "discourage_text_in_images": style.discourage_text_in_images,
+            "ai_model": style.ai_model,
+            "status": style.status,
+        },
+    )
+
+
+@transaction.atomic
+def import_project_as_picture_dictionary(
+    *,
+    community: Community,
+    organiser,
+    source_project: Project,
+) -> tuple[PictureDictionary, dict[str, object]]:
+    """Create/update a community picture dictionary from a dictionary-like project copy.
+
+    The initial importer is intentionally conservative: it keeps only pages that
+    contain at least one non-null translation annotation, which discards title or
+    cover pages in projects such as ``50 words in Kok Kaper`` while preserving
+    approved word/image pages as dictionary entries.
+    """
+
+    _require_organiser(community, organiser)
+    if source_project.community_id != community.id:
+        raise PermissionDenied("Source project must belong to the organiser's community.")
+
+    retained_pages, diagnostics = _extract_dictionary_seed_pages(source_project)
+    if not retained_pages:
+        raise ValueError("No dictionary entries found. The source project needs pages with non-null translations.")
+
+    title = _unique_project_title(organiser, f"{source_project.title} picture dictionary")
+    target_project = Project.objects.create(
+        owner=organiser,
+        title=title,
+        description=(
+            f"Picture dictionary for {community.name}, copied from project “{source_project.title}”. "
+            "Pages without non-null translations were discarded during import."
+        ),
+        source_text="\n".join(row["surface"] for row in retained_pages)[:1000000],
+        input_mode=Project.INPUT_SOURCE,
+        language=(community.language or source_project.language or "en")[:16],
+        target_language=(source_project.target_language or community.language or source_project.language or "en")[:16],
+        ai_model=source_project.ai_model,
+        page_image_placement=source_project.page_image_placement,
+        image_generation_pivot_language=source_project.image_generation_pivot_language,
+        page_image_text_source=source_project.page_image_text_source,
+        segmentation_method=source_project.segmentation_method or "auto",
+        romanization_method=source_project.romanization_method or "auto",
+        access_scope=Project.ACCESS_COMMUNITY,
+        community=community,
+    )
+    _copy_project_artifacts(source_project, target_project)
+    _copy_project_image_style(source_project, target_project)
+
+    dictionary = PictureDictionary.objects.select_related("project").filter(community=community).first()
+    old_project_id = dictionary.project_id if dictionary else None
+    if dictionary:
+        dictionary.entries.all().delete()
+        dictionary.project = target_project
+        dictionary.organiser = organiser
+        dictionary.language = community.language or target_project.language
+        dictionary.is_active = True
+        dictionary.save(update_fields=["project", "organiser", "language", "is_active", "updated_at"])
+    else:
+        dictionary = PictureDictionary.objects.create(
+            community=community,
+            project=target_project,
+            organiser=organiser,
+            language=community.language or target_project.language,
+        )
+
+    page_map: dict[int, int] = {}
+    created_entries: list[PictureDictionaryEntry] = []
+    for new_page_number, row in enumerate(retained_pages, start=1):
+        image_page = row.get("image_page")
+        image_path = getattr(image_page, "image_path", "") if image_page else ""
+        entry = PictureDictionaryEntry.objects.create(
+            dictionary=dictionary,
+            surface=str(row["surface"]),
+            lemma=str(row.get("lemma") or row["surface"]),
+            pos=str(row.get("pos") or ""),
+            image_path=image_path or "",
+            current_page_number=new_page_number,
+            is_active=True,
+        )
+        page = ProjectImagePage.objects.create(
+            project=target_project,
+            page_number=new_page_number,
+            page_text=str(row["surface"]),
+            generation_prompt=(
+                (getattr(image_page, "generation_prompt", "") or str(row["surface"]))
+                if image_page
+                else str(row["surface"])
+            ),
+            image_model=getattr(image_page, "image_model", "gpt-image-1") if image_page else "gpt-image-1",
+            image_path=image_path or "",
+            image_revised_prompt=getattr(image_page, "image_revised_prompt", "") if image_page else "",
+            status=(
+                getattr(image_page, "status", ProjectImagePage.STATUS_APPROVED)
+                if image_page
+                else ProjectImagePage.STATUS_APPROVED
+            ),
+        )
+        page_map[int(row["old_page_number"])] = new_page_number
+        if image_page:
+            preferred_variant = None
+            for variant in image_page.variants.order_by("variant_index", "id"):
+                copied_variant = ProjectImagePageVariant.objects.create(
+                    page=page,
+                    variant_index=variant.variant_index,
+                    image_model=variant.image_model,
+                    image_path=variant.image_path,
+                    generation_prompt=variant.generation_prompt,
+                    image_revised_prompt=variant.image_revised_prompt,
+                    status=variant.status,
+                )
+                if image_page.preferred_variant_id == variant.id:
+                    preferred_variant = copied_variant
+            if preferred_variant:
+                page.preferred_variant = preferred_variant
+                page.save(update_fields=["preferred_variant", "updated_at"])
+        if not entry.image_path and page.image_path:
+            entry.image_path = page.image_path
+            entry.save(update_fields=["image_path", "updated_at"])
+        created_entries.append(entry)
+
+    _write_segmentation_phase_1(dictionary, created_entries)
+    _write_dictionary_annotation_stages(dictionary, created_entries)
+
+    summary = {
+        "source_project_id": source_project.id,
+        "source_project_title": source_project.title,
+        "target_project_id": target_project.id,
+        "old_dictionary_project_id": old_project_id,
+        "entries_created": len(retained_pages),
+        "page_map": page_map,
+        "diagnostics": diagnostics,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    summary_dir = target_project.artifact_dir() / "picture_dictionary_import"
+    summary_dir.mkdir(parents=True, exist_ok=True)
+    (summary_dir / "summary.json").write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    _sync_project_source_from_registry(dictionary)
+    return dictionary, summary
 
 
 @transaction.atomic

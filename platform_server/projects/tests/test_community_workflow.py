@@ -7,6 +7,8 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from unittest.mock import patch
 
+from pipeline.stage_artifacts import write_stage_artifact
+
 from projects.models import (
     Community,
     CommunityImageVote,
@@ -90,6 +92,68 @@ class CommunityWorkflowTests(TestCase):
         self.project.refresh_from_db()
         self.assertIsNone(self.project.community)
 
+
+    def test_organiser_can_import_project_as_picture_dictionary_copy_from_ui(self):
+        self.project.community = self.community
+        self.project.access_scope = Project.ACCESS_COMMUNITY
+        self.project.title = "50 words in Kok Kaper"
+        self.project.save(update_fields=["community", "access_scope", "title", "updated_at"])
+        run_dir = self.project.artifact_dir() / "runs" / "run_seed"
+        write_stage_artifact(
+            run_dir,
+            "gloss",
+            {
+                "pages": [
+                    {
+                        "surface": "English title",
+                        "segments": [{"tokens": [{"surface": "English"}], "annotations": {}}],
+                        "annotations": {},
+                    },
+                    {
+                        "surface": "pama",
+                        "segments": [
+                            {
+                                "tokens": [
+                                    {
+                                        "surface": "pama",
+                                        "annotations": {"lemma": "pama", "pos": "NOUN", "translation": "person"},
+                                    }
+                                ],
+                                "annotations": {},
+                            }
+                        ],
+                        "annotations": {},
+                    },
+                ]
+            },
+        )
+        rel = "images/pages/page_002/variant_001.png"
+        image_path = self.project.artifact_dir() / rel
+        image_path.parent.mkdir(parents=True, exist_ok=True)
+        image_path.write_bytes(b"fake-pama")
+        ProjectImagePage.objects.create(
+            project=self.project,
+            page_number=2,
+            page_text="pama",
+            image_path=rel,
+            status=ProjectImagePage.STATUS_APPROVED,
+        )
+
+        client = Client()
+        client.login(username="org", password="pw")
+        response = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {"picture_dictionary_action": "import_from_project", "source_project_id": str(self.project.id)},
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Imported “50 words in Kok Kaper” as a picture dictionary copy with 1 entry")
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        self.assertNotEqual(dictionary.project_id, self.project.id)
+        self.assertEqual(list(dictionary.entries.values_list("surface", flat=True)), ["pama"])
+        self.assertNotIn("English title", dictionary.project.source_text)
+
     def test_community_tab_and_home_redirect_for_single_membership(self):
         client = Client()
         client.login(username="mem", password="pw")
@@ -126,6 +190,7 @@ class CommunityWorkflowTests(TestCase):
         self.assertContains(page, "Picture dictionary (Phase A)")
         self.assertContains(page, "Ensure dictionary")
         self.assertContains(page, "Add from text")
+        self.assertContains(page, "Import as dictionary copy")
         self.assertContains(page, "Style brief (used if style is missing)")
         self.assertNotContains(page, "Remove words")
 
