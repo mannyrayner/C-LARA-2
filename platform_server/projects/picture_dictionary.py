@@ -117,22 +117,12 @@ def _token_surface_is_word(surface: str) -> bool:
     return bool(re.search(r"\w", surface or "", flags=re.UNICODE))
 
 
-def _page_has_non_null_translation(page: dict) -> bool:
-    for segment in page.get("segments") or []:
-        if not isinstance(segment, dict):
-            continue
-        if _non_null_text((segment.get("annotations") or {}).get("translation")):
-            return True
-        for token in segment.get("tokens") or []:
-            if not isinstance(token, dict):
-                continue
-            if _non_null_text((token.get("annotations") or {}).get("translation")):
-                return True
-    return False
+def _token_gloss_or_translation(token: dict) -> str:
+    annotations = token.get("annotations") or {}
+    return _non_null_text(annotations.get("gloss")) or _non_null_text(annotations.get("translation"))
 
 
-def _first_translated_token(page: dict) -> dict | None:
-    fallback: dict | None = None
+def _first_glossed_or_translated_token(page: dict) -> dict | None:
     for segment in page.get("segments") or []:
         if not isinstance(segment, dict):
             continue
@@ -142,11 +132,9 @@ def _first_translated_token(page: dict) -> dict | None:
             surface = _normalise_word(token.get("surface") or "")
             if not surface or not _token_surface_is_word(surface):
                 continue
-            if fallback is None:
-                fallback = token
-            if _non_null_text((token.get("annotations") or {}).get("translation")):
+            if _token_gloss_or_translation(token):
                 return token
-    return fallback
+    return None
 
 
 def _extract_dictionary_seed_pages(source_project: Project) -> tuple[list[dict], list[str]]:
@@ -171,11 +159,11 @@ def _extract_dictionary_seed_pages(source_project: Project) -> tuple[list[dict],
     for old_page_number, page in enumerate(source_pages, start=1):
         if not isinstance(page, dict):
             continue
-        if not _page_has_non_null_translation(page):
+        token = _first_glossed_or_translated_token(page)
+        if token is None:
             discarded_without_translation += 1
             continue
-        token = _first_translated_token(page)
-        surface = _normalise_word((token or {}).get("surface") or page.get("surface") or "")
+        surface = _normalise_word(token.get("surface") or page.get("surface") or "")
         if not surface:
             discarded_without_word += 1
             continue
@@ -186,13 +174,14 @@ def _extract_dictionary_seed_pages(source_project: Project) -> tuple[list[dict],
                 "surface": surface,
                 "lemma": _normalise_word(annotations.get("lemma") or surface),
                 "pos": _normalise_word(annotations.get("pos") or "").upper(),
+                "gloss": _non_null_text(annotations.get("gloss")),
                 "translation": _non_null_text(annotations.get("translation")),
                 "image_page": image_pages.get(old_page_number),
             }
         )
-    diagnostics.append(f"Retained {len(retained)} page(s) with non-null translations.")
+    diagnostics.append(f"Retained {len(retained)} page(s) with token-level glosses/translations.")
     if discarded_without_translation:
-        diagnostics.append(f"Discarded {discarded_without_translation} page(s) without non-null translations.")
+        diagnostics.append(f"Discarded {discarded_without_translation} page(s) without token-level glosses/translations.")
     if discarded_without_word:
         diagnostics.append(f"Discarded {discarded_without_word} translated page(s) without a usable word surface.")
     return retained, diagnostics
@@ -350,7 +339,7 @@ def import_project_as_picture_dictionary(
         created_entries.append(entry)
 
     _write_segmentation_phase_1(dictionary, created_entries)
-    _write_dictionary_annotation_stages(dictionary, created_entries)
+    _write_imported_dictionary_annotation_stages(dictionary, retained_pages)
 
     summary = {
         "source_project_id": source_project.id,
@@ -358,6 +347,7 @@ def import_project_as_picture_dictionary(
         "target_project_id": target_project.id,
         "old_dictionary_project_id": old_project_id,
         "entries_created": len(retained_pages),
+        "filter": "token_level_gloss_or_translation",
         "page_map": page_map,
         "diagnostics": diagnostics,
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -579,6 +569,54 @@ def _write_dictionary_annotation_stages(dictionary: PictureDictionary, entries: 
     run_dir.mkdir(parents=True, exist_ok=True)
     for stage_name in ("segmentation_phase_2", "mwe", "lemma", "gloss", "romanization", "pinyin"):
         payload = _dictionary_stage_payload(dictionary, entries, stage_name)
+        write_stage_artifact(run_dir.parent, stage_name, payload)
+
+
+def _imported_dictionary_stage_payload(dictionary: PictureDictionary, rows: list[dict], stage_name: str) -> dict:
+    pages = []
+    for row in rows:
+        token_annotations: dict[str, str] = {}
+        if stage_name in {"lemma", "gloss", "romanization", "pinyin"}:
+            if row.get("lemma"):
+                token_annotations["lemma"] = str(row["lemma"])
+            if row.get("pos"):
+                token_annotations["pos"] = str(row["pos"])
+        if stage_name in {"gloss", "romanization", "pinyin"}:
+            gloss = row.get("gloss") or row.get("translation") or ""
+            if gloss:
+                token_annotations["gloss"] = str(gloss)
+        pages.append(
+            {
+                "surface": str(row["surface"]),
+                "segments": [
+                    {
+                        "surface": str(row["surface"]),
+                        "tokens": [{"surface": str(row["surface"]), "annotations": token_annotations}],
+                        "annotations": {},
+                    }
+                ],
+                "annotations": {},
+            }
+        )
+    return {
+        "l2": dictionary.project.language,
+        "surface": "<page>".join(str(row["surface"]) for row in rows),
+        "pages": pages,
+        "annotations": {},
+        "metadata": {
+            "source": "picture_dictionary_import",
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "entry_count": len(rows),
+            "stage": stage_name,
+        },
+    }
+
+
+def _write_imported_dictionary_annotation_stages(dictionary: PictureDictionary, rows: list[dict]) -> None:
+    run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    for stage_name in ("segmentation_phase_2", "mwe", "lemma", "gloss", "romanization", "pinyin"):
+        payload = _imported_dictionary_stage_payload(dictionary, rows, stage_name)
         write_stage_artifact(run_dir.parent, stage_name, payload)
 
 

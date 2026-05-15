@@ -6,7 +6,7 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase
 
-from pipeline.stage_artifacts import write_stage_artifact
+from pipeline.stage_artifacts import read_stage_artifact, write_stage_artifact
 
 from projects.models import Community, CommunityMembership, PictureDictionary, PictureDictionaryEntry, Project, ProjectImagePage
 from projects.views import _build_picture_glosses_for_compile
@@ -90,7 +90,7 @@ class PictureDictionaryCommandTests(TestCase):
         source = Project.objects.create(
             owner=self.organiser,
             title="50 words in Kok Kaper",
-            source_text="Title page\nKatze\nHund",
+            source_text="50 words in Kok Kaper\nKatze\nHund",
             language="de",
             target_language="en",
             community=self.community,
@@ -100,15 +100,21 @@ class PictureDictionaryCommandTests(TestCase):
         payload = {
             "l2": "de",
             "l1": "en",
-            "surface": "Title page<page>Katze<page>Hund",
+            "surface": "50 words in Kok Kaper<page>Katze<page>Hund",
             "pages": [
                 {
-                    "surface": "Title page",
+                    "surface": "50 words in Kok Kaper",
                     "segments": [
                         {
-                            "surface": "Title page",
-                            "tokens": [{"surface": "Title"}, {"surface": "page"}],
-                            "annotations": {},
+                            "surface": "50 words in Kok Kaper",
+                            "tokens": [
+                                {"surface": "50"},
+                                {"surface": "words"},
+                                {"surface": "in"},
+                                {"surface": "Kok"},
+                                {"surface": "Kaper"},
+                            ],
+                            "annotations": {"translation": "50 words in Kok Kaper"},
                         }
                     ],
                     "annotations": {},
@@ -121,7 +127,7 @@ class PictureDictionaryCommandTests(TestCase):
                             "tokens": [
                                 {
                                     "surface": "Katze",
-                                    "annotations": {"lemma": "Katze", "pos": "NOUN", "translation": "cat"},
+                                    "annotations": {"lemma": "Katze", "pos": "NOUN", "gloss": "cat"},
                                 }
                             ],
                             "annotations": {},
@@ -137,7 +143,7 @@ class PictureDictionaryCommandTests(TestCase):
                             "tokens": [
                                 {
                                     "surface": "Hund",
-                                    "annotations": {"lemma": "Hund", "pos": "NOUN", "translation": "dog"},
+                                    "annotations": {"lemma": "Hund", "pos": "NOUN", "gloss": "dog"},
                                 }
                             ],
                             "annotations": {},
@@ -176,13 +182,21 @@ class PictureDictionaryCommandTests(TestCase):
         entries = list(dictionary.entries.filter(is_active=True).order_by("current_page_number"))
         self.assertEqual([entry.surface for entry in entries], ["Katze", "Hund"])
         self.assertEqual([entry.current_page_number for entry in entries], [1, 2])
-        self.assertNotIn("Title", dictionary.project.source_text)
+        self.assertNotIn("50", dictionary.project.source_text)
         self.assertEqual(dictionary.project.image_pages.count(), 2)
         copied_image = dictionary.project.artifact_dir() / entries[0].image_path
         self.assertTrue(copied_image.exists())
         filtered_stage = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages" / "segmentation_phase_1.json"
         self.assertTrue(filtered_stage.exists())
-        self.assertNotIn("Title page", filtered_stage.read_text(encoding="utf-8"))
+        self.assertNotIn("50 words in Kok Kaper", filtered_stage.read_text(encoding="utf-8"))
+        imported_gloss = read_stage_artifact(dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary", "gloss")
+        tokens = [
+            token
+            for page in imported_gloss["pages"]
+            for segment in page["segments"]
+            for token in segment["tokens"]
+        ]
+        self.assertEqual([token["annotations"].get("gloss") for token in tokens], ["cat", "dog"])
         summary_path = dictionary.project.artifact_dir() / "picture_dictionary_import" / "summary.json"
         self.assertTrue(summary_path.exists())
         summary = json.loads(summary_path.read_text(encoding="utf-8"))

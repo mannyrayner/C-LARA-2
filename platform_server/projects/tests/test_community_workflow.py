@@ -105,8 +105,19 @@ class CommunityWorkflowTests(TestCase):
             {
                 "pages": [
                     {
-                        "surface": "English title",
-                        "segments": [{"tokens": [{"surface": "English"}], "annotations": {}}],
+                        "surface": "50 words in Kok Kaper",
+                        "segments": [
+                            {
+                                "tokens": [
+                                    {"surface": "50"},
+                                    {"surface": "words"},
+                                    {"surface": "in"},
+                                    {"surface": "Kok"},
+                                    {"surface": "Kaper"},
+                                ],
+                                "annotations": {"translation": "50 words in Kok Kaper"},
+                            }
+                        ],
                         "annotations": {},
                     },
                     {
@@ -116,7 +127,7 @@ class CommunityWorkflowTests(TestCase):
                                 "tokens": [
                                     {
                                         "surface": "pama",
-                                        "annotations": {"lemma": "pama", "pos": "NOUN", "translation": "person"},
+                                        "annotations": {"lemma": "pama", "pos": "NOUN", "gloss": "person"},
                                     }
                                 ],
                                 "annotations": {},
@@ -152,7 +163,7 @@ class CommunityWorkflowTests(TestCase):
         dictionary = PictureDictionary.objects.get(community=self.community)
         self.assertNotEqual(dictionary.project_id, self.project.id)
         self.assertEqual(list(dictionary.entries.values_list("surface", flat=True)), ["pama"])
-        self.assertNotIn("English title", dictionary.project.source_text)
+        self.assertNotIn("50", dictionary.project.source_text)
 
     def test_community_tab_and_home_redirect_for_single_membership(self):
         client = Client()
