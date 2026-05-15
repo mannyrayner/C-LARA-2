@@ -6,6 +6,7 @@ This roadmap describes how C-LARA-2 should generate and deliver interactive exer
 
 - Cloze: implemented in Django platform.
 - Flashcards (first version): implemented for **form → meaning** multiple-choice using glossed tokens, with AI distractor generation and publish/play flows shared with cloze.
+- Next flashcard priority: image-based Kok Kaper cards generated from a picture dictionary seeded from the migrated **50 words in Kok Kaper** project.
 
 ## Goals
 
@@ -52,6 +53,7 @@ A flashcard presents one information type and asks learner to choose the correct
 - **Meaning → form**: translation/gloss prompt to word/MWE options.
 - **Audio → form/meaning**: play token/MWE audio and choose text/meaning.
 - **Image → form/meaning**: show AI-generated image and choose lexical item/meaning.
+- **Form → image**: show a word/phrase and choose the matching image from alternatives.
 
 ### Candidate data sources
 - token surface,
@@ -59,12 +61,14 @@ A flashcard presents one information type and asks learner to choose the correct
 - gloss/translation,
 - token/MWE audio,
 - generated image assets,
+- picture-dictionary entries and approved/game-ready images,
 - POS/MWE metadata.
 
 ### Distractors
 - AI-generated + retrieval-based hybrid:
   - start from in-project confusable items,
-  - supplement with AI proposals,
+  - for picture-dictionary-backed image cards, first draw distractors from the same approved dictionary so all options are community-curated,
+  - supplement with AI proposals only when the curated pool is too small,
   - validate by constraints (POS/script/frequency/semantic distance).
 
 ## Storage and lifecycle
@@ -122,9 +126,12 @@ Each item should store provenance:
 - Difficulty calibration and distractor QA improvements.
 
 ### Phase 3
-- Image-based flashcards.
+- Image-based flashcards, with the Kok Kaper MVP as the first concrete target.
+  - Seed card candidates from the community picture dictionary created from **50 words in Kok Kaper**.
   - **Prompt = image, options = text** (choose the correct word/meaning for an image).
   - **Prompt = text, options = image** (choose the matching image for a word/phrase).
+  - Use same-dictionary approved entries as distractors, with optional AI ranking/filtering.
 - Reuse existing project image artifacts and metadata so image exercises do not require a separate media pipeline.
+- Keep the first learner UI simple enough for community sessions: large images, large answer buttons, and a quick way to flag bad images/words/distractors.
 - Spaced repetition and performance analytics.
 - Community sharing/rating of exercise sets.

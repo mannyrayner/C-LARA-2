@@ -1,10 +1,10 @@
 # Roadmap: source project export/import bundles
 
-This roadmap defines support for exporting and importing **source project bundles** (ZIP files) for C-LARA-2 projects.
+This roadmap defines support for exporting and importing **source project bundles** (ZIP files) for C-LARA-2 projects, including direct import of supported legacy C-LARA JSON export bundles.
 
 ## Goal
 
-Enable a project to be moved between environments (server ↔ laptop) in a form that preserves editable source artifacts, not only compiled output.
+Enable a project to be moved between environments (server ↔ laptop) in a form that preserves editable source artifacts, not only compiled output. Also provide a practical migration path for legacy C-LARA projects by importing supported legacy JSON exports into the same C-LARA-2 project model.
 
 ## Why this matters
 
@@ -13,7 +13,8 @@ This workflow is already proven useful in C-LARA. Typical use cases include:
 - export from server and import locally for debugging/re-running,
 - export from local machine and import to server for publishing/collaboration,
 - backup/transfer of in-progress annotation work,
-- reproducibility of pipeline runs.
+- reproducibility of pipeline runs,
+- migration of legacy C-LARA content into C-LARA-2 for inspection, reruns, and continued editing.
 
 ## Scope
 
@@ -40,6 +41,26 @@ Import a compatible bundle and reconstruct a project with:
 - metadata/provenance preserved,
 - option to rerun selected phases,
 - conflict handling when project IDs/names collide.
+
+### Import: legacy C-LARA JSON export bundle (ZIP)
+
+Status: **Implemented.** The same source-bundle import entry point now detects legacy C-LARA JSON export bundles and imports them directly as new C-LARA-2 projects.
+
+Supported legacy ZIP layouts:
+
+- flat archives containing `annotated_text.json` and `metadata.json`, with optional `audio/` and `images/` folders;
+- archives rooted at a single top-level directory containing the same files.
+
+The importer:
+
+- creates a normal C-LARA-2 `Project` owned by the importing user;
+- stores the original legacy files under `legacy_clara/` in the project artifact root for provenance and auditing;
+- converts legacy pages, segments, annotations, pinyin, lemma/gloss data, and audio references into C-LARA-2 stage JSON artifacts;
+- restores page-image and style records from legacy image metadata when present;
+- preserves unsupported content elements in diagnostic/provenance annotations rather than silently dropping them;
+- normalizes the temporary legacy import processing marker to valid runtime choices (`auto`) so imported projects can be rerun with current C-LARA-2 validation.
+
+The previous proposal to require an intermediate C-LARA-2-oriented migration bundle is no longer necessary for this supported legacy JSON export format. Future migration work should focus on narrower gaps, such as additional legacy export variants or unsupported fields discovered in real archives.
 
 ## Bundle format proposal
 
@@ -91,6 +112,7 @@ project_source_bundle.zip
 ## Import requirements
 
 - UI action: **Import Source Bundle** (always creates a new project).
+- Detect both native C-LARA-2 source bundles and supported legacy C-LARA JSON export bundles.
 - Preflight validation before write:
   - schema compatibility,
   - required files present,
@@ -123,14 +145,20 @@ project_source_bundle.zip
 
 ### Phase A — MVP export/import
 
+Status: **Delivered.**
+
 - Export latest run source artifacts.
 - Import as new project with validation.
 - Minimal manifest and checksum support.
+- Validate required stage artifacts during import and regenerate missing export stages automatically when possible.
 
 ### Phase B — media + image completeness
 
+Status: **Partly delivered.**
+
 - Include image artifacts/prompts and optional media payloads.
 - Better import preflight reporting and environment-compatibility checks.
+- Legacy C-LARA JSON export import now preserves legacy media files, imports audio references, and restores page-image/style metadata where present.
 
 ### Phase C — reproducibility hardening
 
@@ -141,10 +169,20 @@ project_source_bundle.zip
 
 - CLI/admin automation for batch export/import.
 - Nightly backup/export pipelines and restore drills.
+- Document and preserve deployment-transfer runbooks for large legacy corpora, including AWS security-group inbound SSH rules, explicit EC2 `.pem` key usage, and resumable `rsync` options such as `--partial --append-verify`.
+
+### Phase E — legacy migration follow-ups
+
+Status: **Core legacy JSON import delivered; follow-ups only as needed.**
+
+- Add regression fixtures for additional real legacy C-LARA archives when they become available.
+- Track unsupported legacy fields as specific issues with examples rather than reopening the broad migration task.
+- Consider batch/admin tooling for importing many legacy JSON export bundles.
 
 ## Success criteria
 
 - Users can reliably move editable projects between server and local environments.
 - Imported bundles can be rerun in debug mode with minimal manual repair.
+- Supported legacy C-LARA JSON exports can be imported directly into usable C-LARA-2 projects.
 - Bundle format remains stable and versioned across releases.
 - Teams can use bundles for backup, handover, and migration workflows.
