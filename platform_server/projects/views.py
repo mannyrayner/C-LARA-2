@@ -9605,6 +9605,7 @@ def _copy_image_assets_and_rows(source_project: Project, target_project: Project
                 "sample_image_path": source_style.sample_image_path,
                 "sample_image_revised_prompt": source_style.sample_image_revised_prompt,
                 "sample_image_model": source_style.sample_image_model,
+                "discourage_text_in_images": source_style.discourage_text_in_images,
                 "ai_model": source_style.ai_model,
                 "status": source_style.status,
             },

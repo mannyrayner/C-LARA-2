@@ -20,7 +20,7 @@ import zipfile
 from core.config import DEFAULT_MODEL
 from pipeline.stage_artifacts import write_stage_artifact
 
-from .models import Project, ProjectImageElement, ProjectImagePage, ProjectImageStyle
+from .models import Project, ProjectImageElement, ProjectImagePage, ProjectImagePageVariant, ProjectImageStyle
 
 LEGACY_CLARA_ANNOTATED_TEXT = "annotated_text.json"
 LEGACY_CLARA_METADATA = "metadata.json"
@@ -673,6 +673,77 @@ def _legacy_asset_path(value: Any, subdir: str, artifact_root: Path) -> str:
     return str(artifact_root / LEGACY_CLARA_ROOT / subdir / filename)
 
 
+def _safe_image_slug(value: Any, fallback: str = "image") -> str:
+    slug = "".join(ch.lower() if ch.isalnum() else "_" for ch in str(value or ""))
+    slug = "_".join(part for part in slug.split("_") if part)
+    return slug[:80] or fallback
+
+
+def _native_image_relpath(*, kind: str, source_member: str, page_number: int | None = None, name: str = "") -> str:
+    suffix = PurePosixPath(source_member).suffix.lower() or ".png"
+    if suffix not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
+        suffix = ".png"
+    if kind == "style":
+        return f"images/style/legacy_clara_style{suffix}"
+    if kind == "element":
+        return f"images/elements/{_safe_image_slug(name, 'element')}/image{suffix}"
+    if kind == "page" and page_number is not None:
+        return f"images/pages/page_{page_number:03d}/variant_001{suffix}"
+    return f"images/legacy_clara/{_safe_image_slug(name, 'image')}{suffix}"
+
+
+def _copy_zip_member_to_artifact(zf: zipfile.ZipFile, member: str, artifact_root: Path, rel_path: str) -> str:
+    if not member or not rel_path:
+        return ""
+    target = (artifact_root / rel_path).resolve()
+    try:
+        target.relative_to(artifact_root.resolve())
+    except ValueError:
+        return ""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with zf.open(member, "r") as src, target.open("wb") as dst:
+            shutil.copyfileobj(src, dst)
+    except KeyError:
+        return ""
+    return rel_path
+
+
+def _legacy_image_member(root: str, image_path: Any) -> str:
+    raw = str(image_path or "").strip()
+    if not raw:
+        return ""
+    filename = PurePosixPath(raw.replace("\\", "/")).name
+    return _bundle_member(root, f"images/{filename}") if filename else ""
+
+
+def _upsert_page_variant_for_import(
+    *,
+    project: Project,
+    page: ProjectImagePage,
+    image_path: str,
+    generation_prompt: str,
+    image_model: str = "legacy_clara_import",
+) -> None:
+    if not image_path:
+        return
+    variant, _created = ProjectImagePageVariant.objects.update_or_create(
+        page=page,
+        variant_index=1,
+        defaults={
+            "image_model": image_model[:64],
+            "image_path": image_path[:512],
+            "generation_prompt": generation_prompt or page.generation_prompt or page.page_text or "",
+            "image_revised_prompt": "",
+            "status": ProjectImagePageVariant.STATUS_APPROVED,
+        },
+    )
+    page.image_path = image_path[:512]
+    page.preferred_variant = variant
+    page.status = ProjectImagePage.STATUS_APPROVED
+    page.save(update_fields=["image_path", "preferred_variant", "status", "updated_at"])
+
+
 def _restore_legacy_image_records(
     *, project: Project, zf: zipfile.ZipFile, root: str, artifact_root: Path, text: dict[str, Any]
 ) -> None:
@@ -687,15 +758,23 @@ def _restore_legacy_image_records(
         if not isinstance(row, dict):
             continue
         image_type = row.get("image_type")
-        image_rel_path = _legacy_asset_path(row.get("image_file_path"), "images", artifact_root)
+        image_member = _legacy_image_member(root, row.get("image_file_path"))
         if image_type == "style":
+            native_image_path = ""
+            if image_member:
+                native_image_path = _copy_zip_member_to_artifact(
+                    zf,
+                    image_member,
+                    artifact_root,
+                    _native_image_relpath(kind="style", source_member=image_member),
+                )
             ProjectImageStyle.objects.update_or_create(
                 project=project,
                 defaults={
                     "style_brief": row.get("advice") or row.get("style_description") or "Legacy C-LARA imported style",
                     "expanded_style_description": row.get("style_description") or "",
                     "sample_image_prompt": row.get("user_prompt") or row.get("advice") or "",
-                    "sample_image_path": _relative_to_artifact_root(image_rel_path, artifact_root),
+                    "sample_image_path": native_image_path,
                     "status": ProjectImageStyle.STATUS_APPROVED,
                     "ai_model": DEFAULT_MODEL,
                 },
@@ -704,15 +783,30 @@ def _restore_legacy_image_records(
             page_number = row.get("page")
             if not isinstance(page_number, int):
                 continue
-            ProjectImagePage.objects.update_or_create(
+            native_image_path = ""
+            if image_member:
+                native_image_path = _copy_zip_member_to_artifact(
+                    zf,
+                    image_member,
+                    artifact_root,
+                    _native_image_relpath(kind="page", source_member=image_member, page_number=page_number),
+                )
+            prompt = row.get("user_prompt") or row.get("content_description") or ""
+            page_obj, _created = ProjectImagePage.objects.update_or_create(
                 project=project,
                 page_number=page_number,
                 defaults={
                     "page_text": _page_text(text, page_number),
-                    "generation_prompt": row.get("user_prompt") or row.get("content_description") or "",
-                    "image_path": _relative_to_artifact_root(image_rel_path, artifact_root),
-                    "status": ProjectImagePage.STATUS_APPROVED,
+                    "generation_prompt": prompt,
+                    "image_path": native_image_path,
+                    "status": ProjectImagePage.STATUS_APPROVED if native_image_path else ProjectImagePage.STATUS_GENERATED,
                 },
+            )
+            _upsert_page_variant_for_import(
+                project=project,
+                page=page_obj,
+                image_path=native_image_path,
+                generation_prompt=prompt,
             )
 
 
@@ -766,7 +860,14 @@ def _restore_legacy_coherent_style(*, project: Project, zf: zipfile.ZipFile, roo
         if not style.style_brief:
             style.style_brief = expanded_description[:500]
     if image_member:
-        style.sample_image_path = _relative_member_path(image_member, root)
+        native_image_path = _copy_zip_member_to_artifact(
+            zf,
+            image_member,
+            artifact_root,
+            _native_image_relpath(kind="style", source_member=image_member),
+        )
+        if native_image_path:
+            style.sample_image_path = native_image_path
     if not style.status or style.status == ProjectImageStyle.STATUS_DRAFT:
         style.status = ProjectImageStyle.STATUS_APPROVED
     style.save(
@@ -854,7 +955,16 @@ def _upsert_legacy_coherent_element(
     expanded_description = expanded_description or str(
         row.get("expanded_description") or row.get("description") or row.get("prompt") or ""
     )
-    image_path = _relative_member_path(image_member, root) if image_member else str(row.get("image_path") or "")
+    image_path = ""
+    if image_member:
+        image_path = _copy_zip_member_to_artifact(
+            zf,
+            image_member,
+            project.artifact_dir().resolve(),
+            _native_image_relpath(kind="element", source_member=image_member, name=name),
+        )
+    if not image_path:
+        image_path = str(row.get("image_path") or "")
     page_refs = _coherent_page_refs(row)
     element_type = str(row.get("element_type") or row.get("type") or "character")[:64]
     ProjectImageElement.objects.update_or_create(
@@ -893,17 +1003,31 @@ def _restore_legacy_coherent_pages(
         )
         if not expanded_description and not image_member:
             continue
+        native_image_path = ""
+        if image_member:
+            native_image_path = _copy_zip_member_to_artifact(
+                zf,
+                image_member,
+                artifact_root,
+                _native_image_relpath(kind="page", source_member=image_member, page_number=page_number),
+            )
         defaults = {
             "page_text": _page_text(text, page_number),
             "generation_prompt": expanded_description,
-            "status": ProjectImagePage.STATUS_APPROVED if image_member else ProjectImagePage.STATUS_GENERATED,
+            "status": ProjectImagePage.STATUS_APPROVED if native_image_path else ProjectImagePage.STATUS_GENERATED,
         }
-        if image_member:
-            defaults["image_path"] = _relative_member_path(image_member, root)
-        ProjectImagePage.objects.update_or_create(
+        if native_image_path:
+            defaults["image_path"] = native_image_path
+        page_obj, _created = ProjectImagePage.objects.update_or_create(
             project=project,
             page_number=page_number,
             defaults=defaults,
+        )
+        _upsert_page_variant_for_import(
+            project=project,
+            page=page_obj,
+            image_path=native_image_path,
+            generation_prompt=expanded_description,
         )
 
 
@@ -1001,22 +1125,6 @@ def _first_existing_member(zf: zipfile.ZipFile, candidates: list[str]) -> str:
             return candidate
     return ""
 
-
-def _relative_member_path(member: str, root: str) -> str:
-    if not member:
-        return ""
-    prefix = f"{root}/" if root else ""
-    rel = member[len(prefix) :] if prefix and member.startswith(prefix) else member
-    return (PurePosixPath(LEGACY_CLARA_ROOT) / PurePosixPath(rel)).as_posix()
-
-
-def _relative_to_artifact_root(path_str: str, artifact_root: Path) -> str:
-    if not path_str:
-        return ""
-    try:
-        return Path(path_str).resolve().relative_to(artifact_root.resolve()).as_posix()
-    except Exception:
-        return path_str
 
 
 def _page_text(text: dict[str, Any], page_number: int) -> str:

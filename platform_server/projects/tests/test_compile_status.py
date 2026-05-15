@@ -21,6 +21,7 @@ from projects.models import (
     Project,
     ProjectImageElement,
     ProjectImagePage,
+    ProjectImagePageVariant,
     ProjectImageStyle,
     ProjectCollaborator,
     ContentComment,
@@ -1105,15 +1106,35 @@ class CompileStatusViewTests(TestCase):
         self.assertTrue((imported.artifact_dir() / "legacy_clara" / "audio" / "default_panda.mp3").exists())
         self.assertTrue((imported.artifact_dir() / "legacy_clara" / "images" / "page_1.png").exists())
         image_page = ProjectImagePage.objects.get(project=imported, page_number=1)
-        self.assertEqual(image_page.image_path, "legacy_clara/coherent_images_v2_project_dir/pages/page_1/image.jpg")
+        self.assertEqual(image_page.image_path, "images/pages/page_001/variant_001.jpg")
         self.assertEqual(image_page.generation_prompt, "Panda sitting beneath bamboo.")
+        self.assertTrue((imported.artifact_dir() / image_page.image_path).exists())
+        image_variant = ProjectImagePageVariant.objects.get(page=image_page, variant_index=1)
+        self.assertEqual(image_variant.image_path, image_page.image_path)
+        self.assertEqual(image_page.preferred_variant_id, image_variant.id)
         style = ProjectImageStyle.objects.get(project=imported)
-        self.assertEqual(style.sample_image_path, "legacy_clara/coherent_images_v2_project_dir/style/image.jpg")
+        self.assertEqual(style.sample_image_path, "images/style/legacy_clara_style.jpg")
+        self.assertTrue((imported.artifact_dir() / style.sample_image_path).exists())
         self.assertEqual(style.expanded_style_description, "Ink-wash style with soft bamboo textures.")
         element = ProjectImageElement.objects.get(project=imported, name="Panda")
         self.assertEqual(element.expanded_description, "A gentle panda with expressive eyes.")
-        self.assertEqual(element.image_path, "legacy_clara/coherent_images_v2_project_dir/elements/Panda/image.jpg")
+        self.assertEqual(element.image_path, "images/elements/panda/image.jpg")
+        self.assertTrue((imported.artifact_dir() / element.image_path).exists())
         self.assertTrue(element.is_confirmed)
+
+        clone = Project.objects.create(
+            owner=self.user,
+            title="Imported legacy clone",
+            source_text=imported.source_text,
+            language=imported.language,
+            target_language=imported.target_language,
+        )
+        views._copy_image_assets_and_rows(imported, clone)
+        self.assertTrue((clone.artifact_dir() / image_page.image_path).exists())
+        clone_page = ProjectImagePage.objects.get(project=clone, page_number=1)
+        clone_variant = ProjectImagePageVariant.objects.get(page=clone_page, variant_index=1)
+        self.assertEqual(clone_page.image_path, "images/pages/page_001/variant_001.jpg")
+        self.assertEqual(clone_variant.image_path, clone_page.image_path)
 
         with patch("projects.views.credits_enabled", return_value=False), patch("projects.views.async_task") as mock_async_task:
             compile_resp = self.client.post(
