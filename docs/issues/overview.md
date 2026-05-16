@@ -1,21 +1,21 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-15T00:41:45Z_
+_Last updated: 2026-05-15T23:55:21Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
 ## Recent progress
 
-- **[ISSUE-0011](issues/ISSUE-0011.json)** has been updated from a new human suggestion with a concrete Kok Kaper fast path: seed a community picture dictionary from the migrated **50 words in Kok Kaper** project, then generate image→word and word→image flashcards from approved dictionary entries.
+- **[ISSUE-0011](issues/ISSUE-0011.json)** has moved past the seed-import milestone: **50 words in Kok Kaper** has been successfully imported from legacy C-LARA material and installed as the first Kok Kaper community picture dictionary. The issue remains active because the learner-facing image-game/flashcard work is still pending.
 - **[ISSUE-0013](issues/ISSUE-0013.json)** now has a dedicated [efficiency and stage-artifact persistence roadmap](../roadmap/efficiency-and-stage-artifacts.md), covering generic stage read/write operations, JSON backward compatibility, faster internal formats, timing instrumentation, project/run format selection, and a trusted admin-only binary migration experiment.
 - **[ISSUE-0010](issues/ISSUE-0010.json)** records that C-LARA projects from the Adelaide server can now be imported as C-LARA-2 projects on AWS, but representative corpus triage is still needed.
-- **[ISSUE-0003](issues/ISSUE-0003.json)** remains the planned systematic comparison runner; the imported Adelaide corpus and the known `The Dragon and the Cube` first-page corruption should become concrete fixtures for it.
+- **[ISSUE-0003](issues/ISSUE-0003.json)** remains the planned systematic comparison runner; the imported Adelaide corpus and known import/compile divergences should become concrete fixtures for it.
 
 ## Near-term priorities
 
 1. **[ISSUE-0003](issues/ISSUE-0003.json) (P1)** — Add an efficient end-to-end pipeline test runner; first target legacy-vs-C-LARA-2 comparisons over the imported corpus from ISSUE-0010, with AI-assisted gross-difference review where exact matching is inappropriate.
-2. **[ISSUE-0011](issues/ISSUE-0011.json) (P1, active, deadline 2026-06-01)** — Implement the Kok Kaper image-game fast path: register/import **50 words in Kok Kaper** as a community picture dictionary, then adapt flashcards for image→word and word→image play using approved same-dictionary distractors.
-3. **[ISSUE-0010](issues/ISSUE-0010.json) (P1)** — Import and triage a representative legacy C-LARA corpus from the Adelaide material now reaching C-LARA-2 on AWS; include known divergence checks such as `The Dragon and the Cube` first-page corruption before growing into multi-bundle batch import with heartbeat progress.
+2. **[ISSUE-0011](issues/ISSUE-0011.json) (P1, active, deadline 2026-06-01)** — Continue the Kok Kaper image-game fast path now that the picture dictionary has been seeded: validate/curate game-ready entries, then adapt flashcards for image→word and word→image play using approved same-dictionary distractors.
+3. **[ISSUE-0010](issues/ISSUE-0010.json) (P1)** — Import and triage a representative legacy C-LARA corpus from the Adelaide material now reaching C-LARA-2 on AWS; include known divergence checks before growing into multi-bundle batch import with heartbeat progress.
 4. **[ISSUE-0013](issues/ISSUE-0013.json) (P1)** — Implement the efficiency roadmap: centralize stage-artifact read/write operations, benchmark JSON against faster formats, record read/write timings, and include a trusted admin-only binary/pickle-like migration-format experiment if it speeds the one-off Adelaide migration.
 5. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, deadline 2026-06-15)** — Draft the long C-LARA-2 internal technical report and use it as the source for the accepted EuroCALL 2026 paper and possible ALTA 2026 submission.
 6. **[ISSUE-0006](issues/ISSUE-0006.json) (P2)** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness, preferably using ISSUE-0003 diagnostics where possible.
@@ -32,10 +32,10 @@ This document summarizes the current issue registry for quick human review. Cano
 
 ## Notes and risks
 
-- **Kok Kaper fast path:** ISSUE-0011 should avoid over-generalizing first. The first valuable implementation is a narrow project-to-picture-dictionary seed import for **50 words in Kok Kaper**, preserving approved word/image pages and adding only the metadata needed for dictionary ownership, readiness, game eligibility, and provenance.
+- **Kok Kaper picture dictionary:** ISSUE-0011's first seed-import/registration step is now done for **50 words in Kok Kaper**. Keep the next implementation steps narrow: verify imported entry readiness, preserve community-organiser review controls, and avoid broad game-framework generalization before the first image-game workflow is usable.
 - **Image-game distractors:** for ISSUE-0011, distractors should come from the same approved picture dictionary where possible; AI should rank/filter curated candidates rather than inventing unreviewed answer options for the first community-facing version.
 - **Legacy corpus dependency:** ISSUE-0003 now depends on ISSUE-0010 for its first high-value evaluation corpus; the runner can be designed earlier, but legacy-vs-C-LARA-2 comparisons need enough imported material to be useful.
-- **Known import divergence:** `The Dragon and the Cube`, a long English story with Chinese glosses, currently has a corrupted first page after import/compilation. Capture this as a concrete fixture for ISSUE-0010 triage and ISSUE-0003 comparison tooling.
+- **Known import divergences:** imported C-LARA projects with corrupted pages, missing images, or mismatched stage artifacts should be captured as concrete fixtures for ISSUE-0010 triage and ISSUE-0003 comparison tooling.
 - **Stage-artifact abstraction:** ISSUE-0013 should first centralize read/write operations behind a format-independent API so pipeline logic is not tied to `Path.read_text`/`json.loads` or `Path.write_text`/`json.dumps`.
 - **Trusted one-off migration format:** ISSUE-0013 may use pickle or a similar binary representation for the Adelaide migration handoff because the source is trusted and the operation is admin-only/one-off. Keep this separate from ordinary user uploads and from long-term source-bundle interchange.
 - **Measurement before defaults:** the efficiency roadmap calls for read/write timing and artifact-size measurements before changing defaults globally. JSON must remain readable for backward compatibility and available for human inspection, source-bundle compatibility, debugging, reproducibility, and untrusted/user-supplied bundles.
