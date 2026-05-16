@@ -116,7 +116,7 @@ Status: **New roadmap document added.** See [roadmap/deployment-and-migration.md
 
 Priorities:
 - Urgent: Adelaide dual-run deployment with existing C-LARA (target before end of April 2026).
-- Next: structured migration tooling from C-LARA data to C-LARA-2 data model.
+- Done for supported legacy JSON exports: structured import from legacy C-LARA data to the C-LARA-2 data model.
 - Next: host portability and backup export/import workflows (likely AWS Sydney target).
 
 Key constraint: the urgent Adelaide deployment approach must remain upward-compatible with migration and relocation work.
@@ -177,17 +177,21 @@ Focus:
 
 ### 14. Source project export/import bundles roadmap
 
-Status: **Initial implementation delivered.** See [roadmap/source-project-bundles.md](source-project-bundles.md).
+Status: **Initial implementation delivered, with legacy C-LARA JSON import support.** See [roadmap/source-project-bundles.md](source-project-bundles.md).
 
 Focus:
 - ZIP export/import of editable source artifacts from latest (or selected) runs.
+- Direct import of supported legacy C-LARA JSON export bundles into normal C-LARA-2 projects.
 - Full preservation of text annotations and image-pipeline metadata/provenance.
-- Server↔laptop portability for debugging, handover, backup, and migration workflows.
+- Server↔laptop portability for debugging, handover, backup, and migration workflows, including documented AWS/SSH transfer details for large legacy corpus uploads.
 
 Implemented now:
 - Export source bundle from project detail.
 - Import source bundle from project list, always creating a new project.
+- Import supported legacy C-LARA JSON ZIP bundles (flat or single-root layouts with `annotated_text.json` and `metadata.json`) through the same import flow.
+- Convert legacy annotations, pinyin, glossary/lemma data, audio references, and image metadata into C-LARA-2 artifacts while preserving original legacy files under `legacy_clara/`.
 - Imported project title is kept when unique for that user, otherwise suffixed (`(2)`, `(3)`, ...).
+- Adelaide legacy corpus folder has been transferred to AWS; the operational runbook records the need for inbound SSH security-policy access and explicit EC2 `.pem` key use with `rsync`.
 
 ### 15. Conventional UX roadmap (project workspace IA)
 
@@ -255,3 +259,30 @@ Focus:
 - Repository-native, Codex-first issue JSON store (one file per issue + focus index + timestamped index archive).
 - Deadline/dependency-aware issues with human-facing browser + simple user suggestion capture + admin export + Codex-mediated incorporation loop.
 
+### 21. Reports and academic papers roadmap
+
+Status: **New roadmap document added.** See [roadmap/reports-and-papers.md](reports-and-papers.md).
+
+Focus:
+- Long internal C-LARA-2 technical report by mid-June 2026, tracked by [ISSUE-0008](../issues/issues/ISSUE-0008.json).
+- EuroCALL 2026 paper preparation, accepted with a mid-August 2026 deadline.
+- Possible ALTA 2026 paper and related-work positioning around AI-assisted, repo-native software/documentation/test co-development.
+
+### 22. Efficiency and stage-artifact persistence roadmap
+
+Status: **New roadmap document added.** See [roadmap/efficiency-and-stage-artifacts.md](efficiency-and-stage-artifacts.md).
+
+Focus:
+- Centralize pipeline stage artifact read/write operations behind a format-independent API.
+- Preserve JSON compatibility while benchmarking faster internal formats for large imported projects.
+- Explore trusted admin-only binary/pickle-like migration artifacts for the one-off Adelaide corpus, without weakening safety for normal user uploads or source-bundle interchange.
+- Record artifact read/write timings and expose project/run-level diagnostics so performance decisions are evidence-based.
+
+### 23. Mobile access roadmap
+
+Status: **New roadmap document added.** See [roadmap/mobile-access.md](mobile-access.md).
+
+Focus:
+- Treat phones and tablets as first-class access devices for learner-facing flows.
+- Start with browsing published/compiled texts, then extend to content browsing, exercises, and default-driven background content creation.
+- Treat dense linguistic annotation editing as the difficult mobile case, while exploring lightweight triage/review angles.
