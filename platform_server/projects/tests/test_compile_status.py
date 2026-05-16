@@ -1391,6 +1391,56 @@ class CompileStatusViewTests(TestCase):
         self.assertFalse(any(option.endswith("_1") for option in item.options))
         self.assertGreaterEqual(len(set(item.options)), 4)
 
+    def test_generate_cloze_exercises_filters_distractors_by_pos(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_cloze_pos" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        sample = {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "segments": [
+                        {
+                            "tokens": [
+                                {"surface": "Sarah", "annotations": {"pos": "PROPN", "lemma": "Sarah"}},
+                                {"surface": " ist ", "annotations": {"pos": "AUX", "lemma": "sein"}},
+                                {"surface": "gerade ", "annotations": {"pos": "ADV", "lemma": "gerade"}},
+                                {"surface": "in ", "annotations": {"pos": "ADP", "lemma": "in"}},
+                                {"surface": "Deutschland", "annotations": {"pos": "PROPN", "lemma": "Deutschland"}},
+                                {"surface": " angekommen.", "annotations": {"pos": "VERB", "lemma": "ankommen"}},
+                            ]
+                        },
+                        {
+                            "tokens": [
+                                {"surface": "Tom", "annotations": {"pos": "PROPN", "lemma": "Tom"}},
+                                {"surface": " besucht ", "annotations": {"pos": "VERB", "lemma": "besuchen"}},
+                                {"surface": "Australien", "annotations": {"pos": "PROPN", "lemma": "Australien"}},
+                            ]
+                        },
+                    ],
+                }
+            ]
+        }
+        (run_dir / "gloss.json").write_text(json.dumps(sample), encoding="utf-8")
+        self.project.compiled_path = "runs/run_cloze_pos/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+
+        class _FakeClient:
+            async def chat_json(self, *_args, **_kwargs):
+                return {"distractors": ["ist", "Sarah", "gerade"], "rationale": {}}
+
+        with patch("projects.views._build_ai_client", return_value=_FakeClient()):
+            resp = self.client.post(
+                reverse("project-generate-cloze", args=[self.project.pk]),
+                {"theme": "vocabulary", "item_count": 1, "ai_model": "gpt-4o"},
+            )
+        self.assertEqual(resp.status_code, 302)
+        item = ExerciseSet.objects.get(project=self.project, exercise_type=ExerciseSet.TYPE_CLOZE).items.get()
+        self.assertEqual(item.answer, "Sarah")
+        self.assertNotIn("ist", item.options)
+        self.assertNotIn("gerade", item.options)
+        self.assertIn("Tom", item.options)
+        self.assertIn("Deutschland", item.options)
+
     def test_generate_cloze_form_uses_model_dropdown(self):
         resp = self.client.get(reverse("project-generate-cloze", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
@@ -1530,6 +1580,54 @@ class CompileStatusViewTests(TestCase):
         self.assertIsNotNone(item)
         self.assertIn("boyfriend", item.prompt.lower())
         self.assertEqual(item.answer, "freund")
+
+    def test_generate_inverse_flashcards_filters_form_distractors_by_pos(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_flashcards_pos" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        sample = {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "segments": [
+                        {
+                            "tokens": [
+                                {"surface": "Freund", "annotations": {"gloss": "friend", "pos": "NOUN"}},
+                                {"surface": "hat", "annotations": {"gloss": "has", "pos": "AUX"}},
+                                {"surface": "schnell", "annotations": {"gloss": "quickly", "pos": "ADV"}},
+                                {"surface": "Laden", "annotations": {"gloss": "shop", "pos": "NOUN"}},
+                                {"surface": "Abend", "annotations": {"gloss": "evening", "pos": "NOUN"}},
+                                {"surface": "Brot", "annotations": {"gloss": "bread", "pos": "NOUN"}},
+                            ]
+                        }
+                    ],
+                }
+            ]
+        }
+        (run_dir / "gloss.json").write_text(json.dumps(sample), encoding="utf-8")
+        self.project.compiled_path = "runs/run_flashcards_pos/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+
+        class _FakeClient:
+            async def chat_json(self, *_args, **_kwargs):
+                return {"distractors": ["hat", "schnell", "Freund"], "rationale": {}}
+
+        with patch("projects.views._build_ai_client", return_value=_FakeClient()):
+            resp = self.client.post(
+                reverse("project-generate-flashcards", args=[self.project.pk]),
+                {
+                    "theme": "vocabulary",
+                    "flashcard_mode": "meaning_to_form",
+                    "item_count": 1,
+                    "ai_model": "gpt-4o",
+                },
+            )
+        self.assertEqual(resp.status_code, 302)
+        item = ExerciseSet.objects.get(project=self.project, exercise_type=ExerciseSet.TYPE_FLASHCARD).items.get()
+        self.assertEqual(item.answer, "Freund")
+        self.assertNotIn("hat", item.options)
+        self.assertNotIn("schnell", item.options)
+        self.assertIn("Laden", item.options)
+        self.assertIn("Abend", item.options)
 
     def test_project_exercises_home_shows_flashcard_generation_link(self):
         resp = self.client.get(reverse("project-exercises-home", args=[self.project.pk]))
