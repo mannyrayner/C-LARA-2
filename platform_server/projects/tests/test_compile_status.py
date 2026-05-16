@@ -1356,7 +1356,13 @@ class CompileStatusViewTests(TestCase):
                 {
                     "page_number": 1,
                     "segments": [
-                        {"tokens": [{"surface": "The "}, {"surface": "panda"}, {"surface": " eats"}]}
+                        {"tokens": [
+                            {"surface": "The "},
+                            {"surface": "panda"},
+                            {"surface": " eats "},
+                            {"surface": "quick "},
+                            {"surface": "bamboo"},
+                        ]}
                     ],
                 }
             ]
@@ -1371,7 +1377,7 @@ class CompileStatusViewTests(TestCase):
 
         class _FakeClient:
             async def chat_json(self, *_args, **_kwargs):
-                return {"distractors": ["cat", "dog", "mouse"], "rationale": {}}
+                raise RuntimeError("AI unavailable in fallback test")
 
         with patch("projects.views._build_ai_client", return_value=_FakeClient()):
             resp = self.client.post(
@@ -1382,6 +1388,8 @@ class CompileStatusViewTests(TestCase):
         ex_set = ExerciseSet.objects.get(project=self.project, exercise_type=ExerciseSet.TYPE_CLOZE)
         item = ex_set.items.get()
         self.assertIn("panda", item.segment_text)
+        self.assertFalse(any(option.endswith("_1") for option in item.options))
+        self.assertGreaterEqual(len(set(item.options)), 4)
 
     def test_generate_cloze_form_uses_model_dropdown(self):
         resp = self.client.get(reverse("project-generate-cloze", args=[self.project.pk]))
@@ -1441,7 +1449,14 @@ class CompileStatusViewTests(TestCase):
                 {
                     "page_number": 1,
                     "segments": [
-                        {"tokens": [{"surface": "panda", "annotations": {"gloss": "panda bear"}}]}
+                        {
+                            "tokens": [
+                                {"surface": "panda", "annotations": {"gloss": "panda bear"}},
+                                {"surface": "milo", "annotations": {"gloss": "mink"}},
+                                {"surface": "forest", "annotations": {"gloss": "woods"}},
+                                {"surface": "fast", "annotations": {"gloss": "quick"}},
+                            ]
+                        }
                     ],
                 }
             ]
@@ -1456,7 +1471,7 @@ class CompileStatusViewTests(TestCase):
 
         class _FakeClient:
             async def chat_json(self, *_args, **_kwargs):
-                return {"distractors": ["cat", "dog", "mouse"], "rationale": {}}
+                raise RuntimeError("AI unavailable in fallback test")
 
         with patch("projects.views._build_ai_client", return_value=_FakeClient()):
             resp = self.client.post(
@@ -1472,6 +1487,8 @@ class CompileStatusViewTests(TestCase):
         ex_set = ExerciseSet.objects.get(project=self.project, exercise_type=ExerciseSet.TYPE_FLASHCARD)
         item = ex_set.items.get()
         self.assertEqual(item.answer, "panda bear")
+        self.assertFalse(any(option.startswith("panda bear_") for option in item.options))
+        self.assertGreaterEqual(len(set(item.options)), 4)
 
     def test_generate_inverse_flashcards_creates_set(self):
         run_dir = self.project.artifact_dir() / "runs" / "run_flashcards_inverse" / "stages"

@@ -8174,6 +8174,44 @@ def serve_compiled(request: HttpRequest, pk: int, path: str) -> HttpResponse:
 
 
 EXERCISE_SOURCE_STAGE_NAMES = ["gloss", "lemma", "mwe", "translation", "segmentation_phase_2"]
+EXERCISE_CLOZE_STOPWORDS = {
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "but",
+    "by",
+    "for",
+    "from",
+    "had",
+    "has",
+    "he",
+    "her",
+    "him",
+    "his",
+    "in",
+    "is",
+    "it",
+    "its",
+    "of",
+    "on",
+    "one",
+    "or",
+    "she",
+    "that",
+    "the",
+    "their",
+    "them",
+    "they",
+    "to",
+    "too",
+    "was",
+    "were",
+    "with",
+}
 
 
 def _exercise_run_candidates(run_dir: Path) -> list[Path]:
@@ -8215,6 +8253,13 @@ def _exercise_stage_payloads(run_dir: Path, stage_names: list[str]) -> list[dict
     return payloads
 
 
+def _is_cloze_word_candidate(surface: str) -> bool:
+    normalized = surface.strip()
+    if not any(ch.isalpha() for ch in normalized):
+        return False
+    return normalized.casefold() not in EXERCISE_CLOZE_STOPWORDS
+
+
 def _extract_segment_candidates_from_payload(payload: dict[str, Any]) -> list[dict[str, Any]]:
     candidates: list[dict[str, Any]] = []
     for page in payload.get("pages", []):
@@ -8229,7 +8274,7 @@ def _extract_segment_candidates_from_payload(payload: dict[str, Any]) -> list[di
                     continue
                 if ann.get("mwe_id"):
                     continue
-                if any(ch.isalpha() for ch in surface):
+                if _is_cloze_word_candidate(surface):
                     words.append(surface)
             if words:
                 seg_text = "".join(t.get("surface", "") for t in tokens).strip() or seg.get("surface", "")
@@ -8294,12 +8339,37 @@ def _extract_token_candidates_for_flashcards(run_dir: Path) -> list[dict[str, An
     return []
 
 
+def _append_fallback_distractors(
+    distractors: list[str],
+    fallback_values: list[str],
+    *,
+    forbidden_values: set[str],
+    limit: int = 3,
+) -> list[str]:
+    """Top up distractors from known project values before using placeholders."""
+
+    seen = {value.casefold() for value in distractors}
+    forbidden = {value.casefold() for value in forbidden_values if value}
+    topped_up = list(distractors)
+    for value in fallback_values:
+        candidate = str(value or "").strip()
+        key = candidate.casefold()
+        if not candidate or key in seen or key in forbidden:
+            continue
+        topped_up.append(candidate)
+        seen.add(key)
+        if len(topped_up) >= limit:
+            break
+    return topped_up[:limit]
+
+
 async def _generate_cloze_item(
     client: OpenAIClient,
     model: str,
     theme: str,
     candidate: dict[str, Any],
     order_index: int,
+    fallback_words: list[str],
 ) -> dict[str, Any]:
     target_word = candidate["words"][order_index % len(candidate["words"])]
     segment_text = candidate["segment_text"]
@@ -8321,11 +8391,18 @@ Return JSON with:
     except Exception:
         data = {}
     distractors = [str(x).strip() for x in (data.get("distractors") or []) if str(x).strip()]
-    distractors = [d for d in distractors if d.lower() != target_word.lower()]
-    distractors = distractors[:3]
+    distractors = [d for d in distractors if d.casefold() != target_word.casefold()]
+    distractors = _append_fallback_distractors(
+        distractors[:3],
+        fallback_words,
+        forbidden_values={target_word},
+    )
     while len(distractors) < 3:
         distractors.append(f"{target_word}_{len(distractors)+1}")
     options = [target_word] + distractors
+    random.Random(f"{target_word}|{segment_text}|{order_index}|cloze").shuffle(options)
+    if options and options[0] == target_word and len(options) > 1:
+        options[0], options[1] = options[1], options[0]
     return {
         "order_index": order_index,
         "page_number": candidate["page_number"],
@@ -8345,6 +8422,7 @@ async def _generate_flashcard_item(
     candidate: dict[str, Any],
     order_index: int,
     flashcard_mode: str,
+    fallback_values: list[str],
 ) -> dict[str, Any]:
     source_word = candidate["source_word"]
     correct_gloss = candidate["target_gloss"]
@@ -8398,12 +8476,16 @@ Return JSON with:
             for d in distractors
             if d.lower() != correct_gloss.lower() and d.lower() != source_word.lower()
         ]
-    distractors = distractors[:3]
+    answer = source_word if flashcard_mode == "meaning_to_form" else correct_gloss
+    distractors = _append_fallback_distractors(
+        distractors[:3],
+        fallback_values,
+        forbidden_values={source_word, correct_gloss, answer},
+    )
     while len(distractors) < 3:
-        filler_base = source_word if flashcard_mode == "meaning_to_form" else correct_gloss
+        filler_base = answer
         distractors.append(f"{filler_base}_{len(distractors)+1}")
 
-    answer = source_word if flashcard_mode == "meaning_to_form" else correct_gloss
     prompt_text = (
         f"What is the best source-language word for: {correct_gloss}?"
         if flashcard_mode == "meaning_to_form"
@@ -8446,6 +8528,9 @@ def generate_cloze_exercises(request: HttpRequest, pk: int) -> HttpResponse:
                 return redirect("project-detail", pk=project.pk)
 
             selected = candidates[:item_count]
+            fallback_words = []
+            for cand in candidates:
+                fallback_words.extend(cand.get("words") or [])
             ex_set = ExerciseSet.objects.create(
                 project=project,
                 exercise_type=ExerciseSet.TYPE_CLOZE,
@@ -8462,7 +8547,7 @@ def generate_cloze_exercises(request: HttpRequest, pk: int) -> HttpResponse:
                     request_type="exercise_cloze_generation",
                 )
                 tasks = [
-                    _generate_cloze_item(client, model, theme, cand, idx)
+                    _generate_cloze_item(client, model, theme, cand, idx, fallback_words)
                     for idx, cand in enumerate(selected)
                 ]
                 return await asyncio.gather(*tasks)
@@ -8526,6 +8611,10 @@ def generate_flashcard_exercises(request: HttpRequest, pk: int) -> HttpResponse:
                 return redirect("project-detail", pk=project.pk)
 
             selected = candidates[:item_count]
+            fallback_values = [
+                cand["source_word"] if flashcard_mode == "meaning_to_form" else cand["target_gloss"]
+                for cand in candidates
+            ]
             ex_set = ExerciseSet.objects.create(
                 project=project,
                 exercise_type=ExerciseSet.TYPE_FLASHCARD,
@@ -8543,7 +8632,7 @@ def generate_flashcard_exercises(request: HttpRequest, pk: int) -> HttpResponse:
                     request_type="exercise_flashcard_generation",
                 )
                 tasks = [
-                    _generate_flashcard_item(client, model, theme, cand, idx, flashcard_mode)
+                    _generate_flashcard_item(client, model, theme, cand, idx, flashcard_mode, fallback_values)
                     for idx, cand in enumerate(selected)
                 ]
                 return await asyncio.gather(*tasks)
