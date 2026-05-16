@@ -1,19 +1,19 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-16T13:54:58Z_
+_Last updated: 2026-05-16T22:53:37Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
 ## Recent progress
 
-- **[ISSUE-0014](issues/ISSUE-0014.json)** has been added from human suggestion #4 as a **P1 pre-rollout operational readiness issue**: AWS has warned that one or more Free Tier service limits are already above 85% in May while usage is still very limited, so service limits, budgets, quotas, and expected beta traffic costs need review before wider launch.
-- **[ISSUE-0011](issues/ISSUE-0011.json)** now records that a first picture-dictionary-backed **image → word** flashcard mode has been implemented. The remaining image-game work is narrower: curation/game-ready flags, picture glossing where appropriate, word → image flashcards, and learner/community feedback for bad cards.
+- **[ISSUE-0014](issues/ISSUE-0014.json)** has been updated with initial AWS billing triage: AWS Bills shows about **USD 20** spent in April and about **USD 67** so far by **May 17**, with roughly three quarters of May spend on EC2 and most of the remainder on RDS. This may be normal for the deployed architecture, but confirms that cost tracking and budget alarms need to be in place before broader rollout.
+- **[ISSUE-0011](issues/ISSUE-0011.json)** records that a first picture-dictionary-backed **image → word** flashcard mode has been implemented. The remaining image-game work is narrower: curation/game-ready flags, picture glossing where appropriate, word → image flashcards, and learner/community feedback for bad cards.
 - **[ISSUE-0013](issues/ISSUE-0013.json)** remains the main performance/resilience track for large imported legacy projects and stage-artifact persistence.
 - **[ISSUE-0010](issues/ISSUE-0010.json)** remains active as the representative Adelaide legacy corpus import/triage track; that corpus should also feed the systematic comparison runner in ISSUE-0003.
 
 ## Near-term priorities
 
-1. **[ISSUE-0014](issues/ISSUE-0014.json) (P1)** — Audit the AWS services triggering the May Free Tier warning, estimate beta usage/cost, configure budgets/alerts and service-quota checks, and document any limit/resource changes needed before C-LARA-2 is opened to more users.
+1. **[ISSUE-0014](issues/ISSUE-0014.json) (P1)** — Continue AWS operational readiness work: configure AWS Budgets/alerts, monitor service-level EC2/RDS cost breakdowns, estimate monthly run-rate under beta usage, and review whether EC2/RDS resources can be right-sized or scheduled before C-LARA-2 is opened to more users.
 2. **[ISSUE-0003](issues/ISSUE-0003.json) (P1)** — Add an efficient end-to-end pipeline test runner; first target legacy-vs-C-LARA-2 comparisons over the imported corpus from ISSUE-0010, with AI-assisted gross-difference review where exact matching is inappropriate.
 3. **[ISSUE-0011](issues/ISSUE-0011.json) (P1, active, deadline 2026-06-01)** — Continue the Kok Kaper image-game fast path after the seed dictionary and first image→word flashcards: validate/curate game-ready entries, then add word→image play and feedback/reporting for image/card problems.
 4. **[ISSUE-0010](issues/ISSUE-0010.json) (P1)** — Import and triage a representative legacy C-LARA corpus from the Adelaide material now reaching C-LARA-2 on AWS; include known divergence checks before growing into multi-bundle batch import with heartbeat progress.
@@ -33,7 +33,8 @@ This document summarizes the current issue registry for quick human review. Cano
 
 ## Notes and risks
 
-- **AWS readiness is now a launch blocker:** ISSUE-0014 is high priority even though it is not an application bug; the platform should not invite broader usage until the team knows which AWS services are near limits, what the expected costs are, and what alarms/quotas/runbooks are in place.
+- **AWS readiness remains a launch blocker:** ISSUE-0014 is high priority even though it is not an application bug. The April/May bills suggest EC2 and RDS are the main cost drivers; before broader usage, the team should know the expected run-rate, define acceptable monthly spend, set alarms, and document what to do if costs rise unexpectedly.
+- **Cost data is still preliminary:** the update gives useful first measurements but not yet a complete month or a normalized per-user/per-project estimate. Treat it as a starting point for monitoring rather than proof that current capacity/costs are acceptable.
 - **Kok Kaper image games:** ISSUE-0011 should still keep the first community-facing scope narrow. The implemented image→word flashcards are a useful first step, but game readiness still depends on dictionary curation, approved entries, word→image mode, and a simple way to flag bad images/words/distractors.
 - **Low-resource-language distractors:** image/card distractors for Indigenous language work should come from the curated picture dictionary where possible, with translations passed to AI ranking/filtering so the model need not know the source language.
 - **Legacy corpus dependency:** ISSUE-0003 depends on ISSUE-0010 for its first high-value evaluation corpus; the runner can be designed earlier, but legacy-vs-C-LARA-2 comparisons need enough imported material to be useful.
