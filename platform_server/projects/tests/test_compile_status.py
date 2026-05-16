@@ -1348,6 +1348,41 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual(ex_set.exercise_type, ExerciseSet.TYPE_CLOZE)
         self.assertEqual(ex_set.items.count(), 2)
 
+    def test_generate_cloze_exercises_falls_back_to_older_token_run(self):
+        import_run = self.project.artifact_dir() / "runs" / "run_legacy_import" / "stages"
+        import_run.mkdir(parents=True, exist_ok=True)
+        sample = {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "segments": [
+                        {"tokens": [{"surface": "The "}, {"surface": "panda"}, {"surface": " eats"}]}
+                    ],
+                }
+            ]
+        }
+        (import_run / "gloss.json").write_text(json.dumps(sample), encoding="utf-8")
+        compile_run = self.project.artifact_dir() / "runs" / "run_compile_only" / "stages"
+        compile_run.mkdir(parents=True, exist_ok=True)
+        (compile_run / "compile_html.json").write_text('{"pages":[]}', encoding="utf-8")
+        os.utime(self.project.artifact_dir() / "runs" / "run_compile_only", None)
+        self.project.compiled_path = "runs/run_compile_only/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+
+        class _FakeClient:
+            async def chat_json(self, *_args, **_kwargs):
+                return {"distractors": ["cat", "dog", "mouse"], "rationale": {}}
+
+        with patch("projects.views._build_ai_client", return_value=_FakeClient()):
+            resp = self.client.post(
+                reverse("project-generate-cloze", args=[self.project.pk]),
+                {"theme": "vocabulary", "item_count": 1, "ai_model": "gpt-4o"},
+            )
+        self.assertEqual(resp.status_code, 302)
+        ex_set = ExerciseSet.objects.get(project=self.project, exercise_type=ExerciseSet.TYPE_CLOZE)
+        item = ex_set.items.get()
+        self.assertIn("panda", item.segment_text)
+
     def test_generate_cloze_form_uses_model_dropdown(self):
         resp = self.client.get(reverse("project-generate-cloze", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
@@ -1397,6 +1432,46 @@ class CompileStatusViewTests(TestCase):
         self.assertIsNotNone(item)
         self.assertIn("chat", item.options)
         self.assertNotEqual(item.options[0], item.answer)
+
+    def test_generate_flashcards_falls_back_to_older_gloss_run(self):
+        import_run = self.project.artifact_dir() / "runs" / "run_legacy_import_flashcards" / "stages"
+        import_run.mkdir(parents=True, exist_ok=True)
+        sample = {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "segments": [
+                        {"tokens": [{"surface": "panda", "annotations": {"gloss": "panda bear"}}]}
+                    ],
+                }
+            ]
+        }
+        (import_run / "gloss.json").write_text(json.dumps(sample), encoding="utf-8")
+        compile_run = self.project.artifact_dir() / "runs" / "run_compile_only_flashcards" / "stages"
+        compile_run.mkdir(parents=True, exist_ok=True)
+        (compile_run / "compile_html.json").write_text('{"pages":[]}', encoding="utf-8")
+        os.utime(self.project.artifact_dir() / "runs" / "run_compile_only_flashcards", None)
+        self.project.compiled_path = "runs/run_compile_only_flashcards/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+
+        class _FakeClient:
+            async def chat_json(self, *_args, **_kwargs):
+                return {"distractors": ["cat", "dog", "mouse"], "rationale": {}}
+
+        with patch("projects.views._build_ai_client", return_value=_FakeClient()):
+            resp = self.client.post(
+                reverse("project-generate-flashcards", args=[self.project.pk]),
+                {
+                    "theme": "vocabulary",
+                    "flashcard_mode": "form_to_meaning",
+                    "item_count": 1,
+                    "ai_model": "gpt-4o",
+                },
+            )
+        self.assertEqual(resp.status_code, 302)
+        ex_set = ExerciseSet.objects.get(project=self.project, exercise_type=ExerciseSet.TYPE_FLASHCARD)
+        item = ex_set.items.get()
+        self.assertEqual(item.answer, "panda bear")
 
     def test_generate_inverse_flashcards_creates_set(self):
         run_dir = self.project.artifact_dir() / "runs" / "run_flashcards_inverse" / "stages"

@@ -8173,20 +8173,49 @@ def serve_compiled(request: HttpRequest, pk: int, path: str) -> HttpResponse:
     return HttpResponse(data, content_type=content_type or "application/octet-stream")
 
 
-def _extract_segment_candidates_for_cloze(run_dir: Path) -> list[dict[str, Any]]:
-    stage_names = ["gloss", "lemma", "mwe", "translation", "segmentation_phase_2"]
-    payload = None
-    for stage in stage_names:
-        path = stage_artifact_path(run_dir, stage)
-        if path.exists():
+EXERCISE_SOURCE_STAGE_NAMES = ["gloss", "lemma", "mwe", "translation", "segmentation_phase_2"]
+
+
+def _exercise_run_candidates(run_dir: Path) -> list[Path]:
+    """Return run directories to try when extracting exercise source material.
+
+    Imported legacy projects are often recompiled from existing artifacts.  That
+    can leave the newest run containing only compile output while the usable
+    token/gloss stages remain in an older import run.  Exercise generation should
+    therefore fall back through sibling runs instead of treating the newest
+    compile-only run as authoritative.
+    """
+
+    primary = Path(run_dir)
+    runs_root = primary.parent
+    candidates: list[Path] = []
+    if primary.exists():
+        candidates.append(primary)
+    if runs_root.exists():
+        siblings = [path for path in runs_root.iterdir() if path.is_dir() and path != primary]
+        siblings.sort(key=lambda path: path.stat().st_mtime, reverse=True)
+        candidates.extend(siblings)
+    return candidates
+
+
+def _exercise_stage_payloads(run_dir: Path, stage_names: list[str]) -> list[dict[str, Any]]:
+    payloads: list[dict[str, Any]] = []
+    for candidate_run in _exercise_run_candidates(run_dir):
+        for stage in stage_names:
+            path = stage_artifact_path(candidate_run, stage)
+            if not path.exists():
+                continue
             try:
-                payload = read_stage_artifact(run_dir, stage)
-                break
+                payload = read_stage_artifact(candidate_run, stage)
             except Exception:
                 continue
-    if not payload:
-        return []
+            if isinstance(payload, dict):
+                payloads.append(payload)
+                break
+    return payloads
 
+
+def _extract_segment_candidates_from_payload(payload: dict[str, Any]) -> list[dict[str, Any]]:
     candidates: list[dict[str, Any]] = []
     for page in payload.get("pages", []):
         page_number = page.get("page_number", 1)
@@ -8215,20 +8244,15 @@ def _extract_segment_candidates_for_cloze(run_dir: Path) -> list[dict[str, Any]]
     return candidates
 
 
-def _extract_token_candidates_for_flashcards(run_dir: Path) -> list[dict[str, Any]]:
-    stage_names = ["gloss", "lemma", "mwe", "translation", "segmentation_phase_2"]
-    payload = None
-    for stage in stage_names:
-        path = stage_artifact_path(run_dir, stage)
-        if path.exists():
-            try:
-                payload = read_stage_artifact(run_dir, stage)
-                break
-            except Exception:
-                continue
-    if not payload:
-        return []
+def _extract_segment_candidates_for_cloze(run_dir: Path) -> list[dict[str, Any]]:
+    for payload in _exercise_stage_payloads(run_dir, EXERCISE_SOURCE_STAGE_NAMES):
+        candidates = _extract_segment_candidates_from_payload(payload)
+        if candidates:
+            return candidates
+    return []
 
+
+def _extract_token_candidates_from_payload(payload: dict[str, Any]) -> list[dict[str, Any]]:
     candidates: list[dict[str, Any]] = []
     seen: set[tuple[str, str]] = set()
     for page in payload.get("pages", []):
@@ -8260,6 +8284,14 @@ def _extract_token_candidates_for_flashcards(run_dir: Path) -> list[dict[str, An
                     }
                 )
     return candidates
+
+
+def _extract_token_candidates_for_flashcards(run_dir: Path) -> list[dict[str, Any]]:
+    for payload in _exercise_stage_payloads(run_dir, EXERCISE_SOURCE_STAGE_NAMES):
+        candidates = _extract_token_candidates_from_payload(payload)
+        if candidates:
+            return candidates
+    return []
 
 
 async def _generate_cloze_item(
