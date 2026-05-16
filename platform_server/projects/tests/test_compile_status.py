@@ -4,13 +4,15 @@ import io
 import json
 import uuid
 import zipfile
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
+from django.core.management import call_command, CommandError
 from django.utils import timezone
 
 from projects import views
@@ -19,6 +21,7 @@ from projects.models import (
     Project,
     ProjectImageElement,
     ProjectImagePage,
+    ProjectImagePageVariant,
     ProjectImageStyle,
     ProjectCollaborator,
     ContentComment,
@@ -564,6 +567,56 @@ class CompileStatusViewTests(TestCase):
             self.assertEqual(metadata.get("annotation_direction"), "ltr")
 
 
+    def test_import_zip_view_round_trips_clara2_source_bundle_with_image_style(self):
+        shutil.rmtree(self.project.artifact_dir(), ignore_errors=True)
+        self.addCleanup(lambda: shutil.rmtree(self.project.artifact_dir(), ignore_errors=True))
+        run_dir = self.project.artifact_dir() / "runs" / "run_source"
+        stages_dir = run_dir / "stages"
+        stages_dir.mkdir(parents=True, exist_ok=True)
+        for stage in views.SOURCE_BUNDLE_REQUIRED_STAGES:
+            (stages_dir / f"{stage}.json").write_text('{"pages":[]}', encoding="utf-8")
+        (self.project.artifact_dir() / "source").mkdir(parents=True, exist_ok=True)
+        (self.project.artifact_dir() / "source" / "source_text.txt").write_text("Hello", encoding="utf-8")
+
+        ProjectImageStyle.objects.create(
+            project=self.project,
+            style_brief="flat colors",
+            expanded_style_description="A flat, high-contrast visual style.",
+            representative_excerpt="Hello",
+            sample_image_prompt="Draw a greeting.",
+            sample_image_path="images/style/sample.png",
+            sample_image_revised_prompt="Draw a warm greeting.",
+            sample_image_model="gpt-image-1",
+            discourage_text_in_images=True,
+            ai_model="gpt-4o",
+            status=ProjectImageStyle.STATUS_APPROVED,
+        )
+        img_path = self.project.artifact_dir() / "images" / "style" / "sample.png"
+        img_path.parent.mkdir(parents=True, exist_ok=True)
+        img_path.write_bytes(b"png")
+
+        self.project.compiled_path = "runs/run_source/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+
+        export_resp = self.client.get(reverse("project-download-source-bundle", args=[self.project.pk]))
+        self.assertEqual(export_resp.status_code, 200)
+        payload = b"".join(export_resp.streaming_content)
+        upload = SimpleUploadedFile("source_bundle.zip", payload, content_type="application/zip")
+
+        import_resp = self.client.post(reverse("project-import-zip"), {"source_bundle": upload})
+        self.assertEqual(import_resp.status_code, 302)
+
+        imported = Project.objects.exclude(pk=self.project.pk).get()
+        self.assertEqual(imported.title, "Test Project (2)")
+        imported_style = ProjectImageStyle.objects.get(project=imported)
+        self.assertEqual(imported_style.style_brief, "flat colors")
+        self.assertEqual(imported_style.expanded_style_description, "A flat, high-contrast visual style.")
+        self.assertEqual(imported_style.representative_excerpt, "Hello")
+        self.assertEqual(imported_style.sample_image_prompt, "Draw a greeting.")
+        self.assertEqual(imported_style.sample_image_path, "images/style/sample.png")
+        self.assertTrue(imported_style.discourage_text_in_images)
+        self.assertTrue((imported.artifact_dir() / "images" / "style" / "sample.png").exists())
+
     def test_download_source_bundle_auto_refreshes_missing_current_run_stages(self):
         base = self.project.artifact_dir() / "runs"
         upstream_stages = base / "run_upstream" / "stages"
@@ -635,6 +688,585 @@ class CompileStatusViewTests(TestCase):
 
         stage_files = list((imported.artifact_dir() / "runs").rglob("translation.json"))
         self.assertTrue(stage_files)
+
+
+    def test_import_zip_view_admin_can_search_and_import_legacy_bundle_library(self):
+        User = get_user_model()
+        admin = User.objects.create_user(username="zip_admin", password="pw", is_staff=True)
+        self.client.logout()
+        self.client.login(username="zip_admin", password="pw")
+
+        tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmpdir.cleanup)
+        tmp_root = Path(tmpdir.name)
+        library_root = tmp_root / "legacy_library"
+        bundle_dir = library_root / "9"
+        bundle_dir.mkdir(parents=True, exist_ok=True)
+        annotated_text = {
+            "l2_language": "german",
+            "l1_language": "english",
+            "pages": [
+                {
+                    "segments": [
+                        {
+                            "content_elements": [
+                                {"type": "Word", "content": "Salve", "annotations": {"gloss": "hello", "lemma": "salve"}},
+                                {"type": "NonWordText", "content": "!", "annotations": {}},
+                            ],
+                            "annotations": {"translated": "Hello!", "mwes": [], "page_number": 1},
+                        }
+                    ],
+                    "annotations": {"title": "Ørberg's Deutsch"},
+                }
+            ],
+        }
+        (bundle_dir / "annotated_text.json").write_text(json.dumps(annotated_text), encoding="utf-8")
+        (bundle_dir / "metadata.json").write_text(
+            json.dumps(
+                {
+                    "id": 9,
+                    "title": "Ørberg's Deutsch",
+                    "l2": "german",
+                    "l1": "english",
+                    "owner_username": "jeremiahmcpadden",
+                    "size_bytes": 4044,
+                    "sha256": "d32ff4d5ab8a69d4d0d9766dde66b54569e9533f94f5176830cd3b5c8e395367",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        with override_settings(
+            LEGACY_CLARA_BUNDLE_LIBRARY_ROOT=str(library_root),
+            PIPELINE_OUTPUT_ROOT=tmp_root / "users",
+        ):
+            call_command("build_legacy_bundle_metadata", str(library_root), verbosity=0)
+            resp = self.client.get(reverse("project-import-zip"), {"title": "Deutsch", "owner": "jeremiah"})
+            self.assertEqual(resp.status_code, 200)
+            self.assertContains(resp, "Ørberg&#x27;s Deutsch")
+            self.assertContains(resp, "jeremiahmcpadden")
+
+            resp = self.client.post(
+                reverse("project-import-zip"),
+                {"import_mode": "server_bundle", "bundle_key": "9"},
+            )
+            self.assertEqual(resp.status_code, 302)
+            imported = Project.objects.get(owner=admin, title="Ørberg's Deutsch")
+            self.assertEqual(imported.language, "de")
+            self.assertEqual(imported.target_language, "en")
+            self.assertTrue((imported.artifact_dir() / "legacy_clara" / "annotated_text.json").exists())
+
+    def test_import_zip_view_admin_imports_source_zip_with_sidecar_metadata(self):
+        User = get_user_model()
+        admin = User.objects.create_user(username="sidecar_admin", password="pw", is_staff=True)
+        self.client.logout()
+        self.client.login(username="sidecar_admin", password="pw")
+
+        tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmpdir.cleanup)
+        tmp_root = Path(tmpdir.name)
+        library_root = tmp_root / "legacy_library"
+        bundle_dir = library_root / "1"
+        bundle_dir.mkdir(parents=True, exist_ok=True)
+        annotated_text = {
+            "l2_language": "german",
+            "l1_language": "english",
+            "pages": [
+                {
+                    "segments": [
+                        {
+                            "content_elements": [
+                                {"type": "Word", "content": "Hallo", "annotations": {"gloss": "hello", "lemma": "hallo"}},
+                            ],
+                            "annotations": {"translated": "Hello", "mwes": [], "page_number": 1},
+                        }
+                    ],
+                    "annotations": {"title": "Sidecar Legacy"},
+                }
+            ],
+        }
+        (bundle_dir / "metadata.json").write_text(
+            json.dumps(
+                {
+                    "id": 1,
+                    "title": "Sidecar Legacy",
+                    "l2": "german",
+                    "l1": "english",
+                    "owner_username": "legacyowner",
+                }
+            ),
+            encoding="utf-8",
+        )
+        with zipfile.ZipFile(bundle_dir / "source.zip", "w") as zf:
+            zf.writestr("AdelaideJSON/annotated_text.json", json.dumps(annotated_text))
+
+        with override_settings(
+            LEGACY_CLARA_BUNDLE_LIBRARY_ROOT=str(library_root),
+            PIPELINE_OUTPUT_ROOT=tmp_root / "users",
+        ):
+            call_command("build_legacy_bundle_metadata", str(library_root), verbosity=0)
+            metadata = json.loads((library_root / "legacy_bundle_metadata.json").read_text(encoding="utf-8"))
+            self.assertEqual(metadata["bundles"][0]["import_relative_path"], "1/source.zip")
+
+            resp = self.client.post(
+                reverse("project-import-zip"),
+                {"import_mode": "server_bundle", "bundle_key": "1"},
+            )
+
+            self.assertEqual(resp.status_code, 302)
+            imported = Project.objects.get(owner=admin, title="Sidecar Legacy")
+            self.assertTrue((imported.artifact_dir() / "legacy_clara" / "metadata.json").exists())
+            self.assertTrue((imported.artifact_dir() / "legacy_clara" / "annotated_text.json").exists())
+
+    def test_import_zip_view_admin_imports_project_dir_legacy_source_zip(self):
+        User = get_user_model()
+        admin = User.objects.create_user(username="project_dir_admin", password="pw", is_staff=True)
+        self.client.logout()
+        self.client.login(username="project_dir_admin", password="pw")
+
+        tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmpdir.cleanup)
+        tmp_root = Path(tmpdir.name)
+        library_root = tmp_root / "legacy_library"
+        bundle_dir = library_root / "1"
+        bundle_dir.mkdir(parents=True, exist_ok=True)
+        (bundle_dir / "metadata.json").write_text(
+            json.dumps(
+                {
+                    "id": 1,
+                    "title": "Project Dir Legacy",
+                    "l2": "german",
+                    "l1": "english",
+                    "owner_username": "legacyowner",
+                }
+            ),
+            encoding="utf-8",
+        )
+        with zipfile.ZipFile(bundle_dir / "source.zip", "w") as zf:
+            zf.writestr("metadata.json", json.dumps({"title": "Project Dir Legacy", "l2": "german", "l1": "english"}))
+            zf.writestr("project_dir/metadata.json", json.dumps({"title": "Project Dir Legacy"}))
+            zf.writestr("project_dir/plain/plain.txt", "Hallo Welt")
+            zf.writestr("audio/metadata.json", "[]")
+            zf.writestr("images/metadata.json", "[]")
+
+        with override_settings(
+            LEGACY_CLARA_BUNDLE_LIBRARY_ROOT=str(library_root),
+            PIPELINE_OUTPUT_ROOT=tmp_root / "users",
+        ):
+            call_command("build_legacy_bundle_metadata", str(library_root), verbosity=0)
+            resp = self.client.post(
+                reverse("project-import-zip"),
+                {"import_mode": "server_bundle", "bundle_key": "1"},
+            )
+
+            self.assertEqual(resp.status_code, 302)
+            imported = Project.objects.get(owner=admin, title="Project Dir Legacy")
+            self.assertEqual(imported.source_text, "Hallo Welt")
+            self.assertEqual(imported.language, "de")
+            self.assertEqual(imported.target_language, "en")
+            self.assertTrue((imported.artifact_dir() / "legacy_clara" / "project_dir" / "metadata.json").exists())
+            self.assertTrue(list((imported.artifact_dir() / "runs").rglob("legacy_import_summary.json")))
+
+    def test_import_zip_view_admin_missing_metadata_message_includes_trace(self):
+        User = get_user_model()
+        User.objects.create_user(username="trace_admin", password="pw", is_staff=True)
+        self.client.logout()
+        self.client.login(username="trace_admin", password="pw")
+
+        tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmpdir.cleanup)
+        tmp_root = Path(tmpdir.name)
+        library_root = tmp_root / "legacy_library"
+        bundle_dir = library_root / "2"
+        bundle_dir.mkdir(parents=True, exist_ok=True)
+        (bundle_dir / "metadata.json").write_text(
+            json.dumps({"id": 2, "title": "Trace Legacy"}),
+            encoding="utf-8",
+        )
+        with zipfile.ZipFile(bundle_dir / "source.zip", "w") as zf:
+            zf.writestr("too/deep/annotated_text.json", json.dumps({"pages": []}))
+
+        with override_settings(LEGACY_CLARA_BUNDLE_LIBRARY_ROOT=str(library_root)):
+            call_command("build_legacy_bundle_metadata", str(library_root), verbosity=0)
+            resp = self.client.post(
+                reverse("project-import-zip"),
+                {"import_mode": "server_bundle", "bundle_key": "2"},
+            )
+
+        self.assertEqual(resp.status_code, 302)
+        message_text = "\n".join(str(message) for message in get_messages(resp.wsgi_request))
+        self.assertIn("Bundle is missing project metadata.", message_text)
+        self.assertIn("Import trace:", message_text)
+        self.assertIn("selected_import_path", message_text)
+        self.assertIn("too/deep/annotated_text.json", message_text)
+        self.assertIn("too/deep/metadata.json", message_text)
+
+    def test_import_zip_view_hides_legacy_library_from_non_admin(self):
+        resp = self.client.get(reverse("project-import-zip"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Upload a local ZIP")
+        self.assertNotContains(resp, "Import from configured legacy bundle library")
+
+    def test_import_zip_view_admin_shows_legacy_library_diagnostics_when_unconfigured(self):
+        User = get_user_model()
+        User.objects.create_user(username="diag_admin", password="pw", is_staff=True)
+        self.client.logout()
+        self.client.login(username="diag_admin", password="pw")
+
+        with override_settings(LEGACY_CLARA_BUNDLE_LIBRARY_ROOT=""):
+            resp = self.client.get(reverse("project-import-zip"))
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Library unavailable:")
+        self.assertContains(resp, "Legacy bundle library root is not configured.")
+        self.assertContains(resp, "Legacy library diagnostics")
+        self.assertContains(resp, "Django setting LEGACY_CLARA_BUNDLE_LIBRARY_ROOT")
+        self.assertContains(resp, "interactive shell export does not change an already-running web process")
+
+    def test_build_legacy_bundle_metadata_reports_write_permission_error(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            library_root = Path(tmpdir) / "legacy_library"
+            bundle_dir = library_root / "9"
+            bundle_dir.mkdir(parents=True)
+            (bundle_dir / "metadata.json").write_text(
+                json.dumps({"id": 9, "title": "Permission Example"}),
+                encoding="utf-8",
+            )
+
+            with patch(
+                "projects.management.commands.build_legacy_bundle_metadata.Path.write_text",
+                side_effect=PermissionError("blocked"),
+            ):
+                with self.assertRaisesMessage(CommandError, "sudo -u ubuntu"):
+                    call_command("build_legacy_bundle_metadata", str(library_root), verbosity=0)
+
+
+    def test_import_legacy_clara_json_bundle_creates_project_with_pinyin_audio_and_images(self):
+        bundle = io.BytesIO()
+        root = "DepressedPandaJSON"
+        annotated_text = {
+            "l2_language": "mandarin",
+            "l1_language": "english",
+            "pages": [
+                {
+                    "segments": [
+                        {
+                            "content_elements": [
+                                {"type": "Markup", "content": "<h1>", "annotations": {}},
+                                {
+                                    "type": "Word",
+                                    "content": "熊猫",
+                                    "annotations": {
+                                        "gloss": "panda",
+                                        "lemma": "熊猫",
+                                        "pos": "NOUN",
+                                        "pinyin": "xióng māo",
+                                        "tts": {
+                                            "engine_id": "google",
+                                            "language_id": "cmn-CN",
+                                            "voice_id": "default",
+                                            "file_path": "audio/default_panda.mp3",
+                                        },
+                                    },
+                                },
+                                {"type": "NonWordText", "content": "。", "annotations": {}},
+                            ],
+                            "annotations": {
+                                "translated": "Panda.",
+                                "mwes": [],
+                                "tts": {
+                                    "engine_id": "google",
+                                    "language_id": "cmn-CN",
+                                    "voice_id": "cmn-CN-Wavenet-C",
+                                    "file_path": "audio/segment_panda.mp3",
+                                },
+                                "page_number": 1,
+                                "segment_uid": "seg_panda_1",
+                            },
+                        },
+                        {
+                            "content_elements": [
+                                {
+                                    "type": "Image",
+                                    "content": {
+                                        "src": "page_1.png",
+                                        "thumbnail_src": "page_1_thumbnail.png",
+                                        "width": 512,
+                                        "height": 512,
+                                    },
+                                    "annotations": {},
+                                }
+                            ],
+                            "annotations": {"mwes": [], "page_number": 1, "segment_uid": "seg_panda_img"},
+                        },
+                    ],
+                    "annotations": {
+                        "title": "熊猫独白",
+                        "tts": {
+                            "engine_id": "google",
+                            "language_id": "cmn-CN",
+                            "voice_id": "cmn-CN-Wavenet-C",
+                            "file_path": "audio/segment_panda.mp3",
+                        },
+                    },
+                }
+            ],
+            "annotations": {"voice": "google_cmn-CN"},
+        }
+        image_metadata = [
+            {
+                "image_file_path": "page_1.png",
+                "thumbnail_file_path": "page_1_thumbnail.png",
+                "image_name": "page_1",
+                "page": 1,
+                "position": "bottom",
+                "image_type": "page",
+                "user_prompt": "",
+                "content_description": "",
+            },
+            {
+                "image_file_path": "style.png",
+                "thumbnail_file_path": "style_thumbnail.png",
+                "image_name": "style",
+                "page": 1,
+                "position": "bottom",
+                "image_type": "style",
+                "advice": "Create a style inspired by traditional Chinese pen and ink art.",
+            },
+        ]
+        with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr(f"{root}/annotated_text.json", json.dumps(annotated_text, ensure_ascii=False))
+            zf.writestr(
+                f"{root}/metadata.json",
+                json.dumps({"simple_clara_type": "create_text_and_image", "audio_type_for_words": "tts"}),
+            )
+            zf.writestr(f"{root}/audio/default_panda.mp3", b"fake mp3 bytes")
+            zf.writestr(f"{root}/audio/segment_panda.mp3", b"fake segment mp3 bytes")
+            zf.writestr(f"{root}/audio/metadata.json", json.dumps({"words": [], "segments": []}))
+            zf.writestr(f"{root}/images/page_1.png", b"fake image bytes")
+            zf.writestr(f"{root}/images/page_1_thumbnail.png", b"fake thumbnail bytes")
+            zf.writestr(f"{root}/images/style.png", b"fake style bytes")
+            zf.writestr(f"{root}/images/metadata.json", json.dumps(image_metadata))
+            coherent_root = f"{root}/coherent_images_v2_project_dir"
+            zf.writestr(f"{coherent_root}/style/expanded_description.txt", "Ink-wash style with soft bamboo textures.")
+            zf.writestr(f"{coherent_root}/style/image.jpg", b"fake coherent style image")
+            zf.writestr(
+                f"{coherent_root}/elements/elements.json",
+                json.dumps([{"name": "Panda", "element_type": "character", "pages": [1]}]),
+            )
+            zf.writestr(f"{coherent_root}/elements/Panda/expanded_description.txt", "A gentle panda with expressive eyes.")
+            zf.writestr(f"{coherent_root}/elements/Panda/image.jpg", b"fake coherent element image")
+            zf.writestr(f"{coherent_root}/pages/page_1/expanded_description.txt", "Panda sitting beneath bamboo.")
+            zf.writestr(f"{coherent_root}/pages/page_1/image.jpg", b"fake coherent page image")
+        bundle.seek(0)
+
+        upload = SimpleUploadedFile("legacy_clara.zip", bundle.getvalue(), content_type="application/zip")
+        resp = self.client.post(reverse("project-import-source-bundle"), {"source_bundle": upload})
+        self.assertEqual(resp.status_code, 302)
+
+        imported = Project.objects.exclude(pk=self.project.pk).get()
+        self.assertEqual(imported.title, "熊猫独白")
+        self.assertEqual(imported.language, "zh")
+        self.assertEqual(imported.target_language, "en")
+        self.assertEqual(imported.page_image_placement, "bottom")
+        self.assertEqual(imported.segmentation_method, "auto")
+        self.assertEqual(imported.romanization_method, "auto")
+        self.assertIn("熊猫。", imported.source_text)
+
+        pinyin_path = next((imported.artifact_dir() / "runs").rglob("pinyin.json"))
+        pinyin_payload = json.loads(pinyin_path.read_text(encoding="utf-8"))
+        token = pinyin_payload["pages"][0]["segments"][0]["tokens"][0]
+        self.assertEqual(token["annotations"]["pinyin"], "xióng māo")
+        self.assertEqual(token["annotations"]["gloss"], "panda")
+        self.assertEqual(pinyin_payload["pages"][0]["segments"][0]["annotations"]["translation"], "Panda.")
+        self.assertTrue(Path(token["annotations"]["audio"]["path"]).exists())
+
+        seg1_path = next((imported.artifact_dir() / "runs").rglob("segmentation_phase_1.json"))
+        seg2_path = next((imported.artifact_dir() / "runs").rglob("segmentation_phase_2.json"))
+        seg1_payload = json.loads(seg1_path.read_text(encoding="utf-8"))
+        seg2_payload = json.loads(seg2_path.read_text(encoding="utf-8"))
+
+        def _contains_key(value, key):
+            if isinstance(value, dict):
+                return key in value or any(_contains_key(child, key) for child in value.values())
+            if isinstance(value, list):
+                return any(_contains_key(child, key) for child in value)
+            return False
+
+        self.assertFalse(_contains_key(seg1_payload, "tokens"))
+        self.assertFalse(_contains_key(seg1_payload, "audio"))
+        self.assertFalse(_contains_key(seg1_payload, "tts"))
+        seg2_token = seg2_payload["pages"][0]["segments"][0]["tokens"][0]
+        self.assertEqual(seg2_token, {"surface": "熊猫"})
+        self.assertNotIn("annotations", seg2_token)
+        self.assertFalse(_contains_key(seg2_payload, "audio"))
+        self.assertFalse(_contains_key(seg2_payload, "tts"))
+
+        self.assertTrue((imported.artifact_dir() / "legacy_clara" / "annotated_text.json").exists())
+        self.assertTrue((imported.artifact_dir() / "legacy_clara" / "audio" / "default_panda.mp3").exists())
+        self.assertTrue((imported.artifact_dir() / "legacy_clara" / "images" / "page_1.png").exists())
+        image_page = ProjectImagePage.objects.get(project=imported, page_number=1)
+        self.assertEqual(image_page.image_path, "images/pages/page_001/variant_001.jpg")
+        self.assertEqual(image_page.generation_prompt, "Panda sitting beneath bamboo.")
+        self.assertTrue((imported.artifact_dir() / image_page.image_path).exists())
+        image_variant = ProjectImagePageVariant.objects.get(page=image_page, variant_index=1)
+        self.assertEqual(image_variant.image_path, image_page.image_path)
+        self.assertEqual(image_page.preferred_variant_id, image_variant.id)
+        style = ProjectImageStyle.objects.get(project=imported)
+        self.assertEqual(style.sample_image_path, "images/style/legacy_clara_style.jpg")
+        self.assertTrue((imported.artifact_dir() / style.sample_image_path).exists())
+        self.assertEqual(style.expanded_style_description, "Ink-wash style with soft bamboo textures.")
+        element = ProjectImageElement.objects.get(project=imported, name="Panda")
+        self.assertEqual(element.expanded_description, "A gentle panda with expressive eyes.")
+        self.assertEqual(element.image_path, "images/elements/panda/image.jpg")
+        self.assertTrue((imported.artifact_dir() / element.image_path).exists())
+        self.assertTrue(element.is_confirmed)
+
+        clone = Project.objects.create(
+            owner=self.user,
+            title="Imported legacy clone",
+            source_text=imported.source_text,
+            language=imported.language,
+            target_language=imported.target_language,
+        )
+        views._copy_image_assets_and_rows(imported, clone)
+        self.assertTrue((clone.artifact_dir() / image_page.image_path).exists())
+        clone_page = ProjectImagePage.objects.get(project=clone, page_number=1)
+        clone_variant = ProjectImagePageVariant.objects.get(page=clone_page, variant_index=1)
+        self.assertEqual(clone_page.image_path, "images/pages/page_001/variant_001.jpg")
+        self.assertEqual(clone_variant.image_path, clone_page.image_path)
+
+        with patch("projects.views.credits_enabled", return_value=False), patch("projects.views.async_task") as mock_async_task:
+            compile_resp = self.client.post(
+                reverse("project-compile", args=[imported.pk]),
+                {"start_stage": "compile_html", "end_stage": "compile_html"},
+            )
+        self.assertEqual(compile_resp.status_code, 302)
+        self.assertTrue(mock_async_task.called)
+        compile_args, _compile_kwargs = mock_async_task.call_args
+        self.assertEqual("compile_html", compile_args[5])
+        self.assertEqual("auto", compile_args[15])
+        self.assertEqual("auto", compile_args[16])
+
+
+    def test_import_legacy_clara_json_bundle_accepts_flat_zip_layout(self):
+        bundle = io.BytesIO()
+        annotated_text = {
+            "l2_language": "mandarin",
+            "l1_language": "english",
+            "pages": [
+                {
+                    "segments": [
+                        {
+                            "content_elements": [
+                                {
+                                    "type": "Word",
+                                    "content": "熊猫",
+                                    "annotations": {
+                                        "gloss": "panda",
+                                        "lemma": "熊猫",
+                                        "pos": "NOUN",
+                                        "pinyin": "xióng māo",
+                                        "tts": {
+                                            "engine_id": "google",
+                                            "language_id": "cmn-CN",
+                                            "voice_id": "default",
+                                            "file_path": "audio/default_panda.mp3",
+                                        },
+                                    },
+                                }
+                            ],
+                            "annotations": {"translated": "Panda.", "mwes": [], "page_number": 1},
+                        }
+                    ],
+                    "annotations": {"title": "Flat Panda"},
+                }
+            ],
+        }
+        with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("annotated_text.json", json.dumps(annotated_text, ensure_ascii=False))
+            zf.writestr("metadata.json", json.dumps({"simple_clara_type": "create_text"}))
+            zf.writestr("audio/default_panda.mp3", b"fake mp3 bytes")
+        bundle.seek(0)
+
+        upload = SimpleUploadedFile("flat_legacy_clara.zip", bundle.getvalue(), content_type="application/zip")
+        resp = self.client.post(reverse("project-import-source-bundle"), {"source_bundle": upload})
+        self.assertEqual(resp.status_code, 302)
+
+        imported = Project.objects.exclude(pk=self.project.pk).get()
+        self.assertEqual(imported.title, "Flat Panda")
+        self.assertEqual(imported.language, "zh")
+        self.assertTrue((imported.artifact_dir() / "legacy_clara" / "metadata.json").exists())
+        self.assertTrue((imported.artifact_dir() / "legacy_clara" / "audio" / "default_panda.mp3").exists())
+        pinyin_path = next((imported.artifact_dir() / "runs").rglob("pinyin.json"))
+        pinyin_payload = json.loads(pinyin_path.read_text(encoding="utf-8"))
+        self.assertEqual(
+            pinyin_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"]["pinyin"],
+            "xióng māo",
+        )
+
+    def test_import_legacy_clara_json_bundle_maps_kok_kaper_language(self):
+        bundle = io.BytesIO()
+        annotated_text = {
+            "l2_language": "Kok Kaper",
+            "l1_language": "English",
+            "pages": [
+                {
+                    "segments": [
+                        {
+                            "content_elements": [
+                                {"type": "Word", "content": "Ngat", "annotations": {"gloss": "I"}},
+                            ],
+                            "annotations": {"translated": "I", "mwes": [], "page_number": 1},
+                        }
+                    ],
+                    "annotations": {"title": "Kok Kaper sample"},
+                }
+            ],
+        }
+        with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("annotated_text.json", json.dumps(annotated_text, ensure_ascii=False))
+            zf.writestr("metadata.json", json.dumps({"simple_clara_type": "create_text"}))
+        bundle.seek(0)
+
+        upload = SimpleUploadedFile("kok_kaper_legacy.zip", bundle.getvalue(), content_type="application/zip")
+        resp = self.client.post(reverse("project-import-source-bundle"), {"source_bundle": upload})
+        self.assertEqual(resp.status_code, 302)
+
+        imported = Project.objects.exclude(pk=self.project.pk).get()
+        self.assertEqual(imported.language, "xkk")
+        self.assertEqual(imported.target_language, "en")
+
+    @patch("projects.views.async_task")
+    def test_compile_normalizes_legacy_import_processing_method(self, mock_async_task):
+        self.project.language = "zh"
+        self.project.segmentation_method = "legacy_clara_import"
+        self.project.romanization_method = "legacy_clara_import"
+        self.project.save(update_fields=["language", "segmentation_method", "romanization_method"])
+        stages = self.project.artifact_dir() / "runs" / "run_legacy" / "stages"
+        stages.mkdir(parents=True, exist_ok=True)
+        stages.joinpath("audio.json").write_text('{"pages":[]}', encoding="utf-8")
+        stages.joinpath("compile_html.json").write_text('{"pages":[]}', encoding="utf-8")
+
+        with patch("projects.views.credits_enabled", return_value=False):
+            resp = self.client.post(
+                reverse("project-compile", args=[self.project.pk]),
+                {
+                    "start_stage": "compile_html",
+                    "end_stage": "compile_html",
+                    "segmentation_method": "legacy_clara_import",
+                    "romanization_method": "legacy_clara_import",
+                },
+            )
+
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(mock_async_task.called)
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.segmentation_method, "auto")
+        self.assertEqual(self.project.romanization_method, "auto")
+        args, _kwargs = mock_async_task.call_args
+        self.assertEqual("auto", args[15])
+        self.assertEqual("auto", args[16])
 
     def test_import_source_bundle_adds_suffix_when_title_conflicts_for_same_user(self):
         bundle = io.BytesIO()
