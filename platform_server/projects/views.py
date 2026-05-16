@@ -8566,6 +8566,130 @@ def _extract_token_candidates_for_flashcards(run_dir: Path) -> list[dict[str, An
     return []
 
 
+def _nonempty_exercise_translation(annotations: dict[str, Any]) -> str:
+    for key in ("gloss", "translation"):
+        value = str(annotations.get(key) or "").strip()
+        if value and value.casefold() not in {"none", "null", "-"}:
+            return value
+    return ""
+
+
+def _find_project_picture_dictionary(project: Project) -> PictureDictionary | None:
+    query = PictureDictionary.objects.select_related("project").filter(is_active=True)
+    if project.community_id:
+        dictionary = query.filter(community_id=project.community_id).first()
+        if dictionary:
+            return dictionary
+    language = (project.language or "").strip()
+    if language:
+        return query.filter(language__iexact=language).first()
+    return None
+
+
+def _picture_dictionary_image_exists(dictionary: PictureDictionary, image_path: str) -> bool:
+    if not image_path:
+        return False
+    try:
+        image_file = (dictionary.project.artifact_dir() / image_path).resolve()
+        image_file.relative_to(dictionary.project.artifact_dir().resolve())
+    except ValueError:
+        return False
+    return image_file.exists()
+
+
+def _picture_dictionary_entry_index(dictionary: PictureDictionary) -> dict[str, PictureDictionaryEntry]:
+    indexed: dict[str, PictureDictionaryEntry] = {}
+    entries = dictionary.entries.filter(is_active=True).exclude(image_path="").order_by("id")
+    for entry in entries:
+        if not _picture_dictionary_image_exists(dictionary, entry.image_path):
+            continue
+        for value in (entry.surface, entry.lemma):
+            key = str(value or "").strip().casefold()
+            if key and key not in indexed:
+                indexed[key] = entry
+    return indexed
+
+
+def _extract_image_flashcard_candidates_from_payload(
+    payload: dict[str, Any],
+    *,
+    dictionary: PictureDictionary,
+) -> list[dict[str, Any]]:
+    entry_index = _picture_dictionary_entry_index(dictionary)
+    if not entry_index:
+        return []
+    candidates: list[dict[str, Any]] = []
+    seen_entries: set[int] = set()
+    for page in payload.get("pages", []):
+        page_number = page.get("page_number", 1)
+        for seg_idx, seg in enumerate(page.get("segments", [])):
+            tokens = seg.get("tokens", [])
+            segment_text = "".join(t.get("surface", "") for t in tokens).strip() or seg.get("surface", "")
+            segment_token_metadata = [
+                _exercise_token_metadata((t.get("surface") or "").strip(), t.get("annotations", {}) or {})
+                for t in tokens
+                if (t.get("surface") or "").strip()
+            ]
+            for tok_idx, token in enumerate(tokens):
+                surface = (token.get("surface") or "").strip()
+                if not surface or not any(ch.isalpha() for ch in surface):
+                    continue
+                ann = token.get("annotations", {}) or {}
+                if ann.get("mwe_id") or not _is_cloze_word_candidate(surface, ann):
+                    continue
+                translation = _nonempty_exercise_translation(ann)
+                if not translation:
+                    continue
+                lemma = str(ann.get("lemma") or "").strip()
+                entry = entry_index.get(surface.casefold()) or entry_index.get(lemma.casefold())
+                if not entry or entry.id in seen_entries:
+                    continue
+                seen_entries.add(entry.id)
+                metadata = _exercise_token_metadata(surface, ann)
+                candidates.append(
+                    {
+                        "page_number": page_number,
+                        "segment_index": seg_idx,
+                        "token_index": tok_idx,
+                        "source_word": surface,
+                        "target_gloss": translation,
+                        "pos": metadata["pos"] or entry.pos,
+                        "lexical_category": metadata["lexical_category"],
+                        "script": metadata["script"],
+                        "source_length": metadata["length"],
+                        "segment_text": segment_text,
+                        "token_metadata": segment_token_metadata,
+                        "dictionary_entry_id": entry.id,
+                        "dictionary_project_id": dictionary.project_id,
+                        "image_path": entry.image_path,
+                        "dictionary_surface": entry.surface,
+                        "dictionary_lemma": entry.lemma,
+                    }
+                )
+    return candidates
+
+
+def _extract_image_flashcard_candidates(run_dir: Path, *, dictionary: PictureDictionary) -> list[dict[str, Any]]:
+    for payload in _exercise_stage_payloads(run_dir, EXERCISE_SOURCE_STAGE_NAMES):
+        candidates = _extract_image_flashcard_candidates_from_payload(payload, dictionary=dictionary)
+        if candidates:
+            return candidates
+    return []
+
+
+def _image_flashcard_option_metadata(candidates: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    return {
+        str(cand.get("source_word") or "").casefold(): {
+            "surface": cand.get("source_word") or "",
+            "pos": cand.get("pos") or "",
+            "script": cand.get("script") or "",
+            "translation": cand.get("target_gloss") or "",
+        }
+        for cand in candidates
+        if cand.get("source_word")
+    }
+
+
 def _append_fallback_distractors(
     distractors: list[str],
     fallback_values: list[Any],
@@ -8793,6 +8917,104 @@ Return JSON with:
     }
 
 
+async def _generate_image_flashcard_item(
+    client: OpenAIClient,
+    model: str,
+    theme: str,
+    candidate: dict[str, Any],
+    order_index: int,
+    fallback_values: list[dict[str, Any]],
+) -> dict[str, Any]:
+    source_word = candidate["source_word"]
+    correct_gloss = candidate["target_gloss"]
+    source_pos = str(candidate.get("pos") or "")
+    source_script = str(candidate.get("script") or "")
+    source_category = EXERCISE_LEXICAL_CATEGORIES.get(
+        _exercise_lexical_category(source_pos),
+        source_pos or "the same broad lexical category",
+    )
+    pool_lines = []
+    for cand in fallback_values[:40]:
+        word = str(cand.get("surface") or cand.get("value") or "").strip()
+        translation = str(cand.get("translation") or "").strip()
+        pos = str(cand.get("pos") or "").strip()
+        if word and word.casefold() != source_word.casefold():
+            pool_lines.append(f"- {word} | translation: {translation or '[unknown]'} | POS: {pos or '[unknown]'}")
+    pool_text = "\n".join(pool_lines)
+    prompt = f"""
+Choose exactly 3 WRONG source-language word distractors for an image-to-word flashcard.
+Theme: {theme}
+The image represents this correct source-language word: {source_word}
+Translation/gloss of the correct word: {correct_gloss}
+Correct answer POS/category: {source_pos or "unknown"} ({source_category})
+Candidate distractor pool (source word | translation | POS):
+{pool_text}
+Hard constraints:
+- Choose distractors only from the candidate pool.
+- Every distractor must be incorrect for the image.
+- Use the translations/glosses to avoid near-synonyms or words that could plausibly describe the same image.
+- Prefer the same broad lexical category/POS as the correct answer when possible.
+- Use the same language and script as the correct answer.
+- Use similar length/form to reduce trivial elimination.
+- Do NOT return the correct answer or close variants/spellings/morphological forms of it.
+
+Return JSON with:
+- distractors: array of 3 source-language words from the pool
+- rationale: object mapping each distractor to a short reason it is clearly wrong
+"""
+    try:
+        data = await client.chat_json(prompt, model=model)
+    except Exception:
+        data = {}
+    known_metadata = _image_flashcard_option_metadata(fallback_values)
+    distractors = [
+        str(x).strip()
+        for x in (data.get("distractors") or [])
+        if str(x).strip() and str(x).strip().casefold() in known_metadata
+    ]
+    distractors = _append_fallback_distractors(
+        distractors,
+        fallback_values,
+        forbidden_values={source_word},
+        answer=source_word,
+        answer_pos=source_pos,
+        answer_script=source_script,
+        known_metadata=known_metadata,
+    )
+    while len(distractors) < 3:
+        distractors.append(f"option {len(distractors)+1}")
+
+    answer = source_word
+    options = [answer] + distractors
+    random.Random(f"{source_word}|{correct_gloss}|{candidate.get('image_path')}|{order_index}|image_to_form").shuffle(options)
+    if options and options[0] == answer and len(options) > 1:
+        options[0], options[1] = options[1], options[0]
+    option_translations = {
+        opt: str(known_metadata.get(opt.casefold(), {}).get("translation") or "")
+        for opt in options
+    }
+    rationale = data.get("rationale") if isinstance(data.get("rationale"), dict) else {}
+    rationale = {
+        **rationale,
+        "exercise_kind": "image_to_form",
+        "image_project_id": candidate.get("dictionary_project_id"),
+        "image_path": candidate.get("image_path"),
+        "dictionary_entry_id": candidate.get("dictionary_entry_id"),
+        "answer_translation": correct_gloss,
+        "option_translations": option_translations,
+    }
+    return {
+        "order_index": order_index,
+        "page_number": candidate["page_number"],
+        "segment_index": candidate["segment_index"],
+        "segment_text": candidate["segment_text"],
+        "prompt": "Choose the word that matches the image.",
+        "answer": answer,
+        "options": options,
+        "rationale": rationale,
+    }
+
+
 @login_required
 def generate_cloze_exercises(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
@@ -8888,24 +9110,51 @@ def generate_flashcard_exercises(request: HttpRequest, pk: int) -> HttpResponse:
             item_count = form.cleaned_data["item_count"]
             model = form.cleaned_data.get("ai_model") or project.ai_model or DEFAULT_MODEL
 
-            candidates = _extract_token_candidates_for_flashcards(run_dir)
-            if not candidates:
-                messages.error(
-                    request,
-                    "Could not find suitable glossed tokens for flashcard generation. Run glossing first.",
-                )
-                return redirect("project-detail", pk=project.pk)
+            if flashcard_mode == ExerciseSet.FLASHCARD_MODE_IMAGE_TO_FORM:
+                dictionary = _find_project_picture_dictionary(project)
+                if not dictionary:
+                    messages.error(
+                        request,
+                        "Image flashcards require an active picture dictionary for this project's community/language.",
+                    )
+                    return redirect("project-detail", pk=project.pk)
+                candidates = _extract_image_flashcard_candidates(run_dir, dictionary=dictionary)
+                if len(candidates) < 4:
+                    messages.error(
+                        request,
+                        "Image flashcards require at least four current-project words that also have images and translations in the picture dictionary.",
+                    )
+                    return redirect("project-detail", pk=project.pk)
+                selected = candidates[:item_count]
+                fallback_values = [
+                    {
+                        "surface": cand["source_word"],
+                        "value": cand["source_word"],
+                        "pos": cand.get("pos") or "",
+                        "script": cand.get("script") or "",
+                        "translation": cand.get("target_gloss") or "",
+                    }
+                    for cand in candidates
+                ]
+            else:
+                candidates = _extract_token_candidates_for_flashcards(run_dir)
+                if not candidates:
+                    messages.error(
+                        request,
+                        "Could not find suitable glossed tokens for flashcard generation. Run glossing first.",
+                    )
+                    return redirect("project-detail", pk=project.pk)
 
-            selected = candidates[:item_count]
-            fallback_values = [
-                {
-                    "surface": cand["source_word"] if flashcard_mode == "meaning_to_form" else cand["target_gloss"],
-                    "value": cand["source_word"] if flashcard_mode == "meaning_to_form" else cand["target_gloss"],
-                    "pos": cand.get("pos") or "",
-                    "script": (cand.get("script") or "") if flashcard_mode == "meaning_to_form" else "",
-                }
-                for cand in candidates
-            ]
+                selected = candidates[:item_count]
+                fallback_values = [
+                    {
+                        "surface": cand["source_word"] if flashcard_mode == "meaning_to_form" else cand["target_gloss"],
+                        "value": cand["source_word"] if flashcard_mode == "meaning_to_form" else cand["target_gloss"],
+                        "pos": cand.get("pos") or "",
+                        "script": (cand.get("script") or "") if flashcard_mode == "meaning_to_form" else "",
+                    }
+                    for cand in candidates
+                ]
             ex_set = ExerciseSet.objects.create(
                 project=project,
                 exercise_type=ExerciseSet.TYPE_FLASHCARD,
@@ -8922,10 +9171,16 @@ def generate_flashcard_exercises(request: HttpRequest, pk: int) -> HttpResponse:
                     model_name=model,
                     request_type="exercise_flashcard_generation",
                 )
-                tasks = [
-                    _generate_flashcard_item(client, model, theme, cand, idx, flashcard_mode, fallback_values)
-                    for idx, cand in enumerate(selected)
-                ]
+                if flashcard_mode == ExerciseSet.FLASHCARD_MODE_IMAGE_TO_FORM:
+                    tasks = [
+                        _generate_image_flashcard_item(client, model, theme, cand, idx, fallback_values)
+                        for idx, cand in enumerate(selected)
+                    ]
+                else:
+                    tasks = [
+                        _generate_flashcard_item(client, model, theme, cand, idx, flashcard_mode, fallback_values)
+                        for idx, cand in enumerate(selected)
+                    ]
                 return await asyncio.gather(*tasks)
 
             items = asyncio.run(_run())
@@ -8960,6 +9215,34 @@ def generate_flashcard_exercises(request: HttpRequest, pk: int) -> HttpResponse:
         "projects/exercise_generate_flashcard.html",
         {"project": project, "form": form},
     )
+
+
+@login_required
+def exercise_item_image(request: HttpRequest, item_id: int) -> HttpResponse:
+    item = get_object_or_404(
+        ExerciseItem.objects.select_related("exercise_set", "exercise_set__project"),
+        pk=item_id,
+    )
+    ex_set = item.exercise_set
+    project = ex_set.project
+    if project.owner != request.user and not ex_set.is_published:
+        raise Http404()
+    rationale = item.rationale if isinstance(item.rationale, dict) else {}
+    image_project_id = rationale.get("image_project_id")
+    image_path = str(rationale.get("image_path") or "").strip()
+    if not image_project_id or not image_path:
+        raise Http404()
+    image_project = get_object_or_404(Project, pk=image_project_id)
+    base = image_project.artifact_dir().resolve()
+    file_path = (base / image_path).resolve()
+    try:
+        file_path.relative_to(base)
+    except ValueError:
+        raise Http404()
+    if not file_path.exists() or not file_path.is_file():
+        raise Http404()
+    content_type, _ = mimetypes.guess_type(str(file_path))
+    return FileResponse(open(file_path, "rb"), content_type=content_type or "application/octet-stream")
 
 
 @login_required
