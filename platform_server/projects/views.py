@@ -13,7 +13,7 @@ import asyncio
 from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
@@ -46,6 +46,7 @@ from core.ai_api import OpenAIClient, normalize_json_text
 from core.language_direction import language_direction
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 from pipeline.mwe import normalize_mwes
+from pipeline.stage_artifacts import read_stage_artifact, stage_artifact_path, write_stage_artifact
 
 from .forms import (
     AdminCommunityForm,
@@ -68,6 +69,15 @@ from .forms import (
     RegistrationForm,
 )
 from .metadata import update_project_discovery_metadata
+from .legacy_clara_import import (
+    LegacyClaraImportError,
+    find_legacy_clara_bundle_root,
+    import_legacy_clara_bundle,
+    import_legacy_clara_project_dir_bundle,
+    is_legacy_clara_project_dir_bundle,
+    legacy_clara_bundle_title,
+    legacy_clara_project_dir_bundle_title,
+)
 from .billing import (
     apply_credit_delta,
     credits_enabled,
@@ -108,6 +118,7 @@ from .picture_dictionary import (
     add_words as picture_dictionary_add_words,
     compile_picture_dictionary as picture_dictionary_compile,
     ensure_picture_dictionary_for_community,
+    import_project_as_picture_dictionary,
     remove_entries_by_ids as picture_dictionary_remove_entries_by_ids,
     remove_words as picture_dictionary_remove_words,
 )
@@ -156,6 +167,7 @@ IMAGE_MODEL_CHOICES = [
 PAGE_IMAGE_PLACEMENT_CHOICES = ["none", "top", "bottom"]
 SEGMENTATION_METHOD_CHOICES = ["auto", "jieba", "ai"]
 ROMANIZATION_METHOD_CHOICES = ["auto", "pypinyin", "indic_transliteration", "ai"]
+LEGACY_IMPORT_PROCESSING_METHOD = "legacy_clara_import"
 CONTENT_DATE_FILTERS = {
     "any": None,
     "last_3_days": timedelta(days=3),
@@ -285,6 +297,17 @@ def _require_admin(user) -> None:
     _ensure_bootstrap_admin(user)
     if not user.is_staff:
         raise Http404()
+
+
+def _normalize_processing_method_choice(method: str | None, valid_choices: list[str]) -> str:
+    """Normalize stored processing options while preserving validation for bad user input."""
+
+    normalized = (method or "auto").strip().lower()
+    if normalized == LEGACY_IMPORT_PROCESSING_METHOD:
+        return "auto"
+    if normalized in valid_choices:
+        return normalized
+    return normalized
 
 
 def _resolve_segmentation_method(language: str, configured: str | None) -> str:
@@ -3745,7 +3768,7 @@ def _save_versioned_stage_payload(
     target_run = run_dir or _ensure_stage_run_dir(project)
     stage_dir = target_run / "stages"
     stage_dir.mkdir(parents=True, exist_ok=True)
-    (stage_dir / f"{stage_name}.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    write_stage_artifact(target_run, stage_name, payload)
     versions_dir = stage_dir / "manual_versions"
     versions_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
@@ -4455,13 +4478,11 @@ def _build_phase2_seed_from_seg1(seg1_payload: dict[str, Any]) -> dict[str, Any]
 
 
 def _salvage_segmentation_phase_2_for_run(run_dir: Path) -> dict[str, Any] | None:
-    seg1_path = run_dir / "stages" / "segmentation_phase_1.json"
-    seg2_path = run_dir / "stages" / "segmentation_phase_2.json"
-    if not seg1_path.exists() or not seg2_path.exists():
+    if not stage_artifact_path(run_dir, "segmentation_phase_1").exists() or not stage_artifact_path(run_dir, "segmentation_phase_2").exists():
         return None
     try:
-        seg1_payload = json.loads(seg1_path.read_text(encoding="utf-8"))
-        seg2_payload = json.loads(seg2_path.read_text(encoding="utf-8"))
+        seg1_payload = read_stage_artifact(run_dir, "segmentation_phase_1")
+        seg2_payload = read_stage_artifact(run_dir, "segmentation_phase_2")
     except Exception:
         return None
     if not isinstance(seg1_payload, dict) or not isinstance(seg2_payload, dict):
@@ -4497,10 +4518,7 @@ def _salvage_segmentation_phase_2_for_run(run_dir: Path) -> dict[str, Any] | Non
 
     if unchanged_pages == 0:
         return None
-    (run_dir / "stages" / "segmentation_phase_2.json").write_text(
-        json.dumps(salvaged, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+    write_stage_artifact(run_dir, "segmentation_phase_2", salvaged)
     return {"unchanged_pages": unchanged_pages, "total_pages": len(new_hashes)}
 
 
@@ -4509,7 +4527,7 @@ def _invalidate_downstream_stage_files(run_dir: Path, from_stage: str) -> None:
         return
     from_index = PIPELINE_ORDER.index(from_stage)
     for stage in PIPELINE_ORDER[from_index + 1 :]:
-        path = run_dir / "stages" / f"{stage}.json"
+        path = stage_artifact_path(run_dir, stage)
         if path.exists():
             path.unlink()
 
@@ -4916,10 +4934,7 @@ def manual_segmentation_phase_2(request: HttpRequest, pk: int) -> HttpResponse:
     seg2_payload, reconciled = _reconcile_phase2_payload_with_seg1(seg1_payload, seg2_payload)
     if reconciled:
         target_run = _ensure_stage_run_dir(project)
-        (target_run / "stages" / "segmentation_phase_2.json").write_text(
-            json.dumps(seg2_payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        write_stage_artifact(target_run, "segmentation_phase_2", seg2_payload)
         messages.warning(
             request,
             "Segmentation phase 2 was out of sync with phase 1 and has been auto-reconciled; "
@@ -4983,10 +4998,7 @@ def manual_mwe(request: HttpRequest, pk: int) -> HttpResponse:
     mwe_payload, reconciled = _reconcile_mwe_payload_with_seg2(seg2_payload, mwe_payload)
     if reconciled:
         target_run = _ensure_stage_run_dir(project)
-        (target_run / "stages" / "mwe.json").write_text(
-            json.dumps(mwe_payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        write_stage_artifact(target_run, "mwe", mwe_payload)
         messages.warning(
             request,
             "MWE stage was out of sync with segmentation phase 2 and has been auto-reconciled; "
@@ -5046,10 +5058,7 @@ def manual_lemma(request: HttpRequest, pk: int) -> HttpResponse:
     lemma_payload, reconciled = _reconcile_lemma_payload_with_mwe(mwe_payload, lemma_payload)
     if reconciled:
         target_run = _ensure_stage_run_dir(project)
-        (target_run / "stages" / "lemma.json").write_text(
-            json.dumps(lemma_payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        write_stage_artifact(target_run, "lemma", lemma_payload)
         messages.warning(
             request,
             "Lemma stage was out of sync with MWE and has been auto-reconciled; "
@@ -5113,10 +5122,7 @@ def manual_gloss(request: HttpRequest, pk: int) -> HttpResponse:
     gloss_payload, reconciled = _reconcile_gloss_payload_with_lemma(lemma_payload, gloss_payload)
     if reconciled:
         target_run = _ensure_stage_run_dir(project)
-        (target_run / "stages" / "gloss.json").write_text(
-            json.dumps(gloss_payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        write_stage_artifact(target_run, "gloss", gloss_payload)
         messages.warning(
             request,
             "Gloss stage was out of sync with lemma and has been auto-reconciled; "
@@ -5176,10 +5182,7 @@ def manual_pinyin(request: HttpRequest, pk: int) -> HttpResponse:
     pinyin_payload, reconciled = _reconcile_pinyin_payload_with_gloss(gloss_payload, pinyin_payload)
     if reconciled:
         target_run = _ensure_stage_run_dir(project)
-        (target_run / "stages" / "pinyin.json").write_text(
-            json.dumps(pinyin_payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        write_stage_artifact(target_run, "pinyin", pinyin_payload)
         messages.warning(
             request,
             "Pinyin/romanization stage was out of sync with gloss and has been auto-reconciled; "
@@ -5239,10 +5242,7 @@ def manual_translation(request: HttpRequest, pk: int) -> HttpResponse:
     tr_payload, reconciled = _reconcile_translation_payload_with_seg2(seg2_payload, tr_payload)
     if reconciled:
         target_run = _ensure_stage_run_dir(project)
-        (target_run / "stages" / "translation.json").write_text(
-            json.dumps(tr_payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        write_stage_artifact(target_run, "translation", tr_payload)
         messages.warning(
             request,
             "Translation stage was out of sync with segmentation phase 2 and has been auto-reconciled; "
@@ -5897,11 +5897,11 @@ def _load_stage_payload(
         run_dir = _find_run_with_stage(project, stage) or _resolve_run_dir(project)
     if not run_dir:
         return None
-    path = run_dir / "stages" / f"{stage}.json"
+    path = stage_artifact_path(run_dir, stage)
     if not path.exists():
         return None
     try:
-        return normalize_json_text(json.loads(path.read_text(encoding="utf-8")))
+        return normalize_json_text(read_stage_artifact(run_dir, stage))
     except Exception:
         return None
 
@@ -5928,7 +5928,7 @@ def _latest_stage_artifact(project: Project, stage: str) -> tuple[Path, Path, fl
     run_dir = _find_run_with_stage(project, stage)
     if run_dir is None:
         return None
-    stage_path = run_dir / "stages" / f"{stage}.json"
+    stage_path = stage_artifact_path(run_dir, stage)
     if not stage_path.exists():
         return None
     try:
@@ -6074,8 +6074,18 @@ def _compose_latest_compile_payload(project: Project) -> tuple[dict[str, Any] | 
     return normalize_json_text(composed), plan
 
 
-def _build_picture_glosses_for_compile(*, project: Project, output_dir: Path) -> dict[str, dict[str, str]]:
+def _build_picture_glosses_for_compile(
+    *,
+    project: Project,
+    output_dir: Path,
+    diagnostics: list[str] | None = None,
+) -> dict[str, dict[str, str]]:
+    def _record(message: str) -> None:
+        if diagnostics is not None:
+            diagnostics.append(message)
+
     if not project.community_id:
+        _record("Picture gloss diagnostics: project has no community; no dictionary lookup attempted.")
         return {}
     picture_glosses: dict[str, dict[str, str]] = {}
     picture_gloss_dir = output_dir / "html" / "picture_glosses"
@@ -6086,32 +6096,71 @@ def _build_picture_glosses_for_compile(*, project: Project, output_dir: Path) ->
         .first()
     )
     if not dictionary:
+        _record(f"Picture gloss diagnostics: no active picture dictionary for community_id={project.community_id}.")
         return {}
-    for entry in PictureDictionaryEntry.objects.filter(
-        dictionary=dictionary,
-        is_active=True,
-    ):
+
+    entries = list(
+        PictureDictionaryEntry.objects.filter(
+            dictionary=dictionary,
+            is_active=True,
+        ).order_by("id")
+    )
+    entry_image_path_count = sum(1 for entry in entries if (entry.image_path or "").strip())
+    entry_page_number_count = sum(1 for entry in entries if entry.current_page_number)
+    dictionary_pages = list(
+        ProjectImagePage.objects.select_related("preferred_variant")
+        .filter(project=dictionary.project)
+        .order_by("page_number", "id")
+    )
+    page_image_path_count = sum(1 for page in dictionary_pages if (page.image_path or "").strip())
+    page_preferred_variant_count = sum(1 for page in dictionary_pages if page.preferred_variant_id)
+    page_preferred_variant_image_count = sum(
+        1
+        for page in dictionary_pages
+        if page.preferred_variant_id and page.preferred_variant and (page.preferred_variant.image_path or "").strip()
+    )
+    page_by_number = {page.page_number: page for page in dictionary_pages}
+    page_by_text: dict[str, ProjectImagePage] = {}
+    for page in dictionary_pages:
+        page_text_key = (page.page_text or "").strip().casefold()
+        if page_text_key and page_text_key not in page_by_text:
+            page_by_text[page_text_key] = page
+    missing_lemma: list[str] = []
+    duplicate_lemma: list[str] = []
+    missing_image_path: list[str] = []
+    missing_image_file: list[str] = []
+    mapped_samples: list[str] = []
+    page_fallback_count = 0
+    for entry in entries:
         lemma_key = (entry.lemma or entry.surface or "").strip().casefold()
-        if not lemma_key or lemma_key in picture_glosses:
+        label = f"entry_id={entry.id}, surface={entry.surface!r}, lemma={entry.lemma!r}, page={entry.current_page_number}"
+        if not lemma_key:
+            missing_lemma.append(label)
+            continue
+        if lemma_key in picture_glosses:
+            duplicate_lemma.append(label)
             continue
         resolved_image_path = (entry.image_path or "").strip()
         if not resolved_image_path:
-            page_qs = ProjectImagePage.objects.select_related("preferred_variant").filter(project=dictionary.project)
+            page = None
             if entry.current_page_number:
-                page = page_qs.filter(page_number=entry.current_page_number).first()
-            else:
-                page = page_qs.filter(page_text=entry.surface).order_by("page_number").first()
+                page = page_by_number.get(entry.current_page_number)
+            if page is None:
+                page = page_by_text.get((entry.surface or "").strip().casefold())
             if page:
                 resolved_image_path = (page.image_path or "").strip()
                 if not resolved_image_path and page.preferred_variant_id and page.preferred_variant:
                     resolved_image_path = (page.preferred_variant.image_path or "").strip()
             if resolved_image_path:
+                page_fallback_count += 1
                 entry.image_path = resolved_image_path
                 entry.save(update_fields=["image_path", "updated_at"])
         if not resolved_image_path:
+            missing_image_path.append(label)
             continue
         abs_path = (dictionary.project.artifact_dir() / resolved_image_path).resolve()
         if not abs_path.exists():
+            missing_image_file.append(f"{label}, image_path={resolved_image_path!r}, abs={abs_path}")
             continue
         if dictionary.project_id == project.id:
             rel_path = os.path.relpath(abs_path, output_dir / "html").replace("\\", "/")
@@ -6129,6 +6178,32 @@ def _build_picture_glosses_for_compile(*, project: Project, output_dir: Path) ->
             "image_path": rel_path,
             "surface": entry.surface or entry.lemma or "",
         }
+        if len(mapped_samples) < 5:
+            mapped_samples.append(f"{lemma_key}->{rel_path}")
+
+    _record(
+        "Picture gloss diagnostics: "
+        f"community_id={project.community_id}, dictionary_id={dictionary.id}, "
+        f"dictionary_project_id={dictionary.project_id}, active_entries={len(entries)}, "
+        f"entry_image_paths_before_fallback={entry_image_path_count}, entry_page_numbers={entry_page_number_count}, "
+        f"dictionary_pages={len(dictionary_pages)}, page_image_paths={page_image_path_count}, "
+        f"page_preferred_variants={page_preferred_variant_count}, "
+        f"page_preferred_variant_images={page_preferred_variant_image_count}, "
+        f"entry_image_paths_after_fallback={entry_image_path_count + page_fallback_count}, "
+        f"mapped={len(picture_glosses)}, page_fallbacks={page_fallback_count}, "
+        f"missing_lemma={len(missing_lemma)}, duplicate_lemma={len(duplicate_lemma)}, "
+        f"missing_image_path={len(missing_image_path)}, missing_image_file={len(missing_image_file)}."
+    )
+
+    def _sample(label: str, values: list[str]) -> None:
+        if values:
+            _record(f"Picture gloss diagnostics {label} sample: " + "; ".join(values[:5]))
+
+    _sample("mapped", mapped_samples)
+    _sample("missing_lemma", missing_lemma)
+    _sample("duplicate_lemma", duplicate_lemma)
+    _sample("missing_image_path", missing_image_path)
+    _sample("missing_image_file", missing_image_file)
     return picture_glosses
 
 
@@ -6232,8 +6307,15 @@ def _run_compile_task(
         )
         post_update("Pipeline spec initialized.")
         try:
-            spec.picture_glosses = _build_picture_glosses_for_compile(project=project, output_dir=output_dir)
+            picture_gloss_diagnostics: list[str] = []
+            spec.picture_glosses = _build_picture_glosses_for_compile(
+                project=project,
+                output_dir=output_dir,
+                diagnostics=picture_gloss_diagnostics,
+            )
             post_update(f"Prepared picture gloss map: {len(spec.picture_glosses)} lemma image(s).")
+            for diagnostic in picture_gloss_diagnostics:
+                post_update(diagnostic)
         except Exception as gloss_exc:
             logger.exception("Failed to build picture gloss map for project %s; continuing without picture glosses", project_id)
             spec.picture_glosses = {}
@@ -6505,8 +6587,12 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         project.ai_model = ai_model
         project.save(update_fields=["ai_model", "updated_at"])
 
-    segmentation_method = (request.POST.get("segmentation_method") or project.segmentation_method or "auto").strip().lower()
-    romanization_method = (request.POST.get("romanization_method") or project.romanization_method or "auto").strip().lower()
+    segmentation_method = _normalize_processing_method_choice(
+        request.POST.get("segmentation_method") or project.segmentation_method, SEGMENTATION_METHOD_CHOICES
+    )
+    romanization_method = _normalize_processing_method_choice(
+        request.POST.get("romanization_method") or project.romanization_method, ROMANIZATION_METHOD_CHOICES
+    )
     if segmentation_method not in SEGMENTATION_METHOD_CHOICES:
         messages.error(request, "Unknown segmentation method option.")
         return redirect(return_to)
@@ -6707,8 +6793,12 @@ def set_page_image_placement(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
-    segmentation_method = (request.POST.get("segmentation_method") or project.segmentation_method or "auto").strip().lower()
-    romanization_method = (request.POST.get("romanization_method") or project.romanization_method or "auto").strip().lower()
+    segmentation_method = _normalize_processing_method_choice(
+        request.POST.get("segmentation_method") or project.segmentation_method, SEGMENTATION_METHOD_CHOICES
+    )
+    romanization_method = _normalize_processing_method_choice(
+        request.POST.get("romanization_method") or project.romanization_method, ROMANIZATION_METHOD_CHOICES
+    )
     if segmentation_method not in SEGMENTATION_METHOD_CHOICES:
         messages.error(request, "Unknown segmentation method option.")
         return redirect("project-detail", pk=project.pk)
@@ -7374,10 +7464,11 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
     if picture_dictionary:
         style = getattr(picture_dictionary.project, "image_style", None)
         picture_dictionary_style_brief = ((style.style_brief or "").strip() if style else "")
-        seg1_path = picture_dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages" / "segmentation_phase_1.json"
+        seg1_run = picture_dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
+        seg1_path = stage_artifact_path(seg1_run, "segmentation_phase_1")
         if seg1_path.exists():
             try:
-                payload = json.loads(seg1_path.read_text(encoding="utf-8"))
+                payload = read_stage_artifact(seg1_run, "segmentation_phase_1")
             except Exception:
                 payload = {}
             picture_dictionary_compile_info = {
@@ -7388,6 +7479,40 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
     if request.method == "POST":
         action = (request.POST.get("picture_dictionary_action") or "").strip()
         if action:
+            if action == "import_from_project":
+                source_project_id_raw = (request.POST.get("source_project_id") or "").strip()
+                try:
+                    source_project_id = int(source_project_id_raw)
+                except ValueError:
+                    source_project_id = 0
+                source_project = next((row for row in projects if row.id == source_project_id), None)
+                if not source_project:
+                    messages.error(request, "Please choose a valid community project to import as a picture dictionary.")
+                else:
+                    try:
+                        picture_dictionary, summary = import_project_as_picture_dictionary(
+                            community=community,
+                            organiser=request.user,
+                            source_project=source_project,
+                        )
+                    except ValueError as exc:
+                        messages.error(request, str(exc))
+                    except PermissionDenied:
+                        raise Http404()
+                    else:
+                        messages.success(
+                            request,
+                            "Imported “%s” as a picture dictionary copy with %s entr%s."
+                            % (
+                                source_project.title,
+                                summary.get("entries_created", 0),
+                                "y" if summary.get("entries_created") == 1 else "ies",
+                            ),
+                        )
+                        for diagnostic in summary.get("diagnostics", []):
+                            messages.info(request, str(diagnostic))
+                return redirect("community-organiser-home", community_id=community_id)
+
             try:
                 picture_dictionary = ensure_picture_dictionary_for_community(
                     community=community,
@@ -7641,8 +7766,12 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
 @login_required
 def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
-    segmentation_method = (request.POST.get("segmentation_method") or project.segmentation_method or "auto").strip().lower()
-    romanization_method = (request.POST.get("romanization_method") or project.romanization_method or "auto").strip().lower()
+    segmentation_method = _normalize_processing_method_choice(
+        request.POST.get("segmentation_method") or project.segmentation_method, SEGMENTATION_METHOD_CHOICES
+    )
+    romanization_method = _normalize_processing_method_choice(
+        request.POST.get("romanization_method") or project.romanization_method, ROMANIZATION_METHOD_CHOICES
+    )
     if segmentation_method not in SEGMENTATION_METHOD_CHOICES:
         messages.error(request, "Unknown segmentation method option.")
         return redirect("project-detail", pk=project.pk)
@@ -7987,7 +8116,7 @@ def set_project_target_language(request: HttpRequest, pk: int) -> HttpResponse:
     removed_files = 0
     for run_dir in _iter_runs(project):
         for stage_name in ("translation", "gloss"):
-            stage_path = run_dir / "stages" / f"{stage_name}.json"
+            stage_path = stage_artifact_path(run_dir, stage_name)
             if stage_path.exists():
                 stage_path.unlink()
                 removed_files += 1
@@ -8044,20 +8173,94 @@ def serve_compiled(request: HttpRequest, pk: int, path: str) -> HttpResponse:
     return HttpResponse(data, content_type=content_type or "application/octet-stream")
 
 
-def _extract_segment_candidates_for_cloze(run_dir: Path) -> list[dict[str, Any]]:
-    stage_names = ["gloss", "lemma", "mwe", "translation", "segmentation_phase_2"]
-    payload = None
-    for stage in stage_names:
-        path = run_dir / "stages" / f"{stage}.json"
-        if path.exists():
+EXERCISE_SOURCE_STAGE_NAMES = ["gloss", "lemma", "mwe", "translation", "segmentation_phase_2"]
+EXERCISE_CLOZE_STOPWORDS = {
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "but",
+    "by",
+    "for",
+    "from",
+    "had",
+    "has",
+    "he",
+    "her",
+    "him",
+    "his",
+    "in",
+    "is",
+    "it",
+    "its",
+    "of",
+    "on",
+    "one",
+    "or",
+    "she",
+    "that",
+    "the",
+    "their",
+    "them",
+    "they",
+    "to",
+    "too",
+    "was",
+    "were",
+    "with",
+}
+
+
+def _exercise_run_candidates(run_dir: Path) -> list[Path]:
+    """Return run directories to try when extracting exercise source material.
+
+    Imported legacy projects are often recompiled from existing artifacts.  That
+    can leave the newest run containing only compile output while the usable
+    token/gloss stages remain in an older import run.  Exercise generation should
+    therefore fall back through sibling runs instead of treating the newest
+    compile-only run as authoritative.
+    """
+
+    primary = Path(run_dir)
+    runs_root = primary.parent
+    candidates: list[Path] = []
+    if primary.exists():
+        candidates.append(primary)
+    if runs_root.exists():
+        siblings = [path for path in runs_root.iterdir() if path.is_dir() and path != primary]
+        siblings.sort(key=lambda path: path.stat().st_mtime, reverse=True)
+        candidates.extend(siblings)
+    return candidates
+
+
+def _exercise_stage_payloads(run_dir: Path, stage_names: list[str]) -> list[dict[str, Any]]:
+    payloads: list[dict[str, Any]] = []
+    for candidate_run in _exercise_run_candidates(run_dir):
+        for stage in stage_names:
+            path = stage_artifact_path(candidate_run, stage)
+            if not path.exists():
+                continue
             try:
-                payload = json.loads(path.read_text(encoding="utf-8"))
-                break
+                payload = read_stage_artifact(candidate_run, stage)
             except Exception:
                 continue
-    if not payload:
-        return []
+            if isinstance(payload, dict):
+                payloads.append(payload)
+                break
+    return payloads
 
+
+def _is_cloze_word_candidate(surface: str) -> bool:
+    normalized = surface.strip()
+    if not any(ch.isalpha() for ch in normalized):
+        return False
+    return normalized.casefold() not in EXERCISE_CLOZE_STOPWORDS
+
+
+def _extract_segment_candidates_from_payload(payload: dict[str, Any]) -> list[dict[str, Any]]:
     candidates: list[dict[str, Any]] = []
     for page in payload.get("pages", []):
         page_number = page.get("page_number", 1)
@@ -8071,7 +8274,7 @@ def _extract_segment_candidates_for_cloze(run_dir: Path) -> list[dict[str, Any]]
                     continue
                 if ann.get("mwe_id"):
                     continue
-                if any(ch.isalpha() for ch in surface):
+                if _is_cloze_word_candidate(surface):
                     words.append(surface)
             if words:
                 seg_text = "".join(t.get("surface", "") for t in tokens).strip() or seg.get("surface", "")
@@ -8086,20 +8289,15 @@ def _extract_segment_candidates_for_cloze(run_dir: Path) -> list[dict[str, Any]]
     return candidates
 
 
-def _extract_token_candidates_for_flashcards(run_dir: Path) -> list[dict[str, Any]]:
-    stage_names = ["gloss", "lemma", "mwe", "translation", "segmentation_phase_2"]
-    payload = None
-    for stage in stage_names:
-        path = run_dir / "stages" / f"{stage}.json"
-        if path.exists():
-            try:
-                payload = json.loads(path.read_text(encoding="utf-8"))
-                break
-            except Exception:
-                continue
-    if not payload:
-        return []
+def _extract_segment_candidates_for_cloze(run_dir: Path) -> list[dict[str, Any]]:
+    for payload in _exercise_stage_payloads(run_dir, EXERCISE_SOURCE_STAGE_NAMES):
+        candidates = _extract_segment_candidates_from_payload(payload)
+        if candidates:
+            return candidates
+    return []
 
+
+def _extract_token_candidates_from_payload(payload: dict[str, Any]) -> list[dict[str, Any]]:
     candidates: list[dict[str, Any]] = []
     seen: set[tuple[str, str]] = set()
     for page in payload.get("pages", []):
@@ -8133,12 +8331,45 @@ def _extract_token_candidates_for_flashcards(run_dir: Path) -> list[dict[str, An
     return candidates
 
 
+def _extract_token_candidates_for_flashcards(run_dir: Path) -> list[dict[str, Any]]:
+    for payload in _exercise_stage_payloads(run_dir, EXERCISE_SOURCE_STAGE_NAMES):
+        candidates = _extract_token_candidates_from_payload(payload)
+        if candidates:
+            return candidates
+    return []
+
+
+def _append_fallback_distractors(
+    distractors: list[str],
+    fallback_values: list[str],
+    *,
+    forbidden_values: set[str],
+    limit: int = 3,
+) -> list[str]:
+    """Top up distractors from known project values before using placeholders."""
+
+    seen = {value.casefold() for value in distractors}
+    forbidden = {value.casefold() for value in forbidden_values if value}
+    topped_up = list(distractors)
+    for value in fallback_values:
+        candidate = str(value or "").strip()
+        key = candidate.casefold()
+        if not candidate or key in seen or key in forbidden:
+            continue
+        topped_up.append(candidate)
+        seen.add(key)
+        if len(topped_up) >= limit:
+            break
+    return topped_up[:limit]
+
+
 async def _generate_cloze_item(
     client: OpenAIClient,
     model: str,
     theme: str,
     candidate: dict[str, Any],
     order_index: int,
+    fallback_words: list[str],
 ) -> dict[str, Any]:
     target_word = candidate["words"][order_index % len(candidate["words"])]
     segment_text = candidate["segment_text"]
@@ -8160,11 +8391,18 @@ Return JSON with:
     except Exception:
         data = {}
     distractors = [str(x).strip() for x in (data.get("distractors") or []) if str(x).strip()]
-    distractors = [d for d in distractors if d.lower() != target_word.lower()]
-    distractors = distractors[:3]
+    distractors = [d for d in distractors if d.casefold() != target_word.casefold()]
+    distractors = _append_fallback_distractors(
+        distractors[:3],
+        fallback_words,
+        forbidden_values={target_word},
+    )
     while len(distractors) < 3:
         distractors.append(f"{target_word}_{len(distractors)+1}")
     options = [target_word] + distractors
+    random.Random(f"{target_word}|{segment_text}|{order_index}|cloze").shuffle(options)
+    if options and options[0] == target_word and len(options) > 1:
+        options[0], options[1] = options[1], options[0]
     return {
         "order_index": order_index,
         "page_number": candidate["page_number"],
@@ -8184,6 +8422,7 @@ async def _generate_flashcard_item(
     candidate: dict[str, Any],
     order_index: int,
     flashcard_mode: str,
+    fallback_values: list[str],
 ) -> dict[str, Any]:
     source_word = candidate["source_word"]
     correct_gloss = candidate["target_gloss"]
@@ -8237,12 +8476,16 @@ Return JSON with:
             for d in distractors
             if d.lower() != correct_gloss.lower() and d.lower() != source_word.lower()
         ]
-    distractors = distractors[:3]
+    answer = source_word if flashcard_mode == "meaning_to_form" else correct_gloss
+    distractors = _append_fallback_distractors(
+        distractors[:3],
+        fallback_values,
+        forbidden_values={source_word, correct_gloss, answer},
+    )
     while len(distractors) < 3:
-        filler_base = source_word if flashcard_mode == "meaning_to_form" else correct_gloss
+        filler_base = answer
         distractors.append(f"{filler_base}_{len(distractors)+1}")
 
-    answer = source_word if flashcard_mode == "meaning_to_form" else correct_gloss
     prompt_text = (
         f"What is the best source-language word for: {correct_gloss}?"
         if flashcard_mode == "meaning_to_form"
@@ -8285,6 +8528,9 @@ def generate_cloze_exercises(request: HttpRequest, pk: int) -> HttpResponse:
                 return redirect("project-detail", pk=project.pk)
 
             selected = candidates[:item_count]
+            fallback_words = []
+            for cand in candidates:
+                fallback_words.extend(cand.get("words") or [])
             ex_set = ExerciseSet.objects.create(
                 project=project,
                 exercise_type=ExerciseSet.TYPE_CLOZE,
@@ -8301,7 +8547,7 @@ def generate_cloze_exercises(request: HttpRequest, pk: int) -> HttpResponse:
                     request_type="exercise_cloze_generation",
                 )
                 tasks = [
-                    _generate_cloze_item(client, model, theme, cand, idx)
+                    _generate_cloze_item(client, model, theme, cand, idx, fallback_words)
                     for idx, cand in enumerate(selected)
                 ]
                 return await asyncio.gather(*tasks)
@@ -8365,6 +8611,10 @@ def generate_flashcard_exercises(request: HttpRequest, pk: int) -> HttpResponse:
                 return redirect("project-detail", pk=project.pk)
 
             selected = candidates[:item_count]
+            fallback_values = [
+                cand["source_word"] if flashcard_mode == "meaning_to_form" else cand["target_gloss"]
+                for cand in candidates
+            ]
             ex_set = ExerciseSet.objects.create(
                 project=project,
                 exercise_type=ExerciseSet.TYPE_FLASHCARD,
@@ -8382,7 +8632,7 @@ def generate_flashcard_exercises(request: HttpRequest, pk: int) -> HttpResponse:
                     request_type="exercise_flashcard_generation",
                 )
                 tasks = [
-                    _generate_flashcard_item(client, model, theme, cand, idx, flashcard_mode)
+                    _generate_flashcard_item(client, model, theme, cand, idx, flashcard_mode, fallback_values)
                     for idx, cand in enumerate(selected)
                 ]
                 return await asyncio.gather(*tasks)
@@ -8636,6 +8886,7 @@ def download_project_source_bundle(request: HttpRequest, pk: int) -> HttpRespons
             "sample_image_path": style.sample_image_path,
             "sample_image_revised_prompt": style.sample_image_revised_prompt,
             "sample_image_model": style.sample_image_model,
+            "discourage_text_in_images": style.discourage_text_in_images,
             "ai_model": style.ai_model,
             "status": style.status,
         }
@@ -8730,216 +8981,616 @@ def download_project_source_bundle(request: HttpRequest, pk: int) -> HttpRespons
     return FileResponse(spool, as_attachment=True, filename=filename, content_type="application/zip")
 
 
+def _legacy_bundle_library_root() -> Path | None:
+    configured = (getattr(settings, "LEGACY_CLARA_BUNDLE_LIBRARY_ROOT", "") or "").strip()
+    if not configured:
+        return None
+    return Path(configured).expanduser().resolve()
+
+
+def _legacy_bundle_library_metadata_path() -> Path | None:
+    root = _legacy_bundle_library_root()
+    if root is None:
+        return None
+    configured = (getattr(settings, "LEGACY_CLARA_BUNDLE_LIBRARY_METADATA", "legacy_bundle_metadata.json") or "legacy_bundle_metadata.json").strip()
+    path = Path(configured).expanduser()
+    if not path.is_absolute():
+        path = root / path
+    return path.resolve()
+
+
+def _legacy_bundle_library_diagnostics() -> dict[str, Any]:
+    root_setting = getattr(settings, "LEGACY_CLARA_BUNDLE_LIBRARY_ROOT", "") or ""
+    metadata_setting = getattr(settings, "LEGACY_CLARA_BUNDLE_LIBRARY_METADATA", "legacy_bundle_metadata.json") or "legacy_bundle_metadata.json"
+    root = _legacy_bundle_library_root()
+    metadata_path = _legacy_bundle_library_metadata_path()
+    return {
+        "root_setting": root_setting,
+        "metadata_setting": metadata_setting,
+        "root_path": str(root) if root is not None else "",
+        "root_exists": bool(root and root.exists()),
+        "root_is_dir": bool(root and root.is_dir()),
+        "metadata_path": str(metadata_path) if metadata_path is not None else "",
+        "metadata_exists": bool(metadata_path and metadata_path.exists()),
+        "env_root_present": "C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT" in os.environ,
+        "env_metadata_present": "C_LARA_LEGACY_BUNDLE_LIBRARY_METADATA" in os.environ,
+        "process_pid": os.getpid(),
+    }
+
+
+def _load_legacy_bundle_library() -> tuple[list[dict[str, Any]], str | None]:
+    root = _legacy_bundle_library_root()
+    metadata_path = _legacy_bundle_library_metadata_path()
+    if root is None or metadata_path is None:
+        return [], "Legacy bundle library root is not configured."
+    if not root.exists() or not root.is_dir():
+        return [], f"Legacy bundle library root does not exist: {root}"
+    try:
+        metadata_path.relative_to(root)
+    except ValueError:
+        return [], "Legacy bundle metadata file must be inside the configured library root."
+    if not metadata_path.exists():
+        return [], f"Legacy bundle metadata file does not exist: {metadata_path}"
+    try:
+        payload = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except Exception as exc:  # noqa: BLE001
+        return [], f"Could not read legacy bundle metadata: {exc}"
+    if isinstance(payload, list):
+        rows = payload
+    elif isinstance(payload, dict) and isinstance(payload.get("bundles"), list):
+        rows = payload["bundles"]
+    else:
+        return [], "Legacy bundle metadata must be a list or an object with a bundles list."
+    bundles = [row for row in rows if isinstance(row, dict)]
+    return bundles, None
+
+
+def _filter_legacy_bundle_rows(rows: list[dict[str, Any]], query: dict[str, str]) -> list[dict[str, Any]]:
+    def contains(value: Any, needle: str) -> bool:
+        return not needle or needle.casefold() in str(value or "").casefold()
+
+    title = (query.get("title") or "").strip()
+    owner = (query.get("owner") or "").strip()
+    l2 = (query.get("l2") or "").strip()
+    l1 = (query.get("l1") or "").strip()
+    filtered = []
+    for row in rows:
+        if not contains(row.get("title"), title):
+            continue
+        if not contains(row.get("owner_username") or row.get("userid") or row.get("user_id"), owner):
+            continue
+        if not contains(row.get("l2") or row.get("source_language") or row.get("language"), l2):
+            continue
+        if not contains(row.get("l1") or row.get("target_language"), l1):
+            continue
+        filtered.append(row)
+    return filtered
+
+
+def _legacy_bundle_row_key(row: dict[str, Any]) -> str:
+    for key in ("id", "directory_name", "relative_path", "import_relative_path", "zip_relative_path"):
+        value = row.get(key)
+        if value not in (None, ""):
+            return str(value)
+    return ""
+
+
+def _find_legacy_bundle_row(rows: list[dict[str, Any]], selection: str) -> dict[str, Any] | None:
+    selection = (selection or "").strip()
+    if not selection:
+        return None
+    for row in rows:
+        if _legacy_bundle_row_key(row) == selection:
+            return row
+    return None
+
+
+def _safe_legacy_import_path(root: Path, row: dict[str, Any]) -> Path | None:
+    raw = (
+        row.get("import_relative_path")
+        or row.get("zip_relative_path")
+        or row.get("relative_path")
+        or row.get("directory_name")
+        or ""
+    )
+    if not raw:
+        return None
+    candidate = Path(str(raw))
+    if candidate.is_absolute():
+        return None
+    resolved = (root / candidate).resolve()
+    try:
+        resolved.relative_to(root)
+    except ValueError:
+        return None
+    return resolved
+
+
+def _zip_directory_to_spooled_file(directory: Path):
+    spool = tempfile.SpooledTemporaryFile(max_size=20 * 1024 * 1024)
+    with zipfile.ZipFile(spool, "w", zipfile.ZIP_DEFLATED) as zf:
+        for path in sorted(directory.rglob("*")):
+            if path.is_file():
+                zf.write(path, path.relative_to(directory).as_posix())
+    spool.seek(0)
+    return spool
+
+
+def _metadata_arcnames_for_legacy_source_zip(names: list[str]) -> list[str]:
+    """Return sidecar metadata locations for a legacy source.zip, if needed."""
+
+    if any(PurePosixPath(name).name == "metadata.json" for name in names):
+        return []
+
+    arcnames: list[str] = []
+    for name in names:
+        path = PurePosixPath(name)
+        if path.name != "annotated_text.json":
+            continue
+        parent = path.parent.as_posix()
+        arcnames.append("metadata.json" if parent == "." else f"{parent}/metadata.json")
+    return list(dict.fromkeys(arcnames))
+
+
+def _legacy_zip_trace(names: list[str], *, limit: int = 20) -> dict[str, Any]:
+    annotated = [name for name in names if PurePosixPath(name).name == "annotated_text.json"]
+    metadata = [name for name in names if PurePosixPath(name).name == "metadata.json"]
+    return {
+        "entry_count": len(names),
+        "first_entries": names[:limit],
+        "annotated_text_entries": annotated[:limit],
+        "metadata_entries": metadata[:limit],
+        "legacy_root_detected": find_legacy_clara_bundle_root(names),
+    }
+
+
+def _format_legacy_import_trace(trace: dict[str, Any] | None) -> str:
+    if not trace:
+        return ""
+
+    parts = []
+    for key in (
+        "selected_import_path",
+        "selected_import_path_type",
+        "source_zip_path",
+        "sidecar_metadata_path",
+        "sidecar_metadata_exists",
+        "injected_metadata_entries",
+        "entry_count",
+        "annotated_text_entries",
+        "metadata_entries",
+        "legacy_root_detected",
+        "first_entries",
+    ):
+        if key in trace:
+            parts.append(f"{key}={trace[key]}")
+    return " Import trace: " + "; ".join(parts) if parts else ""
+
+
+def _zip_with_sidecar_legacy_metadata(zip_path: Path, metadata_path: Path):
+    """Copy a legacy source.zip to a spool, adding sibling metadata.json if needed."""
+
+    spool = tempfile.SpooledTemporaryFile(max_size=20 * 1024 * 1024)
+    with zipfile.ZipFile(zip_path) as source_zf:
+        names = source_zf.namelist()
+        metadata_arcnames = _metadata_arcnames_for_legacy_source_zip(names)
+        trace = {
+            **_legacy_zip_trace(names),
+            "source_zip_path": str(zip_path),
+            "sidecar_metadata_path": str(metadata_path),
+            "sidecar_metadata_exists": metadata_path.exists(),
+            "injected_metadata_entries": metadata_arcnames if metadata_path.exists() else [],
+        }
+        if not metadata_arcnames or not metadata_path.exists():
+            spool.write(zip_path.read_bytes())
+        else:
+            metadata_text = metadata_path.read_text(encoding="utf-8")
+            with zipfile.ZipFile(spool, "w", zipfile.ZIP_DEFLATED) as target_zf:
+                for info in source_zf.infolist():
+                    target_zf.writestr(info, source_zf.read(info.filename))
+                for metadata_arcname in metadata_arcnames:
+                    target_zf.writestr(metadata_arcname, metadata_text)
+            trace.update(_legacy_zip_trace(names + metadata_arcnames))
+    spool.seek(0)
+    return spool, trace
+
+
+def _open_server_bundle_for_import(import_path: Path):
+    """Return a spooled ZIP and trace data for a configured server-side bundle path."""
+
+    base_trace = {
+        "selected_import_path": str(import_path),
+        "selected_import_path_type": "directory" if import_path.is_dir() else "file",
+    }
+
+    if import_path.is_dir():
+        zip_candidates = sorted(import_path.glob("*.zip"), key=lambda p: (p.name != "source.zip", p.name))
+        metadata_path = import_path / "metadata.json"
+        if zip_candidates and metadata_path.exists():
+            spool, trace = _zip_with_sidecar_legacy_metadata(zip_candidates[0], metadata_path)
+            trace.update(base_trace)
+            return spool, trace
+        spool = _zip_directory_to_spooled_file(import_path)
+        with zipfile.ZipFile(spool) as zf:
+            trace = {**base_trace, **_legacy_zip_trace(zf.namelist())}
+        spool.seek(0)
+        return spool, trace
+
+    metadata_path = import_path.with_name("metadata.json")
+    if import_path.suffix.lower() == ".zip" and metadata_path.exists():
+        spool, trace = _zip_with_sidecar_legacy_metadata(import_path, metadata_path)
+        trace.update(base_trace)
+        return spool, trace
+
+    spool = tempfile.SpooledTemporaryFile(max_size=20 * 1024 * 1024)
+    spool.write(import_path.read_bytes())
+    spool.seek(0)
+    with zipfile.ZipFile(spool) as zf:
+        trace = {**base_trace, **_legacy_zip_trace(zf.namelist())}
+    spool.seek(0)
+    return spool, trace
+
+
+def _import_open_project_source_zip(
+    request: HttpRequest,
+    zf: zipfile.ZipFile,
+    *,
+    error_redirect: str = "project-list",
+    import_trace: dict[str, Any] | None = None,
+) -> HttpResponse:
+    """Import an already opened source/legacy ZIP and redirect to the created project."""
+
+    names = zf.namelist()
+    if not names:
+        messages.error(request, "ZIP file is empty.")
+        return redirect(error_redirect)
+
+    root = Path(names[0]).parts[0]
+    legacy_root = find_legacy_clara_bundle_root(names)
+    if legacy_root is not None:
+        try:
+            base_title = legacy_clara_bundle_title(zf, legacy_root)
+            result = import_legacy_clara_bundle(
+                zf=zf,
+                names=names,
+                root=legacy_root,
+                user=request.user,
+                unique_title=_build_unique_import_title(request.user, base_title),
+            )
+        except LegacyClaraImportError as exc:
+            messages.error(request, str(exc))
+            return redirect(error_redirect)
+        _persist_project_source(result.project)
+        detail = ""
+        if result.diagnostics:
+            detail = f" Import diagnostics: {'; '.join(result.diagnostics[:3])}"
+        messages.success(request, f"Imported legacy C-LARA bundle as new project '{result.project.title}'.{detail}")
+        return redirect("project-detail", pk=result.project.pk)
+
+    if is_legacy_clara_project_dir_bundle(names):
+        try:
+            base_title = legacy_clara_project_dir_bundle_title(zf)
+            result = import_legacy_clara_project_dir_bundle(
+                zf=zf,
+                names=names,
+                user=request.user,
+                unique_title=_build_unique_import_title(request.user, base_title),
+            )
+        except LegacyClaraImportError as exc:
+            messages.error(request, f"{exc}{_format_legacy_import_trace(import_trace or _legacy_zip_trace(names))}")
+            return redirect(error_redirect)
+        _persist_project_source(result.project)
+        detail = ""
+        if result.diagnostics:
+            detail = f" Import diagnostics: {'; '.join(result.diagnostics[:3])}"
+        messages.success(request, f"Imported legacy C-LARA project_dir bundle as new project '{result.project.title}'.{detail}")
+        return redirect("project-detail", pk=result.project.pk)
+
+    metadata = _safe_zip_read_json(zf, f"{root}/project/metadata.json")
+    if not metadata:
+        legacy_hint = ""
+        if any(PurePosixPath(name).name == "annotated_text.json" for name in names):
+            legacy_hint = " The ZIP looks like a legacy C-LARA export because it contains annotated_text.json, but metadata.json was not found beside it."
+        messages.error(request, f"Bundle is missing project metadata.{legacy_hint}{_format_legacy_import_trace(import_trace or _legacy_zip_trace(names))}")
+        return redirect(error_redirect)
+
+    stage_prefix = f"{root}/stages/"
+    missing_stages = _missing_source_bundle_zip_stages(names, stage_prefix)
+    if missing_stages:
+        messages.error(
+            request,
+            "Source bundle is missing required stage artifacts: "
+            f"{', '.join(missing_stages)}. Re-export the project after regenerating source bundle stages.",
+        )
+        return redirect(error_redirect)
+
+    title = _build_unique_import_title(request.user, metadata.get("title", "Imported project"))
+    valid_pivot_languages = {code for code, _label in ProjectForm.LANGUAGE_CHOICES}
+    project = Project.objects.create(
+        owner=request.user,
+        title=title,
+        description=(metadata.get("description") or "")[:100000],
+        source_text=(metadata.get("source_text") or "")[:1000000],
+        input_mode=metadata.get("input_mode") if metadata.get("input_mode") in {Project.INPUT_DESCRIPTION, Project.INPUT_SOURCE} else Project.INPUT_SOURCE,
+        language=(metadata.get("language") or "en")[:16],
+        target_language=(metadata.get("target_language") or "fr")[:16],
+        ai_model=(metadata.get("ai_model") or DEFAULT_MODEL)[:64],
+        page_image_placement=(metadata.get("page_image_placement") or "none")[:16],
+        image_generation_pivot_language=(
+            (metadata.get("image_generation_pivot_language") or "none")
+            if (metadata.get("image_generation_pivot_language") or "none") in valid_pivot_languages
+            else "none"
+        ),
+        page_image_text_source=(
+            metadata.get("page_image_text_source")
+            if metadata.get("page_image_text_source") in {value for value, _label in Project.PAGE_IMAGE_TEXT_SOURCE_CHOICES}
+            else Project.PAGE_IMAGE_TEXT_SOURCE_SEGMENTATION
+        ),
+        access_scope=(
+            metadata.get("access_scope")
+            if metadata.get("access_scope") in {value for value, _label in Project.ACCESS_CHOICES}
+            else Project.ACCESS_PRIVATE
+        ),
+        segmentation_method=_normalize_processing_method_choice(
+            metadata.get("segmentation_method"), SEGMENTATION_METHOD_CHOICES
+        ) or "auto",
+        romanization_method=_normalize_processing_method_choice(
+            metadata.get("romanization_method"), ROMANIZATION_METHOD_CHOICES
+        ) or "auto",
+    )
+    artifact_root = project.artifact_dir()
+    artifact_root.mkdir(parents=True, exist_ok=True)
+    run_dir = artifact_root / "runs" / "run_imported_source_bundle"
+    stages_dir = run_dir / "stages"
+    stages_dir.mkdir(parents=True, exist_ok=True)
+
+    def _safe_write(member_name: str, target: Path) -> None:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with zf.open(member_name) as src, target.open("wb") as dst:
+            shutil.copyfileobj(src, dst)
+
+    for stage in PIPELINE_ORDER:
+        member = f"{root}/stages/{stage}.json"
+        if member in names:
+            _safe_write(member, stages_dir / f"{stage}.json")
+
+    logs_prefix = f"{root}/logs/"
+    for member_name in names:
+        if not member_name.startswith(logs_prefix):
+            continue
+        rel = Path(member_name).relative_to(logs_prefix)
+        target = (run_dir / "logs" / rel).resolve()
+        try:
+            target.relative_to(run_dir / "logs")
+        except ValueError:
+            continue
+        _safe_write(member_name, target)
+
+    style_payload = _safe_zip_read_json(zf, f"{root}/images/style.json")
+    if isinstance(style_payload, dict):
+        ProjectImageStyle.objects.update_or_create(
+            project=project,
+            defaults={
+                "style_brief": style_payload.get("style_brief") or "",
+                "expanded_style_description": (
+                    style_payload.get("expanded_style_description")
+                    or style_payload.get("style_text")
+                    or ""
+                ),
+                "representative_excerpt": style_payload.get("representative_excerpt") or "",
+                "sample_image_prompt": style_payload.get("sample_image_prompt") or "",
+                "sample_image_path": (style_payload.get("sample_image_path") or "")[:512],
+                "sample_image_revised_prompt": style_payload.get("sample_image_revised_prompt") or "",
+                "sample_image_model": (
+                    style_payload.get("sample_image_model")
+                    or style_payload.get("image_model")
+                    or "gpt-image-1"
+                )[:64],
+                "discourage_text_in_images": bool(style_payload.get("discourage_text_in_images")),
+                "ai_model": (style_payload.get("ai_model") or DEFAULT_MODEL)[:64],
+                "status": (style_payload.get("status") or ProjectImageStyle.STATUS_APPROVED)[:32],
+            },
+        )
+
+    elements_payload = _safe_zip_read_json(zf, f"{root}/images/elements.json")
+    if isinstance(elements_payload, list):
+        for row in elements_payload:
+            if not isinstance(row, dict):
+                continue
+            ProjectImageElement.objects.create(
+                project=project,
+                name=(row.get("name") or "Element")[:255],
+                element_type=(row.get("element_type") or "")[:64],
+                page_refs=(row.get("page_refs") or "")[:255],
+                why_consistency_matters=row.get("why_consistency_matters") or "",
+                expanded_description=row.get("expanded_description") or "",
+                expanded_prompt=row.get("expanded_prompt") or "",
+                image_model=(row.get("image_model") or "gpt-image-1")[:64],
+                image_path=(row.get("image_path") or "")[:512],
+                image_revised_prompt=row.get("image_revised_prompt") or "",
+                is_confirmed=bool(row.get("is_confirmed")),
+                ai_model=(row.get("ai_model") or DEFAULT_MODEL)[:64],
+                status=(row.get("status") or ProjectImageElement.STATUS_PROPOSED)[:32],
+            )
+
+    pages_payload = _safe_zip_read_json(zf, f"{root}/images/pages.json")
+    page_pk_map: dict[int, int] = {}
+    if isinstance(pages_payload, list):
+        for row in pages_payload:
+            if not isinstance(row, dict):
+                continue
+            page_num = row.get("page_number")
+            if not isinstance(page_num, int):
+                continue
+            page_obj, _ = ProjectImagePage.objects.update_or_create(
+                project=project,
+                page_number=page_num,
+                defaults={
+                    "page_text": row.get("page_text") or "",
+                    "generation_prompt": row.get("generation_prompt") or "",
+                    "image_model": (row.get("image_model") or "gpt-image-1")[:64],
+                    "image_path": (row.get("image_path") or "")[:512],
+                    "image_revised_prompt": row.get("image_revised_prompt") or "",
+                    "status": (row.get("status") or ProjectImagePage.STATUS_DRAFT)[:32],
+                },
+            )
+            raw_id = row.get("id")
+            if isinstance(raw_id, int):
+                page_pk_map[raw_id] = page_obj.pk
+
+    variants_payload = _safe_zip_read_json(zf, f"{root}/images/page_variants.json")
+    variant_pk_map: dict[int, int] = {}
+    if isinstance(variants_payload, list):
+        for row in variants_payload:
+            if not isinstance(row, dict):
+                continue
+            source_page_id = row.get("page_id")
+            variant_index = row.get("variant_index")
+            if not isinstance(source_page_id, int) or not isinstance(variant_index, int):
+                continue
+            target_page_id = page_pk_map.get(source_page_id)
+            if not target_page_id:
+                continue
+            variant_obj, _ = ProjectImagePageVariant.objects.update_or_create(
+                page_id=target_page_id,
+                variant_index=variant_index,
+                defaults={
+                    "image_model": (row.get("image_model") or "gpt-image-1")[:64],
+                    "image_path": (row.get("image_path") or "")[:512],
+                    "generation_prompt": row.get("generation_prompt") or "",
+                    "image_revised_prompt": row.get("image_revised_prompt") or "",
+                    "status": (row.get("status") or ProjectImagePageVariant.STATUS_DRAFT)[:32],
+                },
+            )
+            raw_variant_id = row.get("id")
+            if isinstance(raw_variant_id, int):
+                variant_pk_map[raw_variant_id] = variant_obj.pk
+    if isinstance(pages_payload, list):
+        for row in pages_payload:
+            if not isinstance(row, dict):
+                continue
+            source_page_id = row.get("id")
+            preferred_variant_id = row.get("preferred_variant_id")
+            if not isinstance(source_page_id, int) or not isinstance(preferred_variant_id, int):
+                continue
+            target_page_id = page_pk_map.get(source_page_id)
+            target_variant_id = variant_pk_map.get(preferred_variant_id)
+            if target_page_id and target_variant_id:
+                ProjectImagePage.objects.filter(pk=target_page_id).update(preferred_variant_id=target_variant_id)
+
+    # Restore selected image files under their original relative paths.
+    asset_prefix = f"{root}/assets/"
+    for member_name in names:
+        if not member_name.startswith(asset_prefix):
+            continue
+        rel = Path(member_name).relative_to(asset_prefix)
+        target = (artifact_root / rel).resolve()
+        try:
+            target.relative_to(artifact_root)
+        except ValueError:
+            continue
+        _safe_write(member_name, target)
+
+    _persist_project_source(project)
+    messages.success(request, f"Imported source bundle as new project '{project.title}'.")
+    return redirect("project-detail", pk=project.pk)
+
+
 @login_required
 def import_project_source_bundle(request: HttpRequest) -> HttpResponse:
-    """Import a source bundle and always create a new project."""
+    """Compatibility endpoint for the original source-bundle upload form."""
 
     if request.method != "POST":
-        return redirect("project-list")
+        return redirect("project-import-zip")
 
     upload = request.FILES.get("source_bundle")
     if upload is None:
         messages.error(request, "Please select a ZIP file to import.")
-        return redirect("project-list")
+        return redirect("project-import-zip")
 
     try:
         zf = zipfile.ZipFile(upload)
-    except Exception:
+    except zipfile.BadZipFile:
         messages.error(request, "Could not read ZIP file.")
-        return redirect("project-list")
+        return redirect("project-import-zip")
+    try:
+        with zf:
+            return _import_open_project_source_zip(request, zf, error_redirect="project-import-zip")
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Failed to import uploaded source bundle")
+        messages.error(request, f"Could not import ZIP file: {exc}")
+        return redirect("project-import-zip")
 
-    with zf:
-        names = zf.namelist()
-        if not names:
-            messages.error(request, "ZIP file is empty.")
-            return redirect("project-list")
 
-        root = Path(names[0]).parts[0]
-        metadata = _safe_zip_read_json(zf, f"{root}/project/metadata.json")
-        if not metadata:
-            messages.error(request, "Bundle is missing project metadata.")
-            return redirect("project-list")
+@login_required
+def import_project_zip(request: HttpRequest) -> HttpResponse:
+    """Import a project ZIP from upload or an admin-configured legacy corpus."""
 
-        stage_prefix = f"{root}/stages/"
-        missing_stages = _missing_source_bundle_zip_stages(names, stage_prefix)
-        if missing_stages:
-            messages.error(
-                request,
-                "Source bundle is missing required stage artifacts: "
-                f"{', '.join(missing_stages)}. Re-export the project after regenerating source bundle stages.",
-            )
-            return redirect("project-list")
+    legacy_rows: list[dict[str, Any]] = []
+    legacy_error: str | None = None
+    legacy_query = {
+        "title": (request.GET.get("title") or "").strip(),
+        "owner": (request.GET.get("owner") or "").strip(),
+        "l2": (request.GET.get("l2") or "").strip(),
+        "l1": (request.GET.get("l1") or "").strip(),
+    }
+    if request.user.is_staff:
+        all_rows, legacy_error = _load_legacy_bundle_library()
+        legacy_rows = _filter_legacy_bundle_rows(all_rows, legacy_query)[:200]
 
-        title = _build_unique_import_title(request.user, metadata.get("title", "Imported project"))
-        valid_pivot_languages = {code for code, _label in ProjectForm.LANGUAGE_CHOICES}
-        project = Project.objects.create(
-            owner=request.user,
-            title=title,
-            description=(metadata.get("description") or "")[:100000],
-            source_text=(metadata.get("source_text") or "")[:1000000],
-            input_mode=metadata.get("input_mode") if metadata.get("input_mode") in {Project.INPUT_DESCRIPTION, Project.INPUT_SOURCE} else Project.INPUT_SOURCE,
-            language=(metadata.get("language") or "en")[:16],
-            target_language=(metadata.get("target_language") or "fr")[:16],
-            ai_model=(metadata.get("ai_model") or DEFAULT_MODEL)[:64],
-            page_image_placement=(metadata.get("page_image_placement") or "none")[:16],
-            image_generation_pivot_language=(
-                (metadata.get("image_generation_pivot_language") or "")
-                if (metadata.get("image_generation_pivot_language") or "") in valid_pivot_languages
-                else ""
-            )[:16],
-            page_image_text_source=(
-                metadata.get("page_image_text_source")
-                if metadata.get("page_image_text_source") in {c[0] for c in Project.PAGE_IMAGE_TEXT_SOURCE_CHOICES}
-                else Project.PAGE_IMAGE_TEXT_SOURCE_SEGMENTATION
-            )[:32],
-            segmentation_method=(metadata.get("segmentation_method") or "auto")[:32],
-            romanization_method=(metadata.get("romanization_method") or "auto")[:32],
-        )
-
-        artifact_root = project.artifact_dir().resolve()
-        (artifact_root / "source").mkdir(parents=True, exist_ok=True)
-
-        def _safe_write(member_name: str, target: Path) -> None:
+    if request.method == "POST":
+        mode = (request.POST.get("import_mode") or "upload").strip()
+        if mode == "server_bundle":
+            if not request.user.is_staff:
+                raise PermissionDenied
+            root = _legacy_bundle_library_root()
+            rows, legacy_error = _load_legacy_bundle_library()
+            if root is None or legacy_error:
+                messages.error(request, legacy_error or "Legacy bundle library is not configured.")
+                return redirect("project-import-zip")
+            row = _find_legacy_bundle_row(rows, request.POST.get("bundle_key") or "")
+            if row is None:
+                messages.error(request, "Please choose a legacy bundle to import.")
+                return redirect("project-import-zip")
+            import_path = _safe_legacy_import_path(root, row)
+            if import_path is None or not import_path.exists():
+                messages.error(request, "Selected legacy bundle path is missing or unsafe.")
+                return redirect("project-import-zip")
             try:
-                with zf.open(member_name, "r") as fp:
-                    data = fp.read()
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_bytes(data)
-            except KeyError:
-                return
+                spool, import_trace = _open_server_bundle_for_import(import_path)
+                with spool:
+                    with zipfile.ZipFile(spool) as zf:
+                        return _import_open_project_source_zip(request, zf, error_redirect="project-import-zip", import_trace=import_trace)
+            except Exception as exc:  # noqa: BLE001
+                messages.error(request, f"Could not import selected legacy bundle: {exc}")
+                return redirect("project-import-zip")
 
-        _safe_write(f"{root}/text/source_text.txt", artifact_root / "source" / "source_text.txt")
-        _safe_write(f"{root}/text/description.txt", artifact_root / "source" / "description.txt")
+        upload = request.FILES.get("source_bundle")
+        if upload is None:
+            messages.error(request, "Please select a ZIP file to import.")
+            return redirect("project-import-zip")
+        try:
+            with zipfile.ZipFile(upload) as zf:
+                return _import_open_project_source_zip(request, zf, error_redirect="project-import-zip")
+        except zipfile.BadZipFile:
+            messages.error(request, "Could not read ZIP file.")
+            return redirect("project-import-zip")
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Failed to import uploaded project ZIP")
+            messages.error(request, f"Could not import ZIP file: {exc}")
+            return redirect("project-import-zip")
 
-        # Restore latest run stages.
-        run_dir = artifact_root / "runs" / f"run_imported_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
-        stage_names = [n for n in names if n.startswith(stage_prefix) and n.endswith(".json")]
-        if stage_names:
-            for member_name in stage_names:
-                rel = Path(member_name).relative_to(stage_prefix)
-                target = run_dir / "stages" / rel
-                _safe_write(member_name, target)
-
-        # Restore images metadata.
-        style_payload = _safe_zip_read_json(zf, f"{root}/images/style.json")
-        if isinstance(style_payload, dict) and style_payload:
-            ProjectImageStyle.objects.update_or_create(
-                project=project,
-                defaults={
-                    "style_brief": style_payload.get("style_brief", ""),
-                    "expanded_style_description": style_payload.get("expanded_style_description", ""),
-                    "representative_excerpt": style_payload.get("representative_excerpt", ""),
-                    "sample_image_prompt": style_payload.get("sample_image_prompt", ""),
-                    "sample_image_path": style_payload.get("sample_image_path", ""),
-                    "sample_image_revised_prompt": style_payload.get("sample_image_revised_prompt", ""),
-                    "sample_image_model": style_payload.get("sample_image_model", "gpt-image-1"),
-                    "ai_model": style_payload.get("ai_model", DEFAULT_MODEL),
-                    "status": style_payload.get("status", ProjectImageStyle.STATUS_DRAFT),
-                },
-            )
-
-        elements_payload = _safe_zip_read_json(zf, f"{root}/images/elements.json")
-        if isinstance(elements_payload, list):
-            for row in elements_payload:
-                if not isinstance(row, dict):
-                    continue
-                ProjectImageElement.objects.create(
-                    project=project,
-                    name=(row.get("name") or "Element")[:255],
-                    element_type=(row.get("element_type") or "")[:64],
-                    page_refs=(row.get("page_refs") or "")[:255],
-                    why_consistency_matters=row.get("why_consistency_matters") or "",
-                    expanded_description=row.get("expanded_description") or "",
-                    expanded_prompt=row.get("expanded_prompt") or "",
-                    image_model=(row.get("image_model") or "gpt-image-1")[:64],
-                    image_path=(row.get("image_path") or "")[:512],
-                    image_revised_prompt=row.get("image_revised_prompt") or "",
-                    is_confirmed=bool(row.get("is_confirmed")),
-                    ai_model=(row.get("ai_model") or DEFAULT_MODEL)[:64],
-                    status=(row.get("status") or ProjectImageElement.STATUS_PROPOSED)[:32],
-                )
-
-        pages_payload = _safe_zip_read_json(zf, f"{root}/images/pages.json")
-        page_pk_map: dict[int, int] = {}
-        if isinstance(pages_payload, list):
-            for row in pages_payload:
-                if not isinstance(row, dict):
-                    continue
-                page_num = row.get("page_number")
-                if not isinstance(page_num, int):
-                    continue
-                page_obj, _ = ProjectImagePage.objects.update_or_create(
-                    project=project,
-                    page_number=page_num,
-                    defaults={
-                        "page_text": row.get("page_text") or "",
-                        "generation_prompt": row.get("generation_prompt") or "",
-                        "image_model": (row.get("image_model") or "gpt-image-1")[:64],
-                        "image_path": (row.get("image_path") or "")[:512],
-                        "image_revised_prompt": row.get("image_revised_prompt") or "",
-                        "status": (row.get("status") or ProjectImagePage.STATUS_DRAFT)[:32],
-                    },
-                )
-                raw_id = row.get("id")
-                if isinstance(raw_id, int):
-                    page_pk_map[raw_id] = page_obj.pk
-
-        variants_payload = _safe_zip_read_json(zf, f"{root}/images/page_variants.json")
-        variant_pk_map: dict[int, int] = {}
-        if isinstance(variants_payload, list):
-            for row in variants_payload:
-                if not isinstance(row, dict):
-                    continue
-                source_page_id = row.get("page_id")
-                variant_index = row.get("variant_index")
-                if not isinstance(source_page_id, int) or not isinstance(variant_index, int):
-                    continue
-                target_page_id = page_pk_map.get(source_page_id)
-                if not target_page_id:
-                    continue
-                variant_obj, _ = ProjectImagePageVariant.objects.update_or_create(
-                    page_id=target_page_id,
-                    variant_index=variant_index,
-                    defaults={
-                        "image_model": (row.get("image_model") or "gpt-image-1")[:64],
-                        "image_path": (row.get("image_path") or "")[:512],
-                        "generation_prompt": row.get("generation_prompt") or "",
-                        "image_revised_prompt": row.get("image_revised_prompt") or "",
-                        "status": (row.get("status") or ProjectImagePageVariant.STATUS_DRAFT)[:32],
-                    },
-                )
-                raw_variant_id = row.get("id")
-                if isinstance(raw_variant_id, int):
-                    variant_pk_map[raw_variant_id] = variant_obj.pk
-        if isinstance(pages_payload, list):
-            for row in pages_payload:
-                if not isinstance(row, dict):
-                    continue
-                source_page_id = row.get("id")
-                preferred_variant_id = row.get("preferred_variant_id")
-                if not isinstance(source_page_id, int) or not isinstance(preferred_variant_id, int):
-                    continue
-                target_page_id = page_pk_map.get(source_page_id)
-                target_variant_id = variant_pk_map.get(preferred_variant_id)
-                if target_page_id and target_variant_id:
-                    ProjectImagePage.objects.filter(pk=target_page_id).update(preferred_variant_id=target_variant_id)
-
-        # Restore selected image files under their original relative paths.
-        asset_prefix = f"{root}/assets/"
-        for member_name in names:
-            if not member_name.startswith(asset_prefix):
-                continue
-            rel = Path(member_name).relative_to(asset_prefix)
-            target = (artifact_root / rel).resolve()
-            try:
-                target.relative_to(artifact_root)
-            except ValueError:
-                continue
-            _safe_write(member_name, target)
-
-        _persist_project_source(project)
-        messages.success(request, f"Imported source bundle as new project '{project.title}'.")
-        return redirect("project-detail", pk=project.pk)
+    return render(
+        request,
+        "projects/import_zip.html",
+        {
+            "legacy_rows": legacy_rows,
+            "legacy_error": legacy_error,
+            "legacy_query": legacy_query,
+            "legacy_library_configured": _legacy_bundle_library_root() is not None,
+            "legacy_library_diagnostics": _legacy_bundle_library_diagnostics() if request.user.is_staff else None,
+        },
+    )
 
 
 @login_required
@@ -9075,6 +9726,7 @@ def _copy_image_assets_and_rows(source_project: Project, target_project: Project
                 "sample_image_path": source_style.sample_image_path,
                 "sample_image_revised_prompt": source_style.sample_image_revised_prompt,
                 "sample_image_model": source_style.sample_image_model,
+                "discourage_text_in_images": source_style.discourage_text_in_images,
                 "ai_model": source_style.ai_model,
                 "status": source_style.status,
             },
