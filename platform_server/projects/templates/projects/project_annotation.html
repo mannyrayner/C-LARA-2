@@ -76,6 +76,12 @@
         <option value="{{ value }}" {% if value == selected_romanization_method %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
+    <label for="audio_mode" class="ml-2">Audio:</label>
+    <select name="audio_mode" id="audio_mode">
+      {% for value, label in audio_mode_options %}
+        <option value="{{ value }}" {% if value == selected_audio_mode %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
     <button class="btn secondary" type="submit">Save language options</button>
   </p>
 </form>
