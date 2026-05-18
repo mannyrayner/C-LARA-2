@@ -424,17 +424,34 @@ class CompileStatusViewTests(TestCase):
 
     def test_set_processing_options_updates_audio_mode(self):
         url = reverse("project-processing-options", args=[self.project.pk])
+        annotation_url = reverse("project-annotation-home", args=[self.project.pk])
         resp = self.client.post(
             url,
             {
                 "segmentation_method": "auto",
                 "romanization_method": "auto",
                 "audio_mode": Project.AUDIO_MODE_NONE,
+                "return_to": annotation_url,
             },
         )
         self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, annotation_url)
         self.project.refresh_from_db()
         self.assertEqual(self.project.audio_mode, Project.AUDIO_MODE_NONE)
+
+    def test_project_detail_shows_audio_mode_control(self):
+        resp = self.client.get(reverse("project-detail", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'id="detail_audio_mode"', html=False)
+        self.assertContains(resp, 'name="audio_mode"', html=False)
+        self.assertContains(resp, "No audio / skip TTS")
+
+    def test_annotation_home_shows_audio_mode_control(self):
+        resp = self.client.get(reverse("project-annotation-home", args=[self.project.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'id="annotation_audio_mode"', html=False)
+        self.assertContains(resp, "Save audio setting")
+        self.assertContains(resp, "No audio / skip TTS")
 
     def test_project_create_form_uses_language_dropdowns_with_clear_labels(self):
         Profile.objects.update_or_create(user=self.user, defaults={"timezone": "UTC", "dialogue_language": "de"})

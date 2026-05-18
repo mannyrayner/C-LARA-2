@@ -6813,6 +6813,9 @@ def set_page_image_placement(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
+    return_to = (request.POST.get("return_to") or "").strip()
+    if not return_to.startswith("/"):
+        return_to = reverse("project-detail", args=[project.pk])
     segmentation_method = _normalize_processing_method_choice(
         request.POST.get("segmentation_method") or project.segmentation_method, SEGMENTATION_METHOD_CHOICES
     )
@@ -6822,13 +6825,13 @@ def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
     audio_mode = (request.POST.get("audio_mode") or project.audio_mode or Project.AUDIO_MODE_TTS).strip().lower()
     if segmentation_method not in SEGMENTATION_METHOD_CHOICES:
         messages.error(request, "Unknown segmentation method option.")
-        return redirect("project-detail", pk=project.pk)
+        return redirect(return_to)
     if romanization_method not in ROMANIZATION_METHOD_CHOICES:
         messages.error(request, "Unknown romanization method option.")
-        return redirect("project-detail", pk=project.pk)
+        return redirect(return_to)
     if audio_mode not in {Project.AUDIO_MODE_TTS, Project.AUDIO_MODE_NONE}:
         messages.error(request, "Unknown audio mode option.")
-        return redirect("project-detail", pk=project.pk)
+        return redirect(return_to)
     update_fields: list[str] = []
     if segmentation_method != project.segmentation_method:
         project.segmentation_method = segmentation_method
@@ -6842,7 +6845,7 @@ def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
     if update_fields:
         project.save(update_fields=update_fields + ["updated_at"])
     messages.success(request, "Saved language-processing options.")
-    return redirect("project-detail", pk=project.pk)
+    return redirect(return_to)
 
 
 @login_required
@@ -7839,6 +7842,9 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
 @login_required
 def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
+    return_to = (request.POST.get("return_to") or "").strip()
+    if not return_to.startswith("/"):
+        return_to = reverse("project-detail", args=[project.pk])
     segmentation_method = _normalize_processing_method_choice(
         request.POST.get("segmentation_method") or project.segmentation_method, SEGMENTATION_METHOD_CHOICES
     )
@@ -7848,13 +7854,13 @@ def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
     audio_mode = (request.POST.get("audio_mode") or project.audio_mode or Project.AUDIO_MODE_TTS).strip().lower()
     if segmentation_method not in SEGMENTATION_METHOD_CHOICES:
         messages.error(request, "Unknown segmentation method option.")
-        return redirect("project-detail", pk=project.pk)
+        return redirect(return_to)
     if romanization_method not in ROMANIZATION_METHOD_CHOICES:
         messages.error(request, "Unknown romanization method option.")
-        return redirect("project-detail", pk=project.pk)
+        return redirect(return_to)
     if audio_mode not in {Project.AUDIO_MODE_TTS, Project.AUDIO_MODE_NONE}:
         messages.error(request, "Unknown audio mode option.")
-        return redirect("project-detail", pk=project.pk)
+        return redirect(return_to)
     update_fields: list[str] = []
     if segmentation_method != project.segmentation_method:
         project.segmentation_method = segmentation_method
@@ -7868,7 +7874,7 @@ def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
     if update_fields:
         project.save(update_fields=update_fields + ["updated_at"])
     messages.success(request, "Saved language-processing options.")
-    return redirect("project-detail", pk=project.pk)
+    return redirect(return_to)
 
 
 @login_required
