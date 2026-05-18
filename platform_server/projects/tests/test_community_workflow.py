@@ -280,6 +280,37 @@ class CommunityWorkflowTests(TestCase):
         self.assertContains(judge, "variant 1")
         self.assertContains(judge, "current preferred image")
 
+    def test_member_and_organiser_review_show_source_and_translation_context(self):
+        self.project.community = self.community
+        self.project.source_text = "Source page text from project"
+        self.project.save(update_fields=["community", "source_text", "updated_at"])
+        run_dir = self.project.artifact_dir() / "runs" / "run_translation" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        translation_payload = {
+            "pages": [
+                {"segments": [{"annotations": {"translation": "Bonjour la page"}}]},
+            ]
+        }
+        (run_dir / "translation.json").write_text(json.dumps(translation_payload), encoding="utf-8")
+
+        member_client = Client()
+        member_client.login(username="mem", password="pw")
+        judge = member_client.get(reverse("community-member-judge-project", args=[self.community.id, self.project.id]))
+        self.assertEqual(judge.status_code, 200)
+        self.assertContains(judge, "Source page text")
+        self.assertContains(judge, "Source page text from project")
+        self.assertContains(judge, "Page translation")
+        self.assertContains(judge, "Bonjour la page")
+
+        organiser_client = Client()
+        organiser_client.login(username="org", password="pw")
+        review = organiser_client.get(reverse("community-organiser-review-project", args=[self.community.id, self.project.id]))
+        self.assertEqual(review.status_code, 200)
+        self.assertContains(review, "Source page text")
+        self.assertContains(review, "Source page text from project")
+        self.assertContains(review, "Page translation")
+        self.assertContains(review, "Bonjour la page")
+
     def test_organiser_image_review_entry_point_and_preferred_variant_label(self):
         self.project.community = self.community
         self.project.save(update_fields=["community", "updated_at"])

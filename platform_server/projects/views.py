@@ -867,6 +867,10 @@ def _extract_project_pages(project: Project) -> list[str]:
         translation_pages = _extract_project_pages_from_translation(project)
         if translation_pages:
             return translation_pages
+    return _extract_project_source_pages(project)
+
+
+def _extract_project_source_pages(project: Project) -> list[str]:
     latest_run = _resolve_run_dir(project)
     if latest_run:
         seg1 = _load_stage_payload(project, "segmentation_phase_1", run_dir=latest_run)
@@ -6338,20 +6342,51 @@ def _run_compile_task(
         if placement in {"top", "bottom"}:
             page_images: dict[int, dict[str, str]] = {}
             expected_paths: list[str] = []
+            missing_preferred_pages: list[int] = []
+            missing_fallback_pages: list[int] = []
             for row in project.image_pages.select_related("preferred_variant").order_by("page_number"):
-                resolved_image_path = row.image_path or (
-                    row.preferred_variant.image_path if row.preferred_variant_id and row.preferred_variant else ""
-                )
+                resolved_image_path = ""
+                source_label = "none"
+                if row.preferred_variant_id and row.preferred_variant:
+                    resolved_image_path = row.preferred_variant.image_path or ""
+                    source_label = "preferred variant"
+                elif row.image_path:
+                    resolved_image_path = row.image_path
+                    source_label = "page image fallback"
+
                 if not resolved_image_path:
-                    expected_paths.append(f"page {row.page_number}: [no image_path set]")
+                    expected_paths.append(f"page {row.page_number}: [no usable preferred or fallback image_path set]")
+                    if row.preferred_variant_id:
+                        missing_preferred_pages.append(row.page_number)
+                    else:
+                        missing_fallback_pages.append(row.page_number)
                     continue
+
                 abs_path = (project.artifact_dir() / resolved_image_path).resolve()
                 rel_path = os.path.relpath(abs_path, output_dir / "html").replace("\\", "/")
-                expected_paths.append(f"page {row.page_number}: {abs_path} (exists={abs_path.exists()})")
+                expected_paths.append(
+                    f"page {row.page_number}: {abs_path} ({source_label}, exists={abs_path.exists()})"
+                )
                 if abs_path.exists():
                     page_images[row.page_number] = {"path": rel_path, "placement": placement}
+                elif row.preferred_variant_id:
+                    missing_preferred_pages.append(row.page_number)
+                else:
+                    missing_fallback_pages.append(row.page_number)
             spec.page_images = page_images
             post_update(f"Resolved compile page images: {len(page_images)} page image reference(s).")
+            if missing_preferred_pages:
+                post_update(
+                    "Warning: preferred page images missing for page(s): "
+                    + ", ".join(str(page) for page in missing_preferred_pages)
+                    + ". Those pages will compile without page images."
+                )
+            if missing_fallback_pages:
+                post_update(
+                    "Warning: fallback page images missing for page(s): "
+                    + ", ".join(str(page) for page in missing_fallback_pages)
+                    + ". Those pages will compile without page images."
+                )
             if not page_images:
                 logger.warning(
                     "Page image placement is '%s' but no source images were resolved for compile input. Expected references: %s",
@@ -7426,6 +7461,24 @@ def community_member_home(request: HttpRequest, community_id: int) -> HttpRespon
     )
 
 
+def _page_review_context_rows(project: Project, pages: list[ProjectImagePage]) -> dict[int, dict[str, str]]:
+    source_pages = _extract_project_source_pages(project)
+    translation_pages = _extract_project_pages_from_translation(project)
+    context_by_page: dict[int, dict[str, str]] = {}
+    for page in pages:
+        source_text = source_pages[page.page_number - 1] if page.page_number <= len(source_pages) else ""
+        translation_text = translation_pages[page.page_number - 1] if page.page_number <= len(translation_pages) else ""
+        if not source_text and project.page_image_text_source != Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION:
+            source_text = page.page_text
+        if not translation_text and project.page_image_text_source == Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION:
+            translation_text = page.page_text
+        context_by_page[page.id] = {
+            "source_text": source_text,
+            "translation_text": translation_text,
+        }
+    return context_by_page
+
+
 @login_required
 def community_member_judge_project(request: HttpRequest, community_id: int, project_id: int) -> HttpResponse:
     membership = _require_community_member(community_id, request.user)
@@ -7455,9 +7508,12 @@ def community_member_judge_project(request: HttpRequest, community_id: int, proj
         vote.variant_id: vote
         for vote in CommunityImageVote.objects.filter(community_id=community_id, project=project, user=request.user)
     }
+    page_context = _page_review_context_rows(project, pages)
     page_rows = [
         {
             "page": page,
+            "source_text": page_context.get(page.id, {}).get("source_text", ""),
+            "translation_text": page_context.get(page.id, {}).get("translation_text", ""),
             "variant_rows": [{"variant": variant, "vote": existing_votes.get(variant.id)} for variant in page.variants.all()],
         }
         for page in pages
@@ -7811,8 +7867,18 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
             messages.success(request, f"Generated {generated} new variant(s) from organiser requests.")
             return redirect("community-organiser-review-project", community_id=community_id, project_id=project.id)
 
+    page_context = _page_review_context_rows(project, pages)
+    page_rows = [
+        {
+            "page": page,
+            "source_text": page_context.get(page.id, {}).get("source_text", ""),
+            "translation_text": page_context.get(page.id, {}).get("translation_text", ""),
+        }
+        for page in pages
+    ]
     vote_rows: list[dict[str, Any]] = []
     for page in pages:
+        context = page_context.get(page.id, {})
         for variant in page.variants.order_by("variant_index"):
             votes = list(
                 CommunityImageVote.objects.filter(community_id=community_id, project=project, variant=variant)
@@ -7821,7 +7887,15 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
             )
             up = sum(1 for vote in votes if vote.value == CommunityImageVote.VALUE_UP)
             down = sum(1 for vote in votes if vote.value == CommunityImageVote.VALUE_DOWN)
-            vote_rows.append({"page": page, "variant": variant, "votes": votes, "up": up, "down": down})
+            vote_rows.append({
+                "page": page,
+                "source_text": context.get("source_text", ""),
+                "translation_text": context.get("translation_text", ""),
+                "variant": variant,
+                "votes": votes,
+                "up": up,
+                "down": down,
+            })
     review = CommunityOrganiserReview.objects.filter(
         community_id=community_id, project=project, organiser=request.user
     ).first()
@@ -7832,7 +7906,7 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
             "community": membership.community,
             "membership": membership,
             "project": project,
-            "pages": pages,
+            "pages": page_rows,
             "vote_rows": vote_rows,
             "review": review,
             "image_models": IMAGE_MODEL_CHOICES,
