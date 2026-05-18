@@ -31,6 +31,12 @@ class Project(models.Model):
         (PAGE_IMAGE_TEXT_SOURCE_SEGMENTATION, "Segmented source text"),
         (PAGE_IMAGE_TEXT_SOURCE_TRANSLATION, "Concatenated page translations"),
     ]
+    AUDIO_MODE_TTS = "tts"
+    AUDIO_MODE_NONE = "none"
+    AUDIO_MODE_CHOICES = [
+        (AUDIO_MODE_TTS, "Use TTS audio"),
+        (AUDIO_MODE_NONE, "No audio / skip TTS"),
+    ]
 
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="projects")
     title = models.CharField(max_length=200)
@@ -49,6 +55,7 @@ class Project(models.Model):
     )
     segmentation_method = models.CharField(max_length=32, default="auto")
     romanization_method = models.CharField(max_length=32, default="auto")
+    audio_mode = models.CharField(max_length=16, choices=AUDIO_MODE_CHOICES, default=AUDIO_MODE_TTS)
     compiled_path = models.CharField(max_length=512, blank=True)
     artifact_root = models.CharField(max_length=512, blank=True)
     is_published = models.BooleanField(default=False)

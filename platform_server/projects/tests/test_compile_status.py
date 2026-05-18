@@ -422,6 +422,20 @@ class CompileStatusViewTests(TestCase):
         self.project.refresh_from_db()
         self.assertEqual(self.project.page_image_placement, "top")
 
+    def test_set_processing_options_updates_audio_mode(self):
+        url = reverse("project-processing-options", args=[self.project.pk])
+        resp = self.client.post(
+            url,
+            {
+                "segmentation_method": "auto",
+                "romanization_method": "auto",
+                "audio_mode": Project.AUDIO_MODE_NONE,
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.audio_mode, Project.AUDIO_MODE_NONE)
+
     def test_project_create_form_uses_language_dropdowns_with_clear_labels(self):
         Profile.objects.update_or_create(user=self.user, defaults={"timezone": "UTC", "dialogue_language": "de"})
         resp = self.client.get(reverse("project-create"))
@@ -2093,6 +2107,8 @@ class CompileStatusViewTests(TestCase):
         async def _fake_pipeline(spec, client):
             captured["page_images"] = spec.page_images
             captured["audio_cache_dir"] = spec.audio_cache_dir
+            captured["audio_mode"] = spec.audio_mode
+            captured["require_real_tts"] = spec.require_real_tts
             return {"html": {"run_root": str(run_root), "index_path": str(page_file)}}
 
         mock_run_full_pipeline.side_effect = _fake_pipeline
@@ -2119,6 +2135,57 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual("top", captured["page_images"][1]["placement"])
         self.assertTrue(captured["page_images"][1]["path"].startswith("../../../images/pages/"))
         self.assertIn("audio_repository/en", str(captured["audio_cache_dir"]).replace("\\", "/"))
+        self.assertEqual(captured["audio_mode"], Project.AUDIO_MODE_TTS)
+        self.assertTrue(captured["require_real_tts"])
+
+    @patch("projects.views._build_ai_client")
+    @patch("projects.views.run_full_pipeline")
+    def test_compile_task_no_audio_mode_disables_real_tts(self, mock_run_full_pipeline, mock_build_ai_client):
+        project = self.project
+        project.audio_mode = Project.AUDIO_MODE_NONE
+        project.save(update_fields=["audio_mode"])
+        Profile.objects.get_or_create(user=self.user, defaults={"timezone": "UTC"})
+
+        run_root = project.artifact_dir() / "runs" / "run_no_audio_spec"
+        run_root.mkdir(parents=True, exist_ok=True)
+        page_file = run_root / "page_1.html"
+        page_file.write_text('<div id="main-text-pane" class="page"></div>', encoding="utf-8")
+
+        captured = {}
+
+        async def _fake_pipeline(spec, client):
+            captured["audio_mode"] = spec.audio_mode
+            captured["require_real_tts"] = spec.require_real_tts
+            return {"html": {"run_root": str(run_root), "index_path": str(page_file)}}
+
+        mock_run_full_pipeline.side_effect = _fake_pipeline
+        mock_build_ai_client.return_value = object()
+
+        views._run_compile_task(
+            project.id,
+            self.user.id,
+            str(run_root),
+            str(project.artifact_dir()),
+            "segmentation_phase_1",
+            "UTC",
+            project.description,
+            "Hello world",
+            None,
+            str(uuid.uuid4()),
+            "compile_project_test",
+            "gpt-4o",
+            "compile_html",
+            "none",
+        )
+
+        self.assertEqual(captured["audio_mode"], Project.AUDIO_MODE_NONE)
+        self.assertFalse(captured["require_real_tts"])
+        self.assertTrue(
+            TaskUpdate.objects.filter(
+                user=self.user,
+                message__icontains="No audio / skip TTS",
+            ).exists()
+        )
 
     @patch("projects.views._build_ai_client")
     @patch("projects.views.run_full_pipeline")

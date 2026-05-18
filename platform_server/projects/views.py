@@ -3470,6 +3470,8 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
             context["romanization_method_options"] = [("auto", "Not used for this language")]
         context["selected_segmentation_method"] = project.segmentation_method or "auto"
         context["selected_romanization_method"] = project.romanization_method or "auto"
+        context["audio_mode_options"] = Project.AUDIO_MODE_CHOICES
+        context["selected_audio_mode"] = project.audio_mode or Project.AUDIO_MODE_TTS
         collaborators = project.collaborators.select_related("user").all()
         context["collaborators"] = collaborators
         context["collaborator_role_choices"] = ProjectCollaborator.ROLE_CHOICES
@@ -6288,6 +6290,14 @@ def _run_compile_task(
             "Compile task started. "
             f"start_stage={start_stage}, end_stage={end_stage or 'compile_html'}, output_dir={output_dir}"
         )
+        audio_mode = (
+            project.audio_mode
+            if project.audio_mode in {Project.AUDIO_MODE_TTS, Project.AUDIO_MODE_NONE}
+            else Project.AUDIO_MODE_TTS
+        )
+        if audio_mode == Project.AUDIO_MODE_NONE:
+            post_update("Audio mode is 'No audio / skip TTS'; the audio stage will not call TTS and compiled HTML will omit audio controls.")
+
         spec = FullPipelineSpec(
             text=text,
             text_obj=text_obj,
@@ -6296,7 +6306,8 @@ def _run_compile_task(
             target_language=project.target_language,
             output_dir=output_dir,
             audio_cache_dir=_audio_repository_dir(project.language),
-            require_real_tts=True,
+            require_real_tts=audio_mode != Project.AUDIO_MODE_NONE,
+            audio_mode=audio_mode,
             persist_intermediates=True,
             progress_callback=tracked_progress_cb,
             start_stage=start_stage,
@@ -6595,11 +6606,15 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     romanization_method = _normalize_processing_method_choice(
         request.POST.get("romanization_method") or project.romanization_method, ROMANIZATION_METHOD_CHOICES
     )
+    audio_mode = (request.POST.get("audio_mode") or project.audio_mode or Project.AUDIO_MODE_TTS).strip().lower()
     if segmentation_method not in SEGMENTATION_METHOD_CHOICES:
         messages.error(request, "Unknown segmentation method option.")
         return redirect(return_to)
     if romanization_method not in ROMANIZATION_METHOD_CHOICES:
         messages.error(request, "Unknown romanization method option.")
+        return redirect(return_to)
+    if audio_mode not in {Project.AUDIO_MODE_TTS, Project.AUDIO_MODE_NONE}:
+        messages.error(request, "Unknown audio mode option.")
         return redirect(return_to)
     update_fields: list[str] = []
     if segmentation_method != project.segmentation_method:
@@ -6608,6 +6623,9 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     if romanization_method != project.romanization_method:
         project.romanization_method = romanization_method
         update_fields.append("romanization_method")
+    if audio_mode != project.audio_mode:
+        project.audio_mode = audio_mode
+        update_fields.append("audio_mode")
     if update_fields:
         project.save(update_fields=update_fields + ["updated_at"])
 
@@ -6801,11 +6819,15 @@ def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
     romanization_method = _normalize_processing_method_choice(
         request.POST.get("romanization_method") or project.romanization_method, ROMANIZATION_METHOD_CHOICES
     )
+    audio_mode = (request.POST.get("audio_mode") or project.audio_mode or Project.AUDIO_MODE_TTS).strip().lower()
     if segmentation_method not in SEGMENTATION_METHOD_CHOICES:
         messages.error(request, "Unknown segmentation method option.")
         return redirect("project-detail", pk=project.pk)
     if romanization_method not in ROMANIZATION_METHOD_CHOICES:
         messages.error(request, "Unknown romanization method option.")
+        return redirect("project-detail", pk=project.pk)
+    if audio_mode not in {Project.AUDIO_MODE_TTS, Project.AUDIO_MODE_NONE}:
+        messages.error(request, "Unknown audio mode option.")
         return redirect("project-detail", pk=project.pk)
     update_fields: list[str] = []
     if segmentation_method != project.segmentation_method:
@@ -6814,6 +6836,9 @@ def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
     if romanization_method != project.romanization_method:
         project.romanization_method = romanization_method
         update_fields.append("romanization_method")
+    if audio_mode != project.audio_mode:
+        project.audio_mode = audio_mode
+        update_fields.append("audio_mode")
     if update_fields:
         project.save(update_fields=update_fields + ["updated_at"])
     messages.success(request, "Saved language-processing options.")
@@ -7820,11 +7845,15 @@ def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
     romanization_method = _normalize_processing_method_choice(
         request.POST.get("romanization_method") or project.romanization_method, ROMANIZATION_METHOD_CHOICES
     )
+    audio_mode = (request.POST.get("audio_mode") or project.audio_mode or Project.AUDIO_MODE_TTS).strip().lower()
     if segmentation_method not in SEGMENTATION_METHOD_CHOICES:
         messages.error(request, "Unknown segmentation method option.")
         return redirect("project-detail", pk=project.pk)
     if romanization_method not in ROMANIZATION_METHOD_CHOICES:
         messages.error(request, "Unknown romanization method option.")
+        return redirect("project-detail", pk=project.pk)
+    if audio_mode not in {Project.AUDIO_MODE_TTS, Project.AUDIO_MODE_NONE}:
+        messages.error(request, "Unknown audio mode option.")
         return redirect("project-detail", pk=project.pk)
     update_fields: list[str] = []
     if segmentation_method != project.segmentation_method:
@@ -7833,6 +7862,9 @@ def set_processing_options(request: HttpRequest, pk: int) -> HttpResponse:
     if romanization_method != project.romanization_method:
         project.romanization_method = romanization_method
         update_fields.append("romanization_method")
+    if audio_mode != project.audio_mode:
+        project.audio_mode = audio_mode
+        update_fields.append("audio_mode")
     if update_fields:
         project.save(update_fields=update_fields + ["updated_at"])
     messages.success(request, "Saved language-processing options.")
@@ -9551,6 +9583,7 @@ def download_project_source_bundle(request: HttpRequest, pk: int) -> HttpRespons
             "page_image_text_source": project.page_image_text_source,
             "segmentation_method": project.segmentation_method,
             "romanization_method": project.romanization_method,
+            "audio_mode": project.audio_mode,
         }
         zf.writestr((bundle_root / "project" / "metadata.json").as_posix(), json.dumps(metadata, ensure_ascii=False, indent=2))
 
@@ -9561,6 +9594,7 @@ def download_project_source_bundle(request: HttpRequest, pk: int) -> HttpRespons
             "page_image_placement": project.page_image_placement,
             "image_generation_pivot_language": project.image_generation_pivot_language,
             "page_image_text_source": project.page_image_text_source,
+            "audio_mode": project.audio_mode,
         }
         zf.writestr((bundle_root / "project" / "pipeline_config.json").as_posix(), json.dumps(pipeline_config, ensure_ascii=False, indent=2))
 
@@ -9958,6 +9992,11 @@ def _import_open_project_source_zip(
         romanization_method=_normalize_processing_method_choice(
             metadata.get("romanization_method"), ROMANIZATION_METHOD_CHOICES
         ) or "auto",
+        audio_mode=(
+            metadata.get("audio_mode")
+            if metadata.get("audio_mode") in {Project.AUDIO_MODE_TTS, Project.AUDIO_MODE_NONE}
+            else Project.AUDIO_MODE_TTS
+        ),
     )
     artifact_root = project.artifact_dir()
     artifact_root.mkdir(parents=True, exist_ok=True)
@@ -10439,6 +10478,7 @@ def clone_project(request: HttpRequest, pk: int) -> HttpResponse:
         page_image_text_source=source_project.page_image_text_source,
         segmentation_method=source_project.segmentation_method,
         romanization_method=source_project.romanization_method,
+        audio_mode=source_project.audio_mode,
     )
     _persist_project_source(clone)
     copied_files = _copy_latest_run_files(source_project, clone)

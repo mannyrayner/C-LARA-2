@@ -12,6 +12,14 @@ from pipeline.full_pipeline import FullPipelineSpec, run_full_pipeline
 from tests.log_utils import log_test_case
 
 
+def _contains_key(value: object, key: str) -> bool:
+    if isinstance(value, dict):
+        return key in value or any(_contains_key(child, key) for child in value.values())
+    if isinstance(value, list):
+        return any(_contains_key(child, key) for child in value)
+    return False
+
+
 class FakeAIClient(OpenAIClient):
     def __init__(self, responses: list[dict[str, object]]):
         # We do not call super() to avoid initializing real clients.
@@ -207,6 +215,58 @@ class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
             json.loads(gloss_path.read_text(encoding="utf-8")),
             json.loads(pinyin_path.read_text(encoding="utf-8")),
         )
+
+    async def test_no_audio_mode_skips_tts_and_strips_audio_annotations(self) -> None:
+        text_obj = {
+            "l2": "xkk",
+            "surface": "Waku.",
+            "pages": [
+                {
+                    "surface": "Waku.",
+                    "annotations": {"audio": {"path": "/tmp/stale-page.wav"}},
+                    "segments": [
+                        {
+                            "surface": "Waku.",
+                            "annotations": {"translation": "Dog.", "audio": {"path": "/tmp/stale-seg.wav"}},
+                            "tokens": [
+                                {
+                                    "surface": "Waku",
+                                    "annotations": {
+                                        "lemma": "waku",
+                                        "gloss": "dog",
+                                        "audio": {"path": "/tmp/stale-token.wav"},
+                                    },
+                                },
+                                {"surface": ".", "annotations": {}},
+                            ],
+                        }
+                    ],
+                }
+            ],
+            "annotations": {},
+        }
+        out_root = self.fake_html_root / "no_audio"
+        spec = FullPipelineSpec(
+            text_obj=text_obj,
+            language="xkk",
+            target_language="en",
+            output_dir=out_root,
+            audio_cache_dir=self.fake_audio_root / "no_audio",
+            start_stage="audio",
+            end_stage="compile_html",
+            persist_intermediates=True,
+            require_real_tts=True,
+            audio_mode="none",
+        )
+
+        result = await run_full_pipeline(spec, client=self.fake_client)
+
+        html_root = Path(result["html"].get("html_root", Path(result["html"]["run_root"]) / "html"))
+        html_content = (html_root / "page_1.html").read_text(encoding="utf-8")
+        audio_payload = json.loads((out_root / "stages" / "audio.json").read_text(encoding="utf-8"))
+        self.assertNotIn("data-audio", html_content)
+        self.assertNotIn("Play page audio", html_content)
+        self.assertFalse(_contains_key(audio_payload, "audio"))
 
     async def test_full_pipeline_with_fake_client_multi_page_mwe(self) -> None:
         """Larger fake flow with two pages and an explicit MWE."""

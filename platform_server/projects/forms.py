@@ -66,6 +66,7 @@ class ProjectForm(forms.ModelForm):
             "source_text",
             "language",
             "target_language",
+            "audio_mode",
             "access_scope",
             "community",
         ]

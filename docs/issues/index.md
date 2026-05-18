@@ -1,12 +1,12 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-18T03:20:16Z_
+_Last updated: 2026-05-18T04:05:00Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
 ## Recent progress
 
-- **[ISSUE-0016](issues/ISSUE-0016.json)** has been added from human suggestion #6: low-resource languages without usable TTS need an urgent no-TTS/no-audio pipeline option before the Kok Kaper community visit on **2026-06-01**, followed by a fuller community-recorded audio dictionary workflow.
+- **[ISSUE-0016](issues/ISSUE-0016.json)** is now active and Phase A is implemented: project owners can select no audio / skip TTS, the audio stage avoids TTS calls and strips stale audio annotations, and compiled HTML omits audio controls when no recorded audio exists. Phase B remains the community-recorded word/segment audio dictionary.
 - **[ISSUE-0015](issues/ISSUE-0015.json)** is now closed: community organisers can add existing users as ordinary members from the organiser page, view current memberships, and remove ordinary members. Organiser-role changes remain protected from the organiser UI.
 - **[ISSUE-0014](issues/ISSUE-0014.json)** has recent AWS billing triage: AWS Bills shows about **USD 20** spent in April and about **USD 67** so far by **May 17**, with roughly three quarters of May spend on EC2 and most of the remainder on RDS. This may be normal for the deployed architecture, but confirms that cost tracking and budget alarms need to be in place before broader rollout.
 - **[ISSUE-0011](issues/ISSUE-0011.json)** records that a first picture-dictionary-backed **image → word** flashcard mode has been implemented. The remaining image-game work is narrower: curation/game-ready flags, picture glossing where appropriate, word → image flashcards, and learner/community feedback for bad cards.
@@ -15,7 +15,7 @@ This document summarizes the current issue registry for quick human review. Cano
 ## Near-term priorities
 
 1. **[ISSUE-0014](issues/ISSUE-0014.json) (P1)** — Continue AWS operational readiness work: configure AWS Budgets/alerts, monitor service-level EC2/RDS cost breakdowns, estimate monthly run-rate under beta usage, and review whether EC2/RDS resources can be right-sized or scheduled before C-LARA-2 is opened to more users.
-2. **[ISSUE-0016](issues/ISSUE-0016.json) (P1, deadline 2026-06-01)** — Implement the low-resource audio fast path: provide a content-owner/project option for languages where TTS is unusable, let the audio stage run without TTS, compile final HTML without broken audio controls, and design the follow-up community-recorded audio dictionary for words and segments.
+2. **[ISSUE-0016](issues/ISSUE-0016.json) (P1, active, deadline 2026-06-01)** — Validate the no-audio/skip-TTS fallback with Kok Kaper material, then design and implement the follow-up community-recorded audio dictionary for surface words and segments.
 3. **[ISSUE-0003](issues/ISSUE-0003.json) (P1)** — Add an efficient end-to-end pipeline test runner; first target legacy-vs-C-LARA-2 comparisons over the imported corpus from ISSUE-0010, with AI-assisted gross-difference review where exact matching is inappropriate.
 4. **[ISSUE-0011](issues/ISSUE-0011.json) (P1, active, deadline 2026-06-01)** — Continue the Kok Kaper image-game fast path after the seed dictionary and first image→word flashcards: validate/curate game-ready entries, then add word→image play and feedback/reporting for image/card problems.
 5. **[ISSUE-0010](issues/ISSUE-0010.json) (P1)** — Import and triage a representative legacy C-LARA corpus from the Adelaide material now reaching C-LARA-2 on AWS; include known divergence checks before growing into multi-bundle batch import with heartbeat progress.
@@ -36,7 +36,7 @@ This document summarizes the current issue registry for quick human review. Cano
 
 ## Notes and risks
 
-- **Low-resource audio has a hard near-term date:** ISSUE-0016 Phase A should stay narrow enough to land before **2026-06-01**: skip unusable TTS cleanly and avoid broken audio in compiled HTML. The richer recording workflow should be designed in parallel but should not block the minimal no-TTS fallback.
+- **Low-resource audio has a hard near-term date:** ISSUE-0016 Phase A has landed as a narrow no-audio/skip-TTS fallback. It should be validated on Kok Kaper projects before **2026-06-01**; the richer recording workflow should be designed in parallel but should not destabilize the fallback.
 - **Audio dictionary model differs from picture dictionaries:** recorded audio should likely be surface-word- and segment-oriented, with text occurrence links and community moderation/approval, while picture dictionaries are primarily lemma-oriented. Avoid prematurely merging the two resource models.
 - **Organiser membership scope:** ISSUE-0015 intentionally implements ordinary-member add/remove, not organiser promotion/demotion or email invitations. If communities need self-service invitations or organiser role delegation, track that as a follow-up rather than weakening the initial security boundary.
 - **AWS readiness remains a launch blocker:** ISSUE-0014 is high priority even though it is not an application bug. The April/May bills suggest EC2 and RDS are the main cost drivers; before broader usage, the team should know the expected run-rate, define acceptable monthly spend, set alarms, and document what to do if costs rise unexpectedly.

@@ -149,6 +149,8 @@ Some low-resource languages will not have usable text-to-speech support. For the
 
 ### 5.1 Phase A: no-TTS / no-audio mode
 
+Status: **implemented as the first no-audio fallback**. Projects can now be configured to use either normal TTS audio or no audio / skip TTS. In no-audio mode, the audio pipeline stage skips external TTS calls, removes stale audio annotations from the stage payload, and compilation strips audio annotations before HTML rendering so the final pages do not contain broken audio links or empty audio controls.
+
 Urgent target: have a safe minimal workflow before the Kok Kaper community visit on **2026-06-01**.
 
 - Add a project/content-owner option, or an equivalent language/community setting, that marks the project language as not having useful TTS.
