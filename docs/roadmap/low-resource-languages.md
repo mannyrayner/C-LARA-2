@@ -143,12 +143,54 @@ No feature should assume that annotations are AI-generated.
 
 ---
 
-## 5) Community model for Indigenous-language workflows
+## 5) Audio for languages without usable TTS
+
+Some low-resource languages will not have usable text-to-speech support. For these projects, audio should be optional at first, and then community-recorded. This is tracked in **ISSUE-0016**.
+
+### 5.1 Phase A: no-TTS / no-audio mode
+
+Status: **implemented as the first no-audio fallback**. Projects can now be configured to use either normal TTS audio or no audio / skip TTS. In no-audio mode, the audio pipeline stage skips external TTS calls, removes stale audio annotations from the stage payload, and compilation strips audio annotations before HTML rendering so the final pages do not contain broken audio links or empty audio controls.
+
+Urgent target: have a safe minimal workflow before the Kok Kaper community visit on **2026-06-01**.
+
+- Add a project/content-owner option, or an equivalent language/community setting, that marks the project language as not having useful TTS.
+- When this setting is active, the pipeline audio stage must not request or insert TTS-generated audio.
+- Compilation should continue successfully and final HTML should omit audio controls/references where no recorded audio exists.
+- The UI should explain that audio has intentionally been disabled or deferred, rather than presenting it as a processing failure.
+
+Acceptance checks:
+
+- A non-TTS project can pass through the audio stage without external TTS calls.
+- Published/compiled output contains no broken audio links or empty audio controls.
+- Existing TTS-capable projects keep their current behavior.
+
+### 5.2 Phase B: community-recorded audio dictionary
+
+A better long-term workflow should let community members record the audio needed for texts. This should be designed as a community-specific **audio dictionary**, but probably not merged with the picture dictionary: picture-dictionary entries are lemma-oriented, while audio entries need to be surface-word- and segment-oriented.
+
+Data/workflow requirements:
+
+1. During the audio stage for a non-TTS project, record the surface words and segments requiring audio in the community audio dictionary.
+2. Associate each word/segment entry with every text where it has been observed, so contributors can prioritize recordings by current teaching material.
+3. Add a view reachable from community member pages, such as `communities/<community>/member/`, for a selected text's needed audio.
+4. In that view, allow members to play existing recordings and record/rerecord word or segment audio using MediaRecorder or a similar browser API.
+5. Decide whether to support multiple recording versions per entry, including a preferred/approved recording marker and review history.
+6. When recorded audio exists for a non-TTS project, the audio annotation stage should insert the selected recordings into annotated text using the same downstream structure currently used for TTS-generated audio.
+
+Open design questions:
+
+- Permissions: which community roles may record, rerecord, approve, or retire audio?
+- Moderation: should organiser approval be required before audio is used in compiled/published content?
+- Storage: how should audio files be named, versioned, deduplicated, backed up, and associated with project artifacts?
+- Granularity: when should the platform prefer a full segment recording over concatenating word recordings?
+- Review UI: how should disagreements or multiple speaker variants be presented to organisers and learners?
+
+## 6) Community model for Indigenous-language workflows
 
 To support the Indigenous-language collaboration model used in C-LARA, add a first-class **Community** object
 plus explicit community roles and moderation/review flows.
 
-### 5.1 Core entities and roles
+### 6.1 Core entities and roles
 
 #### Community (new object)
 
@@ -179,7 +221,7 @@ Roles:
   - add/remove community members,
   - manage community review workflows for projects/images.
 
-### 5.2 Access control: community-only texts
+### 6.2 Access control: community-only texts
 
 Add project/content visibility mode:
 
@@ -193,7 +235,7 @@ For community-only resources:
 - organiser/admin retain management access,
 - non-members see explicit access-denied messaging.
 
-### 5.3 Community image review workflow (multi-variant page images)
+### 6.3 Community image review workflow (multi-variant page images)
 
 For meaningful community review, page-image generation must support multiple candidates per page.
 
@@ -221,7 +263,7 @@ For meaningful community review, page-image generation must support multiple can
 - Mark specific variants/pages for regeneration.
 - Trigger regeneration for flagged pages (possibly with revised prompts informed by comments).
 
-### 5.4 Data model additions for image review
+### 6.4 Data model additions for image review
 
 Add entities similar to:
 
@@ -236,7 +278,7 @@ Add entities similar to:
   - set by organiser,
   - includes reason/status/audit fields.
 
-### 5.5 UI/API implications
+### 6.5 UI/API implications
 
 - Admin tools:
   - create/manage communities,
@@ -250,7 +292,7 @@ Add entities similar to:
   - side-by-side variant gallery,
   - fast thumbs-up/down controls + comment capture.
 
-### 5.6 Governance, safety, and audit
+### 6.6 Governance, safety, and audit
 
 - Full audit trail for:
   - membership changes,
@@ -262,7 +304,7 @@ Add entities similar to:
   - duplicate-vote suppression rules,
   - organiser override logs.
 
-### 5.7 Delivery phasing for community feature
+### 6.7 Delivery phasing for community feature
 
 #### Phase A (foundation)
 
@@ -283,7 +325,7 @@ Add entities similar to:
 - Aggregated analytics/consensus indicators for organiser decisions.
 - Extended audit/report exports for partner communities.
 
-### 5.8 Success criteria for community feature
+### 6.8 Success criteria for community feature
 
 - Communities can be created and managed with clear role boundaries.
 - Community-only texts are inaccessible to non-members.
@@ -298,10 +340,12 @@ Add entities similar to:
 ### Phase A
 - Manual editor MVP for segmentation + lemma/gloss + translation.
 - Strict validators and versioned saves.
+- Non-TTS/no-audio pipeline mode for low-resource languages without usable TTS.
 - Community foundation (community object, roles, and community-only access gate).
 
 ### Phase B
 - Extend manual editor to MWE + romanization + audio metadata.
+- Community-recorded audio dictionary MVP for surface words and segments.
 - Diff/review tools for AI-assisted workflows.
 - Community image review MVP with multi-variant page images and organiser flagging.
 
@@ -315,4 +359,4 @@ Add entities similar to:
 - A project in an AI-weak language can be completed end-to-end with manual annotations.
 - Invalid edited structures are blocked with actionable feedback.
 - Published outputs are usable and discoverable exactly like other projects.
-- Indigenous-language community governance and image-review loops are supported end-to-end.
+- Indigenous-language community governance, image-review loops, and community-recorded audio workflows are supported end-to-end.

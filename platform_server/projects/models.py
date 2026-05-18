@@ -31,6 +31,12 @@ class Project(models.Model):
         (PAGE_IMAGE_TEXT_SOURCE_SEGMENTATION, "Segmented source text"),
         (PAGE_IMAGE_TEXT_SOURCE_TRANSLATION, "Concatenated page translations"),
     ]
+    AUDIO_MODE_TTS = "tts"
+    AUDIO_MODE_NONE = "none"
+    AUDIO_MODE_CHOICES = [
+        (AUDIO_MODE_TTS, "Use TTS audio"),
+        (AUDIO_MODE_NONE, "No audio / skip TTS"),
+    ]
 
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="projects")
     title = models.CharField(max_length=200)
@@ -49,6 +55,7 @@ class Project(models.Model):
     )
     segmentation_method = models.CharField(max_length=32, default="auto")
     romanization_method = models.CharField(max_length=32, default="auto")
+    audio_mode = models.CharField(max_length=16, choices=AUDIO_MODE_CHOICES, default=AUDIO_MODE_TTS)
     compiled_path = models.CharField(max_length=512, blank=True)
     artifact_root = models.CharField(max_length=512, blank=True)
     is_published = models.BooleanField(default=False)
@@ -598,9 +605,11 @@ class ExerciseSet(models.Model):
     ]
     FLASHCARD_MODE_FORM_TO_MEANING = "form_to_meaning"
     FLASHCARD_MODE_MEANING_TO_FORM = "meaning_to_form"
+    FLASHCARD_MODE_IMAGE_TO_FORM = "image_to_form"
     FLASHCARD_MODE_CHOICES = [
         (FLASHCARD_MODE_FORM_TO_MEANING, "Form → meaning"),
         (FLASHCARD_MODE_MEANING_TO_FORM, "Meaning → form"),
+        (FLASHCARD_MODE_IMAGE_TO_FORM, "Image → form"),
     ]
 
     THEME_VOCAB = "vocabulary"
