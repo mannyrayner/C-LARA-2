@@ -1,29 +1,31 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-15T23:55:21Z_
+_Last updated: 2026-05-18T00:52:51Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
 ## Recent progress
 
-- **[ISSUE-0011](issues/ISSUE-0011.json)** has moved past the seed-import milestone: **50 words in Kok Kaper** has been successfully imported from legacy C-LARA material and installed as the first Kok Kaper community picture dictionary. The issue remains active because the learner-facing image-game/flashcard work is still pending.
-- **[ISSUE-0013](issues/ISSUE-0013.json)** now has a dedicated [efficiency and stage-artifact persistence roadmap](../roadmap/efficiency-and-stage-artifacts.md), covering generic stage read/write operations, JSON backward compatibility, faster internal formats, timing instrumentation, project/run format selection, and a trusted admin-only binary migration experiment.
-- **[ISSUE-0010](issues/ISSUE-0010.json)** records that C-LARA projects from the Adelaide server can now be imported as C-LARA-2 projects on AWS, but representative corpus triage is still needed.
-- **[ISSUE-0003](issues/ISSUE-0003.json)** remains the planned systematic comparison runner; the imported Adelaide corpus and known import/compile divergences should become concrete fixtures for it.
+- **[ISSUE-0015](issues/ISSUE-0015.json)** has been added from human suggestion #5 as a **P1 community operations issue**: community organisers need self-service membership management, most immediately the ability to add other users as members of their own community without platform-admin intervention.
+- **[ISSUE-0014](issues/ISSUE-0014.json)** has recent AWS billing triage: AWS Bills shows about **USD 20** spent in April and about **USD 67** so far by **May 17**, with roughly three quarters of May spend on EC2 and most of the remainder on RDS. This may be normal for the deployed architecture, but confirms that cost tracking and budget alarms need to be in place before broader rollout.
+- **[ISSUE-0011](issues/ISSUE-0011.json)** records that a first picture-dictionary-backed **image → word** flashcard mode has been implemented. The remaining image-game work is narrower: curation/game-ready flags, picture glossing where appropriate, word → image flashcards, and learner/community feedback for bad cards.
+- **[ISSUE-0013](issues/ISSUE-0013.json)** remains the main performance/resilience track for large imported legacy projects and stage-artifact persistence.
 
 ## Near-term priorities
 
-1. **[ISSUE-0003](issues/ISSUE-0003.json) (P1)** — Add an efficient end-to-end pipeline test runner; first target legacy-vs-C-LARA-2 comparisons over the imported corpus from ISSUE-0010, with AI-assisted gross-difference review where exact matching is inappropriate.
-2. **[ISSUE-0011](issues/ISSUE-0011.json) (P1, active, deadline 2026-06-01)** — Continue the Kok Kaper image-game fast path now that the picture dictionary has been seeded: validate/curate game-ready entries, then adapt flashcards for image→word and word→image play using approved same-dictionary distractors.
-3. **[ISSUE-0010](issues/ISSUE-0010.json) (P1)** — Import and triage a representative legacy C-LARA corpus from the Adelaide material now reaching C-LARA-2 on AWS; include known divergence checks before growing into multi-bundle batch import with heartbeat progress.
-4. **[ISSUE-0013](issues/ISSUE-0013.json) (P1)** — Implement the efficiency roadmap: centralize stage-artifact read/write operations, benchmark JSON against faster formats, record read/write timings, and include a trusted admin-only binary/pickle-like migration-format experiment if it speeds the one-off Adelaide migration.
-5. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, deadline 2026-06-15)** — Draft the long C-LARA-2 internal technical report and use it as the source for the accepted EuroCALL 2026 paper and possible ALTA 2026 submission.
-6. **[ISSUE-0006](issues/ISSUE-0006.json) (P2)** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness, preferably using ISSUE-0003 diagnostics where possible.
-7. **[ISSUE-0005](issues/ISSUE-0005.json) (P2)** — Tune segmentation_phase_1 prompting so prose and poetry segment granularity better matches expected legacy behavior.
-8. **[ISSUE-0004](issues/ISSUE-0004.json) (P2)** — Introduce AI-based review gates with a pluggable evaluator architecture after the test-runner foundation is available.
-9. **[ISSUE-0007](issues/ISSUE-0007.json) (P2)** — Improve page-image generation by routing prompt construction through an LLM-backed indirection layer.
-10. **[ISSUE-0001](issues/ISSUE-0001.json) (P2)** — Support registration of hosted compiled legacy content in C-LARA-2; use the same AWS staging/rsync runbook and the imported C-LARA corpus as complementary test material.
-11. **[ISSUE-0012](issues/ISSUE-0012.json) (P2)** — Adjust project creation defaults for AI text generation and top page-image placement.
+1. **[ISSUE-0014](issues/ISSUE-0014.json) (P1)** — Continue AWS operational readiness work: configure AWS Budgets/alerts, monitor service-level EC2/RDS cost breakdowns, estimate monthly run-rate under beta usage, and review whether EC2/RDS resources can be right-sized or scheduled before C-LARA-2 is opened to more users.
+2. **[ISSUE-0003](issues/ISSUE-0003.json) (P1)** — Add an efficient end-to-end pipeline test runner; first target legacy-vs-C-LARA-2 comparisons over the imported corpus from ISSUE-0010, with AI-assisted gross-difference review where exact matching is inappropriate.
+3. **[ISSUE-0011](issues/ISSUE-0011.json) (P1, active, deadline 2026-06-01)** — Continue the Kok Kaper image-game fast path after the seed dictionary and first image→word flashcards: validate/curate game-ready entries, then add word→image play and feedback/reporting for image/card problems.
+4. **[ISSUE-0015](issues/ISSUE-0015.json) (P1)** — Add community-organiser membership management so organisers can onboard community members themselves, with security boundaries and tests for duplicate, unauthorized, and cross-community cases.
+5. **[ISSUE-0010](issues/ISSUE-0010.json) (P1)** — Import and triage a representative legacy C-LARA corpus from the Adelaide material now reaching C-LARA-2 on AWS; include known divergence checks before growing into multi-bundle batch import with heartbeat progress.
+6. **[ISSUE-0013](issues/ISSUE-0013.json) (P1)** — Implement the efficiency roadmap: centralize stage-artifact read/write operations, benchmark JSON against faster formats, record read/write timings, and keep trusted admin-only binary migration experiments separate from untrusted user uploads.
+7. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, deadline 2026-06-15)** — Draft the long C-LARA-2 internal technical report and use it as the source for the accepted EuroCALL 2026 paper and possible ALTA 2026 submission.
+8. **[ISSUE-0006](issues/ISSUE-0006.json) (P2)** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness, preferably using ISSUE-0003 diagnostics where possible.
+9. **[ISSUE-0005](issues/ISSUE-0005.json) (P2)** — Tune segmentation_phase_1 prompting so prose and poetry segment granularity better matches expected legacy behavior.
+10. **[ISSUE-0004](issues/ISSUE-0004.json) (P2)** — Introduce AI-based review gates with a pluggable evaluator architecture after the test-runner foundation is available.
+11. **[ISSUE-0007](issues/ISSUE-0007.json) (P2)** — Improve page-image generation by routing prompt construction through an LLM-backed indirection layer.
+12. **[ISSUE-0001](issues/ISSUE-0001.json) (P2)** — Support registration of hosted compiled legacy content in C-LARA-2; use the same AWS staging/rsync runbook and the imported C-LARA corpus as complementary test material.
+13. **[ISSUE-0012](issues/ISSUE-0012.json) (P2)** — Adjust project creation defaults for AI text generation and top page-image placement.
 
 ## Completed issues
 
@@ -32,15 +34,13 @@ This document summarizes the current issue registry for quick human review. Cano
 
 ## Notes and risks
 
-- **Kok Kaper picture dictionary:** ISSUE-0011's first seed-import/registration step is now done for **50 words in Kok Kaper**. Keep the next implementation steps narrow: verify imported entry readiness, preserve community-organiser review controls, and avoid broad game-framework generalization before the first image-game workflow is usable.
-- **Image-game distractors:** for ISSUE-0011, distractors should come from the same approved picture dictionary where possible; AI should rank/filter curated candidates rather than inventing unreviewed answer options for the first community-facing version.
-- **Legacy corpus dependency:** ISSUE-0003 now depends on ISSUE-0010 for its first high-value evaluation corpus; the runner can be designed earlier, but legacy-vs-C-LARA-2 comparisons need enough imported material to be useful.
-- **Known import divergences:** imported C-LARA projects with corrupted pages, missing images, or mismatched stage artifacts should be captured as concrete fixtures for ISSUE-0010 triage and ISSUE-0003 comparison tooling.
+- **Community operations are becoming urgent:** ISSUE-0015 is not just an admin convenience. Kok Kaper and other community workflows depend on organisers being able to onboard participants for review sessions, picture-dictionary work, and language games without waiting for a platform admin.
+- **Membership management needs careful boundaries:** the first version should probably let organisers add/remove ordinary members in their own community while keeping organiser-role promotion/demotion either admin-only or strongly confirmed, to avoid accidental lockout and privilege escalation.
+- **AWS readiness remains a launch blocker:** ISSUE-0014 is high priority even though it is not an application bug. The April/May bills suggest EC2 and RDS are the main cost drivers; before broader usage, the team should know the expected run-rate, define acceptable monthly spend, set alarms, and document what to do if costs rise unexpectedly.
+- **Cost data is still preliminary:** the update gives useful first measurements but not yet a complete month or a normalized per-user/per-project estimate. Treat it as a starting point for monitoring rather than proof that current capacity/costs are acceptable.
+- **Kok Kaper image games:** ISSUE-0011 should still keep the first community-facing scope narrow. The implemented image→word flashcards are a useful first step, but game readiness still depends on dictionary curation, approved entries, word→image mode, and a simple way to flag bad images/words/distractors.
+- **Low-resource-language distractors:** image/card distractors for Indigenous language work should come from the curated picture dictionary where possible, with translations passed to AI ranking/filtering so the model need not know the source language.
+- **Legacy corpus dependency:** ISSUE-0003 depends on ISSUE-0010 for its first high-value evaluation corpus; the runner can be designed earlier, but legacy-vs-C-LARA-2 comparisons need enough imported material to be useful.
 - **Stage-artifact abstraction:** ISSUE-0013 should first centralize read/write operations behind a format-independent API so pipeline logic is not tied to `Path.read_text`/`json.loads` or `Path.write_text`/`json.dumps`.
-- **Trusted one-off migration format:** ISSUE-0013 may use pickle or a similar binary representation for the Adelaide migration handoff because the source is trusted and the operation is admin-only/one-off. Keep this separate from ordinary user uploads and from long-term source-bundle interchange.
-- **Measurement before defaults:** the efficiency roadmap calls for read/write timing and artifact-size measurements before changing defaults globally. JSON must remain readable for backward compatibility and available for human inspection, source-bundle compatibility, debugging, reproducibility, and untrusted/user-supplied bundles.
-- **Gross-difference review:** exact comparison is inappropriate for stages like translation and glossing, so ISSUE-0003 should support AI-assisted judgement of whether differences are problematic, while still using deterministic structural checks where possible.
-- **Segmentation triage:** ISSUE-0003 should at least support ISSUE-0006 by detecting clear segmentation_phase_2 token-span failures in legacy-vs-C-LARA-2 comparisons.
-- **Compiled LARA corpus staging:** ISSUE-0001 should reuse the same large-folder transfer runbook, but target `/srv/c-lara/legacy-compiled/lara/` rather than the C-LARA source-bundle library so compiled hosted content is not mixed with importable C-LARA source bundles.
-- **Service-environment visibility:** ISSUE-0010 records that `export C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT=...` in an SSH shell is not enough for the website; configure the Gunicorn/Django service environment, restart services, and use the admin-only diagnostics panel on `projects/import-zip/` to confirm the running web process sees the setting.
+- **Trusted one-off migration format:** ISSUE-0013 may use pickle or a similar binary representation only for the trusted Adelaide migration handoff. Keep that separate from ordinary user uploads and long-term source-bundle interchange.
 - **Writing scope:** ISSUE-0008 should use the internal report as the master source, then, subject to co-author approval, split it into a user-facing EuroCALL 2026 paper and an implementor-facing ALTA 2026 paper to avoid duplicated effort.

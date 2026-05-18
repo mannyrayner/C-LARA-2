@@ -598,9 +598,11 @@ class ExerciseSet(models.Model):
     ]
     FLASHCARD_MODE_FORM_TO_MEANING = "form_to_meaning"
     FLASHCARD_MODE_MEANING_TO_FORM = "meaning_to_form"
+    FLASHCARD_MODE_IMAGE_TO_FORM = "image_to_form"
     FLASHCARD_MODE_CHOICES = [
         (FLASHCARD_MODE_FORM_TO_MEANING, "Form → meaning"),
         (FLASHCARD_MODE_MEANING_TO_FORM, "Meaning → form"),
+        (FLASHCARD_MODE_IMAGE_TO_FORM, "Image → form"),
     ]
 
     THEME_VOCAB = "vocabulary"
