@@ -4,6 +4,23 @@
 <h1>{{ object.title }}</h1>
 <p>{{ object.description }}</p>
 <p>Language: {{ object.language }} → {{ object.target_language }}</p>
+<p>Audio: {{ object.get_audio_mode_display }}</p>
+{% if current_user_role == "owner" %}
+  <form method="post" action="{% url 'project-processing-options' object.pk %}" style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0; background:#fafafa;">
+    {% csrf_token %}
+    <input type="hidden" name="segmentation_method" value="{{ selected_segmentation_method }}" />
+    <input type="hidden" name="romanization_method" value="{{ selected_romanization_method }}" />
+    <input type="hidden" name="return_to" value="{% url 'project-detail' object.pk %}" />
+    <label for="detail_audio_mode"><strong>Audio setting:</strong></label>
+    <select name="audio_mode" id="detail_audio_mode">
+      {% for value, label in audio_mode_options %}
+        <option value="{{ value }}" {% if value == selected_audio_mode %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn secondary" type="submit">Save audio setting</button>
+    <small>Use “No audio / skip TTS” when this language has no useful TTS.</small>
+  </form>
+{% endif %}
 <p>Access: {{ object.get_access_scope_display }}{% if object.community %} ({{ object.community.name }}){% endif %}</p>
 <p>Direction: {{ project_text_direction }} (text) / {{ project_annotation_direction }} (annotation)</p>
 {% if current_user_role == "owner" %}

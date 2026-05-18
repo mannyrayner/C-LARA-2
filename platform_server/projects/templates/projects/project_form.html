@@ -32,6 +32,10 @@
   <p>{{ form.source_text.label_tag }} {{ form.source_text }}</p>
   <p>{{ form.language.label_tag }} {{ form.language }}</p>
   <p>{{ form.target_language.label_tag }} {{ form.target_language }}</p>
+  <p>
+    {{ form.audio_mode.label_tag }} {{ form.audio_mode }}<br />
+    <small>Select “No audio / skip TTS” for languages where text-to-speech is not useful yet.</small>
+  </p>
   {% if form.language.value == form.target_language.value %}
     <p style="color:#8a6d3b;">
       ⚠️ Glossing language currently matches text language.
