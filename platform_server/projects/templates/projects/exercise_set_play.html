@@ -6,6 +6,9 @@
   <p>No items in this exercise set.</p>
 {% else %}
   <p>Item {{ index|add:1 }} of {{ total }}</p>
+  {% if item.rationale.image_path %}
+    <p><img src="{% url 'exercise-item-image' item.id %}" alt="Flashcard image" style="max-width: 420px; height: auto;" /></p>
+  {% endif %}
   <p><strong>{{ item.prompt }}</strong></p>
   <form method="post">{% csrf_token %}
     {% for opt in item.options %}
