@@ -406,6 +406,14 @@ class AdminCommunityMembershipForm(forms.Form):
         self.fields["user"].queryset = User.objects.order_by("username")
 
 
+class CommunityOrganiserMembershipForm(forms.Form):
+    user = forms.ModelChoiceField(queryset=User.objects.none(), label="User")
+
+    def __init__(self, *args, community: Community | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["user"].queryset = User.objects.order_by("username")
+
+
 class AdminDeleteCommunityForm(forms.Form):
     community = forms.ModelChoiceField(queryset=Community.objects.none(), label="Community")
 

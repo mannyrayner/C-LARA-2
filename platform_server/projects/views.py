@@ -52,6 +52,7 @@ from pipeline.stage_artifacts import read_stage_artifact, stage_artifact_path, w
 from .forms import (
     AdminCommunityForm,
     AdminCommunityMembershipForm,
+    CommunityOrganiserMembershipForm,
     AdminDeleteCommunityForm,
     AdminAdjustCreditsForm,
     AdminOpenAIPricingForm,
@@ -7452,6 +7453,12 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
         raise Http404()
     community = membership.community
     projects = list(Project.objects.filter(community_id=community_id).order_by("-updated_at"))
+    community_memberships = list(
+        CommunityMembership.objects.filter(community_id=community_id)
+        .select_related("user")
+        .order_by("role", "user__username")
+    )
+    community_membership_form = CommunityOrganiserMembershipForm(community=community)
     picture_dictionary = (
         PictureDictionary.objects.select_related("project")
         .filter(community_id=community_id, is_active=True)
@@ -7478,6 +7485,44 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             }
 
     if request.method == "POST":
+        membership_action = (request.POST.get("community_membership_action") or "").strip()
+        if membership_action == "add_member":
+            community_membership_form = CommunityOrganiserMembershipForm(request.POST, community=community)
+            if community_membership_form.is_valid():
+                user_obj = community_membership_form.cleaned_data["user"]
+                membership_obj, created = CommunityMembership.objects.get_or_create(
+                    community=community,
+                    user=user_obj,
+                    defaults={"role": CommunityMembership.ROLE_MEMBER},
+                )
+                if created:
+                    messages.success(request, f"Added {user_obj.username} as a member of {community.name}.")
+                else:
+                    messages.info(request, f"{user_obj.username} is already in {community.name} as {membership_obj.role}.")
+                return redirect("community-organiser-home", community_id=community_id)
+        elif membership_action == "remove_member":
+            membership_id_raw = (request.POST.get("membership_id") or "").strip()
+            try:
+                membership_id = int(membership_id_raw)
+            except ValueError:
+                membership_id = 0
+            target_membership = (
+                CommunityMembership.objects.filter(id=membership_id, community=community)
+                .select_related("user")
+                .first()
+            )
+            if not target_membership:
+                messages.error(request, "Please choose a valid community member to remove.")
+            elif target_membership.user_id == request.user.id:
+                messages.error(request, "You cannot remove your own organiser membership.")
+            elif target_membership.role == CommunityMembership.ROLE_ORGANISER:
+                messages.error(request, "Organiser memberships can only be changed by platform admins.")
+            else:
+                username = target_membership.user.username
+                target_membership.delete()
+                messages.success(request, f"Removed {username} from {community.name}.")
+                return redirect("community-organiser-home", community_id=community_id)
+
         action = (request.POST.get("picture_dictionary_action") or "").strip()
         if action:
             if action == "import_from_project":
@@ -7679,6 +7724,8 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             "community": community,
             "membership": membership,
             "summary_rows": summary_rows,
+            "community_memberships": community_memberships,
+            "community_membership_form": community_membership_form,
             "picture_dictionary": picture_dictionary,
             "dictionary_entries": dictionary_entries,
             "picture_dictionary_compile_info": picture_dictionary_compile_info,
