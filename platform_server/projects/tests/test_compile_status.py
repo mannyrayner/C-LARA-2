@@ -28,6 +28,9 @@ from projects.models import (
     ContentRating,
     TaskUpdate,
     ExerciseSet,
+    Community,
+    PictureDictionary,
+    PictureDictionaryEntry,
 )
 
 
@@ -418,6 +421,20 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual(resp.status_code, 302)
         self.project.refresh_from_db()
         self.assertEqual(self.project.page_image_placement, "top")
+
+    def test_set_processing_options_updates_audio_mode(self):
+        url = reverse("project-processing-options", args=[self.project.pk])
+        resp = self.client.post(
+            url,
+            {
+                "segmentation_method": "auto",
+                "romanization_method": "auto",
+                "audio_mode": Project.AUDIO_MODE_NONE,
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.audio_mode, Project.AUDIO_MODE_NONE)
 
     def test_project_create_form_uses_language_dropdowns_with_clear_labels(self):
         Profile.objects.update_or_create(user=self.user, defaults={"timezone": "UTC", "dialogue_language": "de"})
@@ -1391,6 +1408,56 @@ class CompileStatusViewTests(TestCase):
         self.assertFalse(any(option.endswith("_1") for option in item.options))
         self.assertGreaterEqual(len(set(item.options)), 4)
 
+    def test_generate_cloze_exercises_filters_distractors_by_pos(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_cloze_pos" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        sample = {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "segments": [
+                        {
+                            "tokens": [
+                                {"surface": "Sarah", "annotations": {"pos": "PROPN", "lemma": "Sarah"}},
+                                {"surface": " ist ", "annotations": {"pos": "AUX", "lemma": "sein"}},
+                                {"surface": "gerade ", "annotations": {"pos": "ADV", "lemma": "gerade"}},
+                                {"surface": "in ", "annotations": {"pos": "ADP", "lemma": "in"}},
+                                {"surface": "Deutschland", "annotations": {"pos": "PROPN", "lemma": "Deutschland"}},
+                                {"surface": " angekommen.", "annotations": {"pos": "VERB", "lemma": "ankommen"}},
+                            ]
+                        },
+                        {
+                            "tokens": [
+                                {"surface": "Tom", "annotations": {"pos": "PROPN", "lemma": "Tom"}},
+                                {"surface": " besucht ", "annotations": {"pos": "VERB", "lemma": "besuchen"}},
+                                {"surface": "Australien", "annotations": {"pos": "PROPN", "lemma": "Australien"}},
+                            ]
+                        },
+                    ],
+                }
+            ]
+        }
+        (run_dir / "gloss.json").write_text(json.dumps(sample), encoding="utf-8")
+        self.project.compiled_path = "runs/run_cloze_pos/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+
+        class _FakeClient:
+            async def chat_json(self, *_args, **_kwargs):
+                return {"distractors": ["ist", "Sarah", "gerade"], "rationale": {}}
+
+        with patch("projects.views._build_ai_client", return_value=_FakeClient()):
+            resp = self.client.post(
+                reverse("project-generate-cloze", args=[self.project.pk]),
+                {"theme": "vocabulary", "item_count": 1, "ai_model": "gpt-4o"},
+            )
+        self.assertEqual(resp.status_code, 302)
+        item = ExerciseSet.objects.get(project=self.project, exercise_type=ExerciseSet.TYPE_CLOZE).items.get()
+        self.assertEqual(item.answer, "Sarah")
+        self.assertNotIn("ist", item.options)
+        self.assertNotIn("gerade", item.options)
+        self.assertIn("Tom", item.options)
+        self.assertIn("Deutschland", item.options)
+
     def test_generate_cloze_form_uses_model_dropdown(self):
         resp = self.client.get(reverse("project-generate-cloze", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
@@ -1530,6 +1597,172 @@ class CompileStatusViewTests(TestCase):
         self.assertIsNotNone(item)
         self.assertIn("boyfriend", item.prompt.lower())
         self.assertEqual(item.answer, "freund")
+
+    def test_generate_image_flashcards_uses_picture_dictionary_and_translations(self):
+        shutil.rmtree(self.project.artifact_dir(), ignore_errors=True)
+        community = Community.objects.create(name="Kok Kaper", language="xkk")
+        self.project.community = community
+        self.project.language = "xkk"
+        self.project.target_language = "en"
+        self.project.save(update_fields=["community", "language", "target_language", "updated_at"])
+        dictionary_project = Project.objects.create(
+            owner=self.user,
+            title="Kok Kaper picture dictionary",
+            source_text="maku\nlona\nsere\nnopu",
+            language="xkk",
+            target_language="en",
+            community=community,
+        )
+        dictionary = PictureDictionary.objects.create(
+            community=community,
+            project=dictionary_project,
+            organiser=self.user,
+            language="xkk",
+        )
+        for word in ["maku", "lona", "sere", "nopu"]:
+            image_path = f"images/pages/{word}.png"
+            abs_image = dictionary_project.artifact_dir() / image_path
+            abs_image.parent.mkdir(parents=True, exist_ok=True)
+            abs_image.write_bytes(b"fake-png")
+            PictureDictionaryEntry.objects.create(
+                dictionary=dictionary,
+                surface=word,
+                lemma=word,
+                pos="NOUN",
+                image_path=image_path,
+                is_active=True,
+            )
+        run_dir = self.project.artifact_dir() / "runs" / "run_image_flashcards" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        sample = {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "segments": [
+                        {
+                            "tokens": [
+                                {"surface": "maku", "annotations": {"lemma": "maku", "pos": "NOUN", "gloss": "fish"}},
+                                {"surface": " lona", "annotations": {"lemma": "lona", "pos": "NOUN", "gloss": "bird"}},
+                                {"surface": " sere", "annotations": {"lemma": "sere", "pos": "NOUN", "gloss": "tree"}},
+                                {"surface": " nopu", "annotations": {"lemma": "nopu", "pos": "NOUN", "gloss": "water"}},
+                            ]
+                        }
+                    ],
+                }
+            ]
+        }
+        (run_dir / "gloss.json").write_text(json.dumps(sample), encoding="utf-8")
+        self.project.compiled_path = "runs/run_image_flashcards/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+        prompts = []
+
+        class _FakeClient:
+            async def chat_json(self, prompt, *_args, **_kwargs):
+                prompts.append(prompt)
+                return {"distractors": ["madeup", "lona", "sere"], "rationale": {}}
+
+        with patch("projects.views._build_ai_client", return_value=_FakeClient()):
+            resp = self.client.post(
+                reverse("project-generate-flashcards", args=[self.project.pk]),
+                {
+                    "theme": "vocabulary",
+                    "flashcard_mode": "image_to_form",
+                    "item_count": 1,
+                    "ai_model": "gpt-4o",
+                },
+            )
+        self.assertEqual(resp.status_code, 302)
+        item = ExerciseSet.objects.get(project=self.project, exercise_type=ExerciseSet.TYPE_FLASHCARD).items.get()
+        self.assertEqual(item.answer, "maku")
+        self.assertEqual(set(item.options), {"maku", "lona", "sere", "nopu"})
+        self.assertEqual(item.rationale["exercise_kind"], "image_to_form")
+        self.assertEqual(item.rationale["answer_translation"], "fish")
+        self.assertIn("translation: bird", prompts[0])
+        self.assertIn("translation: tree", prompts[0])
+        image_resp = self.client.get(reverse("exercise-item-image", args=[item.pk]))
+        self.assertEqual(image_resp.status_code, 200)
+
+    def test_generate_image_flashcards_requires_picture_dictionary(self):
+        shutil.rmtree(self.project.artifact_dir(), ignore_errors=True)
+        self.project.language = "xkk"
+        self.project.save(update_fields=["language", "updated_at"])
+        run_dir = self.project.artifact_dir() / "runs" / "run_image_flashcards_no_dict" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        sample = {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "segments": [
+                        {"tokens": [{"surface": "maku", "annotations": {"lemma": "maku", "pos": "NOUN", "gloss": "fish"}}]}
+                    ],
+                }
+            ]
+        }
+        (run_dir / "gloss.json").write_text(json.dumps(sample), encoding="utf-8")
+        self.project.compiled_path = "runs/run_image_flashcards_no_dict/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+        resp = self.client.post(
+            reverse("project-generate-flashcards", args=[self.project.pk]),
+            {
+                "theme": "vocabulary",
+                "flashcard_mode": "image_to_form",
+                "item_count": 1,
+                "ai_model": "gpt-4o",
+            },
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        messages = [str(message) for message in get_messages(resp.wsgi_request)]
+        self.assertTrue(any("Image flashcards require an active picture dictionary" in message for message in messages))
+        self.assertFalse(ExerciseSet.objects.filter(project=self.project, exercise_type=ExerciseSet.TYPE_FLASHCARD).exists())
+
+    def test_generate_inverse_flashcards_filters_form_distractors_by_pos(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_flashcards_pos" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        sample = {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "segments": [
+                        {
+                            "tokens": [
+                                {"surface": "Freund", "annotations": {"gloss": "friend", "pos": "NOUN"}},
+                                {"surface": "hat", "annotations": {"gloss": "has", "pos": "AUX"}},
+                                {"surface": "schnell", "annotations": {"gloss": "quickly", "pos": "ADV"}},
+                                {"surface": "Laden", "annotations": {"gloss": "shop", "pos": "NOUN"}},
+                                {"surface": "Abend", "annotations": {"gloss": "evening", "pos": "NOUN"}},
+                                {"surface": "Brot", "annotations": {"gloss": "bread", "pos": "NOUN"}},
+                            ]
+                        }
+                    ],
+                }
+            ]
+        }
+        (run_dir / "gloss.json").write_text(json.dumps(sample), encoding="utf-8")
+        self.project.compiled_path = "runs/run_flashcards_pos/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+
+        class _FakeClient:
+            async def chat_json(self, *_args, **_kwargs):
+                return {"distractors": ["hat", "schnell", "Freund"], "rationale": {}}
+
+        with patch("projects.views._build_ai_client", return_value=_FakeClient()):
+            resp = self.client.post(
+                reverse("project-generate-flashcards", args=[self.project.pk]),
+                {
+                    "theme": "vocabulary",
+                    "flashcard_mode": "meaning_to_form",
+                    "item_count": 1,
+                    "ai_model": "gpt-4o",
+                },
+            )
+        self.assertEqual(resp.status_code, 302)
+        item = ExerciseSet.objects.get(project=self.project, exercise_type=ExerciseSet.TYPE_FLASHCARD).items.get()
+        self.assertEqual(item.answer, "Freund")
+        self.assertNotIn("hat", item.options)
+        self.assertNotIn("schnell", item.options)
+        self.assertIn("Laden", item.options)
+        self.assertIn("Abend", item.options)
 
     def test_project_exercises_home_shows_flashcard_generation_link(self):
         resp = self.client.get(reverse("project-exercises-home", args=[self.project.pk]))
@@ -1874,6 +2107,8 @@ class CompileStatusViewTests(TestCase):
         async def _fake_pipeline(spec, client):
             captured["page_images"] = spec.page_images
             captured["audio_cache_dir"] = spec.audio_cache_dir
+            captured["audio_mode"] = spec.audio_mode
+            captured["require_real_tts"] = spec.require_real_tts
             return {"html": {"run_root": str(run_root), "index_path": str(page_file)}}
 
         mock_run_full_pipeline.side_effect = _fake_pipeline
@@ -1900,6 +2135,57 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual("top", captured["page_images"][1]["placement"])
         self.assertTrue(captured["page_images"][1]["path"].startswith("../../../images/pages/"))
         self.assertIn("audio_repository/en", str(captured["audio_cache_dir"]).replace("\\", "/"))
+        self.assertEqual(captured["audio_mode"], Project.AUDIO_MODE_TTS)
+        self.assertTrue(captured["require_real_tts"])
+
+    @patch("projects.views._build_ai_client")
+    @patch("projects.views.run_full_pipeline")
+    def test_compile_task_no_audio_mode_disables_real_tts(self, mock_run_full_pipeline, mock_build_ai_client):
+        project = self.project
+        project.audio_mode = Project.AUDIO_MODE_NONE
+        project.save(update_fields=["audio_mode"])
+        Profile.objects.get_or_create(user=self.user, defaults={"timezone": "UTC"})
+
+        run_root = project.artifact_dir() / "runs" / "run_no_audio_spec"
+        run_root.mkdir(parents=True, exist_ok=True)
+        page_file = run_root / "page_1.html"
+        page_file.write_text('<div id="main-text-pane" class="page"></div>', encoding="utf-8")
+
+        captured = {}
+
+        async def _fake_pipeline(spec, client):
+            captured["audio_mode"] = spec.audio_mode
+            captured["require_real_tts"] = spec.require_real_tts
+            return {"html": {"run_root": str(run_root), "index_path": str(page_file)}}
+
+        mock_run_full_pipeline.side_effect = _fake_pipeline
+        mock_build_ai_client.return_value = object()
+
+        views._run_compile_task(
+            project.id,
+            self.user.id,
+            str(run_root),
+            str(project.artifact_dir()),
+            "segmentation_phase_1",
+            "UTC",
+            project.description,
+            "Hello world",
+            None,
+            str(uuid.uuid4()),
+            "compile_project_test",
+            "gpt-4o",
+            "compile_html",
+            "none",
+        )
+
+        self.assertEqual(captured["audio_mode"], Project.AUDIO_MODE_NONE)
+        self.assertFalse(captured["require_real_tts"])
+        self.assertTrue(
+            TaskUpdate.objects.filter(
+                user=self.user,
+                message__icontains="No audio / skip TTS",
+            ).exists()
+        )
 
     @patch("projects.views._build_ai_client")
     @patch("projects.views.run_full_pipeline")

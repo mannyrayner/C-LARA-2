@@ -5,6 +5,7 @@
 <p><a class="btn secondary" href="{% url 'project-detail' object.pk %}">← Back to project</a></p>
 <p>{{ object.description }}</p>
 <p>Language: {{ object.language }} → {{ object.target_language }}</p>
+<p>Audio: {{ object.get_audio_mode_display }}</p>
 {% if annotation_dialogue_plan %}
   <div style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0; background:#fafafa;">
     <strong>Dialogue assistant suggestion</strong>
@@ -57,6 +58,12 @@
     <select name="romanization_method" id="romanization_method">
       {% for value, label in romanization_method_options %}
         <option value="{{ value }}" {% if value == selected_romanization_method %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <label for="audio_mode" class="ml-2">Audio:</label>
+    <select name="audio_mode" id="audio_mode">
+      {% for value, label in audio_mode_options %}
+        <option value="{{ value }}" {% if value == selected_audio_mode %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
     <button class="btn secondary" type="submit">Save language options</button>

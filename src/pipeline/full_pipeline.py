@@ -62,8 +62,24 @@ class FullPipelineSpec:
     segmentation_method: str = "auto"
     romanization_method: str = "auto"
     require_real_tts: bool = False
+    audio_mode: str = "tts"
     persist_intermediates: bool = False
     progress_callback: Callable[[str, str, str], None] | None = None
+
+
+def _strip_audio_annotations(payload: Any) -> Any:
+    """Return a deep copy of annotated text with all audio annotations removed."""
+
+    if isinstance(payload, dict):
+        cleaned: dict[str, Any] = {}
+        for key, value in payload.items():
+            if key == "audio":
+                continue
+            cleaned[key] = _strip_audio_annotations(value)
+        return cleaned
+    if isinstance(payload, list):
+        return [_strip_audio_annotations(item) for item in payload]
+    return payload
 
 
 async def run_full_pipeline(
@@ -272,21 +288,27 @@ async def run_full_pipeline(
             telemetry.event(stage_op_id, "info", "stage done")
         elif stage == "audio":
             _progress("audio", "start")
-            current = await annotate_audio(
-                AudioSpec(
-                    text=current,
-                    language=spec.language,
-                    voice=spec.voice,
-                    cache_dir=spec.audio_cache_dir,
-                    telemetry=telemetry,
-                    op_id=stage_op_id,
-                    require_real_tts=spec.require_real_tts,
+            if spec.audio_mode == "none":
+                current = _strip_audio_annotations(current)
+                telemetry.event(stage_op_id, "info", "audio disabled; skipping TTS")
+            else:
+                current = await annotate_audio(
+                    AudioSpec(
+                        text=current,
+                        language=spec.language,
+                        voice=spec.voice,
+                        cache_dir=spec.audio_cache_dir,
+                        telemetry=telemetry,
+                        op_id=stage_op_id,
+                        require_real_tts=spec.require_real_tts,
+                    )
                 )
-            )
             _persist("audio", current)
             _progress("audio", "done")
             telemetry.event(stage_op_id, "info", "stage done")
         elif stage == "compile_html":
+            if spec.audio_mode == "none":
+                current = _strip_audio_annotations(current)
             if spec.page_images and isinstance(current, dict):
                 pages = current.get("pages") or []
                 if isinstance(pages, list):
