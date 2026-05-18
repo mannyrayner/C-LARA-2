@@ -263,6 +263,40 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(vote.value, "up")
         self.assertEqual(vote.note, "nice")
 
+    def test_member_image_review_entry_point_and_preferred_variant_label(self):
+        self.project.community = self.community
+        self.project.save(update_fields=["community", "updated_at"])
+        client = Client()
+        client.login(username="mem", password="pw")
+
+        home = client.get(reverse("community-member-home", args=[self.community.id]))
+        self.assertEqual(home.status_code, 200)
+        self.assertContains(home, "Judge page images")
+        self.assertContains(home, f"Judge images for {self.project.title}")
+
+        judge = client.get(reverse("community-member-judge-project", args=[self.community.id, self.project.id]))
+        self.assertEqual(judge.status_code, 200)
+        self.assertContains(judge, "Current preferred image")
+        self.assertContains(judge, "variant 1")
+        self.assertContains(judge, "current preferred image")
+
+    def test_organiser_image_review_entry_point_and_preferred_variant_label(self):
+        self.project.community = self.community
+        self.project.save(update_fields=["community", "updated_at"])
+        client = Client()
+        client.login(username="org", password="pw")
+
+        home = client.get(reverse("community-organiser-home", args=[self.community.id]))
+        self.assertEqual(home.status_code, 200)
+        self.assertContains(home, "Image review dashboard")
+        self.assertContains(home, f"Review images for {self.project.title}")
+
+        review = client.get(reverse("community-organiser-review-project", args=[self.community.id, self.project.id]))
+        self.assertEqual(review.status_code, 200)
+        self.assertContains(review, "Current preferred image")
+        self.assertContains(review, "variant 1")
+        self.assertContains(review, "current preferred image")
+
     def test_organiser_picture_dictionary_controls(self):
         self.project.community = self.community
         self.project.source_text = "Frida sings in Antarctica."

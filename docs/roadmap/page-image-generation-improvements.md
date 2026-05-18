@@ -118,6 +118,8 @@ Avoid duplicating source-of-truth fields. `preferred_variant` should remain the 
 
 ### Phase A: roadmap and UI clarity
 
+Status: **started/implemented for the existing review entry points**. The roadmap exists and is linked from the broader image-generation roadmap; member and organiser community pages now label the image-review actions explicitly; member and organiser review views label the current preferred image/variant.
+
 - Create this roadmap and link it from the broader image-generation roadmap.
 - Make sure organiser/member entry points are discoverable.
 - Ensure existing views label the preferred variant clearly.

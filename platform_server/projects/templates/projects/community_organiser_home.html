@@ -95,10 +95,12 @@
   {% endif %}
 </form>
 
+<h2>Image review dashboard</h2>
+<p>Review community image judgements, see preferred page-image variants, and request additional variants for projects in this community.</p>
 <ul>
   {% for row in summary_rows %}
     <li>
-      <a href="{% url 'community-organiser-review-project' community.id row.project.id %}">{{ row.project.title }}</a>
+      <a class="btn secondary" href="{% url 'community-organiser-review-project' community.id row.project.id %}">Review images for {{ row.project.title }}</a>
       {% if row.review %}
         — reviewed at {{ row.review.updated_at }}{% if row.up_to_date %} (up to date){% else %} (new votes pending){% endif %}
       {% else %}

@@ -7,7 +7,7 @@
 <h3>Vote summary</h3>
 {% for row in vote_rows %}
   <section style="border:1px solid #ddd; margin:0.6rem 0; padding:0.6rem;">
-    <p><strong>Page {{ row.page.page_number }}, variant {{ row.variant.variant_index }}</strong> — 👍 {{ row.up }} / 👎 {{ row.down }}</p>
+    <p><strong>Page {{ row.page.page_number }}, variant {{ row.variant.variant_index }}</strong>{% if row.page.preferred_variant_id == row.variant.id %} <span style="font-weight:bold; color:#2e7d32;">(current preferred image)</span>{% endif %} — 👍 {{ row.up }} / 👎 {{ row.down }}</p>
     <p><img src="{% url 'project-compiled' project.id row.variant.image_path %}" style="max-width:300px;height:auto;" /></p>
     <p><small>Prompt:</small></p>
     <pre>{{ row.variant.generation_prompt }}</pre>
@@ -36,6 +36,7 @@
   {% for page in pages %}
     <div style="border-top:1px dashed #ddd; margin-top:0.5rem; padding-top:0.5rem;">
       <strong>Page {{ page.page_number }}</strong>
+      {% if page.preferred_variant_id %}<p><strong>Current preferred image:</strong> variant {{ page.preferred_variant.variant_index }}</p>{% else %}<p><strong>Current preferred image:</strong> none selected yet</p>{% endif %}
       <p>New variants: <input type="number" min="0" max="8" name="request_count_{{ page.id }}" value="0" /></p>
       <p><input type="text" name="request_prompt_{{ page.id }}" placeholder="Prompt update request (optional)" style="width:100%;" /></p>
     </div>
