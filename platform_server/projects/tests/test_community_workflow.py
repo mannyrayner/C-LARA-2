@@ -93,6 +93,80 @@ class CommunityWorkflowTests(TestCase):
         self.assertIsNone(self.project.community)
 
 
+    def test_organiser_can_manage_ordinary_community_members(self):
+        User = get_user_model()
+        newcomer = User.objects.create_user(username="newbie", password="pw")
+        client = Client()
+        client.login(username="org", password="pw")
+
+        page = client.get(reverse("community-organiser-home", args=[self.community.id]))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Community members")
+        self.assertContains(page, "mem (member)")
+
+        added = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {"community_membership_action": "add_member", "user": str(newcomer.id)},
+            follow=True,
+        )
+        self.assertEqual(added.status_code, 200)
+        self.assertContains(added, "Added newbie as a member")
+        self.assertTrue(
+            CommunityMembership.objects.filter(
+                community=self.community, user=newcomer, role=CommunityMembership.ROLE_MEMBER
+            ).exists()
+        )
+
+        duplicate = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {"community_membership_action": "add_member", "user": str(newcomer.id)},
+            follow=True,
+        )
+        self.assertEqual(duplicate.status_code, 200)
+        self.assertContains(duplicate, "newbie is already in")
+        self.assertEqual(CommunityMembership.objects.filter(community=self.community, user=newcomer).count(), 1)
+
+        newcomer_membership = CommunityMembership.objects.get(community=self.community, user=newcomer)
+        removed = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {"community_membership_action": "remove_member", "membership_id": str(newcomer_membership.id)},
+            follow=True,
+        )
+        self.assertEqual(removed.status_code, 200)
+        self.assertContains(removed, "Removed newbie from")
+        self.assertFalse(CommunityMembership.objects.filter(community=self.community, user=newcomer).exists())
+
+    def test_organiser_membership_management_enforces_boundaries(self):
+        User = get_user_model()
+        other_organiser = User.objects.create_user(username="otherorg", password="pw")
+        other_community = Community.objects.create(name="Other", language="fr")
+        CommunityMembership.objects.create(
+            community=other_community, user=other_organiser, role=CommunityMembership.ROLE_ORGANISER
+        )
+        client = Client()
+        client.login(username="org", password="pw")
+
+        remove_self = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {"community_membership_action": "remove_member", "membership_id": str(CommunityMembership.objects.get(community=self.community, user=self.organiser).id)},
+            follow=True,
+        )
+        self.assertEqual(remove_self.status_code, 200)
+        self.assertContains(remove_self, "You cannot remove your own organiser membership")
+        self.assertTrue(CommunityMembership.objects.filter(community=self.community, user=self.organiser).exists())
+
+        remove_other_organiser = client.post(
+            reverse("community-organiser-home", args=[other_community.id]),
+            {"community_membership_action": "remove_member", "membership_id": str(CommunityMembership.objects.get(community=other_community, user=other_organiser).id)},
+        )
+        self.assertEqual(remove_other_organiser.status_code, 404)
+        self.assertTrue(CommunityMembership.objects.filter(community=other_community, user=other_organiser).exists())
+
+        member_client = Client()
+        member_client.login(username="mem", password="pw")
+        member_response = member_client.get(reverse("community-organiser-home", args=[self.community.id]))
+        self.assertEqual(member_response.status_code, 404)
+
     def test_organiser_can_import_project_as_picture_dictionary_copy_from_ui(self):
         self.project.community = self.community
         self.project.access_scope = Project.ACCESS_COMMUNITY
@@ -188,6 +262,40 @@ class CommunityWorkflowTests(TestCase):
         vote = CommunityImageVote.objects.get(user=self.member, variant=self.variant)
         self.assertEqual(vote.value, "up")
         self.assertEqual(vote.note, "nice")
+
+    def test_member_image_review_entry_point_and_preferred_variant_label(self):
+        self.project.community = self.community
+        self.project.save(update_fields=["community", "updated_at"])
+        client = Client()
+        client.login(username="mem", password="pw")
+
+        home = client.get(reverse("community-member-home", args=[self.community.id]))
+        self.assertEqual(home.status_code, 200)
+        self.assertContains(home, "Judge page images")
+        self.assertContains(home, f"Judge images for {self.project.title}")
+
+        judge = client.get(reverse("community-member-judge-project", args=[self.community.id, self.project.id]))
+        self.assertEqual(judge.status_code, 200)
+        self.assertContains(judge, "Current preferred image")
+        self.assertContains(judge, "variant 1")
+        self.assertContains(judge, "current preferred image")
+
+    def test_organiser_image_review_entry_point_and_preferred_variant_label(self):
+        self.project.community = self.community
+        self.project.save(update_fields=["community", "updated_at"])
+        client = Client()
+        client.login(username="org", password="pw")
+
+        home = client.get(reverse("community-organiser-home", args=[self.community.id]))
+        self.assertEqual(home.status_code, 200)
+        self.assertContains(home, "Image review dashboard")
+        self.assertContains(home, f"Review images for {self.project.title}")
+
+        review = client.get(reverse("community-organiser-review-project", args=[self.community.id, self.project.id]))
+        self.assertEqual(review.status_code, 200)
+        self.assertContains(review, "Current preferred image")
+        self.assertContains(review, "variant 1")
+        self.assertContains(review, "current preferred image")
 
     def test_organiser_picture_dictionary_controls(self):
         self.project.community = self.community

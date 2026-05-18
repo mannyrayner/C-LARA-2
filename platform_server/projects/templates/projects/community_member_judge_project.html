@@ -8,9 +8,10 @@
   {% for row in page_rows %}
     <section style="border:1px solid #ddd; margin:0.8rem 0; padding:0.7rem;">
       <h2>Page {{ row.page.page_number }}</h2>
+      {% if row.page.preferred_variant_id %}<p><strong>Current preferred image:</strong> variant {{ row.page.preferred_variant.variant_index }}</p>{% else %}<p><strong>Current preferred image:</strong> none selected yet</p>{% endif %}
       {% for vr in row.variant_rows %}
           <div style="border-top:1px dashed #ddd; margin-top:0.4rem; padding-top:0.4rem;">
-            <p><strong>Variant {{ vr.variant.variant_index }}</strong></p>
+            <p><strong>Variant {{ vr.variant.variant_index }}</strong>{% if row.page.preferred_variant_id == vr.variant.id %} <span style="font-weight:bold; color:#2e7d32;">(current preferred image)</span>{% endif %}</p>
             <p><img src="{% url 'project-compiled' project.id vr.variant.image_path %}" style="max-width: 340px; height: auto;" /></p>
             <label><input type="radio" name="vote_{{ vr.variant.id }}" value="up" {% if vr.vote and vr.vote.value == "up" %}checked{% endif %}/> 👍</label>
             <label><input type="radio" name="vote_{{ vr.variant.id }}" value="down" {% if vr.vote and vr.vote.value == "down" %}checked{% endif %}/> 👎</label>

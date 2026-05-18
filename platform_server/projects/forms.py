@@ -66,6 +66,7 @@ class ProjectForm(forms.ModelForm):
             "source_text",
             "language",
             "target_language",
+            "audio_mode",
             "access_scope",
             "community",
         ]
@@ -314,6 +315,7 @@ class FlashcardExerciseSetForm(forms.Form):
     FLASHCARD_MODE_CHOICES = [
         ("form_to_meaning", "Form → meaning"),
         ("meaning_to_form", "Meaning → form"),
+        ("image_to_form", "Image → form (picture dictionary)"),
     ]
 
     theme = forms.ChoiceField(
@@ -402,6 +404,14 @@ class AdminCommunityMembershipForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["community"].queryset = Community.objects.filter(is_active=True).order_by("name")
+        self.fields["user"].queryset = User.objects.order_by("username")
+
+
+class CommunityOrganiserMembershipForm(forms.Form):
+    user = forms.ModelChoiceField(queryset=User.objects.none(), label="User")
+
+    def __init__(self, *args, community: Community | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
         self.fields["user"].queryset = User.objects.order_by("username")
 
 

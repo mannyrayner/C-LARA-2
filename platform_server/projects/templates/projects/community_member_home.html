@@ -5,10 +5,12 @@
 {% if membership.role == "organiser" %}
   <p><a class="btn secondary" href="{% url 'community-organiser-home' community.id %}">Switch to organiser page</a></p>
 {% endif %}
+<h2>Judge page images</h2>
+<p>Open a project to review generated page-image variants. Your thumbs-up/down judgements and notes help organisers choose preferred images and plan regeneration.</p>
 <ul>
   {% for row in project_rows %}
     <li>
-      <a href="{% url 'community-member-judge-project' community.id row.project.id %}">{{ row.project.title }}</a>
+      <a class="btn secondary" href="{% url 'community-member-judge-project' community.id row.project.id %}">Judge images for {{ row.project.title }}</a>
       — your judgements: {{ row.judged_count }}
     </li>
   {% empty %}

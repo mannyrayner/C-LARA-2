@@ -21,7 +21,7 @@ Implemented now:
 - Integration with compile pipeline so page images can be injected into generated HTML (top/bottom placement options).
 - Self-contained ZIP export of generated outputs (compiled HTML + audio + images), suitable for external review.
 
-This document remains the roadmap/spec for next iterations (quality, UX, moderation/community loops, cost controls, and richer regeneration workflows).
+This document remains the roadmap/spec for next iterations (quality, UX, moderation/community loops, cost controls, and richer regeneration workflows). For the next focused page-image regeneration/review plan, see [`page-image-generation-improvements.md`](page-image-generation-improvements.md).
 
 ## 1. High-level goals
 

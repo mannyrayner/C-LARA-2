@@ -4,6 +4,31 @@
 <h1>{{ community.name }} · organiser page</h1>
 <p><a class="btn secondary" href="{% url 'community-member-home' community.id %}">Member page</a></p>
 
+<h2>Community members</h2>
+<form method="post" style="margin: 0.75rem 0;">
+  {% csrf_token %}
+  {{ community_membership_form.as_p }}
+  <button class="btn secondary" type="submit" name="community_membership_action" value="add_member">Add member</button>
+</form>
+{% if community_memberships %}
+  <ul>
+    {% for row in community_memberships %}
+      <li>
+        {{ row.user.username }} ({{ row.role }})
+        {% if row.role == "member" %}
+          <form method="post" style="display:inline; margin-left: 0.5rem;" onsubmit="return confirm('Remove this user from the community?');">
+            {% csrf_token %}
+            <input type="hidden" name="membership_id" value="{{ row.id }}" />
+            <button class="btn secondary" type="submit" name="community_membership_action" value="remove_member">Remove</button>
+          </form>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>No members yet.</p>
+{% endif %}
+
 <h2>Picture dictionary (Phase A)</h2>
 {% if picture_dictionary %}
   <p>
@@ -70,10 +95,12 @@
   {% endif %}
 </form>
 
+<h2>Image review dashboard</h2>
+<p>Review community image judgements, see preferred page-image variants, and request additional variants for projects in this community.</p>
 <ul>
   {% for row in summary_rows %}
     <li>
-      <a href="{% url 'community-organiser-review-project' community.id row.project.id %}">{{ row.project.title }}</a>
+      <a class="btn secondary" href="{% url 'community-organiser-review-project' community.id row.project.id %}">Review images for {{ row.project.title }}</a>
       {% if row.review %}
         — reviewed at {{ row.review.updated_at }}{% if row.up_to_date %} (up to date){% else %} (new votes pending){% endif %}
       {% else %}
