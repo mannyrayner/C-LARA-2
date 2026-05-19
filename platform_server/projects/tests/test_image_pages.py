@@ -275,6 +275,8 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertTrue(page.image_path.endswith("page_001/variant_001.png"))
         self.assertIn("Style description:", page.generation_prompt)
         self.assertEqual(ProjectImagePageVariant.objects.filter(page=page).count(), 1)
+        self.assertContains(resp, "Prompt used for this variant:")
+        self.assertContains(resp, "Style description:")
 
         msgs = [m.message for m in get_messages(resp.wsgi_request)]
         self.assertTrue(any("Generated 2 page image variant(s) with gpt-image-1." in msg for msg in msgs))
