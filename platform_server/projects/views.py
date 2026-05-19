@@ -1850,6 +1850,63 @@ def _fit_page_image_prompt_to_limit(
     return prompt, metadata
 
 
+def _build_page_prompt_construction_request(
+    *,
+    project: Project,
+    page_obj: ProjectImagePage,
+    base_prompt: str,
+    full_text: str,
+    summary_text: str,
+    previous_page_text: str,
+    next_page_text: str,
+    relevant_elements: list[ProjectImageElement],
+) -> tuple[str, dict[str, Any]]:
+    payload = {
+        "project_title": project.title,
+        "source_language": project.language,
+        "target_language": project.target_language,
+        "page_number": page_obj.page_number,
+        "summary_text": summary_text,
+        "current_page_text": page_obj.page_text,
+        "previous_page_text": previous_page_text,
+        "next_page_text": next_page_text,
+        "full_text_excerpt": _truncate_for_prompt(full_text, max_chars=1800),
+        "relevant_elements": [
+            {
+                "name": element.name,
+                "element_type": element.element_type,
+                "description": element.expanded_description or element.why_consistency_matters or "",
+                "prompt_text": element.expanded_prompt or "",
+                "image_path": element.image_path or "",
+            }
+            for element in relevant_elements
+        ],
+        "base_prompt": base_prompt,
+    }
+    instruction = "\n".join(
+        [
+            "You are constructing a final image-generation prompt for a single story page illustration.",
+            "Use the JSON context below.",
+            "Return only the final prompt text, no markdown, no JSON.",
+            "Preserve important style and element continuity details.",
+            "Focus on current-page content while staying globally consistent.",
+            "Do not include unresolved file references like local image paths in the final prompt.",
+            "",
+            json.dumps(payload, ensure_ascii=False, indent=2),
+        ]
+    )
+    return instruction, payload
+
+
+def _normalize_constructed_page_prompt(raw_prompt: str, *, fallback_prompt: str) -> str:
+    prompt = str(raw_prompt or "").strip()
+    if not prompt:
+        return fallback_prompt
+    lines = [line for line in prompt.splitlines() if "image_path" not in line and "Reference image path:" not in line]
+    cleaned = "\n".join(lines).strip()
+    return cleaned or fallback_prompt
+
+
 def _append_page_image_telemetry(project: Project, record: dict[str, Any]) -> None:
     telemetry_path = _image_pages_dir(project) / "telemetry.jsonl"
     telemetry_path.parent.mkdir(parents=True, exist_ok=True)
@@ -2077,7 +2134,10 @@ def _generate_project_page_images(
     usage_reporter = _collect_usage_event(usage_events)
 
     variants_per_page = max(1, min(8, int(variants_per_page or 1)))
+    summary_text = _truncate_for_prompt(full_text, max_chars=700) if full_text else ""
     prompt_by_page: dict[int, str] = {}
+    prompt_construction_by_page: dict[int, dict[str, Any]] = {}
+    page_texts_by_number = {row.page_number: (row.page_text or "") for row in page_rows}
     for page_obj in page_rows:
         refs = [
             element
@@ -2097,6 +2157,26 @@ def _generate_project_page_images(
             discourage_text_in_image=discourage_text_in_image,
             dictionary_entry=dictionary_entry,
         )
+        previous_page_text = page_texts_by_number.get(page_obj.page_number - 1, "")
+        next_page_text = page_texts_by_number.get(page_obj.page_number + 1, "")
+        constructor_prompt, constructor_payload = _build_page_prompt_construction_request(
+            project=project,
+            page_obj=page_obj,
+            base_prompt=prompt,
+            full_text=full_text,
+            summary_text=summary_text,
+            previous_page_text=previous_page_text,
+            next_page_text=next_page_text,
+            relevant_elements=refs,
+        )
+        prompt_construction_by_page[page_obj.pk] = {
+            "request_prompt": constructor_prompt,
+            "request_payload": constructor_payload,
+            "prompt_meta": prompt_meta,
+            "relevant_element_count": len(refs),
+            "relevant_element_paths": [e.image_path for e in refs if e.image_path],
+            "dictionary_mode": dictionary_entry is not None,
+        }
         prompt_by_page[page_obj.pk] = prompt
         _append_page_image_telemetry(
             project,
@@ -2117,7 +2197,7 @@ def _generate_project_page_images(
         )
 
     def _generate_one_variant(page_obj: ProjectImagePage, variant_index: int) -> tuple[int, int, str, str, str, str]:
-        prompt = prompt_by_page[page_obj.pk]
+        fallback_prompt = prompt_by_page[page_obj.pk]
         started = datetime.now(timezone.utc)
         client = _build_ai_client(
             model_name=image_model,
@@ -2125,6 +2205,22 @@ def _generate_project_page_images(
         )
         page_dir = pages_dir / f"page_{page_obj.page_number:03d}"
         page_dir.mkdir(parents=True, exist_ok=True)
+        construction = prompt_construction_by_page[page_obj.pk]
+        constructed_raw = asyncio.run(client.chat_text(construction["request_prompt"]))
+        prompt = _normalize_constructed_page_prompt(constructed_raw, fallback_prompt=fallback_prompt)
+        _append_page_image_telemetry(
+            project,
+            {
+                "event": "page_image_prompt_construction",
+                "page_number": page_obj.page_number,
+                "variant_index": variant_index,
+                "model": image_model,
+                "request_payload": construction["request_payload"],
+                "request_prompt": construction["request_prompt"],
+                "response_prompt_raw": str(constructed_raw or ""),
+                "response_prompt_final": prompt,
+            },
+        )
         try:
             image_result = client.generate_image(prompt, model=image_model)
         except Exception as exc:

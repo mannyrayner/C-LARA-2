@@ -136,6 +136,15 @@ Status: **implemented**. Member and organiser image-review views now show source
 
 Rationale: this can be implemented and tested independently after the review/compile foundations are in place. It also gives the later regeneration workflow a stronger prompt-construction contract before organiser-facing batch controls are expanded.
 
+Status: **initial implementation in progress**. Page-image generation now runs a text-model prompt-construction step inside fan-out/fan-in before image rendering. The constructor input includes global summary/excerpt, current page plus neighboring page text, style context, and relevant element descriptions/image paths; outputs are normalized and persisted to telemetry for audit/debugging.
+
+Implementation strategy (current first version):
+- Build a per-page constructor payload with summary + local context (previous/current/next page text), style text, and relevant element metadata.
+- Ask the text model to return only a final image-generation prompt (no JSON/markdown) using that payload.
+- Normalize constructor output with safety fallback to the deterministic base prompt if output is empty/invalid.
+- Record constructor request/response alongside page-image request telemetry for reproducibility.
+- Keep constructor and image calls inside fan-out/fan-in so prompt construction happens in parallel per page before each image call.
+
 - Add the text-model prompt-construction step.
 - Feed community suggestions and organiser prompt updates into the prompt-construction input.
 - Persist prompt-construction provenance and expose it for debugging/review.
