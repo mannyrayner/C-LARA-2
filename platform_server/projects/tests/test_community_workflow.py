@@ -462,6 +462,47 @@ class CommunityWorkflowTests(TestCase):
         self.assertFalse(dictionary_entries[0].is_active)
         self.assertContains(remove_selected, "Last dictionary compile:")
 
+    def test_mark_reviewed_promotes_member_upvoted_variant_to_preferred(self):
+        self.project.community = self.community
+        self.project.save(update_fields=["community", "updated_at"])
+        second_variant = ProjectImagePageVariant.objects.create(
+            page=self.page,
+            variant_index=2,
+            image_model="gpt-image-1",
+            image_path="images/pages/page_001/variant_002.png",
+            generation_prompt="alternate prompt",
+            image_revised_prompt="alternate revised",
+            status="generated",
+        )
+
+        member_client = Client()
+        member_client.login(username="mem", password="pw")
+        vote_response = member_client.post(
+            reverse("community-member-judge-project", args=[self.community.id, self.project.id]),
+            {f"vote_{second_variant.id}": "up", f"note_{second_variant.id}": "best match"},
+            follow=True,
+        )
+        self.assertEqual(vote_response.status_code, 200)
+
+        organiser_client = Client()
+        organiser_client.login(username="org", password="pw")
+        reviewed = organiser_client.post(
+            reverse("community-organiser-review-project", args=[self.community.id, self.project.id]),
+            {"action": "mark_reviewed", "review_note": "looks good"},
+            follow=True,
+        )
+        self.assertEqual(reviewed.status_code, 200)
+        self.assertContains(reviewed, "Updated preferred image for 1 page")
+
+        self.page.refresh_from_db()
+        self.assertEqual(self.page.preferred_variant_id, second_variant.id)
+        self.assertEqual(self.page.image_path, second_variant.image_path)
+
+        member_page = member_client.get(reverse("community-member-judge-project", args=[self.community.id, self.project.id]))
+        self.assertEqual(member_page.status_code, 200)
+        self.assertContains(member_page, "Current preferred image:</strong> variant 2", html=False)
+        self.assertContains(member_page, "current preferred image")
+
     @patch("projects.views._build_ai_client")
     def test_organiser_review_can_generate_requested_variants_and_mark_reviewed(self, mock_build_ai_client):
         self.project.community = self.community

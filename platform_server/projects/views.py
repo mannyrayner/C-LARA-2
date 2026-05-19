@@ -1979,6 +1979,43 @@ def _set_page_preferred_variant(page: ProjectImagePage, variant: ProjectImagePag
     )
 
 
+def _apply_community_vote_preferred_variants(*, project: Project, community_id: int) -> int:
+    """Promote each page's highest positively rated community variant to preferred."""
+
+    changed = 0
+    pages = list(
+        ProjectImagePage.objects.filter(project=project)
+        .select_related("preferred_variant")
+        .prefetch_related("variants")
+        .order_by("page_number", "id")
+    )
+    votes_by_variant: dict[int, dict[str, int]] = {}
+    for vote in CommunityImageVote.objects.filter(community_id=community_id, project=project):
+        counts = votes_by_variant.setdefault(vote.variant_id, {"up": 0, "down": 0})
+        if vote.value == CommunityImageVote.VALUE_UP:
+            counts["up"] += 1
+        elif vote.value == CommunityImageVote.VALUE_DOWN:
+            counts["down"] += 1
+
+    for page in pages:
+        ranked_variants: list[tuple[int, int, int, int, ProjectImagePageVariant]] = []
+        for variant in page.variants.all():
+            counts = votes_by_variant.get(variant.id, {"up": 0, "down": 0})
+            up = counts["up"]
+            down = counts["down"]
+            if up <= 0:
+                continue
+            ranked_variants.append((up - down, up, -down, -variant.variant_index, variant))
+        if not ranked_variants:
+            continue
+        ranked_variants.sort(reverse=True)
+        selected = ranked_variants[0][4]
+        if page.preferred_variant_id != selected.id or page.image_path != selected.image_path:
+            _set_page_preferred_variant(page, selected)
+            changed += 1
+    return changed
+
+
 def _apply_preferred_variant_selection(project: Project, post_data) -> int:
     changed = 0
     pages = list(ProjectImagePage.objects.filter(project=project).order_by("page_number", "id"))
@@ -7831,13 +7868,22 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
         action = (request.POST.get("action") or "").strip()
         if action == "mark_reviewed":
             note = (request.POST.get("review_note") or "").strip()
+            preferred_updates = _apply_community_vote_preferred_variants(project=project, community_id=community_id)
+            if preferred_updates:
+                _persist_image_pages_artifacts(project)
             CommunityOrganiserReview.objects.update_or_create(
                 community_id=community_id,
                 project=project,
                 organiser=request.user,
                 defaults={"note": note},
             )
-            messages.success(request, "Marked review as up to date.")
+            if preferred_updates:
+                messages.success(
+                    request,
+                    f"Marked review as up to date. Updated preferred image for {preferred_updates} page(s).",
+                )
+            else:
+                messages.success(request, "Marked review as up to date.")
             return redirect("community-organiser-review-project", community_id=community_id, project_id=project.id)
         if action == "generate_requested":
             requested: list[tuple[ProjectImagePage, int, str]] = []
