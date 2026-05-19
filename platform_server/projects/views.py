@@ -557,6 +557,17 @@ def _exception_telemetry_fields(exc: BaseException) -> dict[str, Any]:
     }
 
 
+def _is_moderation_blocked_exception(exc: BaseException) -> bool:
+    text = str(exc or "").lower()
+    return "moderation_blocked" in text or "rejected by the safety system" in text
+
+
+def _extract_request_id_from_exception(exc: BaseException) -> str:
+    text = str(exc or "")
+    match = re.search(r"\breq_[A-Za-z0-9]+\b", text)
+    return match.group(0) if match else ""
+
+
 def _ensure_style_telemetry_file(project: Project) -> Path:
     telemetry_path = _image_style_dir(project) / "telemetry.jsonl"
     telemetry_path.parent.mkdir(parents=True, exist_ok=True)
@@ -2229,22 +2240,56 @@ def _generate_project_page_images(
                 "response_prompt_final": prompt,
             },
         )
-        try:
-            image_result = image_client.generate_image(prompt, model=image_model)
-        except Exception as exc:
-            elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
-            _append_page_image_telemetry(
-                project,
-                {
-                    "event": "page_image_timeout" if _is_timeout_exception(exc) else "page_image_error",
-                    "page_number": page_obj.page_number,
-                    "variant_index": variant_index,
-                    "model": image_model,
-                    "elapsed_s": round(elapsed_s, 3),
-                    **_exception_telemetry_fields(exc),
-                },
-            )
-            raise
+        image_prompt_attempts = [prompt]
+        retry_prompt = (
+            "Create a neutral, non-graphic, family-friendly scene with no violence, no harm, and no sensitive content.\n\n"
+            + _truncate_for_prompt(prompt, max_chars=7000)
+        )
+        if retry_prompt != prompt:
+            image_prompt_attempts.append(retry_prompt)
+        image_result = None
+        last_exc: Exception | None = None
+        for attempt_index, attempt_prompt in enumerate(image_prompt_attempts, start=1):
+            try:
+                image_result = image_client.generate_image(attempt_prompt, model=image_model)
+                if attempt_index > 1:
+                    _append_page_image_telemetry(
+                        project,
+                        {
+                            "event": "page_image_retry_success",
+                            "page_number": page_obj.page_number,
+                            "variant_index": variant_index,
+                            "model": image_model,
+                            "attempt": attempt_index,
+                        },
+                    )
+                prompt = attempt_prompt
+                break
+            except Exception as exc:
+                last_exc = exc
+                elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
+                blocked = _is_moderation_blocked_exception(exc)
+                _append_page_image_telemetry(
+                    project,
+                    {
+                        "event": (
+                            "page_image_moderation_blocked"
+                            if blocked
+                            else ("page_image_timeout" if _is_timeout_exception(exc) else "page_image_error")
+                        ),
+                        "page_number": page_obj.page_number,
+                        "variant_index": variant_index,
+                        "model": image_model,
+                        "attempt": attempt_index,
+                        "elapsed_s": round(elapsed_s, 3),
+                        "request_id": _extract_request_id_from_exception(exc),
+                        **_exception_telemetry_fields(exc),
+                    },
+                )
+                if not blocked or attempt_index >= len(image_prompt_attempts):
+                    break
+        if image_result is None and last_exc is not None:
+            raise last_exc
         image_path = page_dir / f"variant_{variant_index:03d}.png"
         image_path.write_bytes(image_result["bytes"])
         rel_path = image_path.relative_to(project.artifact_dir()).as_posix()
@@ -3324,15 +3369,26 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
                     )
                 except Exception as exc:
                     logger.exception("Failed to generate page images for project %s", project.pk)
+                    moderation_blocked = _is_moderation_blocked_exception(exc)
+                    request_id = _extract_request_id_from_exception(exc)
                     _append_page_image_telemetry(
                         project,
                         {
                             "event": "page_images_generation_failed",
                             "model": image_model,
+                            "moderation_blocked": moderation_blocked,
+                            "request_id": request_id,
                             **_exception_telemetry_fields(exc),
                         },
                     )
-                    messages.error(request, f"Page image generation failed: {exc}")
+                    if moderation_blocked:
+                        details = "The request was blocked by safety moderation."
+                        if request_id:
+                            details += f" Request id: {request_id}."
+                        details += " The system retried once with a safer prompt variant; adjust page text/style context if it keeps failing."
+                        messages.error(request, f"Page image generation failed: {details}")
+                    else:
+                        messages.error(request, f"Page image generation failed: {exc}")
                 else:
                     messages.success(
                         request,

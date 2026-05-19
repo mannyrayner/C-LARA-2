@@ -60,6 +60,20 @@ class TimeoutImageClient:
         raise TimeoutError("simulated timeout")
 
 
+class ModerationRetryImageClient(FakeImageClient):
+    def __init__(self):
+        super().__init__()
+        self.calls = 0
+
+    def generate_image(self, prompt, **kwargs):
+        self.calls += 1
+        if self.calls == 1:
+            raise Exception(
+                "Error code: 400 - {'error': {'message': 'rejected by the safety system req_demo123.', 'code': 'moderation_blocked'}}"
+            )
+        return super().generate_image(prompt, **kwargs)
+
+
 class ProjectImagePagesViewTests(TestCase):
     def setUp(self):
         user_model = get_user_model()
@@ -573,6 +587,25 @@ class ProjectImagePagesViewTests(TestCase):
         timeout_events = [line for line in lines if line.get("event") == "page_image_timeout"]
         self.assertTrue(timeout_events)
         self.assertTrue(all(event.get("is_timeout") is True for event in timeout_events))
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_page_images_retries_once_after_moderation_block(self, mock_build_ai_client):
+        fake_client = ModerationRetryImageClient()
+        mock_build_ai_client.return_value = fake_client
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        resp = self.client.post(reverse("project-image-pages", args=[self.project.pk]), payload, follow=True)
+        self.assertEqual(resp.status_code, 200)
+        msgs = [m.message for m in get_messages(resp.wsgi_request)]
+        self.assertTrue(any("Generated 2 page image variant(s)" in msg for msg in msgs))
+        telemetry_path = self.project.artifact_dir() / "images" / "pages" / "telemetry.jsonl"
+        lines = [json.loads(line) for line in telemetry_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        blocked_events = [line for line in lines if line.get("event") == "page_image_moderation_blocked"]
+        retry_events = [line for line in lines if line.get("event") == "page_image_retry_success"]
+        self.assertTrue(blocked_events)
+        self.assertTrue(retry_events)
 
     def test_discourage_text_guideline_known_language_mentions_signs_and_sfx(self):
         guideline = views._discourage_text_guideline_for_language("en")
