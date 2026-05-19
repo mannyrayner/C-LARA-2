@@ -8,6 +8,18 @@
   {% for row in page_rows %}
     <section style="border:1px solid #ddd; margin:0.8rem 0; padding:0.7rem;">
       <h2>Page {{ row.page.page_number }}</h2>
+      {% if row.source_text %}
+        <p><strong>Source page text:</strong></p>
+        <blockquote>{{ row.source_text }}</blockquote>
+      {% else %}
+        <p><strong>Source page text:</strong> <em>not available</em></p>
+      {% endif %}
+      {% if row.translation_text %}
+        <p><strong>Page translation:</strong></p>
+        <blockquote>{{ row.translation_text }}</blockquote>
+      {% else %}
+        <p><strong>Page translation:</strong> <em>not available</em></p>
+      {% endif %}
       {% if row.page.preferred_variant_id %}<p><strong>Current preferred image:</strong> variant {{ row.page.preferred_variant.variant_index }}</p>{% else %}<p><strong>Current preferred image:</strong> none selected yet</p>{% endif %}
       {% for vr in row.variant_rows %}
           <div style="border-top:1px dashed #ddd; margin-top:0.4rem; padding-top:0.4rem;">
