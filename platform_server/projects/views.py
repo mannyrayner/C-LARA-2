@@ -1909,13 +1909,35 @@ def _build_page_prompt_construction_request(
     return instruction, payload
 
 
-def _normalize_constructed_page_prompt(raw_prompt: str, *, fallback_prompt: str) -> str:
+def _normalize_constructed_page_prompt(
+    raw_prompt: str,
+    *,
+    fallback_prompt: str,
+    relevant_elements: list[ProjectImageElement],
+) -> str:
     prompt = str(raw_prompt or "").strip()
     if not prompt:
         return fallback_prompt
-    lines = [line for line in prompt.splitlines() if "image_path" not in line and "Reference image path:" not in line]
+    lines = [line for line in prompt.splitlines() if "image_path" not in line]
     cleaned = "\n".join(lines).strip()
-    return cleaned or fallback_prompt
+    if not cleaned:
+        cleaned = fallback_prompt
+
+    element_refs = [element for element in relevant_elements if (element.image_path or "").strip()]
+    if not element_refs:
+        return cleaned
+    if "Reference image path:" in cleaned:
+        return cleaned
+
+    ref_lines = ["", "Relevant element references (must preserve identity/continuity):"]
+    for element in element_refs:
+        ref_lines.extend(
+            [
+                f"- Element: {element.name}",
+                f"  Reference image path: {element.image_path}",
+            ]
+        )
+    return cleaned.rstrip() + "\n" + "\n".join(ref_lines)
 
 
 def _append_page_image_telemetry(project: Project, record: dict[str, Any]) -> None:
@@ -2186,6 +2208,7 @@ def _generate_project_page_images(
         prompt_construction_by_page[page_obj.pk] = {
             "request_prompt": constructor_prompt,
             "request_payload": constructor_payload,
+            "relevant_elements": refs,
             "prompt_meta": prompt_meta,
             "relevant_element_count": len(refs),
             "relevant_element_paths": [e.image_path for e in refs if e.image_path],
@@ -2225,7 +2248,11 @@ def _generate_project_page_images(
         page_dir.mkdir(parents=True, exist_ok=True)
         construction = prompt_construction_by_page[page_obj.pk]
         constructed_raw = asyncio.run(text_client.chat_text(construction["request_prompt"]))
-        prompt = _normalize_constructed_page_prompt(constructed_raw, fallback_prompt=fallback_prompt)
+        prompt = _normalize_constructed_page_prompt(
+            constructed_raw,
+            fallback_prompt=fallback_prompt,
+            relevant_elements=construction["relevant_elements"],
+        )
         _append_page_image_telemetry(
             project,
             {
