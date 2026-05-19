@@ -126,6 +126,8 @@ Status: **started/implemented for the existing review entry points**. The roadma
 
 ### Phase B: review context and preferred-image compile behavior
 
+Status: **implemented**. Member and organiser image-review views now show source page text and available page translations, and compile resolves page-image placement from the selected `preferred_variant` first with safe omission/diagnostics when preferred image files are missing.
+
 - Add source page text and page translation to member review and organiser review views.
 - Confirm compile uses `preferred_variant` in all page-image placement paths.
 - Add regression tests for preferred-variant selection and missing-image fallback.
