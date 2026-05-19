@@ -2,6 +2,7 @@ from unittest.mock import patch
 import inspect
 import base64
 import json
+import re
 
 from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
@@ -24,6 +25,21 @@ from projects.models import (
 class FakeImageClient:
     def __init__(self):
         self.prompts: list[str] = []
+        self.text_prompts: list[str] = []
+
+    async def chat_text(self, prompt, **kwargs):  # noqa: ARG002
+        text = str(prompt)
+        self.text_prompts.append(text)
+        json_start = text.find("{")
+        if json_start >= 0:
+            try:
+                payload = json.loads(text[json_start:])
+                base_prompt = str(payload.get("base_prompt") or "").strip()
+                if base_prompt:
+                    return base_prompt
+            except Exception:
+                pass
+        return "Constructed prompt for image generation."
 
     def generate_image(self, prompt, **kwargs):
         self.prompts.append(prompt)
@@ -37,6 +53,9 @@ class FakeImageClient:
 
 
 class TimeoutImageClient:
+    async def chat_text(self, prompt, **kwargs):  # noqa: ARG002
+        return "Constructed prompt for image generation."
+
     def generate_image(self, prompt, **kwargs):
         raise TimeoutError("simulated timeout")
 
@@ -255,7 +274,6 @@ class ProjectImagePagesViewTests(TestCase):
         page = ProjectImagePage.objects.get(project=self.project, page_number=1)
         self.assertTrue(page.image_path.endswith("page_001/variant_001.png"))
         self.assertIn("Style description:", page.generation_prompt)
-        self.assertIn("Reference image path: images/elements/celine/reference.png", page.generation_prompt)
         self.assertEqual(ProjectImagePageVariant.objects.filter(page=page).count(), 1)
 
         msgs = [m.message for m in get_messages(resp.wsgi_request)]
@@ -385,6 +403,10 @@ class ProjectImagePagesViewTests(TestCase):
         response_events = [line for line in lines if line.get("event") == "page_image_response"]
         self.assertTrue(response_events)
         self.assertIn("elapsed_s", response_events[0])
+        construction_events = [line for line in lines if line.get("event") == "page_image_prompt_construction"]
+        self.assertTrue(construction_events)
+        self.assertIn("request_payload", construction_events[0])
+        self.assertIn("response_prompt_final", construction_events[0])
 
     @patch("projects.views._build_ai_client")
     def test_generate_page_images_can_discourage_text_in_image(self, mock_build_ai_client):
