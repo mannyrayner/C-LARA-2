@@ -2132,6 +2132,9 @@ def _generate_project_page_images(
 
     usage_events: list[dict[str, Any]] = []
     usage_reporter = _collect_usage_event(usage_events)
+    text_model = (project.ai_model or DEFAULT_MODEL).strip()
+    if text_model not in AI_MODEL_CHOICES:
+        text_model = DEFAULT_MODEL
 
     variants_per_page = max(1, min(8, int(variants_per_page or 1)))
     summary_text = _truncate_for_prompt(full_text, max_chars=700) if full_text else ""
@@ -2199,14 +2202,18 @@ def _generate_project_page_images(
     def _generate_one_variant(page_obj: ProjectImagePage, variant_index: int) -> tuple[int, int, str, str, str, str]:
         fallback_prompt = prompt_by_page[page_obj.pk]
         started = datetime.now(timezone.utc)
-        client = _build_ai_client(
+        image_client = _build_ai_client(
             model_name=image_model,
+            usage_reporter=usage_reporter,
+        )
+        text_client = _build_ai_client(
+            model_name=text_model,
             usage_reporter=usage_reporter,
         )
         page_dir = pages_dir / f"page_{page_obj.page_number:03d}"
         page_dir.mkdir(parents=True, exist_ok=True)
         construction = prompt_construction_by_page[page_obj.pk]
-        constructed_raw = asyncio.run(client.chat_text(construction["request_prompt"]))
+        constructed_raw = asyncio.run(text_client.chat_text(construction["request_prompt"]))
         prompt = _normalize_constructed_page_prompt(constructed_raw, fallback_prompt=fallback_prompt)
         _append_page_image_telemetry(
             project,
@@ -2215,6 +2222,7 @@ def _generate_project_page_images(
                 "page_number": page_obj.page_number,
                 "variant_index": variant_index,
                 "model": image_model,
+                "constructor_model": text_model,
                 "request_payload": construction["request_payload"],
                 "request_prompt": construction["request_prompt"],
                 "response_prompt_raw": str(constructed_raw or ""),
@@ -2222,7 +2230,7 @@ def _generate_project_page_images(
             },
         )
         try:
-            image_result = client.generate_image(prompt, model=image_model)
+            image_result = image_client.generate_image(prompt, model=image_model)
         except Exception as exc:
             elapsed_s = (datetime.now(timezone.utc) - started).total_seconds()
             _append_page_image_telemetry(
