@@ -71,6 +71,8 @@
                   Preferred (variant {{ variant.variant_index }})
                 </label>
                 <p style="margin:0.3rem 0;"><small>Model: {{ variant.image_model }}</small></p>
+                <p><small><strong>Prompt used for this variant:</strong></small></p>
+                <textarea readonly rows="5" style="width:100%; font-family: monospace;">{{ variant.generation_prompt }}</textarea>
                 <img
                   src="{% url 'project-compiled' project.pk variant.image_path %}"
                   alt="Generated image variant {{ variant.variant_index }} for page {{ form.instance.page_number }}"
