@@ -7,7 +7,7 @@ from django.views.generic.base import RedirectView
 from projects import views as project_views
 
 urlpatterns = [
-    path("favicon.ico", RedirectView.as_view(url=static_url("projects/favicon.svg"), permanent=False)),
+    path("favicon.ico", project_views.favicon, name="favicon"),
     path("admin/", admin.site.urls),
     path("accounts/register/", project_views.register, name="register"),
     path("", include("projects.urls")),

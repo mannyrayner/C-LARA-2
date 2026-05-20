@@ -2546,6 +2546,11 @@ def issues_home(request: HttpRequest) -> HttpResponse:
     )
 
 
+def favicon(request: HttpRequest) -> HttpResponse:
+    favicon_path = settings.ROOT_DIR / "platform_server" / "projects" / "static" / "projects" / "favicon.svg"
+    return FileResponse(favicon_path.open("rb"), content_type="image/svg+xml")
+
+
 @login_required
 def submit_issue_update_suggestion(request: HttpRequest) -> HttpResponse:
     issue_choices, _ = _issue_registry_choices()
