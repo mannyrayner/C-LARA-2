@@ -5,6 +5,7 @@ from django.urls import include, path
 from projects import views as project_views
 
 urlpatterns = [
+    path("favicon.ico", project_views.favicon, name="favicon"),
     path("admin/", admin.site.urls),
     path("accounts/register/", project_views.register, name="register"),
     path("", include("projects.urls")),
