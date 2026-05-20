@@ -1,14 +1,13 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-20T00:17:41Z_
+_Last updated: 2026-05-20T00:51:14Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
 ## Recent progress
 
-- Added **[ISSUE-0018](issues/ISSUE-0018.json)** from a new human suggestion about confusion in issue processing when the server checkout is stale relative to recently merged work.
-- The new issue scopes a deterministic data-source fix: suggestion processing should read issue/roadmap context from the canonical checked-in `main` branch snapshot (or an equivalent explicit remote ref), rather than the local checked-out repo state.
-- ISSUE-0018 also requires visibility and resilience work: display which repository ref/snapshot was used and define fallback behaviour for offline or fetch-error states.
+- **[ISSUE-0018](issues/ISSUE-0018.json)** is now closed: issue-suggestion processing now uses canonical `main`-branch issue registry data (with local fallback) and reports the source in admin prompt text.
+- Added and closed **[ISSUE-0019](issues/ISSUE-0019.json)** from a new human suggestion: favicon visibility on AWS was hardened by adding an explicit `/favicon.ico` route that redirects to the static project favicon.
 - **[ISSUE-0017](issues/ISSUE-0017.json)** remains the current page-image umbrella issue, with ISSUE-0007 kept as a linked prompt-indirection subproblem.
 - **[ISSUE-0016](issues/ISSUE-0016.json)** remains active after Phase A no-audio/skip-TTS delivery; the community-recorded dictionary extension remains pending.
 
@@ -32,13 +31,14 @@ This document summarizes the current issue registry for quick human review. Cano
 
 ## Completed issues
 
-1. **[ISSUE-0015](issues/ISSUE-0015.json) (completed 2026-05-18)** — Let community organisers add existing users as ordinary community members, list memberships, and remove ordinary members while keeping organiser-role changes protected.
-2. **[ISSUE-0002](issues/ISSUE-0002.json) (completed 2026-05-09)** — Support migration of legacy C-LARA projects into C-LARA-2 through direct import of supported legacy JSON export ZIP bundles.
-3. **[ISSUE-0009](issues/ISSUE-0009.json) (completed 2026-05-06)** — Auto-regenerate and validate source project bundle stage artifacts before export/import.
+1. **[ISSUE-0019](issues/ISSUE-0019.json) (completed 2026-05-20)** — Ensure favicon reliably appears on AWS deployment by adding an explicit `/favicon.ico` redirect to the static project favicon.
+2. **[ISSUE-0018](issues/ISSUE-0018.json) (completed 2026-05-20)** — Use canonical `main`-branch issue registry data (with fallback visibility) during issue-suggestion processing.
+3. **[ISSUE-0015](issues/ISSUE-0015.json) (completed 2026-05-18)** — Let community organisers add existing users as ordinary community members, list memberships, and remove ordinary members while keeping organiser-role changes protected.
+4. **[ISSUE-0002](issues/ISSUE-0002.json) (completed 2026-05-09)** — Support migration of legacy C-LARA projects into C-LARA-2 through direct import of supported legacy JSON export ZIP bundles.
+5. **[ISSUE-0009](issues/ISSUE-0009.json) (completed 2026-05-06)** — Auto-regenerate and validate source project bundle stage artifacts before export/import.
 
 ## Notes and risks
 
-- **Suggestion-processing trust risk:** if admins cannot tell which issue registry snapshot was used for triage, suggestion handling can drift and create duplicate or contradictory issue entries.
-- **Operational dependency risk:** ISSUE-0018 likely requires dependable remote-ref fetching/caching, so behaviour under GitHub/API/network failure needs explicit fallback semantics and operator messaging.
+- **AWS/static serving variance:** favicon behaviour can differ by browser and deployment settings; the `/favicon.ico` redirect reduces risk from implicit browser requests that bypass `<link rel="icon">`.
 - **Publication scope cohesion:** publication planning remains in ISSUE-0008 rather than being split into multiple fragmented issues; this keeps deadlines and cross-paper dependencies in one place.
 - **Page-image roadmap scope:** ISSUE-0017 is intentionally broader than ISSUE-0007. Prompt indirection is one requirement; the full page-image workflow also needs additive variant generation, subset regeneration, review context, organiser preferred-image decisions, and compile-time preferred-image selection.
