@@ -50,6 +50,7 @@
     <input id="variants_per_page" type="number" name="variants_per_page" min="1" max="8" value="{{ default_variants_per_page }}" style="width:5rem;" />
     <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_images" data-long-action="true" data-busy-label="Generating page images...">Generate page images</button>
     <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="set_preferred">Save preferred images</button>
+    <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="clear_generated" onclick="return confirm('Remove all generated page images and prompts for this project?');">Clear all generated page images/prompts</button>
   </p>
 
   <p id="pages-progress" style="display:none; font-weight:bold;" aria-live="polite">Processing request...</p>

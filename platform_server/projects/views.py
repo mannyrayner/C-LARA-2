@@ -3467,6 +3467,38 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
             elif action == "set_preferred":
                 changed = _apply_preferred_variant_selection(project, request.POST)
                 messages.success(request, f"Updated preferred image for {changed} page(s).")
+            elif action == "clear_generated":
+                cleared_pages = 0
+                cleared_variants = ProjectImagePageVariant.objects.filter(page__project=project).count()
+                ProjectImagePageVariant.objects.filter(page__project=project).delete()
+                for page in ProjectImagePage.objects.filter(project=project):
+                    had_generated = bool(
+                        page.image_path
+                        or page.generation_prompt
+                        or page.image_revised_prompt
+                        or page.preferred_variant_id
+                    )
+                    if had_generated:
+                        cleared_pages += 1
+                    page.image_path = ""
+                    page.generation_prompt = ""
+                    page.image_revised_prompt = ""
+                    page.preferred_variant_id = None
+                    page.status = ProjectImagePage.STATUS_DRAFT
+                    page.save(
+                        update_fields=[
+                            "image_path",
+                            "generation_prompt",
+                            "image_revised_prompt",
+                            "preferred_variant",
+                            "status",
+                            "updated_at",
+                        ]
+                    )
+                messages.success(
+                    request,
+                    f"Cleared generated page images/prompts for {cleared_pages} page(s) and removed {cleared_variants} variant(s).",
+                )
             else:
                 messages.success(request, "Saved page image prompt edits.")
             if action in {"save", "refresh", "generate_images"}:

@@ -388,6 +388,31 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertTrue(page.image_path.endswith("page_001/variant_003.png"))
 
     @patch("projects.views._build_ai_client")
+    def test_clear_generated_page_images_and_prompts(self, mock_build_ai_client):
+        fake_client = FakeImageClient()
+        mock_build_ai_client.return_value = fake_client
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        resp = self.client.post(reverse("project-image-pages", args=[self.project.pk]), payload, follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(ProjectImagePageVariant.objects.filter(page__project=self.project).exists())
+
+        clear_payload = self._page_form_payload()
+        clear_payload["action"] = "clear_generated"
+        cleared = self.client.post(reverse("project-image-pages", args=[self.project.pk]), clear_payload, follow=True)
+        self.assertEqual(cleared.status_code, 200)
+        self.assertFalse(ProjectImagePageVariant.objects.filter(page__project=self.project).exists())
+
+        for page in ProjectImagePage.objects.filter(project=self.project):
+            self.assertEqual(page.image_path, "")
+            self.assertEqual(page.generation_prompt, "")
+            self.assertEqual(page.image_revised_prompt, "")
+            self.assertIsNone(page.preferred_variant_id)
+
+    @patch("projects.views._build_ai_client")
     def test_generate_page_images_trims_long_prompts_and_writes_telemetry(self, mock_build_ai_client):
         fake_client = FakeImageClient()
         mock_build_ai_client.return_value = fake_client
