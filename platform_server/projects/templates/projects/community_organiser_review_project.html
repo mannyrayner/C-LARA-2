@@ -36,6 +36,7 @@
 <h3>Request new variants</h3>
 <form method="post" id="generate-requested-form">
   {% csrf_token %}
+  <input type="hidden" name="action_intent" id="generate-requested-action-intent" value="" />
   
   <p>
     <label for="image_model">Image model:</label>
@@ -89,10 +90,17 @@
     const button = document.getElementById("generate-requested-submit");
     const status = document.getElementById("generate-requested-status");
     if (!form || !button || !status) return;
-    form.addEventListener("submit", function () {
-      button.disabled = true;
-      button.textContent = "Generating…";
-      status.style.display = "block";
+    form.addEventListener("submit", function (event) {
+      const submitter = event.submitter || document.activeElement;
+      const actionIntent = document.getElementById("generate-requested-action-intent");
+      const actionValue = submitter && submitter.value ? submitter.value : "";
+      if (actionIntent) actionIntent.value = actionValue;
+
+      if (actionValue === "generate_requested") {
+        button.disabled = true;
+        button.textContent = "Generating…";
+        status.style.display = "block";
+      }
     });
   })();
 </script>

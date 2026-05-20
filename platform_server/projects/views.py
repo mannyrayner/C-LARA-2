@@ -8212,7 +8212,7 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
     pages = list(ProjectImagePage.objects.filter(project=project).order_by("page_number").prefetch_related("variants"))
 
     if request.method == "POST":
-        action = (request.POST.get("action") or "").strip()
+        action = (request.POST.get("action") or request.POST.get("action_intent") or "").strip()
         if action == "mark_reviewed":
             note = (request.POST.get("review_note") or "").strip()
             preferred_updates = _apply_community_vote_preferred_variants(project=project, community_id=community_id)
