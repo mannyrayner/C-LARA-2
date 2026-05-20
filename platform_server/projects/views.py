@@ -8168,16 +8168,54 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
             image_model = (request.POST.get("image_model") or "gpt-image-1").strip()
             if image_model not in IMAGE_MODEL_CHOICES:
                 image_model = "gpt-image-1"
-            for page in pages:
+            filter_mode = (request.POST.get("generation_filter") or "selected_pages").strip()
+            selected_page_ids = {int(v) for v in request.POST.getlist("selected_page_id") if str(v).isdigit()}
+            candidate_pages: list[ProjectImagePage] = []
+            if filter_mode == "missing_images":
+                candidate_pages = [page for page in pages if not page.variants.exists() and not (page.image_path or "").strip()]
+            elif filter_mode == "no_preferred":
+                candidate_pages = [page for page in pages if not page.preferred_variant_id]
+            elif filter_mode == "all_unacceptable":
+                candidate_pages = []
+                for page in pages:
+                    variants = list(page.variants.all())
+                    if not variants:
+                        continue
+                    has_acceptable = False
+                    for variant in variants:
+                        votes = CommunityImageVote.objects.filter(
+                            community_id=community_id, project=project, page=page, variant=variant
+                        )
+                        up = votes.filter(value=CommunityImageVote.VALUE_UP).count()
+                        down = votes.filter(value=CommunityImageVote.VALUE_DOWN).count()
+                        if up > down:
+                            has_acceptable = True
+                            break
+                    if not has_acceptable:
+                        candidate_pages.append(page)
+            else:
+                candidate_pages = [page for page in pages if page.id in selected_page_ids]
+
+            default_count_raw = (request.POST.get("request_count_all") or "").strip()
+            try:
+                default_count = int(default_count_raw or "0")
+            except ValueError:
+                default_count = 0
+            default_count = max(0, min(8, default_count))
+            default_prompt_update = (request.POST.get("request_prompt_all") or "").strip()
+
+            for page in candidate_pages:
                 count_raw = (request.POST.get(f"request_count_{page.id}") or "").strip()
                 prompt_update = (request.POST.get(f"request_prompt_{page.id}") or "").strip()
                 try:
-                    count = int(count_raw or "0")
+                    count = int(count_raw or str(default_count))
                 except ValueError:
                     count = 0
                 count = max(0, min(8, count))
                 if count <= 0:
                     continue
+                if not prompt_update:
+                    prompt_update = default_prompt_update
                 base_prompt = page.generation_prompt or page.page_text
                 final_prompt = f"{base_prompt}\n\nCommunity organiser request: {prompt_update}" if prompt_update else base_prompt
                 requested.append((page, count, final_prompt))
@@ -8234,6 +8272,12 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
             "vote_rows": vote_rows,
             "review": review,
             "image_models": IMAGE_MODEL_CHOICES,
+            "generation_filter_options": [
+                ("selected_pages", "Selected pages"),
+                ("missing_images", "Missing images only"),
+                ("no_preferred", "No preferred image"),
+                ("all_unacceptable", "All variants unacceptable"),
+            ],
         },
     )
 

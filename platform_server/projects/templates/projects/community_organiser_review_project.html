@@ -45,13 +45,29 @@
       {% endfor %}
     </select>
   </p>
+  <p>
+    <label for="generation_filter">Page filter:</label>
+    <select name="generation_filter" id="generation_filter">
+      {% for value, label in generation_filter_options %}
+        <option value="{{ value }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+  </p>
+  <p>
+    <label for="request_count_all">Default new variants per selected page:</label>
+    <input type="number" min="0" max="8" id="request_count_all" name="request_count_all" value="1" />
+  </p>
+  <p>
+    <input type="text" name="request_prompt_all" placeholder="Default prompt update for selected pages (optional)" style="width:100%;" />
+  </p>
   {% for row in pages %}
     <div style="border-top:1px dashed #ddd; margin-top:0.5rem; padding-top:0.5rem;">
       <strong>Page {{ row.page.page_number }}</strong>
+      <label style="margin-left:0.6rem;"><input type="checkbox" name="selected_page_id" value="{{ row.page.id }}" /> Select</label>
       {% if row.source_text %}<p><strong>Source page text:</strong> {{ row.source_text }}</p>{% endif %}
       {% if row.translation_text %}<p><strong>Page translation:</strong> {{ row.translation_text }}</p>{% endif %}
       {% if row.page.preferred_variant_id %}<p><strong>Current preferred image:</strong> variant {{ row.page.preferred_variant.variant_index }}</p>{% else %}<p><strong>Current preferred image:</strong> none selected yet</p>{% endif %}
-      <p>New variants: <input type="number" min="0" max="8" name="request_count_{{ row.page.id }}" value="0" /></p>
+      <p>New variants (optional override): <input type="number" min="0" max="8" name="request_count_{{ row.page.id }}" value="" /></p>
       <p><input type="text" name="request_prompt_{{ row.page.id }}" placeholder="Prompt update request (optional)" style="width:100%;" /></p>
     </div>
   {% endfor %}
