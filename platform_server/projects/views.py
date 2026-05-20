@@ -3755,7 +3755,7 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["page_image_placement_options"] = PAGE_IMAGE_PLACEMENT_CHOICES
         context["selected_page_image_placement"] = (
             project.page_image_placement
-            if project.page_image_placement in PAGE_IMAGE_PLACEMENT_CHOICES
+            if project.page_image_placement in {"top", "bottom"}
             else "top"
         )
         usage_breakdown = (
@@ -7149,7 +7149,7 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 def set_page_image_placement(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
-    placement = (request.POST.get("page_image_placement") or "none").strip().lower()
+    placement = (request.POST.get("page_image_placement") or "top").strip().lower()
     if placement not in PAGE_IMAGE_PLACEMENT_CHOICES:
         messages.error(request, "Unknown page image placement option.")
         return redirect("project-detail", pk=project.pk)
