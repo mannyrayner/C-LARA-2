@@ -21,6 +21,17 @@
     <button class="btn secondary" type="submit">Save audio setting</button>
     <small>Use “No audio / skip TTS” to compile without TTS or audio controls.</small>
   </form>
+  <form method="post" action="{% url 'project-image-placement' object.pk %}" style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0; background:#fafafa;">
+    {% csrf_token %}
+    <label for="annotation_page_image_placement"><strong>Page image placement:</strong></label>
+    <select name="page_image_placement" id="annotation_page_image_placement">
+      {% for placement in page_image_placement_options %}
+        <option value="{{ placement }}" {% if placement == selected_page_image_placement %}selected{% endif %}>{{ placement }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn secondary" type="submit">Save image placement</button>
+    <small>Choose where generated page images appear in compiled pages.</small>
+  </form>
 {% endif %}
 {% if annotation_dialogue_plan %}
   <div style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0; background:#fafafa;">
@@ -51,17 +62,6 @@
     </ul>
   </div>
 {% endif %}
-<form method="post" action="{% url 'project-image-placement' object.pk %}">{% csrf_token %}
-  <p>
-    <label for="page_image_placement">Page image placement:</label>
-    <select name="page_image_placement" id="page_image_placement">
-      {% for placement in page_image_placement_options %}
-        <option value="{{ placement }}" {% if placement == selected_page_image_placement %}selected{% endif %}>{{ placement }}</option>
-      {% endfor %}
-    </select>
-    <button class="btn secondary" type="submit">Save image placement</button>
-  </p>
-</form>
 <form method="post" action="{% url 'project-processing-options' object.pk %}">{% csrf_token %}
   <p>
     <label for="segmentation_method">Segmentation (phase 2):</label>
