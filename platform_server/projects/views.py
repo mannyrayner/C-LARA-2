@@ -2445,6 +2445,7 @@ def _generate_requested_page_variants(
     project: Project,
     image_model: str,
     requests: list[tuple[ProjectImagePage, int, str]],
+    progress_callback: Callable[[int, int], None] | None = None,
 ) -> int:
     pages_dir = _image_pages_dir(project)
     pages_dir.mkdir(parents=True, exist_ok=True)
@@ -2452,6 +2453,69 @@ def _generate_requested_page_variants(
     page_by_id = {page.id: page for page, _count, _prompt in requests}
     usage_events: list[dict[str, Any]] = []
     usage_reporter = _collect_usage_event(usage_events)
+    style = project.image_style
+    full_text = _extract_project_plain_text(project)
+    summary_text = _truncate_for_prompt(full_text, max_chars=700) if full_text else ""
+    page_texts_by_number = {
+        row.page_number: (row.page_text or "")
+        for row in ProjectImagePage.objects.filter(project=project)
+    }
+    relevant_elements = [
+        element for element in project.image_elements.order_by("name", "id") if element.image_path
+    ]
+    text_model = (project.ai_model or DEFAULT_MODEL).strip()
+    if text_model not in AI_MODEL_CHOICES:
+        text_model = DEFAULT_MODEL
+
+    def _build_requested_prompt(page: ProjectImagePage, prompt_update: str) -> str:
+        refs = [
+            element for element in relevant_elements
+            if not element.page_refs or _page_refs_match(element.page_refs, page.page_number)
+        ]
+        base_prompt, _meta = _fit_page_image_prompt_to_limit(
+            project=project,
+            style=style,
+            page_number=page.page_number,
+            page_text=page.page_text,
+            full_text=full_text,
+            relevant_elements=refs,
+            discourage_text_in_image=False,
+            dictionary_entry=None,
+        )
+        if prompt_update:
+            base_prompt = f"{base_prompt}\n\nCommunity organiser request: {prompt_update}"
+        constructor_prompt, constructor_payload = _build_page_prompt_construction_request(
+            project=project,
+            page_obj=page,
+            base_prompt=base_prompt,
+            full_text=full_text,
+            summary_text=summary_text,
+            previous_page_text=page_texts_by_number.get(page.page_number - 1, ""),
+            next_page_text=page_texts_by_number.get(page.page_number + 1, ""),
+            relevant_elements=refs,
+        )
+        text_client = _build_ai_client(model_name=text_model, usage_reporter=usage_reporter)
+        constructed_raw = asyncio.run(text_client.chat_text(constructor_prompt))
+        final_prompt = _normalize_constructed_page_prompt(
+            constructed_raw,
+            fallback_prompt=base_prompt,
+            relevant_elements=refs,
+        )
+        _append_page_image_telemetry(project, {
+            "event": "community_prompt_construction",
+            "page_number": page.page_number,
+            "constructor_model": text_model,
+            "request_payload": constructor_payload,
+            "request_prompt": constructor_prompt,
+            "response_prompt_raw": str(constructed_raw or ""),
+            "response_prompt_final": final_prompt,
+        })
+        return final_prompt
+
+    prepared_requests: list[tuple[ProjectImagePage, int, str]] = [
+        (page, count, _build_requested_prompt(page, prompt_update))
+        for page, count, prompt_update in requests
+    ]
 
     def _generate_one(page: ProjectImagePage, variant_index: int, prompt: str) -> tuple[int, int, str, str, str]:
         started = datetime.now(timezone.utc)
@@ -2479,9 +2543,11 @@ def _generate_requested_page_variants(
         return page.id, variant_index, rel_path, revised_prompt, prompt
 
     futures = {}
-    max_workers = min(24, max(1, sum(count for _p, count, _prompt in requests)))
+    total_variants = sum(count for _p, count, _prompt in prepared_requests)
+    completed_variants = 0
+    max_workers = min(24, max(1, total_variants))
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        for page, count, prompt in requests:
+        for page, count, prompt in prepared_requests:
             max_variant = page.variants.aggregate(max_idx=Max("variant_index")).get("max_idx") or 0
             for offset in range(1, count + 1):
                 idx = max_variant + offset
@@ -2505,6 +2571,9 @@ def _generate_requested_page_variants(
             if not page.preferred_variant_id:
                 _set_page_preferred_variant(page, variant)
             generated += 1
+            completed_variants += 1
+            if progress_callback:
+                progress_callback(completed_variants, total_variants)
 
     billing_reporter = _billing_usage_reporter(
         user_id=project.owner_id,
@@ -8163,8 +8232,9 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
             else:
                 messages.success(request, "Marked review as up to date.")
             return redirect("community-organiser-review-project", community_id=community_id, project_id=project.id)
-        if action == "generate_requested":
+        if action in {"generate_requested_preview", "generate_requested"}:
             requested: list[tuple[ProjectImagePage, int, str]] = []
+            request_summaries: list[str] = []
             image_model = (request.POST.get("image_model") or "gpt-image-1").strip()
             if image_model not in IMAGE_MODEL_CHOICES:
                 image_model = "gpt-image-1"
@@ -8218,14 +8288,55 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
                     prompt_update = default_prompt_update
                 base_prompt = page.generation_prompt or page.page_text
                 final_prompt = f"{base_prompt}\n\nCommunity organiser request: {prompt_update}" if prompt_update else base_prompt
-                requested.append((page, count, final_prompt))
+                requested.append((page, count, prompt_update))
+                request_summaries.append(f"Page {page.page_number}: {count} variant(s)")
             if not requested:
                 messages.info(request, "No generation requests were specified.")
                 return redirect("community-organiser-review-project", community_id=community_id, project_id=project.id)
             requested_count = sum(count for _page, count, _prompt in requested)
-            messages.info(request, f"Generating {requested_count} requested variant(s). Please wait…")
-            generated = _generate_requested_page_variants(project=project, image_model=image_model, requests=requested)
+            if action == "generate_requested_preview":
+                request.session["community_generation_plan"] = {
+                    "community_id": community_id,
+                    "project_id": project.id,
+                    "image_model": image_model,
+                    "requests": [(page.id, count, prompt_update) for page, count, prompt_update in requested],
+                }
+                messages.info(
+                    request,
+                    "Proposed generation plan: " + "; ".join(request_summaries) + ". Submit again to confirm and start generation.",
+                )
+                return redirect("community-organiser-review-project", community_id=community_id, project_id=project.id)
+
+            plan = request.session.get("community_generation_plan") or {}
+            planned_items = plan.get("requests") or []
+            if not planned_items or plan.get("project_id") != project.id or plan.get("community_id") != community_id:
+                messages.warning(request, "Please preview the generation plan first, then confirm.")
+                return redirect("community-organiser-review-project", community_id=community_id, project_id=project.id)
+            plan_by_page = {int(page_id): (int(count), str(prompt_update)) for page_id, count, prompt_update in planned_items}
+            confirmed_requests = []
+            for page, _count, _prompt_update in requested:
+                if page.id not in plan_by_page:
+                    continue
+                count, prompt_update = plan_by_page[page.id]
+                confirmed_requests.append((page, count, prompt_update))
+            if not confirmed_requests:
+                messages.warning(request, "The confirmed generation plan no longer matches the selected pages. Please preview again.")
+                return redirect("community-organiser-review-project", community_id=community_id, project_id=project.id)
+
+            progress_marks: list[str] = []
+            def _progress_callback(done: int, total: int) -> None:
+                progress_marks.append(f"{done}/{total}")
+            messages.info(request, f"Generating {requested_count} requested variant(s).")
+            generated = _generate_requested_page_variants(
+                project=project,
+                image_model=image_model,
+                requests=confirmed_requests,
+                progress_callback=_progress_callback,
+            )
+            request.session.pop("community_generation_plan", None)
             _persist_image_pages_artifacts(project)
+            if progress_marks:
+                messages.info(request, f"Generation progress updates: {' -> '.join(progress_marks)}")
             messages.success(request, f"Generated {generated} new variant(s) from organiser requests.")
             return redirect("community-organiser-review-project", community_id=community_id, project_id=project.id)
 

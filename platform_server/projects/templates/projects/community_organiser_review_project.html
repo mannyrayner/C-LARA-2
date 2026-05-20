@@ -36,7 +36,7 @@
 <h3>Request new variants</h3>
 <form method="post" id="generate-requested-form">
   {% csrf_token %}
-  <input type="hidden" name="action" value="generate_requested" />
+  
   <p>
     <label for="image_model">Image model:</label>
     <select name="image_model" id="image_model">
@@ -71,7 +71,8 @@
       <p><input type="text" name="request_prompt_{{ row.page.id }}" placeholder="Prompt update request (optional)" style="width:100%;" /></p>
     </div>
   {% endfor %}
-  <button class="btn" type="submit" id="generate-requested-submit">Generate requested variants</button>
+  <button class="btn" type="submit" id="generate-requested-preview" name="action" value="generate_requested_preview">Preview generation plan</button>
+  <button class="btn secondary" type="submit" id="generate-requested-submit" name="action" value="generate_requested">Confirm and generate</button>
   <p id="generate-requested-status" style="display:none; margin-top:0.5rem;"><em>Submitting generation request…</em></p>
 </form>
 
