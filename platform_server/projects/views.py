@@ -8238,9 +8238,15 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
             image_model = (request.POST.get("image_model") or "gpt-image-1").strip()
             if image_model not in IMAGE_MODEL_CHOICES:
                 image_model = "gpt-image-1"
-            filter_mode = (request.POST.get("generation_filter") or "selected_pages").strip()
+            filter_mode = (request.POST.get("generation_filter") or "all_unacceptable").strip()
             selected_page_ids = {int(v) for v in request.POST.getlist("selected_page_id") if str(v).isdigit()}
             candidate_pages: list[ProjectImagePage] = []
+            if filter_mode == "selected_pages" and not selected_page_ids:
+                messages.info(
+                    request,
+                    "No generation requests were specified. Select at least one page checkbox, or choose a different page filter.",
+                )
+                return redirect("community-organiser-review-project", community_id=community_id, project_id=project.id)
             if filter_mode == "missing_images":
                 candidate_pages = [page for page in pages if not page.variants.exists() and not (page.image_path or "").strip()]
             elif filter_mode == "no_preferred":

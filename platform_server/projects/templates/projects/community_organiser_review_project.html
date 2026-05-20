@@ -49,7 +49,7 @@
     <label for="generation_filter">Page filter:</label>
     <select name="generation_filter" id="generation_filter">
       {% for value, label in generation_filter_options %}
-        <option value="{{ value }}">{{ label }}</option>
+        <option value="{{ value }}" {% if value == "all_unacceptable" %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
   </p>
@@ -71,7 +71,7 @@
       <p><input type="text" name="request_prompt_{{ row.page.id }}" placeholder="Prompt update request (optional)" style="width:100%;" /></p>
     </div>
   {% endfor %}
-  <button class="btn" type="submit" id="generate-requested-preview" name="action" value="generate_requested_preview">Preview generation plan</button>
+  <button class="btn" type="submit" id="generate-requested-preview" name="action" value="generate_requested_preview">Preview generation request</button>
   <button class="btn secondary" type="submit" id="generate-requested-submit" name="action" value="generate_requested">Confirm and generate</button>
   <p id="generate-requested-status" style="display:none; margin-top:0.5rem;"><em>Submitting generation request…</em></p>
 </form>
