@@ -38,6 +38,7 @@ from django.utils import timezone as django_timezone
 import mimetypes
 import tempfile
 import zipfile
+import urllib.error
 import urllib.request
 from urllib.parse import unquote
 from urllib.parse import quote
@@ -145,15 +146,43 @@ SOURCE_BUNDLE_REGEN_UPSTREAM_STAGES = SOURCE_BUNDLE_REQUIRED_STAGES[
 ]
 
 
-def _issue_registry_choices() -> list[tuple[str, str]]:
+def _issue_registry_choices() -> tuple[list[tuple[str, str]], str]:
+    """Return issue choices and a source label.
+
+    Prefer canonical GitHub main-branch issue JSON files; fall back to local checkout
+    when remote fetch is unavailable.
+    """
+    remote_listing_url = "https://api.github.com/repos/mannyrayner/C-LARA-2/contents/docs/issues/issues?ref=main"
+    remote_raw_base = "https://raw.githubusercontent.com/mannyrayner/C-LARA-2/main/docs/issues/issues"
+
+    try:
+        with urllib.request.urlopen(remote_listing_url, timeout=10) as response_fp:
+            listing = json.loads(response_fp.read().decode("utf-8"))
+        issue_items = [item for item in listing if str(item.get("name", "")).startswith("ISSUE-")]
+        choices: list[tuple[str, str]] = []
+        for item in sorted(issue_items, key=lambda entry: str(entry.get("name", ""))):
+            filename = str(item.get("name", ""))
+            if not filename.endswith(".json"):
+                continue
+            raw_url = f"{remote_raw_base}/{filename}"
+            with urllib.request.urlopen(raw_url, timeout=10) as issue_fp:
+                data = json.loads(issue_fp.read().decode("utf-8"))
+            issue_id = data.get("issue_id") or filename.removesuffix(".json")
+            title = data.get("title") or "Untitled issue"
+            choices.append((issue_id, f"{issue_id}: {title}"))
+        if choices:
+            return choices, "GitHub main branch (docs/issues/issues @ ref main)"
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, TypeError, ValueError) as exc:
+        logger.warning("Falling back to local issue registry choices: %s", exc)
+
     issues_dir = settings.ROOT_DIR / "docs" / "issues" / "issues"
-    choices: list[tuple[str, str]] = []
+    choices = []
     for path in sorted(issues_dir.glob("ISSUE-*.json")):
         data = json.loads(path.read_text(encoding="utf-8"))
         issue_id = data.get("issue_id") or path.stem
         title = data.get("title") or "Untitled issue"
         choices.append((issue_id, f"{issue_id}: {title}"))
-    return choices
+    return choices, "Local checkout fallback"
 
 
 AI_MODEL_CHOICES = [
@@ -2519,7 +2548,7 @@ def issues_home(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def submit_issue_update_suggestion(request: HttpRequest) -> HttpResponse:
-    issue_choices = _issue_registry_choices()
+    issue_choices, _ = _issue_registry_choices()
     issue_title_by_id = {
         issue_id: label.removeprefix(f"{issue_id}: ") for issue_id, label in issue_choices
     }
@@ -2567,6 +2596,7 @@ def admin_issue_suggestions(request: HttpRequest) -> HttpResponse:
             )
             return redirect("admin-issue-suggestions")
     suggestions = list(IssueSuggestion.objects.select_related("submitter").order_by("-submitted_at", "-id"))
+    issue_choices, issue_choices_source = _issue_registry_choices()
     update_suggestions = list(
         IssueUpdateSuggestion.objects.select_related("submitter").order_by("-submitted_at", "-id")
     )
@@ -2580,8 +2610,13 @@ def admin_issue_suggestions(request: HttpRequest) -> HttpResponse:
         "For update suggestions, update the referenced docs/issues entry or related index/overview files as appropriate.",
         "Prepare output intended for docs/issues; in some cases updating existing docs/issues files may be preferable to adding a new file.",
         "Also regenerate docs/issues/overview.md per the overview guidance in docs/roadmap/issue-tracking-and-human-suggestions.md.",
+        f"Issue registry context source for existing issues: {issue_choices_source}.",
     ]
     suggestion_lines: list[str] = []
+    if issue_choices:
+        suggestion_lines.append("\nCurrent existing issues (for update-vs-new decisions)")
+        for idx, (_, issue_label) in enumerate(issue_choices, start=1):
+            suggestion_lines.append(f"{idx}. {issue_label}")
     if suggestions:
         suggestion_lines.append("\nNew issue suggestions")
     for index, suggestion in enumerate(suggestions, start=1):
