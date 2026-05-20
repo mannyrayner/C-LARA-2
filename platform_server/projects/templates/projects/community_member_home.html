@@ -7,14 +7,14 @@
 {% endif %}
 <h2>Judge page images</h2>
 <p>Open a project to review generated page-image variants. Your thumbs-up/down judgements and notes help organisers choose preferred images and plan regeneration.</p>
-<ul>
+<ul style="line-height: 2.4; padding-left: 1.4rem;">
   {% for row in project_rows %}
-    <li>
+    <li style="margin: 0.35rem 0;">
       <a class="btn secondary" href="{% url 'community-member-judge-project' community.id row.project.id %}">Judge images for {{ row.project.title }}</a>
       — your judgements: {{ row.judged_count }}
     </li>
   {% empty %}
-    <li>No community projects assigned yet.</li>
+    <li style="margin: 0.35rem 0;">No community projects assigned yet.</li>
   {% endfor %}
 </ul>
 {% endblock %}

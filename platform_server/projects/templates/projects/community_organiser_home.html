@@ -97,9 +97,9 @@
 
 <h2>Image review dashboard</h2>
 <p>Review community image judgements, see preferred page-image variants, and request additional variants for projects in this community.</p>
-<ul>
+<ul style="line-height: 2.4; padding-left: 1.4rem;">
   {% for row in summary_rows %}
-    <li>
+    <li style="margin: 0.35rem 0;">
       <a class="btn secondary" href="{% url 'community-organiser-review-project' community.id row.project.id %}">Review images for {{ row.project.title }}</a>
       {% if row.review %}
         — reviewed at {{ row.review.updated_at }}{% if row.up_to_date %} (up to date){% else %} (new votes pending){% endif %}
@@ -108,7 +108,7 @@
       {% endif %}
     </li>
   {% empty %}
-    <li>No projects assigned to this community.</li>
+    <li style="margin: 0.35rem 0;">No projects assigned to this community.</li>
   {% endfor %}
 </ul>
 {% endblock %}
