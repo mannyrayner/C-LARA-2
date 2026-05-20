@@ -605,13 +605,37 @@ class ProjectImagePagesViewTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         msgs = [m.message for m in get_messages(resp.wsgi_request)]
-        self.assertTrue(any("Page image generation failed" in msg for msg in msgs))
+        self.assertTrue(any("Generated 0 page image variant(s)" in msg for msg in msgs))
 
         telemetry_path = self.project.artifact_dir() / "images" / "pages" / "telemetry.jsonl"
         lines = [json.loads(line) for line in telemetry_path.read_text(encoding="utf-8").splitlines() if line.strip()]
         timeout_events = [line for line in lines if line.get("event") == "page_image_timeout"]
         self.assertTrue(timeout_events)
         self.assertTrue(all(event.get("is_timeout") is True for event in timeout_events))
+        failed_variants = list(ProjectImagePageVariant.objects.filter(page__project=self.project, image_path=""))
+        self.assertTrue(failed_variants)
+        self.assertTrue(any((variant.image_revised_prompt or "").startswith("ERROR:") for variant in failed_variants))
+        self.assertContains(resp, "Image generation failed:")
+        self.assertContains(resp, "ERROR:")
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_page_images_retries_once_after_moderation_block(self, mock_build_ai_client):
+        fake_client = ModerationRetryImageClient()
+        mock_build_ai_client.return_value = fake_client
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        resp = self.client.post(reverse("project-image-pages", args=[self.project.pk]), payload, follow=True)
+        self.assertEqual(resp.status_code, 200)
+        msgs = [m.message for m in get_messages(resp.wsgi_request)]
+        self.assertTrue(any("Generated 2 page image variant(s)" in msg for msg in msgs))
+        telemetry_path = self.project.artifact_dir() / "images" / "pages" / "telemetry.jsonl"
+        lines = [json.loads(line) for line in telemetry_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        blocked_events = [line for line in lines if line.get("event") == "page_image_moderation_blocked"]
+        retry_events = [line for line in lines if line.get("event") == "page_image_retry_success"]
+        self.assertTrue(blocked_events)
+        self.assertTrue(retry_events)
 
     @patch("projects.views._build_ai_client")
     def test_generate_page_images_retries_once_after_moderation_block(self, mock_build_ai_client):

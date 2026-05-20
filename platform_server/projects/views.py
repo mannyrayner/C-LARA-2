@@ -2346,7 +2346,18 @@ def _generate_project_page_images(
                 if not blocked or attempt_index >= len(image_prompt_attempts):
                     break
         if image_result is None and last_exc is not None:
-            raise last_exc
+            request_id = _extract_request_id_from_exception(last_exc)
+            error_message = f"{type(last_exc).__name__}: {last_exc}"
+            if request_id:
+                error_message += f" [request_id={request_id}]"
+            return (
+                page_obj.pk,
+                page_obj.page_number,
+                variant_index,
+                "",
+                f"ERROR: {error_message}",
+                prompt,
+            )
         image_path = page_dir / f"variant_{variant_index:03d}.png"
         image_path.write_bytes(image_result["bytes"])
         rel_path = image_path.relative_to(project.artifact_dir()).as_posix()
@@ -2389,7 +2400,8 @@ def _generate_project_page_images(
         for future in as_completed(futures):
             page_pk, _page_number, variant_index, rel_path, revised_prompt, prompt = future.result()
             outputs_by_page.setdefault(page_pk, []).append((variant_index, rel_path, revised_prompt, prompt))
-            generated += 1
+            if rel_path:
+                generated += 1
 
     for page_obj in page_rows:
         outputs = sorted(outputs_by_page.get(page_obj.pk, []), key=lambda tup: tup[0])
@@ -2405,11 +2417,15 @@ def _generate_project_page_images(
                     "image_path": rel_path,
                     "image_revised_prompt": revised_prompt,
                     "generation_prompt": prompt,
-                    "status": ProjectImagePage.STATUS_GENERATED,
+                    "status": (
+                        ProjectImagePage.STATUS_GENERATED
+                        if rel_path
+                        else ProjectImagePage.STATUS_DRAFT
+                    ),
                 },
             )
             if preferred_variant is None and variant_index == 1:
-                preferred_variant = variant
+                preferred_variant = variant if rel_path else None
         if preferred_variant is not None:
             _set_page_preferred_variant(page_obj, preferred_variant)
 
