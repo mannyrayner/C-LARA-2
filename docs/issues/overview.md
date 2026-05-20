@@ -1,14 +1,14 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-19T23:44:24Z_
+_Last updated: 2026-05-20T00:17:41Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
 ## Recent progress
 
-- **[ISSUE-0008](issues/ISSUE-0008.json)** has been refreshed from a new human suggestion about publication planning. The suggestion was treated as an **update to existing scope** (not a new issue), since publication strategy is already tracked in ISSUE-0008 and [`docs/roadmap/reports-and-papers.md`](../roadmap/reports-and-papers.md).
-- The publication roadmap now explicitly treats all three near-term outputs as active coordinated targets: (1) initial technical report (mid-June 2026), (2) accepted EuroCALL 2026 paper (mid-August 2026), and (3) ALTA 2026 paper (mid-September 2026).
-- The roadmap now explicitly requires that the writing workflow be documented in the publications themselves: drafts are produced through the C-LARA-2 issue-suggestion loop (Codex authorship with human steering/review), with auditable repository traces.
+- Added **[ISSUE-0018](issues/ISSUE-0018.json)** from a new human suggestion about confusion in issue processing when the server checkout is stale relative to recently merged work.
+- The new issue scopes a deterministic data-source fix: suggestion processing should read issue/roadmap context from the canonical checked-in `main` branch snapshot (or an equivalent explicit remote ref), rather than the local checked-out repo state.
+- ISSUE-0018 also requires visibility and resilience work: display which repository ref/snapshot was used and define fallback behaviour for offline or fetch-error states.
 - **[ISSUE-0017](issues/ISSUE-0017.json)** remains the current page-image umbrella issue, with ISSUE-0007 kept as a linked prompt-indirection subproblem.
 - **[ISSUE-0016](issues/ISSUE-0016.json)** remains active after Phase A no-audio/skip-TTS delivery; the community-recorded dictionary extension remains pending.
 
@@ -28,6 +28,7 @@ This document summarizes the current issue registry for quick human review. Cano
 12. **[ISSUE-0007](issues/ISSUE-0007.json) (P2)** — Implement LLM prompt-construction indirection for page-image generation prompts as a component of ISSUE-0017.
 13. **[ISSUE-0001](issues/ISSUE-0001.json) (P2)** — Support registration of hosted compiled legacy content in C-LARA-2; use the same AWS staging/rsync runbook and the imported C-LARA corpus as complementary test material.
 14. **[ISSUE-0012](issues/ISSUE-0012.json) (P2)** — Adjust project creation defaults for AI text generation and top page-image placement.
+15. **[ISSUE-0018](issues/ISSUE-0018.json) (P2)** — Make issue-suggestion processing resolve issue/roadmap context from canonical `main`-branch data instead of potentially stale local checkouts, with explicit ref reporting and robust fallback behaviour.
 
 ## Completed issues
 
@@ -37,7 +38,7 @@ This document summarizes the current issue registry for quick human review. Cano
 
 ## Notes and risks
 
+- **Suggestion-processing trust risk:** if admins cannot tell which issue registry snapshot was used for triage, suggestion handling can drift and create duplicate or contradictory issue entries.
+- **Operational dependency risk:** ISSUE-0018 likely requires dependable remote-ref fetching/caching, so behaviour under GitHub/API/network failure needs explicit fallback semantics and operator messaging.
 - **Publication scope cohesion:** publication planning remains in ISSUE-0008 rather than being split into multiple fragmented issues; this keeps deadlines and cross-paper dependencies in one place.
-- **Methodology claim risk:** because the papers intend to foreground issues-driven Codex authorship, claims about process quality must stay tightly aligned with concrete repo evidence (issues, roadmap diffs, tests, and review trail).
-- **ALTA scope drift:** the ALTA paper is now treated as a concrete target with a mid-September 2026 date; scope should stay focused on implementor-facing engineering methodology to avoid duplicating EuroCALL content.
 - **Page-image roadmap scope:** ISSUE-0017 is intentionally broader than ISSUE-0007. Prompt indirection is one requirement; the full page-image workflow also needs additive variant generation, subset regeneration, review context, organiser preferred-image decisions, and compile-time preferred-image selection.
