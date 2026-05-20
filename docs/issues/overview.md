@@ -27,6 +27,7 @@ This document summarizes the current issue registry for quick human review. Cano
 12. **[ISSUE-0007](issues/ISSUE-0007.json) (P2)** — Implement LLM prompt-construction indirection for page-image generation prompts as a component of ISSUE-0017.
 13. **[ISSUE-0001](issues/ISSUE-0001.json) (P2)** — Support registration of hosted compiled legacy content in C-LARA-2; use the same AWS staging/rsync runbook and the imported C-LARA corpus as complementary test material.
 14. **[ISSUE-0012](issues/ISSUE-0012.json) (P2)** — Adjust project creation defaults for AI text generation and top page-image placement.
+15. **[ISSUE-0018](issues/ISSUE-0018.json) (P2)** — Make issue-suggestion processing resolve issue/roadmap context from canonical `main`-branch data instead of potentially stale local checkouts, with explicit ref reporting and robust fallback behaviour.
 
 ## Completed issues
 
