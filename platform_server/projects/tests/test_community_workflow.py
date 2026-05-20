@@ -572,10 +572,6 @@ class CommunityWorkflowTests(TestCase):
             reverse("community-organiser-review-project", args=[self.community.id, self.project.id]),
             {
                 "action": "generate_requested",
-                "generation_filter": "selected_pages",
-                "image_model": "gpt-image-1",
-                "selected_page_id": [str(self.page.id)],
-                "request_count_all": "1",
             },
             follow=True,
         )

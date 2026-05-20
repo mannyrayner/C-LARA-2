@@ -8318,16 +8318,26 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
             if not planned_items or plan.get("project_id") != project.id or plan.get("community_id") != community_id:
                 messages.warning(request, "Please preview the generation plan first, then confirm.")
                 return redirect("community-organiser-review-project", community_id=community_id, project_id=project.id)
-            plan_by_page = {int(page_id): (int(count), str(prompt_update)) for page_id, count, prompt_update in planned_items}
-            confirmed_requests = []
-            for page, _count, _prompt_update in requested:
-                if page.id not in plan_by_page:
+
+            planned_page_ids = [int(page_id) for page_id, _count, _prompt_update in planned_items]
+            pages_by_id = {
+                page.id: page
+                for page in ProjectImagePage.objects.filter(project=project, id__in=planned_page_ids)
+            }
+            confirmed_requests: list[tuple[ProjectImagePage, int, str]] = []
+            for page_id, count, prompt_update in planned_items:
+                page = pages_by_id.get(int(page_id))
+                if page is None:
                     continue
-                count, prompt_update = plan_by_page[page.id]
-                confirmed_requests.append((page, count, prompt_update))
+                confirmed_requests.append((page, max(0, min(8, int(count))), str(prompt_update)))
+            confirmed_requests = [item for item in confirmed_requests if item[1] > 0]
             if not confirmed_requests:
-                messages.warning(request, "The confirmed generation plan no longer matches the selected pages. Please preview again.")
+                messages.warning(request, "The confirmed generation plan is no longer valid. Please preview again.")
                 return redirect("community-organiser-review-project", community_id=community_id, project_id=project.id)
+
+            image_model = str(plan.get("image_model") or image_model).strip()
+            if image_model not in IMAGE_MODEL_CHOICES:
+                image_model = "gpt-image-1"
 
             progress_marks: list[str] = []
             def _progress_callback(done: int, total: int) -> None:
