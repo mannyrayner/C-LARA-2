@@ -8366,8 +8366,32 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
         for page in pages
     ]
     vote_rows: list[dict[str, Any]] = []
+    filter_counts = {
+        "selected_pages": len(pages),
+        "missing_images": 0,
+        "no_preferred": 0,
+        "all_unacceptable": 0,
+    }
     for page in pages:
         context = page_context.get(page.id, {})
+        if not page.preferred_variant_id:
+            filter_counts["no_preferred"] += 1
+        if not page.variants.exists() and not (page.image_path or "").strip():
+            filter_counts["missing_images"] += 1
+        variants_for_page = list(page.variants.order_by("variant_index"))
+        if variants_for_page:
+            has_acceptable = False
+            for variant in variants_for_page:
+                votes_qs = CommunityImageVote.objects.filter(
+                    community_id=community_id, project=project, page=page, variant=variant
+                )
+                up_count = votes_qs.filter(value=CommunityImageVote.VALUE_UP).count()
+                down_count = votes_qs.filter(value=CommunityImageVote.VALUE_DOWN).count()
+                if up_count > down_count:
+                    has_acceptable = True
+                    break
+            if not has_acceptable:
+                filter_counts["all_unacceptable"] += 1
         for variant in page.variants.order_by("variant_index"):
             votes = list(
                 CommunityImageVote.objects.filter(community_id=community_id, project=project, variant=variant)
@@ -8399,6 +8423,13 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
             "vote_rows": vote_rows,
             "review": review,
             "image_models": IMAGE_MODEL_CHOICES,
+            "review_summary": {
+                "reviewed": bool(review),
+                "review_note": (review.note or "") if review else "",
+                "total_pages": len(pages),
+                "total_variants": len(vote_rows),
+                "filter_counts": filter_counts,
+            },
             "generation_filter_options": [
                 ("selected_pages", "Selected pages"),
                 ("missing_images", "Missing images only"),
