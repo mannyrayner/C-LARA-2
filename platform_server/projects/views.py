@@ -23,6 +23,7 @@ from django.core.exceptions import PermissionDenied
 from django.core.management import call_command
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.staticfiles import finders
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse
@@ -2547,8 +2548,10 @@ def issues_home(request: HttpRequest) -> HttpResponse:
 
 
 def favicon(request: HttpRequest) -> HttpResponse:
-    favicon_path = settings.ROOT_DIR / "platform_server" / "projects" / "static" / "projects" / "favicon.svg"
-    return FileResponse(favicon_path.open("rb"), content_type="image/svg+xml")
+    favicon_path = finders.find("projects/favicon.svg")
+    if not favicon_path:
+        raise Http404("favicon not found")
+    return FileResponse(open(favicon_path, "rb"), content_type="image/svg+xml")
 
 
 @login_required
