@@ -1,13 +1,13 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-20T00:51:14Z_
+_Last updated: 2026-05-20T01:30:00Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
 ## Recent progress
 
 - **[ISSUE-0018](issues/ISSUE-0018.json)** is now closed: issue-suggestion processing now uses canonical `main`-branch issue registry data (with local fallback) and reports the source in admin prompt text.
-- Added and closed **[ISSUE-0019](issues/ISSUE-0019.json)** from a new human suggestion: favicon visibility on AWS was hardened by adding an explicit `/favicon.ico` route that redirects to the static project favicon.
+- **[ISSUE-0019](issues/ISSUE-0019.json)** has been deprioritised/shelved for now: several favicon fixes were attempted, but AWS behaviour remains inconsistent; follow-up troubleshooting steps are now recorded in the issue notes.
 - **[ISSUE-0017](issues/ISSUE-0017.json)** remains the current page-image umbrella issue, with ISSUE-0007 kept as a linked prompt-indirection subproblem.
 - **[ISSUE-0016](issues/ISSUE-0016.json)** remains active after Phase A no-audio/skip-TTS delivery; the community-recorded dictionary extension remains pending.
 
@@ -27,15 +27,14 @@ This document summarizes the current issue registry for quick human review. Cano
 12. **[ISSUE-0007](issues/ISSUE-0007.json) (P2)** — Implement LLM prompt-construction indirection for page-image generation prompts as a component of ISSUE-0017.
 13. **[ISSUE-0001](issues/ISSUE-0001.json) (P2)** — Support registration of hosted compiled legacy content in C-LARA-2; use the same AWS staging/rsync runbook and the imported C-LARA corpus as complementary test material.
 14. **[ISSUE-0012](issues/ISSUE-0012.json) (P2)** — Adjust project creation defaults for AI text generation and top page-image placement.
-15. **[ISSUE-0018](issues/ISSUE-0018.json) (P2)** — Make issue-suggestion processing resolve issue/roadmap context from canonical `main`-branch data instead of potentially stale local checkouts, with explicit ref reporting and robust fallback behaviour.
+15. **[ISSUE-0019](issues/ISSUE-0019.json) (P3, shelved)** — Favicon inconsistency on AWS remains unresolved; defer active work and resume with deployment/static-pipeline diagnostics when higher-priority items allow.
 
 ## Completed issues
 
-1. **[ISSUE-0019](issues/ISSUE-0019.json) (completed 2026-05-20)** — Ensure favicon reliably appears on AWS deployment by adding an explicit `/favicon.ico` redirect to the static project favicon.
-2. **[ISSUE-0018](issues/ISSUE-0018.json) (completed 2026-05-20)** — Use canonical `main`-branch issue registry data (with fallback visibility) during issue-suggestion processing.
-3. **[ISSUE-0015](issues/ISSUE-0015.json) (completed 2026-05-18)** — Let community organisers add existing users as ordinary community members, list memberships, and remove ordinary members while keeping organiser-role changes protected.
-4. **[ISSUE-0002](issues/ISSUE-0002.json) (completed 2026-05-09)** — Support migration of legacy C-LARA projects into C-LARA-2 through direct import of supported legacy JSON export ZIP bundles.
-5. **[ISSUE-0009](issues/ISSUE-0009.json) (completed 2026-05-06)** — Auto-regenerate and validate source project bundle stage artifacts before export/import.
+1. **[ISSUE-0018](issues/ISSUE-0018.json) (completed 2026-05-20)** — Use canonical `main`-branch issue registry data (with fallback visibility) during issue-suggestion processing.
+2. **[ISSUE-0015](issues/ISSUE-0015.json) (completed 2026-05-18)** — Let community organisers add existing users as ordinary community members, list memberships, and remove ordinary members while keeping organiser-role changes protected.
+3. **[ISSUE-0002](issues/ISSUE-0002.json) (completed 2026-05-09)** — Support migration of legacy C-LARA projects into C-LARA-2 through direct import of supported legacy JSON export ZIP bundles.
+4. **[ISSUE-0009](issues/ISSUE-0009.json) (completed 2026-05-06)** — Auto-regenerate and validate source project bundle stage artifacts before export/import.
 
 ## Notes and risks
 
