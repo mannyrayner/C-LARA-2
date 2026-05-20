@@ -126,32 +126,46 @@ Status: **started/implemented for the existing review entry points**. The roadma
 
 ### Phase B: review context and preferred-image compile behavior
 
+Status: **implemented**. Member and organiser image-review views now show source page text and available page translations, and compile resolves page-image placement from the selected `preferred_variant` first with safe omission/diagnostics when preferred image files are missing.
+
 - Add source page text and page translation to member review and organiser review views.
 - Confirm compile uses `preferred_variant` in all page-image placement paths.
 - Add regression tests for preferred-variant selection and missing-image fallback.
 
-### Phase C: additive and subset generation
+### Phase C: prompt-construction indirection (ISSUE-0007)
+
+Rationale: this can be implemented and tested independently after the review/compile foundations are in place. It also gives the later regeneration workflow a stronger prompt-construction contract before organiser-facing batch controls are expanded.
+
+Status: **initial implementation in progress**. Page-image generation now runs a text-model prompt-construction step inside fan-out/fan-in before image rendering. The constructor input includes global summary/excerpt, current page plus neighboring page text, style context, and relevant element descriptions/image paths; outputs are normalized and persisted to telemetry for audit/debugging.
+
+Implementation strategy (current first version):
+- Build a per-page constructor payload with summary + local context (previous/current/next page text), style text, and relevant element metadata.
+- Ask the text model to return only a final image-generation prompt (no JSON/markdown) using that payload.
+- Normalize constructor output with safety fallback to the deterministic base prompt if output is empty/invalid.
+- Record constructor request/response alongside page-image request telemetry for reproducibility.
+- Keep constructor and image calls inside fan-out/fan-in so prompt construction happens in parallel per page before each image call.
+
+- Add the text-model prompt-construction step.
+- Feed community suggestions and organiser prompt updates into the prompt-construction input.
+- Persist prompt-construction provenance and expose it for debugging/review.
+- Add focused tests for prompt-construction inputs, outputs, provenance persistence, and text-rendering guardrails.
+
+### Phase D: additive, subset, and organiser regeneration workflow
+
+Rationale: additive/subset generation and organiser regeneration controls are tightly coupled in practice. Delivering them together makes the workflow easier to test end-to-end: page selection filters resolve to concrete batches, organiser controls submit those batches, generated variants are appended safely, and review state remains intact.
 
 - Implement backend selection helpers for missing-only, no-approved/preferred-only, all-unacceptable, and selected-pages filters.
 - Make generation append new variants by default.
 - Show affected-page counts before batch submission.
 - Persist generation request metadata.
-
-### Phase D: prompt-construction indirection (ISSUE-0007)
-
-- Add the text-model prompt-construction step.
-- Feed community suggestions and organiser prompt updates into the prompt-construction input.
-- Persist prompt-construction provenance and expose it for debugging/review.
-
-### Phase E: organiser regeneration workflow
-
 - Expand the organiser review dashboard with page filters, preferred-variant controls, approval/unacceptable decisions, and batch regeneration actions.
 - Add progress/status feedback for long-running regeneration tasks.
 - Keep the workflow safe under partial failures: successful pages should remain available even if some pages fail.
+- Add end-to-end tests covering subset selection, organiser batch submission, additive variant creation, preserved votes/preferred selections, and regeneration audit metadata.
 
-### Phase F: hardening and operational checks
+### Phase E: hardening and operational checks
 
-- Add tests for subset selection, additive generation, preferred variant compile behavior, review context, and prompt indirection.
+- Add remaining cross-phase tests for subset selection, additive generation, preferred variant compile behavior, review context, and prompt indirection.
 - Add cost/concurrency guardrails for batch regeneration.
 - Add audit/event logs sufficient to reconstruct why a page image was regenerated.
 
