@@ -2,6 +2,7 @@ from unittest.mock import patch
 import inspect
 import base64
 import json
+import re
 
 from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
@@ -24,6 +25,21 @@ from projects.models import (
 class FakeImageClient:
     def __init__(self):
         self.prompts: list[str] = []
+        self.text_prompts: list[str] = []
+
+    async def chat_text(self, prompt, **kwargs):  # noqa: ARG002
+        text = str(prompt)
+        self.text_prompts.append(text)
+        json_start = text.find("{")
+        if json_start >= 0:
+            try:
+                payload = json.loads(text[json_start:])
+                base_prompt = str(payload.get("base_prompt") or "").strip()
+                if base_prompt:
+                    return base_prompt
+            except Exception:
+                pass
+        return "Constructed prompt for image generation."
 
     def generate_image(self, prompt, **kwargs):
         self.prompts.append(prompt)
@@ -37,8 +53,25 @@ class FakeImageClient:
 
 
 class TimeoutImageClient:
+    async def chat_text(self, prompt, **kwargs):  # noqa: ARG002
+        return "Constructed prompt for image generation."
+
     def generate_image(self, prompt, **kwargs):
         raise TimeoutError("simulated timeout")
+
+
+class ModerationRetryImageClient(FakeImageClient):
+    def __init__(self):
+        super().__init__()
+        self.calls = 0
+
+    def generate_image(self, prompt, **kwargs):
+        self.calls += 1
+        if self.calls == 1:
+            raise Exception(
+                "Error code: 400 - {'error': {'message': 'rejected by the safety system req_demo123.', 'code': 'moderation_blocked'}}"
+            )
+        return super().generate_image(prompt, **kwargs)
 
 
 class ProjectImagePagesViewTests(TestCase):
@@ -257,6 +290,8 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertIn("Style description:", page.generation_prompt)
         self.assertIn("Reference image path: images/elements/celine/reference.png", page.generation_prompt)
         self.assertEqual(ProjectImagePageVariant.objects.filter(page=page).count(), 1)
+        self.assertContains(resp, "Prompt used for this variant:")
+        self.assertContains(resp, "Style description:")
 
         msgs = [m.message for m in get_messages(resp.wsgi_request)]
         self.assertTrue(any("Generated 2 page image variant(s) with gpt-image-1." in msg for msg in msgs))
@@ -354,6 +389,31 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertTrue(page.image_path.endswith("page_001/variant_003.png"))
 
     @patch("projects.views._build_ai_client")
+    def test_clear_generated_page_images_and_prompts(self, mock_build_ai_client):
+        fake_client = FakeImageClient()
+        mock_build_ai_client.return_value = fake_client
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        resp = self.client.post(reverse("project-image-pages", args=[self.project.pk]), payload, follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(ProjectImagePageVariant.objects.filter(page__project=self.project).exists())
+
+        clear_payload = self._page_form_payload()
+        clear_payload["action"] = "clear_generated"
+        cleared = self.client.post(reverse("project-image-pages", args=[self.project.pk]), clear_payload, follow=True)
+        self.assertEqual(cleared.status_code, 200)
+        self.assertFalse(ProjectImagePageVariant.objects.filter(page__project=self.project).exists())
+
+        for page in ProjectImagePage.objects.filter(project=self.project):
+            self.assertEqual(page.image_path, "")
+            self.assertEqual(page.generation_prompt, "")
+            self.assertEqual(page.image_revised_prompt, "")
+            self.assertIsNone(page.preferred_variant_id)
+
+    @patch("projects.views._build_ai_client")
     def test_generate_page_images_trims_long_prompts_and_writes_telemetry(self, mock_build_ai_client):
         fake_client = FakeImageClient()
         mock_build_ai_client.return_value = fake_client
@@ -385,6 +445,10 @@ class ProjectImagePagesViewTests(TestCase):
         response_events = [line for line in lines if line.get("event") == "page_image_response"]
         self.assertTrue(response_events)
         self.assertIn("elapsed_s", response_events[0])
+        construction_events = [line for line in lines if line.get("event") == "page_image_prompt_construction"]
+        self.assertTrue(construction_events)
+        self.assertIn("request_payload", construction_events[0])
+        self.assertIn("response_prompt_final", construction_events[0])
 
     @patch("projects.views._build_ai_client")
     def test_generate_page_images_can_discourage_text_in_image(self, mock_build_ai_client):
@@ -542,13 +606,37 @@ class ProjectImagePagesViewTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         msgs = [m.message for m in get_messages(resp.wsgi_request)]
-        self.assertTrue(any("Page image generation failed" in msg for msg in msgs))
+        self.assertTrue(any("Generated 0 page image variant(s)" in msg for msg in msgs))
 
         telemetry_path = self.project.artifact_dir() / "images" / "pages" / "telemetry.jsonl"
         lines = [json.loads(line) for line in telemetry_path.read_text(encoding="utf-8").splitlines() if line.strip()]
         timeout_events = [line for line in lines if line.get("event") == "page_image_timeout"]
         self.assertTrue(timeout_events)
         self.assertTrue(all(event.get("is_timeout") is True for event in timeout_events))
+        failed_variants = list(ProjectImagePageVariant.objects.filter(page__project=self.project, image_path=""))
+        self.assertTrue(failed_variants)
+        self.assertTrue(any((variant.image_revised_prompt or "").startswith("ERROR:") for variant in failed_variants))
+        self.assertContains(resp, "Image generation failed:")
+        self.assertContains(resp, "ERROR:")
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_page_images_retries_once_after_moderation_block(self, mock_build_ai_client):
+        fake_client = ModerationRetryImageClient()
+        mock_build_ai_client.return_value = fake_client
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        resp = self.client.post(reverse("project-image-pages", args=[self.project.pk]), payload, follow=True)
+        self.assertEqual(resp.status_code, 200)
+        msgs = [m.message for m in get_messages(resp.wsgi_request)]
+        self.assertTrue(any("Generated 2 page image variant(s)" in msg for msg in msgs))
+        telemetry_path = self.project.artifact_dir() / "images" / "pages" / "telemetry.jsonl"
+        lines = [json.loads(line) for line in telemetry_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        blocked_events = [line for line in lines if line.get("event") == "page_image_moderation_blocked"]
+        retry_events = [line for line in lines if line.get("event") == "page_image_retry_success"]
+        self.assertTrue(blocked_events)
+        self.assertTrue(retry_events)
 
     def test_discourage_text_guideline_known_language_mentions_signs_and_sfx(self):
         guideline = views._discourage_text_guideline_for_language("en")
