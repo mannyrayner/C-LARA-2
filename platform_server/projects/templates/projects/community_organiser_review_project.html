@@ -15,6 +15,7 @@
     {% endif %}
   </p>
   <p>Pages: <strong>{{ review_summary.total_pages }}</strong> · Variants shown: <strong>{{ review_summary.total_variants }}</strong></p>
+  <p>Current preview plan pages: <strong>{{ review_summary.preview_plan_count }}</strong></p>
   <p>Pages matched by filter:</p>
   <ul>
     <li>Selected pages: {{ review_summary.filter_counts.selected_pages }}</li>
@@ -60,6 +61,7 @@
 
   <h3>Vote summary</h3>
 {% for row in vote_rows %}
+  {% if not has_preview_plan or row.in_preview_plan %}
   <section style="border:1px solid #ddd; margin:0.6rem 0; padding:0.6rem;">
     <p><strong>Page {{ row.page.page_number }}, variant {{ row.variant.variant_index }}</strong>{% if row.page.preferred_variant_id == row.variant.id %} <span style="font-weight:bold; color:#2e7d32;">(current preferred image)</span>{% endif %} — 👍 {{ row.up }} / 👎 {{ row.down }}</p>
     {% if row.source_text %}
@@ -90,11 +92,8 @@
       </ul>
     {% endif %}
   </section>
+  {% endif %}
 {% endfor %}
-  <p style="margin-top:1rem;">
-    <button class="btn" type="submit" name="action" value="generate_requested_preview">Preview generation request</button>
-    <button class="btn secondary" type="submit" name="action" value="generate_requested">Confirm and generate</button>
-  </p>
 </form>
 
 <div id="bottom-controls" style="margin-top:1rem; padding-top:0.6rem; border-top:1px dashed #ddd;">

@@ -7902,6 +7902,20 @@ def community_member_judge_project(request: HttpRequest, community_id: int, proj
         }
         for page in pages
     ]
+    show_mode = (request.GET.get("show") or "unjudged").strip().lower()
+    if show_mode not in {"all", "unjudged"}:
+        show_mode = "unjudged"
+    unjudged_count = 0
+    for row in page_rows:
+        row_unjudged = 0
+        for vr in row["variant_rows"]:
+            if not vr["vote"] or vr["vote"].value not in {CommunityImageVote.VALUE_UP, CommunityImageVote.VALUE_DOWN}:
+                row_unjudged += 1
+        row["unjudged_count"] = row_unjudged
+        if row_unjudged > 0:
+            unjudged_count += 1
+    if show_mode == "unjudged":
+        page_rows = [row for row in page_rows if row.get("unjudged_count", 0) > 0]
     return render(
         request,
         "projects/community_member_judge_project.html",
@@ -7910,6 +7924,9 @@ def community_member_judge_project(request: HttpRequest, community_id: int, proj
             "membership": membership,
             "project": project,
             "page_rows": page_rows,
+            "show_mode": show_mode,
+            "unjudged_page_count": unjudged_count,
+            "total_page_count": len(pages),
         },
     )
 
@@ -8366,6 +8383,14 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
         for page in pages
     ]
     vote_rows: list[dict[str, Any]] = []
+    preview_page_ids: set[int] = set()
+    plan = request.session.get("community_generation_plan") or {}
+    if plan.get("project_id") == project.id and plan.get("community_id") == community_id:
+        for page_id, _count, _prompt_update in (plan.get("requests") or []):
+            try:
+                preview_page_ids.add(int(page_id))
+            except (TypeError, ValueError):
+                continue
     filter_counts = {
         "selected_pages": len(pages),
         "missing_images": 0,
@@ -8408,6 +8433,7 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
                 "votes": votes,
                 "up": up,
                 "down": down,
+                "in_preview_plan": page.id in preview_page_ids,
             })
     review = CommunityOrganiserReview.objects.filter(
         community_id=community_id, project=project, organiser=request.user
@@ -8429,7 +8455,9 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
                 "total_pages": len(pages),
                 "total_variants": len(vote_rows),
                 "filter_counts": filter_counts,
+                "preview_plan_count": len(preview_page_ids),
             },
+            "has_preview_plan": bool(preview_page_ids),
             "generation_filter_options": [
                 ("selected_pages", "Selected pages"),
                 ("missing_images", "Missing images only"),

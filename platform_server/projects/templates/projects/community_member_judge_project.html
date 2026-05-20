@@ -3,11 +3,22 @@
 {% block content %}
 <h1>Judge images: {{ project.title }}</h1>
 <p><a class="btn secondary" href="{% url 'community-member-home' community.id %}">← Back to community member page</a></p>
+<section style="border:1px solid #ddd; padding:0.8rem; margin:0.8rem 0; background:#fafafa;">
+  <h3 style="margin-top:0;">Judging summary</h3>
+  <p>Unjudged pages: <strong>{{ unjudged_page_count }}</strong> / {{ total_page_count }}</p>
+  <p>
+    Show:
+    <a class="btn secondary" href="?show=unjudged">Unjudged only</a>
+    <a class="btn secondary" href="?show=all">All pages</a>
+    (current: <strong>{{ show_mode }}</strong>)
+  </p>
+</section>
 <form method="post">
   {% csrf_token %}
   {% for row in page_rows %}
     <section style="border:1px solid #ddd; margin:0.8rem 0; padding:0.7rem;">
       <h2>Page {{ row.page.page_number }}</h2>
+      <p><small>Unjudged variants on this page: {{ row.unjudged_count }}</small></p>
       {% if row.source_text %}
         <p><strong>Source page text:</strong></p>
         <blockquote>{{ row.source_text }}</blockquote>
