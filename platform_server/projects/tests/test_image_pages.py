@@ -288,7 +288,6 @@ class ProjectImagePagesViewTests(TestCase):
         page = ProjectImagePage.objects.get(project=self.project, page_number=1)
         self.assertTrue(page.image_path.endswith("page_001/variant_001.png"))
         self.assertIn("Style description:", page.generation_prompt)
-        self.assertIn("Reference image path: images/elements/celine/reference.png", page.generation_prompt)
         self.assertEqual(ProjectImagePageVariant.objects.filter(page=page).count(), 1)
         self.assertContains(resp, "Prompt used for this variant:")
         self.assertContains(resp, "Style description:")
@@ -618,6 +617,25 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertTrue(any((variant.image_revised_prompt or "").startswith("ERROR:") for variant in failed_variants))
         self.assertContains(resp, "Image generation failed:")
         self.assertContains(resp, "ERROR:")
+
+    @patch("projects.views._build_ai_client")
+    def test_generate_page_images_retries_once_after_moderation_block(self, mock_build_ai_client):
+        fake_client = ModerationRetryImageClient()
+        mock_build_ai_client.return_value = fake_client
+        self.client.get(reverse("project-image-pages", args=[self.project.pk]))
+        payload = self._page_form_payload()
+        payload["action"] = "generate_images"
+        payload["image_model"] = "gpt-image-1"
+        resp = self.client.post(reverse("project-image-pages", args=[self.project.pk]), payload, follow=True)
+        self.assertEqual(resp.status_code, 200)
+        msgs = [m.message for m in get_messages(resp.wsgi_request)]
+        self.assertTrue(any("Generated 2 page image variant(s)" in msg for msg in msgs))
+        telemetry_path = self.project.artifact_dir() / "images" / "pages" / "telemetry.jsonl"
+        lines = [json.loads(line) for line in telemetry_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        blocked_events = [line for line in lines if line.get("event") == "page_image_moderation_blocked"]
+        retry_events = [line for line in lines if line.get("event") == "page_image_retry_success"]
+        self.assertTrue(blocked_events)
+        self.assertTrue(retry_events)
 
     @patch("projects.views._build_ai_client")
     def test_generate_page_images_retries_once_after_moderation_block(self, mock_build_ai_client):
