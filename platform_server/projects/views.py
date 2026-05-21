@@ -1901,6 +1901,7 @@ def _build_page_prompt_construction_request(
     previous_page_text: str,
     next_page_text: str,
     relevant_elements: list[ProjectImageElement],
+    current_page_text: str | None = None,
 ) -> tuple[str, dict[str, Any]]:
     payload = {
         "project_title": project.title,
@@ -1908,7 +1909,7 @@ def _build_page_prompt_construction_request(
         "target_language": project.target_language,
         "page_number": page_obj.page_number,
         "summary_text": summary_text,
-        "current_page_text": page_obj.page_text,
+        "current_page_text": str(current_page_text if current_page_text is not None else page_obj.page_text),
         "previous_page_text": previous_page_text,
         "next_page_text": next_page_text,
         "full_text_excerpt": _truncate_for_prompt(full_text, max_chars=1800),
@@ -2456,10 +2457,20 @@ def _generate_requested_page_variants(
     style = project.image_style
     full_text = _extract_project_plain_text(project)
     summary_text = _truncate_for_prompt(full_text, max_chars=700) if full_text else ""
-    page_texts_by_number = {
-        row.page_number: (row.page_text or "")
-        for row in ProjectImagePage.objects.filter(project=project)
-    }
+    project_pages = list(ProjectImagePage.objects.filter(project=project).order_by("page_number", "id"))
+    page_context_rows = _page_review_context_rows(project, project_pages)
+    page_text_by_id: dict[int, str] = {}
+    page_texts_by_number: dict[int, str] = {}
+    for row in project_pages:
+        context = page_context_rows.get(row.id, {})
+        preferred_text = (
+            context.get("translation_text", "")
+            if project.page_image_text_source == Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION
+            else context.get("source_text", "")
+        )
+        resolved_text = str(preferred_text or row.page_text or "").strip()
+        page_text_by_id[row.id] = resolved_text
+        page_texts_by_number[row.page_number] = resolved_text
     relevant_elements = [
         element for element in project.image_elements.order_by("name", "id") if element.image_path
     ]
@@ -2468,6 +2479,7 @@ def _generate_requested_page_variants(
         text_model = DEFAULT_MODEL
 
     def _build_requested_prompt(page: ProjectImagePage, prompt_update: str) -> str:
+        page_text_for_prompt = page_text_by_id.get(page.id, page.page_text or "")
         refs = [
             element for element in relevant_elements
             if not element.page_refs or _page_refs_match(element.page_refs, page.page_number)
@@ -2476,7 +2488,7 @@ def _generate_requested_page_variants(
             project=project,
             style=style,
             page_number=page.page_number,
-            page_text=page.page_text,
+            page_text=page_text_for_prompt,
             full_text=full_text,
             relevant_elements=refs,
             discourage_text_in_image=False,
@@ -2493,6 +2505,7 @@ def _generate_requested_page_variants(
             previous_page_text=page_texts_by_number.get(page.page_number - 1, ""),
             next_page_text=page_texts_by_number.get(page.page_number + 1, ""),
             relevant_elements=refs,
+            current_page_text=page_text_for_prompt,
         )
         text_client = _build_ai_client(model_name=text_model, usage_reporter=usage_reporter)
         constructed_raw = asyncio.run(text_client.chat_text(constructor_prompt))
