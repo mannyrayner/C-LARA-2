@@ -1,14 +1,14 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-21T12:23:39Z_
+_Last updated: 2026-05-21T13:05:00Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
 ## Recent progress
 
-- Added **[ISSUE-0021](issues/ISSUE-0021.json)** from human suggestion #12 to track broader model-access expansion, with explicit initial scope for GPT-Image-2 integration in image-generation workflows.
+- Refined **[ISSUE-0021](issues/ISSUE-0021.json)** after follow-up guidance: treat GPT-Image-2 enablement as immediate low-hanging-fruit delivery, specifically as a selectable option (alongside GPT-Image-1) for element and page image generation.
 - Added **[ISSUE-0020](issues/ISSUE-0020.json)** from human suggestion #11, covering picture-dictionary compile improvements: clearer organiser feedback during image generation, low-resource partial-pipeline placeholder artifacts, and direct handoff links to manual annotation.
-- Community review/regeneration UX work under **[ISSUE-0017](issues/ISSUE-0017.json)** continues to converge, and ISSUE-0021 now captures the model-catalog and model-selection layer needed to make these image workflows more configurable and future-proof.
+- Community review/regeneration UX work under **[ISSUE-0017](issues/ISSUE-0017.json)** continues to converge, and ISSUE-0021 now targets concrete near-term pipeline work rather than full general model-catalog architecture.
 
 ## Near-term priorities
 
@@ -17,7 +17,7 @@ This document summarizes the current issue registry for quick human review. Cano
 3. **[ISSUE-0020](issues/ISSUE-0020.json) (P1)** — Improve picture-dictionary compile for low-resource workflows and organiser feedback: partial artifacts + explicit manual-completion handoff.
 4. **[ISSUE-0011](issues/ISSUE-0011.json) (P1, active, deadline 2026-06-01)** — Continue picture-dictionary/game workflow hardening: curation/game-ready signals, word→image mode, and feedback loops.
 5. **[ISSUE-0017](issues/ISSUE-0017.json) (P1)** — Complete page-image generation/review/regeneration stabilization, especially organiser workflow polish and reliability.
-6. **[ISSUE-0021](issues/ISSUE-0021.json) (P2)** — Expand configurable model support with a central model catalog and GPT-Image-2 integration for image workflows.
+6. **[ISSUE-0021](issues/ISSUE-0021.json) (P1)** — Add GPT-Image-2 as a selectable model for element/page image generation, with compatibility and fallback behavior.
 7. **[ISSUE-0003](issues/ISSUE-0003.json) (P1)** — Build efficient end-to-end pipeline test runner with corpus-driven quality checks.
 8. **[ISSUE-0010](issues/ISSUE-0010.json) (P1)** — Expand representative legacy corpus imports and tooling.
 9. **[ISSUE-0013](issues/ISSUE-0013.json) (P1)** — Improve stage artifact persistence performance and timeout resilience.
@@ -33,6 +33,6 @@ This document summarizes the current issue registry for quick human review. Cano
 ## Notes and risks
 
 - **Low-resource language workflows are now cross-cutting.** ISSUE-0016 (audio), ISSUE-0011 (picture dictionary/games), and ISSUE-0020 (dictionary compile/manual fallback) should be coordinated so organisers get one coherent non-AI workflow.
-- **Model-surface growth needs governance.** ISSUE-0021 should define capability/eligibility rules so adding models (including GPT-Image-2) improves outcomes without creating opaque or brittle per-feature configuration.
+- **Keep this iteration focused.** ISSUE-0021 is intentionally narrowed to GPT-Image-2 option support in element/page image flows; broader multi-model governance should not block this immediate improvement.
 - **Organiser trust depends on transparent long-running actions.** For dictionary/image compile and regeneration, status/progress messaging should be explicit and tied to real stage transitions.
 - **Deployment polish remains important.** ISSUE-0019 is low priority but highly visible; static asset/cache consistency on AWS should be treated as a small reliability patch, not a user workaround.

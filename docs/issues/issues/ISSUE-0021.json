@@ -1,17 +1,16 @@
 {
   "schema_version": 1,
   "issue_id": "ISSUE-0021",
-  "title": "Expand configurable model support, including GPT-Image-2 for image workflows",
+  "title": "Add GPT-Image-2 as selectable model for element and page image generation",
   "state": "reported",
-  "priority": "P2",
+  "priority": "P1",
   "created_at": "2026-05-21T12:23:39Z",
-  "updated_at": "2026-05-21T12:23:39Z",
+  "updated_at": "2026-05-21T13:05:00Z",
   "origin": "human-suggestion",
-  "notes": "Suggestion #12 from admin export (submitted by mannyrayner on 2026-05-21), clarified and scoped. C-LARA-2 should expose a broader, explicitly managed set of AI models rather than relying on a narrow/default subset. Immediate priority is to support GPT-Image-2 as a selectable option in relevant image-generation and regeneration paths. Scope: (1) Audit where model choices are currently hard-coded or indirectly configured (text generation, image generation, and review-adjacent flows). (2) Define a central model-catalog/configuration mechanism with safe defaults, capability metadata, and clear eligibility rules per task type. (3) Add GPT-Image-2 integration for page-image and picture-dictionary generation flows, with graceful fallback behavior when unavailable. (4) Expose model choice in organiser/admin UX where appropriate, and persist chosen model in job/stage metadata for traceability and reproducibility. (5) Add regression tests/docs covering model selection, fallback logic, and backward compatibility with existing projects.",
+  "notes": "Suggestion #12 from admin export (submitted by mannyrayner on 2026-05-21), refined after follow-up feedback. Treat this as a focused near-term delivery item rather than the full model-catalog program. Immediate scope: add GPT-Image-2 as an additional selectable image model (alongside GPT-Image-1) in the generation pipeline for both element images and page images. Implementation should cover: (1) pipeline/config wiring so both models are supported and GPT-Image-1 remains backward-compatible default unless explicitly changed; (2) organiser-facing model selection where image generation/regeneration jobs are launched; (3) persistence of selected model in job/stage metadata for traceability; (4) graceful fallback/error messaging when GPT-Image-2 is unavailable; and (5) regression tests and docs updates for selection behavior in element/page image flows. Broader cross-task model governance remains future work and can be tracked separately if needed.",
   "deadline": null,
   "dependencies": [
     "ISSUE-0017",
-    "ISSUE-0020",
     "ISSUE-0007"
   ]
 }
