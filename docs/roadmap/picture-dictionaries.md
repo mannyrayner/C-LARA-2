@@ -221,6 +221,12 @@ Provide explicit organiser-facing commands/actions from the Community Organiser 
 - Validate canonical keys and detect conflicts/duplicates.
 - If no usable image style exists yet, require an organiser-provided **style brief** at compile time and auto-generate style artifacts before image generation starts.
 - Show explicit organiser feedback that compilation has started as a long-running action, then report annotation/image outcomes.
+- In AI-enabled languages, do not stop feedback at “linguistic pipeline done”: continue with explicit progress updates for dictionary image generation (started, in progress where possible, and completed with success/failure counts).
+- In low-resource/non-AI-supported languages, allow a deterministic **partial compile** path:
+  1. run and persist reliable segmentation outputs (`segmentation_phase_1`, `segmentation_phase_2`);
+  2. write placeholder stage artifacts for translation, MWE, lemma, gloss, and pinyin with clear markers that manual completion is required;
+  3. finish with a prominent message explaining what was auto-filled vs placeholder-only.
+- After low-resource partial compile completes, provide a direct link to the page-by-page manual annotation editor so organisers can immediately complete missing fields.
 
 ### B6.2 Add given words
 
@@ -247,6 +253,18 @@ Suggested first-version filter for pictureability:
 - exclude very high-frequency stop items,
 - optionally whitelist concrete POS classes first (`NOUN`, `VERB`, `ADJ`),
 - allow organiser review before commit or before game use.
+
+For organiser usability, entry lists shown in `communities/xxx/organiser/` should be predictable and uniform:
+
+- default ordering should be alphabetical by displayed surface form (case-insensitive);
+- each row should use a consistent format derived from project lexical analysis, e.g.:
+  - `homme (lemma: homme) [NOUN]`
+  - `femme (lemma: femme) [NOUN]`
+  - `habiter (lemma: habiter) [VERB]`
+  - `petit (lemma: petit) [ADJ]`
+  - `maison (lemma: maison) [NOUN]`
+
+This formatting should be used both for human scanning and as the basis for predictable selection/filter controls.
 
 ### B6.5 Generate images for new/missing entries
 
