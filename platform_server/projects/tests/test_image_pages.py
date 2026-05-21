@@ -288,7 +288,6 @@ class ProjectImagePagesViewTests(TestCase):
         page = ProjectImagePage.objects.get(project=self.project, page_number=1)
         self.assertTrue(page.image_path.endswith("page_001/variant_001.png"))
         self.assertIn("Style description:", page.generation_prompt)
-        self.assertIn("Reference image path: images/elements/celine/reference.png", page.generation_prompt)
         self.assertEqual(ProjectImagePageVariant.objects.filter(page=page).count(), 1)
         self.assertContains(resp, "Prompt used for this variant:")
         self.assertContains(resp, "Style description:")

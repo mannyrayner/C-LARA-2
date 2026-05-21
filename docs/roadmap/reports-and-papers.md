@@ -37,11 +37,11 @@ The discussion trace available here records the user's side of the exchange rath
 - **Purpose:** turn the internal-report material into a focused academic paper for the EuroCALL 2026 audience.
 - **Likely emphasis:** C-LARA-2 as a rapidly evolving AI-assisted CALL platform, including practical workflows for language-learning content creation and the AI-assisted software/documentation process behind the platform.
 
-### Target C — possible ALTA 2026 paper
+### Target C — ALTA 2026 paper
 
-- **Status:** possible target.
-- **Deadline:** to be confirmed.
-- **Purpose:** consider a more computational-linguistics/NLP-oriented paper, potentially emphasising multilingual annotation, low-resource language workflows, evaluation, or the AI-assisted engineering methodology if it fits the call.
+- **Status:** active target.
+- **Deadline:** mid-September 2026.
+- **Purpose:** prepare a more computational-linguistics/NLP-oriented paper, primarily emphasising the implementor-facing half of the technical report (AI-authored repo workflow, evaluation strategy, and architecture/process lessons), while retaining enough user-facing context to motivate the work.
 
 ### Proposed split between EuroCALL and ALTA
 
@@ -140,8 +140,9 @@ Near-term CodePrism questions:
 2. **Draft the internal report in LaTeX.** Codex should produce the initial draft, using repository docs as primary evidence.
 3. **Ask ChatGPT-5.x for high-level critique.** Use it as a reviewer/suggester, not as the sole author.
 4. **Human review.** Humans correct framing, claims, terminology, and domain details.
-5. **Extract paper versions.** Derive the EuroCALL and possible ALTA submissions from the internal report rather than starting from scratch.
-6. **Keep repo documentation synchronized.** Any claims about process or functionality should be checked against current roadmap/issues/tests.
+5. **Extract paper versions.** Derive the EuroCALL and ALTA submissions from the internal report rather than starting from scratch.
+6. **Keep the methodology explicit in each publication.** State clearly that drafts are produced through the C-LARA-2 issues workflow (Codex authorship with human steering/review), and keep suggestion/issue traces auditable in-repo.
+7. **Keep repo documentation synchronized.** Any claims about process or functionality should be checked against current roadmap/issues/tests.
 
 ## 8) Near-term action items
 
@@ -150,4 +151,5 @@ Near-term CodePrism questions:
 - Create a report outline in LaTeX.
 - Start a related-work bibliography, including both academic and grey-literature sources.
 - Investigate CodePrism in detail as the closest currently known comparator.
-- Confirm with co-authors whether the EuroCALL 2026 paper should focus on the user-facing half of the report and the possible ALTA 2026 paper on the implementor-facing half.
+- Confirm with co-authors that the split remains: EuroCALL 2026 focused on user-facing functionality, ALTA 2026 focused on implementor-facing methodology/engineering, with limited overlap as needed.
+- Ensure each publication includes a concise methods statement explaining the issues-driven Codex authoring workflow and human review role.
