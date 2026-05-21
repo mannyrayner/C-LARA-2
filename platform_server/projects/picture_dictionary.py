@@ -10,6 +10,7 @@ from typing import Iterable
 
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
+from django.urls import reverse
 from pipeline.stage_artifacts import read_stage_artifact, stage_artifact_path, write_stage_artifact
 
 from .models import (
@@ -714,6 +715,7 @@ def compile_picture_dictionary(
     compile_task_report_id: str | None = None,
     compile_task_user_id: int | None = None,
     compile_task_type: str | None = None,
+    low_resource_mode: bool = False,
 ) -> dict[str, object]:
     def _post_progress(message: str) -> None:
         if progress_callback:
@@ -765,14 +767,24 @@ def compile_picture_dictionary(
     _write_segmentation_phase_1(dictionary, entries)
     if manual_annotations_complete:
         _write_imported_dictionary_annotation_stages(dictionary, manual_rows)
+    elif low_resource_mode:
+        _write_dictionary_annotation_stages(dictionary, entries)
     else:
         _write_dictionary_annotation_stages(dictionary, entries)
-    annotation_run = "manual" if manual_annotations_complete else "skipped"
+    annotation_run = "manual" if manual_annotations_complete else ("placeholder" if low_resource_mode else "skipped")
     annotation_error = ""
     generated_images = 0
     image_generation_note = ""
     if manual_annotations_complete:
         _post_progress("Text phase 3/3: using existing manual lemma/gloss annotations; AI annotation skipped.")
+    elif low_resource_mode:
+        _post_progress(
+            "Text phase 3/3: low-resource mode selected. Wrote placeholder artifacts for translation/MWE/lemma/gloss/pinyin."
+        )
+        _post_progress(
+            "Please open page-by-page manual annotation to complete missing values: "
+            f"{reverse('manual-page-annotation', args=[dictionary.project.id])}"
+        )
     else:
         try:
             from .views import _run_compile_task
@@ -809,7 +821,11 @@ def compile_picture_dictionary(
                 dictionary.project_id,
             )
 
-    _post_progress(f"Dictionary image compilation started for {len(entries)} image entr{'y' if len(entries) == 1 else 'ies'}.")
+    missing_image_entries = sum(1 for entry in entries if not (entry.image_path or "").strip())
+    _post_progress(
+        "Dictionary image compilation started: "
+        f"{missing_image_entries}/{len(entries)} entr{'y' if len(entries) == 1 else 'ies'} currently missing image files."
+    )
     try:
         style = getattr(dictionary.project, "image_style", None)
         style_usable = bool(
@@ -820,9 +836,15 @@ def compile_picture_dictionary(
             )
             and style.status in {"generated", "approved"}
         )
-        if style_usable:
+        if low_resource_mode:
+            image_generation_note = "Image generation skipped (low-resource compile mode)."
+        elif style_usable:
             from .views import _generate_project_page_images
 
+            _post_progress(
+                "Image phase: generating missing dictionary images from current style. "
+                f"Target entries with missing images: {missing_image_entries}."
+            )
             generated_images = _generate_project_page_images(
                 dictionary.project,
                 image_model=style.sample_image_model or "gpt-image-1",
@@ -831,6 +853,11 @@ def compile_picture_dictionary(
                 include_full_text=False,
                 include_elements=False,
                 missing_only=True,
+            )
+            _post_progress(
+                "Image phase complete: "
+                f"generated {generated_images} image variant{'s' if generated_images != 1 else ''} "
+                f"for dictionary project \"{dictionary.project.title}\"."
             )
         else:
             image_generation_note = "Image generation skipped (style missing or not approved)."

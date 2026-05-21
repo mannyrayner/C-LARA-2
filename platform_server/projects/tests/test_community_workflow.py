@@ -280,6 +280,37 @@ class CommunityWorkflowTests(TestCase):
         self.assertContains(judge, "variant 1")
         self.assertContains(judge, "current preferred image")
 
+    def test_member_and_organiser_review_show_source_and_translation_context(self):
+        self.project.community = self.community
+        self.project.source_text = "Source page text from project"
+        self.project.save(update_fields=["community", "source_text", "updated_at"])
+        run_dir = self.project.artifact_dir() / "runs" / "run_translation" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        translation_payload = {
+            "pages": [
+                {"segments": [{"annotations": {"translation": "Bonjour la page"}}]},
+            ]
+        }
+        (run_dir / "translation.json").write_text(json.dumps(translation_payload), encoding="utf-8")
+
+        member_client = Client()
+        member_client.login(username="mem", password="pw")
+        judge = member_client.get(reverse("community-member-judge-project", args=[self.community.id, self.project.id]))
+        self.assertEqual(judge.status_code, 200)
+        self.assertContains(judge, "Source page text")
+        self.assertContains(judge, "Source page text from project")
+        self.assertContains(judge, "Page translation")
+        self.assertContains(judge, "Bonjour la page")
+
+        organiser_client = Client()
+        organiser_client.login(username="org", password="pw")
+        review = organiser_client.get(reverse("community-organiser-review-project", args=[self.community.id, self.project.id]))
+        self.assertEqual(review.status_code, 200)
+        self.assertContains(review, "Source page text")
+        self.assertContains(review, "Source page text from project")
+        self.assertContains(review, "Page translation")
+        self.assertContains(review, "Bonjour la page")
+
     def test_organiser_image_review_entry_point_and_preferred_variant_label(self):
         self.project.community = self.community
         self.project.save(update_fields=["community", "updated_at"])
@@ -431,6 +462,47 @@ class CommunityWorkflowTests(TestCase):
         self.assertFalse(dictionary_entries[0].is_active)
         self.assertContains(remove_selected, "Last dictionary compile:")
 
+    def test_mark_reviewed_promotes_member_upvoted_variant_to_preferred(self):
+        self.project.community = self.community
+        self.project.save(update_fields=["community", "updated_at"])
+        second_variant = ProjectImagePageVariant.objects.create(
+            page=self.page,
+            variant_index=2,
+            image_model="gpt-image-1",
+            image_path="images/pages/page_001/variant_002.png",
+            generation_prompt="alternate prompt",
+            image_revised_prompt="alternate revised",
+            status="generated",
+        )
+
+        member_client = Client()
+        member_client.login(username="mem", password="pw")
+        vote_response = member_client.post(
+            reverse("community-member-judge-project", args=[self.community.id, self.project.id]),
+            {f"vote_{second_variant.id}": "up", f"note_{second_variant.id}": "best match"},
+            follow=True,
+        )
+        self.assertEqual(vote_response.status_code, 200)
+
+        organiser_client = Client()
+        organiser_client.login(username="org", password="pw")
+        reviewed = organiser_client.post(
+            reverse("community-organiser-review-project", args=[self.community.id, self.project.id]),
+            {"action": "mark_reviewed", "review_note": "looks good"},
+            follow=True,
+        )
+        self.assertEqual(reviewed.status_code, 200)
+        self.assertContains(reviewed, "Updated preferred image for 1 page")
+
+        self.page.refresh_from_db()
+        self.assertEqual(self.page.preferred_variant_id, second_variant.id)
+        self.assertEqual(self.page.image_path, second_variant.image_path)
+
+        member_page = member_client.get(reverse("community-member-judge-project", args=[self.community.id, self.project.id]))
+        self.assertEqual(member_page.status_code, 200)
+        self.assertContains(member_page, "Current preferred image:</strong> variant 2", html=False)
+        self.assertContains(member_page, "current preferred image")
+
     @patch("projects.views._build_ai_client")
     def test_organiser_review_can_generate_requested_variants_and_mark_reviewed(self, mock_build_ai_client):
         self.project.community = self.community
@@ -440,12 +512,20 @@ class CommunityWorkflowTests(TestCase):
         client.login(username="org", password="pw")
         resp = client.post(
             reverse("community-organiser-review-project", args=[self.community.id, self.project.id]),
-            {"action": "generate_requested", "image_model": "gpt-image-1", f"request_count_{self.page.id}": "2"},
+            {"action": "generate_requested_preview", "image_model": "gpt-image-1", f"request_count_{self.page.id}": "2"},
             follow=True,
         )
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "Generating 2 requested variant(s). Please wait")
-        self.assertContains(resp, "Generated 2 new variant(s) from organiser requests.")
+        self.assertContains(resp, "Proposed generation plan")
+
+        resp_confirm = client.post(
+            reverse("community-organiser-review-project", args=[self.community.id, self.project.id]),
+            {"action": "generate_requested", "image_model": "gpt-image-1", f"request_count_{self.page.id}": "2"},
+            follow=True,
+        )
+        self.assertEqual(resp_confirm.status_code, 200)
+        self.assertContains(resp_confirm, "Generating 2 requested variant(s).")
+        self.assertContains(resp_confirm, "Generated 2 new variant(s) from organiser requests.")
         self.assertEqual(ProjectImagePageVariant.objects.filter(page=self.page).count(), 3)
 
         reviewed = client.post(
@@ -459,3 +539,44 @@ class CommunityWorkflowTests(TestCase):
                 community=self.community, project=self.project, organiser=self.organiser
             ).exists()
         )
+
+    @patch("projects.views._build_ai_client")
+    def test_organiser_review_generate_requested_selected_pages_filter(self, mock_build_ai_client):
+        self.project.community = self.community
+        self.project.save(update_fields=["community", "updated_at"])
+        second_page = ProjectImagePage.objects.create(
+            project=self.project,
+            page_number=2,
+            page_text="Second page",
+            generation_prompt="second prompt",
+            image_model="gpt-image-1",
+            status="generated",
+        )
+        mock_build_ai_client.return_value = FakeImageClient()
+        client = Client()
+        client.login(username="org", password="pw")
+        resp = client.post(
+            reverse("community-organiser-review-project", args=[self.community.id, self.project.id]),
+            {
+                "action": "generate_requested_preview",
+                "generation_filter": "selected_pages",
+                "image_model": "gpt-image-1",
+                "selected_page_id": [str(self.page.id)],
+                "request_count_all": "1",
+            },
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Proposed generation plan")
+        resp_confirm = client.post(
+            reverse("community-organiser-review-project", args=[self.community.id, self.project.id]),
+            {
+                "action": "generate_requested",
+            },
+            follow=True,
+        )
+        self.assertEqual(resp_confirm.status_code, 200)
+        self.assertContains(resp_confirm, "Generation progress updates")
+        self.assertEqual(ProjectImagePageVariant.objects.filter(page=self.page).count(), 2)
+        self.assertEqual(ProjectImagePageVariant.objects.filter(page=second_page).count(), 0)
+
