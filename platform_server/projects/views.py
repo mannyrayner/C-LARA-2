@@ -194,6 +194,7 @@ AI_MODEL_CHOICES = [
 
 IMAGE_MODEL_CHOICES = [
     "gpt-image-1",
+    "gpt-image-2",
 ]
 
 PAGE_IMAGE_PLACEMENT_CHOICES = ["none", "top", "bottom"]

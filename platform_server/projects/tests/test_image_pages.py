@@ -139,6 +139,8 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Style AI model:")
         self.assertContains(resp, "Image model (style/elements/pages):")
+        self.assertContains(resp, '<option value="gpt-image-1"', html=False)
+        self.assertContains(resp, '<option value="gpt-image-2"', html=False)
 
     def test_get_pages_view_shows_billing_telemetry_link_when_present(self):
         billing_path = self.project.artifact_dir() / "images" / "billing_telemetry.jsonl"
