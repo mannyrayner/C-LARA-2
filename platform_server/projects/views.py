@@ -6922,7 +6922,12 @@ def _run_compile_task(
             logger.exception("Failed to post unexpected-crash update for project %s", project_id)
 
 
-def _run_picture_dictionary_compile_task(dictionary_id: int, user_id: int, report_id: str) -> None:
+def _run_picture_dictionary_compile_task(
+    dictionary_id: int,
+    user_id: int,
+    report_id: str,
+    low_resource_mode: bool = False,
+) -> None:
     task_type = f"picture_dictionary_compile_{dictionary_id}"
     try:
         report_uuid = uuid.UUID(report_id)
@@ -6946,6 +6951,7 @@ def _run_picture_dictionary_compile_task(dictionary_id: int, user_id: int, repor
             compile_task_report_id=report_id,
             compile_task_user_id=user_id,
             compile_task_type=task_type,
+            low_resource_mode=low_resource_mode,
         )
         post_update(
             "Compiled picture dictionary: "
@@ -8114,11 +8120,13 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                     )
                     messages.success(request, "Created dictionary image style from the provided style brief.")
                 report_id = str(uuid.uuid4())
+                low_resource_mode = bool(request.POST.get("picture_dictionary_low_resource_mode"))
                 async_task(
                     _run_picture_dictionary_compile_task,
                     picture_dictionary.id,
                     request.user.id,
                     report_id,
+                    low_resource_mode,
                     q_options={"sync": False},
                 )
                 messages.info(request, "Picture dictionary compilation started. Opening live status monitor.")
