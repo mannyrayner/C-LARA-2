@@ -62,7 +62,7 @@
 
   <h3>Vote summary</h3>
 {% for row in vote_rows %}
-  {% if row.visible_by_filter and (not has_preview_plan or row.in_preview_plan) %}
+  {% if row.visible_by_filter and not has_preview_plan or row.visible_by_filter and row.in_preview_plan %}
   <section style="border:1px solid #ddd; margin:0.6rem 0; padding:0.6rem;">
     <p><strong>Page {{ row.page.page_number }}, variant {{ row.variant.variant_index }}</strong>{% if row.page.preferred_variant_id == row.variant.id %} <span style="font-weight:bold; color:#2e7d32;">(current preferred image)</span>{% endif %} — 👍 {{ row.up }} / 👎 {{ row.down }}</p>
     {% if row.source_text %}
