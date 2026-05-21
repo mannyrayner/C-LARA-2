@@ -821,7 +821,11 @@ def compile_picture_dictionary(
                 dictionary.project_id,
             )
 
-    _post_progress(f"Dictionary image compilation started for {len(entries)} image entr{'y' if len(entries) == 1 else 'ies'}.")
+    missing_image_entries = sum(1 for entry in entries if not (entry.image_path or "").strip())
+    _post_progress(
+        "Dictionary image compilation started: "
+        f"{missing_image_entries}/{len(entries)} entr{'y' if len(entries) == 1 else 'ies'} currently missing image files."
+    )
     try:
         style = getattr(dictionary.project, "image_style", None)
         style_usable = bool(
@@ -837,6 +841,10 @@ def compile_picture_dictionary(
         elif style_usable:
             from .views import _generate_project_page_images
 
+            _post_progress(
+                "Image phase: generating missing dictionary images from current style. "
+                f"Target entries with missing images: {missing_image_entries}."
+            )
             generated_images = _generate_project_page_images(
                 dictionary.project,
                 image_model=style.sample_image_model or "gpt-image-1",
@@ -845,6 +853,11 @@ def compile_picture_dictionary(
                 include_full_text=False,
                 include_elements=False,
                 missing_only=True,
+            )
+            _post_progress(
+                "Image phase complete: "
+                f"generated {generated_images} image variant{'s' if generated_images != 1 else ''} "
+                f"for dictionary project \"{dictionary.project.title}\"."
             )
         else:
             image_generation_note = "Image generation skipped (style missing or not approved)."
