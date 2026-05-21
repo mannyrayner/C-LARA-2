@@ -450,6 +450,8 @@ class CompileStatusViewTests(TestCase):
         resp = self.client.get(reverse("project-annotation-home", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'id="annotation_audio_mode"', html=False)
+        self.assertContains(resp, 'id="annotation_page_image_placement"', html=False)
+        self.assertContains(resp, '<option value="top" selected>top</option>', html=False)
         self.assertContains(resp, "Save audio setting")
         self.assertContains(resp, "No audio / skip TTS")
 
@@ -2154,6 +2156,135 @@ class CompileStatusViewTests(TestCase):
         self.assertIn("audio_repository/en", str(captured["audio_cache_dir"]).replace("\\", "/"))
         self.assertEqual(captured["audio_mode"], Project.AUDIO_MODE_TTS)
         self.assertTrue(captured["require_real_tts"])
+
+    @patch("projects.views._build_ai_client")
+    @patch("projects.views.run_full_pipeline")
+    def test_compile_task_prefers_preferred_variant_image(
+        self, mock_run_full_pipeline, mock_build_ai_client
+    ):
+        project = self.project
+        project.page_image_placement = "top"
+        project.save(update_fields=["page_image_placement"])
+        Profile.objects.get_or_create(user=self.user, defaults={"timezone": "UTC"})
+
+        image_dir = project.artifact_dir() / "images" / "pages" / "page_001"
+        image_dir.mkdir(parents=True, exist_ok=True)
+        (image_dir / "stale.png").write_bytes(b"stale")
+        (image_dir / "preferred.png").write_bytes(b"preferred")
+        page = ProjectImagePage.objects.create(
+            project=project,
+            page_number=1,
+            page_text="hello",
+            image_path="images/pages/page_001/stale.png",
+        )
+        preferred = ProjectImagePageVariant.objects.create(
+            page=page,
+            variant_index=2,
+            image_path="images/pages/page_001/preferred.png",
+            status=ProjectImagePageVariant.STATUS_GENERATED,
+        )
+        page.preferred_variant = preferred
+        page.save(update_fields=["preferred_variant", "updated_at"])
+
+        run_root = project.artifact_dir() / "runs" / "run_preferred_spec"
+        run_root.mkdir(parents=True, exist_ok=True)
+        page_file = run_root / "page_1.html"
+        page_file.write_text('<div id="main-text-pane" class="page"></div>', encoding="utf-8")
+        captured = {}
+
+        async def _fake_pipeline(spec, client):
+            captured["page_images"] = spec.page_images
+            return {"html": {"run_root": str(run_root), "index_path": str(page_file)}}
+
+        mock_run_full_pipeline.side_effect = _fake_pipeline
+        mock_build_ai_client.return_value = object()
+
+        views._run_compile_task(
+            project.id,
+            self.user.id,
+            str(run_root),
+            str(project.artifact_dir()),
+            "segmentation_phase_1",
+            "UTC",
+            project.description,
+            "Hello world",
+            None,
+            str(uuid.uuid4()),
+            "compile_project_test",
+            "gpt-4o",
+            "compile_html",
+            "top",
+        )
+
+        self.assertIn(1, captured["page_images"])
+        self.assertIn("preferred.png", captured["page_images"][1]["path"])
+        self.assertNotIn("stale.png", captured["page_images"][1]["path"])
+
+    @patch("projects.views._build_ai_client")
+    @patch("projects.views.run_full_pipeline")
+    def test_compile_task_omits_page_when_preferred_variant_file_missing(
+        self, mock_run_full_pipeline, mock_build_ai_client
+    ):
+        project = self.project
+        project.page_image_placement = "bottom"
+        project.save(update_fields=["page_image_placement"])
+        Profile.objects.get_or_create(user=self.user, defaults={"timezone": "UTC"})
+
+        image_dir = project.artifact_dir() / "images" / "pages" / "page_001"
+        image_dir.mkdir(parents=True, exist_ok=True)
+        (image_dir / "fallback.png").write_bytes(b"fallback")
+        page = ProjectImagePage.objects.create(
+            project=project,
+            page_number=1,
+            page_text="hello",
+            image_path="images/pages/page_001/fallback.png",
+        )
+        missing_preferred = ProjectImagePageVariant.objects.create(
+            page=page,
+            variant_index=2,
+            image_path="images/pages/page_001/missing.png",
+            status=ProjectImagePageVariant.STATUS_GENERATED,
+        )
+        page.preferred_variant = missing_preferred
+        page.save(update_fields=["preferred_variant", "updated_at"])
+
+        run_root = project.artifact_dir() / "runs" / "run_missing_preferred_spec"
+        run_root.mkdir(parents=True, exist_ok=True)
+        page_file = run_root / "page_1.html"
+        page_file.write_text('<div id="main-text-pane" class="page"></div>', encoding="utf-8")
+        captured = {}
+
+        async def _fake_pipeline(spec, client):
+            captured["page_images"] = spec.page_images
+            return {"html": {"run_root": str(run_root), "index_path": str(page_file)}}
+
+        mock_run_full_pipeline.side_effect = _fake_pipeline
+        mock_build_ai_client.return_value = object()
+
+        views._run_compile_task(
+            project.id,
+            self.user.id,
+            str(run_root),
+            str(project.artifact_dir()),
+            "segmentation_phase_1",
+            "UTC",
+            project.description,
+            "Hello world",
+            None,
+            str(uuid.uuid4()),
+            "compile_project_test",
+            "gpt-4o",
+            "compile_html",
+            "bottom",
+        )
+
+        self.assertNotIn(1, captured["page_images"])
+        self.assertTrue(
+            TaskUpdate.objects.filter(
+                user=self.user,
+                message__icontains="preferred page images missing for page(s): 1",
+            ).exists()
+        )
 
     @patch("projects.views._build_ai_client")
     @patch("projects.views.run_full_pipeline")
