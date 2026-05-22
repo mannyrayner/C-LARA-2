@@ -50,6 +50,7 @@
     <input id="variants_per_page" type="number" name="variants_per_page" min="1" max="8" value="{{ default_variants_per_page }}" style="width:5rem;" />
     <button class="btn" style="cursor:pointer" type="submit" name="action" value="generate_images" data-long-action="true" data-busy-label="Generating page images...">Generate page images</button>
     <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="set_preferred">Save preferred images</button>
+    <button class="btn" style="cursor:pointer; background:#b00020; border-color:#8a0018;" type="submit" name="action" value="clear_generated" onclick="return confirm('Remove all generated page images and prompts for this project?');">Clear all generated page images/prompts</button>
   </p>
 
   <p id="pages-progress" style="display:none; font-weight:bold;" aria-live="polite">Processing request...</p>
@@ -60,8 +61,7 @@
         {{ form.id }}
         <p><strong>Page {{ form.instance.page_number }}</strong></p>
         {{ form.as_p }}
-        {% if form.instance.image_path %}
-          {% if form.instance.variants_for_ui %}
+        {% if form.instance.variants_for_ui %}
             <p><strong>Generated page image variants</strong></p>
             {% for variant in form.instance.variants_for_ui %}
               <div style="border:1px solid #eee; padding:0.4rem; margin:0.5rem 0;">
@@ -73,14 +73,20 @@
                 <p style="margin:0.3rem 0;"><small>Model: {{ variant.image_model }}</small></p>
                 <p><small><strong>Prompt used for this variant:</strong></small></p>
                 <textarea readonly rows="5" style="width:100%; font-family: monospace;">{{ variant.generation_prompt }}</textarea>
-                <img
-                  src="{% url 'project-compiled' project.pk variant.image_path %}"
-                  alt="Generated image variant {{ variant.variant_index }} for page {{ form.instance.page_number }}"
-                  style="max-width: 512px; width: 100%; height: auto;"
-                />
+                {% if variant.image_path %}
+                  <img
+                    src="{% url 'project-compiled' project.pk variant.image_path %}"
+                    alt="Generated image variant {{ variant.variant_index }} for page {{ form.instance.page_number }}"
+                    style="max-width: 512px; width: 100%; height: auto;"
+                  />
+                {% else %}
+                  <p style="margin-top:0.4rem; color:#b00020;">
+                    <strong>Image generation failed:</strong>
+                    {{ variant.image_revised_prompt|default:"No additional error details were recorded." }}
+                  </p>
+                {% endif %}
               </div>
             {% endfor %}
-          {% endif %}
         {% endif %}
       </fieldset>
     {% endfor %}
