@@ -194,6 +194,27 @@ Status summary:
   - Project create and compile validated after media permission reset.
   - Non-trivial Hindi project (~2K words, 10 images) imports, compiles, and opens in manual editor.
 
+### ISSUE-0022 integration: large upload reliability (added 2026-05-22)
+
+The nginx `413 Request Entity Too Large` failure on a 62MB project ZIP import is now tracked as **[ISSUE-0022](../issues/issues/ISSUE-0022.json)** and should be executed from this roadmap as a deployment/runbook workstream.
+
+Recommended handling options:
+
+1. **Track in this existing roadmap (recommended).**
+   - Keep ISSUE-0022 linked here as the deployment source of truth.
+   - Add explicit acceptance checks for 50MB+ and ~100MB ZIP imports in AWS.
+   - Record concrete nginx, gunicorn, and Django limits/timeouts in the runbook so local-vs-AWS defaults are unambiguous.
+2. **Create a dedicated micro-roadmap only if scope expands.**
+   - Split out only if work grows beyond deployment settings/runbook verification (for example resumable/chunked uploads, background ingest redesign, or object-storage pre-signed upload flows).
+
+Minimum implementation checklist under this roadmap:
+
+- nginx request body limit and request timeout settings sized for expected import bundles.
+- Django upload-size and data-upload guardrails aligned with proxy/server limits (no contradictory caps).
+- Gunicorn/request timeout and worker settings aligned with realistic import+unzip+validation durations.
+- AWS runbook section documenting final values, restart commands, and a post-deploy verification script/checklist.
+- Regression verification: successful import of at least one >50MB ZIP on AWS and explicit failure message quality checks when limits are intentionally exceeded.
+
 ### Phase P4 — production readiness checks (day 2–3)
 1. Smoke test critical flows:
    - login,
