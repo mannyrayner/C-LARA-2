@@ -413,14 +413,24 @@ def import_project_as_picture_dictionary(
 @transaction.atomic
 def ensure_picture_dictionary_for_community(*, community: Community, organiser) -> PictureDictionary:
     _require_organiser(community, organiser)
-    existing = PictureDictionary.objects.select_related("project").filter(community=community).first()
+    existing = (
+        PictureDictionary.objects.select_related("project")
+        .filter(community=community)
+        .order_by("-is_active", "-id")
+        .first()
+    )
     if existing:
+        if not existing.is_active:
+            existing.is_active = True
+            existing.organiser = organiser
+            existing.language = community.language or existing.project.language
+            existing.save(update_fields=["is_active", "organiser", "language", "updated_at"])
         _bootstrap_registry_from_project_source(existing)
         _sync_project_source_from_registry(existing)
         return existing
     project = Project.objects.create(
         owner=organiser,
-        title=f"{community.name} picture dictionary",
+        title=_unique_project_title(organiser, f"{community.name} picture dictionary"),
         description=f"Picture dictionary for {community.name} ({community.language or 'language unspecified'}).",
         input_mode=Project.INPUT_SOURCE,
         source_text="",
