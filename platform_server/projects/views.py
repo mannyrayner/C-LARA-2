@@ -293,9 +293,12 @@ def _community_role_for_user(community: Community, user) -> str | None:
 
 
 def _manual_annotation_context(project: Project) -> dict[str, Any]:
+    has_segmentation_phase_1 = _has_segmentation_phase_1_output(project)
     return {
-        "has_source_text_for_manual_segmentation": bool(_base_text_for_segmentation_phase_1(project).strip()),
-        "has_segmentation_phase_1": _has_segmentation_phase_1_output(project),
+        "has_source_text_for_manual_segmentation": (
+            bool(_base_text_for_segmentation_phase_1(project).strip()) or has_segmentation_phase_1
+        ),
+        "has_segmentation_phase_1": has_segmentation_phase_1,
         "has_segmentation_phase_2": _find_latest_stage_file(project, "segmentation_phase_2.json") is not None,
         "has_mwe": _find_latest_stage_file(project, "mwe.json") is not None,
         "has_lemma": _find_latest_stage_file(project, "lemma.json") is not None,
