@@ -1,6 +1,6 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-22T06:32:19Z_
+_Last updated: 2026-05-22T23:14:02Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
@@ -8,7 +8,7 @@ This document summarizes the current issue registry for quick human review. Cano
 
 - **[ISSUE-0018](issues/ISSUE-0018.json)** is now closed: issue-suggestion processing now uses canonical `main`-branch issue registry data (with local fallback) and reports the source in admin prompt text.
 - **[ISSUE-0019](issues/ISSUE-0019.json)** is now closed based on a human update confirming the favicon currently appears correctly on AWS deployment.
-- Added **[ISSUE-0022](issues/ISSUE-0022.json)** from a new human suggestion after an AWS `413 Request Entity Too Large` failure on a 62MB project ZIP import; this is tracked as a high-priority deployment/configuration gap affecting corpus migration workflows.
+- **[ISSUE-0022](issues/ISSUE-0022.json)** is now closed based on a human update confirming the deployment-and-migration runbook fix works and larger uploads now succeed on AWS.
 - **[ISSUE-0017](issues/ISSUE-0017.json)** remains the current page-image umbrella issue, with ISSUE-0007 kept as a linked prompt-indirection subproblem.
 - **[ISSUE-0016](issues/ISSUE-0016.json)** remains active after Phase A no-audio/skip-TTS delivery; the community-recorded dictionary extension remains pending.
 
@@ -32,11 +32,12 @@ This document summarizes the current issue registry for quick human review. Cano
 
 ## Completed issues
 
-1. **[ISSUE-0019](issues/ISSUE-0019.json) (completed 2026-05-22)** — Favicon currently confirmed to display correctly on AWS deployment; issue closed after operator verification.
-2. **[ISSUE-0018](issues/ISSUE-0018.json) (completed 2026-05-20)** — Use canonical `main`-branch issue registry data (with fallback visibility) during issue-suggestion processing.
-3. **[ISSUE-0015](issues/ISSUE-0015.json) (completed 2026-05-18)** — Let community organisers add existing users as ordinary community members, list memberships, and remove ordinary members while keeping organiser-role changes protected.
-4. **[ISSUE-0002](issues/ISSUE-0002.json) (completed 2026-05-09)** — Support migration of legacy C-LARA projects into C-LARA-2 through direct import of supported legacy JSON export ZIP bundles.
-5. **[ISSUE-0009](issues/ISSUE-0009.json) (completed 2026-05-06)** — Auto-regenerate and validate source project bundle stage artifacts before export/import.
+1. **[ISSUE-0022](issues/ISSUE-0022.json) (completed 2026-05-22)** — Resolved large ZIP import failures on AWS using the deployment-and-migration method; larger uploads now verified to work.
+2. **[ISSUE-0019](issues/ISSUE-0019.json) (completed 2026-05-22)** — Favicon currently confirmed to display correctly on AWS deployment; issue closed after operator verification.
+3. **[ISSUE-0018](issues/ISSUE-0018.json) (completed 2026-05-20)** — Use canonical `main`-branch issue registry data (with fallback visibility) during issue-suggestion processing.
+4. **[ISSUE-0015](issues/ISSUE-0015.json) (completed 2026-05-18)** — Let community organisers add existing users as ordinary community members, list memberships, and remove ordinary members while keeping organiser-role changes protected.
+5. **[ISSUE-0002](issues/ISSUE-0002.json) (completed 2026-05-09)** — Support migration of legacy C-LARA projects into C-LARA-2 through direct import of supported legacy JSON export ZIP bundles.
+6. **[ISSUE-0009](issues/ISSUE-0009.json) (completed 2026-05-06)** — Auto-regenerate and validate source project bundle stage artifacts before export/import.
 
 ## Notes and risks
 
