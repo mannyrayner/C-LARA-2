@@ -60,6 +60,12 @@
     <textarea id="picture_dictionary_style_brief" name="picture_dictionary_style_brief" rows="3" style="width: 100%;">{{ picture_dictionary_style_brief }}</textarea>
   </p>
   <p>
+    <label>
+      <input type="checkbox" name="picture_dictionary_low_resource_mode" value="1" />
+      Low-resource compile mode (segmentation only + placeholder annotation stages + manual annotation handoff)
+    </label>
+  </p>
+  <p>
     <label for="picture_dictionary_words">Words (comma or newline separated):</label><br />
     <textarea id="picture_dictionary_words" name="picture_dictionary_words" rows="4" style="width: 100%;"></textarea>
   </p>
@@ -85,12 +91,13 @@
       {% for entry in dictionary_entries %}
         <label style="display: block;">
           <input type="checkbox" name="remove_entry" value="{{ entry.id }}" />
-          {{ entry.surface }}{% if entry.lemma %} (lemma: {{ entry.lemma }}){% endif %}{% if entry.pos %} [{{ entry.pos }}]{% endif %}
+          {{ entry.display_label }}
         </label>
       {% endfor %}
     </div>
     <p>
       <button class="btn secondary" type="submit" name="picture_dictionary_action" value="remove_selected">Remove selected entries</button>
+      <button class="btn secondary" type="submit" name="picture_dictionary_action" value="remove_all" onclick="return confirm('Remove all entries from this picture dictionary?');">Remove all entries</button>
     </p>
   {% endif %}
 </form>

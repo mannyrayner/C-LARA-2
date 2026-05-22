@@ -120,6 +120,7 @@ from .models import (
 from .picture_dictionary import (
     add_lemma_pos_entries as picture_dictionary_add_lemma_pos_entries,
     add_words as picture_dictionary_add_words,
+    clear_entries as picture_dictionary_clear_entries,
     compile_picture_dictionary as picture_dictionary_compile,
     ensure_picture_dictionary_for_community,
     import_project_as_picture_dictionary,
@@ -194,6 +195,7 @@ AI_MODEL_CHOICES = [
 
 IMAGE_MODEL_CHOICES = [
     "gpt-image-1",
+    "gpt-image-2",
 ]
 
 PAGE_IMAGE_PLACEMENT_CHOICES = ["none", "top", "bottom"]
@@ -291,9 +293,12 @@ def _community_role_for_user(community: Community, user) -> str | None:
 
 
 def _manual_annotation_context(project: Project) -> dict[str, Any]:
+    has_segmentation_phase_1 = _has_segmentation_phase_1_output(project)
     return {
-        "has_source_text_for_manual_segmentation": bool(_base_text_for_segmentation_phase_1(project).strip()),
-        "has_segmentation_phase_1": _has_segmentation_phase_1_output(project),
+        "has_source_text_for_manual_segmentation": (
+            bool(_base_text_for_segmentation_phase_1(project).strip()) or has_segmentation_phase_1
+        ),
+        "has_segmentation_phase_1": has_segmentation_phase_1,
         "has_segmentation_phase_2": _find_latest_stage_file(project, "segmentation_phase_2.json") is not None,
         "has_mwe": _find_latest_stage_file(project, "mwe.json") is not None,
         "has_lemma": _find_latest_stage_file(project, "lemma.json") is not None,
@@ -1901,6 +1906,7 @@ def _build_page_prompt_construction_request(
     previous_page_text: str,
     next_page_text: str,
     relevant_elements: list[ProjectImageElement],
+    current_page_text: str | None = None,
 ) -> tuple[str, dict[str, Any]]:
     payload = {
         "project_title": project.title,
@@ -1908,7 +1914,7 @@ def _build_page_prompt_construction_request(
         "target_language": project.target_language,
         "page_number": page_obj.page_number,
         "summary_text": summary_text,
-        "current_page_text": page_obj.page_text,
+        "current_page_text": str(current_page_text if current_page_text is not None else page_obj.page_text),
         "previous_page_text": previous_page_text,
         "next_page_text": next_page_text,
         "full_text_excerpt": _truncate_for_prompt(full_text, max_chars=1800),
@@ -2346,7 +2352,18 @@ def _generate_project_page_images(
                 if not blocked or attempt_index >= len(image_prompt_attempts):
                     break
         if image_result is None and last_exc is not None:
-            raise last_exc
+            request_id = _extract_request_id_from_exception(last_exc)
+            error_message = f"{type(last_exc).__name__}: {last_exc}"
+            if request_id:
+                error_message += f" [request_id={request_id}]"
+            return (
+                page_obj.pk,
+                page_obj.page_number,
+                variant_index,
+                "",
+                f"ERROR: {error_message}",
+                prompt,
+            )
         image_path = page_dir / f"variant_{variant_index:03d}.png"
         image_path.write_bytes(image_result["bytes"])
         rel_path = image_path.relative_to(project.artifact_dir()).as_posix()
@@ -2389,7 +2406,8 @@ def _generate_project_page_images(
         for future in as_completed(futures):
             page_pk, _page_number, variant_index, rel_path, revised_prompt, prompt = future.result()
             outputs_by_page.setdefault(page_pk, []).append((variant_index, rel_path, revised_prompt, prompt))
-            generated += 1
+            if rel_path:
+                generated += 1
 
     for page_obj in page_rows:
         outputs = sorted(outputs_by_page.get(page_obj.pk, []), key=lambda tup: tup[0])
@@ -2405,11 +2423,15 @@ def _generate_project_page_images(
                     "image_path": rel_path,
                     "image_revised_prompt": revised_prompt,
                     "generation_prompt": prompt,
-                    "status": ProjectImagePage.STATUS_GENERATED,
+                    "status": (
+                        ProjectImagePage.STATUS_GENERATED
+                        if rel_path
+                        else ProjectImagePage.STATUS_DRAFT
+                    ),
                 },
             )
             if preferred_variant is None and variant_index == 1:
-                preferred_variant = variant
+                preferred_variant = variant if rel_path else None
         if preferred_variant is not None:
             _set_page_preferred_variant(page_obj, preferred_variant)
 
@@ -2429,6 +2451,7 @@ def _generate_requested_page_variants(
     project: Project,
     image_model: str,
     requests: list[tuple[ProjectImagePage, int, str]],
+    progress_callback: Callable[[int, int], None] | None = None,
 ) -> int:
     pages_dir = _image_pages_dir(project)
     pages_dir.mkdir(parents=True, exist_ok=True)
@@ -2436,6 +2459,81 @@ def _generate_requested_page_variants(
     page_by_id = {page.id: page for page, _count, _prompt in requests}
     usage_events: list[dict[str, Any]] = []
     usage_reporter = _collect_usage_event(usage_events)
+    style = project.image_style
+    full_text = _extract_project_plain_text(project)
+    summary_text = _truncate_for_prompt(full_text, max_chars=700) if full_text else ""
+    project_pages = list(ProjectImagePage.objects.filter(project=project).order_by("page_number", "id"))
+    page_context_rows = _page_review_context_rows(project, project_pages)
+    page_text_by_id: dict[int, str] = {}
+    page_texts_by_number: dict[int, str] = {}
+    for row in project_pages:
+        context = page_context_rows.get(row.id, {})
+        preferred_text = (
+            context.get("translation_text", "")
+            if project.page_image_text_source == Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION
+            else context.get("source_text", "")
+        )
+        resolved_text = str(preferred_text or row.page_text or "").strip()
+        page_text_by_id[row.id] = resolved_text
+        page_texts_by_number[row.page_number] = resolved_text
+    relevant_elements = [
+        element for element in project.image_elements.order_by("name", "id") if element.image_path
+    ]
+    text_model = (project.ai_model or DEFAULT_MODEL).strip()
+    if text_model not in AI_MODEL_CHOICES:
+        text_model = DEFAULT_MODEL
+
+    def _build_requested_prompt(page: ProjectImagePage, prompt_update: str) -> str:
+        page_text_for_prompt = page_text_by_id.get(page.id, page.page_text or "")
+        refs = [
+            element for element in relevant_elements
+            if not element.page_refs or _page_refs_match(element.page_refs, page.page_number)
+        ]
+        base_prompt, _meta = _fit_page_image_prompt_to_limit(
+            project=project,
+            style=style,
+            page_number=page.page_number,
+            page_text=page_text_for_prompt,
+            full_text=full_text,
+            relevant_elements=refs,
+            discourage_text_in_image=False,
+            dictionary_entry=None,
+        )
+        if prompt_update:
+            base_prompt = f"{base_prompt}\n\nCommunity organiser request: {prompt_update}"
+        constructor_prompt, constructor_payload = _build_page_prompt_construction_request(
+            project=project,
+            page_obj=page,
+            base_prompt=base_prompt,
+            full_text=full_text,
+            summary_text=summary_text,
+            previous_page_text=page_texts_by_number.get(page.page_number - 1, ""),
+            next_page_text=page_texts_by_number.get(page.page_number + 1, ""),
+            relevant_elements=refs,
+            current_page_text=page_text_for_prompt,
+        )
+        text_client = _build_ai_client(model_name=text_model, usage_reporter=usage_reporter)
+        constructed_raw = asyncio.run(text_client.chat_text(constructor_prompt))
+        final_prompt = _normalize_constructed_page_prompt(
+            constructed_raw,
+            fallback_prompt=base_prompt,
+            relevant_elements=refs,
+        )
+        _append_page_image_telemetry(project, {
+            "event": "community_prompt_construction",
+            "page_number": page.page_number,
+            "constructor_model": text_model,
+            "request_payload": constructor_payload,
+            "request_prompt": constructor_prompt,
+            "response_prompt_raw": str(constructed_raw or ""),
+            "response_prompt_final": final_prompt,
+        })
+        return final_prompt
+
+    prepared_requests: list[tuple[ProjectImagePage, int, str]] = [
+        (page, count, _build_requested_prompt(page, prompt_update))
+        for page, count, prompt_update in requests
+    ]
 
     def _generate_one(page: ProjectImagePage, variant_index: int, prompt: str) -> tuple[int, int, str, str, str]:
         started = datetime.now(timezone.utc)
@@ -2463,9 +2561,11 @@ def _generate_requested_page_variants(
         return page.id, variant_index, rel_path, revised_prompt, prompt
 
     futures = {}
-    max_workers = min(24, max(1, sum(count for _p, count, _prompt in requests)))
+    total_variants = sum(count for _p, count, _prompt in prepared_requests)
+    completed_variants = 0
+    max_workers = min(24, max(1, total_variants))
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        for page, count, prompt in requests:
+        for page, count, prompt in prepared_requests:
             max_variant = page.variants.aggregate(max_idx=Max("variant_index")).get("max_idx") or 0
             for offset in range(1, count + 1):
                 idx = max_variant + offset
@@ -2489,6 +2589,9 @@ def _generate_requested_page_variants(
             if not page.preferred_variant_id:
                 _set_page_preferred_variant(page, variant)
             generated += 1
+            completed_variants += 1
+            if progress_callback:
+                progress_callback(completed_variants, total_variants)
 
     billing_reporter = _billing_usage_reporter(
         user_id=project.owner_id,
@@ -3467,6 +3570,38 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
             elif action == "set_preferred":
                 changed = _apply_preferred_variant_selection(project, request.POST)
                 messages.success(request, f"Updated preferred image for {changed} page(s).")
+            elif action == "clear_generated":
+                cleared_pages = 0
+                cleared_variants = ProjectImagePageVariant.objects.filter(page__project=project).count()
+                ProjectImagePageVariant.objects.filter(page__project=project).delete()
+                for page in ProjectImagePage.objects.filter(project=project):
+                    had_generated = bool(
+                        page.image_path
+                        or page.generation_prompt
+                        or page.image_revised_prompt
+                        or page.preferred_variant_id
+                    )
+                    if had_generated:
+                        cleared_pages += 1
+                    page.image_path = ""
+                    page.generation_prompt = ""
+                    page.image_revised_prompt = ""
+                    page.preferred_variant_id = None
+                    page.status = ProjectImagePage.STATUS_DRAFT
+                    page.save(
+                        update_fields=[
+                            "image_path",
+                            "generation_prompt",
+                            "image_revised_prompt",
+                            "preferred_variant",
+                            "status",
+                            "updated_at",
+                        ]
+                    )
+                messages.success(
+                    request,
+                    f"Cleared generated page images/prompts for {cleared_pages} page(s) and removed {cleared_variants} variant(s).",
+                )
             else:
                 messages.success(request, "Saved page image prompt edits.")
             if action in {"save", "refresh", "generate_images"}:
@@ -3707,7 +3842,7 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["page_image_placement_options"] = PAGE_IMAGE_PLACEMENT_CHOICES
         context["selected_page_image_placement"] = (
             project.page_image_placement
-            if project.page_image_placement in PAGE_IMAGE_PLACEMENT_CHOICES
+            if project.page_image_placement in {"top", "bottom"}
             else "top"
         )
         usage_breakdown = (
@@ -5119,13 +5254,15 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
 def manual_segmentation_phase_1(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
     return_to = _annotation_return_to(request, project, default_manual=True)
-    base_text = _base_text_for_segmentation_phase_1(project)
-    if not base_text.strip():
-        messages.error(request, "Manual segmentation phase 1 requires source text.")
-        return redirect(return_to)
-
     run_dir = _find_run_with_stage(project, "segmentation_phase_1") or _resolve_run_dir(project)
     current_payload = _load_stage_payload(project, "segmentation_phase_1", run_dir=run_dir) if run_dir else None
+    base_text = _base_text_for_segmentation_phase_1(project)
+    if not base_text.strip() and isinstance(current_payload, dict):
+        base_text = _surface_without_phase1_markers(_phase1_surface_from_payload(current_payload)).strip()
+    if not base_text.strip():
+        messages.error(request, "Manual segmentation phase 1 requires source text or an existing segmentation phase 1 artifact.")
+        return redirect(return_to)
+
     current_surface = _canonicalize_phase1_surface(str((current_payload or {}).get("surface") or base_text))
     base_cmp_hash = _phase1_comparison_hash(base_text)
     if isinstance(current_payload, dict):
@@ -6805,7 +6942,12 @@ def _run_compile_task(
             logger.exception("Failed to post unexpected-crash update for project %s", project_id)
 
 
-def _run_picture_dictionary_compile_task(dictionary_id: int, user_id: int, report_id: str) -> None:
+def _run_picture_dictionary_compile_task(
+    dictionary_id: int,
+    user_id: int,
+    report_id: str,
+    low_resource_mode: bool = False,
+) -> None:
     task_type = f"picture_dictionary_compile_{dictionary_id}"
     try:
         report_uuid = uuid.UUID(report_id)
@@ -6829,6 +6971,7 @@ def _run_picture_dictionary_compile_task(dictionary_id: int, user_id: int, repor
             compile_task_report_id=report_id,
             compile_task_user_id=user_id,
             compile_task_type=task_type,
+            low_resource_mode=low_resource_mode,
         )
         post_update(
             "Compiled picture dictionary: "
@@ -7101,7 +7244,7 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 def set_page_image_placement(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
-    placement = (request.POST.get("page_image_placement") or "none").strip().lower()
+    placement = (request.POST.get("page_image_placement") or "top").strip().lower()
     if placement not in PAGE_IMAGE_PLACEMENT_CHOICES:
         messages.error(request, "Unknown page image placement option.")
         return redirect("project-detail", pk=project.pk)
@@ -7785,6 +7928,20 @@ def community_member_judge_project(request: HttpRequest, community_id: int, proj
         }
         for page in pages
     ]
+    show_mode = (request.GET.get("show") or "unjudged").strip().lower()
+    if show_mode not in {"all", "unjudged"}:
+        show_mode = "unjudged"
+    unjudged_count = 0
+    for row in page_rows:
+        row_unjudged = 0
+        for vr in row["variant_rows"]:
+            if not vr["vote"] or vr["vote"].value not in {CommunityImageVote.VALUE_UP, CommunityImageVote.VALUE_DOWN}:
+                row_unjudged += 1
+        row["unjudged_count"] = row_unjudged
+        if row_unjudged > 0:
+            unjudged_count += 1
+    if show_mode == "unjudged":
+        page_rows = [row for row in page_rows if row.get("unjudged_count", 0) > 0]
     return render(
         request,
         "projects/community_member_judge_project.html",
@@ -7793,6 +7950,9 @@ def community_member_judge_project(request: HttpRequest, community_id: int, proj
             "membership": membership,
             "project": project,
             "page_rows": page_rows,
+            "show_mode": show_mode,
+            "unjudged_page_count": unjudged_count,
+            "total_page_count": len(pages),
         },
     )
 
@@ -7815,9 +7975,21 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
         .filter(community_id=community_id, is_active=True)
         .first()
     )
-    dictionary_entries = list(
-        picture_dictionary.entries.filter(is_active=True).order_by("id") if picture_dictionary else []
-    )
+    dictionary_entries: list[PictureDictionaryEntry] = []
+    if picture_dictionary:
+        dictionary_entries = list(picture_dictionary.entries.filter(is_active=True))
+        dictionary_entries.sort(
+            key=lambda entry: (
+                str(entry.surface or "").casefold(),
+                str(entry.lemma or "").casefold(),
+                str(entry.pos or "").casefold(),
+                entry.id,
+            )
+        )
+        for entry in dictionary_entries:
+            lemma = (entry.lemma or entry.surface or "").strip()
+            pos = (entry.pos or "UNSPECIFIED").strip().upper()
+            entry.display_label = f"{(entry.surface or '').strip()} (lemma: {lemma}) [{pos}]"
     picture_dictionary_compile_info: dict[str, Any] | None = None
     picture_dictionary_style_brief = ""
     if picture_dictionary:
@@ -7980,11 +8152,13 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                     )
                     messages.success(request, "Created dictionary image style from the provided style brief.")
                 report_id = str(uuid.uuid4())
+                low_resource_mode = bool(request.POST.get("picture_dictionary_low_resource_mode"))
                 async_task(
                     _run_picture_dictionary_compile_task,
                     picture_dictionary.id,
                     request.user.id,
                     report_id,
+                    low_resource_mode,
                     q_options={"sync": False},
                 )
                 messages.info(request, "Picture dictionary compilation started. Opening live status monitor.")
@@ -8004,6 +8178,9 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                     entry_ids=selected_ids,
                 )
                 messages.success(request, f"Removed {removed} selected dictionary entr{'y' if removed == 1 else 'ies'}.")
+            elif action == "remove_all":
+                removed = picture_dictionary_clear_entries(dictionary=picture_dictionary)
+                messages.success(request, f"Removed {removed} dictionary entr{'y' if removed == 1 else 'ies'}.")
             elif action == "add_from_text":
                 source_project_id_raw = (request.POST.get("source_project_id") or "").strip()
                 try:
@@ -8095,7 +8272,7 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
     pages = list(ProjectImagePage.objects.filter(project=project).order_by("page_number").prefetch_related("variants"))
 
     if request.method == "POST":
-        action = (request.POST.get("action") or "").strip()
+        action = (request.POST.get("action") or request.POST.get("action_intent") or "").strip()
         if action == "mark_reviewed":
             note = (request.POST.get("review_note") or "").strip()
             preferred_updates = _apply_community_vote_preferred_variants(project=project, community_id=community_id)
@@ -8115,31 +8292,127 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
             else:
                 messages.success(request, "Marked review as up to date.")
             return redirect("community-organiser-review-project", community_id=community_id, project_id=project.id)
-        if action == "generate_requested":
+        if action in {"generate_requested_preview", "generate_requested"}:
             requested: list[tuple[ProjectImagePage, int, str]] = []
+            request_summaries: list[str] = []
             image_model = (request.POST.get("image_model") or "gpt-image-1").strip()
             if image_model not in IMAGE_MODEL_CHOICES:
                 image_model = "gpt-image-1"
-            for page in pages:
+            filter_mode = (request.POST.get("generation_filter") or "all_unacceptable").strip()
+            selected_page_ids = {int(v) for v in request.POST.getlist("selected_page_id") if str(v).isdigit()}
+            candidate_pages: list[ProjectImagePage] = []
+            if filter_mode == "selected_pages" and not selected_page_ids:
+                messages.info(
+                    request,
+                    "No generation requests were specified. Select at least one page checkbox, or choose a different page filter.",
+                )
+                return redirect("community-organiser-review-project", community_id=community_id, project_id=project.id)
+            if filter_mode == "missing_images":
+                candidate_pages = [page for page in pages if not page.variants.exists() and not (page.image_path or "").strip()]
+            elif filter_mode == "no_preferred":
+                candidate_pages = [page for page in pages if not page.preferred_variant_id]
+            elif filter_mode == "all_unacceptable":
+                candidate_pages = []
+                for page in pages:
+                    variants = list(page.variants.all())
+                    if not variants:
+                        continue
+                    has_acceptable = False
+                    for variant in variants:
+                        votes = CommunityImageVote.objects.filter(
+                            community_id=community_id, project=project, page=page, variant=variant
+                        )
+                        up = votes.filter(value=CommunityImageVote.VALUE_UP).count()
+                        down = votes.filter(value=CommunityImageVote.VALUE_DOWN).count()
+                        if up > down:
+                            has_acceptable = True
+                            break
+                    if not has_acceptable:
+                        candidate_pages.append(page)
+            else:
+                candidate_pages = [page for page in pages if page.id in selected_page_ids]
+
+            default_count_raw = (request.POST.get("request_count_all") or "").strip()
+            try:
+                default_count = int(default_count_raw or "0")
+            except ValueError:
+                default_count = 0
+            default_count = max(0, min(8, default_count))
+            default_prompt_update = (request.POST.get("request_prompt_all") or "").strip()
+
+            for page in candidate_pages:
                 count_raw = (request.POST.get(f"request_count_{page.id}") or "").strip()
                 prompt_update = (request.POST.get(f"request_prompt_{page.id}") or "").strip()
                 try:
-                    count = int(count_raw or "0")
+                    count = int(count_raw or str(default_count))
                 except ValueError:
                     count = 0
                 count = max(0, min(8, count))
                 if count <= 0:
                     continue
+                if not prompt_update:
+                    prompt_update = default_prompt_update
                 base_prompt = page.generation_prompt or page.page_text
                 final_prompt = f"{base_prompt}\n\nCommunity organiser request: {prompt_update}" if prompt_update else base_prompt
-                requested.append((page, count, final_prompt))
+                requested.append((page, count, prompt_update))
+                request_summaries.append(f"Page {page.page_number}: {count} variant(s)")
             if not requested:
                 messages.info(request, "No generation requests were specified.")
                 return redirect("community-organiser-review-project", community_id=community_id, project_id=project.id)
             requested_count = sum(count for _page, count, _prompt in requested)
-            messages.info(request, f"Generating {requested_count} requested variant(s). Please wait…")
-            generated = _generate_requested_page_variants(project=project, image_model=image_model, requests=requested)
+            if action == "generate_requested_preview":
+                request.session["community_generation_plan"] = {
+                    "community_id": community_id,
+                    "project_id": project.id,
+                    "image_model": image_model,
+                    "requests": [(page.id, count, prompt_update) for page, count, prompt_update in requested],
+                }
+                messages.info(
+                    request,
+                    "Proposed generation plan: " + "; ".join(request_summaries) + ". Submit again to confirm and start generation.",
+                )
+                return redirect("community-organiser-review-project", community_id=community_id, project_id=project.id)
+
+            plan = request.session.get("community_generation_plan") or {}
+            planned_items = plan.get("requests") or []
+            if not planned_items or plan.get("project_id") != project.id or plan.get("community_id") != community_id:
+                messages.warning(request, "Please preview the generation plan first, then confirm.")
+                return redirect("community-organiser-review-project", community_id=community_id, project_id=project.id)
+
+            planned_page_ids = [int(page_id) for page_id, _count, _prompt_update in planned_items]
+            pages_by_id = {
+                page.id: page
+                for page in ProjectImagePage.objects.filter(project=project, id__in=planned_page_ids)
+            }
+            confirmed_requests: list[tuple[ProjectImagePage, int, str]] = []
+            for page_id, count, prompt_update in planned_items:
+                page = pages_by_id.get(int(page_id))
+                if page is None:
+                    continue
+                confirmed_requests.append((page, max(0, min(8, int(count))), str(prompt_update)))
+            confirmed_requests = [item for item in confirmed_requests if item[1] > 0]
+            if not confirmed_requests:
+                messages.warning(request, "The confirmed generation plan is no longer valid. Please preview again.")
+                return redirect("community-organiser-review-project", community_id=community_id, project_id=project.id)
+
+            image_model = str(plan.get("image_model") or image_model).strip()
+            if image_model not in IMAGE_MODEL_CHOICES:
+                image_model = "gpt-image-1"
+
+            progress_marks: list[str] = []
+            def _progress_callback(done: int, total: int) -> None:
+                progress_marks.append(f"{done}/{total}")
+            messages.info(request, f"Generating {requested_count} requested variant(s).")
+            generated = _generate_requested_page_variants(
+                project=project,
+                image_model=image_model,
+                requests=confirmed_requests,
+                progress_callback=_progress_callback,
+            )
+            request.session.pop("community_generation_plan", None)
             _persist_image_pages_artifacts(project)
+            if progress_marks:
+                messages.info(request, f"Generation progress updates: {' -> '.join(progress_marks)}")
             messages.success(request, f"Generated {generated} new variant(s) from organiser requests.")
             return redirect("community-organiser-review-project", community_id=community_id, project_id=project.id)
 
@@ -8153,8 +8426,67 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
         for page in pages
     ]
     vote_rows: list[dict[str, Any]] = []
+    current_generation_filter = (request.GET.get("generation_filter") or "all_unacceptable").strip()
+    if current_generation_filter not in {"selected_pages", "missing_images", "no_preferred", "all_unacceptable"}:
+        current_generation_filter = "all_unacceptable"
+    visible_page_ids: set[int] = set()
+    if current_generation_filter == "missing_images":
+        visible_page_ids = {page.id for page in pages if not page.variants.exists() and not (page.image_path or "").strip()}
+    elif current_generation_filter == "no_preferred":
+        visible_page_ids = {page.id for page in pages if not page.preferred_variant_id}
+    elif current_generation_filter == "all_unacceptable":
+        for page in pages:
+            variants = list(page.variants.all())
+            if not variants:
+                continue
+            has_acceptable = False
+            for variant in variants:
+                votes_qs = CommunityImageVote.objects.filter(
+                    community_id=community_id, project=project, page=page, variant=variant
+                )
+                up_count = votes_qs.filter(value=CommunityImageVote.VALUE_UP).count()
+                down_count = votes_qs.filter(value=CommunityImageVote.VALUE_DOWN).count()
+                if up_count > down_count:
+                    has_acceptable = True
+                    break
+            if not has_acceptable:
+                visible_page_ids.add(page.id)
+    else:
+        visible_page_ids = {page.id for page in pages}
+    preview_page_ids: set[int] = set()
+    plan = request.session.get("community_generation_plan") or {}
+    if plan.get("project_id") == project.id and plan.get("community_id") == community_id:
+        for page_id, _count, _prompt_update in (plan.get("requests") or []):
+            try:
+                preview_page_ids.add(int(page_id))
+            except (TypeError, ValueError):
+                continue
+    filter_counts = {
+        "selected_pages": len(pages),
+        "missing_images": 0,
+        "no_preferred": 0,
+        "all_unacceptable": 0,
+    }
     for page in pages:
         context = page_context.get(page.id, {})
+        if not page.preferred_variant_id:
+            filter_counts["no_preferred"] += 1
+        if not page.variants.exists() and not (page.image_path or "").strip():
+            filter_counts["missing_images"] += 1
+        variants_for_page = list(page.variants.order_by("variant_index"))
+        if variants_for_page:
+            has_acceptable = False
+            for variant in variants_for_page:
+                votes_qs = CommunityImageVote.objects.filter(
+                    community_id=community_id, project=project, page=page, variant=variant
+                )
+                up_count = votes_qs.filter(value=CommunityImageVote.VALUE_UP).count()
+                down_count = votes_qs.filter(value=CommunityImageVote.VALUE_DOWN).count()
+                if up_count > down_count:
+                    has_acceptable = True
+                    break
+            if not has_acceptable:
+                filter_counts["all_unacceptable"] += 1
         for variant in page.variants.order_by("variant_index"):
             votes = list(
                 CommunityImageVote.objects.filter(community_id=community_id, project=project, variant=variant)
@@ -8171,6 +8503,8 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
                 "votes": votes,
                 "up": up,
                 "down": down,
+                "in_preview_plan": page.id in preview_page_ids,
+                "visible_by_filter": page.id in visible_page_ids,
             })
     review = CommunityOrganiserReview.objects.filter(
         community_id=community_id, project=project, organiser=request.user
@@ -8186,6 +8520,22 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
             "vote_rows": vote_rows,
             "review": review,
             "image_models": IMAGE_MODEL_CHOICES,
+            "review_summary": {
+                "reviewed": bool(review),
+                "review_note": (review.note or "") if review else "",
+                "total_pages": len(pages),
+                "total_variants": len(vote_rows),
+                "filter_counts": filter_counts,
+                "preview_plan_count": len(preview_page_ids),
+            },
+            "has_preview_plan": bool(preview_page_ids),
+            "current_generation_filter": current_generation_filter,
+            "generation_filter_options": [
+                ("selected_pages", "Selected pages"),
+                ("missing_images", "Missing images only"),
+                ("no_preferred", "No preferred image"),
+                ("all_unacceptable", "All variants unacceptable"),
+            ],
         },
     )
 
