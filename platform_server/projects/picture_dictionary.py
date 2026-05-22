@@ -176,6 +176,15 @@ def _extract_dictionary_seed_pages(source_project: Project) -> tuple[list[dict],
                 pos_value = _normalise_word(ann.get("pos") or "").upper()
                 lemma_pos_by_page_surface[(page_number, surface.casefold())] = (lemma_value, pos_value)
 
+    seg1_payload = _latest_stage_payload(source_project, "segmentation_phase_1") or {}
+    seg1_surface_by_page: dict[int, str] = {}
+    for page_number, seg1_page in enumerate(seg1_payload.get("pages") or [], start=1):
+        if not isinstance(seg1_page, dict):
+            continue
+        seg1_surface = _normalise_word(seg1_page.get("surface") or "")
+        if seg1_surface and _token_surface_is_word(seg1_surface):
+            seg1_surface_by_page[page_number] = seg1_surface
+
     payload = None
     for stage_name in ("gloss", "lemma", "translation", "segmentation_phase_2", "segmentation_phase_1"):
         payload = _latest_stage_payload(source_project, stage_name)
@@ -201,7 +210,9 @@ def _extract_dictionary_seed_pages(source_project: Project) -> tuple[list[dict],
         if token is None:
             discarded_without_translation += 1
             continue
-        surface = _normalise_word(token.get("surface") or page.get("surface") or "")
+        fallback_surface = _normalise_word(token.get("surface") or page.get("surface") or "")
+        preferred_surface = seg1_surface_by_page.get(old_page_number, "")
+        surface = preferred_surface or fallback_surface
         if not surface:
             discarded_without_word += 1
             continue
