@@ -91,7 +91,7 @@
       {% for entry in dictionary_entries %}
         <label style="display: block;">
           <input type="checkbox" name="remove_entry" value="{{ entry.id }}" />
-          {{ entry.surface }}{% if entry.lemma %} (lemma: {{ entry.lemma }}){% endif %}{% if entry.pos %} [{{ entry.pos }}]{% endif %}
+          {{ entry.display_label }}
         </label>
       {% endfor %}
     </div>

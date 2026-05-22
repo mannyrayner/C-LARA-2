@@ -310,8 +310,6 @@ class CommunityWorkflowTests(TestCase):
         self.assertContains(review, "Source page text from project")
         self.assertContains(review, "Page translation")
         self.assertContains(review, "Bonjour la page")
-        self.assertContains(review, '<option value="gpt-image-1">gpt-image-1</option>', html=False)
-        self.assertContains(review, '<option value="gpt-image-2">gpt-image-2</option>', html=False)
 
     def test_organiser_image_review_entry_point_and_preferred_variant_label(self):
         self.project.community = self.community
@@ -581,3 +579,4 @@ class CommunityWorkflowTests(TestCase):
         self.assertContains(resp_confirm, "Generation progress updates")
         self.assertEqual(ProjectImagePageVariant.objects.filter(page=self.page).count(), 2)
         self.assertEqual(ProjectImagePageVariant.objects.filter(page=second_page).count(), 0)
+

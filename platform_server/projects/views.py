@@ -7969,9 +7969,21 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
         .filter(community_id=community_id, is_active=True)
         .first()
     )
-    dictionary_entries = list(
-        picture_dictionary.entries.filter(is_active=True).order_by("id") if picture_dictionary else []
-    )
+    dictionary_entries: list[PictureDictionaryEntry] = []
+    if picture_dictionary:
+        dictionary_entries = list(picture_dictionary.entries.filter(is_active=True))
+        dictionary_entries.sort(
+            key=lambda entry: (
+                str(entry.surface or "").casefold(),
+                str(entry.lemma or "").casefold(),
+                str(entry.pos or "").casefold(),
+                entry.id,
+            )
+        )
+        for entry in dictionary_entries:
+            lemma = (entry.lemma or entry.surface or "").strip()
+            pos = (entry.pos or "UNSPECIFIED").strip().upper()
+            entry.display_label = f"{(entry.surface or '').strip()} (lemma: {lemma}) [{pos}]"
     picture_dictionary_compile_info: dict[str, Any] | None = None
     picture_dictionary_style_brief = ""
     if picture_dictionary:
