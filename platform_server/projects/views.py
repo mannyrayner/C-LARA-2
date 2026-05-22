@@ -5254,13 +5254,15 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
 def manual_segmentation_phase_1(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
     return_to = _annotation_return_to(request, project, default_manual=True)
-    base_text = _base_text_for_segmentation_phase_1(project)
-    if not base_text.strip():
-        messages.error(request, "Manual segmentation phase 1 requires source text.")
-        return redirect(return_to)
-
     run_dir = _find_run_with_stage(project, "segmentation_phase_1") or _resolve_run_dir(project)
     current_payload = _load_stage_payload(project, "segmentation_phase_1", run_dir=run_dir) if run_dir else None
+    base_text = _base_text_for_segmentation_phase_1(project)
+    if not base_text.strip() and isinstance(current_payload, dict):
+        base_text = _surface_without_phase1_markers(_phase1_surface_from_payload(current_payload)).strip()
+    if not base_text.strip():
+        messages.error(request, "Manual segmentation phase 1 requires source text or an existing segmentation phase 1 artifact.")
+        return redirect(return_to)
+
     current_surface = _canonicalize_phase1_surface(str((current_payload or {}).get("surface") or base_text))
     base_cmp_hash = _phase1_comparison_hash(base_text)
     if isinstance(current_payload, dict):
