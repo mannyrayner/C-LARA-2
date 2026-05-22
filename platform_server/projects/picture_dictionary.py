@@ -157,6 +157,25 @@ def _page_import_image_path(page: dict) -> str:
 
 
 def _extract_dictionary_seed_pages(source_project: Project) -> tuple[list[dict], list[str]]:
+    lemma_payload = _latest_stage_payload(source_project, "lemma") or {}
+    lemma_pos_by_page_surface: dict[tuple[int, str], tuple[str, str]] = {}
+    for page_number, lemma_page in enumerate(lemma_payload.get("pages") or [], start=1):
+        if not isinstance(lemma_page, dict):
+            continue
+        for segment in lemma_page.get("segments") or []:
+            if not isinstance(segment, dict):
+                continue
+            for token in segment.get("tokens") or []:
+                if not isinstance(token, dict):
+                    continue
+                surface = _normalise_word(token.get("surface") or "")
+                if not surface or not _token_surface_is_word(surface):
+                    continue
+                ann = token.get("annotations") or {}
+                lemma_value = _normalise_word(ann.get("lemma") or surface)
+                pos_value = _normalise_word(ann.get("pos") or "").upper()
+                lemma_pos_by_page_surface[(page_number, surface.casefold())] = (lemma_value, pos_value)
+
     payload = None
     for stage_name in ("gloss", "lemma", "translation", "segmentation_phase_2", "segmentation_phase_1"):
         payload = _latest_stage_payload(source_project, stage_name)
@@ -187,12 +206,16 @@ def _extract_dictionary_seed_pages(source_project: Project) -> tuple[list[dict],
             discarded_without_word += 1
             continue
         annotations = (token or {}).get("annotations") or {}
+        fallback_lemma, fallback_pos = lemma_pos_by_page_surface.get(
+            (old_page_number, surface.casefold()),
+            ("", ""),
+        )
         retained.append(
             {
                 "old_page_number": old_page_number,
                 "surface": surface,
-                "lemma": _normalise_word(annotations.get("lemma") or surface),
-                "pos": _normalise_word(annotations.get("pos") or "").upper(),
+                "lemma": _normalise_word(annotations.get("lemma") or fallback_lemma or surface),
+                "pos": _normalise_word(annotations.get("pos") or fallback_pos or "").upper(),
                 "gloss": _non_null_text(annotations.get("gloss")),
                 "translation": _non_null_text(annotations.get("translation")),
                 "image_path": _page_import_image_path(page),
@@ -465,6 +488,18 @@ def remove_entries_by_ids(*, dictionary: PictureDictionary, entry_ids: Iterable[
     ids = {int(pk) for pk in entry_ids}
     removed = 0
     for entry in dictionary.entries.filter(id__in=ids, is_active=True):
+        entry.is_active = False
+        entry.current_page_number = None
+        entry.save(update_fields=["is_active", "current_page_number", "updated_at"])
+        removed += 1
+    if removed:
+        _sync_project_source_from_registry(dictionary)
+    return removed
+
+
+def clear_entries(*, dictionary: PictureDictionary) -> int:
+    removed = 0
+    for entry in dictionary.entries.filter(is_active=True):
         entry.is_active = False
         entry.current_page_number = None
         entry.save(update_fields=["is_active", "current_page_number", "updated_at"])

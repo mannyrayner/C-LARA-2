@@ -120,6 +120,7 @@ from .models import (
 from .picture_dictionary import (
     add_lemma_pos_entries as picture_dictionary_add_lemma_pos_entries,
     add_words as picture_dictionary_add_words,
+    clear_entries as picture_dictionary_clear_entries,
     compile_picture_dictionary as picture_dictionary_compile,
     ensure_picture_dictionary_for_community,
     import_project_as_picture_dictionary,
@@ -8172,6 +8173,9 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                     entry_ids=selected_ids,
                 )
                 messages.success(request, f"Removed {removed} selected dictionary entr{'y' if removed == 1 else 'ies'}.")
+            elif action == "remove_all":
+                removed = picture_dictionary_clear_entries(dictionary=picture_dictionary)
+                messages.success(request, f"Removed {removed} dictionary entr{'y' if removed == 1 else 'ies'}.")
             elif action == "add_from_text":
                 source_project_id_raw = (request.POST.get("source_project_id") or "").strip()
                 try:
