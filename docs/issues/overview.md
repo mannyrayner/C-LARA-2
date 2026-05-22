@@ -1,6 +1,6 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-22T06:01:39Z_
+_Last updated: 2026-05-22T06:32:19Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
@@ -8,21 +8,27 @@ This document summarizes the current issue registry for quick human review. Cano
 
 - **[ISSUE-0018](issues/ISSUE-0018.json)** is now closed: issue-suggestion processing now uses canonical `main`-branch issue registry data (with local fallback) and reports the source in admin prompt text.
 - **[ISSUE-0019](issues/ISSUE-0019.json)** is now closed based on a human update confirming the favicon currently appears correctly on AWS deployment.
+- Added **[ISSUE-0022](issues/ISSUE-0022.json)** from a new human suggestion after an AWS `413 Request Entity Too Large` failure on a 62MB project ZIP import; this is tracked as a high-priority deployment/configuration gap affecting corpus migration workflows.
 - **[ISSUE-0017](issues/ISSUE-0017.json)** remains the current page-image umbrella issue, with ISSUE-0007 kept as a linked prompt-indirection subproblem.
 - **[ISSUE-0016](issues/ISSUE-0016.json)** remains active after Phase A no-audio/skip-TTS delivery; the community-recorded dictionary extension remains pending.
 
 ## Near-term priorities
 
-1. **[ISSUE-0014](issues/ISSUE-0014.json) (P1)** — Continue AWS operational readiness work (budgets/alerts, run-rate, right-sizing/scheduling) before wider rollout.
-2. **[ISSUE-0016](issues/ISSUE-0016.json) (P1, active, deadline 2026-06-01)** — Validate no-audio/skip-TTS fallback on Kok Kaper and design the follow-up community-recorded audio dictionary.
-3. **[ISSUE-0020](issues/ISSUE-0020.json) (P1)** — Improve picture-dictionary compile for low-resource workflows and organiser feedback: partial artifacts + explicit manual-completion handoff.
-4. **[ISSUE-0011](issues/ISSUE-0011.json) (P1, active, deadline 2026-06-01)** — Continue picture-dictionary/game workflow hardening: curation/game-ready signals, word→image mode, and feedback loops.
-5. **[ISSUE-0017](issues/ISSUE-0017.json) (P1)** — Complete page-image generation/review/regeneration stabilization, especially organiser workflow polish and reliability.
-6. **[ISSUE-0003](issues/ISSUE-0003.json) (P1)** — Build efficient end-to-end pipeline test runner with corpus-driven quality checks.
-7. **[ISSUE-0010](issues/ISSUE-0010.json) (P1)** — Expand representative legacy corpus imports and tooling.
-8. **[ISSUE-0013](issues/ISSUE-0013.json) (P1)** — Improve stage artifact persistence performance and timeout resilience.
-9. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, deadline 2026-06-15)** — Draft technical report and publication outputs.
-10. **[ISSUE-0019](issues/ISSUE-0019.json) (P3)** — Fix AWS favicon serving/caching mismatch (minor but visible UX issue).
+1. **[ISSUE-0014](issues/ISSUE-0014.json) (P1)** — Continue AWS operational readiness work: configure AWS Budgets/alerts, monitor service-level EC2/RDS cost breakdowns, estimate monthly run-rate under beta usage, and review whether EC2/RDS resources can be right-sized or scheduled before C-LARA-2 is opened to more users.
+2. **[ISSUE-0016](issues/ISSUE-0016.json) (P1, active, deadline 2026-06-01)** — Validate the no-audio/skip-TTS fallback with Kok Kaper material, then design and implement the follow-up community-recorded audio dictionary for surface words and segments.
+3. **[ISSUE-0003](issues/ISSUE-0003.json) (P1)** — Add an efficient end-to-end pipeline test runner; first target legacy-vs-C-LARA-2 comparisons over the imported corpus from ISSUE-0010, with AI-assisted gross-difference review where exact matching is inappropriate.
+4. **[ISSUE-0011](issues/ISSUE-0011.json) (P1, active, deadline 2026-06-01)** — Continue the Kok Kaper image-game fast path after the seed dictionary and first image→word flashcards: validate/curate game-ready entries, then add word→image play and feedback/reporting for image/card problems.
+5. **[ISSUE-0017](issues/ISSUE-0017.json) (P1)** — Implement the page-image improvements roadmap: show source/translation context in community review, use preferred page images in compile, add additive/subset regeneration, feed community suggestions into prompt indirection, and harden organiser review/regeneration workflows.
+6. **[ISSUE-0010](issues/ISSUE-0010.json) (P1)** — Import and triage a representative legacy C-LARA corpus from the Adelaide material now reaching C-LARA-2 on AWS; include known divergence checks before growing into multi-bundle batch import with heartbeat progress.
+7. **[ISSUE-0022](issues/ISSUE-0022.json) (P1)** — Remove large-upload blockers for project import on AWS by aligning nginx request-size limits, Django upload limits/timeouts, and documented deployment runbook verification for 50MB+ ZIP bundles.
+8. **[ISSUE-0013](issues/ISSUE-0013.json) (P1)** — Implement the efficiency roadmap: centralize stage-artifact read/write operations, benchmark JSON against faster formats, record read/write timings, and keep trusted admin-only binary migration experiments separate from untrusted user uploads.
+9. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, deadline 2026-06-15)** — Deliver the internal technical report and derive the EuroCALL (mid-August 2026) and ALTA (mid-September 2026) papers, while explicitly documenting the issues-driven Codex+human workflow used to produce them.
+10. **[ISSUE-0006](issues/ISSUE-0006.json) (P2)** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness, preferably using ISSUE-0003 diagnostics where possible.
+11. **[ISSUE-0005](issues/ISSUE-0005.json) (P2)** — Tune segmentation_phase_1 prompting so prose and poetry segment granularity better matches expected legacy behavior.
+12. **[ISSUE-0004](issues/ISSUE-0004.json) (P2)** — Introduce AI-based review gates with a pluggable evaluator architecture after the test-runner foundation is available.
+13. **[ISSUE-0007](issues/ISSUE-0007.json) (P2)** — Implement LLM prompt-construction indirection for page-image generation prompts as a component of ISSUE-0017.
+14. **[ISSUE-0001](issues/ISSUE-0001.json) (P2)** — Support registration of hosted compiled legacy content in C-LARA-2; use the same AWS staging/rsync runbook and the imported C-LARA corpus as complementary test material.
+15. **[ISSUE-0012](issues/ISSUE-0012.json) (P2)** — Adjust project creation defaults for AI text generation and top page-image placement.
 
 ## Completed issues
 
