@@ -18,7 +18,7 @@ class IssueSuggestionTests(TestCase):
         response = client.get(reverse("issues-home"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Open current issues overview")
-        self.assertContains(response, "projects/favicon.svg")
+        self.assertContains(response, reverse("favicon"))
         self.assertContains(response, "Suggest a new issue")
         self.assertContains(response, reverse("issue-suggestion-submit"))
         self.assertContains(response, "Suggest an update to an existing issue")
@@ -26,6 +26,12 @@ class IssueSuggestionTests(TestCase):
         self.assertContains(response, "https://github.com/mannyrayner/C-LARA-2/blob/main/docs/issues/overview.md")
         self.assertContains(response, 'target="_blank"')
         self.assertNotContains(response, "## Focus order")
+
+    def test_favicon_endpoint_serves_icon(self):
+        client = Client()
+        response = client.get(reverse("favicon"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "image/svg+xml")
 
     def test_authenticated_user_can_submit_suggestion(self):
         client = Client()
@@ -120,4 +126,3 @@ class IssueSuggestionTests(TestCase):
         self.assertEqual(IssueUpdateSuggestion.objects.count(), 0)
         self.assertContains(response, "No new issue suggestions yet.")
         self.assertContains(response, "No existing issue update suggestions yet.")
-
