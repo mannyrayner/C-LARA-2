@@ -215,6 +215,64 @@ Minimum implementation checklist under this roadmap:
 - AWS runbook section documenting final values, restart commands, and a post-deploy verification script/checklist.
 - Regression verification: successful import of at least one >50MB ZIP on AWS and explicit failure message quality checks when limits are intentionally exceeded.
 
+#### Operator playbook: how to change/reset upload limits on AWS
+
+Use this when imports fail with `413 Request Entity Too Large` or time out for large ZIP bundles.
+
+1. **Pick target limits first (example profile).**
+   - Working baseline for current migration needs: `100M` body size, `300s` request timeout.
+   - Conservative higher profile for larger one-off imports: `200M` body size, `600s` request timeout.
+   - Keep local dev lower if preferred; document AWS values explicitly so environments do not drift.
+
+2. **Update nginx request-size/time settings (primary 413 control).**
+   - Edit the active site file (typically in `/etc/nginx/sites-available/`).
+   - Set/confirm:
+     - `client_max_body_size <SIZE>;` (e.g. `100M`)
+     - `client_body_timeout <SECONDS>;` (e.g. `300s`)
+     - If proxying to gunicorn over HTTP, also ensure `proxy_read_timeout <SECONDS>;` and `proxy_send_timeout <SECONDS>;` are large enough for import processing.
+   - Validate syntax before reload: `sudo nginx -t`
+   - Apply: `sudo systemctl reload nginx`
+
+3. **Align gunicorn timeout so uploads are not killed upstream.**
+   - Open the deployed `gunicorn-clara2.service` unit (or its referenced env/start script).
+   - Set timeout argument to match/beat nginx request window (for example `--timeout 300`).
+   - Reload unit files and restart:
+     - `sudo systemctl daemon-reload`
+     - `sudo systemctl restart gunicorn-clara2.service`
+   - Check health/logs:
+     - `sudo systemctl status gunicorn-clara2.service`
+     - `sudo journalctl -u gunicorn-clara2.service -n 200 --no-pager`
+
+4. **Align Django upload guardrails (if set in settings/env).**
+   - Confirm app-level limits are not lower than nginx:
+     - `DATA_UPLOAD_MAX_MEMORY_SIZE`
+     - `FILE_UPLOAD_MAX_MEMORY_SIZE`
+     - any custom import ZIP size limit used by C-LARA-2 views/forms.
+   - If values are environment-driven, update `/etc/clara2.env` (or equivalent), then restart app/worker services.
+
+5. **Restart dependent services in safe order.**
+   1. `sudo systemctl restart gunicorn-clara2.service`
+   2. `sudo systemctl restart djangoq-clara2.service`
+   3. `sudo systemctl reload nginx`
+
+6. **Verify with explicit pass/fail checks.**
+   - Upload a known-good ZIP around `62MB` (the original failure case).
+   - Upload one file above `50MB` and near the configured cap (e.g. `90–95MB` for a `100M` cap).
+   - Optionally upload an over-limit file (e.g. `110MB` against `100M`) to confirm a clear user-visible error.
+   - Record outcome, timestamp, and active config values in the deployment log.
+
+7. **How to reset back to defaults after a one-off migration window.**
+   - Revert nginx/gunicorn/env values to the standard baseline profile captured in the runbook.
+   - Repeat `nginx -t`, reload/restart commands, and a small upload smoke test (<10MB).
+   - Commit runbook notes with final values so future operators can reproduce exactly.
+
+#### Recommended AWS baseline values to document in runbook
+
+- `client_max_body_size`: `100M` (raise to `200M` only when needed).
+- `client_body_timeout`: `300s`.
+- gunicorn `--timeout`: `300`.
+- matching Django/env upload limits: **not lower** than nginx cap.
+
 ### Phase P4 — production readiness checks (day 2–3)
 1. Smoke test critical flows:
    - login,
