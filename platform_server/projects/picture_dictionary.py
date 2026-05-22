@@ -10,6 +10,7 @@ from typing import Iterable
 
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
+from django.urls import reverse
 from pipeline.stage_artifacts import read_stage_artifact, stage_artifact_path, write_stage_artifact
 
 from .models import (
@@ -156,6 +157,25 @@ def _page_import_image_path(page: dict) -> str:
 
 
 def _extract_dictionary_seed_pages(source_project: Project) -> tuple[list[dict], list[str]]:
+    lemma_payload = _latest_stage_payload(source_project, "lemma") or {}
+    lemma_pos_by_page_surface: dict[tuple[int, str], tuple[str, str]] = {}
+    for page_number, lemma_page in enumerate(lemma_payload.get("pages") or [], start=1):
+        if not isinstance(lemma_page, dict):
+            continue
+        for segment in lemma_page.get("segments") or []:
+            if not isinstance(segment, dict):
+                continue
+            for token in segment.get("tokens") or []:
+                if not isinstance(token, dict):
+                    continue
+                surface = _normalise_word(token.get("surface") or "")
+                if not surface or not _token_surface_is_word(surface):
+                    continue
+                ann = token.get("annotations") or {}
+                lemma_value = _normalise_word(ann.get("lemma") or surface)
+                pos_value = _normalise_word(ann.get("pos") or "").upper()
+                lemma_pos_by_page_surface[(page_number, surface.casefold())] = (lemma_value, pos_value)
+
     payload = None
     for stage_name in ("gloss", "lemma", "translation", "segmentation_phase_2", "segmentation_phase_1"):
         payload = _latest_stage_payload(source_project, stage_name)
@@ -186,12 +206,16 @@ def _extract_dictionary_seed_pages(source_project: Project) -> tuple[list[dict],
             discarded_without_word += 1
             continue
         annotations = (token or {}).get("annotations") or {}
+        fallback_lemma, fallback_pos = lemma_pos_by_page_surface.get(
+            (old_page_number, surface.casefold()),
+            ("", ""),
+        )
         retained.append(
             {
                 "old_page_number": old_page_number,
                 "surface": surface,
-                "lemma": _normalise_word(annotations.get("lemma") or surface),
-                "pos": _normalise_word(annotations.get("pos") or "").upper(),
+                "lemma": _normalise_word(annotations.get("lemma") or fallback_lemma or surface),
+                "pos": _normalise_word(annotations.get("pos") or fallback_pos or "").upper(),
                 "gloss": _non_null_text(annotations.get("gloss")),
                 "translation": _non_null_text(annotations.get("translation")),
                 "image_path": _page_import_image_path(page),
@@ -389,14 +413,24 @@ def import_project_as_picture_dictionary(
 @transaction.atomic
 def ensure_picture_dictionary_for_community(*, community: Community, organiser) -> PictureDictionary:
     _require_organiser(community, organiser)
-    existing = PictureDictionary.objects.select_related("project").filter(community=community).first()
+    existing = (
+        PictureDictionary.objects.select_related("project")
+        .filter(community=community)
+        .order_by("-is_active", "-id")
+        .first()
+    )
     if existing:
+        if not existing.is_active:
+            existing.is_active = True
+            existing.organiser = organiser
+            existing.language = community.language or existing.project.language
+            existing.save(update_fields=["is_active", "organiser", "language", "updated_at"])
         _bootstrap_registry_from_project_source(existing)
         _sync_project_source_from_registry(existing)
         return existing
     project = Project.objects.create(
         owner=organiser,
-        title=f"{community.name} picture dictionary",
+        title=_unique_project_title(organiser, f"{community.name} picture dictionary"),
         description=f"Picture dictionary for {community.name} ({community.language or 'language unspecified'}).",
         input_mode=Project.INPUT_SOURCE,
         source_text="",
@@ -464,6 +498,18 @@ def remove_entries_by_ids(*, dictionary: PictureDictionary, entry_ids: Iterable[
     ids = {int(pk) for pk in entry_ids}
     removed = 0
     for entry in dictionary.entries.filter(id__in=ids, is_active=True):
+        entry.is_active = False
+        entry.current_page_number = None
+        entry.save(update_fields=["is_active", "current_page_number", "updated_at"])
+        removed += 1
+    if removed:
+        _sync_project_source_from_registry(dictionary)
+    return removed
+
+
+def clear_entries(*, dictionary: PictureDictionary) -> int:
+    removed = 0
+    for entry in dictionary.entries.filter(is_active=True):
         entry.is_active = False
         entry.current_page_number = None
         entry.save(update_fields=["is_active", "current_page_number", "updated_at"])
@@ -714,6 +760,7 @@ def compile_picture_dictionary(
     compile_task_report_id: str | None = None,
     compile_task_user_id: int | None = None,
     compile_task_type: str | None = None,
+    low_resource_mode: bool = False,
 ) -> dict[str, object]:
     def _post_progress(message: str) -> None:
         if progress_callback:
@@ -765,14 +812,24 @@ def compile_picture_dictionary(
     _write_segmentation_phase_1(dictionary, entries)
     if manual_annotations_complete:
         _write_imported_dictionary_annotation_stages(dictionary, manual_rows)
+    elif low_resource_mode:
+        _write_dictionary_annotation_stages(dictionary, entries)
     else:
         _write_dictionary_annotation_stages(dictionary, entries)
-    annotation_run = "manual" if manual_annotations_complete else "skipped"
+    annotation_run = "manual" if manual_annotations_complete else ("placeholder" if low_resource_mode else "skipped")
     annotation_error = ""
     generated_images = 0
     image_generation_note = ""
     if manual_annotations_complete:
         _post_progress("Text phase 3/3: using existing manual lemma/gloss annotations; AI annotation skipped.")
+    elif low_resource_mode:
+        _post_progress(
+            "Text phase 3/3: low-resource mode selected. Wrote placeholder artifacts for translation/MWE/lemma/gloss/pinyin."
+        )
+        _post_progress(
+            "Please open page-by-page manual annotation to complete missing values: "
+            f"{reverse('manual-page-annotation', args=[dictionary.project.id])}"
+        )
     else:
         try:
             from .views import _run_compile_task
@@ -809,7 +866,11 @@ def compile_picture_dictionary(
                 dictionary.project_id,
             )
 
-    _post_progress(f"Dictionary image compilation started for {len(entries)} image entr{'y' if len(entries) == 1 else 'ies'}.")
+    missing_image_entries = sum(1 for entry in entries if not (entry.image_path or "").strip())
+    _post_progress(
+        "Dictionary image compilation started: "
+        f"{missing_image_entries}/{len(entries)} entr{'y' if len(entries) == 1 else 'ies'} currently missing image files."
+    )
     try:
         style = getattr(dictionary.project, "image_style", None)
         style_usable = bool(
@@ -820,9 +881,15 @@ def compile_picture_dictionary(
             )
             and style.status in {"generated", "approved"}
         )
-        if style_usable:
+        if low_resource_mode:
+            image_generation_note = "Image generation skipped (low-resource compile mode)."
+        elif style_usable:
             from .views import _generate_project_page_images
 
+            _post_progress(
+                "Image phase: generating missing dictionary images from current style. "
+                f"Target entries with missing images: {missing_image_entries}."
+            )
             generated_images = _generate_project_page_images(
                 dictionary.project,
                 image_model=style.sample_image_model or "gpt-image-1",
@@ -831,6 +898,11 @@ def compile_picture_dictionary(
                 include_full_text=False,
                 include_elements=False,
                 missing_only=True,
+            )
+            _post_progress(
+                "Image phase complete: "
+                f"generated {generated_images} image variant{'s' if generated_images != 1 else ''} "
+                f"for dictionary project \"{dictionary.project.title}\"."
             )
         else:
             image_generation_note = "Image generation skipped (style missing or not approved)."
