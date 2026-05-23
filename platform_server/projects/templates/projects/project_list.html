@@ -64,7 +64,7 @@
 </p>
 <ul>
   {% for project in object_list %}
-    <li>
+    <li style="margin-bottom:0.5rem;">
       <a href="{% url 'project-detail' project.pk %}">{{ project.title }}</a>
       {% if project.is_published %}(published){% endif %}
       <form method="post" action="{% url 'project-delete' project.pk %}" style="display:inline" onsubmit="return confirm('Delete this project and its artifacts?');">
