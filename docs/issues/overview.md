@@ -1,6 +1,6 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-23T06:20:00Z_
+_Last updated: 2026-05-23T13:30:00Z_
 
 This is the canonical human-facing issue registry. Canonical machine-readable records remain in `docs/issues/issues/*.json` and focus ordering in `docs/issues/index.json`.
 
@@ -13,6 +13,7 @@ This is the canonical human-facing issue registry. Canonical machine-readable re
 - Closed **[ISSUE-0023](issues/ISSUE-0023.json)** for manual segmentation phase-1 editor fallback when segmentation artifacts exist but source text is empty.
 - Closed **[ISSUE-0022](issues/ISSUE-0022.json)** by addressing AWS large ZIP import failures (`nginx 413`).
 - Closed **[ISSUE-0014](issues/ISSUE-0014.json)** and **[ISSUE-0017](issues/ISSUE-0017.json)** as completed roadmap slices.
+- Added **[ISSUE-0025](issues/ISSUE-0025.json)** to track systematic UI regression detection after repeated reports of disappearing controls/content in platform views.
 
 ## Near-term priorities
 
@@ -21,11 +22,13 @@ This is the canonical human-facing issue registry. Canonical machine-readable re
 3. **[ISSUE-0010](issues/ISSUE-0010.json) (P1, active)** — Expand representative legacy corpus imports and batch-tooling readiness.
 4. **[ISSUE-0003](issues/ISSUE-0003.json) (P1, reported)** — Build efficient end-to-end pipeline test runner and quality diagnostics.
 5. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, reported, deadline 2026-06-15)** — Produce technical report and publication outputs.
+6. **[ISSUE-0025](issues/ISSUE-0025.json) (P1, reported)** — Add template/view UI inventory snapshots and change-alert workflow to catch unintended UI regressions quickly.
 
 ## Notes and risks
 
 - **Low-resource delivery remains cross-cutting** across audio (ISSUE-0016), image games (ISSUE-0011), and dictionary compile flow (ISSUE-0020).
 - **Validation and regression infrastructure is still a dependency** for safer iteration speed (ISSUE-0003).
+- **UI regressions need first-class monitoring** so disappearing controls/content are detected immediately (ISSUE-0025).
 - **Closed-issue hygiene must stay strict**: overview status values should always reflect per-issue JSON state.
 
 ## Complete issue inventory
@@ -56,3 +59,4 @@ This is the canonical human-facing issue registry. Canonical machine-readable re
 | [ISSUE-0022](issues/ISSUE-0022.json) | closed | P1 | Handle large project ZIP imports without nginx 413 failures on AWS. |
 | [ISSUE-0023](issues/ISSUE-0023.json) | closed | P3 | Allow manual segmentation phase 1 editor when segmentation artifact exists but source text is empty. |
 | [ISSUE-0024](issues/ISSUE-0024.json) | closed | P3 | Stabilize and verify natural-language search controls on Published Content view. |
+| [ISSUE-0025](issues/ISSUE-0025.json) | reported | P1 | Add systematic UI regression tracking for disappearing controls/content. |

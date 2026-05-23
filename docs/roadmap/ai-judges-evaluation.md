@@ -107,6 +107,7 @@ To maintain validity:
 2. **Regression monitoring**
    - Keep benchmark sets for each processing phase.
    - Re-score after major model/pipeline changes.
+   - Include a UI-regression track that snapshots key controls/content in major views and flags unexpected diffs for maintainer review.
 3. **Error discovery**
    - Cluster low-score items by error tags.
    - Feed clusters into targeted prompt/pipeline fixes.
