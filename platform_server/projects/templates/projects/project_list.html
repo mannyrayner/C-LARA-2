@@ -2,7 +2,6 @@
 {% block title %}Projects{% endblock %}
 {% block content %}
 <h1>Your projects</h1>
-<p><a class="btn" href="{% url 'project-create' %}">New project</a></p>
 <form method="get" action="{% url 'project-list' %}" style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0;">
   <p><strong>Dialogue: find/open existing project</strong></p>
   <p>
@@ -30,7 +29,39 @@
     {% endfor %}
   </ul>
 {% endif %}
-<p><a class="btn secondary" href="{% url 'project-import-zip' %}">Import from ZIP</a></p>
+<form method="get" action="{% url 'project-list' %}" style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0;">
+  <p><strong>Simple filters</strong></p>
+  <p>
+    <label for="text_language">Text language:</label>
+    <select id="text_language" name="text_language">
+      <option value="">Any</option>
+      {% for value, label in project_language_choices %}
+        <option value="{{ value }}" {% if text_language_filter == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </p>
+  <p>
+    <label for="gloss_language">Gloss language:</label>
+    <select id="gloss_language" name="gloss_language">
+      <option value="">Any</option>
+      {% for value, label in project_language_choices %}
+        <option value="{{ value }}" {% if gloss_language_filter == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </p>
+  <p>
+    <label for="title_substring">Project title contains:</label><br />
+    <input id="title_substring" type="text" name="title_substring" value="{{ title_substring_filter }}" style="width:100%;" />
+  </p>
+  <p>
+    <button class="btn secondary" type="submit">Apply filters</button>
+    <a class="btn secondary" href="{% url 'project-list' %}">Clear</a>
+  </p>
+</form>
+<p>
+  <a class="btn" href="{% url 'project-create' %}">Create new project</a>
+  <a class="btn secondary" href="{% url 'project-import-zip' %}">Import existing project from ZIP</a>
+</p>
 <ul>
   {% for project in object_list %}
     <li>

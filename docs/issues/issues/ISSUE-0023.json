@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "issue_id": "ISSUE-0023",
+  "title": "Allow manual segmentation phase 1 editor when segmentation artifact exists but source text is empty",
+  "state": "closed",
+  "priority": "P3",
+  "created_at": "2026-05-23T00:00:00Z",
+  "updated_at": "2026-05-23T00:00:00Z",
+  "origin": "human-suggestion",
+  "notes": "Low-hanging UI/flow inconsistency: manual top-level showed the Manual segmentation phase 1 control for imported picture-dictionary projects, but clicking it failed with 'requires source text' even when segmentation_phase_1 artifact existed. Fixed by making manual_segmentation_phase_1 derive base text from existing segmentation_phase_1 payload when source text is blank, and only error when both source text and artifact are absent.",
+  "deadline": null,
+  "dependencies": [
+    "ISSUE-0020"
+  ]
+}
