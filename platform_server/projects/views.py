@@ -7700,7 +7700,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
         text_language = _normalize_language_filter(str(nl_plan.get("text_language") or ""))
         annotation_language = _normalize_language_filter(str(nl_plan.get("annotation_language") or ""))
         date_posted = _normalize_date_posted_filter(str(nl_plan.get("date_posted") or "any"))
-        level = manual_level or _normalize_cefr_level_expression(str(nl_plan.get("level") or "").strip(), max_levels=3)
+        level = _normalize_cefr_level_expression(str(nl_plan.get("level") or "").strip(), max_levels=3)
     else:
         title = manual_title
         text_language = manual_text_language
@@ -7709,7 +7709,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
         level = manual_level
 
     qs = _published_projects_visible_to_user(request.user)
-    title_hard_filter = manual_title if nl_query else title
+    title_hard_filter = title
     if title_hard_filter:
         qs = qs.filter(title__icontains=title_hard_filter)
     if text_language:
@@ -7769,14 +7769,17 @@ def content_list(request: HttpRequest) -> HttpResponse:
         {
             "projects": [row["project"] for row in result_rows],
             "result_rows": result_rows,
-            "filters": {
-                "title": title,
-                "text_language": text_language,
-                "annotation_language": annotation_language,
-                "date_posted": date_posted,
+            "nl_filters": {
                 "nl_query": nl_query,
                 "dialogue_language": dialogue_language,
                 "level": level,
+            },
+            "simple_filters": {
+                "title": manual_title,
+                "text_language": manual_text_language,
+                "annotation_language": manual_annotation_language,
+                "date_posted": manual_date_posted,
+                "level": manual_level,
             },
             "nl_plan": nl_plan,
             "dialogue_language_choices": ProjectForm.LANGUAGE_CHOICES,
@@ -8736,7 +8739,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
         text_language = _normalize_language_filter(str(nl_plan.get("text_language") or ""))
         annotation_language = _normalize_language_filter(str(nl_plan.get("annotation_language") or ""))
         date_posted = _normalize_date_posted_filter(str(nl_plan.get("date_posted") or "any"))
-        level = manual_level or _normalize_cefr_level_expression(str(nl_plan.get("level") or "").strip(), max_levels=3)
+        level = _normalize_cefr_level_expression(str(nl_plan.get("level") or "").strip(), max_levels=3)
     else:
         title = manual_title
         text_language = manual_text_language
@@ -8745,7 +8748,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
         level = manual_level
 
     qs = _published_projects_visible_to_user(request.user)
-    title_hard_filter = manual_title if nl_query else title
+    title_hard_filter = title
     if title_hard_filter:
         qs = qs.filter(title__icontains=title_hard_filter)
     if text_language:
@@ -8805,14 +8808,17 @@ def content_list(request: HttpRequest) -> HttpResponse:
         {
             "projects": [row["project"] for row in result_rows],
             "result_rows": result_rows,
-            "filters": {
-                "title": title,
-                "text_language": text_language,
-                "annotation_language": annotation_language,
-                "date_posted": date_posted,
+            "nl_filters": {
                 "nl_query": nl_query,
                 "dialogue_language": dialogue_language,
                 "level": level,
+            },
+            "simple_filters": {
+                "title": manual_title,
+                "text_language": manual_text_language,
+                "annotation_language": manual_annotation_language,
+                "date_posted": manual_date_posted,
+                "level": manual_level,
             },
             "nl_plan": nl_plan,
             "dialogue_language_choices": ProjectForm.LANGUAGE_CHOICES,
