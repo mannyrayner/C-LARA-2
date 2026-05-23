@@ -1,6 +1,6 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-23T23:10:00Z_
+_Last updated: 2026-05-23T23:40:00Z_
 
 This is the canonical human-facing issue registry. Canonical machine-readable records remain in `docs/issues/issues/*.json` and focus ordering in `docs/issues/index.json`.
 
@@ -20,7 +20,7 @@ This is the canonical human-facing issue registry. Canonical machine-readable re
 
 ## Near-term priorities
 
-1. **[ISSUE-0027](issues/ISSUE-0027.json) (P1, reported)** — Add user credit transfer (positive amounts only) and BYOK OpenAI API-key billing option.
+1. **[ISSUE-0027](issues/ISSUE-0027.json) (P2, reported)** — Add user credit transfer (positive amounts only) and BYOK OpenAI API-key billing option.
 2. **[ISSUE-0026](issues/ISSUE-0026.json) (P1, reported)** — Define next-step community-recorded audio workflow for non-TTS languages.
 3. **[ISSUE-0011](issues/ISSUE-0011.json) (P1, active, deadline 2026-06-01)** — Continue image-based game hardening (curation signals, game-readiness, and feedback loops).
 4. **[ISSUE-0010](issues/ISSUE-0010.json) (P1, active)** — Expand representative legacy corpus imports and batch-tooling readiness.
@@ -66,4 +66,4 @@ This is the canonical human-facing issue registry. Canonical machine-readable re
 | [ISSUE-0024](issues/ISSUE-0024.json) | closed | P3 | Stabilize and verify natural-language search controls on Published Content view. |
 | [ISSUE-0025](issues/ISSUE-0025.json) | reported | P1 | Add systematic UI regression tracking for disappearing controls/content. |
 | [ISSUE-0026](issues/ISSUE-0026.json) | reported | P1 | Define next-step community-recorded audio workflow for non-TTS languages. |
-| [ISSUE-0027](issues/ISSUE-0027.json) | reported | P1 | Add user credit transfer and user-provided OpenAI API key billing option. |
+| [ISSUE-0027](issues/ISSUE-0027.json) | reported | P2 | Add user credit transfer and user-provided OpenAI API key billing option. |
