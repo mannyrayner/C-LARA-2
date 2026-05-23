@@ -67,9 +67,6 @@
     <li>
       <a href="{% url 'project-detail' project.pk %}">{{ project.title }}</a>
       {% if project.is_published %}(published){% endif %}
-      <a class="btn secondary" href="{% url 'project-annotation-home' project.pk %}">Linguistic annotation</a>
-      <a class="btn secondary" href="{% url 'manual-top-level' project.pk %}">Manual annotation</a>
-      <a class="btn secondary" href="{% url 'project-images-home' project.pk %}">Images</a>
       <form method="post" action="{% url 'project-delete' project.pk %}" style="display:inline" onsubmit="return confirm('Delete this project and its artifacts?');">
         {% csrf_token %}
         <button class="btn secondary" type="submit">Delete</button>
