@@ -3653,6 +3653,21 @@ class ProjectListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):  # type: ignore[override]
         context = super().get_context_data(**kwargs)
+        text_language_filter = _normalize_language_filter(str(self.request.GET.get("text_language") or ""))
+        gloss_language_filter = _normalize_language_filter(str(self.request.GET.get("gloss_language") or ""))
+        title_substring_filter = str(self.request.GET.get("title_substring") or "").strip()
+        filtered_projects = list(context["object_list"])
+        if text_language_filter:
+            filtered_projects = [p for p in filtered_projects if (p.language or "").lower().startswith(text_language_filter)]
+        if gloss_language_filter:
+            filtered_projects = [
+                p for p in filtered_projects if (p.target_language or "").lower().startswith(gloss_language_filter)
+            ]
+        if title_substring_filter:
+            needle = title_substring_filter.casefold()
+            filtered_projects = [p for p in filtered_projects if needle in (p.title or "").casefold()]
+        context["object_list"] = filtered_projects
+
         nl_query = (self.request.GET.get("nl_open_query") or "").strip()
         dialogue_language = (self.request.GET.get("dialogue_language") or "").strip()
         if not dialogue_language:
@@ -3717,6 +3732,10 @@ class ProjectListView(LoginRequiredMixin, ListView):
                 "dialogue_language": dialogue_language,
                 "suggested_projects": suggested_projects,
                 "dialogue_language_choices": ProjectForm.LANGUAGE_CHOICES,
+                "text_language_filter": text_language_filter,
+                "gloss_language_filter": gloss_language_filter,
+                "title_substring_filter": title_substring_filter,
+                "project_language_choices": ProjectForm.LANGUAGE_CHOICES,
             }
         )
         return context
