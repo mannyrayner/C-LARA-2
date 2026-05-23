@@ -450,6 +450,8 @@ class CompileStatusViewTests(TestCase):
         resp = self.client.get(reverse("project-annotation-home", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'id="annotation_audio_mode"', html=False)
+        self.assertContains(resp, 'id="annotation_page_image_placement"', html=False)
+        self.assertContains(resp, '<option value="top" selected>top</option>', html=False)
         self.assertContains(resp, "Save audio setting")
         self.assertContains(resp, "No audio / skip TTS")
 
