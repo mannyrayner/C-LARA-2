@@ -58,6 +58,7 @@ from .forms import (
     AdminDeleteCommunityForm,
     AdminAdjustCreditsForm,
     AdminOpenAIPricingForm,
+    CreditTransferForm,
     ClozeExerciseSetForm,
     DeleteCachedWordAudioForm,
     FlashcardExerciseSetForm,
@@ -90,6 +91,7 @@ from .billing import (
     minimum_compile_balance_usd,
     openai_price_for_model,
     record_openai_usage_and_charge,
+    transfer_credits_between_users,
 )
 from .models import (
     Community,
@@ -2623,13 +2625,44 @@ def profile(request: HttpRequest) -> HttpResponse:
     _ensure_bootstrap_admin(request.user)
     profile_obj, _ = Profile.objects.get_or_create(user=request.user)
 
+    transfer_form = CreditTransferForm(sender=request.user)
     if request.method == "POST":
         action = (request.POST.get("memory_action") or "").strip().lower()
+        credit_action = (request.POST.get("credit_action") or "").strip().lower()
         if action == "clear":
             profile_obj.dialogue_memory = {}
             profile_obj.save(update_fields=["dialogue_memory", "updated_at"])
             messages.success(request, "Dialogue memory cleared.")
             return redirect("profile")
+        if credit_action == "transfer":
+            transfer_form = CreditTransferForm(request.POST, sender=request.user)
+            if transfer_form.is_valid():
+                recipient = transfer_form.cleaned_data["recipient"]
+                amount = transfer_form.cleaned_data["amount_usd"]
+                note = (transfer_form.cleaned_data.get("note") or "").strip()
+                description = note or f"Credit transfer from {request.user.username}"
+                try:
+                    sender_entry, _ = transfer_credits_between_users(
+                        sender=request.user,
+                        recipient=recipient,
+                        amount_usd=amount,
+                        description=description,
+                    )
+                except ValueError as exc:
+                    transfer_form.add_error(None, str(exc))
+                else:
+                    messages.success(
+                        request,
+                        f"Transferred ${amount:.4f} to {recipient.username}. "
+                        f"Your new balance is ${sender_entry.balance_after_usd:.4f}.",
+                    )
+                    return redirect("profile")
+            form = ProfileForm(instance=profile_obj)
+            return render(
+                request,
+                "projects/profile_form.html",
+                {"form": form, "credit_transfer_form": transfer_form},
+            )
         form = ProfileForm(request.POST, instance=profile_obj)
         if form.is_valid():
             form.save()
@@ -2638,7 +2671,7 @@ def profile(request: HttpRequest) -> HttpResponse:
     else:
         form = ProfileForm(instance=profile_obj)
 
-    return render(request, "projects/profile_form.html", {"form": form})
+    return render(request, "projects/profile_form.html", {"form": form, "credit_transfer_form": transfer_form})
 
 
 @login_required
@@ -2715,12 +2748,14 @@ def admin_issue_suggestions(request: HttpRequest) -> HttpResponse:
         "Please process the following human issue suggestions collected in the C-LARA-2 platform admin UI.",
         "These suggestions come from user submissions stored at /admin-tools/issue-suggestions/.",
         "Follow guidance in docs/roadmap/issue-tracking-and-human-suggestions.md.",
+        "In particular, follow the section 'Overview file guidance (docs/issues/overview.md)' in that roadmap file.",
         "Use your best judgement to decide how each item should be handled.",
         "Assign a priority to each new-issue suggestion (including very low if a suggestion seems unimportant, incorrect, or out of scope).",
         "If a new-issue suggestion appears well grounded, generally rewrite and clarify it based on your understanding of the docs and codebase.",
         "For update suggestions, update the referenced docs/issues entry or related index/overview files as appropriate.",
         "Prepare output intended for docs/issues; in some cases updating existing docs/issues files may be preferable to adding a new file.",
-        "Also regenerate docs/issues/overview.md per the overview guidance in docs/roadmap/issue-tracking-and-human-suggestions.md.",
+        "Also regenerate docs/issues/overview.md in the new canonical format: timestamp, recent progress, near-term priorities, notes/risks, and a final complete issue inventory for all issues with status.",
+        "Validate that issue statuses in overview.md match docs/issues/issues/*.json before finishing.",
         f"Issue registry context source for existing issues: {issue_choices_source}.",
     ]
     suggestion_lines: list[str] = []
@@ -9492,12 +9527,16 @@ def _extract_image_flashcard_candidates_from_payload(
                     continue
                 seen_entries.add(entry.id)
                 metadata = _exercise_token_metadata(surface, ann)
+                prompt_word = str(entry.surface or surface or "").strip()
+                if not prompt_word:
+                    continue
                 candidates.append(
                     {
                         "page_number": page_number,
                         "segment_index": seg_idx,
                         "token_index": tok_idx,
-                        "source_word": surface,
+                        "source_word": prompt_word,
+                        "source_word_seen_in_text": surface,
                         "target_gloss": translation,
                         "pos": metadata["pos"] or entry.pos,
                         "lexical_category": metadata["lexical_category"],
@@ -9861,6 +9900,126 @@ Return JSON with:
     }
 
 
+async def _generate_form_to_image_flashcard_item(
+    client: OpenAIClient,
+    model: str,
+    theme: str,
+    candidate: dict[str, Any],
+    order_index: int,
+    fallback_values: list[dict[str, Any]],
+) -> dict[str, Any]:
+    source_word = candidate["source_word"]
+    correct_gloss = candidate["target_gloss"]
+    source_pos = str(candidate.get("pos") or "")
+    source_script = str(candidate.get("script") or "")
+    known_metadata = {
+        str(cand.get("source_word") or "").casefold(): cand
+        for cand in fallback_values
+        if cand.get("source_word")
+    }
+    pool_lines = []
+    for cand in fallback_values[:40]:
+        word = str(cand.get("source_word") or "").strip()
+        translation = str(cand.get("target_gloss") or "").strip()
+        pos = str(cand.get("pos") or "").strip()
+        if word and word.casefold() != source_word.casefold():
+            pool_lines.append(f"- {word} | translation: {translation or '[unknown]'} | POS: {pos or '[unknown]'}")
+    prompt = f"""
+Choose exactly 3 WRONG source-language word distractors for a word-to-image flashcard.
+Theme: {theme}
+Correct source-language word: {source_word}
+Correct translation/gloss: {correct_gloss}
+Candidate distractor pool:
+{chr(10).join(pool_lines)}
+Hard constraints:
+- Choose distractors only from the candidate pool.
+- Every distractor must be incorrect for the prompt word.
+- Prefer same broad lexical category/POS and script where possible.
+- Do not return the correct word or close variants.
+Return JSON with:
+- distractors: array of 3 source-language words from the pool
+"""
+    try:
+        data = await client.chat_json(prompt, model=model)
+    except Exception:
+        data = {}
+    distractors = [
+        str(x).strip()
+        for x in (data.get("distractors") or [])
+        if str(x).strip() and str(x).strip().casefold() in known_metadata
+    ]
+    distractors = _append_fallback_distractors(
+        distractors,
+        [{"surface": c.get("source_word", ""), "pos": c.get("pos", ""), "script": c.get("script", "")} for c in fallback_values],
+        forbidden_values={source_word},
+        answer=source_word,
+        answer_pos=source_pos,
+        answer_script=source_script,
+        known_metadata=_image_flashcard_option_metadata(fallback_values),
+    )
+    # Keep only distractors with usable image metadata; this mode requires image-backed options.
+    distractors = [
+        d
+        for d in distractors
+        if d.casefold() in known_metadata
+        and str(known_metadata[d.casefold()].get("image_path") or "").strip()
+    ]
+    options_words = [source_word] + distractors[:3]
+    while len(options_words) < 4:
+        for cand in fallback_values:
+            word = str(cand.get("source_word") or "").strip()
+            if not word or word.casefold() == source_word.casefold():
+                continue
+            if word in options_words:
+                continue
+            if not str(cand.get("image_path") or "").strip():
+                continue
+            options_words.append(word)
+            if len(options_words) >= 4:
+                break
+        if len(options_words) >= 4:
+            break
+        # deterministic hard fallback: reuse known valid dictionary words from pool
+        break
+    options_words = options_words[:4]
+    labels = ["A", "B", "C", "D"]
+    random.Random(f"{source_word}|{candidate.get('image_path')}|{order_index}|form_to_image").shuffle(options_words)
+    label_to_word = {label: word for label, word in zip(labels, options_words)}
+    correct_label = next((k for k, v in label_to_word.items() if v == source_word), labels[0])
+    option_images = {
+        label: {
+            "source_word": word,
+            "image_project_id": known_metadata.get(word.casefold(), {}).get("dictionary_project_id"),
+            "image_path": known_metadata.get(word.casefold(), {}).get("image_path"),
+        }
+        for label, word in label_to_word.items()
+    }
+    trace = {
+        "mode": "form_to_image",
+        "candidate_source_word_seen_in_text": candidate.get("source_word_seen_in_text"),
+        "dictionary_surface": candidate.get("dictionary_surface"),
+        "pool_size": len(fallback_values),
+        "selected_option_words": options_words,
+        "missing_option_images": [w for w in options_words if not option_images.get(next((k for k,v in label_to_word.items() if v==w), ""), {}).get("image_path")],
+    }
+    return {
+        "order_index": order_index,
+        "page_number": candidate["page_number"],
+        "segment_index": candidate["segment_index"],
+        "segment_text": candidate["segment_text"],
+        "prompt": f"Choose the image that matches: {source_word}",
+        "answer": correct_label,
+        "options": labels,
+        "rationale": {
+            "exercise_kind": "form_to_image",
+            "correct_source_word": source_word,
+            "correct_translation": correct_gloss,
+            "option_images": option_images,
+            "trace": trace,
+        },
+    }
+
+
 @login_required
 def generate_cloze_exercises(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
@@ -9956,7 +10115,7 @@ def generate_flashcard_exercises(request: HttpRequest, pk: int) -> HttpResponse:
             item_count = form.cleaned_data["item_count"]
             model = form.cleaned_data.get("ai_model") or project.ai_model or DEFAULT_MODEL
 
-            if flashcard_mode == ExerciseSet.FLASHCARD_MODE_IMAGE_TO_FORM:
+            if flashcard_mode in {ExerciseSet.FLASHCARD_MODE_IMAGE_TO_FORM, ExerciseSet.FLASHCARD_MODE_FORM_TO_IMAGE}:
                 dictionary = _find_project_picture_dictionary(project)
                 if not dictionary:
                     messages.error(
@@ -10022,6 +10181,11 @@ def generate_flashcard_exercises(request: HttpRequest, pk: int) -> HttpResponse:
                         _generate_image_flashcard_item(client, model, theme, cand, idx, fallback_values)
                         for idx, cand in enumerate(selected)
                     ]
+                elif flashcard_mode == ExerciseSet.FLASHCARD_MODE_FORM_TO_IMAGE:
+                    tasks = [
+                        _generate_form_to_image_flashcard_item(client, model, theme, cand, idx, candidates)
+                        for idx, cand in enumerate(selected)
+                    ]
                 else:
                     tasks = [
                         _generate_flashcard_item(client, model, theme, cand, idx, flashcard_mode, fallback_values)
@@ -10076,6 +10240,40 @@ def exercise_item_image(request: HttpRequest, item_id: int) -> HttpResponse:
     rationale = item.rationale if isinstance(item.rationale, dict) else {}
     image_project_id = rationale.get("image_project_id")
     image_path = str(rationale.get("image_path") or "").strip()
+    if not image_project_id or not image_path:
+        raise Http404()
+    image_project = get_object_or_404(Project, pk=image_project_id)
+    base = image_project.artifact_dir().resolve()
+    file_path = (base / image_path).resolve()
+    try:
+        file_path.relative_to(base)
+    except ValueError:
+        raise Http404()
+    if not file_path.exists() or not file_path.is_file():
+        raise Http404()
+    content_type, _ = mimetypes.guess_type(str(file_path))
+    return FileResponse(open(file_path, "rb"), content_type=content_type or "application/octet-stream")
+
+
+@login_required
+def exercise_item_option_image(request: HttpRequest, item_id: int, option_key: str) -> HttpResponse:
+    item = get_object_or_404(
+        ExerciseItem.objects.select_related("exercise_set", "exercise_set__project"),
+        pk=item_id,
+    )
+    ex_set = item.exercise_set
+    project = ex_set.project
+    if project.owner != request.user and not ex_set.is_published:
+        raise Http404()
+    rationale = item.rationale if isinstance(item.rationale, dict) else {}
+    option_images = rationale.get("option_images")
+    if not isinstance(option_images, dict):
+        raise Http404()
+    payload = option_images.get(option_key)
+    if not isinstance(payload, dict):
+        raise Http404()
+    image_project_id = payload.get("image_project_id")
+    image_path = str(payload.get("image_path") or "").strip()
     if not image_project_id or not image_path:
         raise Http404()
     image_project = get_object_or_404(Project, pk=image_project_id)
