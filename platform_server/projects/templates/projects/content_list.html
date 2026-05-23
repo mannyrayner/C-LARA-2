@@ -46,6 +46,14 @@
       {% endfor %}
     </select>
   </p>
+  <p>
+    <label for="level">Level:</label>
+    <select id="level" name="level">
+      {% for value, label in level_options %}
+        <option value="{{ value }}" {% if filters.level == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </p>
   <p><button class="btn" type="submit">Apply filters</button></p>
 </form>
 
