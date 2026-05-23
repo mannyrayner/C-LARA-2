@@ -16,7 +16,13 @@
     <p><strong>{{ item.prompt }}</strong></p>
     <ul>
       {% for opt in item.options %}
-        <li>{{ opt }}{% if opt == item.answer %} ✅{% endif %}</li>
+        <li>
+          {{ opt }}{% if opt == item.answer %} ✅{% endif %}
+          {% if item.rationale.exercise_kind == "form_to_image" %}
+            <br />
+            <img src="{% url 'exercise-item-option-image' item.id opt %}" alt="Option image {{ opt }}" style="max-width: 220px; height: auto;" />
+          {% endif %}
+        </li>
       {% endfor %}
     </ul>
   </li>

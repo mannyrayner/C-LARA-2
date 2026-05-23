@@ -9896,6 +9896,93 @@ Return JSON with:
     }
 
 
+async def _generate_form_to_image_flashcard_item(
+    client: OpenAIClient,
+    model: str,
+    theme: str,
+    candidate: dict[str, Any],
+    order_index: int,
+    fallback_values: list[dict[str, Any]],
+) -> dict[str, Any]:
+    source_word = candidate["source_word"]
+    correct_gloss = candidate["target_gloss"]
+    source_pos = str(candidate.get("pos") or "")
+    source_script = str(candidate.get("script") or "")
+    known_metadata = {
+        str(cand.get("source_word") or "").casefold(): cand for cand in fallback_values if cand.get("source_word")
+    }
+    pool_lines = []
+    for cand in fallback_values[:40]:
+        word = str(cand.get("source_word") or "").strip()
+        translation = str(cand.get("target_gloss") or "").strip()
+        pos = str(cand.get("pos") or "").strip()
+        if word and word.casefold() != source_word.casefold():
+            pool_lines.append(f"- {word} | translation: {translation or '[unknown]'} | POS: {pos or '[unknown]'}")
+    prompt = f"""
+Choose exactly 3 WRONG source-language word distractors for a word-to-image flashcard.
+Theme: {theme}
+Correct source-language word: {source_word}
+Correct translation/gloss: {correct_gloss}
+Candidate distractor pool:
+{chr(10).join(pool_lines)}
+Hard constraints:
+- Choose distractors only from the candidate pool.
+- Every distractor must be incorrect for the prompt word.
+- Prefer same broad lexical category/POS and script where possible.
+- Do not return the correct word or close variants.
+Return JSON with:
+- distractors: array of 3 source-language words from the pool
+"""
+    try:
+        data = await client.chat_json(prompt, model=model)
+    except Exception:
+        data = {}
+    distractors = [
+        str(x).strip()
+        for x in (data.get("distractors") or [])
+        if str(x).strip() and str(x).strip().casefold() in known_metadata
+    ]
+    distractors = _append_fallback_distractors(
+        distractors,
+        [{"surface": c.get("source_word", ""), "pos": c.get("pos", ""), "script": c.get("script", "")} for c in fallback_values],
+        forbidden_values={source_word},
+        answer=source_word,
+        answer_pos=source_pos,
+        answer_script=source_script,
+        known_metadata=_image_flashcard_option_metadata(fallback_values),
+    )
+    options_words = [source_word] + distractors[:3]
+    while len(options_words) < 4:
+        options_words.append(f"option {len(options_words)}")
+    labels = ["A", "B", "C", "D"]
+    random.Random(f"{source_word}|{candidate.get('image_path')}|{order_index}|form_to_image").shuffle(options_words)
+    label_to_word = {label: word for label, word in zip(labels, options_words)}
+    correct_label = next((k for k, v in label_to_word.items() if v == source_word), labels[0])
+    option_images = {
+        label: {
+            "source_word": word,
+            "image_project_id": known_metadata.get(word.casefold(), {}).get("dictionary_project_id"),
+            "image_path": known_metadata.get(word.casefold(), {}).get("image_path"),
+        }
+        for label, word in label_to_word.items()
+    }
+    return {
+        "order_index": order_index,
+        "page_number": candidate["page_number"],
+        "segment_index": candidate["segment_index"],
+        "segment_text": candidate["segment_text"],
+        "prompt": f"Choose the image that matches: {source_word}",
+        "answer": correct_label,
+        "options": labels,
+        "rationale": {
+            "exercise_kind": "form_to_image",
+            "correct_source_word": source_word,
+            "correct_translation": correct_gloss,
+            "option_images": option_images,
+        },
+    }
+
+
 @login_required
 def generate_cloze_exercises(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
@@ -9991,7 +10078,7 @@ def generate_flashcard_exercises(request: HttpRequest, pk: int) -> HttpResponse:
             item_count = form.cleaned_data["item_count"]
             model = form.cleaned_data.get("ai_model") or project.ai_model or DEFAULT_MODEL
 
-            if flashcard_mode == ExerciseSet.FLASHCARD_MODE_IMAGE_TO_FORM:
+            if flashcard_mode in {ExerciseSet.FLASHCARD_MODE_IMAGE_TO_FORM, ExerciseSet.FLASHCARD_MODE_FORM_TO_IMAGE}:
                 dictionary = _find_project_picture_dictionary(project)
                 if not dictionary:
                     messages.error(
@@ -10057,6 +10144,11 @@ def generate_flashcard_exercises(request: HttpRequest, pk: int) -> HttpResponse:
                         _generate_image_flashcard_item(client, model, theme, cand, idx, fallback_values)
                         for idx, cand in enumerate(selected)
                     ]
+                elif flashcard_mode == ExerciseSet.FLASHCARD_MODE_FORM_TO_IMAGE:
+                    tasks = [
+                        _generate_form_to_image_flashcard_item(client, model, theme, cand, idx, candidates)
+                        for idx, cand in enumerate(selected)
+                    ]
                 else:
                     tasks = [
                         _generate_flashcard_item(client, model, theme, cand, idx, flashcard_mode, fallback_values)
@@ -10111,6 +10203,40 @@ def exercise_item_image(request: HttpRequest, item_id: int) -> HttpResponse:
     rationale = item.rationale if isinstance(item.rationale, dict) else {}
     image_project_id = rationale.get("image_project_id")
     image_path = str(rationale.get("image_path") or "").strip()
+    if not image_project_id or not image_path:
+        raise Http404()
+    image_project = get_object_or_404(Project, pk=image_project_id)
+    base = image_project.artifact_dir().resolve()
+    file_path = (base / image_path).resolve()
+    try:
+        file_path.relative_to(base)
+    except ValueError:
+        raise Http404()
+    if not file_path.exists() or not file_path.is_file():
+        raise Http404()
+    content_type, _ = mimetypes.guess_type(str(file_path))
+    return FileResponse(open(file_path, "rb"), content_type=content_type or "application/octet-stream")
+
+
+@login_required
+def exercise_item_option_image(request: HttpRequest, item_id: int, option_key: str) -> HttpResponse:
+    item = get_object_or_404(
+        ExerciseItem.objects.select_related("exercise_set", "exercise_set__project"),
+        pk=item_id,
+    )
+    ex_set = item.exercise_set
+    project = ex_set.project
+    if project.owner != request.user and not ex_set.is_published:
+        raise Http404()
+    rationale = item.rationale if isinstance(item.rationale, dict) else {}
+    option_images = rationale.get("option_images")
+    if not isinstance(option_images, dict):
+        raise Http404()
+    payload = option_images.get(option_key)
+    if not isinstance(payload, dict):
+        raise Http404()
+    image_project_id = payload.get("image_project_id")
+    image_path = str(payload.get("image_path") or "").strip()
     if not image_project_id or not image_path:
         raise Http404()
     image_project = get_object_or_404(Project, pk=image_project_id)

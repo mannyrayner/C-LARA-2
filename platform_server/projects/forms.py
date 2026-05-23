@@ -316,6 +316,7 @@ class FlashcardExerciseSetForm(forms.Form):
         ("form_to_meaning", "Form → meaning"),
         ("meaning_to_form", "Meaning → form"),
         ("image_to_form", "Image → form (picture dictionary)"),
+        ("form_to_image", "Form → image (picture dictionary)"),
     ]
 
     theme = forms.ChoiceField(
