@@ -15,6 +15,7 @@ class BillingPhaseATests(TestCase):
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(username="billing_user", password="pw")
+        self.recipient = User.objects.create_user(username="billing_recipient", password="pw")
         self.admin = User.objects.create_user(username="billing_admin", password="pw", is_staff=True)
         self.project = Project.objects.create(
             owner=self.user,
@@ -55,6 +56,45 @@ class BillingPhaseATests(TestCase):
         self.assertEqual(entry.entry_type, CreditLedgerEntry.ENTRY_ADMIN_ADJUST)
         self.assertEqual(str(entry.amount_usd), "3.2500")
         self.assertEqual(entry.metadata.get("admin_user_id"), self.admin.id)
+
+    def test_user_can_transfer_positive_credits_to_another_user(self):
+        self.client.login(username="billing_admin", password="pw")
+        self.client.post(
+            reverse("admin-tools"),
+            {"action": "adjust_credits", "user": self.user.pk, "amount_usd": "5.0000", "reason": "Seed credits"},
+            follow=True,
+        )
+        self.client.login(username="billing_user", password="pw")
+        resp = self.client.post(
+            reverse("profile"),
+            {
+                "credit_action": "transfer",
+                "recipient": self.recipient.pk,
+                "amount_usd": "1.2500",
+                "note": "Kok Kaper support",
+            },
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Transferred $1.2500 to billing_recipient")
+        self.assertEqual(str(get_user_balance_usd(self.user)), "3.7500")
+        self.assertEqual(str(get_user_balance_usd(self.recipient)), "1.2500")
+        sender_entry = CreditLedgerEntry.objects.filter(user=self.user).latest("created_at")
+        recipient_entry = CreditLedgerEntry.objects.filter(user=self.recipient).latest("created_at")
+        self.assertEqual(sender_entry.entry_type, CreditLedgerEntry.ENTRY_TRANSFER_OUT)
+        self.assertEqual(recipient_entry.entry_type, CreditLedgerEntry.ENTRY_TRANSFER_IN)
+
+    def test_user_cannot_transfer_more_than_available_balance(self):
+        self.client.login(username="billing_user", password="pw")
+        resp = self.client.post(
+            reverse("profile"),
+            {"credit_action": "transfer", "recipient": self.recipient.pk, "amount_usd": "0.5000", "note": ""},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Insufficient balance for transfer.")
+        self.assertEqual(str(get_user_balance_usd(self.user)), "0.0000")
+        self.assertEqual(str(get_user_balance_usd(self.recipient)), "0.0000")
 
     def test_usage_charge_updates_project_total_and_request_type_breakdown(self):
         self.client.login(username="billing_admin", password="pw")

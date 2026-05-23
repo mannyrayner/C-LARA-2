@@ -58,6 +58,7 @@ from .forms import (
     AdminDeleteCommunityForm,
     AdminAdjustCreditsForm,
     AdminOpenAIPricingForm,
+    CreditTransferForm,
     ClozeExerciseSetForm,
     DeleteCachedWordAudioForm,
     FlashcardExerciseSetForm,
@@ -90,6 +91,7 @@ from .billing import (
     minimum_compile_balance_usd,
     openai_price_for_model,
     record_openai_usage_and_charge,
+    transfer_credits_between_users,
 )
 from .models import (
     Community,
@@ -2623,13 +2625,44 @@ def profile(request: HttpRequest) -> HttpResponse:
     _ensure_bootstrap_admin(request.user)
     profile_obj, _ = Profile.objects.get_or_create(user=request.user)
 
+    transfer_form = CreditTransferForm(sender=request.user)
     if request.method == "POST":
         action = (request.POST.get("memory_action") or "").strip().lower()
+        credit_action = (request.POST.get("credit_action") or "").strip().lower()
         if action == "clear":
             profile_obj.dialogue_memory = {}
             profile_obj.save(update_fields=["dialogue_memory", "updated_at"])
             messages.success(request, "Dialogue memory cleared.")
             return redirect("profile")
+        if credit_action == "transfer":
+            transfer_form = CreditTransferForm(request.POST, sender=request.user)
+            if transfer_form.is_valid():
+                recipient = transfer_form.cleaned_data["recipient"]
+                amount = transfer_form.cleaned_data["amount_usd"]
+                note = (transfer_form.cleaned_data.get("note") or "").strip()
+                description = note or f"Credit transfer from {request.user.username}"
+                try:
+                    sender_entry, _ = transfer_credits_between_users(
+                        sender=request.user,
+                        recipient=recipient,
+                        amount_usd=amount,
+                        description=description,
+                    )
+                except ValueError as exc:
+                    transfer_form.add_error(None, str(exc))
+                else:
+                    messages.success(
+                        request,
+                        f"Transferred ${amount:.4f} to {recipient.username}. "
+                        f"Your new balance is ${sender_entry.balance_after_usd:.4f}.",
+                    )
+                    return redirect("profile")
+            form = ProfileForm(instance=profile_obj)
+            return render(
+                request,
+                "projects/profile_form.html",
+                {"form": form, "credit_transfer_form": transfer_form},
+            )
         form = ProfileForm(request.POST, instance=profile_obj)
         if form.is_valid():
             form.save()
@@ -2638,7 +2671,7 @@ def profile(request: HttpRequest) -> HttpResponse:
     else:
         form = ProfileForm(instance=profile_obj)
 
-    return render(request, "projects/profile_form.html", {"form": form})
+    return render(request, "projects/profile_form.html", {"form": form, "credit_transfer_form": transfer_form})
 
 
 @login_required
@@ -2715,12 +2748,14 @@ def admin_issue_suggestions(request: HttpRequest) -> HttpResponse:
         "Please process the following human issue suggestions collected in the C-LARA-2 platform admin UI.",
         "These suggestions come from user submissions stored at /admin-tools/issue-suggestions/.",
         "Follow guidance in docs/roadmap/issue-tracking-and-human-suggestions.md.",
+        "In particular, follow the section 'Overview file guidance (docs/issues/overview.md)' in that roadmap file.",
         "Use your best judgement to decide how each item should be handled.",
         "Assign a priority to each new-issue suggestion (including very low if a suggestion seems unimportant, incorrect, or out of scope).",
         "If a new-issue suggestion appears well grounded, generally rewrite and clarify it based on your understanding of the docs and codebase.",
         "For update suggestions, update the referenced docs/issues entry or related index/overview files as appropriate.",
         "Prepare output intended for docs/issues; in some cases updating existing docs/issues files may be preferable to adding a new file.",
-        "Also regenerate docs/issues/overview.md per the overview guidance in docs/roadmap/issue-tracking-and-human-suggestions.md.",
+        "Also regenerate docs/issues/overview.md in the new canonical format: timestamp, recent progress, near-term priorities, notes/risks, and a final complete issue inventory for all issues with status.",
+        "Validate that issue statuses in overview.md match docs/issues/issues/*.json before finishing.",
         f"Issue registry context source for existing issues: {issue_choices_source}.",
     ]
     suggestion_lines: list[str] = []

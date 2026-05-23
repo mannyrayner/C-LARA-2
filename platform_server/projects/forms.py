@@ -374,6 +374,25 @@ class AdminAdjustCreditsForm(forms.Form):
         return value
 
 
+class CreditTransferForm(forms.Form):
+    recipient = forms.ModelChoiceField(queryset=User.objects.none(), label="Recipient")
+    amount_usd = forms.DecimalField(
+        max_digits=12,
+        decimal_places=4,
+        min_value=Decimal("0.0001"),
+        label="Amount (USD)",
+        help_text="Transfer amount must be positive.",
+    )
+    note = forms.CharField(max_length=255, required=False, label="Note (optional)")
+
+    def __init__(self, *args, sender=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        qs = User.objects.order_by("username")
+        if sender is not None and getattr(sender, "pk", None):
+            qs = qs.exclude(pk=sender.pk)
+        self.fields["recipient"].queryset = qs
+
+
 class AdminOpenAIPricingForm(forms.ModelForm):
     class Meta:
         model = OpenAIModelPricing

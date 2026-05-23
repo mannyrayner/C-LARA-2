@@ -157,9 +157,13 @@ class CreditAccount(models.Model):
 class CreditLedgerEntry(models.Model):
     ENTRY_USAGE = "usage"
     ENTRY_ADMIN_ADJUST = "admin_adjust"
+    ENTRY_TRANSFER_OUT = "transfer_out"
+    ENTRY_TRANSFER_IN = "transfer_in"
     ENTRY_CHOICES = [
         (ENTRY_USAGE, "Usage charge"),
         (ENTRY_ADMIN_ADJUST, "Admin adjustment"),
+        (ENTRY_TRANSFER_OUT, "Transfer sent"),
+        (ENTRY_TRANSFER_IN, "Transfer received"),
     ]
 
     user = models.ForeignKey(

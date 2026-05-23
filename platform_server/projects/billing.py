@@ -71,6 +71,52 @@ def apply_credit_delta(
     )
 
 
+@transaction.atomic
+def transfer_credits_between_users(
+    *,
+    sender: Any,
+    recipient: Any,
+    amount_usd: Decimal,
+    description: str,
+) -> tuple[CreditLedgerEntry, CreditLedgerEntry]:
+    amount = _quantize_4(Decimal(amount_usd))
+    if amount <= Decimal("0"):
+        raise ValueError("Transfer amount must be positive.")
+    if sender.id == recipient.id:
+        raise ValueError("Cannot transfer credits to yourself.")
+
+    sender_account, _ = CreditAccount.objects.select_for_update().get_or_create(user=sender)
+    recipient_account, _ = CreditAccount.objects.select_for_update().get_or_create(user=recipient)
+    if Decimal(sender_account.balance_usd) < amount:
+        raise ValueError("Insufficient balance for transfer.")
+
+    sender_new_balance = _quantize_4(Decimal(sender_account.balance_usd) - amount)
+    recipient_new_balance = _quantize_4(Decimal(recipient_account.balance_usd) + amount)
+    sender_account.balance_usd = sender_new_balance
+    recipient_account.balance_usd = recipient_new_balance
+    sender_account.save(update_fields=["balance_usd", "updated_at"])
+    recipient_account.save(update_fields=["balance_usd", "updated_at"])
+
+    common_metadata = {"counterparty_user_id": recipient.id, "sender_user_id": sender.id}
+    sender_entry = CreditLedgerEntry.objects.create(
+        user=sender,
+        entry_type=CreditLedgerEntry.ENTRY_TRANSFER_OUT,
+        amount_usd=-amount,
+        balance_after_usd=sender_new_balance,
+        description=description[:255],
+        metadata=common_metadata,
+    )
+    recipient_entry = CreditLedgerEntry.objects.create(
+        user=recipient,
+        entry_type=CreditLedgerEntry.ENTRY_TRANSFER_IN,
+        amount_usd=amount,
+        balance_after_usd=recipient_new_balance,
+        description=description[:255],
+        metadata={"counterparty_user_id": sender.id, "recipient_user_id": recipient.id},
+    )
+    return sender_entry, recipient_entry
+
+
 def _settings_openai_price_table() -> dict[str, dict[str, Decimal]]:
     raw = getattr(settings, "OPENAI_TOKEN_PRICING_USD_PER_1M", {})
     table: dict[str, dict[str, Decimal]] = {}

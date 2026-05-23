@@ -127,7 +127,10 @@ Properties:
    - updates focus-index membership/order,
    - removes closed issues from the active focus index,
    - writes an index snapshot to `docs/issues/index-archive/` when focus priorities change,
+   - consolidates issue summaries into `docs/issues/overview.md` as the single canonical human-facing registry (retiring `docs/issues/index.md`),
+   - if `docs/issues/index.md` still exists, replaces it with a short pointer to `overview.md` during migration and then deletes it in the follow-up cleanup PR,
    - regenerates `docs/issues/overview.md`, including a completed-issues section ordered by completion date with most recent completions first,
+   - verifies status correctness against per-issue JSON before writing the overview (for example, do not mark a closed issue like `ISSUE-0019` as open),
    - merges duplicates,
    - records rationale in notes/changelog.
 5. Codex also refreshes `docs/issues/overview.md` so humans can quickly understand:
@@ -139,7 +142,7 @@ Properties:
 
 ### Overview file guidance (`docs/issues/overview.md`)
 
-The overview file is a human-facing summary (Markdown preferred) regenerated periodically by Codex.
+The overview file is the single canonical human-facing issue registry (Markdown preferred) regenerated periodically by Codex. `docs/issues/index.md` is transitional only and should be removed after its content is merged or replaced by a one-line pointer during migration.
 
 Recommended structure:
 
@@ -147,6 +150,15 @@ Recommended structure:
 - Short "Recent progress" section (bullet points, concise, action-oriented).
 - "Near-term priorities" section ordered by urgency/importance.
 - Optional "Notes/risks" section for blockers, dependencies, or uncertainty.
+- Required final "Complete issue inventory" section listing **all** known issues with one-line summaries and current status.
+
+
+Additional consistency rules for Codex updates:
+
+- Always compute overview status values from canonical issue JSON fields (`state`, `updated_at`, and closure metadata where present), not from previous overview prose.
+- Run a pre-commit validation pass that checks for state mismatches between `docs/issues/issues/*.json` and `docs/issues/overview.md`.
+- If a mismatch is found, treat JSON as source of truth and regenerate the corresponding overview entry.
+- In the PR description/changelog, include an explicit "status corrections" subsection when any issue state is changed in the overview without underlying JSON changes.
 
 Authoring guidance for Codex:
 
