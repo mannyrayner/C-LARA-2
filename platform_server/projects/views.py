@@ -7781,6 +7781,13 @@ def content_list(request: HttpRequest) -> HttpResponse:
                 "date_posted": manual_date_posted,
                 "level": manual_level,
             },
+            "simple_filters": {
+                "title": manual_title,
+                "text_language": manual_text_language,
+                "annotation_language": manual_annotation_language,
+                "date_posted": manual_date_posted,
+                "level": manual_level,
+            },
             "nl_plan": nl_plan,
             "dialogue_language_choices": ProjectForm.LANGUAGE_CHOICES,
             "language_choices": ProjectForm.LANGUAGE_CHOICES,
@@ -8812,6 +8819,13 @@ def content_list(request: HttpRequest) -> HttpResponse:
                 "nl_query": nl_query,
                 "dialogue_language": dialogue_language,
                 "level": level,
+            },
+            "simple_filters": {
+                "title": manual_title,
+                "text_language": manual_text_language,
+                "annotation_language": manual_annotation_language,
+                "date_posted": manual_date_posted,
+                "level": manual_level,
             },
             "simple_filters": {
                 "title": manual_title,
