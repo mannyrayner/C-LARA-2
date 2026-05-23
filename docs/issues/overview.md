@@ -1,43 +1,44 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-19T23:44:24Z_
+_Last updated: 2026-05-23T00:25:47Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
 ## Recent progress
 
-- **[ISSUE-0008](issues/ISSUE-0008.json)** has been refreshed from a new human suggestion about publication planning. The suggestion was treated as an **update to existing scope** (not a new issue), since publication strategy is already tracked in ISSUE-0008 and [`docs/roadmap/reports-and-papers.md`](../roadmap/reports-and-papers.md).
-- The publication roadmap now explicitly treats all three near-term outputs as active coordinated targets: (1) initial technical report (mid-June 2026), (2) accepted EuroCALL 2026 paper (mid-August 2026), and (3) ALTA 2026 paper (mid-September 2026).
-- The roadmap now explicitly requires that the writing workflow be documented in the publications themselves: drafts are produced through the C-LARA-2 issue-suggestion loop (Codex authorship with human steering/review), with auditable repository traces.
-- **[ISSUE-0017](issues/ISSUE-0017.json)** remains the current page-image umbrella issue, with ISSUE-0007 kept as a linked prompt-indirection subproblem.
-- **[ISSUE-0016](issues/ISSUE-0016.json)** remains active after Phase A no-audio/skip-TTS delivery; the community-recorded dictionary extension remains pending.
+- Added **[ISSUE-0023](issues/ISSUE-0023.json)** from a new human suggestion to restore manual project-list filters (substring + text/gloss language menus) while keeping natural-language search as the primary UX.
+- **[ISSUE-0014](issues/ISSUE-0014.json)** has been closed based on human update suggestion #7; further AWS rollout problems should be tracked as focused new issues.
+- **[ISSUE-0017](issues/ISSUE-0017.json)** has been closed based on human update suggestion #8; future page-image regressions/enhancements should be tracked as specific new issues.
+- **[ISSUE-0022](issues/ISSUE-0022.json)** remains closed after confirmed resolution of large ZIP upload limits on AWS.
 
 ## Near-term priorities
 
-1. **[ISSUE-0014](issues/ISSUE-0014.json) (P1)** — Continue AWS operational readiness work: configure AWS Budgets/alerts, monitor service-level EC2/RDS cost breakdowns, estimate monthly run-rate under beta usage, and review whether EC2/RDS resources can be right-sized or scheduled before C-LARA-2 is opened to more users.
-2. **[ISSUE-0016](issues/ISSUE-0016.json) (P1, active, deadline 2026-06-01)** — Validate the no-audio/skip-TTS fallback with Kok Kaper material, then design and implement the follow-up community-recorded audio dictionary for surface words and segments.
+1. **[ISSUE-0016](issues/ISSUE-0016.json) (P1, active, deadline 2026-06-01)** — Validate the no-audio/skip-TTS fallback with Kok Kaper material, then design and implement the follow-up community-recorded audio dictionary for surface words and segments.
+2. **[ISSUE-0023](issues/ISSUE-0023.json) (P2)** — Reintroduce manual controls on "Your projects" (case-insensitive substring + text/gloss language menus) while preserving natural-language search as the recommended default.
 3. **[ISSUE-0003](issues/ISSUE-0003.json) (P1)** — Add an efficient end-to-end pipeline test runner; first target legacy-vs-C-LARA-2 comparisons over the imported corpus from ISSUE-0010, with AI-assisted gross-difference review where exact matching is inappropriate.
 4. **[ISSUE-0011](issues/ISSUE-0011.json) (P1, active, deadline 2026-06-01)** — Continue the Kok Kaper image-game fast path after the seed dictionary and first image→word flashcards: validate/curate game-ready entries, then add word→image play and feedback/reporting for image/card problems.
-5. **[ISSUE-0017](issues/ISSUE-0017.json) (P1)** — Implement the page-image improvements roadmap: show source/translation context in community review, use preferred page images in compile, add additive/subset regeneration, feed community suggestions into prompt indirection, and harden organiser review/regeneration workflows.
-6. **[ISSUE-0010](issues/ISSUE-0010.json) (P1)** — Import and triage a representative legacy C-LARA corpus from the Adelaide material now reaching C-LARA-2 on AWS; include known divergence checks before growing into multi-bundle batch import with heartbeat progress.
-7. **[ISSUE-0013](issues/ISSUE-0013.json) (P1)** — Implement the efficiency roadmap: centralize stage-artifact read/write operations, benchmark JSON against faster formats, record read/write timings, and keep trusted admin-only binary migration experiments separate from untrusted user uploads.
-8. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, deadline 2026-06-15)** — Deliver the internal technical report and derive the EuroCALL (mid-August 2026) and ALTA (mid-September 2026) papers, while explicitly documenting the issues-driven Codex+human workflow used to produce them.
-9. **[ISSUE-0006](issues/ISSUE-0006.json) (P2)** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness, preferably using ISSUE-0003 diagnostics where possible.
-10. **[ISSUE-0005](issues/ISSUE-0005.json) (P2)** — Tune segmentation_phase_1 prompting so prose and poetry segment granularity better matches expected legacy behavior.
-11. **[ISSUE-0004](issues/ISSUE-0004.json) (P2)** — Introduce AI-based review gates with a pluggable evaluator architecture after the test-runner foundation is available.
-12. **[ISSUE-0007](issues/ISSUE-0007.json) (P2)** — Implement LLM prompt-construction indirection for page-image generation prompts as a component of ISSUE-0017.
-13. **[ISSUE-0001](issues/ISSUE-0001.json) (P2)** — Support registration of hosted compiled legacy content in C-LARA-2; use the same AWS staging/rsync runbook and the imported C-LARA corpus as complementary test material.
-14. **[ISSUE-0012](issues/ISSUE-0012.json) (P2)** — Adjust project creation defaults for AI text generation and top page-image placement.
+5. **[ISSUE-0010](issues/ISSUE-0010.json) (P1)** — Import and triage a representative legacy C-LARA corpus from the Adelaide material now reaching C-LARA-2 on AWS; include known divergence checks before growing into multi-bundle batch import with heartbeat progress.
+6. **[ISSUE-0013](issues/ISSUE-0013.json) (P1)** — Implement the efficiency roadmap: centralize stage-artifact read/write operations, benchmark JSON against faster formats, record read/write timings, and keep trusted admin-only binary migration experiments separate from untrusted user uploads.
+7. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, deadline 2026-06-15)** — Deliver the internal technical report and derive the EuroCALL (mid-August 2026) and ALTA (mid-September 2026) papers, while explicitly documenting the issues-driven Codex+human workflow used to produce them.
+8. **[ISSUE-0006](issues/ISSUE-0006.json) (P2)** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness, preferably using ISSUE-0003 diagnostics where possible.
+9. **[ISSUE-0005](issues/ISSUE-0005.json) (P2)** — Tune segmentation_phase_1 prompting so prose and poetry segment granularity better matches expected legacy behavior.
+10. **[ISSUE-0004](issues/ISSUE-0004.json) (P2)** — Introduce AI-based review gates with a pluggable evaluator architecture after the test-runner foundation is available.
+11. **[ISSUE-0007](issues/ISSUE-0007.json) (P2)** — Implement LLM prompt-construction indirection for page-image generation prompts as a component of page-image workflows.
+12. **[ISSUE-0001](issues/ISSUE-0001.json) (P2)** — Support registration of hosted compiled legacy content in C-LARA-2.
+13. **[ISSUE-0012](issues/ISSUE-0012.json) (P2)** — Adjust project creation defaults for AI text generation and top page-image placement.
 
 ## Completed issues
 
-1. **[ISSUE-0015](issues/ISSUE-0015.json) (completed 2026-05-18)** — Let community organisers add existing users as ordinary community members, list memberships, and remove ordinary members while keeping organiser-role changes protected.
-2. **[ISSUE-0002](issues/ISSUE-0002.json) (completed 2026-05-09)** — Support migration of legacy C-LARA projects into C-LARA-2 through direct import of supported legacy JSON export ZIP bundles.
-3. **[ISSUE-0009](issues/ISSUE-0009.json) (completed 2026-05-06)** — Auto-regenerate and validate source project bundle stage artifacts before export/import.
+1. **[ISSUE-0017](issues/ISSUE-0017.json) (completed 2026-05-23)** — Page-image generation/review/regeneration umbrella work considered complete for current scope.
+2. **[ISSUE-0014](issues/ISSUE-0014.json) (completed 2026-05-23)** — AWS service-limit audit/adjustment considered complete for current rollout scope.
+3. **[ISSUE-0022](issues/ISSUE-0022.json) (completed 2026-05-22)** — Resolved large ZIP import failures on AWS using deployment-and-migration guidance.
+4. **[ISSUE-0019](issues/ISSUE-0019.json) (completed 2026-05-22)** — Favicon confirmed to display correctly on AWS deployment.
+5. **[ISSUE-0018](issues/ISSUE-0018.json) (completed 2026-05-20)** — Use canonical `main`-branch issue registry data during issue-suggestion processing.
+6. **[ISSUE-0015](issues/ISSUE-0015.json) (completed 2026-05-18)** — Community organiser membership management.
+7. **[ISSUE-0002](issues/ISSUE-0002.json) (completed 2026-05-09)** — Legacy project migration import support.
+8. **[ISSUE-0009](issues/ISSUE-0009.json) (completed 2026-05-06)** — Auto-regenerate and validate source project bundle artifacts.
 
 ## Notes and risks
 
-- **Publication scope cohesion:** publication planning remains in ISSUE-0008 rather than being split into multiple fragmented issues; this keeps deadlines and cross-paper dependencies in one place.
-- **Methodology claim risk:** because the papers intend to foreground issues-driven Codex authorship, claims about process quality must stay tightly aligned with concrete repo evidence (issues, roadmap diffs, tests, and review trail).
-- **ALTA scope drift:** the ALTA paper is now treated as a concrete target with a mid-September 2026 date; scope should stay focused on implementor-facing engineering methodology to avoid duplicating EuroCALL content.
-- **Page-image roadmap scope:** ISSUE-0017 is intentionally broader than ISSUE-0007. Prompt indirection is one requirement; the full page-image workflow also needs additive variant generation, subset regeneration, review context, organiser preferred-image decisions, and compile-time preferred-image selection.
+- Closing broad umbrella issues (ISSUE-0014, ISSUE-0017) reduces active noise, but new concrete regressions should be opened promptly as narrowly scoped follow-ups.
+- Publication scope cohesion remains important in ISSUE-0008 as deadlines approach.
