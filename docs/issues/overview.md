@@ -1,11 +1,12 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-23T00:00:00Z_
+_Last updated: 2026-05-23T05:00:00Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
 ## Recent progress
 
+- Closed **[ISSUE-0024](issues/ISSUE-0024.json)** after follow-up user confirmation that `/content/` natural-language controls and invocation now work well.
 - Added **[ISSUE-0020](issues/ISSUE-0020.json)** from human suggestion #11, covering picture-dictionary compile improvements: clearer organiser feedback during image generation, low-resource partial-pipeline placeholder artifacts, and direct handoff links to manual annotation.
 - Added (or restored as canonical JSON in-repo) **[ISSUE-0019](issues/ISSUE-0019.json)** from human suggestion #10 to track AWS favicon reliability separately from broader infrastructure work.
 - Community review/regeneration UX work under **[ISSUE-0017](issues/ISSUE-0017.json)** continues to converge, with member-side “show only unjudged” behavior now validated by user feedback; organiser-side filter-focused display remains active iteration work.
@@ -25,10 +26,11 @@ This document summarizes the current issue registry for quick human review. Cano
 
 ## Completed issues
 
-1. **[ISSUE-0023](issues/ISSUE-0023.json) (completed 2026-05-23)** — Manual segmentation phase 1 now works for imported dictionary projects that have segmentation artifacts but blank source text.
-2. **[ISSUE-0015](issues/ISSUE-0015.json) (completed 2026-05-18)** — Community organisers can add/remove ordinary community members in organiser UI.
-3. **[ISSUE-0002](issues/ISSUE-0002.json) (completed 2026-05-09)** — Legacy C-LARA ZIP import migration path implemented.
-4. **[ISSUE-0009](issues/ISSUE-0009.json) (completed 2026-05-06)** — Export/import now auto-regenerates and validates source bundle artifacts.
+1. **[ISSUE-0024](issues/ISSUE-0024.json) (completed 2026-05-23)** — Published Content natural-language search controls and invocation flow stabilized; user confirmed fix.
+2. **[ISSUE-0023](issues/ISSUE-0023.json) (completed 2026-05-23)** — Manual segmentation phase 1 now works for imported dictionary projects that have segmentation artifacts but blank source text.
+3. **[ISSUE-0015](issues/ISSUE-0015.json) (completed 2026-05-18)** — Community organisers can add/remove ordinary community members in organiser UI.
+4. **[ISSUE-0002](issues/ISSUE-0002.json) (completed 2026-05-09)** — Legacy C-LARA ZIP import migration path implemented.
+5. **[ISSUE-0009](issues/ISSUE-0009.json) (completed 2026-05-06)** — Export/import now auto-regenerates and validates source bundle artifacts.
 
 ## Notes and risks
 
