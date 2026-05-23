@@ -7388,6 +7388,8 @@ def _parse_nl_content_request(
         f"User language for this request: {dialogue_language}. "
         "Convert the user request into JSON filters for published content discovery, using prior turn context if relevant. "
         "If the user asks to change language/topic, update or clear previous filters accordingly. "
+        "Only set 'level' when the user explicitly requests a CEFR level (A1, A2, B1, B2, C1, C2, beginner/intermediate/advanced). "
+        "If level is not explicitly requested in the current query, return level as an empty string unless the user clearly asks to keep a previous level. "
         "Return only a JSON object with keys: title, text_language, annotation_language, date_posted, level, keywords, max_results. "
         "date_posted must be one of: any, last_3_days, last_month, last_3_months, last_year. "
         "keywords must be an array of short strings. If unknown, use empty strings/arrays.\n\n"
@@ -7642,6 +7644,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
     manual_text_language = _normalize_language_filter(request.GET.get("text_language") or "")
     manual_annotation_language = _normalize_language_filter(request.GET.get("annotation_language") or "")
     manual_date_posted = _normalize_date_posted_filter(request.GET.get("date_posted") or "any")
+    manual_level = _normalize_cefr_level_expression(request.GET.get("level") or "", max_levels=3)
 
     nl_query = (request.GET.get("nl_query") or "").strip()
     dialogue_language = (request.GET.get("dialogue_language") or "").strip()
@@ -7697,11 +7700,13 @@ def content_list(request: HttpRequest) -> HttpResponse:
         text_language = _normalize_language_filter(str(nl_plan.get("text_language") or ""))
         annotation_language = _normalize_language_filter(str(nl_plan.get("annotation_language") or ""))
         date_posted = _normalize_date_posted_filter(str(nl_plan.get("date_posted") or "any"))
+        level = manual_level or _normalize_cefr_level_expression(str(nl_plan.get("level") or "").strip(), max_levels=3)
     else:
         title = manual_title
         text_language = manual_text_language
         annotation_language = manual_annotation_language
         date_posted = manual_date_posted
+        level = manual_level
 
     qs = _published_projects_visible_to_user(request.user)
     title_hard_filter = manual_title if nl_query else title
@@ -7725,7 +7730,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
     result_rows: list[dict[str, Any]] = []
     if nl_query:
         requested_keywords = [str(k).strip().lower() for k in (nl_plan.get("keywords") or []) if str(k).strip()]
-        requested_level = _normalize_cefr_level_expression(str(nl_plan.get("level") or "").strip(), max_levels=3)
+        requested_level = level
         scored: list[tuple[int, list[str], Project]] = []
         for project in projects:
             score = 0
@@ -7771,6 +7776,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
                 "date_posted": date_posted,
                 "nl_query": nl_query,
                 "dialogue_language": dialogue_language,
+                "level": level,
             },
             "nl_plan": nl_plan,
             "dialogue_language_choices": ProjectForm.LANGUAGE_CHOICES,
@@ -7781,6 +7787,12 @@ def content_list(request: HttpRequest) -> HttpResponse:
                 ("last_month", "Last month"),
                 ("last_3_months", "Last 3 months"),
                 ("last_year", "Last year"),
+            ],
+            "level_options": [
+                ("", "Any level"),
+                ("A1/A2", "A1/A2"),
+                ("B1/B2", "B1/B2"),
+                ("C1/C2", "C1/C2"),
             ],
         },
     )
@@ -8668,6 +8680,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
     manual_text_language = _normalize_language_filter(request.GET.get("text_language") or "")
     manual_annotation_language = _normalize_language_filter(request.GET.get("annotation_language") or "")
     manual_date_posted = _normalize_date_posted_filter(request.GET.get("date_posted") or "any")
+    manual_level = _normalize_cefr_level_expression(request.GET.get("level") or "", max_levels=3)
 
     nl_query = (request.GET.get("nl_query") or "").strip()
     dialogue_language = (request.GET.get("dialogue_language") or "").strip()
@@ -8723,11 +8736,13 @@ def content_list(request: HttpRequest) -> HttpResponse:
         text_language = _normalize_language_filter(str(nl_plan.get("text_language") or ""))
         annotation_language = _normalize_language_filter(str(nl_plan.get("annotation_language") or ""))
         date_posted = _normalize_date_posted_filter(str(nl_plan.get("date_posted") or "any"))
+        level = manual_level or _normalize_cefr_level_expression(str(nl_plan.get("level") or "").strip(), max_levels=3)
     else:
         title = manual_title
         text_language = manual_text_language
         annotation_language = manual_annotation_language
         date_posted = manual_date_posted
+        level = manual_level
 
     qs = _published_projects_visible_to_user(request.user)
     title_hard_filter = manual_title if nl_query else title
@@ -8751,7 +8766,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
     result_rows: list[dict[str, Any]] = []
     if nl_query:
         requested_keywords = [str(k).strip().lower() for k in (nl_plan.get("keywords") or []) if str(k).strip()]
-        requested_level = _normalize_cefr_level_expression(str(nl_plan.get("level") or "").strip(), max_levels=3)
+        requested_level = level
         scored: list[tuple[int, list[str], Project]] = []
         for project in projects:
             score = 0
@@ -8797,6 +8812,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
                 "date_posted": date_posted,
                 "nl_query": nl_query,
                 "dialogue_language": dialogue_language,
+                "level": level,
             },
             "nl_plan": nl_plan,
             "dialogue_language_choices": ProjectForm.LANGUAGE_CHOICES,
@@ -8807,6 +8823,12 @@ def content_list(request: HttpRequest) -> HttpResponse:
                 ("last_month", "Last month"),
                 ("last_3_months", "Last 3 months"),
                 ("last_year", "Last year"),
+            ],
+            "level_options": [
+                ("", "Any level"),
+                ("A1/A2", "A1/A2"),
+                ("B1/B2", "B1/B2"),
+                ("C1/C2", "C1/C2"),
             ],
         },
     )

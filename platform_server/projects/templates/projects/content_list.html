@@ -14,6 +14,7 @@
         <option value="{{ value }}" {% if filters.dialogue_language == value %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
+    <button class="btn secondary" type="submit">Interpret request</button>
   </p>
   <p>
     <label for="title">Title contains:</label>
@@ -45,7 +46,15 @@
       {% endfor %}
     </select>
   </p>
-  <p><button class="btn" type="submit">Search</button></p>
+  <p>
+    <label for="level">Level:</label>
+    <select id="level" name="level">
+      {% for value, label in level_options %}
+        <option value="{{ value }}" {% if filters.level == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </p>
+  <p><button class="btn" type="submit">Apply filters</button></p>
 </form>
 
 {% if nl_plan %}
