@@ -23,6 +23,7 @@ This document summarizes the current issue registry for quick human review. Cano
 8. **[ISSUE-0013](issues/ISSUE-0013.json) (P1)** — Improve stage artifact persistence performance and timeout resilience.
 9. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, deadline 2026-06-15)** — Draft technical report and publication outputs.
 10. **[ISSUE-0019](issues/ISSUE-0019.json) (P3)** — Fix AWS favicon serving/caching mismatch (minor but visible UX issue).
+11. **[ISSUE-0024](issues/ISSUE-0024.json) (P3)** — Verify/reproduce reported missing NL search controls on `/content/` and add a rendering guard test.
 
 ## Completed issues
 
