@@ -9527,12 +9527,16 @@ def _extract_image_flashcard_candidates_from_payload(
                     continue
                 seen_entries.add(entry.id)
                 metadata = _exercise_token_metadata(surface, ann)
+                prompt_word = str(entry.surface or surface or "").strip()
+                if not prompt_word:
+                    continue
                 candidates.append(
                     {
                         "page_number": page_number,
                         "segment_index": seg_idx,
                         "token_index": tok_idx,
-                        "source_word": surface,
+                        "source_word": prompt_word,
+                        "source_word_seen_in_text": surface,
                         "target_gloss": translation,
                         "pos": metadata["pos"] or entry.pos,
                         "lexical_category": metadata["lexical_category"],
@@ -9909,7 +9913,9 @@ async def _generate_form_to_image_flashcard_item(
     source_pos = str(candidate.get("pos") or "")
     source_script = str(candidate.get("script") or "")
     known_metadata = {
-        str(cand.get("source_word") or "").casefold(): cand for cand in fallback_values if cand.get("source_word")
+        str(cand.get("source_word") or "").casefold(): cand
+        for cand in fallback_values
+        if cand.get("source_word")
     }
     pool_lines = []
     for cand in fallback_values[:40]:
@@ -9951,9 +9957,31 @@ Return JSON with:
         answer_script=source_script,
         known_metadata=_image_flashcard_option_metadata(fallback_values),
     )
+    # Keep only distractors with usable image metadata; this mode requires image-backed options.
+    distractors = [
+        d
+        for d in distractors
+        if d.casefold() in known_metadata
+        and str(known_metadata[d.casefold()].get("image_path") or "").strip()
+    ]
     options_words = [source_word] + distractors[:3]
     while len(options_words) < 4:
-        options_words.append(f"option {len(options_words)}")
+        for cand in fallback_values:
+            word = str(cand.get("source_word") or "").strip()
+            if not word or word.casefold() == source_word.casefold():
+                continue
+            if word in options_words:
+                continue
+            if not str(cand.get("image_path") or "").strip():
+                continue
+            options_words.append(word)
+            if len(options_words) >= 4:
+                break
+        if len(options_words) >= 4:
+            break
+        # deterministic hard fallback: reuse known valid dictionary words from pool
+        break
+    options_words = options_words[:4]
     labels = ["A", "B", "C", "D"]
     random.Random(f"{source_word}|{candidate.get('image_path')}|{order_index}|form_to_image").shuffle(options_words)
     label_to_word = {label: word for label, word in zip(labels, options_words)}
@@ -9965,6 +9993,14 @@ Return JSON with:
             "image_path": known_metadata.get(word.casefold(), {}).get("image_path"),
         }
         for label, word in label_to_word.items()
+    }
+    trace = {
+        "mode": "form_to_image",
+        "candidate_source_word_seen_in_text": candidate.get("source_word_seen_in_text"),
+        "dictionary_surface": candidate.get("dictionary_surface"),
+        "pool_size": len(fallback_values),
+        "selected_option_words": options_words,
+        "missing_option_images": [w for w in options_words if not option_images.get(next((k for k,v in label_to_word.items() if v==w), ""), {}).get("image_path")],
     }
     return {
         "order_index": order_index,
@@ -9979,6 +10015,7 @@ Return JSON with:
             "correct_source_word": source_word,
             "correct_translation": correct_gloss,
             "option_images": option_images,
+            "trace": trace,
         },
     }
 
