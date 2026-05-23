@@ -12,6 +12,17 @@
   <button class="btn" type="submit">Save profile</button>
 </form>
 
+<h2>Transfer credits</h2>
+<p>Send some of your available credit balance to another user.</p>
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="credit_action" value="transfer" />
+  <table>
+    {{ credit_transfer_form.as_table }}
+  </table>
+  <button class="btn" type="submit">Send credits</button>
+</form>
+
 <h2>Dialogue memory</h2>
 <p>
   {% if form.instance.dialogue_memory_enabled %}

@@ -1,5 +1,7 @@
 # Roadmap: credits, billing, and API-cost governance
 
+Related issue: **ISSUE-0027** (`docs/issues/issues/ISSUE-0027.json`).
+
 This roadmap defines a credit-based usage model for C-LARA-2 so AI/API spend is visible, controllable, and auditable.
 
 ## Goals
@@ -32,6 +34,25 @@ This roadmap defines a credit-based usage model for C-LARA-2 so AI/API spend is 
 
 6. **User-to-user transfer (optional in phase 1/2)**
    - Controlled transfer workflow with confirmation and anti-abuse limits.
+
+## First elaboration linked to ISSUE-0027
+
+This roadmap now explicitly tracks two concrete capabilities requested from prior C-LARA usage:
+
+1. **Credit transfer between users**
+   - Sender must have positive available credit.
+   - Transfer amount must be strictly positive (no zero/negative transfers).
+   - Enforce atomic debit/credit ledger writes.
+   - Require confirmation step and recipient identity check.
+   - Add anti-abuse controls (rate limits, per-day caps, anomaly flagging).
+
+2. **User-provided OpenAI API key billing (BYOK charging path)**
+   - User registers API key securely (encrypted at rest, masked in UI/logs).
+   - User can opt specific AI operations/projects into BYOK billing mode.
+   - In BYOK mode, C-LARA-2 should charge provider usage to the user key rather than platform credits where supported.
+   - Fail gracefully with clear fallback/error messaging when key is invalid, missing scope, or provider is unavailable.
+
+Cross-reference: this section and ISSUE-0027 should stay synchronized as implementation details evolve.
 
 ## Future capability
 
