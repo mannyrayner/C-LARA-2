@@ -127,7 +127,8 @@ Properties:
    - updates focus-index membership/order,
    - removes closed issues from the active focus index,
    - writes an index snapshot to `docs/issues/index-archive/` when focus priorities change,
-   - consolidates issue summaries into `docs/issues/overview.md` as the single canonical human-facing registry (retiring `docs/issues/index..md`),
+   - consolidates issue summaries into `docs/issues/overview.md` as the single canonical human-facing registry (retiring `docs/issues/index.md`),
+   - if `docs/issues/index.md` still exists, replaces it with a short pointer to `overview.md` during migration and then deletes it in the follow-up cleanup PR,
    - regenerates `docs/issues/overview.md`, including a completed-issues section ordered by completion date with most recent completions first,
    - verifies status correctness against per-issue JSON before writing the overview (for example, do not mark a closed issue like `ISSUE-0019` as open),
    - merges duplicates,
@@ -141,7 +142,7 @@ Properties:
 
 ### Overview file guidance (`docs/issues/overview.md`)
 
-The overview file is the single canonical human-facing issue registry (Markdown preferred) regenerated periodically by Codex. `docs/issues/index..md` should be treated as retired once content is merged.
+The overview file is the single canonical human-facing issue registry (Markdown preferred) regenerated periodically by Codex. `docs/issues/index.md` is transitional only and should be removed after its content is merged or replaced by a one-line pointer during migration.
 
 Recommended structure:
 
