@@ -1,11 +1,12 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-23T00:00:00Z_
+_Last updated: 2026-05-23T03:30:00Z_
 
 This document summarizes the current issue registry for quick human review. Canonical machine-readable records remain in `docs/issues/issues/*.json` and `docs/issues/index.json`.
 
 ## Recent progress
 
+- Added **[ISSUE-0024](issues/ISSUE-0024.json)** from human suggestion #15 to track a reported disappearance of the natural-language search controls on `/content/`; current code suggests a deployment/path-specific regression, so the issue focuses on reproducibility checks and a guardrail rendering test.
 - Added **[ISSUE-0020](issues/ISSUE-0020.json)** from human suggestion #11, covering picture-dictionary compile improvements: clearer organiser feedback during image generation, low-resource partial-pipeline placeholder artifacts, and direct handoff links to manual annotation.
 - Added (or restored as canonical JSON in-repo) **[ISSUE-0019](issues/ISSUE-0019.json)** from human suggestion #10 to track AWS favicon reliability separately from broader infrastructure work.
 - Community review/regeneration UX work under **[ISSUE-0017](issues/ISSUE-0017.json)** continues to converge, with member-side “show only unjudged” behavior now validated by user feedback; organiser-side filter-focused display remains active iteration work.
@@ -22,6 +23,7 @@ This document summarizes the current issue registry for quick human review. Cano
 8. **[ISSUE-0013](issues/ISSUE-0013.json) (P1)** — Improve stage artifact persistence performance and timeout resilience.
 9. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, deadline 2026-06-15)** — Draft technical report and publication outputs.
 10. **[ISSUE-0019](issues/ISSUE-0019.json) (P3)** — Fix AWS favicon serving/caching mismatch (minor but visible UX issue).
+11. **[ISSUE-0024](issues/ISSUE-0024.json) (P3)** — Verify/reproduce reported missing NL search controls on `/content/` and add a rendering guard test.
 
 ## Completed issues
 
