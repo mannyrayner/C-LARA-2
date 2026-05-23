@@ -145,11 +145,12 @@ No feature should assume that annotations are AI-generated.
 
 ## 5) Audio for languages without usable TTS
 
-Some low-resource languages will not have usable text-to-speech support. For these projects, audio should be optional at first, and then community-recorded. This is tracked in **ISSUE-0016**.
+Some low-resource languages will not have usable text-to-speech support. For these projects, audio should be optional at first, and then community-recorded. This is now split across **ISSUE-0016** (fallback validation, closed) and **ISSUE-0026** (next-step community-recorded workflow definition).
 
-### 5.1 Phase A: no-TTS / no-audio mode
+### 5.1 Phase A: no-TTS / no-audio mode (**ISSUE-0016**)
 
-Status: **implemented as the first no-audio fallback**. Projects can now be configured to use either normal TTS audio or no audio / skip TTS. In no-audio mode, the audio pipeline stage skips external TTS calls, removes stale audio annotations from the stage payload, and compilation strips audio annotations before HTML rendering so the final pages do not contain broken audio links or empty audio controls.
+Status: **implemented and validated target completed**. Projects can now be configured to use either normal TTS audio or no audio / skip TTS. In no-audio mode, the audio pipeline stage skips external TTS calls, removes stale audio annotations from the stage payload, and compilation strips audio annotations before HTML rendering so the final pages do not contain broken audio links or empty audio controls.
+Follow-on design work continues in **ISSUE-0026** (Section 5.2).
 
 Urgent target: have a safe minimal workflow before the Kok Kaper community visit on **2026-06-01**.
 
@@ -164,9 +165,10 @@ Acceptance checks:
 - Published/compiled output contains no broken audio links or empty audio controls.
 - Existing TTS-capable projects keep their current behavior.
 
-### 5.2 Phase B: community-recorded audio dictionary
+### 5.2 Phase B: community-recorded audio dictionary (**ISSUE-0026**)
 
 A better long-term workflow should let community members record the audio needed for texts. This should be designed as a community-specific **audio dictionary**, but probably not merged with the picture dictionary: picture-dictionary entries are lemma-oriented, while audio entries need to be surface-word- and segment-oriented.
+This phase explicitly depends on the completed fallback behavior from **ISSUE-0016** (Section 5.1).
 
 Data/workflow requirements:
 
