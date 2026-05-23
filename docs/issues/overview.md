@@ -1,6 +1,6 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-23T06:05:00Z_
+_Last updated: 2026-05-23T06:20:00Z_
 
 This is the canonical human-facing issue registry. Canonical machine-readable records remain in `docs/issues/issues/*.json` and focus ordering in `docs/issues/index.json`.
 
@@ -9,6 +9,7 @@ This is the canonical human-facing issue registry. Canonical machine-readable re
 - Closed **[ISSUE-0024](issues/ISSUE-0024.json)** after verification that Published Content natural-language search controls are stable.
 - Closed **[ISSUE-0021](issues/ISSUE-0021.json)** after maintainer confirmation that GPT-Image-2 model selection support is complete.
 - Closed **[ISSUE-0019](issues/ISSUE-0019.json)** after maintainer confirmation that favicon behavior on AWS is now working well.
+- Closed **[ISSUE-0020](issues/ISSUE-0020.json)** after maintainer confirmation that low-resource picture-dictionary compile-flow improvements are complete.
 - Closed **[ISSUE-0023](issues/ISSUE-0023.json)** for manual segmentation phase-1 editor fallback when segmentation artifacts exist but source text is empty.
 - Closed **[ISSUE-0022](issues/ISSUE-0022.json)** by addressing AWS large ZIP import failures (`nginx 413`).
 - Closed **[ISSUE-0014](issues/ISSUE-0014.json)** and **[ISSUE-0017](issues/ISSUE-0017.json)** as completed roadmap slices.
@@ -19,8 +20,7 @@ This is the canonical human-facing issue registry. Canonical machine-readable re
 2. **[ISSUE-0011](issues/ISSUE-0011.json) (P1, active, deadline 2026-06-01)** — Continue image-based game hardening (curation signals, game-readiness, and feedback loops).
 3. **[ISSUE-0010](issues/ISSUE-0010.json) (P1, active)** — Expand representative legacy corpus imports and batch-tooling readiness.
 4. **[ISSUE-0003](issues/ISSUE-0003.json) (P1, reported)** — Build efficient end-to-end pipeline test runner and quality diagnostics.
-5. **[ISSUE-0020](issues/ISSUE-0020.json) (P1, reported)** — Improve low-resource picture-dictionary compile flow and organiser feedback/hand-off.
-6. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, reported, deadline 2026-06-15)** — Produce technical report and publication outputs.
+5. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, reported, deadline 2026-06-15)** — Produce technical report and publication outputs.
 
 ## Notes and risks
 
@@ -51,7 +51,7 @@ This is the canonical human-facing issue registry. Canonical machine-readable re
 | [ISSUE-0017](issues/ISSUE-0017.json) | closed | P1 | Improve page-image generation, review, and regeneration workflows. |
 | [ISSUE-0018](issues/ISSUE-0018.json) | closed | P2 | Use main-branch issue registry data when processing human issue suggestions. |
 | [ISSUE-0019](issues/ISSUE-0019.json) | closed | P3 | Ensure favicon reliably appears on AWS deployment. |
-| [ISSUE-0020](issues/ISSUE-0020.json) | reported | P1 | Improve picture-dictionary compile flow for low-resource languages and organiser feedback. |
+| [ISSUE-0020](issues/ISSUE-0020.json) | closed | P1 | Improve picture-dictionary compile flow for low-resource languages and organiser feedback. |
 | [ISSUE-0021](issues/ISSUE-0021.json) | closed | P1 | Add GPT-Image-2 as selectable model for element and page image generation. |
 | [ISSUE-0022](issues/ISSUE-0022.json) | closed | P1 | Handle large project ZIP imports without nginx 413 failures on AWS. |
 | [ISSUE-0023](issues/ISSUE-0023.json) | closed | P3 | Allow manual segmentation phase 1 editor when segmentation artifact exists but source text is empty. |
