@@ -7772,6 +7772,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
             "nl_filters": {
                 "nl_query": nl_query,
                 "dialogue_language": dialogue_language,
+                "level": level,
             },
             "simple_filters": {
                 "title": manual_title,
@@ -8810,6 +8811,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
             "nl_filters": {
                 "nl_query": nl_query,
                 "dialogue_language": dialogue_language,
+                "level": level,
             },
             "simple_filters": {
                 "title": manual_title,
