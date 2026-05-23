@@ -12,7 +12,13 @@
   <p><strong>{{ item.prompt }}</strong></p>
   <form method="post">{% csrf_token %}
     {% for opt in item.options %}
-      <p><label><input type="radio" name="choice" value="{{ opt }}" required /> {{ opt }}</label></p>
+      <p>
+        <label><input type="radio" name="choice" value="{{ opt }}" required /> {{ opt }}</label>
+        {% if item.rationale.exercise_kind == "form_to_image" %}
+          <br />
+          <img src="{% url 'exercise-item-option-image' item.id opt %}" alt="Option image {{ opt }}" style="max-width: 260px; height: auto;" />
+        {% endif %}
+      </p>
     {% endfor %}
     <button class="btn" type="submit">Check answer</button>
   </form>

@@ -92,6 +92,15 @@ class IssueSuggestionTests(TestCase):
         self.assertContains(response, "Prepared text for Codex")
         self.assertContains(response, "Remove currently displayed issue suggestions")
         self.assertContains(response, "docs/roadmap/issue-tracking-and-human-suggestions.md")
+        self.assertContains(response, "Overview file guidance (docs/issues/overview.md)")
+        self.assertContains(
+            response,
+            "new canonical format: timestamp, recent progress, near-term priorities, notes/risks, and a final complete issue inventory",
+        )
+        self.assertContains(
+            response,
+            "Validate that issue statuses in overview.md match docs/issues/issues/*.json before finishing.",
+        )
         self.assertContains(response, "New issue suggestion 1")
         self.assertContains(response, "Existing issue update suggestions")
         self.assertContains(response, "Existing issue update suggestion 1")
