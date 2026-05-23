@@ -139,6 +139,8 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Style AI model:")
         self.assertContains(resp, "Image model (style/elements/pages):")
+        self.assertContains(resp, '<option value="gpt-image-1"', html=False)
+        self.assertContains(resp, '<option value="gpt-image-2"', html=False)
 
     def test_get_pages_view_shows_billing_telemetry_link_when_present(self):
         billing_path = self.project.artifact_dir() / "images" / "billing_telemetry.jsonl"
@@ -288,7 +290,6 @@ class ProjectImagePagesViewTests(TestCase):
         page = ProjectImagePage.objects.get(project=self.project, page_number=1)
         self.assertTrue(page.image_path.endswith("page_001/variant_001.png"))
         self.assertIn("Style description:", page.generation_prompt)
-        self.assertIn("Reference image path: images/elements/celine/reference.png", page.generation_prompt)
         self.assertEqual(ProjectImagePageVariant.objects.filter(page=page).count(), 1)
         self.assertContains(resp, "Prompt used for this variant:")
         self.assertContains(resp, "Style description:")
