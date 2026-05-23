@@ -512,12 +512,20 @@ class CommunityWorkflowTests(TestCase):
         client.login(username="org", password="pw")
         resp = client.post(
             reverse("community-organiser-review-project", args=[self.community.id, self.project.id]),
-            {"action": "generate_requested", "image_model": "gpt-image-1", f"request_count_{self.page.id}": "2"},
+            {"action": "generate_requested_preview", "image_model": "gpt-image-1", f"request_count_{self.page.id}": "2"},
             follow=True,
         )
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "Generating 2 requested variant(s). Please wait")
-        self.assertContains(resp, "Generated 2 new variant(s) from organiser requests.")
+        self.assertContains(resp, "Proposed generation plan")
+
+        resp_confirm = client.post(
+            reverse("community-organiser-review-project", args=[self.community.id, self.project.id]),
+            {"action": "generate_requested", "image_model": "gpt-image-1", f"request_count_{self.page.id}": "2"},
+            follow=True,
+        )
+        self.assertEqual(resp_confirm.status_code, 200)
+        self.assertContains(resp_confirm, "Generating 2 requested variant(s).")
+        self.assertContains(resp_confirm, "Generated 2 new variant(s) from organiser requests.")
         self.assertEqual(ProjectImagePageVariant.objects.filter(page=self.page).count(), 3)
 
         reviewed = client.post(
@@ -531,3 +539,44 @@ class CommunityWorkflowTests(TestCase):
                 community=self.community, project=self.project, organiser=self.organiser
             ).exists()
         )
+
+    @patch("projects.views._build_ai_client")
+    def test_organiser_review_generate_requested_selected_pages_filter(self, mock_build_ai_client):
+        self.project.community = self.community
+        self.project.save(update_fields=["community", "updated_at"])
+        second_page = ProjectImagePage.objects.create(
+            project=self.project,
+            page_number=2,
+            page_text="Second page",
+            generation_prompt="second prompt",
+            image_model="gpt-image-1",
+            status="generated",
+        )
+        mock_build_ai_client.return_value = FakeImageClient()
+        client = Client()
+        client.login(username="org", password="pw")
+        resp = client.post(
+            reverse("community-organiser-review-project", args=[self.community.id, self.project.id]),
+            {
+                "action": "generate_requested_preview",
+                "generation_filter": "selected_pages",
+                "image_model": "gpt-image-1",
+                "selected_page_id": [str(self.page.id)],
+                "request_count_all": "1",
+            },
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Proposed generation plan")
+        resp_confirm = client.post(
+            reverse("community-organiser-review-project", args=[self.community.id, self.project.id]),
+            {
+                "action": "generate_requested",
+            },
+            follow=True,
+        )
+        self.assertEqual(resp_confirm.status_code, 200)
+        self.assertContains(resp_confirm, "Generation progress updates")
+        self.assertEqual(ProjectImagePageVariant.objects.filter(page=self.page).count(), 2)
+        self.assertEqual(ProjectImagePageVariant.objects.filter(page=second_page).count(), 0)
+
