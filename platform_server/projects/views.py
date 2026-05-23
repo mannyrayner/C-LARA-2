@@ -2715,12 +2715,14 @@ def admin_issue_suggestions(request: HttpRequest) -> HttpResponse:
         "Please process the following human issue suggestions collected in the C-LARA-2 platform admin UI.",
         "These suggestions come from user submissions stored at /admin-tools/issue-suggestions/.",
         "Follow guidance in docs/roadmap/issue-tracking-and-human-suggestions.md.",
+        "In particular, follow the section 'Overview file guidance (docs/issues/overview.md)' in that roadmap file.",
         "Use your best judgement to decide how each item should be handled.",
         "Assign a priority to each new-issue suggestion (including very low if a suggestion seems unimportant, incorrect, or out of scope).",
         "If a new-issue suggestion appears well grounded, generally rewrite and clarify it based on your understanding of the docs and codebase.",
         "For update suggestions, update the referenced docs/issues entry or related index/overview files as appropriate.",
         "Prepare output intended for docs/issues; in some cases updating existing docs/issues files may be preferable to adding a new file.",
-        "Also regenerate docs/issues/overview.md per the overview guidance in docs/roadmap/issue-tracking-and-human-suggestions.md.",
+        "Also regenerate docs/issues/overview.md in the new canonical format: timestamp, recent progress, near-term priorities, notes/risks, and a final complete issue inventory for all issues with status.",
+        "Validate that issue statuses in overview.md match docs/issues/issues/*.json before finishing.",
         f"Issue registry context source for existing issues: {issue_choices_source}.",
     ]
     suggestion_lines: list[str] = []
