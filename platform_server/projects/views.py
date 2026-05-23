@@ -58,6 +58,7 @@ from .forms import (
     AdminDeleteCommunityForm,
     AdminAdjustCreditsForm,
     AdminOpenAIPricingForm,
+    CreditTransferForm,
     ClozeExerciseSetForm,
     DeleteCachedWordAudioForm,
     FlashcardExerciseSetForm,
@@ -90,6 +91,7 @@ from .billing import (
     minimum_compile_balance_usd,
     openai_price_for_model,
     record_openai_usage_and_charge,
+    transfer_credits_between_users,
 )
 from .models import (
     Community,
@@ -2623,13 +2625,44 @@ def profile(request: HttpRequest) -> HttpResponse:
     _ensure_bootstrap_admin(request.user)
     profile_obj, _ = Profile.objects.get_or_create(user=request.user)
 
+    transfer_form = CreditTransferForm(sender=request.user)
     if request.method == "POST":
         action = (request.POST.get("memory_action") or "").strip().lower()
+        credit_action = (request.POST.get("credit_action") or "").strip().lower()
         if action == "clear":
             profile_obj.dialogue_memory = {}
             profile_obj.save(update_fields=["dialogue_memory", "updated_at"])
             messages.success(request, "Dialogue memory cleared.")
             return redirect("profile")
+        if credit_action == "transfer":
+            transfer_form = CreditTransferForm(request.POST, sender=request.user)
+            if transfer_form.is_valid():
+                recipient = transfer_form.cleaned_data["recipient"]
+                amount = transfer_form.cleaned_data["amount_usd"]
+                note = (transfer_form.cleaned_data.get("note") or "").strip()
+                description = note or f"Credit transfer from {request.user.username}"
+                try:
+                    sender_entry, _ = transfer_credits_between_users(
+                        sender=request.user,
+                        recipient=recipient,
+                        amount_usd=amount,
+                        description=description,
+                    )
+                except ValueError as exc:
+                    transfer_form.add_error(None, str(exc))
+                else:
+                    messages.success(
+                        request,
+                        f"Transferred ${amount:.4f} to {recipient.username}. "
+                        f"Your new balance is ${sender_entry.balance_after_usd:.4f}.",
+                    )
+                    return redirect("profile")
+            form = ProfileForm(instance=profile_obj)
+            return render(
+                request,
+                "projects/profile_form.html",
+                {"form": form, "credit_transfer_form": transfer_form},
+            )
         form = ProfileForm(request.POST, instance=profile_obj)
         if form.is_valid():
             form.save()
@@ -2638,7 +2671,7 @@ def profile(request: HttpRequest) -> HttpResponse:
     else:
         form = ProfileForm(instance=profile_obj)
 
-    return render(request, "projects/profile_form.html", {"form": form})
+    return render(request, "projects/profile_form.html", {"form": form, "credit_transfer_form": transfer_form})
 
 
 @login_required
