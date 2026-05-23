@@ -2,29 +2,35 @@
 {% block title %}Published Content{% endblock %}
 {% block content %}
 <h1>Published Content</h1>
-<form method="get">
+<form method="get" action="{% url 'content-list' %}" style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0;">
+  <p><strong>Dialogue: find published content</strong></p>
   <p>
     <label for="nl_query"><strong>Natural-language request:</strong></label><br />
-    <textarea id="nl_query" name="nl_query" rows="3" style="width:100%;" placeholder="e.g. Show me intermediate French stories about travel">{{ filters.nl_query }}</textarea>
+    <textarea id="nl_query" name="nl_query" rows="3" style="width:100%;" placeholder="e.g. Do we have anything in Hindi?">{{ nl_filters.nl_query }}</textarea>
   </p>
   <p>
     <label for="dialogue_language">Dialogue language:</label>
     <select id="dialogue_language" name="dialogue_language">
       {% for value, label in dialogue_language_choices %}
-        <option value="{{ value }}" {% if filters.dialogue_language == value %}selected{% endif %}>{{ label }}</option>
+        <option value="{{ value }}" {% if nl_filters.dialogue_language == value %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
+    <button class="btn secondary" type="submit">Interpret request</button>
   </p>
+</form>
+
+<form method="get" action="{% url 'content-list' %}" style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0;">
+  <p><strong>Simple filters</strong></p>
   <p>
     <label for="title">Title contains:</label>
-    <input id="title" type="text" name="title" value="{{ filters.title }}" />
+    <input id="title" type="text" name="title" value="{{ simple_filters.title }}" />
   </p>
   <p>
     <label for="text_language">Text language:</label>
     <select id="text_language" name="text_language">
       <option value="">(Any)</option>
       {% for value, label in language_choices %}
-        <option value="{{ value }}" {% if filters.text_language == value %}selected{% endif %}>{{ label }}</option>
+        <option value="{{ value }}" {% if simple_filters.text_language == value %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
   </p>
@@ -33,7 +39,7 @@
     <select id="annotation_language" name="annotation_language">
       <option value="">(Any)</option>
       {% for value, label in language_choices %}
-        <option value="{{ value }}" {% if filters.annotation_language == value %}selected{% endif %}>{{ label }}</option>
+        <option value="{{ value }}" {% if simple_filters.annotation_language == value %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
   </p>
@@ -41,11 +47,22 @@
     <label for="date_posted">Date posted:</label>
     <select id="date_posted" name="date_posted">
       {% for value, label in date_options %}
-        <option value="{{ value }}" {% if filters.date_posted == value %}selected{% endif %}>{{ label }}</option>
+        <option value="{{ value }}" {% if simple_filters.date_posted == value %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
   </p>
-  <p><button class="btn" type="submit">Search</button></p>
+  <p>
+    <label for="level">Level:</label>
+    <select id="level" name="level">
+      {% for value, label in level_options %}
+        <option value="{{ value }}" {% if simple_filters.level == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </p>
+  <p>
+    <button class="btn secondary" type="submit">Apply filters</button>
+    <a class="btn secondary" href="{% url 'content-list' %}">Clear</a>
+  </p>
 </form>
 
 {% if nl_plan %}

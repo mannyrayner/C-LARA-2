@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "issue_id": "ISSUE-0024",
+  "title": "Stabilize and verify natural-language search controls on Published Content view",
+  "state": "reported",
+  "priority": "P3",
+  "created_at": "2026-05-23T00:00:00Z",
+  "updated_at": "2026-05-23T00:00:00Z",
+  "origin": "human-suggestion",
+  "notes": "Human suggestion #15 reports that the natural-language search control on /content/ disappeared. Current template still includes the NL request textarea and dialogue-language selector, so likely causes are conditional rendering drift, route/template mismatch, or a regression in deployed branch/assets. Track this as a low-priority but user-visible regression investigation: (1) confirm which deployed environment/URL reproduces, (2) verify authenticated vs anonymous rendering paths, (3) add a focused view/template test asserting nl_query + dialogue_language controls render on content_list, and (4) if deployment-only, add release checklist item to sanity-check /content/ search controls.",
+  "deadline": null,
+  "dependencies": []
+}
