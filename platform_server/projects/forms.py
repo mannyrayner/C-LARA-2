@@ -125,10 +125,27 @@ class ProfileForm(forms.ModelForm):
         label="Enable dialogue personalization memory",
         help_text="Store a compact summary of your latest discovery preferences across sessions.",
     )
+    use_personal_openai_key = forms.BooleanField(
+        required=False,
+        label="Use my OpenAI API key (BYOK)",
+        help_text="When enabled, eligible OpenAI calls use your key instead of platform credits.",
+    )
+    openai_api_key = forms.CharField(
+        required=False,
+        label="OpenAI API key",
+        widget=forms.PasswordInput(render_value=True),
+        help_text="Stored for your account and used only when BYOK is enabled.",
+    )
 
     class Meta:
         model = Profile
-        fields = ["timezone", "dialogue_language", "dialogue_memory_enabled"]
+        fields = ["timezone", "dialogue_language", "dialogue_memory_enabled", "use_personal_openai_key", "openai_api_key"]
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("use_personal_openai_key") and not (cleaned.get("openai_api_key") or "").strip():
+            self.add_error("openai_api_key", "Enter an OpenAI API key to enable BYOK.")
+        return cleaned
 
 
 class ProjectDiscoveryMetadataForm(forms.ModelForm):
