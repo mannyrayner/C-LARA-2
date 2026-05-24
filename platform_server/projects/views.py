@@ -1734,7 +1734,7 @@ def _build_page_image_prompt(
 
 
 _DISCOURAGE_TEXT_GUIDELINES = {
-    "en": "Prefer little or no visible text. Allow short text only when story-essential (e.g., a meaningful sign, or brief comic-style sound effects like 'BANG!' or 'BOOM!').",
+    "en": "Do not include visible/readable text in the image. Avoid words, letters, numbers, labels, captions, signs, speech bubbles, and onomatopoeic text.",
     "fr": "Privilégie peu ou pas de texte visible. Autorise un texte court seulement s’il est essentiel à la scène (p. ex. un panneau important, ou une onomatopée brève de style BD comme « BANG! »).",
     "de": "Bevorzuge wenig oder keinen sichtbaren Text. Erlaube kurzen Text nur, wenn er für die Szene wesentlich ist (z. B. ein wichtiges Schild oder ein kurzes Comic-Geräusch wie „BANG!“).",
     "es": "Prefiere poco o ningún texto visible. Permite texto breve solo cuando sea esencial para la escena (p. ej., un letrero importante o una onomatopeya breve estilo cómic como «¡BANG!»).",
