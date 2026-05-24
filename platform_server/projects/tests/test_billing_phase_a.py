@@ -52,6 +52,20 @@ class BillingPhaseATests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, "Insufficient credits to start compile")
 
+    def test_flush_project_usage_events_skips_charging_when_byok_enabled(self):
+        profile_obj, _ = Profile.objects.get_or_create(user=self.user)
+        profile_obj.use_personal_openai_key = True
+        profile_obj.openai_api_key = "sk-user-byok"
+        profile_obj.save(update_fields=["use_personal_openai_key", "openai_api_key", "updated_at"])
+        events = [{"model": "gpt-4o-mini", "operation": "chat", "prompt_tokens": 120, "completion_tokens": 50, "total_tokens": 170}]
+        views._flush_project_usage_events(
+            project=self.project,
+            events=events,
+            request_type="segmentation_phase_1",
+            default_model="gpt-4o-mini",
+        )
+        self.assertEqual(AIUsageCharge.objects.filter(user=self.user, project=self.project).count(), 0)
+
     def test_admin_can_adjust_credits_and_create_ledger_entry(self):
         self.client.login(username="billing_admin", password="pw")
         resp = self.client.post(

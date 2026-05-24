@@ -6051,6 +6051,17 @@ def _build_ai_client(
     return OpenAIClient(config=config)
 
 
+def _user_has_byok_enabled(user: Any | None) -> bool:
+    if user is None:
+        return False
+    profile_obj = getattr(user, "profile", None)
+    return bool(
+        profile_obj
+        and getattr(profile_obj, "use_personal_openai_key", False)
+        and (getattr(profile_obj, "openai_api_key", "") or "").strip()
+    )
+
+
 def _billing_usage_reporter(*, user_id: int, project_id: int | None, request_type: str) -> Callable[[dict[str, Any]], None]:
     def _report(event: dict[str, Any]) -> None:
         payload = dict(event or {})
@@ -6071,8 +6082,7 @@ def _billing_usage_reporter(*, user_id: int, project_id: int | None, request_typ
         user = get_user_model().objects.filter(pk=user_id).first()
         if user is None:
             return
-        profile_obj = getattr(user, "profile", None)
-        byok_enabled = bool(profile_obj and getattr(profile_obj, "use_personal_openai_key", False) and (getattr(profile_obj, "openai_api_key", "") or "").strip())
+        byok_enabled = _user_has_byok_enabled(user)
         if not byok_enabled:
             record_openai_usage_and_charge(
             user_id=user_id,
@@ -6151,17 +6161,19 @@ def _flush_project_usage_events(
     request_type: str,
     default_model: str,
 ) -> None:
+    byok_enabled = _user_has_byok_enabled(getattr(project, "owner", None))
     for event in events:
-        record_openai_usage_and_charge(
-            user_id=project.owner_id,
-            project_id=project.id,
-            model=str(event.get("model") or default_model),
-            operation=str(event.get("operation") or "chat"),
-            prompt_tokens=max(0, int(event.get("prompt_tokens") or 0)),
-            completion_tokens=max(0, int(event.get("completion_tokens") or 0)),
-            total_tokens=max(0, int(event.get("total_tokens") or 0)),
-            request_type=request_type,
-        )
+        if not byok_enabled:
+            record_openai_usage_and_charge(
+                user_id=project.owner_id,
+                project_id=project.id,
+                model=str(event.get("model") or default_model),
+                operation=str(event.get("operation") or "chat"),
+                prompt_tokens=max(0, int(event.get("prompt_tokens") or 0)),
+                completion_tokens=max(0, int(event.get("completion_tokens") or 0)),
+                total_tokens=max(0, int(event.get("total_tokens") or 0)),
+                request_type=request_type,
+            )
     events.clear()
 
 
@@ -6935,18 +6947,27 @@ def _run_compile_task(
             )
 
         def flush_usage_events() -> None:
+            byok_enabled = _user_has_byok_enabled(user)
+            if detailed_api_trace:
+                telemetry.event(
+                    str(current_request_type["value"] or "compile"),
+                    "info",
+                    "billing mode",
+                    {"byok_enabled": byok_enabled, "user_id": user_id, "project_id": project_id},
+                )
             for event in usage_events:
                 try:
-                    record_openai_usage_and_charge(
-                        user_id=user_id,
-                        project_id=project_id,
-                        model=str(event.get("model") or chosen_model),
-                        operation=str(event.get("operation") or "chat"),
-                        prompt_tokens=int(event.get("prompt_tokens") or 0),
-                        completion_tokens=int(event.get("completion_tokens") or 0),
-                        total_tokens=int(event.get("total_tokens") or 0),
-                        request_type=str(event.get("request_type") or current_request_type["value"] or "unknown"),
-                    )
+                    if not byok_enabled:
+                        record_openai_usage_and_charge(
+                            user_id=user_id,
+                            project_id=project_id,
+                            model=str(event.get("model") or chosen_model),
+                            operation=str(event.get("operation") or "chat"),
+                            prompt_tokens=int(event.get("prompt_tokens") or 0),
+                            completion_tokens=int(event.get("completion_tokens") or 0),
+                            total_tokens=int(event.get("total_tokens") or 0),
+                            request_type=str(event.get("request_type") or current_request_type["value"] or "unknown"),
+                        )
                 except Exception:
                     logger.exception("Failed to record OpenAI usage charge for project=%s", project_id)
 
@@ -6958,6 +6979,7 @@ def _run_compile_task(
 
         post_update(f"Building AI client: model={chosen_model}.")
         client = _build_ai_client(
+            user=user,
             model_name=chosen_model,
             usage_reporter=usage_reporter,
             detailed_telemetry=detailed_api_trace,
