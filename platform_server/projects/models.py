@@ -157,9 +157,13 @@ class CreditAccount(models.Model):
 class CreditLedgerEntry(models.Model):
     ENTRY_USAGE = "usage"
     ENTRY_ADMIN_ADJUST = "admin_adjust"
+    ENTRY_TRANSFER_OUT = "transfer_out"
+    ENTRY_TRANSFER_IN = "transfer_in"
     ENTRY_CHOICES = [
         (ENTRY_USAGE, "Usage charge"),
         (ENTRY_ADMIN_ADJUST, "Admin adjustment"),
+        (ENTRY_TRANSFER_OUT, "Transfer sent"),
+        (ENTRY_TRANSFER_IN, "Transfer received"),
     ]
 
     user = models.ForeignKey(
@@ -606,10 +610,12 @@ class ExerciseSet(models.Model):
     FLASHCARD_MODE_FORM_TO_MEANING = "form_to_meaning"
     FLASHCARD_MODE_MEANING_TO_FORM = "meaning_to_form"
     FLASHCARD_MODE_IMAGE_TO_FORM = "image_to_form"
+    FLASHCARD_MODE_FORM_TO_IMAGE = "form_to_image"
     FLASHCARD_MODE_CHOICES = [
         (FLASHCARD_MODE_FORM_TO_MEANING, "Form → meaning"),
         (FLASHCARD_MODE_MEANING_TO_FORM, "Meaning → form"),
         (FLASHCARD_MODE_IMAGE_TO_FORM, "Image → form"),
+        (FLASHCARD_MODE_FORM_TO_IMAGE, "Form → image"),
     ]
 
     THEME_VOCAB = "vocabulary"
