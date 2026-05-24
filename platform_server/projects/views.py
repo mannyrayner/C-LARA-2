@@ -6752,6 +6752,7 @@ def _run_compile_task(
     detailed_api_trace: bool = False,
 ) -> None:
     project = Project.objects.get(pk=project_id)
+    user = get_user_model().objects.filter(pk=user_id).first()
     output_dir = Path(output_dir_str)
     project_root = Path(project_root_str)
     stage_dir = output_dir / "stages"
@@ -6811,6 +6812,10 @@ def _run_compile_task(
             "Compile task started. "
             f"start_stage={start_stage}, end_stage={end_stage or 'compile_html'}, output_dir={output_dir}"
         )
+        if user is None:
+            post_update(f"Compile failed: no user found for user_id={user_id}", status="error")
+            logger.error("Compile task aborted: missing user record for user_id=%s project_id=%s", user_id, project_id)
+            return
         audio_mode = (
             project.audio_mode
             if project.audio_mode in {Project.AUDIO_MODE_TTS, Project.AUDIO_MODE_NONE}
