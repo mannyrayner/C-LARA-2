@@ -8,6 +8,7 @@ from django.urls import reverse
 from projects.billing import estimate_openai_token_cost_usd, get_user_balance_usd, record_openai_usage_and_charge
 from projects import views
 from projects.models import AIUsageCharge, CreditLedgerEntry, OpenAIModelPricing, Project
+from projects.models import Profile
 
 
 @override_settings(CREDITS_ENABLED=True, CREDITS_MIN_BALANCE_USD="0.0500")
@@ -36,6 +37,20 @@ class BillingPhaseATests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Insufficient credits to start compile")
+
+    def test_compile_not_blocked_when_byok_enabled(self):
+        profile_obj, _ = Profile.objects.get_or_create(user=self.user)
+        profile_obj.use_personal_openai_key = True
+        profile_obj.openai_api_key = "sk-user-byok"
+        profile_obj.save(update_fields=["use_personal_openai_key", "openai_api_key", "updated_at"])
+        self.client.login(username="billing_user", password="pw")
+        resp = self.client.post(
+            reverse("project-compile", args=[self.project.pk]),
+            {"start_stage": "segmentation_phase_1", "end_stage": "segmentation_phase_1"},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, "Insufficient credits to start compile")
 
     def test_admin_can_adjust_credits_and_create_ledger_entry(self):
         self.client.login(username="billing_admin", password="pw")

@@ -110,6 +110,8 @@ class Profile(models.Model):
     dialogue_language = models.CharField(max_length=16, default="en")
     dialogue_memory_enabled = models.BooleanField(default=True)
     dialogue_memory = models.JSONField(default=dict, blank=True)
+    use_personal_openai_key = models.BooleanField(default=False)
+    openai_api_key = models.CharField(max_length=255, blank=True, default="")
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self) -> str:  # pragma: no cover - display helper
