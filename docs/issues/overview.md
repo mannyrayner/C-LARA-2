@@ -1,11 +1,12 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-24T12:00:00Z_
+_Last updated: 2026-05-24T13:00:00Z_
 
 ## Recent progress
 
-- Closed **[ISSUE-0028](issues/ISSUE-0028.json)** based on maintainer confirmation that the picture-dictionary text-control inconsistency has been resolved and strict text-free generation mode is now in place for flashcard-safe images.
-- Removed **ISSUE-0028** from `docs/issues/index.json` focus list because closed issues are excluded from active focus ordering.
+- Added **[ISSUE-0029](issues/ISSUE-0029.json)** (P1, reported) from human suggestion #18 to track autosave-on-entry for community judging pages and prevent loss of unsaved judgements.
+- Processed update suggestion #13 for **ISSUE-0028** and kept it **closed** (no further state change needed).
+- Archived the previous focus index snapshot before updating active priorities.
 
 ## Near-term priorities
 
@@ -15,14 +16,16 @@ _Last updated: 2026-05-24T12:00:00Z_
 4. **[ISSUE-0013](issues/ISSUE-0013.json) (P1, reported)** — Improve stage artifact persistence performance and timeout resilience.
 5. **[ISSUE-0025](issues/ISSUE-0025.json) (P1, reported)** — Add systematic UI regression tracking for disappearing controls/content.
 6. **[ISSUE-0026](issues/ISSUE-0026.json) (P1, reported)** — Define next-step community-recorded audio workflow for non-TTS languages.
-7. **[ISSUE-0001](issues/ISSUE-0001.json) (P2, reported)** — Support hosted compiled legacy content registration in C-LARA-2.
-8. **[ISSUE-0004](issues/ISSUE-0004.json) (P2, reported)** — Introduce AI-based review gates for phase outputs with extensible evaluator architecture.
+7. **[ISSUE-0029](issues/ISSUE-0029.json) (P1, reported)** — Autosave community judging inputs to prevent accidental data loss.
+8. **[ISSUE-0001](issues/ISSUE-0001.json) (P2, reported)** — Support hosted compiled legacy content registration in C-LARA-2.
+9. **[ISSUE-0004](issues/ISSUE-0004.json) (P2, reported)** — Introduce AI-based review gates for phase outputs with extensible evaluator architecture.
+10. **[ISSUE-0005](issues/ISSUE-0005.json) (P2, reported)** — Tune segmentation_phase_1 prompting to improve segment granularity by genre.
 
 ## Notes/risks
 
-- UI regression risk remains non-trivial; keep ISSUE-0025 high in the queue to catch control-level regressions quickly.
-- Validation/automation gaps (ISSUE-0003) still increase risk of regressions across generation and review workflows.
-- Credit transfer/BYOK billing work (ISSUE-0027) remains user-visible and policy-sensitive.
+- Community judging UX currently risks silent data loss without immediate persistence (ISSUE-0029).
+- Regression-detection coverage for UI controls remains incomplete until ISSUE-0025 lands.
+- End-to-end validation automation (ISSUE-0003) is still a cross-cutting dependency for safer rapid iteration.
 
 ## Complete issue inventory
 
@@ -56,3 +59,4 @@ _Last updated: 2026-05-24T12:00:00Z_
 | [ISSUE-0026](issues/ISSUE-0026.json) | reported | P1 | Define next-step community-recorded audio workflow for non-TTS languages. |
 | [ISSUE-0027](issues/ISSUE-0027.json) | reported | P2 | Add user credit transfer and user-provided OpenAI API key billing option. |
 | [ISSUE-0028](issues/ISSUE-0028.json) | closed | P1 | Ensure picture-dictionary image generation produces text-free images. |
+| [ISSUE-0029](issues/ISSUE-0029.json) | reported | P1 | Autosave community judging inputs to prevent accidental data loss. |
