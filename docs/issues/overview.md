@@ -1,42 +1,28 @@
 # C-LARA-2 issues overview
 
-_Last updated: 2026-05-24T09:00:00Z_
-
-This is the canonical human-facing issue registry. Canonical machine-readable records remain in `docs/issues/issues/*.json` and focus ordering in `docs/issues/index.json`.
+_Last updated: 2026-05-24T12:00:00Z_
 
 ## Recent progress
 
-- Closed **[ISSUE-0024](issues/ISSUE-0024.json)** after verification that Published Content natural-language search controls are stable.
-- Closed **[ISSUE-0021](issues/ISSUE-0021.json)** after maintainer confirmation that GPT-Image-2 model selection support is complete.
-- Closed **[ISSUE-0019](issues/ISSUE-0019.json)** after maintainer confirmation that favicon behavior on AWS is now working well.
-- Closed **[ISSUE-0020](issues/ISSUE-0020.json)** after maintainer confirmation that low-resource picture-dictionary compile-flow improvements are complete.
-- Closed **[ISSUE-0023](issues/ISSUE-0023.json)** for manual segmentation phase-1 editor fallback when segmentation artifacts exist but source text is empty.
-- Closed **[ISSUE-0022](issues/ISSUE-0022.json)** by addressing AWS large ZIP import failures (`nginx 413`).
-- Closed **[ISSUE-0014](issues/ISSUE-0014.json)** and **[ISSUE-0017](issues/ISSUE-0017.json)** as completed roadmap slices.
-- Added **[ISSUE-0025](issues/ISSUE-0025.json)** to track systematic UI regression detection after repeated reports of disappearing controls/content in platform views.
-- Closed **[ISSUE-0016](issues/ISSUE-0016.json)** after reducing scope to Kok Kaper no-audio/skip-TTS fallback validation and confirming completion.
-- Added **[ISSUE-0026](issues/ISSUE-0026.json)** to track definition of the next-step community-recorded audio workflow for non-TTS languages.
-- Added **[ISSUE-0027](issues/ISSUE-0027.json)** to track user credit transfer and BYOK OpenAI API-key billing restoration from C-LARA.
+- Closed **[ISSUE-0028](issues/ISSUE-0028.json)** based on maintainer confirmation that the picture-dictionary text-control inconsistency has been resolved and strict text-free generation mode is now in place for flashcard-safe images.
+- Removed **ISSUE-0028** from `docs/issues/index.json` focus list because closed issues are excluded from active focus ordering.
 
 ## Near-term priorities
 
-- Closed **[ISSUE-0011](issues/ISSUE-0011.json)** after successful validation of picture-dictionary flashcards in both directions (image→word and word→image).
-- Added **[ISSUE-0028](issues/ISSUE-0028.json)** to track text-free picture-dictionary image generation so image-based flashcards remain valid.
-1. **[ISSUE-0027](issues/ISSUE-0027.json) (P2, reported)** — Add user credit transfer (positive amounts only) and BYOK OpenAI API-key billing option.
-2. **[ISSUE-0026](issues/ISSUE-0026.json) (P1, reported)** — Define next-step community-recorded audio workflow for non-TTS languages.
-3. **[ISSUE-0028](issues/ISSUE-0028.json) (P1, reported)** — Ensure picture-dictionary image generation produces text-free images for flashcard-safe use.
-4. **[ISSUE-0010](issues/ISSUE-0010.json) (P1, active)** — Expand representative legacy corpus imports and batch-tooling readiness.
-5. **[ISSUE-0003](issues/ISSUE-0003.json) (P1, reported)** — Build efficient end-to-end pipeline test runner and quality diagnostics.
-6. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, reported, deadline 2026-06-15)** — Produce technical report and publication outputs.
-7. **[ISSUE-0025](issues/ISSUE-0025.json) (P1, reported)** — Add template/view UI inventory snapshots and change-alert workflow to catch unintended UI regressions quickly.
+1. **[ISSUE-0010](issues/ISSUE-0010.json) (P1, active)** — Import a representative legacy C-LARA project corpus and add batch import tooling.
+2. **[ISSUE-0003](issues/ISSUE-0003.json) (P1, reported)** — Add efficient end-to-end pipeline test runner for systematic quality checks.
+3. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, reported)** — Write C-LARA-2 technical report and academic papers.
+4. **[ISSUE-0013](issues/ISSUE-0013.json) (P1, reported)** — Improve stage artifact persistence performance and timeout resilience.
+5. **[ISSUE-0025](issues/ISSUE-0025.json) (P1, reported)** — Add systematic UI regression tracking for disappearing controls/content.
+6. **[ISSUE-0026](issues/ISSUE-0026.json) (P1, reported)** — Define next-step community-recorded audio workflow for non-TTS languages.
+7. **[ISSUE-0001](issues/ISSUE-0001.json) (P2, reported)** — Support hosted compiled legacy content registration in C-LARA-2.
+8. **[ISSUE-0004](issues/ISSUE-0004.json) (P2, reported)** — Introduce AI-based review gates for phase outputs with extensible evaluator architecture.
 
-## Notes and risks
+## Notes/risks
 
-- **Picture-dictionary quality gates remain critical**: text in generated dictionary images can invalidate image-based flashcards and must be controlled (ISSUE-0028).
-- **Validation and regression infrastructure is still a dependency** for safer iteration speed (ISSUE-0003).
-- **UI regressions need first-class monitoring** so disappearing controls/content are detected immediately (ISSUE-0025).
-- **Credit governance UX is still incomplete** until transfer and BYOK billing paths are restored safely (ISSUE-0027).
-- **Closed-issue hygiene must stay strict**: overview status values should always reflect per-issue JSON state.
+- UI regression risk remains non-trivial; keep ISSUE-0025 high in the queue to catch control-level regressions quickly.
+- Validation/automation gaps (ISSUE-0003) still increase risk of regressions across generation and review workflows.
+- Credit transfer/BYOK billing work (ISSUE-0027) remains user-visible and policy-sensitive.
 
 ## Complete issue inventory
 
@@ -69,4 +55,4 @@ This is the canonical human-facing issue registry. Canonical machine-readable re
 | [ISSUE-0025](issues/ISSUE-0025.json) | reported | P1 | Add systematic UI regression tracking for disappearing controls/content. |
 | [ISSUE-0026](issues/ISSUE-0026.json) | reported | P1 | Define next-step community-recorded audio workflow for non-TTS languages. |
 | [ISSUE-0027](issues/ISSUE-0027.json) | reported | P2 | Add user credit transfer and user-provided OpenAI API key billing option. |
-| [ISSUE-0028](issues/ISSUE-0028.json) | reported | P1 | Ensure picture-dictionary image generation produces text-free images. |
+| [ISSUE-0028](issues/ISSUE-0028.json) | closed | P1 | Ensure picture-dictionary image generation produces text-free images. |

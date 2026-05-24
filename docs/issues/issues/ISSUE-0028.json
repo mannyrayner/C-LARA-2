@@ -2,12 +2,12 @@
   "schema_version": 1,
   "issue_id": "ISSUE-0028",
   "title": "Ensure picture-dictionary image generation produces text-free images",
-  "state": "reported",
+  "state": "closed",
   "priority": "P1",
   "created_at": "2026-05-24T09:00:00Z",
-  "updated_at": "2026-05-24T09:00:00Z",
+  "updated_at": "2026-05-24T12:00:00Z",
   "origin": "human-suggestion",
-  "notes": "Opened on 2026-05-24 after validation of form\u2192image flashcards. Problem: many picture-dictionary images contain visible written words (often the illustrated word), which undermines pedagogical value and invalidates image-based flashcards. Scope: enforce text-free image outputs for picture-dictionary generation/regeneration; add prompt constraints and/or post-generation checks; add organiser-facing rejection reason for detected text; add regression checks so dictionary images used in flashcards are text-free by default.",
+  "notes": "Opened on 2026-05-24 after validation of form\u2192image flashcards. Problem: many picture-dictionary images contain visible written words (often the illustrated word), which undermines pedagogical value and invalidates image-based flashcards. Scope: enforce text-free image outputs for picture-dictionary generation/regeneration; add prompt constraints and/or post-generation checks; add organiser-facing rejection reason for detected text; add regression checks so dictionary images used in flashcards are text-free by default. Closed on 2026-05-24 after UI/settings and prompt-path changes distinguished discourage vs disallow controls and removed duplicate conflicting option, enabling strict text-free picture-dictionary generation mode.",
   "deadline": null,
   "dependencies": [
     "ISSUE-0011"
