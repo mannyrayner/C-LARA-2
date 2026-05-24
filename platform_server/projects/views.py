@@ -1620,6 +1620,7 @@ def _build_page_image_prompt(
     full_text: str,
     relevant_elements: list[ProjectImageElement],
     discourage_text_in_image: bool = False,
+    disallow_text_in_image: bool = False,
     dictionary_entry: PictureDictionaryEntry | None = None,
 ) -> str:
     language_instructions = {
@@ -1653,7 +1654,8 @@ def _build_page_image_prompt(
     if prompt_language not in language_instructions:
         prompt_language = "en"
     line1, line2 = language_instructions.get(prompt_language, language_instructions["en"])
-    no_text_line = _discourage_text_guideline_for_language(prompt_language)
+    discourage_text_line = _discourage_text_guideline_for_language(prompt_language)
+    disallow_text_line = _disallow_text_guideline_for_language(prompt_language)
     if dictionary_entry is not None:
         lemma = (dictionary_entry.lemma or page_text or "").strip()
         pos = (dictionary_entry.pos or "").strip() or "unspecified"
@@ -1667,7 +1669,7 @@ def _build_page_image_prompt(
                 f"Style description: {_compact_style_description_for_prompt(style.expanded_style_description or style.style_brief or '[none]', max_chars=1200)}",
                 "Render a clear visual scene for the target lemma itself (not a generic story page).",
                 "Do not focus on words, captions, typography, book pages, or signage text.",
-                f"{no_text_line}",
+                f"{disallow_text_line if disallow_text_in_image else discourage_text_line}",
                 "If the lemma is a noun, make the object/animal/person visually central and unambiguous.",
                 "If the lemma is a verb, depict the action in progress with clear actors/objects.",
                 "If the lemma is an adjective, depict a concrete object/scene where the property is visually obvious.",
@@ -1693,9 +1695,12 @@ def _build_page_image_prompt(
         line2,
         "",
     ]
-    if discourage_text_in_image:
+    if disallow_text_in_image:
         lines.extend(suppression_block)
-        lines.extend([f"- {no_text_line}", ""])
+        lines.extend([f"- {disallow_text_line}", ""])
+    elif discourage_text_in_image:
+        lines.extend(suppression_block)
+        lines.extend([f"- {discourage_text_line}", ""])
     lines.extend(
         [
         f"Prompt language: {language_labels.get(prompt_language, 'English')}",
@@ -1749,6 +1754,10 @@ _DISCOURAGE_TEXT_GUIDELINES = {
     "hi": "दृश्य में टेक्स्ट बहुत कम रखें या न रखें। केवल तब छोटा टेक्स्ट दें जब वह कहानी के लिए ज़रूरी हो (जैसे महत्वपूर्ण साइनबोर्ड या कॉमिक-शैली की छोटी ध्वनि जैसे “BANG!”)।",
 }
 
+_DISALLOW_TEXT_GUIDELINES = {
+    "en": "Do not include visible/readable text in the image. Avoid words, letters, numbers, labels, captions, signs, speech bubbles, and onomatopoeic text.",
+}
+
 
 @lru_cache(maxsize=128)
 def _translate_discourage_text_guideline(language_code: str) -> str:
@@ -1779,6 +1788,13 @@ def _discourage_text_guideline_for_language(language_code: str) -> str:
     return _translate_discourage_text_guideline(code)
 
 
+def _disallow_text_guideline_for_language(language_code: str) -> str:
+    code = (language_code or "").strip().lower()
+    if not code:
+        return _DISALLOW_TEXT_GUIDELINES["en"]
+    return _DISALLOW_TEXT_GUIDELINES.get(code, _DISALLOW_TEXT_GUIDELINES["en"])
+
+
 def _image_prompt_language(project: Project) -> str:
     if project.page_image_text_source == Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION:
         pivot_language = (project.image_generation_pivot_language or "").strip().lower()
@@ -1806,6 +1822,7 @@ def _fit_page_image_prompt_to_limit(
     relevant_elements: list[ProjectImageElement],
     dictionary_entry: PictureDictionaryEntry | None = None,
     discourage_text_in_image: bool = False,
+    disallow_text_in_image: bool = False,
     max_chars: int = 12000,
 ) -> tuple[str, dict[str, Any]]:
     """Build a page-image prompt and iteratively trim when it exceeds limits."""
@@ -1864,6 +1881,7 @@ def _fit_page_image_prompt_to_limit(
             relevant_elements=trimmed_elements,
             dictionary_entry=dictionary_entry,
             discourage_text_in_image=discourage_text_in_image,
+            disallow_text_in_image=disallow_text_in_image,
         )
 
     prompt = _build_with_limits()
@@ -2169,6 +2187,7 @@ def _generate_project_page_images(
     image_model: str,
     variants_per_page: int = 1,
     discourage_text_in_image: bool = False,
+    disallow_text_in_image: bool = False,
     include_full_text: bool = True,
     include_elements: bool = True,
     missing_only: bool = False,
@@ -2228,6 +2247,7 @@ def _generate_project_page_images(
             full_text=full_text,
             relevant_elements=refs,
             discourage_text_in_image=discourage_text_in_image,
+            disallow_text_in_image=disallow_text_in_image,
             dictionary_entry=dictionary_entry,
         )
         previous_page_text = page_texts_by_number.get(page_obj.page_number - 1, "")
@@ -3573,6 +3593,7 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
                         image_model=image_model,
                         variants_per_page=variants_per_page,
                         discourage_text_in_image=bool(style.discourage_text_in_images),
+                        disallow_text_in_image=bool(getattr(style, "disallow_text_in_images", False)),
                     )
                 except Exception as exc:
                     logger.exception("Failed to generate page images for project %s", project.pk)
@@ -5774,6 +5795,14 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
             "on",
             "yes",
         }
+        disallow_text_in_images = (request.POST.get("disallow_text_in_images") or "").strip().lower() in {
+            "1",
+            "true",
+            "on",
+            "yes",
+        }
+        if disallow_text_in_images:
+            discourage_text_in_images = False
         text_source = (
             Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION
             if from_translations
@@ -5803,12 +5832,16 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
                     ai_model=requested_style_ai_model or project.ai_model or DEFAULT_MODEL,
                     sample_image_model=requested_style_image_model or "gpt-image-1",
                     discourage_text_in_images=discourage_text_in_images,
+                    disallow_text_in_images=disallow_text_in_images,
                 )
             else:
                 update_fields: list[str] = []
                 if style.discourage_text_in_images != discourage_text_in_images:
                     style.discourage_text_in_images = discourage_text_in_images
                     update_fields.append("discourage_text_in_images")
+                if bool(getattr(style, "disallow_text_in_images", False)) != disallow_text_in_images:
+                    style.disallow_text_in_images = disallow_text_in_images
+                    update_fields.append("disallow_text_in_images")
                 if style.ai_model != requested_style_ai_model:
                     style.ai_model = requested_style_ai_model
                     update_fields.append("ai_model")
@@ -5862,6 +5895,7 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
             "pivot_language_choices": ProjectForm.LANGUAGE_CHOICES,
             "selected_image_generation_pivot_language": project.image_generation_pivot_language,
             "discourage_text_in_images_default": bool(getattr(style, "discourage_text_in_images", False)),
+            "disallow_text_in_images_default": bool(getattr(style, "disallow_text_in_images", False)),
             "ai_model_choices": AI_MODEL_CHOICES,
             "image_model_choices": IMAGE_MODEL_CHOICES,
             "selected_style_ai_model": (getattr(style, "ai_model", "") or project.ai_model or DEFAULT_MODEL),

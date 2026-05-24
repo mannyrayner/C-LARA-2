@@ -236,6 +236,8 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertIn("selected_image_generation_pivot_language", resp.context)
         self.assertEqual(resp.context["selected_image_generation_pivot_language"], self.project.image_generation_pivot_language)
         self.assertIn("discourage_text_in_images_default", resp.context)
+        self.assertIn("disallow_text_in_images_default", resp.context)
+        self.assertContains(resp, "Discourage visible text in images")
         self.assertContains(resp, "Disallow visible text in images")
 
     def test_images_home_can_toggle_discourage_text_setting(self):
@@ -258,6 +260,19 @@ class ProjectImagePagesViewTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         style.refresh_from_db()
+        self.assertFalse(style.discourage_text_in_images)
+
+    def test_images_home_can_toggle_disallow_text_setting(self):
+        style = ProjectImageStyle.objects.get(project=self.project)
+        self.assertFalse(getattr(style, "disallow_text_in_images", False))
+        resp = self.client.post(
+            reverse("project-images-home", args=[self.project.pk]),
+            {"disallow_text_in_images": "1"},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        style.refresh_from_db()
+        self.assertTrue(style.disallow_text_in_images)
         self.assertFalse(style.discourage_text_in_images)
 
     def test_images_home_view_source_contains_pivot_language_assignment_and_validation(self):
