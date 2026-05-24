@@ -157,9 +157,13 @@ class CreditAccount(models.Model):
 class CreditLedgerEntry(models.Model):
     ENTRY_USAGE = "usage"
     ENTRY_ADMIN_ADJUST = "admin_adjust"
+    ENTRY_TRANSFER_OUT = "transfer_out"
+    ENTRY_TRANSFER_IN = "transfer_in"
     ENTRY_CHOICES = [
         (ENTRY_USAGE, "Usage charge"),
         (ENTRY_ADMIN_ADJUST, "Admin adjustment"),
+        (ENTRY_TRANSFER_OUT, "Transfer sent"),
+        (ENTRY_TRANSFER_IN, "Transfer received"),
     ]
 
     user = models.ForeignKey(
@@ -305,6 +309,7 @@ class ProjectImageStyle(models.Model):
     sample_image_revised_prompt = models.TextField(blank=True)
     sample_image_model = models.CharField(max_length=64, default="gpt-image-1")
     discourage_text_in_images = models.BooleanField(default=False)
+    disallow_text_in_images = models.BooleanField(default=False)
     ai_model = models.CharField(max_length=64, default="gpt-4o")
     status = models.CharField(
         max_length=32, choices=STATUS_CHOICES, default=STATUS_DRAFT
@@ -606,10 +611,12 @@ class ExerciseSet(models.Model):
     FLASHCARD_MODE_FORM_TO_MEANING = "form_to_meaning"
     FLASHCARD_MODE_MEANING_TO_FORM = "meaning_to_form"
     FLASHCARD_MODE_IMAGE_TO_FORM = "image_to_form"
+    FLASHCARD_MODE_FORM_TO_IMAGE = "form_to_image"
     FLASHCARD_MODE_CHOICES = [
         (FLASHCARD_MODE_FORM_TO_MEANING, "Form → meaning"),
         (FLASHCARD_MODE_MEANING_TO_FORM, "Meaning → form"),
         (FLASHCARD_MODE_IMAGE_TO_FORM, "Image → form"),
+        (FLASHCARD_MODE_FORM_TO_IMAGE, "Form → image"),
     ]
 
     THEME_VOCAB = "vocabulary"

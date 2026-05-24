@@ -101,7 +101,7 @@
     <small>If checked, page text is taken from concatenated segment translations (pivot language = project translation language).</small>
   </p>
   <p>
-    <label for="discourage_text_in_images">
+    <label for="disallow_text_in_images">
       <input
         type="checkbox"
         id="discourage_text_in_images"
@@ -113,7 +113,23 @@
     </label>
     <br />
     <small>
-      If checked, generated prompts ask for minimal visible text in images except story-critical signs and short comic-style sound effects.
+      If checked, generated prompts ask for minimal visible text while still allowing rare story-essential exceptions.
+    </small>
+  </p>
+  <p>
+    <label for="discourage_text_in_images">
+      <input
+        type="checkbox"
+        id="disallow_text_in_images"
+        name="disallow_text_in_images"
+        value="1"
+        {% if disallow_text_in_images_default %}checked{% endif %}
+      />
+      Disallow visible text in images
+    </label>
+    <br />
+    <small>
+      If checked, generated prompts require text-free images (no readable words, labels, captions, signs, or speech bubbles).
     </small>
   </p>
   <p>

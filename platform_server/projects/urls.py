@@ -88,6 +88,11 @@ urlpatterns = [
     path("exercise-sets/<int:set_id>/", views.exercise_set_detail, name="exercise-set-detail"),
     path("exercise-sets/<int:set_id>/play/", views.exercise_set_play, name="exercise-set-play"),
     path("exercise-items/<int:item_id>/image/", views.exercise_item_image, name="exercise-item-image"),
+    path(
+        "exercise-items/<int:item_id>/image/<str:option_key>/",
+        views.exercise_item_option_image,
+        name="exercise-item-option-image",
+    ),
     path("exercise-sets/<int:set_id>/publish/", views.publish_exercise_set, name="exercise-set-publish"),
     path("content/<int:pk>/exercises/", views.published_exercises_for_project, name="content-exercises"),
     path("projects/<int:pk>/collaborators/", views.set_project_collaborator, name="project-collaborators"),

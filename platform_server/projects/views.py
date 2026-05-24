@@ -58,6 +58,7 @@ from .forms import (
     AdminDeleteCommunityForm,
     AdminAdjustCreditsForm,
     AdminOpenAIPricingForm,
+    CreditTransferForm,
     ClozeExerciseSetForm,
     DeleteCachedWordAudioForm,
     FlashcardExerciseSetForm,
@@ -90,6 +91,7 @@ from .billing import (
     minimum_compile_balance_usd,
     openai_price_for_model,
     record_openai_usage_and_charge,
+    transfer_credits_between_users,
 )
 from .models import (
     Community,
@@ -679,8 +681,7 @@ def _build_style_generation_request(project: Project, style_brief: str) -> dict[
             f"Target language: {project.target_language}",
             f"User style brief: {style_brief}",
             (
-                "Text policy for final images: Prefer little/no visible text, "
-                "but allow short text only when it is clearly required by the story (e.g., a meaningful sign or label)."
+                "Text policy for final images: Do not include visible/readable text."
                 if getattr(project.image_style, "discourage_text_in_images", False)
                 else "Text policy for final images: Text is allowed when appropriate for the scene."
             ),
@@ -1619,6 +1620,7 @@ def _build_page_image_prompt(
     full_text: str,
     relevant_elements: list[ProjectImageElement],
     discourage_text_in_image: bool = False,
+    disallow_text_in_image: bool = False,
     dictionary_entry: PictureDictionaryEntry | None = None,
 ) -> str:
     language_instructions = {
@@ -1652,7 +1654,8 @@ def _build_page_image_prompt(
     if prompt_language not in language_instructions:
         prompt_language = "en"
     line1, line2 = language_instructions.get(prompt_language, language_instructions["en"])
-    no_text_line = _discourage_text_guideline_for_language(prompt_language)
+    discourage_text_line = _discourage_text_guideline_for_language(prompt_language)
+    disallow_text_line = _disallow_text_guideline_for_language(prompt_language)
     if dictionary_entry is not None:
         lemma = (dictionary_entry.lemma or page_text or "").strip()
         pos = (dictionary_entry.pos or "").strip() or "unspecified"
@@ -1666,7 +1669,7 @@ def _build_page_image_prompt(
                 f"Style description: {_compact_style_description_for_prompt(style.expanded_style_description or style.style_brief or '[none]', max_chars=1200)}",
                 "Render a clear visual scene for the target lemma itself (not a generic story page).",
                 "Do not focus on words, captions, typography, book pages, or signage text.",
-                f"{no_text_line}",
+                f"{disallow_text_line if disallow_text_in_image else discourage_text_line}",
                 "If the lemma is a noun, make the object/animal/person visually central and unambiguous.",
                 "If the lemma is a verb, depict the action in progress with clear actors/objects.",
                 "If the lemma is an adjective, depict a concrete object/scene where the property is visually obvious.",
@@ -1676,14 +1679,14 @@ def _build_page_image_prompt(
         "en": [
             "TEXT SUPPRESSION REQUIREMENTS (HIGH PRIORITY):",
             "- Do not render readable words, sentences, subtitles, speech bubbles, labels, captions, or signage text.",
-            "- Exception: allow at most 1–3 very short words only when absolutely story-essential (for example: one critical sign or one brief comic-style sound effect).",
-            "- If any text is unavoidable, keep it tiny, low-contrast, background-only, and never central.",
+            "- No exceptions: do not render any readable words, numbers, symbols, labels, captions, signs, or speech bubbles.",
+            "- If accidental text appears in a draft, regenerate until the image is text-free.",
         ],
         "fr": [
             "EXIGENCES DE SUPPRESSION DU TEXTE (PRIORITÉ ÉLEVÉE) :",
             "- N’affiche aucun mot lisible, aucune phrase, sous-titre, bulle, étiquette, légende ou texte d’enseigne.",
-            "- Exception : autorise au maximum 1 à 3 mots très courts, uniquement si c’est indispensable à l’histoire (par exemple une enseigne critique ou une très brève onomatopée).",
-            "- Si du texte est inévitable, il doit rester minuscule, peu contrasté, en arrière-plan, et jamais central.",
+            "- Aucune exception : n’affiche aucun mot, nombre, symbole, étiquette, légende, enseigne ni bulle lisibles.",
+            "- Si du texte apparaît accidentellement, régénère l’image jusqu’à obtenir une image sans texte.",
         ],
     }
     suppression_block = suppression_block_by_language.get(prompt_language, suppression_block_by_language["en"])
@@ -1692,9 +1695,12 @@ def _build_page_image_prompt(
         line2,
         "",
     ]
-    if discourage_text_in_image:
+    if disallow_text_in_image:
         lines.extend(suppression_block)
-        lines.extend([f"- {no_text_line}", ""])
+        lines.extend([f"- {disallow_text_line}", ""])
+    elif discourage_text_in_image:
+        lines.extend(suppression_block)
+        lines.extend([f"- {discourage_text_line}", ""])
     lines.extend(
         [
         f"Prompt language: {language_labels.get(prompt_language, 'English')}",
@@ -1748,6 +1754,10 @@ _DISCOURAGE_TEXT_GUIDELINES = {
     "hi": "दृश्य में टेक्स्ट बहुत कम रखें या न रखें। केवल तब छोटा टेक्स्ट दें जब वह कहानी के लिए ज़रूरी हो (जैसे महत्वपूर्ण साइनबोर्ड या कॉमिक-शैली की छोटी ध्वनि जैसे “BANG!”)।",
 }
 
+_DISALLOW_TEXT_GUIDELINES = {
+    "en": "Do not include visible/readable text in the image. Avoid words, letters, numbers, labels, captions, signs, speech bubbles, and onomatopoeic text.",
+}
+
 
 @lru_cache(maxsize=128)
 def _translate_discourage_text_guideline(language_code: str) -> str:
@@ -1778,6 +1788,13 @@ def _discourage_text_guideline_for_language(language_code: str) -> str:
     return _translate_discourage_text_guideline(code)
 
 
+def _disallow_text_guideline_for_language(language_code: str) -> str:
+    code = (language_code or "").strip().lower()
+    if not code:
+        return _DISALLOW_TEXT_GUIDELINES["en"]
+    return _DISALLOW_TEXT_GUIDELINES.get(code, _DISALLOW_TEXT_GUIDELINES["en"])
+
+
 def _image_prompt_language(project: Project) -> str:
     if project.page_image_text_source == Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION:
         pivot_language = (project.image_generation_pivot_language or "").strip().lower()
@@ -1805,6 +1822,7 @@ def _fit_page_image_prompt_to_limit(
     relevant_elements: list[ProjectImageElement],
     dictionary_entry: PictureDictionaryEntry | None = None,
     discourage_text_in_image: bool = False,
+    disallow_text_in_image: bool = False,
     max_chars: int = 12000,
 ) -> tuple[str, dict[str, Any]]:
     """Build a page-image prompt and iteratively trim when it exceeds limits."""
@@ -1863,6 +1881,7 @@ def _fit_page_image_prompt_to_limit(
             relevant_elements=trimmed_elements,
             dictionary_entry=dictionary_entry,
             discourage_text_in_image=discourage_text_in_image,
+            disallow_text_in_image=disallow_text_in_image,
         )
 
     prompt = _build_with_limits()
@@ -2168,6 +2187,7 @@ def _generate_project_page_images(
     image_model: str,
     variants_per_page: int = 1,
     discourage_text_in_image: bool = False,
+    disallow_text_in_image: bool = False,
     include_full_text: bool = True,
     include_elements: bool = True,
     missing_only: bool = False,
@@ -2227,6 +2247,7 @@ def _generate_project_page_images(
             full_text=full_text,
             relevant_elements=refs,
             discourage_text_in_image=discourage_text_in_image,
+            disallow_text_in_image=disallow_text_in_image,
             dictionary_entry=dictionary_entry,
         )
         previous_page_text = page_texts_by_number.get(page_obj.page_number - 1, "")
@@ -2623,13 +2644,44 @@ def profile(request: HttpRequest) -> HttpResponse:
     _ensure_bootstrap_admin(request.user)
     profile_obj, _ = Profile.objects.get_or_create(user=request.user)
 
+    transfer_form = CreditTransferForm(sender=request.user)
     if request.method == "POST":
         action = (request.POST.get("memory_action") or "").strip().lower()
+        credit_action = (request.POST.get("credit_action") or "").strip().lower()
         if action == "clear":
             profile_obj.dialogue_memory = {}
             profile_obj.save(update_fields=["dialogue_memory", "updated_at"])
             messages.success(request, "Dialogue memory cleared.")
             return redirect("profile")
+        if credit_action == "transfer":
+            transfer_form = CreditTransferForm(request.POST, sender=request.user)
+            if transfer_form.is_valid():
+                recipient = transfer_form.cleaned_data["recipient"]
+                amount = transfer_form.cleaned_data["amount_usd"]
+                note = (transfer_form.cleaned_data.get("note") or "").strip()
+                description = note or f"Credit transfer from {request.user.username}"
+                try:
+                    sender_entry, _ = transfer_credits_between_users(
+                        sender=request.user,
+                        recipient=recipient,
+                        amount_usd=amount,
+                        description=description,
+                    )
+                except ValueError as exc:
+                    transfer_form.add_error(None, str(exc))
+                else:
+                    messages.success(
+                        request,
+                        f"Transferred ${amount:.4f} to {recipient.username}. "
+                        f"Your new balance is ${sender_entry.balance_after_usd:.4f}.",
+                    )
+                    return redirect("profile")
+            form = ProfileForm(instance=profile_obj)
+            return render(
+                request,
+                "projects/profile_form.html",
+                {"form": form, "credit_transfer_form": transfer_form},
+            )
         form = ProfileForm(request.POST, instance=profile_obj)
         if form.is_valid():
             form.save()
@@ -2638,7 +2690,7 @@ def profile(request: HttpRequest) -> HttpResponse:
     else:
         form = ProfileForm(instance=profile_obj)
 
-    return render(request, "projects/profile_form.html", {"form": form})
+    return render(request, "projects/profile_form.html", {"form": form, "credit_transfer_form": transfer_form})
 
 
 @login_required
@@ -2715,12 +2767,14 @@ def admin_issue_suggestions(request: HttpRequest) -> HttpResponse:
         "Please process the following human issue suggestions collected in the C-LARA-2 platform admin UI.",
         "These suggestions come from user submissions stored at /admin-tools/issue-suggestions/.",
         "Follow guidance in docs/roadmap/issue-tracking-and-human-suggestions.md.",
+        "In particular, follow the section 'Overview file guidance (docs/issues/overview.md)' in that roadmap file.",
         "Use your best judgement to decide how each item should be handled.",
         "Assign a priority to each new-issue suggestion (including very low if a suggestion seems unimportant, incorrect, or out of scope).",
         "If a new-issue suggestion appears well grounded, generally rewrite and clarify it based on your understanding of the docs and codebase.",
         "For update suggestions, update the referenced docs/issues entry or related index/overview files as appropriate.",
         "Prepare output intended for docs/issues; in some cases updating existing docs/issues files may be preferable to adding a new file.",
-        "Also regenerate docs/issues/overview.md per the overview guidance in docs/roadmap/issue-tracking-and-human-suggestions.md.",
+        "Also regenerate docs/issues/overview.md in the new canonical format: timestamp, recent progress, near-term priorities, notes/risks, and a final complete issue inventory for all issues with status.",
+        "Validate that issue statuses in overview.md match docs/issues/issues/*.json before finishing.",
         f"Issue registry context source for existing issues: {issue_choices_source}.",
     ]
     suggestion_lines: list[str] = []
@@ -3539,6 +3593,7 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
                         image_model=image_model,
                         variants_per_page=variants_per_page,
                         discourage_text_in_image=bool(style.discourage_text_in_images),
+                        disallow_text_in_image=bool(getattr(style, "disallow_text_in_images", False)),
                     )
                 except Exception as exc:
                     logger.exception("Failed to generate page images for project %s", project.pk)
@@ -5740,6 +5795,14 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
             "on",
             "yes",
         }
+        disallow_text_in_images = (request.POST.get("disallow_text_in_images") or "").strip().lower() in {
+            "1",
+            "true",
+            "on",
+            "yes",
+        }
+        if disallow_text_in_images:
+            discourage_text_in_images = False
         text_source = (
             Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION
             if from_translations
@@ -5769,12 +5832,16 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
                     ai_model=requested_style_ai_model or project.ai_model or DEFAULT_MODEL,
                     sample_image_model=requested_style_image_model or "gpt-image-1",
                     discourage_text_in_images=discourage_text_in_images,
+                    disallow_text_in_images=disallow_text_in_images,
                 )
             else:
                 update_fields: list[str] = []
                 if style.discourage_text_in_images != discourage_text_in_images:
                     style.discourage_text_in_images = discourage_text_in_images
                     update_fields.append("discourage_text_in_images")
+                if bool(getattr(style, "disallow_text_in_images", False)) != disallow_text_in_images:
+                    style.disallow_text_in_images = disallow_text_in_images
+                    update_fields.append("disallow_text_in_images")
                 if style.ai_model != requested_style_ai_model:
                     style.ai_model = requested_style_ai_model
                     update_fields.append("ai_model")
@@ -5828,6 +5895,7 @@ def project_images_home(request: HttpRequest, pk: int) -> HttpResponse:
             "pivot_language_choices": ProjectForm.LANGUAGE_CHOICES,
             "selected_image_generation_pivot_language": project.image_generation_pivot_language,
             "discourage_text_in_images_default": bool(getattr(style, "discourage_text_in_images", False)),
+            "disallow_text_in_images_default": bool(getattr(style, "disallow_text_in_images", False)),
             "ai_model_choices": AI_MODEL_CHOICES,
             "image_model_choices": IMAGE_MODEL_CHOICES,
             "selected_style_ai_model": (getattr(style, "ai_model", "") or project.ai_model or DEFAULT_MODEL),
@@ -9492,12 +9560,16 @@ def _extract_image_flashcard_candidates_from_payload(
                     continue
                 seen_entries.add(entry.id)
                 metadata = _exercise_token_metadata(surface, ann)
+                prompt_word = str(entry.surface or surface or "").strip()
+                if not prompt_word:
+                    continue
                 candidates.append(
                     {
                         "page_number": page_number,
                         "segment_index": seg_idx,
                         "token_index": tok_idx,
-                        "source_word": surface,
+                        "source_word": prompt_word,
+                        "source_word_seen_in_text": surface,
                         "target_gloss": translation,
                         "pos": metadata["pos"] or entry.pos,
                         "lexical_category": metadata["lexical_category"],
@@ -9861,6 +9933,126 @@ Return JSON with:
     }
 
 
+async def _generate_form_to_image_flashcard_item(
+    client: OpenAIClient,
+    model: str,
+    theme: str,
+    candidate: dict[str, Any],
+    order_index: int,
+    fallback_values: list[dict[str, Any]],
+) -> dict[str, Any]:
+    source_word = candidate["source_word"]
+    correct_gloss = candidate["target_gloss"]
+    source_pos = str(candidate.get("pos") or "")
+    source_script = str(candidate.get("script") or "")
+    known_metadata = {
+        str(cand.get("source_word") or "").casefold(): cand
+        for cand in fallback_values
+        if cand.get("source_word")
+    }
+    pool_lines = []
+    for cand in fallback_values[:40]:
+        word = str(cand.get("source_word") or "").strip()
+        translation = str(cand.get("target_gloss") or "").strip()
+        pos = str(cand.get("pos") or "").strip()
+        if word and word.casefold() != source_word.casefold():
+            pool_lines.append(f"- {word} | translation: {translation or '[unknown]'} | POS: {pos or '[unknown]'}")
+    prompt = f"""
+Choose exactly 3 WRONG source-language word distractors for a word-to-image flashcard.
+Theme: {theme}
+Correct source-language word: {source_word}
+Correct translation/gloss: {correct_gloss}
+Candidate distractor pool:
+{chr(10).join(pool_lines)}
+Hard constraints:
+- Choose distractors only from the candidate pool.
+- Every distractor must be incorrect for the prompt word.
+- Prefer same broad lexical category/POS and script where possible.
+- Do not return the correct word or close variants.
+Return JSON with:
+- distractors: array of 3 source-language words from the pool
+"""
+    try:
+        data = await client.chat_json(prompt, model=model)
+    except Exception:
+        data = {}
+    distractors = [
+        str(x).strip()
+        for x in (data.get("distractors") or [])
+        if str(x).strip() and str(x).strip().casefold() in known_metadata
+    ]
+    distractors = _append_fallback_distractors(
+        distractors,
+        [{"surface": c.get("source_word", ""), "pos": c.get("pos", ""), "script": c.get("script", "")} for c in fallback_values],
+        forbidden_values={source_word},
+        answer=source_word,
+        answer_pos=source_pos,
+        answer_script=source_script,
+        known_metadata=_image_flashcard_option_metadata(fallback_values),
+    )
+    # Keep only distractors with usable image metadata; this mode requires image-backed options.
+    distractors = [
+        d
+        for d in distractors
+        if d.casefold() in known_metadata
+        and str(known_metadata[d.casefold()].get("image_path") or "").strip()
+    ]
+    options_words = [source_word] + distractors[:3]
+    while len(options_words) < 4:
+        for cand in fallback_values:
+            word = str(cand.get("source_word") or "").strip()
+            if not word or word.casefold() == source_word.casefold():
+                continue
+            if word in options_words:
+                continue
+            if not str(cand.get("image_path") or "").strip():
+                continue
+            options_words.append(word)
+            if len(options_words) >= 4:
+                break
+        if len(options_words) >= 4:
+            break
+        # deterministic hard fallback: reuse known valid dictionary words from pool
+        break
+    options_words = options_words[:4]
+    labels = ["A", "B", "C", "D"]
+    random.Random(f"{source_word}|{candidate.get('image_path')}|{order_index}|form_to_image").shuffle(options_words)
+    label_to_word = {label: word for label, word in zip(labels, options_words)}
+    correct_label = next((k for k, v in label_to_word.items() if v == source_word), labels[0])
+    option_images = {
+        label: {
+            "source_word": word,
+            "image_project_id": known_metadata.get(word.casefold(), {}).get("dictionary_project_id"),
+            "image_path": known_metadata.get(word.casefold(), {}).get("image_path"),
+        }
+        for label, word in label_to_word.items()
+    }
+    trace = {
+        "mode": "form_to_image",
+        "candidate_source_word_seen_in_text": candidate.get("source_word_seen_in_text"),
+        "dictionary_surface": candidate.get("dictionary_surface"),
+        "pool_size": len(fallback_values),
+        "selected_option_words": options_words,
+        "missing_option_images": [w for w in options_words if not option_images.get(next((k for k,v in label_to_word.items() if v==w), ""), {}).get("image_path")],
+    }
+    return {
+        "order_index": order_index,
+        "page_number": candidate["page_number"],
+        "segment_index": candidate["segment_index"],
+        "segment_text": candidate["segment_text"],
+        "prompt": f"Choose the image that matches: {source_word}",
+        "answer": correct_label,
+        "options": labels,
+        "rationale": {
+            "exercise_kind": "form_to_image",
+            "correct_source_word": source_word,
+            "correct_translation": correct_gloss,
+            "option_images": option_images,
+            "trace": trace,
+        },
+    }
+
+
 @login_required
 def generate_cloze_exercises(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
@@ -9956,7 +10148,7 @@ def generate_flashcard_exercises(request: HttpRequest, pk: int) -> HttpResponse:
             item_count = form.cleaned_data["item_count"]
             model = form.cleaned_data.get("ai_model") or project.ai_model or DEFAULT_MODEL
 
-            if flashcard_mode == ExerciseSet.FLASHCARD_MODE_IMAGE_TO_FORM:
+            if flashcard_mode in {ExerciseSet.FLASHCARD_MODE_IMAGE_TO_FORM, ExerciseSet.FLASHCARD_MODE_FORM_TO_IMAGE}:
                 dictionary = _find_project_picture_dictionary(project)
                 if not dictionary:
                     messages.error(
@@ -10022,6 +10214,11 @@ def generate_flashcard_exercises(request: HttpRequest, pk: int) -> HttpResponse:
                         _generate_image_flashcard_item(client, model, theme, cand, idx, fallback_values)
                         for idx, cand in enumerate(selected)
                     ]
+                elif flashcard_mode == ExerciseSet.FLASHCARD_MODE_FORM_TO_IMAGE:
+                    tasks = [
+                        _generate_form_to_image_flashcard_item(client, model, theme, cand, idx, candidates)
+                        for idx, cand in enumerate(selected)
+                    ]
                 else:
                     tasks = [
                         _generate_flashcard_item(client, model, theme, cand, idx, flashcard_mode, fallback_values)
@@ -10076,6 +10273,40 @@ def exercise_item_image(request: HttpRequest, item_id: int) -> HttpResponse:
     rationale = item.rationale if isinstance(item.rationale, dict) else {}
     image_project_id = rationale.get("image_project_id")
     image_path = str(rationale.get("image_path") or "").strip()
+    if not image_project_id or not image_path:
+        raise Http404()
+    image_project = get_object_or_404(Project, pk=image_project_id)
+    base = image_project.artifact_dir().resolve()
+    file_path = (base / image_path).resolve()
+    try:
+        file_path.relative_to(base)
+    except ValueError:
+        raise Http404()
+    if not file_path.exists() or not file_path.is_file():
+        raise Http404()
+    content_type, _ = mimetypes.guess_type(str(file_path))
+    return FileResponse(open(file_path, "rb"), content_type=content_type or "application/octet-stream")
+
+
+@login_required
+def exercise_item_option_image(request: HttpRequest, item_id: int, option_key: str) -> HttpResponse:
+    item = get_object_or_404(
+        ExerciseItem.objects.select_related("exercise_set", "exercise_set__project"),
+        pk=item_id,
+    )
+    ex_set = item.exercise_set
+    project = ex_set.project
+    if project.owner != request.user and not ex_set.is_published:
+        raise Http404()
+    rationale = item.rationale if isinstance(item.rationale, dict) else {}
+    option_images = rationale.get("option_images")
+    if not isinstance(option_images, dict):
+        raise Http404()
+    payload = option_images.get(option_key)
+    if not isinstance(payload, dict):
+        raise Http404()
+    image_project_id = payload.get("image_project_id")
+    image_path = str(payload.get("image_path") or "").strip()
     if not image_project_id or not image_path:
         raise Http404()
     image_project = get_object_or_404(Project, pk=image_project_id)
