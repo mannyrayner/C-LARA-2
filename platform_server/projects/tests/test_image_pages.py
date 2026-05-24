@@ -236,7 +236,9 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertIn("selected_image_generation_pivot_language", resp.context)
         self.assertEqual(resp.context["selected_image_generation_pivot_language"], self.project.image_generation_pivot_language)
         self.assertIn("discourage_text_in_images_default", resp.context)
+        self.assertIn("disallow_text_in_images_default", resp.context)
         self.assertContains(resp, "Discourage visible text in images")
+        self.assertContains(resp, "Disallow visible text in images")
 
     def test_images_home_can_toggle_discourage_text_setting(self):
         style = ProjectImageStyle.objects.get(project=self.project)
@@ -258,6 +260,19 @@ class ProjectImagePagesViewTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         style.refresh_from_db()
+        self.assertFalse(style.discourage_text_in_images)
+
+    def test_images_home_can_toggle_disallow_text_setting(self):
+        style = ProjectImageStyle.objects.get(project=self.project)
+        self.assertFalse(getattr(style, "disallow_text_in_images", False))
+        resp = self.client.post(
+            reverse("project-images-home", args=[self.project.pk]),
+            {"disallow_text_in_images": "1"},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        style.refresh_from_db()
+        self.assertTrue(style.disallow_text_in_images)
         self.assertFalse(style.discourage_text_in_images)
 
     def test_images_home_view_source_contains_pivot_language_assignment_and_validation(self):
@@ -639,10 +654,9 @@ class ProjectImagePagesViewTests(TestCase):
         self.assertTrue(blocked_events)
         self.assertTrue(retry_events)
 
-    def test_discourage_text_guideline_known_language_mentions_signs_and_sfx(self):
+    def test_discourage_text_guideline_known_language_requires_no_visible_text(self):
         guideline = views._discourage_text_guideline_for_language("en")
-        self.assertIn("meaningful sign", guideline)
-        self.assertIn("comic-style sound effects", guideline)
+        self.assertIn("Do not include visible/readable text", guideline)
 
     @patch("projects.views._build_ai_client")
     def test_discourage_text_guideline_unknown_language_uses_cached_ai_translation(self, mock_build_ai_client):
@@ -652,7 +666,7 @@ class ProjectImagePagesViewTests(TestCase):
 
             async def chat_text(self, prompt, **kwargs):  # noqa: ARG002
                 self.calls += 1
-                return "Texte minimal; autoriser seulement les panneaux importants."
+                return "Ne pas inclure de texte visible/lisible dans l’image."
 
         fake_translator = FakeTranslator()
         mock_build_ai_client.return_value = fake_translator
@@ -661,5 +675,5 @@ class ProjectImagePagesViewTests(TestCase):
         first = views._discourage_text_guideline_for_language("eo")
         second = views._discourage_text_guideline_for_language("eo")
         self.assertEqual(first, second)
-        self.assertIn("panneaux importants", first)
+        self.assertIn("texte visible/lisible", first)
         self.assertEqual(fake_translator.calls, 1)

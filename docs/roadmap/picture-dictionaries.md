@@ -78,6 +78,17 @@ This is both a usability improvement and a consistency requirement for selection
 - Continue to enforce practical readiness states (candidate / needs image / image generated / approved-game-ready / excluded / needs review).
 - Ensure game generation and glossing use curated-ready entries, not raw/unreviewed entries.
 
+### 2.5 Enforce text-free dictionary images (linked to ISSUE-0028)
+
+Image-based flashcards are now working in both directions, but they are undermined when dictionary images contain visible written words.
+
+- Treat “no overlaid readable text in the generated image” as a default quality requirement for picture-dictionary images.
+- Strengthen generation/regeneration prompts with explicit text-free constraints.
+- Add organiser-facing diagnostics so entries can be flagged/rejected when text is detected in generated images.
+- Add lightweight regression checks for dictionary image assets used by flashcards.
+
+Track implementation in **ISSUE-0028** (`docs/issues/issues/ISSUE-0028.json`).
+
 ---
 
 ## 3) Longer-term goals

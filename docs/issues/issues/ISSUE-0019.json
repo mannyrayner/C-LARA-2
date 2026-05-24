@@ -2,12 +2,12 @@
   "schema_version": 1,
   "issue_id": "ISSUE-0019",
   "title": "Ensure favicon reliably appears on AWS deployment",
-  "state": "reported",
+  "state": "closed",
   "priority": "P3",
   "created_at": "2026-05-21T00:51:14Z",
-  "updated_at": "2026-05-21T00:51:14Z",
+  "updated_at": "2026-05-23T06:05:00Z",
   "origin": "human-suggestion",
-  "notes": "Suggestion #10 from admin export (submitted by mannyrayner on 2026-05-20). Favicon appears in local/laptop deployments but not on AWS-hosted deployment. Investigate deployment-specific static asset delivery and cache behavior: verify favicon files are present in collected static output, template/head references use stable URLs, MIME type is correct, CDN/proxy rules are not stripping or rewriting icon requests, and browser cache invalidation/versioning works across updates. This is minor UX polish but visible and should be fixed with a small, low-risk deployment/static-assets patch.",
+  "notes": "Suggestion #10 from admin export (submitted by mannyrayner on 2026-05-20). Favicon appears in local/laptop deployments but not on AWS-hosted deployment. Investigate deployment-specific static asset delivery and cache behavior: verify favicon files are present in collected static output, template/head references use stable URLs, MIME type is correct, CDN/proxy rules are not stripping or rewriting icon requests, and browser cache invalidation/versioning works across updates. This is minor UX polish but visible and should be fixed with a small, low-risk deployment/static-assets patch.\n\nClosed based on maintainer confirmation in issue update suggestion #10 (2026-05-23): favicon behavior is now working well on AWS deployment.",
   "deadline": null,
   "dependencies": [
     "ISSUE-0014"
