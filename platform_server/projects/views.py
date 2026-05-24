@@ -681,8 +681,7 @@ def _build_style_generation_request(project: Project, style_brief: str) -> dict[
             f"Target language: {project.target_language}",
             f"User style brief: {style_brief}",
             (
-                "Text policy for final images: Prefer little/no visible text, "
-                "but allow short text only when it is clearly required by the story (e.g., a meaningful sign or label)."
+                "Text policy for final images: Do not include visible/readable text."
                 if getattr(project.image_style, "discourage_text_in_images", False)
                 else "Text policy for final images: Text is allowed when appropriate for the scene."
             ),
@@ -1678,14 +1677,14 @@ def _build_page_image_prompt(
         "en": [
             "TEXT SUPPRESSION REQUIREMENTS (HIGH PRIORITY):",
             "- Do not render readable words, sentences, subtitles, speech bubbles, labels, captions, or signage text.",
-            "- Exception: allow at most 1–3 very short words only when absolutely story-essential (for example: one critical sign or one brief comic-style sound effect).",
-            "- If any text is unavoidable, keep it tiny, low-contrast, background-only, and never central.",
+            "- No exceptions: do not render any readable words, numbers, symbols, labels, captions, signs, or speech bubbles.",
+            "- If accidental text appears in a draft, regenerate until the image is text-free.",
         ],
         "fr": [
             "EXIGENCES DE SUPPRESSION DU TEXTE (PRIORITÉ ÉLEVÉE) :",
             "- N’affiche aucun mot lisible, aucune phrase, sous-titre, bulle, étiquette, légende ou texte d’enseigne.",
-            "- Exception : autorise au maximum 1 à 3 mots très courts, uniquement si c’est indispensable à l’histoire (par exemple une enseigne critique ou une très brève onomatopée).",
-            "- Si du texte est inévitable, il doit rester minuscule, peu contrasté, en arrière-plan, et jamais central.",
+            "- Aucune exception : n’affiche aucun mot, nombre, symbole, étiquette, légende, enseigne ni bulle lisibles.",
+            "- Si du texte apparaît accidentellement, régénère l’image jusqu’à obtenir une image sans texte.",
         ],
     }
     suppression_block = suppression_block_by_language.get(prompt_language, suppression_block_by_language["en"])
@@ -1730,7 +1729,7 @@ def _build_page_image_prompt(
 
 
 _DISCOURAGE_TEXT_GUIDELINES = {
-    "en": "Prefer little or no visible text. Allow short text only when story-essential (e.g., a meaningful sign, or brief comic-style sound effects like 'BANG!' or 'BOOM!').",
+    "en": "Do not include visible/readable text in the image. Avoid words, letters, numbers, labels, captions, signs, speech bubbles, and onomatopoeic text.",
     "fr": "Privilégie peu ou pas de texte visible. Autorise un texte court seulement s’il est essentiel à la scène (p. ex. un panneau important, ou une onomatopée brève de style BD comme « BANG! »).",
     "de": "Bevorzuge wenig oder keinen sichtbaren Text. Erlaube kurzen Text nur, wenn er für die Szene wesentlich ist (z. B. ein wichtiges Schild oder ein kurzes Comic-Geräusch wie „BANG!“).",
     "es": "Prefiere poco o ningún texto visible. Permite texto breve solo cuando sea esencial para la escena (p. ej., un letrero importante o una onomatopeya breve estilo cómic como «¡BANG!»).",
