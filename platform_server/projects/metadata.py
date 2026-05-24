@@ -17,7 +17,7 @@ from core.config import DEFAULT_MODEL, OpenAIConfig
 from pipeline.stage_artifacts import read_stage_artifact, stage_artifact_path
 
 from .billing import record_openai_usage_and_charge
-from .models import Project
+from .models import Profile, Project
 
 logger = logging.getLogger(__name__)
 
@@ -121,8 +121,13 @@ def _run_billed_chat_text(
     def _collect(event: dict[str, Any]) -> None:
         usage_events.append(dict(event or {}))
 
+    profile_obj = Profile.objects.filter(user=project.owner).first()
+    byok_key = ""
+    if profile_obj and profile_obj.use_personal_openai_key:
+        byok_key = (profile_obj.openai_api_key or "").strip()
     client = OpenAIClient(
         config=OpenAIConfig(
+            api_key=byok_key or None,
             model=DEFAULT_MODEL,
             usage_reporter=_collect,
         )
@@ -130,16 +135,17 @@ def _run_billed_chat_text(
     response = asyncio.run(client.chat_text(prompt, model=DEFAULT_MODEL, temperature=temperature))
     for event in usage_events:
         payload = dict(event or {})
-        record_openai_usage_and_charge(
-            user_id=project.owner_id,
-            project_id=project.id,
-            model=str(payload.get("model") or DEFAULT_MODEL),
-            operation=str(payload.get("operation") or "chat_text"),
-            prompt_tokens=max(0, int(payload.get("prompt_tokens") or 0)),
-            completion_tokens=max(0, int(payload.get("completion_tokens") or 0)),
-            total_tokens=max(0, int(payload.get("total_tokens") or 0)),
-            request_type=request_type,
-        )
+        if not byok_key:
+            record_openai_usage_and_charge(
+                user_id=project.owner_id,
+                project_id=project.id,
+                model=str(payload.get("model") or DEFAULT_MODEL),
+                operation=str(payload.get("operation") or "chat_text"),
+                prompt_tokens=max(0, int(payload.get("prompt_tokens") or 0)),
+                completion_tokens=max(0, int(payload.get("completion_tokens") or 0)),
+                total_tokens=max(0, int(payload.get("total_tokens") or 0)),
+                request_type=request_type,
+            )
     return response or ""
 
 

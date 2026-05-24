@@ -286,3 +286,13 @@ Focus:
 - Treat phones and tablets as first-class access devices for learner-facing flows.
 - Start with browsing published/compiled texts, then extend to content browsing, exercises, and default-driven background content creation.
 - Treat dense linguistic annotation editing as the difficult mobile case, while exploring lightweight triage/review angles.
+
+### 24. Community judging autosave roadmap
+
+Status: **Planning document added; implementation intentionally deferred until after June 1 Kok Kaper visit.** See [roadmap/community-judging-autosave.md](community-judging-autosave.md).
+
+Focus:
+- Prevent accidental loss of community member judgements on judge pages.
+- Add autosave-on-change with clear saved-state feedback and fallback submit compatibility.
+- Deliver in a low-risk rollout window after current field visit commitments.
+

@@ -6032,11 +6032,18 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
 
 
 def _build_ai_client(
+    user: Any | None = None,
     model_name: str | None = None,
     usage_reporter: Callable[[dict[str, Any]], None] | None = None,
     detailed_telemetry: bool = False,
 ) -> OpenAIClient:
+    api_key = None
+    if user is not None:
+        profile_obj = getattr(user, "profile", None)
+        if profile_obj and getattr(profile_obj, "use_personal_openai_key", False):
+            api_key = (getattr(profile_obj, "openai_api_key", "") or "").strip() or None
     config = OpenAIConfig(
+        api_key=api_key,
         model=model_name or DEFAULT_MODEL,
         usage_reporter=usage_reporter,
         detailed_telemetry=detailed_telemetry,
@@ -6061,7 +6068,13 @@ def _billing_usage_reporter(*, user_id: int, project_id: int | None, request_typ
         if fallback_applied:
             completion_tokens = 1_000_000
             total_tokens = 1_000_000
-        record_openai_usage_and_charge(
+        user = get_user_model().objects.filter(pk=user_id).first()
+        if user is None:
+            return
+        profile_obj = getattr(user, "profile", None)
+        byok_enabled = bool(profile_obj and getattr(profile_obj, "use_personal_openai_key", False) and (getattr(profile_obj, "openai_api_key", "") or "").strip())
+        if not byok_enabled:
+            record_openai_usage_and_charge(
             user_id=user_id,
             project_id=project_id,
             model=model,
@@ -6070,14 +6083,13 @@ def _billing_usage_reporter(*, user_id: int, project_id: int | None, request_typ
             completion_tokens=completion_tokens,
             total_tokens=total_tokens,
             request_type=request_type or str(payload.get("request_type") or operation),
-        )
+            )
         if project_id and "image" in (request_type or operation):
             try:
                 project = Project.objects.filter(pk=project_id).first()
                 if project is None:
                     return
                 usage = AIUsageCharge.objects.filter(user_id=user_id, project_id=project_id).order_by("-created_at", "-id").first()
-                user = get_user_model().objects.filter(pk=user_id).first()
                 pricing = openai_price_for_model(model)
                 _append_image_billing_telemetry(
                     project,
@@ -6094,9 +6106,10 @@ def _billing_usage_reporter(*, user_id: int, project_id: int | None, request_typ
                         "price_input_usd_per_1m": str(pricing["input"]),
                         "price_output_usd_per_1m": str(pricing["output"]),
                         "usage_charge_id": usage.id if usage else None,
-                        "usage_status": usage.status if usage else None,
+                        "usage_status": "byok" if byok_enabled else (usage.status if usage else None),
                         "usage_cost_usd": str(usage.cost_usd) if usage else None,
                         "balance_after_usd": str(get_user_balance_usd(user)) if user is not None else None,
+                        "byok_enabled": byok_enabled,
                     },
                 )
             except Exception:
@@ -6112,6 +6125,7 @@ def _build_billed_project_ai_client(
     request_type: str,
 ) -> OpenAIClient:
     return _build_ai_client(
+        user=project.owner,
         model_name=model_name,
         usage_reporter=_billing_usage_reporter(
             user_id=project.owner_id,

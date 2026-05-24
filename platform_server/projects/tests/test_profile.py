@@ -46,6 +46,22 @@ class ProfileTests(TestCase):
         profile_obj = Profile.objects.get(user=self.user)
         self.assertFalse(profile_obj.dialogue_memory_enabled)
 
+    def test_profile_can_enable_byok_with_key(self):
+        resp = self.client.post(
+            reverse("profile"),
+            {
+                "timezone": "UTC",
+                "dialogue_language": "en",
+                "use_personal_openai_key": "on",
+                "openai_api_key": "sk-test-123",
+            },
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        profile_obj = Profile.objects.get(user=self.user)
+        self.assertTrue(profile_obj.use_personal_openai_key)
+        self.assertEqual(profile_obj.openai_api_key, "sk-test-123")
+
     def test_profile_clear_memory_action(self):
         profile_obj = Profile.objects.get(user=self.user)
         profile_obj.dialogue_memory = {"last_nl_query": "Find me a story about elephants"}

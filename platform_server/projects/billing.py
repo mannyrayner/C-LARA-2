@@ -45,6 +45,9 @@ def get_user_balance_usd(user: Any) -> Decimal:
 def has_minimum_balance_for_compile(user: Any) -> bool:
     if not credits_enabled():
         return True
+    profile_obj = getattr(user, "profile", None)
+    if profile_obj and getattr(profile_obj, "use_personal_openai_key", False) and (getattr(profile_obj, "openai_api_key", "") or "").strip():
+        return True
     return get_user_balance_usd(user) >= minimum_compile_balance_usd()
 
 
