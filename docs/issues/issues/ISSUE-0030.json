@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "issue_id": "ISSUE-0030",
+  "title": "Fix image-generation workflow UX around element expansion auto-refresh and selection confirmation",
+  "state": "reported",
+  "priority": "P1",
+  "created_at": "2026-05-24T14:21:50Z",
+  "updated_at": "2026-05-24T14:21:50Z",
+  "origin": "human-suggestion",
+  "notes": "Suggestion #19 from admin export (submitted by mannyrayner on 2026-05-24). Reported two user-facing failures in the image-generation flow: (1) UI text during element expansion claims the browser will auto-update, but users observe no automatic refresh; either implement actual auto-refresh/push update behavior or revise messaging to accurately describe required manual refresh. (2) After selecting expanded elements via checkboxes, attempting image generation without an explicit confirm step can fail silently; enforce a clear precondition with actionable warning, or treat selection as implicitly confirmed and proceed with explicit user feedback. Include regression coverage to prevent silent failures in this sequence.",
+  "deadline": null,
+  "dependencies": [
+    "ISSUE-0017",
+    "ISSUE-0025"
+  ]
+}

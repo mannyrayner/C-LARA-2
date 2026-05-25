@@ -296,3 +296,13 @@ Focus:
 - Add autosave-on-change with clear saved-state feedback and fallback submit compatibility.
 - Deliver in a low-risk rollout window after current field visit commitments.
 
+
+
+### 21. First progress report roadmap
+
+Status: **New roadmap document added.** See [roadmap/first-progress-report.md](first-progress-report.md).
+
+Focus:
+- Markdown-first publication workspace for the first progress report (target 2026-06-15).
+- Structured section outline with later LaTeX conversion path.
+- Explicit links from publication drafting to issue/roadmap evidence.
