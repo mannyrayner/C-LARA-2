@@ -1,9 +1,9 @@
 # C-LARA-2 issues overview
-_Last updated: 2026-05-24T14:21:50Z_
+_Last updated: 2026-05-25T00:53:31Z_
 
 ## Recent progress
-- Added **[ISSUE-0030](issues/ISSUE-0030.json)** (P1, reported) from human suggestion #19 to track two image-generation UI failures: misleading auto-update messaging and silent failure when selection confirmation is missing.
-- Re-prioritized focus order to include ISSUE-0030 at the top because it impacts a core creation workflow and currently causes silent user-facing failure.
+- Processed update suggestion #15 for **[ISSUE-0006](issues/ISSUE-0006.json)** and captured a concrete surface-form-first redesign path for segmentation_phase_2 in issue notes for implementation/prototyping.
+- Reconfirmed update suggestion #14 remains reflected: **[ISSUE-0027](issues/ISSUE-0027.json)** is already **closed**; no additional state change was required in this pass.
 - Revalidated overview status values against canonical per-issue JSON records.
 
 ## Near-term priorities
@@ -24,7 +24,7 @@ _Last updated: 2026-05-24T14:21:50Z_
 
 ## Notes/risks
 - ISSUE-0030 indicates at least one silent-failure path in the image-generation journey; this risks user confusion and duplicate retries unless validation/feedback is made explicit.
-- Regression-detection coverage for UI controls remains incomplete until ISSUE-0025 lands.
+- ISSUE-0006 remains reliability-sensitive; the proposed surface-form strategy should be validated against multilingual edge cases and rerun-path behavior before broad adoption.
 - End-to-end validation automation (ISSUE-0003) remains a cross-cutting dependency for safer rapid iteration.
 
 ## Complete issue inventory
