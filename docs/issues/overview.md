@@ -1,31 +1,32 @@
 # C-LARA-2 issues overview
-
-_Last updated: 2026-05-24T13:00:00Z_
+_Last updated: 2026-05-25T02:21:13Z_
 
 ## Recent progress
-
-- Added **[ISSUE-0029](issues/ISSUE-0029.json)** (P1, reported) from human suggestion #18 to track autosave-on-entry for community judging pages and prevent loss of unsaved judgements.
-- Processed update suggestion #13 for **ISSUE-0028** and kept it **closed** (no further state change needed).
-- Archived the previous focus index snapshot before updating active priorities.
+- Processed update suggestion #21 under **[ISSUE-0008](issues/ISSUE-0008.json)** and added a dedicated roadmap/workspace for the first progress report due 2026-06-15 (`docs/roadmap/first-progress-report.md`, `docs/publications/progress_report_1/`).
+- Treated suggestion #21 as an **existing-issue update** (ISSUE-0008), not a new issue, because publication planning already lives in the report/papers track.
+- Revalidated overview status values against canonical per-issue JSON records.
 
 ## Near-term priorities
-
-1. **[ISSUE-0010](issues/ISSUE-0010.json) (P1, active)** — Import a representative legacy C-LARA project corpus and add batch import tooling.
-2. **[ISSUE-0003](issues/ISSUE-0003.json) (P1, reported)** — Add efficient end-to-end pipeline test runner for systematic quality checks.
-3. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, reported)** — Write C-LARA-2 technical report and academic papers.
-4. **[ISSUE-0013](issues/ISSUE-0013.json) (P1, reported)** — Improve stage artifact persistence performance and timeout resilience.
-5. **[ISSUE-0025](issues/ISSUE-0025.json) (P1, reported)** — Add systematic UI regression tracking for disappearing controls/content.
-6. **[ISSUE-0026](issues/ISSUE-0026.json) (P1, reported)** — Define next-step community-recorded audio workflow for non-TTS languages.
-7. **[ISSUE-0029](issues/ISSUE-0029.json) (P1, reported)** — Autosave community judging inputs to prevent accidental data loss.
-8. **[ISSUE-0001](issues/ISSUE-0001.json) (P2, reported)** — Support hosted compiled legacy content registration in C-LARA-2.
-9. **[ISSUE-0004](issues/ISSUE-0004.json) (P2, reported)** — Introduce AI-based review gates for phase outputs with extensible evaluator architecture.
-10. **[ISSUE-0005](issues/ISSUE-0005.json) (P2, reported)** — Tune segmentation_phase_1 prompting to improve segment granularity by genre.
+1. **[ISSUE-0031](issues/ISSUE-0031.json) (P1, reported)** — Improve compiled-content presentation context and configurable public access controls.
+2. **[ISSUE-0030](issues/ISSUE-0030.json) (P1, reported)** — Fix image-generation workflow UX around element expansion auto-refresh and selection confirmation.
+3. **[ISSUE-0029](issues/ISSUE-0029.json) (P1, reported)** — Autosave community judging inputs to prevent accidental data loss.
+4. **[ISSUE-0026](issues/ISSUE-0026.json) (P1, reported)** — Define next-step community-recorded audio workflow for non-TTS languages.
+5. **[ISSUE-0003](issues/ISSUE-0003.json) (P1, reported)** — Add efficient end-to-end pipeline test runner for systematic quality checks.
+6. **[ISSUE-0025](issues/ISSUE-0025.json) (P1, reported)** — Add systematic UI regression tracking for disappearing controls/content.
+7. **[ISSUE-0010](issues/ISSUE-0010.json) (P1, active)** — Import a representative legacy C-LARA project corpus and add batch import tooling.
+8. **[ISSUE-0013](issues/ISSUE-0013.json) (P1, reported)** — Improve stage artifact persistence performance and timeout resilience.
+9. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, reported)** — Write C-LARA-2 technical report and academic papers.
+10. **[ISSUE-0006](issues/ISSUE-0006.json) (P2, reported)** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness.
+11. **[ISSUE-0005](issues/ISSUE-0005.json) (P2, reported)** — Tune segmentation_phase_1 prompting to improve segment granularity by genre.
+12. **[ISSUE-0004](issues/ISSUE-0004.json) (P2, reported)** — Introduce AI-based review gates for phase outputs with extensible evaluator architecture.
+13. **[ISSUE-0007](issues/ISSUE-0007.json) (P2, reported)** — Use LLM prompt-construction indirection for page-image generation prompts.
+14. **[ISSUE-0001](issues/ISSUE-0001.json) (P2, reported)** — Support hosted compiled legacy content registration in C-LARA-2.
+15. **[ISSUE-0012](issues/ISSUE-0012.json) (P2, reported)** — Adjust project creation defaults for AI generation and page images.
 
 ## Notes/risks
-
-- Community judging UX currently risks silent data loss without immediate persistence (ISSUE-0029).
-- Regression-detection coverage for UI controls remains incomplete until ISSUE-0025 lands.
-- End-to-end validation automation (ISSUE-0003) is still a cross-cutting dependency for safer rapid iteration.
+- The first progress report has a fixed near-term date (2026-06-15); maintaining momentum now depends on consistent section-level drafting in the new publication workspace.
+- ISSUE-0031 spans authentication and published-content serving; policy/UI mistakes could expose content unintentionally or block intended anonymous access.
+- End-to-end validation automation (ISSUE-0003) remains a cross-cutting dependency for safer rapid iteration.
 
 ## Complete issue inventory
 
@@ -57,6 +58,8 @@ _Last updated: 2026-05-24T13:00:00Z_
 | [ISSUE-0024](issues/ISSUE-0024.json) | closed | P3 | Stabilize and verify natural-language search controls on Published Content view. |
 | [ISSUE-0025](issues/ISSUE-0025.json) | reported | P1 | Add systematic UI regression tracking for disappearing controls/content. |
 | [ISSUE-0026](issues/ISSUE-0026.json) | reported | P1 | Define next-step community-recorded audio workflow for non-TTS languages. |
-| [ISSUE-0027](issues/ISSUE-0027.json) | reported | P2 | Add user credit transfer and user-provided OpenAI API key billing option. |
+| [ISSUE-0027](issues/ISSUE-0027.json) | closed | P2 | Add user credit transfer and user-provided OpenAI API key billing option. |
 | [ISSUE-0028](issues/ISSUE-0028.json) | closed | P1 | Ensure picture-dictionary image generation produces text-free images. |
 | [ISSUE-0029](issues/ISSUE-0029.json) | reported | P1 | Autosave community judging inputs to prevent accidental data loss. |
+| [ISSUE-0030](issues/ISSUE-0030.json) | reported | P1 | Fix image-generation workflow UX around element expansion auto-refresh and selection confirmation. |
+| [ISSUE-0031](issues/ISSUE-0031.json) | reported | P1 | Improve compiled-content presentation context and configurable public access controls. |
