@@ -123,6 +123,26 @@ class PictureDictionaryCommandTests(TestCase):
         self.assertEqual(by_surface["Katze"]["annotations"].get("gloss"), "cat")
         self.assertEqual(by_surface["Hund"].get("annotations", {}), {})
 
+    def test_compile_uses_translation_text_for_page_prompts_when_configured(self):
+        call_command("picture_dictionary", "ensure", community_id=self.community.id, organiser=self.organiser.username)
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        dictionary.project.page_image_text_source = Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION
+        dictionary.project.save(update_fields=["page_image_text_source", "updated_at"])
+        call_command("picture_dictionary", "add", community_id=self.community.id, organiser=self.organiser.username, words="Katze")
+        run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
+        gloss_payload = read_stage_artifact(run_dir, "gloss")
+        gloss_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"] = {
+            "lemma": "Katze",
+            "pos": "NOUN",
+            "gloss": "cat",
+            "translation": "cat",
+        }
+        write_stage_artifact(run_dir, "gloss", gloss_payload)
+        call_command("picture_dictionary", "compile", community_id=self.community.id, organiser=self.organiser.username)
+        page = dictionary.project.image_pages.order_by("page_number").first()
+        assert page is not None
+        self.assertEqual(page.page_text, "cat")
+
     def test_import_project_as_dictionary_copy_filters_untranslated_pages_and_supports_picture_glossing(self):
         source = Project.objects.create(
             owner=self.organiser,

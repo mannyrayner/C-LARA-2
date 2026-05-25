@@ -841,18 +841,25 @@ def compile_picture_dictionary(
     _bootstrap_registry_from_project_source(dictionary)
     entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
     _sync_project_source_from_registry(dictionary)
+    manual_rows = _manual_rows_from_entries(dictionary, entries)
     _post_progress(f"Dictionary text compilation started for {len(entries)} image entr{'y' if len(entries) == 1 else 'ies'}.")
     _post_progress("Text phase 1/3: syncing dictionary entries to image pages.")
 
     for idx, entry in enumerate(entries, start=1):
+        page_prompt_text = entry.surface
+        if dictionary.project.page_image_text_source == Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION and idx <= len(manual_rows):
+            row = manual_rows[idx - 1]
+            candidate = str(row.get("translation") or row.get("gloss") or "").strip()
+            if candidate:
+                page_prompt_text = candidate
         existing = ProjectImagePage.objects.filter(project=dictionary.project, page_number=idx).first()
         if existing:
             changed = False
-            if existing.page_text != entry.surface:
-                existing.page_text = entry.surface
+            if existing.page_text != page_prompt_text:
+                existing.page_text = page_prompt_text
                 changed = True
-            if existing.generation_prompt != entry.surface:
-                existing.generation_prompt = entry.surface
+            if existing.generation_prompt != page_prompt_text:
+                existing.generation_prompt = page_prompt_text
                 changed = True
             if entry.image_path and existing.image_path != entry.image_path:
                 existing.image_path = entry.image_path
@@ -867,8 +874,8 @@ def compile_picture_dictionary(
             page = ProjectImagePage.objects.create(
                 project=dictionary.project,
                 page_number=idx,
-                page_text=entry.surface,
-                generation_prompt=entry.surface,
+                page_text=page_prompt_text,
+                generation_prompt=page_prompt_text,
                 image_model="gpt-image-1",
                 image_path=entry.image_path,
             )
@@ -879,7 +886,6 @@ def compile_picture_dictionary(
 
     ProjectImagePage.objects.filter(project=dictionary.project, page_number__gt=len(entries)).delete()
     _post_progress("Text phase 2/3: writing segmentation and annotation stage artifacts.")
-    manual_rows = _manual_rows_from_entries(dictionary, entries)
     manual_annotations_complete = _rows_have_manual_glosses(manual_rows)
     _write_segmentation_phase_1(dictionary, entries)
     if manual_annotations_complete:
