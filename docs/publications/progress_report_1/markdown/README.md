@@ -1,8 +1,15 @@
-# Progress Report 1 (Markdown workspace)
+# C-LARA-2 Progress Report 1 (Outline Draft)
 
-Target date: **2026-06-15**.
+**Target date:** 2026-06-15  
+**Draft status:** Outline for internal discussion with project members
 
-This is the top-level outline document for the first C-LARA-2 progress report.
+This document is the top-level entry point for the first C-LARA-2 progress report.
+
+## How to use this outline
+
+- Read this file first to understand the narrative flow.
+- Then read each linked section draft.
+- Treat all claims as *discussion-ready drafts* that should be reviewed, corrected, and expanded by project members.
 
 ## Section map
 
@@ -12,11 +19,18 @@ This is the top-level outline document for the first C-LARA-2 progress report.
 4. [04-implementor-facing-functionality.md](04-implementor-facing-functionality.md)
 5. [05-medium-term-future-work.md](05-medium-term-future-work.md)
 
-## Outline notes
+## Proposed high-level narrative
 
-- History: LARA → C-LARA → C-LARA-2.
-- Stable core: multimodal pedagogical texts.
-- Evolving differentiator: increasing AI autonomy with human supervision/review.
-- User-facing advances: structured editing, exercise generation, picture dictionaries.
-- Implementor-facing advances: roadmap memory + issue-suggestion loop.
-- Future work: mobile, direct audio recording workflow, alignment, autonomous drift tracking.
+1. **Why C-LARA-2 exists**: successor platform with cleaner architecture and broader long-term scope.
+2. **What stayed stable**: multimodal pedagogical text production remains central.
+3. **What changed most**: AI autonomy expanded from pipeline/content generation to implementation, documentation, issue management, and operational support.
+4. **What works now**: substantial user-facing and implementor-facing functionality already delivered.
+5. **What comes next**: concrete roadmap/issue-grounded priorities for the next phase.
+
+## Open questions for the human review pass
+
+- Are the current claims about AI role distribution phrased accurately and responsibly?
+- Which user-facing capabilities should be foregrounded for external audiences?
+- Which technical details should be moved to appendices versus kept in the main narrative?
+- How should we calibrate emphasis between user impact and engineering/process innovation?
+- Which future-work items are mandatory for the next reporting cycle?
