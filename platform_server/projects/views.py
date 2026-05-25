@@ -10256,12 +10256,13 @@ def generate_flashcard_exercises(request: HttpRequest, pk: int) -> HttpResponse:
                 created_by=request.user,
             )
 
+            client = _build_billed_project_ai_client(
+                project,
+                model_name=model,
+                request_type="exercise_flashcard_generation",
+            )
+
             async def _run() -> list[dict[str, Any]]:
-                client = _build_billed_project_ai_client(
-                    project,
-                    model_name=model,
-                    request_type="exercise_flashcard_generation",
-                )
                 if flashcard_mode == ExerciseSet.FLASHCARD_MODE_IMAGE_TO_FORM:
                     tasks = [
                         _generate_image_flashcard_item(client, model, theme, cand, idx, fallback_values)
