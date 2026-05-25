@@ -1,9 +1,9 @@
 # C-LARA-2 issues overview
-_Last updated: 2026-05-25T03:13:12Z_
+_Last updated: 2026-05-25T05:03:13Z_
 
 ## Recent progress
-- Processed update suggestion #18 for **[ISSUE-0008](issues/ISSUE-0008.json)** by expanding `docs/roadmap/first-progress-report.md` with two added outline elements: AI-led sysadmin/deployment tasks and legacy-project migration as implementor-facing functionality.
-- Kept this as an update to existing publication-planning scope (ISSUE-0008) rather than creating a new issue.
+- Processed update suggestion #19 and marked **[ISSUE-0012](issues/ISSUE-0012.json)** as **closed**.
+- Updated focus priorities to remove closed ISSUE-0012 from active focus ordering.
 - Revalidated overview status values against canonical per-issue JSON records.
 
 ## Near-term priorities
@@ -21,11 +21,10 @@ _Last updated: 2026-05-25T03:13:12Z_
 12. **[ISSUE-0004](issues/ISSUE-0004.json) (P2, reported)** — Introduce AI-based review gates for phase outputs with extensible evaluator architecture.
 13. **[ISSUE-0007](issues/ISSUE-0007.json) (P2, reported)** — Use LLM prompt-construction indirection for page-image generation prompts.
 14. **[ISSUE-0001](issues/ISSUE-0001.json) (P2, reported)** — Support hosted compiled legacy content registration in C-LARA-2.
-15. **[ISSUE-0012](issues/ISSUE-0012.json) (P2, reported)** — Adjust project creation defaults for AI generation and page images.
 
 ## Notes/risks
-- The first progress report remains date-bound (2026-06-15); added scope should be integrated without derailing section-drafting cadence.
 - ISSUE-0031 spans authentication and published-content serving boundaries; policy/UI mistakes could expose content unintentionally or block intended anonymous access.
+- The first progress report remains date-bound (2026-06-15), so publication drafting needs steady section-level progress.
 - End-to-end validation automation (ISSUE-0003) remains a cross-cutting dependency for safer rapid iteration.
 
 ## Complete issue inventory
@@ -43,7 +42,7 @@ _Last updated: 2026-05-25T03:13:12Z_
 | [ISSUE-0009](issues/ISSUE-0009.json) | closed | P1 | Auto-regenerate and validate source project bundle stage artifacts before export/import. |
 | [ISSUE-0010](issues/ISSUE-0010.json) | active | P1 | Import a representative legacy C-LARA project corpus and add batch import tooling. |
 | [ISSUE-0011](issues/ISSUE-0011.json) | closed | P1 | Add image-based language games for community use. |
-| [ISSUE-0012](issues/ISSUE-0012.json) | reported | P2 | Adjust project creation defaults for AI generation and page images. |
+| [ISSUE-0012](issues/ISSUE-0012.json) | closed | P2 | Adjust project creation defaults for AI generation and page images. |
 | [ISSUE-0013](issues/ISSUE-0013.json) | reported | P1 | Improve stage artifact persistence performance and timeout resilience. |
 | [ISSUE-0014](issues/ISSUE-0014.json) | closed | P1 | Audit and adjust AWS service limits before broader rollout. |
 | [ISSUE-0015](issues/ISSUE-0015.json) | closed | P1 | Let community organisers manage community membership. |
