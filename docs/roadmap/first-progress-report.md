@@ -60,6 +60,7 @@ The initial top-level outline should include:
    - code implementation,
    - project-management/documentation support,
    - publication drafting support,
+   - sysadmin/deployment tasks (including AWS setup/migration orchestration guided by Codex and GPT-5),
    with explicit human supervision/review role.
 4. **User-facing functionality**
    - cleaned-up authoring flow,
@@ -68,7 +69,8 @@ The initial top-level outline should include:
    - picture dictionaries and exercise integration.
 5. **Implementor-facing functionality**
    - roadmap-as-memory pattern,
-   - issue suggestion ingestion and Codex update loop.
+   - issue suggestion ingestion and Codex update loop,
+   - migration of legacy projects (format conversion + server installation workflow).
 6. **Medium-term future work (issue-grounded)**
    - user-facing items (mobile, direct audio recording, alignment support),
    - implementor-facing items (autonomous process/UX drift tracking).

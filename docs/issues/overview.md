@@ -1,9 +1,9 @@
 # C-LARA-2 issues overview
-_Last updated: 2026-05-25T02:21:13Z_
+_Last updated: 2026-05-25T03:13:12Z_
 
 ## Recent progress
-- Processed update suggestion #21 under **[ISSUE-0008](issues/ISSUE-0008.json)** and added a dedicated roadmap/workspace for the first progress report due 2026-06-15 (`docs/roadmap/first-progress-report.md`, `docs/publications/progress_report_1/`).
-- Treated suggestion #21 as an **existing-issue update** (ISSUE-0008), not a new issue, because publication planning already lives in the report/papers track.
+- Processed update suggestion #18 for **[ISSUE-0008](issues/ISSUE-0008.json)** by expanding `docs/roadmap/first-progress-report.md` with two added outline elements: AI-led sysadmin/deployment tasks and legacy-project migration as implementor-facing functionality.
+- Kept this as an update to existing publication-planning scope (ISSUE-0008) rather than creating a new issue.
 - Revalidated overview status values against canonical per-issue JSON records.
 
 ## Near-term priorities
@@ -24,8 +24,8 @@ _Last updated: 2026-05-25T02:21:13Z_
 15. **[ISSUE-0012](issues/ISSUE-0012.json) (P2, reported)** — Adjust project creation defaults for AI generation and page images.
 
 ## Notes/risks
-- The first progress report has a fixed near-term date (2026-06-15); maintaining momentum now depends on consistent section-level drafting in the new publication workspace.
-- ISSUE-0031 spans authentication and published-content serving; policy/UI mistakes could expose content unintentionally or block intended anonymous access.
+- The first progress report remains date-bound (2026-06-15); added scope should be integrated without derailing section-drafting cadence.
+- ISSUE-0031 spans authentication and published-content serving boundaries; policy/UI mistakes could expose content unintentionally or block intended anonymous access.
 - End-to-end validation automation (ISSUE-0003) remains a cross-cutting dependency for safer rapid iteration.
 
 ## Complete issue inventory
