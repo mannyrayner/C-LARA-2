@@ -485,6 +485,7 @@ def add_words(*, dictionary: PictureDictionary, words: Iterable[str]) -> int:
             existing[key] = created
         added += 1
     _sync_project_source_from_registry(dictionary)
+    _refresh_dictionary_placeholder_stages(dictionary)
     return added
 
 
@@ -502,6 +503,7 @@ def remove_words(*, dictionary: PictureDictionary, words: Iterable[str]) -> int:
             removed += 1
     if removed:
         _sync_project_source_from_registry(dictionary)
+        _refresh_dictionary_placeholder_stages(dictionary)
     return removed
 
 
@@ -515,6 +517,7 @@ def remove_entries_by_ids(*, dictionary: PictureDictionary, entry_ids: Iterable[
         removed += 1
     if removed:
         _sync_project_source_from_registry(dictionary)
+        _refresh_dictionary_placeholder_stages(dictionary)
     return removed
 
 
@@ -527,6 +530,7 @@ def clear_entries(*, dictionary: PictureDictionary) -> int:
         removed += 1
     if removed:
         _sync_project_source_from_registry(dictionary)
+        _refresh_dictionary_placeholder_stages(dictionary)
     return removed
 
 
@@ -587,6 +591,7 @@ def add_lemma_pos_entries(*, dictionary: PictureDictionary, lemma_pos_pairs: Ite
             existing[key] = created
         added += 1
     _sync_project_source_from_registry(dictionary)
+    _refresh_dictionary_placeholder_stages(dictionary)
     return added
 
 
@@ -643,9 +648,55 @@ def _dictionary_stage_payload(dictionary: PictureDictionary, entries: list[Pictu
 def _write_dictionary_annotation_stages(dictionary: PictureDictionary, entries: list[PictureDictionaryEntry]) -> None:
     run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages"
     run_dir.mkdir(parents=True, exist_ok=True)
-    for stage_name in ("segmentation_phase_2", "mwe", "lemma", "gloss", "romanization", "pinyin"):
+    for stage_name in ("segmentation_phase_2", "translation", "mwe", "lemma", "gloss", "romanization", "pinyin"):
         payload = _dictionary_stage_payload(dictionary, entries, stage_name)
         write_stage_artifact(run_dir.parent, stage_name, payload)
+
+
+def _merge_stage_placeholders_with_existing(
+    dictionary: PictureDictionary,
+    entries: list[PictureDictionaryEntry],
+    *,
+    stage_name: str,
+) -> None:
+    run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
+    try:
+        existing_payload = read_stage_artifact(run_dir, stage_name)
+    except Exception:
+        existing_payload = {}
+    existing_tokens_by_surface: dict[str, dict] = {}
+    for page in existing_payload.get("pages") or []:
+        if not isinstance(page, dict):
+            continue
+        for seg in page.get("segments") or []:
+            if not isinstance(seg, dict):
+                continue
+            for tok in seg.get("tokens") or []:
+                if not isinstance(tok, dict):
+                    continue
+                key = _normalise_word(tok.get("surface") or "").casefold()
+                if key:
+                    existing_tokens_by_surface[key] = tok
+
+    payload = _dictionary_stage_payload(dictionary, entries, stage_name)
+    for page in payload.get("pages") or []:
+        for seg in page.get("segments") or []:
+            for tok in seg.get("tokens") or []:
+                key = _normalise_word(tok.get("surface") or "").casefold()
+                prior = existing_tokens_by_surface.get(key)
+                if not prior:
+                    continue
+                prior_ann = prior.get("annotations") if isinstance(prior.get("annotations"), dict) else {}
+                if prior_ann:
+                    tok["annotations"] = dict(prior_ann)
+    write_stage_artifact(run_dir, stage_name, payload)
+
+
+def _refresh_dictionary_placeholder_stages(dictionary: PictureDictionary) -> None:
+    entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
+    _write_segmentation_phase_1(dictionary, entries)
+    for stage_name in ("segmentation_phase_2", "translation", "mwe", "lemma", "gloss", "romanization", "pinyin"):
+        _merge_stage_placeholders_with_existing(dictionary, entries, stage_name=stage_name)
 
 
 def _imported_dictionary_stage_payload(dictionary: PictureDictionary, rows: list[dict], stage_name: str) -> dict:
@@ -657,6 +708,10 @@ def _imported_dictionary_stage_payload(dictionary: PictureDictionary, rows: list
                 token_annotations["lemma"] = str(row["lemma"])
             if row.get("pos"):
                 token_annotations["pos"] = str(row["pos"])
+        if stage_name == "translation":
+            translation = row.get("translation") or row.get("gloss") or ""
+            if translation:
+                token_annotations["translation"] = str(translation)
         if stage_name in {"gloss", "romanization", "pinyin"}:
             gloss = row.get("gloss") or row.get("translation") or ""
             if gloss:
@@ -691,7 +746,7 @@ def _imported_dictionary_stage_payload(dictionary: PictureDictionary, rows: list
 def _write_imported_dictionary_annotation_stages(dictionary: PictureDictionary, rows: list[dict]) -> None:
     run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages"
     run_dir.mkdir(parents=True, exist_ok=True)
-    for stage_name in ("segmentation_phase_2", "mwe", "lemma", "gloss", "romanization", "pinyin"):
+    for stage_name in ("segmentation_phase_2", "translation", "mwe", "lemma", "gloss", "romanization", "pinyin"):
         payload = _imported_dictionary_stage_payload(dictionary, rows, stage_name)
         write_stage_artifact(run_dir.parent, stage_name, payload)
 
@@ -743,14 +798,20 @@ def _manual_rows_from_entries(dictionary: PictureDictionary, entries: list[Pictu
         if prior is None and entry.lemma:
             prior = existing.get(("lemma", entry.lemma.casefold()))
         prior = prior or {}
+        prior_gloss = str(prior.get("gloss") or "").strip()
+        prior_translation = str(prior.get("translation") or "").strip()
+        if prior_gloss and not prior_translation:
+            prior_translation = prior_gloss
+        elif prior_translation and not prior_gloss:
+            prior_gloss = prior_translation
         rows.append(
             {
                 "old_page_number": entry.current_page_number or len(rows) + 1,
                 "surface": entry.surface,
                 "lemma": entry.lemma or prior.get("lemma") or entry.surface,
                 "pos": entry.pos or prior.get("pos") or "",
-                "gloss": prior.get("gloss") or "",
-                "translation": prior.get("translation") or "",
+                "gloss": prior_gloss,
+                "translation": prior_translation,
                 "image_path": entry.image_path or "",
             }
         )
