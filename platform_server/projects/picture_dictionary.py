@@ -653,10 +653,50 @@ def _write_dictionary_annotation_stages(dictionary: PictureDictionary, entries: 
         write_stage_artifact(run_dir.parent, stage_name, payload)
 
 
+def _merge_stage_placeholders_with_existing(
+    dictionary: PictureDictionary,
+    entries: list[PictureDictionaryEntry],
+    *,
+    stage_name: str,
+) -> None:
+    run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
+    try:
+        existing_payload = read_stage_artifact(run_dir, stage_name)
+    except Exception:
+        existing_payload = {}
+    existing_tokens_by_surface: dict[str, dict] = {}
+    for page in existing_payload.get("pages") or []:
+        if not isinstance(page, dict):
+            continue
+        for seg in page.get("segments") or []:
+            if not isinstance(seg, dict):
+                continue
+            for tok in seg.get("tokens") or []:
+                if not isinstance(tok, dict):
+                    continue
+                key = _normalise_word(tok.get("surface") or "").casefold()
+                if key:
+                    existing_tokens_by_surface[key] = tok
+
+    payload = _dictionary_stage_payload(dictionary, entries, stage_name)
+    for page in payload.get("pages") or []:
+        for seg in page.get("segments") or []:
+            for tok in seg.get("tokens") or []:
+                key = _normalise_word(tok.get("surface") or "").casefold()
+                prior = existing_tokens_by_surface.get(key)
+                if not prior:
+                    continue
+                prior_ann = prior.get("annotations") if isinstance(prior.get("annotations"), dict) else {}
+                if prior_ann:
+                    tok["annotations"] = dict(prior_ann)
+    write_stage_artifact(run_dir, stage_name, payload)
+
+
 def _refresh_dictionary_placeholder_stages(dictionary: PictureDictionary) -> None:
     entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
     _write_segmentation_phase_1(dictionary, entries)
-    _write_dictionary_annotation_stages(dictionary, entries)
+    for stage_name in ("segmentation_phase_2", "translation", "mwe", "lemma", "gloss", "romanization", "pinyin"):
+        _merge_stage_placeholders_with_existing(dictionary, entries, stage_name=stage_name)
 
 
 def _imported_dictionary_stage_payload(dictionary: PictureDictionary, rows: list[dict], stage_name: str) -> dict:

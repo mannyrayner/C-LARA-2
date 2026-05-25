@@ -120,6 +120,7 @@ from .models import (
     IssueUpdateSuggestion,
 )
 from .picture_dictionary import (
+    _refresh_dictionary_placeholder_stages,
     add_lemma_pos_entries as picture_dictionary_add_lemma_pos_entries,
     add_words as picture_dictionary_add_words,
     clear_entries as picture_dictionary_clear_entries,
@@ -8264,6 +8265,12 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
 
             if action == "ensure":
                 messages.success(request, "Picture dictionary is ready.")
+            elif action == "sync_placeholders":
+                _refresh_dictionary_placeholder_stages(picture_dictionary)
+                messages.success(
+                    request,
+                    "Dictionary stages synced. Existing annotations were preserved; placeholders were added only for new/missing entries.",
+                )
             elif action == "compile":
                 compile_updates: list[str] = []
 

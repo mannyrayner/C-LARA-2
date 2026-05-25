@@ -108,6 +108,21 @@ class PictureDictionaryCommandTests(TestCase):
             stage_path = run_dir / "stages" / f"{stage_name}.json"
             self.assertTrue(stage_path.exists())
 
+    def test_placeholder_refresh_preserves_existing_annotations(self):
+        call_command("picture_dictionary", "ensure", community_id=self.community.id, organiser=self.organiser.username)
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        call_command("picture_dictionary", "add", community_id=self.community.id, organiser=self.organiser.username, words="Katze")
+        run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
+        gloss_payload = read_stage_artifact(run_dir, "gloss")
+        gloss_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"] = {"lemma": "Katze", "pos": "NOUN", "gloss": "cat"}
+        write_stage_artifact(run_dir, "gloss", gloss_payload)
+        call_command("picture_dictionary", "add", community_id=self.community.id, organiser=self.organiser.username, words="Hund")
+        gloss_after = read_stage_artifact(run_dir, "gloss")
+        tokens = [p["segments"][0]["tokens"][0] for p in gloss_after.get("pages", [])]
+        by_surface = {t["surface"]: t for t in tokens}
+        self.assertEqual(by_surface["Katze"]["annotations"].get("gloss"), "cat")
+        self.assertEqual(by_surface["Hund"].get("annotations", {}), {})
+
     def test_import_project_as_dictionary_copy_filters_untranslated_pages_and_supports_picture_glossing(self):
         source = Project.objects.create(
             owner=self.organiser,

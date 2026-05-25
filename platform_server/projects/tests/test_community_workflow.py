@@ -339,6 +339,7 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "Picture dictionary (Phase A)")
         self.assertContains(page, "Ensure dictionary")
+        self.assertContains(page, "Sync dictionary text + placeholder stages (no image generation)")
         self.assertContains(page, "Add from text")
         self.assertContains(page, "Import as dictionary copy")
         self.assertContains(page, "Style brief (used if style is missing)")

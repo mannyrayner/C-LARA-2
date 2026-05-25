@@ -53,6 +53,7 @@
   {% csrf_token %}
   <p>
     <button class="btn secondary" type="submit" name="picture_dictionary_action" value="ensure">Ensure dictionary</button>
+    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="sync_placeholders">Sync dictionary text + placeholder stages (no image generation)</button>
     <button class="btn secondary" type="submit" name="picture_dictionary_action" value="compile" {% if low_resource_mode_recommended and low_resource_missing_rows > 0 %}disabled title="Add missing glosses/translations in the review editor first"{% endif %}>Compile dictionary (sync pages + annotation + images)</button>
   </p>
   <p>
