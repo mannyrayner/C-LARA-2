@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "issue_id": "ISSUE-0031",
+  "title": "Improve compiled-content presentation context and configurable public access controls",
+  "state": "reported",
+  "priority": "P1",
+  "created_at": "2026-05-25T01:11:48Z",
+  "updated_at": "2026-05-25T01:11:48Z",
+  "origin": "human-suggestion",
+  "notes": "Suggestion #20 from admin export (submitted by mannyrayner on 2026-05-25). Two related improvements requested for compiled content delivery: (1) context-aware navigation in compiled HTML so the 'Back to project' affordance is shown only when launched from project-internal workflow (or replaced with an appropriate 'Back to content' / neutral navigation when opened from published content views); (2) publisher-managed access policy for compiled/published content, including support for anonymous/public access where appropriate and a reset/change mechanism for access level after publication. Scope should include UI controls, permission checks, stable serving paths, and regression coverage for logged-in vs anonymous readers.",
+  "deadline": null,
+  "dependencies": [
+    "ISSUE-0024",
+    "ISSUE-0010"
+  ]
+}
