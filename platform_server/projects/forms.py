@@ -77,6 +77,8 @@ class ProjectForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if not getattr(self.instance, "pk", None):
+            self.fields["input_mode"].initial = Project.INPUT_DESCRIPTION
         self.fields["language"] = forms.ChoiceField(
             choices=self.LANGUAGE_CHOICES,
             initial=self.instance.language if getattr(self.instance, "pk", None) else "en",

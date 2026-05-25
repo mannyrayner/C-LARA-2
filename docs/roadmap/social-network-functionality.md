@@ -18,6 +18,7 @@ These features provide the base for community interaction and moderation.
 - Enable multi-user project collaboration with explicit roles.
 - Enable language-centered communities and organizer workflows.
 - Connect social feedback loops to image quality control and regeneration.
+- Improve published-content access/presentation controls, including anonymous access policy and context-aware navigation (ISSUE-0031).
 
 ---
 
@@ -55,6 +56,77 @@ These features provide the base for community interaction and moderation.
 - Report comment/rating.
 - Organizer/admin moderation queue.
 - Soft-delete strategy for auditability.
+
+---
+
+## 1b) Published-content access controls and navigation context (ISSUE-0031)
+
+### Problem statement
+
+Current compiled-page presentation and access behavior is oriented toward the project workspace context. Two gaps called out in ISSUE-0031:
+
+1. Navigation labels/links can be misleading when the same compiled artifact is opened from content discovery views rather than from a project page (for example, showing “Back to project” in a public/content-browsing context).
+2. Access policy needs to support publisher-managed visibility levels, including optional anonymous/public access, with a safe way to change/reset policy after publication.
+
+### Proposed access policy model
+
+Use explicit publication visibility states on the published artifact entry (not only project ownership):
+
+- `private`: owner/collaborators only.
+- `community`: limited to members of assigned community.
+- `platform_users`: any authenticated C-LARA-2 user.
+- `public_anonymous`: accessible without login.
+
+Notes:
+- Keep project editing permissions separate from published-reading permissions.
+- Require explicit publisher confirmation when switching to `public_anonymous`.
+- Record every visibility change in audit history (who, when, from, to, optional reason).
+
+### Context-aware navigation strategy
+
+Treat compiled pages as reusable artifacts with a lightweight “entry context”:
+
+- `from_project`
+- `from_content`
+- `direct_public` (no authenticated context)
+
+For each context, render different top navigation affordances:
+
+- `from_project` → “Back to project”.
+- `from_content` → “Back to content”.
+- `direct_public` → neutral home/discovery links without project-internal affordances.
+
+Implementation options (can be combined):
+- signed query parameter carrying entry context,
+- session-based last-entry marker,
+- dedicated route wrappers per context (cleanest for templates/permissions).
+
+### Security and safety requirements
+
+- Never trust client-only context flags for authorization decisions.
+- Evaluate visibility permissions server-side before rendering content.
+- Ensure direct URL access checks visibility policy and user/session identity consistently.
+- Add explicit tests for permission transitions (private → public, public → private, community → public, etc.).
+
+### UX and governance requirements
+
+- Publisher-facing control panel on content metadata page:
+  - current visibility,
+  - change visibility action,
+  - warning copy for anonymous/public mode,
+  - “last changed by/at” audit metadata.
+- Optional cool-down or second confirmation before making high-visibility transitions.
+- Clear viewer-facing indicators of visibility level and ownership/moderation policy.
+
+### Suggested delivery plan for ISSUE-0031
+
+1. Add visibility state model + server-side enforcement + tests.
+2. Add publisher controls and audit log for visibility transitions.
+3. Add context-aware navigation labels/routes for compiled pages.
+4. Add regression tests covering:
+   - navigation label correctness by entry context,
+   - anonymous vs authenticated access boundaries,
+   - visibility change correctness and rollback behavior.
 
 ---
 

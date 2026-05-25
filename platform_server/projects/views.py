@@ -278,6 +278,8 @@ def _user_community_ids(user) -> list[int]:
 
 
 def _published_projects_visible_to_user(user):
+    if not getattr(user, "is_authenticated", False):
+        return Project.objects.filter(is_published=True, access_scope=Project.ACCESS_PUBLIC)
     if user.is_staff:
         return Project.objects.filter(is_published=True)
     community_ids = _user_community_ids(user)
@@ -6752,6 +6754,7 @@ def _run_compile_task(
     detailed_api_trace: bool = False,
 ) -> None:
     project = Project.objects.get(pk=project_id)
+    user = get_user_model().objects.filter(pk=user_id).first()
     output_dir = Path(output_dir_str)
     project_root = Path(project_root_str)
     stage_dir = output_dir / "stages"
@@ -6811,6 +6814,10 @@ def _run_compile_task(
             "Compile task started. "
             f"start_stage={start_stage}, end_stage={end_stage or 'compile_html'}, output_dir={output_dir}"
         )
+        if user is None:
+            post_update(f"Compile failed: no user found for user_id={user_id}", status="error")
+            logger.error("Compile task aborted: missing user record for user_id=%s project_id=%s", user_id, project_id)
+            return
         audio_mode = (
             project.audio_mode
             if project.audio_mode in {Project.AUDIO_MODE_TTS, Project.AUDIO_MODE_NONE}
@@ -7740,7 +7747,6 @@ def _update_profile_memory_section(profile: Profile, section: str, payload: dict
     profile.save(update_fields=["dialogue_memory", "updated_at"])
 
 
-@login_required
 def content_list(request: HttpRequest) -> HttpResponse:
     """Search/browse published projects, with optional natural-language discovery."""
 
@@ -7912,7 +7918,6 @@ def content_list(request: HttpRequest) -> HttpResponse:
     )
 
 
-@login_required
 def content_detail(request: HttpRequest, pk: int) -> HttpResponse:
     """Show metadata for a published project and link to page 1."""
 
@@ -7920,6 +7925,9 @@ def content_detail(request: HttpRequest, pk: int) -> HttpResponse:
     Project.objects.filter(pk=project.pk).update(access_count=F("access_count") + 1)
 
     if request.method == "POST":
+        if not request.user.is_authenticated:
+            messages.error(request, "Please sign in to post comments or ratings.")
+            return redirect("login")
         action = (request.POST.get("action") or "").strip().lower()
         if action == "comment":
             body = (request.POST.get("body") or "").strip()
@@ -9081,7 +9089,6 @@ def set_project_target_language(request: HttpRequest, pk: int) -> HttpResponse:
     return redirect("project-detail", pk=project.pk)
 
 
-@login_required
 @xframe_options_sameorigin
 def serve_compiled(request: HttpRequest, pk: int, path: str) -> HttpResponse:
     """Serve compiled artifacts from a project's run directory.
@@ -9091,7 +9098,11 @@ def serve_compiled(request: HttpRequest, pk: int, path: str) -> HttpResponse:
     """
 
     project = get_object_or_404(Project, pk=pk)
-    if project.owner != request.user and not project.is_published:
+    user = request.user
+    is_owner = bool(getattr(user, "is_authenticated", False) and project.owner_id == getattr(user, "id", None))
+    if not is_owner and not project.is_published:
+        raise Http404()
+    if not is_owner and project.access_scope != Project.ACCESS_PUBLIC:
         raise Http404()
 
     base = Path(project.artifact_root or project.artifact_dir()).resolve()
@@ -9112,10 +9123,16 @@ def serve_compiled(request: HttpRequest, pk: int, path: str) -> HttpResponse:
     if (content_type or "").startswith("text/html"):
         try:
             html_text = data.decode("utf-8")
-            back_href = reverse("project-detail", args=[project.pk])
+            entry_context = (request.GET.get("ctx") or "project").strip().lower()
+            if entry_context == "content":
+                back_href = reverse("content-detail", args=[project.pk])
+                back_label = "Back to content"
+            else:
+                back_href = reverse("project-detail", args=[project.pk])
+                back_label = "Back to project"
             back_block = (
                 f'<div style="padding:0.5rem 1rem;background:#f6f6f6;border-bottom:1px solid #ddd;">'
-                f'<a href="{back_href}">&#x2190; Back to project</a></div>'
+                f'<a href="{back_href}">&#x2190; {back_label}</a></div>'
             )
             html_text = html_text.replace("<body>", f"<body>\n{back_block}", 1)
             data = html_text.encode("utf-8")
