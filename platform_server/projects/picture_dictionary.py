@@ -743,14 +743,20 @@ def _manual_rows_from_entries(dictionary: PictureDictionary, entries: list[Pictu
         if prior is None and entry.lemma:
             prior = existing.get(("lemma", entry.lemma.casefold()))
         prior = prior or {}
+        prior_gloss = str(prior.get("gloss") or "").strip()
+        prior_translation = str(prior.get("translation") or "").strip()
+        if prior_gloss and not prior_translation:
+            prior_translation = prior_gloss
+        elif prior_translation and not prior_gloss:
+            prior_gloss = prior_translation
         rows.append(
             {
                 "old_page_number": entry.current_page_number or len(rows) + 1,
                 "surface": entry.surface,
                 "lemma": entry.lemma or prior.get("lemma") or entry.surface,
                 "pos": entry.pos or prior.get("pos") or "",
-                "gloss": prior.get("gloss") or "",
-                "translation": prior.get("translation") or "",
+                "gloss": prior_gloss,
+                "translation": prior_translation,
                 "image_path": entry.image_path or "",
             }
         )
