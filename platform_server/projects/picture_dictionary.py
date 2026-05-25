@@ -953,8 +953,10 @@ def compile_picture_dictionary(
             )
             and style.status in {"generated", "approved"}
         )
-        if low_resource_mode:
-            image_generation_note = "Image generation skipped (low-resource compile mode)."
+        if low_resource_mode and not manual_annotations_complete:
+            image_generation_note = (
+                "Image generation skipped: low-resource mode is enabled and manual annotations are incomplete."
+            )
         elif style_usable:
             from .views import _generate_project_page_images
 
