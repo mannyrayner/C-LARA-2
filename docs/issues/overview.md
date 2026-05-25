@@ -1,9 +1,9 @@
 # C-LARA-2 issues overview
-_Last updated: 2026-05-25T01:11:48Z_
+_Last updated: 2026-05-25T01:38:33Z_
 
 ## Recent progress
-- Added **[ISSUE-0031](issues/ISSUE-0031.json)** (P1, reported) from human suggestion #20 to track compiled-content navigation context and publisher-managed public access controls.
-- Kept suggestion #15 reflected in **[ISSUE-0006](issues/ISSUE-0006.json)** as a candidate segmentation_phase_2 redesign path, without changing status/priority.
+- Processed update suggestion #16 for **[ISSUE-0010](issues/ISSUE-0010.json)**: large-project imports (including *The Dragon and the Cube* and *Den lille havfrue*) now succeed after upload-limit work, so next step is corpus-scale batch import tooling/execution.
+- Kept **[ISSUE-0010](issues/ISSUE-0010.json)** as **active (P1)** because full legacy corpus migration and tooling remain in progress.
 - Revalidated overview status values against canonical per-issue JSON records.
 
 ## Near-term priorities
@@ -24,8 +24,8 @@ _Last updated: 2026-05-25T01:11:48Z_
 15. **[ISSUE-0012](issues/ISSUE-0012.json) (P2, reported)** — Adjust project creation defaults for AI generation and page images.
 
 ## Notes/risks
-- ISSUE-0031 touches authentication, publishing UX, and compiled artifact serving; inconsistent handling could expose content unintentionally or block intended anonymous access.
-- ISSUE-0030 still indicates silent failure risk in image-generation flow until UI feedback/confirmation handling is fixed.
+- ISSUE-0010 has positive evidence for large single-project imports, but full-batch migration still needs robust tooling, resumability, and reporting to avoid partial/corrupt corpus ingestion.
+- ISSUE-0031 touches authentication/publishing/serving boundaries; incorrect policy wiring could expose content unintentionally or block intended anonymous access.
 - End-to-end validation automation (ISSUE-0003) remains a cross-cutting dependency for safer rapid iteration.
 
 ## Complete issue inventory
