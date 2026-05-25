@@ -9,27 +9,31 @@
 <p><strong>Description:</strong> {{ project.description|default:"(none)" }}</p>
 <p><strong>Ratings:</strong> 👍 {{ up_count }} / 👎 {{ down_count }}</p>
 
-<form method="post">{% csrf_token %}
-  <input type="hidden" name="action" value="rate" />
-  <p>
-    <label><input type="radio" name="value" value="up" {% if user_rating and user_rating.value == 'up' %}checked{% endif %}/> Thumbs up</label>
-    <label><input type="radio" name="value" value="down" {% if user_rating and user_rating.value == 'down' %}checked{% endif %}/> Thumbs down</label>
-  </p>
-  <p>
-    <label for="rating_comment">Optional rating note:</label>
-    <input id="rating_comment" type="text" name="comment" value="{% if user_rating %}{{ user_rating.comment }}{% endif %}" />
-  </p>
-  <p><button class="btn secondary" type="submit">Save rating</button></p>
-</form>
+{% if request.user.is_authenticated %}
+  <form method="post">{% csrf_token %}
+    <input type="hidden" name="action" value="rate" />
+    <p>
+      <label><input type="radio" name="value" value="up" {% if user_rating and user_rating.value == 'up' %}checked{% endif %}/> Thumbs up</label>
+      <label><input type="radio" name="value" value="down" {% if user_rating and user_rating.value == 'down' %}checked{% endif %}/> Thumbs down</label>
+    </p>
+    <p>
+      <label for="rating_comment">Optional rating note:</label>
+      <input id="rating_comment" type="text" name="comment" value="{% if user_rating %}{{ user_rating.comment }}{% endif %}" />
+    </p>
+    <p><button class="btn secondary" type="submit">Save rating</button></p>
+  </form>
 
-<form method="post">{% csrf_token %}
-  <input type="hidden" name="action" value="comment" />
-  <p>
-    <label for="comment_body">Add comment:</label>
-    <textarea id="comment_body" name="body" rows="3"></textarea>
-  </p>
-  <p><button class="btn secondary" type="submit">Post comment</button></p>
-</form>
+  <form method="post">{% csrf_token %}
+    <input type="hidden" name="action" value="comment" />
+    <p>
+      <label for="comment_body">Add comment:</label>
+      <textarea id="comment_body" name="body" rows="3"></textarea>
+    </p>
+    <p><button class="btn secondary" type="submit">Post comment</button></p>
+  </form>
+{% else %}
+  <p><a href="{% url 'login' %}">Sign in</a> to post ratings or comments.</p>
+{% endif %}
 
 {% if comments %}
   <h2>Comments</h2>
@@ -44,7 +48,7 @@
 
 {% if page_one_path %}
   <p>
-    <a class="btn" href="{% url 'project-compiled' pk=project.pk path=page_one_path %}" target="_blank">Open compiled text (page 1)</a>
+    <a class="btn" href="{% url 'project-compiled' pk=project.pk path=page_one_path %}?ctx=content" target="_blank">Open compiled text (page 1)</a>
   </p>
 {% else %}
   <p>No compiled HTML is currently available for this published project.</p>
