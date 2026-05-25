@@ -342,6 +342,7 @@ class CommunityWorkflowTests(TestCase):
         self.assertContains(page, "Add from text")
         self.assertContains(page, "Import as dictionary copy")
         self.assertContains(page, "Style brief (used if style is missing)")
+        self.assertContains(page, "low-resource mode is preselected")
         self.assertNotContains(page, "Remove words")
 
         ensure = client.post(
@@ -439,6 +440,8 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(scheduled.args[1], dictionary.id)
         self.assertEqual(scheduled.args[2], self.organiser.id)
         report_id = scheduled.args[3]
+        dictionary.project.refresh_from_db()
+        self.assertEqual(dictionary.project.page_image_text_source, Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION)
 
         scheduled.args[0](*scheduled.args[1:4])
         self.assertTrue(
@@ -461,6 +464,21 @@ class CommunityWorkflowTests(TestCase):
         dictionary_entries[0].refresh_from_db()
         self.assertFalse(dictionary_entries[0].is_active)
         self.assertContains(remove_selected, "Last dictionary compile:")
+
+    def test_low_resource_compile_blocks_when_gloss_or_translation_missing(self):
+        client = Client()
+        client.login(username="org", password="pw")
+        client.post(reverse("community-organiser-home", args=[self.community.id]), {"picture_dictionary_action": "ensure"})
+        blocked = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "compile",
+                "picture_dictionary_low_resource_mode": "1",
+            },
+            follow=True,
+        )
+        self.assertEqual(blocked.status_code, 200)
+        self.assertContains(blocked, "Compile temporarily blocked")
 
     def test_mark_reviewed_promotes_member_upvoted_variant_to_preferred(self):
         self.project.community = self.community
@@ -579,4 +597,3 @@ class CommunityWorkflowTests(TestCase):
         self.assertContains(resp_confirm, "Generation progress updates")
         self.assertEqual(ProjectImagePageVariant.objects.filter(page=self.page).count(), 2)
         self.assertEqual(ProjectImagePageVariant.objects.filter(page=second_page).count(), 0)
-
