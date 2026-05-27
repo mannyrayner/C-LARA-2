@@ -819,6 +819,25 @@ def _write_imported_dictionary_annotation_stages(dictionary: PictureDictionary, 
 
 def _index_existing_dictionary_annotations(dictionary: PictureDictionary) -> dict[tuple[str, str], dict]:
     run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
+    translation_by_page: dict[int, str] = {}
+    try:
+        tr_payload = read_stage_artifact(run_dir, "translation")
+    except Exception:
+        tr_payload = {}
+    for page_number, page in enumerate((tr_payload.get("pages") or []), start=1):
+        if not isinstance(page, dict):
+            continue
+        segments = page.get("segments") or []
+        parts: list[str] = []
+        for segment in segments:
+            if not isinstance(segment, dict):
+                continue
+            translation_text = str(((segment.get("annotations") or {}).get("translation") or "")).strip()
+            if translation_text:
+                parts.append(translation_text)
+        if parts:
+            translation_by_page[page_number] = " ".join(parts).strip()
+
     try:
         payload = read_stage_artifact(run_dir, "gloss")
     except Exception:
@@ -842,7 +861,7 @@ def _index_existing_dictionary_annotations(dictionary: PictureDictionary) -> dic
                     "lemma": _normalise_word(annotations.get("lemma") or surface),
                     "pos": _normalise_word(annotations.get("pos") or "").upper(),
                     "gloss": _non_null_text(annotations.get("gloss")),
-                    "translation": _non_null_text(annotations.get("translation")),
+                    "translation": _non_null_text(annotations.get("translation")) or translation_by_page.get(page_number, ""),
                 }
                 indexed[("page", str(page_number))] = row
                 indexed[("surface", surface.casefold())] = row

@@ -9,6 +9,7 @@ from django.test import TestCase
 from pipeline.stage_artifacts import read_stage_artifact, write_stage_artifact
 
 from projects.models import Community, CommunityMembership, PictureDictionary, PictureDictionaryEntry, Project, ProjectImagePage
+from projects.picture_dictionary import _manual_rows_from_entries
 from projects.views import _build_picture_glosses_for_compile
 
 
@@ -176,6 +177,20 @@ class PictureDictionaryCommandTests(TestCase):
         style = dictionary.project.image_style
         self.assertFalse(style.discourage_text_in_images)
         self.assertTrue(style.disallow_text_in_images)
+
+    def test_manual_rows_pick_up_translation_stage_values(self):
+        call_command("picture_dictionary", "ensure", community_id=self.community.id, organiser=self.organiser.username)
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        call_command("picture_dictionary", "add", community_id=self.community.id, organiser=self.organiser.username, words="Katze")
+        run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
+        tr_payload = read_stage_artifact(run_dir, "translation")
+        tr_payload["pages"][0]["segments"][0].setdefault("annotations", {})
+        tr_payload["pages"][0]["segments"][0]["annotations"]["translation"] = "cat"
+        write_stage_artifact(run_dir, "translation", tr_payload)
+        entry = dictionary.entries.get(surface="Katze")
+        rows = _manual_rows_from_entries(dictionary, [entry])
+        self.assertEqual(rows[0]["translation"], "cat")
+        self.assertEqual(rows[0]["gloss"], "cat")
 
     def test_import_project_as_dictionary_copy_filters_untranslated_pages_and_supports_picture_glossing(self):
         source = Project.objects.create(
