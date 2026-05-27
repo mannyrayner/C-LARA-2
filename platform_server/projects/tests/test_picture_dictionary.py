@@ -8,7 +8,15 @@ from django.test import TestCase
 
 from pipeline.stage_artifacts import read_stage_artifact, write_stage_artifact
 
-from projects.models import Community, CommunityMembership, PictureDictionary, PictureDictionaryEntry, Project, ProjectImagePage
+from projects.models import (
+    Community,
+    CommunityMembership,
+    PictureDictionary,
+    PictureDictionaryEntry,
+    Project,
+    ProjectImagePage,
+    ProjectImagePageVariant,
+)
 from projects.picture_dictionary import _manual_rows_from_entries
 from projects.views import _build_picture_glosses_for_compile
 
@@ -147,6 +155,41 @@ class PictureDictionaryCommandTests(TestCase):
         self.assertEqual(pages[0].page_text, "Katze")
         seg2 = read_stage_artifact(dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary", "segmentation_phase_2")
         self.assertEqual([p.get("surface") for p in seg2.get("pages", [])], ["Katze"])
+
+    def test_removing_word_keeps_page_variants_in_sync(self):
+        call_command("picture_dictionary", "ensure", community_id=self.community.id, organiser=self.organiser.username)
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        call_command(
+            "picture_dictionary",
+            "add",
+            community_id=self.community.id,
+            organiser=self.organiser.username,
+            words="Katze, Hund",
+        )
+        page1, page2 = list(dictionary.project.image_pages.order_by("page_number"))
+        v1 = ProjectImagePageVariant.objects.create(page=page1, variant_index=1, image_path="images/pages/page_001/variant_001.png")
+        v2 = ProjectImagePageVariant.objects.create(page=page2, variant_index=1, image_path="images/pages/page_002/variant_001.png")
+        page1.preferred_variant = v1
+        page2.preferred_variant = v2
+        page1.image_path = v1.image_path
+        page2.image_path = v2.image_path
+        page1.save(update_fields=["preferred_variant", "image_path", "updated_at"])
+        page2.save(update_fields=["preferred_variant", "image_path", "updated_at"])
+        entry_hund = dictionary.entries.get(surface="Hund")
+        entry_hund.image_path = v2.image_path
+        entry_hund.save(update_fields=["image_path", "updated_at"])
+        call_command(
+            "picture_dictionary",
+            "remove",
+            community_id=self.community.id,
+            organiser=self.organiser.username,
+            words="Katze",
+        )
+        only_page = dictionary.project.image_pages.get(page_number=1)
+        self.assertEqual(only_page.page_text, "Hund")
+        self.assertIsNotNone(only_page.preferred_variant)
+        self.assertEqual(only_page.preferred_variant.variant_index, 1)
+        self.assertEqual(only_page.preferred_variant.image_path, entry_hund.image_path)
 
     def test_compile_uses_translation_text_for_page_prompts_when_configured(self):
         call_command("picture_dictionary", "ensure", community_id=self.community.id, organiser=self.organiser.username)

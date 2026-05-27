@@ -757,6 +757,35 @@ def _sync_dictionary_project_pages(dictionary: PictureDictionary, entries: list[
                 changed = True
             if changed:
                 page.save(update_fields=["page_text", "generation_prompt", "image_path", "updated_at"])
+        # Keep variants/preferred variant aligned with canonical page image_path.
+        # Without this, judge/images views can show stale variants after dictionary deletions/reindexing.
+        canonical_path = (entry.image_path or "").strip()
+        if canonical_path:
+            variant, _ = ProjectImagePageVariant.objects.update_or_create(
+                page=page,
+                variant_index=1,
+                defaults={
+                    "image_model": page.image_model or "gpt-image-1",
+                    "image_path": canonical_path,
+                    "generation_prompt": page.generation_prompt or "",
+                    "image_revised_prompt": "",
+                    "status": ProjectImagePageVariant.STATUS_GENERATED,
+                },
+            )
+            stale_variants = page.variants.exclude(id=variant.id)
+            if stale_variants.exists():
+                stale_variants.delete()
+            if page.preferred_variant_id != variant.id:
+                page.preferred_variant = variant
+                page.status = ProjectImagePage.STATUS_GENERATED
+                page.save(update_fields=["preferred_variant", "status", "updated_at"])
+        else:
+            if page.variants.exists():
+                page.variants.all().delete()
+            if page.preferred_variant_id is not None:
+                page.preferred_variant = None
+                page.status = ProjectImagePage.STATUS_DRAFT
+                page.save(update_fields=["preferred_variant", "status", "updated_at"])
         if entry.current_page_number != idx:
             entry.current_page_number = idx
             entry.save(update_fields=["current_page_number", "updated_at"])
