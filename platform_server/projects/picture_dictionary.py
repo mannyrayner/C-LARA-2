@@ -24,6 +24,8 @@ from .models import (
     ProjectImageStyle,
 )
 
+NON_AI_ENABLED_LANGUAGES = {"xkk", "iai", "dre"}
+
 logger = logging.getLogger(__name__)
 
 
@@ -266,11 +268,36 @@ def _copy_project_image_style(source_project: Project, target_project: Project) 
             "sample_image_path": style.sample_image_path,
             "sample_image_revised_prompt": style.sample_image_revised_prompt,
             "sample_image_model": style.sample_image_model,
-            "discourage_text_in_images": style.discourage_text_in_images,
+            "discourage_text_in_images": False,
+            "disallow_text_in_images": True,
             "ai_model": style.ai_model,
             "status": style.status,
         },
     )
+
+
+def _apply_picture_dictionary_image_defaults(project: Project) -> None:
+    language = (project.language or "").strip().lower()
+    project.page_image_text_source = (
+        Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION
+        if language in NON_AI_ENABLED_LANGUAGES
+        else Project.PAGE_IMAGE_TEXT_SOURCE_SEGMENTATION
+    )
+    project.save(update_fields=["page_image_text_source", "updated_at"])
+    style, _ = ProjectImageStyle.objects.get_or_create(
+        project=project,
+        defaults={"ai_model": project.ai_model or "gpt-4o"},
+    )
+    update_fields: list[str] = []
+    if style.discourage_text_in_images:
+        style.discourage_text_in_images = False
+        update_fields.append("discourage_text_in_images")
+    if not bool(getattr(style, "disallow_text_in_images", False)):
+        style.disallow_text_in_images = True
+        update_fields.append("disallow_text_in_images")
+    if update_fields:
+        update_fields.append("updated_at")
+        style.save(update_fields=update_fields)
 
 
 @transaction.atomic
@@ -319,6 +346,7 @@ def import_project_as_picture_dictionary(
     )
     _copy_project_artifacts(source_project, target_project)
     _copy_project_image_style(source_project, target_project)
+    _apply_picture_dictionary_image_defaults(target_project)
 
     dictionary = PictureDictionary.objects.select_related("project").filter(community=community).first()
     old_project_id = dictionary.project_id if dictionary else None
@@ -456,6 +484,7 @@ def ensure_picture_dictionary_for_community(*, community: Community, organiser) 
         organiser=organiser,
         language=community.language or project.language,
     )
+    _apply_picture_dictionary_image_defaults(project)
     return dictionary
 
 
@@ -485,6 +514,7 @@ def add_words(*, dictionary: PictureDictionary, words: Iterable[str]) -> int:
             existing[key] = created
         added += 1
     _sync_project_source_from_registry(dictionary)
+    _refresh_dictionary_placeholder_stages(dictionary)
     return added
 
 
@@ -502,6 +532,7 @@ def remove_words(*, dictionary: PictureDictionary, words: Iterable[str]) -> int:
             removed += 1
     if removed:
         _sync_project_source_from_registry(dictionary)
+        _refresh_dictionary_placeholder_stages(dictionary)
     return removed
 
 
@@ -515,6 +546,7 @@ def remove_entries_by_ids(*, dictionary: PictureDictionary, entry_ids: Iterable[
         removed += 1
     if removed:
         _sync_project_source_from_registry(dictionary)
+        _refresh_dictionary_placeholder_stages(dictionary)
     return removed
 
 
@@ -527,6 +559,7 @@ def clear_entries(*, dictionary: PictureDictionary) -> int:
         removed += 1
     if removed:
         _sync_project_source_from_registry(dictionary)
+        _refresh_dictionary_placeholder_stages(dictionary)
     return removed
 
 
@@ -587,6 +620,7 @@ def add_lemma_pos_entries(*, dictionary: PictureDictionary, lemma_pos_pairs: Ite
             existing[key] = created
         added += 1
     _sync_project_source_from_registry(dictionary)
+    _refresh_dictionary_placeholder_stages(dictionary)
     return added
 
 
@@ -643,9 +677,92 @@ def _dictionary_stage_payload(dictionary: PictureDictionary, entries: list[Pictu
 def _write_dictionary_annotation_stages(dictionary: PictureDictionary, entries: list[PictureDictionaryEntry]) -> None:
     run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages"
     run_dir.mkdir(parents=True, exist_ok=True)
-    for stage_name in ("segmentation_phase_2", "mwe", "lemma", "gloss", "romanization", "pinyin"):
+    for stage_name in ("segmentation_phase_2", "translation", "mwe", "lemma", "gloss", "romanization", "pinyin"):
         payload = _dictionary_stage_payload(dictionary, entries, stage_name)
         write_stage_artifact(run_dir.parent, stage_name, payload)
+
+
+def _merge_stage_placeholders_with_existing(
+    dictionary: PictureDictionary,
+    entries: list[PictureDictionaryEntry],
+    *,
+    stage_name: str,
+) -> None:
+    run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
+    try:
+        existing_payload = read_stage_artifact(run_dir, stage_name)
+    except Exception:
+        existing_payload = {}
+    existing_tokens_by_surface: dict[str, dict] = {}
+    for page in existing_payload.get("pages") or []:
+        if not isinstance(page, dict):
+            continue
+        for seg in page.get("segments") or []:
+            if not isinstance(seg, dict):
+                continue
+            for tok in seg.get("tokens") or []:
+                if not isinstance(tok, dict):
+                    continue
+                key = _normalise_word(tok.get("surface") or "").casefold()
+                if key:
+                    existing_tokens_by_surface[key] = tok
+
+    payload = _dictionary_stage_payload(dictionary, entries, stage_name)
+    for page in payload.get("pages") or []:
+        for seg in page.get("segments") or []:
+            for tok in seg.get("tokens") or []:
+                key = _normalise_word(tok.get("surface") or "").casefold()
+                prior = existing_tokens_by_surface.get(key)
+                if not prior:
+                    continue
+                prior_ann = prior.get("annotations") if isinstance(prior.get("annotations"), dict) else {}
+                if prior_ann:
+                    tok["annotations"] = dict(prior_ann)
+    write_stage_artifact(run_dir, stage_name, payload)
+
+
+def _refresh_dictionary_placeholder_stages(dictionary: PictureDictionary) -> None:
+    entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
+    _sync_project_source_from_registry(dictionary)
+    _sync_dictionary_project_pages(dictionary, entries)
+    _write_segmentation_phase_1(dictionary, entries)
+    for stage_name in ("segmentation_phase_2", "translation", "mwe", "lemma", "gloss", "romanization", "pinyin"):
+        _merge_stage_placeholders_with_existing(dictionary, entries, stage_name=stage_name)
+
+
+def _sync_dictionary_project_pages(dictionary: PictureDictionary, entries: list[PictureDictionaryEntry]) -> None:
+    project = dictionary.project
+    existing_pages = {page.page_number: page for page in ProjectImagePage.objects.filter(project=project)}
+    for idx, entry in enumerate(entries, start=1):
+        page = existing_pages.get(idx)
+        if page is None:
+            page = ProjectImagePage.objects.create(
+                project=project,
+                page_number=idx,
+                page_text=entry.surface,
+                generation_prompt=entry.surface,
+                image_model="gpt-image-1",
+                image_path=entry.image_path or "",
+            )
+        else:
+            changed = False
+            if page.page_text != entry.surface:
+                page.page_text = entry.surface
+                changed = True
+            if page.generation_prompt != entry.surface:
+                page.generation_prompt = entry.surface
+                changed = True
+            if (entry.image_path or "") != (page.image_path or ""):
+                page.image_path = entry.image_path or ""
+                changed = True
+            if changed:
+                page.save(update_fields=["page_text", "generation_prompt", "image_path", "updated_at"])
+        if entry.current_page_number != idx:
+            entry.current_page_number = idx
+            entry.save(update_fields=["current_page_number", "updated_at"])
+
+    # Remove orphaned pages (and cascading variants/votes) after dictionary deletions.
+    ProjectImagePage.objects.filter(project=project, page_number__gt=len(entries)).delete()
 
 
 def _imported_dictionary_stage_payload(dictionary: PictureDictionary, rows: list[dict], stage_name: str) -> dict:
@@ -657,6 +774,10 @@ def _imported_dictionary_stage_payload(dictionary: PictureDictionary, rows: list
                 token_annotations["lemma"] = str(row["lemma"])
             if row.get("pos"):
                 token_annotations["pos"] = str(row["pos"])
+        if stage_name == "translation":
+            translation = row.get("translation") or row.get("gloss") or ""
+            if translation:
+                token_annotations["translation"] = str(translation)
         if stage_name in {"gloss", "romanization", "pinyin"}:
             gloss = row.get("gloss") or row.get("translation") or ""
             if gloss:
@@ -691,7 +812,7 @@ def _imported_dictionary_stage_payload(dictionary: PictureDictionary, rows: list
 def _write_imported_dictionary_annotation_stages(dictionary: PictureDictionary, rows: list[dict]) -> None:
     run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages"
     run_dir.mkdir(parents=True, exist_ok=True)
-    for stage_name in ("segmentation_phase_2", "mwe", "lemma", "gloss", "romanization", "pinyin"):
+    for stage_name in ("segmentation_phase_2", "translation", "mwe", "lemma", "gloss", "romanization", "pinyin"):
         payload = _imported_dictionary_stage_payload(dictionary, rows, stage_name)
         write_stage_artifact(run_dir.parent, stage_name, payload)
 
@@ -743,14 +864,20 @@ def _manual_rows_from_entries(dictionary: PictureDictionary, entries: list[Pictu
         if prior is None and entry.lemma:
             prior = existing.get(("lemma", entry.lemma.casefold()))
         prior = prior or {}
+        prior_gloss = str(prior.get("gloss") or "").strip()
+        prior_translation = str(prior.get("translation") or "").strip()
+        if prior_gloss and not prior_translation:
+            prior_translation = prior_gloss
+        elif prior_translation and not prior_gloss:
+            prior_gloss = prior_translation
         rows.append(
             {
                 "old_page_number": entry.current_page_number or len(rows) + 1,
                 "surface": entry.surface,
                 "lemma": entry.lemma or prior.get("lemma") or entry.surface,
                 "pos": entry.pos or prior.get("pos") or "",
-                "gloss": prior.get("gloss") or "",
-                "translation": prior.get("translation") or "",
+                "gloss": prior_gloss,
+                "translation": prior_translation,
                 "image_path": entry.image_path or "",
             }
         )
@@ -780,18 +907,25 @@ def compile_picture_dictionary(
     _bootstrap_registry_from_project_source(dictionary)
     entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
     _sync_project_source_from_registry(dictionary)
+    manual_rows = _manual_rows_from_entries(dictionary, entries)
     _post_progress(f"Dictionary text compilation started for {len(entries)} image entr{'y' if len(entries) == 1 else 'ies'}.")
     _post_progress("Text phase 1/3: syncing dictionary entries to image pages.")
 
     for idx, entry in enumerate(entries, start=1):
+        page_prompt_text = entry.surface
+        if dictionary.project.page_image_text_source == Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION and idx <= len(manual_rows):
+            row = manual_rows[idx - 1]
+            candidate = str(row.get("translation") or row.get("gloss") or "").strip()
+            if candidate:
+                page_prompt_text = candidate
         existing = ProjectImagePage.objects.filter(project=dictionary.project, page_number=idx).first()
         if existing:
             changed = False
-            if existing.page_text != entry.surface:
-                existing.page_text = entry.surface
+            if existing.page_text != page_prompt_text:
+                existing.page_text = page_prompt_text
                 changed = True
-            if existing.generation_prompt != entry.surface:
-                existing.generation_prompt = entry.surface
+            if existing.generation_prompt != page_prompt_text:
+                existing.generation_prompt = page_prompt_text
                 changed = True
             if entry.image_path and existing.image_path != entry.image_path:
                 existing.image_path = entry.image_path
@@ -806,8 +940,8 @@ def compile_picture_dictionary(
             page = ProjectImagePage.objects.create(
                 project=dictionary.project,
                 page_number=idx,
-                page_text=entry.surface,
-                generation_prompt=entry.surface,
+                page_text=page_prompt_text,
+                generation_prompt=page_prompt_text,
                 image_model="gpt-image-1",
                 image_path=entry.image_path,
             )
@@ -818,7 +952,6 @@ def compile_picture_dictionary(
 
     ProjectImagePage.objects.filter(project=dictionary.project, page_number__gt=len(entries)).delete()
     _post_progress("Text phase 2/3: writing segmentation and annotation stage artifacts.")
-    manual_rows = _manual_rows_from_entries(dictionary, entries)
     manual_annotations_complete = _rows_have_manual_glosses(manual_rows)
     _write_segmentation_phase_1(dictionary, entries)
     if manual_annotations_complete:
@@ -892,8 +1025,10 @@ def compile_picture_dictionary(
             )
             and style.status in {"generated", "approved"}
         )
-        if low_resource_mode:
-            image_generation_note = "Image generation skipped (low-resource compile mode)."
+        if low_resource_mode and not manual_annotations_complete:
+            image_generation_note = (
+                "Image generation skipped: low-resource mode is enabled and manual annotations are incomplete."
+            )
         elif style_usable:
             from .views import _generate_project_page_images
 
