@@ -123,6 +123,30 @@ class PictureDictionaryCommandTests(TestCase):
         self.assertEqual(by_surface["Katze"]["annotations"].get("gloss"), "cat")
         self.assertEqual(by_surface["Hund"].get("annotations", {}), {})
 
+    def test_removing_word_removes_corresponding_dictionary_page(self):
+        call_command("picture_dictionary", "ensure", community_id=self.community.id, organiser=self.organiser.username)
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        call_command(
+            "picture_dictionary",
+            "add",
+            community_id=self.community.id,
+            organiser=self.organiser.username,
+            words="Katze, Hund",
+        )
+        self.assertEqual(dictionary.project.image_pages.count(), 2)
+        call_command(
+            "picture_dictionary",
+            "remove",
+            community_id=self.community.id,
+            organiser=self.organiser.username,
+            words="Hund",
+        )
+        pages = list(dictionary.project.image_pages.order_by("page_number"))
+        self.assertEqual(len(pages), 1)
+        self.assertEqual(pages[0].page_text, "Katze")
+        seg2 = read_stage_artifact(dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary", "segmentation_phase_2")
+        self.assertEqual([p.get("surface") for p in seg2.get("pages", [])], ["Katze"])
+
     def test_compile_uses_translation_text_for_page_prompts_when_configured(self):
         call_command("picture_dictionary", "ensure", community_id=self.community.id, organiser=self.organiser.username)
         dictionary = PictureDictionary.objects.get(community=self.community)

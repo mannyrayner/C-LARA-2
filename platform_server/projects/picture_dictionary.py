@@ -723,9 +723,46 @@ def _merge_stage_placeholders_with_existing(
 
 def _refresh_dictionary_placeholder_stages(dictionary: PictureDictionary) -> None:
     entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
+    _sync_project_source_from_registry(dictionary)
+    _sync_dictionary_project_pages(dictionary, entries)
     _write_segmentation_phase_1(dictionary, entries)
     for stage_name in ("segmentation_phase_2", "translation", "mwe", "lemma", "gloss", "romanization", "pinyin"):
         _merge_stage_placeholders_with_existing(dictionary, entries, stage_name=stage_name)
+
+
+def _sync_dictionary_project_pages(dictionary: PictureDictionary, entries: list[PictureDictionaryEntry]) -> None:
+    project = dictionary.project
+    existing_pages = {page.page_number: page for page in ProjectImagePage.objects.filter(project=project)}
+    for idx, entry in enumerate(entries, start=1):
+        page = existing_pages.get(idx)
+        if page is None:
+            page = ProjectImagePage.objects.create(
+                project=project,
+                page_number=idx,
+                page_text=entry.surface,
+                generation_prompt=entry.surface,
+                image_model="gpt-image-1",
+                image_path=entry.image_path or "",
+            )
+        else:
+            changed = False
+            if page.page_text != entry.surface:
+                page.page_text = entry.surface
+                changed = True
+            if page.generation_prompt != entry.surface:
+                page.generation_prompt = entry.surface
+                changed = True
+            if (entry.image_path or "") != (page.image_path or ""):
+                page.image_path = entry.image_path or ""
+                changed = True
+            if changed:
+                page.save(update_fields=["page_text", "generation_prompt", "image_path", "updated_at"])
+        if entry.current_page_number != idx:
+            entry.current_page_number = idx
+            entry.save(update_fields=["current_page_number", "updated_at"])
+
+    # Remove orphaned pages (and cascading variants/votes) after dictionary deletions.
+    ProjectImagePage.objects.filter(project=project, page_number__gt=len(entries)).delete()
 
 
 def _imported_dictionary_stage_payload(dictionary: PictureDictionary, rows: list[dict], stage_name: str) -> dict:
