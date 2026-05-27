@@ -8,7 +8,16 @@ from django.test import TestCase
 
 from pipeline.stage_artifacts import read_stage_artifact, write_stage_artifact
 
-from projects.models import Community, CommunityMembership, PictureDictionary, PictureDictionaryEntry, Project, ProjectImagePage
+from projects.models import (
+    Community,
+    CommunityMembership,
+    PictureDictionary,
+    PictureDictionaryEntry,
+    Project,
+    ProjectImagePage,
+    ProjectImagePageVariant,
+)
+from projects.picture_dictionary import _manual_rows_from_entries
 from projects.views import _build_picture_glosses_for_compile
 
 
@@ -85,6 +94,146 @@ class PictureDictionaryCommandTests(TestCase):
         for stage_name in ("segmentation_phase_2", "mwe", "lemma", "gloss", "romanization", "pinyin"):
             stage_path = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages" / f"{stage_name}.json"
             self.assertTrue(stage_path.exists())
+
+    def test_add_words_refreshes_placeholder_stage_artifacts_for_manual_editor(self):
+        call_command(
+            "picture_dictionary",
+            "ensure",
+            community_id=self.community.id,
+            organiser=self.organiser.username,
+        )
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        call_command(
+            "picture_dictionary",
+            "add",
+            community_id=self.community.id,
+            organiser=self.organiser.username,
+            words="Kuma, Nori",
+        )
+        run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
+        seg2 = read_stage_artifact(run_dir, "segmentation_phase_2")
+        self.assertEqual([p.get("surface") for p in seg2.get("pages", [])], ["Kuma", "Nori"])
+        for stage_name in ("translation", "mwe", "lemma", "gloss", "pinyin"):
+            stage_path = run_dir / "stages" / f"{stage_name}.json"
+            self.assertTrue(stage_path.exists())
+
+    def test_placeholder_refresh_preserves_existing_annotations(self):
+        call_command("picture_dictionary", "ensure", community_id=self.community.id, organiser=self.organiser.username)
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        call_command("picture_dictionary", "add", community_id=self.community.id, organiser=self.organiser.username, words="Katze")
+        run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
+        gloss_payload = read_stage_artifact(run_dir, "gloss")
+        gloss_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"] = {"lemma": "Katze", "pos": "NOUN", "gloss": "cat"}
+        write_stage_artifact(run_dir, "gloss", gloss_payload)
+        call_command("picture_dictionary", "add", community_id=self.community.id, organiser=self.organiser.username, words="Hund")
+        gloss_after = read_stage_artifact(run_dir, "gloss")
+        tokens = [p["segments"][0]["tokens"][0] for p in gloss_after.get("pages", [])]
+        by_surface = {t["surface"]: t for t in tokens}
+        self.assertEqual(by_surface["Katze"]["annotations"].get("gloss"), "cat")
+        self.assertEqual(by_surface["Hund"].get("annotations", {}), {})
+
+    def test_removing_word_removes_corresponding_dictionary_page(self):
+        call_command("picture_dictionary", "ensure", community_id=self.community.id, organiser=self.organiser.username)
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        call_command(
+            "picture_dictionary",
+            "add",
+            community_id=self.community.id,
+            organiser=self.organiser.username,
+            words="Katze, Hund",
+        )
+        self.assertEqual(dictionary.project.image_pages.count(), 2)
+        call_command(
+            "picture_dictionary",
+            "remove",
+            community_id=self.community.id,
+            organiser=self.organiser.username,
+            words="Hund",
+        )
+        pages = list(dictionary.project.image_pages.order_by("page_number"))
+        self.assertEqual(len(pages), 1)
+        self.assertEqual(pages[0].page_text, "Katze")
+        seg2 = read_stage_artifact(dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary", "segmentation_phase_2")
+        self.assertEqual([p.get("surface") for p in seg2.get("pages", [])], ["Katze"])
+
+    def test_removing_word_keeps_page_variants_in_sync(self):
+        call_command("picture_dictionary", "ensure", community_id=self.community.id, organiser=self.organiser.username)
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        call_command(
+            "picture_dictionary",
+            "add",
+            community_id=self.community.id,
+            organiser=self.organiser.username,
+            words="Katze, Hund",
+        )
+        page1, page2 = list(dictionary.project.image_pages.order_by("page_number"))
+        v1 = ProjectImagePageVariant.objects.create(page=page1, variant_index=1, image_path="images/pages/page_001/variant_001.png")
+        v2 = ProjectImagePageVariant.objects.create(page=page2, variant_index=1, image_path="images/pages/page_002/variant_001.png")
+        page1.preferred_variant = v1
+        page2.preferred_variant = v2
+        page1.image_path = v1.image_path
+        page2.image_path = v2.image_path
+        page1.save(update_fields=["preferred_variant", "image_path", "updated_at"])
+        page2.save(update_fields=["preferred_variant", "image_path", "updated_at"])
+        entry_hund = dictionary.entries.get(surface="Hund")
+        entry_hund.image_path = v2.image_path
+        entry_hund.save(update_fields=["image_path", "updated_at"])
+        call_command(
+            "picture_dictionary",
+            "remove",
+            community_id=self.community.id,
+            organiser=self.organiser.username,
+            words="Katze",
+        )
+        only_page = dictionary.project.image_pages.get(page_number=1)
+        self.assertEqual(only_page.page_text, "Hund")
+        self.assertIsNotNone(only_page.preferred_variant)
+        self.assertEqual(only_page.preferred_variant.variant_index, 1)
+        self.assertEqual(only_page.preferred_variant.image_path, entry_hund.image_path)
+
+    def test_compile_uses_translation_text_for_page_prompts_when_configured(self):
+        call_command("picture_dictionary", "ensure", community_id=self.community.id, organiser=self.organiser.username)
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        dictionary.project.page_image_text_source = Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION
+        dictionary.project.save(update_fields=["page_image_text_source", "updated_at"])
+        call_command("picture_dictionary", "add", community_id=self.community.id, organiser=self.organiser.username, words="Katze")
+        run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
+        gloss_payload = read_stage_artifact(run_dir, "gloss")
+        gloss_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"] = {
+            "lemma": "Katze",
+            "pos": "NOUN",
+            "gloss": "cat",
+            "translation": "cat",
+        }
+        write_stage_artifact(run_dir, "gloss", gloss_payload)
+        call_command("picture_dictionary", "compile", community_id=self.community.id, organiser=self.organiser.username)
+        page = dictionary.project.image_pages.order_by("page_number").first()
+        assert page is not None
+        self.assertEqual(page.page_text, "cat")
+
+    def test_picture_dictionary_defaults_for_non_ai_language(self):
+        self.community.language = "xkk"
+        self.community.save(update_fields=["language"])
+        call_command("picture_dictionary", "ensure", community_id=self.community.id, organiser=self.organiser.username)
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        self.assertEqual(dictionary.project.page_image_text_source, Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION)
+        style = dictionary.project.image_style
+        self.assertFalse(style.discourage_text_in_images)
+        self.assertTrue(style.disallow_text_in_images)
+
+    def test_manual_rows_pick_up_translation_stage_values(self):
+        call_command("picture_dictionary", "ensure", community_id=self.community.id, organiser=self.organiser.username)
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        call_command("picture_dictionary", "add", community_id=self.community.id, organiser=self.organiser.username, words="Katze")
+        run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
+        tr_payload = read_stage_artifact(run_dir, "translation")
+        tr_payload["pages"][0]["segments"][0].setdefault("annotations", {})
+        tr_payload["pages"][0]["segments"][0]["annotations"]["translation"] = "cat"
+        write_stage_artifact(run_dir, "translation", tr_payload)
+        entry = dictionary.entries.get(surface="Katze")
+        rows = _manual_rows_from_entries(dictionary, [entry])
+        self.assertEqual(rows[0]["translation"], "cat")
+        self.assertEqual(rows[0]["gloss"], "cat")
 
     def test_import_project_as_dictionary_copy_filters_untranslated_pages_and_supports_picture_glossing(self):
         source = Project.objects.create(
