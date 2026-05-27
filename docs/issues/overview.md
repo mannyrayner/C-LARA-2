@@ -1,9 +1,9 @@
 # C-LARA-2 issues overview
-_Last updated: 2026-05-25T05:03:13Z_
+_Last updated: 2026-05-27T23:59:00Z_
 
 ## Recent progress
-- Processed update suggestion #19 and marked **[ISSUE-0012](issues/ISSUE-0012.json)** as **closed**.
-- Updated focus priorities to remove closed ISSUE-0012 from active focus ordering.
+- Processed update suggestion #21 and marked **[ISSUE-0020](issues/ISSUE-0020.json)** as **closed** after maintainer confirmation.
+- Updated focus priorities to remove closed ISSUE-0020 from active near-term list.
 - Revalidated overview status values against canonical per-issue JSON records.
 
 ## Near-term priorities
@@ -24,8 +24,8 @@ _Last updated: 2026-05-25T05:03:13Z_
 
 ## Notes/risks
 - ISSUE-0031 spans authentication and published-content serving boundaries; policy/UI mistakes could expose content unintentionally or block intended anonymous access.
-- The first progress report remains date-bound (2026-06-15), so publication drafting needs steady section-level progress.
 - End-to-end validation automation (ISSUE-0003) remains a cross-cutting dependency for safer rapid iteration.
+- Community audio and judging UX tracks (ISSUE-0026, ISSUE-0029) remain sensitive to workflow friction and data-loss risk until implemented.
 
 ## Complete issue inventory
 
