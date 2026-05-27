@@ -24,6 +24,8 @@ from .models import (
     ProjectImageStyle,
 )
 
+NON_AI_ENABLED_LANGUAGES = {"xkk", "iai", "dre"}
+
 logger = logging.getLogger(__name__)
 
 
@@ -266,11 +268,36 @@ def _copy_project_image_style(source_project: Project, target_project: Project) 
             "sample_image_path": style.sample_image_path,
             "sample_image_revised_prompt": style.sample_image_revised_prompt,
             "sample_image_model": style.sample_image_model,
-            "discourage_text_in_images": style.discourage_text_in_images,
+            "discourage_text_in_images": False,
+            "disallow_text_in_images": True,
             "ai_model": style.ai_model,
             "status": style.status,
         },
     )
+
+
+def _apply_picture_dictionary_image_defaults(project: Project) -> None:
+    language = (project.language or "").strip().lower()
+    project.page_image_text_source = (
+        Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION
+        if language in NON_AI_ENABLED_LANGUAGES
+        else Project.PAGE_IMAGE_TEXT_SOURCE_SEGMENTATION
+    )
+    project.save(update_fields=["page_image_text_source", "updated_at"])
+    style, _ = ProjectImageStyle.objects.get_or_create(
+        project=project,
+        defaults={"ai_model": project.ai_model or "gpt-4o"},
+    )
+    update_fields: list[str] = []
+    if style.discourage_text_in_images:
+        style.discourage_text_in_images = False
+        update_fields.append("discourage_text_in_images")
+    if not bool(getattr(style, "disallow_text_in_images", False)):
+        style.disallow_text_in_images = True
+        update_fields.append("disallow_text_in_images")
+    if update_fields:
+        update_fields.append("updated_at")
+        style.save(update_fields=update_fields)
 
 
 @transaction.atomic
@@ -319,6 +346,7 @@ def import_project_as_picture_dictionary(
     )
     _copy_project_artifacts(source_project, target_project)
     _copy_project_image_style(source_project, target_project)
+    _apply_picture_dictionary_image_defaults(target_project)
 
     dictionary = PictureDictionary.objects.select_related("project").filter(community=community).first()
     old_project_id = dictionary.project_id if dictionary else None
@@ -456,6 +484,7 @@ def ensure_picture_dictionary_for_community(*, community: Community, organiser) 
         organiser=organiser,
         language=community.language or project.language,
     )
+    _apply_picture_dictionary_image_defaults(project)
     return dictionary
 
 

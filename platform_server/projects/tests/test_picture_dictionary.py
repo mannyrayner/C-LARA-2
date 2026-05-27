@@ -143,6 +143,16 @@ class PictureDictionaryCommandTests(TestCase):
         assert page is not None
         self.assertEqual(page.page_text, "cat")
 
+    def test_picture_dictionary_defaults_for_non_ai_language(self):
+        self.community.language = "xkk"
+        self.community.save(update_fields=["language"])
+        call_command("picture_dictionary", "ensure", community_id=self.community.id, organiser=self.organiser.username)
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        self.assertEqual(dictionary.project.page_image_text_source, Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION)
+        style = dictionary.project.image_style
+        self.assertFalse(style.discourage_text_in_images)
+        self.assertTrue(style.disallow_text_in_images)
+
     def test_import_project_as_dictionary_copy_filters_untranslated_pages_and_supports_picture_glossing(self):
         source = Project.objects.create(
             owner=self.organiser,
