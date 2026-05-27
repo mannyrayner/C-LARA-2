@@ -8034,8 +8034,10 @@ def _page_review_context_rows(project: Project, pages: list[ProjectImagePage]) -
         translation_text = translation_pages[page.page_number - 1] if page.page_number <= len(translation_pages) else ""
         if not source_text and project.page_image_text_source != Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION:
             source_text = page.page_text
-        if not translation_text and project.page_image_text_source == Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION:
-            translation_text = page.page_text
+        # Do not mirror page_text into translation_text when translation stage is empty.
+        # In translation-driven workflows (e.g. low-resource dictionaries), page_text may
+        # already hold source or prompt text and mirroring it here makes the review UI
+        # misleading by showing source==translation.
         context_by_page[page.id] = {
             "source_text": source_text,
             "translation_text": translation_text,

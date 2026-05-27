@@ -311,6 +311,20 @@ class CommunityWorkflowTests(TestCase):
         self.assertContains(review, "Page translation")
         self.assertContains(review, "Bonjour la page")
 
+    def test_review_does_not_mirror_source_into_translation_when_translation_missing(self):
+        self.project.community = self.community
+        self.project.source_text = "Makerr"
+        self.project.page_image_text_source = Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION
+        self.project.save(update_fields=["community", "source_text", "page_image_text_source", "updated_at"])
+        member_client = Client()
+        member_client.login(username="mem", password="pw")
+        judge = member_client.get(reverse("community-member-judge-project", args=[self.community.id, self.project.id]))
+        self.assertEqual(judge.status_code, 200)
+        self.assertContains(judge, "Source page text")
+        self.assertContains(judge, "Makerr")
+        self.assertContains(judge, "Page translation:")
+        self.assertContains(judge, "not available")
+
     def test_organiser_image_review_entry_point_and_preferred_variant_label(self):
         self.project.community = self.community
         self.project.save(update_fields=["community", "updated_at"])
