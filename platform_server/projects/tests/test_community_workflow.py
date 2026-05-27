@@ -341,6 +341,7 @@ class CommunityWorkflowTests(TestCase):
         self.assertContains(review, "Current preferred image")
         self.assertContains(review, "variant 1")
         self.assertContains(review, "current preferred image")
+        self.assertContains(review, "All pages")
 
     def test_organiser_picture_dictionary_controls(self):
         self.project.community = self.community

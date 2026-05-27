@@ -8532,6 +8532,8 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
                             break
                     if not has_acceptable:
                         candidate_pages.append(page)
+            elif filter_mode == "all_pages":
+                candidate_pages = list(pages)
             else:
                 candidate_pages = [page for page in pages if page.id in selected_page_ids]
 
@@ -8630,7 +8632,7 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
     ]
     vote_rows: list[dict[str, Any]] = []
     current_generation_filter = (request.GET.get("generation_filter") or "all_unacceptable").strip()
-    if current_generation_filter not in {"selected_pages", "missing_images", "no_preferred", "all_unacceptable"}:
+    if current_generation_filter not in {"selected_pages", "missing_images", "no_preferred", "all_unacceptable", "all_pages"}:
         current_generation_filter = "all_unacceptable"
     visible_page_ids: set[int] = set()
     if current_generation_filter == "missing_images":
@@ -8654,6 +8656,8 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
                     break
             if not has_acceptable:
                 visible_page_ids.add(page.id)
+    elif current_generation_filter == "all_pages":
+        visible_page_ids = {page.id for page in pages}
     else:
         visible_page_ids = {page.id for page in pages}
     preview_page_ids: set[int] = set()
@@ -8735,6 +8739,7 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
             "current_generation_filter": current_generation_filter,
             "generation_filter_options": [
                 ("selected_pages", "Selected pages"),
+                ("all_pages", "All pages"),
                 ("missing_images", "Missing images only"),
                 ("no_preferred", "No preferred image"),
                 ("all_unacceptable", "All variants unacceptable"),
