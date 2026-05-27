@@ -53,7 +53,8 @@
   {% csrf_token %}
   <p>
     <button class="btn secondary" type="submit" name="picture_dictionary_action" value="ensure">Ensure dictionary</button>
-    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="compile">Compile dictionary (sync pages + annotation + images)</button>
+    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="sync_placeholders">Sync dictionary text + placeholder stages (no image generation)</button>
+    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="compile" {% if low_resource_mode_recommended and low_resource_missing_rows > 0 %}disabled title="Add missing glosses/translations in the review editor first"{% endif %}>Compile dictionary (sync pages + annotation + images)</button>
   </p>
   <p>
     <label for="picture_dictionary_style_brief">Style brief (used if style is missing):</label><br />
@@ -61,10 +62,16 @@
   </p>
   <p>
     <label>
-      <input type="checkbox" name="picture_dictionary_low_resource_mode" value="1" />
+      <input type="checkbox" name="picture_dictionary_low_resource_mode" value="1" {% if low_resource_mode_recommended %}checked{% endif %} />
       Low-resource compile mode (segmentation only + placeholder annotation stages + manual annotation handoff)
     </label>
   </p>
+  {% if low_resource_mode_recommended %}
+    <p><small>This community language is configured as non-AI-enabled, so low-resource mode is preselected.</small></p>
+    {% if low_resource_missing_rows > 0 %}
+      <p><small><strong>Compile temporarily blocked:</strong> {{ low_resource_missing_rows }} dictionary row(s) are missing gloss and/or translation. Please use “Review dictionary content (page-oriented editor)” first.</small></p>
+    {% endif %}
+  {% endif %}
   <p>
     <label for="picture_dictionary_words">Words (comma or newline separated):</label><br />
     <textarea id="picture_dictionary_words" name="picture_dictionary_words" rows="4" style="width: 100%;"></textarea>
