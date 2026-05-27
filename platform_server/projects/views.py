@@ -120,6 +120,7 @@ from .models import (
     IssueUpdateSuggestion,
 )
 from .picture_dictionary import (
+    _refresh_dictionary_placeholder_stages,
     add_lemma_pos_entries as picture_dictionary_add_lemma_pos_entries,
     add_words as picture_dictionary_add_words,
     clear_entries as picture_dictionary_clear_entries,
@@ -8033,8 +8034,10 @@ def _page_review_context_rows(project: Project, pages: list[ProjectImagePage]) -
         translation_text = translation_pages[page.page_number - 1] if page.page_number <= len(translation_pages) else ""
         if not source_text and project.page_image_text_source != Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION:
             source_text = page.page_text
-        if not translation_text and project.page_image_text_source == Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION:
-            translation_text = page.page_text
+        # Do not mirror page_text into translation_text when translation stage is empty.
+        # In translation-driven workflows (e.g. low-resource dictionaries), page_text may
+        # already hold source or prompt text and mirroring it here makes the review UI
+        # misleading by showing source==translation.
         context_by_page[page.id] = {
             "source_text": source_text,
             "translation_text": translation_text,
@@ -8160,6 +8163,31 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                 "entry_count": int(((payload.get("metadata") or {}).get("entry_count") or 0)),
             }
 
+    low_resource_languages = {"xkk", "iai", "dre"}
+    low_resource_mode_recommended = (community.language or "").strip().lower() in low_resource_languages
+    low_resource_missing_rows = 0
+    low_resource_missing_row_details: list[str] = []
+    if picture_dictionary:
+        try:
+            from .picture_dictionary import _manual_rows_from_entries
+
+            _rows = _manual_rows_from_entries(picture_dictionary, dictionary_entries)
+            for idx, row in enumerate(_rows, start=1):
+                gloss = str(row.get("gloss") or "").strip()
+                translation = str(row.get("translation") or "").strip()
+                if gloss and translation:
+                    continue
+                low_resource_missing_rows += 1
+                low_resource_missing_row_details.append(
+                    f"row={idx} surface='{str(row.get('surface') or '').strip()}' "
+                    f"lemma='{str(row.get('lemma') or '').strip()}' pos='{str(row.get('pos') or '').strip()}' "
+                    f"missing={'gloss' if not gloss else ''}{'+' if (not gloss and not translation) else ''}{'translation' if not translation else ''} "
+                    f"gloss='{gloss}' translation='{translation}'"
+                )
+        except Exception:
+            low_resource_missing_rows = 0
+            low_resource_missing_row_details = []
+
     if request.method == "POST":
         membership_action = (request.POST.get("community_membership_action") or "").strip()
         if membership_action == "add_member":
@@ -8248,6 +8276,12 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
 
             if action == "ensure":
                 messages.success(request, "Picture dictionary is ready.")
+            elif action == "sync_placeholders":
+                _refresh_dictionary_placeholder_stages(picture_dictionary)
+                messages.success(
+                    request,
+                    "Dictionary stages synced. Existing annotations were preserved; placeholders were added only for new/missing entries.",
+                )
             elif action == "compile":
                 compile_updates: list[str] = []
 
@@ -8306,6 +8340,19 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                     messages.success(request, "Created dictionary image style from the provided style brief.")
                 report_id = str(uuid.uuid4())
                 low_resource_mode = bool(request.POST.get("picture_dictionary_low_resource_mode"))
+                if low_resource_mode and low_resource_missing_rows > 0:
+                    review_url = reverse("manual-page-annotation", args=[picture_dictionary.project.id])
+                    messages.error(
+                        request,
+                        "Low-resource compile mode is enabled, but some dictionary rows are missing gloss and/or translation. "
+                        f"Please use “Review dictionary content (page-oriented editor)” first ({review_url}).",
+                    )
+                    for detail in low_resource_missing_row_details[:12]:
+                        messages.info(request, f"Low-resource compile check detail: {detail}")
+                    return redirect("community-organiser-home", community_id=community_id)
+                if picture_dictionary.project.page_image_text_source != Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION:
+                    picture_dictionary.project.page_image_text_source = Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION
+                    picture_dictionary.project.save(update_fields=["page_image_text_source", "updated_at"])
                 async_task(
                     _run_picture_dictionary_compile_task,
                     picture_dictionary.id,
@@ -8412,6 +8459,9 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             "picture_dictionary_compile_info": picture_dictionary_compile_info,
             "picture_dictionary_style_brief": picture_dictionary_style_brief,
             "community_projects": projects,
+            "low_resource_mode_recommended": low_resource_mode_recommended,
+            "low_resource_missing_rows": low_resource_missing_rows,
+            "low_resource_missing_row_details": low_resource_missing_row_details[:12],
         },
     )
 
@@ -10256,12 +10306,13 @@ def generate_flashcard_exercises(request: HttpRequest, pk: int) -> HttpResponse:
                 created_by=request.user,
             )
 
+            client = _build_billed_project_ai_client(
+                project,
+                model_name=model,
+                request_type="exercise_flashcard_generation",
+            )
+
             async def _run() -> list[dict[str, Any]]:
-                client = _build_billed_project_ai_client(
-                    project,
-                    model_name=model,
-                    request_type="exercise_flashcard_generation",
-                )
                 if flashcard_mode == ExerciseSet.FLASHCARD_MODE_IMAGE_TO_FORM:
                     tasks = [
                         _generate_image_flashcard_item(client, model, theme, cand, idx, fallback_values)

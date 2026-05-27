@@ -311,6 +311,20 @@ class CommunityWorkflowTests(TestCase):
         self.assertContains(review, "Page translation")
         self.assertContains(review, "Bonjour la page")
 
+    def test_review_does_not_mirror_source_into_translation_when_translation_missing(self):
+        self.project.community = self.community
+        self.project.source_text = "Makerr"
+        self.project.page_image_text_source = Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION
+        self.project.save(update_fields=["community", "source_text", "page_image_text_source", "updated_at"])
+        member_client = Client()
+        member_client.login(username="mem", password="pw")
+        judge = member_client.get(reverse("community-member-judge-project", args=[self.community.id, self.project.id]))
+        self.assertEqual(judge.status_code, 200)
+        self.assertContains(judge, "Source page text")
+        self.assertContains(judge, "Makerr")
+        self.assertContains(judge, "Page translation:")
+        self.assertContains(judge, "not available")
+
     def test_organiser_image_review_entry_point_and_preferred_variant_label(self):
         self.project.community = self.community
         self.project.save(update_fields=["community", "updated_at"])
@@ -339,9 +353,11 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "Picture dictionary (Phase A)")
         self.assertContains(page, "Ensure dictionary")
+        self.assertContains(page, "Sync dictionary text + placeholder stages (no image generation)")
         self.assertContains(page, "Add from text")
         self.assertContains(page, "Import as dictionary copy")
         self.assertContains(page, "Style brief (used if style is missing)")
+        self.assertContains(page, "low-resource mode is preselected")
         self.assertNotContains(page, "Remove words")
 
         ensure = client.post(
@@ -439,6 +455,8 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(scheduled.args[1], dictionary.id)
         self.assertEqual(scheduled.args[2], self.organiser.id)
         report_id = scheduled.args[3]
+        dictionary.project.refresh_from_db()
+        self.assertEqual(dictionary.project.page_image_text_source, Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION)
 
         scheduled.args[0](*scheduled.args[1:4])
         self.assertTrue(
@@ -461,6 +479,21 @@ class CommunityWorkflowTests(TestCase):
         dictionary_entries[0].refresh_from_db()
         self.assertFalse(dictionary_entries[0].is_active)
         self.assertContains(remove_selected, "Last dictionary compile:")
+
+    def test_low_resource_compile_blocks_when_gloss_or_translation_missing(self):
+        client = Client()
+        client.login(username="org", password="pw")
+        client.post(reverse("community-organiser-home", args=[self.community.id]), {"picture_dictionary_action": "ensure"})
+        blocked = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "compile",
+                "picture_dictionary_low_resource_mode": "1",
+            },
+            follow=True,
+        )
+        self.assertEqual(blocked.status_code, 200)
+        self.assertContains(blocked, "Compile temporarily blocked")
 
     def test_mark_reviewed_promotes_member_upvoted_variant_to_preferred(self):
         self.project.community = self.community
@@ -579,4 +612,3 @@ class CommunityWorkflowTests(TestCase):
         self.assertContains(resp_confirm, "Generation progress updates")
         self.assertEqual(ProjectImagePageVariant.objects.filter(page=self.page).count(), 2)
         self.assertEqual(ProjectImagePageVariant.objects.filter(page=second_page).count(), 0)
-
