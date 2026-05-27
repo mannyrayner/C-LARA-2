@@ -818,10 +818,27 @@ def _write_imported_dictionary_annotation_stages(dictionary: PictureDictionary, 
 
 
 def _index_existing_dictionary_annotations(dictionary: PictureDictionary) -> dict[tuple[str, str], dict]:
-    run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
+    runs_root = dictionary.project.artifact_dir() / "runs"
+
+    def _latest_run_with_stage(stage_name: str) -> Path | None:
+        if not runs_root.exists():
+            return None
+        candidates: list[Path] = []
+        for run_dir in runs_root.iterdir():
+            if not run_dir.is_dir():
+                continue
+            stage_path = run_dir / "stages" / f"{stage_name}.json"
+            if stage_path.exists():
+                candidates.append(run_dir)
+        if not candidates:
+            return None
+        candidates.sort(key=lambda path: (path / "stages" / f"{stage_name}.json").stat().st_mtime, reverse=True)
+        return candidates[0]
+
+    translation_run = _latest_run_with_stage("translation")
     translation_by_page: dict[int, str] = {}
     try:
-        tr_payload = read_stage_artifact(run_dir, "translation")
+        tr_payload = read_stage_artifact(translation_run, "translation") if translation_run else {}
     except Exception:
         tr_payload = {}
     for page_number, page in enumerate((tr_payload.get("pages") or []), start=1):
@@ -838,8 +855,9 @@ def _index_existing_dictionary_annotations(dictionary: PictureDictionary) -> dic
         if parts:
             translation_by_page[page_number] = " ".join(parts).strip()
 
+    gloss_run = _latest_run_with_stage("gloss")
     try:
-        payload = read_stage_artifact(run_dir, "gloss")
+        payload = read_stage_artifact(gloss_run, "gloss") if gloss_run else {}
     except Exception:
         return {}
     indexed: dict[tuple[str, str], dict] = {}
