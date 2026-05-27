@@ -70,6 +70,16 @@
     <p><small>This community language is configured as non-AI-enabled, so low-resource mode is preselected.</small></p>
     {% if low_resource_missing_rows > 0 %}
       <p><small><strong>Compile temporarily blocked:</strong> {{ low_resource_missing_rows }} dictionary row(s) are missing gloss and/or translation. Please use “Review dictionary content (page-oriented editor)” first.</small></p>
+      {% if low_resource_missing_row_details %}
+        <details style="margin-top:0.4rem;">
+          <summary><small>Show missing-row diagnostics</small></summary>
+          <ul>
+            {% for detail in low_resource_missing_row_details %}
+              <li><small>{{ detail }}</small></li>
+            {% endfor %}
+          </ul>
+        </details>
+      {% endif %}
     {% endif %}
   {% endif %}
   <p>

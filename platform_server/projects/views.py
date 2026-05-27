@@ -8164,18 +8164,27 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
     low_resource_languages = {"xkk", "iai", "dre"}
     low_resource_mode_recommended = (community.language or "").strip().lower() in low_resource_languages
     low_resource_missing_rows = 0
+    low_resource_missing_row_details: list[str] = []
     if picture_dictionary:
         try:
             from .picture_dictionary import _manual_rows_from_entries
 
             _rows = _manual_rows_from_entries(picture_dictionary, dictionary_entries)
-            low_resource_missing_rows = sum(
-                1
-                for row in _rows
-                if not ((row.get("gloss") or "").strip() and (row.get("translation") or "").strip())
-            )
+            for idx, row in enumerate(_rows, start=1):
+                gloss = str(row.get("gloss") or "").strip()
+                translation = str(row.get("translation") or "").strip()
+                if gloss and translation:
+                    continue
+                low_resource_missing_rows += 1
+                low_resource_missing_row_details.append(
+                    f"row={idx} surface='{str(row.get('surface') or '').strip()}' "
+                    f"lemma='{str(row.get('lemma') or '').strip()}' pos='{str(row.get('pos') or '').strip()}' "
+                    f"missing={'gloss' if not gloss else ''}{'+' if (not gloss and not translation) else ''}{'translation' if not translation else ''} "
+                    f"gloss='{gloss}' translation='{translation}'"
+                )
         except Exception:
             low_resource_missing_rows = 0
+            low_resource_missing_row_details = []
 
     if request.method == "POST":
         membership_action = (request.POST.get("community_membership_action") or "").strip()
@@ -8336,6 +8345,8 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                         "Low-resource compile mode is enabled, but some dictionary rows are missing gloss and/or translation. "
                         f"Please use “Review dictionary content (page-oriented editor)” first ({review_url}).",
                     )
+                    for detail in low_resource_missing_row_details[:12]:
+                        messages.info(request, f"Low-resource compile check detail: {detail}")
                     return redirect("community-organiser-home", community_id=community_id)
                 if picture_dictionary.project.page_image_text_source != Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION:
                     picture_dictionary.project.page_image_text_source = Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION
@@ -8448,6 +8459,7 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             "community_projects": projects,
             "low_resource_mode_recommended": low_resource_mode_recommended,
             "low_resource_missing_rows": low_resource_missing_rows,
+            "low_resource_missing_row_details": low_resource_missing_row_details[:12],
         },
     )
 
