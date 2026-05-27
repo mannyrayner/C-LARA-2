@@ -694,22 +694,34 @@ def _merge_stage_placeholders_with_existing(
     except Exception:
         existing_payload = {}
     existing_tokens_by_surface: dict[str, dict] = {}
+    existing_segment_annotations_by_page: dict[int, list[dict[str, Any]]] = {}
     for page in existing_payload.get("pages") or []:
         if not isinstance(page, dict):
             continue
+        page_number = len(existing_segment_annotations_by_page) + 1
+        seg_ann_rows: list[dict[str, Any]] = []
         for seg in page.get("segments") or []:
             if not isinstance(seg, dict):
                 continue
+            seg_ann = seg.get("annotations") if isinstance(seg.get("annotations"), dict) else {}
+            seg_ann_rows.append(dict(seg_ann or {}))
             for tok in seg.get("tokens") or []:
                 if not isinstance(tok, dict):
                     continue
                 key = _normalise_word(tok.get("surface") or "").casefold()
                 if key:
                     existing_tokens_by_surface[key] = tok
+        if seg_ann_rows:
+            existing_segment_annotations_by_page[page_number] = seg_ann_rows
 
     payload = _dictionary_stage_payload(dictionary, entries, stage_name)
-    for page in payload.get("pages") or []:
-        for seg in page.get("segments") or []:
+    for page_idx, page in enumerate(payload.get("pages") or [], start=1):
+        prior_seg_ann_rows = existing_segment_annotations_by_page.get(page_idx, [])
+        for seg_idx, seg in enumerate(page.get("segments") or []):
+            if seg_idx < len(prior_seg_ann_rows):
+                prior_seg_ann = prior_seg_ann_rows[seg_idx]
+                if prior_seg_ann:
+                    seg["annotations"] = dict(prior_seg_ann)
             for tok in seg.get("tokens") or []:
                 key = _normalise_word(tok.get("surface") or "").casefold()
                 prior = existing_tokens_by_surface.get(key)
