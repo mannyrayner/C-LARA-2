@@ -342,6 +342,10 @@ class PictureDictionaryCommandTests(TestCase):
         self.assertTrue(filtered_stage.exists())
         self.assertNotIn("50 words in Kok Kaper", filtered_stage.read_text(encoding="utf-8"))
         imported_gloss = read_stage_artifact(dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary", "gloss")
+        imported_translation = read_stage_artifact(
+            dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary",
+            "translation",
+        )
         tokens = [
             token
             for page in imported_gloss["pages"]
@@ -349,6 +353,12 @@ class PictureDictionaryCommandTests(TestCase):
             for token in segment["tokens"]
         ]
         self.assertEqual([token["annotations"].get("gloss") for token in tokens], ["cat", "dog"])
+        translation_segments = [
+            (segment.get("annotations") or {}).get("translation")
+            for page in imported_translation["pages"]
+            for segment in page["segments"]
+        ]
+        self.assertEqual(translation_segments, ["cat", "dog"])
 
         call_command(
             "picture_dictionary",

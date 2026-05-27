@@ -810,6 +810,7 @@ def _imported_dictionary_stage_payload(dictionary: PictureDictionary, rows: list
     pages = []
     for row in rows:
         token_annotations: dict[str, str] = {}
+        segment_annotations: dict[str, str] = {}
         if stage_name in {"lemma", "gloss", "romanization", "pinyin"}:
             if row.get("lemma"):
                 token_annotations["lemma"] = str(row["lemma"])
@@ -819,6 +820,7 @@ def _imported_dictionary_stage_payload(dictionary: PictureDictionary, rows: list
             translation = row.get("translation") or row.get("gloss") or ""
             if translation:
                 token_annotations["translation"] = str(translation)
+                segment_annotations["translation"] = str(translation)
         if stage_name in {"gloss", "romanization", "pinyin"}:
             gloss = row.get("gloss") or row.get("translation") or ""
             if gloss:
@@ -830,7 +832,7 @@ def _imported_dictionary_stage_payload(dictionary: PictureDictionary, rows: list
                     {
                         "surface": str(row["surface"]),
                         "tokens": [{"surface": str(row["surface"]), "annotations": token_annotations}],
-                        "annotations": {},
+                        "annotations": segment_annotations,
                     }
                 ],
                 "annotations": {},
