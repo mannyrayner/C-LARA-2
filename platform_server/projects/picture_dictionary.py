@@ -528,7 +528,8 @@ def remove_words(*, dictionary: PictureDictionary, words: Iterable[str]) -> int:
         if entry.surface.casefold() in removal_keys:
             entry.is_active = False
             entry.current_page_number = None
-            entry.save(update_fields=["is_active", "current_page_number", "updated_at"])
+            entry.image_path = ""
+            entry.save(update_fields=["is_active", "current_page_number", "image_path", "updated_at"])
             removed += 1
     if removed:
         _sync_project_source_from_registry(dictionary)
@@ -542,7 +543,8 @@ def remove_entries_by_ids(*, dictionary: PictureDictionary, entry_ids: Iterable[
     for entry in dictionary.entries.filter(id__in=ids, is_active=True):
         entry.is_active = False
         entry.current_page_number = None
-        entry.save(update_fields=["is_active", "current_page_number", "updated_at"])
+        entry.image_path = ""
+        entry.save(update_fields=["is_active", "current_page_number", "image_path", "updated_at"])
         removed += 1
     if removed:
         _sync_project_source_from_registry(dictionary)
@@ -555,7 +557,8 @@ def clear_entries(*, dictionary: PictureDictionary) -> int:
     for entry in dictionary.entries.filter(is_active=True):
         entry.is_active = False
         entry.current_page_number = None
-        entry.save(update_fields=["is_active", "current_page_number", "updated_at"])
+        entry.image_path = ""
+        entry.save(update_fields=["is_active", "current_page_number", "image_path", "updated_at"])
         removed += 1
     if removed:
         _sync_project_source_from_registry(dictionary)
@@ -863,10 +866,44 @@ def _refresh_dictionary_placeholder_stages(dictionary: PictureDictionary) -> Non
         _merge_stage_placeholders_with_existing(dictionary, entries, stage_name=stage_name)
 
 
+def _prune_unreferenced_dictionary_image_artifacts(project: Project, active_image_paths: set[str]) -> None:
+    """Remove page-image files/directories no active dictionary entry references."""
+
+    pages_dir = project.artifact_dir() / "images" / "pages"
+    if not pages_dir.exists():
+        return
+    active_parts: set[Path] = set()
+    for raw_path in active_image_paths:
+        path = Path(str(raw_path or "").strip())
+        if not path.parts:
+            continue
+        if len(path.parts) >= 3 and path.parts[0] == "images" and path.parts[1] == "pages":
+            path = Path(*path.parts[2:])
+        active_parts.add(path)
+    active_page_dirs = {part.parts[0] for part in active_parts if part.parts}
+    for child in list(pages_dir.iterdir()):
+        if child.is_dir():
+            if child.name not in active_page_dirs:
+                shutil.rmtree(child, ignore_errors=True)
+            continue
+        try:
+            rel = child.relative_to(pages_dir)
+        except ValueError:
+            continue
+        if rel not in active_parts:
+            child.unlink(missing_ok=True)
+    try:
+        if not any(pages_dir.iterdir()):
+            pages_dir.rmdir()
+    except OSError:
+        pass
+
+
 def _sync_dictionary_project_pages(dictionary: PictureDictionary, entries: list[PictureDictionaryEntry]) -> None:
     project = dictionary.project
     existing_pages = {page.page_number: page for page in ProjectImagePage.objects.filter(project=project).order_by("id")}
     retained_page_ids: set[int] = set()
+    active_image_paths = {(entry.image_path or "").strip() for entry in entries if (entry.image_path or "").strip()}
     for idx, entry in enumerate(entries, start=1):
         page = existing_pages.get(idx)
         if page is None:
@@ -932,6 +969,7 @@ def _sync_dictionary_project_pages(dictionary: PictureDictionary, entries: list[
     if retained_page_ids:
         stale_pages = stale_pages.exclude(id__in=retained_page_ids)
     stale_pages.delete()
+    _prune_unreferenced_dictionary_image_artifacts(project, active_image_paths)
 
 
 def _imported_dictionary_stage_payload(

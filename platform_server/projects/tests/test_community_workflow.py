@@ -571,6 +571,17 @@ class CommunityWorkflowTests(TestCase):
         entries = list(dictionary.entries.filter(surface__in=["xxx", "yyy"]).order_by("surface"))
         self.assertEqual(len(entries), 2)
         self.assertEqual(ProjectImagePage.objects.filter(project=dictionary.project).count(), 2)
+        for page_number, entry in enumerate(entries, start=1):
+            rel_path = f"images/pages/page_{page_number:03d}/variant_001.png"
+            image_path = dictionary.project.artifact_dir() / rel_path
+            image_path.parent.mkdir(parents=True, exist_ok=True)
+            image_path.write_bytes(f"stale-{entry.surface}".encode("utf-8"))
+            entry.image_path = rel_path
+            entry.current_page_number = page_number
+            entry.save(update_fields=["image_path", "current_page_number", "updated_at"])
+            page = ProjectImagePage.objects.get(project=dictionary.project, page_number=page_number)
+            page.image_path = rel_path
+            page.save(update_fields=["image_path", "updated_at"])
 
         response = client.post(
             reverse("community-organiser-home", args=[self.community.id]),
@@ -588,12 +599,35 @@ class CommunityWorkflowTests(TestCase):
         self.assertNotIn("yyy", dictionary.project.source_text)
         self.assertFalse(ProjectImagePage.objects.filter(project=dictionary.project, page_text__in=["xxx", "yyy"]).exists())
         self.assertEqual(ProjectImagePage.objects.filter(project=dictionary.project).count(), 0)
-
+        self.assertFalse((dictionary.project.artifact_dir() / "images/pages/page_001").exists())
+        self.assertFalse((dictionary.project.artifact_dir() / "images/pages/page_002").exists())
+        for entry in entries:
+            entry.refresh_from_db()
+            self.assertEqual(entry.image_path, "")
         run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
         seg1_payload = read_stage_artifact(run_dir, "segmentation_phase_1")
         lemma_payload = read_stage_artifact(run_dir, "lemma")
         self.assertEqual(seg1_payload.get("pages"), [])
         self.assertEqual(lemma_payload.get("pages"), [])
+
+        readded = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "add_low_resource_rows",
+                "low_resource_surface": ["xxx"],
+                "low_resource_lemma": ["xxx"],
+                "low_resource_pos": ["NOUN"],
+                "low_resource_gloss": ["dummy x"],
+            },
+            follow=True,
+        )
+        self.assertEqual(readded.status_code, 200)
+        reactivated = dictionary.entries.get(surface="xxx")
+        self.assertTrue(reactivated.is_active)
+        self.assertEqual(reactivated.image_path, "")
+        readded_page = ProjectImagePage.objects.get(project=dictionary.project, page_text="xxx")
+        self.assertEqual(readded_page.image_path, "")
+        self.assertFalse((dictionary.project.artifact_dir() / "images/pages/page_001").exists())
 
     def test_ai_capable_organiser_keeps_plain_dictionary_word_entry(self):
         ai_community = Community.objects.create(name="French community", language="fr")
