@@ -865,7 +865,8 @@ def _refresh_dictionary_placeholder_stages(dictionary: PictureDictionary) -> Non
 
 def _sync_dictionary_project_pages(dictionary: PictureDictionary, entries: list[PictureDictionaryEntry]) -> None:
     project = dictionary.project
-    existing_pages = {page.page_number: page for page in ProjectImagePage.objects.filter(project=project)}
+    existing_pages = {page.page_number: page for page in ProjectImagePage.objects.filter(project=project).order_by("id")}
+    retained_page_ids: set[int] = set()
     for idx, entry in enumerate(entries, start=1):
         page = existing_pages.get(idx)
         if page is None:
@@ -922,9 +923,15 @@ def _sync_dictionary_project_pages(dictionary: PictureDictionary, entries: list[
         if entry.current_page_number != idx:
             entry.current_page_number = idx
             entry.save(update_fields=["current_page_number", "updated_at"])
+        retained_page_ids.add(page.id)
 
     # Remove orphaned pages (and cascading variants/votes) after dictionary deletions.
-    ProjectImagePage.objects.filter(project=project, page_number__gt=len(entries)).delete()
+    # Filtering only by page_number can leave stale duplicate/legacy rows behind;
+    # delete anything that was not explicitly retained for the active entries.
+    stale_pages = ProjectImagePage.objects.filter(project=project)
+    if retained_page_ids:
+        stale_pages = stale_pages.exclude(id__in=retained_page_ids)
+    stale_pages.delete()
 
 
 def _imported_dictionary_stage_payload(

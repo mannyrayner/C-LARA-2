@@ -552,6 +552,49 @@ class CommunityWorkflowTests(TestCase):
         updated_page = client.get(reverse("community-organiser-home", args=[self.community.id]))
         self.assertContains(updated_page, "Pending new images:</strong> 0", html=False)
 
+    def test_low_resource_remove_selected_cleans_project_pages_and_stage_artifacts(self):
+        client = Client()
+        client.login(username="org", password="pw")
+        response = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "add_low_resource_rows",
+                "low_resource_surface": ["xxx", "yyy"],
+                "low_resource_lemma": ["xxx", "yyy"],
+                "low_resource_pos": ["NOUN", "NOUN"],
+                "low_resource_gloss": ["dummy x", "dummy y"],
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        entries = list(dictionary.entries.filter(surface__in=["xxx", "yyy"]).order_by("surface"))
+        self.assertEqual(len(entries), 2)
+        self.assertEqual(ProjectImagePage.objects.filter(project=dictionary.project).count(), 2)
+
+        response = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "remove_selected",
+                "remove_entry": [str(entry.id) for entry in entries],
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Removed 2 selected dictionary entries")
+        self.assertFalse(dictionary.entries.filter(surface__in=["xxx", "yyy"], is_active=True).exists())
+        dictionary.project.refresh_from_db()
+        self.assertNotIn("xxx", dictionary.project.source_text)
+        self.assertNotIn("yyy", dictionary.project.source_text)
+        self.assertFalse(ProjectImagePage.objects.filter(project=dictionary.project, page_text__in=["xxx", "yyy"]).exists())
+        self.assertEqual(ProjectImagePage.objects.filter(project=dictionary.project).count(), 0)
+
+        run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
+        seg1_payload = read_stage_artifact(run_dir, "segmentation_phase_1")
+        lemma_payload = read_stage_artifact(run_dir, "lemma")
+        self.assertEqual(seg1_payload.get("pages"), [])
+        self.assertEqual(lemma_payload.get("pages"), [])
+
     def test_ai_capable_organiser_keeps_plain_dictionary_word_entry(self):
         ai_community = Community.objects.create(name="French community", language="fr")
         CommunityMembership.objects.create(community=ai_community, user=self.organiser, role="organiser")
