@@ -122,6 +122,7 @@ from .models import (
 from .picture_dictionary import (
     _refresh_dictionary_placeholder_stages,
     add_lemma_pos_entries as picture_dictionary_add_lemma_pos_entries,
+    add_manual_rows as picture_dictionary_add_manual_rows,
     add_words as picture_dictionary_add_words,
     clear_entries as picture_dictionary_clear_entries,
     compile_picture_dictionary as picture_dictionary_compile,
@@ -8167,7 +8168,19 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
     low_resource_mode_recommended = (community.language or "").strip().lower() in low_resource_languages
     low_resource_missing_rows = 0
     low_resource_missing_row_details: list[str] = []
+    picture_dictionary_pending_image_count = 0
+    low_resource_entry_row_numbers = list(range(1, 9))
     if picture_dictionary:
+        image_path_by_page_number = {
+            row.page_number: (row.image_path or "").strip()
+            for row in picture_dictionary.project.image_pages.order_by("page_number", "id")
+        }
+        picture_dictionary_pending_image_count = 0
+        for idx, entry in enumerate(dictionary_entries, start=1):
+            entry_image_path = (entry.image_path or "").strip()
+            page_image_path = image_path_by_page_number.get(entry.current_page_number or idx, "")
+            if not entry_image_path and not page_image_path:
+                picture_dictionary_pending_image_count += 1
         try:
             from .picture_dictionary import _manual_rows_from_entries
 
@@ -8365,6 +8378,37 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                 monitor_url = reverse("project-compile-monitor", args=[picture_dictionary.project.id, report_id])
                 return_to = reverse("community-organiser-home", args=[community_id])
                 return redirect(f"{monitor_url}?next={quote(return_to, safe='/')}")
+            elif action == "add_low_resource_rows":
+                surfaces = request.POST.getlist("low_resource_surface")
+                lemmas = request.POST.getlist("low_resource_lemma")
+                poses = request.POST.getlist("low_resource_pos")
+                glosses = request.POST.getlist("low_resource_gloss")
+                max_rows = max(
+                    len(surfaces),
+                    len(lemmas),
+                    len(poses),
+                    len(glosses),
+                )
+                manual_rows = []
+                for idx in range(max_rows):
+                    row = {
+                        "surface": surfaces[idx] if idx < len(surfaces) else "",
+                        "lemma": lemmas[idx] if idx < len(lemmas) else "",
+                        "pos": poses[idx] if idx < len(poses) else "",
+                        "gloss": glosses[idx] if idx < len(glosses) else "",
+                    }
+                    if any(str(value or "").strip() for value in row.values()):
+                        manual_rows.append(row)
+                if not manual_rows:
+                    messages.error(request, "Enter at least one low-resource dictionary row before adding new words.")
+                else:
+                    result = picture_dictionary_add_manual_rows(dictionary=picture_dictionary, rows=manual_rows)
+                    messages.success(
+                        request,
+                        "Added %(added)s and updated %(updated)s low-resource dictionary row(s). "
+                        "Annotation stages were updated so images can be created without using the page-oriented editor."
+                        % {"added": result["added"], "updated": result["updated"]},
+                    )
             elif action == "add":
                 added = picture_dictionary_add_words(dictionary=picture_dictionary, words=words)
                 messages.success(request, f"Added {added} word(s) to picture dictionary.")
@@ -8462,6 +8506,8 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             "low_resource_mode_recommended": low_resource_mode_recommended,
             "low_resource_missing_rows": low_resource_missing_rows,
             "low_resource_missing_row_details": low_resource_missing_row_details[:12],
+            "picture_dictionary_pending_image_count": picture_dictionary_pending_image_count,
+            "low_resource_entry_row_numbers": low_resource_entry_row_numbers,
         },
     )
 
@@ -9154,10 +9200,22 @@ def serve_compiled(request: HttpRequest, pk: int, path: str) -> HttpResponse:
 
     project = get_object_or_404(Project, pk=pk)
     user = request.user
-    is_owner = bool(getattr(user, "is_authenticated", False) and project.owner_id == getattr(user, "id", None))
-    if not is_owner and not project.is_published:
+    is_authenticated = bool(getattr(user, "is_authenticated", False))
+    is_owner = bool(is_authenticated and project.owner_id == getattr(user, "id", None))
+    is_collaborator = bool(is_authenticated and project.collaborators.filter(user=user).exists())
+    is_project_community_member = bool(
+        is_authenticated
+        and project.community_id
+        and CommunityMembership.objects.filter(
+            community_id=project.community_id,
+            user=user,
+            community__is_active=True,
+        ).exists()
+    )
+    can_access_unpublished = is_owner or is_collaborator or is_project_community_member
+    if not can_access_unpublished and not project.is_published:
         raise Http404()
-    if not is_owner and project.access_scope != Project.ACCESS_PUBLIC:
+    if not can_access_unpublished and project.access_scope != Project.ACCESS_PUBLIC:
         raise Http404()
 
     base = Path(project.artifact_root or project.artifact_dir()).resolve()
