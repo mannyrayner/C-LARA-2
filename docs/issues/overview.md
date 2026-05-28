@@ -1,10 +1,10 @@
 # C-LARA-2 issues overview
-_Last updated: 2026-05-25T13:30:00Z_
+_Last updated: 2026-05-27T23:59:00Z_
 
 ## Recent progress
-- Processed update suggestion #20 and reopened **[ISSUE-0020](issues/ISSUE-0020.json)** based on low-resource picture-dictionary workflow failures found in organiser testing on 2026-05-25.
-- Expanded ISSUE-0020 scope to cover compile gating for missing gloss/translation data, translation↔gloss autofill, and translation-driven image text source in low-resource mode.
-- Refreshed focus ordering and revalidated overview status values against canonical per-issue JSON records.
+- Processed update suggestion #21 and marked **[ISSUE-0020](issues/ISSUE-0020.json)** as **closed** after maintainer confirmation.
+- Updated focus priorities to remove closed ISSUE-0020 from active near-term list.
+- Revalidated overview status values against canonical per-issue JSON records.
 
 ## Near-term priorities
 1. **[ISSUE-0031](issues/ISSUE-0031.json) (P1, reported)** — Improve compiled-content presentation context and configurable public access controls.
@@ -27,6 +27,7 @@ _Last updated: 2026-05-25T13:30:00Z_
 - Low-resource dictionary compile remains brittle for non-AI-enabled languages; without stronger validation and guided handoff, organisers can generate incomplete artifacts that stall image-generation workflows (ISSUE-0020).
 - ISSUE-0031 spans authentication and published-content serving boundaries; policy/UI mistakes could expose content unintentionally or block intended anonymous access.
 - End-to-end validation automation (ISSUE-0003) remains a cross-cutting dependency for safer rapid iteration.
+- Community audio and judging UX tracks (ISSUE-0026, ISSUE-0029) remain sensitive to workflow friction and data-loss risk until implemented.
 
 ## Complete issue inventory
 
