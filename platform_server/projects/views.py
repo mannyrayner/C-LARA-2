@@ -9154,10 +9154,22 @@ def serve_compiled(request: HttpRequest, pk: int, path: str) -> HttpResponse:
 
     project = get_object_or_404(Project, pk=pk)
     user = request.user
-    is_owner = bool(getattr(user, "is_authenticated", False) and project.owner_id == getattr(user, "id", None))
-    if not is_owner and not project.is_published:
+    is_authenticated = bool(getattr(user, "is_authenticated", False))
+    is_owner = bool(is_authenticated and project.owner_id == getattr(user, "id", None))
+    is_collaborator = bool(is_authenticated and project.collaborators.filter(user=user).exists())
+    is_project_community_member = bool(
+        is_authenticated
+        and project.community_id
+        and CommunityMembership.objects.filter(
+            community_id=project.community_id,
+            user=user,
+            community__is_active=True,
+        ).exists()
+    )
+    can_access_unpublished = is_owner or is_collaborator or is_project_community_member
+    if not can_access_unpublished and not project.is_published:
         raise Http404()
-    if not is_owner and project.access_scope != Project.ACCESS_PUBLIC:
+    if not can_access_unpublished and project.access_scope != Project.ACCESS_PUBLIC:
         raise Http404()
 
     base = Path(project.artifact_root or project.artifact_dir()).resolve()

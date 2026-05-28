@@ -280,6 +280,22 @@ class CommunityWorkflowTests(TestCase):
         self.assertContains(judge, "variant 1")
         self.assertContains(judge, "current preferred image")
 
+    def test_member_can_load_compiled_variant_image_for_community_project(self):
+        self.project.community = self.community
+        self.project.access_scope = Project.ACCESS_COMMUNITY
+        self.project.is_published = False
+        self.project.save(update_fields=["community", "access_scope", "is_published", "updated_at"])
+        image_abs = self.project.artifact_dir() / self.variant.image_path
+        image_abs.parent.mkdir(parents=True, exist_ok=True)
+        image_abs.write_bytes(b"fake-image")
+
+        client = Client()
+        client.login(username="mem", password="pw")
+        image_url = reverse("project-compiled", args=[self.project.id, self.variant.image_path])
+        image_resp = client.get(image_url)
+        self.assertEqual(image_resp.status_code, 200)
+        self.assertEqual(image_resp.content, b"fake-image")
+
     def test_member_and_organiser_review_show_source_and_translation_context(self):
         self.project.community = self.community
         self.project.source_text = "Source page text from project"
