@@ -563,6 +563,97 @@ def clear_entries(*, dictionary: PictureDictionary) -> int:
     return removed
 
 
+def add_manual_rows(*, dictionary: PictureDictionary, rows: Iterable[dict[str, str]]) -> dict[str, int]:
+    """Add/update fully annotated picture-dictionary rows from organiser input.
+
+    Low-resource community organisers use this path to enter the metadata that
+    would otherwise have to be added later in the page-oriented annotation
+    editor.  The submitted gloss and translation are mirrored when only one is
+    supplied, matching the compile-time low-resource fallback expectations.
+    """
+
+    _bootstrap_registry_from_project_source(dictionary)
+    existing_by_surface = {
+        _normalise_word(entry.surface).casefold(): entry
+        for entry in dictionary.entries.order_by("id")
+        if _normalise_word(entry.surface)
+    }
+    submitted_by_surface: dict[str, dict[str, str]] = {}
+    added = 0
+    updated = 0
+    skipped = 0
+
+    for raw_row in rows:
+        surface = _normalise_word(raw_row.get("surface") or "")
+        if not surface:
+            skipped += 1
+            continue
+        lemma = _normalise_word(raw_row.get("lemma") or surface)
+        pos = _normalise_word(raw_row.get("pos") or "").upper()
+        gloss = _non_null_text(raw_row.get("gloss"))
+        translation = _non_null_text(raw_row.get("translation"))
+        if gloss and not translation:
+            translation = gloss
+        elif translation and not gloss:
+            gloss = translation
+        key = surface.casefold()
+        entry = existing_by_surface.get(key)
+        if entry is None:
+            entry = PictureDictionaryEntry.objects.create(
+                dictionary=dictionary,
+                surface=surface,
+                lemma=lemma,
+                pos=pos,
+                is_active=True,
+            )
+            existing_by_surface[key] = entry
+            added += 1
+        else:
+            changed_fields: list[str] = []
+            if not entry.is_active:
+                entry.is_active = True
+                changed_fields.append("is_active")
+            if entry.surface != surface:
+                entry.surface = surface
+                changed_fields.append("surface")
+            if entry.lemma != lemma:
+                entry.lemma = lemma
+                changed_fields.append("lemma")
+            if entry.pos != pos:
+                entry.pos = pos
+                changed_fields.append("pos")
+            if changed_fields:
+                changed_fields.append("updated_at")
+                entry.save(update_fields=changed_fields)
+            # Gloss/translation live in stage artifacts rather than the registry
+            # row, so a submitted metadata row still counts as an update even
+            # when the database fields already matched.
+            updated += 1
+        submitted_by_surface[key] = {
+            "surface": surface,
+            "lemma": lemma,
+            "pos": pos,
+            "gloss": gloss,
+            "translation": translation,
+        }
+
+    active_entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
+    _sync_project_source_from_registry(dictionary)
+    _sync_dictionary_project_pages(dictionary, active_entries)
+    _write_segmentation_phase_1(dictionary, active_entries)
+    manual_rows = _manual_rows_from_entries(dictionary, active_entries)
+    for row in manual_rows:
+        submitted = submitted_by_surface.get(_normalise_word(row.get("surface") or "").casefold())
+        if not submitted:
+            continue
+        row["lemma"] = submitted["lemma"] or row.get("lemma") or row.get("surface")
+        row["pos"] = submitted["pos"]
+        row["gloss"] = submitted["gloss"]
+        row["translation"] = submitted["translation"]
+    _write_imported_dictionary_annotation_stages(dictionary, manual_rows, source="picture_dictionary_manual_entry")
+    return {"added": added, "updated": updated, "skipped": skipped, "submitted": len(submitted_by_surface)}
+
+
 def extract_pictureable_words(text: str) -> list[str]:
     raw = re.findall(r"[\w'-]+", text or "", flags=re.UNICODE)
     candidates: list[str] = []
@@ -806,7 +897,13 @@ def _sync_dictionary_project_pages(dictionary: PictureDictionary, entries: list[
     ProjectImagePage.objects.filter(project=project, page_number__gt=len(entries)).delete()
 
 
-def _imported_dictionary_stage_payload(dictionary: PictureDictionary, rows: list[dict], stage_name: str) -> dict:
+def _imported_dictionary_stage_payload(
+    dictionary: PictureDictionary,
+    rows: list[dict],
+    stage_name: str,
+    *,
+    source: str = "picture_dictionary_import",
+) -> dict:
     pages = []
     for row in rows:
         token_annotations: dict[str, str] = {}
@@ -844,7 +941,7 @@ def _imported_dictionary_stage_payload(dictionary: PictureDictionary, rows: list
         "pages": pages,
         "annotations": {},
         "metadata": {
-            "source": "picture_dictionary_import",
+            "source": source,
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "entry_count": len(rows),
             "stage": stage_name,
@@ -852,11 +949,16 @@ def _imported_dictionary_stage_payload(dictionary: PictureDictionary, rows: list
     }
 
 
-def _write_imported_dictionary_annotation_stages(dictionary: PictureDictionary, rows: list[dict]) -> None:
+def _write_imported_dictionary_annotation_stages(
+    dictionary: PictureDictionary,
+    rows: list[dict],
+    *,
+    source: str = "picture_dictionary_import",
+) -> None:
     run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages"
     run_dir.mkdir(parents=True, exist_ok=True)
     for stage_name in ("segmentation_phase_2", "translation", "mwe", "lemma", "gloss", "romanization", "pinyin"):
-        payload = _imported_dictionary_stage_payload(dictionary, rows, stage_name)
+        payload = _imported_dictionary_stage_payload(dictionary, rows, stage_name, source=source)
         write_stage_artifact(run_dir.parent, stage_name, payload)
 
 
@@ -1035,7 +1137,7 @@ def compile_picture_dictionary(
     manual_annotations_complete = _rows_have_manual_glosses(manual_rows)
     _write_segmentation_phase_1(dictionary, entries)
     if manual_annotations_complete:
-        _write_imported_dictionary_annotation_stages(dictionary, manual_rows)
+        _write_imported_dictionary_annotation_stages(dictionary, manual_rows, source="picture_dictionary_manual_entry")
     elif low_resource_mode:
         _write_dictionary_annotation_stages(dictionary, entries)
     else:
