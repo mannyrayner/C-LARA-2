@@ -1,13 +1,14 @@
 # C-LARA-2 issues overview
-_Last updated: 2026-05-28T12:00:00Z_
+_Last updated: 2026-05-28T21:30:00Z_
 
 ## Recent progress
-- Added **[ISSUE-0032](issues/ISSUE-0032.json)** as a new critical report for broken image visibility in community judging for non-owner members.
-- Applied status correction for **[ISSUE-0020](issues/ISSUE-0020.json)** to **closed** in canonical issue JSON and refreshed overview sections to match.
-- Refreshed focus ordering from `docs/issues/index.json` and regenerated the full inventory from `docs/issues/issues/*.json`.
+- Reopened **[ISSUE-0020](issues/ISSUE-0020.json)** as a **P0** follow-up after organiser testing showed the low-resource picture-dictionary add-word flow is still too cumbersome.
+- Refocused **ISSUE-0020** around a low-resource organiser workflow: tabular word/lemma/POS/gloss entry, direct annotation/stage updates, and a clearer “Create new images” action with pending-image counts.
+- Processed the duplicate **[ISSUE-0032](issues/ISSUE-0032.json)** fixed/closed confirmation with no state change, because the issue is already closed.
+- Archived the previous focus index and regenerated this overview from canonical `docs/issues/issues/*.json` status values.
 
 ## Near-term priorities
-1. **[ISSUE-0032](issues/ISSUE-0032.json) (P0, reported)** — Fix community judging image visibility for non-owner community members.
+1. **[ISSUE-0020](issues/ISSUE-0020.json) (P0, reported)** — Improve picture-dictionary compile flow for low-resource languages and organiser feedback.
 2. **[ISSUE-0031](issues/ISSUE-0031.json) (P1, reported)** — Improve compiled-content presentation context and configurable public access controls.
 3. **[ISSUE-0030](issues/ISSUE-0030.json) (P1, reported)** — Fix image-generation workflow UX around element expansion auto-refresh and selection confirmation.
 4. **[ISSUE-0029](issues/ISSUE-0029.json) (P1, reported)** — Autosave community judging inputs to prevent accidental data loss.
@@ -24,9 +25,9 @@ _Last updated: 2026-05-28T12:00:00Z_
 15. **[ISSUE-0001](issues/ISSUE-0001.json) (P2, reported)** — Support hosted compiled legacy content registration in C-LARA-2.
 
 ## Notes/risks
-- **ISSUE-0032** is a release-blocking collaboration risk for community judging: if non-owner members cannot view images, judging cannot proceed reliably.
-- **ISSUE-0031** and related content-serving work continue to carry permission-boundary risk; fixes should avoid exposing private assets while allowing intended member access.
-- Quality/safety automation remains a dependency: **ISSUE-0003** and **ISSUE-0025** are still needed to reduce regression churn across high-velocity UX fixes.
+- **ISSUE-0020** is back at the top of the queue because the current low-resource path still forces organisers to move between the community organiser page and the page-oriented editor, which is confusing for routine dictionary expansion.
+- The reopened scope should be implemented carefully so low-resource dictionary row metadata stays synchronized with generated stage artifacts and does not regress the AI-capable language flow.
+- **ISSUE-0031** remains relevant for broader compiled-content and permission-boundary hardening after the targeted **ISSUE-0032** fix.
 
 ## Complete issue inventory
 
@@ -51,7 +52,7 @@ _Last updated: 2026-05-28T12:00:00Z_
 | [ISSUE-0017](issues/ISSUE-0017.json) | closed | P1 | Improve page-image generation, review, and regeneration workflows. |
 | [ISSUE-0018](issues/ISSUE-0018.json) | closed | P2 | Use main-branch issue registry data when processing human issue suggestions. |
 | [ISSUE-0019](issues/ISSUE-0019.json) | closed | P3 | Ensure favicon reliably appears on AWS deployment. |
-| [ISSUE-0020](issues/ISSUE-0020.json) | closed | P1 | Improve picture-dictionary compile flow for low-resource languages and organiser feedback. |
+| [ISSUE-0020](issues/ISSUE-0020.json) | reported | P0 | Improve picture-dictionary compile flow for low-resource languages and organiser feedback. |
 | [ISSUE-0021](issues/ISSUE-0021.json) | closed | P1 | Add GPT-Image-2 as selectable model for element and page image generation. |
 | [ISSUE-0022](issues/ISSUE-0022.json) | closed | P1 | Handle large project ZIP imports without nginx 413 failures on AWS. |
 | [ISSUE-0023](issues/ISSUE-0023.json) | closed | P3 | Allow manual segmentation phase 1 editor when segmentation artifact exists but source text is empty. |
@@ -63,4 +64,4 @@ _Last updated: 2026-05-28T12:00:00Z_
 | [ISSUE-0029](issues/ISSUE-0029.json) | reported | P1 | Autosave community judging inputs to prevent accidental data loss. |
 | [ISSUE-0030](issues/ISSUE-0030.json) | reported | P1 | Fix image-generation workflow UX around element expansion auto-refresh and selection confirmation. |
 | [ISSUE-0031](issues/ISSUE-0031.json) | reported | P1 | Improve compiled-content presentation context and configurable public access controls. |
-| [ISSUE-0032](issues/ISSUE-0032.json) | reported | P0 | Fix community judging image visibility for non-owner community members. |
+| [ISSUE-0032](issues/ISSUE-0032.json) | closed | P0 | Fix community judging image visibility for non-owner community members. |
