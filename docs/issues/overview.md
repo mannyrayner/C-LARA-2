@@ -2,15 +2,15 @@
 _Last updated: 2026-05-28T12:00:00Z_
 
 ## Recent progress
-- Revalidated **[ISSUE-0020](issues/ISSUE-0020.json)** status in the overview and confirmed it is **closed** to match canonical issue JSON.
-- Refreshed overview sections from canonical issue records to remove status drift.
-- Rechecked focus ordering against `docs/issues/index.json` and per-issue states.
+- Added **[ISSUE-0032](issues/ISSUE-0032.json)** as a new critical report for broken image visibility in community judging for non-owner members.
+- Applied status correction for **[ISSUE-0020](issues/ISSUE-0020.json)** to **closed** in canonical issue JSON and refreshed overview sections to match.
+- Refreshed focus ordering from `docs/issues/index.json` and regenerated the full inventory from `docs/issues/issues/*.json`.
 
 ## Near-term priorities
-1. **[ISSUE-0031](issues/ISSUE-0031.json) (P1, reported)** — Improve compiled-content presentation context and configurable public access controls.
-2. **[ISSUE-0030](issues/ISSUE-0030.json) (P1, reported)** — Fix image-generation workflow UX around element expansion auto-refresh and selection confirmation.
-3. **[ISSUE-0029](issues/ISSUE-0029.json) (P1, reported)** — Autosave community judging inputs to prevent accidental data loss.
-4. **[ISSUE-0020](issues/ISSUE-0020.json) (P1, reported)** — Improve picture-dictionary compile flow for low-resource languages and organiser feedback.
+1. **[ISSUE-0032](issues/ISSUE-0032.json) (P0, reported)** — Fix community judging image visibility for non-owner community members.
+2. **[ISSUE-0031](issues/ISSUE-0031.json) (P1, reported)** — Improve compiled-content presentation context and configurable public access controls.
+3. **[ISSUE-0030](issues/ISSUE-0030.json) (P1, reported)** — Fix image-generation workflow UX around element expansion auto-refresh and selection confirmation.
+4. **[ISSUE-0029](issues/ISSUE-0029.json) (P1, reported)** — Autosave community judging inputs to prevent accidental data loss.
 5. **[ISSUE-0026](issues/ISSUE-0026.json) (P1, reported)** — Define next-step community-recorded audio workflow for non-TTS languages.
 6. **[ISSUE-0003](issues/ISSUE-0003.json) (P1, reported)** — Add efficient end-to-end pipeline test runner for systematic quality checks.
 7. **[ISSUE-0025](issues/ISSUE-0025.json) (P1, reported)** — Add systematic UI regression tracking for disappearing controls/content.
@@ -24,10 +24,9 @@ _Last updated: 2026-05-28T12:00:00Z_
 15. **[ISSUE-0001](issues/ISSUE-0001.json) (P2, reported)** — Support hosted compiled legacy content registration in C-LARA-2.
 
 ## Notes/risks
-- Low-resource dictionary compile remains brittle for non-AI-enabled languages; without stronger validation and guided handoff, organisers can generate incomplete artifacts that stall image-generation workflows (ISSUE-0020).
-- ISSUE-0031 spans authentication and published-content serving boundaries; policy/UI mistakes could expose content unintentionally or block intended anonymous access.
-- End-to-end validation automation (ISSUE-0003) remains a cross-cutting dependency for safer rapid iteration.
-- Community audio and judging UX tracks (ISSUE-0026, ISSUE-0029) remain sensitive to workflow friction and data-loss risk until implemented.
+- **ISSUE-0032** is a release-blocking collaboration risk for community judging: if non-owner members cannot view images, judging cannot proceed reliably.
+- **ISSUE-0031** and related content-serving work continue to carry permission-boundary risk; fixes should avoid exposing private assets while allowing intended member access.
+- Quality/safety automation remains a dependency: **ISSUE-0003** and **ISSUE-0025** are still needed to reduce regression churn across high-velocity UX fixes.
 
 ## Complete issue inventory
 
@@ -52,7 +51,7 @@ _Last updated: 2026-05-28T12:00:00Z_
 | [ISSUE-0017](issues/ISSUE-0017.json) | closed | P1 | Improve page-image generation, review, and regeneration workflows. |
 | [ISSUE-0018](issues/ISSUE-0018.json) | closed | P2 | Use main-branch issue registry data when processing human issue suggestions. |
 | [ISSUE-0019](issues/ISSUE-0019.json) | closed | P3 | Ensure favicon reliably appears on AWS deployment. |
-| [ISSUE-0020](issues/ISSUE-0020.json) | reported | P1 | Improve picture-dictionary compile flow for low-resource languages and organiser feedback. |
+| [ISSUE-0020](issues/ISSUE-0020.json) | closed | P1 | Improve picture-dictionary compile flow for low-resource languages and organiser feedback. |
 | [ISSUE-0021](issues/ISSUE-0021.json) | closed | P1 | Add GPT-Image-2 as selectable model for element and page image generation. |
 | [ISSUE-0022](issues/ISSUE-0022.json) | closed | P1 | Handle large project ZIP imports without nginx 413 failures on AWS. |
 | [ISSUE-0023](issues/ISSUE-0023.json) | closed | P3 | Allow manual segmentation phase 1 editor when segmentation artifact exists but source text is empty. |
@@ -64,3 +63,4 @@ _Last updated: 2026-05-28T12:00:00Z_
 | [ISSUE-0029](issues/ISSUE-0029.json) | reported | P1 | Autosave community judging inputs to prevent accidental data loss. |
 | [ISSUE-0030](issues/ISSUE-0030.json) | reported | P1 | Fix image-generation workflow UX around element expansion auto-refresh and selection confirmation. |
 | [ISSUE-0031](issues/ISSUE-0031.json) | reported | P1 | Improve compiled-content presentation context and configurable public access controls. |
+| [ISSUE-0032](issues/ISSUE-0032.json) | reported | P0 | Fix community judging image visibility for non-owner community members. |
