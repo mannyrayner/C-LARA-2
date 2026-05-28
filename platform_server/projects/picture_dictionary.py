@@ -528,7 +528,8 @@ def remove_words(*, dictionary: PictureDictionary, words: Iterable[str]) -> int:
         if entry.surface.casefold() in removal_keys:
             entry.is_active = False
             entry.current_page_number = None
-            entry.save(update_fields=["is_active", "current_page_number", "updated_at"])
+            entry.image_path = ""
+            entry.save(update_fields=["is_active", "current_page_number", "image_path", "updated_at"])
             removed += 1
     if removed:
         _sync_project_source_from_registry(dictionary)
@@ -542,7 +543,8 @@ def remove_entries_by_ids(*, dictionary: PictureDictionary, entry_ids: Iterable[
     for entry in dictionary.entries.filter(id__in=ids, is_active=True):
         entry.is_active = False
         entry.current_page_number = None
-        entry.save(update_fields=["is_active", "current_page_number", "updated_at"])
+        entry.image_path = ""
+        entry.save(update_fields=["is_active", "current_page_number", "image_path", "updated_at"])
         removed += 1
     if removed:
         _sync_project_source_from_registry(dictionary)
@@ -555,12 +557,100 @@ def clear_entries(*, dictionary: PictureDictionary) -> int:
     for entry in dictionary.entries.filter(is_active=True):
         entry.is_active = False
         entry.current_page_number = None
-        entry.save(update_fields=["is_active", "current_page_number", "updated_at"])
+        entry.image_path = ""
+        entry.save(update_fields=["is_active", "current_page_number", "image_path", "updated_at"])
         removed += 1
     if removed:
         _sync_project_source_from_registry(dictionary)
         _refresh_dictionary_placeholder_stages(dictionary)
     return removed
+
+
+def add_manual_rows(*, dictionary: PictureDictionary, rows: Iterable[dict[str, str]]) -> dict[str, int]:
+    """Add/update fully annotated picture-dictionary rows from organiser input.
+
+    Low-resource community organisers use this path to enter the metadata that
+    would otherwise have to be added later in the page-oriented annotation
+    editor.  The submitted gloss is always reused as the page translation for
+    this picture-dictionary workflow.
+    """
+
+    _bootstrap_registry_from_project_source(dictionary)
+    existing_by_surface = {
+        _normalise_word(entry.surface).casefold(): entry
+        for entry in dictionary.entries.order_by("id")
+        if _normalise_word(entry.surface)
+    }
+    submitted_by_surface: dict[str, dict[str, str]] = {}
+    added = 0
+    updated = 0
+    skipped = 0
+
+    for raw_row in rows:
+        surface = _normalise_word(raw_row.get("surface") or "")
+        if not surface:
+            skipped += 1
+            continue
+        lemma = _normalise_word(raw_row.get("lemma") or surface)
+        pos = _normalise_word(raw_row.get("pos") or "").upper()
+        gloss = _non_null_text(raw_row.get("gloss"))
+        translation = gloss
+        key = surface.casefold()
+        entry = existing_by_surface.get(key)
+        if entry is None:
+            entry = PictureDictionaryEntry.objects.create(
+                dictionary=dictionary,
+                surface=surface,
+                lemma=lemma,
+                pos=pos,
+                is_active=True,
+            )
+            existing_by_surface[key] = entry
+            added += 1
+        else:
+            changed_fields: list[str] = []
+            if not entry.is_active:
+                entry.is_active = True
+                changed_fields.append("is_active")
+            if entry.surface != surface:
+                entry.surface = surface
+                changed_fields.append("surface")
+            if entry.lemma != lemma:
+                entry.lemma = lemma
+                changed_fields.append("lemma")
+            if entry.pos != pos:
+                entry.pos = pos
+                changed_fields.append("pos")
+            if changed_fields:
+                changed_fields.append("updated_at")
+                entry.save(update_fields=changed_fields)
+            # Gloss/translation live in stage artifacts rather than the registry
+            # row, so a submitted metadata row still counts as an update even
+            # when the database fields already matched.
+            updated += 1
+        submitted_by_surface[key] = {
+            "surface": surface,
+            "lemma": lemma,
+            "pos": pos,
+            "gloss": gloss,
+            "translation": translation,
+        }
+
+    active_entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
+    _sync_project_source_from_registry(dictionary)
+    _sync_dictionary_project_pages(dictionary, active_entries)
+    _write_segmentation_phase_1(dictionary, active_entries)
+    manual_rows = _manual_rows_from_entries(dictionary, active_entries)
+    for row in manual_rows:
+        submitted = submitted_by_surface.get(_normalise_word(row.get("surface") or "").casefold())
+        if not submitted:
+            continue
+        row["lemma"] = submitted["lemma"] or row.get("lemma") or row.get("surface")
+        row["pos"] = submitted["pos"]
+        row["gloss"] = submitted["gloss"]
+        row["translation"] = submitted["translation"]
+    _write_imported_dictionary_annotation_stages(dictionary, manual_rows, source="picture_dictionary_manual_entry")
+    return {"added": added, "updated": updated, "skipped": skipped, "submitted": len(submitted_by_surface)}
 
 
 def extract_pictureable_words(text: str) -> list[str]:
@@ -733,6 +823,40 @@ def _merge_stage_placeholders_with_existing(
     write_stage_artifact(run_dir, stage_name, payload)
 
 
+def _sync_entry_image_paths_from_pages(dictionary: PictureDictionary, entries: list[PictureDictionaryEntry]) -> int:
+    """Copy current page image paths back to dictionary entries.
+
+    Page-image generation updates ``ProjectImagePage.image_path``.  The organiser
+    dashboard counts missing images from dictionary entries, so keep the registry
+    in step immediately after generation instead of waiting for a later compile
+    pass to discover the page image paths.
+    """
+
+    pages_by_number = {
+        page.page_number: page
+        for page in ProjectImagePage.objects.filter(project=dictionary.project).order_by("page_number", "id")
+    }
+    updated = 0
+    for idx, entry in enumerate(entries, start=1):
+        page_number = entry.current_page_number or idx
+        page = pages_by_number.get(page_number)
+        if not page:
+            continue
+        changed_fields: list[str] = []
+        page_image_path = (page.image_path or "").strip()
+        if page_image_path and entry.image_path != page_image_path:
+            entry.image_path = page_image_path
+            changed_fields.append("image_path")
+        if entry.current_page_number != page.page_number:
+            entry.current_page_number = page.page_number
+            changed_fields.append("current_page_number")
+        if changed_fields:
+            changed_fields.append("updated_at")
+            entry.save(update_fields=changed_fields)
+            updated += 1
+    return updated
+
+
 def _refresh_dictionary_placeholder_stages(dictionary: PictureDictionary) -> None:
     entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
     _sync_project_source_from_registry(dictionary)
@@ -742,9 +866,44 @@ def _refresh_dictionary_placeholder_stages(dictionary: PictureDictionary) -> Non
         _merge_stage_placeholders_with_existing(dictionary, entries, stage_name=stage_name)
 
 
+def _prune_unreferenced_dictionary_image_artifacts(project: Project, active_image_paths: set[str]) -> None:
+    """Remove page-image files/directories no active dictionary entry references."""
+
+    pages_dir = project.artifact_dir() / "images" / "pages"
+    if not pages_dir.exists():
+        return
+    active_parts: set[Path] = set()
+    for raw_path in active_image_paths:
+        path = Path(str(raw_path or "").strip())
+        if not path.parts:
+            continue
+        if len(path.parts) >= 3 and path.parts[0] == "images" and path.parts[1] == "pages":
+            path = Path(*path.parts[2:])
+        active_parts.add(path)
+    active_page_dirs = {part.parts[0] for part in active_parts if part.parts}
+    for child in list(pages_dir.iterdir()):
+        if child.is_dir():
+            if child.name not in active_page_dirs:
+                shutil.rmtree(child, ignore_errors=True)
+            continue
+        try:
+            rel = child.relative_to(pages_dir)
+        except ValueError:
+            continue
+        if rel not in active_parts:
+            child.unlink(missing_ok=True)
+    try:
+        if not any(pages_dir.iterdir()):
+            pages_dir.rmdir()
+    except OSError:
+        pass
+
+
 def _sync_dictionary_project_pages(dictionary: PictureDictionary, entries: list[PictureDictionaryEntry]) -> None:
     project = dictionary.project
-    existing_pages = {page.page_number: page for page in ProjectImagePage.objects.filter(project=project)}
+    existing_pages = {page.page_number: page for page in ProjectImagePage.objects.filter(project=project).order_by("id")}
+    retained_page_ids: set[int] = set()
+    active_image_paths = {(entry.image_path or "").strip() for entry in entries if (entry.image_path or "").strip()}
     for idx, entry in enumerate(entries, start=1):
         page = existing_pages.get(idx)
         if page is None:
@@ -801,12 +960,25 @@ def _sync_dictionary_project_pages(dictionary: PictureDictionary, entries: list[
         if entry.current_page_number != idx:
             entry.current_page_number = idx
             entry.save(update_fields=["current_page_number", "updated_at"])
+        retained_page_ids.add(page.id)
 
     # Remove orphaned pages (and cascading variants/votes) after dictionary deletions.
-    ProjectImagePage.objects.filter(project=project, page_number__gt=len(entries)).delete()
+    # Filtering only by page_number can leave stale duplicate/legacy rows behind;
+    # delete anything that was not explicitly retained for the active entries.
+    stale_pages = ProjectImagePage.objects.filter(project=project)
+    if retained_page_ids:
+        stale_pages = stale_pages.exclude(id__in=retained_page_ids)
+    stale_pages.delete()
+    _prune_unreferenced_dictionary_image_artifacts(project, active_image_paths)
 
 
-def _imported_dictionary_stage_payload(dictionary: PictureDictionary, rows: list[dict], stage_name: str) -> dict:
+def _imported_dictionary_stage_payload(
+    dictionary: PictureDictionary,
+    rows: list[dict],
+    stage_name: str,
+    *,
+    source: str = "picture_dictionary_import",
+) -> dict:
     pages = []
     for row in rows:
         token_annotations: dict[str, str] = {}
@@ -844,7 +1016,7 @@ def _imported_dictionary_stage_payload(dictionary: PictureDictionary, rows: list
         "pages": pages,
         "annotations": {},
         "metadata": {
-            "source": "picture_dictionary_import",
+            "source": source,
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "entry_count": len(rows),
             "stage": stage_name,
@@ -852,11 +1024,16 @@ def _imported_dictionary_stage_payload(dictionary: PictureDictionary, rows: list
     }
 
 
-def _write_imported_dictionary_annotation_stages(dictionary: PictureDictionary, rows: list[dict]) -> None:
+def _write_imported_dictionary_annotation_stages(
+    dictionary: PictureDictionary,
+    rows: list[dict],
+    *,
+    source: str = "picture_dictionary_import",
+) -> None:
     run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary" / "stages"
     run_dir.mkdir(parents=True, exist_ok=True)
     for stage_name in ("segmentation_phase_2", "translation", "mwe", "lemma", "gloss", "romanization", "pinyin"):
-        payload = _imported_dictionary_stage_payload(dictionary, rows, stage_name)
+        payload = _imported_dictionary_stage_payload(dictionary, rows, stage_name, source=source)
         write_stage_artifact(run_dir.parent, stage_name, payload)
 
 
@@ -1035,7 +1212,7 @@ def compile_picture_dictionary(
     manual_annotations_complete = _rows_have_manual_glosses(manual_rows)
     _write_segmentation_phase_1(dictionary, entries)
     if manual_annotations_complete:
-        _write_imported_dictionary_annotation_stages(dictionary, manual_rows)
+        _write_imported_dictionary_annotation_stages(dictionary, manual_rows, source="picture_dictionary_manual_entry")
     elif low_resource_mode:
         _write_dictionary_annotation_stages(dictionary, entries)
     else:
@@ -1130,6 +1307,14 @@ def compile_picture_dictionary(
                 f"generated {generated_images} image variant{'s' if generated_images != 1 else ''} "
                 f"for dictionary project \"{dictionary.project.title}\"."
             )
+            if generated_images:
+                refreshed_entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
+                synced_entries = _sync_entry_image_paths_from_pages(dictionary, refreshed_entries)
+                if synced_entries:
+                    _post_progress(
+                        "Image phase registry sync: "
+                        f"updated {synced_entries} dictionary entr{'y' if synced_entries == 1 else 'ies'} with generated image paths."
+                    )
         else:
             image_generation_note = "Image generation skipped (style missing or not approved)."
     except Exception:

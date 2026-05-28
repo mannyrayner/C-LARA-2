@@ -54,7 +54,7 @@
   <p>
     <button class="btn secondary" type="submit" name="picture_dictionary_action" value="ensure">Ensure dictionary</button>
     <button class="btn secondary" type="submit" name="picture_dictionary_action" value="sync_placeholders">Sync dictionary text + placeholder stages (no image generation)</button>
-    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="compile" {% if low_resource_mode_recommended and low_resource_missing_rows > 0 %}disabled title="Add missing glosses/translations in the review editor first"{% endif %}>Compile dictionary (sync pages + annotation + images)</button>
+    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="compile" {% if low_resource_mode_recommended and low_resource_missing_rows > 0 %}disabled title="Add missing glosses/translations in the low-resource table or review editor first"{% endif %}>{% if low_resource_mode_recommended %}Create new images{% else %}Compile dictionary (sync pages + annotation + images){% endif %}</button>
   </p>
   <p>
     <label for="picture_dictionary_style_brief">Style brief (used if style is missing):</label><br />
@@ -68,8 +68,9 @@
   </p>
   {% if low_resource_mode_recommended %}
     <p><small>This community language is configured as non-AI-enabled, so low-resource mode is preselected.</small></p>
+    <p><small><strong>Pending new images:</strong> {{ picture_dictionary_pending_image_count }} dictionary entr{{ picture_dictionary_pending_image_count|pluralize:"y,ies" }} currently {{ picture_dictionary_pending_image_count|pluralize:"has,have" }} no image path.</small></p>
     {% if low_resource_missing_rows > 0 %}
-      <p><small><strong>Compile temporarily blocked:</strong> {{ low_resource_missing_rows }} dictionary row(s) are missing gloss and/or translation. Please use “Review dictionary content (page-oriented editor)” first.</small></p>
+      <p><small><strong>Image creation temporarily blocked:</strong> {{ low_resource_missing_rows }} dictionary row(s) are missing gloss and/or translation. Re-add the row with gloss/translation below, or use “Review dictionary content (page-oriented editor)”.</small></p>
       {% if low_resource_missing_row_details %}
         <details style="margin-top:0.4rem;">
           <summary><small>Show missing-row diagnostics</small></summary>
@@ -82,13 +83,45 @@
       {% endif %}
     {% endif %}
   {% endif %}
-  <p>
-    <label for="picture_dictionary_words">Words (comma or newline separated):</label><br />
-    <textarea id="picture_dictionary_words" name="picture_dictionary_words" rows="4" style="width: 100%;"></textarea>
-  </p>
-  <p>
-    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="add">Add words</button>
-  </p>
+  {% if low_resource_mode_recommended %}
+    <fieldset style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0;">
+      <legend>Add new low-resource dictionary words</legend>
+      <p><small>Enter one word per row. The gloss is automatically used as the page translation, so the next step can create images without a separate page-oriented annotation pass.</small></p>
+      <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th style="text-align:left;">Word</th>
+              <th style="text-align:left;">Lemma</th>
+              <th style="text-align:left;">POS</th>
+              <th style="text-align:left;">Gloss (= translation)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row_number in low_resource_entry_row_numbers %}
+              <tr>
+                <td><input type="text" name="low_resource_surface" aria-label="Word {{ row_number }}" style="width:95%;" /></td>
+                <td><input type="text" name="low_resource_lemma" aria-label="Lemma {{ row_number }}" style="width:95%;" /></td>
+                <td><input type="text" name="low_resource_pos" aria-label="POS {{ row_number }}" style="width:95%;" /></td>
+                <td><input type="text" name="low_resource_gloss" aria-label="Gloss {{ row_number }}" style="width:95%;" /></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p>
+        <button class="btn secondary" type="submit" name="picture_dictionary_action" value="add_low_resource_rows">Add new words</button>
+      </p>
+    </fieldset>
+  {% else %}
+    <p>
+      <label for="picture_dictionary_words">Words (comma or newline separated):</label><br />
+      <textarea id="picture_dictionary_words" name="picture_dictionary_words" rows="4" style="width: 100%;"></textarea>
+    </p>
+    <p>
+      <button class="btn secondary" type="submit" name="picture_dictionary_action" value="add">Add words</button>
+    </p>
+  {% endif %}
   <p>
     <label for="source_project_id">Community project:</label>
     <select id="source_project_id" name="source_project_id">
