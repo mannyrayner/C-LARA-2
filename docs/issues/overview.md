@@ -1,10 +1,10 @@
 # C-LARA-2 issues overview
-_Last updated: 2026-05-27T23:59:00Z_
+_Last updated: 2026-05-28T12:00:00Z_
 
 ## Recent progress
-- Processed update suggestion #21 and marked **[ISSUE-0020](issues/ISSUE-0020.json)** as **closed** after maintainer confirmation.
-- Updated focus priorities to remove closed ISSUE-0020 from active near-term list.
-- Revalidated overview status values against canonical per-issue JSON records.
+- Revalidated **[ISSUE-0020](issues/ISSUE-0020.json)** status in the overview and confirmed it is **closed** to match canonical issue JSON.
+- Refreshed overview sections from canonical issue records to remove status drift.
+- Rechecked focus ordering against `docs/issues/index.json` and per-issue states.
 
 ## Near-term priorities
 1. **[ISSUE-0031](issues/ISSUE-0031.json) (P1, reported)** — Improve compiled-content presentation context and configurable public access controls.
