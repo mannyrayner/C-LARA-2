@@ -506,6 +506,8 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "Add new low-resource dictionary words")
         self.assertContains(page, "Create new images")
+        self.assertContains(page, "Gloss (= translation)")
+        self.assertNotContains(page, "Translation (optional)")
         self.assertNotContains(page, "Words (comma or newline separated)")
 
         response = client.post(
@@ -516,7 +518,6 @@ class CommunityWorkflowTests(TestCase):
                 "low_resource_lemma": ["pama", ""],
                 "low_resource_pos": ["NOUN", ""],
                 "low_resource_gloss": ["person", ""],
-                "low_resource_translation": ["", ""],
             },
             follow=True,
         )
@@ -541,6 +542,15 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(lemma_token["annotations"]["pos"], "NOUN")
         self.assertEqual(gloss_token["annotations"]["gloss"], "person")
         self.assertEqual(translation_segment["annotations"]["translation"], "person")
+
+        # Pending-image counts should use current image pages as a fallback, so
+        # the dashboard is not stale if page-image generation has filled the
+        # page image path before the registry row has been synced.
+        page_row = ProjectImagePage.objects.get(project=dictionary.project, page_number=1)
+        page_row.image_path = "images/pages/page_001/variant_001.png"
+        page_row.save(update_fields=["image_path", "updated_at"])
+        updated_page = client.get(reverse("community-organiser-home", args=[self.community.id]))
+        self.assertContains(updated_page, "Pending new images:</strong> 0", html=False)
 
     def test_ai_capable_organiser_keeps_plain_dictionary_word_entry(self):
         ai_community = Community.objects.create(name="French community", language="fr")

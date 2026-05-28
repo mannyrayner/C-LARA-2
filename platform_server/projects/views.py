@@ -8171,9 +8171,16 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
     picture_dictionary_pending_image_count = 0
     low_resource_entry_row_numbers = list(range(1, 9))
     if picture_dictionary:
-        picture_dictionary_pending_image_count = sum(
-            1 for entry in dictionary_entries if not (entry.image_path or "").strip()
-        )
+        image_path_by_page_number = {
+            row.page_number: (row.image_path or "").strip()
+            for row in picture_dictionary.project.image_pages.order_by("page_number", "id")
+        }
+        picture_dictionary_pending_image_count = 0
+        for idx, entry in enumerate(dictionary_entries, start=1):
+            entry_image_path = (entry.image_path or "").strip()
+            page_image_path = image_path_by_page_number.get(entry.current_page_number or idx, "")
+            if not entry_image_path and not page_image_path:
+                picture_dictionary_pending_image_count += 1
         try:
             from .picture_dictionary import _manual_rows_from_entries
 
@@ -8376,13 +8383,11 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                 lemmas = request.POST.getlist("low_resource_lemma")
                 poses = request.POST.getlist("low_resource_pos")
                 glosses = request.POST.getlist("low_resource_gloss")
-                translations = request.POST.getlist("low_resource_translation")
                 max_rows = max(
                     len(surfaces),
                     len(lemmas),
                     len(poses),
                     len(glosses),
-                    len(translations),
                 )
                 manual_rows = []
                 for idx in range(max_rows):
@@ -8391,7 +8396,6 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                         "lemma": lemmas[idx] if idx < len(lemmas) else "",
                         "pos": poses[idx] if idx < len(poses) else "",
                         "gloss": glosses[idx] if idx < len(glosses) else "",
-                        "translation": translations[idx] if idx < len(translations) else "",
                     }
                     if any(str(value or "").strip() for value in row.values()):
                         manual_rows.append(row)

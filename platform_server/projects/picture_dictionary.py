@@ -568,8 +568,8 @@ def add_manual_rows(*, dictionary: PictureDictionary, rows: Iterable[dict[str, s
 
     Low-resource community organisers use this path to enter the metadata that
     would otherwise have to be added later in the page-oriented annotation
-    editor.  The submitted gloss and translation are mirrored when only one is
-    supplied, matching the compile-time low-resource fallback expectations.
+    editor.  The submitted gloss is always reused as the page translation for
+    this picture-dictionary workflow.
     """
 
     _bootstrap_registry_from_project_source(dictionary)
@@ -591,11 +591,7 @@ def add_manual_rows(*, dictionary: PictureDictionary, rows: Iterable[dict[str, s
         lemma = _normalise_word(raw_row.get("lemma") or surface)
         pos = _normalise_word(raw_row.get("pos") or "").upper()
         gloss = _non_null_text(raw_row.get("gloss"))
-        translation = _non_null_text(raw_row.get("translation"))
-        if gloss and not translation:
-            translation = gloss
-        elif translation and not gloss:
-            gloss = translation
+        translation = gloss
         key = surface.casefold()
         entry = existing_by_surface.get(key)
         if entry is None:
@@ -822,6 +818,40 @@ def _merge_stage_placeholders_with_existing(
                 if prior_ann:
                     tok["annotations"] = dict(prior_ann)
     write_stage_artifact(run_dir, stage_name, payload)
+
+
+def _sync_entry_image_paths_from_pages(dictionary: PictureDictionary, entries: list[PictureDictionaryEntry]) -> int:
+    """Copy current page image paths back to dictionary entries.
+
+    Page-image generation updates ``ProjectImagePage.image_path``.  The organiser
+    dashboard counts missing images from dictionary entries, so keep the registry
+    in step immediately after generation instead of waiting for a later compile
+    pass to discover the page image paths.
+    """
+
+    pages_by_number = {
+        page.page_number: page
+        for page in ProjectImagePage.objects.filter(project=dictionary.project).order_by("page_number", "id")
+    }
+    updated = 0
+    for idx, entry in enumerate(entries, start=1):
+        page_number = entry.current_page_number or idx
+        page = pages_by_number.get(page_number)
+        if not page:
+            continue
+        changed_fields: list[str] = []
+        page_image_path = (page.image_path or "").strip()
+        if page_image_path and entry.image_path != page_image_path:
+            entry.image_path = page_image_path
+            changed_fields.append("image_path")
+        if entry.current_page_number != page.page_number:
+            entry.current_page_number = page.page_number
+            changed_fields.append("current_page_number")
+        if changed_fields:
+            changed_fields.append("updated_at")
+            entry.save(update_fields=changed_fields)
+            updated += 1
+    return updated
 
 
 def _refresh_dictionary_placeholder_stages(dictionary: PictureDictionary) -> None:
@@ -1232,6 +1262,14 @@ def compile_picture_dictionary(
                 f"generated {generated_images} image variant{'s' if generated_images != 1 else ''} "
                 f"for dictionary project \"{dictionary.project.title}\"."
             )
+            if generated_images:
+                refreshed_entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
+                synced_entries = _sync_entry_image_paths_from_pages(dictionary, refreshed_entries)
+                if synced_entries:
+                    _post_progress(
+                        "Image phase registry sync: "
+                        f"updated {synced_entries} dictionary entr{'y' if synced_entries == 1 else 'ies'} with generated image paths."
+                    )
         else:
             image_generation_note = "Image generation skipped (style missing or not approved)."
     except Exception:
