@@ -7,7 +7,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from unittest.mock import patch
 
-from pipeline.stage_artifacts import write_stage_artifact
+from pipeline.stage_artifacts import read_stage_artifact, write_stage_artifact
 
 from projects.models import (
     Community,
@@ -496,6 +496,64 @@ class CommunityWorkflowTests(TestCase):
         dictionary_entries[0].refresh_from_db()
         self.assertFalse(dictionary_entries[0].is_active)
         self.assertContains(remove_selected, "Last dictionary compile:")
+
+
+    def test_low_resource_organiser_can_add_annotated_dictionary_rows(self):
+        client = Client()
+        client.login(username="org", password="pw")
+
+        page = client.get(reverse("community-organiser-home", args=[self.community.id]))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Add new low-resource dictionary words")
+        self.assertContains(page, "Create new images")
+        self.assertNotContains(page, "Words (comma or newline separated)")
+
+        response = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "add_low_resource_rows",
+                "low_resource_surface": ["pama", ""],
+                "low_resource_lemma": ["pama", ""],
+                "low_resource_pos": ["NOUN", ""],
+                "low_resource_gloss": ["person", ""],
+                "low_resource_translation": ["", ""],
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Added 1 and updated 0 low-resource dictionary row")
+        self.assertContains(response, "Pending new images:</strong> 1", html=False)
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        entry = dictionary.entries.get(surface="pama")
+        self.assertEqual(entry.lemma, "pama")
+        self.assertEqual(entry.pos, "NOUN")
+        dictionary.project.refresh_from_db()
+        self.assertIn("pama", dictionary.project.source_text)
+
+        run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
+        lemma_payload = read_stage_artifact(run_dir, "lemma")
+        gloss_payload = read_stage_artifact(run_dir, "gloss")
+        translation_payload = read_stage_artifact(run_dir, "translation")
+        lemma_token = lemma_payload["pages"][0]["segments"][0]["tokens"][0]
+        gloss_token = gloss_payload["pages"][0]["segments"][0]["tokens"][0]
+        translation_segment = translation_payload["pages"][0]["segments"][0]
+        self.assertEqual(lemma_token["annotations"]["lemma"], "pama")
+        self.assertEqual(lemma_token["annotations"]["pos"], "NOUN")
+        self.assertEqual(gloss_token["annotations"]["gloss"], "person")
+        self.assertEqual(translation_segment["annotations"]["translation"], "person")
+
+    def test_ai_capable_organiser_keeps_plain_dictionary_word_entry(self):
+        ai_community = Community.objects.create(name="French community", language="fr")
+        CommunityMembership.objects.create(community=ai_community, user=self.organiser, role="organiser")
+        client = Client()
+        client.login(username="org", password="pw")
+
+        page = client.get(reverse("community-organiser-home", args=[ai_community.id]))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Words (comma or newline separated)")
+        self.assertContains(page, "Compile dictionary (sync pages + annotation + images)")
+        self.assertNotContains(page, "Add new low-resource dictionary words")
+        self.assertNotContains(page, "Create new images")
 
     def test_low_resource_compile_blocks_when_gloss_or_translation_missing(self):
         client = Client()
