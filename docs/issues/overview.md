@@ -1,10 +1,10 @@
 # C-LARA-2 issues overview
-_Last updated: 2026-05-28T22:30:00Z_
+_Last updated: 2026-05-29T12:45:30Z_
 
 ## Recent progress
-- Closed **[ISSUE-0020](issues/ISSUE-0020.json)** after implementing the low-resource community-organiser picture-dictionary workflow.
-- Added a low-resource tabular add-word path for word, lemma, POS, gloss, and optional translation metadata, while preserving the simple comma/newline word-entry path for AI-capable languages.
-- Refreshed focus ordering after removing closed **ISSUE-0020** and archived the previous focus snapshot.
+- Added **[ISSUE-0033](issues/ISSUE-0033.json)** from human suggestion #23 to track systematic cleanup of messy roadmap files.
+- Created **[roadmap-cleanup.md](../roadmap/roadmap-cleanup.md)** with phased cleanup passes for publication/report roadmaps, user-facing feature roadmaps, implementor/infrastructure roadmaps, and later repeat audits.
+- Refreshed the focus index to include roadmap cleanup after **ISSUE-0008** and archived the previous focus snapshot.
 - Regenerated this overview from canonical `docs/issues/issues/*.json` status values.
 
 ## Near-term priorities
@@ -17,15 +17,16 @@ _Last updated: 2026-05-28T22:30:00Z_
 7. **[ISSUE-0010](issues/ISSUE-0010.json) (P1, active)** — Import a representative legacy C-LARA project corpus and add batch import tooling.
 8. **[ISSUE-0013](issues/ISSUE-0013.json) (P1, reported)** — Improve stage artifact persistence performance and timeout resilience.
 9. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, reported)** — Write C-LARA-2 technical report and academic papers.
-10. **[ISSUE-0006](issues/ISSUE-0006.json) (P2, reported)** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness.
-11. **[ISSUE-0005](issues/ISSUE-0005.json) (P2, reported)** — Tune segmentation_phase_1 prompting to improve segment granularity by genre.
-12. **[ISSUE-0004](issues/ISSUE-0004.json) (P2, reported)** — Introduce AI-based review gates for phase outputs with extensible evaluator architecture.
-13. **[ISSUE-0007](issues/ISSUE-0007.json) (P2, reported)** — Use LLM prompt-construction indirection for page-image generation prompts.
-14. **[ISSUE-0001](issues/ISSUE-0001.json) (P2, reported)** — Support hosted compiled legacy content registration in C-LARA-2.
+10. **[ISSUE-0033](issues/ISSUE-0033.json) (P2, reported)** — Clean up and phase-track roadmap file maintenance.
+11. **[ISSUE-0006](issues/ISSUE-0006.json) (P2, reported)** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness.
+12. **[ISSUE-0005](issues/ISSUE-0005.json) (P2, reported)** — Tune segmentation_phase_1 prompting to improve segment granularity by genre.
+13. **[ISSUE-0004](issues/ISSUE-0004.json) (P2, reported)** — Introduce AI-based review gates for phase outputs with extensible evaluator architecture.
+14. **[ISSUE-0007](issues/ISSUE-0007.json) (P2, reported)** — Use LLM prompt-construction indirection for page-image generation prompts.
+15. **[ISSUE-0001](issues/ISSUE-0001.json) (P2, reported)** — Support hosted compiled legacy content registration in C-LARA-2.
 
 ## Notes/risks
-- The low-resource dictionary-entry flow is now implemented, but should be watched in organiser testing to confirm the generated annotation stages cover the expected Kok Kaper/Iaai/Drehu workflows.
-- **ISSUE-0031** remains relevant for broader compiled-content and permission-boundary hardening after the targeted **ISSUE-0032** fix.
+- Roadmap cleanup is process hygiene rather than a production blocker, but stale or mixed roadmap files can degrade both human review and Codex context recovery.
+- Publication/report roadmaps should be cleaned first because they feed the June 2026 progress report and downstream EuroCALL/ALTA/Gunkel paper planning.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated UI/pipeline coverage.
 
 ## Complete issue inventory
@@ -64,3 +65,4 @@ _Last updated: 2026-05-28T22:30:00Z_
 | [ISSUE-0030](issues/ISSUE-0030.json) | reported | P1 | Fix image-generation workflow UX around element expansion auto-refresh and selection confirmation. |
 | [ISSUE-0031](issues/ISSUE-0031.json) | reported | P1 | Improve compiled-content presentation context and configurable public access controls. |
 | [ISSUE-0032](issues/ISSUE-0032.json) | closed | P0 | Fix community judging image visibility for non-owner community members. |
+| [ISSUE-0033](issues/ISSUE-0033.json) | reported | P2 | Clean up and phase-track roadmap file maintenance. |

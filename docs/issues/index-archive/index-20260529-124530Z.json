@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-05-29T12:45:30Z",
+  "updated_at": "2026-05-28T22:30:00Z",
   "description": "Current focus issues in priority order (highest focus first). Closed issues are omitted from this focus list and summarized in overview.md.",
   "focus_issue_ids": [
     "ISSUE-0031",
@@ -12,7 +12,6 @@
     "ISSUE-0010",
     "ISSUE-0013",
     "ISSUE-0008",
-    "ISSUE-0033",
     "ISSUE-0006",
     "ISSUE-0005",
     "ISSUE-0004",
