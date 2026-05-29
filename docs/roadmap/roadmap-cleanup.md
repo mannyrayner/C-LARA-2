@@ -29,7 +29,6 @@ Each roadmap file can keep its topic-specific structure, but a cleanup pass shou
 Candidate files:
 
 - [reports-and-papers.md](reports-and-papers.md)
-- [first-progress-report.md](first-progress-report.md)
 - `docs/publications/progress_report_1/markdown/README.md` and section outlines, where roadmap cleanup reveals inconsistencies
 
 Suggested checks:
