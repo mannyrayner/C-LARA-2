@@ -5,7 +5,6 @@ This roadmap tracks C-LARA-2 writing outputs: the first progress report, confere
 Linked issues and companion docs:
 
 - [ISSUE-0008](../issues/issues/ISSUE-0008.json) — report/papers umbrella issue.
-- [first-progress-report.md](first-progress-report.md) — execution roadmap for the first progress report workspace.
 - [roadmap-cleanup.md](roadmap-cleanup.md) — tracks the cleanup pass that produced this clearer structure.
 - `docs/publications/progress_report_1/markdown/` — Markdown-first draft report workspace.
 
@@ -135,7 +134,7 @@ Near-term CodePrism questions:
 ## Workflow rules
 
 1. **Keep the progress report concise.** Draft from the Markdown workspace and remove repeated C-LARA background unless needed.
-2. **Keep roadmap and report synchronized.** If the progress-report section map or main thesis changes, update this file and [first-progress-report.md](first-progress-report.md).
+2. **Keep roadmap and report synchronized.** If the progress-report section map or main thesis changes, update this file and the Markdown report workspace.
 3. **Use repository evidence.** Claims should be checked against current roadmap/issues/docs/tests where possible.
 4. **State the method explicitly.** Each publication should explain the issues-driven Codex authoring workflow and the human review role.
 5. **Ask ChatGPT-5.x for high-level critique if useful.** Use it as a reviewer/suggester, not as the sole author.
@@ -145,7 +144,7 @@ Near-term CodePrism questions:
 
 ## Near-term action items
 
-- Keep [ISSUE-0008](../issues/issues/ISSUE-0008.json), [first-progress-report.md](first-progress-report.md), and the Markdown report workspace synchronized.
+- Keep [ISSUE-0008](../issues/issues/ISSUE-0008.json), this roadmap, and the Markdown report workspace synchronized.
 - Finish the concise progress-report draft around the AI-centered thesis.
 - Add concrete examples for picture dictionaries, low-resource-language support, and AWS migration.
 - Gather current repository metrics and feature inventory only where they support the concise narrative.
