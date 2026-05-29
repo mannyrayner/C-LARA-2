@@ -1,10 +1,12 @@
 # First C-LARA-2 progress report roadmap
 
-This roadmap defines the repository structure, workflow, and initial content plan for the **first C-LARA-2 progress report** (target date: **2026-06-15**).
+This roadmap defines the repository structure, workflow, and initial content plan for the **first C-LARA-2 progress report** (target date: **2026-06-15**). The report should now be treated as a short interim report rather than a long technical catalogue.
 
 It is a focused execution companion to:
 - [reports-and-papers.md](reports-and-papers.md)
 - [ISSUE-0008](../issues/issues/ISSUE-0008.json)
+
+The EuroCALL 2026 full-paper deadline is now confirmed as **2026-07-31**, so the progress report should remain concise and reusable as the source for that paper.
 
 ## Why this roadmap exists
 
@@ -14,15 +16,15 @@ We need a concrete writing workspace and repeatable production workflow for the 
 
 ### In scope
 
-- Create a report workspace under `docs/publications/progress_report_1/`.
-- Use a **Markdown-first** drafting process, with later migration to LaTeX.
+- Create and maintain a concise report workspace under `docs/publications/progress_report_1/`.
+- Use a **Markdown-first** drafting process, with later migration to LaTeX if needed.
 - Maintain a top-level document that links to section documents.
 - Capture an initial outline spanning:
   - project history (LARA → C-LARA → C-LARA-2),
   - user-facing functionality,
   - implementor-facing functionality,
   - AI-autonomy methodology,
-  - medium-term future work grounded in current issues.
+  - medium-term future work grounded in current issues, with special emphasis on more autonomous AI self-checking, mobile support, and platform audio recording.
 
 ### Out of scope (for now)
 
@@ -61,19 +63,23 @@ The initial top-level outline should include:
    - project-management/documentation support,
    - publication drafting support,
    - sysadmin/deployment tasks (including AWS setup/migration orchestration guided by Codex and GPT-5),
-   with explicit human supervision/review role.
+   with explicit human advice/review/acceptance role and emphasis on rapid rewriting/flexibility.
 4. **User-facing functionality**
    - cleaned-up authoring flow,
    - structured editing for low-resource languages,
    - exercise generation,
-   - picture dictionaries and exercise integration.
+   - picture dictionaries, picture glossing, picture flashcards, and exercise integration.
 5. **Implementor-facing functionality**
    - roadmap-as-memory pattern,
    - issue suggestion ingestion and Codex update loop,
    - migration of legacy projects (format conversion + server installation workflow).
 6. **Medium-term future work (issue-grounded)**
-   - user-facing items (mobile, direct audio recording, alignment support),
+   - user-facing items (mobile, direct audio recording, alignment support), especially for low-resource languages,
    - implementor-facing items (autonomous process/UX drift tracking).
+
+## Authorship-paper note
+
+The initial progress report may also become evidence for a possible paper with David Gunkel on AI authorship. Keep the report-production method explicit: Codex drafts and maintains the committed text, while humans advise, review, and accept/reject. Frame any claim that the AI meets formal authorship criteria apart from being human as an open research/ethics question.
 
 ## Cross-links to issue roadmap items
 
