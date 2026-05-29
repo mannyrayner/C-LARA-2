@@ -6,6 +6,8 @@ It is a focused execution companion to:
 - [reports-and-papers.md](reports-and-papers.md)
 - [ISSUE-0008](../issues/issues/ISSUE-0008.json)
 
+The EuroCALL 2026 full-paper deadline is now confirmed as **2026-07-31**, so the progress report should remain concise and reusable as the source for that paper.
+
 ## Why this roadmap exists
 
 We need a concrete writing workspace and repeatable production workflow for the first project report, while keeping the process aligned with the issues-driven Codex workflow used across C-LARA-2.

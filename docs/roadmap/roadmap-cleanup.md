@@ -95,3 +95,4 @@ Suggested checks:
 ## Current status
 
 - **2026-05-29:** Roadmap cleanup tracking opened from human suggestion #23. Phase 1 should start with the publication/report roadmaps because they feed the first C-LARA-2 progress report.
+- **2026-05-29:** Phase 1 started with [reports-and-papers.md](reports-and-papers.md): reorganized it around settled framing, current targets, planned paper split, related-work comparison, workflow rules, and near-term actions; also corrected the EuroCALL 2026 deadline to 2026-07-31 and synchronized it with the progress-report Markdown workspace.

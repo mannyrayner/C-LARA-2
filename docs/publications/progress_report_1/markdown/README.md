@@ -20,6 +20,17 @@ This directory is the Markdown-first workspace for the first C-LARA-2 progress r
 4. [04-implementor-facing-functionality.md](04-implementor-facing-functionality.md)
 5. [05-medium-term-future-work.md](05-medium-term-future-work.md)
 
+## Relationship to downstream papers
+
+This Markdown workspace is the source outline for the writing targets tracked in [../../../roadmap/reports-and-papers.md](../../../roadmap/reports-and-papers.md):
+
+- first C-LARA-2 progress report target date: **2026-06-15**;
+- EuroCALL 2026 full-paper deadline: **2026-07-31**;
+- ALTA 2026 remains an active target, currently treated as mid-September 2026 pending confirmation;
+- the possible David Gunkel AI-authorship paper should draw on the report-production method without taking over the progress report's main narrative.
+
+Keep this outline and `reports-and-papers.md` synchronized whenever the main thesis, section map, or publication deadlines change.
+
 ## Proposed high-level narrative
 
 1. **Why this report is short**: much C-LARA-2 functionality continues C-LARA functionality, so the report should only summarize that background.

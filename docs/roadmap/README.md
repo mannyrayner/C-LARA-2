@@ -264,9 +264,9 @@ Focus:
 Status: **New roadmap document added.** See [roadmap/reports-and-papers.md](reports-and-papers.md).
 
 Focus:
-- Long internal C-LARA-2 technical report by mid-June 2026, tracked by [ISSUE-0008](../issues/issues/ISSUE-0008.json).
-- EuroCALL 2026 paper preparation, accepted with a mid-August 2026 deadline.
-- Possible ALTA 2026 paper and related-work positioning around AI-assisted, repo-native software/documentation/test co-development.
+- Concise first C-LARA-2 progress report by 2026-06-15, tracked by [ISSUE-0008](../issues/issues/ISSUE-0008.json).
+- EuroCALL 2026 paper preparation, accepted with a confirmed 2026-07-31 deadline.
+- ALTA 2026 target and related-work positioning around AI-centered, repo-native software/documentation/test co-development, plus a possible David Gunkel AI-authorship paper.
 
 ### 22. Efficiency and stage-artifact persistence roadmap
 
