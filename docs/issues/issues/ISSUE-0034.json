@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "issue_id": "ISSUE-0034",
+  "title": "Add an AI assistant for questions about C-LARA-2 functionality",
+  "state": "reported",
+  "priority": "P2",
+  "created_at": "2026-05-30T10:34:56Z",
+  "updated_at": "2026-05-30T10:34:56Z",
+  "origin": "human-suggestion",
+  "notes": "Created from human suggestion #24 (submitted by mannyrayner on 2026-05-30). The requested capability is a platform-facing assistant that can answer questions about C-LARA-2 functionality, documentation, workflows, known issues, and roadmap context by using a repo-aware Codex/OpenAI model or equivalent retrieval-backed architecture. Initial scope is discovery and planning rather than direct code execution: add a roadmap document, define safe API boundaries, clarify repository/documentation context packaging, and later prototype a read-only conversational support view. Priority is P2 because it is strategically aligned with the project goal of AI-understandable documentation and user support, but it is not an immediate production blocker and has security, cost, and context-governance questions to resolve before implementation.",
+  "deadline": null,
+  "dependencies": [
+    "ISSUE-0033"
+  ]
+}

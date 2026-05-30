@@ -297,6 +297,17 @@ Focus:
 - Deliver in a low-risk rollout window after current field visit commitments.
 
 
+### 25. Platform self-knowledge assistant roadmap
+
+Status: **New roadmap document added.** See [roadmap/platform-self-knowledge-assistant.md](platform-self-knowledge-assistant.md). Tracked by [ISSUE-0034](../issues/issues/ISSUE-0034.json).
+
+Focus:
+- Read-only conversational help about C-LARA-2 functionality, workflows, roadmap documents, and issue status.
+- Repo/documentation-grounded answers with source links and conservative context allowlisting.
+- Safe architecture for API usage, prompt construction, cost control, and future convergence with the broader dialogue top level.
+
+
+
 
 ### 21. First progress report roadmap
 
