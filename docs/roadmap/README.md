@@ -297,14 +297,14 @@ Focus:
 - Deliver in a low-risk rollout window after current field visit commitments.
 
 
-### 25. Platform self-knowledge assistant roadmap
+### 25. Restricted project-understanding assistant roadmap
 
 Status: **New roadmap document added.** See [roadmap/platform-self-knowledge-assistant.md](platform-self-knowledge-assistant.md). Tracked by [ISSUE-0034](../issues/issues/ISSUE-0034.json).
 
 Focus:
-- Read-only conversational help about C-LARA-2 functionality, workflows, roadmap documents, and issue status.
-- Repo/documentation-grounded answers with source links and conservative context allowlisting.
-- Safe architecture for API usage, prompt construction, cost control, and future convergence with the broader dialogue top level.
+- Admin/trusted-user question answering about C-LARA-2 architecture, goals, status, issue structure, plans, tests, prompts, and relevant public GitHub source files.
+- Repo-grounded answers that distinguish implemented vs planned functionality, cite supporting files, and admit unsupported or uncertain answers.
+- Versioned `docs/project_understanding/`-style evidence records with model/prompt metadata and human assessment fields for the initial report's autonomy/authorship evidence case.
 
 
 
