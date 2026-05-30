@@ -1,11 +1,9 @@
-# C-LARA-2 issues overview
-_Last updated: 2026-05-29T12:45:30Z_
+# C-LARA-2 issue overview (refreshed 2026-05-30T10:34:56Z)
 
 ## Recent progress
-- Added **[ISSUE-0033](issues/ISSUE-0033.json)** from human suggestion #23 to track systematic cleanup of messy roadmap files.
-- Created **[roadmap-cleanup.md](../roadmap/roadmap-cleanup.md)** with phased cleanup passes for publication/report roadmaps, user-facing feature roadmaps, implementor/infrastructure roadmaps, and later repeat audits.
-- Refreshed the focus index to include roadmap cleanup after **ISSUE-0008** and archived the previous focus snapshot.
-- Regenerated this overview from canonical `docs/issues/issues/*.json` status values.
+- Added **[ISSUE-0034](issues/ISSUE-0034.json)** for a read-only AI assistant that answers user questions about C-LARA-2 functionality, documentation, roadmap status, and issue context.
+- Added the associated [platform self-knowledge assistant roadmap](../roadmap/platform-self-knowledge-assistant.md), with the issue and roadmap cross-linking each other.
+- Refreshed the focus index and archived the previous focus ordering before inserting the new P2 issue.
 
 ## Near-term priorities
 1. **[ISSUE-0031](issues/ISSUE-0031.json) (P1, reported)** — Improve compiled-content presentation context and configurable public access controls.
@@ -18,15 +16,16 @@ _Last updated: 2026-05-29T12:45:30Z_
 8. **[ISSUE-0013](issues/ISSUE-0013.json) (P1, reported)** — Improve stage artifact persistence performance and timeout resilience.
 9. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, reported)** — Write C-LARA-2 technical report and academic papers.
 10. **[ISSUE-0033](issues/ISSUE-0033.json) (P2, reported)** — Clean up and phase-track roadmap file maintenance.
-11. **[ISSUE-0006](issues/ISSUE-0006.json) (P2, reported)** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness.
-12. **[ISSUE-0005](issues/ISSUE-0005.json) (P2, reported)** — Tune segmentation_phase_1 prompting to improve segment granularity by genre.
-13. **[ISSUE-0004](issues/ISSUE-0004.json) (P2, reported)** — Introduce AI-based review gates for phase outputs with extensible evaluator architecture.
-14. **[ISSUE-0007](issues/ISSUE-0007.json) (P2, reported)** — Use LLM prompt-construction indirection for page-image generation prompts.
-15. **[ISSUE-0001](issues/ISSUE-0001.json) (P2, reported)** — Support hosted compiled legacy content registration in C-LARA-2.
+11. **[ISSUE-0034](issues/ISSUE-0034.json) (P2, reported)** — Add an AI assistant for questions about C-LARA-2 functionality.
+12. **[ISSUE-0006](issues/ISSUE-0006.json) (P2, reported)** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness.
+13. **[ISSUE-0005](issues/ISSUE-0005.json) (P2, reported)** — Tune segmentation_phase_1 prompting to improve segment granularity by genre.
+14. **[ISSUE-0004](issues/ISSUE-0004.json) (P2, reported)** — Introduce AI-based review gates for phase outputs with extensible evaluator architecture.
+15. **[ISSUE-0007](issues/ISSUE-0007.json) (P2, reported)** — Use LLM prompt-construction indirection for page-image generation prompts.
+16. **[ISSUE-0001](issues/ISSUE-0001.json) (P2, reported)** — Support hosted compiled legacy content registration in C-LARA-2.
 
 ## Notes/risks
-- Roadmap cleanup is process hygiene rather than a production blocker, but stale or mixed roadmap files can degrade both human review and Codex context recovery.
-- Publication/report roadmaps should be cleaned first because they feed the June 2026 progress report and downstream EuroCALL/ALTA/Gunkel paper planning.
+- The new self-knowledge assistant is intentionally scoped as read-only until API capabilities, documentation allowlisting, cost accounting, and prompt-injection controls are clear.
+- Roadmap cleanup remains important because repo-grounded assistant quality will depend on concise, current roadmap and issue documentation.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated UI/pipeline coverage.
 
 ## Complete issue inventory
@@ -66,3 +65,4 @@ _Last updated: 2026-05-29T12:45:30Z_
 | [ISSUE-0031](issues/ISSUE-0031.json) | reported | P1 | Improve compiled-content presentation context and configurable public access controls. |
 | [ISSUE-0032](issues/ISSUE-0032.json) | closed | P0 | Fix community judging image visibility for non-owner community members. |
 | [ISSUE-0033](issues/ISSUE-0033.json) | reported | P2 | Clean up and phase-track roadmap file maintenance. |
+| [ISSUE-0034](issues/ISSUE-0034.json) | reported | P2 | Add an AI assistant for questions about C-LARA-2 functionality. |
