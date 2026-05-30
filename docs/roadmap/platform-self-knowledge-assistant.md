@@ -22,26 +22,28 @@ C-LARA-2 is intentionally developed with extensive repository-native documentati
 
 ## Relationship to existing dialogue work
 
-This roadmap is related to, but narrower and more evidence-oriented than, [the freeform dialogue-based top-level roadmap](dialogue-top-level.md).
+This roadmap complements [the freeform dialogue-based top-level roadmap](dialogue-top-level.md), but the two features have different intended operating points.
 
-- The dialogue top level is about helping users operate C-LARA-2 workflows through conversation.
-- The restricted project-understanding assistant is about answering questions concerning the project itself, using repository materials as evidence.
-- The first implementation should be read-only: it must not trigger project mutations, expensive pipeline runs, admin actions, or repository changes from user prompts.
-- A later phase can decide whether project-understanding answers become one intent within a broader dialogue/orchestration layer.
+- The dialogue top level is a user-facing workflow helper: it should be fast enough for everyday use, oriented toward likely user actions, and able to guide people through existing C-LARA-2 flows.
+- The restricted project-understanding assistant is an evidence-oriented project collaborator: it should reason from a broader context, potentially including the public GitHub repository, selected source files, prompts, tests, documentation, and later carefully controlled runtime state or other contextual data.
+- With sufficiently rich context and suitable action adapters, the project-understanding assistant could in principle answer the same questions as the dialogue top level and advise on the same actions. In practice it is likely to be too slow, expensive, and evidence-heavy for routine workflow guidance.
+- The first implementation should therefore remain read-only and project-understanding focused: it must not trigger project mutations, expensive pipeline runs, admin actions, or repository changes from user prompts.
+- A later phase can decide how much infrastructure should be shared between the two assistants while preserving their different cost, latency, evidence, and safety profiles.
 
 ## Initial requirements
 
 1. Access is initially restricted to admins or a clearly defined trusted group.
 2. The user enters a question through a simple platform form or management command.
-3. The system wraps the question in a prompt instructing the model to answer from C-LARA-2 repository materials.
-4. The model distinguishes implemented functionality from planned or speculative functionality.
-5. The model cites supporting files wherever possible.
-6. The model explicitly says when available project materials do not support an answer.
-7. Each run stores the question, answer, timestamp, model name, prompt version, and cited/supporting files.
-8. Records are stored in the C-LARA-2 file tree, preferably under `docs/project_understanding/` or a similar folder, so they are versionable and inspectable.
-9. Each record includes fields for later human assessment: `accurate`, `partially accurate`, `inaccurate`, or `unclear`, plus reviewer notes.
-10. Tests and user/developer documentation are added before broad use.
-11. A development log explains design choices and why the feature is relevant to the broader C-LARA-2 authorship/autonomy evidence case.
+3. The first version supports single-shot question answering; multi-turn dialogue should be supported early if the chosen Codex/OpenAI API provides reliable thread/context handling, otherwise it should be designed as a later extension managed by C-LARA-2.
+4. The system wraps the question, and later any approved dialogue context, in a prompt instructing the model to answer from C-LARA-2 repository materials.
+5. The model distinguishes implemented functionality from planned or speculative functionality.
+6. The model cites supporting files wherever possible.
+7. The model explicitly says when available project materials do not support an answer.
+8. Each run stores the question, answer, timestamp, model name, prompt version, and cited/supporting files.
+9. Records are stored in the C-LARA-2 file tree, preferably under `docs/project_understanding/` or a similar folder, so they are versionable and inspectable.
+10. Each record includes fields for later human assessment: `accurate`, `partially accurate`, `inaccurate`, or `unclear`, plus reviewer notes.
+11. Tests and user/developer documentation are added before broad use.
+12. A development log explains design choices and why the feature is relevant to the broader C-LARA-2 authorship/autonomy evidence case.
 
 ## Evidence scope
 
@@ -109,6 +111,10 @@ Possible MVP surfaces:
 
 The UI can be minimal: a question box, answer pane, supporting-file list, and reviewer assessment controls. A management-command path may be especially useful for generating repeatable evidence for the initial report.
 
+Single-shot question answering is sufficient for the first implementation if contextual dialogue would require C-LARA-2 to maintain thread state itself. If the selected Codex/OpenAI model/API already supports contextual dialogue with suitable thread semantics, the MVP can expose multi-turn conversations earlier, provided each turn still stores enough prompt, context, citation, and assessment metadata for later audit.
+
+When C-LARA-2 manages dialogue context itself, store a thread record with ordered turns, a compact context summary if used, and explicit links from each answer to the evidence files consulted for that turn. Avoid silently carrying unsupported assumptions from earlier turns into later answers.
+
 ## Safety and governance
 
 The assistant should reason over publicly available repository content, but the production platform still needs strict boundaries:
@@ -128,7 +134,7 @@ The assistant should reason over publicly available repository content, but the 
 - Decide the first evidence corpus and retrieval/indexing method.
 - Define the record schema and create `docs/project_understanding/` conventions.
 - Version the wrapper prompt and decide how prompt versions are stored.
-- Confirm the suitable OpenAI/Codex API route for repo-grounded answers from a production Django app or management command.
+- Confirm the suitable OpenAI/Codex API route for repo-grounded answers from a production Django app or management command, including whether contextual dialogue is model/API-managed or must be managed by C-LARA-2.
 - Choose the first set of report-relevant evaluation questions.
 
 ### Phase B: restricted prototype
@@ -137,6 +143,7 @@ The assistant should reason over publicly available repository content, but the 
 - Ground answers in repository materials, starting with roadmap, issues, reports, tests, prompts, and selected implementation files.
 - Return cited/supporting files with each answer.
 - Store each run as a versionable record with human assessment placeholders.
+- Add model/API-managed multi-turn support if available without significant extra platform state machinery; otherwise keep the prototype single-shot and document the planned thread-state design.
 - Add tests for access control, prompt construction, record serialization, and missing-evidence behaviour.
 
 ### Phase C: report/evidence workflow
@@ -155,6 +162,7 @@ The assistant should reason over publicly available repository content, but the 
 ## Open questions
 
 - Which API and retrieval architecture best supports repo-grounded answers while staying safe in production?
+- Is contextual dialogue natively supported by the selected Codex/OpenAI API, or should C-LARA-2 maintain dialogue thread context and summaries itself?
 - Should records be written directly by the platform, exported for later commit, or both?
 - What is the minimum curated question set needed for the first report?
 - How should human assessments be summarized without overstating model reliability?
