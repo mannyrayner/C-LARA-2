@@ -70,6 +70,42 @@ class FakeClient:
         self.chat = FakeChat(responses)
 
 
+class FakeResponsesAPI:
+    def __init__(self, responses: list[object]) -> None:
+        self._responses = responses
+        self.calls = 0
+        self.last_kwargs: dict[str, object] | None = None
+
+    def create(self, **kwargs: object) -> object:
+        self.last_kwargs = dict(kwargs)
+        idx = self.calls
+        self.calls += 1
+        response = self._responses[idx]
+        if isinstance(response, Exception):
+            raise response
+        if callable(response):
+            return response()
+        return response
+
+
+class FakeResponsesClient(FakeClient):
+    def __init__(self, responses: list[object], response_api_payloads: list[object]) -> None:
+        super().__init__(responses)
+        self.responses = FakeResponsesAPI(response_api_payloads)
+
+
+class FakeResponsesUsage:
+    input_tokens = 7
+    output_tokens = 11
+    total_tokens = 18
+
+
+class FakeResponsesOutput:
+    def __init__(self, output_text: str) -> None:
+        self.output_text = output_text
+        self.usage = FakeResponsesUsage()
+
+
 class AOpenAIClientUnitTests(unittest.IsolatedAsyncioTestCase):
     async def test_01_chat_json_success(self) -> None:
         telemetry = RecordingTelemetry()
@@ -145,6 +181,74 @@ class AOpenAIClientUnitTests(unittest.IsolatedAsyncioTestCase):
         last_kwargs = client._client.chat.completions.last_kwargs  # type: ignore[attr-defined]
         self.assertIsNotNone(last_kwargs)
         self.assertNotIn("response_format", last_kwargs)
+
+    async def test_02d_responses_text_uses_responses_api_and_usage_aliases(self) -> None:
+        usage_events: list[dict[str, object]] = []
+        telemetry = RecordingTelemetry()
+        client = OpenAIClient(
+            config=OpenAIConfig(api_key=None, usage_reporter=usage_events.append),
+            client=FakeResponsesClient([], [FakeResponsesOutput("Repository-grounded answer.")]),
+        )
+
+        result = await client.responses_text(
+            "Explain ISSUE-0034.",
+            model="gpt-5.3-codex",
+            reasoning_effort="medium",
+            max_output_tokens=500,
+            telemetry=telemetry,
+            op_id="op-2d",
+        )
+
+        self.assertEqual("Repository-grounded answer.", result)
+        messages = [evt[2] for evt in telemetry.events]
+        self.assertIn("openai.responses_text request start", messages)
+        self.assertIn("openai.responses_text response received", messages)
+        last_kwargs = client._client.responses.last_kwargs  # type: ignore[attr-defined]
+        self.assertEqual(
+            {
+                "model": "gpt-5.3-codex",
+                "input": "Explain ISSUE-0034.",
+                "reasoning": {"effort": "medium"},
+                "max_output_tokens": 500,
+            },
+            last_kwargs,
+        )
+        self.assertEqual(
+            {
+                "provider": "openai",
+                "model": "gpt-5.3-codex",
+                "operation": "responses_text",
+                "request_type": "responses_text",
+                "prompt_tokens": 7,
+                "completion_tokens": 11,
+                "total_tokens": 18,
+            },
+            usage_events[0],
+        )
+
+    async def test_02e_responses_text_extracts_nested_output_text(self) -> None:
+        client = OpenAIClient(
+            config=OpenAIConfig(api_key=None),
+            client=FakeResponsesClient(
+                [],
+                [
+                    {
+                        "output": [
+                            {
+                                "content": [
+                                    {"type": "output_text", "text": "First paragraph."},
+                                    {"type": "output_text", "text": "Second paragraph."},
+                                ]
+                            }
+                        ]
+                    }
+                ],
+            ),
+        )
+
+        result = await client.responses_text("Explain.")
+
+        self.assertEqual("First paragraph.\nSecond paragraph.", result)
 
     async def test_00_chat_json_retries_on_rate_limit(self) -> None:
         telemetry = RecordingTelemetry()

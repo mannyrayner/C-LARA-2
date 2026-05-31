@@ -1,9 +1,9 @@
-# C-LARA-2 issue overview (refreshed 2026-05-31T09:29:15Z)
+# C-LARA-2 issue overview (refreshed 2026-05-31T10:15:00Z)
 
 ## Recent progress
-- Added **[ISSUE-0035](issues/ISSUE-0035.json)** to track intermittent Codex PR update-branch refusals reported from 2026-05-30 onward.
-- Added the associated [Codex PR update-branch inconsistencies roadmap](../roadmap/codex-pr-update-branch-inconsistencies.md) so future occurrences can be logged with dates, branch/PR context, provenance checks, and workaround outcomes.
-- Refreshed this overview from canonical issue JSON and archived the previous focus index before adding ISSUE-0035 to the active focus list.
+- Started **[ISSUE-0034](issues/ISSUE-0034.json)** by adding the core project-understanding prompt wrapper, Codex-capable Responses API call path, and Markdown evidence-record rendering helpers.
+- Added **[ISSUE-0035](issues/ISSUE-0035.json)** to track intermittent Codex PR update-branch refusals reported from 2026-05-30 onward, with a dedicated roadmap for future incident evidence.
+- Refreshed this overview from canonical issue JSON so ISSUE-0034 is now marked active and inventory status values remain aligned with per-issue records.
 
 ## Near-term priorities
 1. **[ISSUE-0031](issues/ISSUE-0031.json) (P1, reported)** — Improve compiled-content presentation context and configurable public access controls.
@@ -16,7 +16,7 @@
 8. **[ISSUE-0013](issues/ISSUE-0013.json) (P1, reported)** — Improve stage artifact persistence performance and timeout resilience.
 9. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, reported)** — Write C-LARA-2 technical report and academic papers.
 10. **[ISSUE-0033](issues/ISSUE-0033.json) (P2, reported)** — Clean up and phase-track roadmap file maintenance.
-11. **[ISSUE-0034](issues/ISSUE-0034.json) (P2, reported)** — Add restricted project-understanding assistant with versioned evidence records.
+11. **[ISSUE-0034](issues/ISSUE-0034.json) (P2, active)** — Add restricted project-understanding assistant with versioned evidence records.
 12. **[ISSUE-0035](issues/ISSUE-0035.json) (P2, reported)** — Track intermittent Codex PR update-branch refusal.
 13. **[ISSUE-0006](issues/ISSUE-0006.json) (P2, reported)** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness.
 14. **[ISSUE-0005](issues/ISSUE-0005.json) (P2, reported)** — Tune segmentation_phase_1 prompting to improve segment granularity by genre.
@@ -25,8 +25,8 @@
 17. **[ISSUE-0001](issues/ISSUE-0001.json) (P2, reported)** — Support hosted compiled legacy content registration in C-LARA-2.
 
 ## Notes/risks
+- The first ISSUE-0034 implementation step sends repository-grounded instructions to a Codex-capable model but does not yet provide retrieval/indexing, platform access control, billing integration, or human-review UI around stored evidence records.
 - The Codex update-branch inconsistency is currently an external-tool/workflow risk rather than a confirmed C-LARA-2 code defect; useful next action is evidence capture rather than speculative code changes.
-- The restricted project-understanding assistant is intended to produce inspectable evidence records, not unreviewed promotional claims; human assessment fields are required before using outputs in the report.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated UI/pipeline coverage.
 
 ## Complete issue inventory
@@ -66,5 +66,5 @@
 | [ISSUE-0031](issues/ISSUE-0031.json) | reported | P1 | Improve compiled-content presentation context and configurable public access controls. |
 | [ISSUE-0032](issues/ISSUE-0032.json) | closed | P0 | Fix community judging image visibility for non-owner community members. |
 | [ISSUE-0033](issues/ISSUE-0033.json) | reported | P2 | Clean up and phase-track roadmap file maintenance. |
-| [ISSUE-0034](issues/ISSUE-0034.json) | reported | P2 | Add restricted project-understanding assistant with versioned evidence records. |
+| [ISSUE-0034](issues/ISSUE-0034.json) | active | P2 | Add restricted project-understanding assistant with versioned evidence records. |
 | [ISSUE-0035](issues/ISSUE-0035.json) | reported | P2 | Track intermittent Codex PR update-branch refusal. |
