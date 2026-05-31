@@ -267,6 +267,103 @@ class OpenAIClient:
                 telemetry.event(op_id, "error", "unexpected text failure")
                 raise
 
+    async def responses_text(
+        self,
+        prompt: str,
+        *,
+        model: str | None = None,
+        reasoning_effort: str | None = None,
+        max_output_tokens: int | None = None,
+        telemetry: Telemetry | None = None,
+        op_id: str | None = None,
+    ) -> str:
+        """Send a Responses API request and return plain text output."""
+
+        telemetry = telemetry or NullTelemetry()
+        op_id = op_id or f"op-{uuid.uuid4()}"
+        model = model or self.config.model
+        heartbeat_s = self.config.heartbeat_s
+
+        attempt = 0
+        backoff = 1.0
+        while True:
+            attempt += 1
+            start = time.monotonic()
+            telemetry.event(op_id, "info", f"openai.responses_text attempt {attempt}")
+            try:
+                kwargs = self._build_responses_request(
+                    prompt,
+                    model=model,
+                    reasoning_effort=reasoning_effort,
+                    max_output_tokens=max_output_tokens,
+                )
+                telemetry.event(
+                    op_id,
+                    "info",
+                    "openai.responses_text request start",
+                    {
+                        "model": model,
+                        "reasoning_effort": reasoning_effort,
+                        "max_output_tokens": max_output_tokens,
+                        "heartbeat_s": heartbeat_s,
+                        "prompt_preview": _preview_text(prompt),
+                    },
+                )
+                response = await _run_responses_with_heartbeat(
+                    self._client, kwargs, telemetry, op_id, start, heartbeat_s
+                )
+                self._report_usage(response, model=model, operation="responses_text")
+                payload = _extract_responses_payload(response).strip()
+                if self.config.detailed_telemetry:
+                    telemetry.event(
+                        op_id,
+                        "info",
+                        "openai.responses_text trace",
+                        {
+                            "request": kwargs,
+                            "response_payload": payload,
+                            "usage": _extract_usage(response) or {},
+                        },
+                    )
+                telemetry.event(
+                    op_id,
+                    "info",
+                    "openai.responses_text response received",
+                    {"elapsed_s": round(time.monotonic() - start, 3), "payload_preview": _preview_text(payload)},
+                )
+                return payload
+            except (RateLimitError, APIError) as exc:
+                if _is_missing_scope_error(exc):
+                    telemetry.event(op_id, "error", "openai responses missing scope", {"error": str(exc)})
+                    raise PermissionError(
+                        "OpenAI API key is missing required scope 'model.request'. "
+                        "Use a key with model request permissions (and appropriate project/org role)."
+                    ) from exc
+                if attempt >= self.config.max_retries:
+                    telemetry.event(op_id, "error", "openai responses call failed", {"error": str(exc)})
+                    raise
+                telemetry.event(op_id, "warn", "openai responses retry", {"attempt": attempt, "error": str(exc)})
+                await asyncio.sleep(backoff)
+                backoff *= 2
+            except Exception as exc:
+                if exc.__class__.__name__ in {"RateLimitError", "APIError"}:
+                    if _is_missing_scope_error(exc):
+                        telemetry.event(op_id, "error", "openai responses missing scope", {"error": str(exc)})
+                        raise PermissionError(
+                            "OpenAI API key is missing required scope 'model.request'. "
+                            "Use a key with model request permissions (and appropriate project/org role)."
+                        ) from exc
+                    if attempt >= self.config.max_retries:
+                        telemetry.event(op_id, "error", "openai responses call failed", {"error": str(exc)})
+                        raise
+                    telemetry.event(op_id, "warn", "openai responses retry", {"attempt": attempt, "error": str(exc)})
+                    await asyncio.sleep(backoff)
+                    backoff *= 2
+                    continue
+                telemetry.event(op_id, "error", "unexpected responses failure")
+                raise
+
+
     def _build_request(
         self,
         prompt: str,
@@ -289,6 +386,24 @@ class OpenAIClient:
         if temperature is not None:
             kwargs["temperature"] = temperature
 
+        return kwargs
+
+    def _build_responses_request(
+        self,
+        prompt: str,
+        *,
+        model: str,
+        reasoning_effort: str | None,
+        max_output_tokens: int | None,
+    ) -> dict[str, Any]:
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "input": prompt,
+        }
+        if reasoning_effort is not None:
+            kwargs["reasoning"] = {"effort": reasoning_effort}
+        if max_output_tokens is not None:
+            kwargs["max_output_tokens"] = max_output_tokens
         return kwargs
 
     def _report_usage(self, response: Any, *, model: str, operation: str) -> None:
@@ -444,6 +559,33 @@ def _extract_payload(response: Any) -> str:
     return "{}"
 
 
+def _extract_responses_payload(response: Any) -> str:
+    """Extract plain text from a Responses API response or compatible fake."""
+
+    output_text = getattr(response, "output_text", None)
+    if isinstance(output_text, str):
+        return output_text
+    if isinstance(response, dict):
+        output_text = response.get("output_text")
+        if isinstance(output_text, str):
+            return output_text
+        output = response.get("output", [])
+    else:
+        output = getattr(response, "output", [])
+
+    text_parts: list[str] = []
+    for item in output or []:
+        content = item.get("content", []) if isinstance(item, dict) else getattr(item, "content", [])
+        for part in content or []:
+            if isinstance(part, dict):
+                text = part.get("text")
+            else:
+                text = getattr(part, "text", None)
+            if isinstance(text, str):
+                text_parts.append(text)
+    return "\n".join(text_parts)
+
+
 def _extract_usage(response: Any) -> dict[str, int] | None:
     usage = None
     if hasattr(response, "usage"):
@@ -454,12 +596,12 @@ def _extract_usage(response: Any) -> dict[str, int] | None:
         return None
 
     if isinstance(usage, dict):
-        prompt_tokens = int(usage.get("prompt_tokens", 0) or 0)
-        completion_tokens = int(usage.get("completion_tokens", 0) or 0)
+        prompt_tokens = int(usage.get("prompt_tokens", usage.get("input_tokens", 0)) or 0)
+        completion_tokens = int(usage.get("completion_tokens", usage.get("output_tokens", 0)) or 0)
         total_tokens = int(usage.get("total_tokens", prompt_tokens + completion_tokens) or 0)
     else:
-        prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
-        completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
+        prompt_tokens = int(getattr(usage, "prompt_tokens", getattr(usage, "input_tokens", 0)) or 0)
+        completion_tokens = int(getattr(usage, "completion_tokens", getattr(usage, "output_tokens", 0)) or 0)
         total_tokens = int(getattr(usage, "total_tokens", prompt_tokens + completion_tokens) or 0)
     return {
         "prompt_tokens": max(0, prompt_tokens),
@@ -527,6 +669,40 @@ async def _run_with_heartbeat(
 
     def _call() -> Any:
         return client.chat.completions.create(**kwargs)
+
+    future = loop.run_in_executor(None, _call)
+    try:
+        while True:
+            try:
+                return await asyncio.wait_for(asyncio.shield(future), timeout=heartbeat_s)
+            except asyncio.TimeoutError:
+                elapsed = time.monotonic() - start
+                telemetry.heartbeat(op_id, elapsed)
+                continue
+    finally:
+        if not future.done():
+            future.cancel()
+            with contextlib.suppress(Exception):
+                await future
+
+
+async def _run_responses_with_heartbeat(
+    client: Any,
+    kwargs: dict[str, Any],
+    telemetry: Telemetry,
+    op_id: str,
+    start: float,
+    heartbeat_s: float,
+) -> Any:
+    """Execute a blocking OpenAI Responses API call in an executor with heartbeats."""
+
+    loop = asyncio.get_running_loop()
+
+    def _call() -> Any:
+        responses = getattr(client, "responses", None)
+        if responses is None or not hasattr(responses, "create"):
+            raise AttributeError("OpenAI client does not expose responses.create")
+        return responses.create(**kwargs)
 
     future = loop.run_in_executor(None, _call)
     try:
