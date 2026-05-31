@@ -57,7 +57,7 @@ Minimum local or server prerequisites:
 
 1. **Supported host environment.** Use a host supported by the Codex CLI distribution used for deployment, for example macOS, Linux, or Windows through WSL2. Prefer the same OS family in staging and production so sandbox behaviour can be tested before release.
 2. **Codex CLI executable.** Install the maintained OpenAI Codex CLI through an approved route such as the official install script, `npm install -g @openai/codex`, Homebrew, or a pinned release binary. For production, prefer a pinned binary or container image rather than a floating global install.
-3. **Authentication.** Configure Codex authentication for the account or service identity that is allowed to answer project-understanding questions. The secret must be available to Codex at runtime but must not be written into evidence records, web responses, stderr displays, or committed config.
+3. **Authentication.** Configure Codex authentication for the account or service identity that is allowed to answer project-understanding questions. This is not a separate C-LARA-2 licence key: Codex must be signed in with ChatGPT, an OpenAI API key, or an enterprise Codex access token before `codex exec` can call the OpenAI service. A `401 Unauthorized` response from `https://api.openai.com/v1/responses` means the CLI did not have valid cached credentials or a valid bearer token. The secret must be available to Codex at runtime but must not be written into evidence records, web responses, stderr displays, or committed config.
 4. **Repository checkout.** Provide a checked-out C-LARA-2 repository at a fixed configured path, initially something like `/srv/C-LARA-2` in production and the developer's working tree locally. Git should be installed if the system records `git rev-parse HEAD` or uses repository metadata.
 5. **Writable Codex state outside the repository.** Even a read-only repository run may need a writable home/cache/session directory for the CLI itself. Configure `HOME` or `CODEX_HOME` to a dedicated service directory that contains no unrelated secrets and is excluded from the evidence record.
 6. **Network access to OpenAI services.** The process running `codex exec` needs outbound network access required by the Codex CLI. Other outbound access should be minimized in production.
@@ -73,6 +73,17 @@ npm install -g @openai/codex
 codex --version
 codex exec --help
 
+# Authenticate once before the smoke test. Use exactly one route:
+#   1. Browser login for a local developer machine.
+codex login
+#   2. Device-code login for a terminal/headless machine.
+# codex login --device-auth
+#   3. API-key login for automation or a service account.
+# printenv OPENAI_API_KEY | codex login --with-api-key
+
+# Confirm that Codex has usable cached credentials.
+codex login status
+
 # Run a local read-only smoke test from a C-LARA-2 checkout.
 # On Windows/Cygwin/Git Bash, use a forward-slash path such as
 # C:/cygwin64/home/github/c-lara-2 or normalize CLARA2 first.
@@ -85,7 +96,34 @@ printf '%s\n' 'Summarise the repository in three bullet points; cite files if po
     --model gpt-5.3-codex -
 ```
 
-The smoke-test syntax above matches `codex-cli 0.135.0`, where `codex exec [OPTIONS] [PROMPT]` reads the prompt from stdin when `-` is used or when no prompt argument is provided. That version does **not** support the older `--ask-for-approval never` flag, so the wrapper should not include it. For a machine where `CLARA2` is set to a Windows-style path such as `C:\cygwin64\home\github\c-lara-2`, use `REPO_ROOT="${CLARA2//\\//}"` in Bash to pass `C:/cygwin64/home/github/c-lara-2` to `--cd`. If a later version reintroduces an approval-control option, the wrapper can fail closed unless the option is explicitly configured to refuse interactive/privileged escalation. In all versions, preserve the same safety properties: no shell interpolation of user text, fixed repository path, read-only sandbox, non-interactive operation, and bounded runtime.
+The smoke-test syntax above matches `codex-cli 0.135.0`, where `codex exec [OPTIONS] [PROMPT]` reads the prompt from stdin when `-` is used or when no prompt argument is provided. That version does **not** support the older `--ask-for-approval never` flag, so the wrapper should not include it. For a machine where `CLARA2` is set to a Windows-style path such as `C:\cygwin64\home\github\c-lara-2`, use `REPO_ROOT="${CLARA2//\\//}"` in Bash to pass `C:/cygwin64/home/github/c-lara-2` to `--cd`. A `401 Unauthorized` during the smoke test is an authentication problem, not a sandbox or repository-path problem: run `codex login status`, then sign in with ChatGPT, use device-code login, or pipe an OpenAI API key into `codex login --with-api-key`. If a later version reintroduces an approval-control option, the wrapper can fail closed unless the option is explicitly configured to refuse interactive/privileged escalation. In all versions, preserve the same safety properties: no shell interpolation of user text, fixed repository path, read-only sandbox, non-interactive operation, and bounded runtime.
+
+
+#### Authentication setup and 401 diagnostics
+
+A successful installation only proves that the `codex` binary is present. It does not prove that the CLI has a valid credential. The project should document the credential setup separately from the smoke test:
+
+- **Local developer machine:** run `codex login` and complete the ChatGPT browser login, then verify with `codex login status`. This uses the developer's ChatGPT/Codex entitlement and cached local credentials.
+- **Headless local or staging machine:** run `codex login --device-auth` if browser login cannot complete on the same machine.
+- **Automation or service account:** prefer an OpenAI API key or enterprise Codex access token provisioned specifically for this feature. Pipe it into `codex login --with-api-key` or the corresponding access-token login flow; do not put the key directly on the command line, in a prompt, in a committed config file, or in an evidence record.
+- **Production worker:** set `CODEX_HOME` to a locked-down service directory, authenticate the worker identity once during deployment or startup, and run `codex login status` as a readiness check before accepting web jobs. If the check fails, the feature should be disabled or return an administrator-facing configuration error.
+
+For the first local retry after a `401`, the recommended sequence is:
+
+```bash
+codex login status
+# If not authenticated, choose one:
+codex login
+# or: codex login --device-auth
+# or: printenv OPENAI_API_KEY | codex login --with-api-key
+
+codex login status
+REPO_ROOT="${CLARA2//\\//}"
+printf '%s\n' 'Summarise the repository in three bullet points; cite files if possible.' | \
+  codex exec --cd "$REPO_ROOT" --sandbox read-only --ephemeral --model gpt-5.3-codex -
+```
+
+A `401 Unauthorized` with text such as `Missing bearer or basic authentication in header` means Codex reached the OpenAI endpoint but did not send a usable credential. The immediate remediation is to authenticate or refresh the cached credential, not to change the repository path, sandbox mode, model prompt, or read-only safety settings.
 
 ### Safe invocation model
 
