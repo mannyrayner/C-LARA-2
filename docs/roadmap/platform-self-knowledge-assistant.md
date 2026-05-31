@@ -32,7 +32,7 @@ Instead, the platform should:
 
 1. Accept a restricted user's project-understanding question.
 2. Build a concise, versioned instruction prompt that tells Codex to answer from the C-LARA-2 repository, cite files, distinguish implemented from planned work, and identify uncertainty.
-3. Invoke `codex exec` in the deployed C-LARA-2 checkout with a read-only sandbox and no approval prompts.
+3. Invoke `codex exec` in the deployed C-LARA-2 checkout with a read-only sandbox, non-interactive stdin prompt passing, and no unsupported approval flags.
 4. Let Codex inspect the repository and choose evidence files itself.
 5. Capture Codex's stdout/stderr, exit status, model name, prompt version, repository path, and timestamp.
 6. Store the answer and metadata as a versionable project-understanding evidence record.
@@ -43,12 +43,131 @@ A representative command shape is:
 codex exec \
   --cd /srv/C-LARA-2 \
   --sandbox read-only \
-  --ask-for-approval never \
-  --model gpt-5.3-codex \
-  "$(cat prompt.txt)"
+  --ephemeral \
+  --model gpt-5.3-codex - < prompt.txt
 ```
 
 The exact command should be generated without shell-injection hazards; production code should prefer `subprocess.run([...], input=prompt_text, ...)` or an equivalently safe argument vector over interpolating untrusted text into a shell command. The example above is documentation of the intended Codex invocation semantics, not a prescription to use unsafe shell string construction.
+
+### Installation and runtime prerequisites for `codex exec`
+
+The platform does not need to embed Codex as a Python library. It needs a working, pinned Codex CLI executable available to the process that runs the management command or background worker. The installation checklist should be explicit because local development, staging, and production may use different operating-system images.
+
+Minimum local or server prerequisites:
+
+1. **Supported host environment.** Use a host supported by the Codex CLI distribution used for deployment, for example macOS, Linux, or Windows through WSL2. Prefer the same OS family in staging and production so sandbox behaviour can be tested before release.
+2. **Codex CLI executable.** Install the maintained OpenAI Codex CLI through an approved route such as the official install script, `npm install -g @openai/codex`, Homebrew, or a pinned release binary. For production, prefer a pinned binary or container image rather than a floating global install.
+3. **Authentication.** Configure Codex authentication for the account or service identity that is allowed to answer project-understanding questions. This is not a separate C-LARA-2 licence key: Codex must be signed in with ChatGPT, an OpenAI API key, or an enterprise Codex access token before `codex exec` can call the OpenAI service. A `401 Unauthorized` response from `https://api.openai.com/v1/responses` means the CLI did not have valid cached credentials or a valid bearer token. The secret must be available to Codex at runtime but must not be written into evidence records, web responses, stderr displays, or committed config.
+4. **Repository checkout.** Provide a checked-out C-LARA-2 repository at a fixed configured path, initially something like `/srv/C-LARA-2` in production and the developer's working tree locally. Git should be installed if the system records `git rev-parse HEAD` or uses repository metadata.
+5. **Writable Codex state outside the repository.** Even a read-only repository run may need a writable home/cache/session directory for the CLI itself. Configure `HOME` or `CODEX_HOME` to a dedicated service directory that contains no unrelated secrets and is excluded from the evidence record.
+6. **Network access to OpenAI services.** The process running `codex exec` needs outbound network access required by the Codex CLI. Other outbound access should be minimized in production.
+7. **Version and capability check.** Deployment should verify `codex --version` and `codex exec --help` during setup, record the version used for evidence runs, and fail closed if the required flags are unavailable.
+
+A developer bootstrap note can be included in the feature documentation, for example:
+
+```bash
+# Choose one approved install route and pin it where practical.
+npm install -g @openai/codex
+
+# Verify the installed CLI and the non-interactive command.
+codex --version
+codex exec --help
+
+# Authenticate once before the smoke test. Use exactly one route:
+#   1. Browser login for a local developer machine.
+codex login
+#   2. Device-code login for a terminal/headless machine.
+# codex login --device-auth
+#   3. API-key login for automation or a service account.
+# printenv OPENAI_API_KEY | codex login --with-api-key
+
+# Confirm that Codex has usable cached credentials.
+codex login status
+
+# Run a local read-only smoke test from a C-LARA-2 checkout.
+# On Windows/Cygwin/Git Bash, use a forward-slash path such as
+# C:/cygwin64/home/github/c-lara-2 or normalize CLARA2 first.
+REPO_ROOT="/path/to/C-LARA-2"
+printf '%s\n' 'Summarise the repository in three bullet points; cite files if possible.' | \
+  codex exec \
+    --cd "$REPO_ROOT" \
+    --sandbox read-only \
+    --ephemeral \
+    --model gpt-5.3-codex -
+```
+
+The smoke-test syntax above matches `codex-cli 0.135.0`, where `codex exec [OPTIONS] [PROMPT]` reads the prompt from stdin when `-` is used or when no prompt argument is provided. That version does **not** support the older `--ask-for-approval never` flag, so the wrapper should not include it. For a machine where `CLARA2` is set to a Windows-style path such as `C:\cygwin64\home\github\c-lara-2`, use `REPO_ROOT="${CLARA2//\\//}"` in Bash to pass `C:/cygwin64/home/github/c-lara-2` to `--cd`. A `401 Unauthorized` during the smoke test is an authentication problem, not a sandbox or repository-path problem: run `codex login status`, then sign in with ChatGPT, use device-code login, or pipe an OpenAI API key into `codex login --with-api-key`. If a later version reintroduces an approval-control option, the wrapper can fail closed unless the option is explicitly configured to refuse interactive/privileged escalation. In all versions, preserve the same safety properties: no shell interpolation of user text, fixed repository path, read-only sandbox, non-interactive operation, and bounded runtime.
+
+
+#### Authentication setup and 401 diagnostics
+
+A successful installation only proves that the `codex` binary is present. It does not prove that the CLI has a valid credential. The project should document the credential setup separately from the smoke test:
+
+- **Local developer machine:** run `codex login` and complete the ChatGPT browser login, then verify with `codex login status`. This uses the developer's ChatGPT/Codex entitlement and cached local credentials.
+- **Headless local or staging machine:** run `codex login --device-auth` if browser login cannot complete on the same machine.
+- **Automation or service account:** prefer an OpenAI API key or enterprise Codex access token provisioned specifically for this feature. Pipe it into `codex login --with-api-key` or the corresponding access-token login flow; do not put the key directly on the command line, in a prompt, in a committed config file, or in an evidence record.
+- **Production worker:** set `CODEX_HOME` to a locked-down service directory, authenticate the worker identity once during deployment or startup, and run `codex login status` as a readiness check before accepting web jobs. If the check fails, the feature should be disabled or return an administrator-facing configuration error.
+
+For the first local retry after a `401`, the recommended sequence is:
+
+```bash
+codex login status
+# If not authenticated, choose one:
+codex login
+# or: codex login --device-auth
+# or: printenv OPENAI_API_KEY | codex login --with-api-key
+
+codex login status
+REPO_ROOT="${CLARA2//\\//}"
+printf '%s\n' 'Summarise the repository in three bullet points; cite files if possible.' | \
+  codex exec --cd "$REPO_ROOT" --sandbox read-only --ephemeral --model gpt-5.3-codex -
+```
+
+A `401 Unauthorized` with text such as `Missing bearer or basic authentication in header` means Codex reached the OpenAI endpoint but did not send a usable credential. The immediate remediation is to authenticate or refresh the cached credential, not to change the repository path, sandbox mode, model prompt, or read-only safety settings.
+
+### Safe invocation model
+
+The first safety goal is to make a project-understanding run answer-only. It should be unable to mutate the repository, trigger platform actions, leak secrets, or turn a user's prompt into a shell command. Safety should be layered, starting with local development and then tightened for web deployment.
+
+#### Local-machine safety baseline
+
+For local management-command development and report-oriented batch runs:
+
+- run from a disposable or clean checkout when possible, or verify that `--sandbox read-only` prevents writes to the working tree before trusting it;
+- use a non-privileged OS user and avoid running Codex as `root`;
+- invoke Codex with an argument vector, not `shell=True`, for example `subprocess.run([codex_path, "exec", "--cd", repo_path, "--sandbox", "read-only", "--ephemeral", "--model", model, "-"], input=prompt_text, text=True, timeout=timeout_seconds, ...)`;
+- keep the repository path, model, timeout, and Codex executable path in trusted configuration rather than user-controllable form fields;
+- pass the user's question only inside the versioned prompt text, and impose prompt/question length limits before invoking Codex;
+- use `--sandbox read-only` on every run and do not pass unsupported approval flags; treat any interactive prompt, non-zero exit status, timeout, or unexpected stderr as a failed or review-required run;
+- set a minimal environment for the subprocess, preserving only variables needed for Codex authentication and ordinary execution;
+- store CLI cache/session data in a dedicated directory separate from the repository and inspect whether it contains sensitive material before deciding what, if anything, can be logged;
+- capture stdout, stderr, exit status, timeout state, model, prompt version, repository commit, and Codex version, but redact secrets and local-only paths before showing output in a UI or committing evidence records;
+- HTML-escape rendered answers in any local preview because repository text and model output are untrusted content.
+
+This baseline is appropriate for an administrator manually running a management command. It is not sufficient by itself for a public or semi-public web surface because a web request can create concurrency, cost, abuse, and data-exposure risks.
+
+#### Web-environment safety baseline
+
+For a staff-only web feature, the web process should not simply run a shell command synchronously inside the request handler. A safer architecture is:
+
+1. The Django view authenticates and authorizes the staff user, validates the question length/type, creates a pending run record, and enqueues a background job.
+2. A dedicated worker process runs Codex under a locked-down service account with a fixed configuration.
+3. The worker executes Codex in a container, VM, or OS sandbox with the repository mounted read-only and no write access to the application database except through the narrow result-recording path.
+4. The worker applies strict timeout, output-size, concurrency, and rate limits; marks timed-out or failed runs as review-required; and never retries unboundedly.
+5. The UI displays completed answers with escaping, reviewer status, command metadata, and warnings for stderr/non-zero exits, but hides secrets, raw environment, and unnecessary server paths.
+
+Additional web hardening should include:
+
+- staff-only access controls, audit logging, CSRF protection, and per-user/project rate limits;
+- egress controls that allow OpenAI API traffic but block arbitrary internal-network access where possible;
+- no access to Docker sockets, cloud instance metadata, deployment credentials, user-upload stores, production databases, or private project data outside the intended repository checkout;
+- a read-only bind mount for the repository and a small writable scratch/cache directory that can be deleted after each run or rotated regularly;
+- a queue-level budget guard so repeated questions cannot create uncontrolled model spend;
+- output-size limits and safe truncation rules for stdout/stderr;
+- human review before any evidence record is committed back into the repository;
+- regular smoke tests that prove the configured worker cannot write to the repository, cannot access disallowed paths, handles prompt-injection attempts as data, and records failures transparently.
+
+These controls do not make Codex a trusted actor. They make Codex an untrusted subprocess that is useful for repository reading and explanation while the platform retains control over identity, inputs, execution boundaries, output handling, and evidence publication.
 
 ### Why `codex exec` rather than a normal API call
 
@@ -56,7 +175,7 @@ The exact command should be generated without shell-injection hazards; productio
 - The platform does not need to build or maintain a retrieval/indexing layer for the first version.
 - Evidence selection remains part of the model/tool task, where project-development experience shows it works well.
 - The implementation can start as a restricted management command or staff-only action that shells out to Codex, avoiding premature productisation.
-- Running with `--sandbox read-only` and `--ask-for-approval never` makes the intended first version answer-only: Codex can read repository files but cannot mutate the repo or request privileged follow-up actions.
+- Running with `--sandbox read-only` makes the intended first version answer-only: Codex can read repository files but cannot mutate the repo. With current `codex-cli 0.135.0` syntax, the platform should rely on non-interactive `codex exec` plus timeout/error handling rather than passing the unsupported `--ask-for-approval never` option.
 
 ## Relationship to existing dialogue work
 
@@ -72,7 +191,7 @@ This roadmap is related to, but narrower and more evidence-oriented than, [the f
 1. Access is initially restricted to admins or a clearly defined trusted group.
 2. The user enters a question through a simple platform form or management command.
 3. The system wraps the question in a prompt instructing Codex to answer from the C-LARA-2 repository.
-4. The system invokes `codex exec` against the server checkout, initially `/srv/C-LARA-2`, with `--sandbox read-only`, `--ask-for-approval never`, and a pinned/default Codex model such as `gpt-5.3-codex`.
+4. The system invokes `codex exec` against the server checkout, initially `/srv/C-LARA-2`, with `--sandbox read-only`, non-interactive stdin prompt passing, and a pinned/default Codex model such as `gpt-5.3-codex`.
 5. Codex, not the platform, is responsible for deciding which repository files to inspect.
 6. The answer distinguishes implemented functionality from planned or speculative functionality.
 7. The answer cites supporting files wherever possible.
@@ -136,7 +255,7 @@ Use a repository-visible evidence log, for example under `docs/project_understan
 - model name and Codex invocation route;
 - prompt version;
 - repository path and repository commit where available;
-- command metadata, including sandbox mode, approval mode, exit status, timeout, and whether stderr was non-empty;
+- command metadata, including sandbox mode, interaction/approval policy for the installed CLI version, exit status, timeout, and whether stderr was non-empty;
 - cited/supporting files as reported by Codex or extracted from the answer;
 - whether the answer says evidence is missing or uncertain;
 - human assessment field: `unreviewed`, `accurate`, `partially accurate`, `inaccurate`, or `unclear`;
@@ -161,7 +280,7 @@ The UI can be minimal: a question box, answer pane, supporting-file list or extr
 The assistant should reason over publicly available repository content, but the production platform still needs strict boundaries:
 
 - restrict initial access to admins/trusted users;
-- run Codex with `--sandbox read-only` and `--ask-for-approval never`;
+- run Codex with `--sandbox read-only`, non-interactive prompt passing, and no unsupported approval flags;
 - use a fixed repository checkout path controlled by configuration, not arbitrary user-supplied paths;
 - pass user questions to Codex without unsafe shell interpolation;
 - apply request length limits and execution timeouts;
@@ -189,14 +308,14 @@ The assistant should reason over publicly available repository content, but the 
 ### Phase A: revised planning and command design
 
 - Treat the normal API/retrieval-wrapper approach as superseded for the main architecture.
-- Define the first `codex exec` command contract: executable, repository path, sandbox mode, approval mode, model, timeout, prompt passing, and output capture.
+- Define the first `codex exec` command contract: executable, repository path, sandbox mode, non-interactive mode, model, timeout, prompt passing, and output capture.
 - Version the Codex prompt and decide how prompt versions are stored.
 - Define the record schema and create `docs/project_understanding/` conventions.
 - Choose the first set of report-relevant evaluation questions.
 
 ### Phase B: restricted management-command prototype
 
-- Build a management command that accepts a question, constructs the versioned Codex prompt, invokes `codex exec` in read-only/no-approval mode, and prints the answer.
+- Build a management command that accepts a question, constructs the versioned Codex prompt, invokes `codex exec` in read-only/non-interactive mode, and prints the answer.
 - Store each run as a versionable record with command metadata and human assessment placeholders.
 - Add tests for prompt construction, safe subprocess argument construction, timeout/error paths, record serialization, and missing-evidence behaviour.
 - Run a small curated question set manually and inspect whether Codex cites useful files and distinguishes implemented/planned work.
