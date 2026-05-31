@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "issue_id": "ISSUE-0035",
+  "title": "Track intermittent Codex PR update-branch refusal",
+  "state": "reported",
+  "priority": "P2",
+  "created_at": "2026-05-31T09:29:15Z",
+  "updated_at": "2026-05-31T09:29:15Z",
+  "origin": "human-suggestion",
+  "notes": "Created from human suggestion #25 (submitted by mannyrayner on 2026-05-31). Starting on 2026-05-30, maintainers have intermittently seen anomalous Codex responses while using the Codex PR 'Update branch' flow, including the message 'Codex does not currently support updating PRs that are updated outside of Codex. For now, please create a new PR.' Scope: track occurrences with dates, affected PR/session context, whether the branch had actually been updated outside Codex, and available workarounds; determine whether this is a Codex product limitation, a GitHub branch-state edge case, or a C-LARA-2 workflow/documentation issue; update maintainer guidance if needed. Priority is P2 because the issue can disrupt AI-assisted maintenance and PR hygiene, but the current workaround is to create a new PR and it does not directly affect deployed C-LARA-2 user functionality.",
+  "deadline": null,
+  "dependencies": []
+}
