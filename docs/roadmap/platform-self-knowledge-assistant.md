@@ -125,6 +125,27 @@ printf '%s\n' 'Summarise the repository in three bullet points; cite files if po
 
 A `401 Unauthorized` with text such as `Missing bearer or basic authentication in header` means Codex reached the OpenAI endpoint but did not send a usable credential. The immediate remediation is to authenticate or refresh the cached credential, not to change the repository path, sandbox mode, model prompt, or read-only safety settings.
 
+#### Expected successful smoke-test output
+
+A successful smoke test should look like a normal Codex non-interactive session rather than a silent API call. The transcript will typically include:
+
+- a Codex session header showing the CLI version, working directory, model, provider, approval policy, sandbox mode, reasoning settings, and session ID;
+- one or more `exec` events where Codex inspects repository files, commonly using read-only commands such as `rg`, `sed`, or equivalent platform-native shell commands;
+- command-result blocks showing matching file lines or short snippets that Codex used as evidence;
+- a final answer in the requested format, ideally with concise bullets and citations to repository files and line numbers;
+- a token-usage summary.
+
+For the first `Summarise the repository in three bullet points; cite files if possible.` smoke question, plausible behaviour is that Codex searches `README.md`, `docs/README.md`, pipeline code such as `src/pipeline/full_pipeline.py`, Django models such as `platform_server/projects/models.py`, and representative tests such as `tests/test_12_full_pipeline.py`. A good answer should summarize that C-LARA-2 is an AI-assisted language-learning content platform, that the implementation combines a staged Python pipeline with a Django application, and that the repository has tests/CI and operational documentation.
+
+Some transcript details are useful operational metadata but should not be treated as part of the polished user answer. In particular, the platform should separate or redact:
+
+- absolute local/server paths such as `C:\cygwin64\home\github\c-lara-2` or `/srv/C-LARA-2` before displaying answers beyond trusted administrators;
+- raw `exec` traces unless the UI is intentionally showing a detailed run log;
+- session IDs and token counts if they are not needed for the evidence record;
+- duplicated transcript blocks if stdout/stderr capture or terminal copy/paste includes the same run twice.
+
+The important success signal is not the exact wording of the smoke-test answer. It is that Codex authenticates successfully, stays in `read-only` sandbox mode, chooses evidence files itself, cites concrete repository locations, and produces a bounded answer without mutating the checkout.
+
 ### Safe invocation model
 
 The first safety goal is to make a project-understanding run answer-only. It should be unable to mutate the repository, trigger platform actions, leak secrets, or turn a user's prompt into a shell command. Safety should be layered, starting with local development and then tightened for web deployment.
