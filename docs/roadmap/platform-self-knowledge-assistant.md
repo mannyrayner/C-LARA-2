@@ -50,6 +50,85 @@ codex exec \
 
 The exact command should be generated without shell-injection hazards; production code should prefer `subprocess.run([...], input=prompt_text, ...)` or an equivalently safe argument vector over interpolating untrusted text into a shell command. The example above is documentation of the intended Codex invocation semantics, not a prescription to use unsafe shell string construction.
 
+### Installation and runtime prerequisites for `codex exec`
+
+The platform does not need to embed Codex as a Python library. It needs a working, pinned Codex CLI executable available to the process that runs the management command or background worker. The installation checklist should be explicit because local development, staging, and production may use different operating-system images.
+
+Minimum local or server prerequisites:
+
+1. **Supported host environment.** Use a host supported by the Codex CLI distribution used for deployment, for example macOS, Linux, or Windows through WSL2. Prefer the same OS family in staging and production so sandbox behaviour can be tested before release.
+2. **Codex CLI executable.** Install the maintained OpenAI Codex CLI through an approved route such as the official install script, `npm install -g @openai/codex`, Homebrew, or a pinned release binary. For production, prefer a pinned binary or container image rather than a floating global install.
+3. **Authentication.** Configure Codex authentication for the account or service identity that is allowed to answer project-understanding questions. The secret must be available to Codex at runtime but must not be written into evidence records, web responses, stderr displays, or committed config.
+4. **Repository checkout.** Provide a checked-out C-LARA-2 repository at a fixed configured path, initially something like `/srv/C-LARA-2` in production and the developer's working tree locally. Git should be installed if the system records `git rev-parse HEAD` or uses repository metadata.
+5. **Writable Codex state outside the repository.** Even a read-only repository run may need a writable home/cache/session directory for the CLI itself. Configure `HOME` or `CODEX_HOME` to a dedicated service directory that contains no unrelated secrets and is excluded from the evidence record.
+6. **Network access to OpenAI services.** The process running `codex exec` needs outbound network access required by the Codex CLI. Other outbound access should be minimized in production.
+7. **Version and capability check.** Deployment should verify `codex --version` and `codex exec --help` during setup, record the version used for evidence runs, and fail closed if the required flags are unavailable.
+
+A developer bootstrap note can be included in the feature documentation, for example:
+
+```bash
+# Choose one approved install route and pin it where practical.
+npm install -g @openai/codex
+
+# Verify the installed CLI and the non-interactive command.
+codex --version
+codex exec --help
+
+# Run a local read-only smoke test from a C-LARA-2 checkout.
+printf '%s\n' 'Summarise the repository in three bullet points; cite files if possible.' | \
+  codex exec \
+    --cd /path/to/C-LARA-2 \
+    --sandbox read-only \
+    --ask-for-approval never \
+    --model gpt-5.3-codex -
+```
+
+The final smoke-test syntax should be confirmed against the installed CLI version. If a version does not accept `-` as stdin, the wrapper should pass the prompt using the supported non-interactive input method for that version while preserving the same safety properties: no shell interpolation of user text, fixed repository path, read-only sandbox, no approvals, and bounded runtime.
+
+### Safe invocation model
+
+The first safety goal is to make a project-understanding run answer-only. It should be unable to mutate the repository, trigger platform actions, leak secrets, or turn a user's prompt into a shell command. Safety should be layered, starting with local development and then tightened for web deployment.
+
+#### Local-machine safety baseline
+
+For local management-command development and report-oriented batch runs:
+
+- run from a disposable or clean checkout when possible, or verify that `--sandbox read-only` prevents writes to the working tree before trusting it;
+- use a non-privileged OS user and avoid running Codex as `root`;
+- invoke Codex with an argument vector, not `shell=True`, for example `subprocess.run([codex_path, "exec", "--cd", repo_path, "--sandbox", "read-only", "--ask-for-approval", "never", "--model", model], input=prompt_text, text=True, timeout=timeout_seconds, ...)`;
+- keep the repository path, model, timeout, and Codex executable path in trusted configuration rather than user-controllable form fields;
+- pass the user's question only inside the versioned prompt text, and impose prompt/question length limits before invoking Codex;
+- use `--sandbox read-only` and `--ask-for-approval never` on every run, then treat any request for approval, non-zero exit status, timeout, or unexpected stderr as a failed or review-required run;
+- set a minimal environment for the subprocess, preserving only variables needed for Codex authentication and ordinary execution;
+- store CLI cache/session data in a dedicated directory separate from the repository and inspect whether it contains sensitive material before deciding what, if anything, can be logged;
+- capture stdout, stderr, exit status, timeout state, model, prompt version, repository commit, and Codex version, but redact secrets and local-only paths before showing output in a UI or committing evidence records;
+- HTML-escape rendered answers in any local preview because repository text and model output are untrusted content.
+
+This baseline is appropriate for an administrator manually running a management command. It is not sufficient by itself for a public or semi-public web surface because a web request can create concurrency, cost, abuse, and data-exposure risks.
+
+#### Web-environment safety baseline
+
+For a staff-only web feature, the web process should not simply run a shell command synchronously inside the request handler. A safer architecture is:
+
+1. The Django view authenticates and authorizes the staff user, validates the question length/type, creates a pending run record, and enqueues a background job.
+2. A dedicated worker process runs Codex under a locked-down service account with a fixed configuration.
+3. The worker executes Codex in a container, VM, or OS sandbox with the repository mounted read-only and no write access to the application database except through the narrow result-recording path.
+4. The worker applies strict timeout, output-size, concurrency, and rate limits; marks timed-out or failed runs as review-required; and never retries unboundedly.
+5. The UI displays completed answers with escaping, reviewer status, command metadata, and warnings for stderr/non-zero exits, but hides secrets, raw environment, and unnecessary server paths.
+
+Additional web hardening should include:
+
+- staff-only access controls, audit logging, CSRF protection, and per-user/project rate limits;
+- egress controls that allow OpenAI API traffic but block arbitrary internal-network access where possible;
+- no access to Docker sockets, cloud instance metadata, deployment credentials, user-upload stores, production databases, or private project data outside the intended repository checkout;
+- a read-only bind mount for the repository and a small writable scratch/cache directory that can be deleted after each run or rotated regularly;
+- a queue-level budget guard so repeated questions cannot create uncontrolled model spend;
+- output-size limits and safe truncation rules for stdout/stderr;
+- human review before any evidence record is committed back into the repository;
+- regular smoke tests that prove the configured worker cannot write to the repository, cannot access disallowed paths, handles prompt-injection attempts as data, and records failures transparently.
+
+These controls do not make Codex a trusted actor. They make Codex an untrusted subprocess that is useful for repository reading and explanation while the platform retains control over identity, inputs, execution boundaries, output handling, and evidence publication.
+
 ### Why `codex exec` rather than a normal API call
 
 - Codex is already designed to operate inside a repository and inspect files as needed.
