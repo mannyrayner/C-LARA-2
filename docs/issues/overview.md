@@ -1,9 +1,9 @@
-# C-LARA-2 issue overview (refreshed 2026-05-30T11:20:00Z)
+# C-LARA-2 issue overview (refreshed 2026-05-31T09:29:15Z)
 
 ## Recent progress
-- Broadened **[ISSUE-0034](issues/ISSUE-0034.json)** from a narrow platform help assistant into a restricted project-understanding assistant grounded in publicly available C-LARA-2 repository materials.
-- Rewrote the associated [restricted project-understanding assistant roadmap](../roadmap/platform-self-knowledge-assistant.md) to include trusted-user access, public GitHub evidence scope, versioned question/answer records, human assessment fields, and report/autonomy evidence goals.
-- Refreshed this overview from canonical issue JSON while preserving the current focus ordering.
+- Added **[ISSUE-0035](issues/ISSUE-0035.json)** to track intermittent Codex PR update-branch refusals reported from 2026-05-30 onward.
+- Added the associated [Codex PR update-branch inconsistencies roadmap](../roadmap/codex-pr-update-branch-inconsistencies.md) so future occurrences can be logged with dates, branch/PR context, provenance checks, and workaround outcomes.
+- Refreshed this overview from canonical issue JSON and archived the previous focus index before adding ISSUE-0035 to the active focus list.
 
 ## Near-term priorities
 1. **[ISSUE-0031](issues/ISSUE-0031.json) (P1, reported)** — Improve compiled-content presentation context and configurable public access controls.
@@ -17,15 +17,16 @@
 9. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, reported)** — Write C-LARA-2 technical report and academic papers.
 10. **[ISSUE-0033](issues/ISSUE-0033.json) (P2, reported)** — Clean up and phase-track roadmap file maintenance.
 11. **[ISSUE-0034](issues/ISSUE-0034.json) (P2, reported)** — Add restricted project-understanding assistant with versioned evidence records.
-12. **[ISSUE-0006](issues/ISSUE-0006.json) (P2, reported)** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness.
-13. **[ISSUE-0005](issues/ISSUE-0005.json) (P2, reported)** — Tune segmentation_phase_1 prompting to improve segment granularity by genre.
-14. **[ISSUE-0004](issues/ISSUE-0004.json) (P2, reported)** — Introduce AI-based review gates for phase outputs with extensible evaluator architecture.
-15. **[ISSUE-0007](issues/ISSUE-0007.json) (P2, reported)** — Use LLM prompt-construction indirection for page-image generation prompts.
-16. **[ISSUE-0001](issues/ISSUE-0001.json) (P2, reported)** — Support hosted compiled legacy content registration in C-LARA-2.
+12. **[ISSUE-0035](issues/ISSUE-0035.json) (P2, reported)** — Track intermittent Codex PR update-branch refusal.
+13. **[ISSUE-0006](issues/ISSUE-0006.json) (P2, reported)** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness.
+14. **[ISSUE-0005](issues/ISSUE-0005.json) (P2, reported)** — Tune segmentation_phase_1 prompting to improve segment granularity by genre.
+15. **[ISSUE-0004](issues/ISSUE-0004.json) (P2, reported)** — Introduce AI-based review gates for phase outputs with extensible evaluator architecture.
+16. **[ISSUE-0007](issues/ISSUE-0007.json) (P2, reported)** — Use LLM prompt-construction indirection for page-image generation prompts.
+17. **[ISSUE-0001](issues/ISSUE-0001.json) (P2, reported)** — Support hosted compiled legacy content registration in C-LARA-2.
 
 ## Notes/risks
+- The Codex update-branch inconsistency is currently an external-tool/workflow risk rather than a confirmed C-LARA-2 code defect; useful next action is evidence capture rather than speculative code changes.
 - The restricted project-understanding assistant is intended to produce inspectable evidence records, not unreviewed promotional claims; human assessment fields are required before using outputs in the report.
-- Broad repository grounding increases usefulness but also raises retrieval quality, prompt-injection, cost, and stale-documentation risks that must be handled before implementation.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated UI/pipeline coverage.
 
 ## Complete issue inventory
@@ -66,3 +67,4 @@
 | [ISSUE-0032](issues/ISSUE-0032.json) | closed | P0 | Fix community judging image visibility for non-owner community members. |
 | [ISSUE-0033](issues/ISSUE-0033.json) | reported | P2 | Clean up and phase-track roadmap file maintenance. |
 | [ISSUE-0034](issues/ISSUE-0034.json) | reported | P2 | Add restricted project-understanding assistant with versioned evidence records. |
+| [ISSUE-0035](issues/ISSUE-0035.json) | reported | P2 | Track intermittent Codex PR update-branch refusal. |
