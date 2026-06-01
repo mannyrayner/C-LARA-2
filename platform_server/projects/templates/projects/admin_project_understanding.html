@@ -10,8 +10,10 @@
 
 <p style="border-left: 4px solid #b70; padding-left: 0.75rem;">
   Self-understanding calls can consume large token counts. Completed runs record the reported
-  total tokens and an estimated upper-bound cost using the OpenAI pricing table maintained in
-  <a href="{% url 'admin-tools' %}">admin tools</a>.
+  total tokens and a conservative upper-bound cost estimate using the OpenAI pricing table
+  maintained in <a href="{% url 'admin-tools' %}">admin tools</a>. The actual OpenAI Usage
+  page may be lower when billing applies input/cached-input pricing or other Codex accounting
+  not exposed in the CLI's single total-token count.
 </p>
 
 <ul>
@@ -53,7 +55,7 @@
       <tr><th>Prompt version</th><td><code id="project-understanding-prompt-version">{% if result %}{{ result.prompt_version }}{% endif %}</code></td></tr>
       <tr><th>Requested at</th><td><code id="project-understanding-requested-at">{% if result %}{{ result.requested_at }}{% endif %}</code></td></tr>
       <tr><th>Tokens used</th><td><code id="project-understanding-tokens">{% if result.tokens_used != None %}{{ result.tokens_used }}{% else %}unknown{% endif %}</code></td></tr>
-      <tr><th>Estimated cost</th><td><code id="project-understanding-cost">{% if result.estimated_cost_usd %}${{ result.estimated_cost_usd }}{% else %}unknown{% endif %}</code><br><small id="project-understanding-cost-basis">{% if result.cost_basis %}{{ result.cost_basis }}{% endif %}</small></td></tr>
+      <tr><th>Estimated upper-bound cost</th><td><code id="project-understanding-cost">{% if result.estimated_cost_usd %}${{ result.estimated_cost_usd }}{% else %}unknown{% endif %}</code><br><small id="project-understanding-cost-basis">{% if result.cost_basis %}{{ result.cost_basis }}{% endif %}</small></td></tr>
       <tr><th>Elapsed seconds</th><td><code id="project-understanding-elapsed">{% if result.elapsed_seconds != None %}{{ result.elapsed_seconds|floatformat:2 }}{% else %}unknown{% endif %}</code></td></tr>
       <tr><th>Exit status</th><td><code id="project-understanding-exit">{% if result.returncode != None %}{{ result.returncode }}{% else %}unknown{% endif %}</code></td></tr>
       <tr><th>Repository path</th><td><code id="project-understanding-repo">{% if result.repository_path %}{{ result.repository_path }}{% else %}unknown{% endif %}</code></td></tr>

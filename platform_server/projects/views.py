@@ -3233,7 +3233,7 @@ def _run_project_understanding_task(question: str, user_id: int, report_id: str)
             result = replace(
                 result,
                 estimated_cost_usd=f"{estimated_cost:.6f}",
-                cost_basis="Codex reports total tokens only; cost is an output-priced upper-bound estimate.",
+                cost_basis="Conservative upper-bound estimate: Codex reports total tokens only, so all reported tokens are priced at the output-token rate; actual OpenAI Usage charges may be lower.",
             )
         _write_project_understanding_result(report_id, result)
         elapsed = f"{result.elapsed_seconds:.1f}s" if result.elapsed_seconds is not None else "unknown time"
