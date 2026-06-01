@@ -11,6 +11,7 @@ urlpatterns = [
     path("issues/suggest/", views.submit_issue_suggestion, name="issue-suggestion-submit"),
     path("issues/update/", views.submit_issue_update_suggestion, name="issue-update-suggestion-submit"),
     path("admin-tools/project-understanding/", views.admin_project_understanding, name="admin-project-understanding"),
+    path("admin-tools/project-understanding/turns/", views.admin_project_understanding_turns, name="admin-project-understanding-turns"),
     path(
         "admin-tools/project-understanding/<uuid:report_id>/",
         views.admin_project_understanding_monitor,

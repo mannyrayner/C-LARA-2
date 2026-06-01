@@ -12,6 +12,7 @@
   <li>Repository path: <code>{{ repository_path }}</code></li>
   <li>Model: <code>{{ codex_model }}</code></li>
   <li>Timeout: <code>{{ timeout_seconds }}</code> seconds</li>
+  <li><a href="{% url 'admin-project-understanding-turns' %}">Search stored project-understanding turns</a></li>
 </ul>
 
 {% if report_id %}
@@ -53,36 +54,6 @@
     <pre id="project-understanding-stderr" style="white-space: pre-wrap; border: 1px solid #f2c; padding: 1rem; background: #fff8fb;">{% if result %}{{ result.stderr }}{% endif %}</pre>
   </section>
 </section>
-
-<h2>Stored project-understanding turns</h2>
-{% if stored_turns %}
-  <table border="1" cellpadding="6" cellspacing="0">
-    <thead>
-      <tr>
-        <th>Submitted</th>
-        <th>Question</th>
-        <th>Visibility</th>
-        <th>Status</th>
-        <th>Tokens</th>
-        <th>Elapsed</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for turn in stored_turns %}
-        <tr>
-          <td><a href="{% url 'admin-project-understanding-monitor' turn.report_id %}">{{ turn.submitted_at|default:turn.report_id }}</a></td>
-          <td>{{ turn.question|truncatechars:120 }}</td>
-          <td>{{ turn.visibility }}</td>
-          <td>{{ turn.status|default:"unknown" }}</td>
-          <td>{% if turn.tokens_used != None %}{{ turn.tokens_used }}{% else %}—{% endif %}</td>
-          <td>{% if turn.elapsed_seconds != None %}{{ turn.elapsed_seconds|floatformat:2 }}s{% else %}—{% endif %}</td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-{% else %}
-  <p>No stored project-understanding turns visible to you yet.</p>
-{% endif %}
 
 <p><a href="{% url 'admin-tools' %}">Back to admin tools</a></p>
 

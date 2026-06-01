@@ -2894,6 +2894,21 @@ PROJECT_UNDERSTANDING_TASK_TYPE = "admin_project_understanding"
 
 _MARKDOWN_LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
 _MARKDOWN_CODE_RE = re.compile(r"`([^`]+)`")
+_WINDOWS_ABSOLUTE_LINK_RE = re.compile(r"^/?[A-Za-z]:[\\/]")
+
+
+def _normalise_project_understanding_link_href(raw_href: str) -> str:
+    """Return a safe href for Codex answer links, including local repository paths."""
+
+    href = raw_href.strip()
+    href_for_path = href.replace("\\", "/")
+    if href_for_path.startswith("/") and len(href_for_path) > 2 and href_for_path[2] == ":":
+        href_for_path = href_for_path[1:]
+    if _WINDOWS_ABSOLUTE_LINK_RE.match(href):
+        return "file:///" + quote(href_for_path, safe="/:")
+    if href.lower().startswith(("http://", "https://", "/")):
+        return href
+    return ""
 
 
 def _render_project_understanding_inline_markdown(text: str) -> str:
@@ -2908,8 +2923,8 @@ def _render_project_understanding_inline_markdown(text: str) -> str:
         for match in _MARKDOWN_LINK_RE.finditer(chunk):
             parts.append(escape(chunk[last:match.start()]))
             label = escape(match.group(1))
-            href = match.group(2).strip()
-            if href.lower().startswith(("http://", "https://", "/")):
+            href = _normalise_project_understanding_link_href(match.group(2))
+            if href:
                 safe_href = escape(href)
                 parts.append(f'<a href="{safe_href}" target="_blank" rel="noopener noreferrer">{label}</a>')
             else:
@@ -3047,13 +3062,46 @@ def _list_project_understanding_turns(user) -> list[dict[str, Any]]:
                 "question": str(request_payload.get("question") or ""),
                 "visibility": visibility,
                 "username": str(request_payload.get("username") or ""),
+                "user_id": request_payload.get("user_id"),
                 "submitted_at": str(request_payload.get("submitted_at") or ""),
                 "status": latest_update.status if latest_update and latest_update.status else ("finished" if result else "running"),
                 "tokens_used": result.get("tokens_used") if result else None,
                 "elapsed_seconds": result.get("elapsed_seconds") if result else None,
             }
         )
-    return sorted(turns, key=lambda turn: turn.get("submitted_at") or turn["report_id"], reverse=True)[:50]
+    return sorted(turns, key=lambda turn: turn.get("submitted_at") or turn["report_id"], reverse=True)
+
+
+def _filter_project_understanding_turns(turns: list[dict[str, Any]], filters: dict[str, str]) -> list[dict[str, Any]]:
+    query = filters.get("q", "").strip().lower()
+    date_from = filters.get("date_from", "").strip()
+    date_to = filters.get("date_to", "").strip()
+    user_id = filters.get("user_id", "").strip()
+    visibility = filters.get("visibility", "").strip()
+    status = filters.get("status", "").strip()
+
+    filtered: list[dict[str, Any]] = []
+    for turn in turns:
+        submitted_date = str(turn.get("submitted_at") or "")[:10]
+        if query:
+            haystack = " ".join(
+                str(turn.get(field) or "")
+                for field in ("question", "username", "report_id", "status", "visibility")
+            ).lower()
+            if query not in haystack:
+                continue
+        if date_from and (not submitted_date or submitted_date < date_from):
+            continue
+        if date_to and (not submitted_date or submitted_date > date_to):
+            continue
+        if user_id and str(turn.get("user_id") or "") != user_id:
+            continue
+        if visibility and str(turn.get("visibility") or "") != visibility:
+            continue
+        if status and str(turn.get("status") or "") != status:
+            continue
+        filtered.append(turn)
+    return filtered
 
 
 def _write_project_understanding_result(report_id: str | uuid.UUID, result) -> None:
@@ -3185,12 +3233,36 @@ def admin_project_understanding(request: HttpRequest) -> HttpResponse:
             "form": form,
             "result": None,
             "result_answer_html": "",
-            "stored_turns": _list_project_understanding_turns(request.user),
             "report_id": None,
             "status_url": None,
             "repository_path": getattr(settings, "PROJECT_UNDERSTANDING_REPOSITORY_PATH", settings.ROOT_DIR),
             "codex_model": getattr(settings, "PROJECT_UNDERSTANDING_MODEL", "gpt-5.3-codex"),
             "timeout_seconds": getattr(settings, "PROJECT_UNDERSTANDING_TIMEOUT_SECONDS", 300),
+        },
+    )
+
+
+@login_required
+def admin_project_understanding_turns(request: HttpRequest) -> HttpResponse:
+    _require_admin(request.user)
+    filters = {
+        "q": request.GET.get("q", ""),
+        "date_from": request.GET.get("date_from", ""),
+        "date_to": request.GET.get("date_to", ""),
+        "user_id": request.GET.get("user_id", ""),
+        "visibility": request.GET.get("visibility", ""),
+        "status": request.GET.get("status", ""),
+    }
+    all_visible_turns = _list_project_understanding_turns(request.user)
+    turns = _filter_project_understanding_turns(all_visible_turns, filters)[:100]
+    return render(
+        request,
+        "projects/admin_project_understanding_turns.html",
+        {
+            "turns": turns,
+            "filters": filters,
+            "visible_turn_count": len(all_visible_turns),
+            "filtered_turn_count": len(turns),
         },
     )
 
@@ -3213,7 +3285,6 @@ def admin_project_understanding_monitor(request: HttpRequest, report_id: str) ->
             "result_answer_html": mark_safe(render_project_understanding_answer_html(str(result.get("answer") or ""))) if result else "",
             "report_id": report_id,
             "status_url": reverse("admin-project-understanding-status", args=[report_id]),
-            "stored_turns": _list_project_understanding_turns(request.user),
             "repository_path": getattr(settings, "PROJECT_UNDERSTANDING_REPOSITORY_PATH", settings.ROOT_DIR),
             "codex_model": getattr(settings, "PROJECT_UNDERSTANDING_MODEL", "gpt-5.3-codex"),
             "timeout_seconds": getattr(settings, "PROJECT_UNDERSTANDING_TIMEOUT_SECONDS", 300),

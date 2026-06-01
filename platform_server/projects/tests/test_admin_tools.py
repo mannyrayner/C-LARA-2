@@ -115,14 +115,47 @@ class AdminToolsViewTests(TestCase):
         from projects.views import render_project_understanding_answer_html
 
         html = render_project_understanding_answer_html(
-            "See [docs](/docs/roadmap/platform-self-knowledge-assistant.md) and `Token`.\n"
+            "See [docs](/docs/roadmap/platform-self-knowledge-assistant.md), "
+            "[code](C:/cygwin64/home/github/c-lara-2/src/core/project_understanding.py), "
+            "and `Token`.\n"
             "- ignores [unsafe](javascript:alert(1))"
         )
 
         self.assertIn('<a href="/docs/roadmap/platform-self-knowledge-assistant.md"', html)
+        self.assertIn('href="file:///C:/cygwin64/home/github/c-lara-2/src/core/project_understanding.py"', html)
         self.assertIn('<code>Token</code>', html)
         self.assertIn("&lt;", render_project_understanding_answer_html("<script>alert(1)</script>"))
         self.assertNotIn('href="javascript:alert(1)"', html)
+
+
+    def test_project_understanding_turns_view_searches_visible_history(self):
+        self.client.login(username="staffer", password="pw")
+        matching_report_id = uuid.uuid4()
+        hidden_report_id = uuid.uuid4()
+        with tempfile.TemporaryDirectory() as tmpdir, override_settings(MEDIA_ROOT=tmpdir):
+            from projects.views import _write_project_understanding_request
+
+            _write_project_understanding_request(
+                matching_report_id,
+                "How are annotated tokens represented?",
+                user_id=self.staff_user.id,
+                username=self.staff_user.username,
+                visibility="private",
+            )
+            _write_project_understanding_request(
+                hidden_report_id,
+                "How is audio generated?",
+                user_id=self.staff_user.id,
+                username=self.staff_user.username,
+                visibility="private",
+            )
+
+            resp = self.client.get(reverse("admin-project-understanding-turns"), {"q": "tokens"})
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Stored project-understanding turns")
+        self.assertContains(resp, "How are annotated tokens represented?")
+        self.assertNotContains(resp, "How is audio generated?")
 
     def test_project_understanding_monitor_preserves_current_question(self):
         self.client.login(username="staffer", password="pw")
