@@ -1,9 +1,14 @@
 """Helpers for restricted C-LARA-2 project-understanding answers."""
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+import os
+import re
+import subprocess
+import time
 from typing import Sequence
 import uuid
 
@@ -15,6 +20,8 @@ DEFAULT_PROJECT_UNDERSTANDING_MODEL = "gpt-5.3-codex"
 DEFAULT_PROJECT_UNDERSTANDING_REASONING_EFFORT = "medium"
 DEFAULT_PROJECT_UNDERSTANDING_MAX_OUTPUT_TOKENS = 3000
 PROJECT_UNDERSTANDING_PROMPT_VERSION = "project-understanding-v1"
+DEFAULT_CODEX_EXECUTABLE = "codex"
+DEFAULT_CODEX_EXEC_TIMEOUT_SECONDS = 300.0
 
 DEFAULT_EVIDENCE_PATHS = (
     "docs/roadmap/",
@@ -27,10 +34,13 @@ DEFAULT_EVIDENCE_PATHS = (
     "platform_server/",
 )
 
+_TOKEN_USAGE_RE = re.compile(r"tokens\s+used\s*\r?\n\s*([0-9][0-9,]*)", re.IGNORECASE)
+_ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+
 
 @dataclass(frozen=True)
 class ProjectUnderstandingAnswer:
-    """Result returned by a project-understanding model request."""
+    """Result returned by a project-understanding request."""
 
     question: str
     prompt: str
@@ -38,6 +48,18 @@ class ProjectUnderstandingAnswer:
     model: str
     prompt_version: str
     requested_at: str
+    tokens_used: int | None = None
+    elapsed_seconds: float | None = None
+    invocation_route: str = "responses-api"
+    repository_path: str | None = None
+    command: tuple[str, ...] | None = None
+    returncode: int | None = None
+    stderr: str = ""
+    raw_stdout: str = ""
+
+
+class CodexExecError(RuntimeError):
+    """Raised when the `codex exec` project-understanding call cannot complete."""
 
 
 def build_project_understanding_prompt(
@@ -76,6 +98,165 @@ User question:
 """
 
 
+def _utc_timestamp() -> str:
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def build_codex_exec_command(
+    *,
+    repository_path: str | Path,
+    codex_executable: str = DEFAULT_CODEX_EXECUTABLE,
+    model: str = DEFAULT_PROJECT_UNDERSTANDING_MODEL,
+) -> list[str]:
+    """Build the safe argument vector for a non-interactive read-only `codex exec` call."""
+
+    repo = str(Path(repository_path))
+    if not repo:
+        raise ValueError("repository_path must not be empty")
+    return [
+        codex_executable,
+        "exec",
+        "--cd",
+        repo,
+        "--sandbox",
+        "read-only",
+        "--ephemeral",
+        "--model",
+        model,
+        "-",
+    ]
+
+
+def build_codex_exec_environment(
+    *,
+    openai_api_key: str | None = None,
+    base_environment: Mapping[str, str] | None = None,
+) -> dict[str, str]:
+    """Create a reduced environment with the OpenAI key needed by Codex."""
+
+    base = os.environ if base_environment is None else base_environment
+    api_key = openai_api_key or base.get("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY must be set to run codex exec")
+
+    preserved_names = (
+        "PATH",
+        "HOME",
+        "USERPROFILE",
+        "CODEX_HOME",
+        "TMPDIR",
+        "TEMP",
+        "TMP",
+        "SYSTEMROOT",
+        "SystemRoot",
+        "WINDIR",
+        "COMSPEC",
+    )
+    env = {name: value for name in preserved_names if (value := base.get(name))}
+    env["OPENAI_API_KEY"] = api_key
+    return env
+
+
+def extract_codex_tokens_used(output: str) -> int | None:
+    """Extract the final `tokens used` count from a plain-text Codex transcript."""
+
+    matches = _TOKEN_USAGE_RE.findall(output or "")
+    if not matches:
+        return None
+    return int(matches[-1].replace(",", ""))
+
+
+def extract_codex_formatted_answer(output: str) -> str:
+    """Extract the final user-facing answer from a plain-text Codex transcript."""
+
+    clean_output = _ANSI_ESCAPE_RE.sub("", output or "")
+    clean_output = _TOKEN_USAGE_RE.sub("", clean_output).rstrip()
+    codex_blocks = re.split(r"(?m)^codex\s*$", clean_output)
+    if len(codex_blocks) > 1:
+        candidate = codex_blocks[-1].strip()
+    else:
+        candidate = clean_output.strip()
+    return candidate
+
+
+def answer_project_understanding_question_with_codex_exec(
+    user_request: str,
+    *,
+    repository_path: str | Path = ".",
+    codex_executable: str = DEFAULT_CODEX_EXECUTABLE,
+    model: str = DEFAULT_PROJECT_UNDERSTANDING_MODEL,
+    timeout_seconds: float = DEFAULT_CODEX_EXEC_TIMEOUT_SECONDS,
+    openai_api_key: str | None = None,
+    base_environment: Mapping[str, str] | None = None,
+    runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+    monotonic: Callable[[], float] = time.perf_counter,
+) -> ProjectUnderstandingAnswer:
+    """Answer a project-understanding question by safely wrapping `codex exec`.
+
+    The prompt is passed on stdin rather than interpolated into a shell command.
+    The returned answer includes the formatted final response, token usage when
+    present in the Codex transcript, and elapsed wall-clock time.
+    """
+
+    question = (user_request or "").strip()
+    if not question:
+        raise ValueError("user_request must not be empty")
+
+    prompt = build_project_understanding_prompt(question)
+    command = build_codex_exec_command(
+        repository_path=repository_path,
+        codex_executable=codex_executable,
+        model=model,
+    )
+    env = build_codex_exec_environment(
+        openai_api_key=openai_api_key,
+        base_environment=base_environment,
+    )
+    requested_at = _utc_timestamp()
+    started = monotonic()
+    try:
+        completed = runner(
+            command,
+            input=prompt,
+            text=True,
+            capture_output=True,
+            timeout=timeout_seconds,
+            check=False,
+            env=env,
+        )
+    except subprocess.TimeoutExpired as exc:
+        elapsed = monotonic() - started
+        raise CodexExecError(
+            f"codex exec timed out after {elapsed:.2f}s (limit {timeout_seconds:.2f}s)"
+        ) from exc
+    elapsed = monotonic() - started
+
+    stdout = completed.stdout or ""
+    stderr = completed.stderr or ""
+    if completed.returncode != 0:
+        detail = (stderr or stdout).strip()
+        if len(detail) > 500:
+            detail = f"{detail[:500]}..."
+        raise CodexExecError(f"codex exec failed with exit status {completed.returncode}: {detail}")
+
+    return ProjectUnderstandingAnswer(
+        question=question,
+        prompt=prompt,
+        answer=extract_codex_formatted_answer(stdout),
+        model=model,
+        prompt_version=PROJECT_UNDERSTANDING_PROMPT_VERSION,
+        requested_at=requested_at,
+        tokens_used=extract_codex_tokens_used(stdout),
+        elapsed_seconds=elapsed,
+        invocation_route="codex-exec",
+        repository_path=str(Path(repository_path)),
+        command=tuple(command),
+        returncode=completed.returncode,
+        stderr=stderr,
+        raw_stdout=stdout,
+    )
+
+
 async def answer_project_understanding_question(
     user_request: str,
     *,
@@ -92,7 +273,7 @@ async def answer_project_understanding_question(
     prompt = build_project_understanding_prompt(user_request)
     telemetry = telemetry or NullTelemetry()
     op_id = op_id or f"project-understanding-{uuid.uuid4()}"
-    requested_at = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    requested_at = _utc_timestamp()
     owns_client = client is None
     client = client or OpenAIClient(config=config or OpenAIConfig(model=model))
 
@@ -122,12 +303,32 @@ async def answer_project_understanding_question(
 def render_project_understanding_record(result: ProjectUnderstandingAnswer) -> str:
     """Render a versionable Markdown evidence record for a model answer."""
 
+    metadata_lines = [
+        f"- Model: `{result.model}`",
+        f"- Prompt version: `{result.prompt_version}`",
+        f"- Invocation route: `{result.invocation_route}`",
+    ]
+    if result.tokens_used is not None:
+        metadata_lines.append(f"- Tokens used: `{result.tokens_used}`")
+    if result.elapsed_seconds is not None:
+        metadata_lines.append(f"- Elapsed seconds: `{result.elapsed_seconds:.2f}`")
+    if result.repository_path:
+        metadata_lines.append(f"- Repository path: `{result.repository_path}`")
+    if result.returncode is not None:
+        metadata_lines.append(f"- Exit status: `{result.returncode}`")
+    metadata_lines.extend([
+        "- Human assessment: `unreviewed`",
+        "- Reviewer notes: _pending_",
+    ])
+    metadata = "\n".join(metadata_lines)
+
+    command_block = ""
+    if result.command:
+        command_block = "\n## Codex command\n\n```text\n" + " ".join(result.command) + "\n```\n"
+
     return f"""# Project-understanding answer ({result.requested_at})
 
-- Model: `{result.model}`
-- Prompt version: `{result.prompt_version}`
-- Human assessment: `unreviewed`
-- Reviewer notes: _pending_
+{metadata}
 
 ## Question
 
@@ -136,7 +337,7 @@ def render_project_understanding_record(result: ProjectUnderstandingAnswer) -> s
 ## Answer
 
 {result.answer}
-
+{command_block}
 ## Prompt sent to model
 
 ```text
