@@ -129,6 +129,14 @@ class AdminToolsViewTests(TestCase):
         self.assertIn("https://github.com/mannyrayner/C-LARA-2/blob/main/docs/roadmap/platform-self-knowledge-assistant.md", html)
         self.assertIn("https://github.com/mannyrayner/C-LARA-2/blob/main/src/core/project_understanding.py", html)
         self.assertIn("https://github.com/mannyrayner/C-LARA-2/blob/main/README.md#L3", html)
+        with override_settings(
+            PROJECT_UNDERSTANDING_REPOSITORY_PATH="/srv/C-LARA-2",
+            PROJECT_UNDERSTANDING_GITHUB_BLOB_BASE_URL="https://github.com/mannyrayner/C-LARA-2/blob/main",
+        ):
+            mismatched_checkout_html = render_project_understanding_answer_html(
+                "[lemma](C:\\cygwin64\\home\\github\\c-lara-2\\src\\pipeline\\lemma.py)"
+            )
+        self.assertIn("https://github.com/mannyrayner/C-LARA-2/blob/main/src/pipeline/lemma.py", mismatched_checkout_html)
         self.assertIn('<code>Token</code>', html)
         self.assertIn("&lt;", render_project_understanding_answer_html("<script>alert(1)</script>"))
         self.assertNotIn('href="javascript:alert(1)"', html)

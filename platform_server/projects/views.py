@@ -2924,6 +2924,12 @@ def _normalise_project_understanding_path_link(raw_href: str) -> str:
         relative_path = ""
     elif repo_lower and href_lower.startswith(repo_lower + "/"):
         relative_path = href[len(repo_root) + 1 :]
+    elif "/c-lara-2/" in href_lower:
+        # Be tolerant of Codex returning an absolute path from an equivalent
+        # checkout spelling (for example a Windows/Cygwin path) that does not
+        # exactly match the configured repository root string.
+        marker_index = href_lower.rindex("/c-lara-2/")
+        relative_path = href[marker_index + len("/c-lara-2/") :]
     elif not re.match(r"^[A-Za-z][A-Za-z0-9+.-]*:", href) and not href.startswith("/"):
         relative_path = href.lstrip("./")
     else:
@@ -3407,11 +3413,11 @@ def admin_project_understanding_status(request: HttpRequest, report_id: str) -> 
     if status == "running" and not unread:
         if last:
             age_seconds = int((django_timezone.now() - last.timestamp).total_seconds())
-            messages_out.append(
-                "No new Codex worker update yet "
-                f"(latest update {age_seconds}s ago: {last.message}). "
-                "If this does not change, check that the Django Q cluster is running and can import projects.views."
-            )
+            if age_seconds >= 30:
+                messages_out.append(
+                    "Waiting for the next Codex progress update "
+                    f"(latest update {age_seconds}s ago: {last.message})."
+                )
         else:
             messages_out.append(
                 "No TaskUpdate rows exist yet for this report. Check whether the request was enqueued successfully."
