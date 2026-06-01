@@ -1,4 +1,5 @@
 import tempfile
+import uuid
 from pathlib import Path
 from unittest.mock import patch
 
@@ -6,7 +7,8 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from projects.models import Community, CommunityMembership
+from core.project_understanding import ProjectUnderstandingAnswer
+from projects.models import Community, CommunityMembership, TaskUpdate
 
 
 class AdminToolsViewTests(TestCase):
@@ -21,6 +23,218 @@ class AdminToolsViewTests(TestCase):
         self.client.login(username="normal", password="pw")
         resp = self.client.get(reverse("admin-tools"))
         self.assertEqual(resp.status_code, 404)
+
+    def test_admin_tools_links_project_understanding_assistant(self):
+        self.client.login(username="staffer", password="pw")
+        resp = self.client.get(reverse("admin-tools"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, reverse("admin-project-understanding"))
+
+    def test_non_admin_cannot_access_project_understanding_assistant(self):
+        self.client.login(username="normal", password="pw")
+        resp = self.client.get(reverse("admin-project-understanding"))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_admin_can_open_project_understanding_assistant(self):
+        self.client.login(username="staffer", password="pw")
+        resp = self.client.get(reverse("admin-project-understanding"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Project-understanding assistant")
+        self.assertContains(resp, "Ask Codex")
+
+    def test_project_understanding_monitor_form_posts_to_new_request_endpoint(self):
+        self.client.login(username="staffer", password="pw")
+        report_id = uuid.uuid4()
+
+        with tempfile.TemporaryDirectory() as tmpdir, override_settings(MEDIA_ROOT=tmpdir):
+            from projects.views import _write_project_understanding_request
+
+            _write_project_understanding_request(
+                report_id,
+                "What is C-LARA-2?",
+                user_id=self.staff_user.id,
+                username=self.staff_user.username,
+                visibility="private",
+            )
+            resp = self.client.get(reverse("admin-project-understanding-monitor", args=[report_id]))
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, f'action="{reverse("admin-project-understanding")}"')
+
+    @patch("projects.views.async_task")
+    def test_admin_can_queue_project_understanding_assistant(self, mock_async_task):
+        self.client.login(username="staffer", password="pw")
+
+        with tempfile.TemporaryDirectory() as tmpdir, override_settings(MEDIA_ROOT=tmpdir):
+            resp = self.client.post(
+                reverse("admin-project-understanding"),
+                {"question": "What is C-LARA-2?", "visibility": "public"},
+            )
+
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("/admin-tools/project-understanding/", resp["Location"])
+        mock_async_task.assert_called_once()
+        task_args = mock_async_task.call_args.args
+        self.assertEqual("projects.views._run_project_understanding_task", task_args[0])
+        self.assertEqual("What is C-LARA-2?", task_args[1])
+        self.assertEqual(self.staff_user.id, task_args[2])
+        self.assertTrue(TaskUpdate.objects.filter(user=self.staff_user, message="Project-understanding request queued.").exists())
+
+    def test_project_understanding_turn_listing_respects_visibility(self):
+        User = get_user_model()
+        other_staff = User.objects.create_user(username="other_staff", password="pw", is_staff=True)
+        private_report_id = uuid.uuid4()
+        public_report_id = uuid.uuid4()
+        with tempfile.TemporaryDirectory() as tmpdir, override_settings(MEDIA_ROOT=tmpdir):
+            from projects.views import _list_project_understanding_turns, _write_project_understanding_request
+
+            _write_project_understanding_request(
+                private_report_id,
+                "Private question",
+                user_id=self.staff_user.id,
+                username=self.staff_user.username,
+                visibility="private",
+            )
+            _write_project_understanding_request(
+                public_report_id,
+                "Public question",
+                user_id=self.staff_user.id,
+                username=self.staff_user.username,
+                visibility="public",
+            )
+
+            visible_to_owner = {turn["question"] for turn in _list_project_understanding_turns(self.staff_user)}
+            visible_to_other = {turn["question"] for turn in _list_project_understanding_turns(other_staff)}
+
+        self.assertIn("Private question", visible_to_owner)
+        self.assertIn("Public question", visible_to_owner)
+        self.assertNotIn("Private question", visible_to_other)
+        self.assertIn("Public question", visible_to_other)
+
+    def test_project_understanding_answer_markdown_is_rendered_safely(self):
+        from projects.views import render_project_understanding_answer_html
+
+        with override_settings(
+            PROJECT_UNDERSTANDING_REPOSITORY_PATH="C:/cygwin64/home/github/c-lara-2",
+            PROJECT_UNDERSTANDING_GITHUB_BLOB_BASE_URL="https://github.com/mannyrayner/C-LARA-2/blob/main",
+        ):
+            html = render_project_understanding_answer_html(
+                "See [docs](C:/cygwin64/home/github/c-lara-2/docs/roadmap/platform-self-knowledge-assistant.md), "
+                "[code](C:/cygwin64/home/github/c-lara-2/src/core/project_understanding.py), "
+                "[line](C:/cygwin64/home/github/c-lara-2/README.md:3), "
+                "and `Token`.\n"
+                "- ignores [unsafe](javascript:alert(1))"
+            )
+
+        self.assertIn("https://github.com/mannyrayner/C-LARA-2/blob/main/docs/roadmap/platform-self-knowledge-assistant.md", html)
+        self.assertIn("https://github.com/mannyrayner/C-LARA-2/blob/main/src/core/project_understanding.py", html)
+        self.assertIn("https://github.com/mannyrayner/C-LARA-2/blob/main/README.md#L3", html)
+        with override_settings(
+            PROJECT_UNDERSTANDING_REPOSITORY_PATH="/srv/C-LARA-2",
+            PROJECT_UNDERSTANDING_GITHUB_BLOB_BASE_URL="https://github.com/mannyrayner/C-LARA-2/blob/main",
+        ):
+            mismatched_checkout_html = render_project_understanding_answer_html(
+                "[lemma](C:\\cygwin64\\home\\github\\c-lara-2\\src\\pipeline\\lemma.py)"
+            )
+        self.assertIn("https://github.com/mannyrayner/C-LARA-2/blob/main/src/pipeline/lemma.py", mismatched_checkout_html)
+        self.assertIn('<code>Token</code>', html)
+        self.assertIn("&lt;", render_project_understanding_answer_html("<script>alert(1)</script>"))
+        self.assertNotIn('href="javascript:alert(1)"', html)
+        self.assertNotIn("file:///", html)
+
+    def test_project_understanding_turns_view_searches_visible_history(self):
+        self.client.login(username="staffer", password="pw")
+        matching_report_id = uuid.uuid4()
+        hidden_report_id = uuid.uuid4()
+        with tempfile.TemporaryDirectory() as tmpdir, override_settings(MEDIA_ROOT=tmpdir):
+            from projects.views import _write_project_understanding_request
+
+            _write_project_understanding_request(
+                matching_report_id,
+                "How are annotated tokens represented?",
+                user_id=self.staff_user.id,
+                username=self.staff_user.username,
+                visibility="private",
+            )
+            _write_project_understanding_request(
+                hidden_report_id,
+                "How is audio generated?",
+                user_id=self.staff_user.id,
+                username=self.staff_user.username,
+                visibility="private",
+            )
+
+            resp = self.client.get(reverse("admin-project-understanding-turns"), {"q": "tokens"})
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Stored project-understanding turns")
+        self.assertContains(resp, "How are annotated tokens represented?")
+        self.assertNotContains(resp, "How is audio generated?")
+
+    def test_project_understanding_monitor_preserves_current_question(self):
+        self.client.login(username="staffer", password="pw")
+        report_id = uuid.uuid4()
+        with tempfile.TemporaryDirectory() as tmpdir, override_settings(MEDIA_ROOT=tmpdir):
+            from projects.views import _write_project_understanding_request
+
+            _write_project_understanding_request(
+                report_id,
+                "What is the annotation format?",
+                user_id=self.staff_user.id,
+                username=self.staff_user.username,
+                visibility="private",
+            )
+            resp = self.client.get(reverse("admin-project-understanding-monitor", args=[report_id]))
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "What is the annotation format?")
+
+    def test_project_understanding_status_returns_messages_and_result(self):
+        self.client.login(username="staffer", password="pw")
+        report_id = uuid.uuid4()
+        TaskUpdate.objects.create(
+            report_id=report_id,
+            user=self.staff_user,
+            task_type="admin_project_understanding",
+            message="Done",
+            status="finished",
+        )
+        from projects.views import _write_project_understanding_request, _write_project_understanding_result
+
+        with tempfile.TemporaryDirectory() as tmpdir, override_settings(MEDIA_ROOT=tmpdir):
+            _write_project_understanding_request(
+                report_id,
+                "What is C-LARA-2?",
+                user_id=self.staff_user.id,
+                username=self.staff_user.username,
+                visibility="private",
+            )
+            _write_project_understanding_result(
+                report_id,
+                ProjectUnderstandingAnswer(
+                    question="What is C-LARA-2?",
+                    prompt="Wrapped prompt",
+                    answer="C-LARA-2 is a repository-grounded platform answer.",
+                    model="gpt-5.3-codex",
+                    prompt_version="project-understanding-v1",
+                    requested_at="2026-06-01T10:00:00Z",
+                    tokens_used=1234,
+                    elapsed_seconds=2.5,
+                    invocation_route="codex-exec",
+                    repository_path="/srv/C-LARA-2",
+                    returncode=0,
+                ),
+            )
+
+            resp = self.client.get(reverse("admin-project-understanding-status", args=[report_id]))
+
+        self.assertEqual(resp.status_code, 200)
+        payload = resp.json()
+        self.assertEqual("finished", payload["status"])
+        self.assertEqual(["Done"], payload["messages"])
+        self.assertEqual("C-LARA-2 is a repository-grounded platform answer.", payload["result"]["answer"])
+        self.assertEqual(1234, payload["result"]["tokens_used"])
+        self.assertEqual("What is C-LARA-2?", payload["question"])
 
     def test_admin_can_grant_admin_privileges(self):
         self.client.login(username="staffer", password="pw")
