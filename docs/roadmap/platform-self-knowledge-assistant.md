@@ -53,11 +53,12 @@ The exact command should be generated without shell-injection hazards; productio
 
 The first restricted platform implementation is now in place and can be tested from the admin UI. It includes:
 
-- a core `codex exec` wrapper in `src/core/project_understanding.py` that builds the versioned project-understanding prompt, constructs a read-only/non-interactive argument vector, passes the prompt through stdin, supplies `OPENAI_API_KEY` through a reduced environment, resolves common Windows npm Codex shims, applies a timeout, forces UTF-8 subprocess decoding, extracts the final answer and token count where available, and returns structured metadata;
-- configurable Django settings for the Codex executable, repository checkout path, model, and timeout: `PROJECT_UNDERSTANDING_CODEX_EXECUTABLE`, `PROJECT_UNDERSTANDING_REPOSITORY_PATH`, `PROJECT_UNDERSTANDING_MODEL`, and `PROJECT_UNDERSTANDING_TIMEOUT_SECONDS`;
-- an admin-only platform surface at `/admin-tools/project-understanding/`, linked from the admin tools page, with a textarea for the question and a result area showing the answer, model, prompt version, elapsed time, token count when extractable, exit status, repository path, and stderr when present;
+- a core `codex exec` wrapper in `src/core/project_understanding.py` that builds the versioned project-understanding prompt, constructs a read-only/non-interactive argument vector, passes the prompt through stdin, supplies `OPENAI_API_KEY` through a reduced environment, resolves common Windows npm Codex shims, applies a timeout, forces UTF-8 subprocess decoding, extracts the final answer and token count where available from stdout or stderr, and returns structured metadata;
+- configurable Django settings for the Codex executable, repository checkout path, model, timeout, and GitHub blob URL: `PROJECT_UNDERSTANDING_CODEX_EXECUTABLE`, `PROJECT_UNDERSTANDING_REPOSITORY_PATH`, `PROJECT_UNDERSTANDING_MODEL`, `PROJECT_UNDERSTANDING_TIMEOUT_SECONDS`, and `PROJECT_UNDERSTANDING_GITHUB_BLOB_BASE_URL`;
+- an admin-only platform surface at `/admin-tools/project-understanding/`, linked from the admin tools page, with a textarea for the question and a result area showing the answer, model, prompt version, elapsed time, token count when extractable, estimated cost, exit status, repository path, and stderr when present;
 - an asynchronous Django Q execution path: submitting a question queues a background task, immediately redirects to a monitor page, records `TaskUpdate` progress rows, emits periodic heartbeat messages while Codex is running, and polls a JSON status endpoint until the run finishes or fails;
 - request/result persistence under `MEDIA_ROOT/admin_project_understanding/`, so the monitor page can keep showing the current question during execution and after completion, and can render the completed answer produced by the worker process;
+- usage/cost tracking for completed Codex runs when the CLI reports `tokens used`: because current CLI output exposes only a total token count rather than separate input/cached-input/output counts, the platform records a conservative output-priced upper-bound estimate through the existing OpenAI pricing/credits framework and displays the cost basis in run metadata;
 - tests for prompt construction, command/environment construction, Codex executable resolution, transcript parsing, timeout/error handling, record rendering, admin access control, task queueing, monitor rendering, and status/result JSON.
 
 The local smoke tests have also demonstrated that `codex exec` can answer repository-level questions by inspecting files itself and returning plausible cited answers. Observed answers correctly used repository evidence for questions such as a three-bullet repository summary and the internal annotated-text representation.
@@ -331,7 +332,7 @@ The assistant should reason over publicly available repository content, but the 
 - do not expose private user/project data, credentials, server paths beyond the configured repository root, raw logs, or environment variables;
 - do not allow user prompts to execute code, mutate repository/platform state, or trigger costly workflows;
 - treat repository text and user questions as prompt-injection surfaces;
-- rate-limit usage and record costs through the credits/billing framework where appropriate;
+- rate-limit usage and record costs through the credits/billing framework; for Codex CLI runs, record the reported total token count and use an explicit upper-bound estimate until the CLI exposes input/cached-input/output token splits;
 - make stale documentation and unsupported answers visible rather than hiding uncertainty;
 - preserve human review fields so the evidence log does not imply all model answers are correct.
 
@@ -368,7 +369,7 @@ The assistant should reason over publicly available repository content, but the 
 - Add a minimal staff-only Django view linked from the admin tools page.
 - Display answer text, command/run metadata, stderr/exit status warnings, and live background-task progress.
 - Add access-control, queueing, monitor, and status-endpoint tests.
-- Still needed: citation extraction, reviewer assessment controls, rate-limit/cost controls, and export/review paths for committing selected records.
+- Still needed: citation extraction, reviewer assessment controls, hard budget/rate-limit controls, and export/review paths for committing selected records.
 
 ### Phase D: report/evidence workflow
 

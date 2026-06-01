@@ -170,9 +170,8 @@ tokens used
 --------
 codex
 - Repository-grounded answer with citations.
-tokens used
-1,234
-"""
+""",
+            stderr="tokens used\n1,234\n",
         )
 
         result = answer_project_understanding_question_with_codex_exec(

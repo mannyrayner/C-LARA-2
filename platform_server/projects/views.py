@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict
+from dataclasses import asdict, replace
 import json
 import sys
 import logging
@@ -95,6 +95,7 @@ from .billing import (
     has_minimum_balance_for_compile,
     minimum_compile_balance_usd,
     openai_price_for_model,
+    record_openai_total_token_upper_bound_usage_and_charge,
     record_openai_usage_and_charge,
     transfer_credits_between_users,
 )
@@ -3214,6 +3215,19 @@ def _run_project_understanding_task(question: str, user_id: int, report_id: str)
             timeout_seconds=float(getattr(settings, "PROJECT_UNDERSTANDING_TIMEOUT_SECONDS", 300)),
             openai_api_key=getattr(settings, "OPENAI_API_KEY", ""),
         )
+        if result.tokens_used is not None:
+            estimated_cost = record_openai_total_token_upper_bound_usage_and_charge(
+                user_id=user_id,
+                model=result.model,
+                operation="project_understanding",
+                total_tokens=result.tokens_used,
+                request_type="codex_exec_project_understanding",
+            )
+            result = replace(
+                result,
+                estimated_cost_usd=f"{estimated_cost:.6f}",
+                cost_basis="Codex reports total tokens only; cost is an output-priced upper-bound estimate.",
+            )
         _write_project_understanding_result(report_id, result)
         elapsed = f"{result.elapsed_seconds:.1f}s" if result.elapsed_seconds is not None else "unknown time"
         tokens = result.tokens_used if result.tokens_used is not None else "unknown"
@@ -3382,7 +3396,9 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
     pricing_form = AdminOpenAIPricingForm()
     pricing_rows_qs = OpenAIModelPricing.objects.all().order_by("model_name")
     pricing_rows = list(pricing_rows_qs)
-    menu_models = sorted(set(AI_MODEL_CHOICES + IMAGE_MODEL_CHOICES))
+    menu_models = sorted(
+        set(AI_MODEL_CHOICES + IMAGE_MODEL_CHOICES + list(getattr(settings, "OPENAI_PRICING_TRACKED_MODELS", [])))
+    )
     now_ts = django_timezone.now()
     pricing_by_model = {row.model_name: row for row in pricing_rows}
     pricing_matrix: list[dict[str, Any]] = []

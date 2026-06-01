@@ -57,6 +57,8 @@ class ProjectUnderstandingAnswer:
     returncode: int | None = None
     stderr: str = ""
     raw_stdout: str = ""
+    estimated_cost_usd: str = ""
+    cost_basis: str = ""
 
 
 class CodexExecError(RuntimeError):
@@ -291,7 +293,7 @@ def answer_project_understanding_question_with_codex_exec(
         model=model,
         prompt_version=PROJECT_UNDERSTANDING_PROMPT_VERSION,
         requested_at=requested_at,
-        tokens_used=extract_codex_tokens_used(stdout),
+        tokens_used=extract_codex_tokens_used("\n".join([stdout, stderr])),
         elapsed_seconds=elapsed,
         invocation_route="codex-exec",
         repository_path=str(Path(repository_path)),
@@ -357,6 +359,10 @@ def render_project_understanding_record(result: ProjectUnderstandingAnswer) -> s
         metadata_lines.append(f"- Tokens used: `{result.tokens_used}`")
     if result.elapsed_seconds is not None:
         metadata_lines.append(f"- Elapsed seconds: `{result.elapsed_seconds:.2f}`")
+    if result.estimated_cost_usd:
+        metadata_lines.append(f"- Estimated cost USD: `{result.estimated_cost_usd}`")
+    if result.cost_basis:
+        metadata_lines.append(f"- Cost basis: `{result.cost_basis}`")
     if result.repository_path:
         metadata_lines.append(f"- Repository path: `{result.repository_path}`")
     if result.returncode is not None:
