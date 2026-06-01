@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 import os
 import re
+import shutil
 import subprocess
 import time
 from typing import Sequence
@@ -144,6 +145,9 @@ def build_codex_exec_environment(
         "HOME",
         "USERPROFILE",
         "CODEX_HOME",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PATHEXT",
         "TMPDIR",
         "TEMP",
         "TMP",
@@ -155,6 +159,36 @@ def build_codex_exec_environment(
     env = {name: value for name in preserved_names if (value := base.get(name))}
     env["OPENAI_API_KEY"] = api_key
     return env
+
+
+def resolve_codex_executable(
+    codex_executable: str = DEFAULT_CODEX_EXECUTABLE,
+    *,
+    environment: Mapping[str, str] | None = None,
+) -> str:
+    """Resolve the Codex executable, including common Windows npm locations."""
+
+    executable = (codex_executable or "").strip()
+    if not executable:
+        raise ValueError("codex_executable must not be empty")
+
+    env = os.environ if environment is None else environment
+    resolved = shutil.which(executable, path=env.get("PATH"))
+    if resolved:
+        return resolved
+
+    if "/" not in executable and "\\" not in executable:
+        for npm_root_name in ("APPDATA", "LOCALAPPDATA"):
+            npm_root = env.get(npm_root_name)
+            if not npm_root:
+                continue
+            npm_dir = Path(npm_root) / "npm"
+            for candidate_name in (executable, f"{executable}.cmd", f"{executable}.exe", f"{executable}.bat"):
+                candidate = npm_dir / candidate_name
+                if candidate.exists():
+                    return str(candidate)
+
+    return executable
 
 
 def extract_codex_tokens_used(output: str) -> int | None:
@@ -203,14 +237,15 @@ def answer_project_understanding_question_with_codex_exec(
         raise ValueError("user_request must not be empty")
 
     prompt = build_project_understanding_prompt(question)
-    command = build_codex_exec_command(
-        repository_path=repository_path,
-        codex_executable=codex_executable,
-        model=model,
-    )
     env = build_codex_exec_environment(
         openai_api_key=openai_api_key,
         base_environment=base_environment,
+    )
+    resolved_codex_executable = resolve_codex_executable(codex_executable, environment=env)
+    command = build_codex_exec_command(
+        repository_path=repository_path,
+        codex_executable=resolved_codex_executable,
+        model=model,
     )
     requested_at = _utc_timestamp()
     started = monotonic()
@@ -224,11 +259,19 @@ def answer_project_understanding_question_with_codex_exec(
             check=False,
             env=env,
         )
+    except FileNotFoundError as exc:
+        raise CodexExecError(
+            "Could not start codex exec because the Codex CLI executable was not found. "
+            f"Tried `{resolved_codex_executable}`. Set C_LARA_CODEX_EXECUTABLE to the full path "
+            "of codex or codex.cmd, or add the npm global bin directory to PATH for the Django process."
+        ) from exc
     except subprocess.TimeoutExpired as exc:
         elapsed = monotonic() - started
         raise CodexExecError(
             f"codex exec timed out after {elapsed:.2f}s (limit {timeout_seconds:.2f}s)"
         ) from exc
+    except OSError as exc:
+        raise CodexExecError(f"Could not start codex exec: {exc}") from exc
     elapsed = monotonic() - started
 
     stdout = completed.stdout or ""

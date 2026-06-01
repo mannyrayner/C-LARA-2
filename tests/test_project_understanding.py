@@ -8,6 +8,7 @@ from pathlib import Path
 from core.project_understanding import (
     DEFAULT_PROJECT_UNDERSTANDING_MODEL,
     PROJECT_UNDERSTANDING_PROMPT_VERSION,
+    CodexExecError,
     ProjectUnderstandingAnswer,
     answer_project_understanding_question,
     answer_project_understanding_question_with_codex_exec,
@@ -16,6 +17,7 @@ from core.project_understanding import (
     build_project_understanding_prompt,
     extract_codex_formatted_answer,
     extract_codex_tokens_used,
+    resolve_codex_executable,
     render_project_understanding_record,
     write_project_understanding_record,
 )
@@ -109,6 +111,35 @@ class ProjectUnderstandingTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("SECRET", env)
         with self.assertRaises(ValueError):
             build_codex_exec_environment(base_environment={})
+
+    def test_resolve_codex_executable_checks_windows_npm_bin(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            npm_dir = Path(tmpdir) / "npm"
+            npm_dir.mkdir()
+            codex_cmd = npm_dir / "codex.cmd"
+            codex_cmd.write_text("@echo off\n", encoding="utf-8")
+
+            self.assertEqual(
+                str(codex_cmd),
+                resolve_codex_executable(
+                    "codex",
+                    environment={"PATH": "", "APPDATA": tmpdir, "OPENAI_API_KEY": "test-key"},
+                ),
+            )
+
+    def test_codex_exec_missing_executable_raises_friendly_error(self) -> None:
+        def missing_runner(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+            raise FileNotFoundError("no such file")
+
+        with self.assertRaisesRegex(CodexExecError, "Codex CLI executable was not found"):
+            answer_project_understanding_question_with_codex_exec(
+                "Summarise the project.",
+                repository_path="/srv/C-LARA-2",
+                codex_executable="missing-codex",
+                openai_api_key="test-key",
+                base_environment={"PATH": ""},
+                runner=missing_runner,
+            )
 
     def test_extract_codex_transcript_answer_and_tokens(self) -> None:
         transcript = """OpenAI Codex v0.135.0
