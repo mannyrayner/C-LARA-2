@@ -10,6 +10,18 @@ urlpatterns = [
     path("issues/", views.issues_home, name="issues-home"),
     path("issues/suggest/", views.submit_issue_suggestion, name="issue-suggestion-submit"),
     path("issues/update/", views.submit_issue_update_suggestion, name="issue-update-suggestion-submit"),
+    path("admin-tools/project-understanding/", views.admin_project_understanding, name="admin-project-understanding"),
+    path("admin-tools/project-understanding/turns/", views.admin_project_understanding_turns, name="admin-project-understanding-turns"),
+    path(
+        "admin-tools/project-understanding/<uuid:report_id>/",
+        views.admin_project_understanding_monitor,
+        name="admin-project-understanding-monitor",
+    ),
+    path(
+        "admin-tools/project-understanding/<uuid:report_id>/status/",
+        views.admin_project_understanding_status,
+        name="admin-project-understanding-status",
+    ),
     path("admin-tools/issue-suggestions/", views.admin_issue_suggestions, name="admin-issue-suggestions"),
     path("admin-tools/", views.admin_tools, name="admin-tools"),
     path("", views.ProjectListView.as_view(), name="project-list"),
