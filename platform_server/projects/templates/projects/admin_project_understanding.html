@@ -63,6 +63,26 @@
     const submitStatus = document.getElementById("project-understanding-submit-status");
     if (form && submitButton && submitStatus) {
       form.addEventListener("submit", function () {
+        const resultSection = document.getElementById("project-understanding-result");
+        const stderrSection = document.getElementById("project-understanding-stderr-section");
+        const fieldsToClear = [
+          "project-understanding-answer",
+          "project-understanding-route",
+          "project-understanding-model",
+          "project-understanding-prompt-version",
+          "project-understanding-requested-at",
+          "project-understanding-tokens",
+          "project-understanding-elapsed",
+          "project-understanding-exit",
+          "project-understanding-repo",
+          "project-understanding-stderr",
+        ];
+        fieldsToClear.forEach(function (id) {
+          const el = document.getElementById(id);
+          if (el) el.textContent = "";
+        });
+        if (resultSection) resultSection.style.display = "none";
+        if (stderrSection) stderrSection.style.display = "none";
         submitButton.disabled = true;
         submitStatus.style.display = "block";
       });

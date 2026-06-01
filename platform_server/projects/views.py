@@ -3072,40 +3072,6 @@ def admin_project_understanding_status(request: HttpRequest, report_id: str) -> 
 
 
 @login_required
-def admin_project_understanding(request: HttpRequest) -> HttpResponse:
-    _require_admin(request.user)
-    result = None
-    if request.method == "POST":
-        form = AdminProjectUnderstandingForm(request.POST)
-        if form.is_valid():
-            try:
-                result = answer_project_understanding_question_with_codex_exec(
-                    form.cleaned_data["question"],
-                    repository_path=getattr(settings, "PROJECT_UNDERSTANDING_REPOSITORY_PATH", settings.ROOT_DIR),
-                    codex_executable=getattr(settings, "PROJECT_UNDERSTANDING_CODEX_EXECUTABLE", "codex"),
-                    model=getattr(settings, "PROJECT_UNDERSTANDING_MODEL", "gpt-5.3-codex"),
-                    timeout_seconds=float(getattr(settings, "PROJECT_UNDERSTANDING_TIMEOUT_SECONDS", 300)),
-                    openai_api_key=getattr(settings, "OPENAI_API_KEY", ""),
-                )
-                messages.success(request, "Codex project-understanding answer generated.")
-            except (CodexExecError, ValueError) as exc:
-                messages.error(request, f"Codex project-understanding call failed: {exc}")
-    else:
-        form = AdminProjectUnderstandingForm()
-    return render(
-        request,
-        "projects/admin_project_understanding.html",
-        {
-            "form": form,
-            "result": result,
-            "repository_path": getattr(settings, "PROJECT_UNDERSTANDING_REPOSITORY_PATH", settings.ROOT_DIR),
-            "codex_model": getattr(settings, "PROJECT_UNDERSTANDING_MODEL", "gpt-5.3-codex"),
-            "timeout_seconds": getattr(settings, "PROJECT_UNDERSTANDING_TIMEOUT_SECONDS", 300),
-        },
-    )
-
-
-@login_required
 def admin_tools(request: HttpRequest) -> HttpResponse:
     _require_admin(request.user)
     delete_form = DeleteCachedWordAudioForm(language_choices=_audio_cache_language_choices())
