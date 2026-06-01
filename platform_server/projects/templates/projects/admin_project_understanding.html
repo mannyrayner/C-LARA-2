@@ -1,0 +1,165 @@
+{% extends "projects/base.html" %}
+{% block title %}Project understanding · C-LARA-2{% endblock %}
+{% block content %}
+<h1>Project-understanding assistant</h1>
+
+<p>
+  Admin-only tool for asking Codex high-level questions about the configured C-LARA-2 checkout.
+  The call runs through <code>codex exec</code> with a read-only sandbox and a non-interactive prompt.
+</p>
+
+<ul>
+  <li>Repository path: <code>{{ repository_path }}</code></li>
+  <li>Model: <code>{{ codex_model }}</code></li>
+  <li>Timeout: <code>{{ timeout_seconds }}</code> seconds</li>
+  <li><a href="{% url 'admin-project-understanding-turns' %}">Search stored project-understanding turns</a></li>
+</ul>
+
+{% if report_id %}
+  <h2>Live status</h2>
+  <p><strong>Request ID:</strong> <code>{{ report_id }}</code></p>
+  <p id="project-understanding-status" aria-live="polite">Processing started; waiting for the first Codex update…</p>
+  <ul id="project-understanding-messages"></ul>
+{% endif %}
+
+<form method="post" action="{% url 'admin-project-understanding' %}" id="project-understanding-form">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button class="btn" type="submit" id="project-understanding-submit">Ask Codex</button>
+  <p id="project-understanding-submit-status" style="display:none; font-weight:bold;" aria-live="polite">
+    Codex request submitted; opening live status monitor…
+  </p>
+</form>
+
+<section id="project-understanding-result" {% if not result %}style="display:none;"{% endif %}>
+  <h2>Answer</h2>
+  <div id="project-understanding-answer" style="border: 1px solid #ddd; padding: 1rem; background: #f8f8f8;">{% if result_answer_html %}{{ result_answer_html }}{% endif %}</div>
+
+  <h2>Run metadata</h2>
+  <table border="1" cellpadding="6" cellspacing="0">
+    <tbody>
+      <tr><th>Invocation route</th><td><code id="project-understanding-route">{% if result %}{{ result.invocation_route }}{% endif %}</code></td></tr>
+      <tr><th>Model</th><td><code id="project-understanding-model">{% if result %}{{ result.model }}{% endif %}</code></td></tr>
+      <tr><th>Prompt version</th><td><code id="project-understanding-prompt-version">{% if result %}{{ result.prompt_version }}{% endif %}</code></td></tr>
+      <tr><th>Requested at</th><td><code id="project-understanding-requested-at">{% if result %}{{ result.requested_at }}{% endif %}</code></td></tr>
+      <tr><th>Tokens used</th><td><code id="project-understanding-tokens">{% if result.tokens_used != None %}{{ result.tokens_used }}{% else %}unknown{% endif %}</code></td></tr>
+      <tr><th>Elapsed seconds</th><td><code id="project-understanding-elapsed">{% if result.elapsed_seconds != None %}{{ result.elapsed_seconds|floatformat:2 }}{% else %}unknown{% endif %}</code></td></tr>
+      <tr><th>Exit status</th><td><code id="project-understanding-exit">{% if result.returncode != None %}{{ result.returncode }}{% else %}unknown{% endif %}</code></td></tr>
+      <tr><th>Repository path</th><td><code id="project-understanding-repo">{% if result.repository_path %}{{ result.repository_path }}{% else %}unknown{% endif %}</code></td></tr>
+    </tbody>
+  </table>
+
+  <section id="project-understanding-stderr-section" {% if not result.stderr %}style="display:none;"{% endif %}>
+    <h2>stderr</h2>
+    <pre id="project-understanding-stderr" style="white-space: pre-wrap; border: 1px solid #f2c; padding: 1rem; background: #fff8fb;">{% if result %}{{ result.stderr }}{% endif %}</pre>
+  </section>
+</section>
+
+<p><a href="{% url 'admin-tools' %}">Back to admin tools</a></p>
+
+<script>
+  (function () {
+    const form = document.getElementById("project-understanding-form");
+    const submitButton = document.getElementById("project-understanding-submit");
+    const submitStatus = document.getElementById("project-understanding-submit-status");
+    if (form && submitButton && submitStatus) {
+      form.addEventListener("submit", function () {
+        const resultSection = document.getElementById("project-understanding-result");
+        const stderrSection = document.getElementById("project-understanding-stderr-section");
+        const fieldsToClear = [
+          "project-understanding-answer",
+          "project-understanding-route",
+          "project-understanding-model",
+          "project-understanding-prompt-version",
+          "project-understanding-requested-at",
+          "project-understanding-tokens",
+          "project-understanding-elapsed",
+          "project-understanding-exit",
+          "project-understanding-repo",
+          "project-understanding-stderr",
+        ];
+        fieldsToClear.forEach(function (id) {
+          const el = document.getElementById(id);
+          if (el) el.textContent = "";
+        });
+        if (resultSection) resultSection.style.display = "none";
+        if (stderrSection) stderrSection.style.display = "none";
+        submitButton.disabled = true;
+        submitStatus.style.display = "block";
+      });
+    }
+  })();
+</script>
+
+{% if status_url %}
+<script>
+  (function () {
+    const statusUrl = "{{ status_url|escapejs }}";
+    const statusEl = document.getElementById("project-understanding-status");
+    const messagesEl = document.getElementById("project-understanding-messages");
+    const resultSection = document.getElementById("project-understanding-result");
+
+    function setText(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value === null || value === undefined || value === "" ? "unknown" : String(value);
+    }
+
+    function appendMessage(message) {
+      if (!messagesEl) return;
+      const item = document.createElement("li");
+      item.textContent = message;
+      messagesEl.appendChild(item);
+    }
+
+    function showResult(result) {
+      if (!result || !resultSection) return;
+      resultSection.style.display = "block";
+      const answerEl = document.getElementById("project-understanding-answer");
+      if (answerEl) answerEl.innerHTML = result.answer_html || "";
+      setText("project-understanding-route", result.invocation_route);
+      setText("project-understanding-model", result.model);
+      setText("project-understanding-prompt-version", result.prompt_version);
+      setText("project-understanding-requested-at", result.requested_at);
+      setText("project-understanding-tokens", result.tokens_used);
+      setText(
+        "project-understanding-elapsed",
+        result.elapsed_seconds === null || result.elapsed_seconds === undefined
+          ? "unknown"
+          : Number(result.elapsed_seconds).toFixed(2)
+      );
+      setText("project-understanding-exit", result.returncode);
+      setText("project-understanding-repo", result.repository_path);
+      const stderrSection = document.getElementById("project-understanding-stderr-section");
+      if (result.stderr) {
+        setText("project-understanding-stderr", result.stderr);
+        if (stderrSection) stderrSection.style.display = "block";
+      } else if (stderrSection) {
+        stderrSection.style.display = "none";
+      }
+    }
+
+    async function poll() {
+      try {
+        const response = await fetch(statusUrl, {headers: {"X-Requested-With": "XMLHttpRequest"}});
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        (data.messages || []).forEach(appendMessage);
+        if (statusEl) statusEl.textContent = `Status: ${data.status}`;
+        if (data.status === "finished") {
+          showResult(data.result);
+          return;
+        }
+        if (data.status === "error") {
+          return;
+        }
+      } catch (error) {
+        appendMessage(`Status polling failed: ${error}`);
+      }
+      window.setTimeout(poll, 3000);
+    }
+
+    poll();
+  })();
+</script>
+{% endif %}
+{% endblock %}
