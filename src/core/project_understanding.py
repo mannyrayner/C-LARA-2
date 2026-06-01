@@ -254,6 +254,8 @@ def answer_project_understanding_question_with_codex_exec(
             command,
             input=prompt,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             capture_output=True,
             timeout=timeout_seconds,
             check=False,

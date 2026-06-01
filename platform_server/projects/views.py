@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 import json
 import sys
 import logging
 import os
+import threading
 import random
 import shutil
 import hashlib
@@ -46,10 +48,7 @@ from urllib.parse import quote
 
 from core.config import DEFAULT_MODEL, OpenAIConfig
 from core.ai_api import OpenAIClient, normalize_json_text
-from core.project_understanding import (
-    CodexExecError,
-    answer_project_understanding_question_with_codex_exec,
-)
+from core.project_understanding import answer_project_understanding_question_with_codex_exec
 from core.language_direction import language_direction
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 from pipeline.mwe import normalize_mwes
@@ -2887,6 +2886,189 @@ def _extract_openai_pricing_with_ai(
             "evidence": str(row.get("evidence") or ""),
         }
     return result
+
+
+PROJECT_UNDERSTANDING_TASK_TYPE = "admin_project_understanding"
+
+
+def _project_understanding_result_path(report_id: str | uuid.UUID) -> Path:
+    directory = Path(settings.MEDIA_ROOT) / "admin_project_understanding"
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory / f"{report_id}.json"
+
+
+def _write_project_understanding_result(report_id: str | uuid.UUID, result) -> None:
+    payload = asdict(result)
+    _project_understanding_result_path(report_id).write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+def _read_project_understanding_result(report_id: str | uuid.UUID) -> dict[str, Any] | None:
+    path = _project_understanding_result_path(report_id)
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        logger.exception("Failed to read project-understanding result %s", path)
+        return None
+
+
+def _record_project_understanding_update(
+    *,
+    report_id: str | uuid.UUID,
+    user_id: int,
+    message: str,
+    status: str | None = "running",
+) -> None:
+    TaskUpdate.objects.create(
+        report_id=report_id,
+        user_id=user_id,
+        task_type=PROJECT_UNDERSTANDING_TASK_TYPE,
+        message=message[:1024],
+        status=status,
+    )
+
+
+def _run_project_understanding_task(question: str, user_id: int, report_id: str) -> None:
+    stop_heartbeat = threading.Event()
+
+    def _heartbeat() -> None:
+        tick = 0
+        while not stop_heartbeat.wait(10):
+            tick += 10
+            try:
+                _record_project_understanding_update(
+                    report_id=report_id,
+                    user_id=user_id,
+                    message=f"Codex is still inspecting the repository ({tick}s elapsed).",
+                    status="running",
+                )
+            except Exception:
+                logger.exception("Project-understanding heartbeat failed for report %s", report_id)
+
+    heartbeat_thread = threading.Thread(target=_heartbeat, daemon=True)
+    try:
+        _record_project_understanding_update(
+            report_id=report_id,
+            user_id=user_id,
+            message="Started Codex project-understanding request.",
+            status="running",
+        )
+        heartbeat_thread.start()
+        result = answer_project_understanding_question_with_codex_exec(
+            question,
+            repository_path=getattr(settings, "PROJECT_UNDERSTANDING_REPOSITORY_PATH", settings.ROOT_DIR),
+            codex_executable=getattr(settings, "PROJECT_UNDERSTANDING_CODEX_EXECUTABLE", "codex"),
+            model=getattr(settings, "PROJECT_UNDERSTANDING_MODEL", "gpt-5.3-codex"),
+            timeout_seconds=float(getattr(settings, "PROJECT_UNDERSTANDING_TIMEOUT_SECONDS", 300)),
+            openai_api_key=getattr(settings, "OPENAI_API_KEY", ""),
+        )
+        _write_project_understanding_result(report_id, result)
+        elapsed = f"{result.elapsed_seconds:.1f}s" if result.elapsed_seconds is not None else "unknown time"
+        tokens = result.tokens_used if result.tokens_used is not None else "unknown"
+        _record_project_understanding_update(
+            report_id=report_id,
+            user_id=user_id,
+            message=f"Codex project-understanding answer completed in {elapsed}; tokens used: {tokens}.",
+            status="finished",
+        )
+    except Exception as exc:
+        logger.exception("Project-understanding Codex task failed for report %s", report_id)
+        _record_project_understanding_update(
+            report_id=report_id,
+            user_id=user_id,
+            message=f"Codex project-understanding call failed: {exc}",
+            status="error",
+        )
+    finally:
+        stop_heartbeat.set()
+
+
+
+@login_required
+def admin_project_understanding(request: HttpRequest) -> HttpResponse:
+    _require_admin(request.user)
+    if request.method == "POST":
+        form = AdminProjectUnderstandingForm(request.POST)
+        if form.is_valid():
+            report_id = uuid.uuid4()
+            question = form.cleaned_data["question"]
+            _record_project_understanding_update(
+                report_id=report_id,
+                user_id=request.user.id,
+                message="Project-understanding request queued.",
+                status="running",
+            )
+            async_task(
+                "projects.views._run_project_understanding_task",
+                question,
+                request.user.id,
+                str(report_id),
+            )
+            messages.info(request, "Codex project-understanding request queued. Opening live status monitor.")
+            return redirect("admin-project-understanding-monitor", report_id=report_id)
+    else:
+        form = AdminProjectUnderstandingForm()
+    return render(
+        request,
+        "projects/admin_project_understanding.html",
+        {
+            "form": form,
+            "result": None,
+            "report_id": None,
+            "status_url": None,
+            "repository_path": getattr(settings, "PROJECT_UNDERSTANDING_REPOSITORY_PATH", settings.ROOT_DIR),
+            "codex_model": getattr(settings, "PROJECT_UNDERSTANDING_MODEL", "gpt-5.3-codex"),
+            "timeout_seconds": getattr(settings, "PROJECT_UNDERSTANDING_TIMEOUT_SECONDS", 300),
+        },
+    )
+
+
+@login_required
+def admin_project_understanding_monitor(request: HttpRequest, report_id: str) -> HttpResponse:
+    _require_admin(request.user)
+    return render(
+        request,
+        "projects/admin_project_understanding.html",
+        {
+            "form": AdminProjectUnderstandingForm(),
+            "result": _read_project_understanding_result(report_id),
+            "report_id": report_id,
+            "status_url": reverse("admin-project-understanding-status", args=[report_id]),
+            "repository_path": getattr(settings, "PROJECT_UNDERSTANDING_REPOSITORY_PATH", settings.ROOT_DIR),
+            "codex_model": getattr(settings, "PROJECT_UNDERSTANDING_MODEL", "gpt-5.3-codex"),
+            "timeout_seconds": getattr(settings, "PROJECT_UNDERSTANDING_TIMEOUT_SECONDS", 300),
+        },
+    )
+
+
+@login_required
+def admin_project_understanding_status(request: HttpRequest, report_id: str) -> JsonResponse:
+    _require_admin(request.user)
+    updates = TaskUpdate.objects.filter(
+        report_id=report_id,
+        user=request.user,
+        task_type=PROJECT_UNDERSTANDING_TASK_TYPE,
+    ).order_by("timestamp")
+    unread = [u for u in updates if not u.read]
+    messages_out = [u.message for u in unread]
+    status = "running"
+    for update in unread:
+        if update.status == "error":
+            status = "error"
+            break
+        if update.status == "finished":
+            status = "finished"
+    TaskUpdate.objects.filter(pk__in=[u.pk for u in unread]).update(read=True)
+    if status == "running" and not unread:
+        last = updates.last()
+        if last and last.status in {"error", "finished"}:
+            status = last.status
+    result = _read_project_understanding_result(report_id) if status == "finished" else None
+    return JsonResponse({"messages": messages_out, "status": status, "result": result})
 
 
 @login_required

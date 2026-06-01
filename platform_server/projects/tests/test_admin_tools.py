@@ -1,4 +1,5 @@
 import tempfile
+import uuid
 from pathlib import Path
 from unittest.mock import patch
 
@@ -7,7 +8,7 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from core.project_understanding import ProjectUnderstandingAnswer
-from projects.models import Community, CommunityMembership
+from projects.models import Community, CommunityMembership, TaskUpdate
 
 
 class AdminToolsViewTests(TestCase):
@@ -41,28 +42,8 @@ class AdminToolsViewTests(TestCase):
         self.assertContains(resp, "Project-understanding assistant")
         self.assertContains(resp, "Ask Codex")
 
-    @override_settings(
-        OPENAI_API_KEY="test-key",
-        PROJECT_UNDERSTANDING_REPOSITORY_PATH="/srv/C-LARA-2",
-        PROJECT_UNDERSTANDING_CODEX_EXECUTABLE="codex-test",
-        PROJECT_UNDERSTANDING_MODEL="gpt-5.3-codex",
-        PROJECT_UNDERSTANDING_TIMEOUT_SECONDS=12,
-    )
-    @patch("projects.views.answer_project_understanding_question_with_codex_exec")
-    def test_admin_can_call_project_understanding_assistant(self, mock_answer):
-        mock_answer.return_value = ProjectUnderstandingAnswer(
-            question="What is C-LARA-2?",
-            prompt="Wrapped prompt",
-            answer="C-LARA-2 is a repository-grounded platform answer.",
-            model="gpt-5.3-codex",
-            prompt_version="project-understanding-v1",
-            requested_at="2026-06-01T10:00:00Z",
-            tokens_used=1234,
-            elapsed_seconds=2.5,
-            invocation_route="codex-exec",
-            repository_path="/srv/C-LARA-2",
-            returncode=0,
-        )
+    @patch("projects.views.async_task")
+    def test_admin_can_queue_project_understanding_assistant(self, mock_async_task):
         self.client.login(username="staffer", password="pw")
 
         resp = self.client.post(
@@ -70,18 +51,53 @@ class AdminToolsViewTests(TestCase):
             {"question": "What is C-LARA-2?"},
         )
 
-        self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "C-LARA-2 is a repository-grounded platform answer.")
-        self.assertContains(resp, "1234")
-        self.assertContains(resp, "2.50")
-        mock_answer.assert_called_once_with(
-            "What is C-LARA-2?",
-            repository_path="/srv/C-LARA-2",
-            codex_executable="codex-test",
-            model="gpt-5.3-codex",
-            timeout_seconds=12.0,
-            openai_api_key="test-key",
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("/admin-tools/project-understanding/", resp["Location"])
+        mock_async_task.assert_called_once()
+        task_args = mock_async_task.call_args.args
+        self.assertEqual("projects.views._run_project_understanding_task", task_args[0])
+        self.assertEqual("What is C-LARA-2?", task_args[1])
+        self.assertEqual(self.staff_user.id, task_args[2])
+        self.assertTrue(TaskUpdate.objects.filter(user=self.staff_user, message="Project-understanding request queued.").exists())
+
+    @override_settings(MEDIA_ROOT="/tmp/c-lara-test-media")
+    def test_project_understanding_status_returns_messages_and_result(self):
+        self.client.login(username="staffer", password="pw")
+        report_id = uuid.uuid4()
+        TaskUpdate.objects.create(
+            report_id=report_id,
+            user=self.staff_user,
+            task_type="admin_project_understanding",
+            message="Done",
+            status="finished",
         )
+        from projects.views import _write_project_understanding_result
+
+        _write_project_understanding_result(
+            report_id,
+            ProjectUnderstandingAnswer(
+                question="What is C-LARA-2?",
+                prompt="Wrapped prompt",
+                answer="C-LARA-2 is a repository-grounded platform answer.",
+                model="gpt-5.3-codex",
+                prompt_version="project-understanding-v1",
+                requested_at="2026-06-01T10:00:00Z",
+                tokens_used=1234,
+                elapsed_seconds=2.5,
+                invocation_route="codex-exec",
+                repository_path="/srv/C-LARA-2",
+                returncode=0,
+            ),
+        )
+
+        resp = self.client.get(reverse("admin-project-understanding-status", args=[report_id]))
+
+        self.assertEqual(resp.status_code, 200)
+        payload = resp.json()
+        self.assertEqual("finished", payload["status"])
+        self.assertEqual(["Done"], payload["messages"])
+        self.assertEqual("C-LARA-2 is a repository-grounded platform answer.", payload["result"]["answer"])
+        self.assertEqual(1234, payload["result"]["tokens_used"])
 
     def test_admin_can_grant_admin_privileges(self):
         self.client.login(username="staffer", password="pw")

@@ -210,6 +210,8 @@ tokens used
         )
         self.assertIn("Summarise the project.", call["input"])
         self.assertFalse(call.get("check"))
+        self.assertEqual("utf-8", call["encoding"])
+        self.assertEqual("replace", call["errors"])
         self.assertEqual({"PATH": "/bin", "OPENAI_API_KEY": "test-key"}, call["env"])
 
     async def test_answer_project_understanding_question_calls_responses_model(self) -> None:
