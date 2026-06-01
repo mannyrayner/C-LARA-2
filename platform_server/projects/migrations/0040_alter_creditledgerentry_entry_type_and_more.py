@@ -8,7 +8,7 @@ class Migration(migrations.Migration):
     dependencies = [
         (
             "projects",
-            "0039_merge_0036_profile_byok_fields_0038_projectimagestyle_disallow_text_in_images",
+            "0039_merge_20260524_1408",
         ),
     ]
 
