@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -7,9 +8,16 @@ from pathlib import Path
 from core.project_understanding import (
     DEFAULT_PROJECT_UNDERSTANDING_MODEL,
     PROJECT_UNDERSTANDING_PROMPT_VERSION,
+    CodexExecError,
     ProjectUnderstandingAnswer,
     answer_project_understanding_question,
+    answer_project_understanding_question_with_codex_exec,
+    build_codex_exec_command,
+    build_codex_exec_environment,
     build_project_understanding_prompt,
+    extract_codex_formatted_answer,
+    extract_codex_tokens_used,
+    resolve_codex_executable,
     render_project_understanding_record,
     write_project_understanding_record,
 )
@@ -28,6 +36,31 @@ class FakeProjectUnderstandingClient:
         self.closed = True
 
 
+class FakeCodexExecRunner:
+    def __init__(self, stdout: str, returncode: int = 0, stderr: str = "") -> None:
+        self.stdout = stdout
+        self.returncode = returncode
+        self.stderr = stderr
+        self.calls: list[dict[str, object]] = []
+
+    def __call__(self, command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        self.calls.append({"command": command, **kwargs})
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=self.returncode,
+            stdout=self.stdout,
+            stderr=self.stderr,
+        )
+
+
+class FakeClock:
+    def __init__(self) -> None:
+        self.values = iter([10.0, 12.75])
+
+    def __call__(self) -> float:
+        return next(self.values)
+
+
 class ProjectUnderstandingTests(unittest.IsolatedAsyncioTestCase):
     def test_build_prompt_wraps_question_with_safety_and_evidence_rules(self) -> None:
         prompt = build_project_understanding_prompt("What is ISSUE-0034?")
@@ -43,6 +76,142 @@ class ProjectUnderstandingTests(unittest.IsolatedAsyncioTestCase):
     def test_build_prompt_rejects_empty_question(self) -> None:
         with self.assertRaises(ValueError):
             build_project_understanding_prompt("   ")
+
+    def test_build_codex_exec_command_uses_argument_vector(self) -> None:
+        command = build_codex_exec_command(
+            repository_path="/srv/C-LARA-2",
+            codex_executable="/usr/local/bin/codex",
+            model="gpt-5.3-codex",
+        )
+
+        self.assertEqual(
+            [
+                "/usr/local/bin/codex",
+                "exec",
+                "--cd",
+                "/srv/C-LARA-2",
+                "--sandbox",
+                "read-only",
+                "--ephemeral",
+                "--model",
+                "gpt-5.3-codex",
+                "-",
+            ],
+            command,
+        )
+
+    def test_build_codex_exec_environment_requires_openai_key(self) -> None:
+        env = build_codex_exec_environment(
+            openai_api_key="test-key",
+            base_environment={"PATH": "/bin", "SECRET": "do-not-copy"},
+        )
+
+        self.assertEqual("test-key", env["OPENAI_API_KEY"])
+        self.assertEqual("/bin", env["PATH"])
+        self.assertNotIn("SECRET", env)
+        with self.assertRaises(ValueError):
+            build_codex_exec_environment(base_environment={})
+
+    def test_resolve_codex_executable_checks_windows_npm_bin(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            npm_dir = Path(tmpdir) / "npm"
+            npm_dir.mkdir()
+            codex_cmd = npm_dir / "codex.cmd"
+            codex_cmd.write_text("@echo off\n", encoding="utf-8")
+
+            self.assertEqual(
+                str(codex_cmd),
+                resolve_codex_executable(
+                    "codex",
+                    environment={"PATH": "", "APPDATA": tmpdir, "OPENAI_API_KEY": "test-key"},
+                ),
+            )
+
+    def test_codex_exec_missing_executable_raises_friendly_error(self) -> None:
+        def missing_runner(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+            raise FileNotFoundError("no such file")
+
+        with self.assertRaisesRegex(CodexExecError, "Codex CLI executable was not found"):
+            answer_project_understanding_question_with_codex_exec(
+                "Summarise the project.",
+                repository_path="/srv/C-LARA-2",
+                codex_executable="missing-codex",
+                openai_api_key="test-key",
+                base_environment={"PATH": ""},
+                runner=missing_runner,
+            )
+
+    def test_extract_codex_transcript_answer_and_tokens(self) -> None:
+        transcript = """OpenAI Codex v0.135.0
+--------
+codex
+I am checking files.
+exec
+rg README.md
+ succeeded in 100ms:
+3:C-LARA-2 is ...
+
+codex
+- C-LARA-2 is a platform.
+- It cites files.
+tokens used
+41,940
+"""
+
+        self.assertEqual(41940, extract_codex_tokens_used(transcript))
+        self.assertEqual(
+            "- C-LARA-2 is a platform.\n- It cites files.",
+            extract_codex_formatted_answer(transcript),
+        )
+
+    def test_answer_project_understanding_question_with_codex_exec(self) -> None:
+        runner = FakeCodexExecRunner(
+            """OpenAI Codex v0.135.0
+--------
+codex
+- Repository-grounded answer with citations.
+""",
+            stderr="tokens used\n1,234\n",
+        )
+
+        result = answer_project_understanding_question_with_codex_exec(
+            "Summarise the project.",
+            repository_path="/srv/C-LARA-2",
+            openai_api_key="test-key",
+            base_environment={"PATH": "/bin"},
+            runner=runner,
+            monotonic=FakeClock(),
+        )
+
+        self.assertEqual("Summarise the project.", result.question)
+        self.assertEqual("- Repository-grounded answer with citations.", result.answer)
+        self.assertEqual(1234, result.tokens_used)
+        self.assertEqual(2.75, result.elapsed_seconds)
+        self.assertEqual("codex-exec", result.invocation_route)
+        self.assertEqual("/srv/C-LARA-2", result.repository_path)
+        self.assertEqual(0, result.returncode)
+        self.assertEqual(1, len(runner.calls))
+        call = runner.calls[0]
+        self.assertEqual(
+            [
+                "codex",
+                "exec",
+                "--cd",
+                "/srv/C-LARA-2",
+                "--sandbox",
+                "read-only",
+                "--ephemeral",
+                "--model",
+                DEFAULT_PROJECT_UNDERSTANDING_MODEL,
+                "-",
+            ],
+            call["command"],
+        )
+        self.assertIn("Summarise the project.", call["input"])
+        self.assertFalse(call.get("check"))
+        self.assertEqual("utf-8", call["encoding"])
+        self.assertEqual("replace", call["errors"])
+        self.assertEqual({"PATH": "/bin", "OPENAI_API_KEY": "test-key"}, call["env"])
 
     async def test_answer_project_understanding_question_calls_responses_model(self) -> None:
         client = FakeProjectUnderstandingClient()
@@ -76,6 +245,7 @@ class ProjectUnderstandingTests(unittest.IsolatedAsyncioTestCase):
 
         rendered = render_project_understanding_record(result)
         self.assertIn("Human assessment: `unreviewed`", rendered)
+        self.assertIn("Invocation route: `responses-api`", rendered)
         self.assertIn("## Prompt sent to model", rendered)
 
         with tempfile.TemporaryDirectory() as tmpdir:
