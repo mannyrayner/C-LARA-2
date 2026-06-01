@@ -32,7 +32,7 @@
 
 <section id="project-understanding-result" {% if not result %}style="display:none;"{% endif %}>
   <h2>Answer</h2>
-  <pre id="project-understanding-answer" style="white-space: pre-wrap; border: 1px solid #ddd; padding: 1rem; background: #f8f8f8;">{% if result %}{{ result.answer }}{% endif %}</pre>
+  <div id="project-understanding-answer" style="border: 1px solid #ddd; padding: 1rem; background: #f8f8f8;">{% if result_answer_html %}{{ result_answer_html }}{% endif %}</div>
 
   <h2>Run metadata</h2>
   <table border="1" cellpadding="6" cellspacing="0">
@@ -53,6 +53,36 @@
     <pre id="project-understanding-stderr" style="white-space: pre-wrap; border: 1px solid #f2c; padding: 1rem; background: #fff8fb;">{% if result %}{{ result.stderr }}{% endif %}</pre>
   </section>
 </section>
+
+<h2>Stored project-understanding turns</h2>
+{% if stored_turns %}
+  <table border="1" cellpadding="6" cellspacing="0">
+    <thead>
+      <tr>
+        <th>Submitted</th>
+        <th>Question</th>
+        <th>Visibility</th>
+        <th>Status</th>
+        <th>Tokens</th>
+        <th>Elapsed</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for turn in stored_turns %}
+        <tr>
+          <td><a href="{% url 'admin-project-understanding-monitor' turn.report_id %}">{{ turn.submitted_at|default:turn.report_id }}</a></td>
+          <td>{{ turn.question|truncatechars:120 }}</td>
+          <td>{{ turn.visibility }}</td>
+          <td>{{ turn.status|default:"unknown" }}</td>
+          <td>{% if turn.tokens_used != None %}{{ turn.tokens_used }}{% else %}—{% endif %}</td>
+          <td>{% if turn.elapsed_seconds != None %}{{ turn.elapsed_seconds|floatformat:2 }}s{% else %}—{% endif %}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No stored project-understanding turns visible to you yet.</p>
+{% endif %}
 
 <p><a href="{% url 'admin-tools' %}">Back to admin tools</a></p>
 
@@ -113,7 +143,8 @@
     function showResult(result) {
       if (!result || !resultSection) return;
       resultSection.style.display = "block";
-      setText("project-understanding-answer", result.answer);
+      const answerEl = document.getElementById("project-understanding-answer");
+      if (answerEl) answerEl.innerHTML = result.answer_html || "";
       setText("project-understanding-route", result.invocation_route);
       setText("project-understanding-model", result.model);
       setText("project-understanding-prompt-version", result.prompt_version);

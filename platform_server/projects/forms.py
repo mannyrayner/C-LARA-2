@@ -414,6 +414,11 @@ class CreditTransferForm(forms.Form):
 
 
 class AdminProjectUnderstandingForm(forms.Form):
+    VISIBILITY_CHOICES = [
+        ("private", "Private (visible only to me)"),
+        ("public", "Public to other admins/reviewers"),
+    ]
+
     question = forms.CharField(
         max_length=4000,
         label="Project-understanding question",
@@ -425,6 +430,12 @@ class AdminProjectUnderstandingForm(forms.Form):
                 "placeholder": "Summarise the repository in three bullet points; cite files if possible.",
             }
         ),
+    )
+    visibility = forms.ChoiceField(
+        choices=VISIBILITY_CHOICES,
+        initial="private",
+        label="Log visibility",
+        help_text="Private runs stay visible to the submitting admin; public runs can be reviewed by other admins/reviewers.",
     )
 
 

@@ -36,6 +36,7 @@ from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import CreateView, DetailView, ListView
 from django_q.tasks import async_task
 from django.utils.html import escape
+from django.utils.safestring import mark_safe
 from django.utils.text import slugify
 from django.utils import timezone as django_timezone
 import mimetypes
@@ -2891,6 +2892,81 @@ def _extract_openai_pricing_with_ai(
 PROJECT_UNDERSTANDING_TASK_TYPE = "admin_project_understanding"
 
 
+_MARKDOWN_LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
+_MARKDOWN_CODE_RE = re.compile(r"`([^`]+)`")
+
+
+def _render_project_understanding_inline_markdown(text: str) -> str:
+    """Render a small safe subset of inline Markdown used by Codex answers."""
+
+    def _render_code(match: re.Match[str]) -> str:
+        return f"<code>{escape(match.group(1))}</code>"
+
+    def _render_links(chunk: str) -> str:
+        parts: list[str] = []
+        last = 0
+        for match in _MARKDOWN_LINK_RE.finditer(chunk):
+            parts.append(escape(chunk[last:match.start()]))
+            label = escape(match.group(1))
+            href = match.group(2).strip()
+            if href.lower().startswith(("http://", "https://", "/")):
+                safe_href = escape(href)
+                parts.append(f'<a href="{safe_href}" target="_blank" rel="noopener noreferrer">{label}</a>')
+            else:
+                parts.append(escape(match.group(0)))
+            last = match.end()
+        parts.append(escape(chunk[last:]))
+        return "".join(parts)
+
+    rendered_parts: list[str] = []
+    last = 0
+    for match in _MARKDOWN_CODE_RE.finditer(text):
+        rendered_parts.append(_render_links(text[last:match.start()]))
+        rendered_parts.append(_render_code(match))
+        last = match.end()
+    rendered_parts.append(_render_links(text[last:]))
+    return "".join(rendered_parts)
+
+
+def render_project_understanding_answer_html(answer: str) -> str:
+    """Render Codex Markdown-ish answers as safe human-readable HTML."""
+
+    lines = (answer or "").splitlines()
+    html: list[str] = []
+    in_list = False
+    paragraph: list[str] = []
+
+    def flush_paragraph() -> None:
+        if paragraph:
+            html.append(f"<p>{'<br>'.join(paragraph)}</p>")
+            paragraph.clear()
+
+    def close_list() -> None:
+        nonlocal in_list
+        if in_list:
+            html.append("</ul>")
+            in_list = False
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            flush_paragraph()
+            close_list()
+            continue
+        if stripped.startswith("- "):
+            flush_paragraph()
+            if not in_list:
+                html.append("<ul>")
+                in_list = True
+            html.append(f"<li>{_render_project_understanding_inline_markdown(stripped[2:])}</li>")
+            continue
+        close_list()
+        paragraph.append(_render_project_understanding_inline_markdown(stripped))
+    flush_paragraph()
+    close_list()
+    return "\n".join(html)
+
+
 def _project_understanding_run_dir() -> Path:
     directory = Path(settings.MEDIA_ROOT) / "admin_project_understanding"
     directory.mkdir(parents=True, exist_ok=True)
@@ -2905,27 +2981,79 @@ def _project_understanding_request_path(report_id: str | uuid.UUID) -> Path:
     return _project_understanding_run_dir() / f"{report_id}.request.json"
 
 
-def _write_project_understanding_request(report_id: str | uuid.UUID, question: str) -> None:
+def _write_project_understanding_request(
+    report_id: str | uuid.UUID,
+    question: str,
+    *,
+    user_id: int | None = None,
+    username: str = "",
+    visibility: str = "private",
+) -> None:
     _project_understanding_request_path(report_id).write_text(
-        json.dumps({"question": question}, ensure_ascii=False, indent=2),
+        json.dumps(
+            {
+                "question": question,
+                "visibility": visibility if visibility in {"private", "public"} else "private",
+                "user_id": user_id,
+                "username": username,
+                "submitted_at": django_timezone.now().isoformat(),
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
         encoding="utf-8",
     )
 
 
-def _read_project_understanding_question(report_id: str | uuid.UUID) -> str:
+def _read_project_understanding_request(report_id: str | uuid.UUID) -> dict[str, Any]:
     request_path = _project_understanding_request_path(report_id)
     if request_path.exists():
         try:
             payload = json.loads(request_path.read_text(encoding="utf-8"))
-            question = str(payload.get("question") or "").strip()
-            if question:
-                return question
+            if isinstance(payload, dict):
+                return payload
         except Exception:
             logger.exception("Failed to read project-understanding request %s", request_path)
     result = _read_project_understanding_result(report_id)
     if result:
-        return str(result.get("question") or "").strip()
-    return ""
+        return {"question": str(result.get("question") or "").strip(), "visibility": "private"}
+    return {}
+
+
+def _read_project_understanding_question(report_id: str | uuid.UUID) -> str:
+    return str(_read_project_understanding_request(report_id).get("question") or "").strip()
+
+
+def _can_access_project_understanding_turn(user, report_id: str | uuid.UUID) -> bool:
+    payload = _read_project_understanding_request(report_id)
+    visibility = str(payload.get("visibility") or "private")
+    owner_id = payload.get("user_id")
+    return visibility == "public" or owner_id == getattr(user, "id", None)
+
+
+def _list_project_understanding_turns(user) -> list[dict[str, Any]]:
+    turns: list[dict[str, Any]] = []
+    for request_path in _project_understanding_run_dir().glob("*.request.json"):
+        report_id = request_path.name.removesuffix(".request.json")
+        request_payload = _read_project_understanding_request(report_id)
+        visibility = str(request_payload.get("visibility") or "private")
+        if not _can_access_project_understanding_turn(user, report_id):
+            continue
+        result = _read_project_understanding_result(report_id)
+        latest_update = TaskUpdate.objects.filter(report_id=report_id).order_by("-timestamp").first()
+        turns.append(
+            {
+                "report_id": report_id,
+                "question": str(request_payload.get("question") or ""),
+                "visibility": visibility,
+                "username": str(request_payload.get("username") or ""),
+                "submitted_at": str(request_payload.get("submitted_at") or ""),
+                "status": latest_update.status if latest_update and latest_update.status else ("finished" if result else "running"),
+                "tokens_used": result.get("tokens_used") if result else None,
+                "elapsed_seconds": result.get("elapsed_seconds") if result else None,
+            }
+        )
+    return sorted(turns, key=lambda turn: turn.get("submitted_at") or turn["report_id"], reverse=True)[:50]
 
 
 def _write_project_understanding_result(report_id: str | uuid.UUID, result) -> None:
@@ -3027,7 +3155,13 @@ def admin_project_understanding(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             report_id = uuid.uuid4()
             question = form.cleaned_data["question"]
-            _write_project_understanding_request(report_id, question)
+            _write_project_understanding_request(
+                report_id,
+                question,
+                user_id=request.user.id,
+                username=request.user.username,
+                visibility=form.cleaned_data["visibility"],
+            )
             _record_project_understanding_update(
                 report_id=report_id,
                 user_id=request.user.id,
@@ -3050,6 +3184,8 @@ def admin_project_understanding(request: HttpRequest) -> HttpResponse:
         {
             "form": form,
             "result": None,
+            "result_answer_html": "",
+            "stored_turns": _list_project_understanding_turns(request.user),
             "report_id": None,
             "status_url": None,
             "repository_path": getattr(settings, "PROJECT_UNDERSTANDING_REPOSITORY_PATH", settings.ROOT_DIR),
@@ -3062,15 +3198,22 @@ def admin_project_understanding(request: HttpRequest) -> HttpResponse:
 @login_required
 def admin_project_understanding_monitor(request: HttpRequest, report_id: str) -> HttpResponse:
     _require_admin(request.user)
-    current_question = _read_project_understanding_question(report_id)
+    if not _can_access_project_understanding_turn(request.user, report_id):
+        raise Http404()
+    current_request = _read_project_understanding_request(report_id)
+    current_question = str(current_request.get("question") or "").strip()
+    current_visibility = str(current_request.get("visibility") or "private")
+    result = _read_project_understanding_result(report_id)
     return render(
         request,
         "projects/admin_project_understanding.html",
         {
-            "form": AdminProjectUnderstandingForm(initial={"question": current_question}),
-            "result": _read_project_understanding_result(report_id),
+            "form": AdminProjectUnderstandingForm(initial={"question": current_question, "visibility": current_visibility}),
+            "result": result,
+            "result_answer_html": mark_safe(render_project_understanding_answer_html(str(result.get("answer") or ""))) if result else "",
             "report_id": report_id,
             "status_url": reverse("admin-project-understanding-status", args=[report_id]),
+            "stored_turns": _list_project_understanding_turns(request.user),
             "repository_path": getattr(settings, "PROJECT_UNDERSTANDING_REPOSITORY_PATH", settings.ROOT_DIR),
             "codex_model": getattr(settings, "PROJECT_UNDERSTANDING_MODEL", "gpt-5.3-codex"),
             "timeout_seconds": getattr(settings, "PROJECT_UNDERSTANDING_TIMEOUT_SECONDS", 300),
@@ -3081,6 +3224,8 @@ def admin_project_understanding_monitor(request: HttpRequest, report_id: str) ->
 @login_required
 def admin_project_understanding_status(request: HttpRequest, report_id: str) -> JsonResponse:
     _require_admin(request.user)
+    if not _can_access_project_understanding_turn(request.user, report_id):
+        raise Http404()
     updates = TaskUpdate.objects.filter(
         report_id=report_id,
         user=request.user,
@@ -3101,6 +3246,8 @@ def admin_project_understanding_status(request: HttpRequest, report_id: str) -> 
         if last and last.status in {"error", "finished"}:
             status = last.status
     result = _read_project_understanding_result(report_id) if status == "finished" else None
+    if result:
+        result["answer_html"] = render_project_understanding_answer_html(str(result.get("answer") or ""))
     return JsonResponse({
         "messages": messages_out,
         "status": status,
