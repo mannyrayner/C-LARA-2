@@ -1,0 +1,84 @@
+{% extends "projects/base.html" %}
+{% block title %}Project-understanding turns · C-LARA-2{% endblock %}
+{% block content %}
+<h1>Stored project-understanding turns</h1>
+
+<p>
+  Admin-only history for logged project-understanding requests. Private turns are visible only
+  to the submitting admin; public turns are visible to other admins/reviewers.
+</p>
+
+<form method="get" action="{% url 'admin-project-understanding-turns' %}" style="border: 1px solid #ddd; padding: 1rem; margin-bottom: 1rem;">
+  <p>
+    <label for="turn-q">Partial match</label><br>
+    <input id="turn-q" type="search" name="q" value="{{ filters.q }}" style="width: 100%;" placeholder="Question, request ID, username, status, visibility">
+  </p>
+  <p>
+    <label for="turn-date-from">Submitted from</label><br>
+    <input id="turn-date-from" type="date" name="date_from" value="{{ filters.date_from }}">
+  </p>
+  <p>
+    <label for="turn-date-to">Submitted to</label><br>
+    <input id="turn-date-to" type="date" name="date_to" value="{{ filters.date_to }}">
+  </p>
+  <p>
+    <label for="turn-user-id">User ID</label><br>
+    <input id="turn-user-id" type="number" name="user_id" value="{{ filters.user_id }}" min="1">
+  </p>
+  <p>
+    <label for="turn-visibility">Visibility</label><br>
+    <select id="turn-visibility" name="visibility">
+      <option value="" {% if not filters.visibility %}selected{% endif %}>Any</option>
+      <option value="private" {% if filters.visibility == "private" %}selected{% endif %}>Private</option>
+      <option value="public" {% if filters.visibility == "public" %}selected{% endif %}>Public</option>
+    </select>
+  </p>
+  <p>
+    <label for="turn-status">Status</label><br>
+    <select id="turn-status" name="status">
+      <option value="" {% if not filters.status %}selected{% endif %}>Any</option>
+      <option value="running" {% if filters.status == "running" %}selected{% endif %}>Running</option>
+      <option value="finished" {% if filters.status == "finished" %}selected{% endif %}>Finished</option>
+      <option value="error" {% if filters.status == "error" %}selected{% endif %}>Error</option>
+    </select>
+  </p>
+  <button class="btn" type="submit">Search turns</button>
+  <a href="{% url 'admin-project-understanding-turns' %}">Clear filters</a>
+</form>
+
+<p>Showing {{ filtered_turn_count }} of {{ visible_turn_count }} visible turns.</p>
+
+{% if turns %}
+  <table border="1" cellpadding="6" cellspacing="0">
+    <thead>
+      <tr>
+        <th>Submitted</th>
+        <th>Question</th>
+        <th>User</th>
+        <th>Visibility</th>
+        <th>Status</th>
+        <th>Tokens</th>
+        <th>Elapsed</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for turn in turns %}
+        <tr>
+          <td><a href="{% url 'admin-project-understanding-monitor' turn.report_id %}">{{ turn.submitted_at|default:turn.report_id }}</a></td>
+          <td>{{ turn.question|truncatechars:180 }}</td>
+          <td>{% if turn.username %}{{ turn.username }}{% endif %}{% if turn.user_id %} <code>#{{ turn.user_id }}</code>{% endif %}</td>
+          <td>{{ turn.visibility }}</td>
+          <td>{{ turn.status|default:"unknown" }}</td>
+          <td>{% if turn.tokens_used != None %}{{ turn.tokens_used }}{% else %}—{% endif %}</td>
+          <td>{% if turn.elapsed_seconds != None %}{{ turn.elapsed_seconds|floatformat:2 }}s{% else %}—{% endif %}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No stored project-understanding turns match these filters.</p>
+{% endif %}
+
+<p><a href="{% url 'admin-project-understanding' %}">Back to project-understanding assistant</a></p>
+<p><a href="{% url 'admin-tools' %}">Back to admin tools</a></p>
+{% endblock %}
