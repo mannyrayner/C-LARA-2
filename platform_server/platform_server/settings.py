@@ -155,6 +155,10 @@ PROJECT_UNDERSTANDING_CODEX_EXECUTABLE = os.environ.get("C_LARA_CODEX_EXECUTABLE
 PROJECT_UNDERSTANDING_REPOSITORY_PATH = os.environ.get("C_LARA_PROJECT_UNDERSTANDING_REPO", str(ROOT_DIR))
 PROJECT_UNDERSTANDING_MODEL = os.environ.get("C_LARA_PROJECT_UNDERSTANDING_MODEL", "gpt-5.3-codex")
 PROJECT_UNDERSTANDING_TIMEOUT_SECONDS = float(os.environ.get("C_LARA_PROJECT_UNDERSTANDING_TIMEOUT_SECONDS", "300"))
+PROJECT_UNDERSTANDING_GITHUB_BLOB_BASE_URL = os.environ.get(
+    "C_LARA_PROJECT_UNDERSTANDING_GITHUB_BLOB_BASE_URL",
+    "https://github.com/mannyrayner/C-LARA-2/blob/main",
+)
 
 # Optional admin-only legacy C-LARA corpus import support.
 # Point this at a server-side folder containing numbered legacy bundle directories

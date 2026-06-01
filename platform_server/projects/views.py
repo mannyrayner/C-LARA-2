@@ -2897,16 +2897,57 @@ _MARKDOWN_CODE_RE = re.compile(r"`([^`]+)`")
 _WINDOWS_ABSOLUTE_LINK_RE = re.compile(r"^/?[A-Za-z]:[\\/]")
 
 
+def _normalise_project_understanding_path_link(raw_href: str) -> str:
+    """Convert Codex file-path links inside the configured checkout to GitHub blob URLs."""
+
+    href = unquote(raw_href.strip()).replace("\\", "/")
+    if href.lower().startswith("file:///"):
+        href = href[8:]
+    if href.startswith("/") and len(href) > 2 and href[2] == ":":
+        href = href[1:]
+
+    line_fragment = ""
+    line_match = re.match(r"^(?P<path>.+\.[A-Za-z0-9_+-]+):(?P<line>\d+)$", href)
+    if line_match:
+        href = line_match.group("path")
+        line_fragment = f"#L{line_match.group('line')}"
+
+    repo_root = str(getattr(settings, "PROJECT_UNDERSTANDING_REPOSITORY_PATH", settings.ROOT_DIR)).replace("\\", "/").rstrip("/")
+    if repo_root.startswith("/") and len(repo_root) > 2 and repo_root[2] == ":":
+        repo_root = repo_root[1:]
+
+    href_lower = href.lower()
+    repo_lower = repo_root.lower()
+    relative_path = ""
+    if repo_lower and href_lower == repo_lower:
+        relative_path = ""
+    elif repo_lower and href_lower.startswith(repo_lower + "/"):
+        relative_path = href[len(repo_root) + 1 :]
+    elif not re.match(r"^[A-Za-z][A-Za-z0-9+.-]*:", href) and not href.startswith("/"):
+        relative_path = href.lstrip("./")
+    else:
+        return ""
+
+    if not relative_path:
+        return getattr(settings, "PROJECT_UNDERSTANDING_GITHUB_BLOB_BASE_URL", "").rstrip("/")
+    if relative_path.startswith("../") or "/../" in relative_path:
+        return ""
+    base_url = str(getattr(settings, "PROJECT_UNDERSTANDING_GITHUB_BLOB_BASE_URL", "")).rstrip("/")
+    if not base_url.lower().startswith(("http://", "https://")):
+        return ""
+    return f"{base_url}/{quote(relative_path, safe='/')}{line_fragment}"
+
+
 def _normalise_project_understanding_link_href(raw_href: str) -> str:
-    """Return a safe href for Codex answer links, including local repository paths."""
+    """Return a safe href for Codex answer links, mapping repository files to GitHub."""
 
     href = raw_href.strip()
-    href_for_path = href.replace("\\", "/")
-    if href_for_path.startswith("/") and len(href_for_path) > 2 and href_for_path[2] == ":":
-        href_for_path = href_for_path[1:]
-    if _WINDOWS_ABSOLUTE_LINK_RE.match(href):
-        return "file:///" + quote(href_for_path, safe="/:")
-    if href.lower().startswith(("http://", "https://", "/")):
+    if href.lower().startswith(("http://", "https://")):
+        return href
+    github_href = _normalise_project_understanding_path_link(href)
+    if github_href:
+        return github_href
+    if href.startswith("/") and not _WINDOWS_ABSOLUTE_LINK_RE.match(href):
         return href
     return ""
 

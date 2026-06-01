@@ -114,19 +114,25 @@ class AdminToolsViewTests(TestCase):
     def test_project_understanding_answer_markdown_is_rendered_safely(self):
         from projects.views import render_project_understanding_answer_html
 
-        html = render_project_understanding_answer_html(
-            "See [docs](/docs/roadmap/platform-self-knowledge-assistant.md), "
-            "[code](C:/cygwin64/home/github/c-lara-2/src/core/project_understanding.py), "
-            "and `Token`.\n"
-            "- ignores [unsafe](javascript:alert(1))"
-        )
+        with override_settings(
+            PROJECT_UNDERSTANDING_REPOSITORY_PATH="C:/cygwin64/home/github/c-lara-2",
+            PROJECT_UNDERSTANDING_GITHUB_BLOB_BASE_URL="https://github.com/mannyrayner/C-LARA-2/blob/main",
+        ):
+            html = render_project_understanding_answer_html(
+                "See [docs](C:/cygwin64/home/github/c-lara-2/docs/roadmap/platform-self-knowledge-assistant.md), "
+                "[code](C:/cygwin64/home/github/c-lara-2/src/core/project_understanding.py), "
+                "[line](C:/cygwin64/home/github/c-lara-2/README.md:3), "
+                "and `Token`.\n"
+                "- ignores [unsafe](javascript:alert(1))"
+            )
 
-        self.assertIn('<a href="/docs/roadmap/platform-self-knowledge-assistant.md"', html)
-        self.assertIn('href="file:///C:/cygwin64/home/github/c-lara-2/src/core/project_understanding.py"', html)
+        self.assertIn("https://github.com/mannyrayner/C-LARA-2/blob/main/docs/roadmap/platform-self-knowledge-assistant.md", html)
+        self.assertIn("https://github.com/mannyrayner/C-LARA-2/blob/main/src/core/project_understanding.py", html)
+        self.assertIn("https://github.com/mannyrayner/C-LARA-2/blob/main/README.md#L3", html)
         self.assertIn('<code>Token</code>', html)
         self.assertIn("&lt;", render_project_understanding_answer_html("<script>alert(1)</script>"))
         self.assertNotIn('href="javascript:alert(1)"', html)
-
+        self.assertNotIn("file:///", html)
 
     def test_project_understanding_turns_view_searches_visible_history(self):
         self.client.login(username="staffer", password="pw")
