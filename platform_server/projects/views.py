@@ -46,6 +46,10 @@ from urllib.parse import quote
 
 from core.config import DEFAULT_MODEL, OpenAIConfig
 from core.ai_api import OpenAIClient, normalize_json_text
+from core.project_understanding import (
+    CodexExecError,
+    answer_project_understanding_question_with_codex_exec,
+)
 from core.language_direction import language_direction
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 from pipeline.mwe import normalize_mwes
@@ -58,6 +62,7 @@ from .forms import (
     AdminDeleteCommunityForm,
     AdminAdjustCreditsForm,
     AdminOpenAIPricingForm,
+    AdminProjectUnderstandingForm,
     CreditTransferForm,
     ClozeExerciseSetForm,
     DeleteCachedWordAudioForm,
@@ -2882,6 +2887,40 @@ def _extract_openai_pricing_with_ai(
             "evidence": str(row.get("evidence") or ""),
         }
     return result
+
+
+@login_required
+def admin_project_understanding(request: HttpRequest) -> HttpResponse:
+    _require_admin(request.user)
+    result = None
+    if request.method == "POST":
+        form = AdminProjectUnderstandingForm(request.POST)
+        if form.is_valid():
+            try:
+                result = answer_project_understanding_question_with_codex_exec(
+                    form.cleaned_data["question"],
+                    repository_path=getattr(settings, "PROJECT_UNDERSTANDING_REPOSITORY_PATH", settings.ROOT_DIR),
+                    codex_executable=getattr(settings, "PROJECT_UNDERSTANDING_CODEX_EXECUTABLE", "codex"),
+                    model=getattr(settings, "PROJECT_UNDERSTANDING_MODEL", "gpt-5.3-codex"),
+                    timeout_seconds=float(getattr(settings, "PROJECT_UNDERSTANDING_TIMEOUT_SECONDS", 300)),
+                    openai_api_key=getattr(settings, "OPENAI_API_KEY", ""),
+                )
+                messages.success(request, "Codex project-understanding answer generated.")
+            except (CodexExecError, ValueError) as exc:
+                messages.error(request, f"Codex project-understanding call failed: {exc}")
+    else:
+        form = AdminProjectUnderstandingForm()
+    return render(
+        request,
+        "projects/admin_project_understanding.html",
+        {
+            "form": form,
+            "result": result,
+            "repository_path": getattr(settings, "PROJECT_UNDERSTANDING_REPOSITORY_PATH", settings.ROOT_DIR),
+            "codex_model": getattr(settings, "PROJECT_UNDERSTANDING_MODEL", "gpt-5.3-codex"),
+            "timeout_seconds": getattr(settings, "PROJECT_UNDERSTANDING_TIMEOUT_SECONDS", 300),
+        },
+    )
 
 
 @login_required
