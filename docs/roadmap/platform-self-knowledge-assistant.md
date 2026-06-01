@@ -49,6 +49,28 @@ codex exec \
 
 The exact command should be generated without shell-injection hazards; production code should prefer `subprocess.run([...], input=prompt_text, ...)` or an equivalently safe argument vector over interpolating untrusted text into a shell command. The example above is documentation of the intended Codex invocation semantics, not a prescription to use unsafe shell string construction.
 
+### Current implementation status (2026-06-01)
+
+The first restricted platform implementation is now in place and can be tested from the admin UI. It includes:
+
+- a core `codex exec` wrapper in `src/core/project_understanding.py` that builds the versioned project-understanding prompt, constructs a read-only/non-interactive argument vector, passes the prompt through stdin, supplies `OPENAI_API_KEY` through a reduced environment, resolves common Windows npm Codex shims, applies a timeout, forces UTF-8 subprocess decoding, extracts the final answer and token count where available, and returns structured metadata;
+- configurable Django settings for the Codex executable, repository checkout path, model, and timeout: `PROJECT_UNDERSTANDING_CODEX_EXECUTABLE`, `PROJECT_UNDERSTANDING_REPOSITORY_PATH`, `PROJECT_UNDERSTANDING_MODEL`, and `PROJECT_UNDERSTANDING_TIMEOUT_SECONDS`;
+- an admin-only platform surface at `/admin-tools/project-understanding/`, linked from the admin tools page, with a textarea for the question and a result area showing the answer, model, prompt version, elapsed time, token count when extractable, exit status, repository path, and stderr when present;
+- an asynchronous Django Q execution path: submitting a question queues a background task, immediately redirects to a monitor page, records `TaskUpdate` progress rows, emits periodic heartbeat messages while Codex is running, and polls a JSON status endpoint until the run finishes or fails;
+- request/result persistence under `MEDIA_ROOT/admin_project_understanding/`, so the monitor page can keep showing the current question during execution and after completion, and can render the completed answer produced by the worker process;
+- tests for prompt construction, command/environment construction, Codex executable resolution, transcript parsing, timeout/error handling, record rendering, admin access control, task queueing, monitor rendering, and status/result JSON.
+
+The local smoke tests have also demonstrated that `codex exec` can answer repository-level questions by inspecting files itself and returning plausible cited answers. Observed answers correctly used repository evidence for questions such as a three-bullet repository summary and the internal annotated-text representation.
+
+Important remaining work before treating the feature as broadly usable:
+
+- add an explicit export/review flow that writes selected answers into `docs/project_understanding/` as committed evidence records;
+- add reviewer assessment fields in the UI rather than only in rendered Markdown records;
+- decide whether and how to charge/rate-limit admin runs through the credits/billing framework;
+- sanitize or rewrite local absolute path citations before answers are shown outside trusted-admin contexts;
+- resolve the existing migration-graph conflict that currently blocks the Django admin-tool test command in this checkout;
+- run a curated evaluation set and summarize successes, failures, stale-documentation discoveries, and safety observations.
+
 ### Installation and runtime prerequisites for `codex exec`
 
 The platform does not need to embed Codex as a Python library. It needs a working, pinned Codex CLI executable available to the process that runs the management command or background worker. The installation checklist should be explicit because local development, staging, and production may use different operating-system images.
@@ -326,7 +348,7 @@ The assistant should reason over publicly available repository content, but the 
 
 ## Phased plan
 
-### Phase A: revised planning and command design
+### Phase A: revised planning and command design — largely complete
 
 - Treat the normal API/retrieval-wrapper approach as superseded for the main architecture.
 - Define the first `codex exec` command contract: executable, repository path, sandbox mode, non-interactive mode, model, timeout, prompt passing, and output capture.
@@ -334,19 +356,19 @@ The assistant should reason over publicly available repository content, but the 
 - Define the record schema and create `docs/project_understanding/` conventions.
 - Choose the first set of report-relevant evaluation questions.
 
-### Phase B: restricted management-command prototype
+### Phase B: restricted command/wrapper prototype — partly complete
 
-- Build a management command that accepts a question, constructs the versioned Codex prompt, invokes `codex exec` in read-only/non-interactive mode, and prints the answer.
-- Store each run as a versionable record with command metadata and human assessment placeholders.
+- Build a callable wrapper that accepts a question, constructs the versioned Codex prompt, invokes `codex exec` in read-only/non-interactive mode, and returns a structured result.
+- Capture elapsed time, stdout/stderr, exit status, model, prompt version, token count when extractable, repository path, and the command vector.
 - Add tests for prompt construction, safe subprocess argument construction, timeout/error paths, record serialization, and missing-evidence behaviour.
-- Run a small curated question set manually and inspect whether Codex cites useful files and distinguishes implemented/planned work.
+- Still needed: a management command or export command for batch/report-oriented runs.
 
-### Phase C: staff-only UI and review workflow
+### Phase C: staff-only UI and review workflow — first admin UI implemented
 
-- Add a minimal staff-only Django view after the command path is stable.
-- Display answer text, extracted citations/supporting-file list, command metadata, and stderr/exit status warnings.
-- Add reviewer assessment controls and export/review paths for committing selected records.
-- Add access-control, rate-limit, and audit tests.
+- Add a minimal staff-only Django view linked from the admin tools page.
+- Display answer text, command/run metadata, stderr/exit status warnings, and live background-task progress.
+- Add access-control, queueing, monitor, and status-endpoint tests.
+- Still needed: citation extraction, reviewer assessment controls, rate-limit/cost controls, and export/review paths for committing selected records.
 
 ### Phase D: report/evidence workflow
 
