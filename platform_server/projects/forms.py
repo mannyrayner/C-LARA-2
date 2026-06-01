@@ -413,6 +413,21 @@ class CreditTransferForm(forms.Form):
         self.fields["recipient"].queryset = qs
 
 
+class AdminProjectUnderstandingForm(forms.Form):
+    question = forms.CharField(
+        max_length=4000,
+        label="Project-understanding question",
+        help_text="Ask a high-level question about the C-LARA-2 repository. Codex will inspect the configured checkout in read-only mode.",
+        widget=forms.Textarea(
+            attrs={
+                "rows": 6,
+                "style": "width: 100%; font-family: monospace;",
+                "placeholder": "Summarise the repository in three bullet points; cite files if possible.",
+            }
+        ),
+    )
+
+
 class AdminOpenAIPricingForm(forms.ModelForm):
     class Meta:
         model = OpenAIModelPricing
