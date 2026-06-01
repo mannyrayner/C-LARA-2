@@ -67,10 +67,20 @@ Important remaining work before treating the feature as broadly usable:
 
 - add an explicit export/review flow that writes selected answers into `docs/project_understanding/` as committed evidence records;
 - add reviewer assessment fields in the UI rather than only in rendered Markdown records;
-- decide whether and how to charge/rate-limit admin runs through the credits/billing framework;
-- sanitize or rewrite local absolute path citations before answers are shown outside trusted-admin contexts;
-- resolve the existing migration-graph conflict that currently blocks the Django admin-tool test command in this checkout;
+- add hard budget/rate-limit controls for admin runs now that the UI records total tokens and a clearly labelled upper-bound cost estimate;
+- reconcile exact cost accounting if a future Codex CLI/API surface exposes input, cached-input, and output token splits rather than only the total `tokens used`;
+- keep local absolute path citations rewritten to GitHub URLs before answers are shown outside trusted-admin contexts;
 - run a curated evaluation set and summarize successes, failures, stale-documentation discoveries, and safety observations.
+
+#### Migration-state note from the 2026-06-01 implementation pass
+
+The migration warning seen when starting the platform is separate from the project-understanding assistant work: this feature added settings, views, forms, templates, and file-backed request/result records, but did not add or alter Django models. The checkout currently has a pre-existing migration graph with two leaves under `projects`: one branch adds BYOK fields to `Profile` in `0036_profile_byok_fields`, while the other branch runs `0036_alter_exerciseset_flashcard_mode` → `0037_project_audio_mode` → `0038_projectimagestyle_disallow_text_in_images`. In this environment, `manage.py makemigrations --check --dry-run` and the fresh-test-database command report:
+
+```text
+Conflicting migrations detected; multiple leaf nodes in the migration graph: (0036_profile_byok_fields, 0038_projectimagestyle_disallow_text_in_images in projects).
+```
+
+This explains why the Django admin-tool test command is not clean in this checkout. It is not evidence that the project-understanding assistant introduced unapplied model changes. The appropriate fix, when we next touch migrations deliberately, is a normal Django merge migration depending on both leaves (or an equivalent migration-history cleanup chosen by the project maintainer), not an ad-hoc model change from the project-understanding feature. Until then, the warning is benign for manual testing on an already-migrated local database, but it is worth tracking because it blocks clean fresh-database test runs.
 
 ### Installation and runtime prerequisites for `codex exec`
 
