@@ -25,7 +25,11 @@
   <h2>Live status</h2>
   <p><strong>Request ID:</strong> <code>{{ report_id }}</code></p>
   <p id="project-understanding-status" aria-live="polite">Processing started; waiting for the first Codex update…</p>
-  <ul id="project-understanding-messages"></ul>
+  <ul id="project-understanding-messages">
+    {% for update in initial_updates %}
+      <li>{{ update.timestamp|date:"c" }} — {{ update.message }}</li>
+    {% endfor %}
+  </ul>
 {% endif %}
 
 <form method="post" action="{% url 'admin-project-understanding' %}" id="project-understanding-form">
@@ -107,6 +111,9 @@
     const statusEl = document.getElementById("project-understanding-status");
     const messagesEl = document.getElementById("project-understanding-messages");
     const resultSection = document.getElementById("project-understanding-result");
+    const seenMessages = new Set(
+      messagesEl ? Array.from(messagesEl.querySelectorAll("li")).map((item) => item.textContent) : []
+    );
 
     function setText(id, value) {
       const el = document.getElementById(id);
@@ -114,7 +121,8 @@
     }
 
     function appendMessage(message) {
-      if (!messagesEl) return;
+      if (!messagesEl || seenMessages.has(message)) return;
+      seenMessages.add(message);
       const item = document.createElement("li");
       item.textContent = message;
       messagesEl.appendChild(item);
@@ -155,7 +163,10 @@
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
         (data.messages || []).forEach(appendMessage);
-        if (statusEl) statusEl.textContent = `Status: ${data.status}`;
+        if (statusEl) {
+          const lastUpdate = data.last_update_at ? `; last update ${data.last_update_at}` : "";
+          statusEl.textContent = `Status: ${data.status}; updates: ${data.update_count || 0}${lastUpdate}`;
+        }
         if (data.status === "finished") {
           showResult(data.result);
           return;

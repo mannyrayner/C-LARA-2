@@ -3199,11 +3199,12 @@ def _run_project_understanding_task(question: str, user_id: int, report_id: str)
                 logger.exception("Project-understanding heartbeat failed for report %s", report_id)
 
     heartbeat_thread = threading.Thread(target=_heartbeat, daemon=True)
+    logger.info("Project-understanding worker starting for report %s", report_id)
     try:
         _record_project_understanding_update(
             report_id=report_id,
             user_id=user_id,
-            message="Started Codex project-understanding request.",
+            message="Background worker picked up request; launching Codex.",
             status="running",
         )
         heartbeat_thread.start()
@@ -3271,11 +3272,29 @@ def admin_project_understanding(request: HttpRequest) -> HttpResponse:
                 message="Project-understanding request queued.",
                 status="running",
             )
-            async_task(
-                "projects.views._run_project_understanding_task",
-                question,
-                request.user.id,
-                str(report_id),
+            try:
+                task_id = async_task(
+                    "projects.views._run_project_understanding_task",
+                    question,
+                    request.user.id,
+                    str(report_id),
+                )
+            except Exception as exc:
+                logger.exception("Failed to enqueue project-understanding task for report %s", report_id)
+                _record_project_understanding_update(
+                    report_id=report_id,
+                    user_id=request.user.id,
+                    message=f"Failed to enqueue Codex project-understanding task: {exc}",
+                    status="error",
+                )
+                messages.error(request, "Could not enqueue the Codex project-understanding task; opening monitor with details.")
+                return redirect("admin-project-understanding-monitor", report_id=report_id)
+            logger.info("Queued project-understanding task %s for report %s", task_id, report_id)
+            _record_project_understanding_update(
+                report_id=report_id,
+                user_id=request.user.id,
+                message=f"Django Q accepted project-understanding task {task_id or '(unknown id)'}. Waiting for a worker to start Codex.",
+                status="running",
             )
             messages.info(request, "Codex project-understanding request queued. Opening live status monitor.")
             return redirect("admin-project-understanding-monitor", report_id=report_id)
@@ -3288,6 +3307,7 @@ def admin_project_understanding(request: HttpRequest) -> HttpResponse:
             "form": form,
             "result": None,
             "result_answer_html": "",
+            "initial_updates": [],
             "report_id": None,
             "status_url": None,
             "repository_path": getattr(settings, "PROJECT_UNDERSTANDING_REPOSITORY_PATH", settings.ROOT_DIR),
@@ -3331,6 +3351,11 @@ def admin_project_understanding_monitor(request: HttpRequest, report_id: str) ->
     current_question = str(current_request.get("question") or "").strip()
     current_visibility = str(current_request.get("visibility") or "private")
     result = _read_project_understanding_result(report_id)
+    initial_updates = TaskUpdate.objects.filter(
+        report_id=report_id,
+        user=request.user,
+        task_type=PROJECT_UNDERSTANDING_TASK_TYPE,
+    ).order_by("timestamp")
     return render(
         request,
         "projects/admin_project_understanding.html",
@@ -3338,6 +3363,7 @@ def admin_project_understanding_monitor(request: HttpRequest, report_id: str) ->
             "form": AdminProjectUnderstandingForm(initial={"question": current_question, "visibility": current_visibility}),
             "result": result,
             "result_answer_html": mark_safe(render_project_understanding_answer_html(str(result.get("answer") or ""))) if result else "",
+            "initial_updates": initial_updates,
             "report_id": report_id,
             "status_url": reverse("admin-project-understanding-status", args=[report_id]),
             "repository_path": getattr(settings, "PROJECT_UNDERSTANDING_REPOSITORY_PATH", settings.ROOT_DIR),
@@ -3352,11 +3378,12 @@ def admin_project_understanding_status(request: HttpRequest, report_id: str) -> 
     _require_admin(request.user)
     if not _can_access_project_understanding_turn(request.user, report_id):
         raise Http404()
-    updates = TaskUpdate.objects.filter(
+    updates_qs = TaskUpdate.objects.filter(
         report_id=report_id,
         user=request.user,
         task_type=PROJECT_UNDERSTANDING_TASK_TYPE,
     ).order_by("timestamp")
+    updates = list(updates_qs)
     unread = [u for u in updates if not u.read]
     messages_out = [u.message for u in unread]
     status = "running"
@@ -3367,11 +3394,29 @@ def admin_project_understanding_status(request: HttpRequest, report_id: str) -> 
         if update.status == "finished":
             status = "finished"
     TaskUpdate.objects.filter(pk__in=[u.pk for u in unread]).update(read=True)
+    last = updates[-1] if updates else None
+    if status == "running" and not unread and last and last.status in {"error", "finished"}:
+        status = last.status
+
+    result = _read_project_understanding_result(report_id)
+    if result and status == "running":
+        status = "finished"
+    if status != "finished":
+        result = None
+
     if status == "running" and not unread:
-        last = updates.last()
-        if last and last.status in {"error", "finished"}:
-            status = last.status
-    result = _read_project_understanding_result(report_id) if status == "finished" else None
+        if last:
+            age_seconds = int((django_timezone.now() - last.timestamp).total_seconds())
+            messages_out.append(
+                "No new Codex worker update yet "
+                f"(latest update {age_seconds}s ago: {last.message}). "
+                "If this does not change, check that the Django Q cluster is running and can import projects.views."
+            )
+        else:
+            messages_out.append(
+                "No TaskUpdate rows exist yet for this report. Check whether the request was enqueued successfully."
+            )
+
     if result:
         result["answer_html"] = render_project_understanding_answer_html(str(result.get("answer") or ""))
     return JsonResponse({
@@ -3379,6 +3424,8 @@ def admin_project_understanding_status(request: HttpRequest, report_id: str) -> 
         "status": status,
         "result": result,
         "question": _read_project_understanding_question(report_id),
+        "update_count": len(updates),
+        "last_update_at": last.timestamp.isoformat() if last else "",
     })
 
 
