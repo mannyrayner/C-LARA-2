@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import asdict, replace
 import json
 import sys
 import logging
 import os
+import threading
 import random
 import shutil
 import hashlib
@@ -34,6 +36,7 @@ from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import CreateView, DetailView, ListView
 from django_q.tasks import async_task
 from django.utils.html import escape
+from django.utils.safestring import mark_safe
 from django.utils.text import slugify
 from django.utils import timezone as django_timezone
 import mimetypes
@@ -46,6 +49,7 @@ from urllib.parse import quote
 
 from core.config import DEFAULT_MODEL, OpenAIConfig
 from core.ai_api import OpenAIClient, normalize_json_text
+from core.project_understanding import answer_project_understanding_question_with_codex_exec
 from core.language_direction import language_direction
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
 from pipeline.mwe import normalize_mwes
@@ -58,6 +62,7 @@ from .forms import (
     AdminDeleteCommunityForm,
     AdminAdjustCreditsForm,
     AdminOpenAIPricingForm,
+    AdminProjectUnderstandingForm,
     CreditTransferForm,
     ClozeExerciseSetForm,
     DeleteCachedWordAudioForm,
@@ -90,6 +95,7 @@ from .billing import (
     has_minimum_balance_for_compile,
     minimum_compile_balance_usd,
     openai_price_for_model,
+    record_openai_total_token_upper_bound_usage_and_charge,
     record_openai_usage_and_charge,
     transfer_credits_between_users,
 )
@@ -2884,6 +2890,545 @@ def _extract_openai_pricing_with_ai(
     return result
 
 
+PROJECT_UNDERSTANDING_TASK_TYPE = "admin_project_understanding"
+
+
+_MARKDOWN_LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
+_MARKDOWN_CODE_RE = re.compile(r"`([^`]+)`")
+_WINDOWS_ABSOLUTE_LINK_RE = re.compile(r"^/?[A-Za-z]:[\\/]")
+
+
+def _normalise_project_understanding_path_link(raw_href: str) -> str:
+    """Convert Codex file-path links inside the configured checkout to GitHub blob URLs."""
+
+    href = unquote(raw_href.strip()).replace("\\", "/")
+    if href.lower().startswith("file:///"):
+        href = href[8:]
+    if href.startswith("/") and len(href) > 2 and href[2] == ":":
+        href = href[1:]
+
+    line_fragment = ""
+    line_match = re.match(r"^(?P<path>.+\.[A-Za-z0-9_+-]+):(?P<line>\d+)$", href)
+    if line_match:
+        href = line_match.group("path")
+        line_fragment = f"#L{line_match.group('line')}"
+
+    repo_root = str(getattr(settings, "PROJECT_UNDERSTANDING_REPOSITORY_PATH", settings.ROOT_DIR)).replace("\\", "/").rstrip("/")
+    if repo_root.startswith("/") and len(repo_root) > 2 and repo_root[2] == ":":
+        repo_root = repo_root[1:]
+
+    href_lower = href.lower()
+    repo_lower = repo_root.lower()
+    relative_path = ""
+    if repo_lower and href_lower == repo_lower:
+        relative_path = ""
+    elif repo_lower and href_lower.startswith(repo_lower + "/"):
+        relative_path = href[len(repo_root) + 1 :]
+    elif not re.match(r"^[A-Za-z][A-Za-z0-9+.-]*:", href) and not href.startswith("/"):
+        relative_path = href.lstrip("./")
+    else:
+        return ""
+
+    if not relative_path:
+        return getattr(settings, "PROJECT_UNDERSTANDING_GITHUB_BLOB_BASE_URL", "").rstrip("/")
+    if relative_path.startswith("../") or "/../" in relative_path:
+        return ""
+    base_url = str(getattr(settings, "PROJECT_UNDERSTANDING_GITHUB_BLOB_BASE_URL", "")).rstrip("/")
+    if not base_url.lower().startswith(("http://", "https://")):
+        return ""
+    return f"{base_url}/{quote(relative_path, safe='/')}{line_fragment}"
+
+
+def _normalise_project_understanding_link_href(raw_href: str) -> str:
+    """Return a safe href for Codex answer links, mapping repository files to GitHub."""
+
+    href = raw_href.strip()
+    if href.lower().startswith(("http://", "https://")):
+        return href
+    github_href = _normalise_project_understanding_path_link(href)
+    if github_href:
+        return github_href
+    if href.startswith("/") and not _WINDOWS_ABSOLUTE_LINK_RE.match(href):
+        return href
+    return ""
+
+
+def _render_project_understanding_inline_markdown(text: str) -> str:
+    """Render a small safe subset of inline Markdown used by Codex answers."""
+
+    def _render_code(match: re.Match[str]) -> str:
+        return f"<code>{escape(match.group(1))}</code>"
+
+    def _render_links(chunk: str) -> str:
+        parts: list[str] = []
+        last = 0
+        for match in _MARKDOWN_LINK_RE.finditer(chunk):
+            parts.append(escape(chunk[last:match.start()]))
+            label = escape(match.group(1))
+            href = _normalise_project_understanding_link_href(match.group(2))
+            if href:
+                safe_href = escape(href)
+                parts.append(f'<a href="{safe_href}" target="_blank" rel="noopener noreferrer">{label}</a>')
+            else:
+                parts.append(escape(match.group(0)))
+            last = match.end()
+        parts.append(escape(chunk[last:]))
+        return "".join(parts)
+
+    rendered_parts: list[str] = []
+    last = 0
+    for match in _MARKDOWN_CODE_RE.finditer(text):
+        rendered_parts.append(_render_links(text[last:match.start()]))
+        rendered_parts.append(_render_code(match))
+        last = match.end()
+    rendered_parts.append(_render_links(text[last:]))
+    return "".join(rendered_parts)
+
+
+def render_project_understanding_answer_html(answer: str) -> str:
+    """Render Codex Markdown-ish answers as safe human-readable HTML."""
+
+    lines = (answer or "").splitlines()
+    html: list[str] = []
+    in_list = False
+    paragraph: list[str] = []
+
+    def flush_paragraph() -> None:
+        if paragraph:
+            html.append(f"<p>{'<br>'.join(paragraph)}</p>")
+            paragraph.clear()
+
+    def close_list() -> None:
+        nonlocal in_list
+        if in_list:
+            html.append("</ul>")
+            in_list = False
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            flush_paragraph()
+            close_list()
+            continue
+        if stripped.startswith("- "):
+            flush_paragraph()
+            if not in_list:
+                html.append("<ul>")
+                in_list = True
+            html.append(f"<li>{_render_project_understanding_inline_markdown(stripped[2:])}</li>")
+            continue
+        close_list()
+        paragraph.append(_render_project_understanding_inline_markdown(stripped))
+    flush_paragraph()
+    close_list()
+    return "\n".join(html)
+
+
+def _project_understanding_run_dir() -> Path:
+    directory = Path(settings.MEDIA_ROOT) / "admin_project_understanding"
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory
+
+
+def _project_understanding_result_path(report_id: str | uuid.UUID) -> Path:
+    return _project_understanding_run_dir() / f"{report_id}.json"
+
+
+def _project_understanding_request_path(report_id: str | uuid.UUID) -> Path:
+    return _project_understanding_run_dir() / f"{report_id}.request.json"
+
+
+def _write_project_understanding_request(
+    report_id: str | uuid.UUID,
+    question: str,
+    *,
+    user_id: int | None = None,
+    username: str = "",
+    visibility: str = "private",
+) -> None:
+    _project_understanding_request_path(report_id).write_text(
+        json.dumps(
+            {
+                "question": question,
+                "visibility": visibility if visibility in {"private", "public"} else "private",
+                "user_id": user_id,
+                "username": username,
+                "submitted_at": django_timezone.now().isoformat(),
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+
+def _read_project_understanding_request(report_id: str | uuid.UUID) -> dict[str, Any]:
+    request_path = _project_understanding_request_path(report_id)
+    if request_path.exists():
+        try:
+            payload = json.loads(request_path.read_text(encoding="utf-8"))
+            if isinstance(payload, dict):
+                return payload
+        except Exception:
+            logger.exception("Failed to read project-understanding request %s", request_path)
+    result = _read_project_understanding_result(report_id)
+    if result:
+        return {"question": str(result.get("question") or "").strip(), "visibility": "private"}
+    return {}
+
+
+def _read_project_understanding_question(report_id: str | uuid.UUID) -> str:
+    return str(_read_project_understanding_request(report_id).get("question") or "").strip()
+
+
+def _can_access_project_understanding_turn(user, report_id: str | uuid.UUID) -> bool:
+    payload = _read_project_understanding_request(report_id)
+    visibility = str(payload.get("visibility") or "private")
+    owner_id = payload.get("user_id")
+    return visibility == "public" or owner_id == getattr(user, "id", None)
+
+
+def _list_project_understanding_turns(user) -> list[dict[str, Any]]:
+    turns: list[dict[str, Any]] = []
+    for request_path in _project_understanding_run_dir().glob("*.request.json"):
+        report_id = request_path.name.removesuffix(".request.json")
+        request_payload = _read_project_understanding_request(report_id)
+        visibility = str(request_payload.get("visibility") or "private")
+        if not _can_access_project_understanding_turn(user, report_id):
+            continue
+        result = _read_project_understanding_result(report_id)
+        latest_update = TaskUpdate.objects.filter(report_id=report_id).order_by("-timestamp").first()
+        turns.append(
+            {
+                "report_id": report_id,
+                "question": str(request_payload.get("question") or ""),
+                "visibility": visibility,
+                "username": str(request_payload.get("username") or ""),
+                "user_id": request_payload.get("user_id"),
+                "submitted_at": str(request_payload.get("submitted_at") or ""),
+                "status": latest_update.status if latest_update and latest_update.status else ("finished" if result else "running"),
+                "tokens_used": result.get("tokens_used") if result else None,
+                "elapsed_seconds": result.get("elapsed_seconds") if result else None,
+            }
+        )
+    return sorted(turns, key=lambda turn: turn.get("submitted_at") or turn["report_id"], reverse=True)
+
+
+def _filter_project_understanding_turns(turns: list[dict[str, Any]], filters: dict[str, str]) -> list[dict[str, Any]]:
+    query = filters.get("q", "").strip().lower()
+    date_from = filters.get("date_from", "").strip()
+    date_to = filters.get("date_to", "").strip()
+    user_id = filters.get("user_id", "").strip()
+    visibility = filters.get("visibility", "").strip()
+    status = filters.get("status", "").strip()
+
+    filtered: list[dict[str, Any]] = []
+    for turn in turns:
+        submitted_date = str(turn.get("submitted_at") or "")[:10]
+        if query:
+            haystack = " ".join(
+                str(turn.get(field) or "")
+                for field in ("question", "username", "report_id", "status", "visibility")
+            ).lower()
+            if query not in haystack:
+                continue
+        if date_from and (not submitted_date or submitted_date < date_from):
+            continue
+        if date_to and (not submitted_date or submitted_date > date_to):
+            continue
+        if user_id and str(turn.get("user_id") or "") != user_id:
+            continue
+        if visibility and str(turn.get("visibility") or "") != visibility:
+            continue
+        if status and str(turn.get("status") or "") != status:
+            continue
+        filtered.append(turn)
+    return filtered
+
+
+def _write_project_understanding_result(report_id: str | uuid.UUID, result) -> None:
+    payload = asdict(result)
+    _project_understanding_result_path(report_id).write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+def _read_project_understanding_result(report_id: str | uuid.UUID) -> dict[str, Any] | None:
+    path = _project_understanding_result_path(report_id)
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        logger.exception("Failed to read project-understanding result %s", path)
+        return None
+
+
+def _record_project_understanding_update(
+    *,
+    report_id: str | uuid.UUID,
+    user_id: int,
+    message: str,
+    status: str | None = "running",
+) -> None:
+    TaskUpdate.objects.create(
+        report_id=report_id,
+        user_id=user_id,
+        task_type=PROJECT_UNDERSTANDING_TASK_TYPE,
+        message=message[:1024],
+        status=status,
+    )
+
+
+def _run_project_understanding_task(question: str, user_id: int, report_id: str) -> None:
+    stop_heartbeat = threading.Event()
+
+    def _heartbeat() -> None:
+        tick = 0
+        while not stop_heartbeat.wait(10):
+            tick += 10
+            try:
+                _record_project_understanding_update(
+                    report_id=report_id,
+                    user_id=user_id,
+                    message=f"Codex is still inspecting the repository ({tick}s elapsed).",
+                    status="running",
+                )
+            except Exception:
+                logger.exception("Project-understanding heartbeat failed for report %s", report_id)
+
+    heartbeat_thread = threading.Thread(target=_heartbeat, daemon=True)
+    logger.info("Project-understanding worker starting for report %s", report_id)
+    try:
+        _record_project_understanding_update(
+            report_id=report_id,
+            user_id=user_id,
+            message="Background worker picked up request; launching Codex.",
+            status="running",
+        )
+        heartbeat_thread.start()
+        result = answer_project_understanding_question_with_codex_exec(
+            question,
+            repository_path=getattr(settings, "PROJECT_UNDERSTANDING_REPOSITORY_PATH", settings.ROOT_DIR),
+            codex_executable=getattr(settings, "PROJECT_UNDERSTANDING_CODEX_EXECUTABLE", "codex"),
+            model=getattr(settings, "PROJECT_UNDERSTANDING_MODEL", "gpt-5.3-codex"),
+            timeout_seconds=float(getattr(settings, "PROJECT_UNDERSTANDING_TIMEOUT_SECONDS", 300)),
+            openai_api_key=getattr(settings, "OPENAI_API_KEY", ""),
+        )
+        if result.tokens_used is not None:
+            estimated_cost = record_openai_total_token_upper_bound_usage_and_charge(
+                user_id=user_id,
+                model=result.model,
+                operation="project_understanding",
+                total_tokens=result.tokens_used,
+                request_type="codex_exec_project_understanding",
+            )
+            result = replace(
+                result,
+                estimated_cost_usd=f"{estimated_cost:.6f}",
+                cost_basis="Codex reports total tokens only; cost is an output-priced upper-bound estimate.",
+            )
+        _write_project_understanding_result(report_id, result)
+        elapsed = f"{result.elapsed_seconds:.1f}s" if result.elapsed_seconds is not None else "unknown time"
+        tokens = result.tokens_used if result.tokens_used is not None else "unknown"
+        _record_project_understanding_update(
+            report_id=report_id,
+            user_id=user_id,
+            message=f"Codex project-understanding answer completed in {elapsed}; tokens used: {tokens}.",
+            status="finished",
+        )
+    except Exception as exc:
+        logger.exception("Project-understanding Codex task failed for report %s", report_id)
+        _record_project_understanding_update(
+            report_id=report_id,
+            user_id=user_id,
+            message=f"Codex project-understanding call failed: {exc}",
+            status="error",
+        )
+    finally:
+        stop_heartbeat.set()
+
+
+
+@login_required
+def admin_project_understanding(request: HttpRequest) -> HttpResponse:
+    _require_admin(request.user)
+    if request.method == "POST":
+        form = AdminProjectUnderstandingForm(request.POST)
+        if form.is_valid():
+            report_id = uuid.uuid4()
+            question = form.cleaned_data["question"]
+            _write_project_understanding_request(
+                report_id,
+                question,
+                user_id=request.user.id,
+                username=request.user.username,
+                visibility=form.cleaned_data["visibility"],
+            )
+            _record_project_understanding_update(
+                report_id=report_id,
+                user_id=request.user.id,
+                message="Project-understanding request queued.",
+                status="running",
+            )
+            try:
+                task_id = async_task(
+                    "projects.views._run_project_understanding_task",
+                    question,
+                    request.user.id,
+                    str(report_id),
+                )
+            except Exception as exc:
+                logger.exception("Failed to enqueue project-understanding task for report %s", report_id)
+                _record_project_understanding_update(
+                    report_id=report_id,
+                    user_id=request.user.id,
+                    message=f"Failed to enqueue Codex project-understanding task: {exc}",
+                    status="error",
+                )
+                messages.error(request, "Could not enqueue the Codex project-understanding task; opening monitor with details.")
+                return redirect("admin-project-understanding-monitor", report_id=report_id)
+            logger.info("Queued project-understanding task %s for report %s", task_id, report_id)
+            _record_project_understanding_update(
+                report_id=report_id,
+                user_id=request.user.id,
+                message=f"Django Q accepted project-understanding task {task_id or '(unknown id)'}. Waiting for a worker to start Codex.",
+                status="running",
+            )
+            messages.info(request, "Codex project-understanding request queued. Opening live status monitor.")
+            return redirect("admin-project-understanding-monitor", report_id=report_id)
+    else:
+        form = AdminProjectUnderstandingForm()
+    return render(
+        request,
+        "projects/admin_project_understanding.html",
+        {
+            "form": form,
+            "result": None,
+            "result_answer_html": "",
+            "initial_updates": [],
+            "report_id": None,
+            "status_url": None,
+            "repository_path": getattr(settings, "PROJECT_UNDERSTANDING_REPOSITORY_PATH", settings.ROOT_DIR),
+            "codex_model": getattr(settings, "PROJECT_UNDERSTANDING_MODEL", "gpt-5.3-codex"),
+            "timeout_seconds": getattr(settings, "PROJECT_UNDERSTANDING_TIMEOUT_SECONDS", 300),
+        },
+    )
+
+
+@login_required
+def admin_project_understanding_turns(request: HttpRequest) -> HttpResponse:
+    _require_admin(request.user)
+    filters = {
+        "q": request.GET.get("q", ""),
+        "date_from": request.GET.get("date_from", ""),
+        "date_to": request.GET.get("date_to", ""),
+        "user_id": request.GET.get("user_id", ""),
+        "visibility": request.GET.get("visibility", ""),
+        "status": request.GET.get("status", ""),
+    }
+    all_visible_turns = _list_project_understanding_turns(request.user)
+    turns = _filter_project_understanding_turns(all_visible_turns, filters)[:100]
+    return render(
+        request,
+        "projects/admin_project_understanding_turns.html",
+        {
+            "turns": turns,
+            "filters": filters,
+            "visible_turn_count": len(all_visible_turns),
+            "filtered_turn_count": len(turns),
+        },
+    )
+
+
+@login_required
+def admin_project_understanding_monitor(request: HttpRequest, report_id: str) -> HttpResponse:
+    _require_admin(request.user)
+    if not _can_access_project_understanding_turn(request.user, report_id):
+        raise Http404()
+    current_request = _read_project_understanding_request(report_id)
+    current_question = str(current_request.get("question") or "").strip()
+    current_visibility = str(current_request.get("visibility") or "private")
+    result = _read_project_understanding_result(report_id)
+    initial_updates = TaskUpdate.objects.filter(
+        report_id=report_id,
+        user=request.user,
+        task_type=PROJECT_UNDERSTANDING_TASK_TYPE,
+    ).order_by("timestamp")
+    return render(
+        request,
+        "projects/admin_project_understanding.html",
+        {
+            "form": AdminProjectUnderstandingForm(initial={"question": current_question, "visibility": current_visibility}),
+            "result": result,
+            "result_answer_html": mark_safe(render_project_understanding_answer_html(str(result.get("answer") or ""))) if result else "",
+            "initial_updates": initial_updates,
+            "report_id": report_id,
+            "status_url": reverse("admin-project-understanding-status", args=[report_id]),
+            "repository_path": getattr(settings, "PROJECT_UNDERSTANDING_REPOSITORY_PATH", settings.ROOT_DIR),
+            "codex_model": getattr(settings, "PROJECT_UNDERSTANDING_MODEL", "gpt-5.3-codex"),
+            "timeout_seconds": getattr(settings, "PROJECT_UNDERSTANDING_TIMEOUT_SECONDS", 300),
+        },
+    )
+
+
+@login_required
+def admin_project_understanding_status(request: HttpRequest, report_id: str) -> JsonResponse:
+    _require_admin(request.user)
+    if not _can_access_project_understanding_turn(request.user, report_id):
+        raise Http404()
+    updates_qs = TaskUpdate.objects.filter(
+        report_id=report_id,
+        user=request.user,
+        task_type=PROJECT_UNDERSTANDING_TASK_TYPE,
+    ).order_by("timestamp")
+    updates = list(updates_qs)
+    unread = [u for u in updates if not u.read]
+    messages_out = [u.message for u in unread]
+    status = "running"
+    for update in unread:
+        if update.status == "error":
+            status = "error"
+            break
+        if update.status == "finished":
+            status = "finished"
+    TaskUpdate.objects.filter(pk__in=[u.pk for u in unread]).update(read=True)
+    last = updates[-1] if updates else None
+    if status == "running" and not unread and last and last.status in {"error", "finished"}:
+        status = last.status
+
+    result = _read_project_understanding_result(report_id)
+    if result and status == "running":
+        status = "finished"
+    if status != "finished":
+        result = None
+
+    if status == "running" and not unread:
+        if last:
+            age_seconds = int((django_timezone.now() - last.timestamp).total_seconds())
+            messages_out.append(
+                "No new Codex worker update yet "
+                f"(latest update {age_seconds}s ago: {last.message}). "
+                "If this does not change, check that the Django Q cluster is running and can import projects.views."
+            )
+        else:
+            messages_out.append(
+                "No TaskUpdate rows exist yet for this report. Check whether the request was enqueued successfully."
+            )
+
+    if result:
+        result["answer_html"] = render_project_understanding_answer_html(str(result.get("answer") or ""))
+    return JsonResponse({
+        "messages": messages_out,
+        "status": status,
+        "result": result,
+        "question": _read_project_understanding_question(report_id),
+        "update_count": len(updates),
+        "last_update_at": last.timestamp.isoformat() if last else "",
+    })
+
+
 @login_required
 def admin_tools(request: HttpRequest) -> HttpResponse:
     _require_admin(request.user)
@@ -2898,7 +3443,9 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
     pricing_form = AdminOpenAIPricingForm()
     pricing_rows_qs = OpenAIModelPricing.objects.all().order_by("model_name")
     pricing_rows = list(pricing_rows_qs)
-    menu_models = sorted(set(AI_MODEL_CHOICES + IMAGE_MODEL_CHOICES))
+    menu_models = sorted(
+        set(AI_MODEL_CHOICES + IMAGE_MODEL_CHOICES + list(getattr(settings, "OPENAI_PRICING_TRACKED_MODELS", [])))
+    )
     now_ts = django_timezone.now()
     pricing_by_model = {row.model_name: row for row in pricing_rows}
     pricing_matrix: list[dict[str, Any]] = []
