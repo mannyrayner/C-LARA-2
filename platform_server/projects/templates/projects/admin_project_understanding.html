@@ -1,0 +1,48 @@
+{% extends "projects/base.html" %}
+{% block title %}Project understanding · C-LARA-2{% endblock %}
+{% block content %}
+<h1>Project-understanding assistant</h1>
+
+<p>
+  Admin-only tool for asking Codex high-level questions about the configured C-LARA-2 checkout.
+  The call runs through <code>codex exec</code> with a read-only sandbox and a non-interactive prompt.
+</p>
+
+<ul>
+  <li>Repository path: <code>{{ repository_path }}</code></li>
+  <li>Model: <code>{{ codex_model }}</code></li>
+  <li>Timeout: <code>{{ timeout_seconds }}</code> seconds</li>
+</ul>
+
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button class="btn" type="submit">Ask Codex</button>
+</form>
+
+{% if result %}
+  <h2>Answer</h2>
+  <pre style="white-space: pre-wrap; border: 1px solid #ddd; padding: 1rem; background: #f8f8f8;">{{ result.answer }}</pre>
+
+  <h2>Run metadata</h2>
+  <table border="1" cellpadding="6" cellspacing="0">
+    <tbody>
+      <tr><th>Invocation route</th><td><code>{{ result.invocation_route }}</code></td></tr>
+      <tr><th>Model</th><td><code>{{ result.model }}</code></td></tr>
+      <tr><th>Prompt version</th><td><code>{{ result.prompt_version }}</code></td></tr>
+      <tr><th>Requested at</th><td><code>{{ result.requested_at }}</code></td></tr>
+      <tr><th>Tokens used</th><td>{% if result.tokens_used != None %}<code>{{ result.tokens_used }}</code>{% else %}unknown{% endif %}</td></tr>
+      <tr><th>Elapsed seconds</th><td>{% if result.elapsed_seconds != None %}<code>{{ result.elapsed_seconds|floatformat:2 }}</code>{% else %}unknown{% endif %}</td></tr>
+      <tr><th>Exit status</th><td>{% if result.returncode != None %}<code>{{ result.returncode }}</code>{% else %}unknown{% endif %}</td></tr>
+      <tr><th>Repository path</th><td>{% if result.repository_path %}<code>{{ result.repository_path }}</code>{% else %}unknown{% endif %}</td></tr>
+    </tbody>
+  </table>
+
+  {% if result.stderr %}
+    <h2>stderr</h2>
+    <pre style="white-space: pre-wrap; border: 1px solid #f2c; padding: 1rem; background: #fff8fb;">{{ result.stderr }}</pre>
+  {% endif %}
+{% endif %}
+
+<p><a href="{% url 'admin-tools' %}">Back to admin tools</a></p>
+{% endblock %}

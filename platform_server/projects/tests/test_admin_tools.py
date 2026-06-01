@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
+from core.project_understanding import ProjectUnderstandingAnswer
 from projects.models import Community, CommunityMembership
 
 
@@ -21,6 +22,66 @@ class AdminToolsViewTests(TestCase):
         self.client.login(username="normal", password="pw")
         resp = self.client.get(reverse("admin-tools"))
         self.assertEqual(resp.status_code, 404)
+
+    def test_admin_tools_links_project_understanding_assistant(self):
+        self.client.login(username="staffer", password="pw")
+        resp = self.client.get(reverse("admin-tools"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, reverse("admin-project-understanding"))
+
+    def test_non_admin_cannot_access_project_understanding_assistant(self):
+        self.client.login(username="normal", password="pw")
+        resp = self.client.get(reverse("admin-project-understanding"))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_admin_can_open_project_understanding_assistant(self):
+        self.client.login(username="staffer", password="pw")
+        resp = self.client.get(reverse("admin-project-understanding"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Project-understanding assistant")
+        self.assertContains(resp, "Ask Codex")
+
+    @override_settings(
+        OPENAI_API_KEY="test-key",
+        PROJECT_UNDERSTANDING_REPOSITORY_PATH="/srv/C-LARA-2",
+        PROJECT_UNDERSTANDING_CODEX_EXECUTABLE="codex-test",
+        PROJECT_UNDERSTANDING_MODEL="gpt-5.3-codex",
+        PROJECT_UNDERSTANDING_TIMEOUT_SECONDS=12,
+    )
+    @patch("projects.views.answer_project_understanding_question_with_codex_exec")
+    def test_admin_can_call_project_understanding_assistant(self, mock_answer):
+        mock_answer.return_value = ProjectUnderstandingAnswer(
+            question="What is C-LARA-2?",
+            prompt="Wrapped prompt",
+            answer="C-LARA-2 is a repository-grounded platform answer.",
+            model="gpt-5.3-codex",
+            prompt_version="project-understanding-v1",
+            requested_at="2026-06-01T10:00:00Z",
+            tokens_used=1234,
+            elapsed_seconds=2.5,
+            invocation_route="codex-exec",
+            repository_path="/srv/C-LARA-2",
+            returncode=0,
+        )
+        self.client.login(username="staffer", password="pw")
+
+        resp = self.client.post(
+            reverse("admin-project-understanding"),
+            {"question": "What is C-LARA-2?"},
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "C-LARA-2 is a repository-grounded platform answer.")
+        self.assertContains(resp, "1234")
+        self.assertContains(resp, "2.50")
+        mock_answer.assert_called_once_with(
+            "What is C-LARA-2?",
+            repository_path="/srv/C-LARA-2",
+            codex_executable="codex-test",
+            model="gpt-5.3-codex",
+            timeout_seconds=12.0,
+            openai_api_key="test-key",
+        )
 
     def test_admin_can_grant_admin_privileges(self):
         self.client.login(username="staffer", password="pw")
