@@ -21,7 +21,7 @@
   <ul id="project-understanding-messages"></ul>
 {% endif %}
 
-<form method="post" id="project-understanding-form">
+<form method="post" action="{% url 'admin-project-understanding' %}" id="project-understanding-form">
   {% csrf_token %}
   {{ form.as_p }}
   <button class="btn" type="submit" id="project-understanding-submit">Ask Codex</button>

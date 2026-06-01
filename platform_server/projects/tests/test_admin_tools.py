@@ -42,6 +42,15 @@ class AdminToolsViewTests(TestCase):
         self.assertContains(resp, "Project-understanding assistant")
         self.assertContains(resp, "Ask Codex")
 
+    def test_project_understanding_monitor_form_posts_to_new_request_endpoint(self):
+        self.client.login(username="staffer", password="pw")
+        report_id = uuid.uuid4()
+
+        resp = self.client.get(reverse("admin-project-understanding-monitor", args=[report_id]))
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, f'action="{reverse("admin-project-understanding")}"')
+
     @patch("projects.views.async_task")
     def test_admin_can_queue_project_understanding_assistant(self, mock_async_task):
         self.client.login(username="staffer", password="pw")
