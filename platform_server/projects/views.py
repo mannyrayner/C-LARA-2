@@ -2891,10 +2891,41 @@ def _extract_openai_pricing_with_ai(
 PROJECT_UNDERSTANDING_TASK_TYPE = "admin_project_understanding"
 
 
-def _project_understanding_result_path(report_id: str | uuid.UUID) -> Path:
+def _project_understanding_run_dir() -> Path:
     directory = Path(settings.MEDIA_ROOT) / "admin_project_understanding"
     directory.mkdir(parents=True, exist_ok=True)
-    return directory / f"{report_id}.json"
+    return directory
+
+
+def _project_understanding_result_path(report_id: str | uuid.UUID) -> Path:
+    return _project_understanding_run_dir() / f"{report_id}.json"
+
+
+def _project_understanding_request_path(report_id: str | uuid.UUID) -> Path:
+    return _project_understanding_run_dir() / f"{report_id}.request.json"
+
+
+def _write_project_understanding_request(report_id: str | uuid.UUID, question: str) -> None:
+    _project_understanding_request_path(report_id).write_text(
+        json.dumps({"question": question}, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+def _read_project_understanding_question(report_id: str | uuid.UUID) -> str:
+    request_path = _project_understanding_request_path(report_id)
+    if request_path.exists():
+        try:
+            payload = json.loads(request_path.read_text(encoding="utf-8"))
+            question = str(payload.get("question") or "").strip()
+            if question:
+                return question
+        except Exception:
+            logger.exception("Failed to read project-understanding request %s", request_path)
+    result = _read_project_understanding_result(report_id)
+    if result:
+        return str(result.get("question") or "").strip()
+    return ""
 
 
 def _write_project_understanding_result(report_id: str | uuid.UUID, result) -> None:
@@ -2996,6 +3027,7 @@ def admin_project_understanding(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             report_id = uuid.uuid4()
             question = form.cleaned_data["question"]
+            _write_project_understanding_request(report_id, question)
             _record_project_understanding_update(
                 report_id=report_id,
                 user_id=request.user.id,
@@ -3030,11 +3062,12 @@ def admin_project_understanding(request: HttpRequest) -> HttpResponse:
 @login_required
 def admin_project_understanding_monitor(request: HttpRequest, report_id: str) -> HttpResponse:
     _require_admin(request.user)
+    current_question = _read_project_understanding_question(report_id)
     return render(
         request,
         "projects/admin_project_understanding.html",
         {
-            "form": AdminProjectUnderstandingForm(),
+            "form": AdminProjectUnderstandingForm(initial={"question": current_question}),
             "result": _read_project_understanding_result(report_id),
             "report_id": report_id,
             "status_url": reverse("admin-project-understanding-status", args=[report_id]),
@@ -3068,7 +3101,12 @@ def admin_project_understanding_status(request: HttpRequest, report_id: str) -> 
         if last and last.status in {"error", "finished"}:
             status = last.status
     result = _read_project_understanding_result(report_id) if status == "finished" else None
-    return JsonResponse({"messages": messages_out, "status": status, "result": result})
+    return JsonResponse({
+        "messages": messages_out,
+        "status": status,
+        "result": result,
+        "question": _read_project_understanding_question(report_id),
+    })
 
 
 @login_required

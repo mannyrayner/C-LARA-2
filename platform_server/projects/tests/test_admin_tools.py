@@ -55,10 +55,11 @@ class AdminToolsViewTests(TestCase):
     def test_admin_can_queue_project_understanding_assistant(self, mock_async_task):
         self.client.login(username="staffer", password="pw")
 
-        resp = self.client.post(
-            reverse("admin-project-understanding"),
-            {"question": "What is C-LARA-2?"},
-        )
+        with tempfile.TemporaryDirectory() as tmpdir, override_settings(MEDIA_ROOT=tmpdir):
+            resp = self.client.post(
+                reverse("admin-project-understanding"),
+                {"question": "What is C-LARA-2?"},
+            )
 
         self.assertEqual(resp.status_code, 302)
         self.assertIn("/admin-tools/project-understanding/", resp["Location"])
@@ -69,7 +70,18 @@ class AdminToolsViewTests(TestCase):
         self.assertEqual(self.staff_user.id, task_args[2])
         self.assertTrue(TaskUpdate.objects.filter(user=self.staff_user, message="Project-understanding request queued.").exists())
 
-    @override_settings(MEDIA_ROOT="/tmp/c-lara-test-media")
+    def test_project_understanding_monitor_preserves_current_question(self):
+        self.client.login(username="staffer", password="pw")
+        report_id = uuid.uuid4()
+        with tempfile.TemporaryDirectory() as tmpdir, override_settings(MEDIA_ROOT=tmpdir):
+            from projects.views import _write_project_understanding_request
+
+            _write_project_understanding_request(report_id, "What is the annotation format?")
+            resp = self.client.get(reverse("admin-project-understanding-monitor", args=[report_id]))
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "What is the annotation format?")
+
     def test_project_understanding_status_returns_messages_and_result(self):
         self.client.login(username="staffer", password="pw")
         report_id = uuid.uuid4()
@@ -80,26 +92,28 @@ class AdminToolsViewTests(TestCase):
             message="Done",
             status="finished",
         )
-        from projects.views import _write_project_understanding_result
+        from projects.views import _write_project_understanding_request, _write_project_understanding_result
 
-        _write_project_understanding_result(
-            report_id,
-            ProjectUnderstandingAnswer(
-                question="What is C-LARA-2?",
-                prompt="Wrapped prompt",
-                answer="C-LARA-2 is a repository-grounded platform answer.",
-                model="gpt-5.3-codex",
-                prompt_version="project-understanding-v1",
-                requested_at="2026-06-01T10:00:00Z",
-                tokens_used=1234,
-                elapsed_seconds=2.5,
-                invocation_route="codex-exec",
-                repository_path="/srv/C-LARA-2",
-                returncode=0,
-            ),
-        )
+        with tempfile.TemporaryDirectory() as tmpdir, override_settings(MEDIA_ROOT=tmpdir):
+            _write_project_understanding_request(report_id, "What is C-LARA-2?")
+            _write_project_understanding_result(
+                report_id,
+                ProjectUnderstandingAnswer(
+                    question="What is C-LARA-2?",
+                    prompt="Wrapped prompt",
+                    answer="C-LARA-2 is a repository-grounded platform answer.",
+                    model="gpt-5.3-codex",
+                    prompt_version="project-understanding-v1",
+                    requested_at="2026-06-01T10:00:00Z",
+                    tokens_used=1234,
+                    elapsed_seconds=2.5,
+                    invocation_route="codex-exec",
+                    repository_path="/srv/C-LARA-2",
+                    returncode=0,
+                ),
+            )
 
-        resp = self.client.get(reverse("admin-project-understanding-status", args=[report_id]))
+            resp = self.client.get(reverse("admin-project-understanding-status", args=[report_id]))
 
         self.assertEqual(resp.status_code, 200)
         payload = resp.json()
@@ -107,6 +121,7 @@ class AdminToolsViewTests(TestCase):
         self.assertEqual(["Done"], payload["messages"])
         self.assertEqual("C-LARA-2 is a repository-grounded platform answer.", payload["result"]["answer"])
         self.assertEqual(1234, payload["result"]["tokens_used"])
+        self.assertEqual("What is C-LARA-2?", payload["question"])
 
     def test_admin_can_grant_admin_privileges(self):
         self.client.login(username="staffer", password="pw")
