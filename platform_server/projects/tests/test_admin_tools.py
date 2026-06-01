@@ -1,4 +1,5 @@
 import tempfile
+import uuid
 from pathlib import Path
 from unittest.mock import patch
 
@@ -6,7 +7,8 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from projects.models import Community, CommunityMembership
+from core.project_understanding import ProjectUnderstandingAnswer
+from projects.models import Community, CommunityMembership, TaskUpdate
 
 
 class AdminToolsViewTests(TestCase):
@@ -21,6 +23,105 @@ class AdminToolsViewTests(TestCase):
         self.client.login(username="normal", password="pw")
         resp = self.client.get(reverse("admin-tools"))
         self.assertEqual(resp.status_code, 404)
+
+    def test_admin_tools_links_project_understanding_assistant(self):
+        self.client.login(username="staffer", password="pw")
+        resp = self.client.get(reverse("admin-tools"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, reverse("admin-project-understanding"))
+
+    def test_non_admin_cannot_access_project_understanding_assistant(self):
+        self.client.login(username="normal", password="pw")
+        resp = self.client.get(reverse("admin-project-understanding"))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_admin_can_open_project_understanding_assistant(self):
+        self.client.login(username="staffer", password="pw")
+        resp = self.client.get(reverse("admin-project-understanding"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Project-understanding assistant")
+        self.assertContains(resp, "Ask Codex")
+
+    def test_project_understanding_monitor_form_posts_to_new_request_endpoint(self):
+        self.client.login(username="staffer", password="pw")
+        report_id = uuid.uuid4()
+
+        resp = self.client.get(reverse("admin-project-understanding-monitor", args=[report_id]))
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, f'action="{reverse("admin-project-understanding")}"')
+
+    @patch("projects.views.async_task")
+    def test_admin_can_queue_project_understanding_assistant(self, mock_async_task):
+        self.client.login(username="staffer", password="pw")
+
+        with tempfile.TemporaryDirectory() as tmpdir, override_settings(MEDIA_ROOT=tmpdir):
+            resp = self.client.post(
+                reverse("admin-project-understanding"),
+                {"question": "What is C-LARA-2?"},
+            )
+
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("/admin-tools/project-understanding/", resp["Location"])
+        mock_async_task.assert_called_once()
+        task_args = mock_async_task.call_args.args
+        self.assertEqual("projects.views._run_project_understanding_task", task_args[0])
+        self.assertEqual("What is C-LARA-2?", task_args[1])
+        self.assertEqual(self.staff_user.id, task_args[2])
+        self.assertTrue(TaskUpdate.objects.filter(user=self.staff_user, message="Project-understanding request queued.").exists())
+
+    def test_project_understanding_monitor_preserves_current_question(self):
+        self.client.login(username="staffer", password="pw")
+        report_id = uuid.uuid4()
+        with tempfile.TemporaryDirectory() as tmpdir, override_settings(MEDIA_ROOT=tmpdir):
+            from projects.views import _write_project_understanding_request
+
+            _write_project_understanding_request(report_id, "What is the annotation format?")
+            resp = self.client.get(reverse("admin-project-understanding-monitor", args=[report_id]))
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "What is the annotation format?")
+
+    def test_project_understanding_status_returns_messages_and_result(self):
+        self.client.login(username="staffer", password="pw")
+        report_id = uuid.uuid4()
+        TaskUpdate.objects.create(
+            report_id=report_id,
+            user=self.staff_user,
+            task_type="admin_project_understanding",
+            message="Done",
+            status="finished",
+        )
+        from projects.views import _write_project_understanding_request, _write_project_understanding_result
+
+        with tempfile.TemporaryDirectory() as tmpdir, override_settings(MEDIA_ROOT=tmpdir):
+            _write_project_understanding_request(report_id, "What is C-LARA-2?")
+            _write_project_understanding_result(
+                report_id,
+                ProjectUnderstandingAnswer(
+                    question="What is C-LARA-2?",
+                    prompt="Wrapped prompt",
+                    answer="C-LARA-2 is a repository-grounded platform answer.",
+                    model="gpt-5.3-codex",
+                    prompt_version="project-understanding-v1",
+                    requested_at="2026-06-01T10:00:00Z",
+                    tokens_used=1234,
+                    elapsed_seconds=2.5,
+                    invocation_route="codex-exec",
+                    repository_path="/srv/C-LARA-2",
+                    returncode=0,
+                ),
+            )
+
+            resp = self.client.get(reverse("admin-project-understanding-status", args=[report_id]))
+
+        self.assertEqual(resp.status_code, 200)
+        payload = resp.json()
+        self.assertEqual("finished", payload["status"])
+        self.assertEqual(["Done"], payload["messages"])
+        self.assertEqual("C-LARA-2 is a repository-grounded platform answer.", payload["result"]["answer"])
+        self.assertEqual(1234, payload["result"]["tokens_used"])
+        self.assertEqual("What is C-LARA-2?", payload["question"])
 
     def test_admin_can_grant_admin_privileges(self):
         self.client.login(username="staffer", password="pw")
