@@ -11,14 +11,11 @@
 <h2>Issue suggestions</h2>
 <p><a class="btn" href="{% url 'admin-issue-suggestions' %}">Review currently stored issue suggestions</a></p>
 
-
-<h2>Shutdown Django server and Q worker</h2>
-<p>For local development, send SIGTERM to running <code>manage.py runserver</code> and <code>manage.py qcluster</code> processes.</p>
-<form method="post" onsubmit="return confirm('Stop the Django server and Q worker processes? Running requests and background tasks may be interrupted.');">
-  {% csrf_token %}
-  <input type="hidden" name="action" value="shutdown_django_stack" />
-  <button class="btn" type="submit" style="background:#b00020; border-color:#8a0018;">Shutdown Django server and Q worker</button>
-</form>
+{#
+Shutdown control temporarily disabled. Under make run-platform-with-real-q,
+the process supervisor/reloader can reincarnate qcluster processes; closing the
+terminal window is currently the more reliable local-development workaround.
+#}
 
 <h2>Delete cached word audio for language</h2>
 <form method="post">
