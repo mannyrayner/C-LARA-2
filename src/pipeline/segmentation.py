@@ -1,6 +1,7 @@
 """Segmentation pipeline steps."""
 from __future__ import annotations
 
+import asyncio
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,6 +23,70 @@ def _load_fewshots(language: str, *, prompts_root: Path) -> list[dict[str, Any]]
     return annotation_prompts.load_fewshots("segmentation_phase_1", language, prompts_root=prompts_root)
 
 
+def _safe_variant_name(name: str | None) -> str:
+    variant = (name or "").strip()
+    if not variant:
+        return ""
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", variant):
+        raise ValueError(f"Invalid prompt/few-shot variant name: {variant!r}")
+    return variant
+
+
+def _variant_dirs(operation: str, language: str, variant: str, *, prompts_root: Path) -> list[Path]:
+    return [
+        prompts_root / operation / language / "variants" / variant,
+        prompts_root / operation / "variants" / variant,
+        prompts_root / operation / language / variant,
+        prompts_root / operation / variant,
+    ]
+
+
+def _load_template_variant(operation: str, language: str, variant: str, *, prompts_root: Path) -> str:
+    for directory in _variant_dirs(operation, language, variant, prompts_root=prompts_root):
+        template_path = directory / "template.txt"
+        if template_path.exists():
+            return template_path.read_text(encoding="utf-8")
+    raise FileNotFoundError(
+        f"No template variant {variant!r} found for operation={operation!r}, language={language!r}"
+    )
+
+
+def _load_fewshot_variant(operation: str, language: str, variant: str, *, prompts_root: Path) -> list[dict[str, Any]]:
+    for directory in _variant_dirs(operation, language, variant, prompts_root=prompts_root):
+        fewshot_dir = directory / "fewshots"
+        if fewshot_dir.exists():
+            return _load_fewshots_from_dir(fewshot_dir)
+    raise FileNotFoundError(
+        f"No few-shot variant {variant!r} found for operation={operation!r}, language={language!r}"
+    )
+
+
+def _load_fewshots_from_dir(fewshot_dir: Path) -> list[dict[str, Any]]:
+    return [json.loads(path.read_text(encoding="utf-8")) for path in sorted(fewshot_dir.glob("*.json"))]
+
+
+def _select_fewshot_tranche(fewshots: list[dict[str, Any]], selection: str | int | None) -> list[dict[str, Any]]:
+    value = str(selection if selection is not None else "all").strip().lower()
+    if value in {"", "all"}:
+        return fewshots
+    if value in {"none", "no", "false"}:
+        return []
+    named_limits = {"minimal": 1, "small": 2, "medium": 4}
+    if value in named_limits:
+        limit = named_limits[value]
+    else:
+        try:
+            limit = int(value)
+        except ValueError as exc:
+            raise ValueError(
+                "fewshot_count must be 'all', 'none', a non-negative integer, or one of "
+                "'minimal', 'small', 'medium'"
+            ) from exc
+    if limit < 0:
+        raise ValueError("fewshot_count must not be negative")
+    return fewshots[:limit]
+
+
 @dataclass(slots=True)
 class SegmentationSpec:
     """Specification for segmentation phase 1."""
@@ -32,6 +97,7 @@ class SegmentationSpec:
     fewshot_paths: Iterable[Path] | None = None
     telemetry: Telemetry | None = None
     op_id: str | None = None
+    prioritise_sentences: bool = False
 
 
 def _render_fewshot_examples(fewshots: list[dict[str, Any]]) -> str:
@@ -72,7 +138,14 @@ def _json_like_output_to_tagged_text(output: Any) -> str:
     return "<page>".join(rendered_pages)
 
 
-def _build_prompt(template: str, *, text: str, fewshots: list[dict[str, Any]], language: str) -> str:
+def _build_prompt(
+    template: str,
+    *,
+    text: str,
+    fewshots: list[dict[str, Any]],
+    language: str,
+    text_type_advice: str = "",
+) -> str:
     examples = _render_fewshot_examples(fewshots)
     template_has_placeholders = any(
         token in template for token in ("{l2_language}", "{examples}", "{text}", "{text_type_advice}")
@@ -82,11 +155,14 @@ def _build_prompt(template: str, *, text: str, fewshots: list[dict[str, Any]], l
             l2_language=language,
             examples=examples or "[No examples provided]",
             text=text,
-            text_type_advice="",
+            text_type_advice=text_type_advice,
         )
 
     # Backward-compatible fallback for plain-text templates without format placeholders.
-    lines = [template.strip(), "", "Examples:", examples or "[No examples provided]", "", "Input text:"]
+    lines = [template.strip()]
+    if text_type_advice.strip():
+        lines.extend(["", "Additional segmentation guidance:", text_type_advice.strip()])
+    lines.extend(["", "Examples:", examples or "[No examples provided]", "", "Input text:"])
     lines.append("<startoftext>")
     lines.append(text.strip())
     lines.append("<endoftext>")
@@ -184,7 +260,21 @@ async def segmentation_phase_1(
         else annotation_prompts.load_fewshots("segmentation_phase_1", spec.language, prompts_root=prompts_root)
     )
 
-    prompt = _build_prompt(template, text=spec.text, fewshots=fewshots, language=spec.language)
+    text_type_advice = ""
+    if spec.prioritise_sentences:
+        text_type_advice = (
+            "For prose, prioritise sentence boundaries: by default, make each segment a complete "
+            "sentence. Only split inside a sentence when it is unusually long or pedagogically "
+            "unmanageable, and avoid fragmenting ordinary prose into short clauses."
+        )
+
+    prompt = _build_prompt(
+        template,
+        text=spec.text,
+        fewshots=fewshots,
+        language=spec.language,
+        text_type_advice=text_type_advice,
+    )
     telemetry = spec.telemetry or NullTelemetry()
     ai_client = client or OpenAIClient()
     max_attempts = 3
@@ -355,6 +445,10 @@ class SegmentationPhase2Spec:
     telemetry: Telemetry | None = None
     op_id: str | None = None
     method: str = "auto"
+    mechanism: str = "json_direct"
+    prompt_variant: str = ""
+    fewshot_variant: str = ""
+    fewshot_count: str | int = "all"
 
 
 async def segmentation_phase_2(
@@ -366,25 +460,46 @@ async def segmentation_phase_2(
 
     telemetry = spec.telemetry or NullTelemetry()
     method = (spec.method or "auto").strip().lower()
+    mechanism = (spec.mechanism or "json_direct").strip().lower()
+    if mechanism in {"", "default"}:
+        mechanism = "json_direct"
 
     if spec.language.lower().startswith("zh") and method in {"auto", "jieba"}:
         return _tokenize_with_jieba(spec.text, language=spec.language, telemetry=telemetry, op_id=spec.op_id)
     if method not in {"auto", "ai", "jieba"}:
         raise ValueError(f"Unknown segmentation method: {method}")
+    if mechanism not in {"json_direct", "boundary_first"}:
+        raise ValueError(f"Unknown segmentation_phase_2 mechanism: {mechanism}")
 
     prompts_root = (
         spec.template_path.parent.parent if spec.template_path else annotation_prompts.default_prompts_root()
     )
+    prompt_variant = _safe_variant_name(spec.prompt_variant)
+    fewshot_variant = _safe_variant_name(spec.fewshot_variant)
+
+    if mechanism == "boundary_first":
+        template = _load_boundary_first_template(spec.language, prompt_variant, prompts_root=prompts_root)
+        fewshots = _load_boundary_first_fewshots(spec.language, fewshot_variant, prompts_root=prompts_root)
+        fewshots = _select_fewshot_tranche(fewshots, spec.fewshot_count)
+        return await _segmentation_phase_2_boundary_first(
+            spec, client=client, telemetry=telemetry, template=template, fewshots=fewshots
+        )
+
     template = (
         spec.template_path.read_text(encoding="utf-8")
         if spec.template_path
+        else _load_template_variant("segmentation_phase_2", spec.language, prompt_variant, prompts_root=prompts_root)
+        if prompt_variant
         else annotation_prompts.load_template("segmentation_phase_2", spec.language, prompts_root=prompts_root)
     )
     fewshots = (
         [json.loads(path.read_text(encoding="utf-8")) for path in spec.fewshot_paths]
         if spec.fewshot_paths
+        else _load_fewshot_variant("segmentation_phase_2", spec.language, fewshot_variant, prompts_root=prompts_root)
+        if fewshot_variant
         else annotation_prompts.load_fewshots("segmentation_phase_2", spec.language, prompts_root=prompts_root)
     )
+    fewshots = _select_fewshot_tranche(fewshots, spec.fewshot_count)
 
     output_instructions = [
         "Return a JSON object representing the segment with keys surface, tokens (array of token objects with surface),",
@@ -415,6 +530,204 @@ async def segmentation_phase_2(
         client=ai_client,
     )
     return _normalize_phase2_output(annotated)
+
+
+def _strategy_dirs(operation: str, language: str, strategy: str, *, prompts_root: Path) -> list[Path]:
+    return [
+        prompts_root / operation / language / "strategies" / strategy,
+        prompts_root / operation / "strategies" / strategy,
+    ]
+
+
+def _load_boundary_first_template(language: str, variant: str, *, prompts_root: Path) -> str:
+    variant_dirs = (
+        _variant_dirs("segmentation_phase_2", language, variant, prompts_root=prompts_root) if variant else []
+    )
+    for directory in variant_dirs:
+        template_path = directory / "boundary_first_template.txt"
+        if template_path.exists():
+            return template_path.read_text(encoding="utf-8")
+    for directory in _strategy_dirs("segmentation_phase_2", language, "boundary_first", prompts_root=prompts_root):
+        template_path = directory / "template.txt"
+        if template_path.exists():
+            return template_path.read_text(encoding="utf-8")
+    if variant:
+        raise FileNotFoundError(
+            f"No boundary_first template found for variant={variant!r}, operation='segmentation_phase_2', "
+            f"language={language!r}"
+        )
+    raise FileNotFoundError(
+        f"No boundary_first template found for operation='segmentation_phase_2', language={language!r}"
+    )
+
+
+def _load_boundary_first_fewshots(language: str, variant: str, *, prompts_root: Path) -> list[dict[str, Any]]:
+    if variant:
+        return _load_fewshot_variant("segmentation_phase_2", language, variant, prompts_root=prompts_root)
+    for directory in _strategy_dirs("segmentation_phase_2", language, "boundary_first", prompts_root=prompts_root):
+        fewshot_dir = directory / "fewshots"
+        if fewshot_dir.exists():
+            return _load_fewshots_from_dir(fewshot_dir)
+    return annotation_prompts.load_fewshots("segmentation_phase_2", language, prompts_root=prompts_root)
+
+
+_BOUNDARY_MARKER = "¦"
+
+
+def _default_boundary_marked_surface(surface: str) -> str:
+    return _BOUNDARY_MARKER.join(str(tok.get("surface", "")) for tok in _fallback_tokenize_surface(surface))
+
+
+def _boundary_marked_output_from_example(example: dict[str, Any]) -> str:
+    output = example.get("output")
+    if isinstance(output, str):
+        return output.strip()
+    if isinstance(output, dict):
+        tokens = output.get("tokens")
+        if isinstance(tokens, list):
+            parts = [str((tok or {}).get("surface", "")) for tok in tokens if isinstance(tok, dict)]
+            if parts:
+                return _BOUNDARY_MARKER.join(parts)
+        surface = str(output.get("surface") or example.get("input") or "")
+        if surface:
+            return _default_boundary_marked_surface(surface)
+    return _default_boundary_marked_surface(str(example.get("input") or ""))
+
+
+def _render_boundary_first_examples(fewshots: list[dict[str, Any]]) -> str:
+    lines: list[str] = []
+    for idx, example in enumerate(fewshots, start=1):
+        surface = str(example.get("input") or "")
+        provisional = str(example.get("provisional_input") or _default_boundary_marked_surface(surface))
+        output = _boundary_marked_output_from_example(example)
+        lines.append(f"Example {idx} input:")
+        lines.append(provisional)
+        lines.append("Example output:")
+        lines.append(output)
+        lines.append("")
+    return "\n".join(lines).strip()
+
+
+def _boundary_first_prompt(surface: str, *, language: str, template: str, fewshots: list[dict[str, Any]]) -> str:
+    default_marked = _default_boundary_marked_surface(surface)
+    examples = _render_boundary_first_examples(fewshots)
+    template_has_placeholders = any(
+        token in template
+        for token in ("{l2_language}", "{boundary_marker}", "{examples}", "{default_marked}", "{surface}")
+    )
+    if template_has_placeholders:
+        return template.format(
+            l2_language=language,
+            boundary_marker=_BOUNDARY_MARKER,
+            examples=examples or "[No examples provided]",
+            default_marked=default_marked,
+            surface=surface,
+        )
+
+    return "\n".join(
+        [
+            template.strip(),
+            "",
+            "Few-shot examples:",
+            examples or "[No examples provided]",
+            "",
+            "Boundary-marked segment to revise:",
+            "<startofsegment>",
+            default_marked,
+            "<endofsegment>",
+        ]
+    )
+
+
+def _tokens_from_boundary_marked_text(marked: str, *, surface: str) -> list[dict[str, Any]] | None:
+    candidate = _extract_between_tags(marked, "startofsegment", "endofsegment")
+    if candidate == "":
+        candidate = marked.strip()
+    else:
+        candidate = candidate.strip("\r\n")
+    if not candidate:
+        return None
+    candidate = candidate.replace("|", _BOUNDARY_MARKER)
+    if candidate.replace(_BOUNDARY_MARKER, "") != surface:
+        return None
+    parts = [part for part in candidate.split(_BOUNDARY_MARKER) if part != ""]
+    if not parts or "".join(parts) != surface:
+        return None
+    return [{"surface": part} for part in parts]
+
+
+async def _segmentation_phase_2_boundary_first(
+    spec: SegmentationPhase2Spec,
+    *,
+    client: OpenAIClient | None,
+    telemetry: Telemetry,
+    template: str,
+    fewshots: list[dict[str, Any]],
+) -> dict[str, Any]:
+    ai_client = client or OpenAIClient()
+    base_op = spec.op_id or "segmentation_phase_2"
+    telemetry.event(base_op, "info", "Using boundary-first segmentation_phase_2 mechanism")
+
+    pages = spec.text.get("pages", []) or []
+    tasks: list[asyncio.Task[str]] = []
+    index: list[tuple[int, int, str, str]] = []
+
+    async def _annotate(prompt: str, op_id: str) -> str:
+        return await ai_client.chat_text(prompt, telemetry=telemetry, op_id=op_id)
+
+    for page_idx, page in enumerate(pages):
+        for segment_idx, segment in enumerate(page.get("segments", []) or []):
+            surface = str(segment.get("surface", ""))
+            if not surface:
+                continue
+            segment_op_id = f"{base_op}-boundary-p{page_idx}-s{segment_idx}"
+            prompt = _boundary_first_prompt(
+                surface, language=spec.language, template=template, fewshots=fewshots
+            )
+            tasks.append(asyncio.create_task(_annotate(prompt, segment_op_id)))
+            index.append((page_idx, segment_idx, surface, segment_op_id))
+
+    responses = await asyncio.gather(*tasks) if tasks else []
+    tokens_by_index: dict[tuple[int, int], list[dict[str, Any]]] = {}
+    for (page_idx, segment_idx, surface, segment_op_id), raw in zip(index, responses):
+        tokens = _tokens_from_boundary_marked_text(str(raw or ""), surface=surface)
+        if tokens is None:
+            telemetry.event(
+                segment_op_id,
+                "warn",
+                "boundary-first segmentation_phase_2 output failed preservation check; using fallback tokenizer",
+                {"surface_preview": surface[:80], "response_preview": str(raw or "")[:120]},
+            )
+            tokens = _fallback_tokenize_surface(surface)
+        tokens_by_index[(page_idx, segment_idx)] = tokens
+
+    new_pages: list[dict[str, Any]] = []
+    for page_idx, page in enumerate(pages):
+        new_segments: list[dict[str, Any]] = []
+        for segment_idx, segment in enumerate(page.get("segments", []) or []):
+            merged = dict(segment)
+            merged["tokens"] = tokens_by_index.get(
+                (page_idx, segment_idx),
+                [] if not str(segment.get("surface", "")) else _fallback_tokenize_surface(str(segment.get("surface", ""))),
+            )
+            new_segments.append(merged)
+        new_pages.append(
+            {
+                "surface": page.get("surface", ""),
+                "segments": new_segments,
+                "annotations": page.get("annotations", {}),
+            }
+        )
+
+    normalized = {
+        "l2": spec.text.get("l2", spec.language),
+        "l1": spec.text.get("l1"),
+        "title": spec.text.get("title"),
+        "surface": spec.text.get("surface", ""),
+        "pages": new_pages,
+        "annotations": spec.text.get("annotations", {}),
+    }
+    return _normalize_phase2_output({k: v for k, v in normalized.items() if v is not None})
 
 
 def _tokenize_with_jieba(
