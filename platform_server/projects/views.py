@@ -4487,7 +4487,11 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["stage_parameters_example"] = json.dumps(
             {
                 "segmentation_phase_1": {"prioritise_sentences": True},
-                "segmentation_phase_2": {"variant": "clitic_compound"},
+                "segmentation_phase_2": {
+                    "mechanism": "boundary_first",
+                    "variant": "clitic_compound",
+                    "fewshot_count": "all",
+                },
             },
             indent=2,
         )

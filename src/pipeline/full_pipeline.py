@@ -229,6 +229,12 @@ async def run_full_pipeline(
                             or seg2_variant
                         ),
                         fewshot_variant=str(seg2_params.get("fewshot_variant") or seg2_variant),
+                        fewshot_count=str(
+                            seg2_params.get("fewshot_count")
+                            or seg2_params.get("fewshot_limit")
+                            or seg2_params.get("fewshot_tranche")
+                            or "all"
+                        ),
                     ),
                     client=ai_client,
                 )

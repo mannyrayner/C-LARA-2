@@ -183,7 +183,7 @@ class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
             audio_cache_dir=self.fake_audio_root / "stage_params_seg2",
             start_stage="segmentation_phase_2",
             end_stage="segmentation_phase_2",
-            stage_parameters={"segmentation_phase_2": {"variant": "clitic_compound"}},
+            stage_parameters={"segmentation_phase_2": {"variant": "clitic_compound", "fewshot_count": 1}},
         )
 
         await run_full_pipeline(spec, client=client)
@@ -191,6 +191,7 @@ class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(client.prompts)
         self.assertIn("careful treatment of clitics", client.prompts[0])
         self.assertIn("C'est l'heure.", client.prompts[0])
+        self.assertNotIn("Dimela con calma.", client.prompts[0])
 
     async def test_pipeline_passes_stage_specific_op_ids_to_ai_calls(self) -> None:
         seg1 = {

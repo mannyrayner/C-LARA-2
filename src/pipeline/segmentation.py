@@ -55,10 +55,36 @@ def _load_fewshot_variant(operation: str, language: str, variant: str, *, prompt
     for directory in _variant_dirs(operation, language, variant, prompts_root=prompts_root):
         fewshot_dir = directory / "fewshots"
         if fewshot_dir.exists():
-            return [json.loads(path.read_text(encoding="utf-8")) for path in sorted(fewshot_dir.glob("*.json"))]
+            return _load_fewshots_from_dir(fewshot_dir)
     raise FileNotFoundError(
         f"No few-shot variant {variant!r} found for operation={operation!r}, language={language!r}"
     )
+
+
+def _load_fewshots_from_dir(fewshot_dir: Path) -> list[dict[str, Any]]:
+    return [json.loads(path.read_text(encoding="utf-8")) for path in sorted(fewshot_dir.glob("*.json"))]
+
+
+def _select_fewshot_tranche(fewshots: list[dict[str, Any]], selection: str | int | None) -> list[dict[str, Any]]:
+    value = str(selection if selection is not None else "all").strip().lower()
+    if value in {"", "all"}:
+        return fewshots
+    if value in {"none", "no", "false"}:
+        return []
+    named_limits = {"minimal": 1, "small": 2, "medium": 4}
+    if value in named_limits:
+        limit = named_limits[value]
+    else:
+        try:
+            limit = int(value)
+        except ValueError as exc:
+            raise ValueError(
+                "fewshot_count must be 'all', 'none', a non-negative integer, or one of "
+                "'minimal', 'small', 'medium'"
+            ) from exc
+    if limit < 0:
+        raise ValueError("fewshot_count must not be negative")
+    return fewshots[:limit]
 
 
 @dataclass(slots=True)
@@ -422,6 +448,7 @@ class SegmentationPhase2Spec:
     mechanism: str = "json_direct"
     prompt_variant: str = ""
     fewshot_variant: str = ""
+    fewshot_count: str | int = "all"
 
 
 async def segmentation_phase_2(
@@ -443,14 +470,21 @@ async def segmentation_phase_2(
         raise ValueError(f"Unknown segmentation method: {method}")
     if mechanism not in {"json_direct", "boundary_first"}:
         raise ValueError(f"Unknown segmentation_phase_2 mechanism: {mechanism}")
-    if mechanism == "boundary_first":
-        return await _segmentation_phase_2_boundary_first(spec, client=client, telemetry=telemetry)
 
     prompts_root = (
         spec.template_path.parent.parent if spec.template_path else annotation_prompts.default_prompts_root()
     )
     prompt_variant = _safe_variant_name(spec.prompt_variant)
     fewshot_variant = _safe_variant_name(spec.fewshot_variant)
+
+    if mechanism == "boundary_first":
+        template = _load_boundary_first_template(spec.language, prompt_variant, prompts_root=prompts_root)
+        fewshots = _load_boundary_first_fewshots(spec.language, fewshot_variant, prompts_root=prompts_root)
+        fewshots = _select_fewshot_tranche(fewshots, spec.fewshot_count)
+        return await _segmentation_phase_2_boundary_first(
+            spec, client=client, telemetry=telemetry, template=template, fewshots=fewshots
+        )
+
     template = (
         spec.template_path.read_text(encoding="utf-8")
         if spec.template_path
@@ -465,6 +499,7 @@ async def segmentation_phase_2(
         if fewshot_variant
         else annotation_prompts.load_fewshots("segmentation_phase_2", spec.language, prompts_root=prompts_root)
     )
+    fewshots = _select_fewshot_tranche(fewshots, spec.fewshot_count)
 
     output_instructions = [
         "Return a JSON object representing the segment with keys surface, tokens (array of token objects with surface),",
@@ -497,6 +532,45 @@ async def segmentation_phase_2(
     return _normalize_phase2_output(annotated)
 
 
+def _strategy_dirs(operation: str, language: str, strategy: str, *, prompts_root: Path) -> list[Path]:
+    return [
+        prompts_root / operation / language / "strategies" / strategy,
+        prompts_root / operation / "strategies" / strategy,
+    ]
+
+
+def _load_boundary_first_template(language: str, variant: str, *, prompts_root: Path) -> str:
+    variant_dirs = (
+        _variant_dirs("segmentation_phase_2", language, variant, prompts_root=prompts_root) if variant else []
+    )
+    for directory in variant_dirs:
+        template_path = directory / "boundary_first_template.txt"
+        if template_path.exists():
+            return template_path.read_text(encoding="utf-8")
+    for directory in _strategy_dirs("segmentation_phase_2", language, "boundary_first", prompts_root=prompts_root):
+        template_path = directory / "template.txt"
+        if template_path.exists():
+            return template_path.read_text(encoding="utf-8")
+    if variant:
+        raise FileNotFoundError(
+            f"No boundary_first template found for variant={variant!r}, operation='segmentation_phase_2', "
+            f"language={language!r}"
+        )
+    raise FileNotFoundError(
+        f"No boundary_first template found for operation='segmentation_phase_2', language={language!r}"
+    )
+
+
+def _load_boundary_first_fewshots(language: str, variant: str, *, prompts_root: Path) -> list[dict[str, Any]]:
+    if variant:
+        return _load_fewshot_variant("segmentation_phase_2", language, variant, prompts_root=prompts_root)
+    for directory in _strategy_dirs("segmentation_phase_2", language, "boundary_first", prompts_root=prompts_root):
+        fewshot_dir = directory / "fewshots"
+        if fewshot_dir.exists():
+            return _load_fewshots_from_dir(fewshot_dir)
+    return annotation_prompts.load_fewshots("segmentation_phase_2", language, prompts_root=prompts_root)
+
+
 _BOUNDARY_MARKER = "¦"
 
 
@@ -504,27 +578,64 @@ def _default_boundary_marked_surface(surface: str) -> str:
     return _BOUNDARY_MARKER.join(str(tok.get("surface", "")) for tok in _fallback_tokenize_surface(surface))
 
 
-def _boundary_first_prompt(surface: str, *, language: str) -> str:
+def _boundary_marked_output_from_example(example: dict[str, Any]) -> str:
+    output = example.get("output")
+    if isinstance(output, str):
+        return output.strip()
+    if isinstance(output, dict):
+        tokens = output.get("tokens")
+        if isinstance(tokens, list):
+            parts = [str((tok or {}).get("surface", "")) for tok in tokens if isinstance(tok, dict)]
+            if parts:
+                return _BOUNDARY_MARKER.join(parts)
+        surface = str(output.get("surface") or example.get("input") or "")
+        if surface:
+            return _default_boundary_marked_surface(surface)
+    return _default_boundary_marked_surface(str(example.get("input") or ""))
+
+
+def _render_boundary_first_examples(fewshots: list[dict[str, Any]]) -> str:
+    lines: list[str] = []
+    for idx, example in enumerate(fewshots, start=1):
+        surface = str(example.get("input") or "")
+        provisional = str(example.get("provisional_input") or _default_boundary_marked_surface(surface))
+        output = _boundary_marked_output_from_example(example)
+        lines.append(f"Example {idx} input:")
+        lines.append(provisional)
+        lines.append("Example output:")
+        lines.append(output)
+        lines.append("")
+    return "\n".join(lines).strip()
+
+
+def _boundary_first_prompt(surface: str, *, language: str, template: str, fewshots: list[dict[str, Any]]) -> str:
     default_marked = _default_boundary_marked_surface(surface)
-    return (
-        "Revise token boundary markers for language-learning annotation.\n"
-        f"Language: {language}\n"
-        f"The input already contains provisional {_BOUNDARY_MARKER!r} boundary markers. Add, delete, "
-        "or move markers only where needed.\n"
-        "Preserve every original character, including spaces and punctuation, exactly as given; only "
-        f"the {_BOUNDARY_MARKER!r} markers may change.\n"
-        "Typical edits include adding a boundary to separate clitics (EN: it¦'s; FR: l'¦avait; "
-        "IT: di¦me¦la) or splitting transparent compounds (SV: motor¦fordon). Delete markers "
-        "that create linguistically useless fragments.\n"
-        "Return only the revised boundary-marked segment, with no JSON, comments, markdown, or explanation.\n\n"
-        "Examples:\n"
-        "Input: it¦'¦s\nOutput: it¦'s\n"
-        "Input: l¦'¦avait\nOutput: l'¦avait\n"
-        "Input: motorfordon\nOutput: motor¦fordon\n\n"
-        "Boundary-marked segment to revise:\n"
-        "<startofsegment>\n"
-        f"{default_marked}\n"
-        "<endofsegment>"
+    examples = _render_boundary_first_examples(fewshots)
+    template_has_placeholders = any(
+        token in template
+        for token in ("{l2_language}", "{boundary_marker}", "{examples}", "{default_marked}", "{surface}")
+    )
+    if template_has_placeholders:
+        return template.format(
+            l2_language=language,
+            boundary_marker=_BOUNDARY_MARKER,
+            examples=examples or "[No examples provided]",
+            default_marked=default_marked,
+            surface=surface,
+        )
+
+    return "\n".join(
+        [
+            template.strip(),
+            "",
+            "Few-shot examples:",
+            examples or "[No examples provided]",
+            "",
+            "Boundary-marked segment to revise:",
+            "<startofsegment>",
+            default_marked,
+            "<endofsegment>",
+        ]
     )
 
 
@@ -550,6 +661,8 @@ async def _segmentation_phase_2_boundary_first(
     *,
     client: OpenAIClient | None,
     telemetry: Telemetry,
+    template: str,
+    fewshots: list[dict[str, Any]],
 ) -> dict[str, Any]:
     ai_client = client or OpenAIClient()
     base_op = spec.op_id or "segmentation_phase_2"
@@ -568,7 +681,9 @@ async def _segmentation_phase_2_boundary_first(
             if not surface:
                 continue
             segment_op_id = f"{base_op}-boundary-p{page_idx}-s{segment_idx}"
-            prompt = _boundary_first_prompt(surface, language=spec.language)
+            prompt = _boundary_first_prompt(
+                surface, language=spec.language, template=template, fewshots=fewshots
+            )
             tasks.append(asyncio.create_task(_annotate(prompt, segment_op_id)))
             index.append((page_idx, segment_idx, surface, segment_op_id))
 

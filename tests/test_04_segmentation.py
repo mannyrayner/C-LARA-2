@@ -253,6 +253,79 @@ class SegmentationTests(unittest.IsolatedAsyncioTestCase):
         tokens = result["pages"][0]["segments"][0]["tokens"]
         self.assertEqual(["C", "'est", " ", "l'", "heure", "."], [tok["surface"] for tok in tokens])
 
+
+    async def test_segmentation_phase_2_limits_fewshot_tranche(self) -> None:
+        text = {
+            "l2": "fr",
+            "surface": "C'est l'heure.",
+            "pages": [
+                {
+                    "surface": "C'est l'heure.",
+                    "segments": [{"surface": "C'est l'heure.", "annotations": {}}],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        client = FakeAIClient(
+            {
+                "surface": "C'est l'heure.",
+                "tokens": [{"surface": "C'est l'heure."}],
+                "annotations": {},
+            }
+        )
+
+        await segmentation_phase_2(
+            SegmentationPhase2Spec(
+                text=text,
+                language="fr",
+                prompt_variant="clitic_compound",
+                fewshot_variant="clitic_compound",
+                fewshot_count=1,
+            ),
+            client=client,
+        )
+
+        prompt = client.prompts[0]
+        self.assertIn("C'est l'heure.", prompt)
+        self.assertNotIn("Dimela con calma.", prompt)
+        self.assertNotIn("Motorfordon är vanliga.", prompt)
+
+    async def test_segmentation_phase_2_boundary_first_combines_with_clitic_compound_variant(self) -> None:
+        text = {
+            "l2": "fr",
+            "surface": "C'est l'heure.",
+            "pages": [
+                {
+                    "surface": "C'est l'heure.",
+                    "segments": [{"surface": "C'est l'heure.", "annotations": {}}],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        client = FakePerCallAIClient(["C¦'est¦ ¦l'¦heure¦."])
+
+        result = await segmentation_phase_2(
+            SegmentationPhase2Spec(
+                text=text,
+                language="fr",
+                mechanism="boundary_first",
+                prompt_variant="clitic_compound",
+                fewshot_variant="clitic_compound",
+                fewshot_count="small",
+            ),
+            client=client,
+        )
+
+        prompt = client.prompts[0]
+        self.assertIn("special attention to clitics", prompt)
+        self.assertIn("C¦'est¦ ¦l'¦heure¦.", prompt)
+        self.assertIn("Di¦me¦la¦ ¦con¦ ¦calma¦.", prompt)
+        self.assertNotIn("Motor¦fordon", prompt)
+        tokens = result["pages"][0]["segments"][0]["tokens"]
+        self.assertEqual(["C", "'est", " ", "l'", "heure", "."], [tok["surface"] for tok in tokens])
+
     async def test_segmentation_phase_2_rejects_unsafe_variant_name(self) -> None:
         text = {"l2": "en", "surface": "Hello.", "pages": [{"surface": "Hello.", "segments": [{"surface": "Hello."}]}]}
         with self.assertRaisesRegex(ValueError, "Invalid prompt/few-shot variant"):
