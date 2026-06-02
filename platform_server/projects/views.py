@@ -348,6 +348,29 @@ def _require_admin(user) -> None:
         raise Http404()
 
 
+
+def _parse_stage_parameters(raw: str | None) -> tuple[dict[str, dict[str, Any]], str | None]:
+    text = (raw or "").strip()
+    if not text:
+        return {}, None
+    try:
+        parsed = json.loads(text)
+    except Exception as exc:
+        return {}, f"Stage parameters must be valid JSON: {exc}"
+    if not isinstance(parsed, dict):
+        return {}, "Stage parameters must be a JSON object keyed by stage name."
+    allowed_stages = set(PIPELINE_ORDER)
+    normalized: dict[str, dict[str, Any]] = {}
+    for stage, params in parsed.items():
+        stage_name = str(stage).strip()
+        if stage_name not in allowed_stages:
+            return {}, f"Unknown stage in stage parameters: {stage_name}"
+        if not isinstance(params, dict):
+            return {}, f"Stage parameters for {stage_name} must be a JSON object."
+        normalized[stage_name] = params
+    return normalized, None
+
+
 def _normalize_processing_method_choice(method: str | None, valid_choices: list[str]) -> str:
     """Normalize stored processing options while preserving validation for bad user input."""
 
@@ -4461,6 +4484,13 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["ai_models"] = AI_MODEL_CHOICES
         context["selected_ai_model"] = project.ai_model or DEFAULT_MODEL
         context["detailed_api_trace_default"] = False
+        context["stage_parameters_example"] = json.dumps(
+            {
+                "segmentation_phase_1": {"prioritise_sentences": True},
+                "segmentation_phase_2": {"variant": "clitic_compound"},
+            },
+            indent=2,
+        )
         context["language_choices"] = ProjectForm.LANGUAGE_CHOICES
         context["project_text_direction"] = language_direction(project.language)
         context["project_annotation_direction"] = language_direction(project.target_language)
@@ -7307,6 +7337,7 @@ def _run_compile_task(
     segmentation_method: str | None = None,
     romanization_method: str | None = None,
     detailed_api_trace: bool = False,
+    stage_parameters: dict[str, dict[str, Any]] | None = None,
 ) -> None:
     project = Project.objects.get(pk=project_id)
     user = get_user_model().objects.filter(pk=user_id).first()
@@ -7369,6 +7400,8 @@ def _run_compile_task(
             "Compile task started. "
             f"start_stage={start_stage}, end_stage={end_stage or 'compile_html'}, output_dir={output_dir}"
         )
+        if stage_parameters:
+            post_update(f"Stage parameters: {json.dumps(stage_parameters, ensure_ascii=False)}")
         if user is None:
             post_update(f"Compile failed: no user found for user_id={user_id}", status="error")
             logger.error("Compile task aborted: missing user record for user_id=%s project_id=%s", user_id, project_id)
@@ -7400,6 +7433,7 @@ def _run_compile_task(
             segmentation_method=_resolve_segmentation_method(project.language, segmentation_method or project.segmentation_method),
             romanization_method=_resolve_romanization_method(project.language, romanization_method or project.romanization_method),
             telemetry=telemetry,
+            stage_parameters=stage_parameters or {},
         )
         post_update("Pipeline spec initialized.")
         try:
@@ -7710,6 +7744,10 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         "on",
         "yes",
     }
+    stage_parameters, stage_parameters_error = _parse_stage_parameters(request.POST.get("stage_parameters"))
+    if stage_parameters_error:
+        messages.error(request, stage_parameters_error)
+        return redirect(return_to)
     compose_latest_upstream = True
     confirm_compose_latest = True
 
@@ -7919,6 +7957,7 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         segmentation_method,
         romanization_method,
         detailed_api_trace,
+        stage_parameters,
         q_options={"sync": False},
     )
 

@@ -65,6 +65,7 @@ class FullPipelineSpec:
     audio_mode: str = "tts"
     persist_intermediates: bool = False
     progress_callback: Callable[[str, str, str], None] | None = None
+    stage_parameters: dict[str, dict[str, Any]] | None = None
 
 
 def _strip_audio_annotations(payload: Any) -> Any:
@@ -118,6 +119,13 @@ async def run_full_pipeline(
             write_stage_artifact(stage_dir.parent, stage, payload, normalize=normalize_json_text)
         except Exception:
             pass
+
+    def _stage_parameters(stage: str) -> dict[str, Any]:
+        params = (spec.stage_parameters or {}).get(stage, {})
+        return params if isinstance(params, dict) else {}
+
+    if spec.persist_intermediates and spec.stage_parameters:
+        _persist("processing_parameters", spec.stage_parameters)
 
     def _progress(stage: str, status: str) -> None:
         if progress_cb is None:
@@ -179,12 +187,14 @@ async def run_full_pipeline(
                 raise ValueError("segmentation_phase_1 requires a raw text string")
             try:
                 _progress("segmentation_phase_1", "start")
+                seg1_params = _stage_parameters("segmentation_phase_1")
                 current = await segmentation_phase_1(
                     SegmentationSpec(
                         text=raw_text,
                         language=spec.language,
                         telemetry=telemetry,
                         op_id=stage_op_id,
+                        prioritise_sentences=bool(seg1_params.get("prioritise_sentences")),
                     ),
                     client=ai_client,
                 )
@@ -203,6 +213,8 @@ async def run_full_pipeline(
         if stage == "segmentation_phase_2":
             try:
                 _progress("segmentation_phase_2", "start")
+                seg2_params = _stage_parameters("segmentation_phase_2")
+                seg2_variant = str(seg2_params.get("variant") or "")
                 current = await segmentation_phase_2(
                     SegmentationPhase2Spec(
                         text=current,
@@ -210,6 +222,13 @@ async def run_full_pipeline(
                         telemetry=telemetry,
                         op_id=stage_op_id,
                         method=spec.segmentation_method,
+                        mechanism=str(seg2_params.get("mechanism") or "json_direct"),
+                        prompt_variant=str(
+                            seg2_params.get("prompt_variant")
+                            or seg2_params.get("template_variant")
+                            or seg2_variant
+                        ),
+                        fewshot_variant=str(seg2_params.get("fewshot_variant") or seg2_variant),
                     ),
                     client=ai_client,
                 )

@@ -109,6 +109,10 @@
     <input type="hidden" name="segmentation_method" value="{{ selected_segmentation_method }}" />
     <input type="hidden" name="romanization_method" value="{{ selected_romanization_method }}" />
     <input type="hidden" name="return_to" value="{% url 'project-annotation-home' object.pk %}" />
+    <label for="stage_parameters" style="display:block; margin-top:0.75rem;">Stage parameters (JSON, optional):</label>
+    <textarea name="stage_parameters" id="stage_parameters" rows="5" style="width:100%; font-family:monospace;" placeholder='{{ stage_parameters_example }}'></textarea>
+    <small>Power-user overrides for this run only. Example: <code>{"segmentation_phase_1":{"prioritise_sentences":true}}</code>. For phase 2, <code>{"segmentation_phase_2":{"mechanism":"boundary_first"}}</code> tests boundary-first tokenization, and <code>{"segmentation_phase_2":{"variant":"clitic_compound"}}</code> selects the clitic/compound prompt and few-shots.</small>
+    <br />
     <label for="detailed_api_trace" class="ml-2">
       <input type="checkbox" name="detailed_api_trace" id="detailed_api_trace" value="1" {% if detailed_api_trace_default %}checked{% endif %} />
       Detailed API telemetry
