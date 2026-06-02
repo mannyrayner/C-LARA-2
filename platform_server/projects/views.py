@@ -5,6 +5,8 @@ import json
 import sys
 import logging
 import os
+import signal
+import subprocess
 import threading
 import random
 import shutil
@@ -3458,6 +3460,61 @@ def admin_project_understanding_status(request: HttpRequest, report_id: str) -> 
     })
 
 
+def _find_django_q_processes() -> list[dict[str, Any]]:
+    try:
+        output = subprocess.check_output(
+            ["ps", "-eo", "pid=,ppid=,args="],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        return []
+
+    current_pid = os.getpid()
+    matches: list[dict[str, Any]] = []
+    for line in output.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        parts = stripped.split(None, 2)
+        if len(parts) < 3:
+            continue
+        try:
+            pid = int(parts[0])
+            ppid = int(parts[1])
+        except ValueError:
+            continue
+        args = parts[2]
+        arg_tokens = args.split()
+        has_qcluster_command = any(
+            Path(token).name == "manage.py"
+            and idx + 1 < len(arg_tokens)
+            and arg_tokens[idx + 1] == "qcluster"
+            for idx, token in enumerate(arg_tokens)
+        )
+        if pid == current_pid or not has_qcluster_command:
+            continue
+        if "runserver" in arg_tokens:
+            continue
+        matches.append({"pid": pid, "ppid": ppid, "args": args})
+    return matches
+
+
+def _shutdown_django_q_processes() -> list[dict[str, Any]]:
+    stopped: list[dict[str, Any]] = []
+    for proc in _find_django_q_processes():
+        pid = int(proc["pid"])
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            continue
+        except PermissionError as exc:
+            stopped.append({**proc, "status": "permission_denied", "error": str(exc)})
+        else:
+            stopped.append({**proc, "status": "sigterm_sent"})
+    return stopped
+
+
 @login_required
 def admin_tools(request: HttpRequest) -> HttpResponse:
     _require_admin(request.user)
@@ -3499,7 +3556,20 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
 
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
-        if action == "delete_audio_cache":
+        if action == "shutdown_django_q":
+            stopped = _shutdown_django_q_processes()
+            successful = [proc for proc in stopped if proc.get("status") == "sigterm_sent"]
+            denied = [proc for proc in stopped if proc.get("status") == "permission_denied"]
+            if successful:
+                pids = ", ".join(str(proc["pid"]) for proc in successful)
+                messages.success(request, f"Sent SIGTERM to Django Q qcluster process(es): {pids}.")
+            if denied:
+                pids = ", ".join(str(proc["pid"]) for proc in denied)
+                messages.error(request, f"Could not stop Django Q qcluster process(es) due to permissions: {pids}.")
+            if not stopped:
+                messages.info(request, "No Django Q qcluster process was found.")
+            return redirect("admin-tools")
+        elif action == "delete_audio_cache":
             delete_form = DeleteCachedWordAudioForm(
                 request.POST,
                 language_choices=_audio_cache_language_choices(),

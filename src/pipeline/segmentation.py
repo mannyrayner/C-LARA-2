@@ -61,8 +61,15 @@ def _load_fewshot_variant(operation: str, language: str, variant: str, *, prompt
     )
 
 
+def _fewshot_sort_key(path: Path) -> list[int | str]:
+    return [int(part) if part.isdigit() else part for part in re.split(r"(\d+)", path.name)]
+
+
 def _load_fewshots_from_dir(fewshot_dir: Path) -> list[dict[str, Any]]:
-    return [json.loads(path.read_text(encoding="utf-8")) for path in sorted(fewshot_dir.glob("*.json"))]
+    return [
+        json.loads(path.read_text(encoding="utf-8"))
+        for path in sorted(fewshot_dir.glob("*.json"), key=_fewshot_sort_key)
+    ]
 
 
 def _select_fewshot_tranche(fewshots: list[dict[str, Any]], selection: str | int | None) -> list[dict[str, Any]]:

@@ -334,6 +334,17 @@ class SegmentationTests(unittest.IsolatedAsyncioTestCase):
                 client=FakeAIClient({}),
             )
 
+
+    def test_boundary_first_strategy_has_larger_fewshot_set(self) -> None:
+        prompts_root = Path(__file__).resolve().parents[1] / "prompts"
+        fewshots = segmentation._load_boundary_first_fewshots(  # type: ignore[attr-defined]
+            "en", "", prompts_root=prompts_root
+        )
+
+        self.assertGreaterEqual(len(fewshots), 12)
+        self.assertEqual(["it's", "l'avait", "motorfordon"], [example.get("input") for example in fewshots[:3]])
+        self.assertIn("rock'n'roll", {example.get("input") for example in fewshots})
+
     async def test_segmentation_phase_2_boundary_first_mechanism_adds_tokens(self) -> None:
         text = {
             "l2": "en",
