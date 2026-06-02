@@ -1,0 +1,17 @@
+{
+  "input": "Dimela con calma.",
+  "output": {
+    "surface": "Dimela con calma.",
+    "tokens": [
+      {"surface": "Di"},
+      {"surface": "me"},
+      {"surface": "la"},
+      {"surface": " "},
+      {"surface": "con"},
+      {"surface": " "},
+      {"surface": "calma"},
+      {"surface": "."}
+    ],
+    "annotations": {}
+  }
+}
