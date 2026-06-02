@@ -76,8 +76,8 @@ Important remaining work before treating the feature as broadly usable:
 
 The migration warning seen while starting the platform was separate from the project-understanding assistant work: the assistant added settings, views, forms, templates, and file-backed request/result records, but did not add or alter Django models. Investigation showed a pre-existing `projects` migration graph with two leaves: `0036_profile_byok_fields` and `0038_projectimagestyle_disallow_text_in_images`. This has now been resolved using the usual Django workflow:
 
-- `0039_merge_20260524_1408` is a merge migration depending on both leaves.
-- `0040_alter_creditledgerentry_entry_type_and_more` captures the remaining model-state changes detected after the graph merge (`CreditLedgerEntry.entry_type` choices and the current `ExerciseSet.flashcard_mode` choices).
+- `0039_merge_20260524_1408` and the compatibility alias `0039_merge_0036_profile_byok_fields_0038_projectimagestyle_disallow_text_in_images` are no-op merge migrations depending on both leaves; keeping both names avoids a leaf conflict across checkouts that had already seen one merge name or the other.
+- `0040_alter_creditledgerentry_entry_type_and_more` depends on both merge migrations and captures the remaining model-state changes detected after the graph merge (`CreditLedgerEntry.entry_type` choices and the current `ExerciseSet.flashcard_mode` choices).
 
 After these migrations, `manage.py makemigrations --check --dry-run` reports no changes, and the admin-tool Django tests can build a clean fresh test database.
 
