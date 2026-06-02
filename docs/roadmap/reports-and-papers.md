@@ -22,7 +22,7 @@ Linked issues and companion docs:
 - A second central contribution is now **project self-understanding**: C-LARA-2 is beginning to expose, inside the platform, a restricted Codex-backed assistant that can inspect the repository and answer questions about the project with file-grounded evidence.
 - The report should emphasize practical consequences of this organization: faster iteration, greater flexibility, rapid rewriting, and AI-guided sysadmin/deployment work such as the AWS migration.
 - The user-facing examples to foreground are **picture dictionaries** and **more coherent support for low-resource languages**.
-- The report should clearly state that C-LARA-2 is unfinished, while also trying to include a first concrete AI self-checking result: AI-based evaluation of segmentation phase 1, segmentation phase 2, and MWE outputs using the existing pipeline runner. Remaining high-priority future work includes stronger AI self-checking/autonomy, export/review of self-understanding evidence records, mobile support, and platform audio recording.
+- The report should clearly state that C-LARA-2 is unfinished, while also trying to include a first concrete AI self-checking result: AI-based evaluation of default versus candidate segmentation phase 1, segmentation phase 2, and MWE outputs using the existing pipeline runner. Remaining high-priority future work includes stronger AI self-checking/autonomy, export/review of self-understanding evidence records, mobile support, and platform audio recording.
 - The possible AI-authorship paper should be framed as an open research/ethics question, not as a settled authorship-policy claim.
 
 ## Current work
@@ -95,7 +95,7 @@ These theses should be tested and made concrete by showing:
 - how rapid rewriting changes the practical economics of research-software development;
 - how AI-maintained documentation and tests may help preserve system-level coherence;
 - how the restricted project-understanding assistant delegates repository exploration to `codex exec`, captures answer metadata, and creates a path toward versioned human-reviewed evidence records;
-- how a first ISSUE-0004 phase-output evaluator can use the existing pipeline runner to judge segmentation phase 1, segmentation phase 2, and MWE outputs, making autonomy/self-checking operational rather than purely aspirational;
+- how a first ISSUE-0004 phase-output evaluator can use the existing pipeline runner to judge default versus candidate segmentation phase 1, segmentation phase 2, and MWE outputs, making autonomy/self-checking operational and potentially improvement-guiding rather than purely aspirational;
 - where the workflow still fails and needs stronger autonomous checking, export/review controls, cost controls, and safety boundaries.
 
 ## Related-work and comparison work
@@ -151,7 +151,7 @@ Near-term CodePrism questions:
 
 - Keep [ISSUE-0008](../issues/issues/ISSUE-0008.json), this roadmap, and the Markdown report workspace synchronized.
 - Finish the concise progress-report draft around the AI-centered thesis and the new self-understanding theme.
-- Add concrete examples for picture dictionaries, low-resource-language support, AWS migration, the restricted project-understanding assistant, and first-version AI evaluation of linguistic phase outputs.
+- Add concrete examples for picture dictionaries, low-resource-language support, AWS migration, the restricted project-understanding assistant, and first-version AI evaluation of default versus candidate linguistic phase outputs.
 - Gather current repository metrics and feature inventory only where they support the concise narrative.
 - Start a related-work bibliography, including AI-authored repositories and AI authorship/publication ethics.
 - Investigate CodePrism in detail as the closest currently known comparator.

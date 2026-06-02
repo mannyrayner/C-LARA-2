@@ -2,7 +2,7 @@
 
 This roadmap proposes a structured, repeatable evaluation framework where outputs from C-LARA-2 processing stages are reviewed by AI evaluators, eventually including a **panel of independent AI judges**.
 
-The immediate report-driven priority is a smaller first version for **ISSUE-0004**: use the already-implemented pipeline runner to evaluate phase outputs for segmentation phase 1, segmentation phase 2, and MWE detection. This gives the First Progress Report a concrete autonomy/self-checking example rather than only a future-work promise.
+The immediate report-driven priority is a smaller first version for **ISSUE-0004**: use the already-implemented pipeline runner to evaluate phase outputs for segmentation phase 1, segmentation phase 2, and MWE detection. The sharper goal is not only to score outputs, but to show that AI-based judging can tell whether a candidate processing change is an improvement, so that the system can move toward systematic self-improvement. This gives the First Progress Report a concrete autonomy/self-checking example rather than only a future-work promise.
 
 ## Why this matters
 
@@ -12,7 +12,8 @@ Human expert evaluation is the gold standard but is expensive and hard to schedu
 - broad language coverage,
 - consistent repeated scoring across experiments,
 - richer diagnostics than pass/fail test outcomes,
-- concrete evidence for the First Progress Report that C-LARA-2 can begin to inspect its own linguistic-processing quality.
+- concrete evidence for the First Progress Report that C-LARA-2 can begin to inspect its own linguistic-processing quality,
+- evidence that AI judging can guide productive changes by comparing default and candidate processing mechanisms on the same inputs.
 
 The goal is not to replace human evaluation, but to create a practical intermediate layer that helps decide what should be sent to human review. For the first implementation, a single strong judge with a versioned rubric is acceptable; the full multi-model panel is the scaling path once the runner/evaluator interface and artifacts are stable.
 
@@ -112,9 +113,9 @@ To maintain validity:
 
 ## Experimental workflows supported
 
-1. **Prompt A/B evaluation**
-   - Run candidate prompts over the same dataset.
-   - Use panel scores to estimate win rates and confidence.
+1. **Prompt/mechanism A/B evaluation**
+   - Run candidate prompts, few-shot sets, or whole processing mechanisms over the same dataset.
+   - Use judge scores to estimate win rates and confidence, with paired before/after comparisons rather than only absolute scores.
 2. **Regression monitoring**
    - Keep benchmark sets for each processing phase.
    - Re-score after major model/pipeline changes.
@@ -153,6 +154,75 @@ Each run should store provenance:
 - aggregation method.
 
 
+
+## Parameterized processing variants for systematic improvement
+
+The first evaluator should be paired with a lightweight parameterization layer. Otherwise the project can score outputs, but cannot easily answer the report-relevant question: *did this processing change make the system better?*
+
+### Stage-level parameters
+
+Each evaluated phase should expose a default mechanism plus named alternatives. A phase invocation should be reproducible from an explicit parameter bundle, for example:
+
+```json
+{
+  "segmentation_phase_1": {
+    "prompt_version": "default"
+  },
+  "segmentation_phase_2": {
+    "mechanism": "json_direct",
+    "prompt_version": "default"
+  },
+  "mwe": {
+    "prompt_version": "default",
+    "fewshot_set": "default"
+  }
+}
+```
+
+The immediate implementation does not need a complex experiment-management system. It only needs a way for the runner to pass a small parameter dictionary to each stage, record the resolved settings, and write those settings into evaluation artifacts.
+
+### Concrete variant examples
+
+1. **Segmentation phase 1 prompt/few-shot variants**
+   - Keep the current prompt/few-shot set as `default`.
+   - Add at least one candidate prompt/few-shot version that directly targets ISSUE-0005: prose should normally produce sentence-like segments; poetry should usually preserve line-like segments; dialogue/children's material should avoid pathological over-fragmentation.
+   - Evaluate default versus candidate outputs on the same source texts.
+
+2. **Segmentation phase 2 mechanism variants**
+   - Keep the current text-to-JSON tokenization route as `json_direct`.
+   - Add the ISSUE-0006 candidate route as `boundary_first`: first ask the model to insert token/segment boundaries into the original string while preserving text, validate preservation, then convert the validated boundary-marked string into JSON tokens.
+   - Evaluate both mechanisms on examples likely to show over-extended tokens or boundary failures.
+
+3. **MWE prompt/few-shot variants**
+   - Keep the current MWE prompt/few-shot set as `default`.
+   - Add one or more candidate prompt/few-shot sets that make the desired MWE granularity explicit and include both positive examples and non-MWE distractors.
+   - Evaluate whether candidates reduce spurious MWEs while preserving obvious useful expressions.
+
+### Pipeline-level parameter passing
+
+Extend the pipeline runner so a run can specify per-stage settings in one obvious structure and pass each sub-dictionary to the relevant stage. The runner should record:
+
+- stage name, mechanism, prompt version, and few-shot set;
+- model settings used for processing;
+- input dataset identifier/hash;
+- output artifact paths;
+- evaluator rubric/version and judge model.
+
+This makes a complete experiment reproducible: input dataset + processing parameter bundle + evaluator parameter bundle.
+
+### Variant-comparison judging workflow
+
+For the report, the most persuasive result would be a paired comparison:
+
+1. Select a small diagnostic dataset for phase 1, phase 2, and MWE.
+2. Run the default processing bundle and one candidate bundle on the same inputs.
+3. Judge each output independently using the phase-specific evaluator.
+4. Optionally ask a comparison judge to see both outputs side by side and choose `default_better`, `candidate_better`, `tie`, or `unclear`, with reasons.
+5. Aggregate by task: win/loss/tie counts, mean score deltas, recurrent error tags, and representative examples.
+6. Use human spot-checking on the most important wins/losses before claiming that a candidate is genuinely better.
+
+This is the shortest path from AI evaluation to useful autonomy: the AI does not merely detect poor outputs, but helps identify which prompt/mechanism changes are productive.
+
 ## Report-driven first implementation: phase-output AI evaluator (ISSUE-0004)
 
 This is the near-term implementation target for strengthening the autonomy theme in the First Progress Report. It should be delivered before the full panel architecture if time is limited.
@@ -184,7 +254,7 @@ Start with three evaluator tasks:
 - Use the existing OpenAI chat wrapper first; leave provider/model diversity for the later panel phase.
 - Require strict JSON output with score, tags, justification, and confidence.
 - Keep each evaluator prompt short, explicit, and versioned.
-- Store raw phase output, evaluator prompt version, judge model, response JSON, and aggregate summary in a run artifact.
+- Store raw phase output, processing parameter bundle, evaluator prompt version, judge model, response JSON, paired-comparison result when available, and aggregate summary in a run artifact.
 - Make evaluator failure non-destructive: failed/invalid judge responses should be recorded and reported, not silently converted into passing scores.
 
 ### Candidate first dataset
@@ -206,8 +276,12 @@ A single run should produce a compact report such as:
 ```text
 evaluation/phase_outputs/runs/<run_id>/
   config.json
+  processing_variants.json
   input_records.jsonl
+  default_outputs.jsonl
+  candidate_outputs.jsonl
   judge_outputs.jsonl
+  comparison_judgments.jsonl
   aggregate_scores.json
   flagged_items.md
 ```
@@ -219,13 +293,15 @@ evaluation/phase_outputs/runs/<run_id>/
 - The evaluator can run over a fixed sample without UI interaction.
 - It produces stable, inspectable artifacts with prompt/model/version metadata.
 - It catches at least synthetic or known examples of bad phase-1 granularity, over-extended phase-2 tokens, and bad MWE spans.
-- Human review of a small sample finds the AI judgments useful enough to guide debugging, even if not authoritative.
+- It can compare default and candidate processing variants and produce a clear provisional recommendation (`candidate better`, `default better`, `tie`, or `unclear`) for at least one stage.
+- Human review of a small sample finds the AI judgments useful enough to guide debugging and choose promising variants, even if not authoritative.
 - The report can honestly say that C-LARA-2 has a first operational AI self-checking mechanism for linguistic phase outputs, while still noting that calibration and broader benchmarks remain future work.
 
 ### Non-goals for the first version
 
 - Do not require five independent judge models before shipping v1.
 - Do not block normal pipeline execution on judge scores yet.
+- Do not require a fully general parameter system before trying the first explicit phase-1, phase-2, and MWE variants.
 - Do not claim AI evaluation is ground truth.
 - Do not attempt to evaluate every annotation phase before the progress report.
 
@@ -309,12 +385,14 @@ This remains assistive: AI signals never replace maintainer judgment for UI acce
 
 ## Delivery phases
 
-### Phase A — Report-driven phase-output evaluator
+### Phase A — Report-driven variant-comparison evaluator
 
-- Use the existing pipeline runner to produce reproducible phase outputs.
+- Add lightweight per-stage processing parameters for segmentation phase 1, segmentation phase 2, and MWE detection.
+- Use the existing pipeline runner to produce reproducible default and candidate phase outputs on the same inputs.
 - Implement single-judge, strict-JSON evaluators for segmentation phase 1, segmentation phase 2, and MWE detection.
-- Store versioned evaluator artifacts and a concise flagged-items report.
-- Use this as the First Progress Report example of operational AI self-checking/autonomy.
+- Add paired comparison summaries that estimate whether candidate prompts/mechanisms improve over defaults.
+- Store versioned processing/evaluator artifacts and a concise flagged-items/comparison report.
+- Use this as the First Progress Report example of operational AI self-checking/autonomy leading toward systematic improvement.
 
 ### Phase B — Minimal panel evaluator
 
@@ -338,7 +416,8 @@ This remains assistive: AI signals never replace maintainer judgment for UI acce
 
 ## Success criteria
 
-- Team can run an initial segmentation/MWE phase-output evaluator over fixed samples before the First Progress Report.
+- Team can run an initial segmentation/MWE variant-comparison evaluator over fixed samples before the First Progress Report.
+- Team can show at least one concrete before/after comparison where AI judging gives a useful provisional recommendation about whether a candidate processing change is an improvement.
 - Team can compare candidate prompts/pipeline variants quickly and reproducibly.
 - Panel scores correlate usefully with human spot-judgments on key tasks.
 - Evaluation artifacts support root-cause analysis, not only leaderboard numbers.
@@ -347,7 +426,7 @@ This remains assistive: AI signals never replace maintainer judgment for UI acce
 ## Relationship to other roadmaps
 
 - Directly supports `docs/roadmap/linguistic-pipeline.md`, especially the implemented `run_full_pipeline` runner that can start and end at selected stages.
-- Directly supports ISSUE-0004 and gives measurable feedback for ISSUE-0005, ISSUE-0006, and MWE prompt quality.
+- Directly supports ISSUE-0004 and gives measurable before/after feedback for ISSUE-0005, ISSUE-0006, and MWE prompt/mechanism quality.
 - Also supports `docs/roadmap/exercises.md` and `docs/roadmap/alignment.md` as later evaluation targets.
 - Complements `docs/roadmap/dialogue-top-level.md` by enabling quality evaluation of assistant decisions and generated guidance.
 - Can be exposed in platform monitoring/reporting views in future Django roadmap work.

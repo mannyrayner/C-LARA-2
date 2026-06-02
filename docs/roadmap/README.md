@@ -170,8 +170,8 @@ Focus:
 Status: **Report-driven first evaluator plan added.** See [roadmap/ai-judges-evaluation.md](ai-judges-evaluation.md).
 
 Focus:
-- First-version AI evaluation of phase outputs for segmentation phase 1, segmentation phase 2, and MWE detection, using the existing pipeline runner.
-- Near-term support for ISSUE-0004, with concrete evaluation hooks for ISSUE-0005 and ISSUE-0006 before the First Progress Report.
+- First-version AI evaluation of default versus candidate phase-processing variants for segmentation phase 1, segmentation phase 2, and MWE detection, using the existing pipeline runner.
+- Near-term support for ISSUE-0004, with concrete before/after evaluation hooks for ISSUE-0005 and ISSUE-0006 before the First Progress Report.
 - Longer-term panel-based AI scoring, aggregation, disagreement analysis, optional foreman summarization, and human-audit calibration.
 
 
