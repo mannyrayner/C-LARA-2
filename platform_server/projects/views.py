@@ -5,6 +5,8 @@ import json
 import sys
 import logging
 import os
+import signal
+import subprocess
 import threading
 import random
 import shutil
@@ -346,6 +348,29 @@ def _require_admin(user) -> None:
     _ensure_bootstrap_admin(user)
     if not user.is_staff:
         raise Http404()
+
+
+
+def _parse_stage_parameters(raw: str | None) -> tuple[dict[str, dict[str, Any]], str | None]:
+    text = (raw or "").strip()
+    if not text:
+        return {}, None
+    try:
+        parsed = json.loads(text)
+    except Exception as exc:
+        return {}, f"Stage parameters must be valid JSON: {exc}"
+    if not isinstance(parsed, dict):
+        return {}, "Stage parameters must be a JSON object keyed by stage name."
+    allowed_stages = set(PIPELINE_ORDER)
+    normalized: dict[str, dict[str, Any]] = {}
+    for stage, params in parsed.items():
+        stage_name = str(stage).strip()
+        if stage_name not in allowed_stages:
+            return {}, f"Unknown stage in stage parameters: {stage_name}"
+        if not isinstance(params, dict):
+            return {}, f"Stage parameters for {stage_name} must be a JSON object."
+        normalized[stage_name] = params
+    return normalized, None
 
 
 def _normalize_processing_method_choice(method: str | None, valid_choices: list[str]) -> str:
@@ -3435,6 +3460,163 @@ def admin_project_understanding_status(request: HttpRequest, report_id: str) -> 
     })
 
 
+def _process_has_manage_command(args: str, command: str) -> bool:
+    arg_tokens = args.split()
+    return any(
+        Path(token).name == "manage.py"
+        and idx + 1 < len(arg_tokens)
+        and arg_tokens[idx + 1] == command
+        for idx, token in enumerate(arg_tokens)
+    )
+
+
+def _process_snapshot() -> list[dict[str, Any]]:
+    try:
+        output = subprocess.check_output(
+            ["ps", "-eo", "pid=,ppid=,args="],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        return []
+
+    rows: list[dict[str, Any]] = []
+    for line in output.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        parts = stripped.split(None, 2)
+        if len(parts) < 3:
+            continue
+        try:
+            pid = int(parts[0])
+            ppid = int(parts[1])
+        except ValueError:
+            continue
+        rows.append({"pid": pid, "ppid": ppid, "args": parts[2]})
+    return rows
+
+
+def _find_manage_py_processes(command: str, *, process_rows: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    current_pid = os.getpid()
+    matches: list[dict[str, Any]] = []
+    for row in process_rows if process_rows is not None else _process_snapshot():
+        pid = int(row["pid"])
+        args = str(row.get("args") or "")
+        if command != "runserver" and pid == current_pid:
+            continue
+        if not _process_has_manage_command(args, command):
+            continue
+        if command != "runserver" and "runserver" in args.split():
+            continue
+        matches.append({**row, "command": command})
+    return matches
+
+
+def _find_django_q_processes() -> list[dict[str, Any]]:
+    return _find_manage_py_processes("qcluster")
+
+
+def _find_django_server_processes() -> list[dict[str, Any]]:
+    return _find_manage_py_processes("runserver")
+
+
+def _descendant_processes(process_rows: list[dict[str, Any]], root_pids: set[int]) -> list[dict[str, Any]]:
+    children_by_ppid: dict[int, list[dict[str, Any]]] = {}
+    for row in process_rows:
+        children_by_ppid.setdefault(int(row["ppid"]), []).append(row)
+
+    descendants: list[dict[str, Any]] = []
+    queue = list(root_pids)
+    seen = set(root_pids)
+    while queue:
+        parent_pid = queue.pop(0)
+        for child in children_by_ppid.get(parent_pid, []):
+            child_pid = int(child["pid"])
+            if child_pid in seen:
+                continue
+            seen.add(child_pid)
+            descendants.append({**child, "command": "child"})
+            queue.append(child_pid)
+    return descendants
+
+
+def _terminate_processes(processes: list[dict[str, Any]], *, status: str) -> list[dict[str, Any]]:
+    stopped: list[dict[str, Any]] = []
+    seen_pids: set[int] = set()
+    for proc in processes:
+        pid = int(proc["pid"])
+        if pid in seen_pids:
+            continue
+        seen_pids.add(pid)
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            continue
+        except PermissionError as exc:
+            stopped.append({**proc, "status": "permission_denied", "error": str(exc)})
+        else:
+            stopped.append({**proc, "status": status})
+    return stopped
+
+
+def _shutdown_django_q_processes() -> list[dict[str, Any]]:
+    return _terminate_processes(_find_django_q_processes(), status="sigterm_sent")
+
+
+def _django_stack_targets() -> list[dict[str, Any]]:
+    process_rows = _process_snapshot()
+    direct_targets = _find_manage_py_processes("qcluster", process_rows=process_rows) + _find_manage_py_processes(
+        "runserver", process_rows=process_rows
+    )
+    direct_pids = {int(proc["pid"]) for proc in direct_targets}
+    target_by_pid: dict[int, dict[str, Any]] = {int(proc["pid"]): proc for proc in direct_targets}
+    for proc in _descendant_processes(process_rows, direct_pids):
+        target_by_pid.setdefault(int(proc["pid"]), proc)
+    return list(target_by_pid.values())
+
+
+def _schedule_sigterm_for_pids(pids: list[int], *, delay_seconds: float) -> None:
+    if not pids:
+        return
+    helper = (
+        "import os, signal, sys, time\n"
+        "delay = float(sys.argv[1])\n"
+        "pids = [int(pid) for pid in sys.argv[2].split(',') if pid]\n"
+        "time.sleep(delay)\n"
+        "for pid in pids:\n"
+        "    try:\n"
+        "        os.kill(pid, signal.SIGTERM)\n"
+        "    except ProcessLookupError:\n"
+        "        pass\n"
+        "    except PermissionError:\n"
+        "        pass\n"
+    )
+    subprocess.Popen(
+        [sys.executable, "-c", helper, str(delay_seconds), ",".join(str(pid) for pid in pids)],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        close_fds=True,
+        start_new_session=True,
+    )
+
+
+def _shutdown_django_stack_processes(delay_seconds: float = 0.5) -> list[dict[str, Any]]:
+    targets_by_pid: dict[int, dict[str, Any]] = {int(proc["pid"]): proc for proc in _django_stack_targets()}
+    targets = list(targets_by_pid.values())
+    if not targets:
+        return []
+
+    current_pid = os.getpid()
+    ordered_pids = sorted(
+        targets_by_pid,
+        key=lambda pid: (pid == current_pid, int(targets_by_pid[pid].get("ppid", 0)) != current_pid, pid),
+    )
+    _schedule_sigterm_for_pids(ordered_pids, delay_seconds=delay_seconds)
+    return [{**proc, "status": "sigterm_scheduled"} for proc in targets]
+
+
 @login_required
 def admin_tools(request: HttpRequest) -> HttpResponse:
     _require_admin(request.user)
@@ -3476,7 +3658,28 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
 
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
-        if action == "delete_audio_cache":
+        if action in {"shutdown_django_stack", "shutdown_django_q"}:
+            stopped = (
+                _shutdown_django_stack_processes()
+                if action == "shutdown_django_stack"
+                else _shutdown_django_q_processes()
+            )
+            successful = [
+                proc for proc in stopped if proc.get("status") in {"sigterm_sent", "sigterm_scheduled"}
+            ]
+            denied = [proc for proc in stopped if proc.get("status") == "permission_denied"]
+            label = "Django server/Q process" if action == "shutdown_django_stack" else "Django Q qcluster process"
+            if successful:
+                pids = ", ".join(str(proc["pid"]) for proc in successful)
+                verb = "Scheduled SIGTERM for" if action == "shutdown_django_stack" else "Sent SIGTERM to"
+                messages.success(request, f"{verb} {label}(es): {pids}.")
+            if denied:
+                pids = ", ".join(str(proc["pid"]) for proc in denied)
+                messages.error(request, f"Could not stop {label}(es) due to permissions: {pids}.")
+            if not stopped:
+                messages.info(request, f"No {label} was found.")
+            return redirect("admin-tools")
+        elif action == "delete_audio_cache":
             delete_form = DeleteCachedWordAudioForm(
                 request.POST,
                 language_choices=_audio_cache_language_choices(),
@@ -4461,6 +4664,17 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["ai_models"] = AI_MODEL_CHOICES
         context["selected_ai_model"] = project.ai_model or DEFAULT_MODEL
         context["detailed_api_trace_default"] = False
+        context["stage_parameters_example"] = json.dumps(
+            {
+                "segmentation_phase_1": {"prioritise_sentences": True},
+                "segmentation_phase_2": {
+                    "mechanism": "boundary_first",
+                    "variant": "clitic_compound",
+                    "fewshot_count": "all",
+                },
+            },
+            indent=2,
+        )
         context["language_choices"] = ProjectForm.LANGUAGE_CHOICES
         context["project_text_direction"] = language_direction(project.language)
         context["project_annotation_direction"] = language_direction(project.target_language)
@@ -7307,6 +7521,7 @@ def _run_compile_task(
     segmentation_method: str | None = None,
     romanization_method: str | None = None,
     detailed_api_trace: bool = False,
+    stage_parameters: dict[str, dict[str, Any]] | None = None,
 ) -> None:
     project = Project.objects.get(pk=project_id)
     user = get_user_model().objects.filter(pk=user_id).first()
@@ -7369,6 +7584,8 @@ def _run_compile_task(
             "Compile task started. "
             f"start_stage={start_stage}, end_stage={end_stage or 'compile_html'}, output_dir={output_dir}"
         )
+        if stage_parameters:
+            post_update(f"Stage parameters: {json.dumps(stage_parameters, ensure_ascii=False)}")
         if user is None:
             post_update(f"Compile failed: no user found for user_id={user_id}", status="error")
             logger.error("Compile task aborted: missing user record for user_id=%s project_id=%s", user_id, project_id)
@@ -7400,6 +7617,7 @@ def _run_compile_task(
             segmentation_method=_resolve_segmentation_method(project.language, segmentation_method or project.segmentation_method),
             romanization_method=_resolve_romanization_method(project.language, romanization_method or project.romanization_method),
             telemetry=telemetry,
+            stage_parameters=stage_parameters or {},
         )
         post_update("Pipeline spec initialized.")
         try:
@@ -7710,6 +7928,10 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         "on",
         "yes",
     }
+    stage_parameters, stage_parameters_error = _parse_stage_parameters(request.POST.get("stage_parameters"))
+    if stage_parameters_error:
+        messages.error(request, stage_parameters_error)
+        return redirect(return_to)
     compose_latest_upstream = True
     confirm_compose_latest = True
 
@@ -7919,6 +8141,7 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
         segmentation_method,
         romanization_method,
         detailed_api_trace,
+        stage_parameters,
         q_options={"sync": False},
     )
 
