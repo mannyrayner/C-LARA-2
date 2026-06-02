@@ -1,9 +1,9 @@
-# C-LARA-2 issue overview (refreshed 2026-06-02T21:30:00Z)
+# C-LARA-2 issue overview (refreshed 2026-06-02T22:00:00Z)
 
 ## Recent progress
 
 - Escalated **ISSUE-0036** to P1 after maintainer review: current annotation errors are frequent, and a principled few-shot curation pipeline is promising both for quality improvements and for First Progress Report evidence.
-- Expanded `docs/roadmap/few-shot-example-curation.md` into an explicit generate → adversarial review → repair → gold acceptance architecture with schema validation, critic severity labels, consensus scoring, and auditable example records.
+- Expanded `docs/roadmap/few-shot-example-curation.md` into an explicit generate → adversarial review → repair → gold acceptance architecture with schema validation, critic severity labels, consensus scoring, auditable example records, and incremental invocation/storage/review workflows.
 - Closed **ISSUE-0007** in the current issue registry because page-image prompt-construction indirection is now implemented; future page-image prompt work should be filed as concrete follow-ons.
 - Advanced **ISSUE-0034** from a prompt-wrapper prototype toward an admin-only repository-grounded project-understanding assistant with asynchronous execution, status polling, request/result persistence, and cost/metadata capture.
 - Expanded the evaluator/autonomy roadmap around **ISSUE-0003**, **ISSUE-0004**, **ISSUE-0005**, and **ISSUE-0006** so segmentation and MWE improvements can be measured systematically for the First Progress Report.
@@ -21,7 +21,7 @@
 
 ## Notes/risks
 
-- Few-shot curation is now P1 because annotation errors are visible in current work and because the proposed generate/review/repair/acceptance pipeline can produce strong report evidence; it still depends on **ISSUE-0003** and **ISSUE-0004** for systematic measurement.
+- Few-shot curation is now P1 because annotation errors are visible in current work and because the proposed generate/review/repair/acceptance pipeline can produce strong report evidence; it still depends on **ISSUE-0003** and **ISSUE-0004** for systematic measurement, and it should support incremental top-up batches for new languages or new failure modes rather than one large generation run.
 - The boundary-first segmentation experiments should not be treated as proven improvements until **ISSUE-0004** evaluator records compare default and candidate outputs on representative cases.
 - The disabled admin shutdown control remains intentionally hidden; under `make run-platform-with-real-q`, closing the development terminal is currently the reliable workaround for reincarnating Q processes.
 - **ISSUE-0034** remains restricted/admin-only until export/review controls, citation/path sanitization, exact-cost reconciliation, and hard budget/rate-limit controls are in place.

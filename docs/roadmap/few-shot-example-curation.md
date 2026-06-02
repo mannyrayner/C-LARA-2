@@ -133,6 +133,78 @@ Prompt-facing files should stay small, but the project should also be able to st
 
 These records matter because later annotation failures should be traceable back to the few-shot examples that may have influenced them.
 
+
+## Invocation, storage, use, and review model
+
+In practice, curation should be incremental rather than a single large generation run. We should be able to ask for "more French `segmentation_phase_2/boundary_first` clitic examples" or "a first MWE idiom batch for Drehu" without disturbing existing accepted examples.
+
+### Invocation surfaces
+
+Start with two complementary invocation paths:
+
+1. **Management command for repeatable experiments.** Add a command such as `python manage.py curate_fewshots --operation segmentation_phase_2 --language fr --mechanism boundary_first --phenomena clitic,compound --count 40 --target-set clitic_compound_v2`. This is the right surface for bulk generation, laptop/server runs, scripted reruns, and reproducible report evidence.
+2. **Admin UI for small requests and review.** Add an admin-only page where a maintainer can create a curation request, inspect generated candidates, run critic/repair passes, and promote accepted examples. The UI should be able to request additional examples for an existing operation/language/set and should show existing coverage by phenomenon and tranche.
+
+Both paths should create a durable curation request record before calling models. A request should include operation, language, mechanism, target set, requested phenomena, requested count, generator/critic/repair model choices, prompt versions, submitter, timestamp, and notes.
+
+### Incremental batches
+
+A few-shot set should be built from many batches. Each batch should have a stable ID and status, for example:
+
+- `requested`;
+- `generated`;
+- `schema_validated`;
+- `critic_reviewed`;
+- `repair_pending`;
+- `repaired`;
+- `accepted_experimental`;
+- `accepted_gold`;
+- `rejected`;
+- `promoted_to_prompt_assets`.
+
+This lets us top up an existing language or operation without rerunning the whole pipeline. If a language later shows a new failure mode, we add a targeted batch for that phenomenon and evaluate whether it improves outputs.
+
+### Storage layout
+
+Prompt-facing few-shot files should remain compact under `prompts/<operation>/...`, but curation records should be stored separately so rejected and repaired examples remain auditable. A proposed repository layout is:
+
+```text
+docs/few_shot_curation/
+  segmentation_phase_2/
+    fr/
+      boundary_first/
+        clitic_compound_v2/
+          requests/20260602-001.json
+          candidates/EXAMPLE-0001.json
+          reviews/EXAMPLE-0001.critic-gpt-5.3.json
+          repairs/EXAMPLE-0001.repair-gpt-5.5.json
+          accepted/EXAMPLE-0001.json
+          manifest.json
+```
+
+The `manifest.json` should list accepted examples, their ordering/tranche membership, validation status, scores, and the prompt-asset files they were copied into. Generated and reviewed examples can be large; compact prompt assets should be derived outputs, not the only source of truth.
+
+### Using curated examples
+
+Accepted examples should become usable in two ways:
+
+1. **Experimental variants.** Copy selected accepted examples into a named prompt/few-shot variant under `prompts/<operation>/variants/<variant>/fewshots/`, then use existing stage parameters such as `{"segmentation_phase_2": {"mechanism": "boundary_first", "variant": "clitic_compound_v2", "fewshot_count": "small"}}`.
+2. **Default promotion.** After evaluator evidence shows that a set improves outputs, promote a selected tranche to the operation/language default few-shot directory, preserving links back to curation record IDs.
+
+The evaluator should record operation, language, mechanism, prompt variant, few-shot set, tranche size, candidate record IDs, and score deltas so a report claim can identify exactly what changed.
+
+### Review workflow
+
+Review should not require a maintainer to read every raw model output. The admin/review surface should prioritize:
+
+- candidates with fatal/serious critic findings;
+- candidates selected for `minimal` or `small` tranches;
+- examples proposed for default promotion;
+- examples associated with a known annotation failure mode;
+- disagreements between critics and repair/arbiter outcomes.
+
+A human reviewer can then accept, reject, request more repair, or mark an example as experimental-only. The review decision and rationale should be stored in the same curation record.
+
 ## Near-term implementation steps
 
 1. Add validation utilities for few-shot files used by segmentation and MWE prompts.
