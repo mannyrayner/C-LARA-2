@@ -49,13 +49,16 @@ class RecordingAIClient(FakeAIClient):
         super().__init__(responses)
         self.chat_json_op_ids: list[str | None] = []
         self.chat_text_op_ids: list[str | None] = []
+        self.prompts: list[str] = []
 
     async def chat_json(self, prompt: str, **kwargs: object) -> dict:
         self.chat_json_op_ids.append(kwargs.get("op_id") if isinstance(kwargs, dict) else None)
+        self.prompts.append(prompt)
         return await super().chat_json(prompt, **kwargs)
 
     async def chat_text(self, prompt: str, **kwargs: object) -> str:
         self.chat_text_op_ids.append(kwargs.get("op_id") if isinstance(kwargs, dict) else None)
+        self.prompts.append(prompt)
         return await super().chat_text(prompt, **kwargs)
 
 
@@ -121,6 +124,35 @@ class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
         gloss = {"annotations": {}, "tokens": gloss_tokens}
 
         self.fake_client = FakeAIClient([seg1, seg2, translation, mwe, lemma, gloss])
+
+    async def test_pipeline_stage_parameters_reach_segmentation_phase_1_prompt(self) -> None:
+        seg1 = {
+            "l2": "en",
+            "surface": self.sample_text,
+            "pages": [{"surface": self.sample_text, "segments": [{"surface": self.sample_text, "annotations": {}}]}],
+            "annotations": {},
+        }
+        client = RecordingAIClient([seg1])
+        output_dir = self.fake_html_root / "stage_params"
+
+        spec = FullPipelineSpec(
+            text=self.sample_text,
+            language="en",
+            target_language="fr",
+            output_dir=output_dir,
+            audio_cache_dir=self.fake_audio_root / "stage_params",
+            start_stage="segmentation_phase_1",
+            end_stage="segmentation_phase_1",
+            persist_intermediates=True,
+            stage_parameters={"segmentation_phase_1": {"prioritise_sentences": True}},
+        )
+
+        await run_full_pipeline(spec, client=client)
+
+        self.assertTrue(client.prompts)
+        self.assertIn("complete sentence", client.prompts[0])
+        params_path = output_dir / "stages" / "processing_parameters.json"
+        self.assertTrue(params_path.exists())
 
     async def test_pipeline_passes_stage_specific_op_ids_to_ai_calls(self) -> None:
         seg1 = {
