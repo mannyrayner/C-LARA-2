@@ -18,13 +18,14 @@
 - C-LARA-2 is an AI-authored repository in the operational sense used in this project: the committed code, tests, documentation, roadmap documents, issue records, operational notes, and publication drafts are written by the AI.
 - Humans provide goals, priorities, corrections, domain expertise, and acceptance decisions.
 - This division of labour has made progress faster and more flexible than in C-LARA. If a design or implementation is unsatisfactory, the AI can often rewrite the relevant material within hours, sometimes within minutes.
+- Recent work adds a self-understanding dimension: a restricted project-understanding assistant can ask Codex to inspect the repository in read-only mode and answer project-level questions with evidence, metadata, and persisted request/result records.
 
 ## 1.4 Current reporting frame
 
 - The report is an interim account, not a completion report.
 - It should present C-LARA-2 as both:
   - a continuation of a language-learning content platform, and
-  - an experiment in AI-authored software engineering, project management, sysadmin work, and academic writing.
+  - an experiment in AI-authored software engineering, project management, sysadmin work, academic writing, and repository-grounded self-understanding.
 
 ## 1.5 Authorship angle for later papers
 
@@ -36,4 +37,4 @@
 
 - Does this report correctly represent continuity versus change across LARA, C-LARA, and C-LARA-2?
 - Is the AI-authored-repository claim stated precisely enough?
-- Which concrete examples should anchor this section: AWS migration, issue tracking, picture dictionaries, low-resource-language work, or publication drafting?
+- Which concrete examples should anchor this section: AWS migration, issue tracking, picture dictionaries, low-resource-language work, project self-understanding, or publication drafting?

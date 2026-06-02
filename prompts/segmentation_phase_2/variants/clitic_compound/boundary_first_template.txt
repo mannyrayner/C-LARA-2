@@ -1,0 +1,14 @@
+Revise token boundary markers for language-learning annotation, giving special attention to clitics and transparent compounds.
+Language: {l2_language}
+The input already contains provisional {boundary_marker!r} boundary markers. Add, delete, or move markers only where needed.
+Preserve every original character exactly; the only permissible change is to add, delete, or move {boundary_marker!r} boundary markers.
+Separate clitics where the learner benefits from seeing the bound form separately, and split transparent compounds when their internal words are clear. Avoid fragments that are not linguistically useful.
+Return only the revised boundary-marked segment, with no JSON, comments, markdown, or explanation.
+
+Few-shot examples:
+{examples}
+
+Boundary-marked segment to revise:
+<startofsegment>
+{default_marked}
+<endofsegment>
