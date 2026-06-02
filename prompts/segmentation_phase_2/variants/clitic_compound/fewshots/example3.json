@@ -1,0 +1,16 @@
+{
+  "input": "Motorfordon är vanliga.",
+  "output": {
+    "surface": "Motorfordon är vanliga.",
+    "tokens": [
+      {"surface": "Motor"},
+      {"surface": "fordon"},
+      {"surface": " "},
+      {"surface": "är"},
+      {"surface": " "},
+      {"surface": "vanliga"},
+      {"surface": "."}
+    ],
+    "annotations": {}
+  }
+}

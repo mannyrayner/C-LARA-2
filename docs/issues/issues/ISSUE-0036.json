@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "issue_id": "ISSUE-0036",
+  "title": "Systematize creation and evaluation of few-shot examples for linguistic annotation",
+  "state": "reported",
+  "priority": "P2",
+  "created_at": "2026-06-02T20:39:51Z",
+  "updated_at": "2026-06-02T21:00:00Z",
+  "origin": "human-suggestion",
+  "notes": "Created from human suggestion #26 (submitted by mannyrayner on 2026-06-02). The current few-shot examples for linguistic annotation have largely been produced in one-off Codex passes. Recent segmentation_phase_2 work suggests larger example sets can help, but the examples themselves may contain linguistic mistakes, uneven language coverage, and unclear ordering/tranche design. Track a principled workflow for generating, validating, versioning, and evaluating few-shot examples for linguistic annotation stages (segmentation, MWE detection, lemma/gloss support where appropriate). The issue should coordinate with ISSUE-0003 and ISSUE-0004 so example-set changes can be measured systematically rather than eyeballed, and with ISSUE-0005/ISSUE-0006 for segmentation-specific evidence. Initial roadmap: docs/roadmap/few-shot-example-curation.md. Priority is P2: important for quality and for the First Progress Report's autonomy/evaluation story, but dependent on systematic runner/evaluator infrastructure and not a production blocker by itself.",
+  "deadline": null,
+  "dependencies": [
+    "ISSUE-0003",
+    "ISSUE-0004"
+  ]
+}

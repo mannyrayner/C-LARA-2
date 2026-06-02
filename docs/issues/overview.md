@@ -1,33 +1,31 @@
-# C-LARA-2 issue overview (refreshed 2026-06-01T12:10:00Z)
+# C-LARA-2 issue overview (refreshed 2026-06-02T21:00:00Z)
 
 ## Recent progress
-- Advanced **[ISSUE-0034](issues/ISSUE-0034.json)** from a prompt-wrapper prototype to a working admin-only `codex exec` assistant with async Django Q execution, heartbeat/status polling, request/result persistence, structured answer metadata, GitHub-linked citations, and conservative upper-bound cost estimates.
-- Added **[ISSUE-0035](issues/ISSUE-0035.json)** to track intermittent Codex PR update-branch refusals reported from 2026-05-30 onward, with a dedicated roadmap for future incident evidence.
-- Refreshed ISSUE-0034 roadmap/issue metadata to record the implemented `codex exec` path and remaining export/review, rate-limit, citation-sanitization, and curated-evaluation work.
+
+- Added **ISSUE-0036** from human suggestion #26 to track principled creation, validation, and evaluation of few-shot examples for linguistic annotation.
+- Added `docs/roadmap/few-shot-example-curation.md` so few-shot example generation, tranche selection, and evaluator-driven promotion decisions are tracked outside one-off prompt edits.
+- Closed **ISSUE-0007** in the current issue registry because page-image prompt-construction indirection is now implemented; future page-image prompt work should be filed as concrete follow-ons.
+- Advanced **ISSUE-0034** from a prompt-wrapper prototype toward an admin-only repository-grounded project-understanding assistant with asynchronous execution, status polling, request/result persistence, and cost/metadata capture.
+- Expanded the evaluator/autonomy roadmap around **ISSUE-0003**, **ISSUE-0004**, **ISSUE-0005**, and **ISSUE-0006** so segmentation and MWE improvements can be measured systematically for the First Progress Report.
 
 ## Near-term priorities
-1. **[ISSUE-0031](issues/ISSUE-0031.json) (P1, reported)** — Improve compiled-content presentation context and configurable public access controls.
-2. **[ISSUE-0030](issues/ISSUE-0030.json) (P1, reported)** — Fix image-generation workflow UX around element expansion auto-refresh and selection confirmation.
-3. **[ISSUE-0029](issues/ISSUE-0029.json) (P1, reported)** — Autosave community judging inputs to prevent accidental data loss.
-4. **[ISSUE-0026](issues/ISSUE-0026.json) (P1, reported)** — Define next-step community-recorded audio workflow for non-TTS languages.
-5. **[ISSUE-0003](issues/ISSUE-0003.json) (P1, reported)** — Add efficient end-to-end pipeline test runner for systematic quality checks.
-6. **[ISSUE-0025](issues/ISSUE-0025.json) (P1, reported)** — Add systematic UI regression tracking for disappearing controls/content.
-7. **[ISSUE-0010](issues/ISSUE-0010.json) (P1, active)** — Import a representative legacy C-LARA project corpus and add batch import tooling.
-8. **[ISSUE-0013](issues/ISSUE-0013.json) (P1, reported)** — Improve stage artifact persistence performance and timeout resilience.
-9. **[ISSUE-0008](issues/ISSUE-0008.json) (P1, reported)** — Write C-LARA-2 technical report and academic papers.
-10. **[ISSUE-0033](issues/ISSUE-0033.json) (P2, reported)** — Clean up and phase-track roadmap file maintenance.
-11. **[ISSUE-0034](issues/ISSUE-0034.json) (P2, active)** — Add restricted project-understanding assistant with versioned evidence records.
-12. **[ISSUE-0035](issues/ISSUE-0035.json) (P2, reported)** — Track intermittent Codex PR update-branch refusal.
-13. **[ISSUE-0006](issues/ISSUE-0006.json) (P2, reported)** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness.
-14. **[ISSUE-0005](issues/ISSUE-0005.json) (P2, reported)** — Tune segmentation_phase_1 prompting to improve segment granularity by genre.
-15. **[ISSUE-0004](issues/ISSUE-0004.json) (P2, reported)** — Introduce AI-based review gates for phase outputs with extensible evaluator architecture.
-16. **[ISSUE-0007](issues/ISSUE-0007.json) (P2, reported)** — Use LLM prompt-construction indirection for page-image generation prompts.
-17. **[ISSUE-0001](issues/ISSUE-0001.json) (P2, reported)** — Support hosted compiled legacy content registration in C-LARA-2.
+
+1. **ISSUE-0031** — improve compiled-content presentation context and configurable public access controls.
+2. **ISSUE-0030** — fix image-generation workflow UX around element expansion auto-refresh and selection confirmation.
+3. **ISSUE-0029** — autosave community judging inputs to prevent accidental data loss.
+4. **ISSUE-0026** — define the next-step community-recorded audio workflow for non-TTS languages.
+5. **ISSUE-0003 / ISSUE-0004** — use the pipeline runner and AI-based review gates to compare default and candidate processing variants.
+6. **ISSUE-0005 / ISSUE-0006 / ISSUE-0036** — treat segmentation prompt/few-shot changes as measurable experiments rather than anecdotal prompt tuning.
+7. **ISSUE-0010 / ISSUE-0013** — continue legacy corpus import and stage-artifact resilience work needed for representative quality checks.
+8. **ISSUE-0034** — add export/review, budget/rate-limit, and evidence-record controls before wider use of project-understanding answers.
 
 ## Notes/risks
-- ISSUE-0034 now has a restricted admin UI and background `codex exec` execution path with visible progress, private/public turn history, GitHub link rewriting, and upper-bound cost accounting; it still lacks an explicit export/review workflow into `docs/project_understanding/`, reviewer assessment controls, exact-cost reconciliation, hard budget/rate-limit controls, and citation/path sanitization for any wider audience.
-- The Codex update-branch inconsistency is currently an external-tool/workflow risk rather than a confirmed C-LARA-2 code defect; useful next action is evidence capture rather than speculative code changes.
-- Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated UI/pipeline coverage.
+
+- The new few-shot curation issue is deliberately P2: it is strategically important for annotation quality and for the report's autonomy/evaluation narrative, but it depends on systematic runner/evaluator infrastructure and is not an immediate production blocker.
+- The boundary-first segmentation experiments should not be treated as proven improvements until **ISSUE-0004** evaluator records compare default and candidate outputs on representative cases.
+- The disabled admin shutdown control remains intentionally hidden; under `make run-platform-with-real-q`, closing the development terminal is currently the reliable workaround for reincarnating Q processes.
+- **ISSUE-0034** remains restricted/admin-only until export/review controls, citation/path sanitization, exact-cost reconciliation, and hard budget/rate-limit controls are in place.
+- Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated pipeline and UI coverage.
 
 ## Complete issue inventory
 
@@ -39,7 +37,7 @@
 | [ISSUE-0004](issues/ISSUE-0004.json) | reported | P2 | Introduce AI-based review gates for phase outputs with extensible evaluator architecture. |
 | [ISSUE-0005](issues/ISSUE-0005.json) | reported | P2 | Tune segmentation_phase_1 prompting to improve segment granularity by genre. |
 | [ISSUE-0006](issues/ISSUE-0006.json) | reported | P2 | Investigate segmentation_phase_2 token-span failures and rerun-path correctness. |
-| [ISSUE-0007](issues/ISSUE-0007.json) | reported | P2 | Use LLM prompt-construction indirection for page-image generation prompts. |
+| [ISSUE-0007](issues/ISSUE-0007.json) | closed | P2 | Use LLM prompt-construction indirection for page-image generation prompts. |
 | [ISSUE-0008](issues/ISSUE-0008.json) | reported | P1 | Write C-LARA-2 technical report and academic papers. |
 | [ISSUE-0009](issues/ISSUE-0009.json) | closed | P1 | Auto-regenerate and validate source project bundle stage artifacts before export/import. |
 | [ISSUE-0010](issues/ISSUE-0010.json) | active | P1 | Import a representative legacy C-LARA project corpus and add batch import tooling. |
@@ -68,3 +66,4 @@
 | [ISSUE-0033](issues/ISSUE-0033.json) | reported | P2 | Clean up and phase-track roadmap file maintenance. |
 | [ISSUE-0034](issues/ISSUE-0034.json) | active | P2 | Add restricted project-understanding assistant with versioned evidence records. |
 | [ISSUE-0035](issues/ISSUE-0035.json) | reported | P2 | Track intermittent Codex PR update-branch refusal. |
+| [ISSUE-0036](issues/ISSUE-0036.json) | reported | P2 | Systematize creation and evaluation of few-shot examples for linguistic annotation. |
