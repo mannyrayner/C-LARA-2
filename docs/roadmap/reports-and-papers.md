@@ -10,7 +10,7 @@ Linked issues and companion docs:
 
 ## Current status snapshot
 
-- **First progress report:** in progress, target date **2026-06-15**.
+- **First progress report:** in progress, target date **2026-06-15**; self-understanding is now one of the central themes.
 - **EuroCALL 2026 paper:** accepted; full-paper deadline now confirmed as **2026-07-31**.
 - **ALTA 2026 paper:** active target, deadline currently treated as **mid-September 2026** until confirmed more precisely.
 - **Possible David Gunkel AI-authorship paper:** increasingly likely but not yet fully agreed.
@@ -19,9 +19,10 @@ Linked issues and companion docs:
 
 - The first report should be **short, selective, and interim**, not a long catalogue of C-LARA-like functionality.
 - The main contribution to foreground is the **AI-centered project organization**: Codex writes committed code, tests, documentation, roadmap documents, issue records, operational documentation, and publication drafts, while humans advise, review, prioritize, and accept/reject.
+- A second central contribution is now **project self-understanding**: C-LARA-2 is beginning to expose, inside the platform, a restricted Codex-backed assistant that can inspect the repository and answer questions about the project with file-grounded evidence.
 - The report should emphasize practical consequences of this organization: faster iteration, greater flexibility, rapid rewriting, and AI-guided sysadmin/deployment work such as the AWS migration.
 - The user-facing examples to foreground are **picture dictionaries** and **more coherent support for low-resource languages**.
-- The report should clearly state that C-LARA-2 is unfinished and that the highest-priority future work is stronger AI self-checking/autonomy, mobile support, and platform audio recording.
+- The report should clearly state that C-LARA-2 is unfinished and that the highest-priority future work is stronger AI self-checking/autonomy, export/review of self-understanding evidence records, mobile support, and platform audio recording.
 - The possible AI-authorship paper should be framed as an open research/ethics question, not as a settled authorship-policy claim.
 
 ## Current work
@@ -41,10 +42,10 @@ The report workspace and this roadmap should stay synchronized. The current Mark
 |---|---|
 | `README.md` | Top-level narrative, length discipline, and review questions. |
 | `01-introduction-and-history.md` | Short lineage from LARA/C-LARA to C-LARA-2, plus interim-report and authorship-paper framing. |
-| `02-core-themes-and-ai-autonomy.md` | Main AI-centered thesis, AI role decomposition, human role, speed/flexibility, limits, and authorship implications. |
+| `02-core-themes-and-ai-autonomy.md` | Main AI-centered thesis, self-understanding as an emerging core theme, AI role decomposition, human role, speed/flexibility, limits, and authorship implications. |
 | `03-user-facing-functionality.md` | Selected user-facing examples: picture dictionaries, picture glossing/flashcards, low-resource-language support, and brief continuity notes. |
-| `04-implementor-facing-functionality.md` | Roadmap-as-memory, issue ingestion, legacy migration, AWS/sysadmin work, and quality-control infrastructure. |
-| `05-medium-term-future-work.md` | Interim-status caveat and prioritized future work: AI self-checking, mobile support, platform audio recording, alignment, access, and migration/tooling refinements. |
+| `04-implementor-facing-functionality.md` | Roadmap-as-memory, issue ingestion, restricted project-understanding assistant, legacy migration, AWS/sysadmin work, and quality-control infrastructure. |
+| `05-medium-term-future-work.md` | Interim-status caveat and prioritized future work: AI self-checking, self-understanding evidence workflow, mobile support, platform audio recording, alignment, access, and migration/tooling refinements. |
 
 ### Target B — EuroCALL 2026 paper
 
@@ -59,7 +60,7 @@ The report workspace and this roadmap should stay synchronized. The current Mark
 - **Status:** active target.
 - **Deadline:** mid-September 2026, pending confirmation.
 - **Purpose:** prepare a computational-linguistics/NLP-oriented paper from the implementor-facing half of the material.
-- **Likely emphasis:** AI-authored repository workflow, evaluation strategy, architecture/process lessons, issue/roadmap memory, testing/evaluation, and comparison with adjacent AI-engineering projects.
+- **Likely emphasis:** AI-authored repository workflow, project self-understanding, evaluation strategy, architecture/process lessons, issue/roadmap memory, testing/evaluation, and comparison with adjacent AI-engineering projects.
 
 ### Target D — possible AI-authorship paper with David Gunkel
 
@@ -72,26 +73,29 @@ The report workspace and this roadmap should stay synchronized. The current Mark
 
 Subject to co-author agreement, the first progress report should act as the master source document, and later papers should draw selectively from it:
 
-- **Progress report:** short interim account emphasizing AI-centered process, selected functionality, and unfinished work.
+- **Progress report:** short interim account emphasizing AI-centered process, project self-understanding, selected functionality, and unfinished work.
 - **EuroCALL 2026:** user-facing CALL story, with picture dictionaries and low-resource-language workflows as prominent examples.
-- **ALTA 2026:** implementor-facing AI-authored repository story, with issue/roadmap workflow, testing/evaluation strategy, and related-work comparison.
+- **ALTA 2026:** implementor-facing AI-authored repository story, with issue/roadmap workflow, project self-understanding, testing/evaluation strategy, and related-work comparison.
 - **Gunkel authorship paper:** AI authorship story, using the report and repository workflow as evidence.
 
 There will naturally be overlap: EuroCALL needs enough implementation detail to make the platform credible, ALTA needs enough user-facing motivation to explain why the engineering choices matter, and the authorship paper needs enough project detail to make the case concrete.
 
-## Core thesis to develop
+## Core theses to develop
 
-A likely central thesis is:
+Two connected central theses now need to be developed:
 
 > C-LARA-2 is not only an AI-assisted language-learning platform; it is an AI-centered project in which code, tests, documentation, roadmap planning, issue tracking, sysadmin/deployment work, and academic drafts are co-produced inside one repository by an AI agent under human direction and review.
 
-This thesis should be tested and made concrete by showing:
+> C-LARA-2 is also beginning to become self-understanding: because code, tests, issues, roadmaps, runbooks, and report drafts live in the repository, a restricted Codex-backed assistant can inspect that evidence base and answer project-level questions from inside the platform.
+
+These theses should be tested and made concrete by showing:
 
 - how project members provide suggestions, corrections, and priorities;
 - how the AI updates issue records, roadmap files, documentation, code, and publication drafts;
 - how rapid rewriting changes the practical economics of research-software development;
 - how AI-maintained documentation and tests may help preserve system-level coherence;
-- where the workflow still fails and needs stronger autonomous checking.
+- how the restricted project-understanding assistant delegates repository exploration to `codex exec`, captures answer metadata, and creates a path toward versioned human-reviewed evidence records;
+- where the workflow still fails and needs stronger autonomous checking, export/review controls, cost controls, and safety boundaries.
 
 ## Related-work and comparison work
 
@@ -145,11 +149,11 @@ Near-term CodePrism questions:
 ## Near-term action items
 
 - Keep [ISSUE-0008](../issues/issues/ISSUE-0008.json), this roadmap, and the Markdown report workspace synchronized.
-- Finish the concise progress-report draft around the AI-centered thesis.
-- Add concrete examples for picture dictionaries, low-resource-language support, and AWS migration.
+- Finish the concise progress-report draft around the AI-centered thesis and the new self-understanding theme.
+- Add concrete examples for picture dictionaries, low-resource-language support, AWS migration, and the restricted project-understanding assistant.
 - Gather current repository metrics and feature inventory only where they support the concise narrative.
 - Start a related-work bibliography, including AI-authored repositories and AI authorship/publication ethics.
 - Investigate CodePrism in detail as the closest currently known comparator.
 - Confirm the ALTA deadline and the split among EuroCALL 2026, ALTA 2026, and the possible David Gunkel authorship paper.
 - Plan backwards from the **2026-07-31** EuroCALL deadline.
-- Ensure each publication includes a concise methods statement explaining Codex authorship and human steering/review.
+- Ensure each publication includes a concise methods statement explaining Codex authorship, human steering/review, and the status of any self-understanding evidence records used as support.
