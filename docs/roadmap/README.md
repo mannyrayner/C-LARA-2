@@ -174,6 +174,8 @@ Focus:
 - Near-term support for ISSUE-0004, with concrete before/after evaluation hooks for ISSUE-0005 and ISSUE-0006 before the First Progress Report.
 - Longer-term panel-based AI scoring, aggregation, disagreement analysis, optional foreman summarization, and human-audit calibration.
 
+Related prompt/evidence work: [roadmap/few-shot-example-curation.md](few-shot-example-curation.md) tracks systematic creation, checking, tranche selection, and evaluation of few-shot examples for linguistic annotation.
+
 
 ### 14. Source project export/import bundles roadmap
 
