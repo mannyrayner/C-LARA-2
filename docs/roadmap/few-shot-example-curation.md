@@ -142,7 +142,7 @@ In practice, curation should be incremental rather than a single large generatio
 
 Start with two complementary invocation paths:
 
-1. **Management command for repeatable experiments.** The first minimal command is `python manage.py curate_fewshots --operation segmentation_phase_2 --language fr --mechanism boundary_first --phenomena clitic,compound --count 40 --target-set clitic_compound_v2`. It generates candidate JSON examples, validates them deterministically, stores auditable records, and can optionally write valid examples into a prompt variant. This is the right surface for bulk generation, laptop/server runs, scripted reruns, and reproducible report evidence.
+1. **Management command for repeatable experiments.** The first minimal command is `python manage.py curate_fewshots --operation segmentation_phase_2 --language fr --mechanism boundary_first --phenomena clitic,compound --count 40 --target-set clitic_compound_v2`. It generates candidate JSON examples with trace output and fan-out/fan-in shards (`--batch-size`, `--max-concurrency`), validates them deterministically, stores auditable records, and can optionally write valid examples into a prompt variant. This is the right surface for bulk generation, laptop/server runs, scripted reruns, and reproducible report evidence.
 2. **Admin UI for small requests and review.** Add an admin-only page where a maintainer can create a curation request, inspect generated candidates, run critic/repair passes, and promote accepted examples. The UI should be able to request additional examples for an existing operation/language/set and should show existing coverage by phenomenon and tranche.
 
 Both paths should create a durable curation request record before calling models. A request should include operation, language, mechanism, target set, requested phenomena, requested count, generator/critic/repair model choices, prompt versions, submitter, timestamp, and notes.
@@ -208,7 +208,7 @@ A human reviewer can then accept, reject, request more repair, or mark an exampl
 ## Near-term implementation steps
 
 1. **Done in minimal form:** add validation utilities for `segmentation_phase_2` few-shot candidates. Extend these validators to MWE and later lemma/gloss examples.
-2. **Done in minimal form:** implement a candidate-generation command for `segmentation_phase_2`, initially useful for French `boundary_first` experiments.
+2. **Done in minimal form:** implement a traced, fan-out/fan-in candidate-generation command for `segmentation_phase_2`, initially useful for French `boundary_first` experiments.
 3. Define a small phenomenon matrix for `segmentation_phase_2` clitics/compounds and MWE detection.
 4. Add adversarial critic and repair prompts, with severity labels and structured output.
 5. Expand persisted records from candidate/request/accepted/manifest files to include critic, repair, arbiter, and human-review records.

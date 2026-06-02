@@ -19,6 +19,8 @@ class Command(BaseCommand):
         parser.add_argument("--target-set", required=True)
         parser.add_argument("--phenomena", default="")
         parser.add_argument("--count", type=int, default=10)
+        parser.add_argument("--batch-size", type=int, default=5)
+        parser.add_argument("--max-concurrency", type=int, default=4)
         parser.add_argument("--model", default="gpt-5")
         parser.add_argument("--request-id", default="")
         parser.add_argument("--notes", default="")
@@ -38,10 +40,23 @@ class Command(BaseCommand):
             model=options["model"],
             request_id=options["request_id"] or None,
             notes=options["notes"],
+            batch_size=options["batch_size"],
+            max_concurrency=options["max_concurrency"],
         )
         repo_root = Path(options["repo_root"] or getattr(settings, "ROOT_DIR", Path.cwd())).resolve()
+
+        def trace(message: str) -> None:
+            self.stdout.write(f"[curate_fewshots] {message}")
+            self.stdout.flush()
+
+        trace(
+            f"request operation={spec.operation} language={spec.language} mechanism={spec.mechanism} "
+            f"target_set={spec.target_set} count={spec.count} batch_size={spec.batch_size} "
+            f"max_concurrency={spec.max_concurrency} model={spec.model}"
+        )
         try:
-            batch = asyncio.run(generate_candidate_batch(spec))
+            batch = asyncio.run(generate_candidate_batch(spec, trace=trace))
+            trace("generation and validation complete; storing records")
             result = store_candidate_batch(
                 batch,
                 repo_root=repo_root,

@@ -1,9 +1,11 @@
 """Utilities for generating and storing auditable few-shot examples."""
 from __future__ import annotations
 
+import asyncio
 import json
 import re
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -28,6 +30,8 @@ class FewshotCurationSpec:
     prompt_version: str = "fewshot-curation-v1"
     request_id: str | None = None
     notes: str = ""
+    batch_size: int | None = None
+    max_concurrency: int = 4
 
 
 def _utc_timestamp() -> str:
@@ -45,6 +49,10 @@ def build_candidate_generation_prompt(spec: FewshotCurationSpec) -> str:
         raise ValueError(f"Unsupported few-shot curation operation: {spec.operation}")
     if spec.count < 1:
         raise ValueError("count must be at least 1")
+    if spec.batch_size is not None and spec.batch_size < 1:
+        raise ValueError("batch_size must be at least 1 when set")
+    if spec.max_concurrency < 1:
+        raise ValueError("max_concurrency must be at least 1")
 
     return f"""
 Generate candidate few-shot examples for C-LARA-2 linguistic annotation.
@@ -147,48 +155,117 @@ def validate_candidate(operation: str, candidate: dict[str, Any]) -> dict[str, A
     raise ValueError(f"Unsupported few-shot curation operation: {operation}")
 
 
+async def _generate_candidate_shard(
+    spec: FewshotCurationSpec,
+    *,
+    client: OpenAIClient,
+    shard_index: int,
+    shard_count: int,
+    trace: Callable[[str], None] | None = None,
+) -> dict[str, Any]:
+    """Generate one shard of candidate examples."""
+
+    shard_spec = replace(spec, count=shard_count)
+    prompt = build_candidate_generation_prompt(shard_spec)
+    if trace:
+        trace(f"starting generation shard {shard_index} (target {shard_count} candidates)")
+    payload = normalize_json_text(await client.chat_json(prompt, model=spec.model))
+    if not isinstance(payload, dict):
+        raise ValueError(f"few-shot candidate generation shard {shard_index} response must be a JSON object")
+    candidates = payload.get("candidates")
+    if not isinstance(candidates, list):
+        raise ValueError(f"few-shot candidate generation shard {shard_index} response must contain a candidates array")
+    if trace:
+        trace(f"completed generation shard {shard_index}: received {len(candidates)} candidates")
+    return {"shard_index": shard_index, "target_count": shard_count, "prompt": prompt, "candidates": candidates}
+
+
+def _candidate_shard_counts(spec: FewshotCurationSpec) -> list[int]:
+    batch_size = spec.batch_size or spec.count
+    counts: list[int] = []
+    remaining = spec.count
+    while remaining > 0:
+        shard_count = min(batch_size, remaining)
+        counts.append(shard_count)
+        remaining -= shard_count
+    return counts
+
+
 async def generate_candidate_batch(
     spec: FewshotCurationSpec,
     *,
     client: OpenAIClient | None = None,
+    trace: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
     """Generate and deterministically validate a batch of candidate examples."""
 
-    ai_client = client or OpenAIClient()
-    prompt = build_candidate_generation_prompt(spec)
-    payload = normalize_json_text(await ai_client.chat_json(prompt, model=spec.model))
-    if not isinstance(payload, dict):
-        raise ValueError("few-shot candidate generation response must be a JSON object")
-    candidates = payload.get("candidates")
-    if not isinstance(candidates, list):
-        raise ValueError("few-shot candidate generation response must contain a candidates array")
+    if spec.operation not in SUPPORTED_OPERATIONS:
+        raise ValueError(f"Unsupported few-shot curation operation: {spec.operation}")
+    if spec.count < 1:
+        raise ValueError("count must be at least 1")
+    if spec.batch_size is not None and spec.batch_size < 1:
+        raise ValueError("batch_size must be at least 1 when set")
+    if spec.max_concurrency < 1:
+        raise ValueError("max_concurrency must be at least 1")
 
+    ai_client = client or OpenAIClient()
     request_id = spec.request_id or _utc_timestamp()
     generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-    records: list[dict[str, Any]] = []
-    for idx, raw_candidate in enumerate(candidates, start=1):
-        candidate = raw_candidate if isinstance(raw_candidate, dict) else {"raw": raw_candidate}
-        validation = validate_candidate(spec.operation, candidate)
-        status = "schema_validated" if validation["schema_pass"] else "validation_failed"
-        records.append(
-            {
-                "schema_version": 1,
-                "example_id": f"EXAMPLE-{idx:04d}",
-                "request_id": request_id,
-                "status": status,
-                "operation": spec.operation,
-                "language": spec.language,
-                "mechanism": spec.mechanism,
-                "target_set": spec.target_set,
-                "phenomena": list(spec.phenomena),
-                "generated_at": generated_at,
-                "generator_model": spec.model,
-                "generator_prompt_version": spec.prompt_version,
-                "candidate": candidate,
-                "validation": validation,
-            }
+    shard_counts = _candidate_shard_counts(spec)
+    if trace:
+        trace(
+            "generating "
+            f"{spec.count} candidate examples as {len(shard_counts)} shard(s) "
+            f"with max_concurrency={spec.max_concurrency}"
         )
 
+    semaphore = asyncio.Semaphore(spec.max_concurrency)
+
+    async def run_shard(idx: int, shard_count: int) -> dict[str, Any]:
+        async with semaphore:
+            return await _generate_candidate_shard(
+                spec,
+                client=ai_client,
+                shard_index=idx,
+                shard_count=shard_count,
+                trace=trace,
+            )
+
+    shards = await asyncio.gather(*(run_shard(idx, count) for idx, count in enumerate(shard_counts, start=1)))
+
+    records: list[dict[str, Any]] = []
+    next_example_idx = 1
+    for shard in shards:
+        for raw_candidate in shard["candidates"]:
+            candidate = raw_candidate if isinstance(raw_candidate, dict) else {"raw": raw_candidate}
+            validation = validate_candidate(spec.operation, candidate)
+            status = "schema_validated" if validation["schema_pass"] else "validation_failed"
+            records.append(
+                {
+                    "schema_version": 1,
+                    "example_id": f"EXAMPLE-{next_example_idx:04d}",
+                    "request_id": request_id,
+                    "status": status,
+                    "operation": spec.operation,
+                    "language": spec.language,
+                    "mechanism": spec.mechanism,
+                    "target_set": spec.target_set,
+                    "phenomena": list(spec.phenomena),
+                    "generated_at": generated_at,
+                    "generator_model": spec.model,
+                    "generator_prompt_version": spec.prompt_version,
+                    "shard_index": shard["shard_index"],
+                    "candidate": candidate,
+                    "validation": validation,
+                }
+            )
+            next_example_idx += 1
+
+    if trace:
+        valid_count = sum(1 for record in records if record["validation"]["schema_pass"])
+        trace(f"validated {len(records)} candidates; schema-valid={valid_count}; failed={len(records) - valid_count}")
+
+    prompts = [shard["prompt"] for shard in shards]
     return {
         "request": {
             "schema_version": 1,
@@ -199,12 +276,22 @@ async def generate_candidate_batch(
             "target_set": spec.target_set,
             "phenomena": list(spec.phenomena),
             "count": spec.count,
+            "batch_size": spec.batch_size,
+            "max_concurrency": spec.max_concurrency,
             "model": spec.model,
             "prompt_version": spec.prompt_version,
             "requested_at": generated_at,
             "notes": spec.notes,
         },
-        "prompt": prompt,
+        "prompt": prompts[0] if prompts else "",
+        "prompts": [
+            {
+                "shard_index": shard["shard_index"],
+                "target_count": shard["target_count"],
+                "prompt": shard["prompt"],
+            }
+            for shard in shards
+        ],
         "records": records,
     }
 
@@ -258,10 +345,15 @@ def store_candidate_batch(
         prompt_version=request.get("prompt_version") or "",
         request_id=request["request_id"],
         notes=request.get("notes") or "",
+        batch_size=request.get("batch_size"),
+        max_concurrency=int(request.get("max_concurrency") or 1),
     )
     root = curation_root(repo_root, spec)
     _write_json(root / "requests" / f"{spec.request_id}.json", request)
-    _write_json(root / "requests" / f"{spec.request_id}.prompt.json", {"prompt": batch.get("prompt") or ""})
+    _write_json(
+        root / "requests" / f"{spec.request_id}.prompt.json",
+        {"prompt": batch.get("prompt") or "", "prompts": batch.get("prompts") or []},
+    )
 
     accepted_records: list[dict[str, Any]] = []
     prompt_files: list[str] = []
@@ -293,6 +385,8 @@ def store_candidate_batch(
         "mechanism": spec.mechanism,
         "target_set": spec.target_set,
         "candidate_count": len(batch["records"]),
+        "batch_size": spec.batch_size,
+        "max_concurrency": spec.max_concurrency,
         "accepted_count": len(accepted_records),
         "prompt_files": prompt_files,
         "records": [

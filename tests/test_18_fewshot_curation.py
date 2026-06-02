@@ -24,6 +24,18 @@ class FakeCurationClient:
         return self.payload
 
 
+class FakeFanoutCurationClient:
+    def __init__(self, payloads):
+        self.payloads = list(payloads)
+        self.prompts: list[str] = []
+        self.models: list[str | None] = []
+
+    async def chat_json(self, prompt: str, *, model: str | None = None, **_kwargs):
+        self.prompts.append(prompt)
+        self.models.append(model)
+        return self.payloads.pop(0)
+
+
 class FewshotCurationTests(unittest.IsolatedAsyncioTestCase):
     def test_validates_segmentation_phase_2_candidate(self) -> None:
         candidate = {
@@ -142,6 +154,71 @@ class FewshotCurationTests(unittest.IsolatedAsyncioTestCase):
                 ["prompts/segmentation_phase_2/variants/clitic_compound_v2/fewshots/example1.json"],
                 result["manifest"]["prompt_files"],
             )
+
+    async def test_generation_fans_out_and_traces_shards(self) -> None:
+        client = FakeFanoutCurationClient(
+            [
+                {
+                    "candidates": [
+                        {
+                            "input": "Je l'aime.",
+                            "output": {
+                                "surface": "Je l'aime.",
+                                "tokens": [
+                                    {"surface": "Je"},
+                                    {"surface": " "},
+                                    {"surface": "l'"},
+                                    {"surface": "aime"},
+                                    {"surface": "."},
+                                ],
+                                "annotations": {},
+                            },
+                        }
+                    ]
+                },
+                {
+                    "candidates": [
+                        {
+                            "input": "C'est vrai.",
+                            "output": {
+                                "surface": "C'est vrai.",
+                                "tokens": [
+                                    {"surface": "C"},
+                                    {"surface": "'est"},
+                                    {"surface": " "},
+                                    {"surface": "vrai"},
+                                    {"surface": "."},
+                                ],
+                                "annotations": {},
+                            },
+                        }
+                    ]
+                },
+            ]
+        )
+        traces: list[str] = []
+        spec = FewshotCurationSpec(
+            operation="segmentation_phase_2",
+            language="fr",
+            mechanism="boundary_first",
+            target_set="clitic_compound_v2",
+            count=2,
+            batch_size=1,
+            max_concurrency=2,
+            model="fake-model",
+            request_id="20260602-fanout",
+        )
+
+        batch = await generate_candidate_batch(spec, client=client, trace=traces.append)
+
+        self.assertEqual(2, len(client.prompts))
+        self.assertEqual(["fake-model", "fake-model"], client.models)
+        self.assertEqual(["EXAMPLE-0001", "EXAMPLE-0002"], [record["example_id"] for record in batch["records"]])
+        self.assertEqual([1, 2], [record["shard_index"] for record in batch["records"]])
+        self.assertEqual(2, len(batch["prompts"]))
+        self.assertIn("generating 2 candidate examples as 2 shard(s)", traces[0])
+        self.assertTrue(any("completed generation shard 1" in message for message in traces))
+        self.assertTrue(any("validated 2 candidates" in message for message in traces))
 
     async def test_prompt_variant_export_appends_to_existing_examples(self) -> None:
         client = FakeCurationClient(
