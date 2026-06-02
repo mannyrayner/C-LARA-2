@@ -3460,7 +3460,17 @@ def admin_project_understanding_status(request: HttpRequest, report_id: str) -> 
     })
 
 
-def _find_django_q_processes() -> list[dict[str, Any]]:
+def _process_has_manage_command(args: str, command: str) -> bool:
+    arg_tokens = args.split()
+    return any(
+        Path(token).name == "manage.py"
+        and idx + 1 < len(arg_tokens)
+        and arg_tokens[idx + 1] == command
+        for idx, token in enumerate(arg_tokens)
+    )
+
+
+def _find_manage_py_processes(command: str) -> list[dict[str, Any]]:
     try:
         output = subprocess.check_output(
             ["ps", "-eo", "pid=,ppid=,args="],
@@ -3485,25 +3495,32 @@ def _find_django_q_processes() -> list[dict[str, Any]]:
         except ValueError:
             continue
         args = parts[2]
-        arg_tokens = args.split()
-        has_qcluster_command = any(
-            Path(token).name == "manage.py"
-            and idx + 1 < len(arg_tokens)
-            and arg_tokens[idx + 1] == "qcluster"
-            for idx, token in enumerate(arg_tokens)
-        )
-        if pid == current_pid or not has_qcluster_command:
+        if command != "runserver" and pid == current_pid:
             continue
-        if "runserver" in arg_tokens:
+        if not _process_has_manage_command(args, command):
             continue
-        matches.append({"pid": pid, "ppid": ppid, "args": args})
+        if command != "runserver" and "runserver" in args.split():
+            continue
+        matches.append({"pid": pid, "ppid": ppid, "args": args, "command": command})
     return matches
 
 
-def _shutdown_django_q_processes() -> list[dict[str, Any]]:
+def _find_django_q_processes() -> list[dict[str, Any]]:
+    return _find_manage_py_processes("qcluster")
+
+
+def _find_django_server_processes() -> list[dict[str, Any]]:
+    return _find_manage_py_processes("runserver")
+
+
+def _terminate_processes(processes: list[dict[str, Any]], *, status: str) -> list[dict[str, Any]]:
     stopped: list[dict[str, Any]] = []
-    for proc in _find_django_q_processes():
+    seen_pids: set[int] = set()
+    for proc in processes:
         pid = int(proc["pid"])
+        if pid in seen_pids:
+            continue
+        seen_pids.add(pid)
         try:
             os.kill(pid, signal.SIGTERM)
         except ProcessLookupError:
@@ -3511,8 +3528,31 @@ def _shutdown_django_q_processes() -> list[dict[str, Any]]:
         except PermissionError as exc:
             stopped.append({**proc, "status": "permission_denied", "error": str(exc)})
         else:
-            stopped.append({**proc, "status": "sigterm_sent"})
+            stopped.append({**proc, "status": status})
     return stopped
+
+
+def _shutdown_django_q_processes() -> list[dict[str, Any]]:
+    return _terminate_processes(_find_django_q_processes(), status="sigterm_sent")
+
+
+def _shutdown_django_stack_processes(delay_seconds: float = 0.5) -> list[dict[str, Any]]:
+    targets_by_pid: dict[int, dict[str, Any]] = {}
+    for proc in _find_django_q_processes() + _find_django_server_processes():
+        targets_by_pid[int(proc["pid"])] = proc
+    targets = list(targets_by_pid.values())
+    if not targets:
+        return []
+
+    status_rows = [{**proc, "status": "sigterm_scheduled"} for proc in targets]
+
+    def _delayed_shutdown() -> None:
+        if delay_seconds > 0:
+            threading.Event().wait(delay_seconds)
+        _terminate_processes(targets, status="sigterm_sent")
+
+    threading.Thread(target=_delayed_shutdown, daemon=True).start()
+    return status_rows
 
 
 @login_required
@@ -3556,18 +3596,26 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
 
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
-        if action == "shutdown_django_q":
-            stopped = _shutdown_django_q_processes()
-            successful = [proc for proc in stopped if proc.get("status") == "sigterm_sent"]
+        if action in {"shutdown_django_stack", "shutdown_django_q"}:
+            stopped = (
+                _shutdown_django_stack_processes()
+                if action == "shutdown_django_stack"
+                else _shutdown_django_q_processes()
+            )
+            successful = [
+                proc for proc in stopped if proc.get("status") in {"sigterm_sent", "sigterm_scheduled"}
+            ]
             denied = [proc for proc in stopped if proc.get("status") == "permission_denied"]
+            label = "Django server/Q process" if action == "shutdown_django_stack" else "Django Q qcluster process"
             if successful:
                 pids = ", ".join(str(proc["pid"]) for proc in successful)
-                messages.success(request, f"Sent SIGTERM to Django Q qcluster process(es): {pids}.")
+                verb = "Scheduled SIGTERM for" if action == "shutdown_django_stack" else "Sent SIGTERM to"
+                messages.success(request, f"{verb} {label}(es): {pids}.")
             if denied:
                 pids = ", ".join(str(proc["pid"]) for proc in denied)
-                messages.error(request, f"Could not stop Django Q qcluster process(es) due to permissions: {pids}.")
+                messages.error(request, f"Could not stop {label}(es) due to permissions: {pids}.")
             if not stopped:
-                messages.info(request, "No Django Q qcluster process was found.")
+                messages.info(request, f"No {label} was found.")
             return redirect("admin-tools")
         elif action == "delete_audio_cache":
             delete_form = DeleteCachedWordAudioForm(

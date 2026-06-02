@@ -248,20 +248,24 @@ class AdminToolsViewTests(TestCase):
         self.assertTrue(self.target_user.is_staff)
 
 
-    @patch("projects.views._shutdown_django_q_processes")
-    def test_admin_can_shutdown_django_q_worker(self, mock_shutdown):
-        mock_shutdown.return_value = [{"pid": 1234, "status": "sigterm_sent", "args": "python manage.py qcluster"}]
+    @patch("projects.views._shutdown_django_stack_processes")
+    def test_admin_can_shutdown_django_server_and_q_worker(self, mock_shutdown):
+        mock_shutdown.return_value = [
+            {"pid": 1234, "status": "sigterm_scheduled", "args": "python manage.py qcluster"},
+            {"pid": 5678, "status": "sigterm_scheduled", "args": "python manage.py runserver"},
+        ]
         self.client.login(username="staffer", password="pw")
 
         resp = self.client.post(
             reverse("admin-tools"),
-            {"action": "shutdown_django_q"},
+            {"action": "shutdown_django_stack"},
             follow=True,
         )
 
         self.assertEqual(resp.status_code, 200)
         mock_shutdown.assert_called_once_with()
-        self.assertContains(resp, "Sent SIGTERM to Django Q qcluster process")
+        self.assertContains(resp, "Scheduled SIGTERM for Django server/Q process")
+        self.assertContains(resp, "Shutdown Django server and Q worker")
 
     def test_admin_can_delete_language_audio_cache(self):
         self.client.login(username="staffer", password="pw")
