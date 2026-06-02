@@ -8,6 +8,7 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from core.project_understanding import ProjectUnderstandingAnswer
+from projects import views
 from projects.models import Community, CommunityMembership, TaskUpdate
 
 
@@ -266,6 +267,25 @@ class AdminToolsViewTests(TestCase):
         mock_shutdown.assert_called_once_with()
         self.assertContains(resp, "Scheduled SIGTERM for Django server/Q process")
         self.assertContains(resp, "Shutdown Django server and Q worker")
+
+
+    @patch("projects.views._schedule_sigterm_for_pids")
+    @patch("projects.views._process_snapshot")
+    def test_stack_shutdown_targets_runserver_qcluster_and_children(self, mock_snapshot, mock_schedule):
+        mock_snapshot.return_value = [
+            {"pid": 100, "ppid": 1, "args": "python manage.py runserver"},
+            {"pid": 101, "ppid": 100, "args": "python manage.py runserver"},
+            {"pid": 200, "ppid": 1, "args": "python manage.py qcluster"},
+            {"pid": 201, "ppid": 200, "args": "python worker.py"},
+            {"pid": 300, "ppid": 1, "args": "python manage.py migrate"},
+        ]
+
+        result = views._shutdown_django_stack_processes(delay_seconds=0.1)
+
+        self.assertEqual({100, 101, 200, 201}, {int(row["pid"]) for row in result})
+        mock_schedule.assert_called_once()
+        self.assertEqual({100, 101, 200, 201}, set(mock_schedule.call_args.args[0]))
+        self.assertEqual(0.1, mock_schedule.call_args.kwargs["delay_seconds"])
 
     def test_admin_can_delete_language_audio_cache(self):
         self.client.login(username="staffer", password="pw")

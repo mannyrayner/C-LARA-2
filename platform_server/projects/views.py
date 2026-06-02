@@ -3470,7 +3470,7 @@ def _process_has_manage_command(args: str, command: str) -> bool:
     )
 
 
-def _find_manage_py_processes(command: str) -> list[dict[str, Any]]:
+def _process_snapshot() -> list[dict[str, Any]]:
     try:
         output = subprocess.check_output(
             ["ps", "-eo", "pid=,ppid=,args="],
@@ -3480,8 +3480,7 @@ def _find_manage_py_processes(command: str) -> list[dict[str, Any]]:
     except Exception:
         return []
 
-    current_pid = os.getpid()
-    matches: list[dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
     for line in output.splitlines():
         stripped = line.strip()
         if not stripped:
@@ -3494,14 +3493,23 @@ def _find_manage_py_processes(command: str) -> list[dict[str, Any]]:
             ppid = int(parts[1])
         except ValueError:
             continue
-        args = parts[2]
+        rows.append({"pid": pid, "ppid": ppid, "args": parts[2]})
+    return rows
+
+
+def _find_manage_py_processes(command: str, *, process_rows: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    current_pid = os.getpid()
+    matches: list[dict[str, Any]] = []
+    for row in process_rows if process_rows is not None else _process_snapshot():
+        pid = int(row["pid"])
+        args = str(row.get("args") or "")
         if command != "runserver" and pid == current_pid:
             continue
         if not _process_has_manage_command(args, command):
             continue
         if command != "runserver" and "runserver" in args.split():
             continue
-        matches.append({"pid": pid, "ppid": ppid, "args": args, "command": command})
+        matches.append({**row, "command": command})
     return matches
 
 
@@ -3511,6 +3519,26 @@ def _find_django_q_processes() -> list[dict[str, Any]]:
 
 def _find_django_server_processes() -> list[dict[str, Any]]:
     return _find_manage_py_processes("runserver")
+
+
+def _descendant_processes(process_rows: list[dict[str, Any]], root_pids: set[int]) -> list[dict[str, Any]]:
+    children_by_ppid: dict[int, list[dict[str, Any]]] = {}
+    for row in process_rows:
+        children_by_ppid.setdefault(int(row["ppid"]), []).append(row)
+
+    descendants: list[dict[str, Any]] = []
+    queue = list(root_pids)
+    seen = set(root_pids)
+    while queue:
+        parent_pid = queue.pop(0)
+        for child in children_by_ppid.get(parent_pid, []):
+            child_pid = int(child["pid"])
+            if child_pid in seen:
+                continue
+            seen.add(child_pid)
+            descendants.append({**child, "command": "child"})
+            queue.append(child_pid)
+    return descendants
 
 
 def _terminate_processes(processes: list[dict[str, Any]], *, status: str) -> list[dict[str, Any]]:
@@ -3536,23 +3564,57 @@ def _shutdown_django_q_processes() -> list[dict[str, Any]]:
     return _terminate_processes(_find_django_q_processes(), status="sigterm_sent")
 
 
+def _django_stack_targets() -> list[dict[str, Any]]:
+    process_rows = _process_snapshot()
+    direct_targets = _find_manage_py_processes("qcluster", process_rows=process_rows) + _find_manage_py_processes(
+        "runserver", process_rows=process_rows
+    )
+    direct_pids = {int(proc["pid"]) for proc in direct_targets}
+    target_by_pid: dict[int, dict[str, Any]] = {int(proc["pid"]): proc for proc in direct_targets}
+    for proc in _descendant_processes(process_rows, direct_pids):
+        target_by_pid.setdefault(int(proc["pid"]), proc)
+    return list(target_by_pid.values())
+
+
+def _schedule_sigterm_for_pids(pids: list[int], *, delay_seconds: float) -> None:
+    if not pids:
+        return
+    helper = (
+        "import os, signal, sys, time\n"
+        "delay = float(sys.argv[1])\n"
+        "pids = [int(pid) for pid in sys.argv[2].split(',') if pid]\n"
+        "time.sleep(delay)\n"
+        "for pid in pids:\n"
+        "    try:\n"
+        "        os.kill(pid, signal.SIGTERM)\n"
+        "    except ProcessLookupError:\n"
+        "        pass\n"
+        "    except PermissionError:\n"
+        "        pass\n"
+    )
+    subprocess.Popen(
+        [sys.executable, "-c", helper, str(delay_seconds), ",".join(str(pid) for pid in pids)],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        close_fds=True,
+        start_new_session=True,
+    )
+
+
 def _shutdown_django_stack_processes(delay_seconds: float = 0.5) -> list[dict[str, Any]]:
-    targets_by_pid: dict[int, dict[str, Any]] = {}
-    for proc in _find_django_q_processes() + _find_django_server_processes():
-        targets_by_pid[int(proc["pid"])] = proc
+    targets_by_pid: dict[int, dict[str, Any]] = {int(proc["pid"]): proc for proc in _django_stack_targets()}
     targets = list(targets_by_pid.values())
     if not targets:
         return []
 
-    status_rows = [{**proc, "status": "sigterm_scheduled"} for proc in targets]
-
-    def _delayed_shutdown() -> None:
-        if delay_seconds > 0:
-            threading.Event().wait(delay_seconds)
-        _terminate_processes(targets, status="sigterm_sent")
-
-    threading.Thread(target=_delayed_shutdown, daemon=True).start()
-    return status_rows
+    current_pid = os.getpid()
+    ordered_pids = sorted(
+        targets_by_pid,
+        key=lambda pid: (pid == current_pid, int(targets_by_pid[pid].get("ppid", 0)) != current_pid, pid),
+    )
+    _schedule_sigterm_for_pids(ordered_pids, delay_seconds=delay_seconds)
+    return [{**proc, "status": "sigterm_scheduled"} for proc in targets]
 
 
 @login_required
