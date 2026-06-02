@@ -1,6 +1,7 @@
 """Segmentation pipeline steps."""
 from __future__ import annotations
 
+import asyncio
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -453,24 +454,40 @@ async def segmentation_phase_2(
 _BOUNDARY_MARKER = "¦"
 
 
+def _default_boundary_marked_surface(surface: str) -> str:
+    return _BOUNDARY_MARKER.join(str(tok.get("surface", "")) for tok in _fallback_tokenize_surface(surface))
+
+
 def _boundary_first_prompt(surface: str, *, language: str) -> str:
+    default_marked = _default_boundary_marked_surface(surface)
     return (
-        "Insert token boundary markers into the segment for language-learning annotation.\n"
+        "Revise token boundary markers for language-learning annotation.\n"
         f"Language: {language}\n"
-        f"Use the marker {_BOUNDARY_MARKER!r} only between tokens. Do not add the marker at the beginning or end.\n"
-        "Preserve every original character, including spaces and punctuation, exactly as given.\n"
-        "Return only the boundary-marked segment, with no JSON, comments, markdown, or explanation.\n\n"
-        "Segment:\n"
+        f"The input already contains provisional {_BOUNDARY_MARKER!r} boundary markers. Add, delete, "
+        "or move markers only where needed.\n"
+        "Preserve every original character, including spaces and punctuation, exactly as given; only "
+        f"the {_BOUNDARY_MARKER!r} markers may change.\n"
+        "Typical edits include adding a boundary to separate clitics (EN: it¦'s; FR: l'¦avait; "
+        "IT: di¦me¦la) or splitting transparent compounds (SV: motor¦fordon). Delete markers "
+        "that create linguistically useless fragments.\n"
+        "Return only the revised boundary-marked segment, with no JSON, comments, markdown, or explanation.\n\n"
+        "Examples:\n"
+        "Input: it¦'¦s\nOutput: it¦'s\n"
+        "Input: l¦'¦avait\nOutput: l'¦avait\n"
+        "Input: motorfordon\nOutput: motor¦fordon\n\n"
+        "Boundary-marked segment to revise:\n"
         "<startofsegment>\n"
-        f"{surface}\n"
+        f"{default_marked}\n"
         "<endofsegment>"
     )
 
 
 def _tokens_from_boundary_marked_text(marked: str, *, surface: str) -> list[dict[str, Any]] | None:
-    candidate = _extract_between_tags(marked, "startofsegment", "endofsegment").strip()
-    if not candidate:
+    candidate = _extract_between_tags(marked, "startofsegment", "endofsegment")
+    if candidate == "":
         candidate = marked.strip()
+    else:
+        candidate = candidate.strip("\r\n")
     if not candidate:
         return None
     candidate = candidate.replace("|", _BOUNDARY_MARKER)
@@ -491,27 +508,66 @@ async def _segmentation_phase_2_boundary_first(
     ai_client = client or OpenAIClient()
     base_op = spec.op_id or "segmentation_phase_2"
     telemetry.event(base_op, "info", "Using boundary-first segmentation_phase_2 mechanism")
-    text_obj = json.loads(json.dumps(spec.text))
-    for page_idx, page in enumerate(text_obj.get("pages", []) or []):
+
+    pages = spec.text.get("pages", []) or []
+    tasks: list[asyncio.Task[str]] = []
+    index: list[tuple[int, int, str, str]] = []
+
+    async def _annotate(prompt: str, op_id: str) -> str:
+        return await ai_client.chat_text(prompt, telemetry=telemetry, op_id=op_id)
+
+    for page_idx, page in enumerate(pages):
         for segment_idx, segment in enumerate(page.get("segments", []) or []):
             surface = str(segment.get("surface", ""))
             if not surface:
-                segment["tokens"] = []
                 continue
             segment_op_id = f"{base_op}-boundary-p{page_idx}-s{segment_idx}"
             prompt = _boundary_first_prompt(surface, language=spec.language)
-            raw = await ai_client.chat_text(prompt, telemetry=telemetry, op_id=segment_op_id)
-            tokens = _tokens_from_boundary_marked_text(str(raw or ""), surface=surface)
-            if tokens is None:
-                telemetry.event(
-                    segment_op_id,
-                    "warn",
-                    "boundary-first segmentation_phase_2 output failed preservation check; using fallback tokenizer",
-                    {"surface_preview": surface[:80], "response_preview": str(raw or "")[:120]},
-                )
-                tokens = _fallback_tokenize_surface(surface)
-            segment["tokens"] = tokens
-    return _normalize_phase2_output(text_obj)
+            tasks.append(asyncio.create_task(_annotate(prompt, segment_op_id)))
+            index.append((page_idx, segment_idx, surface, segment_op_id))
+
+    responses = await asyncio.gather(*tasks) if tasks else []
+    tokens_by_index: dict[tuple[int, int], list[dict[str, Any]]] = {}
+    for (page_idx, segment_idx, surface, segment_op_id), raw in zip(index, responses):
+        tokens = _tokens_from_boundary_marked_text(str(raw or ""), surface=surface)
+        if tokens is None:
+            telemetry.event(
+                segment_op_id,
+                "warn",
+                "boundary-first segmentation_phase_2 output failed preservation check; using fallback tokenizer",
+                {"surface_preview": surface[:80], "response_preview": str(raw or "")[:120]},
+            )
+            tokens = _fallback_tokenize_surface(surface)
+        tokens_by_index[(page_idx, segment_idx)] = tokens
+
+    new_pages: list[dict[str, Any]] = []
+    for page_idx, page in enumerate(pages):
+        new_segments: list[dict[str, Any]] = []
+        for segment_idx, segment in enumerate(page.get("segments", []) or []):
+            merged = dict(segment)
+            merged["tokens"] = tokens_by_index.get(
+                (page_idx, segment_idx),
+                [] if not str(segment.get("surface", "")) else _fallback_tokenize_surface(str(segment.get("surface", ""))),
+            )
+            new_segments.append(merged)
+        new_pages.append(
+            {
+                "surface": page.get("surface", ""),
+                "segments": new_segments,
+                "annotations": page.get("annotations", {}),
+            }
+        )
+
+    normalized = {
+        "l2": spec.text.get("l2", spec.language),
+        "l1": spec.text.get("l1"),
+        "title": spec.text.get("title"),
+        "surface": spec.text.get("surface", ""),
+        "pages": new_pages,
+        "annotations": spec.text.get("annotations", {}),
+    }
+    return _normalize_phase2_output({k: v for k, v in normalized.items() if v is not None})
+
 
 def _tokenize_with_jieba(
     text: dict[str, Any], *, language: str, telemetry: Telemetry, op_id: str | None

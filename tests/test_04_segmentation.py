@@ -229,7 +229,38 @@ class SegmentationTests(unittest.IsolatedAsyncioTestCase):
 
         tokens = result["pages"][0]["segments"][0]["tokens"]
         self.assertEqual(["A", " cat", " sleeps", "."], [tok["surface"] for tok in tokens])
-        self.assertIn("Use the marker", client.prompts[0])
+        self.assertIn("already contains provisional", client.prompts[0])
+        self.assertIn("A¦ ¦cat¦ ¦sleeps¦.", client.prompts[0])
+        self.assertIn("it¦'s", client.prompts[0])
+        self.assertIn("motor¦fordon", client.prompts[0])
+
+    async def test_segmentation_phase_2_boundary_first_fans_out_over_segments(self) -> None:
+        text = {
+            "l2": "en",
+            "surface": "It's fine. Motorfordon är svenska.",
+            "pages": [
+                {
+                    "surface": "It's fine. Motorfordon är svenska.",
+                    "segments": [
+                        {"surface": "It's fine.", "annotations": {}},
+                        {"surface": "Motorfordon är svenska.", "annotations": {}},
+                    ],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        client = FakePerCallAIClient(["It¦'s¦ fine¦.", "Motor¦fordon¦ är¦ svenska¦."])
+
+        result = await segmentation_phase_2(
+            SegmentationPhase2Spec(text=text, language="en", mechanism="boundary_first"),
+            client=client,
+        )
+
+        segments = result["pages"][0]["segments"]
+        self.assertEqual(["It", "'s", " fine", "."], [tok["surface"] for tok in segments[0]["tokens"]])
+        self.assertEqual(["Motor", "fordon", " är", " svenska", "."], [tok["surface"] for tok in segments[1]["tokens"]])
+        self.assertEqual(2, len(client.prompts))
 
     async def test_segmentation_phase_2_adds_tokens(self) -> None:
         text = {
