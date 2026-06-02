@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "issue_id": "ISSUE-0036",
+  "title": "Systematize creation and evaluation of few-shot examples for linguistic annotation",
+  "state": "reported",
+  "priority": "P1",
+  "created_at": "2026-06-02T20:39:51Z",
+  "updated_at": "2026-06-02T21:30:00Z",
+  "origin": "human-suggestion",
+  "notes": "Created from human suggestion #26 (submitted by mannyrayner on 2026-06-02) and escalated to P1 after maintainer review on 2026-06-02 because current annotation errors are frequent, few-shot quality is a plausible contributor, and the work can provide strong evidence for the First Progress Report. The current few-shot examples for linguistic annotation have largely been produced in one-off Codex passes. Recent segmentation_phase_2 work suggests larger example sets can help, but the examples themselves may contain linguistic mistakes, uneven language coverage, and unclear ordering/tranche design. Track a principled generate -> adversarial review -> repair -> gold acceptance workflow for generating, validating, versioning, and evaluating few-shot examples for linguistic annotation stages (segmentation, MWE detection, lemma/gloss support where appropriate). The architecture should generate many candidate examples per operation/language, validate them against explicit schemas before linguistic judgement, ask critic models to find defects and classify severity, repair plausible defects before discarding examples, score candidates by schema pass, linguistic confidence, critic agreement, and severity penalties, and store auditable records containing original generated examples, operation/language metadata, validation results, critic comments, repairs, final accepted versions, acceptance rationale, and model/prompt versions. The issue should coordinate with ISSUE-0003 and ISSUE-0004 so example-set changes can be measured systematically rather than eyeballed, and with ISSUE-0005/ISSUE-0006 for segmentation-specific evidence. Initial roadmap: docs/roadmap/few-shot-example-curation.md.",
+  "deadline": null,
+  "dependencies": [
+    "ISSUE-0003",
+    "ISSUE-0004"
+  ]
+}

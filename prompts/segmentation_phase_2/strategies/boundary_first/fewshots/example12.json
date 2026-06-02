@@ -1,0 +1,5 @@
+{
+  "input": "The toothbrush is blue.",
+  "provisional_input": "The¦ ¦toothbrush¦ ¦is¦ ¦blue¦.",
+  "output": "The¦ ¦tooth¦brush¦ ¦is¦ ¦blue¦."
+}
