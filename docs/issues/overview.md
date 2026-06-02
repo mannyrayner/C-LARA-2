@@ -1,9 +1,10 @@
-# C-LARA-2 issue overview (refreshed 2026-06-01T12:10:00Z)
+# C-LARA-2 issue overview (refreshed 2026-06-02T01:35:00Z)
 
 ## Recent progress
 - Advanced **[ISSUE-0034](issues/ISSUE-0034.json)** from a prompt-wrapper prototype to a working admin-only `codex exec` assistant with async Django Q execution, heartbeat/status polling, request/result persistence, structured answer metadata, GitHub-linked citations, and conservative upper-bound cost estimates.
 - Added **[ISSUE-0035](issues/ISSUE-0035.json)** to track intermittent Codex PR update-branch refusals reported from 2026-05-30 onward, with a dedicated roadmap for future incident evidence.
-- Refreshed ISSUE-0034 roadmap/issue metadata to record the implemented `codex exec` path and remaining export/review, rate-limit, citation-sanitization, and curated-evaluation work.
+- Confirmed the projects migration graph fix: local `make run-platform-with-real-q` now applies the merge/follow-up migrations cleanly before starting Django Q and the development server.
+- Refreshed ISSUE-0034 roadmap/issue metadata to record the implemented `codex exec` path and remaining export/review, rate-limit, citation-sanitization, exact-cost reconciliation, and curated-evaluation work.
 
 ## Near-term priorities
 1. **[ISSUE-0031](issues/ISSUE-0031.json) (P1, reported)** — Improve compiled-content presentation context and configurable public access controls.
@@ -25,7 +26,7 @@
 17. **[ISSUE-0001](issues/ISSUE-0001.json) (P2, reported)** — Support hosted compiled legacy content registration in C-LARA-2.
 
 ## Notes/risks
-- ISSUE-0034 now has a restricted admin UI and background `codex exec` execution path with visible progress, private/public turn history, GitHub link rewriting, and upper-bound cost accounting; it still lacks an explicit export/review workflow into `docs/project_understanding/`, reviewer assessment controls, exact-cost reconciliation, hard budget/rate-limit controls, and citation/path sanitization for any wider audience.
+- ISSUE-0034 now has a restricted admin UI and background `codex exec` execution path with visible progress, private/public turn history, GitHub link rewriting, upper-bound cost accounting, and a clean local real-Q startup/migration path; it still lacks an explicit export/review workflow into `docs/project_understanding/`, reviewer assessment controls, exact-cost reconciliation, hard budget/rate-limit controls, and citation/path sanitization for any wider audience.
 - The Codex update-branch inconsistency is currently an external-tool/workflow risk rather than a confirmed C-LARA-2 code defect; useful next action is evidence capture rather than speculative code changes.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated UI/pipeline coverage.
 
