@@ -32,6 +32,7 @@ class SegmentationSpec:
     fewshot_paths: Iterable[Path] | None = None
     telemetry: Telemetry | None = None
     op_id: str | None = None
+    prioritise_sentences: bool = False
 
 
 def _render_fewshot_examples(fewshots: list[dict[str, Any]]) -> str:
@@ -72,7 +73,14 @@ def _json_like_output_to_tagged_text(output: Any) -> str:
     return "<page>".join(rendered_pages)
 
 
-def _build_prompt(template: str, *, text: str, fewshots: list[dict[str, Any]], language: str) -> str:
+def _build_prompt(
+    template: str,
+    *,
+    text: str,
+    fewshots: list[dict[str, Any]],
+    language: str,
+    text_type_advice: str = "",
+) -> str:
     examples = _render_fewshot_examples(fewshots)
     template_has_placeholders = any(
         token in template for token in ("{l2_language}", "{examples}", "{text}", "{text_type_advice}")
@@ -82,11 +90,14 @@ def _build_prompt(template: str, *, text: str, fewshots: list[dict[str, Any]], l
             l2_language=language,
             examples=examples or "[No examples provided]",
             text=text,
-            text_type_advice="",
+            text_type_advice=text_type_advice,
         )
 
     # Backward-compatible fallback for plain-text templates without format placeholders.
-    lines = [template.strip(), "", "Examples:", examples or "[No examples provided]", "", "Input text:"]
+    lines = [template.strip()]
+    if text_type_advice.strip():
+        lines.extend(["", "Additional segmentation guidance:", text_type_advice.strip()])
+    lines.extend(["", "Examples:", examples or "[No examples provided]", "", "Input text:"])
     lines.append("<startoftext>")
     lines.append(text.strip())
     lines.append("<endoftext>")
@@ -184,7 +195,21 @@ async def segmentation_phase_1(
         else annotation_prompts.load_fewshots("segmentation_phase_1", spec.language, prompts_root=prompts_root)
     )
 
-    prompt = _build_prompt(template, text=spec.text, fewshots=fewshots, language=spec.language)
+    text_type_advice = ""
+    if spec.prioritise_sentences:
+        text_type_advice = (
+            "For prose, prioritise sentence boundaries: by default, make each segment a complete "
+            "sentence. Only split inside a sentence when it is unusually long or pedagogically "
+            "unmanageable, and avoid fragmenting ordinary prose into short clauses."
+        )
+
+    prompt = _build_prompt(
+        template,
+        text=spec.text,
+        fewshots=fewshots,
+        language=spec.language,
+        text_type_advice=text_type_advice,
+    )
     telemetry = spec.telemetry or NullTelemetry()
     ai_client = client or OpenAIClient()
     max_attempts = 3
@@ -355,6 +380,7 @@ class SegmentationPhase2Spec:
     telemetry: Telemetry | None = None
     op_id: str | None = None
     method: str = "auto"
+    mechanism: str = "json_direct"
 
 
 async def segmentation_phase_2(
@@ -366,11 +392,18 @@ async def segmentation_phase_2(
 
     telemetry = spec.telemetry or NullTelemetry()
     method = (spec.method or "auto").strip().lower()
+    mechanism = (spec.mechanism or "json_direct").strip().lower()
+    if mechanism in {"", "default"}:
+        mechanism = "json_direct"
 
     if spec.language.lower().startswith("zh") and method in {"auto", "jieba"}:
         return _tokenize_with_jieba(spec.text, language=spec.language, telemetry=telemetry, op_id=spec.op_id)
     if method not in {"auto", "ai", "jieba"}:
         raise ValueError(f"Unknown segmentation method: {method}")
+    if mechanism not in {"json_direct", "boundary_first"}:
+        raise ValueError(f"Unknown segmentation_phase_2 mechanism: {mechanism}")
+    if mechanism == "boundary_first":
+        return await _segmentation_phase_2_boundary_first(spec, client=client, telemetry=telemetry)
 
     prompts_root = (
         spec.template_path.parent.parent if spec.template_path else annotation_prompts.default_prompts_root()
@@ -416,6 +449,69 @@ async def segmentation_phase_2(
     )
     return _normalize_phase2_output(annotated)
 
+
+_BOUNDARY_MARKER = "¦"
+
+
+def _boundary_first_prompt(surface: str, *, language: str) -> str:
+    return (
+        "Insert token boundary markers into the segment for language-learning annotation.\n"
+        f"Language: {language}\n"
+        f"Use the marker {_BOUNDARY_MARKER!r} only between tokens. Do not add the marker at the beginning or end.\n"
+        "Preserve every original character, including spaces and punctuation, exactly as given.\n"
+        "Return only the boundary-marked segment, with no JSON, comments, markdown, or explanation.\n\n"
+        "Segment:\n"
+        "<startofsegment>\n"
+        f"{surface}\n"
+        "<endofsegment>"
+    )
+
+
+def _tokens_from_boundary_marked_text(marked: str, *, surface: str) -> list[dict[str, Any]] | None:
+    candidate = _extract_between_tags(marked, "startofsegment", "endofsegment").strip()
+    if not candidate:
+        candidate = marked.strip()
+    if not candidate:
+        return None
+    candidate = candidate.replace("|", _BOUNDARY_MARKER)
+    if candidate.replace(_BOUNDARY_MARKER, "") != surface:
+        return None
+    parts = [part for part in candidate.split(_BOUNDARY_MARKER) if part != ""]
+    if not parts or "".join(parts) != surface:
+        return None
+    return [{"surface": part} for part in parts]
+
+
+async def _segmentation_phase_2_boundary_first(
+    spec: SegmentationPhase2Spec,
+    *,
+    client: OpenAIClient | None,
+    telemetry: Telemetry,
+) -> dict[str, Any]:
+    ai_client = client or OpenAIClient()
+    base_op = spec.op_id or "segmentation_phase_2"
+    telemetry.event(base_op, "info", "Using boundary-first segmentation_phase_2 mechanism")
+    text_obj = json.loads(json.dumps(spec.text))
+    for page_idx, page in enumerate(text_obj.get("pages", []) or []):
+        for segment_idx, segment in enumerate(page.get("segments", []) or []):
+            surface = str(segment.get("surface", ""))
+            if not surface:
+                segment["tokens"] = []
+                continue
+            segment_op_id = f"{base_op}-boundary-p{page_idx}-s{segment_idx}"
+            prompt = _boundary_first_prompt(surface, language=spec.language)
+            raw = await ai_client.chat_text(prompt, telemetry=telemetry, op_id=segment_op_id)
+            tokens = _tokens_from_boundary_marked_text(str(raw or ""), surface=surface)
+            if tokens is None:
+                telemetry.event(
+                    segment_op_id,
+                    "warn",
+                    "boundary-first segmentation_phase_2 output failed preservation check; using fallback tokenizer",
+                    {"surface_preview": surface[:80], "response_preview": str(raw or "")[:120]},
+                )
+                tokens = _fallback_tokenize_surface(surface)
+            segment["tokens"] = tokens
+    return _normalize_phase2_output(text_obj)
 
 def _tokenize_with_jieba(
     text: dict[str, Any], *, language: str, telemetry: Telemetry, op_id: str | None
