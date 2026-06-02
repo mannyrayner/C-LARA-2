@@ -1,6 +1,8 @@
 # Roadmap: evaluation of processing quality using a panel of AI judges
 
-This roadmap proposes a structured, repeatable evaluation framework where outputs from C-LARA-2 processing stages are reviewed by a **panel of independent AI judges**.
+This roadmap proposes a structured, repeatable evaluation framework where outputs from C-LARA-2 processing stages are reviewed by AI evaluators, eventually including a **panel of independent AI judges**.
+
+The immediate report-driven priority is a smaller first version for **ISSUE-0004**: use the already-implemented pipeline runner to evaluate phase outputs for segmentation phase 1, segmentation phase 2, and MWE detection. This gives the First Progress Report a concrete autonomy/self-checking example rather than only a future-work promise.
 
 ## Why this matters
 
@@ -9,9 +11,10 @@ Human expert evaluation is the gold standard but is expensive and hard to schedu
 - fast comparative feedback,
 - broad language coverage,
 - consistent repeated scoring across experiments,
-- richer diagnostics than pass/fail test outcomes.
+- richer diagnostics than pass/fail test outcomes,
+- concrete evidence for the First Progress Report that C-LARA-2 can begin to inspect its own linguistic-processing quality.
 
-The goal is not to replace human evaluation, but to create a practical intermediate layer that helps decide what should be sent to human review.
+The goal is not to replace human evaluation, but to create a practical intermediate layer that helps decide what should be sent to human review. For the first implementation, a single strong judge with a versioned rubric is acceptable; the full multi-model panel is the scaling path once the runner/evaluator interface and artifacts are stable.
 
 ## Core concept
 
@@ -33,9 +36,10 @@ Then aggregate judge outputs into an overall score and diagnostics bundle.
 
 Initial phases to score:
 
-- segmentation quality (readability/usefulness of boundaries),
+- **segmentation phase 1 quality** (page/segment boundaries, especially genre-sensitive granularity; directly supports ISSUE-0005),
+- **segmentation phase 2 quality** (token boundaries and token-span sanity, especially over-extended lexical tokens; directly supports ISSUE-0006),
+- **MWE identification quality** (candidate expression spans, usefulness, and downstream annotation compatibility),
 - translation adequacy/fluency,
-- MWE identification quality,
 - lemma/gloss usefulness,
 - exercise quality (especially distractor plausibility and pedagogical fit),
 - optional romanization quality.
@@ -99,6 +103,13 @@ To maintain validity:
 - track drift over time and across languages,
 - recalibrate prompts/rubrics when alignment degrades.
 
+## Dependencies and current unblockers
+
+- **ISSUE-0003 pipeline runner dependency:** the original ISSUE-0004 blocker is substantially reduced because `run_full_pipeline` can now run from and to selected stages, allowing evaluation to consume reproducible per-phase outputs without stepping through the UI.
+- **Prior C-LARA experience:** AI-based evaluation was already tried in C-LARA, so the first C-LARA-2 version should reuse the proven idea rather than wait for an elaborate new framework.
+- **ISSUE-0005 and ISSUE-0006 linkage:** the first evaluator should make segmentation prompt/debug work measurable by scoring phase-1 granularity and phase-2 token-span quality.
+- **MWE linkage:** MWE detection is a high-value early target because it is linguistically meaningful, downstream-visible in lemma/gloss/audio/HTML behavior, and relatively easy for an AI judge to explain.
+
 ## Experimental workflows supported
 
 1. **Prompt A/B evaluation**
@@ -140,6 +151,83 @@ Each run should store provenance:
 - dataset snapshot/hash,
 - timestamp,
 - aggregation method.
+
+
+## Report-driven first implementation: phase-output AI evaluator (ISSUE-0004)
+
+This is the near-term implementation target for strengthening the autonomy theme in the First Progress Report. It should be delivered before the full panel architecture if time is limited.
+
+### Scope
+
+Start with three evaluator tasks:
+
+1. **Segmentation phase 1 evaluator**
+   - Input: source text plus generated pages/segments.
+   - Score whether boundaries are pedagogically useful and genre-appropriate.
+   - Default expectations: prose should usually segment at sentence-like units; poetry can preserve line-like units; dialogue and very short learner texts should avoid over-fragmentation.
+   - Output tags should include `too_short`, `too_long`, `bad_page_break`, `lost_text`, `genre_mismatch`, and `looks_good`.
+
+2. **Segmentation phase 2 evaluator**
+   - Input: phase-1 segment surface plus token list from phase 2.
+   - Score token boundary correctness and text preservation.
+   - Explicitly flag the ISSUE-0006 failure mode where a lexical token covers an entire segment or an implausibly large span.
+   - Output tags should include `overextended_token`, `missing_token`, `extra_token`, `boundary_error`, `text_not_preserved`, and `looks_good`.
+
+3. **MWE evaluator**
+   - Input: tokenized segment plus candidate MWE spans/labels.
+   - Score whether detected MWEs are plausible, useful for learners, and compatible with downstream lemma/gloss/audio treatment.
+   - Output tags should include `missed_obvious_mwe`, `spurious_mwe`, `bad_span`, `bad_label`, `downstream_risk`, and `looks_good`.
+
+### Minimal architecture
+
+- Add a small evaluator interface that accepts normalized phase-output records and a rubric name/version.
+- Use the existing OpenAI chat wrapper first; leave provider/model diversity for the later panel phase.
+- Require strict JSON output with score, tags, justification, and confidence.
+- Keep each evaluator prompt short, explicit, and versioned.
+- Store raw phase output, evaluator prompt version, judge model, response JSON, and aggregate summary in a run artifact.
+- Make evaluator failure non-destructive: failed/invalid judge responses should be recorded and reported, not silently converted into passing scores.
+
+### Candidate first dataset
+
+Use a deliberately small but diagnostic suite rather than waiting for a large benchmark:
+
+- a short prose text where phase-1 should prefer sentence-like segments;
+- a poem or line-structured text where line boundaries matter;
+- a dialogue or child-language-learning text where over-fragmentation is tempting;
+- at least one known or suspected ISSUE-0006-style phase-2 token-span failure case;
+- a few MWE-rich segments with obvious expressions and non-MWE distractors.
+
+Once ISSUE-0010 legacy imports provide more coverage, selected legacy C-LARA projects can become a larger regression corpus, but they are not required for the first evaluator.
+
+### Output format for the first version
+
+A single run should produce a compact report such as:
+
+```text
+evaluation/phase_outputs/runs/<run_id>/
+  config.json
+  input_records.jsonl
+  judge_outputs.jsonl
+  aggregate_scores.json
+  flagged_items.md
+```
+
+`flagged_items.md` should be readable enough for a human maintainer to inspect quickly and should group findings by issue target: phase-1 segmentation, phase-2 tokenization, and MWE detection.
+
+### Success criteria for the First Progress Report
+
+- The evaluator can run over a fixed sample without UI interaction.
+- It produces stable, inspectable artifacts with prompt/model/version metadata.
+- It catches at least synthetic or known examples of bad phase-1 granularity, over-extended phase-2 tokens, and bad MWE spans.
+- Human review of a small sample finds the AI judgments useful enough to guide debugging, even if not authoritative.
+- The report can honestly say that C-LARA-2 has a first operational AI self-checking mechanism for linguistic phase outputs, while still noting that calibration and broader benchmarks remain future work.
+
+### Non-goals for the first version
+
+- Do not require five independent judge models before shipping v1.
+- Do not block normal pipeline execution on judge scores yet.
+- Do not claim AI evaluation is ground truth.
+- Do not attempt to evaluate every annotation phase before the progress report.
 
 ## First elaboration: UI-regression monitoring track (ISSUE-0025)
 
@@ -221,28 +309,36 @@ This remains assistive: AI signals never replace maintainer judgment for UI acce
 
 ## Delivery phases
 
-### Phase A — Minimal evaluator
+### Phase A — Report-driven phase-output evaluator
 
-- Single-task evaluator (e.g., gloss or MWE) with 2–3 judges.
-- 1–5 scale + short justification + mean score.
+- Use the existing pipeline runner to produce reproducible phase outputs.
+- Implement single-judge, strict-JSON evaluators for segmentation phase 1, segmentation phase 2, and MWE detection.
+- Store versioned evaluator artifacts and a concise flagged-items report.
+- Use this as the First Progress Report example of operational AI self-checking/autonomy.
 
-### Phase B — Multi-phase panel + disagreement metrics
+### Phase B — Minimal panel evaluator
 
-- Extend to multiple processing tasks.
+- Add 2–3 judges for one or more of the Phase A tasks.
+- Add 1–5 scale aggregation, short justification summaries, and disagreement metrics.
+
+### Phase C — Multi-phase panel + disagreement metrics
+
+- Extend to translation, gloss, exercise distractors, and other processing tasks.
 - Add per-dimension scoring and disagreement reports.
 
-### Phase C — Calibration and benchmarking
+### Phase D — Calibration and benchmarking
 
 - Human audit sampling and correlation analysis.
 - Establish stable benchmark suites and acceptance thresholds.
 
-### Phase D — Foreman summarization and decision support
+### Phase E — Foreman summarization and decision support
 
 - Add optional foreman summarizer for panel synthesis.
 - Integrate with release/prompt-change review workflow.
 
 ## Success criteria
 
+- Team can run an initial segmentation/MWE phase-output evaluator over fixed samples before the First Progress Report.
 - Team can compare candidate prompts/pipeline variants quickly and reproducibly.
 - Panel scores correlate usefully with human spot-judgments on key tasks.
 - Evaluation artifacts support root-cause analysis, not only leaderboard numbers.
@@ -250,6 +346,8 @@ This remains assistive: AI signals never replace maintainer judgment for UI acce
 
 ## Relationship to other roadmaps
 
-- Directly supports `docs/roadmap/linguistic-pipeline.md`, `docs/roadmap/exercises.md`, and `docs/roadmap/alignment.md`.
+- Directly supports `docs/roadmap/linguistic-pipeline.md`, especially the implemented `run_full_pipeline` runner that can start and end at selected stages.
+- Directly supports ISSUE-0004 and gives measurable feedback for ISSUE-0005, ISSUE-0006, and MWE prompt quality.
+- Also supports `docs/roadmap/exercises.md` and `docs/roadmap/alignment.md` as later evaluation targets.
 - Complements `docs/roadmap/dialogue-top-level.md` by enabling quality evaluation of assistant decisions and generated guidance.
 - Can be exposed in platform monitoring/reporting views in future Django roadmap work.
