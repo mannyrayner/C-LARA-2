@@ -147,10 +147,32 @@ OPENAI_TOKEN_PRICING_USD_PER_1M = {
     "gpt-4o": {"input": "5.00", "output": "15.00"},
     "gpt-4o-mini": {"input": "0.15", "output": "0.60"},
     "gpt-5": {"input": "1.25", "output": "10.00"},
+    "gpt-5.3-codex": {"input": "1.75", "output": "14.00"},
+    "gpt-5.2-codex": {"input": "1.75", "output": "14.00"},
+    "gpt-5.1-codex-max": {"input": "1.25", "output": "10.00"},
+    "gpt-5.1-codex": {"input": "1.25", "output": "10.00"},
 }
-OPENAI_PRICING_TRACKED_MODELS = ["gpt-4o", "gpt-4o-mini", "gpt-5", "gpt-image-1", "gpt-image-2"]
+OPENAI_PRICING_TRACKED_MODELS = [
+    "gpt-4o",
+    "gpt-4o-mini",
+    "gpt-5",
+    "gpt-image-1",
+    "gpt-image-2",
+    "gpt-5.3-codex",
+    "gpt-5.2-codex",
+    "gpt-5.1-codex-max",
+    "gpt-5.1-codex",
+]
 OPENAI_PRICING_AI_MODEL = os.environ.get("C_LARA_OPENAI_PRICING_AI_MODEL", "gpt-5")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+PROJECT_UNDERSTANDING_CODEX_EXECUTABLE = os.environ.get("C_LARA_CODEX_EXECUTABLE", "codex")
+PROJECT_UNDERSTANDING_REPOSITORY_PATH = os.environ.get("C_LARA_PROJECT_UNDERSTANDING_REPO", str(ROOT_DIR))
+PROJECT_UNDERSTANDING_MODEL = os.environ.get("C_LARA_PROJECT_UNDERSTANDING_MODEL", "gpt-5.3-codex")
+PROJECT_UNDERSTANDING_TIMEOUT_SECONDS = float(os.environ.get("C_LARA_PROJECT_UNDERSTANDING_TIMEOUT_SECONDS", "300"))
+PROJECT_UNDERSTANDING_GITHUB_BLOB_BASE_URL = os.environ.get(
+    "C_LARA_PROJECT_UNDERSTANDING_GITHUB_BLOB_BASE_URL",
+    "https://github.com/mannyrayner/C-LARA-2/blob/main",
+)
 
 # Optional admin-only legacy C-LARA corpus import support.
 # Point this at a server-side folder containing numbered legacy bundle directories
