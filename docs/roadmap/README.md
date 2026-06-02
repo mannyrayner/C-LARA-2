@@ -174,10 +174,19 @@ Focus:
 - Near-term support for ISSUE-0004, with concrete before/after evaluation hooks for ISSUE-0005 and ISSUE-0006 before the First Progress Report.
 - Longer-term panel-based AI scoring, aggregation, disagreement analysis, optional foreman summarization, and human-audit calibration.
 
-Related prompt/evidence work: [roadmap/few-shot-example-curation.md](few-shot-example-curation.md) tracks systematic creation, checking, tranche selection, and evaluation of few-shot examples for linguistic annotation.
+
+### 14. Few-shot example curation and evaluation roadmap
+
+Status: **New P1 roadmap document added.** See [roadmap/few-shot-example-curation.md](few-shot-example-curation.md). Tracked by [ISSUE-0036](../issues/issues/ISSUE-0036.json).
+
+Focus:
+- Generate many candidate few-shot examples per operation/language and cover edge cases such as clitics, compounds, punctuation, idioms, named entities, discontinuous MWEs, and ambiguous glosses.
+- Validate candidates with deterministic schema/preservation checks before linguistic judgement.
+- Use adversarial critic models, repair passes, consensus scoring, and auditable gold-acceptance records so examples can be trusted and traced.
+- Connect prompt/few-shot changes to ISSUE-0004 evaluator records for the First Progress Report.
 
 
-### 14. Source project export/import bundles roadmap
+### 15. Source project export/import bundles roadmap
 
 Status: **Initial implementation delivered, with legacy C-LARA JSON import support.** See [roadmap/source-project-bundles.md](source-project-bundles.md).
 
@@ -195,7 +204,7 @@ Implemented now:
 - Imported project title is kept when unique for that user, otherwise suffixed (`(2)`, `(3)`, ...).
 - Adelaide legacy corpus folder has been transferred to AWS; the operational runbook records the need for inbound SSH security-policy access and explicit EC2 `.pem` key use with `rsync`.
 
-### 15. Conventional UX roadmap (project workspace IA)
+### 16. Conventional UX roadmap (project workspace IA)
 
 Status: **New roadmap document added.** See [roadmap/conventional-ux.md](conventional-ux.md).
 
@@ -205,7 +214,7 @@ Focus:
 - Reduce cognitive load through conditional controls and latest-first summaries.
 
 
-### 16. Credits and billing roadmap
+### 17. Credits and billing roadmap
 
 Status: **Phase A baseline delivered; roadmap active.** See [roadmap/credits-and-billing.md](credits-and-billing.md).
 
@@ -223,7 +232,7 @@ Implemented now:
 - Project-level cost total and request-type breakdown.
 
 
-### 17. Right-to-left (RTL) language support roadmap
+### 18. Right-to-left (RTL) language support roadmap
 
 Status: **New roadmap document added.** See [roadmap/rtl-support.md](rtl-support.md).
 
@@ -233,7 +242,7 @@ Focus:
 - Ensure robust RTL behavior in conventional UX, manual annotation editor, and compiled HTML output.
 
 
-### 18. Multi-word expression (MWE) strategy roadmap
+### 19. Multi-word expression (MWE) strategy roadmap
 
 Status: **New roadmap document added.** See [roadmap/mwe-strategy.md](mwe-strategy.md).
 
@@ -243,7 +252,7 @@ Focus:
 - Regression testing and diagnostics for inconsistent model output.
 
 
-### 19. Picture dictionaries roadmap
+### 20. Picture dictionaries roadmap
 
 Status: **New roadmap document added.** See [roadmap/picture-dictionaries.md](picture-dictionaries.md).
 
@@ -252,7 +261,7 @@ Focus:
 - Optional picture-gloss pipeline stage building on lemma output.
 - HTML interaction and exercise extensions using dictionary-backed image glosses.
 
-### 20. Issue tracking and human-suggestion loop roadmap
+### 21. Issue tracking and human-suggestion loop roadmap
 
 Status: **New roadmap document added.** See [roadmap/issue-tracking-and-human-suggestions.md](issue-tracking-and-human-suggestions.md).
 
@@ -261,7 +270,7 @@ Focus:
 - Repository-native, Codex-first issue JSON store (one file per issue + focus index + timestamped index archive).
 - Deadline/dependency-aware issues with human-facing browser + simple user suggestion capture + admin export + Codex-mediated incorporation loop.
 
-### 21. Reports and academic papers roadmap
+### 22. Reports and academic papers roadmap
 
 Status: **New roadmap document added.** See [roadmap/reports-and-papers.md](reports-and-papers.md).
 
@@ -270,7 +279,7 @@ Focus:
 - EuroCALL 2026 paper preparation, accepted with a confirmed 2026-07-31 deadline.
 - ALTA 2026 target and related-work positioning around AI-centered, repo-native software/documentation/test co-development, plus a possible David Gunkel AI-authorship paper.
 
-### 22. Efficiency and stage-artifact persistence roadmap
+### 23. Efficiency and stage-artifact persistence roadmap
 
 Status: **New roadmap document added.** See [roadmap/efficiency-and-stage-artifacts.md](efficiency-and-stage-artifacts.md).
 
@@ -280,7 +289,7 @@ Focus:
 - Explore trusted admin-only binary/pickle-like migration artifacts for the one-off Adelaide corpus, without weakening safety for normal user uploads or source-bundle interchange.
 - Record artifact read/write timings and expose project/run-level diagnostics so performance decisions are evidence-based.
 
-### 23. Mobile access roadmap
+### 24. Mobile access roadmap
 
 Status: **New roadmap document added.** See [roadmap/mobile-access.md](mobile-access.md).
 
@@ -289,7 +298,7 @@ Focus:
 - Start with browsing published/compiled texts, then extend to content browsing, exercises, and default-driven background content creation.
 - Treat dense linguistic annotation editing as the difficult mobile case, while exploring lightweight triage/review angles.
 
-### 24. Community judging autosave roadmap
+### 25. Community judging autosave roadmap
 
 Status: **Planning document added; implementation intentionally deferred until after June 1 Kok Kaper visit.** See [roadmap/community-judging-autosave.md](community-judging-autosave.md).
 
@@ -299,7 +308,7 @@ Focus:
 - Deliver in a low-risk rollout window after current field visit commitments.
 
 
-### 25. Restricted project-understanding assistant roadmap
+### 26. Restricted project-understanding assistant roadmap
 
 Status: **New roadmap document added.** See [roadmap/platform-self-knowledge-assistant.md](platform-self-knowledge-assistant.md). Tracked by [ISSUE-0034](../issues/issues/ISSUE-0034.json).
 
@@ -311,7 +320,7 @@ Focus:
 
 
 
-### 21. First progress report roadmap
+### 27. First progress report roadmap
 
 Status: **Folded into the consolidated reports roadmap.** See [roadmap/reports-and-papers.md](reports-and-papers.md).
 

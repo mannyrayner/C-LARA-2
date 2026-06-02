@@ -1,9 +1,9 @@
-# C-LARA-2 issue overview (refreshed 2026-06-02T21:00:00Z)
+# C-LARA-2 issue overview (refreshed 2026-06-02T21:30:00Z)
 
 ## Recent progress
 
-- Added **ISSUE-0036** from human suggestion #26 to track principled creation, validation, and evaluation of few-shot examples for linguistic annotation.
-- Added `docs/roadmap/few-shot-example-curation.md` so few-shot example generation, tranche selection, and evaluator-driven promotion decisions are tracked outside one-off prompt edits.
+- Escalated **ISSUE-0036** to P1 after maintainer review: current annotation errors are frequent, and a principled few-shot curation pipeline is promising both for quality improvements and for First Progress Report evidence.
+- Expanded `docs/roadmap/few-shot-example-curation.md` into an explicit generate → adversarial review → repair → gold acceptance architecture with schema validation, critic severity labels, consensus scoring, and auditable example records.
 - Closed **ISSUE-0007** in the current issue registry because page-image prompt-construction indirection is now implemented; future page-image prompt work should be filed as concrete follow-ons.
 - Advanced **ISSUE-0034** from a prompt-wrapper prototype toward an admin-only repository-grounded project-understanding assistant with asynchronous execution, status polling, request/result persistence, and cost/metadata capture.
 - Expanded the evaluator/autonomy roadmap around **ISSUE-0003**, **ISSUE-0004**, **ISSUE-0005**, and **ISSUE-0006** so segmentation and MWE improvements can be measured systematically for the First Progress Report.
@@ -14,14 +14,14 @@
 2. **ISSUE-0030** — fix image-generation workflow UX around element expansion auto-refresh and selection confirmation.
 3. **ISSUE-0029** — autosave community judging inputs to prevent accidental data loss.
 4. **ISSUE-0026** — define the next-step community-recorded audio workflow for non-TTS languages.
-5. **ISSUE-0003 / ISSUE-0004** — use the pipeline runner and AI-based review gates to compare default and candidate processing variants.
-6. **ISSUE-0005 / ISSUE-0006 / ISSUE-0036** — treat segmentation prompt/few-shot changes as measurable experiments rather than anecdotal prompt tuning.
+5. **ISSUE-0003 / ISSUE-0036 / ISSUE-0004** — use the pipeline runner, curated few-shot generation/review, and AI-based review gates to compare default and candidate processing variants.
+6. **ISSUE-0005 / ISSUE-0006** — treat segmentation prompt/few-shot changes as measurable experiments rather than anecdotal prompt tuning.
 7. **ISSUE-0010 / ISSUE-0013** — continue legacy corpus import and stage-artifact resilience work needed for representative quality checks.
 8. **ISSUE-0034** — add export/review, budget/rate-limit, and evidence-record controls before wider use of project-understanding answers.
 
 ## Notes/risks
 
-- The new few-shot curation issue is deliberately P2: it is strategically important for annotation quality and for the report's autonomy/evaluation narrative, but it depends on systematic runner/evaluator infrastructure and is not an immediate production blocker.
+- Few-shot curation is now P1 because annotation errors are visible in current work and because the proposed generate/review/repair/acceptance pipeline can produce strong report evidence; it still depends on **ISSUE-0003** and **ISSUE-0004** for systematic measurement.
 - The boundary-first segmentation experiments should not be treated as proven improvements until **ISSUE-0004** evaluator records compare default and candidate outputs on representative cases.
 - The disabled admin shutdown control remains intentionally hidden; under `make run-platform-with-real-q`, closing the development terminal is currently the reliable workaround for reincarnating Q processes.
 - **ISSUE-0034** remains restricted/admin-only until export/review controls, citation/path sanitization, exact-cost reconciliation, and hard budget/rate-limit controls are in place.
@@ -66,4 +66,4 @@
 | [ISSUE-0033](issues/ISSUE-0033.json) | reported | P2 | Clean up and phase-track roadmap file maintenance. |
 | [ISSUE-0034](issues/ISSUE-0034.json) | active | P2 | Add restricted project-understanding assistant with versioned evidence records. |
 | [ISSUE-0035](issues/ISSUE-0035.json) | reported | P2 | Track intermittent Codex PR update-branch refusal. |
-| [ISSUE-0036](issues/ISSUE-0036.json) | reported | P2 | Systematize creation and evaluation of few-shot examples for linguistic annotation. |
+| [ISSUE-0036](issues/ISSUE-0036.json) | reported | P1 | Systematize creation and evaluation of few-shot examples for linguistic annotation. |
