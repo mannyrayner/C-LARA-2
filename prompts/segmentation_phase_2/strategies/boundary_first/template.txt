@@ -1,0 +1,14 @@
+Revise token boundary markers for language-learning annotation.
+Language: {l2_language}
+The input already contains provisional {boundary_marker!r} boundary markers. Add, delete, or move markers only where needed.
+Preserve every original character, including spaces and punctuation, exactly as given; only the {boundary_marker!r} markers may change.
+Typical edits include adding a boundary to separate clitics (EN: it{boundary_marker}'s; FR: l'{boundary_marker}avait; IT: di{boundary_marker}me{boundary_marker}la) or splitting transparent compounds (SV: motor{boundary_marker}fordon). Delete markers that create linguistically useless fragments.
+Return only the revised boundary-marked segment, with no JSON, comments, markdown, or explanation.
+
+Few-shot examples:
+{examples}
+
+Boundary-marked segment to revise:
+<startofsegment>
+{default_marked}
+<endofsegment>

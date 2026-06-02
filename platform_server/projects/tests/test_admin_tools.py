@@ -247,6 +247,16 @@ class AdminToolsViewTests(TestCase):
         self.target_user.refresh_from_db()
         self.assertTrue(self.target_user.is_staff)
 
+
+    def test_admin_tools_hides_disabled_shutdown_control(self):
+        self.client.login(username="staffer", password="pw")
+
+        resp = self.client.get(reverse("admin-tools"))
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, "shutdown_django_stack")
+        self.assertNotContains(resp, "Shutdown Django server and Q worker")
+
     def test_admin_can_delete_language_audio_cache(self):
         self.client.login(username="staffer", password="pw")
         with tempfile.TemporaryDirectory() as tmpdir:

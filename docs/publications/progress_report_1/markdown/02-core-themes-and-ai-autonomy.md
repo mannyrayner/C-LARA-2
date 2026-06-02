@@ -12,35 +12,46 @@
 - The AI writes the committed implementation, tests, project-management documents, roadmap documents, issue-tracking records, operational documentation, and publication drafts.
 - Humans currently advise quite heavily, but the project can still move faster and change direction more easily than C-LARA because the AI can rapidly rewrite code, documentation, and planning artifacts.
 
-## 2.3 AI role decomposition in C-LARA-2
+## 2.3 New central theme: project self-understanding
+
+- Recent work on the restricted project-understanding assistant should be treated as one of the central themes of the First Progress Report.
+- The assistant exposes C-LARA-2's repository-native self-understanding inside the platform: an authorised user asks a high-level project question, the platform builds a versioned prompt, and `codex exec` inspects the checked-out repository in read-only mode to answer with supporting file evidence.
+- This matters because it converts the project's documentation strategy into an inspectable capability. Roadmaps, issue records, tests, source files, runbooks, and publication drafts are not only internal memory for future Codex sessions; they can also be queried by the platform itself.
+- The current implementation is deliberately restricted and evidential rather than public or action-taking. It is an admin/trusted-user tool for project maintenance, report preparation, and later human-reviewed evidence records.
+
+## 2.4 AI role decomposition in C-LARA-2
 
 - **Content and annotation generation**: AI-assisted writing, glossing, translation, segmentation, and linguistic annotation.
 - **Image and picture-dictionary workflows**: AI-supported illustration generation and vocabulary-image association for glossing, flashcards, and other learner activities.
 - **Code implementation**: Codex-driven implementation of repository code.
 - **Project management and documentation**: AI-maintained roadmap, issue, runbook, and explanatory documents.
+- **Project self-understanding**: Codex-backed repository exploration from inside the platform, with versioned prompts, read-only execution, captured metadata, and a path to reviewed evidence records.
 - **Publication drafting**: AI-authored report and paper drafts under human steering and review.
 - **Sysadmin and deployment**: AI-guided operational work, including organizing the AWS migration when it became necessary and completing the migration work on a days-scale timeline.
 
-## 2.4 Human role
+## 2.5 Human role
 
 - Humans provide goals, project priorities, domain expertise, ethical judgment, critique, and acceptance decisions.
-- Humans remain accountable for correctness, safety, framing, and external claims.
+- Humans remain accountable for correctness, safety, framing, external claims, and assessment of any self-understanding answers used as evidence.
 - The current system is therefore not “autonomous” in the sense of requiring no human intervention; it is autonomous in the narrower operational sense that the AI performs the writing and implementation work once humans have supplied direction and review.
 
-## 2.5 Speed, flexibility, and limits
+## 2.6 Speed, flexibility, self-understanding, and limits
 
 - The positive result to emphasize is development velocity and flexibility: unsatisfactory features, texts, or deployment plans can often be rewritten very quickly.
-- The limit to emphasize is quality control: the AI still needs better ways to check its own work, detect regressions, and notice when user-facing controls or processing quality have drifted.
-- The report should therefore present AI autonomy as a promising but unfinished methodology.
+- The self-understanding result to emphasize is that the platform can now ask Codex to inspect the repository and produce project-level answers with citations, run metadata, token counts where extractable, and persisted request/result records.
+- The limits to emphasize are quality control and evidential governance: the AI still needs better ways to check its own work, detect regressions, notice when user-facing controls or processing quality have drifted, export durable records for review, reconcile exact costs, and protect the restricted assistant from privacy and prompt-injection risks.
+- The report should therefore present AI autonomy and self-understanding as promising but unfinished methodology.
 
-## 2.6 Authorship implications
+## 2.7 Authorship implications
 
 - The report-writing process itself may be relevant to a later paper on AI authorship.
 - The cautious formulation is that C-LARA-2 may provide a concrete case where an AI-generated academic text meets many formal criteria normally associated with authorship, apart from being human.
 - This should be flagged as an emerging line of analysis rather than made the main claim of the progress report.
+- The self-understanding assistant adds a second kind of authorship evidence: not only AI-written text, but an AI-mediated record of how the project explains its own architecture, status, and plans from repository evidence. That evidence will be persuasive only after curated questions, exportable records, and human assessment are in place.
 
-## 2.7 Discussion prompts for revision
+## 2.8 Discussion prompts for revision
 
 - Is “AI-centered” clearer than “AI-autonomous” for the main report?
 - Should the authorship discussion be a footnote, a short paragraph, or deferred to a separate paper?
 - How much detail should be included about the AWS migration and other sysadmin work?
+- Which self-understanding questions should be run, reviewed, and cited in the First Progress Report?

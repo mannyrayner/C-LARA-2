@@ -2,7 +2,7 @@
 
 This roadmap is a focused follow-up to [`image-generation-pipeline.md`](image-generation-pipeline.md). The existing image pipeline already covers style, element, and page-image generation at a broad level; this document defines the next page-image-specific improvements needed for reliable community review, regeneration, and publication workflows.
 
-Tracked issue: **ISSUE-0017**. Related issue: **ISSUE-0007** for LLM prompt-construction indirection.
+Tracked issue: **ISSUE-0017**. Related issue: **ISSUE-0007** for LLM prompt-construction indirection, now closed because the first implementation is in place.
 
 ## Why this roadmap exists
 
@@ -51,7 +51,7 @@ Implementation notes:
 
 ### 3) Improve prompt quality through LLM prompt indirection
 
-ISSUE-0007 should become part of the page-image regeneration path, not just initial generation.
+ISSUE-0007 is now closed for the initial LLM prompt-construction indirection; future work should focus on using the same pattern in richer page-image regeneration paths, not on reopening the standalone issue.
 
 Requirements:
 
@@ -136,7 +136,7 @@ Status: **implemented**. Member and organiser image-review views now show source
 
 Rationale: this can be implemented and tested independently after the review/compile foundations are in place. It also gives the later regeneration workflow a stronger prompt-construction contract before organiser-facing batch controls are expanded.
 
-Status: **initial implementation in progress**. Page-image generation now runs a text-model prompt-construction step inside fan-out/fan-in before image rendering. The constructor input includes global summary/excerpt, current page plus neighboring page text, style context, and relevant element descriptions/image paths; outputs are normalized and persisted to telemetry for audit/debugging.
+Status: **initial implementation complete; ISSUE-0007 closed**. Page-image generation now runs a text-model prompt-construction step inside fan-out/fan-in before image rendering. The constructor input includes global summary/excerpt, current page plus neighboring page text, style context, and relevant element descriptions/image paths; outputs are normalized and persisted to telemetry for audit/debugging.
 
 Implementation strategy (current first version):
 - Build a per-page constructor payload with summary + local context (previous/current/next page text), style text, and relevant element metadata.
