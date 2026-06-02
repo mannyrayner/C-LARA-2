@@ -156,6 +156,72 @@ def openai_price_for_model(model: str) -> dict[str, Decimal]:
     return {"input": Decimal(prices["input"]), "output": Decimal(prices["output"])}
 
 
+def estimate_openai_total_token_upper_bound_cost_usd(model: str, total_tokens: int) -> Decimal:
+    """Estimate cost when only total tokens are known, using the highest token price for the model."""
+
+    prices = openai_price_for_model(model)
+    unit_price = max(Decimal(prices["input"]), Decimal(prices["output"]))
+    total = Decimal(max(0, int(total_tokens or 0))) * unit_price / Decimal(1_000_000)
+    return _quantize_6(total)
+
+
+def record_openai_total_token_upper_bound_usage_and_charge(
+    *,
+    user_id: int,
+    model: str,
+    operation: str,
+    total_tokens: int,
+    request_type: str = "",
+) -> Decimal:
+    """Record/charge a conservative OpenAI usage row when Codex reports total tokens only."""
+
+    User = get_user_model()
+    user = User.objects.filter(pk=user_id).first()
+    if user is None:
+        return Decimal("0")
+
+    safe_total_tokens = max(0, int(total_tokens or 0))
+    cost = estimate_openai_total_token_upper_bound_cost_usd(model, safe_total_tokens)
+    ledger_entry = None
+    status = AIUsageCharge.STATUS_SKIPPED
+    notes = "credits disabled; Codex reported total tokens only; output-priced upper-bound estimate"
+    if credits_enabled():
+        ledger_entry = apply_credit_delta(
+            user=user,
+            amount_usd=-cost,
+            entry_type=CreditLedgerEntry.ENTRY_USAGE,
+            description=f"OpenAI {operation} ({model})",
+            metadata={
+                "provider": "openai",
+                "model": model,
+                "operation": operation,
+                "request_type": request_type,
+                "total_tokens": safe_total_tokens,
+                "cost_usd": str(cost),
+                "cost_basis": "codex_total_tokens_output_price_upper_bound",
+            },
+        )
+        status = AIUsageCharge.STATUS_CHARGED
+        notes = "Codex reported total tokens only; charged as output-priced upper-bound estimate"
+
+    AIUsageCharge.objects.create(
+        user=user,
+        project=None,
+        provider=AIUsageCharge.PROVIDER_OPENAI,
+        model=model,
+        operation=operation,
+        request_type=request_type or operation,
+        prompt_tokens=0,
+        completion_tokens=safe_total_tokens,
+        total_tokens=safe_total_tokens,
+        cost_usd=cost,
+        status=status,
+        notes=notes,
+        ledger_entry=ledger_entry,
+    )
+    return cost
+
+
 def record_openai_usage_and_charge(
     *,
     user_id: int,
