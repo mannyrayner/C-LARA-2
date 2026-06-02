@@ -23,6 +23,44 @@ def _load_fewshots(language: str, *, prompts_root: Path) -> list[dict[str, Any]]
     return annotation_prompts.load_fewshots("segmentation_phase_1", language, prompts_root=prompts_root)
 
 
+def _safe_variant_name(name: str | None) -> str:
+    variant = (name or "").strip()
+    if not variant:
+        return ""
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", variant):
+        raise ValueError(f"Invalid prompt/few-shot variant name: {variant!r}")
+    return variant
+
+
+def _variant_dirs(operation: str, language: str, variant: str, *, prompts_root: Path) -> list[Path]:
+    return [
+        prompts_root / operation / language / "variants" / variant,
+        prompts_root / operation / "variants" / variant,
+        prompts_root / operation / language / variant,
+        prompts_root / operation / variant,
+    ]
+
+
+def _load_template_variant(operation: str, language: str, variant: str, *, prompts_root: Path) -> str:
+    for directory in _variant_dirs(operation, language, variant, prompts_root=prompts_root):
+        template_path = directory / "template.txt"
+        if template_path.exists():
+            return template_path.read_text(encoding="utf-8")
+    raise FileNotFoundError(
+        f"No template variant {variant!r} found for operation={operation!r}, language={language!r}"
+    )
+
+
+def _load_fewshot_variant(operation: str, language: str, variant: str, *, prompts_root: Path) -> list[dict[str, Any]]:
+    for directory in _variant_dirs(operation, language, variant, prompts_root=prompts_root):
+        fewshot_dir = directory / "fewshots"
+        if fewshot_dir.exists():
+            return [json.loads(path.read_text(encoding="utf-8")) for path in sorted(fewshot_dir.glob("*.json"))]
+    raise FileNotFoundError(
+        f"No few-shot variant {variant!r} found for operation={operation!r}, language={language!r}"
+    )
+
+
 @dataclass(slots=True)
 class SegmentationSpec:
     """Specification for segmentation phase 1."""
@@ -382,6 +420,8 @@ class SegmentationPhase2Spec:
     op_id: str | None = None
     method: str = "auto"
     mechanism: str = "json_direct"
+    prompt_variant: str = ""
+    fewshot_variant: str = ""
 
 
 async def segmentation_phase_2(
@@ -409,14 +449,20 @@ async def segmentation_phase_2(
     prompts_root = (
         spec.template_path.parent.parent if spec.template_path else annotation_prompts.default_prompts_root()
     )
+    prompt_variant = _safe_variant_name(spec.prompt_variant)
+    fewshot_variant = _safe_variant_name(spec.fewshot_variant)
     template = (
         spec.template_path.read_text(encoding="utf-8")
         if spec.template_path
+        else _load_template_variant("segmentation_phase_2", spec.language, prompt_variant, prompts_root=prompts_root)
+        if prompt_variant
         else annotation_prompts.load_template("segmentation_phase_2", spec.language, prompts_root=prompts_root)
     )
     fewshots = (
         [json.loads(path.read_text(encoding="utf-8")) for path in spec.fewshot_paths]
         if spec.fewshot_paths
+        else _load_fewshot_variant("segmentation_phase_2", spec.language, fewshot_variant, prompts_root=prompts_root)
+        if fewshot_variant
         else annotation_prompts.load_fewshots("segmentation_phase_2", spec.language, prompts_root=prompts_root)
     )
 

@@ -4485,7 +4485,10 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["selected_ai_model"] = project.ai_model or DEFAULT_MODEL
         context["detailed_api_trace_default"] = False
         context["stage_parameters_example"] = json.dumps(
-            {"segmentation_phase_1": {"prioritise_sentences": True}},
+            {
+                "segmentation_phase_1": {"prioritise_sentences": True},
+                "segmentation_phase_2": {"variant": "clitic_compound"},
+            },
             indent=2,
         )
         context["language_choices"] = ProjectForm.LANGUAGE_CHOICES

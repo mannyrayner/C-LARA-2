@@ -207,6 +207,60 @@ class SegmentationTests(unittest.IsolatedAsyncioTestCase):
         annotated = "A line. \n\n\nB line."
         self.assertTrue(segmentation._phase1_surface_matches_text(base, annotated))  # type: ignore[attr-defined]
 
+
+    async def test_segmentation_phase_2_uses_prompt_and_fewshot_variant(self) -> None:
+        text = {
+            "l2": "fr",
+            "surface": "C'est l'heure.",
+            "pages": [
+                {
+                    "surface": "C'est l'heure.",
+                    "segments": [{"surface": "C'est l'heure.", "annotations": {}}],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        client = FakeAIClient(
+            {
+                "surface": "C'est l'heure.",
+                "tokens": [
+                    {"surface": "C"},
+                    {"surface": "'est"},
+                    {"surface": " "},
+                    {"surface": "l'"},
+                    {"surface": "heure"},
+                    {"surface": "."},
+                ],
+                "annotations": {},
+            }
+        )
+
+        result = await segmentation_phase_2(
+            SegmentationPhase2Spec(
+                text=text,
+                language="fr",
+                prompt_variant="clitic_compound",
+                fewshot_variant="clitic_compound",
+            ),
+            client=client,
+        )
+
+        prompt = client.prompts[0]
+        self.assertIn("careful treatment of clitics", prompt)
+        self.assertIn("C'est l'heure.", prompt)
+        self.assertIn("Motorfordon är vanliga.", prompt)
+        tokens = result["pages"][0]["segments"][0]["tokens"]
+        self.assertEqual(["C", "'est", " ", "l'", "heure", "."], [tok["surface"] for tok in tokens])
+
+    async def test_segmentation_phase_2_rejects_unsafe_variant_name(self) -> None:
+        text = {"l2": "en", "surface": "Hello.", "pages": [{"surface": "Hello.", "segments": [{"surface": "Hello."}]}]}
+        with self.assertRaisesRegex(ValueError, "Invalid prompt/few-shot variant"):
+            await segmentation_phase_2(
+                SegmentationPhase2Spec(text=text, language="en", prompt_variant="../bad"),
+                client=FakeAIClient({}),
+            )
+
     async def test_segmentation_phase_2_boundary_first_mechanism_adds_tokens(self) -> None:
         text = {
             "l2": "en",

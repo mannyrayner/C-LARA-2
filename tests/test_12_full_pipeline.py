@@ -154,6 +154,44 @@ class FullPipelineTests(unittest.IsolatedAsyncioTestCase):
         params_path = output_dir / "stages" / "processing_parameters.json"
         self.assertTrue(params_path.exists())
 
+
+    async def test_pipeline_stage_parameters_reach_segmentation_phase_2_variant_prompt(self) -> None:
+        text_obj = {
+            "l2": "fr",
+            "surface": "C'est l'heure.",
+            "pages": [
+                {
+                    "surface": "C'est l'heure.",
+                    "segments": [{"surface": "C'est l'heure.", "annotations": {}}],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        seg2 = {
+            "surface": "C'est l'heure.",
+            "tokens": [{"surface": "C"}, {"surface": "'est"}, {"surface": " "}, {"surface": "l'"}, {"surface": "heure"}, {"surface": "."}],
+            "annotations": {},
+        }
+        client = RecordingAIClient([seg2])
+
+        spec = FullPipelineSpec(
+            text_obj=text_obj,
+            language="fr",
+            target_language="en",
+            output_dir=self.fake_html_root / "stage_params_seg2",
+            audio_cache_dir=self.fake_audio_root / "stage_params_seg2",
+            start_stage="segmentation_phase_2",
+            end_stage="segmentation_phase_2",
+            stage_parameters={"segmentation_phase_2": {"variant": "clitic_compound"}},
+        )
+
+        await run_full_pipeline(spec, client=client)
+
+        self.assertTrue(client.prompts)
+        self.assertIn("careful treatment of clitics", client.prompts[0])
+        self.assertIn("C'est l'heure.", client.prompts[0])
+
     async def test_pipeline_passes_stage_specific_op_ids_to_ai_calls(self) -> None:
         seg1 = {
             "l2": "en",

@@ -214,6 +214,7 @@ async def run_full_pipeline(
             try:
                 _progress("segmentation_phase_2", "start")
                 seg2_params = _stage_parameters("segmentation_phase_2")
+                seg2_variant = str(seg2_params.get("variant") or "")
                 current = await segmentation_phase_2(
                     SegmentationPhase2Spec(
                         text=current,
@@ -222,6 +223,12 @@ async def run_full_pipeline(
                         op_id=stage_op_id,
                         method=spec.segmentation_method,
                         mechanism=str(seg2_params.get("mechanism") or "json_direct"),
+                        prompt_variant=str(
+                            seg2_params.get("prompt_variant")
+                            or seg2_params.get("template_variant")
+                            or seg2_variant
+                        ),
+                        fewshot_variant=str(seg2_params.get("fewshot_variant") or seg2_variant),
                     ),
                     client=ai_client,
                 )
