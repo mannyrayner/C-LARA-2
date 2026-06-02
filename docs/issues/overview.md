@@ -1,6 +1,7 @@
-# C-LARA-2 issue overview (refreshed 2026-06-01T12:10:00Z)
+# C-LARA-2 issue overview (refreshed 2026-06-02T00:00:00Z)
 
 ## Recent progress
+- Closed **[ISSUE-0007](issues/ISSUE-0007.json)** after maintainer review confirmed that LLM prompt-construction indirection for page-image generation is already implemented and should no longer remain in the active focus list.
 - Advanced **[ISSUE-0034](issues/ISSUE-0034.json)** from a prompt-wrapper prototype to a working admin-only `codex exec` assistant with async Django Q execution, heartbeat/status polling, request/result persistence, structured answer metadata, GitHub-linked citations, and conservative upper-bound cost estimates.
 - Added **[ISSUE-0035](issues/ISSUE-0035.json)** to track intermittent Codex PR update-branch refusals reported from 2026-05-30 onward, with a dedicated roadmap for future incident evidence.
 - Refreshed ISSUE-0034 roadmap/issue metadata to record the implemented `codex exec` path and remaining export/review, rate-limit, citation-sanitization, and curated-evaluation work.
@@ -21,11 +22,11 @@
 13. **[ISSUE-0006](issues/ISSUE-0006.json) (P2, reported)** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness.
 14. **[ISSUE-0005](issues/ISSUE-0005.json) (P2, reported)** — Tune segmentation_phase_1 prompting to improve segment granularity by genre.
 15. **[ISSUE-0004](issues/ISSUE-0004.json) (P2, reported)** — Introduce AI-based review gates for phase outputs with extensible evaluator architecture.
-16. **[ISSUE-0007](issues/ISSUE-0007.json) (P2, reported)** — Use LLM prompt-construction indirection for page-image generation prompts.
-17. **[ISSUE-0001](issues/ISSUE-0001.json) (P2, reported)** — Support hosted compiled legacy content registration in C-LARA-2.
+16. **[ISSUE-0001](issues/ISSUE-0001.json) (P2, reported)** — Support hosted compiled legacy content registration in C-LARA-2.
 
 ## Notes/risks
 - ISSUE-0034 now has a restricted admin UI and background `codex exec` execution path with visible progress, private/public turn history, GitHub link rewriting, and upper-bound cost accounting; it still lacks an explicit export/review workflow into `docs/project_understanding/`, reviewer assessment controls, exact-cost reconciliation, hard budget/rate-limit controls, and citation/path sanitization for any wider audience.
+- ISSUE-0007 is now closed; any future page-image prompt-construction improvements should be tracked as concrete follow-ons rather than keeping the original prompt-indirection request open.
 - The Codex update-branch inconsistency is currently an external-tool/workflow risk rather than a confirmed C-LARA-2 code defect; useful next action is evidence capture rather than speculative code changes.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated UI/pipeline coverage.
 
@@ -39,7 +40,7 @@
 | [ISSUE-0004](issues/ISSUE-0004.json) | reported | P2 | Introduce AI-based review gates for phase outputs with extensible evaluator architecture. |
 | [ISSUE-0005](issues/ISSUE-0005.json) | reported | P2 | Tune segmentation_phase_1 prompting to improve segment granularity by genre. |
 | [ISSUE-0006](issues/ISSUE-0006.json) | reported | P2 | Investigate segmentation_phase_2 token-span failures and rerun-path correctness. |
-| [ISSUE-0007](issues/ISSUE-0007.json) | reported | P2 | Use LLM prompt-construction indirection for page-image generation prompts. |
+| [ISSUE-0007](issues/ISSUE-0007.json) | closed | P2 | Use LLM prompt-construction indirection for page-image generation prompts. |
 | [ISSUE-0008](issues/ISSUE-0008.json) | reported | P1 | Write C-LARA-2 technical report and academic papers. |
 | [ISSUE-0009](issues/ISSUE-0009.json) | closed | P1 | Auto-regenerate and validate source project bundle stage artifacts before export/import. |
 | [ISSUE-0010](issues/ISSUE-0010.json) | active | P1 | Import a representative legacy C-LARA project corpus and add batch import tooling. |
