@@ -5,6 +5,8 @@ import json
 import sys
 import logging
 import os
+import signal
+import subprocess
 import threading
 import random
 import shutil
@@ -3458,6 +3460,163 @@ def admin_project_understanding_status(request: HttpRequest, report_id: str) -> 
     })
 
 
+def _process_has_manage_command(args: str, command: str) -> bool:
+    arg_tokens = args.split()
+    return any(
+        Path(token).name == "manage.py"
+        and idx + 1 < len(arg_tokens)
+        and arg_tokens[idx + 1] == command
+        for idx, token in enumerate(arg_tokens)
+    )
+
+
+def _process_snapshot() -> list[dict[str, Any]]:
+    try:
+        output = subprocess.check_output(
+            ["ps", "-eo", "pid=,ppid=,args="],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        return []
+
+    rows: list[dict[str, Any]] = []
+    for line in output.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        parts = stripped.split(None, 2)
+        if len(parts) < 3:
+            continue
+        try:
+            pid = int(parts[0])
+            ppid = int(parts[1])
+        except ValueError:
+            continue
+        rows.append({"pid": pid, "ppid": ppid, "args": parts[2]})
+    return rows
+
+
+def _find_manage_py_processes(command: str, *, process_rows: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    current_pid = os.getpid()
+    matches: list[dict[str, Any]] = []
+    for row in process_rows if process_rows is not None else _process_snapshot():
+        pid = int(row["pid"])
+        args = str(row.get("args") or "")
+        if command != "runserver" and pid == current_pid:
+            continue
+        if not _process_has_manage_command(args, command):
+            continue
+        if command != "runserver" and "runserver" in args.split():
+            continue
+        matches.append({**row, "command": command})
+    return matches
+
+
+def _find_django_q_processes() -> list[dict[str, Any]]:
+    return _find_manage_py_processes("qcluster")
+
+
+def _find_django_server_processes() -> list[dict[str, Any]]:
+    return _find_manage_py_processes("runserver")
+
+
+def _descendant_processes(process_rows: list[dict[str, Any]], root_pids: set[int]) -> list[dict[str, Any]]:
+    children_by_ppid: dict[int, list[dict[str, Any]]] = {}
+    for row in process_rows:
+        children_by_ppid.setdefault(int(row["ppid"]), []).append(row)
+
+    descendants: list[dict[str, Any]] = []
+    queue = list(root_pids)
+    seen = set(root_pids)
+    while queue:
+        parent_pid = queue.pop(0)
+        for child in children_by_ppid.get(parent_pid, []):
+            child_pid = int(child["pid"])
+            if child_pid in seen:
+                continue
+            seen.add(child_pid)
+            descendants.append({**child, "command": "child"})
+            queue.append(child_pid)
+    return descendants
+
+
+def _terminate_processes(processes: list[dict[str, Any]], *, status: str) -> list[dict[str, Any]]:
+    stopped: list[dict[str, Any]] = []
+    seen_pids: set[int] = set()
+    for proc in processes:
+        pid = int(proc["pid"])
+        if pid in seen_pids:
+            continue
+        seen_pids.add(pid)
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            continue
+        except PermissionError as exc:
+            stopped.append({**proc, "status": "permission_denied", "error": str(exc)})
+        else:
+            stopped.append({**proc, "status": status})
+    return stopped
+
+
+def _shutdown_django_q_processes() -> list[dict[str, Any]]:
+    return _terminate_processes(_find_django_q_processes(), status="sigterm_sent")
+
+
+def _django_stack_targets() -> list[dict[str, Any]]:
+    process_rows = _process_snapshot()
+    direct_targets = _find_manage_py_processes("qcluster", process_rows=process_rows) + _find_manage_py_processes(
+        "runserver", process_rows=process_rows
+    )
+    direct_pids = {int(proc["pid"]) for proc in direct_targets}
+    target_by_pid: dict[int, dict[str, Any]] = {int(proc["pid"]): proc for proc in direct_targets}
+    for proc in _descendant_processes(process_rows, direct_pids):
+        target_by_pid.setdefault(int(proc["pid"]), proc)
+    return list(target_by_pid.values())
+
+
+def _schedule_sigterm_for_pids(pids: list[int], *, delay_seconds: float) -> None:
+    if not pids:
+        return
+    helper = (
+        "import os, signal, sys, time\n"
+        "delay = float(sys.argv[1])\n"
+        "pids = [int(pid) for pid in sys.argv[2].split(',') if pid]\n"
+        "time.sleep(delay)\n"
+        "for pid in pids:\n"
+        "    try:\n"
+        "        os.kill(pid, signal.SIGTERM)\n"
+        "    except ProcessLookupError:\n"
+        "        pass\n"
+        "    except PermissionError:\n"
+        "        pass\n"
+    )
+    subprocess.Popen(
+        [sys.executable, "-c", helper, str(delay_seconds), ",".join(str(pid) for pid in pids)],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        close_fds=True,
+        start_new_session=True,
+    )
+
+
+def _shutdown_django_stack_processes(delay_seconds: float = 0.5) -> list[dict[str, Any]]:
+    targets_by_pid: dict[int, dict[str, Any]] = {int(proc["pid"]): proc for proc in _django_stack_targets()}
+    targets = list(targets_by_pid.values())
+    if not targets:
+        return []
+
+    current_pid = os.getpid()
+    ordered_pids = sorted(
+        targets_by_pid,
+        key=lambda pid: (pid == current_pid, int(targets_by_pid[pid].get("ppid", 0)) != current_pid, pid),
+    )
+    _schedule_sigterm_for_pids(ordered_pids, delay_seconds=delay_seconds)
+    return [{**proc, "status": "sigterm_scheduled"} for proc in targets]
+
+
 @login_required
 def admin_tools(request: HttpRequest) -> HttpResponse:
     _require_admin(request.user)
@@ -3499,7 +3658,28 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
 
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
-        if action == "delete_audio_cache":
+        if action in {"shutdown_django_stack", "shutdown_django_q"}:
+            stopped = (
+                _shutdown_django_stack_processes()
+                if action == "shutdown_django_stack"
+                else _shutdown_django_q_processes()
+            )
+            successful = [
+                proc for proc in stopped if proc.get("status") in {"sigterm_sent", "sigterm_scheduled"}
+            ]
+            denied = [proc for proc in stopped if proc.get("status") == "permission_denied"]
+            label = "Django server/Q process" if action == "shutdown_django_stack" else "Django Q qcluster process"
+            if successful:
+                pids = ", ".join(str(proc["pid"]) for proc in successful)
+                verb = "Scheduled SIGTERM for" if action == "shutdown_django_stack" else "Sent SIGTERM to"
+                messages.success(request, f"{verb} {label}(es): {pids}.")
+            if denied:
+                pids = ", ".join(str(proc["pid"]) for proc in denied)
+                messages.error(request, f"Could not stop {label}(es) due to permissions: {pids}.")
+            if not stopped:
+                messages.info(request, f"No {label} was found.")
+            return redirect("admin-tools")
+        elif action == "delete_audio_cache":
             delete_form = DeleteCachedWordAudioForm(
                 request.POST,
                 language_choices=_audio_cache_language_choices(),
