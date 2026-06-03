@@ -142,8 +142,9 @@ In practice, curation should be incremental rather than a single large generatio
 
 Start with two complementary invocation paths:
 
-1. **Management command for repeatable experiments.** The first minimal command is `python manage.py curate_fewshots --operation segmentation_phase_2 --language fr --mechanism boundary_first --phenomena clitic,compound --count 40 --target-set clitic_compound_v2`. It generates candidate JSON examples with trace output and fan-out/fan-in shards (`--batch-size`, `--max-concurrency`), validates them deterministically, stores auditable records, and can optionally write valid examples into a prompt variant. This is the right surface for bulk generation, laptop/server runs, scripted reruns, and reproducible report evidence.
-2. **Admin UI for small requests and review.** Add an admin-only page where a maintainer can create a curation request, inspect generated candidates, run critic/repair passes, and promote accepted examples. The UI should be able to request additional examples for an existing operation/language/set and should show existing coverage by phenomenon and tranche.
+1. **Management command for repeatable generation experiments.** The first minimal command is `python manage.py curate_fewshots --operation segmentation_phase_2 --language fr --mechanism boundary_first --phenomena clitic,compound --count 40 --target-set clitic_compound_v2`. It generates candidate JSON examples with trace output and fan-out/fan-in shards (`--batch-size`, `--max-concurrency`), validates them deterministically, stores auditable records, and can optionally write valid examples into a prompt variant. This is the right surface for bulk generation, laptop/server runs, scripted reruns, and reproducible report evidence.
+2. **Management command for AI review.** The initial second-step command is `python manage.py review_fewshots --operation segmentation_phase_2 --language fr --mechanism boundary_first --target-set clitic_compound_v2 --request-id <request-id>`. If no language-specific review template exists, it first creates several AI-drafted templates, reconciles them with another AI call, stores the final template under the curation tree, then reviews candidates concurrently and writes `reviews/*.review.json` plus a summary.
+3. **Admin UI for small requests and review.** Add an admin-only page where a maintainer can create a curation request, inspect generated candidates, run critic/repair passes, and promote accepted examples. The UI should be able to request additional examples for an existing operation/language/set and should show existing coverage by phenomenon and tranche.
 
 Both paths should create a durable curation request record before calling models. A request should include operation, language, mechanism, target set, requested phenomena, requested count, generator/critic/repair model choices, prompt versions, submitter, timestamp, and notes.
 
@@ -209,12 +210,13 @@ A human reviewer can then accept, reject, request more repair, or mark an exampl
 
 1. **Done in minimal form:** add validation utilities for `segmentation_phase_2` few-shot candidates. Extend these validators to MWE and later lemma/gloss examples.
 2. **Done in minimal form:** implement a traced, fan-out/fan-in candidate-generation command for `segmentation_phase_2`, initially useful for French `boundary_first` experiments.
-3. Define a small phenomenon matrix for `segmentation_phase_2` clitics/compounds and MWE detection.
-4. Add adversarial critic and repair prompts, with severity labels and structured output.
-5. Expand persisted records from candidate/request/accepted/manifest files to include critic, repair, arbiter, and human-review records.
-6. Add evaluator prompts that compare outputs from two few-shot variants on the same input.
-7. Run a first documented experiment comparing tranche sizes and variant sets.
-8. Decide whether successful example sets should be promoted to default prompts or remain named variants.
+3. **Done in minimal form:** implement a second-step AI review command that creates/reconciles language-specific review templates when needed, then runs hostile-review calls over generated candidates.
+4. Define a small phenomenon matrix for `segmentation_phase_2` clitics/compounds and MWE detection.
+5. Add repair prompts and re-review loops for candidates with fatal/serious/minor findings.
+6. Expand persisted records from candidate/request/accepted/manifest files to include repair, arbiter, and human-review records.
+7. Add evaluator prompts that compare outputs from two few-shot variants on the same input.
+8. Run a first documented experiment comparing tranche sizes and variant sets.
+9. Decide whether successful example sets should be promoted to default prompts or remain named variants.
 
 ## Relationship to other roadmap items
 

@@ -6,7 +6,9 @@ from pathlib import Path
 
 from pipeline.fewshot_curation import (
     FewshotCurationSpec,
+    FewshotReviewSpec,
     generate_candidate_batch,
+    review_candidate_batch,
     store_candidate_batch,
     validate_segmentation_phase_2_candidate,
 )
@@ -34,6 +36,10 @@ class FakeFanoutCurationClient:
         self.prompts.append(prompt)
         self.models.append(model)
         return self.payloads.pop(0)
+
+
+class FakeReviewClient(FakeFanoutCurationClient):
+    pass
 
 
 class FewshotCurationTests(unittest.IsolatedAsyncioTestCase):
@@ -280,6 +286,104 @@ class FewshotCurationTests(unittest.IsolatedAsyncioTestCase):
                 ["prompts/segmentation_phase_2/variants/existing_set/fewshots/example2.json"],
                 result["manifest"]["prompt_files"],
             )
+
+    async def test_review_candidate_batch_creates_template_and_reviews(self) -> None:
+        generation_client = FakeCurationClient(
+            {
+                "candidates": [
+                    {
+                        "input": "Je l'aime.",
+                        "phenomenon": "French object clitic",
+                        "output": {
+                            "surface": "Je l'aime.",
+                            "tokens": [
+                                {"surface": "Je"},
+                                {"surface": " "},
+                                {"surface": "l'"},
+                                {"surface": "aime"},
+                                {"surface": "."},
+                            ],
+                            "annotations": {},
+                        },
+                    }
+                ]
+            }
+        )
+        generation_spec = FewshotCurationSpec(
+            operation="segmentation_phase_2",
+            language="fr",
+            mechanism="boundary_first",
+            target_set="clitic_compound_v2",
+            count=1,
+            model="fake-generator",
+            request_id="20260603-review",
+        )
+        batch = await generate_candidate_batch(generation_spec, client=generation_client)
+
+        review_client = FakeReviewClient(
+            [
+                {
+                    "template_text": "Review French elision carefully: {candidate_json}",
+                    "language_specific_risks": ["French object clitics"],
+                    "checklist": ["surface preservation"],
+                    "severity_definitions": {"fatal": "bad", "serious": "problem", "minor": "small", "none": "ok"},
+                },
+                {
+                    "template_text": "Check apostrophes and clitics: {candidate_json}",
+                    "language_specific_risks": ["apostrophes"],
+                    "checklist": ["clitic boundaries"],
+                    "severity_definitions": {"fatal": "bad", "serious": "problem", "minor": "small", "none": "ok"},
+                },
+                {
+                    "template_text": "Find the strongest French tokenization defect and return JSON: {candidate_json}",
+                    "language_specific_risks": ["French elision", "clitic boundaries"],
+                    "checklist": ["surface preservation", "apostrophes"],
+                    "severity_definitions": {"fatal": "unusable", "serious": "misleading", "minor": "cosmetic", "none": "no defect"},
+                    "reconciliation_rationale": "Combines both drafts.",
+                },
+                {
+                    "severity": "none",
+                    "issue_type": "none",
+                    "critique": "No defect found.",
+                    "suggested_repair": "",
+                    "confidence": 0.82,
+                    "recommended_status": "accepted_experimental",
+                },
+            ]
+        )
+        review_spec = FewshotReviewSpec(
+            operation="segmentation_phase_2",
+            language="fr",
+            mechanism="boundary_first",
+            target_set="clitic_compound_v2",
+            request_id="20260603-review",
+            model="fake-reviewer",
+            template_model="fake-template",
+            template_versions=2,
+            max_concurrency=1,
+        )
+        traces: list[str] = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store_candidate_batch(batch, repo_root=Path(tmpdir))
+            result = await review_candidate_batch(
+                review_spec,
+                repo_root=Path(tmpdir),
+                client=review_client,
+                trace=traces.append,
+            )
+            root = Path(result["root"])
+
+            self.assertTrue((root / "review_templates" / "template.json").exists())
+            self.assertTrue((root / "reviews" / "20260603-review-EXAMPLE-0001.review.json").exists())
+            self.assertTrue((root / "reviews" / "20260603-review.summary.json").exists())
+            self.assertEqual({"fatal": 0, "serious": 0, "minor": 0, "none": 1}, result["summary"]["severity_counts"])
+            self.assertEqual(4, len(review_client.prompts))
+            self.assertEqual(["fake-template", "fake-template", "fake-template", "fake-reviewer"], review_client.models)
+            self.assertTrue(any("creating 2 review-template draft" in message for message in traces))
+            self.assertTrue(any("reviewed 1 candidates" in message for message in traces))
+            self.assertIn("Je l'aime.", review_client.prompts[-1])
+
 
 
 if __name__ == "__main__":

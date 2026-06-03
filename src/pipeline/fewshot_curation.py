@@ -34,6 +34,23 @@ class FewshotCurationSpec:
     max_concurrency: int = 4
 
 
+@dataclass(slots=True)
+class FewshotReviewSpec:
+    """Specification for AI review of generated few-shot candidates."""
+
+    operation: str
+    language: str
+    mechanism: str = "boundary_first"
+    target_set: str = "experimental"
+    request_id: str | None = None
+    model: str = "gpt-5"
+    template_model: str | None = None
+    template_versions: int = 3
+    max_concurrency: int = 4
+    prompt_version: str = "fewshot-review-v1"
+    refresh_template: bool = False
+
+
 def _utc_timestamp() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%SZ")
 
@@ -403,3 +420,253 @@ def store_candidate_batch(
     }
     _write_json(root / "manifest.json", manifest)
     return {"root": str(root), "manifest": manifest}
+
+
+def build_review_template_draft_prompt(spec: FewshotReviewSpec, draft_index: int) -> str:
+    """Build a prompt asking the AI to draft a language-specific review template."""
+
+    if spec.operation not in SUPPORTED_OPERATIONS:
+        raise ValueError(f"Unsupported few-shot review operation: {spec.operation}")
+    if spec.template_versions < 1:
+        raise ValueError("template_versions must be at least 1")
+    if spec.max_concurrency < 1:
+        raise ValueError("max_concurrency must be at least 1")
+
+    return f"""
+Create draft {draft_index} of a language-specific hostile-review prompt template for few-shot examples.
+
+Operation: {spec.operation}
+Language: {spec.language}
+Mechanism/strategy: {spec.mechanism}
+Target example set: {spec.target_set}
+
+The template will be used to review candidate examples for linguistic annotation.
+For segmentation_phase_2, candidates contain an input segment and output tokens whose surfaces
+must concatenate exactly to the input. The reviewer should look for subtle linguistic defects,
+not merely schema errors. For the requested language, include concrete issues that reviewers
+should check, such as clitics, contractions, elision/apostrophes, compounds, punctuation,
+spacing, named entities, abbreviations, and cases where a default boundary should be kept.
+
+Return only JSON in this shape:
+{{
+  "template_text": "Prompt text with a {{candidate_json}} placeholder and instructions to return JSON",
+  "language_specific_risks": ["risk 1", "risk 2"],
+  "checklist": ["check 1", "check 2"],
+  "severity_definitions": {{
+    "fatal": "...",
+    "serious": "...",
+    "minor": "...",
+    "none": "..."
+  }}
+}}
+""".strip()
+
+
+def build_review_template_reconciliation_prompt(spec: FewshotReviewSpec, drafts: list[dict[str, Any]]) -> str:
+    """Build a prompt asking the AI to reconcile candidate review templates."""
+
+    return f"""
+Reconcile these draft few-shot review prompt templates into one best template.
+
+Operation: {spec.operation}
+Language: {spec.language}
+Mechanism/strategy: {spec.mechanism}
+Target example set: {spec.target_set}
+
+The final template must be a hostile-review prompt: it should ask for the strongest reason
+the candidate should not be used as a few-shot example, classify severity as fatal, serious,
+minor, or none, and return structured JSON. It must include a {{candidate_json}} placeholder.
+
+Drafts:
+{json.dumps(drafts, ensure_ascii=False, indent=2)}
+
+Return only JSON in this shape:
+{{
+  "template_text": "Final prompt text with a {{candidate_json}} placeholder and JSON-output instructions",
+  "language_specific_risks": ["risk 1", "risk 2"],
+  "checklist": ["check 1", "check 2"],
+  "severity_definitions": {{
+    "fatal": "...",
+    "serious": "...",
+    "minor": "...",
+    "none": "..."
+  }},
+  "reconciliation_rationale": "why this merged template is best"
+}}
+""".strip()
+
+
+def _review_spec_from_request(request: dict[str, Any], spec: FewshotReviewSpec) -> FewshotCurationSpec:
+    return FewshotCurationSpec(
+        operation=request["operation"],
+        language=request["language"],
+        mechanism=request.get("mechanism") or spec.mechanism,
+        target_set=request.get("target_set") or spec.target_set,
+        count=int(request.get("count") or 0),
+        model=request.get("model") or "",
+        prompt_version=request.get("prompt_version") or "",
+        request_id=request["request_id"],
+    )
+
+
+def _review_template_dir(repo_root: Path, spec: FewshotReviewSpec) -> Path:
+    curation_spec = FewshotCurationSpec(
+        operation=spec.operation,
+        language=spec.language,
+        mechanism=spec.mechanism,
+        target_set=spec.target_set,
+        request_id=spec.request_id,
+    )
+    return curation_root(repo_root, curation_spec) / "review_templates"
+
+
+def _candidate_review_prompt(template: dict[str, Any], record: dict[str, Any]) -> str:
+    candidate_json = json.dumps(record.get("candidate") or {}, ensure_ascii=False, indent=2)
+    template_text = str(template.get("template_text") or "")
+    if "{candidate_json}" in template_text:
+        return template_text.replace("{candidate_json}", candidate_json)
+    return f"{template_text}\n\nCandidate JSON:\n{candidate_json}"
+
+
+async def ensure_review_template(
+    spec: FewshotReviewSpec,
+    *,
+    repo_root: Path,
+    client: OpenAIClient | None = None,
+    trace: Callable[[str], None] | None = None,
+) -> dict[str, Any]:
+    """Load or create a reconciled language-specific candidate-review prompt template."""
+
+    template_dir = _review_template_dir(repo_root, spec)
+    final_path = template_dir / "template.json"
+    if final_path.exists() and not spec.refresh_template:
+        if trace:
+            trace(f"using existing review template {final_path}")
+        return json.loads(final_path.read_text(encoding="utf-8"))
+
+    ai_client = client or OpenAIClient()
+    model = spec.template_model or spec.model
+    template_dir.mkdir(parents=True, exist_ok=True)
+    if trace:
+        trace(f"creating {spec.template_versions} review-template draft(s) for language={spec.language}")
+
+    async def make_draft(idx: int) -> dict[str, Any]:
+        prompt = build_review_template_draft_prompt(spec, idx)
+        if trace:
+            trace(f"starting review-template draft {idx}")
+        payload = normalize_json_text(await ai_client.chat_json(prompt, model=model))
+        if not isinstance(payload, dict):
+            raise ValueError(f"review-template draft {idx} response must be a JSON object")
+        draft = {**payload, "draft_index": idx, "model": model, "prompt": prompt}
+        _write_json(template_dir / "drafts" / f"draft{idx}.json", draft)
+        if trace:
+            trace(f"completed review-template draft {idx}")
+        return draft
+
+    drafts = await asyncio.gather(*(make_draft(idx) for idx in range(1, spec.template_versions + 1)))
+    if trace:
+        trace("reconciling review-template drafts")
+    reconciliation_prompt = build_review_template_reconciliation_prompt(spec, drafts)
+    final_template = normalize_json_text(await ai_client.chat_json(reconciliation_prompt, model=model))
+    if not isinstance(final_template, dict):
+        raise ValueError("review-template reconciliation response must be a JSON object")
+    if "{candidate_json}" not in str(final_template.get("template_text") or ""):
+        raise ValueError("review-template reconciliation must include a {candidate_json} placeholder")
+    final_template = {
+        **final_template,
+        "schema_version": 1,
+        "operation": spec.operation,
+        "language": spec.language,
+        "mechanism": spec.mechanism,
+        "target_set": spec.target_set,
+        "model": model,
+        "prompt_version": spec.prompt_version,
+        "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "draft_count": len(drafts),
+    }
+    _write_json(template_dir / "reconciliation.prompt.json", {"prompt": reconciliation_prompt})
+    _write_json(final_path, final_template)
+    if trace:
+        trace(f"stored review template {final_path}")
+    return final_template
+
+
+async def review_candidate_batch(
+    spec: FewshotReviewSpec,
+    *,
+    repo_root: Path,
+    client: OpenAIClient | None = None,
+    trace: Callable[[str], None] | None = None,
+) -> dict[str, Any]:
+    """Run AI review over generated candidates using a language-specific template."""
+
+    if spec.request_id is None:
+        raise ValueError("request_id is required to review a curation batch")
+    if spec.max_concurrency < 1:
+        raise ValueError("max_concurrency must be at least 1")
+    ai_client = client or OpenAIClient()
+    template = await ensure_review_template(spec, repo_root=repo_root, client=ai_client, trace=trace)
+
+    request_root = _review_template_dir(repo_root, spec).parent
+    request_path = request_root / "requests" / f"{spec.request_id}.json"
+    if not request_path.exists():
+        raise FileNotFoundError(f"few-shot curation request not found: {request_path}")
+    request = json.loads(request_path.read_text(encoding="utf-8"))
+    curation_spec = _review_spec_from_request(request, spec)
+    root = curation_root(repo_root, curation_spec)
+    candidates_dir = root / "candidates"
+    candidate_paths = sorted(candidates_dir.glob(f"{spec.request_id}-EXAMPLE-*.json"))
+    if trace:
+        trace(f"reviewing {len(candidate_paths)} candidate(s) with max_concurrency={spec.max_concurrency}")
+
+    reviews_dir = root / "reviews"
+    semaphore = asyncio.Semaphore(spec.max_concurrency)
+
+    async def review_one(path: Path) -> dict[str, Any]:
+        async with semaphore:
+            record = json.loads(path.read_text(encoding="utf-8"))
+            prompt = _candidate_review_prompt(template, record)
+            if trace:
+                trace(f"starting review {record['example_id']}")
+            payload = normalize_json_text(await ai_client.chat_json(prompt, model=spec.model))
+            if not isinstance(payload, dict):
+                raise ValueError(f"review response for {record['example_id']} must be a JSON object")
+            severity = str(payload.get("severity") or "").lower()
+            if severity not in {"fatal", "serious", "minor", "none"}:
+                severity = "serious"
+                payload = {**payload, "severity_normalization_note": "Invalid or missing severity normalized to serious."}
+            review = {
+                "schema_version": 1,
+                "request_id": spec.request_id,
+                "example_id": record["example_id"],
+                "operation": spec.operation,
+                "language": spec.language,
+                "mechanism": spec.mechanism,
+                "target_set": spec.target_set,
+                "reviewed_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "review_model": spec.model,
+                "review_prompt_version": spec.prompt_version,
+                "template_path": str((_review_template_dir(repo_root, spec) / "template.json").relative_to(repo_root)),
+                "severity": severity,
+                "review": {**payload, "severity": severity},
+            }
+            _write_json(reviews_dir / f"{path.stem}.review.json", review)
+            if trace:
+                trace(f"completed review {record['example_id']}: severity={severity}")
+            return review
+
+    reviews = await asyncio.gather(*(review_one(path) for path in candidate_paths))
+    severity_counts = {severity: 0 for severity in ["fatal", "serious", "minor", "none"]}
+    for review in reviews:
+        severity_counts[review["severity"]] += 1
+    summary = {
+        "schema_version": 1,
+        "request_id": spec.request_id,
+        "review_count": len(reviews),
+        "severity_counts": severity_counts,
+        "template_path": str((_review_template_dir(repo_root, spec) / "template.json").relative_to(repo_root)),
+    }
+    _write_json(root / "reviews" / f"{spec.request_id}.summary.json", summary)
+    if trace:
+        trace(f"reviewed {len(reviews)} candidates; severity_counts={severity_counts}")
+    return {"root": str(root), "summary": summary, "reviews": reviews, "template": template}
