@@ -47,7 +47,7 @@ class FewshotReviewSpec:
     template_model: str | None = None
     template_versions: int = 3
     max_concurrency: int = 4
-    prompt_version: str = "fewshot-review-v2"
+    prompt_version: str = "fewshot-review-v4"
     refresh_template: bool = False
 
 
@@ -424,7 +424,40 @@ def store_candidate_batch(
 
 def _display_review_focus(target_set: str) -> str:
     cleaned = " ".join(part for part in re.split(r"[_-]+", target_set or "") if part)
-    return cleaned or "the requested token-boundary phenomena"
+    return cleaned or "the requested boundary phenomena"
+
+
+def _language_specific_unit_guidance(language: str, focus: str) -> str:
+    language_key = language.lower()
+    if language_key in {"fr", "french", "français", "francais"}:
+        return """
+French-specific guidance to include in the generated reviewer template:
+- Do NOT say that clitics or elided forms should always be kept together with the following or preceding word. This is wrong for our purpose.
+- Productive learner-relevant clitic/elision pieces should often be separated as their own meaningful units, for example C¦'est, l'¦avait, j'¦ai, qu'¦il when this helps expose smaller meaningful pieces.
+- Lexicalized apostrophe words should normally stay together, for example aujourd'hui, quelqu'un, presqu'île, prud'homme.
+- Contractions such as au, aux, du, des are conventional written words and should not be mechanically split into à/le or de/le unless a specific annotation policy says otherwise.
+- Hyphenated compounds and imperatives with pronouns require judgement: some should remain one written word-like unit, while transparent learner-relevant combinations may deserve internal boundaries.
+- Spaces and punctuation may be represented as separate boundary units by the system; this is acceptable and should not distract from judging word-like units unless the boundary choice is linguistically misleading.
+""".strip()
+    return f"""
+Language-specific guidance to include in the generated reviewer template:
+- Explain which clitics, contractions, compounds, affixes, punctuation conventions, abbreviations, names, numbers, and technical strings in {language} should be separate meaningful units and which should remain intact.
+- Do not state a simplistic rule that all clitics must stay attached or all visible subparts must be split. Give nuanced guidance for {language}.
+- Spaces and punctuation may be represented as separate boundary units by the system; this is acceptable unless the boundary choice is linguistically misleading.
+Requested focus: {focus}.
+""".strip()
+
+
+def _unit_boundary_examples() -> str:
+    return """
+Use these examples in spirit when writing the reviewer template:
+- Clitic split that should be accepted: input "the boy's dog", marked "the¦ ¦boy¦'s¦ ¦dog". The possessive 's is a small meaningful piece and should be separated.
+- True compound split that should be accepted: input "bubblegum", marked "bubble¦gum". The parts are transparent enough to be useful for learners.
+- False compound split that should be rejected: input "barbecue", marked "bar¦becue". This is not a useful linguistic division; the boundary should be removed.
+- Default boundary that should stay: input "rock'n'roll", marked "rock'n'roll". Do not force a split just because apostrophes are visible.
+- French clitic/elision split that should be accepted: input "l'avait", marked "l'¦avait". The clitic part is useful as a separate meaningful unit.
+- French lexicalized apostrophe form that should stay: input "aujourd'hui", marked "aujourd'hui". Do not split it mechanically at the apostrophe.
+""".strip()
 
 
 def build_review_template_draft_prompt(spec: FewshotReviewSpec, draft_index: int) -> str:
@@ -437,28 +470,41 @@ def build_review_template_draft_prompt(spec: FewshotReviewSpec, draft_index: int
     if spec.max_concurrency < 1:
         raise ValueError("max_concurrency must be at least 1")
 
+    focus = _display_review_focus(spec.target_set)
     return f"""
-Create draft {draft_index} of a language-specific hostile-review prompt template for token-boundary examples.
+Create draft {draft_index} of a language-specific hostile-review prompt template for examples of
+strings divided into linguistic units.
 
 Language: {spec.language}
-Requested focus: {_display_review_focus(spec.target_set)}
+Requested focus: {focus}
 
-The template will be used after deterministic validation has already checked that the boundary-marked
-string preserves exactly the original text when boundary markers are removed. Do not make preservation
-the main issue. The reviewer's job is to decide whether the boundary markers are linguistically correct:
-the material between two boundary markers is one token. A boundary marker can be inserted, deleted, or
-moved, but the original non-marker characters are assumed to be fixed.
+Background: we are creating few-shot examples where a text string is divided into linguistic units,
+not merely typographical pieces. The marked string may contain mistakes. Deterministic validation has
+already checked that removing boundary markers recreates exactly the original string, so do not make
+character preservation the main issue. The reviewer's job is to judge whether the boundary markers are
+linguistically and pedagogically appropriate. The material between two boundary markers is one proposed
+word-like or meaningful unit. A boundary marker can be inserted, deleted, or moved, but the original
+non-marker characters are assumed to be fixed.
+
+Avoid project-internal and computer-science terminology in the template you produce. Use ordinary
+phrasing such as "word", "word-like unit", "meaningful unit", "boundary marker", and "marked string".
+Do not instruct the reviewer that attached forms must automatically stay attached; the whole point is
+to decide whether a visible or hidden boundary is linguistically useful.
+
+{_unit_boundary_examples()}
 
 Ask the reviewer to find the strongest reason the example should not be used as a few-shot example.
-For the requested language, include concrete guidance about what should and should not count as a token,
-including clitics, contractions/elisions, apostrophes, compounds, punctuation, whitespace, named entities,
-abbreviations, numbers, technical strings, and cases where a default boundary should be left unchanged.
-Avoid project-internal terminology; write as if reviewing a plain language-learning token-boundary example.
+For the requested language, include concrete guidance about what should and should not count as a
+word-like or meaningful unit. Include clitics, contractions/elisions, apostrophes, compounds, punctuation,
+whitespace, named entities, abbreviations, numbers, technical strings, and cases where a default boundary
+should be left unchanged.
 
-The final prompt template must include a {{candidate_json}} placeholder. The candidate JSON supplied to
-the template will include at least:
+{_language_specific_unit_guidance(spec.language, focus)}
+
+The final prompt template must include exactly one placeholder named {{candidate_json}}. Do not invent
+other placeholders. The candidate JSON supplied to the template will include at least:
 - input: original string;
-- boundary_marked: the same string with boundary marker ¦ inserted between proposed tokens;
+- boundary_marked: the same string with boundary marker ¦ inserted between proposed units;
 - boundary_marker: ¦.
 
 Return only JSON in this shape:
@@ -479,20 +525,31 @@ Return only JSON in this shape:
 def build_review_template_reconciliation_prompt(spec: FewshotReviewSpec, drafts: list[dict[str, Any]]) -> str:
     """Build a prompt asking the AI to reconcile candidate review templates."""
 
+    focus = _display_review_focus(spec.target_set)
     return f"""
-Reconcile these draft language-specific token-boundary review prompt templates into one best template.
+Reconcile these draft language-specific word/unit boundary review prompt templates into one best template.
 
 Language: {spec.language}
-Requested focus: {_display_review_focus(spec.target_set)}
+Requested focus: {focus}
 
-The final template must be a hostile-review prompt: it should ask for the strongest reason the
-boundary markers should not be used as a few-shot token-boundary example, classify severity as
-fatal, serious, minor, or none, and return structured JSON. It must include a {{candidate_json}}
-placeholder.
+The final template must be a hostile-review prompt: it should ask for the strongest reason the boundary
+markers should not be used as a few-shot boundary example, classify severity as fatal, serious, minor, or
+none, and return structured JSON. It must include exactly one placeholder named {{candidate_json}} and
+must not invent other placeholders.
 
 Important: deterministic validation has already checked that removing boundary markers recreates the
-original string. The reviewer should focus on whether the markers are in the linguistically right places:
-the material between two markers is one token. Avoid project-internal terminology in the final template.
+original string. The reviewer should focus on whether the markers are in linguistically appropriate
+places: the material between two markers is one proposed word-like or meaningful unit. Do not make exact
+preservation the main topic.
+
+Use ordinary terms like "word", "word-like unit", "meaningful unit", "boundary marker", and "marked
+string". Avoid project-internal and computer-science terminology. If any draft says that French clitics,
+elisions, apostrophe forms, or hyphenated compounds should always stay together, override it using the
+examples and guidance below.
+
+{_unit_boundary_examples()}
+
+{_language_specific_unit_guidance(spec.language, focus)}
 
 Drafts:
 {json.dumps(drafts, ensure_ascii=False, indent=2)}
@@ -561,9 +618,30 @@ def _review_template_dir(repo_root: Path, spec: FewshotReviewSpec) -> Path:
     return curation_root(repo_root, curation_spec) / "review_templates"
 
 
+def _curation_root_for_review_spec(repo_root: Path, spec: FewshotReviewSpec) -> Path:
+    curation_spec = FewshotCurationSpec(
+        operation=spec.operation,
+        language=spec.language,
+        mechanism=spec.mechanism,
+        target_set=spec.target_set,
+        request_id=spec.request_id,
+    )
+    return curation_root(repo_root, curation_spec)
+
+
+def _missing_request_message(request_path: Path) -> str:
+    request_dir = request_path.parent
+    available = sorted(path.stem for path in request_dir.glob("*.json") if not path.name.endswith(".prompt.json"))
+    if available:
+        return f"few-shot curation request not found: {request_path}. Available request IDs: {', '.join(available)}"
+    return f"few-shot curation request not found: {request_path}. No curation request files are present in {request_dir}"
+
+
 def _candidate_review_prompt(template: dict[str, Any], record: dict[str, Any]) -> str:
-    candidate_json = json.dumps(_review_candidate_payload(record), ensure_ascii=False, indent=2)
+    payload = _review_candidate_payload(record)
+    candidate_json = json.dumps(payload, ensure_ascii=False, indent=2)
     template_text = str(template.get("template_text") or "")
+    template_text = template_text.replace("{boundary_marker}", str(payload["boundary_marker"]))
     if "{candidate_json}" in template_text:
         return template_text.replace("{candidate_json}", candidate_json)
     return f"{template_text}\n\nCandidate JSON:\n{candidate_json}"
@@ -657,13 +735,12 @@ async def review_candidate_batch(
     if spec.max_concurrency < 1:
         raise ValueError("max_concurrency must be at least 1")
     ai_client = client or OpenAIClient()
-    template = await ensure_review_template(spec, repo_root=repo_root, client=ai_client, trace=trace)
-
-    request_root = _review_template_dir(repo_root, spec).parent
+    request_root = _curation_root_for_review_spec(repo_root, spec)
     request_path = request_root / "requests" / f"{spec.request_id}.json"
     if not request_path.exists():
-        raise FileNotFoundError(f"few-shot curation request not found: {request_path}")
+        raise FileNotFoundError(_missing_request_message(request_path))
     request = json.loads(request_path.read_text(encoding="utf-8"))
+    template = await ensure_review_template(spec, repo_root=repo_root, client=ai_client, trace=trace)
     curation_spec = _review_spec_from_request(request, spec)
     root = curation_root(repo_root, curation_spec)
     candidates_dir = root / "candidates"

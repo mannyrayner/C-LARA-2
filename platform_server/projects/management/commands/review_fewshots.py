@@ -6,6 +6,8 @@ from pathlib import Path
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
+from core.ai_api import OpenAIClient
+from core.config import OpenAIConfig
 from pipeline.fewshot_curation import FewshotReviewSpec, review_candidate_batch
 
 
@@ -23,6 +25,8 @@ class Command(BaseCommand):
         parser.add_argument("--template-versions", type=int, default=3)
         parser.add_argument("--max-concurrency", type=int, default=4)
         parser.add_argument("--refresh-template", action="store_true")
+        parser.add_argument("--timeout-s", type=float, default=180.0)
+        parser.add_argument("--heartbeat-s", type=float, default=10.0)
         parser.add_argument("--repo-root", default="")
 
     def handle(self, *args, **options):
@@ -47,10 +51,12 @@ class Command(BaseCommand):
         trace(
             f"request operation={spec.operation} language={spec.language} mechanism={spec.mechanism} "
             f"target_set={spec.target_set} request_id={spec.request_id} "
-            f"template_versions={spec.template_versions} max_concurrency={spec.max_concurrency} model={spec.model}"
+            f"template_versions={spec.template_versions} max_concurrency={spec.max_concurrency} "
+            f"model={spec.model} timeout_s={options['timeout_s']}"
         )
+        client = OpenAIClient(config=OpenAIConfig(timeout_s=options["timeout_s"], heartbeat_s=options["heartbeat_s"]))
         try:
-            result = asyncio.run(review_candidate_batch(spec, repo_root=repo_root, trace=trace))
+            result = asyncio.run(review_candidate_batch(spec, repo_root=repo_root, client=client, trace=trace))
         except Exception as exc:  # pragma: no cover - surfaced by command output/tests through CommandError
             raise CommandError(str(exc)) from exc
 
