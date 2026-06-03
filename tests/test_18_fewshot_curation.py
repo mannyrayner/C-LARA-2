@@ -383,13 +383,21 @@ class FewshotCurationTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn("linguistic units", review_client.prompts[0])
             self.assertIn("bubble¦gum", review_client.prompts[0])
             self.assertIn("bar¦becue", review_client.prompts[0])
+            self.assertIn("Donne¦-¦le¦-¦moi", review_client.prompts[0])
             self.assertIn("Do NOT say that clitics or elided forms should always be kept together", review_client.prompts[0])
             self.assertNotIn("token", review_client.prompts[0].lower())
             self.assertTrue(any("creating 2 review-template draft" in message for message in traces))
             self.assertTrue(any("reviewed 1 candidates" in message for message in traces))
             self.assertIn("Je¦ ¦l'¦aime¦.", review_client.prompts[-1])
             self.assertIn("boundary_marked", review_client.prompts[-1])
+            self.assertIn("interpretation_notes", review_client.prompts[-1])
+            self.assertIn("Donne¦-¦le¦-¦moi", review_client.prompts[-1])
             self.assertNotIn("{boundary_marker}", review_client.prompts[-1])
+            review_file = root / "reviews" / "20260603-review-EXAMPLE-0001.review.json"
+            review_json = __import__("json").loads(review_file.read_text(encoding="utf-8"))
+            self.assertEqual("Je l'aime.", review_json["candidate"]["input"])
+            self.assertEqual("Je¦ ¦l'¦aime¦.", review_json["candidate"]["boundary_marked"])
+            self.assertIn("candidate_path", review_json)
 
     async def test_review_checks_request_before_creating_template(self) -> None:
         review_client = FakeReviewClient([{"template_text": "unused"}])

@@ -47,7 +47,7 @@ class FewshotReviewSpec:
     template_model: str | None = None
     template_versions: int = 3
     max_concurrency: int = 4
-    prompt_version: str = "fewshot-review-v4"
+    prompt_version: str = "fewshot-review-v5"
     refresh_template: bool = False
 
 
@@ -437,13 +437,14 @@ French-specific guidance to include in the generated reviewer template:
 - Lexicalized apostrophe words should normally stay together, for example aujourd'hui, quelqu'un, presqu'île, prud'homme.
 - Contractions such as au, aux, du, des are conventional written words and should not be mechanically split into à/le or de/le unless a specific annotation policy says otherwise.
 - Hyphenated compounds and imperatives with pronouns require judgement: some should remain one written word-like unit, while transparent learner-relevant combinations may deserve internal boundaries.
-- Spaces and punctuation may be represented as separate boundary units by the system; this is acceptable and should not distract from judging word-like units unless the boundary choice is linguistically misleading.
+- French imperative clitic chains such as Donne¦-¦le¦-¦moi should not be rejected merely because the hyphens and clitic words are separated; this can be a useful learner-oriented analysis of the verb, separators, and pronouns.
+- Spaces, hyphens, apostrophes, and punctuation may be represented as separate boundary units by the system; this is acceptable and should not distract from judging word-like units unless the boundary choice is linguistically misleading.
 """.strip()
     return f"""
 Language-specific guidance to include in the generated reviewer template:
 - Explain which clitics, contractions, compounds, affixes, punctuation conventions, abbreviations, names, numbers, and technical strings in {language} should be separate meaningful units and which should remain intact.
 - Do not state a simplistic rule that all clitics must stay attached or all visible subparts must be split. Give nuanced guidance for {language}.
-- Spaces and punctuation may be represented as separate boundary units by the system; this is acceptable unless the boundary choice is linguistically misleading.
+- Spaces, hyphens, apostrophes, and punctuation may be represented as separate boundary units by the system; this is acceptable unless the boundary choice is linguistically misleading.
 Requested focus: {focus}.
 """.strip()
 
@@ -456,6 +457,7 @@ Use these examples in spirit when writing the reviewer template:
 - False compound split that should be rejected: input "barbecue", marked "bar¦becue". This is not a useful linguistic division; the boundary should be removed.
 - Default boundary that should stay: input "rock'n'roll", marked "rock'n'roll". Do not force a split just because apostrophes are visible.
 - French clitic/elision split that should be accepted: input "l'avait", marked "l'¦avait". The clitic part is useful as a separate meaningful unit.
+- French imperative clitic chain that should usually be accepted for this learner-oriented purpose: input "Donne-le-moi", marked "Donne¦-¦le¦-¦moi". This means the proposed units are "Donne", "-", "le", "-", and "moi"; do not reject it merely because the hyphenated written word has been analysed into smaller meaningful pieces.
 - French lexicalized apostrophe form that should stay: input "aujourd'hui", marked "aujourd'hui". Do not split it mechanically at the apostrophe.
 """.strip()
 
@@ -505,7 +507,10 @@ The final prompt template must include exactly one placeholder named {{candidate
 other placeholders. The candidate JSON supplied to the template will include at least:
 - input: original string;
 - boundary_marked: the same string with boundary marker ¦ inserted between proposed units;
-- boundary_marker: ¦.
+- boundary_marker: ¦;
+- interpretation_notes: reminders explaining that each ¦ separates proposed units and that spaces,
+  hyphens, apostrophes, and punctuation can appear as separate units;
+- reference_examples: compact examples showing accepted and rejected boundary placements.
 
 Return only JSON in this shape:
 {{
@@ -539,13 +544,16 @@ must not invent other placeholders.
 
 Important: deterministic validation has already checked that removing boundary markers recreates the
 original string. The reviewer should focus on whether the markers are in linguistically appropriate
-places: the material between two markers is one proposed word-like or meaningful unit. Do not make exact
-preservation the main topic.
+places: each ¦ marks a boundary between two proposed units. Spaces, hyphens, apostrophes, and punctuation
+may themselves be separate proposed units; do not reject a marked string merely because these separators
+are split out. Do not make exact preservation the main topic.
 
 Use ordinary terms like "word", "word-like unit", "meaningful unit", "boundary marker", and "marked
 string". Avoid project-internal and computer-science terminology. If any draft says that French clitics,
-elisions, apostrophe forms, or hyphenated compounds should always stay together, override it using the
-examples and guidance below.
+elisions, apostrophe forms, hyphens, or hyphenated compounds should always stay together, override it
+using the examples and guidance below. The final template should explicitly tell reviewers how to read
+boundary_marked strings like Donne¦-¦le¦-¦moi: the proposed units are the pieces separated by ¦, including
+the hyphens as separator units.
 
 {_unit_boundary_examples()}
 
@@ -589,6 +597,34 @@ def _review_candidate_payload(record: dict[str, Any]) -> dict[str, Any]:
         "input": candidate.get("input"),
         "boundary_marked": _boundary_marked_from_candidate(candidate, marker=marker),
         "boundary_marker": marker,
+        "interpretation_notes": [
+            "Each boundary marker separates two proposed word-like or meaningful units.",
+            "Read a marked string such as Donne¦-¦le¦-¦moi as the proposed units Donne, -, le, -, moi.",
+            "Spaces, hyphens, apostrophes, and punctuation can be separate units; do not reject an example merely because these separators have been split out.",
+            "Deterministic validation has already checked that removing the boundary markers recreates the input exactly.",
+        ],
+        "reference_examples": [
+            {
+                "input": "the boy's dog",
+                "boundary_marked": "the¦ ¦boy¦'s¦ ¦dog",
+                "judgement": "acceptable: possessive 's is a small meaningful piece for learners",
+            },
+            {
+                "input": "bubblegum",
+                "boundary_marked": "bubble¦gum",
+                "judgement": "acceptable when the compound parts are transparent enough to be useful",
+            },
+            {
+                "input": "barbecue",
+                "boundary_marked": "bar¦becue",
+                "judgement": "reject: this is a misleading false-compound split",
+            },
+            {
+                "input": "Donne-le-moi",
+                "boundary_marked": "Donne¦-¦le¦-¦moi",
+                "judgement": "usually acceptable here: verb, hyphens, and clitic pronouns are visible meaningful/separator units",
+            },
+        ],
         "phenomenon": candidate.get("phenomenon"),
         "rationale": candidate.get("rationale"),
     }
@@ -776,6 +812,8 @@ async def review_candidate_batch(
                 "review_model": spec.model,
                 "review_prompt_version": spec.prompt_version,
                 "template_path": str((_review_template_dir(repo_root, spec) / "template.json").relative_to(repo_root)),
+                "candidate": _review_candidate_payload(record),
+                "candidate_path": str(path.relative_to(repo_root)),
                 "severity": severity,
                 "review": {**payload, "severity": severity},
             }
