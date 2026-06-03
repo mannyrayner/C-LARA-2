@@ -35,6 +35,7 @@ count-lines:
 				-path "*/.git/*" -o \
 				-path "$$dir/media" -o -path "$$dir/media/*" -o \
 				-path "$$dir/artifacts" -o -path "$$dir/artifacts/*" -o \
+				-path "docs/few_shot_curation" -o -path "docs/few_shot_curation/*" -o \
 				-name "*.sqlite3" \
 			\) -prune -o -type f -print0 | xargs -0 wc -l | awk 'END {print $$1}'); \
 			printf "%-16s %s\n" $$dir $$count; \
