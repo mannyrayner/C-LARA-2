@@ -47,7 +47,7 @@ class FewshotReviewSpec:
     template_model: str | None = None
     template_versions: int = 3
     max_concurrency: int = 4
-    prompt_version: str = "fewshot-review-v1"
+    prompt_version: str = "fewshot-review-v2"
     refresh_template: bool = False
 
 
@@ -422,6 +422,11 @@ def store_candidate_batch(
     return {"root": str(root), "manifest": manifest}
 
 
+def _display_review_focus(target_set: str) -> str:
+    cleaned = " ".join(part for part in re.split(r"[_-]+", target_set or "") if part)
+    return cleaned or "the requested token-boundary phenomena"
+
+
 def build_review_template_draft_prompt(spec: FewshotReviewSpec, draft_index: int) -> str:
     """Build a prompt asking the AI to draft a language-specific review template."""
 
@@ -433,19 +438,28 @@ def build_review_template_draft_prompt(spec: FewshotReviewSpec, draft_index: int
         raise ValueError("max_concurrency must be at least 1")
 
     return f"""
-Create draft {draft_index} of a language-specific hostile-review prompt template for few-shot examples.
+Create draft {draft_index} of a language-specific hostile-review prompt template for token-boundary examples.
 
-Operation: {spec.operation}
 Language: {spec.language}
-Mechanism/strategy: {spec.mechanism}
-Target example set: {spec.target_set}
+Requested focus: {_display_review_focus(spec.target_set)}
 
-The template will be used to review candidate examples for linguistic annotation.
-For segmentation_phase_2, candidates contain an input segment and output tokens whose surfaces
-must concatenate exactly to the input. The reviewer should look for subtle linguistic defects,
-not merely schema errors. For the requested language, include concrete issues that reviewers
-should check, such as clitics, contractions, elision/apostrophes, compounds, punctuation,
-spacing, named entities, abbreviations, and cases where a default boundary should be kept.
+The template will be used after deterministic validation has already checked that the boundary-marked
+string preserves exactly the original text when boundary markers are removed. Do not make preservation
+the main issue. The reviewer's job is to decide whether the boundary markers are linguistically correct:
+the material between two boundary markers is one token. A boundary marker can be inserted, deleted, or
+moved, but the original non-marker characters are assumed to be fixed.
+
+Ask the reviewer to find the strongest reason the example should not be used as a few-shot example.
+For the requested language, include concrete guidance about what should and should not count as a token,
+including clitics, contractions/elisions, apostrophes, compounds, punctuation, whitespace, named entities,
+abbreviations, numbers, technical strings, and cases where a default boundary should be left unchanged.
+Avoid project-internal terminology; write as if reviewing a plain language-learning token-boundary example.
+
+The final prompt template must include a {{candidate_json}} placeholder. The candidate JSON supplied to
+the template will include at least:
+- input: original string;
+- boundary_marked: the same string with boundary marker ¦ inserted between proposed tokens;
+- boundary_marker: ¦.
 
 Return only JSON in this shape:
 {{
@@ -466,16 +480,19 @@ def build_review_template_reconciliation_prompt(spec: FewshotReviewSpec, drafts:
     """Build a prompt asking the AI to reconcile candidate review templates."""
 
     return f"""
-Reconcile these draft few-shot review prompt templates into one best template.
+Reconcile these draft language-specific token-boundary review prompt templates into one best template.
 
-Operation: {spec.operation}
 Language: {spec.language}
-Mechanism/strategy: {spec.mechanism}
-Target example set: {spec.target_set}
+Requested focus: {_display_review_focus(spec.target_set)}
 
-The final template must be a hostile-review prompt: it should ask for the strongest reason
-the candidate should not be used as a few-shot example, classify severity as fatal, serious,
-minor, or none, and return structured JSON. It must include a {{candidate_json}} placeholder.
+The final template must be a hostile-review prompt: it should ask for the strongest reason the
+boundary markers should not be used as a few-shot token-boundary example, classify severity as
+fatal, serious, minor, or none, and return structured JSON. It must include a {{candidate_json}}
+placeholder.
+
+Important: deterministic validation has already checked that removing boundary markers recreates the
+original string. The reviewer should focus on whether the markers are in the linguistically right places:
+the material between two markers is one token. Avoid project-internal terminology in the final template.
 
 Drafts:
 {json.dumps(drafts, ensure_ascii=False, indent=2)}
@@ -494,6 +511,30 @@ Return only JSON in this shape:
   "reconciliation_rationale": "why this merged template is best"
 }}
 """.strip()
+
+
+def _boundary_marked_from_candidate(candidate: dict[str, Any], marker: str = "¦") -> str:
+    output = candidate.get("output") if isinstance(candidate.get("output"), dict) else {}
+    tokens = output.get("tokens") if isinstance(output, dict) else []
+    if not isinstance(tokens, list) or not tokens:
+        return str(candidate.get("input") or "")
+    surfaces = []
+    for token in tokens:
+        if isinstance(token, dict) and isinstance(token.get("surface"), str):
+            surfaces.append(token["surface"])
+    return marker.join(surfaces) if surfaces else str(candidate.get("input") or "")
+
+
+def _review_candidate_payload(record: dict[str, Any]) -> dict[str, Any]:
+    candidate = record.get("candidate") if isinstance(record.get("candidate"), dict) else {}
+    marker = "¦"
+    return {
+        "input": candidate.get("input"),
+        "boundary_marked": _boundary_marked_from_candidate(candidate, marker=marker),
+        "boundary_marker": marker,
+        "phenomenon": candidate.get("phenomenon"),
+        "rationale": candidate.get("rationale"),
+    }
 
 
 def _review_spec_from_request(request: dict[str, Any], spec: FewshotReviewSpec) -> FewshotCurationSpec:
@@ -521,7 +562,7 @@ def _review_template_dir(repo_root: Path, spec: FewshotReviewSpec) -> Path:
 
 
 def _candidate_review_prompt(template: dict[str, Any], record: dict[str, Any]) -> str:
-    candidate_json = json.dumps(record.get("candidate") or {}, ensure_ascii=False, indent=2)
+    candidate_json = json.dumps(_review_candidate_payload(record), ensure_ascii=False, indent=2)
     template_text = str(template.get("template_text") or "")
     if "{candidate_json}" in template_text:
         return template_text.replace("{candidate_json}", candidate_json)
@@ -540,9 +581,13 @@ async def ensure_review_template(
     template_dir = _review_template_dir(repo_root, spec)
     final_path = template_dir / "template.json"
     if final_path.exists() and not spec.refresh_template:
+        existing_template = json.loads(final_path.read_text(encoding="utf-8"))
+        if existing_template.get("prompt_version") == spec.prompt_version:
+            if trace:
+                trace(f"using existing review template {final_path}")
+            return existing_template
         if trace:
-            trace(f"using existing review template {final_path}")
-        return json.loads(final_path.read_text(encoding="utf-8"))
+            trace(f"refreshing review template because prompt_version changed to {spec.prompt_version}")
 
     ai_client = client or OpenAIClient()
     model = spec.template_model or spec.model
@@ -551,14 +596,21 @@ async def ensure_review_template(
         trace(f"creating {spec.template_versions} review-template draft(s) for language={spec.language}")
 
     async def make_draft(idx: int) -> dict[str, Any]:
+        draft_path = template_dir / "drafts" / f"draft{idx}.json"
+        if draft_path.exists() and not spec.refresh_template:
+            existing_draft = json.loads(draft_path.read_text(encoding="utf-8"))
+            if existing_draft.get("prompt_version") == spec.prompt_version:
+                if trace:
+                    trace(f"using existing review-template draft {idx}")
+                return existing_draft
         prompt = build_review_template_draft_prompt(spec, idx)
         if trace:
             trace(f"starting review-template draft {idx}")
         payload = normalize_json_text(await ai_client.chat_json(prompt, model=model))
         if not isinstance(payload, dict):
             raise ValueError(f"review-template draft {idx} response must be a JSON object")
-        draft = {**payload, "draft_index": idx, "model": model, "prompt": prompt}
-        _write_json(template_dir / "drafts" / f"draft{idx}.json", draft)
+        draft = {**payload, "draft_index": idx, "model": model, "prompt_version": spec.prompt_version, "prompt": prompt}
+        _write_json(draft_path, draft)
         if trace:
             trace(f"completed review-template draft {idx}")
         return draft

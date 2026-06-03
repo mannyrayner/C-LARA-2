@@ -380,9 +380,12 @@ class FewshotCurationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual({"fatal": 0, "serious": 0, "minor": 0, "none": 1}, result["summary"]["severity_counts"])
             self.assertEqual(4, len(review_client.prompts))
             self.assertEqual(["fake-template", "fake-template", "fake-template", "fake-reviewer"], review_client.models)
+            self.assertIn("boundary markers", review_client.prompts[0])
+            self.assertNotIn("segmentation_phase_2", review_client.prompts[0])
             self.assertTrue(any("creating 2 review-template draft" in message for message in traces))
             self.assertTrue(any("reviewed 1 candidates" in message for message in traces))
-            self.assertIn("Je l'aime.", review_client.prompts[-1])
+            self.assertIn("Je¦ ¦l'¦aime¦.", review_client.prompts[-1])
+            self.assertIn("boundary_marked", review_client.prompts[-1])
 
 
 
