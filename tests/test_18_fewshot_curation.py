@@ -381,11 +381,43 @@ class FewshotCurationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(4, len(review_client.prompts))
             self.assertEqual(["fake-template", "fake-template", "fake-template", "fake-reviewer"], review_client.models)
             self.assertIn("boundary markers", review_client.prompts[0])
-            self.assertNotIn("segmentation_phase_2", review_client.prompts[0])
+            self.assertIn("do not use terms", review_client.prompts[0])
+            self.assertIn("Do NOT say that clitics or elided forms should always be kept together", review_client.prompts[0])
             self.assertTrue(any("creating 2 review-template draft" in message for message in traces))
             self.assertTrue(any("reviewed 1 candidates" in message for message in traces))
             self.assertIn("Je¦ ¦l'¦aime¦.", review_client.prompts[-1])
             self.assertIn("boundary_marked", review_client.prompts[-1])
+
+    async def test_review_checks_request_before_creating_template(self) -> None:
+        review_client = FakeReviewClient([{"template_text": "unused"}])
+        review_spec = FewshotReviewSpec(
+            operation="segmentation_phase_2",
+            language="fr",
+            mechanism="boundary_first",
+            target_set="clitic_compound_v2",
+            request_id="missing-request",
+            model="fake-reviewer",
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            request_dir = (
+                Path(tmpdir)
+                / "docs"
+                / "few_shot_curation"
+                / "segmentation_phase_2"
+                / "fr"
+                / "boundary_first"
+                / "clitic_compound_v2"
+                / "requests"
+            )
+            request_dir.mkdir(parents=True)
+            (request_dir / "request1.json").write_text("{}\n", encoding="utf-8")
+
+            with self.assertRaises(FileNotFoundError) as cm:
+                await review_candidate_batch(review_spec, repo_root=Path(tmpdir), client=review_client)
+
+            self.assertIn("Available request IDs: request1", str(cm.exception))
+            self.assertEqual([], review_client.prompts)
 
 
 

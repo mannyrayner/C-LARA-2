@@ -1,9 +1,9 @@
-# C-LARA-2 issue overview (refreshed 2026-06-03T01:00:00Z)
+# C-LARA-2 issue overview (refreshed 2026-06-03T02:00:00Z)
 
 ## Recent progress
 
 - Escalated **ISSUE-0036** to P1 after maintainer review: current annotation errors are frequent, and a principled few-shot curation pipeline is promising both for quality improvements and for First Progress Report evidence.
-- Expanded `docs/roadmap/few-shot-example-curation.md` into an explicit generate → adversarial review → repair → gold acceptance architecture with schema validation, critic severity labels, consensus scoring, auditable example records, and incremental invocation/storage/review workflows; the `curate_fewshots` command now covers traced, fan-out/fan-in segmentation_phase_2 candidate generation and validation, and `review_fewshots` adds the first language-specific hostile-review step framed as plain token-boundary review rather than C-LARA-2-internal processing terminology.
+- Expanded `docs/roadmap/few-shot-example-curation.md` into an explicit generate → adversarial review → repair → gold acceptance architecture with schema validation, critic severity labels, consensus scoring, auditable example records, and incremental invocation/storage/review workflows; the `curate_fewshots` command now covers traced, fan-out/fan-in segmentation_phase_2 candidate generation and validation, and `review_fewshots` adds the first language-specific hostile-review step framed as plain word/unit-boundary review rather than C-LARA-2-internal processing terminology, with French clitic guidance and preflight request checks.
 - Closed **ISSUE-0007** in the current issue registry because page-image prompt-construction indirection is now implemented; future page-image prompt work should be filed as concrete follow-ons.
 - Advanced **ISSUE-0034** from a prompt-wrapper prototype toward an admin-only repository-grounded project-understanding assistant with asynchronous execution, status polling, request/result persistence, and cost/metadata capture.
 - Expanded the evaluator/autonomy roadmap around **ISSUE-0003**, **ISSUE-0004**, **ISSUE-0005**, and **ISSUE-0006** so segmentation and MWE improvements can be measured systematically for the First Progress Report.
