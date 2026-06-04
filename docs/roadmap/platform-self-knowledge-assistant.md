@@ -230,6 +230,87 @@ These controls do not make Codex a trusted actor. They make Codex an untrusted s
 - The implementation can start as a restricted management command or staff-only action that shells out to Codex, avoiding premature productisation.
 - Running with `--sandbox read-only` makes the intended first version answer-only: Codex can read repository files but cannot mutate the repo. With current `codex-cli 0.135.0` syntax, the platform should rely on non-interactive `codex exec` plus timeout/error handling rather than passing the unsupported `--ask-for-approval never` option.
 
+## Installation and safe invocation details
+
+### What must be installed to run `codex exec`
+
+The first implementation should treat Codex CLI availability as an explicit deployment prerequisite, not as an implicit Python dependency. A local development machine or server that runs project-understanding requests needs:
+
+1. A supported operating system for the Codex CLI. The expected primary targets are Linux for AWS/server deployment and macOS or Linux for maintainer machines; Windows should be treated as a separate/experimental path unless tested through WSL.
+2. Node.js and `npm`, because the Codex CLI is distributed as the `@openai/codex` npm package.
+3. The Codex CLI installed and upgraded through npm, for example:
+
+   ```bash
+   npm install -g @openai/codex
+   codex --version
+   ```
+
+4. A working Codex authentication setup for the account or service context that will run the command. For local development this may be an interactive Codex login or an `OPENAI_API_KEY` in the developer shell. For a server, prefer a purpose-specific API key or service account configuration with the minimum practical permissions and clear ownership/revocation procedures.
+5. The target model available to that account. The roadmap examples use `gpt-5.3-codex`; deployment should keep the model name configurable so the team can change it without code changes.
+6. A clean C-LARA-2 checkout at a configured path. The examples use `/srv/C-LARA-2` for production, while local development can use the developer's repo path.
+7. Enough host resources and network access for Codex model calls, but no need for application code to expose additional repository read privileges beyond the configured checkout.
+
+Before enabling platform calls, add a deployment check that runs a harmless command such as `codex --version` and, where credentials are configured, a short read-only smoke question against a test checkout. Record failures as configuration errors rather than user-facing assistant failures.
+
+### Safe local-machine invocation
+
+For local development and maintainer-run experiments, safety should favour transparency and reproducibility:
+
+- Run from a disposable or clean Git checkout so accidental local state does not affect answers.
+- Use `--sandbox read-only` and `--ask-for-approval never` for project-understanding questions.
+- Prefer a prompt file or stdin over shell interpolation. If a shell example is used manually, treat it as a convenience only; implementation should not build a shell command with untrusted question text.
+- Keep the Codex command visible in logs or terminal output, minus secrets.
+- Capture stdout and stderr separately so maintainers can distinguish an answer from command warnings or failures.
+- Record the Git commit used for the answer with `git rev-parse HEAD`.
+- Set a timeout even locally, so hung requests do not look like silent platform failures.
+
+A local Python prototype should use an argument list rather than `shell=True`, for example:
+
+```python
+subprocess.run(
+    [
+        "codex",
+        "exec",
+        "--cd",
+        repo_path,
+        "--sandbox",
+        "read-only",
+        "--ask-for-approval",
+        "never",
+        "--model",
+        model,
+        prompt_text,
+    ],
+    capture_output=True,
+    text=True,
+    timeout=timeout_s,
+    check=False,
+)
+```
+
+If the CLI supports prompt input on stdin in the deployed version, that may be preferable for long prompts; the same safety rule applies: pass arguments as a list and keep user text out of shell syntax.
+
+### Safe web/server invocation
+
+A staff-only web feature adds risks beyond local use because a remote user can indirectly start a local process. The first web implementation should therefore be more restrictive than the local management command:
+
+- Restrict access to staff/admin users or a small trusted group; do not expose this to ordinary users until the risk model is better understood.
+- Store configuration in settings: Codex executable path, repository path, model, sandbox mode, approval mode, timeout, maximum prompt length, output directory, and feature flag.
+- Use a fixed allowlisted repository path such as `/srv/C-LARA-2`; never accept `--cd` or filesystem paths from request parameters.
+- Build the subprocess call with an argument vector via `subprocess.run` or `asyncio.create_subprocess_exec`; never use `shell=True` with user-provided text.
+- Run with `--sandbox read-only` and `--ask-for-approval never` unconditionally for this feature.
+- Apply strict request-size limits, execution timeouts, and rate limits per user and globally.
+- Queue longer runs through a background worker rather than blocking a web request thread, especially if answers may take minutes.
+- Capture stdout, stderr, exit code, duration, prompt version, model, repository commit, and requesting user in an internal run record.
+- Return stdout only when the exit code is successful; otherwise show a controlled error message and preserve diagnostics for admins.
+- Scrub or avoid recording environment variables, API keys, absolute private paths outside the configured repo root, and raw server logs.
+- Use a minimal environment for the child process. Pass only variables needed for Codex authentication and normal CLI operation.
+- Consider running the web-triggered Codex process as a dedicated OS user with read-only access to the repository checkout and no write access to application data, uploaded media, credentials, or deployment scripts.
+- Prevent concurrent-run overload with a small worker pool or lock, since each Codex call may be expensive and resource-intensive.
+- Keep evidence records `unreviewed` by default until a human reviewer marks them otherwise.
+
+This server pattern keeps Codex responsible for repository understanding while keeping the web application responsible for authentication, authorization, process containment, auditability, and failure handling.
+
 ## Relationship to existing dialogue work
 
 This roadmap is related to, but narrower and more evidence-oriented than, [the freeform dialogue-based top-level roadmap](dialogue-top-level.md).
