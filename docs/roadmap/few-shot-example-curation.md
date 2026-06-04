@@ -191,6 +191,48 @@ docs/few_shot_curation/
 
 The `manifest.json` should list accepted examples, their ordering/tranche membership, validation status, scores, and the prompt-asset files they were copied into. Generated and reviewed examples can be large; compact prompt assets should be derived outputs, not the only source of truth.
 
+
+### Pipeline experiment CLI for curated few-shot testing
+
+To test curated sets properly, add a third management-command surface that invokes linguistic processing directly rather than going through the annotation UI. A provisional command name is:
+
+```bash
+python manage.py run_linguistic_pipeline_experiment \
+  --project <project-id-or-slug> \
+  --start-stage segmentation_phase_1 \
+  --end-stage mwe \
+  --stage-parameters-json '{"segmentation_phase_2":{"mechanism":"boundary_first","variant":"clitic_compound_v2","fewshot_count":"small"}}' \
+  --run-label fr-clitic-compound-v2-small
+```
+
+The command should also accept `--stage-parameters-file <json-file>` so longer parameter bundles can be versioned and reused. For experiments based on curated examples, the important stage-parameter keys are the already-supported prompt/few-shot selectors, for example `mechanism`, `variant` or `fewshot_variant`, and `fewshot_count`. The command should resolve those settings to actual prompt/template/few-shot files and record both the requested parameter bundle and the resolved files in the run artifact.
+
+Minimum options for the first version:
+
+- `--project` or `--source-file` / `--source-json` to select the input material;
+- `--l1` and `--l2` when the input is not an existing project;
+- `--start-stage` and `--end-stage` using the same stage names as `FullPipelineSpec`;
+- `--stage-parameters-json` and/or `--stage-parameters-file`;
+- `--persist-intermediates` (default on for experiments);
+- `--output-root` and `--run-label`;
+- `--dry-run` to print the resolved stage plan, prompt/few-shot variant files, and output paths without model calls.
+
+The command should write an auditable experiment directory, e.g.:
+
+```text
+docs/pipeline_experiments/
+  runs/
+    20260604-fr-clitic-compound-v2-small/
+      config.json
+      resolved_stage_parameters.json
+      input_snapshot.json
+      stage_outputs/
+      processing_parameters.json
+      manifest.json
+```
+
+This fills the gap between curated example creation and evaluator work: it lets maintainers run the same project or source sample with the default few-shot set, then with a curated set, while preserving exactly which examples and stage parameters were used.
+
 ### Using curated examples
 
 Accepted examples should become usable in two ways:
@@ -221,9 +263,10 @@ A human reviewer can then accept, reject, request more repair, or mark an exampl
 5. Define a small phenomenon matrix for `segmentation_phase_2` clitics/compounds and MWE detection.
 6. Add repair prompts and re-review loops for candidates with fatal/serious/minor findings.
 7. Expand persisted records from candidate/request/accepted/manifest files to include repair, arbiter, and human-review records.
-8. Add evaluator prompts that compare outputs from two few-shot variants on the same input.
-9. Run a first documented experiment comparing tranche sizes and variant sets.
-10. Decide whether successful example sets should be promoted to default prompts or remain named variants.
+8. Specify and implement `run_linguistic_pipeline_experiment`, a management command that runs selected pipeline stages with explicit stage parameters and stores resolved prompt/few-shot provenance.
+9. Add evaluator prompts that compare outputs from two few-shot variants on the same input.
+10. Run a first documented experiment comparing tranche sizes and variant sets.
+11. Decide whether successful example sets should be promoted to default prompts or remain named variants.
 
 ## Relationship to other roadmap items
 

@@ -223,6 +223,110 @@ For the report, the most persuasive result would be a paired comparison:
 
 This is the shortest path from AI evaluation to useful autonomy: the AI does not merely detect poor outputs, but helps identify which prompt/mechanism changes are productive.
 
+
+## Manage.py experiment runner for processing + evaluation
+
+The near-term evaluator needs a CLI entry point that can run linguistic processing with explicit parameters and optionally apply evaluation methods to the resulting artifacts. This should be a management command rather than an admin-only UI feature at first, because report experiments need repeatable command lines, visible logs, and durable artifacts.
+
+Provisional command:
+
+```bash
+python manage.py run_linguistic_pipeline_experiment \
+  --project <project-id-or-slug> \
+  --start-stage segmentation_phase_1 \
+  --end-stage segmentation_phase_2 \
+  --stage-parameters-file experiments/fr_boundary_first_candidate.json \
+  --evaluator segmentation_phase_2_boundary_v1 \
+  --judge-model gpt-5 \
+  --judge-repeats 3 \
+  --run-label fr-boundary-first-candidate
+```
+
+### Required processing inputs
+
+The command should support two input modes:
+
+1. **Existing project mode:** `--project <id-or-slug>` loads source text and project metadata from the platform database/storage. This is the fastest path for maintainers already using `projects/.../annotation/`.
+2. **Standalone fixture mode:** `--source-file`, `--source-json`, or `--input-records-jsonl` runs over a small diagnostic dataset without requiring a database project. This is the right mode for report experiments and regression fixtures.
+
+### Required processing controls
+
+The first version should expose:
+
+- `--start-stage` and `--end-stage`, matching the existing pipeline stage names;
+- `--stage-parameters-json` and `--stage-parameters-file`, using the same JSON structure as the power-user pipeline controls in `projects/.../annotation/`;
+- `--variant-label` or `--run-label` for human-readable artifact names;
+- `--persist-intermediates` defaulting to true;
+- `--dry-run`, which resolves stages, prompt/few-shot files, model settings, and output paths without calling models;
+- `--output-root`, defaulting to a docs or media experiment-artifact directory depending on whether the run is intended for version-controlled evidence.
+
+For few-shot curation experiments, a candidate parameter bundle might look like:
+
+```json
+{
+  "segmentation_phase_2": {
+    "mechanism": "boundary_first",
+    "variant": "clitic_compound_v2",
+    "fewshot_count": "small"
+  }
+}
+```
+
+The command must record both requested and resolved parameters: if `variant=clitic_compound_v2` resolves to specific template and few-shot files, those file paths and hashes should be written into the experiment manifest.
+
+### Optional evaluator controls
+
+Evaluation should be optional, because sometimes maintainers only need processing artifacts. When evaluation is requested, the command should support:
+
+- `--evaluator <rubric-name>` for a single evaluator, repeatable for multiple evaluators;
+- `--evaluator-config <json-file>` for complex judge/model/rubric settings;
+- `--judge-model <model>` and `--judge-repeats <n>` for same-model repeated judging;
+- `--judge-panel <json-file>` for multi-model panels;
+- `--aggregation voting|mean|median|reconcile` to combine repeated or panel judgements;
+- `--compare-with <run-id-or-dir>` for paired default-vs-candidate comparisons.
+
+Curated few-shot examples should also be usable as evaluator exemplars. In that mode, a template derived from a curation set asks the model to *check* an output rather than *produce* one. For example, the same French boundary examples that teach `segmentation_phase_2` where to place boundaries can be transformed into a judge prompt that asks whether a proposed output has similarly appropriate word-like or meaningful units.
+
+### Evaluation aggregation modes
+
+The initial implementation can support three increasingly strong modes:
+
+1. **Repeated single-model voting:** run the same evaluator prompt against the same item `n` times and combine labels by majority vote, keeping all raw responses.
+2. **Panel voting:** run the same item through several configured judge models and aggregate labels/scores with disagreement statistics.
+3. **Reconciliation:** after repeated or panel judgements, ask a final reconciler model to read the raw judgements and produce a final decision with rationale. Reconciliation must preserve links to the raw judge outputs rather than replacing them.
+
+### Artifact contract
+
+A run should produce a directory such as:
+
+```text
+evaluation/phase_outputs/runs/<run_id>/
+  config.json
+  requested_stage_parameters.json
+  resolved_stage_parameters.json
+  input_records.jsonl
+  stage_outputs/
+  evaluator_config.json
+  judge_outputs.jsonl
+  aggregation.json
+  comparison_judgments.jsonl
+  flagged_items.md
+  manifest.json
+```
+
+`manifest.json` should include the input dataset identifier/hash, start/end stages, requested and resolved processing parameters, prompt/few-shot file hashes, model settings, evaluator prompt versions, judge models/repeats, aggregation method, and links to any curation request IDs or accepted example IDs used by either processing or evaluation.
+
+### Report-oriented experiment shape
+
+For the First Progress Report, the target demonstration is:
+
+1. Create one or more curated few-shot sets, starting with French `segmentation_phase_2` / `boundary_first`.
+2. Run a default processing bundle and a curated-set candidate bundle over the same diagnostic inputs with `run_linguistic_pipeline_experiment`.
+3. Evaluate both outputs with a boundary-quality evaluator that can use curated examples as checking exemplars.
+4. Combine repeated or panel judgements by voting or reconciliation.
+5. Human spot-check the retained examples and the most important evaluator wins/losses.
+6. Report a cautious result: whether the curated set appears to improve boundary quality on the diagnostic sample, with artifacts and caveats.
+
 ## Report-driven first implementation: phase-output AI evaluator (ISSUE-0004)
 
 This is the near-term implementation target for strengthening the autonomy theme in the First Progress Report. It should be delivered before the full panel architecture if time is limited.
