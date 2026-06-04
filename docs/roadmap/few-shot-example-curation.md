@@ -8,6 +8,12 @@ This is now a P1 roadmap item because maintainers are seeing many annotation err
 
 Related issue: [ISSUE-0036](../issues/issues/ISSUE-0036.json).
 
+## Current progress note (2026-06-04)
+
+The first French `segmentation_phase_2` / `boundary_first` curation run has produced encouraging evidence that the workflow is useful. A 40-candidate `clitic_compound_v2` batch was generated, deterministically validated, AI-reviewed with the language-specific hostile-review template, and pruned down to eight retained examples. Maintainer review of those eight retained examples found that all eight looked correct. The review stage appears somewhat overstrict, pruning a few examples that may also have been acceptable, but this is the preferred failure mode for prompt few-shots: we would rather start with a small high-confidence set than accidentally promote dubious examples.
+
+The run also exposed an important implementation lesson. One generated candidate had lost interword spaces in the boundary-marked representation, e.g. an input like `L'ami de Marie habite ici.` paired with units that concatenated as `L'amideMariehabiteici.`. The deterministic validation logic already catches this by checking that concatenated unit surfaces exactly match the input, but the review command initially still sent validation-failed candidate records to AI review. That path has now been tightened so AI review only runs over schema-valid candidates and records skipped validation failures in the review summary. This reinforces the architecture: deterministic preservation/schema checks must be a hard gate before linguistic judgement.
+
 ## Core architecture: generate → adversarial review → repair → gold acceptance
 
 The target architecture is a pipeline for few-shot examples themselves:
@@ -211,12 +217,13 @@ A human reviewer can then accept, reject, request more repair, or mark an exampl
 1. **Done in minimal form:** add validation utilities for `segmentation_phase_2` few-shot candidates. Extend these validators to MWE and later lemma/gloss examples.
 2. **Done in minimal form:** implement a traced, fan-out/fan-in candidate-generation command for `segmentation_phase_2`, initially useful for French `boundary_first` experiments.
 3. **Done in minimal form:** implement a second-step AI review command that creates/reconciles language-specific word/unit-boundary review templates when needed, then runs hostile-review calls over generated candidates. The prompt avoids project-internal terms and focuses on whether proposed boundary markers define appropriate word-like or meaningful units.
-4. Define a small phenomenon matrix for `segmentation_phase_2` clitics/compounds and MWE detection.
-5. Add repair prompts and re-review loops for candidates with fatal/serious/minor findings.
-6. Expand persisted records from candidate/request/accepted/manifest files to include repair, arbiter, and human-review records.
-7. Add evaluator prompts that compare outputs from two few-shot variants on the same input.
-8. Run a first documented experiment comparing tranche sizes and variant sets.
-9. Decide whether successful example sets should be promoted to default prompts or remain named variants.
+4. **Done in first smoke-test form:** run and manually inspect a French `clitic_compound_v2` batch; eight retained examples from an initial 40-candidate set were all judged correct by maintainer review, while validation-failed candidates are now excluded from AI review.
+5. Define a small phenomenon matrix for `segmentation_phase_2` clitics/compounds and MWE detection.
+6. Add repair prompts and re-review loops for candidates with fatal/serious/minor findings.
+7. Expand persisted records from candidate/request/accepted/manifest files to include repair, arbiter, and human-review records.
+8. Add evaluator prompts that compare outputs from two few-shot variants on the same input.
+9. Run a first documented experiment comparing tranche sizes and variant sets.
+10. Decide whether successful example sets should be promoted to default prompts or remain named variants.
 
 ## Relationship to other roadmap items
 

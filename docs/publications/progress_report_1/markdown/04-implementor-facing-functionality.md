@@ -41,6 +41,8 @@
 ## 4.7 Quality-control infrastructure (current and planned)
 
 - Existing tests and artifact checks provide partial safeguards.
+- A new few-shot curation/review loop provides an early concrete example of AI-assisted quality control: for French `segmentation_phase_2` boundary examples, the system generated a candidate pool, applied deterministic preservation checks, created an AI-reviewed language-specific evaluation template, and retained a small high-confidence set whose eight examples were all judged correct in maintainer review.
+- The example is promising but deliberately modest: the review step appears overstrict, and broader promotion still needs evaluator comparisons, repair/arbiter steps, and more languages/phenomena.
 - Planned work includes stronger end-to-end runners, AI/human review gates, autonomous drift tracking for functionality regressions, and reviewed self-understanding evidence records.
 - The report should be frank that more autonomous checking and stronger evidence governance are among the highest-priority unfinished items.
 
