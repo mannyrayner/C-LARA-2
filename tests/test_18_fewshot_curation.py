@@ -305,6 +305,23 @@ class FewshotCurationTests(unittest.IsolatedAsyncioTestCase):
                             ],
                             "annotations": {},
                         },
+                    },
+                    {
+                        "input": "L'ami de Marie habite ici.",
+                        "phenomenon": "invalid missing spaces",
+                        "output": {
+                            "surface": "L'ami de Marie habite ici.",
+                            "tokens": [
+                                {"surface": "L'"},
+                                {"surface": "ami"},
+                                {"surface": "de"},
+                                {"surface": "Marie"},
+                                {"surface": "habite"},
+                                {"surface": "ici"},
+                                {"surface": "."},
+                            ],
+                            "annotations": {},
+                        },
                     }
                 ]
             }
@@ -376,7 +393,15 @@ class FewshotCurationTests(unittest.IsolatedAsyncioTestCase):
 
             self.assertTrue((root / "review_templates" / "template.json").exists())
             self.assertTrue((root / "reviews" / "20260603-review-EXAMPLE-0001.review.json").exists())
+            self.assertFalse((root / "reviews" / "20260603-review-EXAMPLE-0002.review.json").exists())
             self.assertTrue((root / "reviews" / "20260603-review.summary.json").exists())
+            self.assertEqual(1, result["summary"]["review_count"])
+            self.assertEqual(1, result["summary"]["skipped_validation_failed_count"])
+            self.assertEqual("EXAMPLE-0002", result["summary"]["skipped_validation_failed"][0]["example_id"])
+            self.assertIn(
+                "concatenated token surfaces must exactly match input",
+                result["summary"]["skipped_validation_failed"][0]["validation_errors"],
+            )
             self.assertEqual({"fatal": 0, "serious": 0, "minor": 0, "none": 1}, result["summary"]["severity_counts"])
             self.assertEqual(4, len(review_client.prompts))
             self.assertEqual(["fake-template", "fake-template", "fake-template", "fake-reviewer"], review_client.models)
@@ -387,6 +412,7 @@ class FewshotCurationTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn("Do NOT say that clitics or elided forms should always be kept together", review_client.prompts[0])
             self.assertNotIn("token", review_client.prompts[0].lower())
             self.assertTrue(any("creating 2 review-template draft" in message for message in traces))
+            self.assertTrue(any("skipping 1 validation-failed candidate" in message for message in traces))
             self.assertTrue(any("reviewed 1 candidates" in message for message in traces))
             self.assertIn("Je¦ ¦l'¦aime¦.", review_client.prompts[-1])
             self.assertIn("boundary_marked", review_client.prompts[-1])

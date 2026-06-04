@@ -781,15 +781,37 @@ async def review_candidate_batch(
     root = curation_root(repo_root, curation_spec)
     candidates_dir = root / "candidates"
     candidate_paths = sorted(candidates_dir.glob(f"{spec.request_id}-EXAMPLE-*.json"))
+    review_jobs: list[tuple[Path, dict[str, Any]]] = []
+    skipped_candidates: list[dict[str, Any]] = []
+    for path in candidate_paths:
+        record = json.loads(path.read_text(encoding="utf-8"))
+        validation = validate_candidate(spec.operation, record.get("candidate") if isinstance(record.get("candidate"), dict) else {})
+        stored_validation = record.get("validation") if isinstance(record.get("validation"), dict) else {}
+        if validation["schema_pass"] and stored_validation.get("schema_pass", True):
+            review_jobs.append((path, record))
+            continue
+        errors = list(validation.get("errors") or [])
+        if stored_validation.get("schema_pass") is False:
+            errors.extend(str(error) for error in stored_validation.get("errors") or [])
+        skipped_candidates.append(
+            {
+                "example_id": record.get("example_id"),
+                "candidate_path": str(path.relative_to(repo_root)),
+                "status": record.get("status"),
+                "validation_errors": sorted(set(errors)),
+            }
+        )
     if trace:
-        trace(f"reviewing {len(candidate_paths)} candidate(s) with max_concurrency={spec.max_concurrency}")
+        trace(
+            f"reviewing {len(review_jobs)} schema-valid candidate(s) with max_concurrency={spec.max_concurrency}; "
+            f"skipping {len(skipped_candidates)} validation-failed candidate(s)"
+        )
 
     reviews_dir = root / "reviews"
     semaphore = asyncio.Semaphore(spec.max_concurrency)
 
-    async def review_one(path: Path) -> dict[str, Any]:
+    async def review_one(path: Path, record: dict[str, Any]) -> dict[str, Any]:
         async with semaphore:
-            record = json.loads(path.read_text(encoding="utf-8"))
             prompt = _candidate_review_prompt(template, record)
             if trace:
                 trace(f"starting review {record['example_id']}")
@@ -822,7 +844,7 @@ async def review_candidate_batch(
                 trace(f"completed review {record['example_id']}: severity={severity}")
             return review
 
-    reviews = await asyncio.gather(*(review_one(path) for path in candidate_paths))
+    reviews = await asyncio.gather(*(review_one(path, record) for path, record in review_jobs))
     severity_counts = {severity: 0 for severity in ["fatal", "serious", "minor", "none"]}
     for review in reviews:
         severity_counts[review["severity"]] += 1
@@ -830,6 +852,8 @@ async def review_candidate_batch(
         "schema_version": 1,
         "request_id": spec.request_id,
         "review_count": len(reviews),
+        "skipped_validation_failed_count": len(skipped_candidates),
+        "skipped_validation_failed": skipped_candidates,
         "severity_counts": severity_counts,
         "template_path": str((_review_template_dir(repo_root, spec) / "template.json").relative_to(repo_root)),
     }
