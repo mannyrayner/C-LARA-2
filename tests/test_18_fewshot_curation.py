@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import shutil
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from pipeline.fewshot_curation import (
@@ -11,6 +13,7 @@ from pipeline.fewshot_curation import (
     generate_candidate_batch,
     review_candidate_batch,
     store_candidate_batch,
+    _write_json,
     validate_segmentation_phase_2_candidate,
 )
 
@@ -427,6 +430,26 @@ class FewshotCurationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual("Je¦ ¦l'¦aime¦.", review_json["candidate"]["boundary_marked"])
             self.assertIn("candidate_path", review_json)
 
+
+
+    def test_write_json_recreates_parent_if_removed_between_mkdir_and_write(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target = Path(tmpdir) / "nested" / "payload.json"
+            original_write_text = Path.write_text
+            attempts = {"count": 0}
+
+            def flaky_write_text(path: Path, *args, **kwargs):
+                if path == target and attempts["count"] == 0:
+                    attempts["count"] += 1
+                    shutil.rmtree(path.parent)
+                    raise FileNotFoundError(str(path))
+                return original_write_text(path, *args, **kwargs)
+
+            with mock.patch.object(Path, "write_text", flaky_write_text):
+                _write_json(target, {"ok": True})
+
+            self.assertEqual({"ok": True}, json.loads(target.read_text(encoding="utf-8")))
+            self.assertEqual(1, attempts["count"])
 
     async def test_custom_curation_root_keeps_experiment_artifacts_out_of_docs(self) -> None:
         client = FakeCurationClient(

@@ -335,8 +335,13 @@ def _display_path(path: Path, repo_root: Path) -> str:
 
 
 def _write_json(path: Path, payload: Any) -> None:
+    text = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    try:
+        path.write_text(text, encoding="utf-8")
+    except FileNotFoundError:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
 
 
 def _next_prompt_example_index(prompt_dir: Path) -> int:
@@ -836,6 +841,7 @@ async def review_candidate_batch(
         )
 
     reviews_dir = root / "reviews"
+    reviews_dir.mkdir(parents=True, exist_ok=True)
     semaphore = asyncio.Semaphore(spec.max_concurrency)
 
     async def review_one(path: Path, record: dict[str, Any]) -> dict[str, Any]:
