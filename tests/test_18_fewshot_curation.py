@@ -13,6 +13,7 @@ from pipeline.fewshot_curation import (
     generate_candidate_batch,
     review_candidate_batch,
     store_candidate_batch,
+    _filesystem_path,
     _write_json,
     validate_segmentation_phase_2_candidate,
 )
@@ -431,6 +432,14 @@ class FewshotCurationTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn("candidate_path", review_json)
 
 
+
+
+    def test_filesystem_path_adds_windows_long_path_prefix(self) -> None:
+        path = Path("/tmp/review-output.json")
+
+        filesystem_path = _filesystem_path(path, os_name="nt")
+
+        self.assertTrue(str(filesystem_path).startswith("\\\\?\\"))
 
     def test_write_json_recreates_parent_if_removed_between_mkdir_and_write(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

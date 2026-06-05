@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, replace
@@ -334,14 +335,28 @@ def _display_path(path: Path, repo_root: Path) -> str:
         return str(path)
 
 
+def _filesystem_path(path: Path, *, os_name: str | None = None) -> Path:
+    """Return a path suitable for filesystem IO, including long-path support on Windows."""
+
+    if (os_name or os.name) != "nt":
+        return path
+    raw = str(path.resolve())
+    if raw.startswith("\\\\?\\"):
+        return Path(raw)
+    if raw.startswith("\\\\"):
+        return Path("\\\\?\\UNC\\" + raw.lstrip("\\"))
+    return Path("\\\\?\\" + raw)
+
+
 def _write_json(path: Path, payload: Any) -> None:
     text = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
-    path.parent.mkdir(parents=True, exist_ok=True)
+    fs_path = _filesystem_path(path)
+    fs_path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        path.write_text(text, encoding="utf-8")
+        fs_path.write_text(text, encoding="utf-8")
     except FileNotFoundError:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8")
+        fs_path.parent.mkdir(parents=True, exist_ok=True)
+        fs_path.write_text(text, encoding="utf-8")
 
 
 def _next_prompt_example_index(prompt_dir: Path) -> int:
