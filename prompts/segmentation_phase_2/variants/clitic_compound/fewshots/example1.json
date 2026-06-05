@@ -1,0 +1,15 @@
+{
+  "input": "C'est l'heure.",
+  "output": {
+    "surface": "C'est l'heure.",
+    "tokens": [
+      {"surface": "C"},
+      {"surface": "'est"},
+      {"surface": " "},
+      {"surface": "l'"},
+      {"surface": "heure"},
+      {"surface": "."}
+    ],
+    "annotations": {}
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "input": "Bokhyllan är full.",
+  "provisional_input": "Bokhyllan¦ ¦är¦ ¦full¦.",
+  "output": "Bok¦hyllan¦ ¦är¦ ¦full¦."
+}
