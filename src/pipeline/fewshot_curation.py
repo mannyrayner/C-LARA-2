@@ -652,6 +652,16 @@ def _review_candidate_payload(record: dict[str, Any]) -> dict[str, Any]:
                 "boundary_marked": "Donne¦-¦le¦-¦moi",
                 "judgement": "usually acceptable here: verb, hyphens, and clitic pronouns are visible meaningful/separator units",
             },
+            {
+                "input": "Je l'ai fait.",
+                "boundary_marked": "Je¦ ¦l'¦ai¦ ¦fait¦.",
+                "judgement": "acceptable: l' and ai can be separate learner-useful clitic/auxiliary units; do not reject because l'ai is a normal written contraction",
+            },
+            {
+                "input": "L'ami arrive.",
+                "boundary_marked": "L'¦ami¦ ¦arrive¦.",
+                "judgement": "acceptable: separating an elided article from the noun can expose a meaningful French unit",
+            },
         ],
         "phenomenon": candidate.get("phenomenon"),
         "rationale": candidate.get("rationale"),
@@ -720,8 +730,25 @@ def _candidate_review_prompt(template: dict[str, Any], record: dict[str, Any]) -
         prompt = template_text.replace("{candidate_json}", candidate_json)
     else:
         prompt = f"{template_text}\n\nCandidate JSON:\n{candidate_json}"
-    return f"{prompt}\n\nReturn your answer as a JSON object."
+    override_policy = """
+Non-negotiable review policy, overriding any earlier wording if there is a conflict:
+- The goal is learner-useful linguistic-unit boundaries, not preserving conventional written-word groupings.
+- Do NOT reject a candidate merely because a French clitic, elided article, or elided conjunction is separated from the following word. Splits such as l'¦ai, l'¦avait, L'¦ami, j'¦ai, qu'¦il, and s'¦il are usually acceptable when the pieces are meaningful for learners.
+- Do NOT reject a candidate merely because spaces, hyphens, apostrophes, or punctuation are separate units; the interpretation notes explicitly allow this.
+- Reject only when a boundary creates a genuinely misleading linguistic analysis, such as a false compound split, a lexicalized apostrophe word split mechanically, or a split that hides rather than clarifies the phenomenon.
+- If a candidate is reasonable under these rules, return severity "none" and decision "accept". Use severity "serious" or "fatal" only for clear, learner-misleading defects.
 
+Return your answer as a JSON object with this shape:
+{
+  "decision": "accept" | "reject",
+  "severity": "none" | "minor" | "serious" | "fatal",
+  "strongest_reason": "short label",
+  "explanation": "brief explanation using the review policy above",
+  "suggested_boundary_marked": "corrected marked string, or the original if accepted",
+  "notes": ["optional short notes"]
+}
+""".strip()
+    return f"{prompt}\n\n{override_policy}"
 
 async def ensure_review_template(
     spec: FewshotReviewSpec,
