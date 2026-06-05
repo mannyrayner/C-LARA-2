@@ -19,3 +19,7 @@ artifacts/
 platform_server/db.sqlite3
 platform_server/media/
 platform_server/staticfiles/
+
+# Experiment outputs
+experiments/**/generated/
+experiments/**/tmp/
