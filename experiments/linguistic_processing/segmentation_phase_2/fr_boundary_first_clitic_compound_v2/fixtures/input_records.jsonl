@@ -1,0 +1,5 @@
+{"record_id":"fr-clitic-001","language":"fr","input":"Va-t'en immédiatement!","phenomena":["imperative_clitic","elision"],"notes":"Known useful boundary-first style: Va¦-¦t'¦en¦ ¦immédiatement¦!"}
+{"record_id":"fr-clitic-002","language":"fr","input":"Donne-le-moi, s'il te plaît.","phenomena":["imperative_clitic","elision","punctuation"],"notes":"Tests hyphenated clitic chain plus s'il."}
+{"record_id":"fr-elision-001","language":"fr","input":"L'ami de Marie habite ici.","phenomena":["article_elision","spaces"],"notes":"Regression fixture for preserving interword spaces during boundary conversion."}
+{"record_id":"fr-compound-001","language":"fr","input":"C'est un porte-monnaie ancien.","phenomena":["elision","hyphenated_compound"],"notes":"Tests transparent hyphenated compound treatment."}
+{"record_id":"fr-lexicalized-001","language":"fr","input":"Aujourd'hui, quelqu'un arrive.","phenomena":["lexicalized_apostrophe"],"notes":"Tests avoiding mechanical splits in lexicalized apostrophe words."}
