@@ -11,7 +11,7 @@ The first progress-report experiment should be intentionally small and concrete:
 
 1. **Curate examples.** Use `curate_fewshots` and `review_fewshots` to create a high-confidence set, starting with French `segmentation_phase_2` / `boundary_first` clitic and compound examples.
 2. **Post-process for two uses.** Derive compact prompt-facing examples for stage processing, and derive checking examples/rubrics for evaluation. The underlying curated record should stay the source of truth; algorithmic post-processing only changes the wrapper/template around the same accepted example.
-3. **Run pipeline variants.** Use a new `manage.py run_linguistic_pipeline_experiment` command to run the same project or fixture from selected start/end stages with either default parameters or curated-set parameters.
+3. **Run pipeline variants.** Use a versioned `experiments/.../<experiment>/Makefile` plus a new `manage.py run_linguistic_pipeline_experiment` command to run the same project or fixture from selected start/end stages with either default parameters or curated-set parameters.
 4. **Evaluate outputs.** Apply a boundary-quality evaluator that can submit the same checking operation to one model repeatedly, to multiple models, or to a reconciler after voting.
 5. **Use realistic inputs.** Draw initial diagnostic inputs from hand-picked fixtures and the now-substantial imported legacy corpus: about 30 legacy pieces are already available, including the largest/challenging cases, so ISSUE-0010 is becoming a source of evaluation material rather than a blocker.
 6. **Report cautiously.** Human spot-check retained examples and key wins/losses before making any claim that a curated set improves processing.
@@ -237,6 +237,44 @@ For the report, the most persuasive result would be a paired comparison:
 
 This is the shortest path from AI evaluation to useful autonomy: the AI does not merely detect poor outputs, but helps identify which prompt/mechanism changes are productive.
 
+
+
+## Repository experiment workspace
+
+The initial experiments should live under a new top-level `experiments/` workspace. This keeps experiment orchestration close to the repository while keeping bulky generated data out of version control. The intended pattern is:
+
+```text
+experiments/
+  linguistic_processing/
+    segmentation_phase_2/
+      fr_boundary_first_clitic_compound_v2/
+        Makefile
+        README.md
+        configs/
+          default_stage_parameters.json
+          candidate_stage_parameters.json
+          evaluator_config.json
+        fixtures/
+          input_records.jsonl
+        generated/        # ignored; command outputs, reviews, reports
+        tmp/              # ignored; scratch/intermediate files
+```
+
+The repo should contain the lightweight, reviewable orchestration files: `Makefile`, `README.md`, small config JSON files, and small hand-authored fixtures where appropriate. The generated folders (`generated/`, `tmp/`, and any large run-output directories) should be ignored by Git, because they may contain large model outputs, repeated run artifacts, or machine/local paths. If a run becomes report evidence, promote only a compact, curated summary or selected artifact into an explicitly versioned evidence location.
+
+Each specific experiment directory should own a small `Makefile` that documents and runs the intended sequence. For the first French `segmentation_phase_2` experiment, targets should mirror the plan above:
+
+- `make curate` — call `python manage.py curate_fewshots ...` or document the existing curation request used as input;
+- `make review` — call `python manage.py review_fewshots ...`;
+- `make derive-processing-examples` — post-process accepted curation records into prompt-facing few-shot files or a staged candidate variant;
+- `make derive-evaluator-examples` — derive checking/rubric examples from the same accepted records;
+- `make run-default` — run `run_linguistic_pipeline_experiment` with default stage parameters;
+- `make run-candidate` — run the same inputs with curated-set stage parameters;
+- `make evaluate` — run the evaluator/repeated judges/panel over default and candidate outputs;
+- `make compare` — aggregate default-vs-candidate results into win/loss/tie counts and flagged examples;
+- `make report` — build a concise Markdown summary suitable for human review and possible progress-report evidence.
+
+The top-level `experiments/` directory can later contain other tracks, for example `experiments/linguistic_processing/mwe/...` or `experiments/ui_regression/...`, but the first concrete path should stay narrow: French `segmentation_phase_2`, `boundary_first`, and the `clitic_compound_v2` curated set. This gives maintainers one obvious place to run and inspect the experiment while the underlying infrastructure is still being filled in.
 
 ## Manage.py experiment runner for processing + evaluation
 
