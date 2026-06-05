@@ -2,7 +2,7 @@ SHELL := /usr/bin/env bash
 
 ROOT_DIR := $(abspath ../../../..)
 PLATFORM_DIR := $(ROOT_DIR)/platform_server
-PYTHON ?= python
+PYTHON ?= python3
 RUN ?= 0
 
 OPERATION := segmentation_phase_2
@@ -10,7 +10,7 @@ LANGUAGE := fr
 MECHANISM := boundary_first
 TARGET_SET := clitic_compound_v2
 PHENOMENA := clitic,compound
-COUNT ?= 40
+COUNT ?= 80
 BATCH_SIZE ?= 5
 MAX_CONCURRENCY ?= 4
 MODEL ?= gpt-5
@@ -28,7 +28,7 @@ TMP_DIR := tmp
 
 MANAGE = cd "$(PLATFORM_DIR)" && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help plan validate-config prepare curate review derive-processing-examples derive-evaluator-examples run-default run-candidate evaluate compare report clean
+.PHONY: help plan validate validate-config prepare curate review derive-processing-examples derive-evaluator-examples run-default run-candidate evaluate compare report clean
 
 help:
 	@sed -n '1,220p' README.md
@@ -55,6 +55,8 @@ plan: prepare
 	@echo "  inputs:    $(INPUT_RECORDS)"
 	@echo
 	@echo "Generated data will be written under $(GENERATED_DIR)/ and $(TMP_DIR)/ (ignored by Git)."
+
+validate: validate-config
 
 validate-config:
 	@$(PYTHON) -m json.tool "$(DEFAULT_PARAMS)" >/dev/null
