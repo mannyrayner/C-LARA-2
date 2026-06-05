@@ -235,12 +235,13 @@ This fills the gap between curated example creation and evaluator work: it lets 
 
 ### Using curated examples
 
-Accepted examples should become usable in two ways:
+Accepted examples should become usable in three closely related ways:
 
-1. **Experimental variants.** Copy selected accepted examples into a named prompt/few-shot variant under `prompts/<operation>/variants/<variant>/fewshots/`, then use existing stage parameters such as `{"segmentation_phase_2": {"mechanism": "boundary_first", "variant": "clitic_compound_v2", "fewshot_count": "small"}}`.
-2. **Default promotion.** After evaluator evidence shows that a set improves outputs, promote a selected tranche to the operation/language default few-shot directory, preserving links back to curation record IDs.
+1. **Experimental processing variants.** Algorithmically post-process selected accepted records into the compact prompt-facing shape expected by the stage, then copy them into a named prompt/few-shot variant under `prompts/<operation>/variants/<variant>/fewshots/`. For `segmentation_phase_2`, this can be as simple as preserving the accepted `input` and converting the accepted boundary units into the JSON `output.tokens` representation. The source curation record remains the auditable source of truth; the prompt file is a derived asset. Existing stage parameters such as `{"segmentation_phase_2": {"mechanism": "boundary_first", "variant": "clitic_compound_v2", "fewshot_count": "small"}}` should select the derived set for processing.
+2. **Evaluation exemplars.** Wrap the same accepted records in evaluator templates that ask a model to *check* an output rather than *produce* one. The positive/negative examples, severity definitions, and repair notes from curation become a rubric for judging whether new outputs have similarly appropriate word-like or meaningful units.
+3. **Default promotion.** After evaluator evidence shows that a set improves outputs, promote a selected tranche to the operation/language default few-shot directory, preserving links back to curation record IDs.
 
-The evaluator should record operation, language, mechanism, prompt variant, few-shot set, tranche size, candidate record IDs, and score deltas so a report claim can identify exactly what changed.
+The evaluator should record operation, language, mechanism, prompt variant, few-shot set, tranche size, candidate record IDs, any derived prompt/evaluator asset paths, and score deltas so a report claim can identify exactly what changed.
 
 ### Review workflow
 

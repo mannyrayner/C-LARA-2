@@ -4,6 +4,20 @@ This roadmap proposes a structured, repeatable evaluation framework where output
 
 The immediate report-driven priority is a smaller first version for **ISSUE-0004**: use the already-implemented pipeline runner to evaluate phase outputs for segmentation phase 1, segmentation phase 2, and MWE detection. The sharper goal is not only to score outputs, but to show that AI-based judging can tell whether a candidate processing change is an improvement, so that the system can move toward systematic self-improvement. This gives the First Progress Report a concrete autonomy/self-checking example rather than only a future-work promise.
 
+
+## Initial experiment plan at a glance
+
+The first progress-report experiment should be intentionally small and concrete:
+
+1. **Curate examples.** Use `curate_fewshots` and `review_fewshots` to create a high-confidence set, starting with French `segmentation_phase_2` / `boundary_first` clitic and compound examples.
+2. **Post-process for two uses.** Derive compact prompt-facing examples for stage processing, and derive checking examples/rubrics for evaluation. The underlying curated record should stay the source of truth; algorithmic post-processing only changes the wrapper/template around the same accepted example.
+3. **Run pipeline variants.** Use a new `manage.py run_linguistic_pipeline_experiment` command to run the same project or fixture from selected start/end stages with either default parameters or curated-set parameters.
+4. **Evaluate outputs.** Apply a boundary-quality evaluator that can submit the same checking operation to one model repeatedly, to multiple models, or to a reconciler after voting.
+5. **Use realistic inputs.** Draw initial diagnostic inputs from hand-picked fixtures and the now-substantial imported legacy corpus: about 30 legacy pieces are already available, including the largest/challenging cases, so ISSUE-0010 is becoming a source of evaluation material rather than a blocker.
+6. **Report cautiously.** Human spot-check retained examples and key wins/losses before making any claim that a curated set improves processing.
+
+Detailed design sections below spell out the judge protocol, artifact contract, CLI controls, aggregation strategies, and report-oriented success criteria.
+
 ## Why this matters
 
 Human expert evaluation is the gold standard but is expensive and hard to schedule at the cadence needed for prompt and pipeline iteration. A panel-of-AIs approach can provide:
@@ -285,7 +299,7 @@ Evaluation should be optional, because sometimes maintainers only need processin
 - `--aggregation voting|mean|median|reconcile` to combine repeated or panel judgements;
 - `--compare-with <run-id-or-dir>` for paired default-vs-candidate comparisons.
 
-Curated few-shot examples should also be usable as evaluator exemplars. In that mode, a template derived from a curation set asks the model to *check* an output rather than *produce* one. For example, the same French boundary examples that teach `segmentation_phase_2` where to place boundaries can be transformed into a judge prompt that asks whether a proposed output has similarly appropriate word-like or meaningful units.
+Curated few-shot examples should be usable both for stage processing and as evaluator exemplars. For processing, an accepted curation record can be algorithmically post-processed into the compact prompt-facing shape expected by the stage, for example by keeping the `input` and converting accepted boundary units into the `output.tokens` representation consumed by `segmentation_phase_2`. For evaluation, the same accepted record can be wrapped in a checking template that asks the model to *check* an output rather than *produce* one. For example, the same French boundary examples that teach `segmentation_phase_2` where to place boundaries can be transformed into a judge prompt that asks whether a proposed output has similarly appropriate word-like or meaningful units.
 
 ### Evaluation aggregation modes
 
@@ -371,7 +385,7 @@ Use a deliberately small but diagnostic suite rather than waiting for a large be
 - at least one known or suspected ISSUE-0006-style phase-2 token-span failure case;
 - a few MWE-rich segments with obvious expressions and non-MWE distractors.
 
-Once ISSUE-0010 legacy imports provide more coverage, selected legacy C-LARA projects can become a larger regression corpus, but they are not required for the first evaluator.
+ISSUE-0010 now provides enough coverage for realistic first experiments: about 30 legacy pieces have been imported, including the largest and most challenging cases, and more can be imported quickly if a specific diagnostic need appears. Selected imported projects should therefore become a practical regression/evaluation corpus, while hand-picked fixtures remain useful for synthetic edge cases.
 
 ### Output format for the first version
 

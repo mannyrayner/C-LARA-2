@@ -1,4 +1,4 @@
-# C-LARA-2 issue overview (refreshed 2026-06-04T00:00:00Z)
+# C-LARA-2 issue overview (refreshed 2026-06-05T00:00:00Z)
 
 ## Recent progress
 
@@ -7,6 +7,7 @@
 - Closed **ISSUE-0007** in the current issue registry because page-image prompt-construction indirection is now implemented; future page-image prompt work should be filed as concrete follow-ons.
 - Advanced **ISSUE-0034** from a prompt-wrapper prototype toward an admin-only repository-grounded project-understanding assistant with asynchronous execution, status polling, request/result persistence, and cost/metadata capture.
 - Expanded the evaluator/autonomy roadmap around **ISSUE-0003**, **ISSUE-0004**, **ISSUE-0005**, and **ISSUE-0006** so segmentation and MWE improvements can be measured systematically for the First Progress Report.
+- Updated **ISSUE-0010** to reflect substantial legacy-import progress: about 30 imported legacy content pieces are now available, including the largest and most challenging cases, making the legacy corpus a practical source of diagnostic/evaluation inputs.
 
 ## Near-term priorities
 
@@ -16,7 +17,7 @@
 4. **ISSUE-0026** — define the next-step community-recorded audio workflow for non-TTS languages.
 5. **ISSUE-0003 / ISSUE-0036 / ISSUE-0004** — use the pipeline runner, curated few-shot generation/review, and AI-based review gates to compare default and candidate processing variants.
 6. **ISSUE-0005 / ISSUE-0006** — treat segmentation prompt/few-shot changes as measurable experiments rather than anecdotal prompt tuning.
-7. **ISSUE-0010 / ISSUE-0013** — continue legacy corpus import and stage-artifact resilience work needed for representative quality checks.
+7. **ISSUE-0010 / ISSUE-0013** — organize the now-substantial imported legacy corpus into diagnostic/evaluation subsets and continue stage-artifact resilience work needed for representative quality checks.
 8. **ISSUE-0034** — add export/review, budget/rate-limit, and evidence-record controls before wider use of project-understanding answers.
 
 ## Notes/risks
