@@ -13,9 +13,9 @@ PHENOMENA := clitic,compound
 COUNT ?= 80
 BATCH_SIZE ?= 5
 MAX_CONCURRENCY ?= 4
-MODEL ?= gpt-5
+MODEL ?= gpt-4o
 TEMPLATE_VERSIONS ?= 3
-TIMEOUT_S ?= 300
+TIMEOUT_S ?= 600
 REQUEST_ID ?=
 RUN_LABEL ?= fr-boundary-first-clitic-compound-v2
 
