@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "evaluator": "segmentation_phase_2_boundary_v1",
+  "language": "fr",
+  "judge_model": "gpt-5",
+  "judge_repeats": 3,
+  "aggregation": "reconcile",
+  "curated_example_set": {
+    "operation": "segmentation_phase_2",
+    "language": "fr",
+    "mechanism": "boundary_first",
+    "target_set": "clitic_compound_v2"
+  },
+  "rubric_focus": [
+    "text preservation is a deterministic precondition",
+    "French clitics and elisions",
+    "hyphenated imperative clitic chains",
+    "transparent compounds versus false compound splits",
+    "learner-useful word-like or meaningful units"
+  ]
+}
