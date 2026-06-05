@@ -35,17 +35,18 @@ Keep this outline and `reports-and-papers.md` synchronized whenever the main the
 
 1. **Why this report is short**: much C-LARA-2 functionality continues C-LARA functionality, so the report should only summarize that background.
 2. **What changed most**: C-LARA-2 is AI-centered in a stronger sense than C-LARA. The AI writes the committed code, roadmap material, issue records, operational documentation, and publication drafts, with humans advising, reviewing, and deciding.
-3. **Why that matters**: this workflow has produced unusually fast implementation and revision cycles. It has also given the project flexibility: when a feature, design, or deployment plan is wrong, the AI can often rewrite it in hours or minutes.
-4. **What works now**: selected examples of user-facing functionality, especially picture dictionaries and stronger support for low-resource languages.
-5. **What remains unfinished**: this is an interim report. Major next steps include more autonomous checking by the AI, mobile deployment support, and audio recording through the platform.
-6. **Possible later use**: the report may become evidence for a publication on AI authorship, including the planned discussion with David Gunkel, because the report itself is an example of academic writing whose production process gives the AI a strong formal claim to authorship apart from the human-status criterion.
+3. **New central theme: self-understanding**: recent work has made project self-understanding concrete through a restricted admin-only assistant that delegates repository exploration to `codex exec` and answers questions from the checked-out C-LARA-2 repository. This should be treated as one of the report's central examples, not a side note.
+4. **Why that matters**: this workflow has produced unusually fast implementation and revision cycles. It has also given the project flexibility: when a feature, design, or deployment plan is wrong, the AI can often rewrite it in hours or minutes. The self-understanding assistant adds a new dimension: the same repository-native artifacts that guide development can be queried, tested, and eventually reviewed as evidence for how well the project can explain itself.
+5. **What works now**: selected examples of user-facing functionality, especially picture dictionaries and stronger support for low-resource languages, plus an implementor-facing example of platform self-understanding.
+6. **What remains unfinished**: this is an interim report. Major next steps include more autonomous checking by the AI, export/review of self-understanding evidence records, mobile deployment support, and audio recording through the platform.
+7. **Possible later use**: the report may become evidence for a publication on AI authorship, including the planned discussion with David Gunkel, because the report itself is an example of academic writing whose production process gives the AI a strong formal claim to authorship apart from the human-status criterion. The self-understanding assistant can strengthen this case only if its answers are preserved with metadata and human assessment rather than treated as automatically reliable.
 
 ## Length and emphasis guidance
 
 - Prefer a short report over a comprehensive catalogue.
-- Foreground the AI-centered development process, not a full feature manual.
+- Foreground the AI-centered development process and the emerging self-understanding capability, not a full feature manual.
 - Mention continuity with C-LARA only where it clarifies the C-LARA-2 contribution.
-- Include concrete examples: AWS migration, picture dictionaries, low-resource-language workflows, roadmap/issue/documentation authorship, and publication drafting.
+- Include concrete examples: AWS migration, picture dictionaries, low-resource-language workflows, roadmap/issue/documentation authorship, publication drafting, and the restricted project-understanding assistant.
 
 ## Open questions for the human review pass
 
@@ -53,3 +54,4 @@ Keep this outline and `reports-and-papers.md` synchronized whenever the main the
 - How explicitly should the report discuss possible AI authorship of the report and later papers?
 - Which user-facing capabilities should be foregrounded for external audiences?
 - Which future-work items are mandatory for the next reporting cycle?
+- Which project-understanding questions and reviewed answer records are strong enough to cite in the First Progress Report?

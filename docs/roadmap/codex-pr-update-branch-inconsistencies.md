@@ -24,6 +24,12 @@ The issue is especially relevant for process-heavy work such as issue-suggestion
 - Known workaround: create a new PR for the follow-up change.
 - Open uncertainty: it is not yet clear whether the affected branches were in fact modified outside Codex, whether GitHub metadata made them appear externally modified, or whether Codex is applying a conservative safety rule inconsistently.
 
+## Incident log
+
+- **2026-05-30:** first known occurrence; Codex refused a PR update with the message that it cannot update PRs updated outside Codex and advised creating a new PR.
+- **2026-06-03:** repeated occurrence during the few-shot curation / segmentation variants / stage-parameter PR sequence. The maintainer reported that the PR was evidently not updated outside Codex, but Codex still returned the same refusal. Workaround requested: create a replacement PR carrying the same branch content. This should be treated as evidence for a possible false-positive Codex/GitHub branch-state detection rather than as confirmed external branch modification.
+- **2026-06-03, follow-up:** the first replacement-PR attempt did not clear the problem; the maintainer saw exactly the same refusal. Next workaround to try: create the replacement PR from a freshly named branch with a new tracking commit, so the branch identity/provenance differs from the affected PR branch.
+
 ## Evidence to collect
 
 For each new occurrence, record:
