@@ -27,6 +27,11 @@ class Command(BaseCommand):
         parser.add_argument("--accept-valid", action="store_true")
         parser.add_argument("--write-prompt-variant", action="store_true")
         parser.add_argument("--repo-root", default="")
+        parser.add_argument(
+            "--curation-root",
+            default="",
+            help="Optional base directory for curation artifacts; defaults to <repo-root>/docs/few_shot_curation",
+        )
 
     def handle(self, *args, **options):
         phenomena = tuple(part.strip() for part in (options["phenomena"] or "").split(",") if part.strip())
@@ -44,6 +49,7 @@ class Command(BaseCommand):
             max_concurrency=options["max_concurrency"],
         )
         repo_root = Path(options["repo_root"] or getattr(settings, "ROOT_DIR", Path.cwd())).resolve()
+        curation_root_base = Path(options["curation_root"]).resolve() if options.get("curation_root") else None
 
         def trace(message: str) -> None:
             self.stdout.write(f"[curate_fewshots] {message}")
@@ -62,6 +68,7 @@ class Command(BaseCommand):
                 repo_root=repo_root,
                 accept_valid=options["accept_valid"],
                 write_prompt_variant=options["write_prompt_variant"],
+                curation_root_base=curation_root_base,
             )
         except Exception as exc:  # pragma: no cover - surfaced by command output/tests through CommandError
             raise CommandError(str(exc)) from exc

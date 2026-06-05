@@ -25,6 +25,7 @@ EVALUATOR_CONFIG := configs/evaluator_config.json
 INPUT_RECORDS := fixtures/input_records.jsonl
 GENERATED_DIR := generated
 TMP_DIR := tmp
+CURATION_ROOT := $(abspath $(GENERATED_DIR))/few_shot_curation
 
 MANAGE = cd "$(PLATFORM_DIR)" && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
@@ -55,6 +56,7 @@ plan: prepare
 	@echo "  inputs:    $(INPUT_RECORDS)"
 	@echo
 	@echo "Generated data will be written under $(GENERATED_DIR)/ and $(TMP_DIR)/ (ignored by Git)."
+	@echo "Curation:  $(CURATION_ROOT)"
 
 validate: validate-config
 
@@ -65,25 +67,25 @@ validate-config:
 	@$(PYTHON) -c 'import json; from pathlib import Path; path=Path("$(INPUT_RECORDS)"); records=[json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]; [(_ for _ in ()).throw(SystemExit(f"{path}: record {idx} missing required keys")) for idx, payload in enumerate(records, start=1) if not {"record_id", "language", "input"}.issubset(payload)]; print(f"validated configs and {path} ({len(records)} records)")'
 
 curate: prepare
-	@echo "+ $(MANAGE) curate_fewshots --operation $(OPERATION) --language $(LANGUAGE) --mechanism $(MECHANISM) --phenomena $(PHENOMENA) --count $(COUNT) --batch-size $(BATCH_SIZE) --max-concurrency $(MAX_CONCURRENCY) --target-set $(TARGET_SET) --model $(MODEL) --repo-root $(ROOT_DIR)"
+	@echo "+ $(MANAGE) curate_fewshots --operation $(OPERATION) --language $(LANGUAGE) --mechanism $(MECHANISM) --phenomena $(PHENOMENA) --count $(COUNT) --batch-size $(BATCH_SIZE) --max-concurrency $(MAX_CONCURRENCY) --target-set $(TARGET_SET) --model $(MODEL) --repo-root $(ROOT_DIR) --curation-root $(CURATION_ROOT)"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) curate_fewshots --operation "$(OPERATION)" --language "$(LANGUAGE)" --mechanism "$(MECHANISM)" --phenomena "$(PHENOMENA)" --count "$(COUNT)" --batch-size "$(BATCH_SIZE)" --max-concurrency "$(MAX_CONCURRENCY)" --target-set "$(TARGET_SET)" --model "$(MODEL)" --repo-root "$(ROOT_DIR)"; \
+		$(MANAGE) curate_fewshots --operation "$(OPERATION)" --language "$(LANGUAGE)" --mechanism "$(MECHANISM)" --phenomena "$(PHENOMENA)" --count "$(COUNT)" --batch-size "$(BATCH_SIZE)" --max-concurrency "$(MAX_CONCURRENCY)" --target-set "$(TARGET_SET)" --model "$(MODEL)" --repo-root "$(ROOT_DIR)" --curation-root "$(CURATION_ROOT)"; \
 	else \
 		echo "dry-run only; set RUN=1 to execute"; \
 	fi
 
 review: prepare
 	@if [ "$(RUN)" = "1" ] && [ -z "$(REQUEST_ID)" ]; then echo "Set REQUEST_ID=<curation-request-id>" >&2; exit 2; fi
-	@echo "+ $(MANAGE) review_fewshots --operation $(OPERATION) --language $(LANGUAGE) --mechanism $(MECHANISM) --target-set $(TARGET_SET) --request-id $${REQUEST_ID:-<request-id>} --model $(MODEL) --template-versions $(TEMPLATE_VERSIONS) --max-concurrency $(MAX_CONCURRENCY) --timeout-s $(TIMEOUT_S) --repo-root $(ROOT_DIR)"
+	@echo "+ $(MANAGE) review_fewshots --operation $(OPERATION) --language $(LANGUAGE) --mechanism $(MECHANISM) --target-set $(TARGET_SET) --request-id $${REQUEST_ID:-<request-id>} --model $(MODEL) --template-versions $(TEMPLATE_VERSIONS) --max-concurrency $(MAX_CONCURRENCY) --timeout-s $(TIMEOUT_S) --repo-root $(ROOT_DIR) --curation-root $(CURATION_ROOT)"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) review_fewshots --operation "$(OPERATION)" --language "$(LANGUAGE)" --mechanism "$(MECHANISM)" --target-set "$(TARGET_SET)" --request-id "$(REQUEST_ID)" --model "$(MODEL)" --template-versions "$(TEMPLATE_VERSIONS)" --max-concurrency "$(MAX_CONCURRENCY)" --timeout-s "$(TIMEOUT_S)" --repo-root "$(ROOT_DIR)"; \
+		$(MANAGE) review_fewshots --operation "$(OPERATION)" --language "$(LANGUAGE)" --mechanism "$(MECHANISM)" --target-set "$(TARGET_SET)" --request-id "$(REQUEST_ID)" --model "$(MODEL)" --template-versions "$(TEMPLATE_VERSIONS)" --max-concurrency "$(MAX_CONCURRENCY)" --timeout-s "$(TIMEOUT_S)" --repo-root "$(ROOT_DIR)" --curation-root "$(CURATION_ROOT)"; \
 	else \
 		echo "dry-run only; set RUN=1 REQUEST_ID=<id> to execute"; \
 	fi
 
 derive-processing-examples: prepare
 	@echo "TODO: derive accepted curation records into prompt-facing few-shot files for $(TARGET_SET)."
-	@echo "Expected future input: docs/few_shot_curation/$(OPERATION)/$(LANGUAGE)/$(MECHANISM)/$(TARGET_SET)/accepted/"
+	@echo "Expected future input: $(CURATION_ROOT)/$(OPERATION)/$(LANGUAGE)/$(MECHANISM)/$(TARGET_SET)/accepted/"
 	@echo "Expected future output: prompts/$(OPERATION)/variants/$(TARGET_SET)/fewshots/"
 
 derive-evaluator-examples: prepare

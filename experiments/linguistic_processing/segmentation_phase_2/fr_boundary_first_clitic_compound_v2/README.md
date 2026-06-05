@@ -25,7 +25,9 @@ Compare a default `segmentation_phase_2` processing run with a candidate run tha
 ## Non-versioned files
 
 The `generated/` and `tmp/` directories are ignored. They are for command outputs, model responses,
-intermediate pipeline artifacts, and local scratch data.
+intermediate pipeline artifacts, and local scratch data. Few-shot curation and review records produced by
+`make curate RUN=1` and `make review RUN=1 ...` are written under `generated/few_shot_curation/` rather
+than `docs/few_shot_curation/`, so experiment runs can remain local until explicitly promoted.
 
 ## Suggested workflow
 

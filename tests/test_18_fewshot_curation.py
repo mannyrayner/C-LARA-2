@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -424,6 +425,105 @@ class FewshotCurationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual("Je l'aime.", review_json["candidate"]["input"])
             self.assertEqual("Je¦ ¦l'¦aime¦.", review_json["candidate"]["boundary_marked"])
             self.assertIn("candidate_path", review_json)
+
+
+    async def test_custom_curation_root_keeps_experiment_artifacts_out_of_docs(self) -> None:
+        client = FakeCurationClient(
+            {
+                "candidates": [
+                    {
+                        "input": "Je l'aime.",
+                        "phenomenon": "French object clitic",
+                        "rationale": "Separates l' from aime while preserving the space.",
+                        "output": {
+                            "surface": "Je l'aime.",
+                            "tokens": [
+                                {"surface": "Je"},
+                                {"surface": " "},
+                                {"surface": "l'"},
+                                {"surface": "aime"},
+                                {"surface": "."},
+                            ],
+                            "annotations": {},
+                        },
+                    }
+                ]
+            }
+        )
+        spec = FewshotCurationSpec(
+            operation="segmentation_phase_2",
+            language="fr",
+            mechanism="boundary_first",
+            target_set="clitic_compound_v2",
+            phenomena=("clitic",),
+            count=1,
+            model="fake-model",
+            request_id="20260605-experiment-root",
+        )
+        batch = await generate_candidate_batch(spec, client=client)
+        review_client = FakeReviewClient(
+            [
+                {
+                    "template_text": "Review this marked example: {candidate_json}",
+                    "language_specific_risks": [],
+                    "checklist": [],
+                    "severity_definitions": {"fatal": "bad", "serious": "problem", "minor": "small", "none": "ok"},
+                },
+                {
+                    "template_text": "Review this marked example: {candidate_json}",
+                    "language_specific_risks": [],
+                    "checklist": [],
+                    "severity_definitions": {"fatal": "bad", "serious": "problem", "minor": "small", "none": "ok"},
+                    "reconciliation_rationale": "Single experiment-root template.",
+                },
+                {"severity": "none", "critique": "No defect found."},
+            ]
+        )
+        review_spec = FewshotReviewSpec(
+            operation="segmentation_phase_2",
+            language="fr",
+            mechanism="boundary_first",
+            target_set="clitic_compound_v2",
+            request_id="20260605-experiment-root",
+            model="fake-reviewer",
+            template_model="fake-template",
+            template_versions=1,
+            max_concurrency=1,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir)
+            curation_root_base = (
+                repo_root
+                / "experiments"
+                / "linguistic_processing"
+                / "segmentation_phase_2"
+                / "fr_boundary_first_clitic_compound_v2"
+                / "generated"
+                / "few_shot_curation"
+            )
+            stored = store_candidate_batch(batch, repo_root=repo_root, curation_root_base=curation_root_base)
+            stored_root = Path(stored["root"])
+
+            self.assertTrue(stored_root.is_relative_to(curation_root_base))
+            self.assertTrue((stored_root / "requests" / "20260605-experiment-root.json").exists())
+            self.assertFalse((repo_root / "docs" / "few_shot_curation").exists())
+
+            reviewed = await review_candidate_batch(
+                review_spec,
+                repo_root=repo_root,
+                client=review_client,
+                curation_root_base=curation_root_base,
+            )
+            review_root = Path(reviewed["root"])
+            review_file = review_root / "reviews" / "20260605-experiment-root-EXAMPLE-0001.review.json"
+            review_json = json.loads(review_file.read_text(encoding="utf-8"))
+
+            self.assertTrue(review_root.is_relative_to(curation_root_base))
+            self.assertTrue(review_file.exists())
+            self.assertTrue(review_json["candidate_path"].startswith("experiments/"))
+            self.assertTrue(reviewed["summary"]["template_path"].startswith("experiments/"))
+            self.assertFalse((repo_root / "docs" / "few_shot_curation").exists())
 
     async def test_review_checks_request_before_creating_template(self) -> None:
         review_client = FakeReviewClient([{"template_text": "unused"}])

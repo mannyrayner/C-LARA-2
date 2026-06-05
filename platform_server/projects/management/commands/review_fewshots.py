@@ -28,6 +28,11 @@ class Command(BaseCommand):
         parser.add_argument("--timeout-s", type=float, default=180.0)
         parser.add_argument("--heartbeat-s", type=float, default=10.0)
         parser.add_argument("--repo-root", default="")
+        parser.add_argument(
+            "--curation-root",
+            default="",
+            help="Optional base directory for curation artifacts; defaults to <repo-root>/docs/few_shot_curation",
+        )
 
     def handle(self, *args, **options):
         spec = FewshotReviewSpec(
@@ -43,6 +48,7 @@ class Command(BaseCommand):
             refresh_template=options["refresh_template"],
         )
         repo_root = Path(options["repo_root"] or getattr(settings, "ROOT_DIR", Path.cwd())).resolve()
+        curation_root_base = Path(options["curation_root"]).resolve() if options.get("curation_root") else None
 
         def trace(message: str) -> None:
             self.stdout.write(f"[review_fewshots] {message}")
@@ -56,7 +62,15 @@ class Command(BaseCommand):
         )
         client = OpenAIClient(config=OpenAIConfig(timeout_s=options["timeout_s"], heartbeat_s=options["heartbeat_s"]))
         try:
-            result = asyncio.run(review_candidate_batch(spec, repo_root=repo_root, client=client, trace=trace))
+            result = asyncio.run(
+                review_candidate_batch(
+                    spec,
+                    repo_root=repo_root,
+                    client=client,
+                    trace=trace,
+                    curation_root_base=curation_root_base,
+                )
+            )
         except Exception as exc:  # pragma: no cover - surfaced by command output/tests through CommandError
             raise CommandError(str(exc)) from exc
 

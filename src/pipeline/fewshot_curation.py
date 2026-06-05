@@ -313,18 +313,25 @@ async def generate_candidate_batch(
     }
 
 
-def curation_root(repo_root: Path, spec: FewshotCurationSpec) -> Path:
+def curation_root(
+    repo_root: Path,
+    spec: FewshotCurationSpec,
+    *,
+    curation_root_base: Path | None = None,
+) -> Path:
     """Return the storage root for a curation request."""
 
-    return (
-        repo_root
-        / "docs"
-        / "few_shot_curation"
-        / spec.operation
-        / spec.language
-        / spec.mechanism
-        / spec.target_set
-    )
+    base = curation_root_base or repo_root / "docs" / "few_shot_curation"
+    return base / spec.operation / spec.language / spec.mechanism / spec.target_set
+
+
+def _display_path(path: Path, repo_root: Path) -> str:
+    """Return a repo-relative path when possible, otherwise an absolute path."""
+
+    try:
+        return str(path.relative_to(repo_root))
+    except ValueError:
+        return str(path)
 
 
 def _write_json(path: Path, payload: Any) -> None:
@@ -347,6 +354,7 @@ def store_candidate_batch(
     repo_root: Path,
     accept_valid: bool = False,
     write_prompt_variant: bool = False,
+    curation_root_base: Path | None = None,
 ) -> dict[str, Any]:
     """Store generated candidate records and optionally derive prompt few-shot files."""
 
@@ -365,7 +373,7 @@ def store_candidate_batch(
         batch_size=request.get("batch_size"),
         max_concurrency=int(request.get("max_concurrency") or 1),
     )
-    root = curation_root(repo_root, spec)
+    root = curation_root(repo_root, spec, curation_root_base=curation_root_base)
     _write_json(root / "requests" / f"{spec.request_id}.json", request)
     _write_json(
         root / "requests" / f"{spec.request_id}.prompt.json",
@@ -392,7 +400,7 @@ def store_candidate_batch(
             prompt_payload = {"input": candidate.get("input"), "output": candidate.get("output")}
             out_path = prompt_dir / f"example{next_idx + offset}.json"
             _write_json(out_path, prompt_payload)
-            prompt_files.append(str(out_path.relative_to(repo_root)))
+            prompt_files.append(_display_path(out_path, repo_root))
 
     manifest = {
         "schema_version": 1,
@@ -643,7 +651,12 @@ def _review_spec_from_request(request: dict[str, Any], spec: FewshotReviewSpec) 
     )
 
 
-def _review_template_dir(repo_root: Path, spec: FewshotReviewSpec) -> Path:
+def _review_template_dir(
+    repo_root: Path,
+    spec: FewshotReviewSpec,
+    *,
+    curation_root_base: Path | None = None,
+) -> Path:
     curation_spec = FewshotCurationSpec(
         operation=spec.operation,
         language=spec.language,
@@ -651,10 +664,15 @@ def _review_template_dir(repo_root: Path, spec: FewshotReviewSpec) -> Path:
         target_set=spec.target_set,
         request_id=spec.request_id,
     )
-    return curation_root(repo_root, curation_spec) / "review_templates"
+    return curation_root(repo_root, curation_spec, curation_root_base=curation_root_base) / "review_templates"
 
 
-def _curation_root_for_review_spec(repo_root: Path, spec: FewshotReviewSpec) -> Path:
+def _curation_root_for_review_spec(
+    repo_root: Path,
+    spec: FewshotReviewSpec,
+    *,
+    curation_root_base: Path | None = None,
+) -> Path:
     curation_spec = FewshotCurationSpec(
         operation=spec.operation,
         language=spec.language,
@@ -662,7 +680,7 @@ def _curation_root_for_review_spec(repo_root: Path, spec: FewshotReviewSpec) -> 
         target_set=spec.target_set,
         request_id=spec.request_id,
     )
-    return curation_root(repo_root, curation_spec)
+    return curation_root(repo_root, curation_spec, curation_root_base=curation_root_base)
 
 
 def _missing_request_message(request_path: Path) -> str:
@@ -689,10 +707,11 @@ async def ensure_review_template(
     repo_root: Path,
     client: OpenAIClient | None = None,
     trace: Callable[[str], None] | None = None,
+    curation_root_base: Path | None = None,
 ) -> dict[str, Any]:
     """Load or create a reconciled language-specific candidate-review prompt template."""
 
-    template_dir = _review_template_dir(repo_root, spec)
+    template_dir = _review_template_dir(repo_root, spec, curation_root_base=curation_root_base)
     final_path = template_dir / "template.json"
     if final_path.exists() and not spec.refresh_template:
         existing_template = json.loads(final_path.read_text(encoding="utf-8"))
@@ -763,6 +782,7 @@ async def review_candidate_batch(
     repo_root: Path,
     client: OpenAIClient | None = None,
     trace: Callable[[str], None] | None = None,
+    curation_root_base: Path | None = None,
 ) -> dict[str, Any]:
     """Run AI review over generated candidates using a language-specific template."""
 
@@ -771,14 +791,20 @@ async def review_candidate_batch(
     if spec.max_concurrency < 1:
         raise ValueError("max_concurrency must be at least 1")
     ai_client = client or OpenAIClient()
-    request_root = _curation_root_for_review_spec(repo_root, spec)
+    request_root = _curation_root_for_review_spec(repo_root, spec, curation_root_base=curation_root_base)
     request_path = request_root / "requests" / f"{spec.request_id}.json"
     if not request_path.exists():
         raise FileNotFoundError(_missing_request_message(request_path))
     request = json.loads(request_path.read_text(encoding="utf-8"))
-    template = await ensure_review_template(spec, repo_root=repo_root, client=ai_client, trace=trace)
+    template = await ensure_review_template(
+        spec,
+        repo_root=repo_root,
+        client=ai_client,
+        trace=trace,
+        curation_root_base=curation_root_base,
+    )
     curation_spec = _review_spec_from_request(request, spec)
-    root = curation_root(repo_root, curation_spec)
+    root = curation_root(repo_root, curation_spec, curation_root_base=curation_root_base)
     candidates_dir = root / "candidates"
     candidate_paths = sorted(candidates_dir.glob(f"{spec.request_id}-EXAMPLE-*.json"))
     review_jobs: list[tuple[Path, dict[str, Any]]] = []
@@ -796,7 +822,7 @@ async def review_candidate_batch(
         skipped_candidates.append(
             {
                 "example_id": record.get("example_id"),
-                "candidate_path": str(path.relative_to(repo_root)),
+                "candidate_path": _display_path(path, repo_root),
                 "status": record.get("status"),
                 "validation_errors": sorted(set(errors)),
             }
@@ -833,9 +859,12 @@ async def review_candidate_batch(
                 "reviewed_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                 "review_model": spec.model,
                 "review_prompt_version": spec.prompt_version,
-                "template_path": str((_review_template_dir(repo_root, spec) / "template.json").relative_to(repo_root)),
+                "template_path": _display_path(
+                    _review_template_dir(repo_root, spec, curation_root_base=curation_root_base) / "template.json",
+                    repo_root,
+                ),
                 "candidate": _review_candidate_payload(record),
-                "candidate_path": str(path.relative_to(repo_root)),
+                "candidate_path": _display_path(path, repo_root),
                 "severity": severity,
                 "review": {**payload, "severity": severity},
             }
@@ -855,7 +884,10 @@ async def review_candidate_batch(
         "skipped_validation_failed_count": len(skipped_candidates),
         "skipped_validation_failed": skipped_candidates,
         "severity_counts": severity_counts,
-        "template_path": str((_review_template_dir(repo_root, spec) / "template.json").relative_to(repo_root)),
+        "template_path": _display_path(
+            _review_template_dir(repo_root, spec, curation_root_base=curation_root_base) / "template.json",
+            repo_root,
+        ),
     }
     _write_json(root / "reviews" / f"{spec.request_id}.summary.json", summary)
     if trace:
