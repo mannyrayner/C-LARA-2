@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import subprocess
 from pathlib import Path
 
 from django.conf import settings
@@ -9,6 +11,18 @@ from django.core.management.base import BaseCommand, CommandError
 from core.ai_api import OpenAIClient
 from core.config import OpenAIConfig
 from pipeline.fewshot_curation import FewshotReviewSpec, review_candidate_batch
+
+
+def _resolve_cli_path(value: str | Path | None, default: str | Path) -> Path:
+    """Resolve a CLI path, translating Cygwin POSIX paths for Windows Python when possible."""
+
+    raw = str(value or default)
+    if os.name == "nt" and raw.startswith("/"):
+        try:
+            raw = subprocess.check_output(["cygpath", "-w", raw], text=True, stderr=subprocess.DEVNULL).strip() or raw
+        except (OSError, subprocess.SubprocessError):
+            pass
+    return Path(raw).resolve()
 
 
 class Command(BaseCommand):
@@ -47,8 +61,8 @@ class Command(BaseCommand):
             max_concurrency=options["max_concurrency"],
             refresh_template=options["refresh_template"],
         )
-        repo_root = Path(options["repo_root"] or getattr(settings, "ROOT_DIR", Path.cwd())).resolve()
-        curation_root_base = Path(options["curation_root"]).resolve() if options.get("curation_root") else None
+        repo_root = _resolve_cli_path(options["repo_root"], getattr(settings, "ROOT_DIR", Path.cwd()))
+        curation_root_base = _resolve_cli_path(options["curation_root"], "") if options.get("curation_root") else None
 
         def trace(message: str) -> None:
             self.stdout.write(f"[review_fewshots] {message}")
