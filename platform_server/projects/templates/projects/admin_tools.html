@@ -11,6 +11,12 @@
 <h2>Issue suggestions</h2>
 <p><a class="btn" href="{% url 'admin-issue-suggestions' %}">Review currently stored issue suggestions</a></p>
 
+{#
+Shutdown control temporarily disabled. Under make run-platform-with-real-q,
+the process supervisor/reloader can reincarnate qcluster processes; closing the
+terminal window is currently the more reliable local-development workaround.
+#}
+
 <h2>Delete cached word audio for language</h2>
 <form method="post">
   {% csrf_token %}
