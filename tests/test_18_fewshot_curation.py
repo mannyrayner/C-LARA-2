@@ -420,6 +420,7 @@ class FewshotCurationTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn("interpretation_notes", review_client.prompts[-1])
             self.assertIn("Donne¦-¦le¦-¦moi", review_client.prompts[-1])
             self.assertNotIn("{boundary_marker}", review_client.prompts[-1])
+            self.assertIn("Return your answer as a JSON object.", review_client.prompts[-1])
             review_file = root / "reviews" / "20260603-review-EXAMPLE-0001.review.json"
             review_json = __import__("json").loads(review_file.read_text(encoding="utf-8"))
             self.assertEqual("Je l'aime.", review_json["candidate"]["input"])

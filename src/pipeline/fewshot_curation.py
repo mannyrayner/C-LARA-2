@@ -697,8 +697,10 @@ def _candidate_review_prompt(template: dict[str, Any], record: dict[str, Any]) -
     template_text = str(template.get("template_text") or "")
     template_text = template_text.replace("{boundary_marker}", str(payload["boundary_marker"]))
     if "{candidate_json}" in template_text:
-        return template_text.replace("{candidate_json}", candidate_json)
-    return f"{template_text}\n\nCandidate JSON:\n{candidate_json}"
+        prompt = template_text.replace("{candidate_json}", candidate_json)
+    else:
+        prompt = f"{template_text}\n\nCandidate JSON:\n{candidate_json}"
+    return f"{prompt}\n\nReturn your answer as a JSON object."
 
 
 async def ensure_review_template(
