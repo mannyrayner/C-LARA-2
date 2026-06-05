@@ -1,0 +1,6 @@
+{
+  "segmentation_phase_2": {
+    "mechanism": "json_direct",
+    "fewshot_count": "all"
+  }
+}
