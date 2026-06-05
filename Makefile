@@ -28,7 +28,7 @@ run-platform-with-real-q:
 
 # Count lines of code under key repository folders and print a grand total.
 count-lines:
-	@folders="docs platform_server prompts src tests"; total=0; \
+	@folders="docs experiments platform_server prompts src tests"; total=0; \
 	for dir in $$folders; do \
 		if [ -d $$dir ]; then \
 			count=$$(find $$dir \( \
@@ -36,6 +36,8 @@ count-lines:
 				-path "$$dir/media" -o -path "$$dir/media/*" -o \
 				-path "$$dir/artifacts" -o -path "$$dir/artifacts/*" -o \
 				-path "docs/few_shot_curation" -o -path "docs/few_shot_curation/*" -o \
+				-path "*/generated" -o -path "*/generated/*" -o \
+				-path "*/tmp" -o -path "*/tmp/*" -o \
 				-name "*.sqlite3" \
 			\) -prune -o -type f -print0 | xargs -0 wc -l | awk 'END {print $$1}'); \
 			printf "%-16s %s\n" $$dir $$count; \
