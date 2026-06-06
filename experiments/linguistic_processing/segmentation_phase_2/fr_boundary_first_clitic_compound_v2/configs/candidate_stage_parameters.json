@@ -1,0 +1,7 @@
+{
+  "segmentation_phase_2": {
+    "mechanism": "boundary_first",
+    "variant": "clitic_compound_v2",
+    "fewshot_count": "small"
+  }
+}
