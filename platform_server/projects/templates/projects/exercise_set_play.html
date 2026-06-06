@@ -7,27 +7,85 @@
 {% else %}
   <p>Item {{ index|add:1 }} of {{ total }}</p>
   {% if item.rationale.image_path %}
-    <p><img src="{% url 'exercise-item-image' item.id %}" alt="Flashcard image" style="max-width: 420px; height: auto;" /></p>
+    <p><img src="{% url 'exercise-item-image' item.id %}" alt="Picture clue" style="max-width: 420px; height: auto;" /></p>
   {% endif %}
   <p><strong>{{ item.prompt }}</strong></p>
-  <form method="post">{% csrf_token %}
-    {% for opt in item.options %}
-      <p>
-        <label><input type="radio" name="choice" value="{{ opt }}" required /> {{ opt }}</label>
-        {% if item.rationale.exercise_kind == "form_to_image" %}
-          <br />
-          <img src="{% url 'exercise-item-option-image' item.id opt %}" alt="Option image {{ opt }}" style="max-width: 260px; height: auto;" />
-        {% endif %}
-      </p>
-    {% endfor %}
-    <button class="btn" type="submit">Check answer</button>
-  </form>
+  {% if item.rationale.exercise_kind == "word_scramble" %}
+    <form method="post" id="word-scramble-form">{% csrf_token %}
+      <input type="hidden" id="word-scramble-choice" name="choice" value="" />
+      <input type="hidden" id="word-scramble-path" name="path" value="[]" />
+      <p>Selected letters: <strong id="word-scramble-selected">(none yet)</strong></p>
+      <p><button class="btn secondary" type="button" id="word-scramble-clear">Clear selection</button></p>
+      <table class="word-scramble-grid" style="border-collapse: collapse; font-family: monospace; margin: 0.75rem 0;">
+        {% for row in item.rationale.grid %}
+          <tr>
+            {% for letter in row %}
+              <td style="border: 1px solid #ccc; padding: 0;">
+                <button
+                  type="button"
+                  class="word-scramble-cell"
+                  data-letter="{{ letter }}"
+                  data-row="{{ forloop.parentloop.counter0 }}"
+                  data-col="{{ forloop.counter0 }}"
+                  style="width: 2.4rem; height: 2.4rem; border: 0; background: #fff; font: inherit; cursor: pointer;"
+                  aria-label="Select letter {{ letter }}"
+                >{{ letter }}</button>
+              </td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </table>
+      <button class="btn" type="submit">Check selection</button>
+    </form>
+    <script>
+      (function () {
+        const selectedDisplay = document.getElementById("word-scramble-selected");
+        const selectedInput = document.getElementById("word-scramble-choice");
+        const pathInput = document.getElementById("word-scramble-path");
+        const clearButton = document.getElementById("word-scramble-clear");
+        const cells = document.querySelectorAll(".word-scramble-cell");
+        let selected = "";
+        let selectedPath = [];
+        function updateSelected(value) {
+          selected = value;
+          selectedInput.value = selected;
+          pathInput.value = JSON.stringify(selectedPath);
+          selectedDisplay.textContent = selected || "(none yet)";
+        }
+        cells.forEach(function (cell) {
+          cell.addEventListener("click", function () {
+            cell.style.background = "#d9edf7";
+            selectedPath.push({row: Number(cell.dataset.row), col: Number(cell.dataset.col)});
+            updateSelected(selected + (cell.dataset.letter || ""));
+          });
+        });
+        clearButton.addEventListener("click", function () {
+          cells.forEach(function (cell) { cell.style.background = "#fff"; });
+          selectedPath = [];
+          updateSelected("");
+        });
+      }());
+    </script>
+  {% else %}
+    <form method="post">{% csrf_token %}
+      {% for opt in item.options %}
+        <p>
+          <label><input type="radio" name="choice" value="{{ opt }}" required /> {{ opt }}</label>
+          {% if item.rationale.exercise_kind == "form_to_image" %}
+            <br />
+            <img src="{% url 'exercise-item-option-image' item.id opt %}" alt="Option image {{ opt }}" style="max-width: 260px; height: auto;" />
+          {% endif %}
+        </p>
+      {% endfor %}
+      <button class="btn" type="submit">Check answer</button>
+    </form>
+  {% endif %}
 
   {% if feedback %}
     {% if feedback.is_correct %}
       <p>✅ Correct.</p>
     {% else %}
-      <p>❌ Incorrect. Correct answer: <strong>{{ feedback.correct }}</strong>.</p>
+      <p>❌ Incorrect. Correct answer: <strong>{% if item.rationale.display_answer %}{{ item.rationale.display_answer }}{% else %}{{ feedback.correct }}{% endif %}</strong>.</p>
     {% endif %}
   {% endif %}
 
