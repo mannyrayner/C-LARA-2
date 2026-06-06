@@ -8,6 +8,7 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from core.project_understanding import ProjectUnderstandingAnswer
+from projects import views
 from projects.models import Community, CommunityMembership, TaskUpdate
 
 
