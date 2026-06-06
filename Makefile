@@ -26,17 +26,16 @@ run-platform-with-real-q:
 		(PYTHONPATH= DJANGO_Q_USE_REAL=1 DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py qcluster & ) && \
 		PYTHONPATH= DJANGO_Q_USE_REAL=1 DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py runserver
 
-# Count lines of code under key repository folders and print a grand total.
+# Count tracked lines under key repository folders and print a grand total.
+# Using git ls-files keeps local generated experiment artifacts out of the count
+# even if a run leaves extra files outside the standard generated/tmp folders.
 count-lines:
-	@folders="docs platform_server prompts src tests"; total=0; \
+	@folders="docs experiments platform_server prompts src tests"; total=0; \
 	for dir in $$folders; do \
 		if [ -d $$dir ]; then \
-			count=$$(find $$dir \( \
-				-path "*/.git/*" -o \
-				-path "$$dir/media" -o -path "$$dir/media/*" -o \
-				-path "$$dir/artifacts" -o -path "$$dir/artifacts/*" -o \
-				-name "*.sqlite3" \
-			\) -prune -o -type f -print0 | xargs -0 wc -l | awk 'END {print $$1}'); \
+			count=$$(git ls-files -z -- $$dir | \
+				perl -0ne 'print unless m#(^|/)(generated|tmp|media|artifacts)(/|$$)# || m#^docs/few_shot_curation(/|$$)# || m#\.sqlite3$$#' | \
+				xargs -0 -r wc -l | awk 'END {print $$1 + 0}'); \
 			printf "%-16s %s\n" $$dir $$count; \
 			total=$$((total + count)); \
 		else \
