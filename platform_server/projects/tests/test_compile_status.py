@@ -1775,6 +1775,8 @@ class CompileStatusViewTests(TestCase):
         initial_play_resp = self.client.get(reverse("exercise-set-play", args=[ex_set.pk]))
         self.assertContains(initial_play_resp, "Show answer")
         self.assertContains(initial_play_resp, "word-scramble-answer-path")
+        self.assertContains(initial_play_resp, "clara-word-scramble-revealed-")
+        self.assertContains(initial_play_resp, 'stroke-width", "3"')
         play_resp = self.client.post(
             reverse("exercise-set-play", args=[ex_set.pk]),
             {"choice": selected_letters, "path": json.dumps(item.rationale["path"])},

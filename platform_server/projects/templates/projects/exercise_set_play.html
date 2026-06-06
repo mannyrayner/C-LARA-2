@@ -56,6 +56,7 @@
         const cells = document.querySelectorAll(".word-scramble-cell");
         const answerPathElement = document.getElementById("word-scramble-answer-path");
         const answerPath = answerPathElement ? JSON.parse(answerPathElement.textContent || "[]") : [];
+        const revealedStorageKey = "clara-word-scramble-revealed-{{ exercise_set.id }}";
         let selected = "";
         let selectedPath = [];
         function updateSelected(value) {
@@ -64,13 +65,41 @@
           pathInput.value = JSON.stringify(selectedPath);
           selectedDisplay.textContent = selected || "(none yet)";
         }
+        function pathKey(path) {
+          return JSON.stringify(path || []);
+        }
+        function readRevealedPaths() {
+          try {
+            const stored = JSON.parse(window.localStorage.getItem(revealedStorageKey) || "[]");
+            return Array.isArray(stored) ? stored : [];
+          } catch (_error) {
+            return [];
+          }
+        }
+        function writeRevealedPaths(paths) {
+          try {
+            window.localStorage.setItem(revealedStorageKey, JSON.stringify(paths));
+          } catch (_error) {
+            // If localStorage is unavailable, the current-page reveal still works.
+          }
+        }
+        function rememberAnswerPath(path) {
+          if (!Array.isArray(path) || path.length === 0) {
+            return;
+          }
+          const paths = readRevealedPaths();
+          const existingKeys = new Set(paths.map(pathKey));
+          if (!existingKeys.has(pathKey(path))) {
+            paths.push(path);
+            writeRevealedPaths(paths);
+          }
+        }
         function cellForPosition(position) {
           return document.querySelector(
             '.word-scramble-cell[data-row="' + position.row + '"][data-col="' + position.col + '"]'
           );
         }
         function drawAnswerLine(pathCells) {
-          answerLineSvg.innerHTML = "";
           if (pathCells.length < 2) {
             return;
           }
@@ -86,19 +115,31 @@
           line.setAttribute("points", points.map(function (point) { return point[0] + "," + point[1]; }).join(" "));
           line.setAttribute("fill", "none");
           line.setAttribute("stroke", "#d9534f");
-          line.setAttribute("stroke-width", "5");
+          line.setAttribute("stroke-width", "3");
           line.setAttribute("stroke-linecap", "round");
           line.setAttribute("stroke-linejoin", "round");
-          line.setAttribute("opacity", "0.9");
+          line.setAttribute("opacity", "0.7");
           answerLineSvg.appendChild(line);
         }
-        function revealAnswer() {
-          const pathCells = answerPath.map(cellForPosition).filter(Boolean);
+        function revealPath(path) {
+          const pathCells = path.map(cellForPosition).filter(Boolean);
           pathCells.forEach(function (cell) {
             cell.style.background = "#ffe08a";
             cell.style.fontWeight = "bold";
           });
           drawAnswerLine(pathCells);
+        }
+        function drawRevealedAnswers() {
+          answerLineSvg.innerHTML = "";
+          readRevealedPaths().forEach(revealPath);
+        }
+        function revealAnswer() {
+          rememberAnswerPath(answerPath);
+          drawRevealedAnswers();
+          const isRemembered = readRevealedPaths().map(pathKey).includes(pathKey(answerPath));
+          if (!isRemembered) {
+            revealPath(answerPath);
+          }
         }
         cells.forEach(function (cell) {
           cell.addEventListener("click", function () {
@@ -112,11 +153,12 @@
             cell.style.background = "#fff";
             cell.style.fontWeight = "normal";
           });
-          answerLineSvg.innerHTML = "";
           selectedPath = [];
           updateSelected("");
+          drawRevealedAnswers();
         });
         showAnswerButton.addEventListener("click", revealAnswer);
+        drawRevealedAnswers();
         {% if feedback %}revealAnswer();{% endif %}
       }());
     </script>

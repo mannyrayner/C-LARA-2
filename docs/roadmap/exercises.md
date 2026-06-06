@@ -114,7 +114,7 @@ Generate a rectangular grid of letters containing target words from a selected p
 - Let the learner select a continuous path of letters, or tap/click start and end cells for straight-line words.
 - Mark found words, provide immediate feedback, and keep picture clues visible as the primary prompt.
 - Avoid showing the written answer until the learner has found it, asks for a hint, or reviews the finished puzzle.
-- Provide a **Show answer** control that highlights the correct path and draws a line through the target letters; after each checked turn, show the same highlighted answer path to make feedback unambiguous.
+- Provide a **Show answer** control that highlights the correct path and draws a thin line through the target letters; after each checked turn, show the same highlighted answer path and persist revealed/found paths into following turns so feedback remains unambiguous.
 
 ### Quality controls
 
