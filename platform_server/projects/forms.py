@@ -358,6 +358,24 @@ class FlashcardExerciseSetForm(forms.Form):
         self.fields["ai_model"].initial = choices[0]
 
 
+class WordScrambleExerciseSetForm(forms.Form):
+    theme = forms.ChoiceField(
+        choices=[
+            ("vocabulary", "Vocabulary"),
+        ],
+        initial="vocabulary",
+        help_text="Word scrambles currently use picture-dictionary vocabulary items.",
+    )
+    item_count = forms.IntegerField(
+        min_value=1,
+        max_value=15,
+        initial=8,
+        help_text="Number of picture-clue words to hide in the grid.",
+    )
+    grid_rows = forms.IntegerField(min_value=6, max_value=16, initial=10)
+    grid_cols = forms.IntegerField(min_value=6, max_value=16, initial=10)
+
+
 class DeleteCachedWordAudioForm(forms.Form):
     language = forms.ChoiceField(choices=[], label="Language")
 

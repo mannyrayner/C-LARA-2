@@ -127,13 +127,15 @@ Status: **Initial cloze implementation delivered.** See [roadmap/exercises.md](e
 
 Focus:
 - Cloze and flashcard generation from existing project artifacts.
-- Distractor generation/validation and review workflows.
+- Picture-dictionary-backed exercise generation, now including planned word scrambles and crosswords with picture clues.
+- Distractor generation/validation, puzzle layout validation, and review workflows.
 - Learner-facing exercise player and future spaced repetition support.
 
 Implemented now:
 - Generate cloze exercise sets from latest run segments.
 - Theme options include vocabulary, grammar, morphology, and grammar/morphology.
 - Publish/unpublish exercise sets and expose published links on content pages.
+- Picture-dictionary-backed flashcards are in place; next planned work is organiser-created sub-projects plus picture-clue word scrambles and crosswords.
 
 ### 10. Alignment roadmap (phonetic + text/audio/translation)
 
@@ -259,7 +261,8 @@ Status: **New roadmap document added.** See [roadmap/picture-dictionaries.md](pi
 Focus:
 - Community-owned shared picture dictionaries keyed by lexical identity (lemma/POS).
 - Optional picture-gloss pipeline stage building on lemma output.
-- HTML interaction and exercise extensions using dictionary-backed image glosses.
+- Organiser-created sub-projects extracted from picture dictionaries using natural-language selection plus manual review.
+- HTML interaction and exercise extensions using dictionary-backed image glosses, flashcards, word scrambles, and crosswords.
 
 ### 21. Issue tracking and human-suggestion loop roadmap
 
