@@ -70,6 +70,7 @@ from .forms import (
     DeleteCachedWordAudioForm,
     FlashcardExerciseSetForm,
     GrantAdminPrivilegesForm,
+    WordScrambleExerciseSetForm,
     ProfileForm,
     IssueSuggestionForm,
     IssueUpdateSuggestionForm,
@@ -6699,6 +6700,14 @@ def project_exercises_home(request: HttpRequest, pk: int) -> HttpResponse:
         if latest_flashcards_for_mode is not None:
             latest_sets.append(latest_flashcards_for_mode)
 
+    latest_word_scramble = (
+        project.exercise_sets.filter(exercise_type=ExerciseSet.TYPE_WORD_SCRAMBLE)
+        .order_by("-updated_at", "-id")
+        .first()
+    )
+    if latest_word_scramble is not None:
+        latest_sets.append(latest_word_scramble)
+
     latest_sets.sort(key=lambda s: s.updated_at, reverse=True)
     return render(
         request,
@@ -10537,6 +10546,151 @@ def _extract_image_flashcard_candidates(run_dir: Path, *, dictionary: PictureDic
     return []
 
 
+WORD_SCRAMBLE_DIRECTIONS: tuple[tuple[int, int], ...] = (
+    (0, 1),
+    (1, 0),
+    (1, 1),
+    (-1, 1),
+)
+WORD_SCRAMBLE_DISTRACTOR_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+
+def _word_scramble_normalize_answer(value: str) -> str:
+    return "".join(ch.upper() for ch in unicodedata.normalize("NFC", value or "") if ch.isalpha())
+
+
+def _word_scramble_random_letters(candidates: list[dict[str, Any]]) -> list[str]:
+    letters: list[str] = []
+    for candidate in candidates:
+        letters.extend(_word_scramble_normalize_answer(str(candidate.get("source_word") or "")))
+    return letters or list(WORD_SCRAMBLE_DISTRACTOR_LETTERS)
+
+
+def _word_scramble_can_place(
+    grid: list[list[str | None]],
+    word: str,
+    row: int,
+    col: int,
+    dr: int,
+    dc: int,
+) -> bool:
+    rows = len(grid)
+    cols = len(grid[0]) if rows else 0
+    end_row = row + dr * (len(word) - 1)
+    end_col = col + dc * (len(word) - 1)
+    if end_row < 0 or end_row >= rows or end_col < 0 or end_col >= cols:
+        return False
+    for idx, letter in enumerate(word):
+        cell = grid[row + dr * idx][col + dc * idx]
+        if cell is not None and cell != letter:
+            return False
+    return True
+
+
+def _word_scramble_place_word(
+    grid: list[list[str | None]],
+    word: str,
+    rng: random.Random,
+) -> list[dict[str, int]] | None:
+    rows = len(grid)
+    cols = len(grid[0]) if rows else 0
+    placements: list[tuple[int, int, int, int]] = []
+    for row in range(rows):
+        for col in range(cols):
+            for dr, dc in WORD_SCRAMBLE_DIRECTIONS:
+                if _word_scramble_can_place(grid, word, row, col, dr, dc):
+                    placements.append((row, col, dr, dc))
+    if not placements:
+        return None
+    row, col, dr, dc = rng.choice(placements)
+    path: list[dict[str, int]] = []
+    for idx, letter in enumerate(word):
+        cell_row = row + dr * idx
+        cell_col = col + dc * idx
+        grid[cell_row][cell_col] = letter
+        path.append({"row": cell_row, "col": cell_col})
+    return path
+
+
+def _generate_word_scramble_items(
+    candidates: list[dict[str, Any]],
+    *,
+    item_count: int,
+    rows: int,
+    cols: int,
+    seed: str,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Create a single word-search-style grid and one picture-clue item per word."""
+
+    rng = random.Random(seed)
+    normalized_candidates: list[dict[str, Any]] = []
+    seen_answers: set[str] = set()
+    for candidate in candidates:
+        answer = _word_scramble_normalize_answer(str(candidate.get("source_word") or ""))
+        if len(answer) < 2 or len(answer) > max(rows, cols):
+            continue
+        if answer in seen_answers:
+            continue
+        seen_answers.add(answer)
+        normalized_candidates.append({**candidate, "scramble_answer": answer})
+
+    normalized_candidates.sort(
+        key=lambda cand: (
+            -len(str(cand.get("scramble_answer") or "")),
+            str(cand.get("source_word") or "").casefold(),
+        )
+    )
+    grid: list[list[str | None]] = [[None for _ in range(cols)] for _ in range(rows)]
+    placed: list[tuple[dict[str, Any], list[dict[str, int]]]] = []
+    for candidate in normalized_candidates:
+        if len(placed) >= item_count:
+            break
+        answer = str(candidate["scramble_answer"])
+        path = _word_scramble_place_word(grid, answer, rng)
+        if path is None:
+            continue
+        placed.append((candidate, path))
+
+    distractor_letters = _word_scramble_random_letters(normalized_candidates)
+    for row in range(rows):
+        for col in range(cols):
+            if grid[row][col] is None:
+                grid[row][col] = rng.choice(distractor_letters)
+    grid_rows = ["".join(str(cell) for cell in row) for row in grid]
+    grid_payload = {
+        "rows": rows,
+        "cols": cols,
+        "grid": grid_rows,
+    }
+    items: list[dict[str, Any]] = []
+    for order_index, (candidate, path) in enumerate(placed):
+        answer = str(candidate["scramble_answer"])
+        items.append(
+            {
+                "order_index": order_index,
+                "page_number": candidate["page_number"],
+                "segment_index": candidate["segment_index"],
+                "segment_text": candidate["segment_text"],
+                "prompt": "Select the letters in the grid that match the picture clue.",
+                "answer": answer,
+                "options": [],
+                "rationale": {
+                    "exercise_kind": "word_scramble",
+                    **grid_payload,
+                    "path": path,
+                    "display_answer": candidate.get("source_word") or answer,
+                    "translation": candidate.get("target_gloss") or "",
+                    "image_project_id": candidate.get("dictionary_project_id"),
+                    "image_path": candidate.get("image_path"),
+                    "dictionary_entry_id": candidate.get("dictionary_entry_id"),
+                    "dictionary_surface": candidate.get("dictionary_surface") or "",
+                    "dictionary_lemma": candidate.get("dictionary_lemma") or "",
+                },
+            }
+        )
+    return items, grid_payload
+
+
 def _image_flashcard_option_metadata(candidates: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return {
         str(cand.get("source_word") or "").casefold(): {
@@ -11204,6 +11358,95 @@ def generate_flashcard_exercises(request: HttpRequest, pk: int) -> HttpResponse:
 
 
 @login_required
+def generate_word_scramble_exercises(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    run_dir = _resolve_project_compiled_run_dir(project) or _resolve_run_dir(project)
+    if run_dir is None or not run_dir.exists():
+        messages.error(request, "Please run the pipeline first to generate stage artifacts.")
+        return redirect("project-detail", pk=project.pk)
+
+    if request.method == "POST":
+        form = WordScrambleExerciseSetForm(request.POST)
+        if form.is_valid():
+            theme = form.cleaned_data["theme"]
+            item_count = form.cleaned_data["item_count"]
+            grid_rows = form.cleaned_data["grid_rows"]
+            grid_cols = form.cleaned_data["grid_cols"]
+            dictionary = _find_project_picture_dictionary(project)
+            if not dictionary:
+                messages.error(
+                    request,
+                    "Word scrambles require an active picture dictionary for this project's community/language.",
+                )
+                return redirect("project-detail", pk=project.pk)
+            candidates = _extract_image_flashcard_candidates(run_dir, dictionary=dictionary)
+            if not candidates:
+                messages.error(
+                    request,
+                    "Could not find current-project words that have translations and picture-dictionary images.",
+                )
+                return redirect("project-detail", pk=project.pk)
+            seed = f"{project.pk}|{django_timezone.now().isoformat()}|word_scramble"
+            items, grid_payload = _generate_word_scramble_items(
+                candidates,
+                item_count=item_count,
+                rows=grid_rows,
+                cols=grid_cols,
+                seed=seed,
+            )
+            if not items:
+                messages.error(
+                    request,
+                    "Could not place any picture-dictionary words in the requested grid. Try a larger grid or fewer/shorter words.",
+                )
+                return redirect("project-generate-word-scramble", pk=project.pk)
+
+            ex_set = ExerciseSet.objects.create(
+                project=project,
+                exercise_type=ExerciseSet.TYPE_WORD_SCRAMBLE,
+                theme=theme,
+                title=f"{project.title} — Picture word scramble ({len(items)} words)",
+                instructions=(
+                    "Look at each picture clue, then select the matching letters in the grid. "
+                    "The written answer is hidden until you check your selection."
+                ),
+                status=ExerciseSet.STATUS_DRAFT,
+                created_by=request.user,
+            )
+            ExerciseItem.objects.bulk_create(
+                [
+                    ExerciseItem(
+                        exercise_set=ex_set,
+                        order_index=item["order_index"],
+                        page_number=item["page_number"],
+                        segment_index=item["segment_index"],
+                        segment_text=item["segment_text"],
+                        prompt=item["prompt"],
+                        answer=item["answer"],
+                        options=item["options"],
+                        rationale=item["rationale"],
+                    )
+                    for item in items
+                ]
+            )
+            ex_set.status = ExerciseSet.STATUS_READY
+            ex_set.save(update_fields=["status", "updated_at"])
+            messages.success(
+                request,
+                f"Generated a {grid_payload['rows']}×{grid_payload['cols']} word scramble with {len(items)} picture clues.",
+            )
+            return redirect("exercise-set-detail", set_id=ex_set.id)
+    else:
+        form = WordScrambleExerciseSetForm()
+
+    return render(
+        request,
+        "projects/exercise_generate_word_scramble.html",
+        {"project": project, "form": form},
+    )
+
+
+@login_required
 def exercise_item_image(request: HttpRequest, item_id: int) -> HttpResponse:
     item = get_object_or_404(
         ExerciseItem.objects.select_related("exercise_set", "exercise_set__project"),
@@ -11295,10 +11538,24 @@ def exercise_set_play(request: HttpRequest, set_id: int) -> HttpResponse:
     selected = None
     if request.method == "POST":
         selected = (request.POST.get("choice") or "").strip()
+        correct = current.answer
+        rationale = current.rationale if isinstance(current.rationale, dict) else {}
+        if rationale.get("exercise_kind") == "word_scramble":
+            selected = _word_scramble_normalize_answer(selected)
+            submitted_path_raw = request.POST.get("path") or "[]"
+            try:
+                submitted_path = json.loads(submitted_path_raw)
+            except json.JSONDecodeError:
+                submitted_path = []
+            expected_path = rationale.get("path") if isinstance(rationale.get("path"), list) else []
+            is_path_match = submitted_path == expected_path or submitted_path == list(reversed(expected_path))
+            is_correct = (selected == correct or selected == correct[::-1]) and is_path_match
+        else:
+            is_correct = selected == correct
         feedback = {
             "selected": selected,
-            "correct": current.answer,
-            "is_correct": selected == current.answer,
+            "correct": correct,
+            "is_correct": is_correct,
         }
     next_index = idx + 1 if idx + 1 < len(items) else None
     return render(
