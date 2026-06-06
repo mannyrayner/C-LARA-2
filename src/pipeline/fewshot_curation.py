@@ -814,6 +814,24 @@ Return your answer as a JSON object with this shape:
 """.strip()
     return f"{prompt}\n\n{override_policy}"
 
+
+def _compact_review_record(review: dict[str, Any]) -> dict[str, Any]:
+    """Return the short per-review record used by human audit tools."""
+
+    review_payload = review.get("review") if isinstance(review.get("review"), dict) else {}
+    candidate_payload = review.get("candidate") if isinstance(review.get("candidate"), dict) else {}
+    return {
+        "example_id": review.get("example_id"),
+        "boundary_marked": candidate_payload.get("boundary_marked"),
+        "decision": review_payload.get("decision") or review_payload.get("recommended_status") or "",
+        "severity": review.get("severity") or review_payload.get("severity"),
+        "strongest_reason": review_payload.get("strongest_reason") or review_payload.get("issue_type") or "",
+        "explanation": review_payload.get("explanation") or review_payload.get("critique") or "",
+        "review_path": review.get("review_path"),
+        "candidate_path": review.get("candidate_path"),
+    }
+
+
 async def ensure_review_template(
     spec: FewshotReviewSpec,
     *,
@@ -962,6 +980,7 @@ async def review_candidate_batch(
             if severity not in {"fatal", "serious", "minor", "none"}:
                 severity = "serious"
                 payload = {**payload, "severity_normalization_note": "Invalid or missing severity normalized to serious."}
+            review_path = reviews_dir / f"{path.stem}.review.json"
             review = {
                 "schema_version": 1,
                 "request_id": spec.request_id,
@@ -979,10 +998,11 @@ async def review_candidate_batch(
                 ),
                 "candidate": _review_candidate_payload(record),
                 "candidate_path": _display_path(path, repo_root),
+                "review_path": _display_path(review_path, repo_root),
                 "severity": severity,
                 "review": {**payload, "severity": severity},
             }
-            _write_json(reviews_dir / f"{path.stem}.review.json", review)
+            _write_json(review_path, review)
             if trace:
                 trace(f"completed review {record['example_id']}: severity={severity}")
             return review
@@ -991,6 +1011,14 @@ async def review_candidate_batch(
     severity_counts = {severity: 0 for severity in ["fatal", "serious", "minor", "none"]}
     for review in reviews:
         severity_counts[review["severity"]] += 1
+    item_summary = {
+        "schema_version": 1,
+        "request_id": spec.request_id,
+        "review_count": len(reviews),
+        "items": [_compact_review_record(review) for review in reviews],
+    }
+    items_path = reviews_dir / f"{spec.request_id}.items.json"
+    _write_json(items_path, item_summary)
     summary = {
         "schema_version": 1,
         "request_id": spec.request_id,
@@ -1002,8 +1030,9 @@ async def review_candidate_batch(
             _review_template_dir(repo_root, spec, curation_root_base=curation_root_base) / "template.json",
             repo_root,
         ),
+        "items_path": _display_path(items_path, repo_root),
     }
     _write_json(root / "reviews" / f"{spec.request_id}.summary.json", summary)
     if trace:
         trace(f"reviewed {len(reviews)} candidates; severity_counts={severity_counts}")
-    return {"root": str(root), "summary": summary, "reviews": reviews, "template": template}
+    return {"root": str(root), "summary": summary, "item_summary": item_summary, "reviews": reviews, "template": template}

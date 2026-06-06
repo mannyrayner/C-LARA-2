@@ -49,8 +49,12 @@ exists and you want to execute it for real, for example:
 ```bash
 make curate RUN=1
 make review RUN=1 REQUEST_ID=<curation-request-id>
+make audit-reviews RUN=1 REQUEST_ID=<curation-request-id> AUDIT_LIMIT=20
 make run-candidate RUN=1
 ```
+
+After `make review`, the review step writes `reviews/<request-id>.items.json`, a compact summary for human scanning.
+Use `make audit-reviews RUN=1 REQUEST_ID=<id>` to step through these items and write a local human audit JSONL file.
 
 Some targets intentionally document future commands that still need implementation, especially
 `run_linguistic_pipeline_experiment` and the derivation/evaluator helpers.

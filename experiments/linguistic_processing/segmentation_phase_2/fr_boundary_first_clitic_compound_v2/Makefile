@@ -17,6 +17,7 @@ MODEL ?= gpt-4o
 TEMPLATE_VERSIONS ?= 3
 TIMEOUT_S ?= 600
 REQUEST_ID ?=
+AUDIT_LIMIT ?= 0
 RUN_LABEL ?= fr-boundary-first-clitic-compound-v2
 
 DEFAULT_PARAMS := configs/default_stage_parameters.json
@@ -34,12 +35,12 @@ PY_CURATION_ROOT := $(call python_path,$(CURATION_ROOT))
 
 MANAGE = cd "$(PLATFORM_DIR)" && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help plan validate validate-config prepare curate review derive-processing-examples derive-evaluator-examples run-default run-candidate evaluate compare report clean
+.PHONY: help plan validate validate-config prepare curate review audit-reviews derive-processing-examples derive-evaluator-examples run-default run-candidate evaluate compare report clean
 
 help:
 	@sed -n '1,220p' README.md
 	@echo
-	@echo "Common targets: plan validate-config curate review derive-processing-examples derive-evaluator-examples run-default run-candidate evaluate compare report"
+	@echo "Common targets: plan validate-config curate review audit-reviews derive-processing-examples derive-evaluator-examples run-default run-candidate evaluate compare report"
 	@echo "Targets that call management commands default to dry-run. Set RUN=1 to execute."
 
 prepare:
@@ -86,6 +87,15 @@ review: prepare
 		$(MANAGE) review_fewshots --operation "$(OPERATION)" --language "$(LANGUAGE)" --mechanism "$(MECHANISM)" --target-set "$(TARGET_SET)" --request-id "$(REQUEST_ID)" --model "$(MODEL)" --template-versions "$(TEMPLATE_VERSIONS)" --max-concurrency "$(MAX_CONCURRENCY)" --timeout-s "$(TIMEOUT_S)" --repo-root "$(PY_ROOT_DIR)" --curation-root "$(PY_CURATION_ROOT)"; \
 	else \
 		echo "dry-run only; set RUN=1 REQUEST_ID=<id> to execute"; \
+	fi
+
+audit-reviews: prepare
+	@if [ "$(RUN)" = "1" ] && [ -z "$(REQUEST_ID)" ]; then echo "Set REQUEST_ID=<curation-request-id>" >&2; exit 2; fi
+	@echo "+ $(MANAGE) audit_fewshot_reviews --operation $(OPERATION) --language $(LANGUAGE) --mechanism $(MECHANISM) --target-set $(TARGET_SET) --request-id $${REQUEST_ID:-<request-id>} --limit $(AUDIT_LIMIT) --repo-root $(PY_ROOT_DIR) --curation-root $(PY_CURATION_ROOT)"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) audit_fewshot_reviews --operation "$(OPERATION)" --language "$(LANGUAGE)" --mechanism "$(MECHANISM)" --target-set "$(TARGET_SET)" --request-id "$(REQUEST_ID)" --limit "$(AUDIT_LIMIT)" --repo-root "$(PY_ROOT_DIR)" --curation-root "$(PY_CURATION_ROOT)"; \
+	else \
+		echo "dry-run only; set RUN=1 REQUEST_ID=<id> to audit interactively"; \
 	fi
 
 derive-processing-examples: prepare

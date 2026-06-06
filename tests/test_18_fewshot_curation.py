@@ -443,6 +443,13 @@ class FewshotCurationTests(unittest.IsolatedAsyncioTestCase):
             self.assertTrue((root / "reviews" / "20260603-review-EXAMPLE-0001.review.json").exists())
             self.assertFalse((root / "reviews" / "20260603-review-EXAMPLE-0002.review.json").exists())
             self.assertTrue((root / "reviews" / "20260603-review.summary.json").exists())
+            items_file = root / "reviews" / "20260603-review.items.json"
+            self.assertTrue(items_file.exists())
+            items_json = json.loads(items_file.read_text(encoding="utf-8"))
+            self.assertEqual("EXAMPLE-0001", items_json["items"][0]["example_id"])
+            self.assertEqual("Je¦ ¦l'¦aime¦.", items_json["items"][0]["boundary_marked"])
+            self.assertEqual("none", items_json["items"][0]["severity"])
+            self.assertIn("items_path", result["summary"])
             self.assertEqual(1, result["summary"]["review_count"])
             self.assertEqual(1, result["summary"]["skipped_validation_failed_count"])
             self.assertEqual("EXAMPLE-0002", result["summary"]["skipped_validation_failed"][0]["example_id"])
