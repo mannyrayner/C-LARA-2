@@ -15,27 +15,34 @@
       <input type="hidden" id="word-scramble-choice" name="choice" value="" />
       <input type="hidden" id="word-scramble-path" name="path" value="[]" />
       <p>Selected letters: <strong id="word-scramble-selected">(none yet)</strong></p>
-      <p><button class="btn secondary" type="button" id="word-scramble-clear">Clear selection</button></p>
-      <table class="word-scramble-grid" style="border-collapse: collapse; font-family: monospace; margin: 0.75rem 0;">
-        {% for row in item.rationale.grid %}
-          <tr>
-            {% for letter in row %}
-              <td style="border: 1px solid #ccc; padding: 0;">
-                <button
-                  type="button"
-                  class="word-scramble-cell"
-                  data-letter="{{ letter }}"
-                  data-row="{{ forloop.parentloop.counter0 }}"
-                  data-col="{{ forloop.counter0 }}"
-                  style="width: 2.4rem; height: 2.4rem; border: 0; background: #fff; font: inherit; cursor: pointer;"
-                  aria-label="Select letter {{ letter }}"
-                >{{ letter }}</button>
-              </td>
-            {% endfor %}
-          </tr>
-        {% endfor %}
-      </table>
-      <button class="btn" type="submit">Check selection</button>
+      <p>
+        <button class="btn secondary" type="button" id="word-scramble-clear">Clear selection</button>
+        <button class="btn secondary" type="button" id="word-scramble-show-answer">Show answer</button>
+      </p>
+      {{ item.rationale.path|json_script:"word-scramble-answer-path" }}
+      <div id="word-scramble-grid-wrap" style="display: inline-block; position: relative; margin: 0.75rem 0;">
+        <svg id="word-scramble-answer-line" aria-hidden="true" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 2;"></svg>
+        <table class="word-scramble-grid" style="border-collapse: collapse; font-family: monospace;">
+          {% for row in item.rationale.grid %}
+            <tr>
+              {% for letter in row %}
+                <td style="border: 1px solid #ccc; padding: 0;">
+                  <button
+                    type="button"
+                    class="word-scramble-cell"
+                    data-letter="{{ letter }}"
+                    data-row="{{ forloop.parentloop.counter0 }}"
+                    data-col="{{ forloop.counter0 }}"
+                    style="width: 2.4rem; height: 2.4rem; border: 0; background: #fff; font: inherit; cursor: pointer;"
+                    aria-label="Select letter {{ letter }}"
+                  >{{ letter }}</button>
+                </td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </table>
+      </div>
+      <p><button class="btn" type="submit">Check selection</button></p>
     </form>
     <script>
       (function () {
@@ -43,7 +50,12 @@
         const selectedInput = document.getElementById("word-scramble-choice");
         const pathInput = document.getElementById("word-scramble-path");
         const clearButton = document.getElementById("word-scramble-clear");
+        const showAnswerButton = document.getElementById("word-scramble-show-answer");
+        const gridWrap = document.getElementById("word-scramble-grid-wrap");
+        const answerLineSvg = document.getElementById("word-scramble-answer-line");
         const cells = document.querySelectorAll(".word-scramble-cell");
+        const answerPathElement = document.getElementById("word-scramble-answer-path");
+        const answerPath = answerPathElement ? JSON.parse(answerPathElement.textContent || "[]") : [];
         let selected = "";
         let selectedPath = [];
         function updateSelected(value) {
@@ -51,6 +63,42 @@
           selectedInput.value = selected;
           pathInput.value = JSON.stringify(selectedPath);
           selectedDisplay.textContent = selected || "(none yet)";
+        }
+        function cellForPosition(position) {
+          return document.querySelector(
+            '.word-scramble-cell[data-row="' + position.row + '"][data-col="' + position.col + '"]'
+          );
+        }
+        function drawAnswerLine(pathCells) {
+          answerLineSvg.innerHTML = "";
+          if (pathCells.length < 2) {
+            return;
+          }
+          const wrapRect = gridWrap.getBoundingClientRect();
+          const points = pathCells.map(function (cell) {
+            const rect = cell.getBoundingClientRect();
+            return [
+              rect.left + rect.width / 2 - wrapRect.left,
+              rect.top + rect.height / 2 - wrapRect.top,
+            ];
+          });
+          const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+          line.setAttribute("points", points.map(function (point) { return point[0] + "," + point[1]; }).join(" "));
+          line.setAttribute("fill", "none");
+          line.setAttribute("stroke", "#d9534f");
+          line.setAttribute("stroke-width", "5");
+          line.setAttribute("stroke-linecap", "round");
+          line.setAttribute("stroke-linejoin", "round");
+          line.setAttribute("opacity", "0.9");
+          answerLineSvg.appendChild(line);
+        }
+        function revealAnswer() {
+          const pathCells = answerPath.map(cellForPosition).filter(Boolean);
+          pathCells.forEach(function (cell) {
+            cell.style.background = "#ffe08a";
+            cell.style.fontWeight = "bold";
+          });
+          drawAnswerLine(pathCells);
         }
         cells.forEach(function (cell) {
           cell.addEventListener("click", function () {
@@ -60,10 +108,16 @@
           });
         });
         clearButton.addEventListener("click", function () {
-          cells.forEach(function (cell) { cell.style.background = "#fff"; });
+          cells.forEach(function (cell) {
+            cell.style.background = "#fff";
+            cell.style.fontWeight = "normal";
+          });
+          answerLineSvg.innerHTML = "";
           selectedPath = [];
           updateSelected("");
         });
+        showAnswerButton.addEventListener("click", revealAnswer);
+        {% if feedback %}revealAnswer();{% endif %}
       }());
     </script>
   {% else %}

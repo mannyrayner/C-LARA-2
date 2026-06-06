@@ -6,7 +6,8 @@ This roadmap describes how C-LARA-2 should generate and deliver interactive exer
 
 - Cloze: implemented in Django platform.
 - Flashcards: implemented for text modes and first picture-dictionary-backed image modes.
-- New Kok Kaper follow-up planning: organiser-defined picture-dictionary sub-projects plus picture-clue word scrambles and crosswords.
+- Picture-clue word scrambles: first implementation delivered from the project Exercises view, using picture-dictionary images as clues.
+- New Kok Kaper follow-up planning remains active for organiser-defined picture-dictionary sub-projects and picture-clue crosswords.
 
 ## Goals
 
@@ -113,6 +114,7 @@ Generate a rectangular grid of letters containing target words from a selected p
 - Let the learner select a continuous path of letters, or tap/click start and end cells for straight-line words.
 - Mark found words, provide immediate feedback, and keep picture clues visible as the primary prompt.
 - Avoid showing the written answer until the learner has found it, asks for a hint, or reviews the finished puzzle.
+- Provide a **Show answer** control that highlights the correct path and draws a line through the target letters; after each checked turn, show the same highlighted answer path to make feedback unambiguous.
 
 ### Quality controls
 
@@ -234,6 +236,6 @@ Each item should store provenance:
 ### Phase 4
 
 - Organiser-defined picture-dictionary sub-projects using natural-language selection plus manual adjustment.
-- Picture-clue word scrambles generated from whole dictionaries or saved sub-projects.
+- Picture-clue word scrambles generated from whole dictionaries or saved sub-projects. First version now demonstrates rapid user-requested feature delivery suitable for inclusion in the First Progress Report.
 - Picture-clue crosswords with simple non-symmetrical layouts suitable for small vocabularies.
 - Shared image-readiness validation, player feedback, and publish/review lifecycle across all picture-based exercise types.

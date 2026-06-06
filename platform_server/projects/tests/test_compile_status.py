@@ -1772,11 +1772,15 @@ class CompileStatusViewTests(TestCase):
         self.assertIn(item.answer, {"MAKU", "LONA", "SERE"})
         selected_letters = "".join(item.rationale["grid"][cell["row"]][cell["col"]] for cell in item.rationale["path"])
         self.assertEqual(selected_letters, item.answer)
+        initial_play_resp = self.client.get(reverse("exercise-set-play", args=[ex_set.pk]))
+        self.assertContains(initial_play_resp, "Show answer")
+        self.assertContains(initial_play_resp, "word-scramble-answer-path")
         play_resp = self.client.post(
             reverse("exercise-set-play", args=[ex_set.pk]),
             {"choice": selected_letters, "path": json.dumps(item.rationale["path"])},
         )
         self.assertContains(play_resp, "✅ Correct")
+        self.assertContains(play_resp, "revealAnswer();")
         wrong_path_resp = self.client.post(
             reverse("exercise-set-play", args=[ex_set.pk]),
             {"choice": selected_letters, "path": json.dumps([])},
