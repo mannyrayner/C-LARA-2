@@ -1,0 +1,3 @@
+# Generated experiment data and local scratch space are intentionally not versioned.
+generated/
+tmp/
