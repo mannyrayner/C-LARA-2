@@ -47,8 +47,9 @@ class FewshotReviewSpec:
     model: str = "gpt-5"
     template_model: str | None = None
     template_versions: int = 3
+    review_passes: int = 1
     max_concurrency: int = 4
-    prompt_version: str = "fewshot-review-v5"
+    prompt_version: str = "fewshot-review-v6"
     refresh_template: bool = False
 
 
@@ -563,6 +564,8 @@ def build_review_template_draft_prompt(spec: FewshotReviewSpec, draft_index: int
         raise ValueError("template_versions must be at least 1")
     if spec.max_concurrency < 1:
         raise ValueError("max_concurrency must be at least 1")
+    if spec.review_passes < 1:
+        raise ValueError("review_passes must be at least 1")
 
     focus = _display_review_focus(spec.target_set)
     return f"""
@@ -578,7 +581,10 @@ already checked that removing boundary markers recreates exactly the original st
 character preservation the main issue. The reviewer's job is to judge whether the boundary markers are
 linguistically and pedagogically appropriate. The material between two boundary markers is one proposed
 word-like or meaningful unit. A boundary marker can be inserted, deleted, or moved, but the original
-non-marker characters are assumed to be fixed.
+non-marker characters are assumed to be fixed. A later Multi Word Expression identification stage can
+merge adjacent units into larger expressions, but it cannot recover distinctions once this review has
+encouraged removing a useful boundary; therefore, when in doubt, it is safer to keep learner-useful
+boundaries than to reject them merely because a larger expression also exists.
 
 Avoid project-internal and computer-science terminology in the template you produce. Use ordinary
 phrasing such as "word", "word-like unit", "meaningful unit", "boundary marker", and "marked string".
@@ -645,7 +651,14 @@ string". Avoid project-internal and computer-science terminology. If any draft s
 elisions, apostrophe forms, hyphens, or hyphenated compounds should always stay together, override it
 using the examples and guidance below. The final template should explicitly tell reviewers how to read
 boundary_marked strings like Donne¦-¦le¦-¦moi: the proposed units are the pieces separated by ¦, including
-the hyphens as separator units.
+the hyphens as separator units. Also state that a hyphen, apostrophe, or internal character inside an
+unmarked span is not itself a boundary marker: for example Elle-même¦ ¦arrive proposes Elle-même as
+one unit, not Elle and même as separate units.
+
+The downstream Multi Word Expression identification stage can merge adjacent units into a larger MWE,
+but it cannot split an over-large unit back into meaningful pieces. The final template should therefore
+treat overzealous boundary deletion as the riskier direction when a proposed boundary is learner-useful
+and not actually misleading.
 
 {_unit_boundary_examples()}
 
@@ -694,6 +707,8 @@ def _review_candidate_payload(record: dict[str, Any]) -> dict[str, Any]:
             "Read a marked string such as Donne¦-¦le¦-¦moi as the proposed units Donne, -, le, -, moi.",
             "Spaces, hyphens, apostrophes, and punctuation can be separate units; do not reject an example merely because these separators have been split out.",
             "Deterministic validation has already checked that removing the boundary markers recreates the input exactly.",
+            "A hyphen or apostrophe inside a span is not itself a boundary marker; only ¦ marks proposed unit boundaries.",
+            "A later MWE step can merge adjacent units, but it cannot split an over-large unit, so reject boundary additions only when they are clearly misleading.",
         ],
         "reference_examples": [
             {
@@ -725,6 +740,11 @@ def _review_candidate_payload(record: dict[str, Any]) -> dict[str, Any]:
                 "input": "L'ami arrive.",
                 "boundary_marked": "L'¦ami¦ ¦arrive¦.",
                 "judgement": "acceptable: separating an elided article from the noun can expose a meaningful French unit",
+            },
+            {
+                "input": "Elle-même arrive.",
+                "boundary_marked": "Elle-même¦ ¦arrive¦.",
+                "judgement": "acceptable: there is no boundary marker inside Elle-même, so it has not been split",
             },
         ],
         "phenomenon": candidate.get("phenomenon"),
@@ -797,6 +817,8 @@ def _candidate_review_prompt(template: dict[str, Any], record: dict[str, Any]) -
     override_policy = """
 Non-negotiable review policy, overriding any earlier wording if there is a conflict:
 - The goal is learner-useful linguistic-unit boundaries, not preserving conventional written-word groupings.
+- A later Multi Word Expression identification stage can merge adjacent units into larger expressions, but it cannot split an over-large unit. It is therefore more dangerous to remove learner-useful boundary markers than to add a reasonable boundary that can later be merged.
+- Read the marked string literally: only the boundary marker separates proposed units. A hyphen, apostrophe, or other character inside an unmarked span is not a proposed boundary. For example Elle-même¦ ¦arrive proposes Elle-même as one unit.
 - Do NOT reject a candidate merely because a French clitic, elided article, or elided conjunction is separated from the following word. Splits such as l'¦ai, l'¦avait, L'¦ami, j'¦ai, qu'¦il, and s'¦il are usually acceptable when the pieces are meaningful for learners.
 - Do NOT reject a candidate merely because spaces, hyphens, apostrophes, or punctuation are separate units; the interpretation notes explicitly allow this.
 - Reject only when a boundary creates a genuinely misleading linguistic analysis, such as a false compound split, a lexicalized apostrophe word split mechanically, or a split that hides rather than clarifies the phenomenon.
@@ -829,6 +851,82 @@ def _compact_review_record(review: dict[str, Any]) -> dict[str, Any]:
         "explanation": review_payload.get("explanation") or review_payload.get("critique") or "",
         "review_path": review.get("review_path"),
         "candidate_path": review.get("candidate_path"),
+    }
+
+
+SEVERITY_ORDER = {"none": 0, "minor": 1, "serious": 2, "fatal": 3}
+
+
+def _normalise_review_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Normalise a reviewer payload so deterministic reconciliation can compare runs."""
+
+    severity = str(payload.get("severity") or "").lower()
+    if severity not in SEVERITY_ORDER:
+        severity = "serious"
+        payload = {**payload, "severity_normalization_note": "Invalid or missing severity normalized to serious."}
+
+    decision = str(payload.get("decision") or "").lower()
+    recommended_status = str(payload.get("recommended_status") or "").lower()
+    if decision not in {"accept", "reject"}:
+        if recommended_status.startswith("accept") or severity == "none":
+            decision = "accept"
+        elif recommended_status.startswith("reject") or severity in {"serious", "fatal"}:
+            decision = "reject"
+        else:
+            decision = "accept"
+    if decision == "accept" and severity in {"serious", "fatal"}:
+        severity = "none"
+        payload = {
+            **payload,
+            "severity_normalization_note": "Accepted reviews are normalized to severity none.",
+        }
+    return {**payload, "decision": decision, "severity": severity}
+
+
+def _reconcile_review_payloads(payloads: list[dict[str, Any]]) -> dict[str, Any]:
+    """Combine repeated independent review passes with a conservative accept bias."""
+
+    if len(payloads) == 1:
+        return payloads[0]
+    accept_count = sum(1 for payload in payloads if payload.get("decision") == "accept")
+    reject_count = len(payloads) - accept_count
+    decision = "reject" if reject_count > accept_count else "accept"
+    if decision == "accept":
+        severity = "none"
+    else:
+        rejecting_severities = [
+            str(payload.get("severity") or "serious")
+            for payload in payloads
+            if payload.get("decision") == "reject"
+        ]
+        severity = max(rejecting_severities, key=lambda value: SEVERITY_ORDER.get(value, 2), default="serious")
+    strongest_payload = max(
+        payloads,
+        key=lambda payload: SEVERITY_ORDER.get(str(payload.get("severity") or "serious"), 2),
+    )
+    explanation = (
+        f"Reconciled {len(payloads)} independent review passes: "
+        f"accept={accept_count}, reject={reject_count}. "
+        f"Final decision uses majority voting with ties biased toward keeping learner-useful boundaries "
+        f"because downstream MWE detection can merge units but cannot split over-large units. "
+        f"Representative rationale: "
+        f"{strongest_payload.get('explanation') or strongest_payload.get('critique') or strongest_payload.get('strongest_reason') or ''}"
+    ).strip()
+    return {
+        "decision": decision,
+        "severity": severity,
+        "strongest_reason": strongest_payload.get("strongest_reason")
+        or strongest_payload.get("issue_type")
+        or "reconciled passes",
+        "explanation": explanation,
+        "suggested_boundary_marked": strongest_payload.get("suggested_boundary_marked")
+        or strongest_payload.get("suggested_repair")
+        or "",
+        "notes": [
+            f"accept_votes={accept_count}",
+            f"reject_votes={reject_count}",
+            "ties are accepted because later MWE identification can merge but not split units",
+        ],
     }
 
 
@@ -921,6 +1019,8 @@ async def review_candidate_batch(
         raise ValueError("request_id is required to review a curation batch")
     if spec.max_concurrency < 1:
         raise ValueError("max_concurrency must be at least 1")
+    if spec.review_passes < 1:
+        raise ValueError("review_passes must be at least 1")
     ai_client = client or OpenAIClient()
     request_root = _curation_root_for_review_spec(repo_root, spec, curation_root_base=curation_root_base)
     request_path = request_root / "requests" / f"{spec.request_id}.json"
@@ -973,13 +1073,20 @@ async def review_candidate_batch(
             prompt = _candidate_review_prompt(template, record)
             if trace:
                 trace(f"starting review {record['example_id']}")
-            payload = normalize_json_text(await ai_client.chat_json(prompt, model=spec.model))
-            if not isinstance(payload, dict):
-                raise ValueError(f"review response for {record['example_id']} must be a JSON object")
-            severity = str(payload.get("severity") or "").lower()
-            if severity not in {"fatal", "serious", "minor", "none"}:
-                severity = "serious"
-                payload = {**payload, "severity_normalization_note": "Invalid or missing severity normalized to serious."}
+            review_passes: list[dict[str, Any]] = []
+            for pass_index in range(1, spec.review_passes + 1):
+                pass_prompt = (
+                    prompt
+                    if spec.review_passes == 1
+                    else f"{prompt}\n\nIndependent review pass {pass_index} of {spec.review_passes}: "
+                    "make your own judgement before seeing any other reviewer output."
+                )
+                payload = normalize_json_text(await ai_client.chat_json(pass_prompt, model=spec.model))
+                if not isinstance(payload, dict):
+                    raise ValueError(f"review response for {record['example_id']} must be a JSON object")
+                review_passes.append(_normalise_review_payload(payload))
+            payload = _reconcile_review_payloads(review_passes)
+            severity = str(payload["severity"])
             review_path = reviews_dir / f"{path.stem}.review.json"
             review = {
                 "schema_version": 1,
@@ -999,6 +1106,8 @@ async def review_candidate_batch(
                 "candidate": _review_candidate_payload(record),
                 "candidate_path": _display_path(path, repo_root),
                 "review_path": _display_path(review_path, repo_root),
+                "review_pass_count": spec.review_passes,
+                "review_passes": review_passes,
                 "severity": severity,
                 "review": {**payload, "severity": severity},
             }
@@ -1015,6 +1124,7 @@ async def review_candidate_batch(
         "schema_version": 1,
         "request_id": spec.request_id,
         "review_count": len(reviews),
+        "review_passes": spec.review_passes,
         "items": [_compact_review_record(review) for review in reviews],
     }
     items_path = reviews_dir / f"{spec.request_id}.items.json"
@@ -1023,6 +1133,7 @@ async def review_candidate_batch(
         "schema_version": 1,
         "request_id": spec.request_id,
         "review_count": len(reviews),
+        "review_passes": spec.review_passes,
         "skipped_validation_failed_count": len(skipped_candidates),
         "skipped_validation_failed": skipped_candidates,
         "severity_counts": severity_counts,

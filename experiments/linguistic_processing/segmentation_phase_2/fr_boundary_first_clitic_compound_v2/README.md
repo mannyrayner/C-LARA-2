@@ -41,9 +41,10 @@ make run-candidate
 make evaluate
 ```
 
-Targets default to dry-run mode where applicable. The default Makefile model is `gpt-4o` with a 600-second
-review timeout because these batch jobs have been timing out with slower models; override `MODEL=...` or
-`TIMEOUT_S=...` on the command line for comparison runs. Set `RUN=1` when the corresponding management command
+Targets default to dry-run mode where applicable. The default Makefile model is `gpt-4o` with three
+independent review passes per item and a 600-second review timeout because these batch jobs have been
+timing out with slower models; override `MODEL=...`, `REVIEW_PASSES=...`, or `TIMEOUT_S=...` on the
+command line for comparison runs. Set `RUN=1` when the corresponding management command
 exists and you want to execute it for real, for example:
 
 ```bash

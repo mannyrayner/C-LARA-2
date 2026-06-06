@@ -37,6 +37,7 @@ class Command(BaseCommand):
         parser.add_argument("--model", default="gpt-5")
         parser.add_argument("--template-model", default="")
         parser.add_argument("--template-versions", type=int, default=3)
+        parser.add_argument("--review-passes", type=int, default=1)
         parser.add_argument("--max-concurrency", type=int, default=4)
         parser.add_argument("--refresh-template", action="store_true")
         parser.add_argument("--timeout-s", type=float, default=180.0)
@@ -58,6 +59,7 @@ class Command(BaseCommand):
             model=options["model"],
             template_model=options["template_model"] or None,
             template_versions=options["template_versions"],
+            review_passes=options["review_passes"],
             max_concurrency=options["max_concurrency"],
             refresh_template=options["refresh_template"],
         )
@@ -71,8 +73,8 @@ class Command(BaseCommand):
         trace(
             f"request operation={spec.operation} language={spec.language} mechanism={spec.mechanism} "
             f"target_set={spec.target_set} request_id={spec.request_id} "
-            f"template_versions={spec.template_versions} max_concurrency={spec.max_concurrency} "
-            f"model={spec.model} timeout_s={options['timeout_s']}"
+            f"template_versions={spec.template_versions} review_passes={spec.review_passes} "
+            f"max_concurrency={spec.max_concurrency} model={spec.model} timeout_s={options['timeout_s']}"
         )
         client = OpenAIClient(config=OpenAIConfig(timeout_s=options["timeout_s"], heartbeat_s=options["heartbeat_s"]))
         try:

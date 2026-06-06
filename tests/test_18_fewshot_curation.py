@@ -465,6 +465,7 @@ class FewshotCurationTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn("bar¦becue", review_client.prompts[0])
             self.assertIn("Donne¦-¦le¦-¦moi", review_client.prompts[0])
             self.assertIn("Do NOT say that clitics or elided forms should always be kept together", review_client.prompts[0])
+            self.assertIn("Multi Word Expression identification stage", review_client.prompts[0])
             self.assertNotIn("token", review_client.prompts[0].lower())
             self.assertTrue(any("creating 2 review-template draft" in message for message in traces))
             self.assertTrue(any("skipping 1 validation-failed candidate" in message for message in traces))
@@ -484,8 +485,83 @@ class FewshotCurationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual("Je¦ ¦l'¦aime¦.", review_json["candidate"]["boundary_marked"])
             self.assertIn("candidate_path", review_json)
 
+    async def test_review_candidate_batch_reconciles_repeated_review_passes(self) -> None:
+        generation_client = FakeCurationClient(
+            {
+                "candidates": [
+                    {
+                        "input": "J'aime la glace.",
+                        "phenomenon": "French elision",
+                        "output": {
+                            "surface": "J'aime la glace.",
+                            "tokens": [
+                                {"surface": "J'"},
+                                {"surface": "aime"},
+                                {"surface": " "},
+                                {"surface": "la"},
+                                {"surface": " "},
+                                {"surface": "glace"},
+                                {"surface": "."},
+                            ],
+                            "annotations": {},
+                        },
+                    }
+                ]
+            }
+        )
+        generation_spec = FewshotCurationSpec(
+            operation="segmentation_phase_2",
+            language="fr",
+            mechanism="boundary_first",
+            target_set="clitic_compound_v2",
+            count=1,
+            model="fake-generator",
+            request_id="20260606-repeated-review",
+        )
+        batch = await generate_candidate_batch(generation_spec, client=generation_client)
+        review_client = FakeReviewClient(
+            [
+                {
+                    "template_text": "Review boundary example and return JSON: {candidate_json}",
+                    "severity_definitions": {"fatal": "bad", "serious": "problem", "minor": "small", "none": "ok"},
+                },
+                {
+                    "template_text": "Review boundary example and return JSON: {candidate_json}",
+                    "severity_definitions": {"fatal": "bad", "serious": "problem", "minor": "small", "none": "ok"},
+                    "reconciliation_rationale": "Single template.",
+                },
+                {"decision": "reject", "severity": "serious", "explanation": "One reviewer over-penalised the split."},
+                {"decision": "accept", "severity": "none", "explanation": "The elided clitic boundary is useful."},
+                {"decision": "accept", "severity": "none", "explanation": "Downstream MWE can merge if necessary."},
+            ]
+        )
+        review_spec = FewshotReviewSpec(
+            operation="segmentation_phase_2",
+            language="fr",
+            mechanism="boundary_first",
+            target_set="clitic_compound_v2",
+            request_id="20260606-repeated-review",
+            model="fake-reviewer",
+            template_model="fake-template",
+            template_versions=1,
+            review_passes=3,
+            max_concurrency=1,
+        )
 
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store_candidate_batch(batch, repo_root=Path(tmpdir))
+            result = await review_candidate_batch(review_spec, repo_root=Path(tmpdir), client=review_client)
+            root = Path(result["root"])
+            review_file = root / "reviews" / "20260606-repeated-review-EXAMPLE-0001.review.json"
+            review_json = json.loads(review_file.read_text(encoding="utf-8"))
 
+            self.assertEqual("accept", review_json["review"]["decision"])
+            self.assertEqual("none", review_json["severity"])
+            self.assertEqual(3, review_json["review_pass_count"])
+            self.assertEqual(3, len(review_json["review_passes"]))
+            self.assertEqual({"fatal": 0, "serious": 0, "minor": 0, "none": 1}, result["summary"]["severity_counts"])
+            self.assertEqual(3, result["summary"]["review_passes"])
+            self.assertIn("Independent review pass 2 of 3", review_client.prompts[-2])
 
     def test_filesystem_path_adds_windows_long_path_prefix(self) -> None:
         path = Path("/tmp/review-output.json")
