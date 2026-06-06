@@ -85,6 +85,48 @@ class FewshotCurationTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(result["schema_pass"])
         self.assertIn("concatenated token surfaces must exactly match input", result["errors"])
 
+    async def test_generation_repairs_missing_surface_gap_tokens(self) -> None:
+        client = FakeCurationClient(
+            {
+                "candidates": [
+                    {
+                        "input": "Je t'aime.",
+                        "phenomenon": "clitic",
+                        "rationale": "Generated without the required inter-word space token.",
+                        "output": {
+                            "surface": "Je t'aime.",
+                            "tokens": [
+                                {"surface": "Je"},
+                                {"surface": "t'"},
+                                {"surface": "aime"},
+                                {"surface": "."},
+                            ],
+                            "annotations": {},
+                        },
+                    }
+                ]
+            }
+        )
+        spec = FewshotCurationSpec(
+            operation="segmentation_phase_2",
+            language="fr",
+            mechanism="boundary_first",
+            target_set="clitic_compound_v2",
+            count=1,
+            model="fake-model",
+            request_id="20260606-repair",
+        )
+
+        batch = await generate_candidate_batch(spec, client=client)
+
+        record = batch["records"][0]
+        self.assertEqual("schema_validated", record["status"])
+        self.assertEqual({"inserted_missing_surface_gaps": 1}, record["normalization"])
+        self.assertEqual(
+            ["Je", " ", "t'", "aime", "."],
+            [token["surface"] for token in record["candidate"]["output"]["tokens"]],
+        )
+
     async def test_generates_stores_and_promotes_valid_candidates(self) -> None:
         client = FakeCurationClient(
             {
@@ -222,6 +264,8 @@ class FewshotCurationTests(unittest.IsolatedAsyncioTestCase):
 
         batch = await generate_candidate_batch(spec, client=client, trace=traces.append)
 
+        self.assertIn('Every inter-word space must appear as its own token', client.prompts[0])
+        self.assertIn('input "Je t\'aime." -> tokens "Je", " ", "t\'", "aime", "."', client.prompts[0])
         self.assertEqual(2, len(client.prompts))
         self.assertEqual(["fake-model", "fake-model"], client.models)
         self.assertEqual(["EXAMPLE-0001", "EXAMPLE-0002"], [record["example_id"] for record in batch["records"]])
@@ -319,7 +363,6 @@ class FewshotCurationTests(unittest.IsolatedAsyncioTestCase):
                             "tokens": [
                                 {"surface": "L'"},
                                 {"surface": "ami"},
-                                {"surface": "de"},
                                 {"surface": "Marie"},
                                 {"surface": "habite"},
                                 {"surface": "ici"},

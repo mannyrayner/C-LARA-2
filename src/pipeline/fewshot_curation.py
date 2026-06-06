@@ -87,11 +87,18 @@ For segmentation_phase_2, each candidate must be a JSON-tokenization example:
 - output.surface: exactly the same string as input.
 - output.tokens: an ordered array of token objects, each with a non-empty surface.
 - Concatenating token surfaces must reproduce input exactly, including spaces and punctuation.
+- Every inter-word space must appear as its own token, e.g. input "Je t'aime." must include tokens "Je", " ", "t'", "aime", ".".
+- Do not silently omit spaces around clitics, compounds, names, or punctuation; missing spaces cause automatic rejection.
 - annotations: an object, usually empty.
 
 Prefer edge cases that are useful for language-learning annotation, including clitics,
 compounds, punctuation, named entities, and examples where default token boundaries
 should be left alone or repaired.
+
+Surface-preserving examples to imitate:
+- input "Je t'aime." -> tokens "Je", " ", "t'", "aime", "."
+- input "Je l'ai fait moi-même." -> tokens "Je", " ", "l'", "ai", " ", "fait", " ", "moi-même", "."
+- input "L'ami de Marie arrive." -> tokens "L'", "ami", " ", "de", " ", "Marie", " ", "arrive", "."
 
 Return only JSON in this exact shape:
 {{
@@ -171,6 +178,59 @@ def validate_candidate(operation: str, candidate: dict[str, Any]) -> dict[str, A
     if operation == "segmentation_phase_2":
         return validate_segmentation_phase_2_candidate(candidate)
     raise ValueError(f"Unsupported few-shot curation operation: {operation}")
+
+
+def _is_repairable_surface_gap(gap: str) -> bool:
+    """Return true when a generated candidate merely omitted separator surface text."""
+
+    repairable_chars = set(' \t\n\r-\'’.,;:!?()[]{}«»"“”')
+    return bool(gap) and all(char in repairable_chars for char in gap)
+
+
+def _repair_missing_surface_gaps(candidate: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Insert omitted separator gaps when generated tokens are otherwise in order."""
+
+    input_text = candidate.get("input")
+    output = candidate.get("output")
+    if not isinstance(input_text, str) or not isinstance(output, dict):
+        return candidate, None
+    tokens = output.get("tokens")
+    if not isinstance(tokens, list) or not tokens:
+        return candidate, None
+
+    repaired_tokens: list[dict[str, Any]] = []
+    position = 0
+    inserted_count = 0
+    for token in tokens:
+        if not isinstance(token, dict) or not isinstance(token.get("surface"), str):
+            return candidate, None
+        surface = token["surface"]
+        if surface == "":
+            return candidate, None
+        next_position = input_text.find(surface, position)
+        if next_position < 0:
+            return candidate, None
+        if next_position > position:
+            gap = input_text[position:next_position]
+            if not _is_repairable_surface_gap(gap):
+                return candidate, None
+            repaired_tokens.append({"surface": gap})
+            inserted_count += 1
+        repaired_tokens.append({**token})
+        position = next_position + len(surface)
+    if position < len(input_text):
+        gap = input_text[position:]
+        if not _is_repairable_surface_gap(gap):
+            return candidate, None
+        repaired_tokens.append({"surface": gap})
+        inserted_count += 1
+
+    if inserted_count == 0 or "".join(token["surface"] for token in repaired_tokens) != input_text:
+        return candidate, None
+
+    repaired_output = {**output, "tokens": repaired_tokens}
+    repaired_candidate = {**candidate, "output": repaired_output}
+    return repaired_candidate, {"inserted_missing_surface_gaps": inserted_count}
 
 
 async def _generate_candidate_shard(
@@ -256,27 +316,31 @@ async def generate_candidate_batch(
     for shard in shards:
         for raw_candidate in shard["candidates"]:
             candidate = raw_candidate if isinstance(raw_candidate, dict) else {"raw": raw_candidate}
+            normalization = None
+            if spec.operation == "segmentation_phase_2" and isinstance(candidate, dict):
+                candidate, normalization = _repair_missing_surface_gaps(candidate)
             validation = validate_candidate(spec.operation, candidate)
             status = "schema_validated" if validation["schema_pass"] else "validation_failed"
-            records.append(
-                {
-                    "schema_version": 1,
-                    "example_id": f"EXAMPLE-{next_example_idx:04d}",
-                    "request_id": request_id,
-                    "status": status,
-                    "operation": spec.operation,
-                    "language": spec.language,
-                    "mechanism": spec.mechanism,
-                    "target_set": spec.target_set,
-                    "phenomena": list(spec.phenomena),
-                    "generated_at": generated_at,
-                    "generator_model": spec.model,
-                    "generator_prompt_version": spec.prompt_version,
-                    "shard_index": shard["shard_index"],
-                    "candidate": candidate,
-                    "validation": validation,
-                }
-            )
+            record = {
+                "schema_version": 1,
+                "example_id": f"EXAMPLE-{next_example_idx:04d}",
+                "request_id": request_id,
+                "status": status,
+                "operation": spec.operation,
+                "language": spec.language,
+                "mechanism": spec.mechanism,
+                "target_set": spec.target_set,
+                "phenomena": list(spec.phenomena),
+                "generated_at": generated_at,
+                "generator_model": spec.model,
+                "generator_prompt_version": spec.prompt_version,
+                "shard_index": shard["shard_index"],
+                "candidate": candidate,
+                "validation": validation,
+            }
+            if normalization:
+                record["normalization"] = normalization
+            records.append(record)
             next_example_idx += 1
 
     if trace:
