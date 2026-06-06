@@ -3,6 +3,7 @@
 {% block content %}
 <h1>{{ exercise_set.title|default:"Exercise set" }}</h1>
 <p>Type: {{ exercise_set.exercise_type }} | Theme: {{ exercise_set.theme }} | Status: {{ exercise_set.status }}</p>
+{% if exercise_set.instructions %}<p>{{ exercise_set.instructions }}</p>{% endif %}
 <p><a class="btn" href="{% url 'exercise-set-play' exercise_set.id %}">Play this set</a></p>
 {% if project.owner == user %}
   <p><a class="btn secondary" href="{% url 'exercise-set-publish' exercise_set.id %}">{% if exercise_set.is_published %}Unpublish{% else %}Publish{% endif %}</a></p>
@@ -11,20 +12,33 @@
 {% for item in items %}
   <li>
     {% if item.rationale.image_path %}
-      <p><img src="{% url 'exercise-item-image' item.id %}" alt="Flashcard image" style="max-width: 360px; height: auto;" /></p>
+      <p><img src="{% url 'exercise-item-image' item.id %}" alt="Picture clue" style="max-width: 360px; height: auto;" /></p>
     {% endif %}
     <p><strong>{{ item.prompt }}</strong></p>
-    <ul>
-      {% for opt in item.options %}
-        <li>
-          {{ opt }}{% if opt == item.answer %} ✅{% endif %}
-          {% if item.rationale.exercise_kind == "form_to_image" %}
-            <br />
-            <img src="{% url 'exercise-item-option-image' item.id opt %}" alt="Option image {{ opt }}" style="max-width: 220px; height: auto;" />
-          {% endif %}
-        </li>
-      {% endfor %}
-    </ul>
+    {% if item.rationale.exercise_kind == "word_scramble" %}
+      <p>Answer: <strong>{{ item.rationale.display_answer|default:item.answer }}</strong></p>
+      <table class="word-scramble-grid" style="border-collapse: collapse; font-family: monospace; margin: 0.75rem 0;">
+        {% for row in item.rationale.grid %}
+          <tr>
+            {% for letter in row %}
+              <td style="border: 1px solid #ccc; width: 1.8rem; height: 1.8rem; text-align: center;">{{ letter }}</td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </table>
+    {% else %}
+      <ul>
+        {% for opt in item.options %}
+          <li>
+            {{ opt }}{% if opt == item.answer %} ✅{% endif %}
+            {% if item.rationale.exercise_kind == "form_to_image" %}
+              <br />
+              <img src="{% url 'exercise-item-option-image' item.id opt %}" alt="Option image {{ opt }}" style="max-width: 220px; height: auto;" />
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
   </li>
 {% empty %}
   <li>No items.</li>
