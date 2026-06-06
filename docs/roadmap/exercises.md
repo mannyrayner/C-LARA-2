@@ -236,6 +236,6 @@ Each item should store provenance:
 ### Phase 4
 
 - Organiser-defined picture-dictionary sub-projects using natural-language selection plus manual adjustment.
-- Picture-clue word scrambles generated from whole dictionaries or saved sub-projects. First version now demonstrates rapid user-requested feature delivery suitable for inclusion in the First Progress Report.
+- Picture-clue word scrambles generated from whole dictionaries or saved sub-projects. First version now demonstrates rapid user-requested feature delivery suitable for inclusion in the First Progress Report, with a narrow implementation estimate of roughly twelve minutes of AI time plus about one hour of human AI-expert steering/review time; any public description involving Australian Aboriginal language material must still be cleared with Sophie and the relevant community/end-users.
 - Picture-clue crosswords with simple non-symmetrical layouts suitable for small vocabularies.
 - Shared image-readiness validation, player feedback, and publish/review lifecycle across all picture-based exercise types.
