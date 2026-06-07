@@ -170,6 +170,48 @@ Recommended AWS deployment sequence:
 
 The laptop setup is the same contract with less ceremony: install Codex, authenticate with `codex login`, set `C_LARA_CODEX_EXECUTABLE` only if `codex` is not on the Django process `PATH`, set `C_LARA_PROJECT_UNDERSTANDING_REPO` if the Django checkout is not the intended evidence checkout, then run the same management command.
 
+#### Concrete AWS example: Codex installed as `ubuntu`
+
+`C_LARA_CODEX_EXECUTABLE` is just the environment variable that tells Django which executable path to pass as the first argument in the safe `subprocess.run([...])` call. It is not a Codex setting and it is not something to type at the Python prompt. If `sudo -iu ubuntu` shows:
+
+```bash
+which codex
+# /home/ubuntu/.local/bin/codex
+```
+
+then the corresponding C-LARA setting should be:
+
+```bash
+C_LARA_CODEX_EXECUTABLE=/home/ubuntu/.local/bin/codex
+```
+
+The important detail is where to put that line. It must be visible to the long-running Django/Gunicorn process and to the Django Q worker process, because the web request only queues the job and the worker is the process that actually launches `codex exec`. Setting it in an interactive SSH shell with `export C_LARA_CODEX_EXECUTABLE=...` is useful for a one-off test, but it will not automatically affect already-running systemd/Gunicorn/Q services or survive a service restart unless it is added to their service environment.
+
+Use whichever deployment mechanism the server already uses for C-LARA environment variables:
+
+- if the server uses systemd unit files, add the same `Environment=C_LARA_CODEX_EXECUTABLE=/home/ubuntu/.local/bin/codex` line to both the Gunicorn service and the Django Q/qcluster service, then run `sudo systemctl daemon-reload` and restart both services;
+- if the server loads a `.env` or deployment environment file, add `C_LARA_CODEX_EXECUTABLE=/home/ubuntu/.local/bin/codex` there and restart both Gunicorn and Q;
+- if the server is started by a shell script, export the variable in that script before it starts Gunicorn and before it starts Q.
+
+A minimal service environment for the case above would include at least:
+
+```ini
+Environment=C_LARA_CODEX_EXECUTABLE=/home/ubuntu/.local/bin/codex
+Environment=C_LARA_PROJECT_UNDERSTANDING_REPO=/srv/C-LARA-2
+Environment=C_LARA_PROJECT_UNDERSTANDING_MODEL=gpt-5.3-codex
+Environment=C_LARA_PROJECT_UNDERSTANDING_TIMEOUT_SECONDS=300
+Environment=CODEX_HOME=/home/ubuntu/.codex
+```
+
+Use `CODEX_HOME=/home/ubuntu/.codex` only if that is where the successful `ubuntu` Codex login was stored. If the login was done with the default home directory for `ubuntu`, this is usually the right assumption; otherwise set `CODEX_HOME` to the locked-down directory used during `codex login`. After restarting the services, run the check from the deployment virtualenv with the same environment the service uses:
+
+```bash
+python platform_server/manage.py check_project_understanding_codex
+python platform_server/manage.py check_project_understanding_codex --smoke
+```
+
+If the first command still says `Resolved executable: codex` rather than `/home/ubuntu/.local/bin/codex`, Django did not receive `C_LARA_CODEX_EXECUTABLE`. If it finds the executable but `codex login status` fails or the smoke test returns 401, the executable path is fine and the remaining problem is authentication/`CODEX_HOME`.
+
 
 #### Authentication setup and 401 diagnostics
 
