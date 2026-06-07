@@ -1869,7 +1869,11 @@ class CompileStatusViewTests(TestCase):
         self.assertContains(detail, "Down")
         self.assertContains(detail, "crossword-grid")
         play = self.client.get(reverse("exercise-set-play", args=[ex_set.pk]))
-        self.assertContains(play, "static review/play preview")
+        self.assertContains(play, "crossword-cell-input")
+        self.assertContains(play, "clara-crossword-state-")
+        self.assertContains(play, "Save progress")
+        self.assertContains(play, "Show answer")
+        self.assertContains(play, "Check puzzle")
 
     def test_generate_image_flashcards_requires_picture_dictionary(self):
         shutil.rmtree(self.project.artifact_dir(), ignore_errors=True)

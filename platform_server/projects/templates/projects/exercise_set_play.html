@@ -11,21 +11,41 @@
   {% endif %}
   <p><strong>{{ item.prompt }}</strong></p>
   {% if item.rationale.exercise_kind == "crossword" %}
-    <p>This first crossword version is a static review/play preview. Editable cells and saved learner attempts are planned for the next phase.</p>
+    <p>Fill any square, select picture clues from the Across/Down panes, and save or reveal individual clues as needed.</p>
     {% with summary=item.rationale.summary %}
       <p>Placed {{ summary.placed_count }} of {{ summary.selected_count }} selected word(s); intersections: {{ summary.intersection_count }}.</p>
     {% endwith %}
+    {{ item.rationale|json_script:"crossword-data" }}
+    <p>
+      <button class="btn secondary" type="button" id="crossword-save">Save progress</button>
+      <button class="btn secondary" type="button" id="crossword-check-puzzle">Check puzzle</button>
+      <button class="btn secondary" type="button" id="crossword-reset">Reset saved attempt</button>
+      <span id="crossword-save-status" aria-live="polite"></span>
+    </p>
     <div style="display: flex; gap: 1.5rem; align-items: flex-start; flex-wrap: wrap;">
       <table class="crossword-grid" style="border-collapse: collapse; font-family: monospace;">
         {% for row in item.rationale.grid %}
           <tr>
             {% for cell in row %}
               {% if cell.is_black %}
-                <td style="background: #111; width: 2rem; height: 2rem; border: 1px solid #333;"></td>
+                <td style="background: #111; width: 2.25rem; height: 2.25rem; border: 1px solid #333;"></td>
               {% else %}
-                <td style="position: relative; width: 2rem; height: 2rem; border: 1px solid #777; text-align: center; vertical-align: middle; background: #fff;">
-                  {% if cell.number %}<span style="position: absolute; top: 1px; left: 2px; font-size: 0.65rem; line-height: 1;">{{ cell.number }}</span>{% endif %}
-                  <span>{{ cell.letter }}</span>
+                <td
+                  class="crossword-cell-wrap"
+                  data-row="{{ cell.row }}"
+                  data-col="{{ cell.col }}"
+                  style="position: relative; width: 2.25rem; height: 2.25rem; border: 1px solid #777; text-align: center; vertical-align: middle; background: #fff;"
+                >
+                  {% if cell.number %}<span style="position: absolute; top: 1px; left: 2px; font-size: 0.65rem; line-height: 1; z-index: 1;">{{ cell.number }}</span>{% endif %}
+                  <input
+                    class="crossword-cell-input"
+                    data-row="{{ cell.row }}"
+                    data-col="{{ cell.col }}"
+                    maxlength="1"
+                    autocomplete="off"
+                    aria-label="Crossword cell row {{ cell.row }} column {{ cell.col }}"
+                    style="width: 100%; height: 100%; border: 0; text-align: center; text-transform: uppercase; font: inherit; background: transparent;"
+                  />
                 </td>
               {% endif %}
             {% endfor %}
@@ -33,26 +53,209 @@
         {% endfor %}
       </table>
       <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-        <section style="max-height: 28rem; overflow-y: auto; min-width: 14rem;">
+        <section style="max-height: 28rem; overflow-y: auto; min-width: 16rem; max-width: 20rem;">
           <h2>Across</h2>
           {% for clue in item.rationale.clues.across %}
-            <div style="margin-bottom: 0.75rem;">
-              <strong>{{ clue.number }}.</strong>
-              <img src="{% url 'exercise-item-option-image' item.id clue.clue_id %}" alt="Across clue {{ clue.number }}" style="max-width: 110px; max-height: 110px; vertical-align: middle;" />
+            <div class="crossword-clue" data-clue-id="{{ clue.clue_id }}" style="margin-bottom: 0.75rem; border: 1px solid #ddd; padding: 0.4rem;">
+              <button class="btn secondary crossword-select-clue" type="button" data-clue-id="{{ clue.clue_id }}">{{ clue.number }} Across</button>
+              <img src="{% url 'exercise-item-option-image' item.id clue.clue_id %}" alt="Across clue {{ clue.number }}" style="max-width: 95px; max-height: 95px; vertical-align: middle;" />
+              <div style="margin-top: 0.35rem;">
+                <button type="button" class="btn secondary crossword-show-answer" data-clue-id="{{ clue.clue_id }}">Show answer</button>
+                <button type="button" class="btn secondary crossword-check-clue" data-clue-id="{{ clue.clue_id }}">Check</button>
+                <button type="button" class="btn secondary crossword-clear-clue" data-clue-id="{{ clue.clue_id }}">Clear</button>
+              </div>
+              <small id="crossword-status-{{ clue.clue_id }}" aria-live="polite"></small>
             </div>
           {% empty %}<p>No across clues.</p>{% endfor %}
         </section>
-        <section style="max-height: 28rem; overflow-y: auto; min-width: 14rem;">
+        <section style="max-height: 28rem; overflow-y: auto; min-width: 16rem; max-width: 20rem;">
           <h2>Down</h2>
           {% for clue in item.rationale.clues.down %}
-            <div style="margin-bottom: 0.75rem;">
-              <strong>{{ clue.number }}.</strong>
-              <img src="{% url 'exercise-item-option-image' item.id clue.clue_id %}" alt="Down clue {{ clue.number }}" style="max-width: 110px; max-height: 110px; vertical-align: middle;" />
+            <div class="crossword-clue" data-clue-id="{{ clue.clue_id }}" style="margin-bottom: 0.75rem; border: 1px solid #ddd; padding: 0.4rem;">
+              <button class="btn secondary crossword-select-clue" type="button" data-clue-id="{{ clue.clue_id }}">{{ clue.number }} Down</button>
+              <img src="{% url 'exercise-item-option-image' item.id clue.clue_id %}" alt="Down clue {{ clue.number }}" style="max-width: 95px; max-height: 95px; vertical-align: middle;" />
+              <div style="margin-top: 0.35rem;">
+                <button type="button" class="btn secondary crossword-show-answer" data-clue-id="{{ clue.clue_id }}">Show answer</button>
+                <button type="button" class="btn secondary crossword-check-clue" data-clue-id="{{ clue.clue_id }}">Check</button>
+                <button type="button" class="btn secondary crossword-clear-clue" data-clue-id="{{ clue.clue_id }}">Clear</button>
+              </div>
+              <small id="crossword-status-{{ clue.clue_id }}" aria-live="polite"></small>
             </div>
           {% empty %}<p>No down clues.</p>{% endfor %}
         </section>
       </div>
     </div>
+    <script>
+      (function () {
+        const crosswordDataElement = document.getElementById("crossword-data");
+        const crosswordData = crosswordDataElement ? JSON.parse(crosswordDataElement.textContent || "{}") : {};
+        const clues = [].concat((crosswordData.clues && crosswordData.clues.across) || [], (crosswordData.clues && crosswordData.clues.down) || []);
+        const clueById = {};
+        clues.forEach(function (clue) { clueById[clue.clue_id] = clue; });
+        const storageKey = "clara-crossword-state-{{ exercise_set.id }}-{{ item.id }}";
+        const saveStatus = document.getElementById("crossword-save-status");
+        let activeClueId = clues.length ? clues[0].clue_id : null;
+        let state = readState();
+
+        function cellKey(row, col) { return row + "," + col; }
+        function inputForCell(cell) {
+          return document.querySelector('.crossword-cell-input[data-row="' + cell.row + '"][data-col="' + cell.col + '"]');
+        }
+        function wrapperForCell(cell) {
+          return document.querySelector('.crossword-cell-wrap[data-row="' + cell.row + '"][data-col="' + cell.col + '"]');
+        }
+        function firstLetter(value) {
+          const chars = Array.from(value || "");
+          const letter = chars.find(function (ch) { return ch.toUpperCase() !== ch.toLowerCase(); });
+          return letter ? letter.toUpperCase() : "";
+        }
+        function readState() {
+          try {
+            const parsed = JSON.parse(window.localStorage.getItem(storageKey) || "{}");
+            return {
+              entries: parsed.entries || {},
+              revealed: Array.isArray(parsed.revealed) ? parsed.revealed : [],
+            };
+          } catch (_error) {
+            return {entries: {}, revealed: []};
+          }
+        }
+        function writeState(message) {
+          try {
+            window.localStorage.setItem(storageKey, JSON.stringify(state));
+            if (saveStatus) { saveStatus.textContent = message || "Saved."; }
+          } catch (_error) {
+            if (saveStatus) { saveStatus.textContent = "Progress is shown here but could not be saved in this browser."; }
+          }
+        }
+        function clueContainsCell(clue, row, col) {
+          return clue.path.some(function (cell) { return Number(cell.row) === Number(row) && Number(cell.col) === Number(col); });
+        }
+        function setActiveClue(clueId, shouldFocus) {
+          if (!clueById[clueId]) { return; }
+          activeClueId = clueId;
+          renderState();
+          if (shouldFocus) {
+            const firstInput = inputForCell(clueById[clueId].path[0]);
+            if (firstInput) { firstInput.focus(); }
+          }
+        }
+        function clueAnswerAt(clue, idx) {
+          return (clue.answer || "").charAt(idx).toUpperCase();
+        }
+        function fillClue(clue, revealed) {
+          clue.path.forEach(function (cell, idx) {
+            state.entries[cellKey(cell.row, cell.col)] = clueAnswerAt(clue, idx);
+          });
+          if (revealed && !state.revealed.includes(clue.clue_id)) {
+            state.revealed.push(clue.clue_id);
+          }
+          writeState(revealed ? "Answer revealed and saved." : "Progress saved.");
+          renderState();
+        }
+        function clearClue(clue) {
+          clue.path.forEach(function (cell) { delete state.entries[cellKey(cell.row, cell.col)]; });
+          state.revealed = state.revealed.filter(function (id) { return id !== clue.clue_id; });
+          writeState("Clue cleared and saved.");
+          renderState();
+        }
+        function checkClue(clue) {
+          const isCorrect = clue.path.every(function (cell, idx) {
+            return (state.entries[cellKey(cell.row, cell.col)] || "") === clueAnswerAt(clue, idx);
+          });
+          const status = document.getElementById("crossword-status-" + clue.clue_id);
+          if (status) { status.textContent = isCorrect ? " ✅ Correct" : " ❌ Not yet"; }
+          return isCorrect;
+        }
+        function renderState() {
+          document.querySelectorAll(".crossword-cell-wrap").forEach(function (wrap) {
+            wrap.style.background = "#fff";
+            wrap.style.outline = "";
+          });
+          document.querySelectorAll(".crossword-clue").forEach(function (clueEl) {
+            clueEl.style.background = "";
+          });
+          clues.forEach(function (clue) {
+            const isRevealed = state.revealed.includes(clue.clue_id);
+            clue.path.forEach(function (cell, idx) {
+              const input = inputForCell(cell);
+              const wrap = wrapperForCell(cell);
+              if (!input || !wrap) { return; }
+              const key = cellKey(cell.row, cell.col);
+              if (isRevealed) { state.entries[key] = clueAnswerAt(clue, idx); }
+              input.value = state.entries[key] || "";
+              if (isRevealed) {
+                wrap.style.background = "#ffe08a";
+                input.style.fontWeight = "bold";
+              } else {
+                input.style.fontWeight = "normal";
+              }
+            });
+          });
+          const active = clueById[activeClueId];
+          if (active) {
+            active.path.forEach(function (cell) {
+              const wrap = wrapperForCell(cell);
+              if (wrap) { wrap.style.outline = "2px solid #31708f"; }
+            });
+            const activeEl = document.querySelector('.crossword-clue[data-clue-id="' + activeClueId + '"]');
+            if (activeEl) { activeEl.style.background = "#eef7fb"; }
+          }
+        }
+        function advanceFrom(input) {
+          const clue = clueById[activeClueId];
+          if (!clue) { return; }
+          const row = Number(input.dataset.row);
+          const col = Number(input.dataset.col);
+          const idx = clue.path.findIndex(function (cell) { return Number(cell.row) === row && Number(cell.col) === col; });
+          if (idx >= 0 && idx + 1 < clue.path.length) {
+            const nextInput = inputForCell(clue.path[idx + 1]);
+            if (nextInput) { nextInput.focus(); }
+          }
+        }
+
+        document.querySelectorAll(".crossword-select-clue").forEach(function (button) {
+          button.addEventListener("click", function () { setActiveClue(button.dataset.clueId, true); });
+        });
+        document.querySelectorAll(".crossword-show-answer").forEach(function (button) {
+          button.addEventListener("click", function () { fillClue(clueById[button.dataset.clueId], true); });
+        });
+        document.querySelectorAll(".crossword-check-clue").forEach(function (button) {
+          button.addEventListener("click", function () { checkClue(clueById[button.dataset.clueId]); });
+        });
+        document.querySelectorAll(".crossword-clear-clue").forEach(function (button) {
+          button.addEventListener("click", function () { clearClue(clueById[button.dataset.clueId]); });
+        });
+        document.querySelectorAll(".crossword-cell-input").forEach(function (input) {
+          input.addEventListener("focus", function () {
+            const containing = clues.find(function (clue) {
+              return clueContainsCell(clue, input.dataset.row, input.dataset.col) && clue.clue_id === activeClueId;
+            }) || clues.find(function (clue) { return clueContainsCell(clue, input.dataset.row, input.dataset.col); });
+            if (containing) { setActiveClue(containing.clue_id, false); }
+          });
+          input.addEventListener("input", function () {
+            const letter = firstLetter(input.value);
+            input.value = letter;
+            if (letter) {
+              state.entries[cellKey(input.dataset.row, input.dataset.col)] = letter;
+              writeState("Progress saved.");
+              advanceFrom(input);
+            }
+          });
+        });
+        document.getElementById("crossword-save").addEventListener("click", function () { writeState("Progress saved."); });
+        document.getElementById("crossword-check-puzzle").addEventListener("click", function () {
+          const correctCount = clues.filter(checkClue).length;
+          if (saveStatus) { saveStatus.textContent = correctCount + " of " + clues.length + " clues correct."; }
+        });
+        document.getElementById("crossword-reset").addEventListener("click", function () {
+          state = {entries: {}, revealed: []};
+          writeState("Saved attempt reset.");
+          renderState();
+        });
+        renderState();
+      }());
+    </script>
   {% elif item.rationale.exercise_kind == "word_scramble" %}
     <form method="post" id="word-scramble-form">{% csrf_token %}
       <input type="hidden" id="word-scramble-choice" name="choice" value="" />
