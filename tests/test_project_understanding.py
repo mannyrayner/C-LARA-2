@@ -100,17 +100,24 @@ class ProjectUnderstandingTests(unittest.IsolatedAsyncioTestCase):
             command,
         )
 
-    def test_build_codex_exec_environment_requires_openai_key(self) -> None:
+    def test_build_codex_exec_environment_preserves_runtime_auth_inputs(self) -> None:
         env = build_codex_exec_environment(
             openai_api_key="test-key",
-            base_environment={"PATH": "/bin", "SECRET": "do-not-copy"},
+            base_environment={"PATH": "/bin", "CODEX_HOME": "/srv/codex-home", "SECRET": "do-not-copy"},
         )
 
         self.assertEqual("test-key", env["OPENAI_API_KEY"])
         self.assertEqual("/bin", env["PATH"])
+        self.assertEqual("/srv/codex-home", env["CODEX_HOME"])
         self.assertNotIn("SECRET", env)
-        with self.assertRaises(ValueError):
-            build_codex_exec_environment(base_environment={})
+
+    def test_build_codex_exec_environment_allows_cached_codex_login_without_api_key(self) -> None:
+        env = build_codex_exec_environment(
+            base_environment={"PATH": "/bin", "CODEX_HOME": "/srv/codex-home"},
+        )
+
+        self.assertEqual("/srv/codex-home", env["CODEX_HOME"])
+        self.assertNotIn("OPENAI_API_KEY", env)
 
     def test_resolve_codex_executable_checks_windows_npm_bin(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -124,6 +131,36 @@ class ProjectUnderstandingTests(unittest.IsolatedAsyncioTestCase):
                 resolve_codex_executable(
                     "codex",
                     environment={"PATH": "", "APPDATA": tmpdir, "OPENAI_API_KEY": "test-key"},
+                ),
+            )
+
+    def test_resolve_codex_executable_checks_unix_service_locations(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            local_bin = Path(tmpdir) / ".local" / "bin"
+            local_bin.mkdir(parents=True)
+            codex_bin = local_bin / "codex"
+            codex_bin.write_text("#!/bin/sh\n", encoding="utf-8")
+
+            self.assertEqual(
+                str(codex_bin),
+                resolve_codex_executable(
+                    "codex",
+                    environment={"PATH": "", "HOME": tmpdir},
+                ),
+            )
+
+    def test_resolve_codex_executable_expands_configured_absolute_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            bin_dir = Path(tmpdir) / "bin"
+            bin_dir.mkdir()
+            codex_bin = bin_dir / "codex"
+            codex_bin.write_text("#!/bin/sh\n", encoding="utf-8")
+
+            self.assertEqual(
+                str(codex_bin),
+                resolve_codex_executable(
+                    "$CODEX_TEST_BIN/codex",
+                    environment={"PATH": "", "CODEX_TEST_BIN": str(bin_dir)},
                 ),
             )
 

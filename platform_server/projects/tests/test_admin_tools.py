@@ -25,23 +25,41 @@ class AdminToolsViewTests(TestCase):
         resp = self.client.get(reverse("admin-tools"))
         self.assertEqual(resp.status_code, 404)
 
-    def test_admin_tools_links_project_understanding_assistant(self):
-        self.client.login(username="staffer", password="pw")
-        resp = self.client.get(reverse("admin-tools"))
-        self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, reverse("admin-project-understanding"))
-
-    def test_non_admin_cannot_access_project_understanding_assistant(self):
+    def test_top_nav_links_project_understanding_assistant(self):
         self.client.login(username="normal", password="pw")
-        resp = self.client.get(reverse("admin-project-understanding"))
-        self.assertEqual(resp.status_code, 404)
+        resp = self.client.get(reverse("project-list"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, reverse("project-understanding"))
 
-    def test_admin_can_open_project_understanding_assistant(self):
+    def test_normal_user_can_access_project_understanding_assistant(self):
+        self.client.login(username="normal", password="pw")
+        resp = self.client.get(reverse("project-understanding"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Project-understanding assistant")
+
+    def test_staff_can_open_project_understanding_assistant(self):
         self.client.login(username="staffer", password="pw")
-        resp = self.client.get(reverse("admin-project-understanding"))
+        resp = self.client.get(reverse("project-understanding"))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Project-understanding assistant")
         self.assertContains(resp, "Ask Codex")
+
+    def test_admin_tools_no_longer_links_project_understanding_assistant(self):
+        self.client.login(username="staffer", password="pw")
+
+        resp = self.client.get(reverse("admin-tools"))
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, reverse("admin-project-understanding"))
+        self.assertNotContains(resp, "Project-understanding assistant")
+
+    def test_legacy_admin_project_understanding_url_redirects_to_assistant(self):
+        self.client.login(username="normal", password="pw")
+
+        resp = self.client.get(reverse("admin-project-understanding"))
+
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp["Location"], reverse("project-understanding"))
 
     def test_project_understanding_monitor_form_posts_to_new_request_endpoint(self):
         self.client.login(username="staffer", password="pw")
@@ -57,33 +75,33 @@ class AdminToolsViewTests(TestCase):
                 username=self.staff_user.username,
                 visibility="private",
             )
-            resp = self.client.get(reverse("admin-project-understanding-monitor", args=[report_id]))
+            resp = self.client.get(reverse("project-understanding-monitor", args=[report_id]))
 
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, f'action="{reverse("admin-project-understanding")}"')
+        self.assertContains(resp, f'action="{reverse("project-understanding")}"')
 
     @patch("projects.views.async_task")
-    def test_admin_can_queue_project_understanding_assistant(self, mock_async_task):
-        self.client.login(username="staffer", password="pw")
+    def test_normal_user_can_queue_project_understanding_assistant(self, mock_async_task):
+        self.client.login(username="normal", password="pw")
 
         with tempfile.TemporaryDirectory() as tmpdir, override_settings(MEDIA_ROOT=tmpdir):
             resp = self.client.post(
-                reverse("admin-project-understanding"),
+                reverse("project-understanding"),
                 {"question": "What is C-LARA-2?", "visibility": "public"},
             )
 
         self.assertEqual(resp.status_code, 302)
-        self.assertIn("/admin-tools/project-understanding/", resp["Location"])
+        self.assertIn("/assistant/project-understanding/", resp["Location"])
         mock_async_task.assert_called_once()
         task_args = mock_async_task.call_args.args
         self.assertEqual("projects.views._run_project_understanding_task", task_args[0])
         self.assertEqual("What is C-LARA-2?", task_args[1])
-        self.assertEqual(self.staff_user.id, task_args[2])
-        self.assertTrue(TaskUpdate.objects.filter(user=self.staff_user, message="Project-understanding request queued.").exists())
+        self.assertEqual(self.normal_user.id, task_args[2])
+        self.assertTrue(TaskUpdate.objects.filter(user=self.normal_user, message="Project-understanding request queued.").exists())
 
     def test_project_understanding_turn_listing_respects_visibility(self):
         User = get_user_model()
-        other_staff = User.objects.create_user(username="other_staff", password="pw", is_staff=True)
+        other_user = User.objects.create_user(username="other_user", password="pw")
         private_report_id = uuid.uuid4()
         public_report_id = uuid.uuid4()
         with tempfile.TemporaryDirectory() as tmpdir, override_settings(MEDIA_ROOT=tmpdir):
@@ -105,7 +123,7 @@ class AdminToolsViewTests(TestCase):
             )
 
             visible_to_owner = {turn["question"] for turn in _list_project_understanding_turns(self.staff_user)}
-            visible_to_other = {turn["question"] for turn in _list_project_understanding_turns(other_staff)}
+            visible_to_other = {turn["question"] for turn in _list_project_understanding_turns(other_user)}
 
         self.assertIn("Private question", visible_to_owner)
         self.assertIn("Public question", visible_to_owner)
@@ -165,7 +183,7 @@ class AdminToolsViewTests(TestCase):
                 visibility="private",
             )
 
-            resp = self.client.get(reverse("admin-project-understanding-turns"), {"q": "tokens"})
+            resp = self.client.get(reverse("project-understanding-turns"), {"q": "tokens"})
 
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Stored project-understanding turns")
@@ -185,7 +203,7 @@ class AdminToolsViewTests(TestCase):
                 username=self.staff_user.username,
                 visibility="private",
             )
-            resp = self.client.get(reverse("admin-project-understanding-monitor", args=[report_id]))
+            resp = self.client.get(reverse("project-understanding-monitor", args=[report_id]))
 
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "What is the annotation format?")
@@ -227,7 +245,7 @@ class AdminToolsViewTests(TestCase):
                 ),
             )
 
-            resp = self.client.get(reverse("admin-project-understanding-status", args=[report_id]))
+            resp = self.client.get(reverse("project-understanding-status", args=[report_id]))
 
         self.assertEqual(resp.status_code, 200)
         payload = resp.json()
