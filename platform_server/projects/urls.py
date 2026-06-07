@@ -102,6 +102,11 @@ urlpatterns = [
         views.generate_word_scramble_exercises,
         name="project-generate-word-scramble",
     ),
+    path(
+        "projects/<int:pk>/exercises/crossword/",
+        views.generate_crossword_exercises,
+        name="project-generate-crossword",
+    ),
     path("exercise-sets/<int:set_id>/", views.exercise_set_detail, name="exercise-set-detail"),
     path("exercise-sets/<int:set_id>/play/", views.exercise_set_play, name="exercise-set-play"),
     path("exercise-items/<int:item_id>/image/", views.exercise_item_image, name="exercise-item-image"),

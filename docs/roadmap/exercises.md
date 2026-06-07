@@ -7,7 +7,8 @@ This roadmap describes how C-LARA-2 should generate and deliver interactive exer
 - Cloze: implemented in Django platform.
 - Flashcards: implemented for text modes and first picture-dictionary-backed image modes.
 - Picture-clue word scrambles: first implementation delivered from the project Exercises view, using picture-dictionary images as clues.
-- New Kok Kaper follow-up planning remains active for organiser-defined picture-dictionary sub-projects and picture-clue crosswords.
+- Picture-clue crosswords: D1 first cut delivered as a static/reviewable generator from the project Exercises view.
+- New Kok Kaper follow-up planning remains active for organiser-defined picture-dictionary sub-projects and playable crossword phases.
 
 ## Goals
 
@@ -194,6 +195,8 @@ Each clue record should include:
 ### Phased implementation plan
 
 #### Phase D1 — generator and reviewable static crossword
+
+Status: **First cut implemented.**
 
 - Add a `crossword` exercise type and generation form under the existing project **Exercises** view.
 - Reuse picture-dictionary-backed candidate extraction from image flashcards/word scrambles.

@@ -11,11 +11,63 @@
 <ol>
 {% for item in items %}
   <li>
-    {% if item.rationale.image_path %}
-      <p><img src="{% url 'exercise-item-image' item.id %}" alt="Picture clue" style="max-width: 360px; height: auto;" /></p>
-    {% endif %}
-    <p><strong>{{ item.prompt }}</strong></p>
-    {% if item.rationale.exercise_kind == "word_scramble" %}
+    {% if item.rationale.exercise_kind == "crossword" %}
+      <p><strong>{{ item.prompt }}</strong></p>
+      {% with summary=item.rationale.summary %}
+        <p>
+          Placed {{ summary.placed_count }} of {{ summary.selected_count }} selected word(s);
+          intersections: {{ summary.intersection_count }}.
+          {% if summary.has_disconnected_fallback %}<strong>Includes a sparse disconnected fallback.</strong>{% endif %}
+        </p>
+        {% if summary.unplaced_words %}
+          <p>Unplaced words: {{ summary.unplaced_words|join:", " }}</p>
+        {% endif %}
+      {% endwith %}
+      <div style="display: flex; gap: 1.5rem; align-items: flex-start; flex-wrap: wrap;">
+        <table class="crossword-grid" style="border-collapse: collapse; font-family: monospace;">
+          {% for row in item.rationale.grid %}
+            <tr>
+              {% for cell in row %}
+                {% if cell.is_black %}
+                  <td style="background: #111; width: 2rem; height: 2rem; border: 1px solid #333;"></td>
+                {% else %}
+                  <td style="position: relative; width: 2rem; height: 2rem; border: 1px solid #777; text-align: center; vertical-align: middle; background: #fff;">
+                    {% if cell.number %}<span style="position: absolute; top: 1px; left: 2px; font-size: 0.65rem; line-height: 1;">{{ cell.number }}</span>{% endif %}
+                    <span>{{ cell.letter }}</span>
+                  </td>
+                {% endif %}
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </table>
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+          <section style="max-height: 28rem; overflow-y: auto; min-width: 14rem;">
+            <h2>Across</h2>
+            {% for clue in item.rationale.clues.across %}
+              <div style="margin-bottom: 0.75rem;">
+                <strong>{{ clue.number }}.</strong>
+                <img src="{% url 'exercise-item-option-image' item.id clue.clue_id %}" alt="Across clue {{ clue.number }}" style="max-width: 110px; max-height: 110px; vertical-align: middle;" />
+                <span>{{ clue.display_answer }}</span>
+              </div>
+            {% empty %}<p>No across clues.</p>{% endfor %}
+          </section>
+          <section style="max-height: 28rem; overflow-y: auto; min-width: 14rem;">
+            <h2>Down</h2>
+            {% for clue in item.rationale.clues.down %}
+              <div style="margin-bottom: 0.75rem;">
+                <strong>{{ clue.number }}.</strong>
+                <img src="{% url 'exercise-item-option-image' item.id clue.clue_id %}" alt="Down clue {{ clue.number }}" style="max-width: 110px; max-height: 110px; vertical-align: middle;" />
+                <span>{{ clue.display_answer }}</span>
+              </div>
+            {% empty %}<p>No down clues.</p>{% endfor %}
+          </section>
+        </div>
+      </div>
+    {% elif item.rationale.exercise_kind == "word_scramble" %}
+      {% if item.rationale.image_path %}
+        <p><img src="{% url 'exercise-item-image' item.id %}" alt="Picture clue" style="max-width: 360px; height: auto;" /></p>
+      {% endif %}
+      <p><strong>{{ item.prompt }}</strong></p>
       <p>Answer: <strong>{{ item.rationale.display_answer|default:item.answer }}</strong></p>
       <table class="word-scramble-grid" style="border-collapse: collapse; font-family: monospace; margin: 0.75rem 0;">
         {% for row in item.rationale.grid %}
@@ -27,6 +79,10 @@
         {% endfor %}
       </table>
     {% else %}
+      {% if item.rationale.image_path %}
+        <p><img src="{% url 'exercise-item-image' item.id %}" alt="Picture clue" style="max-width: 360px; height: auto;" /></p>
+      {% endif %}
+      <p><strong>{{ item.prompt }}</strong></p>
       <ul>
         {% for opt in item.options %}
           <li>

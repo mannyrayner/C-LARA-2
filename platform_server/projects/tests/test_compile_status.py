@@ -1791,6 +1791,86 @@ class CompileStatusViewTests(TestCase):
         image_resp = self.client.get(reverse("exercise-item-image", args=[item.pk]))
         self.assertEqual(image_resp.status_code, 200)
 
+    def test_generate_crossword_creates_static_picture_layout(self):
+        shutil.rmtree(self.project.artifact_dir(), ignore_errors=True)
+        community = Community.objects.create(name="Kok Kaper", language="xkk")
+        self.project.community = community
+        self.project.language = "xkk"
+        self.project.target_language = "en"
+        self.project.save(update_fields=["community", "language", "target_language", "updated_at"])
+        dictionary_project = Project.objects.create(
+            owner=self.user,
+            title="Kok Kaper picture dictionary",
+            source_text="cart\ncat\ncar\nrat",
+            language="xkk",
+            target_language="en",
+            community=community,
+        )
+        dictionary = PictureDictionary.objects.create(
+            community=community,
+            project=dictionary_project,
+            organiser=self.user,
+            language="xkk",
+        )
+        for word in ["cart", "cat", "car", "rat"]:
+            image_path = f"images/pages/{word}.png"
+            abs_image = dictionary_project.artifact_dir() / image_path
+            abs_image.parent.mkdir(parents=True, exist_ok=True)
+            abs_image.write_bytes(b"fake-png")
+            PictureDictionaryEntry.objects.create(
+                dictionary=dictionary,
+                surface=word,
+                lemma=word,
+                pos="NOUN",
+                image_path=image_path,
+                is_active=True,
+            )
+        run_dir = self.project.artifact_dir() / "runs" / "run_crossword" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        sample = {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "segments": [
+                        {
+                            "tokens": [
+                                {"surface": "cart", "annotations": {"lemma": "cart", "pos": "NOUN", "gloss": "cart"}},
+                                {"surface": " cat", "annotations": {"lemma": "cat", "pos": "NOUN", "gloss": "cat"}},
+                                {"surface": " car", "annotations": {"lemma": "car", "pos": "NOUN", "gloss": "car"}},
+                                {"surface": " rat", "annotations": {"lemma": "rat", "pos": "NOUN", "gloss": "rat"}},
+                            ]
+                        }
+                    ],
+                }
+            ]
+        }
+        (run_dir / "gloss.json").write_text(json.dumps(sample), encoding="utf-8")
+        self.project.compiled_path = "runs/run_crossword/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+
+        resp = self.client.post(
+            reverse("project-generate-crossword", args=[self.project.pk]),
+            {"theme": "vocabulary", "item_count": 4, "max_grid_size": 10},
+        )
+        self.assertEqual(resp.status_code, 302)
+        ex_set = ExerciseSet.objects.get(project=self.project, exercise_type=ExerciseSet.TYPE_CROSSWORD)
+        item = ex_set.items.get()
+        self.assertEqual(item.rationale["exercise_kind"], "crossword")
+        self.assertGreaterEqual(item.rationale["summary"]["placed_count"], 2)
+        self.assertTrue(item.rationale["clues"]["across"])
+        self.assertTrue(item.rationale["clues"]["down"])
+        numbered_cells = [cell for row in item.rationale["grid"] for cell in row if cell.get("number")]
+        self.assertTrue(numbered_cells)
+        first_clue = item.rationale["clues"]["across"][0]
+        image_resp = self.client.get(reverse("exercise-item-option-image", args=[item.pk, first_clue["clue_id"]]))
+        self.assertEqual(image_resp.status_code, 200)
+        detail = self.client.get(reverse("exercise-set-detail", args=[ex_set.pk]))
+        self.assertContains(detail, "Across")
+        self.assertContains(detail, "Down")
+        self.assertContains(detail, "crossword-grid")
+        play = self.client.get(reverse("exercise-set-play", args=[ex_set.pk]))
+        self.assertContains(play, "static review/play preview")
+
     def test_generate_image_flashcards_requires_picture_dictionary(self):
         shutil.rmtree(self.project.artifact_dir(), ignore_errors=True)
         self.project.language = "xkk"
@@ -1942,6 +2022,7 @@ class CompileStatusViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, reverse("project-generate-flashcards", args=[self.project.pk]))
         self.assertContains(resp, reverse("project-generate-word-scramble", args=[self.project.pk]))
+        self.assertContains(resp, reverse("project-generate-crossword", args=[self.project.pk]))
 
     def test_project_detail_shows_subpage_links(self):
         resp = self.client.get(reverse("project-detail", args=[self.project.pk]))
