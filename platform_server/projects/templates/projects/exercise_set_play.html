@@ -7,27 +7,224 @@
 {% else %}
   <p>Item {{ index|add:1 }} of {{ total }}</p>
   {% if item.rationale.image_path %}
-    <p><img src="{% url 'exercise-item-image' item.id %}" alt="Flashcard image" style="max-width: 420px; height: auto;" /></p>
+    <p><img src="{% url 'exercise-item-image' item.id %}" alt="Picture clue" style="max-width: 420px; height: auto;" /></p>
   {% endif %}
   <p><strong>{{ item.prompt }}</strong></p>
-  <form method="post">{% csrf_token %}
-    {% for opt in item.options %}
+  {% if item.rationale.exercise_kind == "crossword" %}
+    <p>This first crossword version is a static review/play preview. Editable cells and saved learner attempts are planned for the next phase.</p>
+    {% with summary=item.rationale.summary %}
+      <p>Placed {{ summary.placed_count }} of {{ summary.selected_count }} selected word(s); intersections: {{ summary.intersection_count }}.</p>
+    {% endwith %}
+    <div style="display: flex; gap: 1.5rem; align-items: flex-start; flex-wrap: wrap;">
+      <table class="crossword-grid" style="border-collapse: collapse; font-family: monospace;">
+        {% for row in item.rationale.grid %}
+          <tr>
+            {% for cell in row %}
+              {% if cell.is_black %}
+                <td style="background: #111; width: 2rem; height: 2rem; border: 1px solid #333;"></td>
+              {% else %}
+                <td style="position: relative; width: 2rem; height: 2rem; border: 1px solid #777; text-align: center; vertical-align: middle; background: #fff;">
+                  {% if cell.number %}<span style="position: absolute; top: 1px; left: 2px; font-size: 0.65rem; line-height: 1;">{{ cell.number }}</span>{% endif %}
+                  <span>{{ cell.letter }}</span>
+                </td>
+              {% endif %}
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </table>
+      <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <section style="max-height: 28rem; overflow-y: auto; min-width: 14rem;">
+          <h2>Across</h2>
+          {% for clue in item.rationale.clues.across %}
+            <div style="margin-bottom: 0.75rem;">
+              <strong>{{ clue.number }}.</strong>
+              <img src="{% url 'exercise-item-option-image' item.id clue.clue_id %}" alt="Across clue {{ clue.number }}" style="max-width: 110px; max-height: 110px; vertical-align: middle;" />
+            </div>
+          {% empty %}<p>No across clues.</p>{% endfor %}
+        </section>
+        <section style="max-height: 28rem; overflow-y: auto; min-width: 14rem;">
+          <h2>Down</h2>
+          {% for clue in item.rationale.clues.down %}
+            <div style="margin-bottom: 0.75rem;">
+              <strong>{{ clue.number }}.</strong>
+              <img src="{% url 'exercise-item-option-image' item.id clue.clue_id %}" alt="Down clue {{ clue.number }}" style="max-width: 110px; max-height: 110px; vertical-align: middle;" />
+            </div>
+          {% empty %}<p>No down clues.</p>{% endfor %}
+        </section>
+      </div>
+    </div>
+  {% elif item.rationale.exercise_kind == "word_scramble" %}
+    <form method="post" id="word-scramble-form">{% csrf_token %}
+      <input type="hidden" id="word-scramble-choice" name="choice" value="" />
+      <input type="hidden" id="word-scramble-path" name="path" value="[]" />
+      <p>Selected letters: <strong id="word-scramble-selected">(none yet)</strong></p>
       <p>
-        <label><input type="radio" name="choice" value="{{ opt }}" required /> {{ opt }}</label>
-        {% if item.rationale.exercise_kind == "form_to_image" %}
-          <br />
-          <img src="{% url 'exercise-item-option-image' item.id opt %}" alt="Option image {{ opt }}" style="max-width: 260px; height: auto;" />
-        {% endif %}
+        <button class="btn secondary" type="button" id="word-scramble-clear">Clear selection</button>
+        <button class="btn secondary" type="button" id="word-scramble-show-answer">Show answer</button>
       </p>
-    {% endfor %}
-    <button class="btn" type="submit">Check answer</button>
-  </form>
+      {{ item.rationale.path|json_script:"word-scramble-answer-path" }}
+      <div id="word-scramble-grid-wrap" style="display: inline-block; position: relative; margin: 0.75rem 0;">
+        <svg id="word-scramble-answer-line" aria-hidden="true" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 2;"></svg>
+        <table class="word-scramble-grid" style="border-collapse: collapse; font-family: monospace;">
+          {% for row in item.rationale.grid %}
+            <tr>
+              {% for letter in row %}
+                <td style="border: 1px solid #ccc; padding: 0;">
+                  <button
+                    type="button"
+                    class="word-scramble-cell"
+                    data-letter="{{ letter }}"
+                    data-row="{{ forloop.parentloop.counter0 }}"
+                    data-col="{{ forloop.counter0 }}"
+                    style="width: 2.4rem; height: 2.4rem; border: 0; background: #fff; font: inherit; cursor: pointer;"
+                    aria-label="Select letter {{ letter }}"
+                  >{{ letter }}</button>
+                </td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </table>
+      </div>
+      <p><button class="btn" type="submit">Check selection</button></p>
+    </form>
+    <script>
+      (function () {
+        const selectedDisplay = document.getElementById("word-scramble-selected");
+        const selectedInput = document.getElementById("word-scramble-choice");
+        const pathInput = document.getElementById("word-scramble-path");
+        const clearButton = document.getElementById("word-scramble-clear");
+        const showAnswerButton = document.getElementById("word-scramble-show-answer");
+        const gridWrap = document.getElementById("word-scramble-grid-wrap");
+        const answerLineSvg = document.getElementById("word-scramble-answer-line");
+        const cells = document.querySelectorAll(".word-scramble-cell");
+        const answerPathElement = document.getElementById("word-scramble-answer-path");
+        const answerPath = answerPathElement ? JSON.parse(answerPathElement.textContent || "[]") : [];
+        const revealedStorageKey = "clara-word-scramble-revealed-{{ exercise_set.id }}";
+        let selected = "";
+        let selectedPath = [];
+        function updateSelected(value) {
+          selected = value;
+          selectedInput.value = selected;
+          pathInput.value = JSON.stringify(selectedPath);
+          selectedDisplay.textContent = selected || "(none yet)";
+        }
+        function pathKey(path) {
+          return JSON.stringify(path || []);
+        }
+        function readRevealedPaths() {
+          try {
+            const stored = JSON.parse(window.localStorage.getItem(revealedStorageKey) || "[]");
+            return Array.isArray(stored) ? stored : [];
+          } catch (_error) {
+            return [];
+          }
+        }
+        function writeRevealedPaths(paths) {
+          try {
+            window.localStorage.setItem(revealedStorageKey, JSON.stringify(paths));
+          } catch (_error) {
+            // If localStorage is unavailable, the current-page reveal still works.
+          }
+        }
+        function rememberAnswerPath(path) {
+          if (!Array.isArray(path) || path.length === 0) {
+            return;
+          }
+          const paths = readRevealedPaths();
+          const existingKeys = new Set(paths.map(pathKey));
+          if (!existingKeys.has(pathKey(path))) {
+            paths.push(path);
+            writeRevealedPaths(paths);
+          }
+        }
+        function cellForPosition(position) {
+          return document.querySelector(
+            '.word-scramble-cell[data-row="' + position.row + '"][data-col="' + position.col + '"]'
+          );
+        }
+        function drawAnswerLine(pathCells) {
+          if (pathCells.length < 2) {
+            return;
+          }
+          const wrapRect = gridWrap.getBoundingClientRect();
+          const points = pathCells.map(function (cell) {
+            const rect = cell.getBoundingClientRect();
+            return [
+              rect.left + rect.width / 2 - wrapRect.left,
+              rect.top + rect.height / 2 - wrapRect.top,
+            ];
+          });
+          const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+          line.setAttribute("points", points.map(function (point) { return point[0] + "," + point[1]; }).join(" "));
+          line.setAttribute("fill", "none");
+          line.setAttribute("stroke", "#d9534f");
+          line.setAttribute("stroke-width", "3");
+          line.setAttribute("stroke-linecap", "round");
+          line.setAttribute("stroke-linejoin", "round");
+          line.setAttribute("opacity", "0.7");
+          answerLineSvg.appendChild(line);
+        }
+        function revealPath(path) {
+          const pathCells = path.map(cellForPosition).filter(Boolean);
+          pathCells.forEach(function (cell) {
+            cell.style.background = "#ffe08a";
+            cell.style.fontWeight = "bold";
+          });
+          drawAnswerLine(pathCells);
+        }
+        function drawRevealedAnswers() {
+          answerLineSvg.innerHTML = "";
+          readRevealedPaths().forEach(revealPath);
+        }
+        function revealAnswer() {
+          rememberAnswerPath(answerPath);
+          drawRevealedAnswers();
+          const isRemembered = readRevealedPaths().map(pathKey).includes(pathKey(answerPath));
+          if (!isRemembered) {
+            revealPath(answerPath);
+          }
+        }
+        cells.forEach(function (cell) {
+          cell.addEventListener("click", function () {
+            cell.style.background = "#d9edf7";
+            selectedPath.push({row: Number(cell.dataset.row), col: Number(cell.dataset.col)});
+            updateSelected(selected + (cell.dataset.letter || ""));
+          });
+        });
+        clearButton.addEventListener("click", function () {
+          cells.forEach(function (cell) {
+            cell.style.background = "#fff";
+            cell.style.fontWeight = "normal";
+          });
+          selectedPath = [];
+          updateSelected("");
+          drawRevealedAnswers();
+        });
+        showAnswerButton.addEventListener("click", revealAnswer);
+        drawRevealedAnswers();
+        {% if feedback %}revealAnswer();{% endif %}
+      }());
+    </script>
+  {% else %}
+    <form method="post">{% csrf_token %}
+      {% for opt in item.options %}
+        <p>
+          <label><input type="radio" name="choice" value="{{ opt }}" required /> {{ opt }}</label>
+          {% if item.rationale.exercise_kind == "form_to_image" %}
+            <br />
+            <img src="{% url 'exercise-item-option-image' item.id opt %}" alt="Option image {{ opt }}" style="max-width: 260px; height: auto;" />
+          {% endif %}
+        </p>
+      {% endfor %}
+      <button class="btn" type="submit">Check answer</button>
+    </form>
+  {% endif %}
 
   {% if feedback %}
     {% if feedback.is_correct %}
       <p>✅ Correct.</p>
     {% else %}
-      <p>❌ Incorrect. Correct answer: <strong>{{ feedback.correct }}</strong>.</p>
+      <p>❌ Incorrect. Correct answer: <strong>{% if item.rationale.display_answer %}{{ item.rationale.display_answer }}{% else %}{{ feedback.correct }}{% endif %}</strong>.</p>
     {% endif %}
   {% endif %}
 

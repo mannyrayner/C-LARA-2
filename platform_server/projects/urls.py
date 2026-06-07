@@ -97,6 +97,16 @@ urlpatterns = [
     path("projects/<int:pk>/processing-options/", views.set_processing_options, name="project-processing-options"),
     path("projects/<int:pk>/exercises/cloze/", views.generate_cloze_exercises, name="project-generate-cloze"),
     path("projects/<int:pk>/exercises/flashcards/", views.generate_flashcard_exercises, name="project-generate-flashcards"),
+    path(
+        "projects/<int:pk>/exercises/word-scramble/",
+        views.generate_word_scramble_exercises,
+        name="project-generate-word-scramble",
+    ),
+    path(
+        "projects/<int:pk>/exercises/crossword/",
+        views.generate_crossword_exercises,
+        name="project-generate-crossword",
+    ),
     path("exercise-sets/<int:set_id>/", views.exercise_set_detail, name="exercise-set-detail"),
     path("exercise-sets/<int:set_id>/play/", views.exercise_set_play, name="exercise-set-play"),
     path("exercise-items/<int:item_id>/image/", views.exercise_item_image, name="exercise-item-image"),
