@@ -85,13 +85,21 @@ class Command(BaseCommand):
         if login_status.returncode == 0:
             self.stdout.write(self.style.SUCCESS("codex login status succeeded."))
         else:
+            detail = (login_status.stderr or login_status.stdout).strip()
+            if "CODEX_HOME" in detail and "Permission denied" in detail:
+                raise CommandError(
+                    "Codex CLI is installed, but the configured CODEX_HOME is not readable/writable "
+                    "by this Django/Q service user. Set CODEX_HOME to a private directory owned by "
+                    "the same Unix user that runs Gunicorn and Q (for example /var/lib/c-lara/codex), "
+                    "or run the services as the user that owns the existing CODEX_HOME. Detail: "
+                    f"{detail[:1000]}"
+                )
             self.stdout.write(
                 self.style.WARNING(
                     "codex login status failed; this may be okay if OPENAI_API_KEY is supplied at runtime, "
                     "but cached CLI authentication is not currently ready."
                 )
             )
-            detail = (login_status.stderr or login_status.stdout).strip()
             if detail:
                 self.stdout.write(detail[:1000])
 

@@ -203,7 +203,18 @@ Environment=C_LARA_PROJECT_UNDERSTANDING_TIMEOUT_SECONDS=300
 Environment=CODEX_HOME=/home/ubuntu/.codex
 ```
 
-Use `CODEX_HOME=/home/ubuntu/.codex` only if that is where the successful `ubuntu` Codex login was stored. If the login was done with the default home directory for `ubuntu`, this is usually the right assumption; otherwise set `CODEX_HOME` to the locked-down directory used during `codex login`.
+Use `CODEX_HOME=/home/ubuntu/.codex` only if the same Unix user that runs `manage.py`, Gunicorn, and Q can read/write that directory. A successful `ubuntu` login stored under `/home/ubuntu/.codex` is **not** automatically usable by a process running as `ssm-user`, `www-data`, or another service user. If the smoke check shows `HOME: /home/ssm-user` and `CODEX_HOME: /home/ubuntu/.codex`, the simplest fix is usually to stop pointing `CODEX_HOME` at `ubuntu`'s private home directory.
+
+If `OPENAI_API_KEY available to child: yes`, cached Codex login credentials are optional, but Codex still needs a readable/writable configuration directory. In that case, create a private service-owned directory and point `CODEX_HOME` there, for example:
+
+```bash
+# Replace ssm-user with the actual Unix user that runs Gunicorn and Q.
+sudo install -d -o ssm-user -g ssm-user -m 700 /var/lib/c-lara/codex
+# Then configure both Gunicorn and Q:
+# Environment=CODEX_HOME=/var/lib/c-lara/codex
+```
+
+After changing `/etc/clara2.env`, restart both Gunicorn and Q/qcluster so they receive the new environment. If a later smoke test produces a 401, keep the same accessible `CODEX_HOME` but fix authentication by either preserving `OPENAI_API_KEY` in the service environment or running `codex login`/`codex login --with-api-key` as the actual service user with that `CODEX_HOME`.
 
 If `check_project_understanding_codex` reports `PermissionError: [Errno 13] Permission denied: '/home/ubuntu/.local/bin/codex'`, the path is known but the Unix user running `manage.py`, Gunicorn, or Q cannot traverse `/home/ubuntu` or execute the file. Do **not** make `/home/ubuntu` broadly readable just to fix this. Choose one of these safer approaches instead:
 
@@ -227,7 +238,7 @@ python platform_server/manage.py check_project_understanding_codex
 python platform_server/manage.py check_project_understanding_codex --smoke
 ```
 
-If the first command still says `Resolved executable: codex` rather than the configured absolute path, Django did not receive `C_LARA_CODEX_EXECUTABLE`. If it finds the executable but `codex login status` fails or the smoke test returns 401, the executable path is fine and the remaining problem is authentication/`CODEX_HOME`.
+If the first command still says `Resolved executable: codex` rather than the configured absolute path, Django did not receive `C_LARA_CODEX_EXECUTABLE`. If it finds the executable but reports `failed to read CODEX_HOME`, point `CODEX_HOME` at a directory owned by the actual service user. If `CODEX_HOME` is accessible but `codex login status` fails or the smoke test returns 401, the executable path is fine and the remaining problem is authentication.
 
 
 #### Authentication setup and 401 diagnostics

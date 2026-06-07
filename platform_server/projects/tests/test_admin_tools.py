@@ -1,9 +1,12 @@
+import io
+import subprocess
 import tempfile
 import uuid
 from pathlib import Path
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.management import call_command, CommandError
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
@@ -129,6 +132,33 @@ class AdminToolsViewTests(TestCase):
         self.assertIn("Public question", visible_to_owner)
         self.assertNotIn("Private question", visible_to_other)
         self.assertIn("Public question", visible_to_other)
+
+    @patch("projects.management.commands.check_project_understanding_codex.subprocess.run")
+    @patch("projects.management.commands.check_project_understanding_codex.resolve_codex_executable", return_value="/opt/codex/bin/codex")
+    @patch(
+        "projects.management.commands.check_project_understanding_codex.build_codex_exec_environment",
+        return_value={"PATH": "/bin", "CODEX_HOME": "/home/ubuntu/.codex", "OPENAI_API_KEY": "test-key"},
+    )
+    def test_check_project_understanding_codex_fails_on_inaccessible_codex_home(
+        self, mock_build_env, mock_resolve, mock_run
+    ):
+        mock_run.side_effect = [
+            subprocess.CompletedProcess(
+                args=["/opt/codex/bin/codex", "--version"],
+                returncode=0,
+                stdout="codex-cli 0.137.0\n",
+                stderr="",
+            ),
+            subprocess.CompletedProcess(
+                args=["/opt/codex/bin/codex", "login", "status"],
+                returncode=1,
+                stdout="",
+                stderr='Error loading configuration: failed to read CODEX_HOME "/home/ubuntu/.codex": Permission denied',
+            ),
+        ]
+
+        with self.assertRaisesMessage(CommandError, "configured CODEX_HOME is not readable/writable"):
+            call_command("check_project_understanding_codex", stdout=io.StringIO())
 
     def test_project_understanding_answer_markdown_is_rendered_safely(self):
         from projects.views import render_project_understanding_answer_html
