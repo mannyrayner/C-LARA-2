@@ -127,29 +127,102 @@ Generate a rectangular grid of letters containing target words from a selected p
 
 ### Core concept
 
-Generate a crossword-style layout using target words from a selected picture-dictionary-backed vocabulary. Clues are images, not written definitions. Symmetry and newspaper-style aesthetics are not required; small low-resource vocabularies should prioritize valid intersections and playability.
+Generate a crossword-style layout using target words from a selected picture-dictionary-backed vocabulary. Clues are images, not written definitions. The target experience should feel like a normal crossword where possible: a rectangular grid, interlocking across/down words, black filler cells outside word areas, small clue numbers at word starts, and separate across/down clue lists. However, symmetry and newspaper-style aesthetics are explicitly out of scope for the first versions; small low-resource vocabularies should prioritize valid intersections, readability, and learner playability.
+
+The initial implementation can reuse much of the word-scramble foundation:
+
+- candidate extraction from current project words with picture-dictionary images,
+- answer normalization and display-answer preservation,
+- picture-clue media references,
+- exercise-set lifecycle and publish/play views,
+- per-clue **Show answer** behavior,
+- partial-progress persistence in the learner/player UI.
 
 ### Generation flow
 
 1. Select approved/game-ready target entries from the whole project or a saved sub-project.
 2. Normalize answers for grid placement while preserving display forms for feedback.
-3. Use a simple greedy/backtracking placement algorithm to maximize intersections.
-4. Permit sparse/asymmetrical layouts and disconnected mini-clusters only when the vocabulary is too small to connect everything cleanly.
-5. Create clue records with image references, answer coordinates, direction, and source entry provenance.
+3. Score candidate words for useful intersections, preferring shared letters that produce readable across/down crossings.
+4. Use a simple greedy placement algorithm first, then add bounded backtracking if the greedy result is too sparse.
+5. Place words only horizontally and vertically. Diagonals/backwards words are for word scrambles, not crosswords.
+6. Crop the occupied rectangle and mark all non-word cells as black filler cells.
+7. Assign clue numbers to cells that start one or more across/down answers.
+8. Create clue records with image references, answer coordinates, direction, clue number, normalized answer, display answer, and source entry provenance.
+9. If the vocabulary is too small to connect all words cleanly, allow one sparse disconnected mini-cluster only as a fallback; otherwise warn the organiser and suggest either fewer words, a larger source subset, or a word scramble instead.
 
 ### Player behavior
 
-- Show numbered across/down slots with picture thumbnails as the clues.
-- Let the learner type or select letters in the grid; support mobile-friendly cell navigation.
-- Reveal/check individual answers and whole-puzzle completion.
-- Keep written answers hidden until checked/revealed/reviewed.
+- Show the crossword grid in one pane and all picture clues at once in two scrollable clue panes: **Across** and **Down**.
+- Use thumbnail-sized picture clues with clue number, optional short status, and no written answer by default.
+- Let the learner fill any square at any time; clicking/tapping a cell should focus it and typing should advance along the active across/down clue where possible.
+- Let the learner select a clue to highlight its cells in the grid.
+- Persist partial entries locally and/or server-side so learners can leave and later return to a partially filled crossword.
+- Provide a per-clue **Show answer** control that fills the corresponding letters and marks that clue as revealed. Revealed clues should remain visible after navigation/return, analogous to the persisted word-scramble answer paths.
+- Provide optional controls to check a clue, clear a clue, check the whole puzzle, and reset the saved attempt.
+- Keep written answers hidden until checked, revealed, or reviewed after completion.
+
+### Suggested artifact shape
+
+```text
+exercises/
+  crosswords/
+    config.json       # source, size constraints, generation options
+    grid.json         # rows/cols/cell types/clue numbers
+    clues.json        # across/down clue records with image refs and answer paths
+    attempt_state.json  # optional saved learner state if persisted server-side
+```
+
+Each clue record should include:
+
+- `clue_id`, `number`, `direction` (`across` or `down`),
+- normalized answer and display answer,
+- start row/column and ordered cell coordinates,
+- picture-dictionary entry id, image project id, and image path,
+- source page/segment/token provenance,
+- reveal/check status when storing learner attempt state.
 
 ### Quality controls
 
 - Warn organisers when too few entries are available for a satisfying crossword.
 - Prefer intersections between genuinely different words and reject ambiguous duplicate forms.
 - Do not require rotational symmetry, black-square aesthetics, or dense professional layouts.
+- Reject layouts with excessive isolated single words unless the organiser explicitly accepts a sparse fallback.
+- Avoid placing words whose normalized form is too short, too long, or script-incompatible with the grid UI.
+- Show a generation summary: selected words, placed words, unplaced words, number of intersections, disconnected components, and suggested fixes.
 - Fall back to a word-scramble recommendation when crossword placement quality is too poor.
+
+### Phased implementation plan
+
+#### Phase D1 — generator and reviewable static crossword
+
+- Add a `crossword` exercise type and generation form under the existing project **Exercises** view.
+- Reuse picture-dictionary-backed candidate extraction from image flashcards/word scrambles.
+- Implement a deterministic greedy across/down placement algorithm with no symmetry requirement.
+- Persist grid/clue metadata in `ExerciseItem.rationale` or equivalent JSON artifacts, using one exercise set per crossword.
+- Render a detail/review page showing the grid, clue numbers, black cells, across/down picture clues, placed/unplaced word summary, and image provenance.
+- Defer learner input and save-state complexity until D2.
+
+#### Phase D2 — playable crossword MVP
+
+- Add a learner player with editable cells, active clue selection, keyboard navigation, and two scrollable clue panes.
+- Save partial attempts in browser storage first, keyed by exercise set and user where feasible.
+- Add per-clue **Show answer**, check clue, clear clue, and check puzzle controls.
+- Mark revealed answers distinctly from learner-entered answers so later scoring/reporting can distinguish help use from unaided completion.
+- Support returning to the same crossword with saved entries, revealed clues, and completion state restored.
+
+#### Phase D3 — robust persistence and organiser controls
+
+- Move or mirror attempt state server-side for logged-in users so progress survives browser/device changes.
+- Add organiser-facing generation diagnostics and acceptance controls: regenerate layout, accept sparse layout, adjust word count, and switch to word scramble.
+- Support saved picture-dictionary sub-projects as the primary source-selection mechanism once sub-projects are implemented.
+- Add regression tests for layout validity, clue numbering, saved partial attempts, show-answer persistence, and image-serving permissions.
+
+#### Phase D4 — polish and accessibility
+
+- Improve mobile/tablet layout for grid plus clue panes.
+- Add ARIA labels and keyboard-only operation for cells and clue controls.
+- Add optional print/export view for community sessions with limited connectivity.
+- Add lightweight learner feedback/reporting for bad images, wrong words, or unusable crossword layouts.
 
 ## Storage and lifecycle
 
@@ -172,6 +245,7 @@ exercises/
     config.json
     grid.json
     clues.json
+    attempt_state.json  # optional if learner state is persisted server-side
   source_subsets/
     config.json
     pages.json
@@ -237,5 +311,5 @@ Each item should store provenance:
 
 - Organiser-defined picture-dictionary sub-projects using natural-language selection plus manual adjustment.
 - Picture-clue word scrambles generated from whole dictionaries or saved sub-projects. First version now demonstrates rapid user-requested feature delivery suitable for inclusion in the First Progress Report, with a narrow implementation estimate of roughly twelve minutes of AI time plus about one hour of human AI-expert steering/review time; any public description involving Australian Aboriginal language material must still be cleared with Sophie and the relevant community/end-users.
-- Picture-clue crosswords with simple non-symmetrical layouts suitable for small vocabularies.
+- Picture-clue crosswords delivered in phases: first a static/reviewable layout generator, then a playable grid with saved partial attempts and per-clue show-answer controls, then robust persistence and organiser diagnostics.
 - Shared image-readiness validation, player feedback, and publish/review lifecycle across all picture-based exercise types.
