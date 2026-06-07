@@ -606,9 +606,11 @@ class ContentRating(models.Model):
 class ExerciseSet(models.Model):
     TYPE_CLOZE = "cloze"
     TYPE_FLASHCARD = "flashcard"
+    TYPE_WORD_SCRAMBLE = "word_scramble"
     TYPE_CHOICES = [
         (TYPE_CLOZE, "Cloze"),
         (TYPE_FLASHCARD, "Flashcard"),
+        (TYPE_WORD_SCRAMBLE, "Word scramble"),
     ]
     FLASHCARD_MODE_FORM_TO_MEANING = "form_to_meaning"
     FLASHCARD_MODE_MEANING_TO_FORM = "meaning_to_form"
