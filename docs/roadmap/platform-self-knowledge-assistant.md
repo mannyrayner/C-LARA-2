@@ -203,14 +203,31 @@ Environment=C_LARA_PROJECT_UNDERSTANDING_TIMEOUT_SECONDS=300
 Environment=CODEX_HOME=/home/ubuntu/.codex
 ```
 
-Use `CODEX_HOME=/home/ubuntu/.codex` only if that is where the successful `ubuntu` Codex login was stored. If the login was done with the default home directory for `ubuntu`, this is usually the right assumption; otherwise set `CODEX_HOME` to the locked-down directory used during `codex login`. After restarting the services, run the check from the deployment virtualenv with the same environment the service uses:
+Use `CODEX_HOME=/home/ubuntu/.codex` only if that is where the successful `ubuntu` Codex login was stored. If the login was done with the default home directory for `ubuntu`, this is usually the right assumption; otherwise set `CODEX_HOME` to the locked-down directory used during `codex login`.
+
+If `check_project_understanding_codex` reports `PermissionError: [Errno 13] Permission denied: '/home/ubuntu/.local/bin/codex'`, the path is known but the Unix user running `manage.py`, Gunicorn, or Q cannot traverse `/home/ubuntu` or execute the file. Do **not** make `/home/ubuntu` broadly readable just to fix this. Choose one of these safer approaches instead:
+
+1. **Run Gunicorn, Q, and the check command as `ubuntu`**, if `ubuntu` really is the intended application service user. Then `/home/ubuntu/.local/bin/codex` and `/home/ubuntu/.codex` are naturally accessible to the process that launches Codex.
+2. **Install or copy the Codex executable into a shared executable location**, for example `/opt/codex/bin/codex` or `/usr/local/bin/codex`, owned by `root` and executable by the service user, then set `C_LARA_CODEX_EXECUTABLE` to that shared path. This is usually cleaner when the application service user is not `ubuntu`. Keep credentials in a separate private `CODEX_HOME` owned by the actual service user.
+3. **Use a dedicated service user**, for example `clara`, and install/login Codex as that same user. Then set `C_LARA_CODEX_EXECUTABLE=/home/clara/.local/bin/codex` and `CODEX_HOME=/home/clara/.codex` or another directory owned by `clara`.
+
+For the shared executable option, the permissions should be on the executable path, not on the whole `ubuntu` home directory. A typical pattern is:
+
+```bash
+sudo install -d -o root -g root -m 755 /opt/codex/bin
+sudo install -o root -g root -m 755 /home/ubuntu/.local/bin/codex /opt/codex/bin/codex
+# Then configure both Gunicorn and Q:
+# Environment=C_LARA_CODEX_EXECUTABLE=/opt/codex/bin/codex
+```
+
+After restarting the services, run the check from the deployment virtualenv with the same user/environment the service uses:
 
 ```bash
 python platform_server/manage.py check_project_understanding_codex
 python platform_server/manage.py check_project_understanding_codex --smoke
 ```
 
-If the first command still says `Resolved executable: codex` rather than `/home/ubuntu/.local/bin/codex`, Django did not receive `C_LARA_CODEX_EXECUTABLE`. If it finds the executable but `codex login status` fails or the smoke test returns 401, the executable path is fine and the remaining problem is authentication/`CODEX_HOME`.
+If the first command still says `Resolved executable: codex` rather than the configured absolute path, Django did not receive `C_LARA_CODEX_EXECUTABLE`. If it finds the executable but `codex login status` fails or the smoke test returns 401, the executable path is fine and the remaining problem is authentication/`CODEX_HOME`.
 
 
 #### Authentication setup and 401 diagnostics

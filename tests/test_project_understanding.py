@@ -4,6 +4,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from core.project_understanding import (
     DEFAULT_PROJECT_UNDERSTANDING_MODEL,
@@ -161,6 +162,16 @@ class ProjectUnderstandingTests(unittest.IsolatedAsyncioTestCase):
                 resolve_codex_executable(
                     "$CODEX_TEST_BIN/codex",
                     environment={"PATH": "", "CODEX_TEST_BIN": str(bin_dir)},
+                ),
+            )
+
+    def test_resolve_codex_executable_does_not_crash_on_permission_denied_probe(self) -> None:
+        with patch.object(Path, "exists", side_effect=PermissionError("permission denied")):
+            self.assertEqual(
+                "/home/ubuntu/.local/bin/codex",
+                resolve_codex_executable(
+                    "/home/ubuntu/.local/bin/codex",
+                    environment={"PATH": ""},
                 ),
             )
 

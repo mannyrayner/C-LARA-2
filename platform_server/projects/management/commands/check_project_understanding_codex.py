@@ -59,6 +59,12 @@ class Command(BaseCommand):
                 "Codex CLI was not found. Set C_LARA_CODEX_EXECUTABLE to an absolute codex path "
                 "or put the Codex install directory on PATH for the Django/Q service."
             ) from exc
+        except PermissionError as exc:
+            raise CommandError(
+                f"Could not run Codex CLI because the Django/Q service user cannot access `{resolved_executable}`: {exc}. "
+                "Either run Gunicorn and Q as the user that owns that Codex install, or move/copy Codex to a "
+                "shared executable path such as /opt/codex/bin/codex and point C_LARA_CODEX_EXECUTABLE there."
+            ) from exc
         except OSError as exc:
             raise CommandError(f"Could not run Codex CLI: {exc}") from exc
 

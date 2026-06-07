@@ -178,6 +178,15 @@ def _expand_path_with_environment(path_text: str, environment: Mapping[str, str]
     return expanded
 
 
+def _path_exists_safely(path: Path) -> bool:
+    """Return whether a path exists without leaking permission errors from probes."""
+
+    try:
+        return path.exists()
+    except OSError:
+        return False
+
+
 def resolve_codex_executable(
     codex_executable: str = DEFAULT_CODEX_EXECUTABLE,
     *,
@@ -193,7 +202,7 @@ def resolve_codex_executable(
     expanded = _expand_path_with_environment(executable, env)
     if "/" in expanded or "\\" in expanded:
         candidate = Path(expanded)
-        if candidate.exists():
+        if _path_exists_safely(candidate):
             return str(candidate)
         return expanded
 
@@ -230,7 +239,7 @@ def resolve_codex_executable(
     for directory in candidate_dirs:
         for candidate_name in candidate_names:
             candidate = directory / candidate_name
-            if candidate.exists():
+            if _path_exists_safely(candidate):
                 return str(candidate)
 
     return expanded
