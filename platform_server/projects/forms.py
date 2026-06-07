@@ -454,10 +454,10 @@ class CreditTransferForm(forms.Form):
         self.fields["recipient"].queryset = qs
 
 
-class AdminProjectUnderstandingForm(forms.Form):
+class ProjectUnderstandingForm(forms.Form):
     VISIBILITY_CHOICES = [
         ("private", "Private (visible only to me)"),
-        ("public", "Public to other admins/reviewers"),
+        ("public", "Public to other C-LARA-2 users/reviewers"),
     ]
 
     question = forms.CharField(
@@ -476,7 +476,7 @@ class AdminProjectUnderstandingForm(forms.Form):
         choices=VISIBILITY_CHOICES,
         initial="private",
         label="Log visibility",
-        help_text="Private runs stay visible to the submitting admin; public runs can be reviewed by other admins/reviewers.",
+        help_text="Private runs stay visible only to you; public runs can be reviewed by other C-LARA-2 users/reviewers.",
     )
 
 

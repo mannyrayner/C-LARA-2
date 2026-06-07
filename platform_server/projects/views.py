@@ -64,7 +64,7 @@ from .forms import (
     AdminDeleteCommunityForm,
     AdminAdjustCreditsForm,
     AdminOpenAIPricingForm,
-    AdminProjectUnderstandingForm,
+    ProjectUnderstandingForm,
     CreditTransferForm,
     ClozeExerciseSetForm,
     CrosswordExerciseSetForm,
@@ -3285,10 +3285,9 @@ def _run_project_understanding_task(question: str, user_id: int, report_id: str)
 
 
 @login_required
-def admin_project_understanding(request: HttpRequest) -> HttpResponse:
-    _require_admin(request.user)
+def project_understanding(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
-        form = AdminProjectUnderstandingForm(request.POST)
+        form = ProjectUnderstandingForm(request.POST)
         if form.is_valid():
             report_id = uuid.uuid4()
             question = form.cleaned_data["question"]
@@ -3321,7 +3320,7 @@ def admin_project_understanding(request: HttpRequest) -> HttpResponse:
                     status="error",
                 )
                 messages.error(request, "Could not enqueue the Codex project-understanding task; opening monitor with details.")
-                return redirect("admin-project-understanding-monitor", report_id=report_id)
+                return redirect("project-understanding-monitor", report_id=report_id)
             logger.info("Queued project-understanding task %s for report %s", task_id, report_id)
             _record_project_understanding_update(
                 report_id=report_id,
@@ -3330,12 +3329,12 @@ def admin_project_understanding(request: HttpRequest) -> HttpResponse:
                 status="running",
             )
             messages.info(request, "Codex project-understanding request queued. Opening live status monitor.")
-            return redirect("admin-project-understanding-monitor", report_id=report_id)
+            return redirect("project-understanding-monitor", report_id=report_id)
     else:
-        form = AdminProjectUnderstandingForm()
+        form = ProjectUnderstandingForm()
     return render(
         request,
-        "projects/admin_project_understanding.html",
+        "projects/project_understanding.html",
         {
             "form": form,
             "result": None,
@@ -3351,8 +3350,7 @@ def admin_project_understanding(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
-def admin_project_understanding_turns(request: HttpRequest) -> HttpResponse:
-    _require_admin(request.user)
+def project_understanding_turns(request: HttpRequest) -> HttpResponse:
     filters = {
         "q": request.GET.get("q", ""),
         "date_from": request.GET.get("date_from", ""),
@@ -3365,7 +3363,7 @@ def admin_project_understanding_turns(request: HttpRequest) -> HttpResponse:
     turns = _filter_project_understanding_turns(all_visible_turns, filters)[:100]
     return render(
         request,
-        "projects/admin_project_understanding_turns.html",
+        "projects/project_understanding_turns.html",
         {
             "turns": turns,
             "filters": filters,
@@ -3376,8 +3374,7 @@ def admin_project_understanding_turns(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
-def admin_project_understanding_monitor(request: HttpRequest, report_id: str) -> HttpResponse:
-    _require_admin(request.user)
+def project_understanding_monitor(request: HttpRequest, report_id: str) -> HttpResponse:
     if not _can_access_project_understanding_turn(request.user, report_id):
         raise Http404()
     current_request = _read_project_understanding_request(report_id)
@@ -3391,14 +3388,14 @@ def admin_project_understanding_monitor(request: HttpRequest, report_id: str) ->
     ).order_by("timestamp")
     return render(
         request,
-        "projects/admin_project_understanding.html",
+        "projects/project_understanding.html",
         {
-            "form": AdminProjectUnderstandingForm(initial={"question": current_question, "visibility": current_visibility}),
+            "form": ProjectUnderstandingForm(initial={"question": current_question, "visibility": current_visibility}),
             "result": result,
             "result_answer_html": mark_safe(render_project_understanding_answer_html(str(result.get("answer") or ""))) if result else "",
             "initial_updates": initial_updates,
             "report_id": report_id,
-            "status_url": reverse("admin-project-understanding-status", args=[report_id]),
+            "status_url": reverse("project-understanding-status", args=[report_id]),
             "repository_path": getattr(settings, "PROJECT_UNDERSTANDING_REPOSITORY_PATH", settings.ROOT_DIR),
             "codex_model": getattr(settings, "PROJECT_UNDERSTANDING_MODEL", "gpt-5.3-codex"),
             "timeout_seconds": getattr(settings, "PROJECT_UNDERSTANDING_TIMEOUT_SECONDS", 300),
@@ -3407,8 +3404,7 @@ def admin_project_understanding_monitor(request: HttpRequest, report_id: str) ->
 
 
 @login_required
-def admin_project_understanding_status(request: HttpRequest, report_id: str) -> JsonResponse:
-    _require_admin(request.user)
+def project_understanding_status(request: HttpRequest, report_id: str) -> JsonResponse:
     if not _can_access_project_understanding_turn(request.user, report_id):
         raise Http404()
     updates_qs = TaskUpdate.objects.filter(
@@ -3617,6 +3613,26 @@ def _shutdown_django_stack_processes(delay_seconds: float = 0.5) -> list[dict[st
     )
     _schedule_sigterm_for_pids(ordered_pids, delay_seconds=delay_seconds)
     return [{**proc, "status": "sigterm_scheduled"} for proc in targets]
+
+
+@login_required
+def project_understanding_legacy_redirect(request: HttpRequest) -> HttpResponse:
+    return redirect("project-understanding")
+
+
+@login_required
+def project_understanding_turns_legacy_redirect(request: HttpRequest) -> HttpResponse:
+    return redirect("project-understanding-turns")
+
+
+@login_required
+def project_understanding_monitor_legacy_redirect(request: HttpRequest, report_id: str) -> HttpResponse:
+    return redirect("project-understanding-monitor", report_id=report_id)
+
+
+@login_required
+def project_understanding_status_legacy_redirect(request: HttpRequest, report_id: str) -> HttpResponse:
+    return redirect("project-understanding-status", report_id=report_id)
 
 
 @login_required
