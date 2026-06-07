@@ -135,12 +135,17 @@ def build_codex_exec_environment(
     openai_api_key: str | None = None,
     base_environment: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
-    """Create a reduced environment with the OpenAI key needed by Codex."""
+    """Create a reduced environment suitable for Codex CLI execution.
+
+    Codex may authenticate either from OPENAI_API_KEY or from cached CLI
+    credentials under HOME/CODEX_HOME.  Do not require an API key here: on
+    AWS/Gunicorn deployments the recommended setup is often to authenticate the
+    service account once with `codex login`/`codex login --with-api-key` and
+    then point CODEX_HOME at that locked-down credential directory.
+    """
 
     base = os.environ if base_environment is None else base_environment
     api_key = openai_api_key or base.get("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY must be set to run codex exec")
 
     preserved_names = (
         "PATH",
@@ -159,8 +164,27 @@ def build_codex_exec_environment(
         "COMSPEC",
     )
     env = {name: value for name in preserved_names if (value := base.get(name))}
-    env["OPENAI_API_KEY"] = api_key
+    if api_key:
+        env["OPENAI_API_KEY"] = api_key
     return env
+
+
+def _expand_path_with_environment(path_text: str, environment: Mapping[str, str]) -> str:
+    """Expand ~ and simple $VARS using the supplied environment mapping."""
+
+    expanded = os.path.expanduser(path_text)
+    for name, value in environment.items():
+        expanded = expanded.replace(f"${name}", value).replace(f"${{{name}}}", value)
+    return expanded
+
+
+def _path_exists_safely(path: Path) -> bool:
+    """Return whether a path exists without leaking permission errors from probes."""
+
+    try:
+        return path.exists()
+    except OSError:
+        return False
 
 
 def resolve_codex_executable(
@@ -175,22 +199,50 @@ def resolve_codex_executable(
         raise ValueError("codex_executable must not be empty")
 
     env = os.environ if environment is None else environment
-    resolved = shutil.which(executable, path=env.get("PATH"))
+    expanded = _expand_path_with_environment(executable, env)
+    if "/" in expanded or "\\" in expanded:
+        candidate = Path(expanded)
+        if _path_exists_safely(candidate):
+            return str(candidate)
+        return expanded
+
+    resolved = shutil.which(expanded, path=env.get("PATH"))
     if resolved:
         return resolved
 
-    if "/" not in executable and "\\" not in executable:
-        for npm_root_name in ("APPDATA", "LOCALAPPDATA"):
-            npm_root = env.get(npm_root_name)
-            if not npm_root:
-                continue
-            npm_dir = Path(npm_root) / "npm"
-            for candidate_name in (executable, f"{executable}.cmd", f"{executable}.exe", f"{executable}.bat"):
-                candidate = npm_dir / candidate_name
-                if candidate.exists():
-                    return str(candidate)
+    candidate_dirs: list[Path] = []
+    for npm_root_name in ("APPDATA", "LOCALAPPDATA"):
+        npm_root = env.get(npm_root_name)
+        if npm_root:
+            candidate_dirs.append(Path(npm_root) / "npm")
 
-    return executable
+    for home_name in ("CODEX_HOME", "HOME", "USERPROFILE"):
+        home = env.get(home_name)
+        if home:
+            home_path = Path(_expand_path_with_environment(home, env))
+            candidate_dirs.extend(
+                [
+                    home_path / ".local" / "bin",
+                    home_path / ".npm-global" / "bin",
+                    home_path / "node_modules" / ".bin",
+                ]
+            )
+
+    candidate_dirs.extend(
+        [
+            Path("/usr/local/bin"),
+            Path("/usr/bin"),
+            Path("/opt/homebrew/bin"),
+        ]
+    )
+    candidate_names = (expanded, f"{expanded}.cmd", f"{expanded}.exe", f"{expanded}.bat")
+    for directory in candidate_dirs:
+        for candidate_name in candidate_names:
+            candidate = directory / candidate_name
+            if _path_exists_safely(candidate):
+                return str(candidate)
+
+    return expanded
 
 
 def extract_codex_tokens_used(output: str) -> int | None:
