@@ -89,16 +89,47 @@ Image-based flashcards are now working in both directions, but they are undermin
 
 Track implementation in **ISSUE-0028** (`docs/issues/issues/ISSUE-0028.json`).
 
+### 2.6 Add organiser-created dictionary sub-projects
+
+Sophie’s Kok Kaper follow-up request adds an immediately useful authoring workflow: a Community Organiser should be able to carve out a smaller vocabulary from an existing picture-dictionary project and save it as a sub-project/exercise source.
+
+User goal:
+
+- Start from a community picture dictionary or ordinary project with one-page-per-entry structure.
+- Enter a natural-language command such as “make a set for animals”, “words useful for a family visit”, or “the 12 easiest words for beginners”.
+- Let the system propose the matching pages/entries, then show a review screen where the organiser can add/remove pages manually before saving.
+- Use the resulting subset as a stable source vocabulary for flashcards, word scrambles, crosswords, and later activity types.
+
+Implementation expectations:
+
+1. Reuse existing page/entry metadata wherever possible: surface form, lemma, POS, translation/gloss, readiness status, and approved image reference.
+2. Keep the parent project/dictionary unchanged; the sub-project should be a derived artifact or lightweight project clone with provenance back to parent page ids.
+3. Require organiser confirmation before creating or overwriting a sub-project.
+4. Default exercise generation to approved/game-ready entries, while allowing organisers to see why pages were excluded.
+5. Support manual adjustment even when the natural-language selection is imperfect; the AI proposal is a convenience, not the authority.
+
+Suggested artifact shape:
+
+```text
+picture_dictionary_subsets/
+  <subset_id>/
+    config.json        # name, parent project, command, filters, created_by
+    pages.json         # ordered selected parent page/entry ids + display labels
+    provenance.json    # AI proposal, manual additions/removals, timestamps
+```
+
 ---
 
 ## 3) Longer-term goals
 
 ### 3.1 Mature picture-based learning activities
 
-- Expand beyond the initial flashcard scope while preserving curation quality.
-- Maintain both directions as first-class modes:
+- Maintain both flashcard directions as first-class modes:
   - image → word,
   - word → image.
+- Add the newly requested picture-clue puzzle activities once sub-project source selection is available:
+  - word scrambles with image clues,
+  - crosswords with image clues and simple non-symmetrical layouts.
 - Improve distractor quality and lightweight learner feedback/reporting loops.
 
 ### 3.2 Broaden governance and delegation safely
@@ -117,7 +148,7 @@ Track implementation in **ISSUE-0028** (`docs/issues/issues/ISSUE-0028.json`).
 
 To keep delivery realistic, the following should not block near-term goals:
 
-- many additional game types,
+- many additional game types beyond the currently requested flashcards, word scrambles, and crosswords,
 - heavy analytics,
 - adaptive personalization,
 - complex sense-disambiguation UX.
@@ -126,4 +157,5 @@ The immediate focus should remain:
 
 1. reliable low-resource compile fallback,
 2. explicit organiser feedback during compile/generation,
-3. usable and predictable organiser entry-list presentation.
+3. usable and predictable organiser entry-list presentation,
+4. organiser-created sub-projects as the source-selection foundation for picture-clue exercises.
