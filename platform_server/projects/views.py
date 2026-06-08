@@ -3216,11 +3216,15 @@ def _project_understanding_runtime_summary() -> str:
             username = getpass.getuser()
         except Exception:
             username = "unknown"
+    path_value = os.environ.get("PATH") or ""
+    bwrap_path = shutil.which("bwrap", path=path_value) if path_value else None
     return (
         f"worker user={username}"
         + (f" uid={effective_uid}" if effective_uid is not None else "")
         + f"; HOME={os.environ.get('HOME') or os.environ.get('USERPROFILE') or '(not set)'}"
         + f"; CODEX_HOME={os.environ.get('CODEX_HOME') or '(not set)'}"
+        + f"; PATH={path_value or '(not set)'}"
+        + f"; bwrap={bwrap_path or '(not found)'}"
         + f"; codex={getattr(settings, 'PROJECT_UNDERSTANDING_CODEX_EXECUTABLE', 'codex')}"
     )
 

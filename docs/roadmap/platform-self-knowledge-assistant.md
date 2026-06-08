@@ -253,6 +253,14 @@ sudo systemctl show <django-q-service-name> \
 
 Do not paste secret values such as `OPENAI_API_KEY`; if an `Environment=` line contains secrets, redact the values and leave the variable names.
 
+If those service properties show no explicit namespace hardening (`NoNewPrivileges=no`, `PrivateUsers=no`, `RestrictNamespaces=no`, and no restrictive syscall filter), the next most likely difference is `PATH`: an interactive `sudo -u ubuntu` shell may find the OS package `/usr/bin/bwrap`, while the Gunicorn/Q service may not. The management command and Assistant runtime summary print `PATH` and `bwrap on PATH`/`bwrap=...` for this reason. On Ubuntu, prefer an explicit service path in `/etc/clara2.env` or the systemd unit, for example:
+
+```env
+PATH=/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+```
+
+After adding or changing `PATH`, run `sudo systemctl daemon-reload`, restart Gunicorn and Q, then confirm that the Assistant worker message shows `bwrap=/usr/bin/bwrap` rather than `bwrap=(not found)`.
+
 Interpret the next result as follows:
 
 - If the Assistant UI shows `Background worker picked up request; launching Codex (...)`, compare the `worker user=...`, `HOME=...`, `CODEX_HOME=...`, and `codex=...` values in that message with the successful shell smoke test. They must refer to the same service-owned `CODEX_HOME` and executable.

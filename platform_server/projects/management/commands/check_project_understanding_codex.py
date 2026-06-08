@@ -3,6 +3,7 @@ from __future__ import annotations
 import getpass
 import os
 import pwd
+import shutil
 import subprocess
 
 from django.conf import settings
@@ -55,8 +56,12 @@ class Command(BaseCommand):
             except Exception:
                 process_user = "unknown"
         self.stdout.write(f"Process user: {process_user}{f' (uid {effective_uid})' if effective_uid is not None else ''}")
+        service_path = env.get("PATH") or ""
+        bwrap_path = shutil.which("bwrap", path=service_path) if service_path else None
         self.stdout.write(f"CODEX_HOME: {env.get('CODEX_HOME') or '(not set)'}")
         self.stdout.write(f"HOME: {env.get('HOME') or env.get('USERPROFILE') or '(not set)'}")
+        self.stdout.write(f"PATH: {service_path or '(not set)'}")
+        self.stdout.write(f"bwrap on PATH: {bwrap_path or '(not found)'}")
         self.stdout.write(f"OPENAI_API_KEY available to child: {'yes' if env.get('OPENAI_API_KEY') else 'no'}")
 
         try:
