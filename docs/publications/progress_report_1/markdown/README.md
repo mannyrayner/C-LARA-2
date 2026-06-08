@@ -35,7 +35,7 @@ Keep this outline and `reports-and-papers.md` synchronized whenever the main the
 
 1. **Why this report is short**: much C-LARA-2 functionality continues C-LARA functionality, so the report should only summarize that background.
 2. **What changed most**: C-LARA-2 is AI-centered in a stronger sense than C-LARA. The AI writes the committed code, roadmap material, issue records, operational documentation, and publication drafts, with humans advising, reviewing, and deciding.
-3. **New central theme: self-understanding**: recent work has made project self-understanding concrete through a restricted admin-only assistant that delegates repository exploration to `codex exec` and answers questions from the checked-out C-LARA-2 repository. This should be treated as one of the report's central examples, not a side note.
+3. **New central theme: self-understanding**: recent work has made project self-understanding concrete through an authenticated Assistant that delegates repository exploration to `codex exec` and answers questions from the checked-out C-LARA-2 repository. The Assistant is now working on the AWS deployment after resolving Codex/bubblewrap/AppArmor runtime issues, so it should be treated as one of the report's central examples, not a side note.
 4. **Why that matters**: this workflow has produced unusually fast implementation and revision cycles. It has also given the project flexibility: when a feature, design, or deployment plan is wrong, the AI can often rewrite it in hours or minutes. The self-understanding assistant adds a new dimension: the same repository-native artifacts that guide development can be queried, tested, and eventually reviewed as evidence for how well the project can explain itself.
 5. **What works now**: selected examples of user-facing functionality, especially picture dictionaries and stronger support for low-resource languages, plus an implementor-facing example of platform self-understanding.
 6. **What remains unfinished**: this is an interim report. Major next steps include more autonomous checking by the AI, export/review of self-understanding evidence records, mobile deployment support, and audio recording through the platform.
@@ -46,7 +46,7 @@ Keep this outline and `reports-and-papers.md` synchronized whenever the main the
 - Prefer a short report over a comprehensive catalogue.
 - Foreground the AI-centered development process and the emerging self-understanding capability, not a full feature manual.
 - Mention continuity with C-LARA only where it clarifies the C-LARA-2 contribution.
-- Include concrete examples: AWS migration, picture dictionaries, low-resource-language workflows, roadmap/issue/documentation authorship, publication drafting, and the restricted project-understanding assistant.
+- Include concrete examples: AWS migration, picture dictionaries, low-resource-language workflows, roadmap/issue/documentation authorship, publication drafting, and the authenticated project-understanding Assistant now running on AWS.
 
 ## Open questions for the human review pass
 

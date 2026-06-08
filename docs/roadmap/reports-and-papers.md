@@ -19,9 +19,9 @@ Linked issues and companion docs:
 
 - The first report should be **short, selective, and interim**, not a long catalogue of C-LARA-like functionality.
 - The main contribution to foreground is the **AI-centered project organization**: Codex writes committed code, tests, documentation, roadmap documents, issue records, operational documentation, and publication drafts, while humans advise, review, prioritize, and accept/reject.
-- A second central contribution is now **project self-understanding**: C-LARA-2 is beginning to expose, inside the platform, a restricted Codex-backed assistant that can inspect the repository and answer questions about the project with file-grounded evidence.
+- A second central contribution is now **project self-understanding**: C-LARA-2 exposes, inside the platform, an authenticated Codex-backed assistant that can inspect the repository and answer questions about the project with file-grounded evidence; after resolving Codex/bubblewrap/AppArmor deployment issues, this is now working on the AWS server.
 - The report should emphasize practical consequences of this organization: faster iteration, greater flexibility, rapid rewriting, and AI-guided sysadmin/deployment work such as the AWS migration.
-- The user-facing examples to foreground are **picture dictionaries** and **more coherent support for low-resource languages**.
+- The user-facing examples to foreground are **picture dictionaries** and **more coherent support for low-resource languages**. The first picture-clue word-scramble exercise is a good concrete example of rapid user-requested functionality delivered on top of picture dictionaries and should be considered for the First Progress Report. A draft report claim can say that the feature required roughly **twelve minutes of AI implementation time** and about **one hour of human AI-expert steering/review time**, while being careful not to imply that this covers the full community consultation, pedagogical discussion, or cultural-permission work.
 - The report should clearly state that C-LARA-2 is unfinished, while also trying to include a first concrete AI self-checking result: AI-based evaluation of default versus candidate segmentation phase 1, segmentation phase 2, and MWE outputs using the existing pipeline runner. Remaining high-priority future work includes stronger AI self-checking/autonomy, export/review of self-understanding evidence records, mobile support, and platform audio recording.
 - The possible AI-authorship paper should be framed as an open research/ethics question, not as a settled authorship-policy claim.
 
@@ -44,7 +44,7 @@ The report workspace and this roadmap should stay synchronized. The current Mark
 | `01-introduction-and-history.md` | Short lineage from LARA/C-LARA to C-LARA-2, plus interim-report and authorship-paper framing. |
 | `02-core-themes-and-ai-autonomy.md` | Main AI-centered thesis, self-understanding as an emerging core theme, AI role decomposition, human role, speed/flexibility, limits, and authorship implications. |
 | `03-user-facing-functionality.md` | Selected user-facing examples: picture dictionaries, picture glossing/flashcards, low-resource-language support, and brief continuity notes. |
-| `04-implementor-facing-functionality.md` | Roadmap-as-memory, issue ingestion, restricted project-understanding assistant, legacy migration, AWS/sysadmin work, and quality-control infrastructure. |
+| `04-implementor-facing-functionality.md` | Roadmap-as-memory, issue ingestion, authenticated project-understanding assistant, legacy migration, AWS/sysadmin work, and quality-control infrastructure. |
 | `05-medium-term-future-work.md` | Interim-status caveat and prioritized future work: AI self-checking, self-understanding evidence workflow, mobile support, platform audio recording, alignment, access, and migration/tooling refinements. |
 
 ### Target B — EuroCALL 2026 paper
@@ -86,7 +86,7 @@ Two connected central theses now need to be developed:
 
 > C-LARA-2 is not only an AI-assisted language-learning platform; it is an AI-centered project in which code, tests, documentation, roadmap planning, issue tracking, sysadmin/deployment work, and academic drafts are co-produced inside one repository by an AI agent under human direction and review.
 
-> C-LARA-2 is also beginning to become self-understanding: because code, tests, issues, roadmaps, runbooks, and report drafts live in the repository, a restricted Codex-backed assistant can inspect that evidence base and answer project-level questions from inside the platform.
+> C-LARA-2 is also beginning to become self-understanding: because code, tests, issues, roadmaps, runbooks, and report drafts live in the repository, an authenticated Codex-backed assistant can inspect that evidence base and answer project-level questions from inside the platform; this has now been demonstrated on the AWS deployment after a concrete Codex/AppArmor runbook fix.
 
 These theses should be tested and made concrete by showing:
 
@@ -94,7 +94,7 @@ These theses should be tested and made concrete by showing:
 - how the AI updates issue records, roadmap files, documentation, code, and publication drafts;
 - how rapid rewriting changes the practical economics of research-software development;
 - how AI-maintained documentation and tests may help preserve system-level coherence;
-- how the restricted project-understanding assistant delegates repository exploration to `codex exec`, captures answer metadata, and creates a path toward versioned human-reviewed evidence records;
+- how the authenticated project-understanding assistant delegates repository exploration to `codex exec`, captures answer metadata, and creates a path toward versioned human-reviewed evidence records;
 - how a first ISSUE-0004 phase-output evaluator can use the existing pipeline runner to judge default versus candidate segmentation phase 1, segmentation phase 2, and MWE outputs, making autonomy/self-checking operational and potentially improvement-guiding rather than purely aspirational;
 - where the workflow still fails and needs stronger autonomous checking, export/review controls, cost controls, and safety boundaries.
 
@@ -151,7 +151,7 @@ Near-term CodePrism questions:
 
 - Keep [ISSUE-0008](../issues/issues/ISSUE-0008.json), this roadmap, and the Markdown report workspace synchronized.
 - Finish the concise progress-report draft around the AI-centered thesis and the new self-understanding theme.
-- Add concrete examples for picture dictionaries, low-resource-language support, AWS migration, the restricted project-understanding assistant, and first-version AI evaluation of default versus candidate linguistic phase outputs.
+- Add concrete examples for picture dictionaries, picture-clue word scrambles as rapid user-requested functionality, low-resource-language support, AWS migration, the authenticated project-understanding assistant now running on AWS, and first-version AI evaluation of default versus candidate linguistic phase outputs. For the word-scramble example, explicitly separate the rapid AI/human-expert platform implementation estimate from Sophie’s end-user/community consultation work, and ask Sophie what, if anything, can be said publicly given the sensitivity of Australian Aboriginal language work.
 - Gather current repository metrics and feature inventory only where they support the concise narrative.
 - Start a related-work bibliography, including AI-authored repositories and AI authorship/publication ethics.
 - Investigate CodePrism in detail as the closest currently known comparator.

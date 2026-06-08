@@ -127,13 +127,15 @@ Status: **Initial cloze implementation delivered.** See [roadmap/exercises.md](e
 
 Focus:
 - Cloze and flashcard generation from existing project artifacts.
-- Distractor generation/validation and review workflows.
+- Picture-dictionary-backed exercise generation, now including planned word scrambles and crosswords with picture clues.
+- Distractor generation/validation, puzzle layout validation, and review workflows.
 - Learner-facing exercise player and future spaced repetition support.
 
 Implemented now:
 - Generate cloze exercise sets from latest run segments.
 - Theme options include vocabulary, grammar, morphology, and grammar/morphology.
 - Publish/unpublish exercise sets and expose published links on content pages.
+- Picture-dictionary-backed flashcards are in place; next planned work is organiser-created sub-projects plus picture-clue word scrambles and crosswords.
 
 ### 10. Alignment roadmap (phonetic + text/audio/translation)
 
@@ -259,7 +261,8 @@ Status: **New roadmap document added.** See [roadmap/picture-dictionaries.md](pi
 Focus:
 - Community-owned shared picture dictionaries keyed by lexical identity (lemma/POS).
 - Optional picture-gloss pipeline stage building on lemma output.
-- HTML interaction and exercise extensions using dictionary-backed image glosses.
+- Organiser-created sub-projects extracted from picture dictionaries using natural-language selection plus manual review.
+- HTML interaction and exercise extensions using dictionary-backed image glosses, flashcards, word scrambles, and crosswords.
 
 ### 21. Issue tracking and human-suggestion loop roadmap
 
@@ -308,14 +311,14 @@ Focus:
 - Deliver in a low-risk rollout window after current field visit commitments.
 
 
-### 26. Restricted project-understanding assistant roadmap
+### 26. Authenticated project-understanding assistant roadmap
 
-Status: **New roadmap document added.** See [roadmap/platform-self-knowledge-assistant.md](platform-self-knowledge-assistant.md). Tracked by [ISSUE-0034](../issues/issues/ISSUE-0034.json).
+Status: **Implemented first authenticated version; AWS deployment now working after Codex/AppArmor sandbox setup.** See [roadmap/platform-self-knowledge-assistant.md](platform-self-knowledge-assistant.md). Tracked by [ISSUE-0034](../issues/issues/ISSUE-0034.json).
 
 Focus:
-- Admin/trusted-user question answering about C-LARA-2 architecture, goals, status, issue structure, plans, tests, prompts, and relevant public GitHub source files.
+- Authenticated-user question answering about C-LARA-2 architecture, goals, status, issue structure, plans, tests, prompts, and relevant public GitHub source files, exposed through the top-level Assistant navigation item.
 - Repo-grounded answers that distinguish implemented vs planned functionality, cite supporting files, and admit unsupported or uncertain answers.
-- Versioned `docs/project_understanding/`-style evidence records with model/prompt metadata and human assessment fields for the initial report's autonomy/authorship evidence case.
+- Versioned `docs/project_understanding/`-style evidence records with model/prompt metadata and human assessment fields for the initial report's autonomy/authorship evidence case, plus deployment checks for `codex exec` on laptops and the AWS Gunicorn/Q-worker environment; the first AWS deployment required the Ubuntu `bwrap-userns-restrict` AppArmor profile before Codex could inspect the repository from the platform.
 
 
 
