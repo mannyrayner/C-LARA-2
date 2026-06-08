@@ -4,11 +4,11 @@
 <h1>Stored project-understanding turns</h1>
 
 <p>
-  Admin-only history for logged project-understanding requests. Private turns are visible only
-  to the submitting admin; public turns are visible to other admins/reviewers.
+  History for logged project-understanding requests. Private turns are visible only
+  to the submitting user; public turns are visible to other C-LARA-2 users/reviewers.
 </p>
 
-<form method="get" action="{% url 'admin-project-understanding-turns' %}" style="border: 1px solid #ddd; padding: 1rem; margin-bottom: 1rem;">
+<form method="get" action="{% url 'project-understanding-turns' %}" style="border: 1px solid #ddd; padding: 1rem; margin-bottom: 1rem;">
   <p>
     <label for="turn-q">Partial match</label><br>
     <input id="turn-q" type="search" name="q" value="{{ filters.q }}" style="width: 100%;" placeholder="Question, request ID, username, status, visibility">
@@ -43,7 +43,7 @@
     </select>
   </p>
   <button class="btn" type="submit">Search turns</button>
-  <a href="{% url 'admin-project-understanding-turns' %}">Clear filters</a>
+  <a href="{% url 'project-understanding-turns' %}">Clear filters</a>
 </form>
 
 <p>Showing {{ filtered_turn_count }} of {{ visible_turn_count }} visible turns.</p>
@@ -64,7 +64,7 @@
     <tbody>
       {% for turn in turns %}
         <tr>
-          <td><a href="{% url 'admin-project-understanding-monitor' turn.report_id %}">{{ turn.submitted_at|default:turn.report_id }}</a></td>
+          <td><a href="{% url 'project-understanding-monitor' turn.report_id %}">{{ turn.submitted_at|default:turn.report_id }}</a></td>
           <td>{{ turn.question|truncatechars:180 }}</td>
           <td>{% if turn.username %}{{ turn.username }}{% endif %}{% if turn.user_id %} <code>#{{ turn.user_id }}</code>{% endif %}</td>
           <td>{{ turn.visibility }}</td>
@@ -79,6 +79,6 @@
   <p>No stored project-understanding turns match these filters.</p>
 {% endif %}
 
-<p><a href="{% url 'admin-project-understanding' %}">Back to project-understanding assistant</a></p>
-<p><a href="{% url 'admin-tools' %}">Back to admin tools</a></p>
+<p><a href="{% url 'project-understanding' %}">Back to project-understanding assistant</a></p>
+
 {% endblock %}
