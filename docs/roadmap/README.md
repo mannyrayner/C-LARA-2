@@ -313,12 +313,12 @@ Focus:
 
 ### 26. Authenticated project-understanding assistant roadmap
 
-Status: **Implemented first authenticated version; AWS/laptop Codex CLI setup documented.** See [roadmap/platform-self-knowledge-assistant.md](platform-self-knowledge-assistant.md). Tracked by [ISSUE-0034](../issues/issues/ISSUE-0034.json).
+Status: **Implemented first authenticated version; AWS deployment now working after Codex/AppArmor sandbox setup.** See [roadmap/platform-self-knowledge-assistant.md](platform-self-knowledge-assistant.md). Tracked by [ISSUE-0034](../issues/issues/ISSUE-0034.json).
 
 Focus:
 - Authenticated-user question answering about C-LARA-2 architecture, goals, status, issue structure, plans, tests, prompts, and relevant public GitHub source files, exposed through the top-level Assistant navigation item.
 - Repo-grounded answers that distinguish implemented vs planned functionality, cite supporting files, and admit unsupported or uncertain answers.
-- Versioned `docs/project_understanding/`-style evidence records with model/prompt metadata and human assessment fields for the initial report's autonomy/authorship evidence case, plus deployment checks for `codex exec` on laptops and the AWS Gunicorn/Q-worker environment.
+- Versioned `docs/project_understanding/`-style evidence records with model/prompt metadata and human assessment fields for the initial report's autonomy/authorship evidence case, plus deployment checks for `codex exec` on laptops and the AWS Gunicorn/Q-worker environment; the first AWS deployment required the Ubuntu `bwrap-userns-restrict` AppArmor profile before Codex could inspect the repository from the platform.
 
 
 

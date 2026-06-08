@@ -49,7 +49,7 @@ codex exec \
 
 The exact command should be generated without shell-injection hazards; production code should prefer `subprocess.run([...], input=prompt_text, ...)` or an equivalently safe argument vector over interpolating untrusted text into a shell command. The example above is documentation of the intended Codex invocation semantics, not a prescription to use unsafe shell string construction.
 
-### Current implementation status (2026-06-07)
+### Current implementation status (2026-06-08)
 
 The first platform implementation is now in place and has been moved out of the Admin tab to the main authenticated navigation as **Assistant**. It includes:
 
@@ -63,6 +63,8 @@ The first platform implementation is now in place and has been moved out of the 
 - a `check_project_understanding_codex` management command that reports the configured executable, resolved executable, repository path, model, credential-related environment, `codex --version`, `codex login status`, and optionally runs an end-to-end read-only `codex exec` smoke test.
 
 The local smoke tests have also demonstrated that `codex exec` can answer repository-level questions by inspecting files itself and returning plausible cited answers. Observed answers correctly used repository evidence for questions such as a three-bullet repository summary and the internal annotated-text representation.
+
+The first AWS deployment has now also produced successful in-platform project-understanding answers through the authenticated **Assistant** tab. The decisive production fix was not repository ownership, `CODEX_HOME`, PATH, or Codex authentication, but Ubuntu/AppArmor sandbox policy: loading the `bwrap-userns-restrict` AppArmor profile allowed Codex's read-only bubblewrap sandbox to inspect the checked-out repository from the Gunicorn/Django-Q runtime. A successful AWS run answered whether Italian text creation is supported, citing implemented language choices and text-generation fallback behavior while noting the absence of dedicated Italian text-generation prompt templates. This should be treated as an operational milestone and a useful report example: the platform can now ask Codex to inspect its deployed repository and answer project questions from inside the platform itself.
 
 Important remaining work before treating the feature as broadly usable:
 

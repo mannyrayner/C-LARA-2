@@ -21,9 +21,10 @@
 
 ## 4.4 Restricted project-understanding assistant
 
-- ISSUE-0034 has produced a first admin-only project-understanding implementation. Staff users can submit high-level questions about C-LARA-2, and the platform queues a background `codex exec` run against the repository rather than trying to preselect evidence files itself.
-- The core wrapper builds a versioned prompt, invokes Codex in read-only/non-interactive mode, passes credentials through a reduced environment, captures stdout/stderr/exit status/elapsed time/model/prompt version/token count where available, and parses the final answer.
-- The Django surface at `/admin-tools/project-understanding/` shows live progress through Django Q task updates and persists request/result JSON under the media tree. Manual smoke tests have produced plausible cited answers for repository-summary and annotated-text-format questions.
+- ISSUE-0034 has produced an authenticated project-understanding implementation, now surfaced as the top-level **Assistant** rather than as an admin-only page. Authenticated users can submit high-level questions about C-LARA-2, and the platform queues a background `codex exec` run against the repository rather than trying to preselect evidence files itself.
+- The core wrapper builds a versioned prompt, invokes Codex in read-only/non-interactive mode, passes credentials through a reduced environment, captures stdout/stderr/exit status/elapsed time/model/prompt version/token count where available, detects sandbox/credential failures, and parses the final answer.
+- The Django surface at `/assistant/project-understanding/` shows live progress through task updates and persists request/result JSON under the media tree. It has now been made to work on the AWS server after a detailed deployment/debugging cycle around Codex CLI installation, `CODEX_HOME`, service-user identity, bubblewrap visibility, and Ubuntu AppArmor user-namespace policy.
+- A concrete AWS answer has already been produced from inside the platform: Codex answered whether Italian text creation is supported, citing implemented language choices and text-generation fallback behavior while noting the lack of dedicated Italian text-generation templates. This is a good report example of repository-grounded self-understanding, but not yet a claim of automatic correctness.
 - The report should frame this as recent progress toward self-understanding, not as a finished public chatbot. Remaining work includes export into version-controlled evidence records, reviewer assessment controls, citation/path sanitization, exact-cost reconciliation, budget/rate limits, and curated report-evidence runs.
 
 ## 4.5 Migration of legacy projects
