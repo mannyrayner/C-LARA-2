@@ -209,6 +209,14 @@ class ProjectUnderstandingTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("local file access is currently blocked", detail)
         self.assertNotIn("needs access to create user namespaces", detail)
 
+    def test_detect_codex_sandbox_access_failure_flags_blocked_shell_transcript(self) -> None:
+        detail = detect_codex_sandbox_access_failure(
+            "I can't access the repository contents in this session "
+            "(shell commands are blocked by the current sandbox)."
+        )
+
+        self.assertIn("shell commands are blocked", detail)
+
     def test_codex_exec_successful_process_with_sandbox_failure_raises_error(self) -> None:
         runner = FakeCodexExecRunner(
             """OpenAI Codex v0.137.0

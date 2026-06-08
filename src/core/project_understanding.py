@@ -41,14 +41,18 @@ _CODEX_SANDBOX_FAILURE_CONTEXTS = (
     "bwrap",
     "bubblewrap",
     "linux sandbox",
+    "current sandbox",
     "sandbox uses bubblewrap",
 )
 _CODEX_SANDBOX_FAILURE_SYMPTOMS = (
     "failed rtm_newaddr",
     "operation not permitted",
     "local file access is currently blocked",
+    "shell commands are blocked",
     "command access is currently blocked",
     "command access is failing",
+    "can't access the repository",
+    "can’t access the repository",
     "could not read sources",
     "could not inspect",
 )

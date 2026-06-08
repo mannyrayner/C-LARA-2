@@ -273,6 +273,32 @@ sudo systemd-run --wait --pipe --collect \
 
 If this transient systemd run succeeds but the Assistant still fails, the remaining difference is probably the Gunicorn/web-worker process context rather than the Unix account, repo owner, `CODEX_HOME`, or the Django Q unit. The live Assistant runtime summary includes `/proc/self/status` fields such as `NoNewPrivs`, `Seccomp`, `Seccomp_filters`, `CapEff`, and the first cgroup line so that those contexts can be compared without exposing secrets.
 
+If the transient `systemd-run` smoke test also fails with `RTM_NEWADDR`, the practical fix is normally at the host sandbox policy level, not in the C-LARA repository ownership. On Ubuntu 24.04-class systems, AppArmor's unprivileged user-namespace restriction can block bubblewrap even when `/usr/bin/bwrap` is installed and visible. Prefer the narrow AppArmor-profile fix over globally relaxing the host:
+
+```bash
+# Check whether Ubuntu is restricting unprivileged user namespaces.
+sysctl kernel.apparmor_restrict_unprivileged_userns
+
+# Install the AppArmor helper tools/profile package if needed.
+sudo apt update
+sudo apt install -y apparmor-profiles apparmor-utils
+
+# On Ubuntu 24.04, copy and load the extra bwrap userns profile.
+sudo install -m 0644 \
+  /usr/share/apparmor/extra-profiles/bwrap-userns-restrict \
+  /etc/apparmor.d/bwrap-userns-restrict
+sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns-restrict
+
+# Retest under the same service-like context.
+sudo systemd-run --wait --pipe --collect \
+  -p User=ubuntu -p Group=www-data \
+  -p WorkingDirectory=/srv/C-LARA-2/platform_server \
+  -p EnvironmentFile=/etc/clara2.env \
+  /srv/C-LARA-2/.venv/bin/python manage.py check_project_understanding_codex --smoke
+```
+
+If `/usr/share/apparmor/extra-profiles/bwrap-userns-restrict` is unavailable or loading it does not resolve the issue, check the current Codex sandboxing docs and the Codex CLI/GitHub issue tracker for an updated narrow profile recipe. As a temporary diagnostic only, `sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0` can confirm that AppArmor user-namespace restriction is the blocker; do not leave that global relaxation in place without a deliberate security review.
+
 Interpret the next result as follows:
 
 - If the Assistant UI shows `Background worker picked up request; launching Codex (...)`, compare the `worker user=...`, `HOME=...`, `CODEX_HOME=...`, and `codex=...` values in that message with the successful shell smoke test. They must refer to the same service-owned `CODEX_HOME` and executable.
