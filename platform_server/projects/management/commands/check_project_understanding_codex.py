@@ -125,6 +125,14 @@ class Command(BaseCommand):
         )
         if smoke.returncode != 0:
             detail = (smoke.stderr or smoke.stdout).strip()
+            if "401 Unauthorized" in detail or "Not logged in" in detail:
+                raise CommandError(
+                    "codex exec reached the OpenAI service but was not authenticated. "
+                    "The executable and CODEX_HOME are visible, so fix Codex authentication for this service user: "
+                    "run `codex login`/`codex login --with-api-key` with the same CODEX_HOME, or verify that the "
+                    "OPENAI_API_KEY supplied to the service is valid for Codex. Detail: "
+                    f"{detail[:2000]}"
+                )
             raise CommandError(f"codex exec smoke test failed with status {smoke.returncode}: {detail[:2000]}")
         self.stdout.write(self.style.SUCCESS("codex exec smoke test succeeded."))
         output = (smoke.stdout or "").strip()

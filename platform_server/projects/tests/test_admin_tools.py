@@ -160,6 +160,39 @@ class AdminToolsViewTests(TestCase):
         with self.assertRaisesMessage(CommandError, "configured CODEX_HOME is not readable/writable"):
             call_command("check_project_understanding_codex", stdout=io.StringIO())
 
+    @patch("projects.management.commands.check_project_understanding_codex.subprocess.run")
+    @patch("projects.management.commands.check_project_understanding_codex.resolve_codex_executable", return_value="/opt/codex/bin/codex")
+    @patch(
+        "projects.management.commands.check_project_understanding_codex.build_codex_exec_environment",
+        return_value={"PATH": "/bin", "CODEX_HOME": "/var/lib/c-lara/codex", "OPENAI_API_KEY": "test-key"},
+    )
+    def test_check_project_understanding_codex_smoke_reports_unauthorized_auth(
+        self, mock_build_env, mock_resolve, mock_run
+    ):
+        mock_run.side_effect = [
+            subprocess.CompletedProcess(
+                args=["/opt/codex/bin/codex", "--version"],
+                returncode=0,
+                stdout="codex-cli 0.137.0\n",
+                stderr="",
+            ),
+            subprocess.CompletedProcess(
+                args=["/opt/codex/bin/codex", "login", "status"],
+                returncode=1,
+                stdout="Not logged in",
+                stderr="",
+            ),
+            subprocess.CompletedProcess(
+                args=["/opt/codex/bin/codex", "exec"],
+                returncode=1,
+                stdout="",
+                stderr="HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses",
+            ),
+        ]
+
+        with self.assertRaisesMessage(CommandError, "was not authenticated"):
+            call_command("check_project_understanding_codex", "--smoke", stdout=io.StringIO())
+
     def test_project_understanding_answer_markdown_is_rendered_safely(self):
         from projects.views import render_project_understanding_answer_html
 

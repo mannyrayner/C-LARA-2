@@ -217,7 +217,17 @@ Interpret the next result as follows:
 - `Resolved executable: /opt/codex/bin/codex` and `codex --version: ...` mean the executable path is correct.
 - `failed to read CODEX_HOME` means `CODEX_HOME` is still pointed at a directory the service user cannot read/write.
 - `codex login status failed` without a `CODEX_HOME` permission error may be acceptable if `OPENAI_API_KEY available to child: yes`; the `--smoke` check is the decisive end-to-end test.
-- A 401 during `--smoke` means the executable and `CODEX_HOME` are accessible, but authentication is not available to Codex. Keep the service-owned `CODEX_HOME` and either preserve `OPENAI_API_KEY` in the service environment or run `codex login`/`codex login --with-api-key` as the actual service user with that `CODEX_HOME`.
+- A `bubblewrap` warning is not the blocker if the transcript says Codex will use the bundled bubblewrap; it can be cleaned up later by installing the OS package, but authentication should be fixed first.
+- A 401 during `--smoke` means the executable and `CODEX_HOME` are accessible, but authentication is not available to Codex. In practice, `OPENAI_API_KEY available to child: yes` is not enough if Codex still reports `Not logged in` and the websocket call returns `401 Unauthorized`. Keep the service-owned `CODEX_HOME` and authenticate Codex as the actual service user, for example:
+
+```bash
+# Run this as the same Unix user that runs Gunicorn/Q, or use sudo -u <service-user>.
+export CODEX_HOME=/var/lib/c-lara/codex
+printenv OPENAI_API_KEY | /opt/codex/bin/codex login --with-api-key
+/opt/codex/bin/codex login status
+```
+
+If the service does not expose `OPENAI_API_KEY` to an interactive shell, use the server's secret-loading mechanism to run the same command with that variable present, or use `codex login --device-auth` as the service user with `CODEX_HOME=/var/lib/c-lara/codex`.
 
 
 #### Authentication setup and 401 diagnostics
@@ -244,7 +254,7 @@ printf '%s\n' 'Summarise the repository in three bullet points; cite files if po
   codex exec --cd "$REPO_ROOT" --sandbox read-only --ephemeral --model gpt-5.3-codex -
 ```
 
-A `401 Unauthorized` with text such as `Missing bearer or basic authentication in header` means Codex reached the OpenAI endpoint but did not send a usable credential. The immediate remediation is to authenticate or refresh the cached credential, not to change the repository path, sandbox mode, model prompt, or read-only safety settings.
+A `401 Unauthorized` with text such as `Missing bearer or basic authentication in header` or a websocket `401 Unauthorized` means Codex reached the OpenAI endpoint but did not send a usable credential. The immediate remediation is to authenticate or refresh the cached credential for the same `CODEX_HOME` and Unix user, not to change the repository path, sandbox mode, model prompt, or read-only safety settings.
 
 #### Expected successful smoke-test output
 
