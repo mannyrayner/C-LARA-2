@@ -15,6 +15,10 @@ from projects import views
 from projects.models import Community, CommunityMembership, TaskUpdate
 
 
+def project_understanding_stub_target(value):
+    return f"resolved:{value}"
+
+
 class AdminToolsViewTests(TestCase):
     def setUp(self):
         User = get_user_model()
@@ -63,6 +67,17 @@ class AdminToolsViewTests(TestCase):
 
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(resp["Location"], reverse("project-understanding"))
+
+    def test_django_q_stub_resolves_dotted_task_paths(self):
+        from django_q.tasks import async_task
+
+        result = async_task(
+            "projects.tests.test_admin_tools.project_understanding_stub_target",
+            "task",
+            q_options={"sync": True},
+        )
+
+        self.assertEqual("resolved:task", result)
 
     def test_project_understanding_monitor_form_posts_to_new_request_endpoint(self):
         self.client.login(username="staffer", password="pw")

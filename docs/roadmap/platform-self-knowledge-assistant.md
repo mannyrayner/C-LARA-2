@@ -214,6 +214,7 @@ python platform_server/manage.py check_project_understanding_codex --smoke
 
 Interpret the next result as follows:
 
+- If the Assistant UI only shows `Django Q accepted project-understanding task <Thread(...)>. Waiting for a worker to start Codex.` and never shows `Background worker picked up request; launching Codex.`, the request reached the async-task layer but the local Django-Q compatibility thread did not actually enter `_run_project_understanding_task`. Check the Gunicorn/Django logs for thread exceptions and verify the deployed code includes the dotted-task-path resolution used by the local `django_q` shim.
 - `Resolved executable: /opt/codex/bin/codex` and `codex --version: ...` mean the executable path is correct.
 - `failed to read CODEX_HOME` means `CODEX_HOME` is still pointed at a directory the service user cannot read/write.
 - `codex login status failed` without a `CODEX_HOME` permission error may be acceptable if `OPENAI_API_KEY available to child: yes`; the `--smoke` check is the decisive end-to-end test.
