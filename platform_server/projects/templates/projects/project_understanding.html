@@ -4,14 +4,14 @@
 <h1>Project-understanding assistant</h1>
 
 <p>
-  Admin-only tool for asking Codex high-level questions about the configured C-LARA-2 checkout.
+  Ask Codex high-level questions about the C-LARA-2 repository and get answers grounded in checked-in files.
   The call runs through <code>codex exec</code> with a read-only sandbox and a non-interactive prompt.
 </p>
 
 <p style="border-left: 4px solid #b70; padding-left: 0.75rem;">
   Self-understanding calls can consume large token counts. Completed runs record the reported
   total tokens and a conservative upper-bound cost estimate using the OpenAI pricing table
-  maintained in <a href="{% url 'admin-tools' %}">admin tools</a>. The actual OpenAI Usage
+  maintained by the platform admins. The actual OpenAI Usage
   page may be lower when billing applies input/cached-input pricing or other Codex accounting
   not exposed in the CLI's single total-token count.
 </p>
@@ -20,7 +20,7 @@
   <li>Repository path: <code>{{ repository_path }}</code></li>
   <li>Model: <code>{{ codex_model }}</code></li>
   <li>Timeout: <code>{{ timeout_seconds }}</code> seconds</li>
-  <li><a href="{% url 'admin-project-understanding-turns' %}">Search stored project-understanding turns</a></li>
+  <li><a href="{% url 'project-understanding-turns' %}">Search stored project-understanding turns</a></li>
 </ul>
 
 {% if report_id %}
@@ -34,7 +34,7 @@
   </ul>
 {% endif %}
 
-<form method="post" action="{% url 'admin-project-understanding' %}" id="project-understanding-form">
+<form method="post" action="{% url 'project-understanding' %}" id="project-understanding-form">
   {% csrf_token %}
   {{ form.as_p }}
   <button class="btn" type="submit" id="project-understanding-submit">Ask Codex</button>
@@ -68,7 +68,7 @@
   </section>
 </section>
 
-<p><a href="{% url 'admin-tools' %}">Back to admin tools</a></p>
+
 
 <script>
   (function () {
