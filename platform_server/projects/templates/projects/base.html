@@ -32,6 +32,7 @@
     <a href="{% url 'project-list' %}">Projects</a>
     <a href="{% url 'content-list' %}">Content</a>
     <a href="{% url 'issues-home' %}">Issues</a>
+    <a href="{% url 'project-understanding' %}">Assistant</a>
     {% if user.community_memberships.exists %}
       <a href="{% url 'community-home' %}">Community</a>
     {% endif %}
