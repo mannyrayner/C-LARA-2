@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, replace
+import getpass
 import json
 import sys
 import logging
@@ -3198,6 +3199,28 @@ def _read_project_understanding_result(report_id: str | uuid.UUID) -> dict[str, 
         return None
 
 
+
+
+def _project_understanding_runtime_summary() -> str:
+    """Return non-secret runtime details useful for diagnosing Codex worker setup."""
+
+    try:
+        effective_uid = os.geteuid() if hasattr(os, "geteuid") else None
+    except Exception:
+        effective_uid = None
+    try:
+        username = getpass.getuser()
+    except Exception:
+        username = "unknown"
+    return (
+        f"worker user={username}"
+        + (f" uid={effective_uid}" if effective_uid is not None else "")
+        + f"; HOME={os.environ.get('HOME') or os.environ.get('USERPROFILE') or '(not set)'}"
+        + f"; CODEX_HOME={os.environ.get('CODEX_HOME') or '(not set)'}"
+        + f"; codex={getattr(settings, 'PROJECT_UNDERSTANDING_CODEX_EXECUTABLE', 'codex')}"
+    )
+
+
 def _record_project_understanding_update(
     *,
     report_id: str | uuid.UUID,
@@ -3237,7 +3260,7 @@ def _run_project_understanding_task(question: str, user_id: int, report_id: str)
         _record_project_understanding_update(
             report_id=report_id,
             user_id=user_id,
-            message="Background worker picked up request; launching Codex.",
+            message=f"Background worker picked up request; launching Codex ({_project_understanding_runtime_summary()}).",
             status="running",
         )
         heartbeat_thread.start()

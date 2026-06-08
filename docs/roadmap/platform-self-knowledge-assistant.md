@@ -214,9 +214,10 @@ python platform_server/manage.py check_project_understanding_codex --smoke
 
 Interpret the next result as follows:
 
+- If the Assistant UI shows `Background worker picked up request; launching Codex (...)`, compare the `worker user=...`, `HOME=...`, `CODEX_HOME=...`, and `codex=...` values in that message with the successful shell smoke test. They must refer to the same service-owned `CODEX_HOME` and executable.
 - If the Assistant UI only shows `Django Q accepted project-understanding task <Thread(...)>. Waiting for a worker to start Codex.` and never shows `Background worker picked up request; launching Codex.`, the request reached the async-task layer but the local Django-Q compatibility thread did not actually enter `_run_project_understanding_task`. Check the Gunicorn/Django logs for thread exceptions and verify the deployed code includes the dotted-task-path resolution used by the local `django_q` shim.
 - `Resolved executable: /opt/codex/bin/codex` and `codex --version: ...` mean the executable path is correct.
-- `failed to read CODEX_HOME` means `CODEX_HOME` is still pointed at a directory the service user cannot read/write.
+- `failed to read CODEX_HOME` or `Failed to read config file /var/lib/c-lara/codex/config.toml: Permission denied` means `CODEX_HOME` or files inside it are still owned by the wrong Unix user. Fix ownership recursively for the actual Gunicorn/Q user, for example `sudo chown -R <service-user>:<service-user> /var/lib/c-lara/codex && sudo chmod 700 /var/lib/c-lara/codex`.
 - `codex login status failed` without a `CODEX_HOME` permission error may be acceptable if `OPENAI_API_KEY available to child: yes`; the `--smoke` check is the decisive end-to-end test.
 - A `bubblewrap` warning is not the blocker if the transcript says Codex will use the bundled bubblewrap; it can be cleaned up later by installing the OS package, but authentication should be fixed first.
 - A 401 during `--smoke` means the executable and `CODEX_HOME` are accessible, but authentication is not available to Codex. In practice, `OPENAI_API_KEY available to child: yes` is not enough if Codex still reports `Not logged in` and the websocket call returns `401 Unauthorized`. Keep the service-owned `CODEX_HOME` and authenticate Codex as the actual service user, for example:

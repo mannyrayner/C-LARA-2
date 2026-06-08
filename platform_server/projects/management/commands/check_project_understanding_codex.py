@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import getpass
+import os
 import subprocess
 
 from django.conf import settings
@@ -39,6 +41,15 @@ class Command(BaseCommand):
         self.stdout.write(f"Resolved executable: {resolved_executable}")
         self.stdout.write(f"Repository path: {repository_path}")
         self.stdout.write(f"Model: {model}")
+        try:
+            effective_uid = os.geteuid() if hasattr(os, "geteuid") else None
+        except Exception:
+            effective_uid = None
+        try:
+            process_user = getpass.getuser()
+        except Exception:
+            process_user = "unknown"
+        self.stdout.write(f"Process user: {process_user}{f' (uid {effective_uid})' if effective_uid is not None else ''}")
         self.stdout.write(f"CODEX_HOME: {env.get('CODEX_HOME') or '(not set)'}")
         self.stdout.write(f"HOME: {env.get('HOME') or env.get('USERPROFILE') or '(not set)'}")
         self.stdout.write(f"OPENAI_API_KEY available to child: {'yes' if env.get('OPENAI_API_KEY') else 'no'}")
