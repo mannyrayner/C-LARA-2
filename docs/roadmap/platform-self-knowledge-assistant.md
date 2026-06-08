@@ -261,6 +261,18 @@ PATH=/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 After adding or changing `PATH`, run `sudo systemctl daemon-reload`, restart Gunicorn and Q, then confirm that the Assistant worker message shows `bwrap=/usr/bin/bwrap` rather than `bwrap=(not found)`.
 
+If the Assistant worker already shows `bwrap=/usr/bin/bwrap` but still reports `bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted`, changing repository ownership is unlikely to be the decisive fix. Repository ownership mismatches should still be cleaned up for operational simplicity, but file ownership errors normally appear as `Permission denied` while reading a path; `RTM_NEWADDR` means bubblewrap could not configure the loopback address inside its sandbox namespace. At that point, compare the live Assistant runtime summary with a service-like smoke test:
+
+```bash
+sudo systemd-run --wait --pipe --collect \
+  -p User=ubuntu -p Group=www-data \
+  -p WorkingDirectory=/srv/C-LARA-2/platform_server \
+  -p EnvironmentFile=/etc/clara2.env \
+  /srv/C-LARA-2/.venv/bin/python manage.py check_project_understanding_codex --smoke
+```
+
+If this transient systemd run succeeds but the Assistant still fails, the remaining difference is probably the Gunicorn/web-worker process context rather than the Unix account, repo owner, `CODEX_HOME`, or the Django Q unit. The live Assistant runtime summary includes `/proc/self/status` fields such as `NoNewPrivs`, `Seccomp`, `Seccomp_filters`, `CapEff`, and the first cgroup line so that those contexts can be compared without exposing secrets.
+
 Interpret the next result as follows:
 
 - If the Assistant UI shows `Background worker picked up request; launching Codex (...)`, compare the `worker user=...`, `HOME=...`, `CODEX_HOME=...`, and `codex=...` values in that message with the successful shell smoke test. They must refer to the same service-owned `CODEX_HOME` and executable.

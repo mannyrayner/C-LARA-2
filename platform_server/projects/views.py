@@ -3202,6 +3202,31 @@ def _read_project_understanding_result(report_id: str | uuid.UUID) -> dict[str, 
 
 
 
+def _project_understanding_process_security_summary() -> str:
+    """Return non-secret Linux process security details for Codex sandbox diagnosis."""
+
+    status_fields = {"NoNewPrivs", "Seccomp", "Seccomp_filters", "CapEff"}
+    parts: list[str] = []
+    status_path = Path("/proc/self/status")
+    try:
+        for line in status_path.read_text(encoding="utf-8", errors="replace").splitlines():
+            name, separator, value = line.partition(":")
+            if separator and name in status_fields:
+                parts.append(f"{name}={value.strip()}")
+    except Exception:
+        pass
+
+    try:
+        cgroup_lines = Path("/proc/self/cgroup").read_text(encoding="utf-8", errors="replace").splitlines()
+    except Exception:
+        cgroup_lines = []
+    if cgroup_lines:
+        parts.append(f"cgroup={cgroup_lines[0][-160:]}")
+
+    return "; ".join(parts) if parts else "security=(unavailable)"
+
+
+
 def _project_understanding_runtime_summary() -> str:
     """Return non-secret runtime details useful for diagnosing Codex worker setup."""
 
@@ -3226,6 +3251,7 @@ def _project_understanding_runtime_summary() -> str:
         + f"; PATH={path_value or '(not set)'}"
         + f"; bwrap={bwrap_path or '(not found)'}"
         + f"; codex={getattr(settings, 'PROJECT_UNDERSTANDING_CODEX_EXECUTABLE', 'codex')}"
+        + f"; {_project_understanding_process_security_summary()}"
     )
 
 
