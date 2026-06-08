@@ -12,7 +12,7 @@
 - **Low-resource-language support**: more coherent workflows for languages where AI models or TTS are weak, including structured/manual editing and future reliance on community audio.
 - **Text and annotation pipeline**: segmentation, linguistic layers, and compiled outputs remain central but should be summarized briefly because they continue the LARA/C-LARA tradition.
 - **Image generation workflows**: style, recurring elements, and page imagery remain important as part of multimodal content creation.
-- **Exercise generation**: cloze, flashcard, and related workflows can reuse curated project artifacts, including picture-dictionary material.
+- **Exercise generation**: cloze, flashcard, and related workflows can reuse curated project artifacts, including picture-dictionary material. The first picture-clue word-scramble exercise is a useful report example because it shows a new community-requested activity being added quickly within the AI-authored platform: as a tentative implementation-process estimate, it required roughly **twelve minutes of AI time** and about **one hour of human AI-expert steering/review time**. This estimate should be presented narrowly: it covers platform implementation and review, not Sophie’s community/end-user consultation or any culturally required permission process.
 - **Published content browsing and social-facing interactions**: useful to mention briefly, with continuing enhancement rather than completion implied.
 
 ## 3.3 Why picture dictionaries matter
@@ -30,7 +30,7 @@
 
 ## 3.5 Candidate user-impact examples to include in full draft
 
-- Picture glossing and picture flashcards from a picture dictionary.
+- Picture glossing, picture flashcards, and picture-clue word scrambles from a picture dictionary.
 - A low-resource language workflow where human editing compensates for weak AI resources.
 - Exercise generation from curated project artifacts.
 - Legacy project migration enabling reuse of prior investments.
@@ -39,4 +39,5 @@
 
 - Which picture-dictionary examples are most persuasive?
 - Which low-resource-language examples should be named explicitly?
+- For the picture-clue word-scramble example, what can Sophie and the relevant community/end-users permit us to say publicly, if anything? Australian Aboriginal communities can be highly protective of their languages, so the report may need to keep this example generic or anonymized.
 - Are there important user-facing pain points that should be included candidly?
