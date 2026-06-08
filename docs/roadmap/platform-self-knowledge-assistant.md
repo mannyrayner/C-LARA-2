@@ -170,75 +170,54 @@ Recommended AWS deployment sequence:
 
 The laptop setup is the same contract with less ceremony: install Codex, authenticate with `codex login`, set `C_LARA_CODEX_EXECUTABLE` only if `codex` is not on the Django process `PATH`, set `C_LARA_PROJECT_UNDERSTANDING_REPO` if the Django checkout is not the intended evidence checkout, then run the same management command.
 
-#### Concrete AWS example: Codex installed as `ubuntu`
+#### Concrete AWS example: Codex copied from `ubuntu` to `/opt/codex`
 
-`C_LARA_CODEX_EXECUTABLE` is just the environment variable that tells Django which executable path to pass as the first argument in the safe `subprocess.run([...])` call. It is not a Codex setting and it is not something to type at the Python prompt. If `sudo -iu ubuntu` shows:
-
-```bash
-which codex
-# /home/ubuntu/.local/bin/codex
-```
-
-then the corresponding C-LARA setting should be:
-
-```bash
-C_LARA_CODEX_EXECUTABLE=/home/ubuntu/.local/bin/codex
-```
-
-The important detail is where to put that line. It must be visible to the long-running Django/Gunicorn process and to the Django Q worker process, because the web request only queues the job and the worker is the process that actually launches `codex exec`. Setting it in an interactive SSH shell with `export C_LARA_CODEX_EXECUTABLE=...` is useful for a one-off test, but it will not automatically affect already-running systemd/Gunicorn/Q services or survive a service restart unless it is added to their service environment.
-
-Use whichever deployment mechanism the server already uses for C-LARA environment variables:
-
-- if the server uses systemd unit files, add the same `Environment=C_LARA_CODEX_EXECUTABLE=/home/ubuntu/.local/bin/codex` line to both the Gunicorn service and the Django Q/qcluster service, then run `sudo systemctl daemon-reload` and restart both services;
-- if the server loads a `.env` or deployment environment file, add `C_LARA_CODEX_EXECUTABLE=/home/ubuntu/.local/bin/codex` there and restart both Gunicorn and Q;
-- if the server is started by a shell script, export the variable in that script before it starts Gunicorn and before it starts Q.
-
-A minimal service environment for the case above would include at least:
-
-```ini
-Environment=C_LARA_CODEX_EXECUTABLE=/home/ubuntu/.local/bin/codex
-Environment=C_LARA_PROJECT_UNDERSTANDING_REPO=/srv/C-LARA-2
-Environment=C_LARA_PROJECT_UNDERSTANDING_MODEL=gpt-5.3-codex
-Environment=C_LARA_PROJECT_UNDERSTANDING_TIMEOUT_SECONDS=300
-Environment=CODEX_HOME=/home/ubuntu/.codex
-```
-
-Use `CODEX_HOME=/home/ubuntu/.codex` only if the same Unix user that runs `manage.py`, Gunicorn, and Q can read/write that directory. A successful `ubuntu` login stored under `/home/ubuntu/.codex` is **not** automatically usable by a process running as `ssm-user`, `www-data`, or another service user. If the smoke check shows `HOME: /home/ssm-user` and `CODEX_HOME: /home/ubuntu/.codex`, the simplest fix is usually to stop pointing `CODEX_HOME` at `ubuntu`'s private home directory.
-
-If `OPENAI_API_KEY available to child: yes`, cached Codex login credentials are optional, but Codex still needs a readable/writable configuration directory. In that case, create a private service-owned directory and point `CODEX_HOME` there, for example:
-
-```bash
-# Replace ssm-user with the actual Unix user that runs Gunicorn and Q.
-sudo install -d -o ssm-user -g ssm-user -m 700 /var/lib/c-lara/codex
-# Then configure both Gunicorn and Q:
-# Environment=CODEX_HOME=/var/lib/c-lara/codex
-```
-
-After changing `/etc/clara2.env`, restart both Gunicorn and Q/qcluster so they receive the new environment. If a later smoke test produces a 401, keep the same accessible `CODEX_HOME` but fix authentication by either preserving `OPENAI_API_KEY` in the service environment or running `codex login`/`codex login --with-api-key` as the actual service user with that `CODEX_HOME`.
-
-If `check_project_understanding_codex` reports `PermissionError: [Errno 13] Permission denied: '/home/ubuntu/.local/bin/codex'`, the path is known but the Unix user running `manage.py`, Gunicorn, or Q cannot traverse `/home/ubuntu` or execute the file. Do **not** make `/home/ubuntu` broadly readable just to fix this. Choose one of these safer approaches instead:
-
-1. **Run Gunicorn, Q, and the check command as `ubuntu`**, if `ubuntu` really is the intended application service user. Then `/home/ubuntu/.local/bin/codex` and `/home/ubuntu/.codex` are naturally accessible to the process that launches Codex.
-2. **Install or copy the Codex executable into a shared executable location**, for example `/opt/codex/bin/codex` or `/usr/local/bin/codex`, owned by `root` and executable by the service user, then set `C_LARA_CODEX_EXECUTABLE` to that shared path. This is usually cleaner when the application service user is not `ubuntu`. Keep credentials in a separate private `CODEX_HOME` owned by the actual service user.
-3. **Use a dedicated service user**, for example `clara`, and install/login Codex as that same user. Then set `C_LARA_CODEX_EXECUTABLE=/home/clara/.local/bin/codex` and `CODEX_HOME=/home/clara/.codex` or another directory owned by `clara`.
-
-For the shared executable option, the permissions should be on the executable path, not on the whole `ubuntu` home directory. A typical pattern is:
+A common AWS path is now:
 
 ```bash
 sudo install -d -o root -g root -m 755 /opt/codex/bin
 sudo install -o root -g root -m 755 /home/ubuntu/.local/bin/codex /opt/codex/bin/codex
-# Then configure both Gunicorn and Q:
-# Environment=C_LARA_CODEX_EXECUTABLE=/opt/codex/bin/codex
 ```
 
-After restarting the services, run the check from the deployment virtualenv with the same user/environment the service uses:
+This is a good setup. It deliberately separates the **Codex executable** from the **Codex configuration/credential directory**:
+
+- `C_LARA_CODEX_EXECUTABLE=/opt/codex/bin/codex` points Django/Q at a root-owned executable that every service user can run.
+- `CODEX_HOME=...` points Codex at a writable configuration directory for the Unix user that is actually running `manage.py`, Gunicorn, and Q.
+
+Do not set `CODEX_HOME=/home/ubuntu/.codex` unless those processes really run as `ubuntu`. A successful `ubuntu` login stored under `/home/ubuntu/.codex` is not automatically usable by a process running as `ssm-user`, `www-data`, or another service account. If `check_project_understanding_codex` prints `HOME: /home/ssm-user` and `CODEX_HOME: /home/ubuntu/.codex`, the executable problem has been solved but `CODEX_HOME` is still wrong for that process.
+
+For the current `/opt/codex/bin/codex` setup, the recommended `/etc/clara2.env` shape is:
+
+```env
+C_LARA_CODEX_EXECUTABLE=/opt/codex/bin/codex
+C_LARA_PROJECT_UNDERSTANDING_REPO=/srv/C-LARA-2
+C_LARA_PROJECT_UNDERSTANDING_MODEL=gpt-5.3-codex
+C_LARA_PROJECT_UNDERSTANDING_TIMEOUT_SECONDS=300
+CODEX_HOME=/var/lib/c-lara/codex
+# OPENAI_API_KEY=...  # if supplied by the existing secret/env mechanism
+```
+
+Create `CODEX_HOME` for the Unix user that actually runs Gunicorn and Q. If the current check is being run as `ssm-user` and the services also run as `ssm-user`, use:
+
+```bash
+sudo install -d -o ssm-user -g ssm-user -m 700 /var/lib/c-lara/codex
+```
+
+If Gunicorn/Q run as a different user, replace `ssm-user` with that service user. The key rule is that the same user that starts Codex must be able to read and write `CODEX_HOME`.
+
+After changing `/etc/clara2.env`, restart both Gunicorn and Q/qcluster so they receive the new environment. Then run the check from the deployment virtualenv with the same user/environment the service uses:
 
 ```bash
 python platform_server/manage.py check_project_understanding_codex
 python platform_server/manage.py check_project_understanding_codex --smoke
 ```
 
-If the first command still says `Resolved executable: codex` rather than the configured absolute path, Django did not receive `C_LARA_CODEX_EXECUTABLE`. If it finds the executable but reports `failed to read CODEX_HOME`, point `CODEX_HOME` at a directory owned by the actual service user. If `CODEX_HOME` is accessible but `codex login status` fails or the smoke test returns 401, the executable path is fine and the remaining problem is authentication.
+Interpret the next result as follows:
+
+- `Resolved executable: /opt/codex/bin/codex` and `codex --version: ...` mean the executable path is correct.
+- `failed to read CODEX_HOME` means `CODEX_HOME` is still pointed at a directory the service user cannot read/write.
+- `codex login status failed` without a `CODEX_HOME` permission error may be acceptable if `OPENAI_API_KEY available to child: yes`; the `--smoke` check is the decisive end-to-end test.
+- A 401 during `--smoke` means the executable and `CODEX_HOME` are accessible, but authentication is not available to Codex. Keep the service-owned `CODEX_HOME` and either preserve `OPENAI_API_KEY` in the service environment or run `codex login`/`codex login --with-api-key` as the actual service user with that `CODEX_HOME`.
 
 
 #### Authentication setup and 401 diagnostics
