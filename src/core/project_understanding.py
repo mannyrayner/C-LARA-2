@@ -37,6 +37,49 @@ DEFAULT_EVIDENCE_PATHS = (
 
 _TOKEN_USAGE_RE = re.compile(r"tokens\s+used\s*\r?\n\s*([0-9][0-9,]*)", re.IGNORECASE)
 _ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+_CODEX_SANDBOX_FAILURE_CONTEXTS = (
+    "bwrap",
+    "bubblewrap",
+    "linux sandbox",
+    "sandbox uses bubblewrap",
+)
+_CODEX_SANDBOX_FAILURE_SYMPTOMS = (
+    "failed rtm_newaddr",
+    "operation not permitted",
+    "local file access is currently blocked",
+    "command access is currently blocked",
+    "command access is failing",
+    "could not read sources",
+    "could not inspect",
+)
+
+
+def detect_codex_sandbox_access_failure(output: str) -> str:
+    """Return a short diagnostic if Codex ran but could not inspect the repo.
+
+    Some Codex CLI sandbox failures are reported inside a successful transcript
+    rather than via a non-zero process exit.  Treat those as configuration
+    errors so the Assistant does not store a plausible-looking but unevidenced
+    answer.
+    """
+
+    cleaned = _ANSI_ESCAPE_RE.sub("", output or "").strip()
+    lowered = cleaned.lower()
+    if not lowered:
+        return ""
+
+    has_context = any(marker in lowered for marker in _CODEX_SANDBOX_FAILURE_CONTEXTS)
+    has_symptom = any(marker in lowered for marker in _CODEX_SANDBOX_FAILURE_SYMPTOMS)
+    if not (has_context and has_symptom):
+        return ""
+
+    for line in cleaned.splitlines():
+        line_lower = line.lower()
+        line_markers = (*_CODEX_SANDBOX_FAILURE_CONTEXTS, *_CODEX_SANDBOX_FAILURE_SYMPTOMS)
+        if any(marker in line_lower for marker in line_markers):
+            return line.strip()[:500]
+    return cleaned[:500]
+
 
 
 @dataclass(frozen=True)
@@ -332,6 +375,15 @@ def answer_project_understanding_question_with_codex_exec(
 
     stdout = completed.stdout or ""
     stderr = completed.stderr or ""
+    combined_output = "\n".join([stdout, stderr])
+    sandbox_failure_detail = detect_codex_sandbox_access_failure(combined_output)
+    if sandbox_failure_detail:
+        raise CodexExecError(
+            "codex exec completed, but Codex reported that it could not inspect the repository because "
+            "the Linux sandbox/command execution layer failed. Check bubblewrap/user-namespace/systemd "
+            "restrictions for the Unix user running the Assistant worker. "
+            f"Detail: {sandbox_failure_detail}"
+        )
     if completed.returncode != 0:
         detail = (stderr or stdout).strip()
         if len(detail) > 500:

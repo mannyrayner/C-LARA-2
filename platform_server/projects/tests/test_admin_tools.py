@@ -238,7 +238,7 @@ class AdminToolsViewTests(TestCase):
             ),
         ]
 
-        with self.assertRaisesMessage(CommandError, "bubblewrap is missing or unavailable"):
+        with self.assertRaisesMessage(CommandError, "repository inspection was blocked"):
             call_command("check_project_understanding_codex", "--smoke", stdout=io.StringIO())
 
     def test_project_understanding_answer_markdown_is_rendered_safely(self):

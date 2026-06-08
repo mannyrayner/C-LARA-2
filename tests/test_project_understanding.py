@@ -16,6 +16,7 @@ from core.project_understanding import (
     build_codex_exec_command,
     build_codex_exec_environment,
     build_project_understanding_prompt,
+    detect_codex_sandbox_access_failure,
     extract_codex_formatted_answer,
     extract_codex_tokens_used,
     resolve_codex_executable,
@@ -187,6 +188,36 @@ class ProjectUnderstandingTests(unittest.IsolatedAsyncioTestCase):
                 openai_api_key="test-key",
                 base_environment={"PATH": ""},
                 runner=missing_runner,
+            )
+
+    def test_detect_codex_sandbox_access_failure_identifies_bwrap_namespace_block(self) -> None:
+        detail = detect_codex_sandbox_access_failure(
+            "codex\n"
+            "I cannot summarize because local file access is currently blocked "
+            "(bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted)."
+        )
+
+        self.assertIn("local file access is currently blocked", detail)
+
+    def test_codex_exec_successful_process_with_sandbox_failure_raises_error(self) -> None:
+        runner = FakeCodexExecRunner(
+            """OpenAI Codex v0.137.0
+--------
+codex
+I cannot reliably summarize this repository because local file access is currently blocked (`bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted`).
+tokens used
+7,263
+""",
+            returncode=0,
+        )
+
+        with self.assertRaisesRegex(CodexExecError, "could not inspect the repository"):
+            answer_project_understanding_question_with_codex_exec(
+                "Summarise the project.",
+                repository_path="/srv/C-LARA-2",
+                openai_api_key="test-key",
+                base_environment={"PATH": "/bin"},
+                runner=runner,
             )
 
     def test_extract_codex_transcript_answer_and_tokens(self) -> None:

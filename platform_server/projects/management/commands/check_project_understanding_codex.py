@@ -11,6 +11,7 @@ from django.core.management.base import BaseCommand, CommandError
 from core.project_understanding import (
     build_codex_exec_command,
     build_codex_exec_environment,
+    detect_codex_sandbox_access_failure,
     resolve_codex_executable,
 )
 
@@ -150,13 +151,13 @@ class Command(BaseCommand):
                 )
             raise CommandError(f"codex exec smoke test failed with status {smoke.returncode}: {detail[:2000]}")
         output = (smoke.stdout or "").strip()
-        output_lower = output.lower()
-        if "bubblewrap" in output_lower and ("could not" in output_lower or "failing" in output_lower):
+        sandbox_failure_detail = detect_codex_sandbox_access_failure("\n".join([smoke.stdout or "", smoke.stderr or ""]))
+        if sandbox_failure_detail:
             raise CommandError(
-                "codex exec exited successfully, but its answer says repository command access failed because "
-                "bubblewrap is missing or unavailable. Install the OS bubblewrap package for the service "
-                "environment (for example `sudo apt-get install bubblewrap`) and rerun --smoke. Detail: "
-                f"{output[:2000]}"
+                "codex exec exited successfully, but Codex reported that repository inspection was blocked by "
+                "the Linux sandbox/bubblewrap layer. This is usually a service-user or systemd namespace "
+                "configuration issue rather than a repository-file permission problem. Detail: "
+                f"{sandbox_failure_detail[:2000]}"
             )
         self.stdout.write(self.style.SUCCESS("codex exec smoke test succeeded."))
         if output:

@@ -223,6 +223,18 @@ python platform_server/manage.py check_project_understanding_codex
 python platform_server/manage.py check_project_understanding_codex --smoke
 ```
 
+If that shell check passes as `ssm-user` but the Assistant worker later reports `worker user=ubuntu`, the successful check has not proved the exact worker environment. Run the smoke path as the worker user before looking at repository permissions:
+
+```bash
+sudo -u ubuntu env CODEX_HOME=/var/lib/c-lara/codex \
+  /opt/codex/bin/codex login status
+printf 'Summarise the repository in one sentence; cite one file if possible.\n' | \
+  sudo -u ubuntu env CODEX_HOME=/var/lib/c-lara/codex \
+  /opt/codex/bin/codex exec --cd /srv/C-LARA-2 --sandbox read-only --ephemeral --model gpt-5.3-codex -
+```
+
+A response such as `bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted`, especially when the normal shell smoke test succeeds, means the package is installed and the repository path is probably fine, but the worker's process context cannot create the bubblewrap/user-namespace sandbox Codex expects. Inspect the Gunicorn and Django Q service units (`systemctl cat ...`) for hardening options that block namespaces or sandbox helper processes, such as `PrivateUsers=`, `RestrictNamespaces=`, `NoNewPrivileges=`, or a restrictive `SystemCallFilter=`. Either relax those options for the Q worker that launches Codex, or run the Codex Assistant worker under a service unit/user that permits Codex's read-only sandbox. After changing a unit, run `sudo systemctl daemon-reload`, restart Gunicorn and Q, and repeat the Assistant request.
+
 Interpret the next result as follows:
 
 - If the Assistant UI shows `Background worker picked up request; launching Codex (...)`, compare the `worker user=...`, `HOME=...`, `CODEX_HOME=...`, and `codex=...` values in that message with the successful shell smoke test. They must refer to the same service-owned `CODEX_HOME` and executable.
@@ -231,7 +243,7 @@ Interpret the next result as follows:
 - `failed to read CODEX_HOME` or `Failed to read config file /var/lib/c-lara/codex/config.toml: Permission denied` means `CODEX_HOME` or files inside it are still owned by the wrong Unix user. Fix ownership recursively for the actual Gunicorn/Q user, for example `sudo chown -R <service-user>:<service-user> /var/lib/c-lara/codex && sudo chmod 700 /var/lib/c-lara/codex`.
 - `codex login status failed` without a `CODEX_HOME` permission error may be acceptable if `OPENAI_API_KEY available to child: yes`; the `--smoke` check is the decisive end-to-end test.
 - `Process user: root (uid 1001)` is misleading: older diagnostics used environment variables for the name. The effective uid is authoritative; current diagnostics resolve the uid through the OS user database. Use the uid/name shown by the updated command and Assistant worker message when fixing ownership.
-- A `bubblewrap` warning is not always fatal, but if the smoke answer says it cannot inspect `/srv/C-LARA-2` because command access is failing or bubblewrap is missing, install bubblewrap for the service environment (on Ubuntu, typically `sudo apt-get install bubblewrap`) and rerun `--smoke`.
+- A `bubblewrap` warning is not always fatal, but if the smoke answer says it cannot inspect `/srv/C-LARA-2` because command access is failing or bubblewrap is missing, install bubblewrap for the service environment (on Ubuntu, typically `sudo apt-get install bubblewrap`) and rerun `--smoke`. If bubblewrap is installed and the exact error is `bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted`, treat it as a service sandbox/namespace problem for the worker user rather than a checked-out-repository file-permission problem.
 - A 401 during `--smoke` means the executable and `CODEX_HOME` are accessible, but authentication is not available to Codex. In practice, `OPENAI_API_KEY available to child: yes` is not enough if Codex still reports `Not logged in` and the websocket call returns `401 Unauthorized`. Keep the service-owned `CODEX_HOME` and authenticate Codex as the actual service user, for example:
 
 ```bash
