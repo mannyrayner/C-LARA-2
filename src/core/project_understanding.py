@@ -75,8 +75,11 @@ def detect_codex_sandbox_access_failure(output: str) -> str:
 
     for line in cleaned.splitlines():
         line_lower = line.lower()
-        line_markers = (*_CODEX_SANDBOX_FAILURE_CONTEXTS, *_CODEX_SANDBOX_FAILURE_SYMPTOMS)
-        if any(marker in line_lower for marker in line_markers):
+        if any(marker in line_lower for marker in _CODEX_SANDBOX_FAILURE_SYMPTOMS):
+            return line.strip()[:500]
+    for line in cleaned.splitlines():
+        line_lower = line.lower()
+        if any(marker in line_lower for marker in _CODEX_SANDBOX_FAILURE_CONTEXTS):
             return line.strip()[:500]
     return cleaned[:500]
 

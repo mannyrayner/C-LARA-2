@@ -199,6 +199,16 @@ class ProjectUnderstandingTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIn("local file access is currently blocked", detail)
 
+    def test_detect_codex_sandbox_access_failure_prefers_specific_symptom_line(self) -> None:
+        detail = detect_codex_sandbox_access_failure(
+            "warning: Codex's Linux sandbox uses bubblewrap and needs access to create user namespaces.\n"
+            "I cannot summarize because local file access is currently blocked "
+            "(`bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted`)."
+        )
+
+        self.assertIn("local file access is currently blocked", detail)
+        self.assertNotIn("needs access to create user namespaces", detail)
+
     def test_codex_exec_successful_process_with_sandbox_failure_raises_error(self) -> None:
         runner = FakeCodexExecRunner(
             """OpenAI Codex v0.137.0

@@ -233,7 +233,25 @@ printf 'Summarise the repository in one sentence; cite one file if possible.\n' 
   /opt/codex/bin/codex exec --cd /srv/C-LARA-2 --sandbox read-only --ephemeral --model gpt-5.3-codex -
 ```
 
-A response such as `bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted`, especially when the normal shell smoke test succeeds, means the package is installed and the repository path is probably fine, but the worker's process context cannot create the bubblewrap/user-namespace sandbox Codex expects. Inspect the Gunicorn and Django Q service units (`systemctl cat ...`) for hardening options that block namespaces or sandbox helper processes, such as `PrivateUsers=`, `RestrictNamespaces=`, `NoNewPrivileges=`, or a restrictive `SystemCallFilter=`. Either relax those options for the Q worker that launches Codex, or run the Codex Assistant worker under a service unit/user that permits Codex's read-only sandbox. After changing a unit, run `sudo systemctl daemon-reload`, restart Gunicorn and Q, and repeat the Assistant request.
+A response such as `bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted`, especially when the normal shell smoke test succeeds, means the package is installed and the repository path is probably fine, but the worker's process context cannot create the bubblewrap/user-namespace sandbox Codex expects. `sudo -u ubuntu ... codex exec ...` is a useful Unix-user check, but it does not prove the systemd service context if the Q worker is started by a unit with extra sandboxing. Inspect the Gunicorn and Django Q service units (`systemctl cat ...`) for hardening options that block namespaces or sandbox helper processes, such as `PrivateUsers=`, `RestrictNamespaces=`, `NoNewPrivileges=`, or a restrictive `SystemCallFilter=`. Either relax those options for the Q worker that launches Codex, or run the Codex Assistant worker under a service unit/user that permits Codex's read-only sandbox. After changing a unit, run `sudo systemctl daemon-reload`, restart Gunicorn and Q, and repeat the Assistant request.
+
+To advise on the exact edit, collect the service names and the non-secret systemd properties for the web and worker units. The useful commands are:
+
+```bash
+systemctl list-units --type=service | egrep -i 'clara|gunicorn|django|qcluster|q|celery'
+sudo systemctl cat <gunicorn-service-name>
+sudo systemctl cat <django-q-service-name>
+sudo systemctl show <gunicorn-service-name> \
+  -p User -p Group -p EnvironmentFiles -p WorkingDirectory \
+  -p NoNewPrivileges -p PrivateUsers -p RestrictNamespaces -p SystemCallFilter \
+  -p ProtectHome -p ProtectSystem -p PrivateTmp -p AppArmorProfile
+sudo systemctl show <django-q-service-name> \
+  -p User -p Group -p EnvironmentFiles -p WorkingDirectory \
+  -p NoNewPrivileges -p PrivateUsers -p RestrictNamespaces -p SystemCallFilter \
+  -p ProtectHome -p ProtectSystem -p PrivateTmp -p AppArmorProfile
+```
+
+Do not paste secret values such as `OPENAI_API_KEY`; if an `Environment=` line contains secrets, redact the values and leave the variable names.
 
 Interpret the next result as follows:
 
