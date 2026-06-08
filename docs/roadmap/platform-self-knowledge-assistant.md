@@ -205,7 +205,18 @@ sudo install -d -o ssm-user -g ssm-user -m 700 /var/lib/c-lara/codex
 
 If Gunicorn/Q run as a different user, replace `ssm-user` with that service user. The key rule is that the same user that starts Codex must be able to read and write `CODEX_HOME`.
 
-After changing `/etc/clara2.env`, restart both Gunicorn and Q/qcluster so they receive the new environment. Then run the check from the deployment virtualenv with the same user/environment the service uses:
+If the shell smoke test says `Process user: ssm-user (uid 1001)` but the Assistant worker message says `worker user=ubuntu uid=1000`, then the shell test and Assistant are using different Unix users. In that case, either run the smoke test as `ubuntu`, or make `/var/lib/c-lara/codex` owned by `ubuntu` and authenticate Codex under that same directory, for example:
+
+```bash
+sudo chown -R ubuntu:ubuntu /var/lib/c-lara/codex
+sudo chmod 700 /var/lib/c-lara/codex
+sudo -u ubuntu CODEX_HOME=/var/lib/c-lara/codex /opt/codex/bin/codex login status
+# If needed, authenticate as ubuntu with the same CODEX_HOME:
+# sudo -u ubuntu CODEX_HOME=/var/lib/c-lara/codex /opt/codex/bin/codex login --device-auth
+# or pipe the service API key into: sudo -u ubuntu CODEX_HOME=/var/lib/c-lara/codex /opt/codex/bin/codex login --with-api-key
+```
+
+After changing `/etc/clara2.env`, changing ownership, or authenticating Codex, restart both Gunicorn and Q/qcluster so they receive the new environment. Then run the check from the deployment virtualenv with the same user/environment the service uses:
 
 ```bash
 python platform_server/manage.py check_project_understanding_codex
