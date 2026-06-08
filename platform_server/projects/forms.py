@@ -358,6 +358,47 @@ class FlashcardExerciseSetForm(forms.Form):
         self.fields["ai_model"].initial = choices[0]
 
 
+class WordScrambleExerciseSetForm(forms.Form):
+    theme = forms.ChoiceField(
+        choices=[
+            ("vocabulary", "Vocabulary"),
+        ],
+        initial="vocabulary",
+        help_text="Word scrambles currently use picture-dictionary vocabulary items.",
+    )
+    item_count = forms.IntegerField(
+        min_value=1,
+        max_value=15,
+        initial=8,
+        help_text="Number of picture-clue words to hide in the grid.",
+    )
+    grid_rows = forms.IntegerField(min_value=6, max_value=16, initial=10)
+    grid_cols = forms.IntegerField(min_value=6, max_value=16, initial=10)
+
+
+class CrosswordExerciseSetForm(forms.Form):
+    theme = forms.ChoiceField(
+        choices=[
+            ("vocabulary", "Vocabulary"),
+        ],
+        initial="vocabulary",
+        help_text="Picture crosswords currently use picture-dictionary vocabulary items.",
+    )
+    item_count = forms.IntegerField(
+        min_value=2,
+        max_value=20,
+        initial=10,
+        help_text="Number of picture-clue words to try to place in the crossword.",
+    )
+    max_grid_size = forms.IntegerField(
+        min_value=6,
+        max_value=20,
+        initial=12,
+        help_text="Maximum width/height before the occupied crossword is cropped.",
+    )
+
+
+
 class DeleteCachedWordAudioForm(forms.Form):
     language = forms.ChoiceField(choices=[], label="Language")
 
@@ -413,10 +454,10 @@ class CreditTransferForm(forms.Form):
         self.fields["recipient"].queryset = qs
 
 
-class AdminProjectUnderstandingForm(forms.Form):
+class ProjectUnderstandingForm(forms.Form):
     VISIBILITY_CHOICES = [
         ("private", "Private (visible only to me)"),
-        ("public", "Public to other admins/reviewers"),
+        ("public", "Public to other C-LARA-2 users/reviewers"),
     ]
 
     question = forms.CharField(
@@ -435,7 +476,7 @@ class AdminProjectUnderstandingForm(forms.Form):
         choices=VISIBILITY_CHOICES,
         initial="private",
         label="Log visibility",
-        help_text="Private runs stay visible to the submitting admin; public runs can be reviewed by other admins/reviewers.",
+        help_text="Private runs stay visible only to you; public runs can be reviewed by other C-LARA-2 users/reviewers.",
     )
 
 
