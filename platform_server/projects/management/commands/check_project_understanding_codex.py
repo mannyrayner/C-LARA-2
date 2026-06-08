@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import getpass
 import os
+import pwd
 import subprocess
 
 from django.conf import settings
@@ -46,9 +47,12 @@ class Command(BaseCommand):
         except Exception:
             effective_uid = None
         try:
-            process_user = getpass.getuser()
+            process_user = pwd.getpwuid(effective_uid).pw_name if effective_uid is not None else getpass.getuser()
         except Exception:
-            process_user = "unknown"
+            try:
+                process_user = getpass.getuser()
+            except Exception:
+                process_user = "unknown"
         self.stdout.write(f"Process user: {process_user}{f' (uid {effective_uid})' if effective_uid is not None else ''}")
         self.stdout.write(f"CODEX_HOME: {env.get('CODEX_HOME') or '(not set)'}")
         self.stdout.write(f"HOME: {env.get('HOME') or env.get('USERPROFILE') or '(not set)'}")
@@ -145,7 +149,15 @@ class Command(BaseCommand):
                     f"{detail[:2000]}"
                 )
             raise CommandError(f"codex exec smoke test failed with status {smoke.returncode}: {detail[:2000]}")
-        self.stdout.write(self.style.SUCCESS("codex exec smoke test succeeded."))
         output = (smoke.stdout or "").strip()
+        output_lower = output.lower()
+        if "bubblewrap" in output_lower and ("could not" in output_lower or "failing" in output_lower):
+            raise CommandError(
+                "codex exec exited successfully, but its answer says repository command access failed because "
+                "bubblewrap is missing or unavailable. Install the OS bubblewrap package for the service "
+                "environment (for example `sudo apt-get install bubblewrap`) and rerun --smoke. Detail: "
+                f"{output[:2000]}"
+            )
+        self.stdout.write(self.style.SUCCESS("codex exec smoke test succeeded."))
         if output:
             self.stdout.write(output[:2000])

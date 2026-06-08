@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, replace
 import getpass
+import pwd
 import json
 import sys
 import logging
@@ -3209,9 +3210,12 @@ def _project_understanding_runtime_summary() -> str:
     except Exception:
         effective_uid = None
     try:
-        username = getpass.getuser()
+        username = pwd.getpwuid(effective_uid).pw_name if effective_uid is not None else getpass.getuser()
     except Exception:
-        username = "unknown"
+        try:
+            username = getpass.getuser()
+        except Exception:
+            username = "unknown"
     return (
         f"worker user={username}"
         + (f" uid={effective_uid}" if effective_uid is not None else "")

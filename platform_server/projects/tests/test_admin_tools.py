@@ -208,6 +208,39 @@ class AdminToolsViewTests(TestCase):
         with self.assertRaisesMessage(CommandError, "was not authenticated"):
             call_command("check_project_understanding_codex", "--smoke", stdout=io.StringIO())
 
+    @patch("projects.management.commands.check_project_understanding_codex.subprocess.run")
+    @patch("projects.management.commands.check_project_understanding_codex.resolve_codex_executable", return_value="/opt/codex/bin/codex")
+    @patch(
+        "projects.management.commands.check_project_understanding_codex.build_codex_exec_environment",
+        return_value={"PATH": "/bin", "CODEX_HOME": "/var/lib/c-lara/codex", "OPENAI_API_KEY": "test-key"},
+    )
+    def test_check_project_understanding_codex_smoke_flags_bubblewrap_repo_access_failure(
+        self, mock_build_env, mock_resolve, mock_run
+    ):
+        mock_run.side_effect = [
+            subprocess.CompletedProcess(
+                args=["/opt/codex/bin/codex", "--version"],
+                returncode=0,
+                stdout="codex-cli 0.137.0\n",
+                stderr="",
+            ),
+            subprocess.CompletedProcess(
+                args=["/opt/codex/bin/codex", "login", "status"],
+                returncode=0,
+                stdout="Logged in using an API key\n",
+                stderr="",
+            ),
+            subprocess.CompletedProcess(
+                args=["/opt/codex/bin/codex", "exec"],
+                returncode=0,
+                stdout="I cannot summarize because command access is failing: bubblewrap missing.",
+                stderr="",
+            ),
+        ]
+
+        with self.assertRaisesMessage(CommandError, "bubblewrap is missing or unavailable"):
+            call_command("check_project_understanding_codex", "--smoke", stdout=io.StringIO())
+
     def test_project_understanding_answer_markdown_is_rendered_safely(self):
         from projects.views import render_project_understanding_answer_html
 
