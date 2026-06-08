@@ -1,26 +1,26 @@
-# Roadmap: restricted project-understanding assistant
+# Roadmap: authenticated project-understanding assistant
 
 Tracked by [ISSUE-0034](../issues/issues/ISSUE-0034.json).
 
 ## Goal
 
-Create a lightweight admin/restricted-user feature that lets authorised users ask high-level questions about the C-LARA-2 project and receive answers grounded in the repository.
+Create a lightweight authenticated-user feature that lets authorised C-LARA-2 users ask high-level questions about the C-LARA-2 project and receive answers grounded in the repository.
 
 The revised architecture is deliberately simple: the platform should delegate the whole project-understanding task to Codex running against the checked-out C-LARA-2 repository, rather than trying to preselect evidence files or reconstruct Codex-style repository understanding in application code.
 
 The target evidence base is the full repository available to Codex in read-only mode. Codex should decide which files to inspect, including `docs/roadmap/`, `docs/issues/`, `docs/howto/`, project reports, tests, prompts, and relevant source files. The assistant should support questions about architecture, goals, implementation status, issue structure, roadmap plans, prompt design, tests, and module relationships.
 
-This is not intended as a general public chatbot. The initial product is a restricted project-maintenance and evidence-gathering tool that demonstrates how well C-LARA-2 can use Codex and its repository-native documentation/code to explain itself.
+This is not intended as a general public chatbot. The current product is an authenticated project-maintenance and evidence-gathering tool that demonstrates how well C-LARA-2 can use Codex and its repository-native documentation/code to explain itself.
 
 ## Why this matters
 
-C-LARA-2 is intentionally developed with extensive repository-native documentation so AI tools can understand and help maintain the platform. A restricted self-knowledge assistant would make this capability inspectable from inside the platform and could:
+C-LARA-2 is intentionally developed with extensive repository-native documentation so AI tools can understand and help maintain the platform. An authenticated self-knowledge assistant makes this capability inspectable from inside the platform and could:
 
 - help project maintainers, trusted reviewers, and report authors find reliable answers faster;
 - create a versioned evidence record of how well Codex can answer project-level questions from the repository;
 - support the initial C-LARA-2 report's argument about autonomy and AI-assisted authorship by letting sceptical readers inspect concrete question/answer records;
 - reveal gaps, contradictions, or stale areas in the documentation when Codex cannot answer reliably;
-- provide a reusable baseline for later user-facing help or broader conversational UX, if the restricted version proves accurate and safe.
+- provide a reusable baseline for later user-facing help or broader conversational UX, if the authenticated version proves accurate and safe.
 
 The practical motivation for using Codex directly is that C-LARA-2 has already been maintained successfully for months through Codex sessions connected to the repository. That is the strongest evidence that Codex is the right component to choose and inspect supporting files, rather than a bespoke API wrapper trying to guess the relevant evidence before the model sees the question.
 
@@ -30,7 +30,7 @@ The earlier idea of wrapping a user request, preselecting likely evidence files,
 
 Instead, the platform should:
 
-1. Accept a restricted user's project-understanding question.
+1. Accept an authenticated user's project-understanding question.
 2. Build a concise, versioned instruction prompt that tells Codex to answer from the C-LARA-2 repository, cite files, distinguish implemented from planned work, and identify uncertainty.
 3. Invoke `codex exec` in the deployed C-LARA-2 checkout with a read-only sandbox, non-interactive stdin prompt passing, and no unsupported approval flags.
 4. Let Codex inspect the repository and choose evidence files itself.
@@ -49,17 +49,18 @@ codex exec \
 
 The exact command should be generated without shell-injection hazards; production code should prefer `subprocess.run([...], input=prompt_text, ...)` or an equivalently safe argument vector over interpolating untrusted text into a shell command. The example above is documentation of the intended Codex invocation semantics, not a prescription to use unsafe shell string construction.
 
-### Current implementation status (2026-06-01)
+### Current implementation status (2026-06-07)
 
-The first restricted platform implementation is now in place and can be tested from the admin UI. It includes:
+The first platform implementation is now in place and has been moved out of the Admin tab to the main authenticated navigation as **Assistant**. It includes:
 
-- a core `codex exec` wrapper in `src/core/project_understanding.py` that builds the versioned project-understanding prompt, constructs a read-only/non-interactive argument vector, passes the prompt through stdin, supplies `OPENAI_API_KEY` through a reduced environment, resolves common Windows npm Codex shims, applies a timeout, forces UTF-8 subprocess decoding, extracts the final answer and token count where available from stdout or stderr, and returns structured metadata;
+- a core `codex exec` wrapper in `src/core/project_understanding.py` that builds the versioned project-understanding prompt, constructs a read-only/non-interactive argument vector, passes the prompt through stdin, passes a reduced environment that can use either `OPENAI_API_KEY` or cached Codex CLI credentials under `HOME`/`CODEX_HOME`, resolves common Windows npm, Linux service-user, and configured absolute Codex paths, applies a timeout, forces UTF-8 subprocess decoding, extracts the final answer and token count where available from stdout or stderr, and returns structured metadata;
 - configurable Django settings for the Codex executable, repository checkout path, model, timeout, and GitHub blob URL: `PROJECT_UNDERSTANDING_CODEX_EXECUTABLE`, `PROJECT_UNDERSTANDING_REPOSITORY_PATH`, `PROJECT_UNDERSTANDING_MODEL`, `PROJECT_UNDERSTANDING_TIMEOUT_SECONDS`, and `PROJECT_UNDERSTANDING_GITHUB_BLOB_BASE_URL`;
-- an admin-only platform surface at `/admin-tools/project-understanding/`, linked from the admin tools page, with a textarea for the question and a result area showing the answer, model, prompt version, elapsed time, token count when extractable, estimated upper-bound cost, exit status, repository path, and stderr when present;
+- an authenticated platform surface at `/assistant/project-understanding/`, linked as **Assistant** from the top navigation, with legacy redirects from the previous `/admin-tools/project-understanding/` URLs, a textarea for the question, and a result area showing the answer, model, prompt version, elapsed time, token count when extractable, estimated upper-bound cost, exit status, repository path, and stderr when present;
 - an asynchronous Django Q execution path: submitting a question queues a background task, immediately redirects to a monitor page, records `TaskUpdate` progress rows, emits periodic heartbeat messages while Codex is running, and polls a JSON status endpoint until the run finishes or fails;
-- request/result persistence under `MEDIA_ROOT/admin_project_understanding/`, so the monitor page can keep showing the current question during execution and after completion, and can render the completed answer produced by the worker process;
+- request/result persistence under `MEDIA_ROOT/admin_project_understanding/` (directory name retained for backward compatibility with existing runs), so the monitor page can keep showing the current question during execution and after completion, and can render the completed answer produced by the worker process;
 - usage/cost tracking for completed Codex runs when the CLI reports `tokens used`: because current CLI output exposes only a total token count rather than separate input/cached-input/output counts, the platform records a conservative output-priced upper-bound estimate through the existing OpenAI pricing/credits framework and labels the value as an upper bound in run metadata; local comparisons with the OpenAI Usage page suggest the estimate can be at least three times higher than the eventual API charge, presumably because real billing applies cheaper input/cached-input rates or Codex-specific accounting not visible in the plain CLI transcript;
-- tests for prompt construction, command/environment construction, Codex executable resolution, transcript parsing, timeout/error handling, record rendering, admin access control, task queueing, monitor rendering, and status/result JSON.
+- tests for prompt construction, command/environment construction, Codex executable resolution, transcript parsing, timeout/error handling, record rendering, authenticated access control, task queueing, monitor rendering, and status/result JSON;
+- a `check_project_understanding_codex` management command that reports the configured executable, resolved executable, repository path, model, credential-related environment, `codex --version`, `codex login status`, and optionally runs an end-to-end read-only `codex exec` smoke test.
 
 The local smoke tests have also demonstrated that `codex exec` can answer repository-level questions by inspecting files itself and returning plausible cited answers. Observed answers correctly used repository evidence for questions such as a three-bullet repository summary and the internal annotated-text representation.
 
@@ -130,6 +131,105 @@ printf '%s\n' 'Summarise the repository in three bullet points; cite files if po
 
 The smoke-test syntax above matches `codex-cli 0.135.0`, where `codex exec [OPTIONS] [PROMPT]` reads the prompt from stdin when `-` is used or when no prompt argument is provided. That version does **not** support the older `--ask-for-approval never` flag, so the wrapper should not include it. For a machine where `CLARA2` is set to a Windows-style path such as `C:\cygwin64\home\github\c-lara-2`, use `REPO_ROOT="${CLARA2//\\//}"` in Bash to pass `C:/cygwin64/home/github/c-lara-2` to `--cd`. A `401 Unauthorized` during the smoke test is an authentication problem, not a sandbox or repository-path problem: run `codex login status`, then sign in with ChatGPT, use device-code login, or pipe an OpenAI API key into `codex login --with-api-key`. If a later version reintroduces an approval-control option, the wrapper can fail closed unless the option is explicitly configured to refuse interactive/privileged escalation. In all versions, preserve the same safety properties: no shell interpolation of user text, fixed repository path, read-only sandbox, non-interactive operation, and bounded runtime.
 
+#### Laptop/AWS configuration contract
+
+The important rule is that Django must not depend on a developer's interactive shell startup files. The same settings should exist in the laptop shell, the Django development process, the AWS Gunicorn process, and the Django Q worker process:
+
+| Setting / environment variable | Laptop example | AWS example | Notes |
+| --- | --- | --- | --- |
+| `C_LARA_CODEX_EXECUTABLE` | `codex` or `/Users/alice/.local/bin/codex` | `/opt/codex/bin/codex`, `/usr/local/bin/codex`, or `/home/clara/.local/bin/codex` | Prefer an absolute path on AWS because systemd/Gunicorn often has a shorter `PATH` than an SSH shell. |
+| `C_LARA_PROJECT_UNDERSTANDING_REPO` | `$CLARA2` or the current checkout | `/srv/C-LARA-2` | Must be the checked-out repo Codex should inspect; mount/read it read-only where possible. |
+| `C_LARA_PROJECT_UNDERSTANDING_MODEL` | `gpt-5.3-codex` | `gpt-5.3-codex` | Keep laptop and AWS aligned unless testing a model change. |
+| `C_LARA_PROJECT_UNDERSTANDING_TIMEOUT_SECONDS` | `300` | `300` or a deployment-specific cap | Bound spend and request lifetime. |
+| `CODEX_HOME` | optional, or a local Codex config dir | `/var/lib/c-lara/codex` | Recommended on AWS so cached Codex credentials do not live in the app checkout or a human home directory. |
+| `OPENAI_API_KEY` | optional if `codex login` has cached credentials | optional if `CODEX_HOME` has cached credentials; otherwise set through the secret manager/service environment | The wrapper now passes it if present but no longer requires it, so cached `codex login` credentials work. |
+
+On AWS, install Codex as the same Unix service identity that will run the Q worker, or install it in a root-owned path readable/executable by that identity. The install command suggested by GPT-5.5, `curl -fsSL https://chatgpt.com/codex/install.sh | sh`, should be used only after checking that it is still the current official installer; deployment should record the resulting absolute binary path and version. If the script installs into `~/.local/bin`, either add that directory to the service `PATH` or set `C_LARA_CODEX_EXECUTABLE=/home/<service-user>/.local/bin/codex`. Avoid relying on `~/.bashrc`, because Gunicorn/systemd services typically do not read it.
+
+A minimal systemd-style service environment for both `gunicorn` and `qcluster` should look like this (adapt paths/usernames to the actual server):
+
+```ini
+Environment=PATH=/opt/codex/bin:/usr/local/bin:/usr/bin:/bin
+Environment=C_LARA_CODEX_EXECUTABLE=/opt/codex/bin/codex
+Environment=C_LARA_PROJECT_UNDERSTANDING_REPO=/srv/C-LARA-2
+Environment=C_LARA_PROJECT_UNDERSTANDING_MODEL=gpt-5.3-codex
+Environment=C_LARA_PROJECT_UNDERSTANDING_TIMEOUT_SECONDS=300
+Environment=CODEX_HOME=/var/lib/c-lara/codex
+# Use either cached `codex login` credentials in CODEX_HOME or a secret-managed key:
+# Environment=OPENAI_API_KEY=...
+```
+
+Recommended AWS deployment sequence:
+
+1. Create/choose a non-root service user, for example `clara`, and create a locked-down Codex home: `sudo install -d -o clara -g clara -m 700 /var/lib/c-lara/codex`.
+2. Install Codex using the approved route. If using the install script, run it as the service user or copy the resulting binary into an explicit deployment path such as `/opt/codex/bin/codex`; then record `codex --version`.
+3. Authenticate the service identity: either run `sudo -u clara CODEX_HOME=/var/lib/c-lara/codex /opt/codex/bin/codex login --device-auth` and complete the device flow, or pipe a secret-managed API key into `codex login --with-api-key` without writing the key to shell history.
+4. Add the environment variables above to both Gunicorn and Django Q worker service definitions, then restart both services. The web process and worker must agree on the same executable, repo, model, and `CODEX_HOME`.
+5. Run `python platform_server/manage.py check_project_understanding_codex` in the exact deployment virtualenv and service-like environment. It should print the resolved executable, version, and login status.
+6. Run `python platform_server/manage.py check_project_understanding_codex --smoke` once before enabling general use. A 401 at this stage means authentication is not available to the service environment; a `FileNotFoundError` means the service cannot see the configured executable; a repository-path error means `C_LARA_PROJECT_UNDERSTANDING_REPO` is wrong or inaccessible.
+
+The laptop setup is the same contract with less ceremony: install Codex, authenticate with `codex login`, set `C_LARA_CODEX_EXECUTABLE` only if `codex` is not on the Django process `PATH`, set `C_LARA_PROJECT_UNDERSTANDING_REPO` if the Django checkout is not the intended evidence checkout, then run the same management command.
+
+#### Concrete AWS example: Codex copied from `ubuntu` to `/opt/codex`
+
+A common AWS path is now:
+
+```bash
+sudo install -d -o root -g root -m 755 /opt/codex/bin
+sudo install -o root -g root -m 755 /home/ubuntu/.local/bin/codex /opt/codex/bin/codex
+```
+
+This is a good setup. It deliberately separates the **Codex executable** from the **Codex configuration/credential directory**:
+
+- `C_LARA_CODEX_EXECUTABLE=/opt/codex/bin/codex` points Django/Q at a root-owned executable that every service user can run.
+- `CODEX_HOME=...` points Codex at a writable configuration directory for the Unix user that is actually running `manage.py`, Gunicorn, and Q.
+
+Do not set `CODEX_HOME=/home/ubuntu/.codex` unless those processes really run as `ubuntu`. A successful `ubuntu` login stored under `/home/ubuntu/.codex` is not automatically usable by a process running as `ssm-user`, `www-data`, or another service account. If `check_project_understanding_codex` prints `HOME: /home/ssm-user` and `CODEX_HOME: /home/ubuntu/.codex`, the executable problem has been solved but `CODEX_HOME` is still wrong for that process.
+
+For the current `/opt/codex/bin/codex` setup, the recommended `/etc/clara2.env` shape is:
+
+```env
+C_LARA_CODEX_EXECUTABLE=/opt/codex/bin/codex
+C_LARA_PROJECT_UNDERSTANDING_REPO=/srv/C-LARA-2
+C_LARA_PROJECT_UNDERSTANDING_MODEL=gpt-5.3-codex
+C_LARA_PROJECT_UNDERSTANDING_TIMEOUT_SECONDS=300
+CODEX_HOME=/var/lib/c-lara/codex
+# OPENAI_API_KEY=...  # if supplied by the existing secret/env mechanism
+```
+
+Create `CODEX_HOME` for the Unix user that actually runs Gunicorn and Q. If the current check is being run as `ssm-user` and the services also run as `ssm-user`, use:
+
+```bash
+sudo install -d -o ssm-user -g ssm-user -m 700 /var/lib/c-lara/codex
+```
+
+If Gunicorn/Q run as a different user, replace `ssm-user` with that service user. The key rule is that the same user that starts Codex must be able to read and write `CODEX_HOME`.
+
+After changing `/etc/clara2.env`, restart both Gunicorn and Q/qcluster so they receive the new environment. Then run the check from the deployment virtualenv with the same user/environment the service uses:
+
+```bash
+python platform_server/manage.py check_project_understanding_codex
+python platform_server/manage.py check_project_understanding_codex --smoke
+```
+
+Interpret the next result as follows:
+
+- If the Assistant UI only shows `Django Q accepted project-understanding task <Thread(...)>. Waiting for a worker to start Codex.` and never shows `Background worker picked up request; launching Codex.`, the request reached the async-task layer but the local Django-Q compatibility thread did not actually enter `_run_project_understanding_task`. Check the Gunicorn/Django logs for thread exceptions and verify the deployed code includes the dotted-task-path resolution used by the local `django_q` shim.
+- `Resolved executable: /opt/codex/bin/codex` and `codex --version: ...` mean the executable path is correct.
+- `failed to read CODEX_HOME` means `CODEX_HOME` is still pointed at a directory the service user cannot read/write.
+- `codex login status failed` without a `CODEX_HOME` permission error may be acceptable if `OPENAI_API_KEY available to child: yes`; the `--smoke` check is the decisive end-to-end test.
+- A `bubblewrap` warning is not the blocker if the transcript says Codex will use the bundled bubblewrap; it can be cleaned up later by installing the OS package, but authentication should be fixed first.
+- A 401 during `--smoke` means the executable and `CODEX_HOME` are accessible, but authentication is not available to Codex. In practice, `OPENAI_API_KEY available to child: yes` is not enough if Codex still reports `Not logged in` and the websocket call returns `401 Unauthorized`. Keep the service-owned `CODEX_HOME` and authenticate Codex as the actual service user, for example:
+
+```bash
+# Run this as the same Unix user that runs Gunicorn/Q, or use sudo -u <service-user>.
+export CODEX_HOME=/var/lib/c-lara/codex
+printenv OPENAI_API_KEY | /opt/codex/bin/codex login --with-api-key
+/opt/codex/bin/codex login status
+```
+
+If the service does not expose `OPENAI_API_KEY` to an interactive shell, use the server's secret-loading mechanism to run the same command with that variable present, or use `codex login --device-auth` as the service user with `CODEX_HOME=/var/lib/c-lara/codex`.
+
 
 #### Authentication setup and 401 diagnostics
 
@@ -138,7 +238,7 @@ A successful installation only proves that the `codex` binary is present. It doe
 - **Local developer machine:** run `codex login` and complete the ChatGPT browser login, then verify with `codex login status`. This uses the developer's ChatGPT/Codex entitlement and cached local credentials.
 - **Headless local or staging machine:** run `codex login --device-auth` if browser login cannot complete on the same machine.
 - **Automation or service account:** prefer an OpenAI API key or enterprise Codex access token provisioned specifically for this feature. Pipe it into `codex login --with-api-key` or the corresponding access-token login flow; do not put the key directly on the command line, in a prompt, in a committed config file, or in an evidence record.
-- **Production worker:** set `CODEX_HOME` to a locked-down service directory, authenticate the worker identity once during deployment or startup, and run `codex login status` as a readiness check before accepting web jobs. If the check fails, the feature should be disabled or return an administrator-facing configuration error.
+- **Production worker:** set `CODEX_HOME` to a locked-down service directory, authenticate the worker identity once during deployment or startup, and run `codex login status` plus `python platform_server/manage.py check_project_understanding_codex` as readiness checks before accepting web jobs. If the checks fail, the feature should be disabled or return an administrator-facing configuration error.
 
 For the first local retry after a `401`, the recommended sequence is:
 
@@ -155,7 +255,7 @@ printf '%s\n' 'Summarise the repository in three bullet points; cite files if po
   codex exec --cd "$REPO_ROOT" --sandbox read-only --ephemeral --model gpt-5.3-codex -
 ```
 
-A `401 Unauthorized` with text such as `Missing bearer or basic authentication in header` means Codex reached the OpenAI endpoint but did not send a usable credential. The immediate remediation is to authenticate or refresh the cached credential, not to change the repository path, sandbox mode, model prompt, or read-only safety settings.
+A `401 Unauthorized` with text such as `Missing bearer or basic authentication in header` or a websocket `401 Unauthorized` means Codex reached the OpenAI endpoint but did not send a usable credential. The immediate remediation is to authenticate or refresh the cached credential for the same `CODEX_HOME` and Unix user, not to change the repository path, sandbox mode, model prompt, or read-only safety settings.
 
 #### Expected successful smoke-test output
 
@@ -201,7 +301,7 @@ This baseline is appropriate for an administrator manually running a management 
 
 #### Web-environment safety baseline
 
-For a staff-only web feature, the web process should not simply run a shell command synchronously inside the request handler. A safer architecture is:
+For an authenticated web feature, the web process should not simply run a shell command synchronously inside the request handler. A safer architecture is:
 
 1. The Django view authenticates and authorizes the staff user, validates the question length/type, creates a pending run record, and enqueues a background job.
 2. A dedicated worker process runs Codex under a locked-down service account with a fixed configuration.
@@ -211,7 +311,7 @@ For a staff-only web feature, the web process should not simply run a shell comm
 
 Additional web hardening should include:
 
-- staff-only access controls, audit logging, CSRF protection, and per-user/project rate limits;
+- authenticated access controls, audit logging, CSRF protection, and per-user/project rate limits;
 - egress controls that allow OpenAI API traffic but block arbitrary internal-network access where possible;
 - no access to Docker sockets, cloud instance metadata, deployment credentials, user-upload stores, production databases, or private project data outside the intended repository checkout;
 - a read-only bind mount for the repository and a small writable scratch/cache directory that can be deleted after each run or rotated regularly;
@@ -227,7 +327,7 @@ These controls do not make Codex a trusted actor. They make Codex an untrusted s
 - Codex is already designed to operate inside a repository and inspect files as needed.
 - The platform does not need to build or maintain a retrieval/indexing layer for the first version.
 - Evidence selection remains part of the model/tool task, where project-development experience shows it works well.
-- The implementation can start as a restricted management command or staff-only action that shells out to Codex, avoiding premature productisation.
+- The implementation started as an admin/restricted action that shells out to Codex; the current version is an authenticated UI backed by the same safe command wrapper.
 - Running with `--sandbox read-only` makes the intended first version answer-only: Codex can read repository files but cannot mutate the repo. With current `codex-cli 0.135.0` syntax, the platform should rely on non-interactive `codex exec` plus timeout/error handling rather than passing the unsupported `--ask-for-approval never` option.
 
 ## Relationship to existing dialogue work
@@ -235,13 +335,13 @@ These controls do not make Codex a trusted actor. They make Codex an untrusted s
 This roadmap is related to, but narrower and more evidence-oriented than, [the freeform dialogue-based top-level roadmap](dialogue-top-level.md).
 
 - The dialogue top level is about helping users operate C-LARA-2 workflows through conversation.
-- The restricted project-understanding assistant is about answering questions concerning the project itself, using Codex connected to the repository as the evidence-gathering and reasoning engine.
+- The project-understanding assistant is about answering questions concerning the project itself, using Codex connected to the repository as the evidence-gathering and reasoning engine.
 - The first implementation should be read-only: it must not trigger project mutations, expensive pipeline runs, admin actions, or repository changes from user prompts.
 - A later phase can decide whether project-understanding answers become one intent within a broader dialogue/orchestration layer.
 
 ## Initial requirements
 
-1. Access is initially restricted to admins or a clearly defined trusted group.
+1. Access began with admins and is now exposed to authenticated users through the Assistant navigation item, with privacy controls on stored turns.
 2. The user enters a question through a simple platform form or management command.
 3. The system wraps the question in a prompt instructing Codex to answer from the C-LARA-2 repository.
 4. The system invokes `codex exec` against the server checkout, initially `/srv/C-LARA-2`, with `--sandbox read-only`, non-interactive stdin prompt passing, and a pinned/default Codex model such as `gpt-5.3-codex`.
@@ -302,7 +402,7 @@ Use a repository-visible evidence log, for example under `docs/project_understan
 
 - stable record ID or filename;
 - timestamp;
-- submitter or restricted-user identifier, subject to privacy policy;
+- submitter or authenticated-user identifier, subject to privacy policy;
 - question;
 - answer;
 - model name and Codex invocation route;
@@ -318,13 +418,13 @@ Records should be plain Markdown or JSON/Markdown pairs so they can be committed
 
 ## User interface and operating modes
 
-Possible MVP surfaces:
+Current/MVP surfaces:
 
-- staff-only Django view linked from the admin/support area;
-- management command for batch or report-oriented question runs;
-- optional export command that writes selected records into `docs/project_understanding/` for version control.
+- authenticated Django view linked from the top-level Assistant navigation item;
+- `check_project_understanding_codex` management command for laptop/AWS readiness checks and optional smoke tests;
+- future optional export command that writes selected records into `docs/project_understanding/` for version control.
 
-The management-command path is the safest first implementation because it keeps the initial feature close to administrator workflows and makes command invocation, timeouts, stdout/stderr capture, and record writing easy to inspect. A staff-only UI can be added after the command path has demonstrated reliable behaviour.
+The current web path already uses a background worker rather than running Codex synchronously in the request handler. The management-command path remains useful for deployment readiness, batch/report-oriented question runs, and debugging the exact service environment that Gunicorn and Django Q see.
 
 The UI can be minimal: a question box, answer pane, supporting-file list or extracted citations, command/run metadata, and reviewer assessment controls. A management-command path may be especially useful for generating repeatable evidence for the initial report.
 
@@ -332,7 +432,7 @@ The UI can be minimal: a question box, answer pane, supporting-file list or extr
 
 The assistant should reason over publicly available repository content, but the production platform still needs strict boundaries:
 
-- restrict initial access to admins/trusted users;
+- keep access authenticated and revisit role/credit/quota controls after broader testing;
 - run Codex with `--sandbox read-only`, non-interactive prompt passing, and no unsupported approval flags;
 - use a fixed repository checkout path controlled by configuration, not arbitrary user-supplied paths;
 - pass user questions to Codex without unsafe shell interpolation;
@@ -347,8 +447,8 @@ The assistant should reason over publicly available repository content, but the 
 
 ## Implementation considerations
 
-- Add settings for the Codex executable path, repository checkout path, model, timeout, prompt version, and output directory.
-- Prefer a management command such as `answer_project_understanding_question` before a web UI.
+- Keep settings for the Codex executable path, repository checkout path, model, timeout, prompt version, and output directory aligned across laptop, Gunicorn, and Django Q worker environments.
+- Use `check_project_understanding_codex` as the first diagnostic when the assistant works locally but fails on AWS.
 - Use `subprocess.run` or `asyncio.create_subprocess_exec` with an argument list and bounded timeout.
 - Capture stdout as the candidate answer; capture stderr and non-zero exit status in the record and user-visible error path.
 - Record the current repository commit with `git rev-parse HEAD` when available.
@@ -366,16 +466,16 @@ The assistant should reason over publicly available repository content, but the 
 - Define the record schema and create `docs/project_understanding/` conventions.
 - Choose the first set of report-relevant evaluation questions.
 
-### Phase B: restricted command/wrapper prototype — partly complete
+### Phase B: command/wrapper prototype — complete for first deployment
 
 - Build a callable wrapper that accepts a question, constructs the versioned Codex prompt, invokes `codex exec` in read-only/non-interactive mode, and returns a structured result.
 - Capture elapsed time, stdout/stderr, exit status, model, prompt version, token count when extractable, repository path, and the command vector.
 - Add tests for prompt construction, safe subprocess argument construction, timeout/error paths, record serialization, and missing-evidence behaviour.
-- Still needed: a management command or export command for batch/report-oriented runs.
+- Still needed: an export command/path for committing selected reviewed records.
 
-### Phase C: staff-only UI and review workflow — first admin UI implemented
+### Phase C: authenticated UI and review workflow — first UI implemented
 
-- Add a minimal staff-only Django view linked from the admin tools page.
+- Add a minimal Django view linked from the authenticated Assistant navigation item.
 - Display answer text, command/run metadata, stderr/exit status warnings, and live background-task progress.
 - Add access-control, queueing, monitor, and status-endpoint tests.
 - Still needed: citation extraction, reviewer assessment controls, exact-cost reconciliation if Codex exposes richer usage data, hard budget/rate-limit controls, and export/review paths for committing selected records.
@@ -389,13 +489,13 @@ The assistant should reason over publicly available repository content, but the 
 
 ### Phase E: possible productization
 
-- Evaluate whether the restricted assistant should become a general staff help tool.
+- Evaluate whether the authenticated assistant needs tighter role controls, quotas, or review workflows after broader testing.
 - Consider a carefully narrowed user-facing help assistant only after accuracy, privacy, safety, and cost controls are demonstrated.
 - Consider convergence with the broader dialogue top level, while preserving the evidence-log workflow.
 
 ## Open questions
 
-- What is the most reliable production path to the Codex CLI and the intended repository checkout, especially across local development and AWS deployment?
+- After the first AWS deployment, should the project standardize on the install script, `npm install -g @openai/codex`, a pinned binary, or a small container image for the Codex CLI?
 - How should the platform pass prompts to `codex exec` so long questions are safe and robust without relying on shell interpolation?
 - What timeout should be used for project-understanding questions, and how should partial/no-output cases be presented to users?
 - Should records be written directly by the platform, exported for later commit, or both?
