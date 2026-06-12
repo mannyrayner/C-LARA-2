@@ -393,11 +393,12 @@ class CommunityWorkflowTests(TestCase):
         home = client.get(reverse("community-organiser-home", args=[self.community.id]))
         self.assertEqual(home.status_code, 200)
         self.assertContains(home, "Image review dashboard")
+        self.assertContains(home, "Checking dictionary/image consistency, please wait")
         self.assertContains(home, f"Review images for {self.project.title}")
 
         review = client.get(reverse("community-organiser-review-project", args=[self.community.id, self.project.id]))
         self.assertEqual(review.status_code, 200)
-        self.assertContains(review, "Current preferred image")
+        self.assertContains(review, "current preferred image")
         self.assertContains(review, "variant 1")
         self.assertContains(review, "current preferred image")
         self.assertContains(review, "All pages")
@@ -614,6 +615,35 @@ class CommunityWorkflowTests(TestCase):
             translation_language="en",
         )
         self.assertIsNotNone(warning)
+
+    @override_settings(OPENAI_API_KEY="test-key")
+    @patch("projects.views._build_ai_client")
+    def test_dictionary_mixup_diagnostics_checks_rows_after_forty(self, mock_build_ai_client):
+        mock_build_ai_client.return_value = FakeDictionaryMixupClient()
+        client = Client()
+        client.login(username="org", password="pw")
+        response = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {"picture_dictionary_action": "ensure"},
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        rows = [
+            {"surface": f"kkword{i}", "lemma": f"kkword{i}", "pos": "NOUN", "gloss": "person"}
+            for i in range(45)
+        ]
+        rows[44] = {"surface": "long", "lemma": "long", "pos": "ADJ", "gloss": "pama"}
+
+        warnings, traces = views._picture_dictionary_surface_translation_mixup_diagnostics(
+            dictionary=dictionary,
+            rows=rows,
+            user=self.organiser,
+        )
+
+        self.assertEqual(len(traces), 45)
+        self.assertGreaterEqual(mock_build_ai_client.call_count, 45)
+        self.assertTrue(any(warning["row_number"] == "45" for warning in warnings))
 
     @override_settings(OPENAI_API_KEY="test-key")
     @patch("projects.views._build_ai_client")

@@ -9089,7 +9089,7 @@ def _picture_dictionary_surface_translation_mixup_diagnostics(
     dictionary: PictureDictionary,
     rows: list[dict[str, str]],
     user: Any | None = None,
-    max_rows: int = 40,
+    max_rows: int | None = None,
 ) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
     """Use per-row AI language checks to find likely surface/gloss swaps plus trace rows."""
 
@@ -9119,7 +9119,7 @@ def _picture_dictionary_surface_translation_mixup_diagnostics(
                 "translation": translation,
             }
         )
-        if len(candidate_rows) >= max_rows:
+        if max_rows is not None and len(candidate_rows) >= max_rows:
             break
     if not candidate_rows:
         return [], []
@@ -9196,7 +9196,7 @@ def _picture_dictionary_surface_translation_mixup_warnings(
     dictionary: PictureDictionary,
     rows: list[dict[str, str]],
     user: Any | None = None,
-    max_rows: int = 40,
+    max_rows: int | None = None,
 ) -> list[dict[str, str]]:
     warnings, _traces = _picture_dictionary_surface_translation_mixup_diagnostics(
         dictionary=dictionary,
