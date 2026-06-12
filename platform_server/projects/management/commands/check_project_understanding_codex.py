@@ -2,9 +2,14 @@ from __future__ import annotations
 
 import getpass
 import os
-import pwd
 import shutil
 import subprocess
+import sys
+
+if sys.platform == "win32":
+    pwd = None
+else:
+    import pwd
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
@@ -49,7 +54,7 @@ class Command(BaseCommand):
         except Exception:
             effective_uid = None
         try:
-            process_user = pwd.getpwuid(effective_uid).pw_name if effective_uid is not None else getpass.getuser()
+            process_user = pwd.getpwuid(effective_uid).pw_name if effective_uid is not None and pwd is not None else getpass.getuser()
         except Exception:
             try:
                 process_user = getpass.getuser()

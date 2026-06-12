@@ -3,12 +3,13 @@ import json
 import shutil
 
 from django.contrib.auth import get_user_model
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from unittest.mock import patch
 
 from pipeline.stage_artifacts import read_stage_artifact, write_stage_artifact
 
+from projects import views
 from projects.models import (
     Community,
     CommunityImageVote,
@@ -18,11 +19,25 @@ from projects.models import (
     Project,
     ProjectImagePage,
     ProjectImagePageVariant,
+    ProjectImageStyle,
     TaskUpdate,
 )
 
 
 class FakeImageClient:
+    async def chat_text(self, prompt, **kwargs):  # noqa: ARG002
+        text = str(prompt)
+        json_start = text.find("{")
+        if json_start >= 0:
+            try:
+                payload = json.loads(text[json_start:])
+                base_prompt = str(payload.get("base_prompt") or "").strip()
+                if base_prompt:
+                    return base_prompt
+            except Exception:
+                pass
+        return "Constructed prompt for image generation."
+
     def generate_image(self, prompt, **kwargs):
         return {
             "bytes": base64.b64decode(
@@ -32,6 +47,29 @@ class FakeImageClient:
             "model": kwargs.get("model", "gpt-image-1"),
         }
 
+class FakeDictionaryMixupClient:
+    async def chat_json(self, prompt, **kwargs):  # noqa: ARG002
+        row_json = str(prompt).split("Row:", 1)[-1].strip()
+        try:
+            row = json.loads(row_json)
+        except json.JSONDecodeError:
+            row = {}
+        translation = str(row.get("translation") or "").strip().lower()
+        surface = str(row.get("surface") or "").strip()
+        is_warning = translation == "pama"
+        return {
+            "warning": is_warning,
+            "reason": (
+                f"The gloss/translation ‘{translation}’ does not look like English, while the page text ‘{surface}’ does."
+                if is_warning
+                else "The gloss/translation looks like English."
+            ),
+            "confidence": "high" if is_warning else "low",
+        }
+
+class FakeNoDictionaryMixupClient:
+    async def chat_json(self, prompt, **kwargs):  # noqa: ARG002
+        return {"warnings": []}
 
 class CommunityWorkflowTests(TestCase):
     def setUp(self):
@@ -49,6 +87,7 @@ class CommunityWorkflowTests(TestCase):
             language="iai",
             target_language="fr",
         )
+        self.style = ProjectImageStyle.objects.create(project=self.project)
         self.page = ProjectImagePage.objects.create(
             project=self.project,
             page_number=1,
@@ -552,6 +591,93 @@ class CommunityWorkflowTests(TestCase):
         updated_page = client.get(reverse("community-organiser-home", args=[self.community.id]))
         self.assertContains(updated_page, "Pending new images:</strong> 0", html=False)
 
+    def test_dictionary_mixup_postprocessing_suppresses_valid_english_glosses(self):
+        for translation in ("sky", "car", "non protein food, vegetable food source", "ire, firewood"):
+            warning = views._picture_dictionary_single_mixup_warning_from_payload(
+                {"warning": True, "reason": "over-eager", "confidence": "high"},
+                row_number=1,
+                surface="Path-ch’rrich",
+                translation=translation,
+                translation_language="en",
+            )
+            self.assertIsNone(warning)
+
+        warning = views._picture_dictionary_single_mixup_warning_from_payload(
+            {"warning": True, "reason": "looks swapped", "confidence": "high"},
+            row_number=2,
+            surface="long",
+            translation="yelkarr’ng",
+            translation_language="en",
+        )
+        self.assertIsNotNone(warning)
+
+    @override_settings(OPENAI_API_KEY="test-key")
+    @patch("projects.views._build_ai_client")
+    def test_low_resource_add_warns_on_surface_translation_mixup(self, mock_build_ai_client):
+        mock_build_ai_client.return_value = FakeDictionaryMixupClient()
+        client = Client()
+        client.login(username="org", password="pw")
+
+        response = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "add_low_resource_rows",
+                "low_resource_surface": ["pama", "person"],
+                "low_resource_lemma": ["pama", "person"],
+                "low_resource_pos": ["NOUN", "NOUN"],
+                "low_resource_gloss": ["person", "pama"],
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Possible surface/translation mix-up")
+        self.assertContains(response, "row 2: word ‘person’ with gloss ‘pama’")
+        self.assertGreaterEqual(mock_build_ai_client.call_count, 2)
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        self.assertFalse(dictionary.entries.filter(surface="person", is_active=True).exists())
+        self.assertFalse(dictionary.entries.filter(surface="pama", is_active=True).exists())
+
+    @override_settings(OPENAI_API_KEY="test-key")
+    @patch("projects.views._build_ai_client")
+    def test_organiser_review_warns_on_legacy_dictionary_mixup(self, mock_build_ai_client):
+        client = Client()
+        client.login(username="org", password="pw")
+        mock_build_ai_client.return_value = FakeNoDictionaryMixupClient()
+        created = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "add_low_resource_rows",
+                "low_resource_surface": ["pama"],
+                "low_resource_lemma": ["pama"],
+                "low_resource_pos": ["NOUN"],
+                "low_resource_gloss": ["person"],
+            },
+            follow=True,
+        )
+        self.assertEqual(created.status_code, 200)
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        entry = dictionary.entries.get(surface="pama")
+        entry.surface = "person"
+        entry.lemma = "person"
+        entry.save(update_fields=["surface", "lemma", "updated_at"])
+        run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
+        translation_payload = read_stage_artifact(run_dir, "translation")
+        translation_payload["pages"][0]["segments"][0]["annotations"]["translation"] = "pama"
+        write_stage_artifact(run_dir, "translation", translation_payload)
+        gloss_payload = read_stage_artifact(run_dir, "gloss")
+        gloss_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"]["gloss"] = "pama"
+        write_stage_artifact(run_dir, "gloss", gloss_payload)
+        mock_build_ai_client.return_value = FakeDictionaryMixupClient()
+
+        response = client.get(
+            reverse("community-organiser-review-project", args=[self.community.id, dictionary.project.id])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Possible dictionary word/gloss mix-ups")
+        self.assertContains(response, "word <strong>person</strong>, gloss/translation <strong>pama</strong>", html=False)
+
     def test_low_resource_remove_selected_cleans_project_pages_and_stage_artifacts(self):
         client = Client()
         client.login(username="org", password="pw")
@@ -734,6 +860,77 @@ class CommunityWorkflowTests(TestCase):
                 community=self.community, project=self.project, organiser=self.organiser
             ).exists()
         )
+
+
+    def test_organiser_review_selected_pages_filter_preserves_checked_pages(self):
+        self.project.community = self.community
+        self.project.save(update_fields=["community", "updated_at"])
+        second_page = ProjectImagePage.objects.create(
+            project=self.project,
+            page_number=2,
+            page_text="Second page",
+            generation_prompt="second prompt",
+            image_model="gpt-image-1",
+            image_path="images/pages/page_002/variant_001.png",
+            status="generated",
+        )
+        ProjectImagePageVariant.objects.create(
+            page=second_page,
+            variant_index=1,
+            image_model="gpt-image-1",
+            image_path="images/pages/page_002/variant_001.png",
+            generation_prompt="second prompt",
+            status="generated",
+        )
+        client = Client()
+        client.login(username="org", password="pw")
+
+        resp = client.get(
+            reverse("community-organiser-review-project", args=[self.community.id, self.project.id]),
+            {"generation_filter": "selected_pages", "selected_page_id": str(self.page.id)},
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        content = resp.content.decode()
+        self.assertContains(resp, "Page 1, variant 1")
+        self.assertContains(resp, "Page 2, variant 1")
+        self.assertRegex(content, rf'data-page-id="{second_page.id}"[^>]*display:none')
+        self.assertContains(resp, f'name="selected_page_id" value="{self.page.id}" checked', html=False)
+        self.assertContains(resp, 'Pages selected for regeneration in this view: <strong id="selected-page-count">1</strong>', html=False)
+        self.assertContains(resp, "data-selection-storage-key", html=False)
+
+    @patch("projects.views._build_ai_client")
+    def test_organiser_regeneration_prompt_honours_disallow_text_setting(self, mock_build_ai_client):
+        self.project.community = self.community
+        self.project.save(update_fields=["community", "updated_at"])
+        self.style.disallow_text_in_images = True
+        self.style.save(update_fields=["disallow_text_in_images", "updated_at"])
+        mock_build_ai_client.return_value = FakeImageClient()
+        client = Client()
+        client.login(username="org", password="pw")
+
+        preview = client.post(
+            reverse("community-organiser-review-project", args=[self.community.id, self.project.id]),
+            {
+                "action": "generate_requested_preview",
+                "generation_filter": "selected_pages",
+                "selected_page_id": [str(self.page.id)],
+                "request_count_all": "1",
+            },
+            follow=True,
+        )
+        self.assertEqual(preview.status_code, 200)
+
+        confirm = client.post(
+            reverse("community-organiser-review-project", args=[self.community.id, self.project.id]),
+            {"action": "generate_requested"},
+            follow=True,
+        )
+
+        self.assertEqual(confirm.status_code, 200)
+        generated_variant = ProjectImagePageVariant.objects.get(page=self.page, variant_index=2)
+        self.assertIn("TEXT SUPPRESSION REQUIREMENTS", generated_variant.generation_prompt)
+        self.assertIn("No exceptions", generated_variant.generation_prompt)
 
     @patch("projects.views._build_ai_client")
     def test_organiser_review_generate_requested_selected_pages_filter(self, mock_build_ai_client):
