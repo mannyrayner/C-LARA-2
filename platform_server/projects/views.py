@@ -8946,6 +8946,61 @@ def _normalise_picture_dictionary_mixup_warnings(payload: Any, *, rows_by_number
     return warnings
 
 
+def _picture_dictionary_single_mixup_warning_from_payload(
+    payload: Any,
+    *,
+    row_number: int,
+    surface: str,
+    translation: str,
+) -> dict[str, str] | None:
+    rows_by_number = {row_number: {"surface": surface, "translation": translation}}
+    if isinstance(payload, dict) and isinstance(payload.get("warnings"), list):
+        warnings = _normalise_picture_dictionary_mixup_warnings(payload, rows_by_number=rows_by_number)
+        return warnings[0] if warnings else None
+    if not isinstance(payload, dict):
+        return None
+    warning_value = payload.get("warning")
+    if isinstance(warning_value, str):
+        is_warning = warning_value.strip().lower() in {"true", "yes", "y", "1"}
+    else:
+        is_warning = bool(warning_value)
+    confidence = str(payload.get("confidence") or "").strip().lower()
+    if not is_warning or (confidence and confidence not in {"medium", "high"}):
+        return None
+    reason = str(payload.get("reason") or "").strip()
+    return {
+        "row_number": str(row_number),
+        "surface": surface,
+        "translation": translation,
+        "reason": reason or "The translation/gloss does not appear to be in the gloss language, so the row may have swapped word/gloss fields.",
+        "confidence": confidence or "medium",
+    }
+
+
+def _picture_dictionary_mixup_check_prompt(
+    *,
+    source_language: str,
+    source_label: str,
+    translation_language: str,
+    translation_label: str,
+    candidate: dict[str, Any],
+) -> str:
+    return (
+        "You are checking ONE row of a picture-dictionary table for a low-resource language project. "
+        "The row should have page text / surface form in the text/source language and page translation / gloss in the translation language. "
+        "The main usability risk is that an organiser accidentally swapped these fields, for example entering an English/French gloss as page text and the low-resource word as page translation. "
+        "Decision rule: first inspect the translation/gloss field. If it is a normal, comprehensible expression in the translation/gloss language, return warning=false, even if the surface form vaguely resembles a word in that language. "
+        "Return warning=true when the translation/gloss field does NOT look like the translation/gloss language; this is important because image generation will rely on that text. "
+        "Use higher confidence when, in addition, the surface/page-text field DOES look like the translation/gloss language, since that strongly suggests the fields were swapped. "
+        "Do not flag proper names, numerals, international loanwords/cognates, or short ambiguous surface forms merely because they resemble English/French when the translation/gloss itself is valid. "
+        "Return only JSON with keys warning (boolean), reason (string), confidence ('low', 'medium', or 'high'). "
+        "Use medium/high only when the organiser should be alerted.\n\n"
+        f"Text/source language: {source_label} ({source_language})\n"
+        f"Translation/gloss language: {translation_label} ({translation_language})\n"
+        f"Row: {json.dumps(candidate, ensure_ascii=False)}"
+    )
+
+
 def _picture_dictionary_surface_translation_mixup_warnings(
     *,
     dictionary: PictureDictionary,
@@ -8953,7 +9008,7 @@ def _picture_dictionary_surface_translation_mixup_warnings(
     user: Any | None = None,
     max_rows: int = 40,
 ) -> list[dict[str, str]]:
-    """Use an AI language check to find likely surface/gloss swaps in dictionary rows."""
+    """Use per-row AI language checks to find likely surface/gloss swaps."""
 
     if not rows or not _ai_available_for_user(user):
         return []
@@ -8964,51 +9019,76 @@ def _picture_dictionary_surface_translation_mixup_warnings(
         translation_label = _project_language_label(translation_language)
     else:
         translation_label = "the gloss/translation language (often English or French; infer it from the gloss values)"
-    candidate_rows: list[dict[str, str]] = []
-    rows_by_number: dict[int, dict[str, str]] = {}
+    candidate_rows: list[dict[str, Any]] = []
     for idx, row in enumerate(rows, start=1):
         surface = str(row.get("surface") or "").strip()
         translation = str(row.get("translation") or row.get("gloss") or "").strip()
         if not surface or not translation:
             continue
-        candidate = {
-            "row_number": idx,
-            "surface": surface,
-            "lemma": str(row.get("lemma") or "").strip(),
-            "pos": str(row.get("pos") or "").strip(),
-            "translation": translation,
-        }
-        candidate_rows.append(candidate)
-        rows_by_number[idx] = {"surface": surface, "translation": translation}
+        candidate_rows.append(
+            {
+                "row_number": idx,
+                "surface": surface,
+                "lemma": str(row.get("lemma") or "").strip(),
+                "pos": str(row.get("pos") or "").strip(),
+                "translation": translation,
+            }
+        )
         if len(candidate_rows) >= max_rows:
             break
     if not candidate_rows:
         return []
 
-    prompt = (
-        "You are checking a picture-dictionary table for a low-resource language project. "
-        "Each row should have a page text / surface form in the text/source language and a page translation / gloss in the translation language. "
-        "The main usability risk is that an organiser accidentally swapped these fields, for example entering an English/French gloss as page text and the low-resource word as page translation. "
-        "Use this decision rule: first inspect the translation/gloss field. If it is a normal, comprehensible expression in the translation/gloss language, usually DO NOT warn, even if the surface form vaguely resembles a word in that language. "
-        "Warn when the translation/gloss field does NOT look like the translation/gloss language; this is important because image generation will rely on that text. "
-        "Give higher confidence when, in addition, the surface/page-text field DOES look like the translation/gloss language, since that strongly suggests the fields were swapped. "
-        "Do not flag proper names, numerals, international loanwords/cognates, or short ambiguous surface forms merely because they resemble an English/French word when the translation/gloss itself is valid. "
-        "Return only JSON with key 'warnings', an array of objects with keys row_number, reason, confidence. "
-        "confidence must be 'low', 'medium', or 'high'; only use medium/high when the organiser should be alerted.\n\n"
-        f"Text/source language: {source_label} ({source_language})\n"
-        f"Translation/gloss language: {translation_label} ({translation_language})\n"
-        f"Rows: {json.dumps(candidate_rows, ensure_ascii=False)}"
-    )
-    try:
-        client = _build_ai_client(user=user, model_name="gpt-4o-mini")
-        payload = asyncio.run(client.chat_json(prompt, model="gpt-4o-mini"))
-    except Exception:
-        logger.exception(
-            "Picture-dictionary surface/translation mix-up check failed for dictionary %s",
-            dictionary.id,
+    def _check_candidate(candidate: dict[str, Any]) -> dict[str, str] | None:
+        row_number = int(candidate["row_number"])
+        surface = str(candidate["surface"])
+        translation = str(candidate["translation"])
+        prompt = _picture_dictionary_mixup_check_prompt(
+            source_language=source_language,
+            source_label=source_label,
+            translation_language=translation_language,
+            translation_label=translation_label,
+            candidate=candidate,
         )
-        return []
-    return _normalise_picture_dictionary_mixup_warnings(payload, rows_by_number=rows_by_number)
+        try:
+            client = _build_ai_client(user=user, model_name="gpt-4o-mini")
+            payload = asyncio.run(client.chat_json(prompt, model="gpt-4o-mini"))
+            warning = _picture_dictionary_single_mixup_warning_from_payload(
+                payload,
+                row_number=row_number,
+                surface=surface,
+                translation=translation,
+            )
+            payload_confidence = str(payload.get("confidence") or "") if isinstance(payload, dict) else ""
+            payload_reason = str(payload.get("reason") or "") if isinstance(payload, dict) else ""
+            logger.info(
+                "Picture-dictionary mix-up check row %s: warning=%s confidence=%s surface=%r translation=%r reason=%r",
+                row_number,
+                bool(warning),
+                (warning or {}).get("confidence") or payload_confidence,
+                surface,
+                translation,
+                (warning or {}).get("reason") or payload_reason,
+            )
+            return warning
+        except Exception:
+            logger.exception(
+                "Picture-dictionary surface/translation mix-up check failed for dictionary %s row %s",
+                dictionary.id,
+                row_number,
+            )
+            return None
+
+    warnings: list[dict[str, str]] = []
+    max_workers = min(8, len(candidate_rows))
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(_check_candidate, candidate): candidate for candidate in candidate_rows}
+        for future in as_completed(futures):
+            warning = future.result()
+            if warning is not None:
+                warnings.append(warning)
+    warnings.sort(key=lambda item: int(item["row_number"]))
+    return warnings
 
 
 def _picture_dictionary_existing_mixup_warnings(

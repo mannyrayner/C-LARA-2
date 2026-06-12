@@ -48,14 +48,22 @@ class FakeImageClient:
 
 class FakeDictionaryMixupClient:
     async def chat_json(self, prompt, **kwargs):  # noqa: ARG002
+        row_json = str(prompt).split("Row:", 1)[-1].strip()
+        try:
+            row = json.loads(row_json)
+        except json.JSONDecodeError:
+            row = {}
+        translation = str(row.get("translation") or "").strip().lower()
+        surface = str(row.get("surface") or "").strip()
+        is_warning = translation == "pama"
         return {
-            "warnings": [
-                {
-                    "row_number": 1,
-                    "reason": "The word looks like English while the gloss looks like the low-resource language.",
-                    "confidence": "high",
-                }
-            ]
+            "warning": is_warning,
+            "reason": (
+                f"The gloss/translation ‘{translation}’ does not look like English, while the page text ‘{surface}’ does."
+                if is_warning
+                else "The gloss/translation looks like English."
+            ),
+            "confidence": "high" if is_warning else "low",
         }
 
 class FakeNoDictionaryMixupClient:
@@ -593,19 +601,21 @@ class CommunityWorkflowTests(TestCase):
             reverse("community-organiser-home", args=[self.community.id]),
             {
                 "picture_dictionary_action": "add_low_resource_rows",
-                "low_resource_surface": ["person"],
-                "low_resource_lemma": ["person"],
-                "low_resource_pos": ["NOUN"],
-                "low_resource_gloss": ["pama"],
+                "low_resource_surface": ["pama", "person"],
+                "low_resource_lemma": ["pama", "person"],
+                "low_resource_pos": ["NOUN", "NOUN"],
+                "low_resource_gloss": ["person", "pama"],
             },
             follow=True,
         )
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Possible surface/translation mix-up")
-        self.assertContains(response, "row 1: word ‘person’ with gloss ‘pama’")
+        self.assertContains(response, "row 2: word ‘person’ with gloss ‘pama’")
+        self.assertGreaterEqual(mock_build_ai_client.call_count, 2)
         dictionary = PictureDictionary.objects.get(community=self.community)
         self.assertFalse(dictionary.entries.filter(surface="person", is_active=True).exists())
+        self.assertFalse(dictionary.entries.filter(surface="pama", is_active=True).exists())
 
     @override_settings(OPENAI_API_KEY="test-key")
     @patch("projects.views._build_ai_client")
@@ -630,6 +640,13 @@ class CommunityWorkflowTests(TestCase):
         entry.surface = "person"
         entry.lemma = "person"
         entry.save(update_fields=["surface", "lemma", "updated_at"])
+        run_dir = dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary"
+        translation_payload = read_stage_artifact(run_dir, "translation")
+        translation_payload["pages"][0]["segments"][0]["annotations"]["translation"] = "pama"
+        write_stage_artifact(run_dir, "translation", translation_payload)
+        gloss_payload = read_stage_artifact(run_dir, "gloss")
+        gloss_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"]["gloss"] = "pama"
+        write_stage_artifact(run_dir, "gloss", gloss_payload)
         mock_build_ai_client.return_value = FakeDictionaryMixupClient()
 
         response = client.get(
@@ -638,7 +655,7 @@ class CommunityWorkflowTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Possible dictionary word/gloss mix-ups")
-        self.assertContains(response, "word <strong>person</strong>, gloss/translation <strong>person</strong>", html=False)
+        self.assertContains(response, "word <strong>person</strong>, gloss/translation <strong>pama</strong>", html=False)
 
     def test_low_resource_remove_selected_cleans_project_pages_and_stage_artifacts(self):
         client = Client()
