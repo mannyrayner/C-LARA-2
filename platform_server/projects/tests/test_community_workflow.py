@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from pipeline.stage_artifacts import read_stage_artifact, write_stage_artifact
 
+from projects import views
 from projects.models import (
     Community,
     CommunityImageVote,
@@ -589,6 +590,26 @@ class CommunityWorkflowTests(TestCase):
         page_row.save(update_fields=["image_path", "updated_at"])
         updated_page = client.get(reverse("community-organiser-home", args=[self.community.id]))
         self.assertContains(updated_page, "Pending new images:</strong> 0", html=False)
+
+    def test_dictionary_mixup_postprocessing_suppresses_valid_english_glosses(self):
+        for translation in ("sky", "car", "non protein food, vegetable food source", "ire, firewood"):
+            warning = views._picture_dictionary_single_mixup_warning_from_payload(
+                {"warning": True, "reason": "over-eager", "confidence": "high"},
+                row_number=1,
+                surface="Path-ch’rrich",
+                translation=translation,
+                translation_language="en",
+            )
+            self.assertIsNone(warning)
+
+        warning = views._picture_dictionary_single_mixup_warning_from_payload(
+            {"warning": True, "reason": "looks swapped", "confidence": "high"},
+            row_number=2,
+            surface="long",
+            translation="yelkarr’ng",
+            translation_language="en",
+        )
+        self.assertIsNotNone(warning)
 
     @override_settings(OPENAI_API_KEY="test-key")
     @patch("projects.views._build_ai_client")

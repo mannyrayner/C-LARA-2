@@ -8946,18 +8946,55 @@ def _normalise_picture_dictionary_mixup_warnings(payload: Any, *, rows_by_number
     return warnings
 
 
+
+_ENGLISH_GLOSS_WORDS = {
+    "a", "an", "and", "animal", "big", "bird", "body", "car", "child", "dog", "drink", "eat",
+    "fire", "firewood", "food", "for", "fruit", "good", "grass", "hand", "house", "ire", "large",
+    "leaf", "leg", "little", "long", "man", "non", "person", "plant", "protein", "scrub", "shade",
+    "shell", "sky", "small", "source", "spiral", "tree", "vegetable", "water", "woman", "wood",
+}
+
+
+def _english_gloss_likeness(text: str) -> float:
+    tokens = [token.strip("'-").lower() for token in re.findall(r"[A-Za-z][A-Za-z'-]*", text or "")]
+    tokens = [token for token in tokens if token]
+    if not tokens:
+        return 0.0
+    known = sum(1 for token in tokens if token in _ENGLISH_GLOSS_WORDS)
+    return known / len(tokens)
+
+
+def _translation_looks_like_known_gloss_language(text: str, language_code: str) -> bool:
+    code = (language_code or "").strip().lower()
+    if code not in {"", "en"}:
+        return False
+    likeness = _english_gloss_likeness(text)
+    if likeness >= 0.8:
+        return True
+    tokens = [token.strip("'-").lower() for token in re.findall(r"[A-Za-z][A-Za-z'-]*", text or "") if token.strip("'-")]
+    return len(tokens) == 1 and likeness == 1.0
+
+
 def _picture_dictionary_single_mixup_warning_from_payload(
     payload: Any,
     *,
     row_number: int,
     surface: str,
     translation: str,
+    translation_language: str = "",
 ) -> dict[str, str] | None:
     rows_by_number = {row_number: {"surface": surface, "translation": translation}}
+    if _translation_looks_like_known_gloss_language(translation, translation_language):
+        return None
     if isinstance(payload, dict) and isinstance(payload.get("warnings"), list):
         warnings = _normalise_picture_dictionary_mixup_warnings(payload, rows_by_number=rows_by_number)
         return warnings[0] if warnings else None
     if not isinstance(payload, dict):
+        return None
+    translation_is_gloss_language = payload.get("translation_is_gloss_language")
+    if isinstance(translation_is_gloss_language, str):
+        translation_is_gloss_language = translation_is_gloss_language.strip().lower() in {"true", "yes", "y", "1"}
+    if translation_is_gloss_language is True or _translation_looks_like_known_gloss_language(translation, translation_language):
         return None
     warning_value = payload.get("warning")
     if isinstance(warning_value, str):
@@ -8994,8 +9031,8 @@ def _picture_dictionary_mixup_check_prompt(
         "Return warning=true when the translation/gloss field clearly does NOT look like the translation/gloss language; this is important because image generation will rely on that text. "
         "Use highest confidence when, in addition, the surface/page-text field DOES look like the translation/gloss language, since that strongly suggests the fields were swapped. Examples of likely swaps for an English-gloss dictionary include surface='long' with translation='yelkarr’ng', or surface='small, little' with translation='tikipir'. "
         "Do NOT warn just because the source-language surface form is unfamiliar, non-English-looking, or vaguely resembles an English/French word, as long as the translation/gloss is valid; normal rows often have a low-resource surface such as 'Ch’rrich' and an English gloss such as 'leg'. "
-        "Return only JSON with keys warning (boolean), reason (string), confidence ('low', 'medium', or 'high'). "
-        "Use medium/high only when the organiser should be alerted.\n\n"
+        "Return only JSON with keys translation_is_gloss_language (boolean), warning (boolean), reason (string), confidence ('low', 'medium', or 'high'). "
+        "Set translation_is_gloss_language=true for normal English/French glosses, including terse dictionary glosses. The application will suppress warnings when this is true. Use medium/high only when the organiser should be alerted.\n\n"
         f"Text/source language: {source_label} ({source_language})\n"
         f"Translation/gloss language: {translation_label} ({translation_language})\n"
         f"Row: {json.dumps(candidate, ensure_ascii=False)}"
@@ -9018,8 +9055,10 @@ def _picture_dictionary_surface_translation_mixup_warnings(
     source_label = _project_language_label(source_language)
     if translation_language and translation_language != source_language:
         translation_label = _project_language_label(translation_language)
+        gloss_language_for_check = translation_language
     else:
         translation_label = "the gloss/translation language (often English or French; infer it from the gloss values)"
+        gloss_language_for_check = ""
     candidate_rows: list[dict[str, Any]] = []
     for idx, row in enumerate(rows, start=1):
         surface = str(row.get("surface") or "").strip()
@@ -9059,6 +9098,7 @@ def _picture_dictionary_surface_translation_mixup_warnings(
                 row_number=row_number,
                 surface=surface,
                 translation=translation,
+                translation_language=gloss_language_for_check,
             )
             payload_confidence = str(payload.get("confidence") or "") if isinstance(payload, dict) else ""
             payload_reason = str(payload.get("reason") or "") if isinstance(payload, dict) else ""
