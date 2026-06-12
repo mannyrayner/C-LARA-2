@@ -50,7 +50,22 @@ class FakeImageClient:
 
 class FakeDictionaryMixupClient:
     async def chat_json(self, prompt, **kwargs):  # noqa: ARG002
-        row_json = str(prompt).split("Row:", 1)[-1].strip()
+        text_prompt = str(prompt)
+        if "Item:" in text_prompt:
+            item_json = text_prompt.split("Item:", 1)[-1].strip()
+            try:
+                item = json.loads(item_json)
+            except json.JSONDecodeError:
+                item = {}
+            text = str(item.get("text") or "").strip().lower()
+            is_gloss_language = text in {"person", "long", "mouth"}
+            return {
+                "is_gloss_language": is_gloss_language,
+                "confidence": "high",
+                "reason": "The item looks like English." if is_gloss_language else "The item does not look like English.",
+            }
+
+        row_json = text_prompt.split("Row:", 1)[-1].strip()
         try:
             row = json.loads(row_json)
         except json.JSONDecodeError:
@@ -672,10 +687,32 @@ class CommunityWorkflowTests(TestCase):
             user=self.organiser,
         )
 
-        self.assertEqual(first_call_count, 1)
+        self.assertEqual(first_call_count, 2)
         self.assertEqual(mock_build_ai_client.call_count, first_call_count)
         self.assertEqual(first_warnings, second_warnings)
         self.assertEqual(first_traces, second_traces)
+
+    @override_settings(OPENAI_API_KEY="test-key")
+    @patch("projects.views._build_ai_client")
+    def test_dictionary_mixup_diagnostics_classifies_fields_independently(self, mock_build_ai_client):
+        cache.clear()
+        mock_build_ai_client.return_value = FakeDictionaryMixupClient()
+        dictionary = PictureDictionary.objects.create(
+            community=self.community,
+            project=self.project,
+            organiser=self.organiser,
+            language=self.project.language,
+        )
+
+        warnings, traces = views._picture_dictionary_surface_translation_mixup_diagnostics(
+            dictionary=dictionary,
+            rows=[{"surface": "Thaw", "lemma": "Thaw", "pos": "NOUN", "gloss": "mouth"}],
+            user=self.organiser,
+        )
+
+        self.assertEqual(warnings, [])
+        self.assertEqual(traces[0]["text_language_id"], "not French")
+        self.assertEqual(traces[0]["gloss_language_id"], "French")
 
     @override_settings(OPENAI_API_KEY="test-key")
     @patch("projects.views._build_ai_client")
@@ -736,6 +773,7 @@ class CommunityWorkflowTests(TestCase):
         gloss_payload = read_stage_artifact(run_dir, "gloss")
         gloss_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"]["gloss"] = "pama"
         write_stage_artifact(run_dir, "gloss", gloss_payload)
+        cache.clear()
         mock_build_ai_client.return_value = FakeDictionaryMixupClient()
 
         response = client.get(

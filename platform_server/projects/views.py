@@ -9060,49 +9060,121 @@ def _picture_dictionary_single_mixup_warning_from_payload(
     return warning
 
 
-def _picture_dictionary_mixup_cache_key(
+def _picture_dictionary_language_id_cache_key(
     *,
-    source_language: str,
     translation_language: str,
-    surface: str,
-    translation: str,
+    text: str,
 ) -> str:
     payload = {
-        "version": 2,
-        "source_language": source_language,
+        "version": 3,
         "translation_language": translation_language,
-        "surface": surface.strip().casefold(),
-        "translation": translation.strip().casefold(),
+        "text": text.strip().casefold(),
     }
     digest = hashlib.sha256(
         json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
     ).hexdigest()
-    return f"picture_dictionary_mixup:{digest}"
+    return f"picture_dictionary_language_id:{digest}"
 
 
-def _picture_dictionary_mixup_check_prompt(
+def _picture_dictionary_language_id_prompt(
     *,
-    source_language: str,
-    source_label: str,
     translation_language: str,
     translation_label: str,
-    candidate: dict[str, Any],
+    field_label: str,
+    text: str,
 ) -> str:
     return (
-        "You are checking ONE row of a picture-dictionary table for a low-resource language project. "
-        "The row should have page text / surface form in the text/source language and page translation / gloss in the translation language. "
-        "The main usability risk is that an organiser accidentally swapped these fields, for example entering an English/French gloss as page text and the low-resource word as page translation. "
-        "Classify BOTH fields relative to the translation/gloss language. Return text_is_gloss_language=true if the page text/surface field looks like the translation/gloss language; return translation_is_gloss_language=true if the gloss field looks like the translation/gloss language. "
-        "Use this four-way decision table: (1) text not gloss-language + gloss gloss-language => warning=false; (2) text not gloss-language + gloss not gloss-language => warning=true; (3) text gloss-language + gloss gloss-language => warning=false; (4) text gloss-language + gloss not gloss-language => warning=true. "
-        "Treat comma-separated gloss lists, dictionary-style paraphrases, and minor typos in the translation/gloss language as gloss-language; for example 'ire, firewood' is close enough to English 'fire, firewood' and should count as gloss-language. "
-        "Examples of likely warnings for an English-gloss dictionary include surface='long' with translation='yelkarr’ng', or surface='small, little' with translation='tikipir'. "
-        "Do NOT warn just because the source-language surface form is unfamiliar, non-English-looking, or vaguely resembles an English/French word, as long as the translation/gloss is valid; normal rows often have a low-resource surface such as 'Ch’rrich' and an English gloss such as 'leg'. "
-        "Return only JSON with keys text_is_gloss_language (boolean), text_language_confidence ('low', 'medium', or 'high'), translation_is_gloss_language (boolean), translation_language_confidence ('low', 'medium', or 'high'), warning (boolean), reason (string), confidence ('low', 'medium', or 'high'). "
-        "Use medium/high warning confidence only when the organiser should be alerted.\n\n"
-        f"Text/source language: {source_label} ({source_language})\n"
+        "You are doing a language-ID check for ONE isolated picture-dictionary field. "
+        "Classify only whether this single text is in the translation/gloss language. "
+        "Do not infer or name any low-resource/source language; if it does not look like the gloss language, simply classify it as not in the gloss language. "
+        "Treat short dictionary glosses, comma-separated gloss lists, explanatory paraphrases, and minor typos in the gloss language as being in the gloss language. "
+        "For example, for English glosses, 'mouth', 'sky', 'small, little', 'non protein food, vegetable food source', and 'ire, firewood' should count as English/gloss-language. "
+        "Return only JSON with keys is_gloss_language (boolean), confidence ('low', 'medium', or 'high'), and reason (string).\n\n"
         f"Translation/gloss language: {translation_label} ({translation_language})\n"
-        f"Row: {json.dumps(candidate, ensure_ascii=False)}"
+        f"Item: {json.dumps({'field': field_label, 'text': text}, ensure_ascii=False)}"
     )
+
+
+def _picture_dictionary_normalise_language_id_payload(payload: Any) -> dict[str, Any]:
+    payload_dict = payload if isinstance(payload, dict) else {}
+    is_gloss_language = _coerce_ai_bool(
+        payload_dict.get("is_gloss_language")
+        if "is_gloss_language" in payload_dict
+        else payload_dict.get("text_is_gloss_language")
+    )
+    return {
+        "is_gloss_language": is_gloss_language,
+        "confidence": _normalise_ai_confidence(payload_dict.get("confidence") or payload_dict.get("language_confidence")),
+        "reason": str(payload_dict.get("reason") or "").strip(),
+    }
+
+
+def _picture_dictionary_mixup_result_from_language_ids(
+    *,
+    row_number: int,
+    surface: str,
+    translation: str,
+    text_result: dict[str, Any],
+    translation_result: dict[str, Any],
+    gloss_language_label: str,
+) -> tuple[dict[str, str] | None, dict[str, str]]:
+    text_is_gloss_language = text_result.get("is_gloss_language")
+    translation_is_gloss_language = translation_result.get("is_gloss_language")
+    trace = {
+        "row_number": str(row_number),
+        "surface": surface,
+        "translation": translation,
+        "text_language_id": _picture_dictionary_language_trace_label(
+            text_is_gloss_language,
+            gloss_language_label=gloss_language_label,
+        ),
+        "text_language_confidence": str(text_result.get("confidence") or "unknown"),
+        "gloss_language_id": _picture_dictionary_language_trace_label(
+            translation_is_gloss_language,
+            gloss_language_label=gloss_language_label,
+        ),
+        "gloss_language_confidence": str(translation_result.get("confidence") or "unknown"),
+        "reason": "; ".join(
+            reason
+            for reason in [str(text_result.get("reason") or ""), str(translation_result.get("reason") or "")]
+            if reason
+        ),
+    }
+    if translation_is_gloss_language is not False:
+        return None, trace
+
+    text_label = _picture_dictionary_language_trace_label(
+        True,
+        gloss_language_label=gloss_language_label,
+    )
+    not_text_label = _picture_dictionary_language_trace_label(
+        False,
+        gloss_language_label=gloss_language_label,
+    )
+    if text_is_gloss_language is True:
+        reason = (
+            f"The word appears to be in {text_label}, but the gloss/translation does not look like {text_label}. "
+            "This may mean the word and gloss were swapped, or that the gloss/translation needs correction."
+        )
+        confidence = str(text_result.get("confidence") or "medium")
+    else:
+        reason = (
+            f"The gloss/translation does not look like {text_label}. It was classified as {not_text_label}, "
+            "so image generation may not be able to use it; please check this row."
+        )
+        confidence = str(translation_result.get("confidence") or "medium")
+    if confidence not in {"medium", "high"}:
+        confidence = "medium"
+    warning = {
+        "row_number": str(row_number),
+        "surface": surface,
+        "translation": translation,
+        "reason": reason,
+        "confidence": confidence,
+        "text_language_id": trace["text_language_id"],
+        "gloss_language_id": trace["gloss_language_id"],
+    }
+    return warning, trace
 
 
 def _picture_dictionary_surface_translation_mixup_diagnostics(
@@ -9118,7 +9190,6 @@ def _picture_dictionary_surface_translation_mixup_diagnostics(
         return [], []
     source_language = dictionary.language or dictionary.project.language
     configured_translation_language = dictionary.project.target_language or ""
-    source_label = _project_language_label(source_language)
     if configured_translation_language and configured_translation_language != source_language:
         translation_label = _project_language_label(configured_translation_language)
         translation_language_for_prompt = configured_translation_language
@@ -9145,67 +9216,65 @@ def _picture_dictionary_surface_translation_mixup_diagnostics(
     if not candidate_rows:
         return [], []
 
+    def _classify_field(text_value: str, *, field_label: str) -> dict[str, Any]:
+        cache_key = _picture_dictionary_language_id_cache_key(
+            translation_language=translation_language_for_prompt,
+            text=text_value,
+        )
+        cached = cache.get(cache_key)
+        if isinstance(cached, dict) and "is_gloss_language" in cached:
+            logger.info(
+                "Picture-dictionary language-ID cache hit field=%s is_gloss_language=%s text=%r",
+                field_label,
+                cached.get("is_gloss_language"),
+                text_value,
+            )
+            return cached
+        prompt = _picture_dictionary_language_id_prompt(
+            translation_language=translation_language_for_prompt,
+            translation_label=translation_label,
+            field_label=field_label,
+            text=text_value,
+        )
+        client = _build_ai_client(user=user, model_name="gpt-4o-mini")
+        payload = asyncio.run(client.chat_json(prompt, model="gpt-4o-mini"))
+        result = _picture_dictionary_normalise_language_id_payload(payload)
+        cache.set(cache_key, result, timeout=7 * 24 * 60 * 60)
+        logger.info(
+            "Picture-dictionary language-ID check field=%s is_gloss_language=%s confidence=%s text=%r reason=%r",
+            field_label,
+            result.get("is_gloss_language"),
+            result.get("confidence"),
+            text_value,
+            result.get("reason"),
+        )
+        return result
+
     def _check_candidate(candidate: dict[str, Any]) -> tuple[dict[str, str] | None, dict[str, str]]:
         row_number = int(candidate["row_number"])
         surface = str(candidate["surface"])
         translation = str(candidate["translation"])
-        cache_key = _picture_dictionary_mixup_cache_key(
-            source_language=source_language,
-            translation_language=translation_language_for_prompt,
-            surface=surface,
-            translation=translation,
-        )
-        cached = cache.get(cache_key)
-        if isinstance(cached, dict):
-            warning = cached.get("warning") if isinstance(cached.get("warning"), dict) else None
-            trace = cached.get("trace") if isinstance(cached.get("trace"), dict) else None
-            if trace is not None:
-                trace = {**trace, "row_number": str(row_number)}
-                if warning is not None:
-                    warning = {**warning, "row_number": str(row_number)}
-                logger.info(
-                    "Picture-dictionary mix-up cache hit row %s: warning=%s surface=%r translation=%r",
-                    row_number,
-                    bool(warning),
-                    surface,
-                    translation,
-                )
-                return warning, trace
-        prompt = _picture_dictionary_mixup_check_prompt(
-            source_language=source_language,
-            source_label=source_label,
-            translation_language=translation_language_for_prompt,
-            translation_label=translation_label,
-            candidate=candidate,
-        )
+        gloss_language_label = "English" if translation_language_for_prompt == "inferred" else translation_label
         try:
-            client = _build_ai_client(user=user, model_name="gpt-4o-mini")
-            payload = asyncio.run(client.chat_json(prompt, model="gpt-4o-mini"))
-            warning, trace = _picture_dictionary_single_mixup_result_from_payload(
-                payload,
+            text_result = _classify_field(surface, field_label="word/page text")
+            translation_result = _classify_field(translation, field_label="gloss/translation")
+            warning, trace = _picture_dictionary_mixup_result_from_language_ids(
                 row_number=row_number,
                 surface=surface,
                 translation=translation,
-                translation_language=translation_language_for_prompt,
-                gloss_language_label=(
-                    "English" if translation_language_for_prompt == "inferred" else translation_label
-                ),
+                text_result=text_result,
+                translation_result=translation_result,
+                gloss_language_label=gloss_language_label,
             )
-            cache.set(
-                cache_key,
-                {"warning": warning, "trace": trace},
-                timeout=7 * 24 * 60 * 60,
-            )
-            payload_confidence = str(payload.get("confidence") or "") if isinstance(payload, dict) else ""
-            payload_reason = str(payload.get("reason") or "") if isinstance(payload, dict) else ""
             logger.info(
-                "Picture-dictionary mix-up check row %s: warning=%s confidence=%s surface=%r translation=%r reason=%r",
+                "Picture-dictionary mix-up check row %s: warning=%s confidence=%s surface=%r translation=%r text_id=%s gloss_id=%s",
                 row_number,
                 bool(warning),
-                (warning or {}).get("confidence") or payload_confidence,
+                (warning or {}).get("confidence"),
                 surface,
                 translation,
-                (warning or {}).get("reason") or payload_reason,
+                trace.get("text_language_id"),
+                trace.get("gloss_language_id"),
             )
             return warning, trace
         except Exception:
