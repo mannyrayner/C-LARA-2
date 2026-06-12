@@ -25,6 +25,17 @@
     <li>All variants unacceptable: {{ review_summary.filter_counts.all_unacceptable }}</li>
   </ul>
 </section>
+{% if picture_dictionary_mixup_warnings %}
+<section style="border:1px solid #b26a00; padding:0.8rem; margin:0.8rem 0 1.2rem 0; background:#fff8e1;">
+  <h3 style="margin-top:0; color:#8a4b00;">Possible dictionary word/gloss mix-ups</h3>
+  <p>These entries look as if the dictionary word may have been entered in the gloss/translation language rather than the text language. Please check them before regenerating images.</p>
+  <ul>
+    {% for warning in picture_dictionary_mixup_warnings %}
+      <li>Row {{ warning.row_number }}: word <strong>{{ warning.surface }}</strong>, gloss/translation <strong>{{ warning.translation }}</strong>. {{ warning.reason }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
 
 <h3>Regeneration controls</h3>
 <form method="post" id="generate-requested-form" data-selection-storage-key="community-organiser-selected-pages-{{ community.id }}-{{ project.id }}" data-has-preview-plan="{% if has_preview_plan %}1{% else %}0{% endif %}">

@@ -3,7 +3,7 @@ import json
 import shutil
 
 from django.contrib.auth import get_user_model
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from unittest.mock import patch
 
@@ -46,6 +46,21 @@ class FakeImageClient:
             "model": kwargs.get("model", "gpt-image-1"),
         }
 
+class FakeDictionaryMixupClient:
+    async def chat_json(self, prompt, **kwargs):  # noqa: ARG002
+        return {
+            "warnings": [
+                {
+                    "row_number": 1,
+                    "reason": "The word looks like English while the gloss looks like the low-resource language.",
+                    "confidence": "high",
+                }
+            ]
+        }
+
+class FakeNoDictionaryMixupClient:
+    async def chat_json(self, prompt, **kwargs):  # noqa: ARG002
+        return {"warnings": []}
 
 class CommunityWorkflowTests(TestCase):
     def setUp(self):
@@ -566,6 +581,64 @@ class CommunityWorkflowTests(TestCase):
         page_row.save(update_fields=["image_path", "updated_at"])
         updated_page = client.get(reverse("community-organiser-home", args=[self.community.id]))
         self.assertContains(updated_page, "Pending new images:</strong> 0", html=False)
+
+    @override_settings(OPENAI_API_KEY="test-key")
+    @patch("projects.views._build_ai_client")
+    def test_low_resource_add_warns_on_surface_translation_mixup(self, mock_build_ai_client):
+        mock_build_ai_client.return_value = FakeDictionaryMixupClient()
+        client = Client()
+        client.login(username="org", password="pw")
+
+        response = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "add_low_resource_rows",
+                "low_resource_surface": ["person"],
+                "low_resource_lemma": ["person"],
+                "low_resource_pos": ["NOUN"],
+                "low_resource_gloss": ["pama"],
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Possible surface/translation mix-up")
+        self.assertContains(response, "row 1: word ‘person’ with gloss ‘pama’")
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        self.assertFalse(dictionary.entries.filter(surface="person", is_active=True).exists())
+
+    @override_settings(OPENAI_API_KEY="test-key")
+    @patch("projects.views._build_ai_client")
+    def test_organiser_review_warns_on_legacy_dictionary_mixup(self, mock_build_ai_client):
+        client = Client()
+        client.login(username="org", password="pw")
+        mock_build_ai_client.return_value = FakeNoDictionaryMixupClient()
+        created = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "add_low_resource_rows",
+                "low_resource_surface": ["pama"],
+                "low_resource_lemma": ["pama"],
+                "low_resource_pos": ["NOUN"],
+                "low_resource_gloss": ["person"],
+            },
+            follow=True,
+        )
+        self.assertEqual(created.status_code, 200)
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        entry = dictionary.entries.get(surface="pama")
+        entry.surface = "person"
+        entry.lemma = "person"
+        entry.save(update_fields=["surface", "lemma", "updated_at"])
+        mock_build_ai_client.return_value = FakeDictionaryMixupClient()
+
+        response = client.get(
+            reverse("community-organiser-review-project", args=[self.community.id, dictionary.project.id])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Possible dictionary word/gloss mix-ups")
+        self.assertContains(response, "word <strong>person</strong>, gloss/translation <strong>person</strong>", html=False)
 
     def test_low_resource_remove_selected_cleans_project_pages_and_stage_artifacts(self):
         client = Client()
