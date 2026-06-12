@@ -2,11 +2,15 @@ from __future__ import annotations
 
 from dataclasses import asdict, replace
 import getpass
-import pwd
 import json
 import sys
 import logging
 import os
+
+if sys.platform == "win32":
+    pwd = None
+else:
+    import pwd
 import signal
 import subprocess
 import threading
@@ -3236,7 +3240,7 @@ def _project_understanding_runtime_summary() -> str:
     except Exception:
         effective_uid = None
     try:
-        username = pwd.getpwuid(effective_uid).pw_name if effective_uid is not None else getpass.getuser()
+        username = pwd.getpwuid(effective_uid).pw_name if effective_uid is not None and pwd is not None else getpass.getuser()
     except Exception:
         try:
             username = getpass.getuser()
