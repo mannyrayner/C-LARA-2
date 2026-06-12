@@ -3,6 +3,7 @@ import json
 import shutil
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from unittest.mock import patch
@@ -619,6 +620,7 @@ class CommunityWorkflowTests(TestCase):
     @override_settings(OPENAI_API_KEY="test-key")
     @patch("projects.views._build_ai_client")
     def test_dictionary_mixup_diagnostics_checks_rows_after_forty(self, mock_build_ai_client):
+        cache.clear()
         mock_build_ai_client.return_value = FakeDictionaryMixupClient()
         client = Client()
         client.login(username="org", password="pw")
@@ -647,7 +649,38 @@ class CommunityWorkflowTests(TestCase):
 
     @override_settings(OPENAI_API_KEY="test-key")
     @patch("projects.views._build_ai_client")
+    def test_dictionary_mixup_diagnostics_reuses_cached_language_checks(self, mock_build_ai_client):
+        cache.clear()
+        mock_build_ai_client.return_value = FakeDictionaryMixupClient()
+        dictionary = PictureDictionary.objects.create(
+            community=self.community,
+            project=self.project,
+            organiser=self.organiser,
+            language=self.project.language,
+        )
+        rows = [{"surface": "long", "lemma": "long", "pos": "ADJ", "gloss": "pama"}]
+
+        first_warnings, first_traces = views._picture_dictionary_surface_translation_mixup_diagnostics(
+            dictionary=dictionary,
+            rows=rows,
+            user=self.organiser,
+        )
+        first_call_count = mock_build_ai_client.call_count
+        second_warnings, second_traces = views._picture_dictionary_surface_translation_mixup_diagnostics(
+            dictionary=dictionary,
+            rows=rows,
+            user=self.organiser,
+        )
+
+        self.assertEqual(first_call_count, 1)
+        self.assertEqual(mock_build_ai_client.call_count, first_call_count)
+        self.assertEqual(first_warnings, second_warnings)
+        self.assertEqual(first_traces, second_traces)
+
+    @override_settings(OPENAI_API_KEY="test-key")
+    @patch("projects.views._build_ai_client")
     def test_low_resource_add_warns_on_surface_translation_mixup(self, mock_build_ai_client):
+        cache.clear()
         mock_build_ai_client.return_value = FakeDictionaryMixupClient()
         client = Client()
         client.login(username="org", password="pw")
@@ -675,6 +708,7 @@ class CommunityWorkflowTests(TestCase):
     @override_settings(OPENAI_API_KEY="test-key")
     @patch("projects.views._build_ai_client")
     def test_organiser_review_warns_on_legacy_dictionary_mixup(self, mock_build_ai_client):
+        cache.clear()
         client = Client()
         client.login(username="org", password="pw")
         mock_build_ai_client.return_value = FakeNoDictionaryMixupClient()
@@ -711,7 +745,7 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Possible dictionary word/gloss mix-ups")
         self.assertContains(response, "word <strong>person</strong>, gloss/translation <strong>pama</strong>", html=False)
-        self.assertContains(response, "Dictionary language-ID trace")
+        self.assertContains(response, "Show dictionary language-ID trace")
         self.assertContains(response, "English (high)")
         self.assertContains(response, "not English (high)")
 

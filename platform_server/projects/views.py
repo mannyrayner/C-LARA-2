@@ -29,6 +29,7 @@ from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
+from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.core.management import call_command
 from django.contrib import messages
@@ -9059,6 +9060,26 @@ def _picture_dictionary_single_mixup_warning_from_payload(
     return warning
 
 
+def _picture_dictionary_mixup_cache_key(
+    *,
+    source_language: str,
+    translation_language: str,
+    surface: str,
+    translation: str,
+) -> str:
+    payload = {
+        "version": 2,
+        "source_language": source_language,
+        "translation_language": translation_language,
+        "surface": surface.strip().casefold(),
+        "translation": translation.strip().casefold(),
+    }
+    digest = hashlib.sha256(
+        json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+    return f"picture_dictionary_mixup:{digest}"
+
+
 def _picture_dictionary_mixup_check_prompt(
     *,
     source_language: str,
@@ -9128,6 +9149,28 @@ def _picture_dictionary_surface_translation_mixup_diagnostics(
         row_number = int(candidate["row_number"])
         surface = str(candidate["surface"])
         translation = str(candidate["translation"])
+        cache_key = _picture_dictionary_mixup_cache_key(
+            source_language=source_language,
+            translation_language=translation_language_for_prompt,
+            surface=surface,
+            translation=translation,
+        )
+        cached = cache.get(cache_key)
+        if isinstance(cached, dict):
+            warning = cached.get("warning") if isinstance(cached.get("warning"), dict) else None
+            trace = cached.get("trace") if isinstance(cached.get("trace"), dict) else None
+            if trace is not None:
+                trace = {**trace, "row_number": str(row_number)}
+                if warning is not None:
+                    warning = {**warning, "row_number": str(row_number)}
+                logger.info(
+                    "Picture-dictionary mix-up cache hit row %s: warning=%s surface=%r translation=%r",
+                    row_number,
+                    bool(warning),
+                    surface,
+                    translation,
+                )
+                return warning, trace
         prompt = _picture_dictionary_mixup_check_prompt(
             source_language=source_language,
             source_label=source_label,
@@ -9144,7 +9187,14 @@ def _picture_dictionary_surface_translation_mixup_diagnostics(
                 surface=surface,
                 translation=translation,
                 translation_language=translation_language_for_prompt,
-                gloss_language_label="English" if translation_language_for_prompt == "inferred" else translation_label,
+                gloss_language_label=(
+                    "English" if translation_language_for_prompt == "inferred" else translation_label
+                ),
+            )
+            cache.set(
+                cache_key,
+                {"warning": warning, "trace": trace},
+                timeout=7 * 24 * 60 * 60,
             )
             payload_confidence = str(payload.get("confidence") or "") if isinstance(payload, dict) else ""
             payload_reason = str(payload.get("reason") or "") if isinstance(payload, dict) else ""

@@ -38,8 +38,8 @@
 {% endif %}
 
 {% if picture_dictionary_mixup_traces %}
-<section style="border:1px solid #ddd; padding:0.8rem; margin:0.8rem 0 1.2rem 0; background:#f8fbff;">
-  <h3 style="margin-top:0;">Dictionary language-ID trace</h3>
+<details style="border:1px solid #ddd; padding:0.8rem; margin:0.8rem 0 1.2rem 0; background:#f8fbff;">
+  <summary style="cursor:pointer; font-weight:bold;">Show dictionary language-ID trace ({{ picture_dictionary_mixup_traces|length }} row{{ picture_dictionary_mixup_traces|length|pluralize }})</summary>
   <p><small>Per-row AI language classification used by the mix-up checker. “Word” is the page text/surface field; “gloss” is the page translation/gloss field.</small></p>
   <div style="max-height:14rem; overflow:auto;">
     <table style="width:100%; border-collapse:collapse;">
@@ -65,7 +65,7 @@
       </tbody>
     </table>
   </div>
-</section>
+</details>
 {% endif %}
 
 <h3>Regeneration controls</h3>
