@@ -16,6 +16,7 @@
   </p>
   <p>Pages: <strong>{{ review_summary.total_pages }}</strong> · Variants shown: <strong>{{ review_summary.total_variants }}</strong></p>
   <p>Current preview plan pages: <strong>{{ review_summary.preview_plan_count }}</strong></p>
+  <p>Pages selected for regeneration in this view: <strong>{{ review_summary.selected_page_count }}</strong></p>
   <p>Pages matched by filter:</p>
   <ul>
     <li>Selected pages: {{ review_summary.filter_counts.selected_pages }}</li>
@@ -44,7 +45,7 @@
         <option value="{{ value }}" {% if value == current_generation_filter %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
-    <a class="btn secondary" href="?generation_filter={{ current_generation_filter }}">Refresh displayed pages</a>
+    <a class="btn secondary" id="refresh-generation-filter" href="?generation_filter={{ current_generation_filter }}">Refresh displayed pages</a>
   </p>
   <p>
     <label for="request_count_all">Default new variants per selected page:</label>
@@ -81,7 +82,7 @@
     <p><small>Prompt:</small></p>
     <pre>{{ row.variant.generation_prompt }}</pre>
     <p>
-      <label><input type="checkbox" name="selected_page_id" value="{{ row.page.id }}" /> Select for regeneration</label>
+      <label><input type="checkbox" name="selected_page_id" value="{{ row.page.id }}" {% if row.selected_for_regeneration %}checked{% endif %} /> Select for regeneration</label>
     </p>
     <p>New variants (optional override): <input type="number" min="0" max="8" name="request_count_{{ row.page.id }}" value="" /></p>
     <p><input type="text" name="request_prompt_{{ row.page.id }}" placeholder="Prompt update request (optional)" style="width:100%;" /></p>
@@ -127,12 +128,32 @@
         status.style.display = "block";
       }
     });
+    function selectedPageIds() {
+      if (!form) return [];
+      return Array.from(form.querySelectorAll('input[name="selected_page_id"]:checked')).map(function (checkbox) {
+        return checkbox.value;
+      });
+    }
+    function generationFilterUrl(filterValue) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("generation_filter", filterValue || "all_unacceptable");
+      url.searchParams.delete("selected_page_id");
+      selectedPageIds().forEach(function (pageId) {
+        url.searchParams.append("selected_page_id", pageId);
+      });
+      return url;
+    }
     const filterSelect = document.getElementById("generation_filter");
     if (filterSelect) {
       filterSelect.addEventListener("change", function () {
-        const url = new URL(window.location.href);
-        url.searchParams.set("generation_filter", filterSelect.value || "all_unacceptable");
-        window.location.href = url.toString();
+        window.location.href = generationFilterUrl(filterSelect.value).toString();
+      });
+    }
+    const refreshLink = document.getElementById("refresh-generation-filter");
+    if (refreshLink && filterSelect) {
+      refreshLink.addEventListener("click", function (event) {
+        event.preventDefault();
+        window.location.href = generationFilterUrl(filterSelect.value).toString();
       });
     }
   })();
