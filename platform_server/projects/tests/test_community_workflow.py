@@ -780,10 +780,13 @@ class CommunityWorkflowTests(TestCase):
         )
 
         self.assertEqual(resp.status_code, 200)
+        content = resp.content.decode()
         self.assertContains(resp, "Page 1, variant 1")
-        self.assertNotContains(resp, "Page 2, variant 1")
+        self.assertContains(resp, "Page 2, variant 1")
+        self.assertRegex(content, rf'data-page-id="{second_page.id}"[^>]*display:none')
         self.assertContains(resp, f'name="selected_page_id" value="{self.page.id}" checked', html=False)
-        self.assertContains(resp, "Pages selected for regeneration in this view: <strong>1</strong>", html=False)
+        self.assertContains(resp, 'Pages selected for regeneration in this view: <strong id="selected-page-count">1</strong>', html=False)
+        self.assertContains(resp, "data-selection-storage-key", html=False)
 
     @patch("projects.views._build_ai_client")
     def test_organiser_regeneration_prompt_honours_disallow_text_setting(self, mock_build_ai_client):

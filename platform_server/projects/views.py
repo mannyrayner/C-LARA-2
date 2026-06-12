@@ -9596,10 +9596,13 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
     }
     for page in pages:
         context = page_context.get(page.id, {})
-        if not page.preferred_variant_id:
+        page_no_preferred = not page.preferred_variant_id
+        page_missing_images = not page.variants.exists() and not (page.image_path or "").strip()
+        if page_no_preferred:
             filter_counts["no_preferred"] += 1
-        if not page.variants.exists() and not (page.image_path or "").strip():
+        if page_missing_images:
             filter_counts["missing_images"] += 1
+        page_all_unacceptable = False
         variants_for_page = list(page.variants.order_by("variant_index"))
         if variants_for_page:
             has_acceptable = False
@@ -9612,9 +9615,10 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
                 if up_count > down_count:
                     has_acceptable = True
                     break
-            if not has_acceptable:
+            page_all_unacceptable = not has_acceptable
+            if page_all_unacceptable:
                 filter_counts["all_unacceptable"] += 1
-        for variant in page.variants.order_by("variant_index"):
+        for variant in variants_for_page:
             votes = list(
                 CommunityImageVote.objects.filter(community_id=community_id, project=project, variant=variant)
                 .select_related("user")
@@ -9622,6 +9626,8 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
             )
             up = sum(1 for vote in votes if vote.value == CommunityImageVote.VALUE_UP)
             down = sum(1 for vote in votes if vote.value == CommunityImageVote.VALUE_DOWN)
+            in_preview_plan = page.id in preview_page_ids
+            visible_by_filter = page.id in visible_page_ids
             vote_rows.append({
                 "page": page,
                 "source_text": context.get("source_text", ""),
@@ -9630,9 +9636,16 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
                 "votes": votes,
                 "up": up,
                 "down": down,
-                "in_preview_plan": page.id in preview_page_ids,
-                "selected_for_regeneration": page.id in selected_page_ids_for_filter or page.id in preview_page_ids,
-                "visible_by_filter": page.id in visible_page_ids,
+                "matches_filters": {
+                    "all_pages": True,
+                    "missing_images": page_missing_images,
+                    "no_preferred": page_no_preferred,
+                    "all_unacceptable": page_all_unacceptable,
+                },
+                "in_preview_plan": in_preview_plan,
+                "selected_for_regeneration": page.id in selected_page_ids_for_filter or in_preview_plan,
+                "visible_by_filter": visible_by_filter,
+                "initially_visible": visible_by_filter and (not preview_page_ids or in_preview_plan),
             })
     review = CommunityOrganiserReview.objects.filter(
         community_id=community_id, project=project, organiser=request.user

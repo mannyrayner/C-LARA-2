@@ -16,7 +16,7 @@
   </p>
   <p>Pages: <strong>{{ review_summary.total_pages }}</strong> · Variants shown: <strong>{{ review_summary.total_variants }}</strong></p>
   <p>Current preview plan pages: <strong>{{ review_summary.preview_plan_count }}</strong></p>
-  <p>Pages selected for regeneration in this view: <strong>{{ review_summary.selected_page_count }}</strong></p>
+  <p>Pages selected for regeneration in this view: <strong id="selected-page-count">{{ review_summary.selected_page_count }}</strong></p>
   <p>Pages matched by filter:</p>
   <ul>
     <li>Selected pages: {{ review_summary.filter_counts.selected_pages }}</li>
@@ -27,7 +27,7 @@
 </section>
 
 <h3>Regeneration controls</h3>
-<form method="post" id="generate-requested-form">
+<form method="post" id="generate-requested-form" data-selection-storage-key="community-organiser-selected-pages-{{ community.id }}-{{ project.id }}" data-has-preview-plan="{% if has_preview_plan %}1{% else %}0{% endif %}">
   {% csrf_token %}
   <input type="hidden" name="action_intent" id="generate-requested-action-intent" value="" />
   <p>
@@ -63,8 +63,7 @@
 
   <h3>Vote summary</h3>
 {% for row in vote_rows %}
-  {% if row.visible_by_filter and not has_preview_plan or row.visible_by_filter and row.in_preview_plan %}
-  <section style="border:1px solid #ddd; margin:0.6rem 0; padding:0.6rem;">
+  <section class="community-review-row" data-page-id="{{ row.page.id }}" data-filter-all-pages="1" data-filter-missing-images="{% if row.matches_filters.missing_images %}1{% else %}0{% endif %}" data-filter-no-preferred="{% if row.matches_filters.no_preferred %}1{% else %}0{% endif %}" data-filter-all-unacceptable="{% if row.matches_filters.all_unacceptable %}1{% else %}0{% endif %}" data-in-preview-plan="{% if row.in_preview_plan %}1{% else %}0{% endif %}" style="border:1px solid #ddd; margin:0.6rem 0; padding:0.6rem;{% if not row.initially_visible %} display:none;{% endif %}">
     <p><strong>Page {{ row.page.page_number }}, variant {{ row.variant.variant_index }}</strong>{% if row.page.preferred_variant_id == row.variant.id %} <span style="font-weight:bold; color:#2e7d32;">(current preferred image)</span>{% endif %} — 👍 {{ row.up }} / 👎 {{ row.down }}</p>
     {% if row.source_text %}
       <p><strong>Source page text:</strong></p>
@@ -94,8 +93,8 @@
       </ul>
     {% endif %}
   </section>
-  {% endif %}
 {% endfor %}
+  <p id="no-selected-pages-message" style="display:none;"><em>No pages are currently selected. Tick one or more “Select for regeneration” boxes, then choose “Selected pages”.</em></p>
 </form>
 
 <div id="bottom-controls" style="margin-top:1rem; padding-top:0.6rem; border-top:1px dashed #ddd;">
@@ -128,10 +127,41 @@
         status.style.display = "block";
       }
     });
+    const storageKey = form.dataset.selectionStorageKey || "community-organiser-selected-pages";
+    function unique(values) {
+      return Array.from(new Set(values.filter(function (value) { return value; })));
+    }
+    function checkedBoxes() {
+      return Array.from(form.querySelectorAll('input[name="selected_page_id"]:checked'));
+    }
     function selectedPageIds() {
-      if (!form) return [];
-      return Array.from(form.querySelectorAll('input[name="selected_page_id"]:checked')).map(function (checkbox) {
-        return checkbox.value;
+      return unique(checkedBoxes().map(function (checkbox) { return checkbox.value; }));
+    }
+    function storedSelectedPageIds() {
+      try {
+        const parsed = JSON.parse(window.localStorage.getItem(storageKey) || "[]");
+        return Array.isArray(parsed) ? unique(parsed.map(String)) : [];
+      } catch (error) {
+        return [];
+      }
+    }
+    function saveSelectedPageIds() {
+      try {
+        window.localStorage.setItem(storageKey, JSON.stringify(selectedPageIds()));
+      } catch (error) {
+        // Ignore storage failures; URL parameters still preserve the current interaction.
+      }
+    }
+    function setPageSelection(pageId, checked) {
+      form.querySelectorAll('input[name="selected_page_id"]').forEach(function (checkbox) {
+        if (checkbox.value === pageId) checkbox.checked = checked;
+      });
+    }
+    function restoreStoredSelection() {
+      const restored = new Set(unique(storedSelectedPageIds().concat(selectedPageIds())));
+      if (!restored.size) return;
+      form.querySelectorAll('input[name="selected_page_id"]').forEach(function (checkbox) {
+        if (restored.has(checkbox.value)) checkbox.checked = true;
       });
     }
     function generationFilterUrl(filterValue) {
@@ -143,17 +173,66 @@
       });
       return url;
     }
+    function updateSelectedCount() {
+      const selectedCount = document.getElementById("selected-page-count");
+      if (selectedCount) selectedCount.textContent = String(selectedPageIds().length);
+    }
+    function matchesFilter(row, filterValue, selectedIds) {
+      if (filterValue === "selected_pages") return selectedIds.has(row.dataset.pageId || "");
+      if (filterValue === "missing_images") return row.dataset.filterMissingImages === "1";
+      if (filterValue === "no_preferred") return row.dataset.filterNoPreferred === "1";
+      if (filterValue === "all_pages") return row.dataset.filterAllPages === "1";
+      return row.dataset.filterAllUnacceptable === "1";
+    }
+    function applyGenerationFilter(filterValue) {
+      const selectedIds = new Set(selectedPageIds());
+      const hasPreviewPlan = form.dataset.hasPreviewPlan === "1";
+      let visibleRows = 0;
+      document.querySelectorAll(".community-review-row").forEach(function (row) {
+        const visible = matchesFilter(row, filterValue, selectedIds) && (!hasPreviewPlan || row.dataset.inPreviewPlan === "1");
+        row.style.display = visible ? "" : "none";
+        if (visible) visibleRows += 1;
+      });
+      const noSelectedMessage = document.getElementById("no-selected-pages-message");
+      if (noSelectedMessage) {
+        noSelectedMessage.style.display = filterValue === "selected_pages" && selectedIds.size === 0 ? "" : "none";
+      }
+      updateSelectedCount();
+      return visibleRows;
+    }
+    function updateUrlForCurrentFilter(filterValue) {
+      const url = generationFilterUrl(filterValue);
+      window.history.replaceState({}, "", url.toString());
+      const refreshLink = document.getElementById("refresh-generation-filter");
+      if (refreshLink) refreshLink.href = url.toString();
+    }
+    restoreStoredSelection();
+    updateSelectedCount();
     const filterSelect = document.getElementById("generation_filter");
     if (filterSelect) {
+      applyGenerationFilter(filterSelect.value || "all_unacceptable");
+      updateUrlForCurrentFilter(filterSelect.value || "all_unacceptable");
       filterSelect.addEventListener("change", function () {
-        window.location.href = generationFilterUrl(filterSelect.value).toString();
+        saveSelectedPageIds();
+        applyGenerationFilter(filterSelect.value || "all_unacceptable");
+        updateUrlForCurrentFilter(filterSelect.value || "all_unacceptable");
       });
     }
+    form.querySelectorAll('input[name="selected_page_id"]').forEach(function (checkbox) {
+      checkbox.addEventListener("change", function () {
+        setPageSelection(checkbox.value, checkbox.checked);
+        saveSelectedPageIds();
+        if (filterSelect) {
+          applyGenerationFilter(filterSelect.value || "all_unacceptable");
+          updateUrlForCurrentFilter(filterSelect.value || "all_unacceptable");
+        }
+      });
+    });
     const refreshLink = document.getElementById("refresh-generation-filter");
     if (refreshLink && filterSelect) {
-      refreshLink.addEventListener("click", function (event) {
-        event.preventDefault();
-        window.location.href = generationFilterUrl(filterSelect.value).toString();
+      refreshLink.addEventListener("click", function () {
+        saveSelectedPageIds();
+        refreshLink.href = generationFilterUrl(filterSelect.value || "all_unacceptable").toString();
       });
     }
   })();
