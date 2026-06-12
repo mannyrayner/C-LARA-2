@@ -18,11 +18,25 @@ from projects.models import (
     Project,
     ProjectImagePage,
     ProjectImagePageVariant,
+    ProjectImageStyle,
     TaskUpdate,
 )
 
 
 class FakeImageClient:
+    async def chat_text(self, prompt, **kwargs):  # noqa: ARG002
+        text = str(prompt)
+        json_start = text.find("{")
+        if json_start >= 0:
+            try:
+                payload = json.loads(text[json_start:])
+                base_prompt = str(payload.get("base_prompt") or "").strip()
+                if base_prompt:
+                    return base_prompt
+            except Exception:
+                pass
+        return "Constructed prompt for image generation."
+
     def generate_image(self, prompt, **kwargs):
         return {
             "bytes": base64.b64decode(
@@ -49,6 +63,7 @@ class CommunityWorkflowTests(TestCase):
             language="iai",
             target_language="fr",
         )
+        self.style = ProjectImageStyle.objects.create(project=self.project)
         self.page = ProjectImagePage.objects.create(
             project=self.project,
             page_number=1,
@@ -734,6 +749,74 @@ class CommunityWorkflowTests(TestCase):
                 community=self.community, project=self.project, organiser=self.organiser
             ).exists()
         )
+
+
+    def test_organiser_review_selected_pages_filter_preserves_checked_pages(self):
+        self.project.community = self.community
+        self.project.save(update_fields=["community", "updated_at"])
+        second_page = ProjectImagePage.objects.create(
+            project=self.project,
+            page_number=2,
+            page_text="Second page",
+            generation_prompt="second prompt",
+            image_model="gpt-image-1",
+            image_path="images/pages/page_002/variant_001.png",
+            status="generated",
+        )
+        ProjectImagePageVariant.objects.create(
+            page=second_page,
+            variant_index=1,
+            image_model="gpt-image-1",
+            image_path="images/pages/page_002/variant_001.png",
+            generation_prompt="second prompt",
+            status="generated",
+        )
+        client = Client()
+        client.login(username="org", password="pw")
+
+        resp = client.get(
+            reverse("community-organiser-review-project", args=[self.community.id, self.project.id]),
+            {"generation_filter": "selected_pages", "selected_page_id": str(self.page.id)},
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Page 1, variant 1")
+        self.assertNotContains(resp, "Page 2, variant 1")
+        self.assertContains(resp, f'name="selected_page_id" value="{self.page.id}" checked', html=False)
+        self.assertContains(resp, "Pages selected for regeneration in this view: <strong>1</strong>", html=False)
+
+    @patch("projects.views._build_ai_client")
+    def test_organiser_regeneration_prompt_honours_disallow_text_setting(self, mock_build_ai_client):
+        self.project.community = self.community
+        self.project.save(update_fields=["community", "updated_at"])
+        self.style.disallow_text_in_images = True
+        self.style.save(update_fields=["disallow_text_in_images", "updated_at"])
+        mock_build_ai_client.return_value = FakeImageClient()
+        client = Client()
+        client.login(username="org", password="pw")
+
+        preview = client.post(
+            reverse("community-organiser-review-project", args=[self.community.id, self.project.id]),
+            {
+                "action": "generate_requested_preview",
+                "generation_filter": "selected_pages",
+                "selected_page_id": [str(self.page.id)],
+                "request_count_all": "1",
+            },
+            follow=True,
+        )
+        self.assertEqual(preview.status_code, 200)
+
+        confirm = client.post(
+            reverse("community-organiser-review-project", args=[self.community.id, self.project.id]),
+            {"action": "generate_requested"},
+            follow=True,
+        )
+
+        self.assertEqual(confirm.status_code, 200)
+        generated_variant = ProjectImagePageVariant.objects.get(page=self.page, variant_index=2)
+        self.assertIn("TEXT SUPPRESSION REQUIREMENTS", generated_variant.generation_prompt)
+        self.assertIn("No exceptions", generated_variant.generation_prompt)
 
     @patch("projects.views._build_ai_client")
     def test_organiser_review_generate_requested_selected_pages_filter(self, mock_build_ai_client):
