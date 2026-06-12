@@ -37,6 +37,37 @@
 </section>
 {% endif %}
 
+{% if picture_dictionary_mixup_traces %}
+<section style="border:1px solid #ddd; padding:0.8rem; margin:0.8rem 0 1.2rem 0; background:#f8fbff;">
+  <h3 style="margin-top:0;">Dictionary language-ID trace</h3>
+  <p><small>Per-row AI language classification used by the mix-up checker. “Word” is the page text/surface field; “gloss” is the page translation/gloss field.</small></p>
+  <div style="max-height:14rem; overflow:auto;">
+    <table style="width:100%; border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th style="text-align:left;">Row</th>
+          <th style="text-align:left;">Word</th>
+          <th style="text-align:left;">Word language ID</th>
+          <th style="text-align:left;">Gloss/translation</th>
+          <th style="text-align:left;">Gloss language ID</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for trace in picture_dictionary_mixup_traces %}
+          <tr>
+            <td>{{ trace.row_number }}</td>
+            <td>{{ trace.surface }}</td>
+            <td>{{ trace.text_language_id }}{% if trace.text_language_confidence %} ({{ trace.text_language_confidence }}){% endif %}</td>
+            <td>{{ trace.translation }}</td>
+            <td>{{ trace.gloss_language_id }}{% if trace.gloss_language_confidence %} ({{ trace.gloss_language_confidence }}){% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
 <h3>Regeneration controls</h3>
 <form method="post" id="generate-requested-form" data-selection-storage-key="community-organiser-selected-pages-{{ community.id }}-{{ project.id }}" data-has-preview-plan="{% if has_preview_plan %}1{% else %}0{% endif %}">
   {% csrf_token %}

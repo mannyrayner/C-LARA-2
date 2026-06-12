@@ -58,6 +58,10 @@ class FakeDictionaryMixupClient:
         surface = str(row.get("surface") or "").strip()
         is_warning = translation == "pama"
         return {
+            "text_is_gloss_language": surface.lower() in {"person", "long"},
+            "text_language_confidence": "high",
+            "translation_is_gloss_language": not is_warning,
+            "translation_language_confidence": "high",
             "warning": is_warning,
             "reason": (
                 f"The gloss/translation ‘{translation}’ does not look like English, while the page text ‘{surface}’ does."
@@ -677,6 +681,9 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Possible dictionary word/gloss mix-ups")
         self.assertContains(response, "word <strong>person</strong>, gloss/translation <strong>pama</strong>", html=False)
+        self.assertContains(response, "Dictionary language-ID trace")
+        self.assertContains(response, "English (high)")
+        self.assertContains(response, "not English (high)")
 
     def test_low_resource_remove_selected_cleans_project_pages_and_stage_artifacts(self):
         client = Client()

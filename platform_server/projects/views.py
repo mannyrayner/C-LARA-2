@@ -8947,6 +8947,99 @@ def _normalise_picture_dictionary_mixup_warnings(payload: Any, *, rows_by_number
 
 
 
+def _coerce_ai_bool(value: Any) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "yes", "y", "1", "english", "gloss_language"}:
+            return True
+        if normalized in {"false", "no", "n", "0", "not_english", "not_gloss_language"}:
+            return False
+    return None
+
+
+def _normalise_ai_confidence(value: Any) -> str:
+    confidence = str(value or "").strip().lower()
+    return confidence if confidence in {"low", "medium", "high"} else "unknown"
+
+
+def _picture_dictionary_language_trace_label(is_gloss_language: bool | None, *, gloss_language_label: str) -> str:
+    label = (gloss_language_label or "gloss language").strip()
+    if label.lower().startswith("unknown"):
+        label = "gloss language"
+    if is_gloss_language is True:
+        return label
+    if is_gloss_language is False:
+        return f"not {label}"
+    return "uncertain"
+
+
+def _picture_dictionary_single_mixup_result_from_payload(
+    payload: Any,
+    *,
+    row_number: int,
+    surface: str,
+    translation: str,
+    translation_language: str = "",
+    gloss_language_label: str = "gloss language",
+) -> tuple[dict[str, str] | None, dict[str, str]]:
+    rows_by_number = {row_number: {"surface": surface, "translation": translation}}
+    payload_dict = payload if isinstance(payload, dict) else {}
+    text_is_gloss_language = _coerce_ai_bool(
+        payload_dict.get("text_is_gloss_language")
+        if "text_is_gloss_language" in payload_dict
+        else payload_dict.get("surface_is_gloss_language")
+    )
+    translation_is_gloss_language = _coerce_ai_bool(payload_dict.get("translation_is_gloss_language"))
+    trace_reason = str(payload_dict.get("reason") or "").strip()
+    trace = {
+        "row_number": str(row_number),
+        "surface": surface,
+        "translation": translation,
+        "text_language_id": _picture_dictionary_language_trace_label(
+            text_is_gloss_language,
+            gloss_language_label=gloss_language_label,
+        ),
+        "text_language_confidence": _normalise_ai_confidence(
+            payload_dict.get("text_language_confidence") or payload_dict.get("surface_language_confidence")
+        ),
+        "gloss_language_id": _picture_dictionary_language_trace_label(
+            translation_is_gloss_language,
+            gloss_language_label=gloss_language_label,
+        ),
+        "gloss_language_confidence": _normalise_ai_confidence(
+            payload_dict.get("translation_language_confidence") or payload_dict.get("gloss_language_confidence")
+        ),
+        "reason": trace_reason,
+    }
+    if isinstance(payload, dict) and isinstance(payload.get("warnings"), list):
+        warnings = _normalise_picture_dictionary_mixup_warnings(payload, rows_by_number=rows_by_number)
+        return (warnings[0] if warnings else None), trace
+    if not isinstance(payload, dict):
+        return None, trace
+    if translation_is_gloss_language is True:
+        return None, trace
+    warning_value = payload.get("warning")
+    is_warning = _coerce_ai_bool(warning_value)
+    if is_warning is None:
+        is_warning = translation_is_gloss_language is False
+    confidence = str(payload.get("confidence") or "").strip().lower()
+    if not is_warning or (confidence and confidence not in {"medium", "high"}):
+        return None, trace
+    reason = trace_reason
+    warning = {
+        "row_number": str(row_number),
+        "surface": surface,
+        "translation": translation,
+        "reason": reason or "The translation/gloss does not appear to be in the gloss language, so the row may have swapped word/gloss fields.",
+        "confidence": confidence or "medium",
+        "text_language_id": trace["text_language_id"],
+        "gloss_language_id": trace["gloss_language_id"],
+    }
+    return warning, trace
+
+
 def _picture_dictionary_single_mixup_warning_from_payload(
     payload: Any,
     *,
@@ -8955,33 +9048,15 @@ def _picture_dictionary_single_mixup_warning_from_payload(
     translation: str,
     translation_language: str = "",
 ) -> dict[str, str] | None:
-    rows_by_number = {row_number: {"surface": surface, "translation": translation}}
-    if isinstance(payload, dict) and isinstance(payload.get("warnings"), list):
-        warnings = _normalise_picture_dictionary_mixup_warnings(payload, rows_by_number=rows_by_number)
-        return warnings[0] if warnings else None
-    if not isinstance(payload, dict):
-        return None
-    translation_is_gloss_language = payload.get("translation_is_gloss_language")
-    if isinstance(translation_is_gloss_language, str):
-        translation_is_gloss_language = translation_is_gloss_language.strip().lower() in {"true", "yes", "y", "1"}
-    if translation_is_gloss_language is True:
-        return None
-    warning_value = payload.get("warning")
-    if isinstance(warning_value, str):
-        is_warning = warning_value.strip().lower() in {"true", "yes", "y", "1"}
-    else:
-        is_warning = bool(warning_value)
-    confidence = str(payload.get("confidence") or "").strip().lower()
-    if not is_warning or (confidence and confidence not in {"medium", "high"}):
-        return None
-    reason = str(payload.get("reason") or "").strip()
-    return {
-        "row_number": str(row_number),
-        "surface": surface,
-        "translation": translation,
-        "reason": reason or "The translation/gloss does not appear to be in the gloss language, so the row may have swapped word/gloss fields.",
-        "confidence": confidence or "medium",
-    }
+    warning, _trace = _picture_dictionary_single_mixup_result_from_payload(
+        payload,
+        row_number=row_number,
+        surface=surface,
+        translation=translation,
+        translation_language=translation_language,
+        gloss_language_label=_project_language_label(translation_language) if translation_language not in {"", "inferred"} else "gloss language",
+    )
+    return warning
 
 
 def _picture_dictionary_mixup_check_prompt(
@@ -8996,30 +9071,30 @@ def _picture_dictionary_mixup_check_prompt(
         "You are checking ONE row of a picture-dictionary table for a low-resource language project. "
         "The row should have page text / surface form in the text/source language and page translation / gloss in the translation language. "
         "The main usability risk is that an organiser accidentally swapped these fields, for example entering an English/French gloss as page text and the low-resource word as page translation. "
-        "Decision rule: first inspect the translation/gloss field. If it is a normal, comprehensible expression in the translation/gloss language, return warning=false, even if the surface form vaguely resembles a word in that language or does not look like that language. "
-        "Treat comma-separated gloss lists, dictionary-style paraphrases, and minor typos in the translation/gloss language as comprehensible; for example 'ire, firewood' is close enough to English 'fire, firewood' and should not trigger a warning. "
-        "Return warning=true when the translation/gloss field clearly does NOT look like the translation/gloss language; this is important because image generation will rely on that text. "
-        "Use highest confidence when, in addition, the surface/page-text field DOES look like the translation/gloss language, since that strongly suggests the fields were swapped. Examples of likely swaps for an English-gloss dictionary include surface='long' with translation='yelkarr’ng', or surface='small, little' with translation='tikipir'. "
+        "Classify BOTH fields relative to the translation/gloss language. Return text_is_gloss_language=true if the page text/surface field looks like the translation/gloss language; return translation_is_gloss_language=true if the gloss field looks like the translation/gloss language. "
+        "Use this four-way decision table: (1) text not gloss-language + gloss gloss-language => warning=false; (2) text not gloss-language + gloss not gloss-language => warning=true; (3) text gloss-language + gloss gloss-language => warning=false; (4) text gloss-language + gloss not gloss-language => warning=true. "
+        "Treat comma-separated gloss lists, dictionary-style paraphrases, and minor typos in the translation/gloss language as gloss-language; for example 'ire, firewood' is close enough to English 'fire, firewood' and should count as gloss-language. "
+        "Examples of likely warnings for an English-gloss dictionary include surface='long' with translation='yelkarr’ng', or surface='small, little' with translation='tikipir'. "
         "Do NOT warn just because the source-language surface form is unfamiliar, non-English-looking, or vaguely resembles an English/French word, as long as the translation/gloss is valid; normal rows often have a low-resource surface such as 'Ch’rrich' and an English gloss such as 'leg'. "
-        "Return only JSON with keys translation_is_gloss_language (boolean), warning (boolean), reason (string), confidence ('low', 'medium', or 'high'). "
-        "Set translation_is_gloss_language=true for normal English/French glosses, including terse dictionary glosses. The application will suppress warnings when this is true. Use medium/high only when the organiser should be alerted.\n\n"
+        "Return only JSON with keys text_is_gloss_language (boolean), text_language_confidence ('low', 'medium', or 'high'), translation_is_gloss_language (boolean), translation_language_confidence ('low', 'medium', or 'high'), warning (boolean), reason (string), confidence ('low', 'medium', or 'high'). "
+        "Use medium/high warning confidence only when the organiser should be alerted.\n\n"
         f"Text/source language: {source_label} ({source_language})\n"
         f"Translation/gloss language: {translation_label} ({translation_language})\n"
         f"Row: {json.dumps(candidate, ensure_ascii=False)}"
     )
 
 
-def _picture_dictionary_surface_translation_mixup_warnings(
+def _picture_dictionary_surface_translation_mixup_diagnostics(
     *,
     dictionary: PictureDictionary,
     rows: list[dict[str, str]],
     user: Any | None = None,
     max_rows: int = 40,
-) -> list[dict[str, str]]:
-    """Use per-row AI language checks to find likely surface/gloss swaps."""
+) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+    """Use per-row AI language checks to find likely surface/gloss swaps plus trace rows."""
 
     if not rows or not _ai_available_for_user(user):
-        return []
+        return [], []
     source_language = dictionary.language or dictionary.project.language
     configured_translation_language = dictionary.project.target_language or ""
     source_label = _project_language_label(source_language)
@@ -9047,9 +9122,9 @@ def _picture_dictionary_surface_translation_mixup_warnings(
         if len(candidate_rows) >= max_rows:
             break
     if not candidate_rows:
-        return []
+        return [], []
 
-    def _check_candidate(candidate: dict[str, Any]) -> dict[str, str] | None:
+    def _check_candidate(candidate: dict[str, Any]) -> tuple[dict[str, str] | None, dict[str, str]]:
         row_number = int(candidate["row_number"])
         surface = str(candidate["surface"])
         translation = str(candidate["translation"])
@@ -9063,12 +9138,13 @@ def _picture_dictionary_surface_translation_mixup_warnings(
         try:
             client = _build_ai_client(user=user, model_name="gpt-4o-mini")
             payload = asyncio.run(client.chat_json(prompt, model="gpt-4o-mini"))
-            warning = _picture_dictionary_single_mixup_warning_from_payload(
+            warning, trace = _picture_dictionary_single_mixup_result_from_payload(
                 payload,
                 row_number=row_number,
                 surface=surface,
                 translation=translation,
                 translation_language=translation_language_for_prompt,
+                gloss_language_label="English" if translation_language_for_prompt == "inferred" else translation_label,
             )
             payload_confidence = str(payload.get("confidence") or "") if isinstance(payload, dict) else ""
             payload_reason = str(payload.get("reason") or "") if isinstance(payload, dict) else ""
@@ -9081,25 +9157,70 @@ def _picture_dictionary_surface_translation_mixup_warnings(
                 translation,
                 (warning or {}).get("reason") or payload_reason,
             )
-            return warning
+            return warning, trace
         except Exception:
             logger.exception(
                 "Picture-dictionary surface/translation mix-up check failed for dictionary %s row %s",
                 dictionary.id,
                 row_number,
             )
-            return None
+            trace = {
+                "row_number": str(row_number),
+                "surface": surface,
+                "translation": translation,
+                "text_language_id": "error",
+                "text_language_confidence": "unknown",
+                "gloss_language_id": "error",
+                "gloss_language_confidence": "unknown",
+                "reason": "AI language check failed; see server logs.",
+            }
+            return None, trace
 
     warnings: list[dict[str, str]] = []
+    traces: list[dict[str, str]] = []
     max_workers = min(8, len(candidate_rows))
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(_check_candidate, candidate): candidate for candidate in candidate_rows}
         for future in as_completed(futures):
-            warning = future.result()
+            warning, trace = future.result()
+            traces.append(trace)
             if warning is not None:
                 warnings.append(warning)
     warnings.sort(key=lambda item: int(item["row_number"]))
+    traces.sort(key=lambda item: int(item["row_number"]) if str(item.get("row_number", "")).isdigit() else 0)
+    return warnings, traces
+
+
+def _picture_dictionary_surface_translation_mixup_warnings(
+    *,
+    dictionary: PictureDictionary,
+    rows: list[dict[str, str]],
+    user: Any | None = None,
+    max_rows: int = 40,
+) -> list[dict[str, str]]:
+    warnings, _traces = _picture_dictionary_surface_translation_mixup_diagnostics(
+        dictionary=dictionary,
+        rows=rows,
+        user=user,
+        max_rows=max_rows,
+    )
     return warnings
+
+
+def _picture_dictionary_existing_mixup_diagnostics(
+    *,
+    dictionary: PictureDictionary | None,
+    user: Any | None = None,
+) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+    if dictionary is None:
+        return [], []
+    try:
+        entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
+        rows = _manual_rows_from_entries(dictionary, entries)
+    except Exception:
+        logger.exception("Could not prepare picture-dictionary rows for mix-up check")
+        return [], []
+    return _picture_dictionary_surface_translation_mixup_diagnostics(dictionary=dictionary, rows=rows, user=user)
 
 
 def _picture_dictionary_existing_mixup_warnings(
@@ -9107,15 +9228,8 @@ def _picture_dictionary_existing_mixup_warnings(
     dictionary: PictureDictionary | None,
     user: Any | None = None,
 ) -> list[dict[str, str]]:
-    if dictionary is None:
-        return []
-    try:
-        entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
-        rows = _manual_rows_from_entries(dictionary, entries)
-    except Exception:
-        logger.exception("Could not prepare picture-dictionary rows for mix-up check")
-        return []
-    return _picture_dictionary_surface_translation_mixup_warnings(dictionary=dictionary, rows=rows, user=user)
+    warnings, _traces = _picture_dictionary_existing_mixup_diagnostics(dictionary=dictionary, user=user)
+    return warnings
 
 
 def _page_review_context_rows(project: Project, pages: list[ProjectImagePage]) -> dict[int, dict[str, str]]:
@@ -9492,7 +9606,7 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                 if not manual_rows:
                     messages.error(request, "Enter at least one low-resource dictionary row before adding new words.")
                 else:
-                    mixup_warnings = _picture_dictionary_surface_translation_mixup_warnings(
+                    mixup_warnings, mixup_traces = _picture_dictionary_surface_translation_mixup_diagnostics(
                         dictionary=picture_dictionary,
                         rows=manual_rows,
                         user=request.user,
@@ -9503,6 +9617,18 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                             "Possible surface/translation mix-up: one or more dictionary words look as if they were entered in the gloss/translation language. "
                             "Please check the highlighted row(s) and swap the word/gloss fields if necessary.",
                         )
+                        for trace in mixup_traces[:12]:
+                            messages.info(
+                                request,
+                                "Dictionary language trace row %(row)s: word=%(text_id)s (%(text_conf)s), gloss=%(gloss_id)s (%(gloss_conf)s)."
+                                % {
+                                    "row": trace["row_number"],
+                                    "text_id": trace["text_language_id"],
+                                    "text_conf": trace["text_language_confidence"],
+                                    "gloss_id": trace["gloss_language_id"],
+                                    "gloss_conf": trace["gloss_language_confidence"],
+                                },
+                            )
                         for warning in mixup_warnings[:8]:
                             messages.info(
                                 request,
@@ -9896,7 +10022,7 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
         community_id=community_id, project=project, organiser=request.user
     ).first()
     project_picture_dictionary = getattr(project, "picture_dictionary", None)
-    picture_dictionary_mixup_warnings = _picture_dictionary_existing_mixup_warnings(
+    picture_dictionary_mixup_warnings, picture_dictionary_mixup_traces = _picture_dictionary_existing_mixup_diagnostics(
         dictionary=project_picture_dictionary,
         user=request.user,
     )
@@ -9912,6 +10038,7 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
             "review": review,
             "image_models": IMAGE_MODEL_CHOICES,
             "picture_dictionary_mixup_warnings": picture_dictionary_mixup_warnings,
+            "picture_dictionary_mixup_traces": picture_dictionary_mixup_traces,
             "review_summary": {
                 "reviewed": bool(review),
                 "review_note": (review.note or "") if review else "",
