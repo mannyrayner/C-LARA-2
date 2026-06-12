@@ -594,7 +594,7 @@ class CommunityWorkflowTests(TestCase):
     def test_dictionary_mixup_postprocessing_suppresses_valid_english_glosses(self):
         for translation in ("sky", "car", "non protein food, vegetable food source", "ire, firewood"):
             warning = views._picture_dictionary_single_mixup_warning_from_payload(
-                {"warning": True, "reason": "over-eager", "confidence": "high"},
+                {"translation_is_gloss_language": True, "warning": True, "reason": "over-eager", "confidence": "high"},
                 row_number=1,
                 surface="Path-ch’rrich",
                 translation=translation,
@@ -603,7 +603,7 @@ class CommunityWorkflowTests(TestCase):
             self.assertIsNone(warning)
 
         warning = views._picture_dictionary_single_mixup_warning_from_payload(
-            {"warning": True, "reason": "looks swapped", "confidence": "high"},
+            {"translation_is_gloss_language": False, "warning": True, "reason": "looks swapped", "confidence": "high"},
             row_number=2,
             surface="long",
             translation="yelkarr’ng",
