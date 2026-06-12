@@ -8987,9 +8987,12 @@ def _picture_dictionary_surface_translation_mixup_warnings(
 
     prompt = (
         "You are checking a picture-dictionary table for a low-resource language project. "
-        "Each row should have a surface form in the text/source language and a gloss/translation in the translation language. "
-        "Flag rows where the surface form appears to be accidentally entered in the translation language, or where the surface and translation fields appear swapped. "
-        "Be conservative: do not flag proper names, numerals, international loanwords/cognates, or short ambiguous forms unless the mix-up is likely. "
+        "Each row should have a page text / surface form in the text/source language and a page translation / gloss in the translation language. "
+        "The main usability risk is that an organiser accidentally swapped these fields, for example entering an English/French gloss as page text and the low-resource word as page translation. "
+        "Use this decision rule: first inspect the translation/gloss field. If it is a normal, comprehensible expression in the translation/gloss language, usually DO NOT warn, even if the surface form vaguely resembles a word in that language. "
+        "Warn when the translation/gloss field does NOT look like the translation/gloss language; this is important because image generation will rely on that text. "
+        "Give higher confidence when, in addition, the surface/page-text field DOES look like the translation/gloss language, since that strongly suggests the fields were swapped. "
+        "Do not flag proper names, numerals, international loanwords/cognates, or short ambiguous surface forms merely because they resemble an English/French word when the translation/gloss itself is valid. "
         "Return only JSON with key 'warnings', an array of objects with keys row_number, reason, confidence. "
         "confidence must be 'low', 'medium', or 'high'; only use medium/high when the organiser should be alerted.\n\n"
         f"Text/source language: {source_label} ({source_language})\n"
