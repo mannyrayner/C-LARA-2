@@ -87,28 +87,42 @@
     <fieldset style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0;">
       <legend>Add new low-resource dictionary words</legend>
       <p><small>Enter one word per row. The gloss is automatically used as the page translation, so the next step can create images without a separate page-oriented annotation pass.</small></p>
+      {% if low_resource_mixup_confirmation_required %}
+        <p style="padding:0.6rem; border:1px solid #e0b400; background:#fff8d8;">
+          <strong>Please confirm these rows before adding them.</strong>
+          The language-ID check found possible word/gloss language confusion. If the entries below are correct, tick the confirmation box and submit again.
+        </p>
+      {% endif %}
       <div style="overflow-x:auto;">
         <table style="width:100%; border-collapse:collapse;">
           <thead>
             <tr>
-              <th style="text-align:left;">Word</th>
+              <th style="text-align:left;">{{ low_resource_word_column_label }}</th>
               <th style="text-align:left;">Lemma</th>
               <th style="text-align:left;">POS</th>
-              <th style="text-align:left;">Gloss (= translation)</th>
+              <th style="text-align:left;">{{ low_resource_gloss_column_label }}</th>
             </tr>
           </thead>
           <tbody>
-            {% for row_number in low_resource_entry_row_numbers %}
+            {% for row in low_resource_entry_rows %}
               <tr>
-                <td><input type="text" name="low_resource_surface" aria-label="Word {{ row_number }}" style="width:95%;" /></td>
-                <td><input type="text" name="low_resource_lemma" aria-label="Lemma {{ row_number }}" style="width:95%;" /></td>
-                <td><input type="text" name="low_resource_pos" aria-label="POS {{ row_number }}" style="width:95%;" /></td>
-                <td><input type="text" name="low_resource_gloss" aria-label="Gloss {{ row_number }}" style="width:95%;" /></td>
+                <td><input type="text" name="low_resource_surface" aria-label="{{ low_resource_word_column_label }} {{ row.row_number }}" value="{{ row.surface }}" style="width:95%;" /></td>
+                <td><input type="text" name="low_resource_lemma" aria-label="Lemma {{ row.row_number }}" value="{{ row.lemma }}" style="width:95%;" /></td>
+                <td><input type="text" name="low_resource_pos" aria-label="POS {{ row.row_number }}" value="{{ row.pos }}" style="width:95%;" /></td>
+                <td><input type="text" name="low_resource_gloss" aria-label="{{ low_resource_gloss_column_label }} {{ row.row_number }}" value="{{ row.gloss }}" style="width:95%;" /></td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
+      {% if low_resource_mixup_confirmation_required %}
+        <p>
+          <label>
+            <input type="checkbox" name="confirm_low_resource_mixup" value="1" required />
+            I have checked the language-ID warning(s) and want to add these rows anyway.
+          </label>
+        </p>
+      {% endif %}
       <p>
         <button class="btn secondary" type="submit" name="picture_dictionary_action" value="add_low_resource_rows">Add new words</button>
       </p>
@@ -150,14 +164,79 @@
       <button class="btn secondary" type="submit" name="picture_dictionary_action" value="remove_all" onclick="return confirm('Remove all entries from this picture dictionary?');">Remove all entries</button>
     </p>
   {% endif %}
+
+  {% if picture_dictionary and dictionary_entries %}
+    <fieldset style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0;">
+      <legend>Dictionary subset projects</legend>
+      <p><small>Create named projects that use only selected words from the main picture dictionary. Subsets inherit images and metadata from the main dictionary; review and regenerate images in the main dictionary to avoid divergent curation states.</small></p>
+      {% if picture_dictionary_subsets %}
+        <p>
+          <label for="subset_id">Edit existing subset:</label>
+          <select id="subset_id" name="subset_id">
+            <option value="">Create a new subset…</option>
+            {% for subset in picture_dictionary_subsets %}
+              <option value="{{ subset.subset_id }}" {% if picture_dictionary_subset_edit and picture_dictionary_subset_edit.subset_id == subset.subset_id %}selected{% endif %}>{{ subset.title }} ({{ subset.entry_count }} entr{{ subset.entry_count|pluralize:"y,ies" }})</option>
+            {% endfor %}
+          </select>
+          <button class="btn secondary" type="submit" name="picture_dictionary_action" value="load_subset">Load subset for editing</button>
+          {% if picture_dictionary_subset_edit %}
+            <button class="btn secondary" type="submit" name="picture_dictionary_action" value="clear_subset_edit">Stop editing this subset</button>
+          {% endif %}
+        </p>
+        <ul>
+          {% for subset in picture_dictionary_subsets %}
+            <li>
+              {% if subset.project %}<a href="{% url 'project-detail' subset.project.id %}">{{ subset.title }}</a>{% else %}{{ subset.title }}{% endif %}
+              — {{ subset.entry_count }} entr{{ subset.entry_count|pluralize:"y,ies" }}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p><small>No subset projects have been saved yet.</small></p>
+      {% endif %}
+
+      {% if picture_dictionary_subset_edit %}
+        <input type="hidden" name="editing_subset_id" value="{{ picture_dictionary_subset_edit.subset_id }}" />
+        <p><strong>Editing subset:</strong> {{ picture_dictionary_subset_edit.title }}</p>
+      {% endif %}
+      <p>
+        <label for="subset_title">Subset project name:</label><br />
+        <input id="subset_title" type="text" name="subset_title" value="{% if picture_dictionary_subset_edit %}{{ picture_dictionary_subset_edit.title }}{% endif %}" placeholder="e.g. Kok Kaper beginner animal words" style="width:100%;" />
+      </p>
+      <p>
+        <label for="subset_description">Description (optional):</label><br />
+        <textarea id="subset_description" name="subset_description" rows="2" style="width:100%;">{% if picture_dictionary_subset_edit %}{{ picture_dictionary_subset_edit.description }}{% endif %}</textarea>
+      </p>
+      <p>
+        <label for="subset_selection_note">Selection note / future AI selection command (optional):</label><br />
+        <textarea id="subset_selection_note" name="subset_selection_note" rows="2" style="width:100%;" placeholder="e.g. words for family visit, or 12 easiest beginner words">{% if picture_dictionary_subset_edit %}{{ picture_dictionary_subset_edit.selection_note }}{% endif %}</textarea>
+      </p>
+      <p><strong>Select entries for this subset:</strong></p>
+      <div style="max-height: 16rem; overflow: auto; border: 1px solid #ddd; padding: 0.5rem; margin-bottom: 0.5rem;">
+        {% for entry in dictionary_entries %}
+          <label style="display: block;">
+            <input type="checkbox" name="subset_entry_id" value="{{ entry.id }}" {% if entry.id in picture_dictionary_subset_selected_entry_ids %}checked{% endif %} />
+            {{ entry.display_label }}
+          </label>
+        {% endfor %}
+      </div>
+      <p>
+        <button class="btn secondary" type="submit" name="picture_dictionary_action" value="save_subset" onclick="return confirm('Save this subset project using the selected dictionary entries?');">{% if picture_dictionary_subset_edit %}Update subset project{% else %}Create subset project{% endif %}</button>
+      </p>
+    </fieldset>
+  {% endif %}
 </form>
 
 <h2>Image review dashboard</h2>
 <p>Review community image judgements, see preferred page-image variants, and request additional variants for projects in this community.</p>
+<p id="review-consistency-status" style="display:none; padding:0.6rem; border:1px solid #ddd; background:#f8fbff;">
+  <strong>Checking dictionary/image consistency, please wait…</strong>
+  The review screen will open when the checks are complete.
+</p>
 <ul style="line-height: 2.4; padding-left: 1.4rem;">
   {% for row in summary_rows %}
     <li style="margin: 0.35rem 0;">
-      <a class="btn secondary" href="{% url 'community-organiser-review-project' community.id row.project.id %}">Review images for {{ row.project.title }}</a>
+      <a class="btn secondary review-project-link" href="{% url 'community-organiser-review-project' community.id row.project.id %}">Review images for {{ row.project.title }}</a>
       {% if row.review %}
         — reviewed at {{ row.review.updated_at }}{% if row.up_to_date %} (up to date){% else %} (new votes pending){% endif %}
       {% else %}
@@ -168,4 +247,15 @@
     <li style="margin: 0.35rem 0;">No projects assigned to this community.</li>
   {% endfor %}
 </ul>
+<script>
+  (function () {
+    const status = document.getElementById("review-consistency-status");
+    if (!status) return;
+    document.querySelectorAll(".review-project-link").forEach(function (link) {
+      link.addEventListener("click", function () {
+        status.style.display = "block";
+      });
+    });
+  })();
+</script>
 {% endblock %}
