@@ -1,31 +1,32 @@
-# C-LARA-2 issue overview (refreshed 2026-06-05T00:00:00Z)
+# C-LARA-2 issue overview (refreshed 2026-06-13T10:43:17Z)
 
 ## Recent progress
 
-- Escalated **ISSUE-0036** to P1 after maintainer review: current annotation errors are frequent, and a principled few-shot curation pipeline is promising both for quality improvements and for First Progress Report evidence.
-- Expanded `docs/roadmap/few-shot-example-curation.md` into an explicit generate → adversarial review → repair → gold acceptance architecture with schema validation, critic severity labels, consensus scoring, auditable example records, and incremental invocation/storage/review workflows; the `curate_fewshots` command now covers traced, fan-out/fan-in segmentation_phase_2 candidate generation and validation, and `review_fewshots` adds the first language-specific hostile-review step framed as plain word/unit-boundary review rather than C-LARA-2-internal processing terminology, with French clitic guidance, concrete boundary examples, preflight request checks, and longer review timeouts. A first French `clitic_compound_v2` smoke test is encouraging: from 40 generated candidates, the workflow retained eight examples, and maintainer review found all eight retained examples correct; the review path now also skips deterministic-validation failures before AI review.
-- Closed **ISSUE-0007** in the current issue registry because page-image prompt-construction indirection is now implemented; future page-image prompt work should be filed as concrete follow-ons.
-- Advanced **ISSUE-0034** from a prompt-wrapper prototype toward an admin-only repository-grounded project-understanding assistant with asynchronous execution, status polling, request/result persistence, and cost/metadata capture.
-- Expanded the evaluator/autonomy roadmap around **ISSUE-0003**, **ISSUE-0004**, **ISSUE-0005**, and **ISSUE-0006** so segmentation and MWE improvements can be measured systematically for the First Progress Report.
-- Updated **ISSUE-0010** to reflect substantial legacy-import progress: about 30 imported legacy content pieces are now available, including the largest and most challenging cases, making the legacy corpus a practical source of diagnostic/evaluation inputs.
+- Raised **ISSUE-0037** to active/P1 and extended the first implementation cut for named subset projects derived from community picture dictionaries with translation-visible candidate rows and AI-assisted subset prefill, because this is needed for classroom testing around 2026-07-13.
+- Updated the picture-dictionary roadmap to distinguish the implemented manual subset-project flow from remaining follow-on work: richer sync semantics and exercise-specific exclusion reporting; AI-proposed subset selection now has an initial organiser-reviewed implementation.
+- Recent picture-dictionary work has now wired **Disallow visible text in images** into organiser-requested image regeneration and added advisory AI language-ID diagnostics for likely low-resource word/gloss mix-ups; remaining work is refinement, not first proof of concept.
+- The issue registry continues to treat **ISSUE-0036** few-shot curation, **ISSUE-0003** pipeline evaluation, and **ISSUE-0004** AI review gates as the main quality-measurement cluster for report evidence and future prompt changes.
+- **ISSUE-0034** remains active as the restricted project-understanding assistant matures toward exportable, human-reviewable evidence records.
 
 ## Near-term priorities
 
 1. **ISSUE-0031** — improve compiled-content presentation context and configurable public access controls.
 2. **ISSUE-0030** — fix image-generation workflow UX around element expansion auto-refresh and selection confirmation.
 3. **ISSUE-0029** — autosave community judging inputs to prevent accidental data loss.
-4. **ISSUE-0026** — define the next-step community-recorded audio workflow for non-TTS languages.
-5. **ISSUE-0003 / ISSUE-0036 / ISSUE-0004** — use the pipeline runner, curated few-shot generation/review, and AI-based review gates to compare default and candidate processing variants.
-6. **ISSUE-0005 / ISSUE-0006** — treat segmentation prompt/few-shot changes as measurable experiments rather than anecdotal prompt tuning.
-7. **ISSUE-0010 / ISSUE-0013** — organize the now-substantial imported legacy corpus into diagnostic/evaluation subsets and continue stage-artifact resilience work needed for representative quality checks.
-8. **ISSUE-0034** — add export/review, budget/rate-limit, and evidence-record controls before wider use of project-understanding answers.
+4. **ISSUE-0037** — stabilize organiser-created picture-dictionary subset projects before first classroom testing around 2026-07-13.
+5. **ISSUE-0026** — define the next-step community-recorded audio workflow for non-TTS languages.
+6. **ISSUE-0003 / ISSUE-0036 / ISSUE-0004** — use the pipeline runner, curated few-shot generation/review, and AI-based review gates to compare default and candidate processing variants.
+7. **ISSUE-0005 / ISSUE-0006** — treat segmentation prompt/few-shot changes as measurable experiments rather than anecdotal prompt tuning.
+8. **ISSUE-0010 / ISSUE-0013** — organize the imported legacy corpus into diagnostic/evaluation subsets and continue stage-artifact resilience work needed for representative quality checks.
+9. **ISSUE-0008** — finish the concise progress-report draft, including recent picture-dictionary and AI-centered workflow examples.
+10. **ISSUE-0034** — add export/review, budget/rate-limit, and evidence-record controls before wider use of project-understanding answers.
 
 ## Notes/risks
 
-- Few-shot curation is now P1 because annotation errors are visible in current work and because the generate/review/repair/acceptance pipeline can produce strong report evidence. The first French smoke test is promising, but it remains a small manually reviewed sample; promotion to defaults still depends on **ISSUE-0003** and **ISSUE-0004** for systematic measurement, and the workflow should support incremental top-up batches for new languages or new failure modes rather than one large generation run.
-- The boundary-first segmentation experiments should not be treated as proven improvements until **ISSUE-0004** evaluator records compare default and candidate outputs on representative cases.
-- The disabled admin shutdown control remains intentionally hidden; under `make run-platform-with-real-q`, closing the development terminal is currently the reliable workaround for reincarnating Q processes.
-- **ISSUE-0034** remains restricted/admin-only until export/review controls, citation/path sanitization, exact-cost reconciliation, and hard budget/rate-limit controls are in place.
+- **ISSUE-0037** should avoid creating a second image-curation surface for subset dictionaries. The first cut now hides subset projects from the organiser image-review dashboard and redirects direct review attempts back to the organiser page; remaining risk is keeping derived content/image references synchronized after future canonical edits.
+- The AI language-confusion diagnostics for picture dictionaries are intentionally advisory. They can catch common source/gloss mix-ups, but false positives/negatives are expected and the trace table remains important for human review.
+- Text-free image prompt propagation is now implemented, but image-level detection of accidental visible text remains follow-on quality-control work under the picture-dictionary roadmap and related image-quality issues.
+- Few-shot curation and segmentation changes should not be promoted to defaults until **ISSUE-0003** and **ISSUE-0004** provide systematic comparison evidence.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated pipeline and UI coverage.
 
 ## Complete issue inventory
@@ -68,3 +69,4 @@
 | [ISSUE-0034](issues/ISSUE-0034.json) | active | P2 | Add restricted project-understanding assistant with versioned evidence records. |
 | [ISSUE-0035](issues/ISSUE-0035.json) | reported | P2 | Track intermittent Codex PR update-branch refusal. |
 | [ISSUE-0036](issues/ISSUE-0036.json) | reported | P1 | Systematize creation and evaluation of few-shot examples for linguistic annotation. |
+| [ISSUE-0037](issues/ISSUE-0037.json) | active | P1 | Create subset projects from community picture dictionaries. |

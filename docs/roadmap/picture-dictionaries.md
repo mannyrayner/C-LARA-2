@@ -30,9 +30,23 @@ It also preserves the original user-facing intent: picture dictionaries should b
 
 - Organiser workflows for dictionary-adjacent image review/regeneration now include:
   - explicit page filtering,
+  - selection-preserving “selected pages” regeneration,
   - preview/confirm behavior before expensive generation,
   - improved context presentation for reviewers.
 - These are important prerequisites for dictionary quality curation, even when the final dictionary UI remains separate.
+
+### 1.4 Text-free image constraints are now wired through generation paths
+
+- The project image setting **“Disallow visible text in images”** is now carried through to organiser-requested page-image regeneration prompts, including picture-dictionary projects that reuse page-image infrastructure.
+- This is essential for picture dictionaries because visible written words in the image can invalidate image → word flashcards, make word → image flashcards too easy, and undermine low-text or no-text learner activities.
+- The current implementation covers prompt construction for generation/regeneration. Follow-on work should still add automatic image-level diagnostics for accidental visible text in generated assets.
+
+### 1.5 AI diagnostics now help catch low-resource word/gloss mix-ups
+
+- Organiser dictionary workflows now include AI-based language-ID diagnostics for the common low-resource picture-dictionary error where the source-language word and gloss/translation are accidentally swapped.
+- The checker classifies the page text and gloss/translation fields against the gloss language, shows warnings for likely problem rows, and provides a collapsible trace table for debugging odd classifications.
+- Results are cached at the language-ID item level so repeated checks are cheaper, and the UI displays a “checking consistency” message while review-time checks are running.
+- The diagnostics are deliberately advisory: they should alert organisers to suspicious entries, not block legitimate low-resource words that coincidentally resemble English/French forms.
 
 ---
 
@@ -78,35 +92,59 @@ This is both a usability improvement and a consistency requirement for selection
 - Continue to enforce practical readiness states (candidate / needs image / image generated / approved-game-ready / excluded / needs review).
 - Ensure game generation and glossing use curated-ready entries, not raw/unreviewed entries.
 
-### 2.5 Enforce text-free dictionary images (linked to ISSUE-0028)
+### 2.5 Consolidate text-free dictionary image quality (linked to ISSUE-0028)
 
 Image-based flashcards are now working in both directions, but they are undermined when dictionary images contain visible written words.
 
 - Treat “no overlaid readable text in the generated image” as a default quality requirement for picture-dictionary images.
-- Strengthen generation/regeneration prompts with explicit text-free constraints.
+- Keep the implemented generation/regeneration prompt wiring covered by tests, especially the organiser review path that creates additional variants.
 - Add organiser-facing diagnostics so entries can be flagged/rejected when text is detected in generated images.
 - Add lightweight regression checks for dictionary image assets used by flashcards.
 
-Track implementation in **ISSUE-0028** (`docs/issues/issues/ISSUE-0028.json`).
+Track remaining image-quality work in **ISSUE-0028** (`docs/issues/issues/ISSUE-0028.json`).
 
-### 2.6 Add organiser-created dictionary sub-projects
+### 2.6 Refine low-resource dictionary consistency diagnostics
 
-Sophie’s Kok Kaper follow-up request adds an immediately useful authoring workflow: a Community Organiser should be able to carve out a smaller vocabulary from an existing picture-dictionary project and save it as a sub-project/exercise source.
+The first advisory AI diagnostics are in place, but they should be treated as a practical alert system rather than a solved classifier.
+
+- Continue tuning the single-field language-ID prompt and warning wording as more Kok Kaper/English and other low-resource examples are reviewed.
+- Preserve the collapsible trace table because it is useful for debugging false positives/negatives.
+- Consider adding a “mark checked / ignore this warning” organiser action if repeated benign warnings become distracting.
+- Keep diagnostics non-blocking except in explicit add-row flows where the organiser can immediately correct a suspected swap.
+
+### 2.7 Add organiser-created dictionary subset projects (ISSUE-0037)
+
+Sophie’s Kok Kaper follow-up request is tracked as **ISSUE-0037**, now raised to **P1** because this is needed for real classroom testing beginning around 2026-07-13. It adds an immediately useful authoring workflow: a Community Organiser should be able to carve out a smaller vocabulary from an existing picture-dictionary project and save it as a named subset project/exercise source.
+
+First-cut status (implemented):
+
+- Community organisers can manually create a named subset project from selected active dictionary entries under `communities/.../organiser/`, with candidate rows showing translations/glosses to make selection/debugging easier.
+- Existing subset projects can be loaded back into the organiser page, edited, and re-saved.
+- Organisers can ask AI to pre-fill the checked entries from a natural-language subset description; for low-resource dictionaries the selection prompt is explicitly translation/gloss-driven and the organiser must still review/adjust before saving.
+- Each subset writes provenance artifacts under `picture_dictionary_subsets/<subset_id>/` and creates a lightweight project with source text/stage artifacts derived from the selected dictionary rows.
+- Subsets are hidden from the organiser image-review dashboard, and direct review URLs redirect organisers back to the main organiser page, so image curation remains on the canonical picture dictionary.
+
+Remaining follow-on work:
+
+- Improve automatic synchronization after canonical dictionary images/text are changed outside the subset edit/save flow.
+- Show exercise-specific exclusion/readiness reasons when a selected entry is not approved/game-ready.
 
 User goal:
 
 - Start from a community picture dictionary or ordinary project with one-page-per-entry structure.
 - Enter a natural-language command such as “make a set for animals”, “words useful for a family visit”, or “the 12 easiest words for beginners”.
-- Let the system propose the matching pages/entries, then show a review screen where the organiser can add/remove pages manually before saving.
-- Use the resulting subset as a stable source vocabulary for flashcards, word scrambles, crosswords, and later activity types.
+- Optionally let the system propose matching pages/entries from a natural-language description, then show a review screen where the organiser can add/remove pages manually before saving.
+- Use the resulting subset as a stable source vocabulary for flashcards, word scrambles, crosswords, and later activity types, while keeping the main picture dictionary as the canonical source of images and entry content.
 
 Implementation expectations:
 
 1. Reuse existing page/entry metadata wherever possible: surface form, lemma, POS, translation/gloss, readiness status, and approved image reference.
-2. Keep the parent project/dictionary unchanged; the sub-project should be a derived artifact or lightweight project clone with provenance back to parent page ids.
-3. Require organiser confirmation before creating or overwriting a sub-project.
-4. Default exercise generation to approved/game-ready entries, while allowing organisers to see why pages were excluded.
-5. Support manual adjustment even when the natural-language selection is imperfect; the AI proposal is a convenience, not the authority.
+2. Keep the parent project/dictionary unchanged; the subset project should be a derived artifact or lightweight project clone with provenance back to parent page ids.
+3. Keep subset content synchronized with the main picture dictionary where practical: changes to canonical images or entry text should be reflected in subsets rather than forked silently.
+4. Do **not** expose normal organiser image-review/regeneration actions directly on subset projects; image curation should happen in the main picture dictionary to avoid confusing divergent approval states.
+5. Require organiser confirmation before creating or overwriting a subset project, and allow later retrieval/editing of the selected page list.
+6. Default exercise generation to approved/game-ready entries, while allowing organisers to see why pages were excluded.
+7. Support manual adjustment even when the natural-language selection is imperfect; the AI proposal is a convenience, not the authority.
 
 Suggested artifact shape:
 
@@ -158,4 +196,5 @@ The immediate focus should remain:
 1. reliable low-resource compile fallback,
 2. explicit organiser feedback during compile/generation,
 3. usable and predictable organiser entry-list presentation,
-4. organiser-created sub-projects as the source-selection foundation for picture-clue exercises.
+4. continued refinement of text-free image quality and language-confusion diagnostics,
+5. organiser-created sub-projects as the source-selection foundation for picture-clue exercises.
