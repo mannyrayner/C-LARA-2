@@ -118,14 +118,14 @@ Sophie’s Kok Kaper follow-up request is tracked as **ISSUE-0037**, now raised 
 
 First-cut status (implemented):
 
-- Community organisers can manually create a named subset project from selected active dictionary entries under `communities/.../organiser/`.
+- Community organisers can manually create a named subset project from selected active dictionary entries under `communities/.../organiser/`, with candidate rows showing translations/glosses to make selection/debugging easier.
 - Existing subset projects can be loaded back into the organiser page, edited, and re-saved.
+- Organisers can ask AI to pre-fill the checked entries from a natural-language subset description; for low-resource dictionaries the selection prompt is explicitly translation/gloss-driven and the organiser must still review/adjust before saving.
 - Each subset writes provenance artifacts under `picture_dictionary_subsets/<subset_id>/` and creates a lightweight project with source text/stage artifacts derived from the selected dictionary rows.
 - Subsets are hidden from the organiser image-review dashboard, and direct review URLs redirect organisers back to the main organiser page, so image curation remains on the canonical picture dictionary.
 
 Remaining follow-on work:
 
-- Add the optional AI proposal step from a natural-language command, always followed by manual review.
 - Improve automatic synchronization after canonical dictionary images/text are changed outside the subset edit/save flow.
 - Show exercise-specific exclusion/readiness reasons when a selected entry is not approved/game-ready.
 

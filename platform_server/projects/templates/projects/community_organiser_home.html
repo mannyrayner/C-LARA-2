@@ -201,26 +201,29 @@
       {% endif %}
       <p>
         <label for="subset_title">Subset project name:</label><br />
-        <input id="subset_title" type="text" name="subset_title" value="{% if picture_dictionary_subset_edit %}{{ picture_dictionary_subset_edit.title }}{% endif %}" placeholder="e.g. Kok Kaper beginner animal words" style="width:100%;" />
+        <input id="subset_title" type="text" name="subset_title" value="{{ picture_dictionary_subset_form.title }}" placeholder="e.g. Kok Kaper beginner animal words" style="width:100%;" />
       </p>
       <p>
         <label for="subset_description">Description (optional):</label><br />
-        <textarea id="subset_description" name="subset_description" rows="2" style="width:100%;">{% if picture_dictionary_subset_edit %}{{ picture_dictionary_subset_edit.description }}{% endif %}</textarea>
+        <textarea id="subset_description" name="subset_description" rows="2" style="width:100%;">{{ picture_dictionary_subset_form.description }}</textarea>
       </p>
       <p>
-        <label for="subset_selection_note">Selection note / future AI selection command (optional):</label><br />
-        <textarea id="subset_selection_note" name="subset_selection_note" rows="2" style="width:100%;" placeholder="e.g. words for family visit, or 12 easiest beginner words">{% if picture_dictionary_subset_edit %}{{ picture_dictionary_subset_edit.selection_note }}{% endif %}</textarea>
+        <label for="subset_selection_note">Subset description / AI selection command (optional):</label><br />
+        <textarea id="subset_selection_note" name="subset_selection_note" rows="2" style="width:100%;" placeholder="e.g. words for family visit, or 12 easiest beginner words">{{ picture_dictionary_subset_form.selection_note }}</textarea>
+        <br />
+        <small>Use “Suggest entries from description” to pre-fill the checked entries from this description, then review and adjust manually before saving.</small>
       </p>
       <p><strong>Select entries for this subset:</strong></p>
       <div style="max-height: 16rem; overflow: auto; border: 1px solid #ddd; padding: 0.5rem; margin-bottom: 0.5rem;">
         {% for entry in dictionary_entries %}
           <label style="display: block;">
             <input type="checkbox" name="subset_entry_id" value="{{ entry.id }}" {% if entry.id in picture_dictionary_subset_selected_entry_ids %}checked{% endif %} />
-            {{ entry.display_label }}
+            {{ entry.display_label }}{% if entry.subset_translation_label %} — {{ entry.subset_translation_label }}{% endif %}
           </label>
         {% endfor %}
       </div>
       <p>
+        <button class="btn secondary" type="submit" name="picture_dictionary_action" value="suggest_subset">Suggest entries from description</button>
         <button class="btn secondary" type="submit" name="picture_dictionary_action" value="save_subset" onclick="return confirm('Save this subset project using the selected dictionary entries?');">{% if picture_dictionary_subset_edit %}Update subset project{% else %}Create subset project{% endif %}</button>
       </p>
     </fieldset>

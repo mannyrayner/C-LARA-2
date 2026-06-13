@@ -1,9 +1,9 @@
-# C-LARA-2 issue overview (refreshed 2026-06-13T10:10:41Z)
+# C-LARA-2 issue overview (refreshed 2026-06-13T10:43:17Z)
 
 ## Recent progress
 
-- Raised **ISSUE-0037** to active/P1 and added a first implementation cut for named subset projects derived from community picture dictionaries, because this is needed for classroom testing around 2026-07-13.
-- Updated the picture-dictionary roadmap to distinguish the implemented manual subset-project flow from remaining follow-on work: AI-proposed subset selection, richer sync semantics, and exercise-specific exclusion reporting.
+- Raised **ISSUE-0037** to active/P1 and extended the first implementation cut for named subset projects derived from community picture dictionaries with translation-visible candidate rows and AI-assisted subset prefill, because this is needed for classroom testing around 2026-07-13.
+- Updated the picture-dictionary roadmap to distinguish the implemented manual subset-project flow from remaining follow-on work: richer sync semantics and exercise-specific exclusion reporting; AI-proposed subset selection now has an initial organiser-reviewed implementation.
 - Recent picture-dictionary work has now wired **Disallow visible text in images** into organiser-requested image regeneration and added advisory AI language-ID diagnostics for likely low-resource word/gloss mix-ups; remaining work is refinement, not first proof of concept.
 - The issue registry continues to treat **ISSUE-0036** few-shot curation, **ISSUE-0003** pipeline evaluation, and **ISSUE-0004** AI review gates as the main quality-measurement cluster for report evidence and future prompt changes.
 - **ISSUE-0034** remains active as the restricted project-understanding assistant matures toward exportable, human-reviewable evidence records.

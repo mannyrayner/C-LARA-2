@@ -87,6 +87,27 @@ class FakeDictionaryMixupClient:
             "confidence": "high" if is_warning else "low",
         }
 
+
+class FakeSubsetSelectionClient:
+    async def chat_json(self, prompt, **kwargs):  # noqa: ARG002
+        text_prompt = str(prompt)
+        payload_text = text_prompt.split("Subset candidate:", 1)[-1].strip()
+        try:
+            payload = json.loads(payload_text)
+        except json.JSONDecodeError:
+            payload = {}
+        candidate = payload.get("candidate") or {}
+        haystack = " ".join(
+            str(candidate.get(key) or "").lower()
+            for key in ("surface", "lemma", "gloss", "translation")
+        )
+        include = "animal" in haystack or "dog" in haystack
+        return {
+            "include": include,
+            "confidence": "high" if include else "medium",
+            "reason": "The translation matches the requested animal subset." if include else "The translation is not an animal term.",
+        }
+
 class FakeNoDictionaryMixupClient:
     async def chat_json(self, prompt, **kwargs):  # noqa: ARG002
         return {"warnings": []}
@@ -988,6 +1009,42 @@ class CommunityWorkflowTests(TestCase):
         )
         self.assertEqual(review_response.status_code, 200)
         self.assertContains(review_response, "Subset dictionary projects inherit images")
+
+    def test_ai_suggestion_prefills_picture_dictionary_subset_entries(self):
+        client = Client()
+        client.login(username="org", password="pw")
+        client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "add_low_resource_rows",
+                "low_resource_surface": ["pama", "kutew", "thaw"],
+                "low_resource_lemma": ["pama", "kutew", "thaw"],
+                "low_resource_pos": ["NOUN", "NOUN", "NOUN"],
+                "low_resource_gloss": ["person", "animal, dog", "mouth"],
+            },
+            follow=True,
+        )
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        entries = {entry.surface: entry for entry in dictionary.entries.filter(is_active=True)}
+        with patch("projects.views._ai_available_for_user", return_value=True), patch(
+            "projects.views._build_ai_client",
+            return_value=FakeSubsetSelectionClient(),
+        ):
+            response = client.post(
+                reverse("community-organiser-home", args=[self.community.id]),
+                {
+                    "picture_dictionary_action": "suggest_subset",
+                    "subset_title": "Animal words",
+                    "subset_selection_note": "words for animals",
+                },
+                follow=True,
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "AI suggested 1 dictionary entry for the subset")
+        self.assertContains(response, "Animal words")
+        self.assertContains(response, "animal, dog")
+        self.assertContains(response, f'name="subset_entry_id" value="{entries["kutew"].id}" checked', html=False)
+        self.assertNotContains(response, f'name="subset_entry_id" value="{entries["pama"].id}" checked', html=False)
 
     def test_organiser_can_reload_and_update_picture_dictionary_subset_project(self):
         client = Client()

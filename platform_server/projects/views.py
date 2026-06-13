@@ -9314,6 +9314,114 @@ def _picture_dictionary_surface_translation_mixup_diagnostics(
     return warnings, traces
 
 
+
+
+def _picture_dictionary_subset_selection_prompt(
+    *,
+    subset_description: str,
+    source_language_label: str,
+    translation_language_label: str,
+    row: dict[str, str],
+) -> str:
+    payload = {
+        "subset_description": subset_description,
+        "source_language": source_language_label,
+        "translation_or_gloss_language": translation_language_label,
+        "candidate": row,
+    }
+    return (
+        "You are helping a community organiser build a smaller picture-dictionary subset.\n"
+        "Decide whether the candidate dictionary entry belongs in the requested subset.\n"
+        "For low-resource languages, rely primarily on the gloss/translation field, because the source word may be opaque.\n"
+        "Be inclusive when the candidate is a clear semantic match; do not include unrelated entries.\n"
+        "Return only JSON with keys include (boolean), confidence (low|medium|high), and reason (short string).\n\n"
+        "Subset candidate:\n"
+        f"{json.dumps(payload, ensure_ascii=False)}"
+    )
+
+
+def _normalise_subset_selection_payload(payload: Any) -> dict[str, Any]:
+    data = payload if isinstance(payload, dict) else {}
+    include = _coerce_ai_bool(data.get("include") if "include" in data else data.get("selected"))
+    return {
+        "include": bool(include),
+        "confidence": _normalise_ai_confidence(data.get("confidence")),
+        "reason": str(data.get("reason") or "").strip(),
+    }
+
+
+def _picture_dictionary_ai_subset_suggestions(
+    *,
+    dictionary: PictureDictionary,
+    entries: list[PictureDictionaryEntry],
+    subset_description: str,
+    user: Any | None = None,
+) -> tuple[list[int], list[dict[str, str]]]:
+    """Use per-entry AI checks to suggest entries for a described dictionary subset."""
+
+    description = str(subset_description or "").strip()
+    if not description or not entries or not _ai_available_for_user(user):
+        return [], []
+    rows = _manual_rows_from_entries(dictionary, entries)
+    source_language_label = _project_language_label(dictionary.language or dictionary.project.language)
+    translation_language = (dictionary.project.target_language or "").strip()
+    translation_language_label = _project_language_label(translation_language) if translation_language else "translation/gloss language"
+    candidates: list[dict[str, Any]] = []
+    for entry, row in zip(entries, rows, strict=False):
+        candidates.append(
+            {
+                "entry_id": entry.id,
+                "surface": str(row.get("surface") or entry.surface or ""),
+                "lemma": str(row.get("lemma") or entry.lemma or entry.surface or ""),
+                "pos": str(row.get("pos") or entry.pos or ""),
+                "gloss": str(row.get("gloss") or ""),
+                "translation": str(row.get("translation") or row.get("gloss") or ""),
+            }
+        )
+
+    def _check_candidate(candidate: dict[str, Any]) -> dict[str, str]:
+        prompt = _picture_dictionary_subset_selection_prompt(
+            subset_description=description,
+            source_language_label=source_language_label,
+            translation_language_label=translation_language_label,
+            row={
+                "surface": candidate["surface"],
+                "lemma": candidate["lemma"],
+                "pos": candidate["pos"],
+                "gloss": candidate["gloss"],
+                "translation": candidate["translation"],
+            },
+        )
+        try:
+            client = _build_ai_client(user=user, model_name="gpt-4o-mini")
+            payload = asyncio.run(client.chat_json(prompt, model="gpt-4o-mini"))
+            result = _normalise_subset_selection_payload(payload)
+        except Exception:
+            logger.exception(
+                "Picture-dictionary subset suggestion failed for dictionary %s entry %s",
+                dictionary.id,
+                candidate["entry_id"],
+            )
+            result = {"include": False, "confidence": "unknown", "reason": "AI subset suggestion failed; see server logs."}
+        return {
+            "entry_id": str(candidate["entry_id"]),
+            "surface": candidate["surface"],
+            "translation": candidate["translation"],
+            "include": "1" if result["include"] else "0",
+            "confidence": str(result.get("confidence") or "unknown"),
+            "reason": str(result.get("reason") or ""),
+        }
+
+    traces: list[dict[str, str]] = []
+    max_workers = min(8, len(candidates))
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(_check_candidate, candidate): candidate for candidate in candidates}
+        for future in as_completed(futures):
+            traces.append(future.result())
+    traces.sort(key=lambda row: int(row["entry_id"]) if row.get("entry_id", "").isdigit() else 0)
+    selected_ids = [int(row["entry_id"]) for row in traces if row.get("include") == "1"]
+    return selected_ids, traces
+
 def _picture_dictionary_surface_translation_mixup_warnings(
     *,
     dictionary: PictureDictionary,
@@ -9465,9 +9573,22 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
     picture_dictionary_subsets: list[dict[str, Any]] = []
     picture_dictionary_subset_project_id_set: set[int] = set()
     subset_edit_session_key = f"community:{community_id}:picture_dictionary_subset_edit"
+    subset_draft_session_key = f"community:{community_id}:picture_dictionary_subset_draft"
     subset_edit_id = str(request.session.get(subset_edit_session_key) or "")
+    subset_draft = request.session.get(subset_draft_session_key)
+    if not isinstance(subset_draft, dict):
+        subset_draft = {}
     picture_dictionary_subset_edit: dict[str, Any] | None = None
-    picture_dictionary_subset_selected_entry_ids: set[int] = set()
+    picture_dictionary_subset_selected_entry_ids: set[int] = {
+        int(entry_id)
+        for entry_id in subset_draft.get("selected_entry_ids", [])
+        if str(entry_id).isdigit()
+    }
+    picture_dictionary_subset_form = {
+        "title": str(subset_draft.get("title") or ""),
+        "description": str(subset_draft.get("description") or ""),
+        "selection_note": str(subset_draft.get("selection_note") or ""),
+    }
     if picture_dictionary:
         picture_dictionary_subsets = list_picture_dictionary_subsets(picture_dictionary)
         picture_dictionary_subset_project_id_set = {
@@ -9483,6 +9604,11 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                     for entry_id in picture_dictionary_subset_edit.get("entry_ids", [])
                     if str(entry_id).isdigit()
                 }
+                picture_dictionary_subset_form = {
+                    "title": str(picture_dictionary_subset_edit.get("title") or ""),
+                    "description": str(picture_dictionary_subset_edit.get("description") or ""),
+                    "selection_note": str(picture_dictionary_subset_edit.get("selection_note") or ""),
+                }
             else:
                 request.session.pop(subset_edit_session_key, None)
                 subset_edit_id = ""
@@ -9496,10 +9622,16 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                 entry.id,
             )
         )
+        rows_by_entry_id = {
+            entry.id: row
+            for entry, row in zip(dictionary_entries, _manual_rows_from_entries(picture_dictionary, dictionary_entries), strict=False)
+        }
         for entry in dictionary_entries:
             lemma = (entry.lemma or entry.surface or "").strip()
             pos = (entry.pos or "UNSPECIFIED").strip().upper()
             entry.display_label = f"{(entry.surface or '').strip()} (lemma: {lemma}) [{pos}]"
+            row = rows_by_entry_id.get(entry.id, {})
+            entry.subset_translation_label = str(row.get("translation") or row.get("gloss") or "").strip()
     picture_dictionary_compile_info: dict[str, Any] | None = None
     picture_dictionary_style_brief = ""
     if picture_dictionary:
@@ -9682,11 +9814,53 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                     messages.error(request, "Please choose a saved subset project to edit.")
                 else:
                     request.session[subset_edit_session_key] = selected_subset_id
+                    request.session.pop(subset_draft_session_key, None)
                     request.session.modified = True
                     messages.info(request, f"Loaded subset “{subset['title']}” for editing.")
             elif action == "clear_subset_edit":
                 request.session.pop(subset_edit_session_key, None)
+                request.session.pop(subset_draft_session_key, None)
                 messages.info(request, "Cleared subset edit selection.")
+            elif action == "suggest_subset":
+                subset_title = (request.POST.get("subset_title") or "").strip()
+                subset_description = (request.POST.get("subset_description") or "").strip()
+                subset_note = (request.POST.get("subset_selection_note") or "").strip()
+                selection_description = subset_note or subset_description or subset_title
+                if not selection_description:
+                    messages.error(request, "Enter a subset description or selection note before asking AI to suggest entries.")
+                elif not _ai_available_for_user(request.user):
+                    messages.error(request, "AI subset suggestions need an OpenAI API key or a user profile API key.")
+                else:
+                    selected_ids, traces = _picture_dictionary_ai_subset_suggestions(
+                        dictionary=picture_dictionary,
+                        entries=dictionary_entries,
+                        subset_description=selection_description,
+                        user=request.user,
+                    )
+                    request.session.pop(subset_edit_session_key, None)
+                    request.session[subset_draft_session_key] = {
+                        "title": subset_title,
+                        "description": subset_description,
+                        "selection_note": subset_note,
+                        "selected_entry_ids": selected_ids,
+                    }
+                    request.session.modified = True
+                    messages.success(
+                        request,
+                        f"AI suggested {len(selected_ids)} dictionary entr{'y' if len(selected_ids) == 1 else 'ies'} for the subset. Please review the checked entries before saving.",
+                    )
+                    for trace in traces[:12]:
+                        if trace.get("include") == "1":
+                            messages.info(
+                                request,
+                                "Subset suggestion: selected ‘%(surface)s’ (%(translation)s), confidence=%(confidence)s. %(reason)s"
+                                % {
+                                    "surface": trace.get("surface", ""),
+                                    "translation": trace.get("translation", ""),
+                                    "confidence": trace.get("confidence", "unknown"),
+                                    "reason": trace.get("reason", ""),
+                                },
+                            )
             elif action == "save_subset":
                 selected_entry_ids = [int(value) for value in request.POST.getlist("subset_entry_id") if str(value).isdigit()]
                 subset_id = (request.POST.get("editing_subset_id") or request.POST.get("subset_id") or "").strip()
@@ -9709,6 +9883,7 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                     raise Http404()
                 else:
                     request.session[subset_edit_session_key] = summary["subset_id"]
+                    request.session.pop(subset_draft_session_key, None)
                     request.session.modified = True
                     project = summary["project"]
                     messages.success(
@@ -9980,6 +10155,7 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             "picture_dictionary_subsets": picture_dictionary_subsets,
             "picture_dictionary_subset_edit": picture_dictionary_subset_edit,
             "picture_dictionary_subset_selected_entry_ids": picture_dictionary_subset_selected_entry_ids,
+            "picture_dictionary_subset_form": picture_dictionary_subset_form,
             "low_resource_mode_recommended": low_resource_mode_recommended,
             "low_resource_missing_rows": low_resource_missing_rows,
             "low_resource_missing_row_details": low_resource_missing_row_details[:12],
