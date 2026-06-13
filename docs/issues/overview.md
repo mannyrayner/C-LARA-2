@@ -1,9 +1,9 @@
-# C-LARA-2 issue overview (refreshed 2026-06-13T10:43:17Z)
+# C-LARA-2 issue overview (refreshed 2026-06-13T11:31:36Z)
 
 ## Recent progress
 
-- Raised **ISSUE-0037** to active/P1 and extended the first implementation cut for named subset projects derived from community picture dictionaries with translation-visible candidate rows and AI-assisted subset prefill, because this is needed for classroom testing around 2026-07-13.
-- Updated the picture-dictionary roadmap to distinguish the implemented manual subset-project flow from remaining follow-on work: richer sync semantics and exercise-specific exclusion reporting; AI-proposed subset selection now has an initial organiser-reviewed implementation.
+- **ISSUE-0037** is now active/P1 with a successful first functional pass: description-based AI prefill, subset creation, and flashcard exercise generation from the resulting subdictionary have been exercised and worked as intended.
+- Updated the picture-dictionary roadmap to mark the subset-project feature as ready for server deployment and Sophie review, while keeping richer sync semantics and exercise-specific exclusion reporting as follow-on work.
 - Recent picture-dictionary work has now wired **Disallow visible text in images** into organiser-requested image regeneration and added advisory AI language-ID diagnostics for likely low-resource word/gloss mix-ups; remaining work is refinement, not first proof of concept.
 - The issue registry continues to treat **ISSUE-0036** few-shot curation, **ISSUE-0003** pipeline evaluation, and **ISSUE-0004** AI review gates as the main quality-measurement cluster for report evidence and future prompt changes.
 - **ISSUE-0034** remains active as the restricted project-understanding assistant matures toward exportable, human-reviewable evidence records.
@@ -13,7 +13,7 @@
 1. **ISSUE-0031** — improve compiled-content presentation context and configurable public access controls.
 2. **ISSUE-0030** — fix image-generation workflow UX around element expansion auto-refresh and selection confirmation.
 3. **ISSUE-0029** — autosave community judging inputs to prevent accidental data loss.
-4. **ISSUE-0037** — stabilize organiser-created picture-dictionary subset projects before first classroom testing around 2026-07-13.
+4. **ISSUE-0037** — deploy organiser-created picture-dictionary subset projects to the server on 2026-06-14, then collect Sophie review feedback before classroom testing around 2026-07-13.
 5. **ISSUE-0026** — define the next-step community-recorded audio workflow for non-TTS languages.
 6. **ISSUE-0003 / ISSUE-0036 / ISSUE-0004** — use the pipeline runner, curated few-shot generation/review, and AI-based review gates to compare default and candidate processing variants.
 7. **ISSUE-0005 / ISSUE-0006** — treat segmentation prompt/few-shot changes as measurable experiments rather than anecdotal prompt tuning.
@@ -23,7 +23,7 @@
 
 ## Notes/risks
 
-- **ISSUE-0037** should avoid creating a second image-curation surface for subset dictionaries. The first cut now hides subset projects from the organiser image-review dashboard and redirects direct review attempts back to the organiser page; remaining risk is keeping derived content/image references synchronized after future canonical edits.
+- **ISSUE-0037** should remain active until deployment and Sophie review are complete. The current implementation avoids a second image-curation surface by hiding subset projects from the organiser image-review dashboard and redirecting direct review attempts; the main remaining risk is keeping derived content/image references synchronized after future canonical edits.
 - The AI language-confusion diagnostics for picture dictionaries are intentionally advisory. They can catch common source/gloss mix-ups, but false positives/negatives are expected and the trace table remains important for human review.
 - Text-free image prompt propagation is now implemented, but image-level detection of accidental visible text remains follow-on quality-control work under the picture-dictionary roadmap and related image-quality issues.
 - Few-shot curation and segmentation changes should not be promoted to defaults until **ISSUE-0003** and **ISSUE-0004** provide systematic comparison evidence.
