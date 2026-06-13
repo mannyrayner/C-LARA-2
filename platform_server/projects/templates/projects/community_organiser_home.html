@@ -222,8 +222,12 @@
           </label>
         {% endfor %}
       </div>
+      <p id="subset-suggestion-status" style="display:none; padding:0.6rem; border:1px solid #ddd; background:#f8fbff;">
+        <strong>AI is pre-filling the subset list, please wait…</strong>
+        The checked entries will appear when the operation completes; you can then review and adjust them before saving.
+      </p>
       <p>
-        <button class="btn secondary" type="submit" name="picture_dictionary_action" value="suggest_subset">Suggest entries from description</button>
+        <button id="subset-suggest-button" class="btn secondary" type="submit" name="picture_dictionary_action" value="suggest_subset">Suggest entries from description</button>
         <button class="btn secondary" type="submit" name="picture_dictionary_action" value="save_subset" onclick="return confirm('Save this subset project using the selected dictionary entries?');">{% if picture_dictionary_subset_edit %}Update subset project{% else %}Create subset project{% endif %}</button>
       </p>
     </fieldset>
@@ -258,6 +262,14 @@
       link.addEventListener("click", function () {
         status.style.display = "block";
       });
+    });
+  })();
+  (function () {
+    const suggestButton = document.getElementById("subset-suggest-button");
+    const status = document.getElementById("subset-suggestion-status");
+    if (!suggestButton || !status) return;
+    suggestButton.addEventListener("click", function () {
+      status.style.display = "block";
     });
   })();
 </script>

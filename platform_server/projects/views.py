@@ -9847,7 +9847,7 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                     request.session.modified = True
                     messages.success(
                         request,
-                        f"AI suggested {len(selected_ids)} dictionary entr{'y' if len(selected_ids) == 1 else 'ies'} for the subset. Please review the checked entries before saving.",
+                        f"AI subset prefill complete: suggested {len(selected_ids)} dictionary entr{'y' if len(selected_ids) == 1 else 'ies'} for the subset. Please review the checked entries before saving.",
                     )
                     for trace in traces[:12]:
                         if trace.get("include") == "1":

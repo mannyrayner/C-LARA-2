@@ -1040,7 +1040,9 @@ class CommunityWorkflowTests(TestCase):
                 follow=True,
             )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "AI suggested 1 dictionary entry for the subset")
+        self.assertContains(response, "AI subset prefill complete: suggested 1 dictionary entry for the subset")
+        self.assertContains(response, "AI is pre-filling the subset list, please wait")
+        self.assertContains(response, "subset-suggest-button")
         self.assertContains(response, "Animal words")
         self.assertContains(response, "animal, dog")
         self.assertContains(response, f'name="subset_entry_id" value="{entries["kutew"].id}" checked', html=False)
