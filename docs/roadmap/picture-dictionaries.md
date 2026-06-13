@@ -112,24 +112,26 @@ The first advisory AI diagnostics are in place, but they should be treated as a 
 - Consider adding a “mark checked / ignore this warning” organiser action if repeated benign warnings become distracting.
 - Keep diagnostics non-blocking except in explicit add-row flows where the organiser can immediately correct a suspected swap.
 
-### 2.7 Add organiser-created dictionary sub-projects
+### 2.7 Add organiser-created dictionary subset projects (ISSUE-0037)
 
-Sophie’s Kok Kaper follow-up request adds an immediately useful authoring workflow: a Community Organiser should be able to carve out a smaller vocabulary from an existing picture-dictionary project and save it as a sub-project/exercise source.
+Sophie’s Kok Kaper follow-up request is now tracked as **ISSUE-0037**. It adds an immediately useful authoring workflow: a Community Organiser should be able to carve out a smaller vocabulary from an existing picture-dictionary project and save it as a named subset project/exercise source.
 
 User goal:
 
 - Start from a community picture dictionary or ordinary project with one-page-per-entry structure.
 - Enter a natural-language command such as “make a set for animals”, “words useful for a family visit”, or “the 12 easiest words for beginners”.
-- Let the system propose the matching pages/entries, then show a review screen where the organiser can add/remove pages manually before saving.
-- Use the resulting subset as a stable source vocabulary for flashcards, word scrambles, crosswords, and later activity types.
+- Optionally let the system propose matching pages/entries from a natural-language description, then show a review screen where the organiser can add/remove pages manually before saving.
+- Use the resulting subset as a stable source vocabulary for flashcards, word scrambles, crosswords, and later activity types, while keeping the main picture dictionary as the canonical source of images and entry content.
 
 Implementation expectations:
 
 1. Reuse existing page/entry metadata wherever possible: surface form, lemma, POS, translation/gloss, readiness status, and approved image reference.
-2. Keep the parent project/dictionary unchanged; the sub-project should be a derived artifact or lightweight project clone with provenance back to parent page ids.
-3. Require organiser confirmation before creating or overwriting a sub-project.
-4. Default exercise generation to approved/game-ready entries, while allowing organisers to see why pages were excluded.
-5. Support manual adjustment even when the natural-language selection is imperfect; the AI proposal is a convenience, not the authority.
+2. Keep the parent project/dictionary unchanged; the subset project should be a derived artifact or lightweight project clone with provenance back to parent page ids.
+3. Keep subset content synchronized with the main picture dictionary where practical: changes to canonical images or entry text should be reflected in subsets rather than forked silently.
+4. Do **not** expose normal organiser image-review/regeneration actions directly on subset projects; image curation should happen in the main picture dictionary to avoid confusing divergent approval states.
+5. Require organiser confirmation before creating or overwriting a subset project, and allow later retrieval/editing of the selected page list.
+6. Default exercise generation to approved/game-ready entries, while allowing organisers to see why pages were excluded.
+7. Support manual adjustment even when the natural-language selection is imperfect; the AI proposal is a convenience, not the authority.
 
 Suggested artifact shape:
 
