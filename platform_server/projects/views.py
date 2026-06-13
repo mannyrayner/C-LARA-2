@@ -9494,7 +9494,36 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
     low_resource_missing_rows = 0
     low_resource_missing_row_details: list[str] = []
     picture_dictionary_pending_image_count = 0
-    low_resource_entry_row_numbers = list(range(1, 9))
+    low_resource_pending_session_key = f"community:{community_id}:pending_low_resource_rows"
+    pending_low_resource_rows = request.session.get(low_resource_pending_session_key)
+    if not isinstance(pending_low_resource_rows, list):
+        pending_low_resource_rows = []
+    low_resource_source_label = _project_language_label(community.language)
+    low_resource_gloss_label = ""
+    if picture_dictionary:
+        low_resource_source_label = _project_language_label(
+            picture_dictionary.language or picture_dictionary.project.language or community.language
+        )
+        target_language = (picture_dictionary.project.target_language or "").strip()
+        if target_language and target_language != (picture_dictionary.project.language or "").strip():
+            low_resource_gloss_label = _project_language_label(target_language)
+        else:
+            low_resource_gloss_label = ""
+    low_resource_entry_rows = []
+    display_rows = pending_low_resource_rows[:]
+    display_row_count = max(8, len(display_rows))
+    for idx in range(display_row_count):
+        row = display_rows[idx] if idx < len(display_rows) and isinstance(display_rows[idx], dict) else {}
+        low_resource_entry_rows.append(
+            {
+                "row_number": idx + 1,
+                "surface": str(row.get("surface") or ""),
+                "lemma": str(row.get("lemma") or ""),
+                "pos": str(row.get("pos") or ""),
+                "gloss": str(row.get("gloss") or ""),
+            }
+        )
+    low_resource_mixup_confirmation_required = bool(pending_low_resource_rows)
     if picture_dictionary:
         image_path_by_page_number = {
             row.page_number: (row.image_path or "").strip()
@@ -9723,18 +9752,22 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                     if any(str(value or "").strip() for value in row.values()):
                         manual_rows.append(row)
                 if not manual_rows:
+                    request.session.pop(low_resource_pending_session_key, None)
                     messages.error(request, "Enter at least one low-resource dictionary row before adding new words.")
                 else:
+                    confirm_mixup = (request.POST.get("confirm_low_resource_mixup") or "").strip() == "1"
                     mixup_warnings, mixup_traces = _picture_dictionary_surface_translation_mixup_diagnostics(
                         dictionary=picture_dictionary,
                         rows=manual_rows,
                         user=request.user,
                     )
-                    if mixup_warnings:
+                    if mixup_warnings and not confirm_mixup:
+                        request.session[low_resource_pending_session_key] = manual_rows
+                        request.session.modified = True
                         messages.error(
                             request,
-                            "Possible surface/translation mix-up: one or more dictionary words look as if they were entered in the gloss/translation language. "
-                            "Please check the highlighted row(s) and swap the word/gloss fields if necessary.",
+                            "Possible surface/translation mix-up: one or more dictionary words may have been entered in the wrong language. "
+                            "Please check the language-ID trace and the highlighted row(s). If the rows are correct, tick the confirmation box and submit again.",
                         )
                         for trace in mixup_traces[:12]:
                             messages.info(
@@ -9760,6 +9793,12 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                                 },
                             )
                         return redirect("community-organiser-home", community_id=community_id)
+                    request.session.pop(low_resource_pending_session_key, None)
+                    if mixup_warnings and confirm_mixup:
+                        messages.warning(
+                            request,
+                            "Added rows after organiser confirmation despite language-ID warning(s).",
+                        )
                     result = picture_dictionary_add_manual_rows(dictionary=picture_dictionary, rows=manual_rows)
                     messages.success(
                         request,
@@ -9865,7 +9904,12 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             "low_resource_missing_rows": low_resource_missing_rows,
             "low_resource_missing_row_details": low_resource_missing_row_details[:12],
             "picture_dictionary_pending_image_count": picture_dictionary_pending_image_count,
-            "low_resource_entry_row_numbers": low_resource_entry_row_numbers,
+            "low_resource_entry_rows": low_resource_entry_rows,
+            "low_resource_word_column_label": f"{low_resource_source_label} word",
+            "low_resource_gloss_column_label": (
+                f"{low_resource_gloss_label} gloss (= translation)" if low_resource_gloss_label else "Gloss (= translation)"
+            ),
+            "low_resource_mixup_confirmation_required": low_resource_mixup_confirmation_required,
         },
     )
 
