@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import json
 import logging
 import re
 import shutil
 from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
@@ -1035,6 +1036,425 @@ def _write_imported_dictionary_annotation_stages(
     for stage_name in ("segmentation_phase_2", "translation", "mwe", "lemma", "gloss", "romanization", "pinyin"):
         payload = _imported_dictionary_stage_payload(dictionary, rows, stage_name, source=source)
         write_stage_artifact(run_dir.parent, stage_name, payload)
+
+
+
+PICTURE_DICTIONARY_SUBSET_DIR = "picture_dictionary_subsets"
+
+
+def _picture_dictionary_subset_root(dictionary: PictureDictionary) -> Path:
+    return dictionary.project.artifact_dir() / PICTURE_DICTIONARY_SUBSET_DIR
+
+
+def _picture_dictionary_subset_slug(value: str) -> str:
+    slug = re.sub(r"[^A-Za-z0-9_-]+", "-", (value or "").strip()).strip("-").lower()
+    return slug[:64] or "subset"
+
+
+def _read_picture_dictionary_subset_config(path: Path) -> dict[str, Any] | None:
+    try:
+        with (path / "config.json").open("r", encoding="utf-8") as handle:
+            config = json.load(handle)
+    except Exception:
+        return None
+    return config if isinstance(config, dict) else None
+
+
+def list_picture_dictionary_subsets(dictionary: PictureDictionary) -> list[dict[str, Any]]:
+    """Return stored subset-project metadata for the community dictionary.
+
+    Subsets are tracked as lightweight artifacts under the canonical dictionary
+    project so they can point back to parent entries/pages without adding a
+    migration for this first cut.
+    """
+
+    root = _picture_dictionary_subset_root(dictionary)
+    if not root.exists():
+        return []
+    rows: list[dict[str, Any]] = []
+    for child in sorted((p for p in root.iterdir() if p.is_dir()), key=lambda p: p.name):
+        config = _read_picture_dictionary_subset_config(child)
+        if not config:
+            continue
+        try:
+            with (child / "pages.json").open("r", encoding="utf-8") as handle:
+                pages_payload = json.load(handle)
+        except Exception:
+            pages_payload = {}
+        pages = pages_payload.get("pages") if isinstance(pages_payload, dict) else []
+        if not isinstance(pages, list):
+            pages = []
+        project_id = int(config.get("project_id") or 0)
+        project = Project.objects.filter(id=project_id).first() if project_id else None
+        entry_ids = [int(page.get("entry_id")) for page in pages if isinstance(page, dict) and str(page.get("entry_id") or "").isdigit()]
+        rows.append(
+            {
+                "subset_id": str(config.get("subset_id") or child.name),
+                "title": str(config.get("title") or (project.title if project else child.name)),
+                "description": str(config.get("description") or ""),
+                "selection_note": str(config.get("selection_note") or ""),
+                "project_id": project_id or None,
+                "project": project,
+                "entry_ids": entry_ids,
+                "entry_count": len(entry_ids),
+                "updated_at": str(config.get("updated_at") or ""),
+                "created_at": str(config.get("created_at") or ""),
+            }
+        )
+    rows.sort(key=lambda row: (str(row.get("title") or "").casefold(), str(row.get("subset_id") or "")))
+    return rows
+
+
+def picture_dictionary_subset_project_ids(dictionary: PictureDictionary) -> set[int]:
+    return {int(row["project_id"]) for row in list_picture_dictionary_subsets(dictionary) if row.get("project_id")}
+
+
+def get_picture_dictionary_subset(dictionary: PictureDictionary, subset_id: str) -> dict[str, Any] | None:
+    subset_id = str(subset_id or "").strip()
+    if not subset_id:
+        return None
+    for row in list_picture_dictionary_subsets(dictionary):
+        if str(row.get("subset_id") or "") == subset_id:
+            return row
+    return None
+
+
+def _picture_dictionary_subset_rows(
+    dictionary: PictureDictionary,
+    selected_entries: list[PictureDictionaryEntry],
+) -> list[dict[str, Any]]:
+    rows_by_entry_id = {
+        int(entry.id): row
+        for entry, row in zip(selected_entries, _manual_rows_from_entries(dictionary, selected_entries), strict=False)
+    }
+    pages_by_number = {
+        page.page_number: page
+        for page in ProjectImagePage.objects.filter(project=dictionary.project).prefetch_related("variants").order_by("page_number", "id")
+    }
+    output: list[dict[str, Any]] = []
+    for idx, entry in enumerate(selected_entries, start=1):
+        row = rows_by_entry_id.get(int(entry.id), {})
+        parent_page_number = entry.current_page_number or int(row.get("old_page_number") or idx)
+        parent_page = pages_by_number.get(parent_page_number)
+        output.append(
+            {
+                "entry": entry,
+                "row": row,
+                "parent_page": parent_page,
+                "parent_page_number": parent_page_number,
+                "page_number": idx,
+                "surface": str(row.get("surface") or entry.surface or ""),
+                "lemma": str(row.get("lemma") or entry.lemma or entry.surface or ""),
+                "pos": str(row.get("pos") or entry.pos or ""),
+                "gloss": str(row.get("gloss") or row.get("translation") or ""),
+                "translation": str(row.get("translation") or row.get("gloss") or ""),
+                "image_path": str(row.get("image_path") or entry.image_path or ""),
+            }
+        )
+    return output
+
+
+def _write_subset_segmentation_phase_1(
+    subset_project: Project,
+    dictionary: PictureDictionary,
+    subset_rows: list[dict[str, Any]],
+) -> None:
+    run_dir = subset_project.artifact_dir() / "runs" / "run_picture_dictionary_subset"
+    pages = [
+        {"surface": row["surface"], "segments": [{"surface": row["surface"]}], "annotations": {}}
+        for row in subset_rows
+    ]
+    payload = {
+        "l2": subset_project.language,
+        "surface": "<page>".join(row["surface"] for row in subset_rows),
+        "pages": pages,
+        "annotations": {},
+        "metadata": {
+            "source": "picture_dictionary_subset",
+            "parent_dictionary_id": dictionary.id,
+            "parent_dictionary_project_id": dictionary.project_id,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "entry_count": len(subset_rows),
+        },
+    }
+    write_stage_artifact(run_dir, "segmentation_phase_1", payload)
+
+
+def _write_subset_annotation_stages(
+    subset_project: Project,
+    dictionary: PictureDictionary,
+    subset_rows: list[dict[str, Any]],
+) -> None:
+    run_dir = subset_project.artifact_dir() / "runs" / "run_picture_dictionary_subset"
+    rows = [
+        {
+            "surface": row["surface"],
+            "lemma": row["lemma"],
+            "pos": row["pos"],
+            "gloss": row["gloss"],
+            "translation": row["translation"],
+        }
+        for row in subset_rows
+    ]
+    for stage_name in ("segmentation_phase_2", "translation", "mwe", "lemma", "gloss", "romanization", "pinyin"):
+        payload = _imported_dictionary_stage_payload(
+            dictionary,
+            rows,
+            stage_name,
+            source="picture_dictionary_subset",
+        )
+        payload["l2"] = subset_project.language
+        payload.setdefault("metadata", {}).update(
+            {
+                "source": "picture_dictionary_subset",
+                "parent_dictionary_id": dictionary.id,
+                "parent_dictionary_project_id": dictionary.project_id,
+                "subset_project_id": subset_project.id,
+            }
+        )
+        write_stage_artifact(run_dir, stage_name, payload)
+
+
+def _safe_copy_dictionary_image(dictionary: PictureDictionary, subset_project: Project, image_path: str) -> None:
+    relative = Path(str(image_path or "").strip())
+    if not relative.parts or relative.is_absolute():
+        return
+    try:
+        source = (dictionary.project.artifact_dir() / relative).resolve()
+        source.relative_to(dictionary.project.artifact_dir().resolve())
+        target = (subset_project.artifact_dir() / relative).resolve()
+        target.relative_to(subset_project.artifact_dir().resolve())
+    except ValueError:
+        return
+    if not source.exists() or source.is_dir():
+        return
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, target)
+
+
+def _sync_subset_project_image_pages(
+    subset_project: Project,
+    dictionary: PictureDictionary,
+    subset_rows: list[dict[str, Any]],
+) -> None:
+    existing_pages = {page.page_number: page for page in ProjectImagePage.objects.filter(project=subset_project).order_by("id")}
+    retained_page_ids: set[int] = set()
+    for row in subset_rows:
+        parent_page = row.get("parent_page")
+        page_number = int(row["page_number"])
+        image_path = str(row.get("image_path") or "").strip()
+        if image_path:
+            _safe_copy_dictionary_image(dictionary, subset_project, image_path)
+        page = existing_pages.get(page_number)
+        defaults = {
+            "page_text": row["surface"],
+            "generation_prompt": getattr(parent_page, "generation_prompt", "") or row["surface"],
+            "image_model": getattr(parent_page, "image_model", "gpt-image-1") or "gpt-image-1",
+            "image_path": image_path,
+            "image_revised_prompt": getattr(parent_page, "image_revised_prompt", "") or "",
+            "status": getattr(parent_page, "status", ProjectImagePage.STATUS_APPROVED) if parent_page else ProjectImagePage.STATUS_APPROVED,
+        }
+        if page is None:
+            page = ProjectImagePage.objects.create(project=subset_project, page_number=page_number, **defaults)
+        else:
+            for key, value in defaults.items():
+                setattr(page, key, value)
+            page.save(update_fields=[*defaults.keys(), "updated_at"])
+        retained_page_ids.add(page.id)
+        ProjectImagePageVariant.objects.filter(page=page).delete()
+        preferred_variant = None
+        if parent_page is not None:
+            for variant in parent_page.variants.order_by("variant_index", "id"):
+                variant_image_path = str(variant.image_path or "").strip()
+                if variant_image_path:
+                    _safe_copy_dictionary_image(dictionary, subset_project, variant_image_path)
+                copied = ProjectImagePageVariant.objects.create(
+                    page=page,
+                    variant_index=variant.variant_index,
+                    image_model=variant.image_model,
+                    image_path=variant_image_path,
+                    generation_prompt=variant.generation_prompt,
+                    image_revised_prompt=variant.image_revised_prompt,
+                    status=variant.status,
+                )
+                if parent_page.preferred_variant_id == variant.id:
+                    preferred_variant = copied
+        elif image_path:
+            preferred_variant = ProjectImagePageVariant.objects.create(
+                page=page,
+                variant_index=1,
+                image_model=page.image_model or "gpt-image-1",
+                image_path=image_path,
+                generation_prompt=page.generation_prompt or row["surface"],
+                image_revised_prompt=page.image_revised_prompt or "",
+                status=ProjectImagePageVariant.STATUS_GENERATED,
+            )
+        if preferred_variant and page.preferred_variant_id != preferred_variant.id:
+            page.preferred_variant = preferred_variant
+            page.save(update_fields=["preferred_variant", "updated_at"])
+    stale_pages = ProjectImagePage.objects.filter(project=subset_project)
+    if retained_page_ids:
+        stale_pages = stale_pages.exclude(id__in=retained_page_ids)
+    stale_pages.delete()
+
+
+@transaction.atomic
+def create_or_update_picture_dictionary_subset(
+    *,
+    dictionary: PictureDictionary,
+    organiser,
+    title: str,
+    entry_ids: Iterable[int],
+    subset_id: str = "",
+    description: str = "",
+    selection_note: str = "",
+) -> dict[str, Any]:
+    """Create or update a lightweight subset project derived from a picture dictionary."""
+
+    _require_organiser(dictionary.community, organiser)
+    cleaned_title = _normalise_word(title) or "Picture dictionary subset"
+    cleaned_description = str(description or "").strip()
+    cleaned_note = str(selection_note or "").strip()
+    ordered_ids: list[int] = []
+    seen: set[int] = set()
+    for raw_id in entry_ids:
+        try:
+            entry_id = int(raw_id)
+        except (TypeError, ValueError):
+            continue
+        if entry_id in seen:
+            continue
+        seen.add(entry_id)
+        ordered_ids.append(entry_id)
+    if not ordered_ids:
+        raise ValueError("Select at least one dictionary entry for the subset project.")
+    entries_by_id = {
+        entry.id: entry
+        for entry in dictionary.entries.filter(id__in=ordered_ids, is_active=True).order_by("id")
+    }
+    selected_entries = [entries_by_id[entry_id] for entry_id in ordered_ids if entry_id in entries_by_id]
+    if not selected_entries:
+        raise ValueError("The selected dictionary entries are no longer available.")
+
+    existing_subset = get_picture_dictionary_subset(dictionary, subset_id) if subset_id else None
+    if existing_subset and existing_subset.get("project_id"):
+        subset_project = Project.objects.filter(
+            id=int(existing_subset["project_id"]),
+            community=dictionary.community,
+        ).first()
+        if subset_project is None:
+            existing_subset = None
+    else:
+        subset_project = None
+
+    if subset_project is None:
+        subset_project = Project.objects.create(
+            owner=organiser,
+            title=_unique_project_title(organiser, cleaned_title),
+            description="",
+            source_text="",
+            input_mode=Project.INPUT_SOURCE,
+            language=dictionary.project.language or dictionary.language,
+            target_language=dictionary.project.target_language or "",
+            ai_model=dictionary.project.ai_model or "gpt-4o",
+            page_image_placement=dictionary.project.page_image_placement,
+            image_generation_pivot_language=dictionary.project.image_generation_pivot_language,
+            page_image_text_source=dictionary.project.page_image_text_source,
+            segmentation_method=dictionary.project.segmentation_method,
+            romanization_method=dictionary.project.romanization_method,
+            audio_mode=dictionary.project.audio_mode,
+            access_scope=Project.ACCESS_COMMUNITY,
+            community=dictionary.community,
+        )
+        subset_id = f"project_{subset_project.id}"
+        created = True
+    else:
+        subset_project.title = cleaned_title[:200]
+        subset_project.language = dictionary.project.language or dictionary.language
+        subset_project.target_language = dictionary.project.target_language or ""
+        subset_project.input_mode = Project.INPUT_SOURCE
+        subset_project.access_scope = Project.ACCESS_COMMUNITY
+        subset_project.community = dictionary.community
+        created = False
+        if not subset_id:
+            subset_id = f"project_{subset_project.id}"
+    subset_project.description = (
+        f"Derived subset of picture dictionary “{dictionary.project.title}”.\n\n"
+        f"{cleaned_description}".strip()
+    )
+    subset_project.source_text = "\n".join(entry.surface for entry in selected_entries)
+    subset_project.save()
+
+    subset_rows = _picture_dictionary_subset_rows(dictionary, selected_entries)
+    _write_subset_segmentation_phase_1(subset_project, dictionary, subset_rows)
+    _write_subset_annotation_stages(subset_project, dictionary, subset_rows)
+    _sync_subset_project_image_pages(subset_project, dictionary, subset_rows)
+
+    root = _picture_dictionary_subset_root(dictionary)
+    root.mkdir(parents=True, exist_ok=True)
+    subset_id = _picture_dictionary_subset_slug(subset_id or f"project_{subset_project.id}")
+    subset_dir = root / subset_id
+    subset_dir.mkdir(parents=True, exist_ok=True)
+    now = datetime.now(timezone.utc).isoformat()
+    existing_config = _read_picture_dictionary_subset_config(subset_dir) or {}
+    created_at = str(existing_config.get("created_at") or now)
+    config = {
+        "schema_version": 1,
+        "subset_id": subset_id,
+        "title": subset_project.title,
+        "description": cleaned_description,
+        "selection_note": cleaned_note,
+        "project_id": subset_project.id,
+        "parent_dictionary_id": dictionary.id,
+        "parent_dictionary_project_id": dictionary.project_id,
+        "community_id": dictionary.community_id,
+        "created_by_user_id": organiser.id,
+        "created_at": created_at,
+        "updated_at": now,
+    }
+    pages_payload = {
+        "schema_version": 1,
+        "subset_id": subset_id,
+        "pages": [
+            {
+                "order": row["page_number"],
+                "entry_id": row["entry"].id,
+                "parent_page_number": row["parent_page_number"],
+                "surface": row["surface"],
+                "lemma": row["lemma"],
+                "pos": row["pos"],
+                "gloss": row["gloss"],
+                "translation": row["translation"],
+                "image_path": row["image_path"],
+            }
+            for row in subset_rows
+        ],
+    }
+    provenance = {
+        "schema_version": 1,
+        "subset_id": subset_id,
+        "parent_dictionary_id": dictionary.id,
+        "parent_dictionary_project_id": dictionary.project_id,
+        "updated_at": now,
+        "selection_method": "manual",
+        "selection_note": cleaned_note,
+        "entry_ids": [entry.id for entry in selected_entries],
+    }
+    for filename, payload in (
+        ("config.json", config),
+        ("pages.json", pages_payload),
+        ("provenance.json", provenance),
+    ):
+        with (subset_dir / filename).open("w", encoding="utf-8") as handle:
+            json.dump(payload, handle, ensure_ascii=False, indent=2)
+            handle.write("\n")
+    return {
+        "created": created,
+        "subset_id": subset_id,
+        "project": subset_project,
+        "entry_count": len(selected_entries),
+        "artifact_dir": subset_dir,
+    }
 
 
 def _index_existing_dictionary_annotations(dictionary: PictureDictionary) -> dict[tuple[str, str], dict]:
