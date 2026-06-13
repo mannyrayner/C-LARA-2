@@ -139,6 +139,10 @@ from .models import (
 from .picture_dictionary import (
     _manual_rows_from_entries,
     _refresh_dictionary_placeholder_stages,
+    create_or_update_picture_dictionary_subset,
+    get_picture_dictionary_subset,
+    list_picture_dictionary_subsets,
+    picture_dictionary_subset_project_ids,
     add_lemma_pos_entries as picture_dictionary_add_lemma_pos_entries,
     add_manual_rows as picture_dictionary_add_manual_rows,
     add_words as picture_dictionary_add_words,
@@ -9458,6 +9462,30 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
         .first()
     )
     dictionary_entries: list[PictureDictionaryEntry] = []
+    picture_dictionary_subsets: list[dict[str, Any]] = []
+    picture_dictionary_subset_project_id_set: set[int] = set()
+    subset_edit_session_key = f"community:{community_id}:picture_dictionary_subset_edit"
+    subset_edit_id = str(request.session.get(subset_edit_session_key) or "")
+    picture_dictionary_subset_edit: dict[str, Any] | None = None
+    picture_dictionary_subset_selected_entry_ids: set[int] = set()
+    if picture_dictionary:
+        picture_dictionary_subsets = list_picture_dictionary_subsets(picture_dictionary)
+        picture_dictionary_subset_project_id_set = {
+            int(row["project_id"])
+            for row in picture_dictionary_subsets
+            if row.get("project_id")
+        }
+        if subset_edit_id:
+            picture_dictionary_subset_edit = get_picture_dictionary_subset(picture_dictionary, subset_edit_id)
+            if picture_dictionary_subset_edit:
+                picture_dictionary_subset_selected_entry_ids = {
+                    int(entry_id)
+                    for entry_id in picture_dictionary_subset_edit.get("entry_ids", [])
+                    if str(entry_id).isdigit()
+                }
+            else:
+                request.session.pop(subset_edit_session_key, None)
+                subset_edit_id = ""
     if picture_dictionary:
         dictionary_entries = list(picture_dictionary.entries.filter(is_active=True))
         dictionary_entries.sort(
@@ -9647,11 +9675,69 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                     request,
                     "Dictionary stages synced. Existing annotations were preserved; placeholders were added only for new/missing entries.",
                 )
+            elif action == "load_subset":
+                selected_subset_id = (request.POST.get("subset_id") or "").strip()
+                subset = get_picture_dictionary_subset(picture_dictionary, selected_subset_id)
+                if not subset:
+                    messages.error(request, "Please choose a saved subset project to edit.")
+                else:
+                    request.session[subset_edit_session_key] = selected_subset_id
+                    request.session.modified = True
+                    messages.info(request, f"Loaded subset “{subset['title']}” for editing.")
+            elif action == "clear_subset_edit":
+                request.session.pop(subset_edit_session_key, None)
+                messages.info(request, "Cleared subset edit selection.")
+            elif action == "save_subset":
+                selected_entry_ids = [int(value) for value in request.POST.getlist("subset_entry_id") if str(value).isdigit()]
+                subset_id = (request.POST.get("editing_subset_id") or request.POST.get("subset_id") or "").strip()
+                subset_title = (request.POST.get("subset_title") or "").strip()
+                subset_description = (request.POST.get("subset_description") or "").strip()
+                subset_note = (request.POST.get("subset_selection_note") or "").strip()
+                try:
+                    summary = create_or_update_picture_dictionary_subset(
+                        dictionary=picture_dictionary,
+                        organiser=request.user,
+                        title=subset_title,
+                        entry_ids=selected_entry_ids,
+                        subset_id=subset_id,
+                        description=subset_description,
+                        selection_note=subset_note,
+                    )
+                except ValueError as exc:
+                    messages.error(request, str(exc))
+                except PermissionDenied:
+                    raise Http404()
+                else:
+                    request.session[subset_edit_session_key] = summary["subset_id"]
+                    request.session.modified = True
+                    project = summary["project"]
+                    messages.success(
+                        request,
+                        "%s subset project “%s” with %s entr%s. It inherits images from the main picture dictionary; review/regenerate images there."
+                        % (
+                            "Created" if summary["created"] else "Updated",
+                            project.title,
+                            summary["entry_count"],
+                            "y" if summary["entry_count"] == 1 else "ies",
+                        ),
+                    )
             elif action == "compile":
                 compile_updates: list[str] = []
 
                 def _record_compile_update(message: str) -> None:
                     compile_updates.append(message)
+
+                low_resource_mode = bool(request.POST.get("picture_dictionary_low_resource_mode"))
+                if low_resource_mode and (low_resource_missing_rows > 0 or not dictionary_entries):
+                    review_url = reverse("manual-page-annotation", args=[picture_dictionary.project.id])
+                    messages.error(
+                        request,
+                        "Compile temporarily blocked: low-resource compile mode is enabled, but some dictionary rows are missing gloss and/or translation. "
+                        f"Please use “Review dictionary content (page-oriented editor)” first ({review_url}).",
+                    )
+                    for detail in low_resource_missing_row_details[:12]:
+                        messages.info(request, f"Low-resource compile check detail: {detail}")
+                    return redirect("community-organiser-home", community_id=community_id)
 
                 style = getattr(picture_dictionary.project, "image_style", None)
                 style_usable = bool(
@@ -9704,17 +9790,6 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                     )
                     messages.success(request, "Created dictionary image style from the provided style brief.")
                 report_id = str(uuid.uuid4())
-                low_resource_mode = bool(request.POST.get("picture_dictionary_low_resource_mode"))
-                if low_resource_mode and low_resource_missing_rows > 0:
-                    review_url = reverse("manual-page-annotation", args=[picture_dictionary.project.id])
-                    messages.error(
-                        request,
-                        "Low-resource compile mode is enabled, but some dictionary rows are missing gloss and/or translation. "
-                        f"Please use “Review dictionary content (page-oriented editor)” first ({review_url}).",
-                    )
-                    for detail in low_resource_missing_row_details[:12]:
-                        messages.info(request, f"Low-resource compile check detail: {detail}")
-                    return redirect("community-organiser-home", community_id=community_id)
                 if picture_dictionary.project.page_image_text_source != Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION:
                     picture_dictionary.project.page_image_text_source = Project.PAGE_IMAGE_TEXT_SOURCE_TRANSLATION
                     picture_dictionary.project.save(update_fields=["page_image_text_source", "updated_at"])
@@ -9876,6 +9951,8 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
     }
     summary_rows: list[dict[str, Any]] = []
     for project in projects:
+        if project.id in picture_dictionary_subset_project_id_set:
+            continue
         latest_vote = (
             CommunityImageVote.objects.filter(community_id=community_id, project=project)
             .order_by("-updated_at")
@@ -9899,7 +9976,10 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             "dictionary_entries": dictionary_entries,
             "picture_dictionary_compile_info": picture_dictionary_compile_info,
             "picture_dictionary_style_brief": picture_dictionary_style_brief,
-            "community_projects": projects,
+            "community_projects": [project for project in projects if project.id not in picture_dictionary_subset_project_id_set],
+            "picture_dictionary_subsets": picture_dictionary_subsets,
+            "picture_dictionary_subset_edit": picture_dictionary_subset_edit,
+            "picture_dictionary_subset_selected_entry_ids": picture_dictionary_subset_selected_entry_ids,
             "low_resource_mode_recommended": low_resource_mode_recommended,
             "low_resource_missing_rows": low_resource_missing_rows,
             "low_resource_missing_row_details": low_resource_missing_row_details[:12],
@@ -9920,6 +10000,17 @@ def community_organiser_review_project(request: HttpRequest, community_id: int, 
     if membership.role != CommunityMembership.ROLE_ORGANISER:
         raise Http404()
     project = get_object_or_404(Project, pk=project_id, community_id=community_id)
+    active_dictionary = (
+        PictureDictionary.objects.select_related("project")
+        .filter(community_id=community_id, is_active=True)
+        .first()
+    )
+    if active_dictionary and project.id in picture_dictionary_subset_project_ids(active_dictionary):
+        messages.info(
+            request,
+            "Subset dictionary projects inherit images from the main picture dictionary. Please review or regenerate images on the main dictionary project instead.",
+        )
+        return redirect("community-organiser-home", community_id=community_id)
     pages = list(ProjectImagePage.objects.filter(project=project).order_by("page_number").prefetch_related("variants"))
 
     if request.method == "POST":

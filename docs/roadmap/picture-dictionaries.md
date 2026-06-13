@@ -114,7 +114,20 @@ The first advisory AI diagnostics are in place, but they should be treated as a 
 
 ### 2.7 Add organiser-created dictionary subset projects (ISSUE-0037)
 
-Sophie’s Kok Kaper follow-up request is now tracked as **ISSUE-0037**. It adds an immediately useful authoring workflow: a Community Organiser should be able to carve out a smaller vocabulary from an existing picture-dictionary project and save it as a named subset project/exercise source.
+Sophie’s Kok Kaper follow-up request is tracked as **ISSUE-0037**, now raised to **P1** because this is needed for real classroom testing beginning around 2026-07-13. It adds an immediately useful authoring workflow: a Community Organiser should be able to carve out a smaller vocabulary from an existing picture-dictionary project and save it as a named subset project/exercise source.
+
+First-cut status (implemented):
+
+- Community organisers can manually create a named subset project from selected active dictionary entries under `communities/.../organiser/`.
+- Existing subset projects can be loaded back into the organiser page, edited, and re-saved.
+- Each subset writes provenance artifacts under `picture_dictionary_subsets/<subset_id>/` and creates a lightweight project with source text/stage artifacts derived from the selected dictionary rows.
+- Subsets are hidden from the organiser image-review dashboard, and direct review URLs redirect organisers back to the main organiser page, so image curation remains on the canonical picture dictionary.
+
+Remaining follow-on work:
+
+- Add the optional AI proposal step from a natural-language command, always followed by manual review.
+- Improve automatic synchronization after canonical dictionary images/text are changed outside the subset edit/save flow.
+- Show exercise-specific exclusion/readiness reasons when a selected entry is not approved/game-ready.
 
 User goal:
 

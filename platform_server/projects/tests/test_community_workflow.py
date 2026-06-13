@@ -911,6 +911,143 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(readded_page.image_path, "")
         self.assertFalse((dictionary.project.artifact_dir() / "images/pages/page_001").exists())
 
+    def test_organiser_can_create_picture_dictionary_subset_project(self):
+        client = Client()
+        client.login(username="org", password="pw")
+        response = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "add_low_resource_rows",
+                "low_resource_surface": ["pama", "thaw", "kutew"],
+                "low_resource_lemma": ["pama", "thaw", "kutew"],
+                "low_resource_pos": ["NOUN", "NOUN", "NOUN"],
+                "low_resource_gloss": ["person", "mouth", "dog"],
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
+        for idx, entry in enumerate(entries, start=1):
+            rel_path = f"images/pages/page_{idx:03d}/variant_001.png"
+            image_file = dictionary.project.artifact_dir() / rel_path
+            image_file.parent.mkdir(parents=True, exist_ok=True)
+            image_file.write_bytes(b"fake-image")
+            entry.image_path = rel_path
+            entry.current_page_number = idx
+            entry.save(update_fields=["image_path", "current_page_number", "updated_at"])
+            page = ProjectImagePage.objects.get(project=dictionary.project, page_number=idx)
+            page.image_path = rel_path
+            page.status = ProjectImagePage.STATUS_APPROVED
+            page.save(update_fields=["image_path", "status", "updated_at"])
+            ProjectImagePageVariant.objects.update_or_create(
+                page=page,
+                variant_index=1,
+                defaults={
+                    "image_path": rel_path,
+                    "image_model": "gpt-image-1",
+                    "generation_prompt": entry.surface,
+                    "status": ProjectImagePageVariant.STATUS_APPROVED,
+                },
+            )
+
+        response = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "save_subset",
+                "subset_title": "Beginner Kok Kaper set",
+                "subset_description": "First classroom test set",
+                "subset_selection_note": "manual beginner words",
+                "subset_entry_id": [str(entries[0].id), str(entries[2].id)],
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Created subset project")
+        subset_project = Project.objects.get(owner=self.organiser, title="Beginner Kok Kaper set")
+        self.assertEqual(subset_project.community, self.community)
+        self.assertEqual(subset_project.access_scope, Project.ACCESS_COMMUNITY)
+        self.assertEqual(subset_project.source_text, "pama\nkutew")
+        subset_run = subset_project.artifact_dir() / "runs" / "run_picture_dictionary_subset"
+        lemma_payload = read_stage_artifact(subset_run, "lemma")
+        self.assertEqual([page["surface"] for page in lemma_payload["pages"]], ["pama", "kutew"])
+        self.assertEqual(
+            (subset_project.artifact_dir() / "images/pages/page_001/variant_001.png").read_bytes(),
+            b"fake-image",
+        )
+        subset_dir = dictionary.project.artifact_dir() / "picture_dictionary_subsets" / f"project_{subset_project.id}"
+        config = json.loads((subset_dir / "config.json").read_text(encoding="utf-8"))
+        pages = json.loads((subset_dir / "pages.json").read_text(encoding="utf-8"))["pages"]
+        self.assertEqual(config["project_id"], subset_project.id)
+        self.assertEqual([page["entry_id"] for page in pages], [entries[0].id, entries[2].id])
+        self.assertNotContains(response, "Review images for Beginner Kok Kaper set")
+
+        review_response = client.get(
+            reverse("community-organiser-review-project", args=[self.community.id, subset_project.id]),
+            follow=True,
+        )
+        self.assertEqual(review_response.status_code, 200)
+        self.assertContains(review_response, "Subset dictionary projects inherit images")
+
+    def test_organiser_can_reload_and_update_picture_dictionary_subset_project(self):
+        client = Client()
+        client.login(username="org", password="pw")
+        client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "add_low_resource_rows",
+                "low_resource_surface": ["pama", "thaw", "kutew"],
+                "low_resource_lemma": ["pama", "thaw", "kutew"],
+                "low_resource_pos": ["NOUN", "NOUN", "NOUN"],
+                "low_resource_gloss": ["person", "mouth", "dog"],
+            },
+            follow=True,
+        )
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
+        create_response = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "save_subset",
+                "subset_title": "Editable subset",
+                "subset_entry_id": [str(entries[0].id), str(entries[1].id)],
+            },
+            follow=True,
+        )
+        self.assertEqual(create_response.status_code, 200)
+        subset_project = Project.objects.get(owner=self.organiser, title="Editable subset")
+        subset_id = f"project_{subset_project.id}"
+
+        load_response = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {"picture_dictionary_action": "load_subset", "subset_id": subset_id},
+            follow=True,
+        )
+        self.assertEqual(load_response.status_code, 200)
+        self.assertContains(load_response, "Editing subset:")
+        self.assertContains(load_response, "Editable subset")
+        self.assertContains(load_response, f'value="{entries[0].id}" checked', html=False)
+        self.assertContains(load_response, f'value="{entries[1].id}" checked', html=False)
+
+        update_response = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "save_subset",
+                "editing_subset_id": subset_id,
+                "subset_title": "Editable subset revised",
+                "subset_entry_id": [str(entries[2].id)],
+            },
+            follow=True,
+        )
+        self.assertEqual(update_response.status_code, 200)
+        self.assertContains(update_response, "Updated subset project")
+        subset_project.refresh_from_db()
+        self.assertEqual(subset_project.title, "Editable subset revised")
+        self.assertEqual(subset_project.source_text, "kutew")
+        subset_dir = dictionary.project.artifact_dir() / "picture_dictionary_subsets" / subset_id
+        pages = json.loads((subset_dir / "pages.json").read_text(encoding="utf-8"))["pages"]
+        self.assertEqual([page["entry_id"] for page in pages], [entries[2].id])
+
     def test_ai_capable_organiser_keeps_plain_dictionary_word_entry(self):
         ai_community = Community.objects.create(name="French community", language="fr")
         CommunityMembership.objects.create(community=ai_community, user=self.organiser, role="organiser")
