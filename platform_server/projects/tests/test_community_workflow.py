@@ -558,6 +558,32 @@ class CommunityWorkflowTests(TestCase):
         self.assertContains(remove_selected, "Last dictionary compile:")
 
 
+    def test_low_resource_dictionary_headers_include_language_names(self):
+        xkk_community = Community.objects.create(name="Kok Kaper C", language="xkk")
+        CommunityMembership.objects.create(community=xkk_community, user=self.organiser, role="organiser")
+        dictionary_project = Project.objects.create(
+            owner=self.organiser,
+            title="Kok Kaper picture dictionary",
+            source_text="",
+            language="xkk",
+            target_language="en",
+            community=xkk_community,
+        )
+        PictureDictionary.objects.create(
+            community=xkk_community,
+            project=dictionary_project,
+            organiser=self.organiser,
+            language="xkk",
+        )
+        client = Client()
+        client.login(username="org", password="pw")
+
+        page = client.get(reverse("community-organiser-home", args=[xkk_community.id]))
+
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Kok Kaper word")
+        self.assertContains(page, "English gloss (= translation)")
+
     def test_low_resource_organiser_can_add_annotated_dictionary_rows(self):
         client = Client()
         client.login(username="org", password="pw")
@@ -566,6 +592,7 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "Add new low-resource dictionary words")
         self.assertContains(page, "Create new images")
+        self.assertContains(page, "Iaai word")
         self.assertContains(page, "Gloss (= translation)")
         self.assertNotContains(page, "Translation (optional)")
         self.assertNotContains(page, "Words (comma or newline separated)")
@@ -737,10 +764,30 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Possible surface/translation mix-up")
         self.assertContains(response, "row 2: word ‘person’ with gloss ‘pama’")
+        self.assertContains(response, "Please confirm these rows before adding them")
+        self.assertContains(response, 'value="person"')
         self.assertGreaterEqual(mock_build_ai_client.call_count, 2)
         dictionary = PictureDictionary.objects.get(community=self.community)
         self.assertFalse(dictionary.entries.filter(surface="person", is_active=True).exists())
         self.assertFalse(dictionary.entries.filter(surface="pama", is_active=True).exists())
+
+        confirmed = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "add_low_resource_rows",
+                "confirm_low_resource_mixup": "1",
+                "low_resource_surface": ["pama", "person"],
+                "low_resource_lemma": ["pama", "person"],
+                "low_resource_pos": ["NOUN", "NOUN"],
+                "low_resource_gloss": ["person", "pama"],
+            },
+            follow=True,
+        )
+        self.assertEqual(confirmed.status_code, 200)
+        self.assertContains(confirmed, "Added rows after organiser confirmation")
+        self.assertContains(confirmed, "Added 2 and updated 0 low-resource dictionary row")
+        self.assertTrue(dictionary.entries.filter(surface="person", is_active=True).exists())
+        self.assertTrue(dictionary.entries.filter(surface="pama", is_active=True).exists())
 
     @override_settings(OPENAI_API_KEY="test-key")
     @patch("projects.views._build_ai_client")

@@ -87,28 +87,42 @@
     <fieldset style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0;">
       <legend>Add new low-resource dictionary words</legend>
       <p><small>Enter one word per row. The gloss is automatically used as the page translation, so the next step can create images without a separate page-oriented annotation pass.</small></p>
+      {% if low_resource_mixup_confirmation_required %}
+        <p style="padding:0.6rem; border:1px solid #e0b400; background:#fff8d8;">
+          <strong>Please confirm these rows before adding them.</strong>
+          The language-ID check found possible word/gloss language confusion. If the entries below are correct, tick the confirmation box and submit again.
+        </p>
+      {% endif %}
       <div style="overflow-x:auto;">
         <table style="width:100%; border-collapse:collapse;">
           <thead>
             <tr>
-              <th style="text-align:left;">Word</th>
+              <th style="text-align:left;">{{ low_resource_word_column_label }}</th>
               <th style="text-align:left;">Lemma</th>
               <th style="text-align:left;">POS</th>
-              <th style="text-align:left;">Gloss (= translation)</th>
+              <th style="text-align:left;">{{ low_resource_gloss_column_label }}</th>
             </tr>
           </thead>
           <tbody>
-            {% for row_number in low_resource_entry_row_numbers %}
+            {% for row in low_resource_entry_rows %}
               <tr>
-                <td><input type="text" name="low_resource_surface" aria-label="Word {{ row_number }}" style="width:95%;" /></td>
-                <td><input type="text" name="low_resource_lemma" aria-label="Lemma {{ row_number }}" style="width:95%;" /></td>
-                <td><input type="text" name="low_resource_pos" aria-label="POS {{ row_number }}" style="width:95%;" /></td>
-                <td><input type="text" name="low_resource_gloss" aria-label="Gloss {{ row_number }}" style="width:95%;" /></td>
+                <td><input type="text" name="low_resource_surface" aria-label="{{ low_resource_word_column_label }} {{ row.row_number }}" value="{{ row.surface }}" style="width:95%;" /></td>
+                <td><input type="text" name="low_resource_lemma" aria-label="Lemma {{ row.row_number }}" value="{{ row.lemma }}" style="width:95%;" /></td>
+                <td><input type="text" name="low_resource_pos" aria-label="POS {{ row.row_number }}" value="{{ row.pos }}" style="width:95%;" /></td>
+                <td><input type="text" name="low_resource_gloss" aria-label="{{ low_resource_gloss_column_label }} {{ row.row_number }}" value="{{ row.gloss }}" style="width:95%;" /></td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
+      {% if low_resource_mixup_confirmation_required %}
+        <p>
+          <label>
+            <input type="checkbox" name="confirm_low_resource_mixup" value="1" required />
+            I have checked the language-ID warning(s) and want to add these rows anyway.
+          </label>
+        </p>
+      {% endif %}
       <p>
         <button class="btn secondary" type="submit" name="picture_dictionary_action" value="add_low_resource_rows">Add new words</button>
       </p>
