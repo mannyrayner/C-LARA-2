@@ -600,14 +600,35 @@ The assistant should reason over publicly available repository content, but the 
 - Add access-control, queueing, monitor, and status-endpoint tests.
 - Still needed: citation extraction, reviewer assessment controls, exact-cost reconciliation if Codex exposes richer usage data, hard budget/rate-limit controls, and export/review paths for committing selected records.
 
-### Phase D: dedicated worker service — planned after 2026-06-14 deployment finding
+### Phase D: dedicated worker service — first cut implemented
 
 - Retire the in-Gunicorn local-thread runner for production Codex execution.
-- Add queue claiming/state tracking for project-understanding requests.
-- Add a long-running `process_project_understanding_queue` management command with `--once` test mode.
-- Add a dedicated systemd worker unit that runs the command as the service user and uses the proven Codex/AppArmor/CODEX_HOME environment.
-- Change the Assistant POST path to enqueue only; the worker emits the existing status/result updates.
-- Add regression tests proving production enqueueing does not execute Codex in the Gunicorn request process.
+- First cut added file-backed queue state to existing project-understanding request records (`queued`, `running`, `succeeded`, `failed`) plus lock files for simple atomic claiming.
+- First cut added a long-running `process_project_understanding_queue` management command with `--once` test/deployment mode and configurable worker id/sleep interval.
+- First cut changed the Assistant POST path to enqueue only; the worker emits the existing status/result updates.
+- Added regression coverage proving production enqueueing no longer calls the local `async_task` thread shim and that `process_project_understanding_queue --once` processes a queued request.
+- Still needed for deployment: add a dedicated systemd worker unit that runs the command as the service user and uses the proven Codex/AppArmor/CODEX_HOME environment. A suitable unit shape is:
+
+```ini
+[Unit]
+Description=C-LARA-2 project-understanding Codex worker
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=www-data
+WorkingDirectory=/srv/C-LARA-2/platform_server
+EnvironmentFile=/etc/clara2.env
+ExecStart=/srv/C-LARA-2/.venv/bin/python manage.py process_project_understanding_queue
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+- Still needed after server testing: add stale-lock/stale-running recovery if a worker is killed mid-run, and decide whether the file-backed queue should later be replaced with a database-backed queue model.
 
 ### Phase E: report/evidence workflow
 

@@ -3091,7 +3091,9 @@ def _write_project_understanding_request(
     user_id: int | None = None,
     username: str = "",
     visibility: str = "private",
+    status: str = "queued",
 ) -> None:
+    now = django_timezone.now().isoformat()
     _project_understanding_request_path(report_id).write_text(
         json.dumps(
             {
@@ -3099,13 +3101,95 @@ def _write_project_understanding_request(
                 "visibility": visibility if visibility in {"private", "public"} else "private",
                 "user_id": user_id,
                 "username": username,
-                "submitted_at": django_timezone.now().isoformat(),
+                "submitted_at": now,
+                "queue_status": status,
+                "queued_at": now if status == "queued" else "",
             },
             ensure_ascii=False,
             indent=2,
         ),
         encoding="utf-8",
     )
+
+
+def _write_project_understanding_request_payload(report_id: str | uuid.UUID, payload: dict[str, Any]) -> None:
+    _project_understanding_request_path(report_id).write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+def _update_project_understanding_request_state(
+    report_id: str | uuid.UUID,
+    queue_status: str,
+    **fields: Any,
+) -> dict[str, Any]:
+    payload = _read_project_understanding_request(report_id)
+    payload["queue_status"] = queue_status
+    timestamp_field = {
+        "queued": "queued_at",
+        "running": "claimed_at",
+        "succeeded": "finished_at",
+        "failed": "finished_at",
+    }.get(queue_status)
+    if timestamp_field and not fields.get(timestamp_field):
+        fields[timestamp_field] = django_timezone.now().isoformat()
+    payload.update(fields)
+    _write_project_understanding_request_payload(report_id, payload)
+    return payload
+
+
+def _project_understanding_lock_path(report_id: str | uuid.UUID) -> Path:
+    return _project_understanding_run_dir() / f"{report_id}.request.lock"
+
+
+def _release_project_understanding_request_lock(report_id: str | uuid.UUID) -> None:
+    try:
+        _project_understanding_lock_path(report_id).unlink()
+    except FileNotFoundError:
+        pass
+    except Exception:
+        logger.exception("Failed to release project-understanding request lock for %s", report_id)
+
+
+def _claim_next_project_understanding_request(worker_id: str) -> tuple[str, dict[str, Any]] | None:
+    for request_path in sorted(_project_understanding_run_dir().glob("*.request.json")):
+        report_id = request_path.name.removesuffix(".request.json")
+        payload = _read_project_understanding_request(report_id)
+        if str(payload.get("queue_status") or "queued") != "queued":
+            continue
+        lock_path = _project_understanding_lock_path(report_id)
+        try:
+            fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            continue
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as lock_file:
+                lock_file.write(json.dumps({"worker_id": worker_id, "locked_at": django_timezone.now().isoformat()}))
+            payload = _read_project_understanding_request(report_id)
+            if str(payload.get("queue_status") or "queued") != "queued":
+                _release_project_understanding_request_lock(report_id)
+                continue
+            payload = _update_project_understanding_request_state(
+                report_id,
+                "running",
+                worker_id=worker_id,
+            )
+            return report_id, payload
+        except Exception:
+            _release_project_understanding_request_lock(report_id)
+            logger.exception("Failed to claim project-understanding request %s", report_id)
+    return None
+
+
+def _count_queued_project_understanding_requests() -> int:
+    count = 0
+    for request_path in _project_understanding_run_dir().glob("*.request.json"):
+        report_id = request_path.name.removesuffix(".request.json")
+        payload = _read_project_understanding_request(report_id)
+        if str(payload.get("queue_status") or "queued") == "queued":
+            count += 1
+    return count
 
 
 def _read_project_understanding_request(report_id: str | uuid.UUID) -> dict[str, Any]:
@@ -3331,6 +3415,7 @@ def _run_project_understanding_task(question: str, user_id: int, report_id: str)
                 cost_basis="Conservative upper-bound estimate: Codex reports total tokens only, so all reported tokens are priced at the output-token rate; actual OpenAI Usage charges may be lower.",
             )
         _write_project_understanding_result(report_id, result)
+        _update_project_understanding_request_state(report_id, "succeeded")
         elapsed = f"{result.elapsed_seconds:.1f}s" if result.elapsed_seconds is not None else "unknown time"
         tokens = result.tokens_used if result.tokens_used is not None else "unknown"
         _record_project_understanding_update(
@@ -3341,6 +3426,7 @@ def _run_project_understanding_task(question: str, user_id: int, report_id: str)
         )
     except Exception as exc:
         logger.exception("Project-understanding Codex task failed for report %s", report_id)
+        _update_project_understanding_request_state(report_id, "failed", error=str(exc)[:1000])
         _record_project_understanding_update(
             report_id=report_id,
             user_id=user_id,
@@ -3372,31 +3458,14 @@ def project_understanding(request: HttpRequest) -> HttpResponse:
                 message="Project-understanding request queued.",
                 status="running",
             )
-            try:
-                task_id = async_task(
-                    "projects.views._run_project_understanding_task",
-                    question,
-                    request.user.id,
-                    str(report_id),
-                )
-            except Exception as exc:
-                logger.exception("Failed to enqueue project-understanding task for report %s", report_id)
-                _record_project_understanding_update(
-                    report_id=report_id,
-                    user_id=request.user.id,
-                    message=f"Failed to enqueue Codex project-understanding task: {exc}",
-                    status="error",
-                )
-                messages.error(request, "Could not enqueue the Codex project-understanding task; opening monitor with details.")
-                return redirect("project-understanding-monitor", report_id=report_id)
-            logger.info("Queued project-understanding task %s for report %s", task_id, report_id)
+            logger.info("Queued project-understanding request %s for dedicated worker", report_id)
             _record_project_understanding_update(
                 report_id=report_id,
                 user_id=request.user.id,
-                message=f"Django Q accepted project-understanding task {task_id or '(unknown id)'}. Waiting for a worker to start Codex.",
+                message="Project-understanding request is waiting for the dedicated Codex worker.",
                 status="running",
             )
-            messages.info(request, "Codex project-understanding request queued. Opening live status monitor.")
+            messages.info(request, "Codex project-understanding request queued for the dedicated worker. Opening live status monitor.")
             return redirect("project-understanding-monitor", report_id=report_id)
     else:
         form = ProjectUnderstandingForm()
