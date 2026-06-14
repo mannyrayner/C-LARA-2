@@ -1,5 +1,6 @@
 import io
 import subprocess
+from datetime import timedelta
 import tempfile
 import uuid
 from pathlib import Path
@@ -8,6 +9,7 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.core.management import call_command, CommandError
 from django.test import Client, TestCase, override_settings
+from django.utils import timezone as django_timezone
 from django.urls import reverse
 
 from core.project_understanding import ProjectUnderstandingAnswer
@@ -107,15 +109,78 @@ class AdminToolsViewTests(TestCase):
                 reverse("project-understanding"),
                 {"question": "What is C-LARA-2?", "visibility": "public"},
             )
+            report_id = Path(resp["Location"].rstrip("/")).name
+            payload = views._read_project_understanding_request(report_id)
 
         self.assertEqual(resp.status_code, 302)
         self.assertIn("/assistant/project-understanding/", resp["Location"])
-        mock_async_task.assert_called_once()
-        task_args = mock_async_task.call_args.args
-        self.assertEqual("projects.views._run_project_understanding_task", task_args[0])
-        self.assertEqual("What is C-LARA-2?", task_args[1])
-        self.assertEqual(self.normal_user.id, task_args[2])
+        mock_async_task.assert_not_called()
+        self.assertEqual("What is C-LARA-2?", payload["question"])
+        self.assertEqual("queued", payload["queue_status"])
         self.assertTrue(TaskUpdate.objects.filter(user=self.normal_user, message="Project-understanding request queued.").exists())
+        self.assertTrue(TaskUpdate.objects.filter(user=self.normal_user, message="Project-understanding request is waiting for the dedicated Codex worker.").exists())
+
+
+
+    def test_project_understanding_status_traces_unclaimed_worker_queue(self):
+        self.client.login(username="normal", password="pw")
+
+        with tempfile.TemporaryDirectory() as tmpdir, override_settings(MEDIA_ROOT=tmpdir):
+            resp = self.client.post(
+                reverse("project-understanding"),
+                {"question": "What is C-LARA-2?", "visibility": "private"},
+            )
+            report_id = Path(resp["Location"].rstrip("/")).name
+            TaskUpdate.objects.filter(report_id=report_id).update(
+                read=True,
+                timestamp=django_timezone.now() - timedelta(seconds=35),
+            )
+
+            status_resp = self.client.get(reverse("project-understanding-status", args=[report_id]))
+
+        self.assertEqual(status_resp.status_code, 200)
+        payload = status_resp.json()
+        self.assertEqual("running", payload["status"])
+        self.assertEqual("queued", payload["queue_status"])
+        self.assertTrue(any("no dedicated Codex worker has claimed it yet" in message for message in payload["messages"]))
+        self.assertTrue(any("process_project_understanding_queue --once" in message for message in payload["messages"]))
+
+    @patch("projects.views.answer_project_understanding_question_with_codex_exec")
+    def test_process_project_understanding_queue_once_runs_queued_request(self, mock_answer):
+        self.client.login(username="normal", password="pw")
+        mock_answer.return_value = ProjectUnderstandingAnswer(
+            question="What is C-LARA-2?",
+            prompt="prompt",
+            answer="A test answer.",
+            model="gpt-5.3-codex",
+            prompt_version="project-understanding-v1",
+            requested_at="2026-06-14T00:00:00Z",
+            tokens_used=None,
+            elapsed_seconds=1.2,
+            invocation_route="codex-exec",
+            repository_path="/repo",
+            command=("codex", "exec"),
+            returncode=0,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir, override_settings(MEDIA_ROOT=tmpdir):
+            resp = self.client.post(
+                reverse("project-understanding"),
+                {"question": "What is C-LARA-2?", "visibility": "private"},
+            )
+            report_id = Path(resp["Location"].rstrip("/")).name
+
+            stdout = io.StringIO()
+            call_command("process_project_understanding_queue", "--once", "--worker-id", "test-worker", stdout=stdout)
+            payload = views._read_project_understanding_request(report_id)
+            result = views._read_project_understanding_result(report_id)
+
+        self.assertEqual("succeeded", payload["queue_status"])
+        self.assertEqual("test-worker", payload["worker_id"])
+        self.assertIsNotNone(result)
+        self.assertEqual("A test answer.", result["answer"])
+        self.assertTrue(TaskUpdate.objects.filter(user=self.normal_user, status="finished").exists())
+        mock_answer.assert_called_once()
 
     def test_project_understanding_turn_listing_respects_visibility(self):
         User = get_user_model()
