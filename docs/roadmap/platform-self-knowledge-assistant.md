@@ -628,7 +628,57 @@ RestartSec=5
 WantedBy=multi-user.target
 ```
 
-For production/server deployment, prefer the systemd unit over appending `python manage.py process_project_understanding_queue &` to the normal runbook. A bare background process is easy to orphan, does not restart after failure/reboot, and is harder to inspect than a named unit. During quick manual testing, however, it is acceptable to run the worker in the foreground in one terminal, or as a temporary background process after activating the virtualenv and sourcing `/etc/clara2.env`:
+For production/server deployment, prefer the systemd unit over appending `python manage.py process_project_understanding_queue &` to the normal runbook. A bare background process is easy to orphan, does not restart after failure/reboot, and is harder to inspect than a named unit. The concrete server setup is:
+
+```bash
+# Create/edit the unit file.
+sudo tee /etc/systemd/system/project-understanding-worker.service >/dev/null <<'EOF'
+[Unit]
+Description=C-LARA-2 project-understanding Codex worker
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=www-data
+WorkingDirectory=/srv/C-LARA-2/platform_server
+EnvironmentFile=/etc/clara2.env
+ExecStart=/srv/C-LARA-2/.venv/bin/python manage.py process_project_understanding_queue
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Load, start now, and enable after reboot.
+sudo systemctl daemon-reload
+sudo systemctl enable --now project-understanding-worker
+
+# Check that it is running.
+sudo systemctl status --no-pager project-understanding-worker
+
+# See recent worker logs.
+sudo journalctl -u project-understanding-worker -n 100 --no-pager
+```
+
+After later code or environment changes, restart it with the other C-LARA-2 services:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart gunicorn-clara2 djangoq-clara2 project-understanding-worker
+sudo systemctl restart nginx
+sudo systemctl status --no-pager gunicorn-clara2 djangoq-clara2 project-understanding-worker
+```
+
+To stop or disable the dedicated worker if needed:
+
+```bash
+sudo systemctl stop project-understanding-worker
+sudo systemctl disable project-understanding-worker
+```
+
+During quick manual testing, however, it is acceptable to run the worker in the foreground in one terminal, or as a temporary background process after activating the virtualenv and sourcing `/etc/clara2.env`:
 
 ```bash
 cd /srv/C-LARA-2/platform_server
