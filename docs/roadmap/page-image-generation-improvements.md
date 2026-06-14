@@ -10,13 +10,15 @@ The current page-image implementation has enough moving parts that the next chan
 
 ## Current implementation baseline
 
-As of 2026-05-18, the codebase already has several foundations:
+As of 2026-05-18, the codebase already had several foundations; by 2026-06-12, the organiser review/regeneration path has been substantially tightened:
 
 - Per-page rows (`ProjectImagePage`) and generated variants (`ProjectImagePageVariant`).
 - A `preferred_variant` relationship on each page row.
 - Community member voting (`CommunityImageVote`) and organiser review notes (`CommunityOrganiserReview`).
 - Community member and organiser review views for page-image variants.
 - A generation path that can create requested variants for specific pages.
+- Selection-preserving organiser filtering for “selected pages”, so checked regeneration targets are not lost when the page filter changes.
+- Propagation of image-style text-suppression settings, including **Disallow visible text in images**, into organiser-requested page-image prompt construction.
 - HTML compilation support for page images when compile input receives a page-image map.
 
 The work below is therefore not a greenfield redesign. It should harden and connect the pieces that already exist.
@@ -55,11 +57,11 @@ ISSUE-0007 is now closed for the initial LLM prompt-construction indirection; fu
 
 Requirements:
 
-- Build an intermediate text-model call that receives source page text, page translation when available, style description, relevant element descriptions, current prompt, current community suggestions, and any organiser prompt update.
+- Build an intermediate text-model call that receives source page text, page translation when available, style description, relevant element descriptions, current prompt, current community suggestions, any organiser prompt update, and current image-style constraints.
 - Ask the text model to produce a clean image-generation prompt suitable for the chosen image model.
 - Persist the intermediate prompt-construction input and output for audit and manual debugging.
 - Allow organiser/user edited prompt text to override or amend the AI-produced prompt before image generation where appropriate.
-- Avoid asking the image model to render text unless explicitly requested.
+- Avoid asking the image model to render text unless explicitly requested; for picture dictionaries and flashcard-oriented assets, propagate the explicit “disallow visible text” setting through every regeneration path.
 
 ### 4) Improve community member review context
 
