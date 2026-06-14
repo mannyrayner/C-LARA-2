@@ -3564,6 +3564,8 @@ def project_understanding_status(request: HttpRequest, report_id: str) -> JsonRe
     if status == "running" and not unread and last and last.status in {"error", "finished"}:
         status = last.status
 
+    request_payload = _read_project_understanding_request(report_id)
+    queue_status = str(request_payload.get("queue_status") or "queued")
     result = _read_project_understanding_result(report_id)
     if result and status == "running":
         status = "finished"
@@ -3574,10 +3576,26 @@ def project_understanding_status(request: HttpRequest, report_id: str) -> JsonRe
         if last:
             age_seconds = int((django_timezone.now() - last.timestamp).total_seconds())
             if age_seconds >= 30:
-                messages_out.append(
-                    "Waiting for the next Codex progress update "
-                    f"(latest update {age_seconds}s ago: {last.message})."
-                )
+                if queue_status == "queued":
+                    messages_out.append(
+                        "Project-understanding request is still queued; no dedicated Codex worker has claimed it yet. "
+                        "On a development laptop, start one with "
+                        "`python manage.py process_project_understanding_queue --once` for a single request, "
+                        "or `python manage.py process_project_understanding_queue` for a long-running worker. "
+                        f"Latest update was {age_seconds}s ago: {last.message}."
+                    )
+                elif queue_status == "running":
+                    worker_id = str(request_payload.get("worker_id") or "unknown worker")
+                    messages_out.append(
+                        "Project-understanding request has been claimed by the dedicated Codex worker "
+                        f"({worker_id}), but no new progress update has arrived for {age_seconds}s "
+                        f"(latest update: {last.message})."
+                    )
+                else:
+                    messages_out.append(
+                        "Waiting for the next Codex progress update "
+                        f"(queue status {queue_status}; latest update {age_seconds}s ago: {last.message})."
+                    )
         else:
             messages_out.append(
                 "No TaskUpdate rows exist yet for this report. Check whether the request was enqueued successfully."
@@ -3588,6 +3606,9 @@ def project_understanding_status(request: HttpRequest, report_id: str) -> JsonRe
     return JsonResponse({
         "messages": messages_out,
         "status": status,
+        "queue_status": queue_status,
+        "worker_id": request_payload.get("worker_id") or "",
+        "claimed_at": request_payload.get("claimed_at") or "",
         "result": result,
         "question": _read_project_understanding_question(report_id),
         "update_count": len(updates),

@@ -606,7 +606,7 @@ The assistant should reason over publicly available repository content, but the 
 - First cut added file-backed queue state to existing project-understanding request records (`queued`, `running`, `succeeded`, `failed`) plus lock files for simple atomic claiming.
 - First cut added a long-running `process_project_understanding_queue` management command with `--once` test/deployment mode and configurable worker id/sleep interval.
 - First cut changed the Assistant POST path to enqueue only; the worker emits the existing status/result updates.
-- Added regression coverage proving production enqueueing no longer calls the local `async_task` thread shim and that `process_project_understanding_queue --once` processes a queued request.
+- Added regression coverage proving production enqueueing no longer calls the local `async_task` thread shim, that `process_project_understanding_queue --once` processes a queued request, and that the monitor/status endpoint explicitly explains when a request is still queued because no dedicated worker has claimed it yet.
 - Still needed for deployment: add a dedicated systemd worker unit that runs the command as the service user and uses the proven Codex/AppArmor/CODEX_HOME environment. A suitable unit shape is:
 
 ```ini
@@ -627,6 +627,25 @@ RestartSec=5
 [Install]
 WantedBy=multi-user.target
 ```
+
+For production/server deployment, prefer the systemd unit over appending `python manage.py process_project_understanding_queue &` to the normal runbook. A bare background process is easy to orphan, does not restart after failure/reboot, and is harder to inspect than a named unit. During quick manual testing, however, it is acceptable to run the worker in the foreground in one terminal, or as a temporary background process after activating the virtualenv and sourcing `/etc/clara2.env`:
+
+```bash
+cd /srv/C-LARA-2/platform_server
+set -a && . /etc/clara2.env && set +a
+/srv/C-LARA-2/.venv/bin/python manage.py process_project_understanding_queue
+
+# Temporary background test only:
+/srv/C-LARA-2/.venv/bin/python manage.py process_project_understanding_queue \
+  > /tmp/project-understanding-worker.log 2>&1 &
+echo $! > /tmp/project-understanding-worker.pid
+
+# Stop the temporary background worker:
+kill "$(cat /tmp/project-understanding-worker.pid)"
+rm -f /tmp/project-understanding-worker.pid
+```
+
+For one queued request on a laptop or during debugging, use `python manage.py process_project_understanding_queue --once`; if it fails with `failed rtm_newaddr`, first confirm `python manage.py check_project_understanding_codex --smoke` works in that same shell. A `failed rtm_newaddr` result means the local Codex/bubblewrap sandbox still cannot inspect the repository from that process context; it is not a queue bug.
 
 - Still needed after server testing: add stale-lock/stale-running recovery if a worker is killed mid-run, and decide whether the file-backed queue should later be replaced with a database-backed queue model.
 

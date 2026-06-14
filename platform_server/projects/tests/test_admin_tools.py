@@ -1,5 +1,6 @@
 import io
 import subprocess
+from datetime import timedelta
 import tempfile
 import uuid
 from pathlib import Path
@@ -8,6 +9,7 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.core.management import call_command, CommandError
 from django.test import Client, TestCase, override_settings
+from django.utils import timezone as django_timezone
 from django.urls import reverse
 
 from core.project_understanding import ProjectUnderstandingAnswer
@@ -118,6 +120,30 @@ class AdminToolsViewTests(TestCase):
         self.assertTrue(TaskUpdate.objects.filter(user=self.normal_user, message="Project-understanding request queued.").exists())
         self.assertTrue(TaskUpdate.objects.filter(user=self.normal_user, message="Project-understanding request is waiting for the dedicated Codex worker.").exists())
 
+
+
+    def test_project_understanding_status_traces_unclaimed_worker_queue(self):
+        self.client.login(username="normal", password="pw")
+
+        with tempfile.TemporaryDirectory() as tmpdir, override_settings(MEDIA_ROOT=tmpdir):
+            resp = self.client.post(
+                reverse("project-understanding"),
+                {"question": "What is C-LARA-2?", "visibility": "private"},
+            )
+            report_id = Path(resp["Location"].rstrip("/")).name
+            TaskUpdate.objects.filter(report_id=report_id).update(
+                read=True,
+                timestamp=django_timezone.now() - timedelta(seconds=35),
+            )
+
+            status_resp = self.client.get(reverse("project-understanding-status", args=[report_id]))
+
+        self.assertEqual(status_resp.status_code, 200)
+        payload = status_resp.json()
+        self.assertEqual("running", payload["status"])
+        self.assertEqual("queued", payload["queue_status"])
+        self.assertTrue(any("no dedicated Codex worker has claimed it yet" in message for message in payload["messages"]))
+        self.assertTrue(any("process_project_understanding_queue --once" in message for message in payload["messages"]))
 
     @patch("projects.views.answer_project_understanding_question_with_codex_exec")
     def test_process_project_understanding_queue_once_runs_queued_request(self, mock_answer):
