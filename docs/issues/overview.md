@@ -1,4 +1,4 @@
-# C-LARA-2 issue overview (refreshed 2026-06-13T11:31:36Z)
+# C-LARA-2 issue overview (refreshed 2026-06-14T07:45:00Z)
 
 ## Recent progress
 
@@ -6,7 +6,7 @@
 - Updated the picture-dictionary roadmap to mark the subset-project feature as ready for server deployment and Sophie review, while keeping richer sync semantics and exercise-specific exclusion reporting as follow-on work.
 - Recent picture-dictionary work has now wired **Disallow visible text in images** into organiser-requested image regeneration and added advisory AI language-ID diagnostics for likely low-resource word/gloss mix-ups; remaining work is refinement, not first proof of concept.
 - The issue registry continues to treat **ISSUE-0036** few-shot curation, **ISSUE-0003** pipeline evaluation, and **ISSUE-0004** AI review gates as the main quality-measurement cluster for report evidence and future prompt changes.
-- **ISSUE-0034** remains active as the restricted project-understanding assistant matures toward exportable, human-reviewable evidence records.
+- **ISSUE-0034** has regained successful AWS execution through a dedicated `project-understanding-worker` service; remaining work is export/review, budget/rate-limit, stale-worker recovery, and evidence-quality controls.
 
 ## Near-term priorities
 
@@ -19,7 +19,7 @@
 7. **ISSUE-0005 / ISSUE-0006** — treat segmentation prompt/few-shot changes as measurable experiments rather than anecdotal prompt tuning.
 8. **ISSUE-0010 / ISSUE-0013** — organize the imported legacy corpus into diagnostic/evaluation subsets and continue stage-artifact resilience work needed for representative quality checks.
 9. **ISSUE-0008** — finish the concise progress-report draft, including recent picture-dictionary and AI-centered workflow examples.
-10. **ISSUE-0034** — add export/review, budget/rate-limit, and evidence-record controls before wider use of project-understanding answers.
+10. **ISSUE-0034** — now that AWS execution works through the dedicated worker, add export/review, budget/rate-limit, stale-worker recovery, and evidence-record controls before wider use of project-understanding answers.
 
 ## Notes/risks
 
@@ -27,6 +27,7 @@
 - The AI language-confusion diagnostics for picture dictionaries are intentionally advisory. They can catch common source/gloss mix-ups, but false positives/negatives are expected and the trace table remains important for human review.
 - Text-free image prompt propagation is now implemented, but image-level detection of accidental visible text remains follow-on quality-control work under the picture-dictionary roadmap and related image-quality issues.
 - Few-shot curation and segmentation changes should not be promoted to defaults until **ISSUE-0003** and **ISSUE-0004** provide systematic comparison evidence.
+- The project-understanding worker now runs outside Gunicorn; keep the systemd unit `Environment=HOME=/home/ubuntu` setting with `CODEX_HOME=/var/lib/c-lara/codex`, since removing it reproduced Codex/bubblewrap repository-inspection failures.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated pipeline and UI coverage.
 
 ## Complete issue inventory
