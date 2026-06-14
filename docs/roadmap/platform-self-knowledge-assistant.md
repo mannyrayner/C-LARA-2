@@ -56,7 +56,7 @@ The first platform implementation is now in place and has been moved out of the 
 - a core `codex exec` wrapper in `src/core/project_understanding.py` that builds the versioned project-understanding prompt, constructs a read-only/non-interactive argument vector, passes the prompt through stdin, passes a reduced environment that can use either `OPENAI_API_KEY` or cached Codex CLI credentials under `HOME`/`CODEX_HOME`, resolves common Windows npm, Linux service-user, and configured absolute Codex paths, applies a timeout, forces UTF-8 subprocess decoding, extracts the final answer and token count where available from stdout or stderr, and returns structured metadata;
 - configurable Django settings for the Codex executable, repository checkout path, model, timeout, and GitHub blob URL: `PROJECT_UNDERSTANDING_CODEX_EXECUTABLE`, `PROJECT_UNDERSTANDING_REPOSITORY_PATH`, `PROJECT_UNDERSTANDING_MODEL`, `PROJECT_UNDERSTANDING_TIMEOUT_SECONDS`, and `PROJECT_UNDERSTANDING_GITHUB_BLOB_BASE_URL`;
 - an authenticated platform surface at `/assistant/project-understanding/`, linked as **Assistant** from the top navigation, with legacy redirects from the previous `/admin-tools/project-understanding/` URLs, a textarea for the question, and a result area showing the answer, model, prompt version, elapsed time, token count when extractable, estimated upper-bound cost, exit status, repository path, and stderr when present;
-- an asynchronous Django Q execution path: submitting a question queues a background task, immediately redirects to a monitor page, records `TaskUpdate` progress rows, emits periodic heartbeat messages while Codex is running, and polls a JSON status endpoint until the run finishes or fails;
+- an initial asynchronous execution path: submitting a question queues a background task, immediately redirects to a monitor page, records `TaskUpdate` progress rows, emits periodic heartbeat messages while Codex is running, and polls a JSON status endpoint until the run finishes or fails; the first implementation used an in-process local `django_q` thread shim, which is now being retired for production Codex execution in favour of a dedicated worker service;
 - request/result persistence under `MEDIA_ROOT/admin_project_understanding/` (directory name retained for backward compatibility with existing runs), so the monitor page can keep showing the current question during execution and after completion, and can render the completed answer produced by the worker process;
 - usage/cost tracking for completed Codex runs when the CLI reports `tokens used`: because current CLI output exposes only a total token count rather than separate input/cached-input/output counts, the platform records a conservative output-priced upper-bound estimate through the existing OpenAI pricing/credits framework and labels the value as an upper bound in run metadata; local comparisons with the OpenAI Usage page suggest the estimate can be at least three times higher than the eventual API charge, presumably because real billing applies cheaper input/cached-input rates or Codex-specific accounting not visible in the plain CLI transcript;
 - tests for prompt construction, command/environment construction, Codex executable resolution, transcript parsing, timeout/error handling, record rendering, authenticated access control, task queueing, monitor rendering, and status/result JSON;
@@ -64,7 +64,35 @@ The first platform implementation is now in place and has been moved out of the 
 
 The local smoke tests have also demonstrated that `codex exec` can answer repository-level questions by inspecting files itself and returning plausible cited answers. Observed answers correctly used repository evidence for questions such as a three-bullet repository summary and the internal annotated-text representation.
 
-The first AWS deployment has now also produced successful in-platform project-understanding answers through the authenticated **Assistant** tab. The decisive production fix was not repository ownership, `CODEX_HOME`, PATH, or Codex authentication, but Ubuntu/AppArmor sandbox policy: loading the `bwrap-userns-restrict` AppArmor profile allowed Codex's read-only bubblewrap sandbox to inspect the checked-out repository from the Gunicorn/Django-Q runtime. A successful AWS run answered whether Italian text creation is supported, citing implemented language choices and text-generation fallback behavior while noting the absence of dedicated Italian text-generation prompt templates. This should be treated as an operational milestone and a useful report example: the platform can now ask Codex to inspect its deployed repository and answer project questions from inside the platform itself.
+#### 2026-06-14 deployment finding: retire the in-Gunicorn thread runner
+
+The first authenticated UI used the local `django_q` compatibility shim, which accepts a task and starts a daemon Python thread inside the current Gunicorn worker. That design was acceptable for local development and for proving the monitor/status/result-record workflow, but it is not robust enough for production `codex exec` runs. During AWS redeployment, the same Codex executable, `CODEX_HOME`, AppArmor `bwrap-userns-restrict` profile, repository checkout, and read-only smoke test all worked from a clean transient `systemd-run` service, including from a Python thread inside that transient process. The live Assistant path nevertheless failed with `failed rtm_newaddr` when Codex was launched from the Gunicorn service cgroup. This isolates the problem to the web-server launch context rather than to credentials, repository permissions, PATH, or the basic Codex/bubblewrap installation.
+
+The in-Gunicorn thread runner should therefore be treated as retired for production project-understanding execution. It can remain as a lightweight local/test compatibility path, but production should launch Codex from a dedicated worker context whose systemd unit is deliberately shaped like the successful smoke-test context.
+
+### Dedicated project-understanding worker service plan
+
+The robust replacement is a small service-owned project-understanding worker, separate from Gunicorn, that polls or claims queued request records and runs `codex exec` from a clean process context. The web app should only authenticate the user, write the request file/row, record an initial `TaskUpdate`, and redirect to the monitor page. The worker should be the only production component that invokes the Codex CLI.
+
+Why this should be more robust:
+
+- **Process isolation:** Codex and bubblewrap run from a worker process launched directly by systemd, not from a daemon thread inside a long-running Gunicorn worker.
+- **Reproducible diagnostics:** the same unit shape can be tested with `systemd-run` and the `check_project_understanding_codex --smoke` management command before enabling the UI.
+- **Clear ownership:** the worker unit can run as `ubuntu`, use `CODEX_HOME=/var/lib/c-lara/codex`, and share the exact environment contract already proven by smoke tests.
+- **Narrower security boundary:** Gunicorn no longer needs to be the process that creates Codex/bubblewrap sandboxes; web requests remain limited to queueing and status display.
+- **Operational clarity:** failures can be attributed to either web enqueueing, worker claiming/execution, Codex authentication, or bubblewrap/AppArmor setup instead of being conflated inside the web process.
+
+Concrete implementation plan:
+
+1. **Queue state model/file format:** extend the existing request/result files under `MEDIA_ROOT/admin_project_understanding/` with explicit states such as `queued`, `running`, `succeeded`, `failed`, plus `claimed_at`, `worker_id`, and retry/error metadata; alternatively add a small database-backed queue model if file locking becomes awkward.
+2. **Management command:** add a command such as `process_project_understanding_queue` that loops over queued requests, atomically claims one, calls the existing `_run_project_understanding_task`/core wrapper logic, emits the same `TaskUpdate` records, and sleeps/polls until stopped. Include a `--once` mode for deterministic tests and deployment checks.
+3. **Systemd unit:** add deployment documentation for a `project-understanding-worker` service running as `ubuntu:www-data`, with `WorkingDirectory=/srv/C-LARA-2/platform_server`, `EnvironmentFile=/etc/clara2.env`, and `ExecStart=/srv/C-LARA-2/.venv/bin/python manage.py process_project_understanding_queue`. Keep it separate from both Gunicorn and any general Django-Q/qcluster service.
+4. **Web enqueue change:** change the Assistant POST path so it writes the request and returns without calling the in-process `async_task` shim in production. The monitor/status endpoint can remain unchanged because it already reads request/result/update records.
+5. **Compatibility/testing:** keep the local thread shim usable for tests or explicitly guarded development mode, but add tests that the production enqueue path does not execute Codex in the request process. Add management-command tests for claim/run/failure behaviour, stale queued/running recovery, and result visibility.
+6. **Deployment validation:** before enabling the UI, run the worker command in `--once` mode or run the service-like smoke test under the same unit user/environment. Then restart the worker independently of Gunicorn when Codex/AppArmor/CODEX_HOME settings change.
+7. **Cleanup and documentation:** update the AWS runbook to start/restart/status-check the new worker, and document that the old `Thread(...)` status message should disappear from production Assistant runs.
+
+The first AWS deployment did produce successful in-platform project-understanding answers through the authenticated **Assistant** tab after loading the `bwrap-userns-restrict` AppArmor profile. A successful AWS run answered whether Italian text creation is supported, citing implemented language choices and text-generation fallback behavior while noting the absence of dedicated Italian text-generation prompt templates. The 2026-06-14 redeployment diagnostics qualify that milestone: the Codex/AppArmor setup itself is still valid, but production should not rely on launching Codex from inside the Gunicorn thread context. The dedicated-worker plan above is now the path to restoring the milestone in a more repeatable form.
 
 Important remaining work before treating the feature as broadly usable:
 
@@ -218,11 +246,12 @@ sudo -u ubuntu CODEX_HOME=/var/lib/c-lara/codex /opt/codex/bin/codex login statu
 # or pipe the service API key into: sudo -u ubuntu CODEX_HOME=/var/lib/c-lara/codex /opt/codex/bin/codex login --with-api-key
 ```
 
-After changing `/etc/clara2.env`, changing ownership, or authenticating Codex, restart both Gunicorn and Q/qcluster so they receive the new environment. Then run the check from the deployment virtualenv with the same user/environment the service uses:
+After changing `/etc/clara2.env`, changing ownership, or authenticating Codex, restart both Gunicorn and Q/qcluster so they receive the new environment. Then run the check from the deployment virtualenv with the same user/environment the service uses. On the current AWS deployment it is normal to be logged in interactively as `ssm-user` while both `gunicorn-clara2` and `djangoq-clara2` run as `ubuntu`; in that case, do not interpret an `ssm-user` smoke-test failure against the `ubuntu`-owned `CODEX_HOME` as a service failure. Either switch to the service account for the Codex readiness check, or use `sudo -u ubuntu`/`systemd-run` so the smoke test matches the worker identity:
 
 ```bash
-python platform_server/manage.py check_project_understanding_codex
-python platform_server/manage.py check_project_understanding_codex --smoke
+# From /srv/C-LARA-2/platform_server after pulling and sourcing /etc/clara2.env.
+sudo -u ubuntu -H /srv/C-LARA-2/.venv/bin/python manage.py check_project_understanding_codex
+sudo -u ubuntu -H /srv/C-LARA-2/.venv/bin/python manage.py check_project_understanding_codex --smoke
 ```
 
 If that shell check passes as `ssm-user` but the Assistant worker later reports `worker user=ubuntu`, the successful check has not proved the exact worker environment. Run the smoke path as the worker user before looking at repository permissions:
@@ -515,7 +544,7 @@ Current/MVP surfaces:
 - `check_project_understanding_codex` management command for laptop/AWS readiness checks and optional smoke tests;
 - future optional export command that writes selected records into `docs/project_understanding/` for version control.
 
-The current web path already uses a background worker rather than running Codex synchronously in the request handler. The management-command path remains useful for deployment readiness, batch/report-oriented question runs, and debugging the exact service environment that Gunicorn and Django Q see.
+The current web path already persists requests and monitors background progress rather than rendering Codex synchronously in the request handler, but the first implementation used an in-Gunicorn local thread shim for execution. Production should move this execution step to the dedicated project-understanding worker service described above. The management-command path remains useful for deployment readiness, batch/report-oriented question runs, and debugging the exact service environment that the worker sees.
 
 The UI can be minimal: a question box, answer pane, supporting-file list or extracted citations, command/run metadata, and reviewer assessment controls. A management-command path may be especially useful for generating repeatable evidence for the initial report.
 
@@ -571,14 +600,113 @@ The assistant should reason over publicly available repository content, but the 
 - Add access-control, queueing, monitor, and status-endpoint tests.
 - Still needed: citation extraction, reviewer assessment controls, exact-cost reconciliation if Codex exposes richer usage data, hard budget/rate-limit controls, and export/review paths for committing selected records.
 
-### Phase D: report/evidence workflow
+### Phase D: dedicated worker service — first cut implemented
+
+- Retire the in-Gunicorn local-thread runner for production Codex execution.
+- First cut added file-backed queue state to existing project-understanding request records (`queued`, `running`, `succeeded`, `failed`) plus lock files for simple atomic claiming.
+- First cut added a long-running `process_project_understanding_queue` management command with `--once` test/deployment mode and configurable worker id/sleep interval.
+- First cut changed the Assistant POST path to enqueue only; the worker emits the existing status/result updates.
+- Added regression coverage proving production enqueueing no longer calls the local `async_task` thread shim, that `process_project_understanding_queue --once` processes a queued request, and that the monitor/status endpoint explicitly explains when a request is still queued because no dedicated worker has claimed it yet.
+- Still needed for deployment: add a dedicated systemd worker unit that runs the command as the service user and uses the proven Codex/AppArmor/CODEX_HOME environment. A suitable unit shape is:
+
+```ini
+[Unit]
+Description=C-LARA-2 project-understanding Codex worker
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=www-data
+WorkingDirectory=/srv/C-LARA-2/platform_server
+EnvironmentFile=/etc/clara2.env
+ExecStart=/srv/C-LARA-2/.venv/bin/python manage.py process_project_understanding_queue
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+For production/server deployment, prefer the systemd unit over appending `python manage.py process_project_understanding_queue &` to the normal runbook. A bare background process is easy to orphan, does not restart after failure/reboot, and is harder to inspect than a named unit. The concrete server setup is:
+
+```bash
+# Create/edit the unit file.
+sudo tee /etc/systemd/system/project-understanding-worker.service >/dev/null <<'EOF'
+[Unit]
+Description=C-LARA-2 project-understanding Codex worker
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=www-data
+WorkingDirectory=/srv/C-LARA-2/platform_server
+EnvironmentFile=/etc/clara2.env
+ExecStart=/srv/C-LARA-2/.venv/bin/python manage.py process_project_understanding_queue
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Load, start now, and enable after reboot.
+sudo systemctl daemon-reload
+sudo systemctl enable --now project-understanding-worker
+
+# Check that it is running.
+sudo systemctl status --no-pager project-understanding-worker
+
+# See recent worker logs.
+sudo journalctl -u project-understanding-worker -n 100 --no-pager
+```
+
+After later code or environment changes, restart it with the other C-LARA-2 services:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart gunicorn-clara2 djangoq-clara2 project-understanding-worker
+sudo systemctl restart nginx
+sudo systemctl status --no-pager gunicorn-clara2 djangoq-clara2 project-understanding-worker
+```
+
+To stop or disable the dedicated worker if needed:
+
+```bash
+sudo systemctl stop project-understanding-worker
+sudo systemctl disable project-understanding-worker
+```
+
+During quick manual testing, however, it is acceptable to run the worker in the foreground in one terminal, or as a temporary background process after activating the virtualenv and sourcing `/etc/clara2.env`:
+
+```bash
+cd /srv/C-LARA-2/platform_server
+set -a && . /etc/clara2.env && set +a
+/srv/C-LARA-2/.venv/bin/python manage.py process_project_understanding_queue
+
+# Temporary background test only:
+/srv/C-LARA-2/.venv/bin/python manage.py process_project_understanding_queue \
+  > /tmp/project-understanding-worker.log 2>&1 &
+echo $! > /tmp/project-understanding-worker.pid
+
+# Stop the temporary background worker:
+kill "$(cat /tmp/project-understanding-worker.pid)"
+rm -f /tmp/project-understanding-worker.pid
+```
+
+For one queued request on a laptop or during debugging, use `python manage.py process_project_understanding_queue --once`; if it fails with `failed rtm_newaddr`, first confirm `python manage.py check_project_understanding_codex --smoke` works in that same shell. A `failed rtm_newaddr` result means the local Codex/bubblewrap sandbox still cannot inspect the repository from that process context; it is not a queue bug.
+
+- Still needed after server testing: add stale-lock/stale-running recovery if a worker is killed mid-run, and decide whether the file-backed queue should later be replaced with a database-backed queue model.
+
+### Phase E: report/evidence workflow
 
 - Run a curated question set relevant to the initial C-LARA-2 report's autonomy/authorship argument.
 - Human-review the answers and fill in assessment fields.
 - Add a development log summarizing design choices, limitations, representative successes/failures, and implications for the report.
 - Use reviewed records as inspectable evidence rather than unverified promotional claims.
 
-### Phase E: possible productization
+### Phase F: possible productization
 
 - Evaluate whether the authenticated assistant needs tighter role controls, quotas, or review workflows after broader testing.
 - Consider a carefully narrowed user-facing help assistant only after accuracy, privacy, safety, and cost controls are demonstrated.
