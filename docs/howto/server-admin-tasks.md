@@ -5,9 +5,11 @@ This page is a practical runbook for day-to-day operations on the production hos
 Assumptions:
 - Repo path: `/srv/C-LARA-2`
 - App env file: `/etc/clara2.env`
-- Services: `gunicorn-clara2`, `djangoq-clara2`, `nginx`
+- Services: `gunicorn-clara2`, `djangoq-clara2`, `project-understanding-worker`, `nginx`
 
 ---
+
+Project-understanding note: `project-understanding-worker` is the dedicated Codex worker used by the Assistant feature. Its systemd unit should include `Environment=HOME=/home/ubuntu` as well as `EnvironmentFile=/etc/clara2.env`; without the explicit `HOME`, Codex/bubblewrap repository inspection failed even though the web app and smoke tests otherwise looked healthy.
 
 ## 1) Pull latest code and restart services
 
@@ -22,15 +24,15 @@ cd platform_server
 set -a && . /etc/clara2.env && set +a
 python manage.py check
 python manage.py migrate
-python manage.py collectstatic --noinput
-sudo systemctl restart gunicorn-clara2 djangoq-clara2
-sudo systemctl reload nginx
+sudo systemctl daemon-reload
+sudo systemctl restart gunicorn-clara2 djangoq-clara2 project-understanding-worker
+sudo systemctl restart nginx
 ```
 
 Quick verification:
 
 ```bash
-sudo systemctl status --no-pager gunicorn-clara2 djangoq-clara2 nginx
+sudo systemctl status --no-pager gunicorn-clara2 djangoq-clara2 project-understanding-worker nginx
 curl -I https://c-lara-2.c-lara.org
 ```
 
@@ -41,7 +43,7 @@ curl -I https://c-lara-2.c-lara.org
 Status:
 
 ```bash
-sudo systemctl status --no-pager gunicorn-clara2 djangoq-clara2 nginx
+sudo systemctl status --no-pager gunicorn-clara2 djangoq-clara2 project-understanding-worker nginx
 ```
 
 Live logs:
@@ -49,6 +51,7 @@ Live logs:
 ```bash
 sudo journalctl -u gunicorn-clara2 -f
 sudo journalctl -u djangoq-clara2 -f
+sudo journalctl -u project-understanding-worker -f
 sudo tail -f /var/log/nginx/access.log /var/log/nginx/error.log
 ```
 
@@ -57,6 +60,7 @@ Recent startup errors:
 ```bash
 sudo journalctl -u gunicorn-clara2 -n 120 --no-pager
 sudo journalctl -u djangoq-clara2 -n 120 --no-pager
+sudo journalctl -u project-understanding-worker -n 120 --no-pager
 ```
 
 ---
@@ -72,7 +76,7 @@ sudoedit /etc/clara2.env
 Then reload app services:
 
 ```bash
-sudo systemctl restart gunicorn-clara2 djangoq-clara2
+sudo systemctl restart gunicorn-clara2 djangoq-clara2 project-understanding-worker
 ```
 
 Optional config check:
@@ -93,7 +97,7 @@ Typical symptom: `No module named ...` in compile/worker logs.
 cd /srv/C-LARA-2
 . .venv/bin/activate
 python -m pip install -r requirements.txt
-sudo systemctl restart gunicorn-clara2 djangoq-clara2
+sudo systemctl restart gunicorn-clara2 djangoq-clara2 project-understanding-worker
 ```
 
 Sanity check for installed modules:
@@ -137,7 +141,7 @@ sudo certbot renew --dry-run
 If anything fails, capture:
 - exact timestamp,
 - user/project id,
-- `gunicorn` + `djangoq` log snippets.
+- `gunicorn` + `djangoq` + `project-understanding-worker` log snippets.
 
 ---
 
@@ -154,8 +158,9 @@ python -m pip install -r requirements.txt
 cd platform_server
 set -a && . /etc/clara2.env && set +a
 python manage.py check
-sudo systemctl restart gunicorn-clara2 djangoq-clara2
-sudo systemctl reload nginx
+sudo systemctl daemon-reload
+sudo systemctl restart gunicorn-clara2 djangoq-clara2 project-understanding-worker
+sudo systemctl restart nginx
 ```
 
 Then open the app and run the smoke test again.
