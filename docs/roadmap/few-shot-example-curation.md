@@ -8,11 +8,43 @@ This is now a P1 roadmap item because maintainers are seeing many annotation err
 
 Related issue: [ISSUE-0036](../issues/issues/ISSUE-0036.json).
 
-## Current progress note (2026-06-04)
+## Current progress note (2026-06-15)
 
-The first French `segmentation_phase_2` / `boundary_first` curation run has produced encouraging evidence that the workflow is useful. A 40-candidate `clitic_compound_v2` batch was generated, deterministically validated, AI-reviewed with the language-specific hostile-review template, and pruned down to eight retained examples. Maintainer review of those eight retained examples found that all eight looked correct. The review stage appears somewhat overstrict, pruning a few examples that may also have been acceptable, but this is the preferred failure mode for prompt few-shots: we would rather start with a small high-confidence set than accidentally promote dubious examples.
+The first French `segmentation_phase_2` / `boundary_first` curation workflow has now moved beyond the initial smoke test. The earlier 40-candidate `clitic_compound_v2` run established that the generate → validate → hostile-review → human-audit loop was useful: eight retained examples were all judged correct by maintainer review, and validation-failed candidates are now excluded from AI review.
 
-The run also exposed an important implementation lesson. One generated candidate had lost interword spaces in the boundary-marked representation, e.g. an input like `L'ami de Marie habite ici.` paired with units that concatenated as `L'amideMariehabiteici.`. The deterministic validation logic already catches this by checking that concatenated unit surfaces exactly match the input, but the review command initially still sent validation-failed candidate records to AI review. That path has now been tightened so AI review only runs over schema-valid candidates and records skipped validation failures in the review summary. This reinforces the architecture: deterministic preservation/schema checks must be a hard gate before linguistic judgement.
+On 2026-06-15, the first full-sized batch for this experiment was generated and reviewed through the experiment Makefile:
+
+- `make curate RUN=1` generated 80 candidates.
+- `make review RUN=1 REQUEST_ID=20260615-072115Z` AI-reviewed all 80 candidates, with severity counts `fatal: 3`, `serious: 5`, `minor: 0`, and `none: 72`.
+- `make audit-reviews RUN=1 REQUEST_ID=20260615-072115Z` human-audited the AI review output. The human reviewer accepted all AI judgements, while noting that some decisions were borderline.
+
+This means the curation/review/audit part of the first French `clitic_compound_v2` experiment is no longer the blocker. The next stage is to turn the accepted records from request `20260615-072115Z` into usable derived assets: compact prompt-facing few-shot examples for the candidate processing run, and evaluator/checking examples or rubric material for the AI judge.
+
+The run also exposed an important implementation lesson. One generated candidate in the earlier smoke test had lost interword spaces in the boundary-marked representation, e.g. an input like `L'ami de Marie habite ici.` paired with units that concatenated as `L'amideMariehabiteici.`. The deterministic validation logic already catches this by checking that concatenated unit surfaces exactly match the input, but the review command initially still sent validation-failed candidate records to AI review. That path has now been tightened so AI review only runs over schema-valid candidates and records skipped validation failures in the review summary. This reinforces the architecture: deterministic preservation/schema checks must be a hard gate before linguistic judgement.
+
+
+## Short-term plan: first French boundary-first experiment
+
+The current working plan is concentrated in the versioned experiment workspace at
+`experiments/linguistic_processing/segmentation_phase_2/fr_boundary_first_clitic_compound_v2/`.
+That directory, and especially its `Makefile`, is the executable checklist for the first key experiment.
+Use it as the primary handover artifact when resuming this thread: it names the target operation, language,
+mechanism, curated set, input fixtures, parameter bundles, evaluator config, and the intended command sequence.
+
+The short-term objective is deliberately narrow: determine whether a curated French
+`segmentation_phase_2` / `boundary_first` few-shot set for clitics and transparent compounds can improve
+boundary quality on a small diagnostic sample, and whether AI judging can give useful comparative evidence.
+The planned sequence is:
+
+1. **Done: orient and validate the experiment workspace.** Use `make plan` and `make validate-config` in the experiment directory to confirm the tracked default/candidate parameter files, evaluator config, and diagnostic inputs.
+2. **Done for request `20260615-072115Z`: curate, AI-review, and human-audit candidates.** `make curate RUN=1` generated 80 candidates; `make review RUN=1 REQUEST_ID=20260615-072115Z` reviewed all 80 with 72 `none`, 5 `serious`, and 3 `fatal` judgements; `make audit-reviews RUN=1 REQUEST_ID=20260615-072115Z` accepted the AI judgements after human audit.
+3. **Next: derive usable assets from accepted records.** Implement/fill the `derive-processing-examples` target so accepted curation records become compact prompt-facing few-shot assets for the `clitic_compound_v2` candidate variant. Then implement/fill `derive-evaluator-examples` so the same records can be wrapped as evaluator exemplars or rubric material.
+4. **Then: run default and candidate processing variants.** Implement `run_linguistic_pipeline_experiment` well enough for the Makefile's `run-default` and `run-candidate` targets to process the same fixtures with the default and curated-set parameter bundles.
+5. **Then: evaluate and compare.** Implement/fill `evaluate`, `compare`, and `report` so the experiment produces paired default-vs-candidate judgements, flagged examples, and a concise Markdown summary suitable for maintainer review and possible progress-report evidence.
+
+Until these targets are complete, the roadmap should treat the Makefile as the most concrete source of truth
+for what happens next. The broader sections below describe the architecture we are building toward; the
+experiment workspace describes the first repeatable slice through that architecture.
 
 ## Core architecture: generate → adversarial review → repair → gold acceptance
 
@@ -257,17 +289,21 @@ A human reviewer can then accept, reject, request more repair, or mark an exampl
 
 ## Near-term implementation steps
 
+The immediate checklist is the French `clitic_compound_v2` Makefile workflow described above. In roadmap terms:
+
 1. **Done in minimal form:** add validation utilities for `segmentation_phase_2` few-shot candidates. Extend these validators to MWE and later lemma/gloss examples.
 2. **Done in minimal form:** implement a traced, fan-out/fan-in candidate-generation command for `segmentation_phase_2`, initially useful for French `boundary_first` experiments.
 3. **Done in minimal form:** implement a second-step AI review command that creates/reconciles language-specific word/unit-boundary review templates when needed, then runs hostile-review calls over generated candidates. The prompt avoids project-internal terms and focuses on whether proposed boundary markers define appropriate word-like or meaningful units.
 4. **Done in first smoke-test form:** run and manually inspect a French `clitic_compound_v2` batch; eight retained examples from an initial 40-candidate set were all judged correct by maintainer review, while validation-failed candidates are now excluded from AI review.
-5. Define a small phenomenon matrix for `segmentation_phase_2` clitics/compounds and MWE detection.
-6. Add repair prompts and re-review loops for candidates with fatal/serious/minor findings.
-7. Expand persisted records from candidate/request/accepted/manifest files to include repair, arbiter, and human-review records.
-8. Specify and implement `run_linguistic_pipeline_experiment`, a management command that runs selected pipeline stages with explicit stage parameters and stores resolved prompt/few-shot provenance.
-9. Add evaluator prompts that compare outputs from two few-shot variants on the same input.
-10. Run a first documented experiment comparing tranche sizes and variant sets.
-11. Decide whether successful example sets should be promoted to default prompts or remain named variants.
+5. **Done for the first full-sized batch:** generate 80 candidates with `make curate RUN=1`, review request `20260615-072115Z` with `make review RUN=1 REQUEST_ID=20260615-072115Z`, and human-audit the review output with `make audit-reviews RUN=1 REQUEST_ID=20260615-072115Z`. The AI review labelled 72 examples `none`, 5 `serious`, and 3 `fatal`; the human audit accepted all AI judgements, with some borderline cases noted.
+6. **Current executable handover:** keep `experiments/linguistic_processing/segmentation_phase_2/fr_boundary_first_clitic_compound_v2/Makefile` aligned with this plan and use its dry-run targets (`plan`, `validate-config`, `run-default`, `run-candidate`, `evaluate`) to show the intended sequence.
+7. **Next implementation step:** implement the derivation steps represented by `derive-processing-examples` and `derive-evaluator-examples`, so one accepted curation record can feed both processing prompts and judge rubrics.
+8. Add repair prompts and re-review loops for candidates with fatal/serious/minor findings.
+9. Expand persisted records from candidate/request/accepted/manifest files to include repair, arbiter, and human-review records.
+10. Implement `run_linguistic_pipeline_experiment`, a management command that runs selected pipeline stages with explicit stage parameters and stores resolved prompt/few-shot provenance; this unlocks the Makefile's `run-default` and `run-candidate` targets.
+11. Add evaluator prompts and comparison logic for outputs from two few-shot variants on the same input; this unlocks the Makefile's `evaluate`, `compare`, and `report` targets.
+12. Run the first documented default-vs-`clitic_compound_v2` experiment, inspect the flagged examples, and then decide whether the set remains experimental, needs more curation, or should be promoted toward default prompts.
+13. After the French segmentation slice is stable, reuse the same curation/evaluation pattern for MWE detection and additional languages.
 
 ## Relationship to other roadmap items
 
