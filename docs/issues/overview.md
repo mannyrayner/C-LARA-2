@@ -1,33 +1,38 @@
-# C-LARA-2 issue overview (refreshed 2026-06-14T07:45:00Z)
+# C-LARA-2 issue overview (refreshed 2026-06-15T10:15:00Z)
 
 ## Recent progress
 
-- **ISSUE-0037** is now active/P1 with a successful first functional pass: description-based AI prefill, subset creation, and flashcard exercise generation from the resulting subdictionary have been exercised and worked as intended.
-- Updated the picture-dictionary roadmap to mark the subset-project feature as ready for server deployment and Sophie review, while keeping richer sync semantics and exercise-specific exclusion reporting as follow-on work.
-- Recent picture-dictionary work has now wired **Disallow visible text in images** into organiser-requested image regeneration and added advisory AI language-ID diagnostics for likely low-resource word/gloss mix-ups; remaining work is refinement, not first proof of concept.
-- The issue registry continues to treat **ISSUE-0036** few-shot curation, **ISSUE-0003** pipeline evaluation, and **ISSUE-0004** AI review gates as the main quality-measurement cluster for report evidence and future prompt changes.
-- **ISSUE-0034** has regained successful AWS execution through a dedicated `project-understanding-worker` service; remaining work is export/review, budget/rate-limit, stale-worker recovery, and evidence-quality controls.
+- Closed **ISSUE-0038** after implementing picture-dictionary image-directory renumbering during entry deletion so surviving word images move to their new `page_NNN` locations.
+- **ISSUE-0005** remains escalated to P1 after the fresh prose segmentation example showed line-break-driven splitting; prompt/few-shot changes should explicitly contrast prose and poetry behavior.
+- Refreshed the focus index to remove the now-closed image-synchronization issue while preserving the remaining picture-dictionary, evaluation, and roadmap priorities.
+- Regenerated this overview from canonical issue JSON so the complete inventory reflects all current `reported`, `active`, and `closed` states.
 
 ## Near-term priorities
 
 1. **ISSUE-0031** — improve compiled-content presentation context and configurable public access controls.
 2. **ISSUE-0030** — fix image-generation workflow UX around element expansion auto-refresh and selection confirmation.
 3. **ISSUE-0029** — autosave community judging inputs to prevent accidental data loss.
-4. **ISSUE-0037** — deploy organiser-created picture-dictionary subset projects to the server on 2026-06-14, then collect Sophie review feedback before classroom testing around 2026-07-13.
+4. **ISSUE-0037** — complete deployment and Sophie review for organiser-created picture-dictionary subset projects before classroom testing around 2026-07-13.
 5. **ISSUE-0026** — define the next-step community-recorded audio workflow for non-TTS languages.
-6. **ISSUE-0003 / ISSUE-0036 / ISSUE-0004** — use the pipeline runner, curated few-shot generation/review, and AI-based review gates to compare default and candidate processing variants.
-7. **ISSUE-0005 / ISSUE-0006** — treat segmentation prompt/few-shot changes as measurable experiments rather than anecdotal prompt tuning.
-8. **ISSUE-0010 / ISSUE-0013** — organize the imported legacy corpus into diagnostic/evaluation subsets and continue stage-artifact resilience work needed for representative quality checks.
-9. **ISSUE-0008** — finish the concise progress-report draft, including recent picture-dictionary and AI-centered workflow examples.
-10. **ISSUE-0034** — now that AWS execution works through the dedicated worker, add export/review, budget/rate-limit, stale-worker recovery, and evidence-record controls before wider use of project-understanding answers.
+6. **ISSUE-0005** — revise segmentation_phase_1 prompts and few-shot examples so prose ignores incidental line breaks while poetry can preserve line-sensitive segmentation.
+7. **ISSUE-0003** — use the pipeline runner to compare default and candidate processing variants.
+8. **ISSUE-0036** — systematize few-shot example creation and evaluation for linguistic annotation.
+9. **ISSUE-0025** — add systematic UI regression tracking for disappearing controls/content.
+10. **ISSUE-0010** — organize representative legacy imports into diagnostic and evaluation subsets.
+11. **ISSUE-0013** — continue stage-artifact persistence and timeout-resilience improvements.
+12. **ISSUE-0008** — finish the concise progress-report draft with recent picture-dictionary and AI workflow examples.
+13. **ISSUE-0033** — clean up and phase-track roadmap file maintenance.
+14. **ISSUE-0034** — add export/review, budget/rate-limit, stale-worker recovery, and evidence-quality controls before wider project-understanding use.
+15. **ISSUE-0035** — track intermittent Codex PR update-branch refusal.
+16. **ISSUE-0006** — investigate segmentation_phase_2 token-span failures and rerun-path correctness.
+17. **ISSUE-0004** — introduce AI review gates for phase outputs with an extensible evaluator architecture.
+18. **ISSUE-0001** — support hosted compiled legacy content registration in C-LARA-2.
 
 ## Notes/risks
 
-- **ISSUE-0037** should remain active until deployment and Sophie review are complete. The current implementation avoids a second image-curation surface by hiding subset projects from the organiser image-review dashboard and redirecting direct review attempts; the main remaining risk is keeping derived content/image references synchronized after future canonical edits.
-- The AI language-confusion diagnostics for picture dictionaries are intentionally advisory. They can catch common source/gloss mix-ups, but false positives/negatives are expected and the trace table remains important for human review.
-- Text-free image prompt propagation is now implemented, but image-level detection of accidental visible text remains follow-on quality-control work under the picture-dictionary roadmap and related image-quality issues.
-- Few-shot curation and segmentation changes should not be promoted to defaults until **ISSUE-0003** and **ISSUE-0004** provide systematic comparison evidence.
-- The project-understanding worker now runs outside Gunicorn; keep the systemd unit `Environment=HOME=/home/ubuntu` setting with `CODEX_HOME=/var/lib/c-lara/codex`, since removing it reproduced Codex/bubblewrap repository-inspection failures.
+- **ISSUE-0038** is closed for the low-resource dictionary deletion path, but future subset-project synchronization work under **ISSUE-0037** should continue to avoid page-number-only assumptions when derived content inherits images.
+- **ISSUE-0005** should be handled together with **ISSUE-0003**, **ISSUE-0004**, and **ISSUE-0036** so segmentation prompt changes are evaluated against repeatable examples rather than anecdotal improvements.
+- **ISSUE-0037** should remain active until deployment and Sophie review are complete; keep derived subset image/content references synchronized after canonical dictionary edits.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated pipeline and UI coverage.
 
 ## Complete issue inventory
@@ -38,7 +43,7 @@
 | [ISSUE-0002](issues/ISSUE-0002.json) | closed | P1 | Support migration of legacy C-LARA projects into C-LARA-2. |
 | [ISSUE-0003](issues/ISSUE-0003.json) | reported | P1 | Add efficient end-to-end pipeline test runner for systematic quality checks. |
 | [ISSUE-0004](issues/ISSUE-0004.json) | reported | P2 | Introduce AI-based review gates for phase outputs with extensible evaluator architecture. |
-| [ISSUE-0005](issues/ISSUE-0005.json) | reported | P2 | Tune segmentation_phase_1 prompting to improve segment granularity by genre. |
+| [ISSUE-0005](issues/ISSUE-0005.json) | reported | P1 | Tune segmentation_phase_1 prompting to improve segment granularity by genre. |
 | [ISSUE-0006](issues/ISSUE-0006.json) | reported | P2 | Investigate segmentation_phase_2 token-span failures and rerun-path correctness. |
 | [ISSUE-0007](issues/ISSUE-0007.json) | closed | P2 | Use LLM prompt-construction indirection for page-image generation prompts. |
 | [ISSUE-0008](issues/ISSUE-0008.json) | reported | P1 | Write C-LARA-2 technical report and academic papers. |
@@ -71,3 +76,4 @@
 | [ISSUE-0035](issues/ISSUE-0035.json) | reported | P2 | Track intermittent Codex PR update-branch refusal. |
 | [ISSUE-0036](issues/ISSUE-0036.json) | reported | P1 | Systematize creation and evaluation of few-shot examples for linguistic annotation. |
 | [ISSUE-0037](issues/ISSUE-0037.json) | active | P1 | Create subset projects from community picture dictionaries. |
+| [ISSUE-0038](issues/ISSUE-0038.json) | closed | P1 | Keep picture-dictionary images synchronized when words are deleted. |

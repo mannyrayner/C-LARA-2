@@ -932,6 +932,67 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(readded_page.image_path, "")
         self.assertFalse((dictionary.project.artifact_dir() / "images/pages/page_001").exists())
 
+    def test_low_resource_remove_selected_renumbers_surviving_image_directories(self):
+        client = Client()
+        client.login(username="org", password="pw")
+        response = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "add_low_resource_rows",
+                "low_resource_surface": ["aaa", "bbb", "ccc"],
+                "low_resource_lemma": ["aaa", "bbb", "ccc"],
+                "low_resource_pos": ["NOUN", "NOUN", "NOUN"],
+                "low_resource_gloss": ["dummy a", "dummy b", "dummy c"],
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        entries = list(dictionary.entries.filter(surface__in=["aaa", "bbb", "ccc"]).order_by("id"))
+        self.assertEqual([entry.surface for entry in entries], ["aaa", "bbb", "ccc"])
+        for page_number, entry in enumerate(entries, start=1):
+            rel_path = f"images/pages/page_{page_number:03d}/variant_001.png"
+            image_path = dictionary.project.artifact_dir() / rel_path
+            image_path.parent.mkdir(parents=True, exist_ok=True)
+            image_path.write_bytes(entry.surface.encode("utf-8"))
+            entry.image_path = rel_path
+            entry.current_page_number = page_number
+            entry.save(update_fields=["image_path", "current_page_number", "updated_at"])
+            page = ProjectImagePage.objects.get(project=dictionary.project, page_number=page_number)
+            page.page_text = entry.surface
+            page.image_path = rel_path
+            page.save(update_fields=["page_text", "image_path", "updated_at"])
+
+        response = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "remove_selected",
+                "remove_entry": [str(entries[0].id)],
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        survivors = list(dictionary.entries.filter(is_active=True).order_by("id"))
+        self.assertEqual([entry.surface for entry in survivors], ["bbb", "ccc"])
+        self.assertEqual([entry.current_page_number for entry in survivors], [1, 2])
+        self.assertEqual(survivors[0].image_path, "images/pages/page_001/variant_001.png")
+        self.assertEqual(survivors[1].image_path, "images/pages/page_002/variant_001.png")
+        self.assertEqual(
+            (dictionary.project.artifact_dir() / "images/pages/page_001/variant_001.png").read_bytes(),
+            b"bbb",
+        )
+        self.assertEqual(
+            (dictionary.project.artifact_dir() / "images/pages/page_002/variant_001.png").read_bytes(),
+            b"ccc",
+        )
+        self.assertFalse((dictionary.project.artifact_dir() / "images/pages/page_003").exists())
+        pages = list(ProjectImagePage.objects.filter(project=dictionary.project).order_by("page_number"))
+        self.assertEqual([(page.page_number, page.page_text, page.image_path) for page in pages], [
+            (1, "bbb", "images/pages/page_001/variant_001.png"),
+            (2, "ccc", "images/pages/page_002/variant_001.png"),
+        ])
+
     def test_organiser_can_create_picture_dictionary_subset_project(self):
         client = Client()
         client.login(username="org", password="pw")

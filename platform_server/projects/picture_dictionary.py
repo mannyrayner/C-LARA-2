@@ -4,6 +4,7 @@ import json
 import logging
 import re
 import shutil
+import uuid
 from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
@@ -900,9 +901,99 @@ def _prune_unreferenced_dictionary_image_artifacts(project: Project, active_imag
         pass
 
 
+def _picture_dictionary_page_image_relpath_for_index(image_path: str, page_number: int) -> str:
+    """Return ``image_path`` retargeted to the canonical page directory for ``page_number``.
+
+    Picture-dictionary page images live under ``images/pages/page_NNN``.
+    When entries are deleted, remaining words are renumbered, so a surviving
+    entry that used to point at ``page_002/variant_001.png`` must instead point
+    at ``page_001/variant_001.png`` after it becomes the first page.
+    """
+
+    raw_path = str(image_path or "").strip()
+    if not raw_path:
+        return ""
+    path = Path(raw_path)
+    if len(path.parts) < 4 or path.parts[0] != "images" or path.parts[1] != "pages":
+        return raw_path
+    rest = path.parts[3:]
+    if not rest:
+        return raw_path
+    return str(Path("images") / "pages" / f"page_{page_number:03d}" / Path(*rest))
+
+
+def _renumber_picture_dictionary_image_dirs(project: Project, remap: dict[str, str]) -> None:
+    """Move page image directories according to a page-renumbering remap.
+
+    ``remap`` maps old relative image paths to their new relative paths.  The
+    move is staged through temporary sibling directories so swaps such as
+    page_002 -> page_001 cannot be confused with stale target directories.
+    """
+
+    pages_dir = project.artifact_dir() / "images" / "pages"
+    if not remap or not pages_dir.exists():
+        return
+
+    dir_moves: dict[Path, Path] = {}
+    for old_rel, new_rel in remap.items():
+        old_path = Path(str(old_rel or "").strip())
+        new_path = Path(str(new_rel or "").strip())
+        if (
+            len(old_path.parts) < 4
+            or len(new_path.parts) < 4
+            or old_path.parts[:2] != ("images", "pages")
+            or new_path.parts[:2] != ("images", "pages")
+        ):
+            continue
+        old_dir = pages_dir / old_path.parts[2]
+        new_dir = pages_dir / new_path.parts[2]
+        if old_dir == new_dir or not old_dir.exists():
+            continue
+        dir_moves[old_dir] = new_dir
+
+    if not dir_moves:
+        return
+
+    staged: list[tuple[Path, Path, Path]] = []
+    for old_dir, new_dir in dir_moves.items():
+        if not old_dir.exists():
+            continue
+        tmp_dir = old_dir.with_name(f".renumber-{uuid.uuid4().hex}-{old_dir.name}")
+        shutil.move(str(old_dir), str(tmp_dir))
+        staged.append((tmp_dir, old_dir, new_dir))
+
+    for tmp_dir, _old_dir, new_dir in staged:
+        if new_dir.exists():
+            shutil.rmtree(new_dir, ignore_errors=True)
+        new_dir.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(tmp_dir), str(new_dir))
+
 def _sync_dictionary_project_pages(dictionary: PictureDictionary, entries: list[PictureDictionaryEntry]) -> None:
     project = dictionary.project
     existing_pages = {page.page_number: page for page in ProjectImagePage.objects.filter(project=project).order_by("id")}
+    pages_by_text: dict[str, ProjectImagePage] = {}
+    for page in existing_pages.values():
+        key = _normalise_word(page.page_text).casefold()
+        if key and key not in pages_by_text:
+            pages_by_text[key] = page
+
+    image_path_remap: dict[str, str] = {}
+    for idx, entry in enumerate(entries, start=1):
+        old_image_path = (entry.image_path or "").strip()
+        if not old_image_path and entry.current_page_number:
+            page = existing_pages.get(entry.current_page_number)
+            old_image_path = (getattr(page, "image_path", "") or "").strip()
+        if not old_image_path:
+            page = pages_by_text.get(_normalise_word(entry.surface).casefold())
+            old_image_path = (getattr(page, "image_path", "") or "").strip()
+        new_image_path = _picture_dictionary_page_image_relpath_for_index(old_image_path, idx)
+        if new_image_path and new_image_path != old_image_path:
+            image_path_remap[old_image_path] = new_image_path
+            entry.image_path = new_image_path
+            entry.save(update_fields=["image_path", "updated_at"])
+
+    _renumber_picture_dictionary_image_dirs(project, image_path_remap)
+
     retained_page_ids: set[int] = set()
     active_image_paths = {(entry.image_path or "").strip() for entry in entries if (entry.image_path or "").strip()}
     for idx, entry in enumerate(entries, start=1):
