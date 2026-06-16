@@ -578,6 +578,62 @@ class CommunityWorkflowTests(TestCase):
         self.assertFalse(dictionary_entries[0].is_active)
         self.assertContains(remove_selected, "Last dictionary compile:")
 
+    def test_organiser_can_edit_unified_picture_dictionary_view(self):
+        CommunityMembership.objects.get_or_create(
+            community=self.community,
+            user=self.organiser,
+            defaults={"role": CommunityMembership.ROLE_ORGANISER},
+        )
+        client = Client()
+        client.login(username="org", password="pw")
+        client.post(reverse("community-organiser-home", args=[self.community.id]), {"picture_dictionary_action": "ensure"})
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "add_low_resource_rows",
+                "low_resource_surface": ["pama"],
+                "low_resource_lemma": ["pama"],
+                "low_resource_pos": ["N"],
+                "low_resource_gloss": ["person"],
+            },
+        )
+        entry = dictionary.entries.get(surface="pama")
+        page = ProjectImagePage.objects.get(project=dictionary.project, page_number=1)
+        page.generation_prompt = "Original prompt"
+        page.save(update_fields=["generation_prompt", "updated_at"])
+
+        response = client.get(reverse("community-organiser-home", args=[self.community.id]))
+        self.assertContains(response, "Unified picture-dictionary view")
+        self.assertContains(response, "Original prompt")
+
+        save = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "update_unified_entries",
+                f"unified_surface_{entry.id}": "pama updated",
+                f"unified_lemma_{entry.id}": "pama-lemma",
+                f"unified_pos_{entry.id}": "noun",
+                f"unified_gloss_{entry.id}": "person updated",
+                f"unified_prompt_{entry.id}": "A clear text-free picture of a person.",
+            },
+            follow=True,
+        )
+        self.assertEqual(save.status_code, 200)
+        self.assertContains(save, "Saved unified dictionary view")
+        entry.refresh_from_db()
+        self.assertEqual(entry.surface, "pama updated")
+        self.assertEqual(entry.lemma, "pama-lemma")
+        self.assertEqual(entry.pos, "NOUN")
+        page.refresh_from_db()
+        self.assertEqual(page.page_text, "pama updated")
+        self.assertEqual(page.generation_prompt, "A clear text-free picture of a person.")
+        translation_payload = read_stage_artifact(dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary", "translation")
+        token_annotations = translation_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"]
+        self.assertEqual(token_annotations["translation"], "person updated")
+        gloss_payload = read_stage_artifact(dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary", "gloss")
+        self.assertEqual(gloss_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"]["gloss"], "person updated")
+
 
     def test_low_resource_dictionary_headers_include_language_names(self):
         xkk_community = Community.objects.create(name="Kok Kaper C", language="xkk")

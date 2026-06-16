@@ -56,7 +56,7 @@ These are the items that should be treated as immediate roadmap work.
 
 ### 2.0 Build a unified source-of-truth dictionary workspace (ISSUE-0039)
 
-The next major picture-dictionary step should reduce the current fragmentation between project pages, annotation artifacts, image-generation state, subset artifacts, and organiser review screens. Treat the **picture dictionary itself** as the organiser-facing source of truth, with C-LARA projects and exercise sources derived from it. This is urgent for the Kok Kaper classroom-review path before 2026-07-13 and is also a strong user-facing example for the EuroCALL 2026 paper due 2026-07-31.
+The next major picture-dictionary step should reduce the current fragmentation between project pages, annotation artifacts, image-generation state, subset artifacts, and organiser review screens. Treat the **picture dictionary itself** as the organiser-facing source of truth, with C-LARA projects and exercise sources derived from it. This is urgent for making Kok Kaper classroom use a viable possibility by 2026-07-13 and is also a strong user-facing example for the EuroCALL 2026 paper due 2026-07-31.
 
 Target entity model:
 
@@ -84,9 +84,10 @@ Target organiser workspace:
 
 Sequencing guidance:
 
-- First produce a minimal Kok Kaper-ready integrated workspace that makes the current entry metadata and selected images visible together and supports safe field edits plus synchronization.
+- **First cut implemented (2026-06-16):** the community organiser page now has a unified table showing word, lemma, POS, gloss/translation, image-generation prompt, and selected image together. Saving edits updates the dictionary registry, derived project pages/source text, and annotation stage artifacts.
+- Next, make this first cut more useful for Sophie testing by adding dictionary-level background/context fields, explicit prompt-variant management, and batch image generation/regeneration from selected rows.
 - Then fold existing subset-project and exercise-source workflows into the same source-of-truth model, keeping **ISSUE-0037** for the already active subdictionary implementation/review track.
-- Avoid a disruptive rewrite that blocks urgent classroom testing; prefer incremental migration behind the organiser workflow, with regression checks around image identity, deleted words, subset synchronization, and exercise generation.
+- We do not need to preserve an existing live classroom workflow yet, but still prefer incremental migration behind the organiser workflow so laptop/Sophie testing can identify issues early; keep regression checks around image identity, deleted words, subset synchronization, and exercise generation.
 
 
 ### 2.1 Improve **Compile dictionary** behavior for low-resource languages

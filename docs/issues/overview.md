@@ -1,8 +1,8 @@
-# C-LARA-2 issue overview (refreshed 2026-06-16T11:43:14Z)
+# C-LARA-2 issue overview (refreshed 2026-06-16T12:25:00Z)
 ## Recent progress
-- Added **ISSUE-0039** from human suggestion #29 to track a unified picture-dictionary source-of-truth workspace before the Kok Kaper classroom-review deadline.
-- Updated the picture-dictionaries roadmap with the proposed source-of-truth entity model, organiser workspace capabilities, and incremental sequencing guidance.
-- Refreshed the focus index so the new P0 picture-dictionary workspace leads near-term work and the now-closed **ISSUE-0038** no longer appears in the active focus list.
+- Implemented the first cut of **ISSUE-0039**: the organiser page now has a unified picture-dictionary table for word, lemma, POS, gloss/translation, image-generation prompt, and selected image.
+- Updated **ISSUE-0039** from `reported` to `active` because implementation has started, while leaving it open for prompt variants, batch image generation, dictionary context fields, and tighter subset/exercise integration.
+- Updated the picture-dictionaries roadmap to clarify that Kok Kaper classroom use is not currently live, but the workflow should become viable for Sophie review before 2026-07-13.
 - Regenerated this overview from canonical issue JSON so the complete inventory reflects all current `reported`, `active`, and `closed` states.
 
 ## Near-term priorities
@@ -29,7 +29,7 @@
 
 ## Notes/risks
 
-- **ISSUE-0039** is intentionally broader than earlier picture-dictionary tickets; keep implementation incremental so urgent Kok Kaper classroom testing is not blocked by an all-at-once rewrite.
+- **ISSUE-0039** is intentionally broader than the first cut; laptop/Sophie testing should validate whether the unified table is the right organiser surface before adding heavier prompt-variant and batch-generation controls.
 - **ISSUE-0037** remains active for the already implemented subdictionary/subset-project workflow and Sophie review, but its long-term data ownership should align with **ISSUE-0039**.
 - **ISSUE-0038** is closed for the low-resource dictionary deletion path, but **ISSUE-0039** should preserve stable entry/image identity so future synchronization no longer depends on page-number-only assumptions.
 - **ISSUE-0005** should be handled together with **ISSUE-0003**, **ISSUE-0004**, and **ISSUE-0036** so segmentation prompt changes are evaluated against repeatable examples rather than anecdotal improvements.
@@ -77,4 +77,4 @@
 | [ISSUE-0036](issues/ISSUE-0036.json) | reported | P1 | Systematize creation and evaluation of few-shot examples for linguistic annotation. |
 | [ISSUE-0037](issues/ISSUE-0037.json) | active | P1 | Create subset projects from community picture dictionaries. |
 | [ISSUE-0038](issues/ISSUE-0038.json) | closed | P1 | Keep picture-dictionary images synchronized when words are deleted. |
-| [ISSUE-0039](issues/ISSUE-0039.json) | reported | P0 | Build a unified picture-dictionary source-of-truth workspace. |
+| [ISSUE-0039](issues/ISSUE-0039.json) | active | P0 | Build a unified picture-dictionary source-of-truth workspace. |

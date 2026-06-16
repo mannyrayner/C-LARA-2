@@ -151,6 +151,7 @@ from .picture_dictionary import (
     ensure_picture_dictionary_for_community,
     import_project_as_picture_dictionary,
     remove_entries_by_ids as picture_dictionary_remove_entries_by_ids,
+    update_entry_metadata as picture_dictionary_update_entry_metadata,
     remove_words as picture_dictionary_remove_words,
 )
 
@@ -9716,12 +9717,23 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             entry.id: row
             for entry, row in zip(dictionary_entries, _manual_rows_from_entries(picture_dictionary, dictionary_entries), strict=False)
         }
+        image_pages_by_number = {
+            page.page_number: page
+            for page in picture_dictionary.project.image_pages.order_by("page_number", "id")
+        }
         for entry in dictionary_entries:
             lemma = (entry.lemma or entry.surface or "").strip()
             pos = (entry.pos or "UNSPECIFIED").strip().upper()
             entry.display_label = f"{(entry.surface or '').strip()} (lemma: {lemma}) [{pos}]"
             row = rows_by_entry_id.get(entry.id, {})
             entry.subset_translation_label = str(row.get("translation") or row.get("gloss") or "").strip()
+            page = image_pages_by_number.get(entry.current_page_number or 0)
+            entry.unified_surface = str(row.get("surface") or entry.surface or "").strip()
+            entry.unified_lemma = str(row.get("lemma") or entry.lemma or entry.surface or "").strip()
+            entry.unified_pos = str(row.get("pos") or entry.pos or "").strip()
+            entry.unified_gloss = str(row.get("gloss") or row.get("translation") or "").strip()
+            entry.unified_prompt = str(getattr(page, "generation_prompt", "") or entry.surface or "").strip()
+            entry.unified_image_path = str((entry.image_path or getattr(page, "image_path", "") or "")).strip()
     picture_dictionary_compile_info: dict[str, Any] | None = None
     picture_dictionary_style_brief = ""
     if picture_dictionary:
@@ -9951,6 +9963,47 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                                     "reason": trace.get("reason", ""),
                                 },
                             )
+            elif action == "update_unified_entries":
+                active_entries = list(picture_dictionary.entries.filter(is_active=True).order_by("id"))
+                rows: list[dict[str, str]] = []
+                prompts_by_entry_id: dict[int, str] = {}
+                for entry in active_entries:
+                    surface = (request.POST.get(f"unified_surface_{entry.id}") or entry.surface or "").strip()
+                    lemma = (request.POST.get(f"unified_lemma_{entry.id}") or surface).strip()
+                    pos = (request.POST.get(f"unified_pos_{entry.id}") or "").strip()
+                    gloss = (request.POST.get(f"unified_gloss_{entry.id}") or "").strip()
+                    prompt = (request.POST.get(f"unified_prompt_{entry.id}") or "").strip()
+                    if not surface:
+                        messages.error(request, "Every active dictionary entry needs a surface word before saving the unified view.")
+                        return redirect("community-organiser-home", community_id=community_id)
+                    rows.append({"id": str(entry.id), "surface": surface, "lemma": lemma, "pos": pos, "gloss": gloss})
+                    prompts_by_entry_id[entry.id] = prompt
+                result = picture_dictionary_update_entry_metadata(dictionary=picture_dictionary, rows=rows)
+                refreshed_entries = list(picture_dictionary.entries.filter(is_active=True).order_by("id"))
+                pages_by_number = {
+                    page.page_number: page
+                    for page in picture_dictionary.project.image_pages.order_by("page_number", "id")
+                }
+                prompt_updates = 0
+                for entry in refreshed_entries:
+                    prompt = prompts_by_entry_id.get(entry.id, "").strip()
+                    if not prompt:
+                        continue
+                    page = pages_by_number.get(entry.current_page_number or 0)
+                    if page and page.generation_prompt != prompt:
+                        page.generation_prompt = prompt
+                        page.save(update_fields=["generation_prompt", "updated_at"])
+                        prompt_updates += 1
+                messages.success(
+                    request,
+                    "Saved unified dictionary view: %(submitted)s entr%(entry_suffix)s synchronized to dictionary stages; %(prompt_updates)s image prompt%(prompt_suffix)s updated."
+                    % {
+                        "submitted": result["submitted"],
+                        "entry_suffix": "y" if result["submitted"] == 1 else "ies",
+                        "prompt_updates": prompt_updates,
+                        "prompt_suffix": "" if prompt_updates == 1 else "s",
+                    },
+                )
             elif action == "save_subset":
                 selected_entry_ids = [int(value) for value in request.POST.getlist("subset_entry_id") if str(value).isdigit()]
                 subset_id = (request.POST.get("editing_subset_id") or request.POST.get("subset_id") or "").strip()
