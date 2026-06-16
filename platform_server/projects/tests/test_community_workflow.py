@@ -454,7 +454,6 @@ class CommunityWorkflowTests(TestCase):
         self.assertContains(page, "Sync dictionary text + placeholder stages (no image generation)")
         self.assertContains(page, "Add from text")
         self.assertContains(page, "Import as dictionary copy")
-        self.assertContains(page, "Style brief (used if style is missing)")
         self.assertContains(page, "low-resource mode is preselected")
         self.assertNotContains(page, "Remove words")
 
@@ -605,6 +604,10 @@ class CommunityWorkflowTests(TestCase):
 
         response = client.get(reverse("community-organiser-home", args=[self.community.id]))
         self.assertContains(response, "Unified picture-dictionary view")
+        self.assertContains(response, "Background information")
+        self.assertContains(response, "Create prompts for selected rows")
+        self.assertContains(response, "Create images for selected rows")
+        self.assertContains(response, "Create prompts + images for selected rows")
         self.assertContains(response, "Original prompt")
 
         save = client.post(
@@ -633,6 +636,54 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(token_annotations["translation"], "person updated")
         gloss_payload = read_stage_artifact(dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary", "gloss")
         self.assertEqual(gloss_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"]["gloss"], "person updated")
+
+        prompt_response = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "generate_unified_prompts",
+                "picture_dictionary_background_information": "Use Kok Kaper classroom-friendly cultural context.",
+                "picture_dictionary_style_brief": "Bright watercolor style.",
+                "unified_selected_entry_id": [str(entry.id)],
+                f"unified_surface_{entry.id}": "pama updated",
+                f"unified_lemma_{entry.id}": "pama-lemma",
+                f"unified_pos_{entry.id}": "noun",
+                f"unified_gloss_{entry.id}": "person updated",
+                f"unified_suggestion_{entry.id}": "Show one friendly person, no text.",
+                f"unified_prompt_{entry.id}": "A clear text-free picture of a person.",
+            },
+            follow=True,
+        )
+        self.assertEqual(prompt_response.status_code, 200)
+        self.assertContains(prompt_response, "Created image-generation prompts for 1 selected dictionary row")
+        page.refresh_from_db()
+        self.assertIn("Use Kok Kaper classroom-friendly cultural context", page.generation_prompt)
+        self.assertIn("Show one friendly person", page.generation_prompt)
+        self.assertIn("Do not include written words", page.generation_prompt)
+        metadata_path = dictionary.project.artifact_dir() / "picture_dictionary_workspace.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        self.assertEqual(metadata["background_information"], "Use Kok Kaper classroom-friendly cultural context.")
+        self.assertEqual(metadata["entry_suggestions"][str(entry.id)], "Show one friendly person, no text.")
+
+        with patch("projects.views._generate_requested_page_variants", return_value=1) as mock_generate_images:
+            image_response = client.post(
+                reverse("community-organiser-home", args=[self.community.id]),
+                {
+                    "picture_dictionary_action": "generate_unified_images",
+                    "picture_dictionary_background_information": "Use Kok Kaper classroom-friendly cultural context.",
+                    "picture_dictionary_style_brief": "Bright watercolor style.",
+                    "unified_selected_entry_id": [str(entry.id)],
+                    f"unified_surface_{entry.id}": "pama updated",
+                    f"unified_lemma_{entry.id}": "pama-lemma",
+                    f"unified_pos_{entry.id}": "noun",
+                    f"unified_gloss_{entry.id}": "person updated",
+                    f"unified_suggestion_{entry.id}": "Show one friendly person, no text.",
+                    f"unified_prompt_{entry.id}": page.generation_prompt,
+                },
+                follow=True,
+            )
+        self.assertEqual(image_response.status_code, 200)
+        self.assertTrue(mock_generate_images.called)
+        self.assertContains(image_response, "Created 1 image variant for selected dictionary row")
 
 
     def test_low_resource_dictionary_headers_include_language_names(self):

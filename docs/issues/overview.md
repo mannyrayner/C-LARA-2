@@ -1,8 +1,8 @@
-# C-LARA-2 issue overview (refreshed 2026-06-16T12:25:00Z)
+# C-LARA-2 issue overview (refreshed 2026-06-16T13:05:00Z)
 ## Recent progress
-- Implemented the first cut of **ISSUE-0039**: the organiser page now has a unified picture-dictionary table for word, lemma, POS, gloss/translation, image-generation prompt, and selected image.
-- Updated **ISSUE-0039** from `reported` to `active` because implementation has started, while leaving it open for prompt variants, batch image generation, dictionary context fields, and tighter subset/exercise integration.
-- Updated the picture-dictionaries roadmap to clarify that Kok Kaper classroom use is not currently live, but the workflow should become viable for Sophie review before 2026-07-13.
+- Extended **ISSUE-0039** with dictionary-level background information, per-row organiser suggestions, selected-row checkboxes, and controls to create prompts, images, or prompts plus images from the unified organiser workspace.
+- Kept **ISSUE-0039** active/P0 because prompt-variant management, progress feedback, and tighter subset/exercise integration still need follow-up before Sophie review.
+- Updated the picture-dictionaries roadmap with the second implementation cut and the next Sophie-testing refinements.
 - Regenerated this overview from canonical issue JSON so the complete inventory reflects all current `reported`, `active`, and `closed` states.
 
 ## Near-term priorities
@@ -29,7 +29,7 @@
 
 ## Notes/risks
 
-- **ISSUE-0039** is intentionally broader than the first cut; laptop/Sophie testing should validate whether the unified table is the right organiser surface before adding heavier prompt-variant and batch-generation controls.
+- **ISSUE-0039** now has a usable selected-row workspace, but laptop/Sophie testing should validate the prompt and image controls before adding heavier prompt-variant management.
 - **ISSUE-0037** remains active for the already implemented subdictionary/subset-project workflow and Sophie review, but its long-term data ownership should align with **ISSUE-0039**.
 - **ISSUE-0038** is closed for the low-resource dictionary deletion path, but **ISSUE-0039** should preserve stable entry/image identity so future synchronization no longer depends on page-number-only assumptions.
 - **ISSUE-0005** should be handled together with **ISSUE-0003**, **ISSUE-0004**, and **ISSUE-0036** so segmentation prompt changes are evaluated against repeatable examples rather than anecdotal improvements.
