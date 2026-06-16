@@ -167,6 +167,49 @@
 
   {% if picture_dictionary and dictionary_entries %}
     <fieldset style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0;">
+      <legend>Unified picture-dictionary view</legend>
+      <p><small>This is the first source-of-truth workspace: edit dictionary fields in one place, then save to synchronize the project source text, page records, and annotation stage artifacts. Gloss is also used as the page translation for image generation in low-resource dictionaries.</small></p>
+      <div style="overflow-x:auto; max-height:28rem; border:1px solid #eee;">
+        <table style="width:100%; border-collapse:collapse; min-width:1000px;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.35rem;">Word</th>
+              <th style="text-align:left; padding:0.35rem;">Lemma</th>
+              <th style="text-align:left; padding:0.35rem;">POS</th>
+              <th style="text-align:left; padding:0.35rem;">Gloss / translation</th>
+              <th style="text-align:left; padding:0.35rem;">Image-generation prompt</th>
+              <th style="text-align:left; padding:0.35rem;">Selected image</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in dictionary_entries %}
+              <tr style="border-top:1px solid #eee; vertical-align:top;">
+                <td style="padding:0.35rem;"><input type="text" name="unified_surface_{{ entry.id }}" value="{{ entry.unified_surface }}" style="width:11rem;" /></td>
+                <td style="padding:0.35rem;"><input type="text" name="unified_lemma_{{ entry.id }}" value="{{ entry.unified_lemma }}" style="width:11rem;" /></td>
+                <td style="padding:0.35rem;"><input type="text" name="unified_pos_{{ entry.id }}" value="{{ entry.unified_pos }}" style="width:6rem;" /></td>
+                <td style="padding:0.35rem;"><input type="text" name="unified_gloss_{{ entry.id }}" value="{{ entry.unified_gloss }}" style="width:13rem;" /></td>
+                <td style="padding:0.35rem;"><textarea name="unified_prompt_{{ entry.id }}" rows="3" style="width:22rem;">{{ entry.unified_prompt }}</textarea></td>
+                <td style="padding:0.35rem; min-width:150px;">
+                  {% if entry.unified_image_path %}
+                    <img src="{% url 'project-compiled' picture_dictionary.project.id entry.unified_image_path %}" alt="Image for {{ entry.unified_surface }}" style="max-width:140px; max-height:120px; height:auto;" />
+                    <br /><small>{{ entry.unified_image_path }}</small>
+                  {% else %}
+                    <small>No image yet.</small>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p>
+        <button class="btn secondary" type="submit" name="picture_dictionary_action" value="update_unified_entries">Save unified dictionary edits</button>
+      </p>
+    </fieldset>
+  {% endif %}
+
+  {% if picture_dictionary and dictionary_entries %}
+    <fieldset style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0;">
       <legend>Dictionary subset projects</legend>
       <p><small>Create named projects that use only selected words from the main picture dictionary. Subsets inherit images and metadata from the main dictionary; review and regenerate images in the main dictionary to avoid divergent curation states.</small></p>
       {% if picture_dictionary_subsets %}
