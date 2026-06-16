@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "issue_id": "ISSUE-0039",
+  "title": "Build a unified picture-dictionary source-of-truth workspace",
+  "state": "active",
+  "priority": "P0",
+  "created_at": "2026-06-16T11:43:14Z",
+  "updated_at": "2026-06-16T13:05:00Z",
+  "origin": "human-suggestion",
+  "notes": "Created from human suggestion #29 (submitted by mannyrayner on 2026-06-16). Current Kok Kaper picture-dictionary work has exposed a broader product/design problem: dictionary information is spread across project pages, annotation stages, image-generation artifacts, subset artifacts, and organiser review screens, making the workflow fragile and hard to explain before the target date of 2026-07-13 for making Kok Kaper classroom use viable and the EuroCALL 2026 paper deadline on 2026-07-31. Reframe the picture dictionary as the organiser-facing source of truth, associated with but distinct from a C-LARA-2 project; derived projects, subset projects, stage artifacts, images, and exercises should be regenerated/synchronized from dictionary entries rather than edited independently. Each entry should expose and persist at least surface word, lemma, POS, gloss/translation, image-generation suggestions, concrete generated prompt variants, selected/generated image variants, and readiness/approval metadata. The dictionary itself should include style description and optional background information used when generating prompts. The organiser workspace should provide a configurable tabular/card overview, direct editing of fields, batch prompt generation, batch image generation/regeneration, subdictionary creation/update, and exercise creation from either the whole dictionary or a subdictionary. This issue intentionally supersedes fragmented follow-up items where they are better handled by a unified workspace, while preserving specific bug/feature tickets such as ISSUE-0037 when they are already active. First step: flesh out docs/roadmap/picture-dictionaries.md with the source-of-truth architecture, entity model, and sequencing plan; then implement a minimal integrated Kok Kaper-ready workspace before Sophie review if feasible.\n\nFirst implementation cut on 2026-06-16: the community organiser page now includes a unified picture-dictionary view that displays surface word, lemma, POS, gloss/translation, current image-generation prompt, and selected image together. Organisers can edit the textual fields and prompts in one table; saving synchronizes the picture-dictionary registry, derived project source/pages, and annotation stage artifacts, while preserving existing image identity. This does not close the issue: next cuts should add richer prompt variant management, batch image generation from the unified view, dictionary-level background/context fields, and tighter subset/exercise integration before Sophie review for possible Kok Kaper classroom use around 2026-07-13.\n\nSecond implementation cut on 2026-06-16: the unified organiser block now includes dictionary-level background information, keeps the style brief next to it, adds per-row selection checkboxes and organiser image suggestions, persists background/suggestions in a workspace metadata artifact, and adds selected-row controls for prompt creation, image creation, or prompt-plus-image creation. Prompt creation currently uses the row word/lemma/POS/gloss, background information, style brief, and organiser suggestion to write concrete page image-generation prompts; image creation reuses the selected rows' current prompts through the existing page-variant generation path.",
+  "deadline": "2026-07-13",
+  "dependencies": [
+    "ISSUE-0011",
+    "ISSUE-0020",
+    "ISSUE-0028",
+    "ISSUE-0030",
+    "ISSUE-0037",
+    "ISSUE-0038"
+  ]
+}

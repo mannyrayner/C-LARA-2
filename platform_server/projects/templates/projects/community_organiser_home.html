@@ -57,10 +57,6 @@
     <button class="btn secondary" type="submit" name="picture_dictionary_action" value="compile" {% if low_resource_mode_recommended and low_resource_missing_rows > 0 %}disabled title="Add missing glosses/translations in the low-resource table or review editor first"{% endif %}>{% if low_resource_mode_recommended %}Create new images{% else %}Compile dictionary (sync pages + annotation + images){% endif %}</button>
   </p>
   <p>
-    <label for="picture_dictionary_style_brief">Style brief (used if style is missing):</label><br />
-    <textarea id="picture_dictionary_style_brief" name="picture_dictionary_style_brief" rows="3" style="width: 100%;">{{ picture_dictionary_style_brief }}</textarea>
-  </p>
-  <p>
     <label>
       <input type="checkbox" name="picture_dictionary_low_resource_mode" value="1" {% if low_resource_mode_recommended %}checked{% endif %} />
       Low-resource compile mode (segmentation only + placeholder annotation stages + manual annotation handoff)
@@ -163,6 +159,64 @@
       <button class="btn secondary" type="submit" name="picture_dictionary_action" value="remove_selected">Remove selected entries</button>
       <button class="btn secondary" type="submit" name="picture_dictionary_action" value="remove_all" onclick="return confirm('Remove all entries from this picture dictionary?');">Remove all entries</button>
     </p>
+  {% endif %}
+
+  {% if picture_dictionary and dictionary_entries %}
+    <fieldset style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0;">
+      <legend>Unified picture-dictionary view</legend>
+      <p><small>This is the first source-of-truth workspace: edit dictionary fields in one place, then save to synchronize the project source text, page records, and annotation stage artifacts. Gloss is also used as the page translation for image generation in low-resource dictionaries.</small></p>
+      <p>
+        <label for="picture_dictionary_background_information"><strong>Background information</strong> (used when creating prompts):</label><br />
+        <textarea id="picture_dictionary_background_information" name="picture_dictionary_background_information" rows="3" style="width:100%;" placeholder="Cultural, classroom, or visual context that should guide dictionary images.">{{ picture_dictionary_background_information }}</textarea>
+      </p>
+      <p>
+        <label for="picture_dictionary_style_brief_unified"><strong>Style brief</strong> (used if style is missing or when creating prompts):</label><br />
+        <textarea id="picture_dictionary_style_brief_unified" name="picture_dictionary_style_brief" rows="3" style="width: 100%;">{{ picture_dictionary_style_brief }}</textarea>
+      </p>
+      <div style="overflow-x:auto; max-height:28rem; border:1px solid #eee;">
+        <table style="width:100%; border-collapse:collapse; min-width:1000px;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.35rem;">Select</th>
+              <th style="text-align:left; padding:0.35rem;">Word</th>
+              <th style="text-align:left; padding:0.35rem;">Lemma</th>
+              <th style="text-align:left; padding:0.35rem;">POS</th>
+              <th style="text-align:left; padding:0.35rem;">Gloss / translation</th>
+              <th style="text-align:left; padding:0.35rem;">Suggestion</th>
+              <th style="text-align:left; padding:0.35rem;">Image-generation prompt</th>
+              <th style="text-align:left; padding:0.35rem;">Selected image</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in dictionary_entries %}
+              <tr style="border-top:1px solid #eee; vertical-align:top;">
+                <td style="padding:0.35rem;"><input type="checkbox" name="unified_selected_entry_id" value="{{ entry.id }}" /></td>
+                <td style="padding:0.35rem;"><input type="text" name="unified_surface_{{ entry.id }}" value="{{ entry.unified_surface }}" style="width:11rem;" /></td>
+                <td style="padding:0.35rem;"><input type="text" name="unified_lemma_{{ entry.id }}" value="{{ entry.unified_lemma }}" style="width:11rem;" /></td>
+                <td style="padding:0.35rem;"><input type="text" name="unified_pos_{{ entry.id }}" value="{{ entry.unified_pos }}" style="width:6rem;" /></td>
+                <td style="padding:0.35rem;"><input type="text" name="unified_gloss_{{ entry.id }}" value="{{ entry.unified_gloss }}" style="width:13rem;" /></td>
+                <td style="padding:0.35rem;"><textarea name="unified_suggestion_{{ entry.id }}" rows="3" style="width:18rem;" placeholder="Image idea, cultural note, or thing to avoid.">{{ entry.unified_suggestion }}</textarea></td>
+                <td style="padding:0.35rem;"><textarea name="unified_prompt_{{ entry.id }}" rows="3" style="width:22rem;">{{ entry.unified_prompt }}</textarea></td>
+                <td style="padding:0.35rem; min-width:150px;">
+                  {% if entry.unified_image_path %}
+                    <img src="{% url 'project-compiled' picture_dictionary.project.id entry.unified_image_path %}" alt="Image for {{ entry.unified_surface }}" style="max-width:140px; max-height:120px; height:auto;" />
+                    <br /><small>{{ entry.unified_image_path }}</small>
+                  {% else %}
+                    <small>No image yet.</small>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p>
+        <button class="btn secondary" type="submit" name="picture_dictionary_action" value="update_unified_entries">Save unified dictionary edits</button>
+        <button class="btn secondary" type="submit" name="picture_dictionary_action" value="generate_unified_prompts">Create prompts for selected rows</button>
+        <button class="btn secondary" type="submit" name="picture_dictionary_action" value="generate_unified_images" onclick="return confirm('Create images for the selected dictionary rows using their current prompts?');">Create images for selected rows</button>
+        <button class="btn secondary" type="submit" name="picture_dictionary_action" value="generate_unified_prompts_and_images" onclick="return confirm('Create prompts and then images for the selected dictionary rows?');">Create prompts + images for selected rows</button>
+      </p>
+    </fieldset>
   {% endif %}
 
   {% if picture_dictionary and dictionary_entries %}
