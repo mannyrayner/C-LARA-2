@@ -637,34 +637,54 @@ class CommunityWorkflowTests(TestCase):
         gloss_payload = read_stage_artifact(dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary", "gloss")
         self.assertEqual(gloss_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"]["gloss"], "person updated")
 
-        prompt_response = client.post(
-            reverse("community-organiser-home", args=[self.community.id]),
-            {
-                "picture_dictionary_action": "generate_unified_prompts",
-                "picture_dictionary_background_information": "Use Kok Kaper classroom-friendly cultural context.",
-                "picture_dictionary_style_brief": "Bright watercolor style.",
-                "unified_selected_entry_id": [str(entry.id)],
-                f"unified_surface_{entry.id}": "pama updated",
-                f"unified_lemma_{entry.id}": "pama-lemma",
-                f"unified_pos_{entry.id}": "noun",
-                f"unified_gloss_{entry.id}": "person updated",
-                f"unified_suggestion_{entry.id}": "Show one friendly person, no text.",
-                f"unified_prompt_{entry.id}": "A clear text-free picture of a person.",
-            },
-            follow=True,
-        )
+        class FakeUnifiedPromptClient:
+            async def chat_text(self, prompt, **kwargs):  # noqa: ARG002
+                return (
+                    "A realistic cartoon picture of one friendly person standing outdoors in a simple Cape York coastal setting, "
+                    "focused on the idea of a mother/person, with warm colours and absolutely no written text."
+                )
+
+        with patch("projects.views._build_ai_client", return_value=FakeUnifiedPromptClient()) as mock_prompt_client:
+            prompt_response = client.post(
+                reverse("community-organiser-home", args=[self.community.id]),
+                {
+                    "picture_dictionary_action": "generate_unified_prompts",
+                    "picture_dictionary_background_information": "Use Kok Kaper classroom-friendly cultural context.",
+                    "picture_dictionary_style_brief": "Bright watercolor style.",
+                    "unified_selected_entry_id": [str(entry.id)],
+                    f"unified_surface_{entry.id}": "pama updated",
+                    f"unified_lemma_{entry.id}": "pama-lemma",
+                    f"unified_pos_{entry.id}": "noun",
+                    f"unified_gloss_{entry.id}": "person updated",
+                    f"unified_suggestion_{entry.id}": "Show one friendly person, no text.",
+                    f"unified_prompt_{entry.id}": "A clear text-free picture of a person.",
+                },
+                follow=True,
+            )
         self.assertEqual(prompt_response.status_code, 200)
-        self.assertContains(prompt_response, "Created image-generation prompts for 1 selected dictionary row")
+        self.assertTrue(mock_prompt_client.called)
+        self.assertContains(prompt_response, "Created AI image-generation prompts for 1 selected dictionary row")
         page.refresh_from_db()
-        self.assertIn("Use Kok Kaper classroom-friendly cultural context", page.generation_prompt)
-        self.assertIn("Show one friendly person", page.generation_prompt)
-        self.assertIn("Do not include written words", page.generation_prompt)
+        self.assertIn("friendly person standing outdoors", page.generation_prompt)
+        self.assertNotIn("Source-language word:", page.generation_prompt)
         metadata_path = dictionary.project.artifact_dir() / "picture_dictionary_workspace.json"
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         self.assertEqual(metadata["background_information"], "Use Kok Kaper classroom-friendly cultural context.")
         self.assertEqual(metadata["entry_suggestions"][str(entry.id)], "Show one friendly person, no text.")
 
-        with patch("projects.views._generate_requested_page_variants", return_value=1) as mock_generate_images:
+        def fake_generate_selected_image_variants(*, project, image_model, requests, progress_callback=None):  # noqa: ARG001
+            for requested_page, _count, prompt in requests:
+                ProjectImagePageVariant.objects.create(
+                    page=requested_page,
+                    variant_index=2,
+                    image_model=image_model,
+                    image_path="images/pages/page_001/variant_002.png",
+                    generation_prompt=prompt,
+                    status=ProjectImagePageVariant.STATUS_GENERATED,
+                )
+            return len(requests)
+
+        with patch("projects.views._generate_requested_page_variants", side_effect=fake_generate_selected_image_variants) as mock_generate_images:
             image_response = client.post(
                 reverse("community-organiser-home", args=[self.community.id]),
                 {
@@ -684,6 +704,11 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(image_response.status_code, 200)
         self.assertTrue(mock_generate_images.called)
         self.assertContains(image_response, "Created 1 image variant for selected dictionary row")
+        self.assertContains(image_response, "selected 1 latest image")
+        page.refresh_from_db()
+        entry.refresh_from_db()
+        self.assertEqual(page.image_path, "images/pages/page_001/variant_002.png")
+        self.assertEqual(entry.image_path, "images/pages/page_001/variant_002.png")
 
 
     def test_low_resource_dictionary_headers_include_language_names(self):
