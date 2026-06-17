@@ -53,12 +53,6 @@
   {% csrf_token %}
   <p>
     <button class="btn secondary" type="submit" name="picture_dictionary_action" value="ensure">Ensure dictionary</button>
-    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="sync_placeholders">Sync dictionary text + placeholder stages (no image generation)</button>
-    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="compile" {% if low_resource_mode_recommended and low_resource_missing_rows > 0 %}disabled title="Add missing glosses/translations in the low-resource table or review editor first"{% endif %}>{% if low_resource_mode_recommended %}Create new images{% else %}Compile dictionary (sync pages + annotation + images){% endif %}</button>
-  </p>
-  <p>
-    <label for="picture_dictionary_style_brief">Style brief (used if style is missing):</label><br />
-    <textarea id="picture_dictionary_style_brief" name="picture_dictionary_style_brief" rows="3" style="width: 100%;">{{ picture_dictionary_style_brief }}</textarea>
   </p>
   <p>
     <label>
@@ -167,6 +161,81 @@
 
   {% if picture_dictionary and dictionary_entries %}
     <fieldset style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0;">
+      <legend>Unified picture-dictionary view</legend>
+      <p><small>This is the first source-of-truth workspace: edit dictionary fields in one place, then save to synchronize the project source text, page records, and annotation stage artifacts. Gloss is also used as the page translation for image generation in low-resource dictionaries.</small></p>
+      <p>
+        <label for="picture_dictionary_background_information"><strong>Background information</strong> (used when creating prompts):</label><br />
+        <textarea id="picture_dictionary_background_information" name="picture_dictionary_background_information" rows="3" style="width:100%;" placeholder="Cultural, classroom, or visual context that should guide dictionary images.">{{ picture_dictionary_background_information }}</textarea>
+      </p>
+      <p>
+        <label for="picture_dictionary_style_brief_unified"><strong>Style brief</strong> (used if style is missing or when creating prompts):</label><br />
+        <textarea id="picture_dictionary_style_brief_unified" name="picture_dictionary_style_brief" rows="3" style="width: 100%;">{{ picture_dictionary_style_brief }}</textarea>
+      </p>
+      <p style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+        <strong>Selection:</strong>
+        <button id="unified-select-all" class="btn secondary" type="button">Select all</button>
+        <button id="unified-select-incomplete" class="btn secondary" type="button">Select incomplete</button>
+        <button id="unified-select-none" class="btn secondary" type="button">Select none</button>
+      </p>
+      <p style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+        <strong>Display:</strong>
+        <button id="unified-display-all" class="btn secondary" type="button">Display all</button>
+        <button id="unified-display-incomplete" class="btn secondary" type="button">Display incomplete only</button>
+      </p>
+      <div style="max-height:34rem; overflow:auto; border:1px solid #eee;">
+        <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.35rem; width:4rem;">Select</th>
+              <th style="text-align:left; padding:0.35rem;">Dictionary entry fields</th>
+              <th style="text-align:left; padding:0.35rem; width:170px;">Selected image</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in dictionary_entries %}
+              <tr class="unified-entry-row" data-incomplete="{% if entry.unified_incomplete %}1{% else %}0{% endif %}" style="border-top:1px solid #eee; vertical-align:top;">
+                <td style="padding:0.5rem;">
+                  <input class="unified-entry-select" type="checkbox" name="unified_selected_entry_id" value="{{ entry.id }}" data-incomplete="{% if entry.unified_incomplete %}1{% else %}0{% endif %}" />
+                </td>
+                <td style="padding:0.5rem;">
+                  <div style="display:grid; grid-template-columns: minmax(8rem, 1fr) minmax(8rem, 1fr) minmax(5rem, 0.6fr) minmax(9rem, 1fr); gap:0.45rem; align-items:end;">
+                    <label>Word<br /><input type="text" name="unified_surface_{{ entry.id }}" value="{{ entry.unified_surface }}" style="width:100%; box-sizing:border-box;" /></label>
+                    <label>Lemma<br /><input type="text" name="unified_lemma_{{ entry.id }}" value="{{ entry.unified_lemma }}" style="width:100%; box-sizing:border-box;" /></label>
+                    <label>POS<br /><input type="text" name="unified_pos_{{ entry.id }}" value="{{ entry.unified_pos }}" style="width:100%; box-sizing:border-box;" /></label>
+                    <label>Gloss / translation<br /><input type="text" name="unified_gloss_{{ entry.id }}" value="{{ entry.unified_gloss }}" style="width:100%; box-sizing:border-box;" /></label>
+                  </div>
+                  <div style="display:grid; grid-template-columns:minmax(12rem, 0.8fr) minmax(16rem, 1.2fr); gap:0.45rem; margin-top:0.5rem;">
+                    <label>Suggestion<br /><textarea name="unified_suggestion_{{ entry.id }}" rows="3" style="width:100%; box-sizing:border-box;" placeholder="Image idea, cultural note, or thing to avoid.">{{ entry.unified_suggestion }}</textarea></label>
+                    <label>Image-generation prompt<br /><textarea name="unified_prompt_{{ entry.id }}" rows="3" style="width:100%; box-sizing:border-box;">{{ entry.unified_prompt }}</textarea></label>
+                  </div>
+                </td>
+                <td style="padding:0.5rem;">
+                  {% if entry.unified_image_path %}
+                    <img src="{% url 'project-compiled' picture_dictionary.project.id entry.unified_image_path %}" alt="Image for {{ entry.unified_surface }}" style="max-width:150px; max-height:130px; height:auto;" />
+                    <br /><small>{{ entry.unified_image_path }}</small>
+                  {% else %}
+                    <small>No image yet.</small>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p>
+        <button class="btn secondary unified-action-button" type="submit" name="picture_dictionary_action" value="update_unified_entries" data-running-message="Saving unified dictionary edits…">Save unified dictionary edits</button>
+        <button class="btn secondary unified-action-button" type="submit" name="picture_dictionary_action" value="generate_unified_prompts" data-running-message="Creating prompts for selected rows…">Create prompts for selected rows</button>
+        <button class="btn secondary unified-action-button" type="submit" name="picture_dictionary_action" value="generate_unified_images" data-running-message="Creating images for selected rows…" onclick="return confirm('Create images for the selected dictionary rows using their current prompts?');">Create images for selected rows</button>
+        <button class="btn secondary unified-action-button" type="submit" name="picture_dictionary_action" value="generate_unified_missing_info" data-running-message="Creating missing information, prompts, and images for selected rows as needed…">Create missing information for selected rows</button>
+      </p>
+      <p id="unified-operation-status" style="display:none; padding:0.6rem; border:1px solid #ddd; background:#f8fbff;">
+        <strong>Working…</strong> <span id="unified-operation-status-text">The operation is running.</span>
+      </p>
+    </fieldset>
+  {% endif %}
+
+  {% if picture_dictionary and dictionary_entries %}
+    <fieldset style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0;">
       <legend>Dictionary subset projects</legend>
       <p><small>Create named projects that use only selected words from the main picture dictionary. Subsets inherit images and metadata from the main dictionary; review and regenerate images in the main dictionary to avoid divergent curation states.</small></p>
       {% if picture_dictionary_subsets %}
@@ -261,6 +330,55 @@
     document.querySelectorAll(".review-project-link").forEach(function (link) {
       link.addEventListener("click", function () {
         status.style.display = "block";
+      });
+    });
+  })();
+
+  (function () {
+    const selectAllButton = document.getElementById("unified-select-all");
+    const selectIncompleteButton = document.getElementById("unified-select-incomplete");
+    const selectNoneButton = document.getElementById("unified-select-none");
+    const displayAllButton = document.getElementById("unified-display-all");
+    const displayIncompleteButton = document.getElementById("unified-display-incomplete");
+    const checkboxes = Array.from(document.querySelectorAll(".unified-entry-select"));
+    const rows = Array.from(document.querySelectorAll(".unified-entry-row"));
+    if (selectAllButton) {
+      selectAllButton.addEventListener("click", function () {
+        checkboxes.forEach(function (checkbox) { checkbox.checked = true; });
+      });
+    }
+    if (selectIncompleteButton) {
+      selectIncompleteButton.addEventListener("click", function () {
+        checkboxes.forEach(function (checkbox) {
+          checkbox.checked = checkbox.dataset.incomplete === "1";
+        });
+      });
+    }
+    if (selectNoneButton) {
+      selectNoneButton.addEventListener("click", function () {
+        checkboxes.forEach(function (checkbox) { checkbox.checked = false; });
+      });
+    }
+    if (displayAllButton) {
+      displayAllButton.addEventListener("click", function () {
+        rows.forEach(function (row) { row.style.display = ""; });
+      });
+    }
+    if (displayIncompleteButton) {
+      displayIncompleteButton.addEventListener("click", function () {
+        rows.forEach(function (row) {
+          row.style.display = row.dataset.incomplete === "1" ? "" : "none";
+        });
+      });
+    }
+
+    const statusBox = document.getElementById("unified-operation-status");
+    const statusText = document.getElementById("unified-operation-status-text");
+    document.querySelectorAll(".unified-action-button").forEach(function (button) {
+      button.addEventListener("click", function () {
+        if (!statusBox || !statusText) return;
+        statusText.textContent = button.dataset.runningMessage || "The operation is running.";
+        statusBox.style.display = "block";
       });
     });
   })();
