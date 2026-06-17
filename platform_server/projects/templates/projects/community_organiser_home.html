@@ -177,6 +177,12 @@
         <strong>Selection:</strong>
         <button id="unified-select-all" class="btn secondary" type="button">Select all</button>
         <button id="unified-select-incomplete" class="btn secondary" type="button">Select incomplete</button>
+        <button id="unified-select-none" class="btn secondary" type="button">Select none</button>
+      </p>
+      <p style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+        <strong>Display:</strong>
+        <button id="unified-display-all" class="btn secondary" type="button">Display all</button>
+        <button id="unified-display-incomplete" class="btn secondary" type="button">Display incomplete only</button>
       </p>
       <div style="max-height:34rem; overflow:auto; border:1px solid #eee;">
         <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
@@ -189,7 +195,7 @@
           </thead>
           <tbody>
             {% for entry in dictionary_entries %}
-              <tr style="border-top:1px solid #eee; vertical-align:top;">
+              <tr class="unified-entry-row" data-incomplete="{% if entry.unified_incomplete %}1{% else %}0{% endif %}" style="border-top:1px solid #eee; vertical-align:top;">
                 <td style="padding:0.5rem;">
                   <input class="unified-entry-select" type="checkbox" name="unified_selected_entry_id" value="{{ entry.id }}" data-incomplete="{% if entry.unified_incomplete %}1{% else %}0{% endif %}" />
                 </td>
@@ -330,7 +336,11 @@
   (function () {
     const selectAllButton = document.getElementById("unified-select-all");
     const selectIncompleteButton = document.getElementById("unified-select-incomplete");
+    const selectNoneButton = document.getElementById("unified-select-none");
+    const displayAllButton = document.getElementById("unified-display-all");
+    const displayIncompleteButton = document.getElementById("unified-display-incomplete");
     const checkboxes = Array.from(document.querySelectorAll(".unified-entry-select"));
+    const rows = Array.from(document.querySelectorAll(".unified-entry-row"));
     if (selectAllButton) {
       selectAllButton.addEventListener("click", function () {
         checkboxes.forEach(function (checkbox) { checkbox.checked = true; });
@@ -340,6 +350,23 @@
       selectIncompleteButton.addEventListener("click", function () {
         checkboxes.forEach(function (checkbox) {
           checkbox.checked = checkbox.dataset.incomplete === "1";
+        });
+      });
+    }
+    if (selectNoneButton) {
+      selectNoneButton.addEventListener("click", function () {
+        checkboxes.forEach(function (checkbox) { checkbox.checked = false; });
+      });
+    }
+    if (displayAllButton) {
+      displayAllButton.addEventListener("click", function () {
+        rows.forEach(function (row) { row.style.display = ""; });
+      });
+    }
+    if (displayIncompleteButton) {
+      displayIncompleteButton.addEventListener("click", function () {
+        rows.forEach(function (row) {
+          row.style.display = row.dataset.incomplete === "1" ? "" : "none";
         });
       });
     }

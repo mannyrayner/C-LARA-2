@@ -1,7 +1,7 @@
-# C-LARA-2 issue overview (refreshed 2026-06-17T00:00:00Z)
+# C-LARA-2 issue overview (refreshed 2026-06-17T00:45:00Z)
 ## Recent progress
-- Cleaned up **ISSUE-0039** unified workspace UX: entry rows now use a narrower two-tier field layout with selection on the left and image preview on the right.
-- Added **Select all** and **Select incomplete** controls for the unified picture-dictionary table; incomplete rows are those missing a prompt or an image.
+- Added **Select none** plus **Display all** and **Display incomplete only** controls to the **ISSUE-0039** unified picture-dictionary workspace.
+- Preserved the compact two-tier unified-entry layout while separating selection controls from display/filter controls.
 - Kept **ISSUE-0039** active/P0 because prompt-variant management, progress feedback, and tighter subset/exercise integration still need follow-up before Sophie review.
 - Regenerated this overview from canonical issue JSON so the complete inventory reflects all current `reported`, `active`, and `closed` states.
 
@@ -29,7 +29,7 @@
 
 ## Notes/risks
 
-- **ISSUE-0039** now has a more compact selected-row workspace, but laptop/Sophie testing should validate prompt usefulness, cultural appropriateness, and whether batch operations need clearer progress feedback.
+- **ISSUE-0039** now has separate row-selection and row-display controls, but laptop/Sophie testing should validate whether incomplete rows are defined correctly as missing a prompt or image.
 - **ISSUE-0037** remains active for the already implemented subdictionary/subset-project workflow and Sophie review, but its long-term data ownership should align with **ISSUE-0039**.
 - **ISSUE-0038** is closed for the low-resource dictionary deletion path, but **ISSUE-0039** should preserve stable entry/image identity so future synchronization no longer depends on page-number-only assumptions.
 - **ISSUE-0005** should be handled together with **ISSUE-0003**, **ISSUE-0004**, and **ISSUE-0036** so segmentation prompt changes are evaluated against repeatable examples rather than anecdotal improvements.
