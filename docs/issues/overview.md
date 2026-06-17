@@ -1,38 +1,38 @@
-# C-LARA-2 issue overview (refreshed 2026-06-15T10:15:00Z)
-
+# C-LARA-2 issue overview (refreshed 2026-06-17T00:45:00Z)
 ## Recent progress
-
-- Closed **ISSUE-0038** after implementing picture-dictionary image-directory renumbering during entry deletion so surviving word images move to their new `page_NNN` locations.
-- **ISSUE-0005** remains escalated to P1 after the fresh prose segmentation example showed line-break-driven splitting; prompt/few-shot changes should explicitly contrast prose and poetry behavior.
-- Refreshed the focus index to remove the now-closed image-synchronization issue while preserving the remaining picture-dictionary, evaluation, and roadmap priorities.
+- Added **Select none** plus **Display all** and **Display incomplete only** controls to the **ISSUE-0039** unified picture-dictionary workspace.
+- Preserved the compact two-tier unified-entry layout while separating selection controls from display/filter controls.
+- Kept **ISSUE-0039** active/P0 because prompt-variant management, progress feedback, and tighter subset/exercise integration still need follow-up before Sophie review.
 - Regenerated this overview from canonical issue JSON so the complete inventory reflects all current `reported`, `active`, and `closed` states.
 
 ## Near-term priorities
 
-1. **ISSUE-0031** — improve compiled-content presentation context and configurable public access controls.
-2. **ISSUE-0030** — fix image-generation workflow UX around element expansion auto-refresh and selection confirmation.
-3. **ISSUE-0029** — autosave community judging inputs to prevent accidental data loss.
-4. **ISSUE-0037** — complete deployment and Sophie review for organiser-created picture-dictionary subset projects before classroom testing around 2026-07-13.
-5. **ISSUE-0026** — define the next-step community-recorded audio workflow for non-TTS languages.
-6. **ISSUE-0005** — revise segmentation_phase_1 prompts and few-shot examples so prose ignores incidental line breaks while poetry can preserve line-sensitive segmentation.
-7. **ISSUE-0003** — use the pipeline runner to compare default and candidate processing variants.
-8. **ISSUE-0036** — systematize few-shot example creation and evaluation for linguistic annotation.
-9. **ISSUE-0025** — add systematic UI regression tracking for disappearing controls/content.
-10. **ISSUE-0010** — organize representative legacy imports into diagnostic and evaluation subsets.
-11. **ISSUE-0013** — continue stage-artifact persistence and timeout-resilience improvements.
-12. **ISSUE-0008** — finish the concise progress-report draft with recent picture-dictionary and AI workflow examples.
-13. **ISSUE-0033** — clean up and phase-track roadmap file maintenance.
-14. **ISSUE-0034** — add export/review, budget/rate-limit, stale-worker recovery, and evidence-quality controls before wider project-understanding use.
-15. **ISSUE-0035** — track intermittent Codex PR update-branch refusal.
-16. **ISSUE-0006** — investigate segmentation_phase_2 token-span failures and rerun-path correctness.
-17. **ISSUE-0004** — introduce AI review gates for phase outputs with an extensible evaluator architecture.
-18. **ISSUE-0001** — support hosted compiled legacy content registration in C-LARA-2.
+1. **ISSUE-0039** — build a unified picture-dictionary source-of-truth workspace.
+2. **ISSUE-0031** — improve compiled-content presentation context and configurable public access controls.
+3. **ISSUE-0030** — fix image-generation workflow UX around element expansion auto-refresh and selection confirmation.
+4. **ISSUE-0029** — autosave community judging inputs to prevent accidental data loss.
+5. **ISSUE-0037** — create subset projects from community picture dictionaries.
+6. **ISSUE-0026** — define next-step community-recorded audio workflow for non-TTS languages.
+7. **ISSUE-0005** — tune segmentation_phase_1 prompting to improve segment granularity by genre.
+8. **ISSUE-0003** — add efficient end-to-end pipeline test runner for systematic quality checks.
+9. **ISSUE-0036** — systematize creation and evaluation of few-shot examples for linguistic annotation.
+10. **ISSUE-0025** — add systematic UI regression tracking for disappearing controls/content.
+11. **ISSUE-0010** — import a representative legacy C-LARA project corpus and add batch import tooling.
+12. **ISSUE-0013** — improve stage artifact persistence performance and timeout resilience.
+13. **ISSUE-0008** — write C-LARA-2 technical report and academic papers.
+14. **ISSUE-0033** — clean up and phase-track roadmap file maintenance.
+15. **ISSUE-0034** — add restricted project-understanding assistant with versioned evidence records.
+16. **ISSUE-0035** — track intermittent Codex PR update-branch refusal.
+17. **ISSUE-0006** — investigate segmentation_phase_2 token-span failures and rerun-path correctness.
+18. **ISSUE-0004** — introduce AI-based review gates for phase outputs with extensible evaluator architecture.
+19. **ISSUE-0001** — support hosted compiled legacy content registration in C-LARA-2.
 
 ## Notes/risks
 
-- **ISSUE-0038** is closed for the low-resource dictionary deletion path, but future subset-project synchronization work under **ISSUE-0037** should continue to avoid page-number-only assumptions when derived content inherits images.
+- **ISSUE-0039** now has separate row-selection and row-display controls, but laptop/Sophie testing should validate whether incomplete rows are defined correctly as missing a prompt or image.
+- **ISSUE-0037** remains active for the already implemented subdictionary/subset-project workflow and Sophie review, but its long-term data ownership should align with **ISSUE-0039**.
+- **ISSUE-0038** is closed for the low-resource dictionary deletion path, but **ISSUE-0039** should preserve stable entry/image identity so future synchronization no longer depends on page-number-only assumptions.
 - **ISSUE-0005** should be handled together with **ISSUE-0003**, **ISSUE-0004**, and **ISSUE-0036** so segmentation prompt changes are evaluated against repeatable examples rather than anecdotal improvements.
-- **ISSUE-0037** should remain active until deployment and Sophie review are complete; keep derived subset image/content references synchronized after canonical dictionary edits.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated pipeline and UI coverage.
 
 ## Complete issue inventory
@@ -77,3 +77,4 @@
 | [ISSUE-0036](issues/ISSUE-0036.json) | reported | P1 | Systematize creation and evaluation of few-shot examples for linguistic annotation. |
 | [ISSUE-0037](issues/ISSUE-0037.json) | active | P1 | Create subset projects from community picture dictionaries. |
 | [ISSUE-0038](issues/ISSUE-0038.json) | closed | P1 | Keep picture-dictionary images synchronized when words are deleted. |
+| [ISSUE-0039](issues/ISSUE-0039.json) | active | P0 | Build a unified picture-dictionary source-of-truth workspace. |

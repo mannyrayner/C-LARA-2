@@ -139,6 +139,7 @@ from .models import (
 from .picture_dictionary import (
     _manual_rows_from_entries,
     _refresh_dictionary_placeholder_stages,
+    _sync_entry_image_paths_from_pages,
     create_or_update_picture_dictionary_subset,
     get_picture_dictionary_subset,
     list_picture_dictionary_subsets,
@@ -151,6 +152,7 @@ from .picture_dictionary import (
     ensure_picture_dictionary_for_community,
     import_project_as_picture_dictionary,
     remove_entries_by_ids as picture_dictionary_remove_entries_by_ids,
+    update_entry_metadata as picture_dictionary_update_entry_metadata,
     remove_words as picture_dictionary_remove_words,
 )
 
@@ -9553,6 +9555,123 @@ def _picture_dictionary_existing_mixup_warnings(
     return warnings
 
 
+
+def _picture_dictionary_workspace_metadata_path(dictionary: PictureDictionary) -> Path:
+    return dictionary.project.artifact_dir() / "picture_dictionary_workspace.json"
+
+
+def _read_picture_dictionary_workspace_metadata(dictionary: PictureDictionary) -> dict[str, Any]:
+    path = _picture_dictionary_workspace_metadata_path(dictionary)
+    if not path.exists():
+        return {"background_information": "", "entry_suggestions": {}}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        logger.exception("Could not read picture dictionary workspace metadata for dictionary %s", dictionary.pk)
+        return {"background_information": "", "entry_suggestions": {}}
+    if not isinstance(payload, dict):
+        return {"background_information": "", "entry_suggestions": {}}
+    suggestions = payload.get("entry_suggestions")
+    if not isinstance(suggestions, dict):
+        suggestions = {}
+    return {
+        "background_information": str(payload.get("background_information") or ""),
+        "entry_suggestions": {str(key): str(value or "") for key, value in suggestions.items()},
+    }
+
+
+def _write_picture_dictionary_workspace_metadata(
+    dictionary: PictureDictionary,
+    *,
+    background_information: str,
+    entry_suggestions: dict[int, str],
+) -> None:
+    path = _picture_dictionary_workspace_metadata_path(dictionary)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "background_information": str(background_information or "").strip(),
+        "entry_suggestions": {str(key): str(value or "").strip() for key, value in entry_suggestions.items()},
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _unified_picture_dictionary_prompt_request(
+    *,
+    dictionary: PictureDictionary,
+    entry: PictureDictionaryEntry,
+    gloss: str,
+    suggestion: str,
+    background_information: str,
+    style_brief: str,
+) -> str:
+    payload = {
+        "community": dictionary.community.name,
+        "source_language": dictionary.language or dictionary.project.language or dictionary.community.language,
+        "gloss_language": dictionary.project.target_language,
+        "surface_word": (entry.surface or "").strip(),
+        "lemma": (entry.lemma or "").strip(),
+        "pos": (entry.pos or "").strip(),
+        "gloss_or_translation": str(gloss or "").strip(),
+        "organiser_suggestion": str(suggestion or "").strip(),
+        "background_information": str(background_information or "").strip(),
+        "style_brief": str(style_brief or "").strip(),
+    }
+    return "\n".join(
+        [
+            "You are writing the final image-generation prompt for one entry in a picture dictionary.",
+            "Use the JSON context below to create a concrete, editable prompt that tells the image model what to draw.",
+            "The output must be a vivid but concise prompt, not a restatement of the metadata.",
+            "Make concrete choices about the scene, subject, pose, and visual focus when the metadata allows it.",
+            "Do not invent culturally specific details that are not supplied in the context.",
+            "The image must contain no written words, labels, captions, letters, numbers, or readable text.",
+            "Return only the final prompt text, with no markdown, no JSON, and no explanation.",
+            "",
+            json.dumps(payload, ensure_ascii=False, indent=2),
+        ]
+    )
+
+
+def _build_unified_picture_dictionary_prompt(
+    *,
+    dictionary: PictureDictionary,
+    entry: PictureDictionaryEntry,
+    gloss: str,
+    suggestion: str,
+    background_information: str,
+    style_brief: str,
+    user=None,
+) -> str:
+    request_prompt = _unified_picture_dictionary_prompt_request(
+        dictionary=dictionary,
+        entry=entry,
+        gloss=gloss,
+        suggestion=suggestion,
+        background_information=background_information,
+        style_brief=style_brief,
+    )
+    model_name = (dictionary.project.ai_model or DEFAULT_MODEL).strip()
+    if model_name not in AI_MODEL_CHOICES:
+        model_name = DEFAULT_MODEL
+    client = _build_ai_client(model_name=model_name, user=user)
+    generated = asyncio.run(client.chat_text(request_prompt))
+    prompt = str(generated or "").strip()
+    if not prompt:
+        raise ValueError("AI prompt construction returned an empty prompt.")
+    return prompt
+
+
+def _select_latest_generated_variants_for_pages(pages: list[ProjectImagePage]) -> int:
+    selected = 0
+    for page in pages:
+        latest_variant = page.variants.exclude(image_path="").order_by("-variant_index", "-id").first()
+        if not latest_variant:
+            continue
+        _set_page_preferred_variant(page, latest_variant)
+        selected += 1
+    return selected
+
+
 def _page_review_context_rows(project: Project, pages: list[ProjectImagePage]) -> dict[int, dict[str, str]]:
     source_pages = _extract_project_source_pages(project)
     translation_pages = _extract_project_pages_from_translation(project)
@@ -9662,6 +9781,12 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
     dictionary_entries: list[PictureDictionaryEntry] = []
     picture_dictionary_subsets: list[dict[str, Any]] = []
     picture_dictionary_subset_project_id_set: set[int] = set()
+    picture_dictionary_background_information = ""
+    picture_dictionary_entry_suggestions: dict[str, str] = {}
+    if picture_dictionary:
+        workspace_metadata = _read_picture_dictionary_workspace_metadata(picture_dictionary)
+        picture_dictionary_background_information = workspace_metadata["background_information"]
+        picture_dictionary_entry_suggestions = workspace_metadata["entry_suggestions"]
     subset_edit_session_key = f"community:{community_id}:picture_dictionary_subset_edit"
     subset_draft_session_key = f"community:{community_id}:picture_dictionary_subset_draft"
     subset_edit_id = str(request.session.get(subset_edit_session_key) or "")
@@ -9716,12 +9841,25 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             entry.id: row
             for entry, row in zip(dictionary_entries, _manual_rows_from_entries(picture_dictionary, dictionary_entries), strict=False)
         }
+        image_pages_by_number = {
+            page.page_number: page
+            for page in picture_dictionary.project.image_pages.order_by("page_number", "id")
+        }
         for entry in dictionary_entries:
             lemma = (entry.lemma or entry.surface or "").strip()
             pos = (entry.pos or "UNSPECIFIED").strip().upper()
             entry.display_label = f"{(entry.surface or '').strip()} (lemma: {lemma}) [{pos}]"
             row = rows_by_entry_id.get(entry.id, {})
             entry.subset_translation_label = str(row.get("translation") or row.get("gloss") or "").strip()
+            page = image_pages_by_number.get(entry.current_page_number or 0)
+            entry.unified_surface = str(row.get("surface") or entry.surface or "").strip()
+            entry.unified_lemma = str(row.get("lemma") or entry.lemma or entry.surface or "").strip()
+            entry.unified_pos = str(row.get("pos") or entry.pos or "").strip()
+            entry.unified_gloss = str(row.get("gloss") or row.get("translation") or "").strip()
+            entry.unified_prompt = str(getattr(page, "generation_prompt", "") or entry.surface or "").strip()
+            entry.unified_suggestion = picture_dictionary_entry_suggestions.get(str(entry.id), "")
+            entry.unified_image_path = str((entry.image_path or getattr(page, "image_path", "") or "")).strip()
+            entry.unified_incomplete = not (entry.unified_prompt and entry.unified_image_path)
     picture_dictionary_compile_info: dict[str, Any] | None = None
     picture_dictionary_style_brief = ""
     if picture_dictionary:
@@ -9949,6 +10087,148 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                                     "translation": trace.get("translation", ""),
                                     "confidence": trace.get("confidence", "unknown"),
                                     "reason": trace.get("reason", ""),
+                                },
+                            )
+            elif action in {"update_unified_entries", "generate_unified_prompts", "generate_unified_images", "generate_unified_prompts_and_images"}:
+                active_entries = list(picture_dictionary.entries.filter(is_active=True).order_by("id"))
+                rows: list[dict[str, str]] = []
+                prompts_by_entry_id: dict[int, str] = {}
+                suggestions_by_entry_id: dict[int, str] = {}
+                selected_entry_ids = {int(value) for value in request.POST.getlist("unified_selected_entry_id") if str(value).isdigit()}
+                background_information = (request.POST.get("picture_dictionary_background_information") or "").strip()
+                style_brief = (request.POST.get("picture_dictionary_style_brief") or "").strip()
+                for entry in active_entries:
+                    surface = (request.POST.get(f"unified_surface_{entry.id}") or entry.surface or "").strip()
+                    lemma = (request.POST.get(f"unified_lemma_{entry.id}") or surface).strip()
+                    pos = (request.POST.get(f"unified_pos_{entry.id}") or "").strip()
+                    gloss = (request.POST.get(f"unified_gloss_{entry.id}") or "").strip()
+                    prompt = (request.POST.get(f"unified_prompt_{entry.id}") or "").strip()
+                    suggestion = (request.POST.get(f"unified_suggestion_{entry.id}") or "").strip()
+                    if not surface:
+                        messages.error(request, "Every active dictionary entry needs a surface word before saving the unified view.")
+                        return redirect("community-organiser-home", community_id=community_id)
+                    rows.append({"id": str(entry.id), "surface": surface, "lemma": lemma, "pos": pos, "gloss": gloss})
+                    prompts_by_entry_id[entry.id] = prompt
+                    suggestions_by_entry_id[entry.id] = suggestion
+                _write_picture_dictionary_workspace_metadata(
+                    picture_dictionary,
+                    background_information=background_information,
+                    entry_suggestions=suggestions_by_entry_id,
+                )
+                style, _created_style = ProjectImageStyle.objects.get_or_create(
+                    project=picture_dictionary.project,
+                    defaults={"ai_model": picture_dictionary.project.ai_model or DEFAULT_MODEL},
+                )
+                if style_brief and style.style_brief != style_brief:
+                    style.style_brief = style_brief
+                    style.save(update_fields=["style_brief", "updated_at"])
+                result = picture_dictionary_update_entry_metadata(dictionary=picture_dictionary, rows=rows)
+                refreshed_entries = list(picture_dictionary.entries.filter(is_active=True).order_by("id"))
+                refreshed_by_id = {entry.id: entry for entry in refreshed_entries}
+                pages_by_number = {
+                    page.page_number: page
+                    for page in picture_dictionary.project.image_pages.order_by("page_number", "id")
+                }
+                prompt_updates = 0
+                for entry in refreshed_entries:
+                    prompt = prompts_by_entry_id.get(entry.id, "").strip()
+                    if not prompt:
+                        continue
+                    page = pages_by_number.get(entry.current_page_number or 0)
+                    if page and page.generation_prompt != prompt:
+                        page.generation_prompt = prompt
+                        page.save(update_fields=["generation_prompt", "updated_at"])
+                        prompt_updates += 1
+                messages.success(
+                    request,
+                    "Saved unified dictionary view: %(submitted)s entr%(entry_suffix)s synchronized to dictionary stages; %(prompt_updates)s image prompt%(prompt_suffix)s updated."
+                    % {
+                        "submitted": result["submitted"],
+                        "entry_suffix": "y" if result["submitted"] == 1 else "ies",
+                        "prompt_updates": prompt_updates,
+                        "prompt_suffix": "" if prompt_updates == 1 else "s",
+                    },
+                )
+                if action in {"generate_unified_prompts", "generate_unified_images", "generate_unified_prompts_and_images"} and not selected_entry_ids:
+                    messages.error(request, "Select at least one dictionary row before creating prompts or images.")
+                if action in {"generate_unified_prompts", "generate_unified_prompts_and_images"} and selected_entry_ids:
+                    rows_by_entry_id = {
+                        entry.id: row
+                        for entry, row in zip(
+                            refreshed_entries,
+                            _manual_rows_from_entries(picture_dictionary, refreshed_entries),
+                            strict=False,
+                        )
+                    }
+                    prompt_count = 0
+                    for entry_id in selected_entry_ids:
+                        entry = refreshed_by_id.get(entry_id)
+                        if not entry:
+                            continue
+                        page = pages_by_number.get(entry.current_page_number or 0)
+                        if not page:
+                            continue
+                        row = rows_by_entry_id.get(entry.id, {})
+                        try:
+                            generated_prompt = _build_unified_picture_dictionary_prompt(
+                                dictionary=picture_dictionary,
+                                entry=entry,
+                                gloss=str(row.get("gloss") or row.get("translation") or "").strip(),
+                                suggestion=suggestions_by_entry_id.get(entry.id, ""),
+                                background_information=background_information,
+                                style_brief=style_brief or style.style_brief,
+                                user=request.user,
+                            )
+                        except Exception as exc:
+                            logger.exception("Unified picture-dictionary prompt generation failed for entry %s", entry.id)
+                            messages.error(request, f"Could not create an AI image prompt for {entry.surface}: {exc}")
+                            continue
+                        if page.generation_prompt != generated_prompt:
+                            page.generation_prompt = generated_prompt
+                            page.save(update_fields=["generation_prompt", "updated_at"])
+                        prompts_by_entry_id[entry.id] = generated_prompt
+                        prompt_count += 1
+                    if prompt_count:
+                        messages.success(request, f"Created AI image-generation prompts for {prompt_count} selected dictionary row(s).")
+                if action in {"generate_unified_images", "generate_unified_prompts_and_images"} and selected_entry_ids:
+                    pages_by_number = {
+                        page.page_number: page
+                        for page in picture_dictionary.project.image_pages.order_by("page_number", "id")
+                    }
+                    requests_for_generation: list[tuple[ProjectImagePage, int, str]] = []
+                    for entry_id in selected_entry_ids:
+                        entry = refreshed_by_id.get(entry_id)
+                        if not entry:
+                            continue
+                        page = pages_by_number.get(entry.current_page_number or 0)
+                        if page:
+                            requests_for_generation.append((page, 1, page.generation_prompt or prompts_by_entry_id.get(entry.id, "")))
+                    if not requests_for_generation:
+                        messages.error(request, "No selected dictionary rows have project pages available for image generation.")
+                    else:
+                        try:
+                            generated = _generate_requested_page_variants(
+                                project=picture_dictionary.project,
+                                image_model=style.sample_image_model or "gpt-image-1",
+                                requests=requests_for_generation,
+                            )
+                        except Exception as exc:
+                            logger.exception("Unified picture-dictionary image generation failed for dictionary %s", picture_dictionary.pk)
+                            messages.error(request, f"Could not create selected dictionary images: {exc}")
+                        else:
+                            selected_pages = [page for page, _count, _prompt in requests_for_generation]
+                            preferred_updates = _select_latest_generated_variants_for_pages(selected_pages)
+                            synced_entries = _sync_entry_image_paths_from_pages(picture_dictionary, refreshed_entries)
+                            messages.success(
+                                request,
+                                "Created %(generated)s image variant%(image_suffix)s for selected dictionary row(s); selected %(preferred)s latest image%(preferred_suffix)s and synchronized %(synced)s entr%(entry_suffix)s with image paths."
+                                % {
+                                    "generated": generated,
+                                    "image_suffix": "" if generated == 1 else "s",
+                                    "preferred": preferred_updates,
+                                    "preferred_suffix": "" if preferred_updates == 1 else "s",
+                                    "synced": synced_entries,
+                                    "entry_suffix": "y" if synced_entries == 1 else "ies",
                                 },
                             )
             elif action == "save_subset":
@@ -10241,6 +10521,7 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             "dictionary_entries": dictionary_entries,
             "picture_dictionary_compile_info": picture_dictionary_compile_info,
             "picture_dictionary_style_brief": picture_dictionary_style_brief,
+            "picture_dictionary_background_information": picture_dictionary_background_information,
             "community_projects": [project for project in projects if project.id not in picture_dictionary_subset_project_id_set],
             "picture_dictionary_subsets": picture_dictionary_subsets,
             "picture_dictionary_subset_edit": picture_dictionary_subset_edit,
