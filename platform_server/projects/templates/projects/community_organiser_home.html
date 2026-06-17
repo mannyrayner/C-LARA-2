@@ -173,33 +173,41 @@
         <label for="picture_dictionary_style_brief_unified"><strong>Style brief</strong> (used if style is missing or when creating prompts):</label><br />
         <textarea id="picture_dictionary_style_brief_unified" name="picture_dictionary_style_brief" rows="3" style="width: 100%;">{{ picture_dictionary_style_brief }}</textarea>
       </p>
-      <div style="overflow-x:auto; max-height:28rem; border:1px solid #eee;">
-        <table style="width:100%; border-collapse:collapse; min-width:1000px;">
+      <p style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+        <strong>Selection:</strong>
+        <button id="unified-select-all" class="btn secondary" type="button">Select all</button>
+        <button id="unified-select-incomplete" class="btn secondary" type="button">Select incomplete</button>
+      </p>
+      <div style="max-height:34rem; overflow:auto; border:1px solid #eee;">
+        <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
           <thead>
             <tr>
-              <th style="text-align:left; padding:0.35rem;">Select</th>
-              <th style="text-align:left; padding:0.35rem;">Word</th>
-              <th style="text-align:left; padding:0.35rem;">Lemma</th>
-              <th style="text-align:left; padding:0.35rem;">POS</th>
-              <th style="text-align:left; padding:0.35rem;">Gloss / translation</th>
-              <th style="text-align:left; padding:0.35rem;">Suggestion</th>
-              <th style="text-align:left; padding:0.35rem;">Image-generation prompt</th>
-              <th style="text-align:left; padding:0.35rem;">Selected image</th>
+              <th style="text-align:left; padding:0.35rem; width:4rem;">Select</th>
+              <th style="text-align:left; padding:0.35rem;">Dictionary entry fields</th>
+              <th style="text-align:left; padding:0.35rem; width:170px;">Selected image</th>
             </tr>
           </thead>
           <tbody>
             {% for entry in dictionary_entries %}
               <tr style="border-top:1px solid #eee; vertical-align:top;">
-                <td style="padding:0.35rem;"><input type="checkbox" name="unified_selected_entry_id" value="{{ entry.id }}" /></td>
-                <td style="padding:0.35rem;"><input type="text" name="unified_surface_{{ entry.id }}" value="{{ entry.unified_surface }}" style="width:11rem;" /></td>
-                <td style="padding:0.35rem;"><input type="text" name="unified_lemma_{{ entry.id }}" value="{{ entry.unified_lemma }}" style="width:11rem;" /></td>
-                <td style="padding:0.35rem;"><input type="text" name="unified_pos_{{ entry.id }}" value="{{ entry.unified_pos }}" style="width:6rem;" /></td>
-                <td style="padding:0.35rem;"><input type="text" name="unified_gloss_{{ entry.id }}" value="{{ entry.unified_gloss }}" style="width:13rem;" /></td>
-                <td style="padding:0.35rem;"><textarea name="unified_suggestion_{{ entry.id }}" rows="3" style="width:18rem;" placeholder="Image idea, cultural note, or thing to avoid.">{{ entry.unified_suggestion }}</textarea></td>
-                <td style="padding:0.35rem;"><textarea name="unified_prompt_{{ entry.id }}" rows="3" style="width:22rem;">{{ entry.unified_prompt }}</textarea></td>
-                <td style="padding:0.35rem; min-width:150px;">
+                <td style="padding:0.5rem;">
+                  <input class="unified-entry-select" type="checkbox" name="unified_selected_entry_id" value="{{ entry.id }}" data-incomplete="{% if entry.unified_incomplete %}1{% else %}0{% endif %}" />
+                </td>
+                <td style="padding:0.5rem;">
+                  <div style="display:grid; grid-template-columns: minmax(8rem, 1fr) minmax(8rem, 1fr) minmax(5rem, 0.6fr) minmax(9rem, 1fr); gap:0.45rem; align-items:end;">
+                    <label>Word<br /><input type="text" name="unified_surface_{{ entry.id }}" value="{{ entry.unified_surface }}" style="width:100%; box-sizing:border-box;" /></label>
+                    <label>Lemma<br /><input type="text" name="unified_lemma_{{ entry.id }}" value="{{ entry.unified_lemma }}" style="width:100%; box-sizing:border-box;" /></label>
+                    <label>POS<br /><input type="text" name="unified_pos_{{ entry.id }}" value="{{ entry.unified_pos }}" style="width:100%; box-sizing:border-box;" /></label>
+                    <label>Gloss / translation<br /><input type="text" name="unified_gloss_{{ entry.id }}" value="{{ entry.unified_gloss }}" style="width:100%; box-sizing:border-box;" /></label>
+                  </div>
+                  <div style="display:grid; grid-template-columns:minmax(12rem, 0.8fr) minmax(16rem, 1.2fr); gap:0.45rem; margin-top:0.5rem;">
+                    <label>Suggestion<br /><textarea name="unified_suggestion_{{ entry.id }}" rows="3" style="width:100%; box-sizing:border-box;" placeholder="Image idea, cultural note, or thing to avoid.">{{ entry.unified_suggestion }}</textarea></label>
+                    <label>Image-generation prompt<br /><textarea name="unified_prompt_{{ entry.id }}" rows="3" style="width:100%; box-sizing:border-box;">{{ entry.unified_prompt }}</textarea></label>
+                  </div>
+                </td>
+                <td style="padding:0.5rem;">
                   {% if entry.unified_image_path %}
-                    <img src="{% url 'project-compiled' picture_dictionary.project.id entry.unified_image_path %}" alt="Image for {{ entry.unified_surface }}" style="max-width:140px; max-height:120px; height:auto;" />
+                    <img src="{% url 'project-compiled' picture_dictionary.project.id entry.unified_image_path %}" alt="Image for {{ entry.unified_surface }}" style="max-width:150px; max-height:130px; height:auto;" />
                     <br /><small>{{ entry.unified_image_path }}</small>
                   {% else %}
                     <small>No image yet.</small>
@@ -317,6 +325,24 @@
         status.style.display = "block";
       });
     });
+  })();
+
+  (function () {
+    const selectAllButton = document.getElementById("unified-select-all");
+    const selectIncompleteButton = document.getElementById("unified-select-incomplete");
+    const checkboxes = Array.from(document.querySelectorAll(".unified-entry-select"));
+    if (selectAllButton) {
+      selectAllButton.addEventListener("click", function () {
+        checkboxes.forEach(function (checkbox) { checkbox.checked = true; });
+      });
+    }
+    if (selectIncompleteButton) {
+      selectIncompleteButton.addEventListener("click", function () {
+        checkboxes.forEach(function (checkbox) {
+          checkbox.checked = checkbox.dataset.incomplete === "1";
+        });
+      });
+    }
   })();
   (function () {
     const suggestButton = document.getElementById("subset-suggest-button");

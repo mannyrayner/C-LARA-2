@@ -9859,6 +9859,7 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             entry.unified_prompt = str(getattr(page, "generation_prompt", "") or entry.surface or "").strip()
             entry.unified_suggestion = picture_dictionary_entry_suggestions.get(str(entry.id), "")
             entry.unified_image_path = str((entry.image_path or getattr(page, "image_path", "") or "")).strip()
+            entry.unified_incomplete = not (entry.unified_prompt and entry.unified_image_path)
     picture_dictionary_compile_info: dict[str, Any] | None = None
     picture_dictionary_style_brief = ""
     if picture_dictionary:
