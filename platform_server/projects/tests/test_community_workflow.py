@@ -608,6 +608,7 @@ class CommunityWorkflowTests(TestCase):
         self.assertContains(response, "Background information")
         self.assertContains(response, "Translation language")
         self.assertContains(response, "Create translations for selected rows")
+        self.assertContains(response, "Generation prompt language")
         self.assertContains(response, "Select all")
         self.assertContains(response, "Select incomplete")
         self.assertContains(response, "Select none")
@@ -626,6 +627,7 @@ class CommunityWorkflowTests(TestCase):
             {
                 "picture_dictionary_action": "update_unified_entries",
                 "picture_dictionary_translation_language": "fr",
+                "picture_dictionary_generation_prompt_language": "en",
                 f"unified_surface_{entry.id}": "pama updated",
                 f"unified_lemma_{entry.id}": "pama-lemma",
                 f"unified_pos_{entry.id}": "noun",
@@ -663,6 +665,7 @@ class CommunityWorkflowTests(TestCase):
                 {
                     "picture_dictionary_action": "generate_unified_translations",
                     "picture_dictionary_translation_language": "fr",
+                    "picture_dictionary_generation_prompt_language": "en",
                     "picture_dictionary_background_information": "Use Kok Kaper classroom-friendly cultural context.",
                     "unified_selected_entry_id": [str(entry.id)],
                     f"unified_surface_{entry.id}": "pama updated",
@@ -702,6 +705,7 @@ class CommunityWorkflowTests(TestCase):
                     "picture_dictionary_background_information": "Use Kok Kaper classroom-friendly cultural context.",
                     "picture_dictionary_style_brief": "Bright watercolor style.",
                     "picture_dictionary_translation_language": "fr",
+                    "picture_dictionary_generation_prompt_language": "en",
                     "unified_selected_entry_id": [str(entry.id)],
                     f"unified_surface_{entry.id}": "pama updated",
                     f"unified_lemma_{entry.id}": "pama-lemma",
@@ -717,6 +721,7 @@ class CommunityWorkflowTests(TestCase):
         self.assertContains(prompt_response, "Created AI image-generation prompts for 1 selected dictionary row")
         self.assertIn('"gloss_or_translation": "personne"', fake_prompt_client.prompt)
         self.assertIn('"pos": "NOUN"', fake_prompt_client.prompt)
+        self.assertIn('"generation_prompt_language": "en"', fake_prompt_client.prompt)
         page.refresh_from_db()
         self.assertIn("friendly person standing outdoors", page.generation_prompt)
         self.assertNotIn("Source-language word:", page.generation_prompt)
@@ -724,6 +729,7 @@ class CommunityWorkflowTests(TestCase):
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         self.assertEqual(metadata["background_information"], "Use Kok Kaper classroom-friendly cultural context.")
         self.assertEqual(metadata["translation_language"], "fr")
+        self.assertEqual(metadata["generation_prompt_language"], "en")
         self.assertEqual(metadata["entry_suggestions"][str(entry.id)], "Show one friendly person, no text.")
 
         def fake_generate_selected_image_variants(*, project, image_model, requests, progress_callback=None):  # noqa: ARG001

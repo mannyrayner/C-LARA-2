@@ -167,9 +167,21 @@
         <label for="picture_dictionary_background_information"><strong>Background information</strong> (used when creating prompts):</label><br />
         <textarea id="picture_dictionary_background_information" name="picture_dictionary_background_information" rows="3" style="width:100%;" placeholder="Cultural, classroom, or visual context that should guide dictionary images.">{{ picture_dictionary_background_information }}</textarea>
       </p>
-      <p>
-        <label for="picture_dictionary_translation_language"><strong>Translation language</strong> (used for dictionary translations/glosses and synced to the associated project):</label><br />
-        <input id="picture_dictionary_translation_language" type="text" name="picture_dictionary_translation_language" value="{{ picture_dictionary_translation_language }}" style="width:20rem; max-width:100%;" placeholder="e.g. en, fr, English, French" />
+      <p style="display:flex; gap:1rem; flex-wrap:wrap; align-items:end;">
+        <label for="picture_dictionary_translation_language"><strong>Translation language</strong> (used for dictionary translations/glosses and synced to the associated project):<br />
+          <select id="picture_dictionary_translation_language" name="picture_dictionary_translation_language">
+            {% for value, label in language_choices %}
+              <option value="{{ value }}" {% if value == picture_dictionary_translation_language %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label for="picture_dictionary_generation_prompt_language"><strong>Generation prompt language</strong> (used for AI-created image prompts):<br />
+          <select id="picture_dictionary_generation_prompt_language" name="picture_dictionary_generation_prompt_language">
+            {% for value, label in language_choices %}
+              <option value="{{ value }}" {% if value == picture_dictionary_generation_prompt_language %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
       </p>
       <p>
         <label for="picture_dictionary_style_brief_unified"><strong>Style brief</strong> (used if style is missing or when creating prompts):</label><br />

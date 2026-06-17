@@ -137,6 +137,7 @@ from .models import (
     IssueUpdateSuggestion,
 )
 from .picture_dictionary import (
+    NON_AI_ENABLED_LANGUAGES,
     _manual_rows_from_entries,
     _refresh_dictionary_placeholder_stages,
     _sync_entry_image_paths_from_pages,
@@ -2603,10 +2604,18 @@ def _generate_requested_page_variants(
         })
         return final_prompt
 
-    prepared_requests: list[tuple[ProjectImagePage, int, str]] = [
-        (page, count, _build_requested_prompt(page, prompt_update))
-        for page, count, prompt_update in requests
-    ]
+    def _prepare_request(request_tuple: tuple[ProjectImagePage, int, str]) -> tuple[ProjectImagePage, int, str]:
+        page, count, prompt_update = request_tuple
+        return page, count, _build_requested_prompt(page, prompt_update)
+
+    prepared_requests: list[tuple[ProjectImagePage, int, str]] = []
+    if requests:
+        max_prompt_workers = min(12, len(requests))
+        with ThreadPoolExecutor(max_workers=max_prompt_workers) as executor:
+            futures = [executor.submit(_prepare_request, request_tuple) for request_tuple in requests]
+            for future in as_completed(futures):
+                prepared_requests.append(future.result())
+        prepared_requests.sort(key=lambda request_tuple: (request_tuple[0].page_number, request_tuple[0].id))
 
     def _generate_one(page: ProjectImagePage, variant_index: int, prompt: str) -> tuple[int, int, str, str, str]:
         started = datetime.now(timezone.utc)
@@ -9556,6 +9565,13 @@ def _picture_dictionary_existing_mixup_warnings(
 
 
 
+def _default_picture_dictionary_prompt_language(dictionary: PictureDictionary) -> str:
+    source_language = (dictionary.language or dictionary.project.language or dictionary.community.language or "").strip()
+    if source_language and source_language not in NON_AI_ENABLED_LANGUAGES:
+        return source_language
+    return (dictionary.project.target_language or source_language or "en").strip()
+
+
 def _picture_dictionary_workspace_metadata_path(dictionary: PictureDictionary) -> Path:
     return dictionary.project.artifact_dir() / "picture_dictionary_workspace.json"
 
@@ -9563,20 +9579,21 @@ def _picture_dictionary_workspace_metadata_path(dictionary: PictureDictionary) -
 def _read_picture_dictionary_workspace_metadata(dictionary: PictureDictionary) -> dict[str, Any]:
     path = _picture_dictionary_workspace_metadata_path(dictionary)
     if not path.exists():
-        return {"background_information": "", "translation_language": dictionary.project.target_language or "", "entry_suggestions": {}}
+        return {"background_information": "", "translation_language": dictionary.project.target_language or "", "generation_prompt_language": _default_picture_dictionary_prompt_language(dictionary), "entry_suggestions": {}}
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         logger.exception("Could not read picture dictionary workspace metadata for dictionary %s", dictionary.pk)
-        return {"background_information": "", "translation_language": dictionary.project.target_language or "", "entry_suggestions": {}}
+        return {"background_information": "", "translation_language": dictionary.project.target_language or "", "generation_prompt_language": _default_picture_dictionary_prompt_language(dictionary), "entry_suggestions": {}}
     if not isinstance(payload, dict):
-        return {"background_information": "", "translation_language": dictionary.project.target_language or "", "entry_suggestions": {}}
+        return {"background_information": "", "translation_language": dictionary.project.target_language or "", "generation_prompt_language": _default_picture_dictionary_prompt_language(dictionary), "entry_suggestions": {}}
     suggestions = payload.get("entry_suggestions")
     if not isinstance(suggestions, dict):
         suggestions = {}
     return {
         "background_information": str(payload.get("background_information") or ""),
         "translation_language": str(payload.get("translation_language") or dictionary.project.target_language or ""),
+        "generation_prompt_language": str(payload.get("generation_prompt_language") or _default_picture_dictionary_prompt_language(dictionary)),
         "entry_suggestions": {str(key): str(value or "") for key, value in suggestions.items()},
     }
 
@@ -9586,6 +9603,7 @@ def _write_picture_dictionary_workspace_metadata(
     *,
     background_information: str,
     translation_language: str,
+    generation_prompt_language: str,
     entry_suggestions: dict[int, str],
 ) -> None:
     path = _picture_dictionary_workspace_metadata_path(dictionary)
@@ -9593,6 +9611,7 @@ def _write_picture_dictionary_workspace_metadata(
     payload = {
         "background_information": str(background_information or "").strip(),
         "translation_language": str(translation_language or "").strip(),
+        "generation_prompt_language": str(generation_prompt_language or "").strip(),
         "entry_suggestions": {str(key): str(value or "").strip() for key, value in entry_suggestions.items()},
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -9754,7 +9773,9 @@ def _unified_picture_dictionary_prompt_request(
     suggestion: str,
     background_information: str,
     style_brief: str,
+    prompt_language: str,
 ) -> str:
+    prompt_language_label = _project_language_label(prompt_language) if prompt_language else "the requested prompt language"
     payload = {
         "community": dictionary.community.name,
         "source_language": dictionary.language or dictionary.project.language or dictionary.community.language,
@@ -9767,6 +9788,8 @@ def _unified_picture_dictionary_prompt_request(
         "organiser_suggestion": str(suggestion or "").strip(),
         "background_information": str(background_information or "").strip(),
         "style_brief": str(style_brief or "").strip(),
+        "generation_prompt_language": prompt_language,
+        "generation_prompt_language_label": prompt_language_label,
     }
     return "\n".join(
         [
@@ -9777,6 +9800,7 @@ def _unified_picture_dictionary_prompt_request(
             "Use POS and gloss/translation to disambiguate the surface word; for example, if the word is an adjective meaning pink, depict the colour pink rather than a rose flower.",
             "Do not invent culturally specific details that are not supplied in the context.",
             "The image must contain no written words, labels, captions, letters, numbers, or readable text.",
+            f"Write the final image-generation prompt in {prompt_language_label}. Use that same language consistently across all selected rows.",
             "Return only the final prompt text, with no markdown, no JSON, and no explanation.",
             "",
             json.dumps(payload, ensure_ascii=False, indent=2),
@@ -9792,6 +9816,7 @@ def _build_unified_picture_dictionary_prompt(
     suggestion: str,
     background_information: str,
     style_brief: str,
+    prompt_language: str = "",
     user=None,
 ) -> str:
     request_prompt = _unified_picture_dictionary_prompt_request(
@@ -9801,6 +9826,7 @@ def _build_unified_picture_dictionary_prompt(
         suggestion=suggestion,
         background_information=background_information,
         style_brief=style_brief,
+        prompt_language=prompt_language or _default_picture_dictionary_prompt_language(dictionary),
     )
     model_name = (dictionary.project.ai_model or DEFAULT_MODEL).strip()
     if model_name not in AI_MODEL_CHOICES:
@@ -9936,11 +9962,13 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
     picture_dictionary_background_information = ""
     picture_dictionary_entry_suggestions: dict[str, str] = {}
     picture_dictionary_translation_language = ""
+    picture_dictionary_generation_prompt_language = ""
     if picture_dictionary:
         workspace_metadata = _read_picture_dictionary_workspace_metadata(picture_dictionary)
         picture_dictionary_background_information = workspace_metadata["background_information"]
         picture_dictionary_entry_suggestions = workspace_metadata["entry_suggestions"]
         picture_dictionary_translation_language = workspace_metadata.get("translation_language") or picture_dictionary.project.target_language or ""
+        picture_dictionary_generation_prompt_language = workspace_metadata.get("generation_prompt_language") or _default_picture_dictionary_prompt_language(picture_dictionary)
     subset_edit_session_key = f"community:{community_id}:picture_dictionary_subset_edit"
     subset_draft_session_key = f"community:{community_id}:picture_dictionary_subset_draft"
     subset_edit_id = str(request.session.get(subset_edit_session_key) or "")
@@ -10260,6 +10288,7 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                 selected_entry_ids = {int(value) for value in request.POST.getlist("unified_selected_entry_id") if str(value).isdigit()}
                 background_information = (request.POST.get("picture_dictionary_background_information") or "").strip()
                 translation_language = (request.POST.get("picture_dictionary_translation_language") or picture_dictionary.project.target_language or "").strip()
+                generation_prompt_language = (request.POST.get("picture_dictionary_generation_prompt_language") or _default_picture_dictionary_prompt_language(picture_dictionary)).strip()
                 style_brief = (request.POST.get("picture_dictionary_style_brief") or "").strip()
                 for entry in active_entries:
                     surface = (request.POST.get(f"unified_surface_{entry.id}") or entry.surface or "").strip()
@@ -10278,6 +10307,7 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                     picture_dictionary,
                     background_information=background_information,
                     translation_language=translation_language,
+                    generation_prompt_language=generation_prompt_language,
                     entry_suggestions=suggestions_by_entry_id,
                 )
                 style, _created_style = ProjectImageStyle.objects.get_or_create(
@@ -10402,6 +10432,7 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                             suggestion=suggestions_by_entry_id.get(entry.id, ""),
                             background_information=background_information,
                             style_brief=style_brief or style.style_brief,
+                            prompt_language=generation_prompt_language,
                             user=request.user,
                         )
                         return entry.id, page.id, generated_prompt
@@ -10491,6 +10522,7 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                             suggestion=suggestions_by_entry_id.get(entry.id, ""),
                             background_information=background_information,
                             style_brief=style_brief or style.style_brief,
+                            prompt_language=generation_prompt_language,
                             user=request.user,
                         )
                         return entry.id, page.id, generated_prompt
@@ -10888,6 +10920,8 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             "picture_dictionary_style_brief": picture_dictionary_style_brief,
             "picture_dictionary_background_information": picture_dictionary_background_information,
             "picture_dictionary_translation_language": picture_dictionary_translation_language,
+            "picture_dictionary_generation_prompt_language": picture_dictionary_generation_prompt_language,
+            "language_choices": ProjectForm.LANGUAGE_CHOICES,
             "community_projects": [project for project in projects if project.id not in picture_dictionary_subset_project_id_set],
             "picture_dictionary_subsets": picture_dictionary_subsets,
             "picture_dictionary_subset_edit": picture_dictionary_subset_edit,
