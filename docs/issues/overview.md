@@ -1,8 +1,8 @@
-# C-LARA-2 issue overview (refreshed 2026-06-17T01:30:00Z)
+# C-LARA-2 issue overview (refreshed 2026-06-17T02:10:00Z)
 ## Recent progress
-- Extended **ISSUE-0039** incomplete-row detection to include missing lemma, POS, or gloss/translation, not just missing prompt/image.
-- Replaced the prompts-plus-images button with **Create missing information for selected rows**, using AI to fill selected rows missing lemma, POS, and translation/gloss values.
-- Removed the old placeholder-sync/compile controls from the organiser page so picture-dictionary work is handled directly in the unified workspace.
+- Extended **ISSUE-0039** missing-information creation so selected rows can fill missing lemma/POS/gloss, replace default surface-only prompts, and generate missing images in one action.
+- Added an immediate in-page running notice under unified workspace controls when save/prompt/image/missing-information actions are submitted.
+- Kept **ISSUE-0039** active/P0 because prompt-variant management, progress feedback depth, and tighter subset/exercise integration still need follow-up before Sophie review.
 - Regenerated this overview from canonical issue JSON so the complete inventory reflects all current `reported`, `active`, and `closed` states.
 
 ## Near-term priorities
@@ -29,7 +29,7 @@
 
 ## Notes/risks
 
-- **ISSUE-0039** now supports AI-assisted missing lexical metadata, but laptop/Sophie testing should validate language accuracy and whether low-resource workflows need confirmation or provenance labels for AI-filled fields.
+- **ISSUE-0039** now has a one-click missing-information path, but laptop/Sophie testing should validate language accuracy, generated prompt usefulness, and whether long image batches need a true async progress monitor.
 - **ISSUE-0037** remains active for the already implemented subdictionary/subset-project workflow and Sophie review, but its long-term data ownership should align with **ISSUE-0039**.
 - **ISSUE-0038** is closed for the low-resource dictionary deletion path, but **ISSUE-0039** should preserve stable entry/image identity so future synchronization no longer depends on page-number-only assumptions.
 - **ISSUE-0005** should be handled together with **ISSUE-0003**, **ISSUE-0004**, and **ISSUE-0036** so segmentation prompt changes are evaluated against repeatable examples rather than anecdotal improvements.

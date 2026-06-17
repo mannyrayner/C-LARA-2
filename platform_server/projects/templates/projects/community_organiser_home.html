@@ -223,10 +223,13 @@
         </table>
       </div>
       <p>
-        <button class="btn secondary" type="submit" name="picture_dictionary_action" value="update_unified_entries">Save unified dictionary edits</button>
-        <button class="btn secondary" type="submit" name="picture_dictionary_action" value="generate_unified_prompts">Create prompts for selected rows</button>
-        <button class="btn secondary" type="submit" name="picture_dictionary_action" value="generate_unified_images" onclick="return confirm('Create images for the selected dictionary rows using their current prompts?');">Create images for selected rows</button>
-        <button class="btn secondary" type="submit" name="picture_dictionary_action" value="generate_unified_missing_info">Create missing information for selected rows</button>
+        <button class="btn secondary unified-action-button" type="submit" name="picture_dictionary_action" value="update_unified_entries" data-running-message="Saving unified dictionary edits…">Save unified dictionary edits</button>
+        <button class="btn secondary unified-action-button" type="submit" name="picture_dictionary_action" value="generate_unified_prompts" data-running-message="Creating prompts for selected rows…">Create prompts for selected rows</button>
+        <button class="btn secondary unified-action-button" type="submit" name="picture_dictionary_action" value="generate_unified_images" data-running-message="Creating images for selected rows…" onclick="return confirm('Create images for the selected dictionary rows using their current prompts?');">Create images for selected rows</button>
+        <button class="btn secondary unified-action-button" type="submit" name="picture_dictionary_action" value="generate_unified_missing_info" data-running-message="Creating missing information, prompts, and images for selected rows as needed…">Create missing information for selected rows</button>
+      </p>
+      <p id="unified-operation-status" style="display:none; padding:0.6rem; border:1px solid #ddd; background:#f8fbff;">
+        <strong>Working…</strong> <span id="unified-operation-status-text">The operation is running.</span>
       </p>
     </fieldset>
   {% endif %}
@@ -368,6 +371,16 @@
         });
       });
     }
+
+    const statusBox = document.getElementById("unified-operation-status");
+    const statusText = document.getElementById("unified-operation-status-text");
+    document.querySelectorAll(".unified-action-button").forEach(function (button) {
+      button.addEventListener("click", function () {
+        if (!statusBox || !statusText) return;
+        statusText.textContent = button.dataset.runningMessage || "The operation is running.";
+        statusBox.style.display = "block";
+      });
+    });
   })();
   (function () {
     const suggestButton = document.getElementById("subset-suggest-button");

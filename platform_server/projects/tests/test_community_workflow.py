@@ -617,6 +617,7 @@ class CommunityWorkflowTests(TestCase):
         self.assertContains(response, "Create missing information for selected rows")
         self.assertNotContains(response, "Create prompts + images for selected rows")
         self.assertContains(response, "Original prompt")
+        self.assertContains(response, "Creating missing information, prompts, and images for selected rows as needed")
 
         save = client.post(
             reverse("community-organiser-home", args=[self.community.id]),
@@ -724,7 +725,24 @@ class CommunityWorkflowTests(TestCase):
             async def chat_json(self, prompt, **kwargs):  # noqa: ARG002
                 return {"lemma": "ngama", "pos": "NOUN", "translation": "water"}
 
-        with patch("projects.views._build_ai_client", return_value=FakeMissingInfoClient()) as mock_missing_client:
+            async def chat_text(self, prompt, **kwargs):  # noqa: ARG002
+                return "A realistic cartoon picture of clean water in a simple bowl, with no written text."
+
+        def fake_generate_missing_image_variants(*, project, image_model, requests, progress_callback=None):  # noqa: ARG001
+            for requested_page, _count, prompt in requests:
+                ProjectImagePageVariant.objects.create(
+                    page=requested_page,
+                    variant_index=1,
+                    image_model=image_model,
+                    image_path=f"images/pages/page_{requested_page.page_number:03d}/variant_001.png",
+                    generation_prompt=prompt,
+                    status=ProjectImagePageVariant.STATUS_GENERATED,
+                )
+            return len(requests)
+
+        with patch("projects.views._build_ai_client", return_value=FakeMissingInfoClient()) as mock_missing_client, patch(
+            "projects.views._generate_requested_page_variants", side_effect=fake_generate_missing_image_variants
+        ) as mock_missing_image_generator:
             missing_response = client.post(
                 reverse("community-organiser-home", args=[self.community.id]),
                 {
@@ -749,10 +767,19 @@ class CommunityWorkflowTests(TestCase):
             )
         self.assertEqual(missing_response.status_code, 200)
         self.assertTrue(mock_missing_client.called)
+        self.assertTrue(mock_missing_image_generator.called)
         self.assertContains(missing_response, "Created missing lemma/POS/translation information for 1 selected dictionary row")
+        self.assertContains(missing_response, "Created missing image-generation prompts for 1 selected dictionary row")
+        self.assertContains(missing_response, "Created 1 missing image variant")
         missing_entry.refresh_from_db()
         self.assertEqual(missing_entry.lemma, "ngama")
         self.assertEqual(missing_entry.pos, "NOUN")
+        missing_page = ProjectImagePage.objects.get(project=dictionary.project, page_text="ngama")
+        self.assertIn("clean water", missing_page.generation_prompt)
+        expected_missing_image_path = f"images/pages/page_{missing_page.page_number:03d}/variant_001.png"
+        self.assertEqual(missing_page.image_path, expected_missing_image_path)
+        missing_entry.refresh_from_db()
+        self.assertEqual(missing_entry.image_path, expected_missing_image_path)
         missing_gloss_payload = read_stage_artifact(dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary", "gloss")
         self.assertEqual(missing_gloss_payload["pages"][-1]["segments"][0]["tokens"][0]["annotations"]["gloss"], "water")
 

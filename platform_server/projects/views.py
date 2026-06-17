@@ -9926,11 +9926,12 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             entry.unified_prompt = str(getattr(page, "generation_prompt", "") or entry.surface or "").strip()
             entry.unified_suggestion = picture_dictionary_entry_suggestions.get(str(entry.id), "")
             entry.unified_image_path = str((entry.image_path or getattr(page, "image_path", "") or "")).strip()
+            prompt_is_missing = (not entry.unified_prompt) or (entry.unified_prompt.casefold() == entry.unified_surface.casefold())
             entry.unified_incomplete = not (
                 entry.unified_lemma
                 and entry.unified_pos
                 and entry.unified_gloss
-                and entry.unified_prompt
+                and not prompt_is_missing
                 and entry.unified_image_path
             )
     picture_dictionary_compile_info: dict[str, Any] | None = None
@@ -10256,6 +10257,93 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                         messages.success(request, f"Created missing lemma/POS/translation information for {filled_count} selected dictionary row(s).")
                     else:
                         messages.info(request, "No selected rows needed missing lemma/POS/translation information.")
+
+                    refreshed_entries = list(picture_dictionary.entries.filter(is_active=True).order_by("id"))
+                    refreshed_by_id = {entry.id: entry for entry in refreshed_entries}
+                    pages_by_number = {
+                        page.page_number: page
+                        for page in picture_dictionary.project.image_pages.order_by("page_number", "id")
+                    }
+                    rows_by_entry_id = {
+                        entry.id: row
+                        for entry, row in zip(
+                            refreshed_entries,
+                            _manual_rows_from_entries(picture_dictionary, refreshed_entries),
+                            strict=False,
+                        )
+                    }
+                    missing_prompt_count = 0
+                    for entry_id in selected_entry_ids:
+                        entry = refreshed_by_id.get(entry_id)
+                        if not entry:
+                            continue
+                        page = pages_by_number.get(entry.current_page_number or 0)
+                        current_prompt = (page.generation_prompt or "").strip()
+                        if not page or (current_prompt and current_prompt.casefold() != (entry.surface or "").strip().casefold()):
+                            continue
+                        row = rows_by_entry_id.get(entry.id, {})
+                        try:
+                            generated_prompt = _build_unified_picture_dictionary_prompt(
+                                dictionary=picture_dictionary,
+                                entry=entry,
+                                gloss=str(row.get("gloss") or row.get("translation") or "").strip(),
+                                suggestion=suggestions_by_entry_id.get(entry.id, ""),
+                                background_information=background_information,
+                                style_brief=style_brief or style.style_brief,
+                                user=request.user,
+                            )
+                        except Exception as exc:
+                            logger.exception("Unified picture-dictionary prompt generation failed for missing-info entry %s", entry.id)
+                            messages.error(request, f"Could not create a missing image prompt for {entry.surface}: {exc}")
+                            continue
+                        page.generation_prompt = generated_prompt
+                        page.save(update_fields=["generation_prompt", "updated_at"])
+                        prompts_by_entry_id[entry.id] = generated_prompt
+                        missing_prompt_count += 1
+                    if missing_prompt_count:
+                        messages.success(request, f"Created missing image-generation prompts for {missing_prompt_count} selected dictionary row(s).")
+
+                    pages_by_number = {
+                        page.page_number: page
+                        for page in picture_dictionary.project.image_pages.order_by("page_number", "id")
+                    }
+                    missing_image_requests: list[tuple[ProjectImagePage, int, str]] = []
+                    for entry_id in selected_entry_ids:
+                        entry = refreshed_by_id.get(entry_id)
+                        if not entry:
+                            continue
+                        page = pages_by_number.get(entry.current_page_number or 0)
+                        if not page or (entry.image_path or page.image_path or "").strip():
+                            continue
+                        missing_image_requests.append((page, 1, page.generation_prompt or prompts_by_entry_id.get(entry.id, "")))
+                    if missing_image_requests:
+                        try:
+                            generated = _generate_requested_page_variants(
+                                project=picture_dictionary.project,
+                                image_model=style.sample_image_model or "gpt-image-1",
+                                requests=missing_image_requests,
+                            )
+                        except Exception as exc:
+                            logger.exception("Unified picture-dictionary missing image generation failed for dictionary %s", picture_dictionary.pk)
+                            messages.error(request, f"Could not create missing selected dictionary images: {exc}")
+                        else:
+                            selected_pages = [page for page, _count, _prompt in missing_image_requests]
+                            preferred_updates = _select_latest_generated_variants_for_pages(selected_pages)
+                            synced_entries = _sync_entry_image_paths_from_pages(picture_dictionary, refreshed_entries)
+                            messages.success(
+                                request,
+                                "Created %(generated)s missing image variant%(image_suffix)s; selected %(preferred)s latest image%(preferred_suffix)s and synchronized %(synced)s entr%(entry_suffix)s with image paths."
+                                % {
+                                    "generated": generated,
+                                    "image_suffix": "" if generated == 1 else "s",
+                                    "preferred": preferred_updates,
+                                    "preferred_suffix": "" if preferred_updates == 1 else "s",
+                                    "synced": synced_entries,
+                                    "entry_suffix": "y" if synced_entries == 1 else "ies",
+                                },
+                            )
+                    else:
+                        messages.info(request, "No selected rows needed missing images.")
                 if action == "generate_unified_prompts" and selected_entry_ids:
                     rows_by_entry_id = {
                         entry.id: row
