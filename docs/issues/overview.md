@@ -1,7 +1,7 @@
-# C-LARA-2 issue overview (refreshed 2026-06-17T02:10:00Z)
+# C-LARA-2 issue overview (refreshed 2026-06-17T02:45:00Z)
 ## Recent progress
-- Extended **ISSUE-0039** missing-information creation so selected rows can fill missing lemma/POS/gloss, replace default surface-only prompts, and generate missing images in one action.
-- Added an immediate in-page running notice under unified workspace controls when save/prompt/image/missing-information actions are submitted.
+- Corrected **ISSUE-0039** prompt/image consistency: surface-only prompts are now considered missing only when the row has no image.
+- Preserved existing liked images by leaving their surface-only prompts unchanged unless the image itself is missing and will be regenerated.
 - Kept **ISSUE-0039** active/P0 because prompt-variant management, progress feedback depth, and tighter subset/exercise integration still need follow-up before Sophie review.
 - Regenerated this overview from canonical issue JSON so the complete inventory reflects all current `reported`, `active`, and `closed` states.
 
@@ -29,7 +29,7 @@
 
 ## Notes/risks
 
-- **ISSUE-0039** now has a one-click missing-information path, but laptop/Sophie testing should validate language accuracy, generated prompt usefulness, and whether long image batches need a true async progress monitor.
+- **ISSUE-0039** now avoids separating existing images from their original prompts, but laptop/Sophie testing should validate whether organisers need explicit prompt/image provenance or variant history.
 - **ISSUE-0037** remains active for the already implemented subdictionary/subset-project workflow and Sophie review, but its long-term data ownership should align with **ISSUE-0039**.
 - **ISSUE-0038** is closed for the low-resource dictionary deletion path, but **ISSUE-0039** should preserve stable entry/image identity so future synchronization no longer depends on page-number-only assumptions.
 - **ISSUE-0005** should be handled together with **ISSUE-0003**, **ISSUE-0004**, and **ISSUE-0036** so segmentation prompt changes are evaluated against repeatable examples rather than anecdotal improvements.

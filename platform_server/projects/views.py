@@ -9926,7 +9926,9 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             entry.unified_prompt = str(getattr(page, "generation_prompt", "") or entry.surface or "").strip()
             entry.unified_suggestion = picture_dictionary_entry_suggestions.get(str(entry.id), "")
             entry.unified_image_path = str((entry.image_path or getattr(page, "image_path", "") or "")).strip()
-            prompt_is_missing = (not entry.unified_prompt) or (entry.unified_prompt.casefold() == entry.unified_surface.casefold())
+            prompt_is_missing = not entry.unified_prompt
+            if not entry.unified_image_path and entry.unified_prompt.casefold() == entry.unified_surface.casefold():
+                prompt_is_missing = True
             entry.unified_incomplete = not (
                 entry.unified_lemma
                 and entry.unified_pos
@@ -10279,7 +10281,9 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                             continue
                         page = pages_by_number.get(entry.current_page_number or 0)
                         current_prompt = (page.generation_prompt or "").strip()
-                        if not page or (current_prompt and current_prompt.casefold() != (entry.surface or "").strip().casefold()):
+                        has_existing_image = bool((entry.image_path or page.image_path or "").strip())
+                        surface_only_prompt = current_prompt.casefold() == (entry.surface or "").strip().casefold()
+                        if not page or (current_prompt and (has_existing_image or not surface_only_prompt)):
                             continue
                         row = rows_by_entry_id.get(entry.id, {})
                         try:

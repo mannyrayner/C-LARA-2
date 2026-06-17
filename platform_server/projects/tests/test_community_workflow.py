@@ -706,7 +706,7 @@ class CommunityWorkflowTests(TestCase):
                     f"unified_pos_{entry.id}": "noun",
                     f"unified_gloss_{entry.id}": "person updated",
                     f"unified_suggestion_{entry.id}": "Show one friendly person, no text.",
-                    f"unified_prompt_{entry.id}": page.generation_prompt,
+                    f"unified_prompt_{entry.id}": entry.surface,
                 },
                 follow=True,
             )
@@ -719,6 +719,8 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(page.image_path, "images/pages/page_001/variant_002.png")
         self.assertEqual(entry.image_path, "images/pages/page_001/variant_002.png")
 
+        page.generation_prompt = entry.surface
+        page.save(update_fields=["generation_prompt", "updated_at"])
         missing_entry = dictionary.entries.create(surface="ngama", lemma="", pos="", is_active=True)
 
         class FakeMissingInfoClient:
@@ -749,13 +751,13 @@ class CommunityWorkflowTests(TestCase):
                     "picture_dictionary_action": "generate_unified_missing_info",
                     "picture_dictionary_background_information": "Use Kok Kaper classroom-friendly cultural context.",
                     "picture_dictionary_style_brief": "Bright watercolor style.",
-                    "unified_selected_entry_id": [str(missing_entry.id)],
+                    "unified_selected_entry_id": [str(missing_entry.id), str(entry.id)],
                     f"unified_surface_{entry.id}": entry.surface,
                     f"unified_lemma_{entry.id}": entry.lemma,
                     f"unified_pos_{entry.id}": entry.pos,
                     f"unified_gloss_{entry.id}": "person updated",
                     f"unified_suggestion_{entry.id}": "Show one friendly person, no text.",
-                    f"unified_prompt_{entry.id}": page.generation_prompt,
+                    f"unified_prompt_{entry.id}": entry.surface,
                     f"unified_surface_{missing_entry.id}": "ngama",
                     f"unified_lemma_{missing_entry.id}": "",
                     f"unified_pos_{missing_entry.id}": "",
@@ -780,6 +782,9 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(missing_page.image_path, expected_missing_image_path)
         missing_entry.refresh_from_db()
         self.assertEqual(missing_entry.image_path, expected_missing_image_path)
+        page.refresh_from_db()
+        self.assertEqual(page.generation_prompt, entry.surface)
+        self.assertEqual(page.image_path, "images/pages/page_001/variant_002.png")
         missing_gloss_payload = read_stage_artifact(dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary", "gloss")
         self.assertEqual(missing_gloss_payload["pages"][-1]["segments"][0]["tokens"][0]["annotations"]["gloss"], "water")
 
