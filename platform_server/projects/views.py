@@ -9596,6 +9596,73 @@ def _write_picture_dictionary_workspace_metadata(
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+
+def _missing_picture_dictionary_info_request(
+    *,
+    dictionary: PictureDictionary,
+    surface: str,
+    lemma: str,
+    pos: str,
+    gloss: str,
+    background_information: str,
+) -> str:
+    payload = {
+        "source_language": dictionary.language or dictionary.project.language or dictionary.community.language,
+        "gloss_language": dictionary.project.target_language,
+        "surface_word": surface,
+        "current_lemma": lemma,
+        "current_pos": pos,
+        "current_translation_or_gloss": gloss,
+        "background_information": background_information,
+    }
+    return "\n".join(
+        [
+            "Fill missing lexical metadata for one picture-dictionary entry.",
+            "Return JSON only with string keys: lemma, pos, translation.",
+            "Preserve any non-empty current values unless they are clearly malformed.",
+            "Use a concise universal POS tag such as NOUN, VERB, ADJ, ADV, PRON, PROPN, NUM, ADP, DET, or INTJ.",
+            "If you are not confident, return the best cautious value rather than an explanation.",
+            "",
+            json.dumps(payload, ensure_ascii=False, indent=2),
+        ]
+    )
+
+
+def _generate_missing_picture_dictionary_info(
+    *,
+    dictionary: PictureDictionary,
+    surface: str,
+    lemma: str,
+    pos: str,
+    gloss: str,
+    background_information: str,
+    user=None,
+) -> dict[str, str]:
+    request_prompt = _missing_picture_dictionary_info_request(
+        dictionary=dictionary,
+        surface=surface,
+        lemma=lemma,
+        pos=pos,
+        gloss=gloss,
+        background_information=background_information,
+    )
+    model_name = (dictionary.project.ai_model or DEFAULT_MODEL).strip()
+    if model_name not in AI_MODEL_CHOICES:
+        model_name = DEFAULT_MODEL
+    client = _build_ai_client(model_name=model_name, user=user)
+    if hasattr(client, "chat_json"):
+        payload = asyncio.run(client.chat_json(request_prompt))
+    else:
+        raw = asyncio.run(client.chat_text(request_prompt))
+        payload = json.loads(normalize_json_text(str(raw or "{}")))
+    if not isinstance(payload, dict):
+        payload = {}
+    return {
+        "lemma": str(payload.get("lemma") or lemma or surface).strip(),
+        "pos": str(payload.get("pos") or pos or "").strip().upper(),
+        "gloss": str(payload.get("translation") or payload.get("gloss") or gloss or "").strip(),
+    }
+
 def _unified_picture_dictionary_prompt_request(
     *,
     dictionary: PictureDictionary,
@@ -9859,7 +9926,13 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             entry.unified_prompt = str(getattr(page, "generation_prompt", "") or entry.surface or "").strip()
             entry.unified_suggestion = picture_dictionary_entry_suggestions.get(str(entry.id), "")
             entry.unified_image_path = str((entry.image_path or getattr(page, "image_path", "") or "")).strip()
-            entry.unified_incomplete = not (entry.unified_prompt and entry.unified_image_path)
+            entry.unified_incomplete = not (
+                entry.unified_lemma
+                and entry.unified_pos
+                and entry.unified_gloss
+                and entry.unified_prompt
+                and entry.unified_image_path
+            )
     picture_dictionary_compile_info: dict[str, Any] | None = None
     picture_dictionary_style_brief = ""
     if picture_dictionary:
@@ -10089,7 +10162,7 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                                     "reason": trace.get("reason", ""),
                                 },
                             )
-            elif action in {"update_unified_entries", "generate_unified_prompts", "generate_unified_images", "generate_unified_prompts_and_images"}:
+            elif action in {"update_unified_entries", "generate_unified_prompts", "generate_unified_images", "generate_unified_missing_info"}:
                 active_entries = list(picture_dictionary.entries.filter(is_active=True).order_by("id"))
                 rows: list[dict[str, str]] = []
                 prompts_by_entry_id: dict[int, str] = {}
@@ -10149,9 +10222,41 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                         "prompt_suffix": "" if prompt_updates == 1 else "s",
                     },
                 )
-                if action in {"generate_unified_prompts", "generate_unified_images", "generate_unified_prompts_and_images"} and not selected_entry_ids:
-                    messages.error(request, "Select at least one dictionary row before creating prompts or images.")
-                if action in {"generate_unified_prompts", "generate_unified_prompts_and_images"} and selected_entry_ids:
+                if action in {"generate_unified_prompts", "generate_unified_images", "generate_unified_missing_info"} and not selected_entry_ids:
+                    messages.error(request, "Select at least one dictionary row before creating prompts, images, or missing information.")
+                if action == "generate_unified_missing_info" and selected_entry_ids:
+                    rows_by_id = {int(row["id"]): row for row in rows if str(row.get("id") or "").isdigit()}
+                    filled_count = 0
+                    for entry_id in selected_entry_ids:
+                        row = rows_by_id.get(entry_id)
+                        if not row:
+                            continue
+                        if row.get("lemma") and row.get("pos") and row.get("gloss"):
+                            continue
+                        try:
+                            generated_info = _generate_missing_picture_dictionary_info(
+                                dictionary=picture_dictionary,
+                                surface=row.get("surface", ""),
+                                lemma=row.get("lemma", ""),
+                                pos=row.get("pos", ""),
+                                gloss=row.get("gloss", ""),
+                                background_information=background_information,
+                                user=request.user,
+                            )
+                        except Exception as exc:
+                            logger.exception("Unified picture-dictionary missing-info generation failed for entry %s", entry_id)
+                            messages.error(request, f"Could not create missing information for {row.get('surface', 'selected row')}: {exc}")
+                            continue
+                        row["lemma"] = row.get("lemma") or generated_info["lemma"]
+                        row["pos"] = row.get("pos") or generated_info["pos"]
+                        row["gloss"] = row.get("gloss") or generated_info["gloss"]
+                        filled_count += 1
+                    if filled_count:
+                        picture_dictionary_update_entry_metadata(dictionary=picture_dictionary, rows=rows)
+                        messages.success(request, f"Created missing lemma/POS/translation information for {filled_count} selected dictionary row(s).")
+                    else:
+                        messages.info(request, "No selected rows needed missing lemma/POS/translation information.")
+                if action == "generate_unified_prompts" and selected_entry_ids:
                     rows_by_entry_id = {
                         entry.id: row
                         for entry, row in zip(
@@ -10190,7 +10295,7 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                         prompt_count += 1
                     if prompt_count:
                         messages.success(request, f"Created AI image-generation prompts for {prompt_count} selected dictionary row(s).")
-                if action in {"generate_unified_images", "generate_unified_prompts_and_images"} and selected_entry_ids:
+                if action == "generate_unified_images" and selected_entry_ids:
                     pages_by_number = {
                         page.page_number: page
                         for page in picture_dictionary.project.image_pages.order_by("page_number", "id")

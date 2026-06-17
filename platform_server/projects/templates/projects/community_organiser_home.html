@@ -53,8 +53,6 @@
   {% csrf_token %}
   <p>
     <button class="btn secondary" type="submit" name="picture_dictionary_action" value="ensure">Ensure dictionary</button>
-    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="sync_placeholders">Sync dictionary text + placeholder stages (no image generation)</button>
-    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="compile" {% if low_resource_mode_recommended and low_resource_missing_rows > 0 %}disabled title="Add missing glosses/translations in the low-resource table or review editor first"{% endif %}>{% if low_resource_mode_recommended %}Create new images{% else %}Compile dictionary (sync pages + annotation + images){% endif %}</button>
   </p>
   <p>
     <label>
@@ -228,7 +226,7 @@
         <button class="btn secondary" type="submit" name="picture_dictionary_action" value="update_unified_entries">Save unified dictionary edits</button>
         <button class="btn secondary" type="submit" name="picture_dictionary_action" value="generate_unified_prompts">Create prompts for selected rows</button>
         <button class="btn secondary" type="submit" name="picture_dictionary_action" value="generate_unified_images" onclick="return confirm('Create images for the selected dictionary rows using their current prompts?');">Create images for selected rows</button>
-        <button class="btn secondary" type="submit" name="picture_dictionary_action" value="generate_unified_prompts_and_images" onclick="return confirm('Create prompts and then images for the selected dictionary rows?');">Create prompts + images for selected rows</button>
+        <button class="btn secondary" type="submit" name="picture_dictionary_action" value="generate_unified_missing_info">Create missing information for selected rows</button>
       </p>
     </fieldset>
   {% endif %}

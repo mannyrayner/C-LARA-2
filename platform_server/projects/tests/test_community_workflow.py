@@ -451,7 +451,8 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "Picture dictionary (Phase A)")
         self.assertContains(page, "Ensure dictionary")
-        self.assertContains(page, "Sync dictionary text + placeholder stages (no image generation)")
+        self.assertNotContains(page, "Sync dictionary text + placeholder stages (no image generation)")
+        self.assertNotContains(page, "Compile dictionary (sync pages + annotation + images)")
         self.assertContains(page, "Add from text")
         self.assertContains(page, "Import as dictionary copy")
         self.assertContains(page, "low-resource mode is preselected")
@@ -613,7 +614,8 @@ class CommunityWorkflowTests(TestCase):
         self.assertContains(response, "Dictionary entry fields")
         self.assertContains(response, "Create prompts for selected rows")
         self.assertContains(response, "Create images for selected rows")
-        self.assertContains(response, "Create prompts + images for selected rows")
+        self.assertContains(response, "Create missing information for selected rows")
+        self.assertNotContains(response, "Create prompts + images for selected rows")
         self.assertContains(response, "Original prompt")
 
         save = client.post(
@@ -715,6 +717,44 @@ class CommunityWorkflowTests(TestCase):
         entry.refresh_from_db()
         self.assertEqual(page.image_path, "images/pages/page_001/variant_002.png")
         self.assertEqual(entry.image_path, "images/pages/page_001/variant_002.png")
+
+        missing_entry = dictionary.entries.create(surface="ngama", lemma="", pos="", is_active=True)
+
+        class FakeMissingInfoClient:
+            async def chat_json(self, prompt, **kwargs):  # noqa: ARG002
+                return {"lemma": "ngama", "pos": "NOUN", "translation": "water"}
+
+        with patch("projects.views._build_ai_client", return_value=FakeMissingInfoClient()) as mock_missing_client:
+            missing_response = client.post(
+                reverse("community-organiser-home", args=[self.community.id]),
+                {
+                    "picture_dictionary_action": "generate_unified_missing_info",
+                    "picture_dictionary_background_information": "Use Kok Kaper classroom-friendly cultural context.",
+                    "picture_dictionary_style_brief": "Bright watercolor style.",
+                    "unified_selected_entry_id": [str(missing_entry.id)],
+                    f"unified_surface_{entry.id}": entry.surface,
+                    f"unified_lemma_{entry.id}": entry.lemma,
+                    f"unified_pos_{entry.id}": entry.pos,
+                    f"unified_gloss_{entry.id}": "person updated",
+                    f"unified_suggestion_{entry.id}": "Show one friendly person, no text.",
+                    f"unified_prompt_{entry.id}": page.generation_prompt,
+                    f"unified_surface_{missing_entry.id}": "ngama",
+                    f"unified_lemma_{missing_entry.id}": "",
+                    f"unified_pos_{missing_entry.id}": "",
+                    f"unified_gloss_{missing_entry.id}": "",
+                    f"unified_suggestion_{missing_entry.id}": "",
+                    f"unified_prompt_{missing_entry.id}": "",
+                },
+                follow=True,
+            )
+        self.assertEqual(missing_response.status_code, 200)
+        self.assertTrue(mock_missing_client.called)
+        self.assertContains(missing_response, "Created missing lemma/POS/translation information for 1 selected dictionary row")
+        missing_entry.refresh_from_db()
+        self.assertEqual(missing_entry.lemma, "ngama")
+        self.assertEqual(missing_entry.pos, "NOUN")
+        missing_gloss_payload = read_stage_artifact(dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary", "gloss")
+        self.assertEqual(missing_gloss_payload["pages"][-1]["segments"][0]["tokens"][0]["annotations"]["gloss"], "water")
 
 
     def test_low_resource_dictionary_headers_include_language_names(self):
