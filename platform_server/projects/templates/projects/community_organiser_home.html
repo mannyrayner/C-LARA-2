@@ -168,6 +168,10 @@
         <textarea id="picture_dictionary_background_information" name="picture_dictionary_background_information" rows="3" style="width:100%;" placeholder="Cultural, classroom, or visual context that should guide dictionary images.">{{ picture_dictionary_background_information }}</textarea>
       </p>
       <p>
+        <label for="picture_dictionary_translation_language"><strong>Translation language</strong> (used for dictionary translations/glosses and synced to the associated project):</label><br />
+        <input id="picture_dictionary_translation_language" type="text" name="picture_dictionary_translation_language" value="{{ picture_dictionary_translation_language }}" style="width:20rem; max-width:100%;" placeholder="e.g. en, fr, English, French" />
+      </p>
+      <p>
         <label for="picture_dictionary_style_brief_unified"><strong>Style brief</strong> (used if style is missing or when creating prompts):</label><br />
         <textarea id="picture_dictionary_style_brief_unified" name="picture_dictionary_style_brief" rows="3" style="width: 100%;">{{ picture_dictionary_style_brief }}</textarea>
       </p>
@@ -224,6 +228,7 @@
       </div>
       <p>
         <button class="btn secondary unified-action-button" type="submit" name="picture_dictionary_action" value="update_unified_entries" data-running-message="Saving unified dictionary edits…">Save unified dictionary edits</button>
+        <button class="btn secondary unified-action-button" type="submit" name="picture_dictionary_action" value="generate_unified_translations" data-running-message="Creating translations for selected rows…">Create translations for selected rows</button>
         <button class="btn secondary unified-action-button" type="submit" name="picture_dictionary_action" value="generate_unified_prompts" data-running-message="Creating prompts for selected rows…">Create prompts for selected rows</button>
         <button class="btn secondary unified-action-button" type="submit" name="picture_dictionary_action" value="generate_unified_images" data-running-message="Creating images for selected rows…" onclick="return confirm('Create images for the selected dictionary rows using their current prompts?');">Create images for selected rows</button>
         <button class="btn secondary unified-action-button" type="submit" name="picture_dictionary_action" value="generate_unified_missing_info" data-running-message="Creating missing information, prompts, and images for selected rows as needed…">Create missing information for selected rows</button>

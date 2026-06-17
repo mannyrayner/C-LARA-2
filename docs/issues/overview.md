@@ -1,7 +1,8 @@
-# C-LARA-2 issue overview (refreshed 2026-06-17T02:45:00Z)
+# C-LARA-2 issue overview (refreshed 2026-06-17T03:30:00Z)
 ## Recent progress
 - Corrected **ISSUE-0039** prompt/image consistency: surface-only prompts are now considered missing only when the row has no image.
 - Preserved existing liked images by leaving their surface-only prompts unchanged unless the image itself is missing and will be regenerated.
+- Added dictionary-level translation language, selected-row translation generation, fan-out/fan-in for selected-row AI text operations, and POS/translation-aware image prompt construction for **ISSUE-0039**.
 - Kept **ISSUE-0039** active/P0 because prompt-variant management, progress feedback depth, and tighter subset/exercise integration still need follow-up before Sophie review.
 - Regenerated this overview from canonical issue JSON so the complete inventory reflects all current `reported`, `active`, and `closed` states.
 
