@@ -2,9 +2,10 @@
 {% block title %}Exercise set{% endblock %}
 {% block content %}
 <h1>{{ exercise_set.title|default:"Exercise set" }}</h1>
+{% if back_url %}<p><a class="btn secondary" href="{{ back_url }}">Back to community</a></p>{% endif %}
 <p>Type: {{ exercise_set.exercise_type }} | Theme: {{ exercise_set.theme }} | Status: {{ exercise_set.status }}</p>
 {% if exercise_set.instructions %}<p>{{ exercise_set.instructions }}</p>{% endif %}
-<p><a class="btn" href="{% url 'exercise-set-play' exercise_set.id %}">Play this set</a></p>
+<p><a class="btn" href="{% url 'exercise-set-play' exercise_set.id %}{% if back_url %}?next={{ back_url|urlencode }}{% endif %}">Play this set</a></p>
 {% if project.owner == user %}
   <p><a class="btn secondary" href="{% url 'exercise-set-publish' exercise_set.id %}">{% if exercise_set.is_published %}Unpublish{% else %}Publish{% endif %}</a></p>
 {% endif %}

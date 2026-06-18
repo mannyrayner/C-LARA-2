@@ -8979,6 +8979,29 @@ def _require_community_member(community_id: int, user):
     return membership
 
 
+def _latest_exercise_sets_for_project(project: Project | None) -> list[ExerciseSet]:
+    if project is None:
+        return []
+    latest_sets: list[ExerciseSet] = []
+    for exercise_type in [
+        ExerciseSet.TYPE_FLASHCARD,
+        ExerciseSet.TYPE_WORD_SCRAMBLE,
+        ExerciseSet.TYPE_CROSSWORD,
+        ExerciseSet.TYPE_CLOZE,
+    ]:
+        latest = project.exercise_sets.filter(exercise_type=exercise_type).order_by("-updated_at", "-id").first()
+        if latest is not None:
+            latest_sets.append(latest)
+    latest_sets.sort(key=lambda exercise_set: exercise_set.updated_at, reverse=True)
+    return latest_sets
+
+
+def _safe_exercise_back_url(request: HttpRequest) -> str:
+    back_url = str(request.GET.get("next") or "").strip()
+    if back_url.startswith("/") and not back_url.startswith("//"):
+        return back_url
+    return ""
+
 @login_required
 def community_member_home(request: HttpRequest, community_id: int) -> HttpResponse:
     membership = _require_community_member(community_id, request.user)
@@ -8994,6 +9017,16 @@ def community_member_home(request: HttpRequest, community_id: int) -> HttpRespon
     project_rows = [
         {"project": project, "judged_count": judged_by_project.get(project.id, 0)} for project in projects
     ]
+    picture_dictionary = (
+        PictureDictionary.objects.select_related("project")
+        .filter(community_id=community_id, is_active=True)
+        .first()
+    )
+    picture_dictionary_exercise_sets = _latest_exercise_sets_for_project(picture_dictionary.project if picture_dictionary else None)
+    picture_dictionary_subsets = list_picture_dictionary_subsets(picture_dictionary) if picture_dictionary else []
+    for subset in picture_dictionary_subsets:
+        subset["exercise_sets"] = _latest_exercise_sets_for_project(subset.get("project"))
+    community_back_url = reverse("community-member-home", args=[community_id])
     return render(
         request,
         "projects/community_member_home.html",
@@ -9001,6 +9034,10 @@ def community_member_home(request: HttpRequest, community_id: int) -> HttpRespon
             "community": membership.community,
             "membership": membership,
             "project_rows": project_rows,
+            "picture_dictionary": picture_dictionary,
+            "picture_dictionary_exercise_sets": picture_dictionary_exercise_sets,
+            "picture_dictionary_subsets": picture_dictionary_subsets,
+            "community_back_url": community_back_url,
         },
     )
 
@@ -10055,9 +10092,11 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                 and entry.unified_image_path
             )
     picture_dictionary_entry_count = len(dictionary_entries)
+    picture_dictionary_exercise_sets = _latest_exercise_sets_for_project(picture_dictionary.project if picture_dictionary else None)
     if picture_dictionary_subsets:
         entries_by_id = {entry.id: entry for entry in dictionary_entries}
         for subset in picture_dictionary_subsets:
+            subset["exercise_sets"] = _latest_exercise_sets_for_project(subset.get("project"))
             preview_entries = []
             for entry_id in subset.get("entry_ids", []):
                 entry = entries_by_id.get(int(entry_id)) if str(entry_id).isdigit() else None
@@ -10939,6 +10978,8 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             "dictionary_entries": dictionary_entries,
             "picture_dictionary_compile_info": picture_dictionary_compile_info,
             "picture_dictionary_entry_count": picture_dictionary_entry_count,
+            "picture_dictionary_exercise_sets": picture_dictionary_exercise_sets,
+            "community_back_url": reverse("community-organiser-home", args=[community_id]),
             "picture_dictionary_style_brief": picture_dictionary_style_brief,
             "picture_dictionary_background_information": picture_dictionary_background_information,
             "picture_dictionary_translation_language": picture_dictionary_translation_language,
@@ -13578,10 +13619,11 @@ def exercise_set_detail(request: HttpRequest, set_id: int) -> HttpResponse:
     project = ex_set.project
     if project.owner != request.user and not ex_set.is_published:
         raise Http404()
+    back_url = _safe_exercise_back_url(request)
     return render(
         request,
         "projects/exercise_set_detail.html",
-        {"exercise_set": ex_set, "items": ex_set.items.all(), "project": project},
+        {"exercise_set": ex_set, "items": ex_set.items.all(), "project": project, "back_url": back_url},
     )
 
 
@@ -13592,8 +13634,9 @@ def exercise_set_play(request: HttpRequest, set_id: int) -> HttpResponse:
     if project.owner != request.user and not ex_set.is_published:
         raise Http404()
     items = list(ex_set.items.all())
+    back_url = _safe_exercise_back_url(request)
     if not items:
-        return render(request, "projects/exercise_set_play.html", {"exercise_set": ex_set, "project": project, "done": True})
+        return render(request, "projects/exercise_set_play.html", {"exercise_set": ex_set, "project": project, "done": True, "back_url": back_url})
 
     idx = int(request.GET.get("i", "0") or "0")
     idx = max(0, min(idx, len(items) - 1))
@@ -13634,6 +13677,7 @@ def exercise_set_play(request: HttpRequest, set_id: int) -> HttpResponse:
             "feedback": feedback,
             "next_index": next_index,
             "done": False,
+            "back_url": back_url,
         },
     )
 

@@ -1,9 +1,9 @@
-# C-LARA-2 issue overview (refreshed 2026-06-18T09:30:00Z)
+# C-LARA-2 issue overview (refreshed 2026-06-18T10:15:00Z)
 ## Recent progress
 - Corrected **ISSUE-0039** prompt/image consistency: surface-only prompts are now considered missing only when the row has no image.
 - Preserved existing liked images by leaving their surface-only prompts unchanged unless the image itself is missing and will be regenerated.
 - Added standard-menu translation and generation-prompt language controls, selected-row translation generation, fan-out/fan-in for selected-row AI text operations plus page-image prompt construction, and POS/translation-aware image prompt construction for **ISSUE-0039**.
-- Simplified the organiser page around the source-of-truth dictionary model: automatic dictionary creation, fewer legacy project controls, exercise links in dictionary/subset sections, subset word/gloss/image previews, and no old image-review dashboard.
+- Simplified the organiser page around the source-of-truth dictionary model: automatic dictionary creation, fewer legacy project controls, moved add-word/debug controls, exercise creation/play links in dictionary/subset/member sections with community backlinks, subset word/gloss/image previews, and no old image-review dashboard.
 - Kept **ISSUE-0039** active/P0 because prompt-variant management, progress feedback depth, and tighter subset/exercise integration still need follow-up before Sophie review.
 - Regenerated this overview from canonical issue JSON so the complete inventory reflects all current `reported`, `active`, and `closed` states.
 
