@@ -352,8 +352,8 @@ class CommunityWorkflowTests(TestCase):
 
         home = client.get(reverse("community-member-home", args=[self.community.id]))
         self.assertEqual(home.status_code, 200)
-        self.assertContains(home, "Judge page images")
-        self.assertContains(home, f"Judge images for {self.project.title}")
+        self.assertNotContains(home, "Judge page images")
+        self.assertNotContains(home, f"Judge images for {self.project.title}")
 
         judge = client.get(reverse("community-member-judge-project", args=[self.community.id, self.project.id]))
         self.assertEqual(judge.status_code, 200)
@@ -612,7 +612,7 @@ class CommunityWorkflowTests(TestCase):
         self.assertContains(response, "Create translations for selected rows")
         self.assertContains(response, "Exercises from this dictionary")
         self.assertContains(response, "Create flashcards")
-        self.assertContains(response, "Play created exercises")
+        self.assertContains(response, "Picture dictionary exercises")
         self.assertNotContains(response, "Test/manage exercises")
         self.assertContains(response, "Generation prompt language")
         self.assertContains(response, "Select all")
@@ -747,13 +747,14 @@ class CommunityWorkflowTests(TestCase):
             created_by=self.organiser,
         )
         organiser_with_exercises = client.get(reverse("community-organiser-home", args=[self.community.id]))
-        self.assertContains(organiser_with_exercises, "Play created exercises")
+        self.assertContains(organiser_with_exercises, "Picture dictionary exercises")
         self.assertContains(organiser_with_exercises, "Dictionary flashcards")
         self.assertContains(organiser_with_exercises, f"/exercise-sets/{exercise_set.id}/play/?next=/communities/{self.community.id}/organiser/")
         member_client = Client()
         member_client.login(username="mem", password="pw")
         member_page = member_client.get(reverse("community-member-home", args=[self.community.id]))
         self.assertContains(member_page, "Picture dictionary exercises")
+        self.assertNotContains(member_page, "Judge page images")
         self.assertContains(member_page, "Dictionary flashcards")
         play_response = client.get(
             reverse("exercise-set-play", args=[exercise_set.id]),

@@ -226,16 +226,6 @@
         <a class="btn secondary" href="{% url 'project-generate-flashcards' picture_dictionary.project.id %}">Create flashcards</a>
         <a class="btn secondary" href="{% url 'project-generate-word-scramble' picture_dictionary.project.id %}">Create word scramble</a>
         <a class="btn secondary" href="{% url 'project-generate-crossword' picture_dictionary.project.id %}">Create crossword</a>
-        <div style="margin-top:0.5rem;">
-          <strong>Play created exercises:</strong>
-          {% if picture_dictionary_exercise_sets %}
-            {% for exercise_set in picture_dictionary_exercise_sets %}
-              <a class="btn secondary" href="{% url 'exercise-set-play' exercise_set.id %}?next={{ community_back_url|urlencode }}">{{ exercise_set.title|default:"Exercise set" }}</a>
-            {% endfor %}
-          {% else %}
-            <small>No exercises created yet.</small>
-          {% endif %}
-        </div>
       </div>
       <p id="unified-operation-status" style="display:none; padding:0.6rem; border:1px solid #ddd; background:#f8fbff;">
         <strong>Working…</strong> <span id="unified-operation-status-text">The operation is running.</span>
@@ -296,14 +286,6 @@
                   <a class="btn secondary" href="{% url 'project-generate-word-scramble' subset.project.id %}">Create word scramble</a>
                   <a class="btn secondary" href="{% url 'project-generate-crossword' subset.project.id %}">Create crossword</a>
                   <a class="btn secondary" href="{% url 'project-exercises-home' subset.project.id %}">Test/manage exercises</a>
-                  {% if subset.exercise_sets %}
-                    <div style="margin-top:0.5rem;">
-                      <strong>Play created exercises:</strong>
-                      {% for exercise_set in subset.exercise_sets %}
-                        <a class="btn secondary" href="{% url 'exercise-set-play' exercise_set.id %}?next={{ community_back_url|urlencode }}">{{ exercise_set.title|default:"Exercise set" }}</a>
-                      {% endfor %}
-                    </div>
-                  {% endif %}
                 </div>
               {% endif %}
             </li>
@@ -348,6 +330,36 @@
         <button id="subset-suggest-button" class="btn secondary" type="submit" name="picture_dictionary_action" value="suggest_subset">Suggest entries from description</button>
         <button class="btn secondary" type="submit" name="picture_dictionary_action" value="save_subset" onclick="return confirm('Save this subset project using the selected dictionary entries?');">{% if picture_dictionary_subset_edit %}Update subset project{% else %}Create subset project{% endif %}</button>
       </p>
+    </fieldset>
+  {% endif %}
+
+  {% if picture_dictionary %}
+    <fieldset style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0;">
+      <legend>Picture dictionary exercises</legend>
+      {% if picture_dictionary_exercise_sets %}
+        <h3>Main dictionary</h3>
+        <ul style="line-height:2.2; padding-left:1.4rem;">
+          {% for exercise_set in picture_dictionary_exercise_sets %}
+            <li><a class="btn secondary" href="{% url 'exercise-set-play' exercise_set.id %}?next={{ community_back_url|urlencode }}">Play {{ exercise_set.title|default:"Exercise set" }}</a></li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+      {% if picture_dictionary_subsets %}
+        <h3>Subset dictionaries</h3>
+        {% for subset in picture_dictionary_subsets %}
+          {% if subset.exercise_sets %}
+            <p><strong>{{ subset.title }}</strong></p>
+            <ul style="line-height:2.2; padding-left:1.4rem;">
+              {% for exercise_set in subset.exercise_sets %}
+                <li><a class="btn secondary" href="{% url 'exercise-set-play' exercise_set.id %}?next={{ community_back_url|urlencode }}">Play {{ exercise_set.title|default:"Exercise set" }}</a></li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+      {% if not picture_dictionary_has_exercise_sets %}
+        <p>No picture-dictionary exercises have been created yet.</p>
+      {% endif %}
     </fieldset>
   {% endif %}
 

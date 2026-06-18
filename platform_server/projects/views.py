@@ -9026,6 +9026,9 @@ def community_member_home(request: HttpRequest, community_id: int) -> HttpRespon
     picture_dictionary_subsets = list_picture_dictionary_subsets(picture_dictionary) if picture_dictionary else []
     for subset in picture_dictionary_subsets:
         subset["exercise_sets"] = _latest_exercise_sets_for_project(subset.get("project"))
+    picture_dictionary_has_exercise_sets = bool(picture_dictionary_exercise_sets) or any(
+        bool(subset.get("exercise_sets")) for subset in picture_dictionary_subsets
+    )
     community_back_url = reverse("community-member-home", args=[community_id])
     return render(
         request,
@@ -9037,6 +9040,7 @@ def community_member_home(request: HttpRequest, community_id: int) -> HttpRespon
             "picture_dictionary": picture_dictionary,
             "picture_dictionary_exercise_sets": picture_dictionary_exercise_sets,
             "picture_dictionary_subsets": picture_dictionary_subsets,
+            "picture_dictionary_has_exercise_sets": picture_dictionary_has_exercise_sets,
             "community_back_url": community_back_url,
         },
     )
@@ -10110,6 +10114,9 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                     }
                 )
             subset["preview_entries"] = preview_entries
+    picture_dictionary_has_exercise_sets = bool(picture_dictionary_exercise_sets) or any(
+        bool(subset.get("exercise_sets")) for subset in picture_dictionary_subsets
+    )
 
     picture_dictionary_compile_info: dict[str, Any] | None = None
     picture_dictionary_style_brief = ""
@@ -10987,6 +10994,7 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             "language_choices": ProjectForm.LANGUAGE_CHOICES,
             "community_projects": [project for project in projects if project.id not in picture_dictionary_subset_project_id_set],
             "picture_dictionary_subsets": picture_dictionary_subsets,
+            "picture_dictionary_has_exercise_sets": picture_dictionary_has_exercise_sets,
             "picture_dictionary_subset_edit": picture_dictionary_subset_edit,
             "picture_dictionary_subset_selected_entry_ids": picture_dictionary_subset_selected_entry_ids,
             "picture_dictionary_subset_form": picture_dictionary_subset_form,
