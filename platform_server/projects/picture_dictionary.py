@@ -655,6 +655,67 @@ def add_manual_rows(*, dictionary: PictureDictionary, rows: Iterable[dict[str, s
     return {"added": added, "updated": updated, "skipped": skipped, "submitted": len(submitted_by_surface)}
 
 
+def update_entry_metadata(*, dictionary: PictureDictionary, rows: Iterable[dict[str, str]]) -> dict[str, int]:
+    """Update active picture-dictionary entries from the unified organiser view.
+
+    The database registry owns surface/lemma/POS/image identity. Gloss and
+    translation are synchronized into the derived annotation stage artifacts,
+    using the edited gloss as the translation for picture-dictionary entries.
+    """
+
+    rows_by_id: dict[int, dict[str, str]] = {}
+    for raw_row in rows:
+        try:
+            entry_id = int(raw_row.get("id") or 0)
+        except (TypeError, ValueError):
+            continue
+        surface = _normalise_word(raw_row.get("surface") or "")
+        if not entry_id or not surface:
+            continue
+        rows_by_id[entry_id] = {
+            "surface": surface,
+            "lemma": _normalise_word(raw_row.get("lemma") or surface),
+            "pos": _normalise_word(raw_row.get("pos") or "").upper(),
+            "gloss": _non_null_text(raw_row.get("gloss")),
+            "translation": _non_null_text(raw_row.get("gloss")),
+        }
+
+    updated = 0
+    active_entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
+    for entry in active_entries:
+        submitted = rows_by_id.get(entry.id)
+        if not submitted:
+            continue
+        changed_fields: list[str] = []
+        for field in ("surface", "lemma", "pos"):
+            value = submitted[field]
+            if getattr(entry, field) != value:
+                setattr(entry, field, value)
+                changed_fields.append(field)
+        if changed_fields:
+            changed_fields.append("updated_at")
+            entry.save(update_fields=changed_fields)
+            updated += 1
+
+    active_entries = list(dictionary.entries.filter(is_active=True).order_by("id"))
+    _sync_project_source_from_registry(dictionary)
+    _sync_dictionary_project_pages(dictionary, active_entries)
+    _write_segmentation_phase_1(dictionary, active_entries)
+    manual_rows = _manual_rows_from_entries(dictionary, active_entries)
+    submitted_count = 0
+    for entry, row in zip(active_entries, manual_rows, strict=False):
+        submitted = rows_by_id.get(entry.id)
+        if not submitted:
+            continue
+        submitted_count += 1
+        row["surface"] = submitted["surface"]
+        row["lemma"] = submitted["lemma"] or row.get("lemma") or row.get("surface")
+        row["pos"] = submitted["pos"]
+        row["gloss"] = submitted["gloss"]
+        row["translation"] = submitted["translation"]
+    _write_imported_dictionary_annotation_stages(dictionary, manual_rows, source="picture_dictionary_unified_edit")
+    return {"submitted": submitted_count, "updated": updated, "skipped": max(0, len(rows_by_id) - submitted_count)}
+
 def extract_pictureable_words(text: str) -> list[str]:
     raw = re.findall(r"[\w'-]+", text or "", flags=re.UNICODE)
     candidates: list[str] = []
