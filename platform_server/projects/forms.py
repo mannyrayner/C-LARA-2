@@ -39,6 +39,7 @@ class ProjectForm(forms.ModelForm):
         ("nl", "Dutch"),
         ("fa", "Persian"),
         ("fr", "French"),
+        ("ht", "Haitian Creole (Krèol)"),
         ("hi", "Hindi"),
         ("iai", "Iaai"),
         ("is", "Icelandic"),

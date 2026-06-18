@@ -221,6 +221,14 @@ class PictureDictionaryCommandTests(TestCase):
         self.assertFalse(style.discourage_text_in_images)
         self.assertTrue(style.disallow_text_in_images)
 
+    def test_picture_dictionary_defaults_for_haitian_creole_use_ai_mode(self):
+        self.community.language = "ht"
+        self.community.save(update_fields=["language"])
+        call_command("picture_dictionary", "ensure", community_id=self.community.id, organiser=self.organiser.username)
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        self.assertEqual(dictionary.project.language, "ht")
+        self.assertEqual(dictionary.project.page_image_text_source, Project.PAGE_IMAGE_TEXT_SOURCE_SEGMENTATION)
+
     def test_manual_rows_pick_up_translation_stage_values(self):
         call_command("picture_dictionary", "ensure", community_id=self.community.id, organiser=self.organiser.username)
         dictionary = PictureDictionary.objects.get(community=self.community)

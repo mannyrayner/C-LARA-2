@@ -1686,6 +1686,7 @@ def _build_page_image_prompt(
     language_labels = {
         "en": "English",
         "fr": "French",
+        "ht": "Haitian Creole (Krèol)",
         "de": "German",
         "es": "Spanish",
         "it": "Italian",

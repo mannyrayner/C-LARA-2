@@ -89,6 +89,7 @@ def _build_story_prompt(*, language: str, description: dict[str, Any] | str) -> 
         "es": "Spanish",
         "fa": "Persian",
         "fr": "French",
+        "ht": "Haitian Creole (Krèol)",
         "hi": "Hindi",
         "it": "Italian",
         "ja": "Japanese",
