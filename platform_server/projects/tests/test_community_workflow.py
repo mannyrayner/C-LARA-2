@@ -429,9 +429,9 @@ class CommunityWorkflowTests(TestCase):
 
         home = client.get(reverse("community-organiser-home", args=[self.community.id]))
         self.assertEqual(home.status_code, 200)
-        self.assertContains(home, "Image review dashboard")
-        self.assertContains(home, "Checking dictionary/image consistency, please wait")
-        self.assertContains(home, f"Review images for {self.project.title}")
+        self.assertNotContains(home, "Image review dashboard")
+        self.assertNotContains(home, "Checking dictionary/image consistency, please wait")
+        self.assertNotContains(home, f"Review images for {self.project.title}")
 
         review = client.get(reverse("community-organiser-review-project", args=[self.community.id, self.project.id]))
         self.assertEqual(review.status_code, 200)
@@ -449,13 +449,16 @@ class CommunityWorkflowTests(TestCase):
 
         page = client.get(reverse("community-organiser-home", args=[self.community.id]))
         self.assertEqual(page.status_code, 200)
-        self.assertContains(page, "Picture dictionary (Phase A)")
-        self.assertContains(page, "Ensure dictionary")
+        self.assertContains(page, "Picture dictionary")
+        self.assertContains(page, "Dictionary project (debugging)")
+        self.assertContains(page, "Dictionary entries:")
+        self.assertNotContains(page, "Ensure dictionary")
         self.assertNotContains(page, "Sync dictionary text + placeholder stages (no image generation)")
         self.assertNotContains(page, "Compile dictionary (sync pages + annotation + images)")
         self.assertContains(page, "Add from text")
         self.assertContains(page, "Import as dictionary copy")
-        self.assertContains(page, "low-resource mode is preselected")
+        self.assertContains(page, "Non-AI language: use translations/glosses")
+        self.assertNotContains(page, "Low-resource compile mode")
         self.assertNotContains(page, "Remove words")
 
         ensure = client.post(
@@ -466,10 +469,7 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(ensure.status_code, 200)
         dictionary = PictureDictionary.objects.get(community=self.community)
         self.assertEqual(dictionary.organiser_id, self.organiser.id)
-        self.assertContains(
-            ensure,
-            reverse("manual-page-annotation", args=[dictionary.project.id]),
-        )
+        self.assertNotContains(ensure, "Review dictionary content (page-oriented editor)")
 
         add_words = client.post(
             reverse("community-organiser-home", args=[self.community.id]),
@@ -576,7 +576,272 @@ class CommunityWorkflowTests(TestCase):
         self.assertEqual(remove_selected.status_code, 200)
         dictionary_entries[0].refresh_from_db()
         self.assertFalse(dictionary_entries[0].is_active)
-        self.assertContains(remove_selected, "Last dictionary compile:")
+        self.assertContains(remove_selected, "Dictionary entries:")
+        self.assertNotContains(remove_selected, "Last dictionary compile:")
+
+    def test_organiser_can_edit_unified_picture_dictionary_view(self):
+        CommunityMembership.objects.get_or_create(
+            community=self.community,
+            user=self.organiser,
+            defaults={"role": CommunityMembership.ROLE_ORGANISER},
+        )
+        client = Client()
+        client.login(username="org", password="pw")
+        client.post(reverse("community-organiser-home", args=[self.community.id]), {"picture_dictionary_action": "ensure"})
+        dictionary = PictureDictionary.objects.get(community=self.community)
+        client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "add_low_resource_rows",
+                "low_resource_surface": ["pama"],
+                "low_resource_lemma": ["pama"],
+                "low_resource_pos": ["N"],
+                "low_resource_gloss": ["person"],
+            },
+        )
+        entry = dictionary.entries.get(surface="pama")
+        page = ProjectImagePage.objects.get(project=dictionary.project, page_number=1)
+        page.generation_prompt = "Original prompt"
+        page.save(update_fields=["generation_prompt", "updated_at"])
+
+        response = client.get(reverse("community-organiser-home", args=[self.community.id]))
+        self.assertContains(response, "Unified picture-dictionary view")
+        self.assertContains(response, "Background information")
+        self.assertContains(response, "Translation language")
+        self.assertContains(response, "Create translations for selected rows")
+        self.assertContains(response, "Exercises from this dictionary")
+        self.assertContains(response, "Create flashcards")
+        self.assertContains(response, "Test/manage exercises")
+        self.assertContains(response, "Generation prompt language")
+        self.assertContains(response, "Select all")
+        self.assertContains(response, "Select incomplete")
+        self.assertContains(response, "Select none")
+        self.assertContains(response, "Display all")
+        self.assertContains(response, "Display incomplete only")
+        self.assertContains(response, "Dictionary entry fields")
+        self.assertContains(response, "Create prompts for selected rows")
+        self.assertContains(response, "Create images for selected rows")
+        self.assertContains(response, "Create missing information for selected rows")
+        self.assertNotContains(response, "Create prompts + images for selected rows")
+        self.assertContains(response, "Original prompt")
+        self.assertContains(response, "Creating missing information, prompts, and images for selected rows as needed")
+
+        save = client.post(
+            reverse("community-organiser-home", args=[self.community.id]),
+            {
+                "picture_dictionary_action": "update_unified_entries",
+                "picture_dictionary_translation_language": "fr",
+                "picture_dictionary_generation_prompt_language": "en",
+                f"unified_surface_{entry.id}": "pama updated",
+                f"unified_lemma_{entry.id}": "pama-lemma",
+                f"unified_pos_{entry.id}": "noun",
+                f"unified_gloss_{entry.id}": "person updated",
+                f"unified_prompt_{entry.id}": "A clear text-free picture of a person.",
+            },
+            follow=True,
+        )
+        self.assertEqual(save.status_code, 200)
+        self.assertContains(save, "Saved unified dictionary view")
+        entry.refresh_from_db()
+        self.assertEqual(entry.surface, "pama updated")
+        self.assertEqual(entry.lemma, "pama-lemma")
+        self.assertEqual(entry.pos, "NOUN")
+        dictionary.project.refresh_from_db()
+        self.assertEqual(dictionary.project.target_language, "fr")
+        page.refresh_from_db()
+        self.assertEqual(page.page_text, "pama updated")
+        self.assertEqual(page.generation_prompt, "A clear text-free picture of a person.")
+        translation_payload = read_stage_artifact(dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary", "translation")
+        token_annotations = translation_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"]
+        self.assertEqual(token_annotations["translation"], "person updated")
+        gloss_payload = read_stage_artifact(dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary", "gloss")
+        self.assertEqual(gloss_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"]["gloss"], "person updated")
+
+        class FakeTranslationClient:
+            async def chat_json(self, prompt, **kwargs):  # noqa: ARG002
+                self.prompt = prompt
+                return {"translation": "personne"}
+
+        fake_translation_client = FakeTranslationClient()
+        with patch("projects.views._build_ai_client", return_value=fake_translation_client) as mock_translation_client:
+            translation_response = client.post(
+                reverse("community-organiser-home", args=[self.community.id]),
+                {
+                    "picture_dictionary_action": "generate_unified_translations",
+                    "picture_dictionary_translation_language": "fr",
+                    "picture_dictionary_generation_prompt_language": "en",
+                    "picture_dictionary_background_information": "Use Kok Kaper classroom-friendly cultural context.",
+                    "unified_selected_entry_id": [str(entry.id)],
+                    f"unified_surface_{entry.id}": "pama updated",
+                    f"unified_lemma_{entry.id}": "pama-lemma",
+                    f"unified_pos_{entry.id}": "noun",
+                    f"unified_gloss_{entry.id}": "personne",
+                    f"unified_prompt_{entry.id}": "A clear text-free picture of a person.",
+                },
+                follow=True,
+            )
+        self.assertEqual(translation_response.status_code, 200)
+        self.assertTrue(mock_translation_client.called)
+        self.assertContains(translation_response, "Created translations for 1 selected dictionary row")
+        self.assertIn('"translation_language": "fr"', fake_translation_client.prompt)
+        self.assertIn('"pos": "noun"', fake_translation_client.prompt)
+        translation_payload = read_stage_artifact(dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary", "translation")
+        token_annotations = translation_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"]
+        self.assertEqual(token_annotations["translation"], "personne")
+
+        class FakeUnifiedPromptClient:
+            def __init__(self):
+                self.prompt = ""
+
+            async def chat_text(self, prompt, **kwargs):  # noqa: ARG002
+                self.prompt = prompt
+                return (
+                    "A realistic cartoon picture of one friendly person standing outdoors in a simple Cape York coastal setting, "
+                    "focused on the idea of a mother/person, with warm colours and absolutely no written text."
+                )
+
+        fake_prompt_client = FakeUnifiedPromptClient()
+        with patch("projects.views._build_ai_client", return_value=fake_prompt_client) as mock_prompt_client:
+            prompt_response = client.post(
+                reverse("community-organiser-home", args=[self.community.id]),
+                {
+                    "picture_dictionary_action": "generate_unified_prompts",
+                    "picture_dictionary_background_information": "Use Kok Kaper classroom-friendly cultural context.",
+                    "picture_dictionary_style_brief": "Bright watercolor style.",
+                    "picture_dictionary_translation_language": "fr",
+                    "picture_dictionary_generation_prompt_language": "en",
+                    "unified_selected_entry_id": [str(entry.id)],
+                    f"unified_surface_{entry.id}": "pama updated",
+                    f"unified_lemma_{entry.id}": "pama-lemma",
+                    f"unified_pos_{entry.id}": "noun",
+                    f"unified_gloss_{entry.id}": "personne",
+                    f"unified_suggestion_{entry.id}": "Show one friendly person, no text.",
+                    f"unified_prompt_{entry.id}": "A clear text-free picture of a person.",
+                },
+                follow=True,
+            )
+        self.assertEqual(prompt_response.status_code, 200)
+        self.assertTrue(mock_prompt_client.called)
+        self.assertContains(prompt_response, "Created AI image-generation prompts for 1 selected dictionary row")
+        self.assertIn('"gloss_or_translation": "personne"', fake_prompt_client.prompt)
+        self.assertIn('"pos": "NOUN"', fake_prompt_client.prompt)
+        self.assertIn('"generation_prompt_language": "en"', fake_prompt_client.prompt)
+        page.refresh_from_db()
+        self.assertIn("friendly person standing outdoors", page.generation_prompt)
+        self.assertNotIn("Source-language word:", page.generation_prompt)
+        metadata_path = dictionary.project.artifact_dir() / "picture_dictionary_workspace.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        self.assertEqual(metadata["background_information"], "Use Kok Kaper classroom-friendly cultural context.")
+        self.assertEqual(metadata["translation_language"], "fr")
+        self.assertEqual(metadata["generation_prompt_language"], "en")
+        self.assertEqual(metadata["entry_suggestions"][str(entry.id)], "Show one friendly person, no text.")
+
+        def fake_generate_selected_image_variants(*, project, image_model, requests, progress_callback=None):  # noqa: ARG001
+            for requested_page, _count, prompt in requests:
+                ProjectImagePageVariant.objects.create(
+                    page=requested_page,
+                    variant_index=2,
+                    image_model=image_model,
+                    image_path="images/pages/page_001/variant_002.png",
+                    generation_prompt=prompt,
+                    status=ProjectImagePageVariant.STATUS_GENERATED,
+                )
+            return len(requests)
+
+        with patch("projects.views._generate_requested_page_variants", side_effect=fake_generate_selected_image_variants) as mock_generate_images:
+            image_response = client.post(
+                reverse("community-organiser-home", args=[self.community.id]),
+                {
+                    "picture_dictionary_action": "generate_unified_images",
+                    "picture_dictionary_background_information": "Use Kok Kaper classroom-friendly cultural context.",
+                    "picture_dictionary_style_brief": "Bright watercolor style.",
+                    "unified_selected_entry_id": [str(entry.id)],
+                    f"unified_surface_{entry.id}": "pama updated",
+                    f"unified_lemma_{entry.id}": "pama-lemma",
+                    f"unified_pos_{entry.id}": "noun",
+                    f"unified_gloss_{entry.id}": "personne",
+                    f"unified_suggestion_{entry.id}": "Show one friendly person, no text.",
+                    f"unified_prompt_{entry.id}": entry.surface,
+                },
+                follow=True,
+            )
+        self.assertEqual(image_response.status_code, 200)
+        self.assertTrue(mock_generate_images.called)
+        self.assertContains(image_response, "Created 1 image variant for selected dictionary row")
+        self.assertContains(image_response, "selected 1 latest image")
+        page.refresh_from_db()
+        entry.refresh_from_db()
+        self.assertEqual(page.image_path, "images/pages/page_001/variant_002.png")
+        self.assertEqual(entry.image_path, "images/pages/page_001/variant_002.png")
+
+        page.generation_prompt = entry.surface
+        page.save(update_fields=["generation_prompt", "updated_at"])
+        missing_entry = dictionary.entries.create(surface="ngama", lemma="", pos="", is_active=True)
+
+        class FakeMissingInfoClient:
+            async def chat_json(self, prompt, **kwargs):  # noqa: ARG002
+                return {"lemma": "ngama", "pos": "NOUN", "translation": "water"}
+
+            async def chat_text(self, prompt, **kwargs):  # noqa: ARG002
+                return "A realistic cartoon picture of clean water in a simple bowl, with no written text."
+
+        def fake_generate_missing_image_variants(*, project, image_model, requests, progress_callback=None):  # noqa: ARG001
+            for requested_page, _count, prompt in requests:
+                ProjectImagePageVariant.objects.create(
+                    page=requested_page,
+                    variant_index=1,
+                    image_model=image_model,
+                    image_path=f"images/pages/page_{requested_page.page_number:03d}/variant_001.png",
+                    generation_prompt=prompt,
+                    status=ProjectImagePageVariant.STATUS_GENERATED,
+                )
+            return len(requests)
+
+        with patch("projects.views._build_ai_client", return_value=FakeMissingInfoClient()) as mock_missing_client, patch(
+            "projects.views._generate_requested_page_variants", side_effect=fake_generate_missing_image_variants
+        ) as mock_missing_image_generator:
+            missing_response = client.post(
+                reverse("community-organiser-home", args=[self.community.id]),
+                {
+                    "picture_dictionary_action": "generate_unified_missing_info",
+                    "picture_dictionary_background_information": "Use Kok Kaper classroom-friendly cultural context.",
+                    "picture_dictionary_style_brief": "Bright watercolor style.",
+                    "unified_selected_entry_id": [str(missing_entry.id), str(entry.id)],
+                    f"unified_surface_{entry.id}": entry.surface,
+                    f"unified_lemma_{entry.id}": entry.lemma,
+                    f"unified_pos_{entry.id}": entry.pos,
+                    f"unified_gloss_{entry.id}": "person updated",
+                    f"unified_suggestion_{entry.id}": "Show one friendly person, no text.",
+                    f"unified_prompt_{entry.id}": entry.surface,
+                    f"unified_surface_{missing_entry.id}": "ngama",
+                    f"unified_lemma_{missing_entry.id}": "",
+                    f"unified_pos_{missing_entry.id}": "",
+                    f"unified_gloss_{missing_entry.id}": "",
+                    f"unified_suggestion_{missing_entry.id}": "",
+                    f"unified_prompt_{missing_entry.id}": "",
+                },
+                follow=True,
+            )
+        self.assertEqual(missing_response.status_code, 200)
+        self.assertTrue(mock_missing_client.called)
+        self.assertTrue(mock_missing_image_generator.called)
+        self.assertContains(missing_response, "Created missing lemma/POS/translation information for 1 selected dictionary row")
+        self.assertContains(missing_response, "Created missing image-generation prompts for 1 selected dictionary row")
+        self.assertContains(missing_response, "Created 1 missing image variant")
+        missing_entry.refresh_from_db()
+        self.assertEqual(missing_entry.lemma, "ngama")
+        self.assertEqual(missing_entry.pos, "NOUN")
+        missing_page = ProjectImagePage.objects.get(project=dictionary.project, page_text="ngama")
+        self.assertIn("clean water", missing_page.generation_prompt)
+        expected_missing_image_path = f"images/pages/page_{missing_page.page_number:03d}/variant_001.png"
+        self.assertEqual(missing_page.image_path, expected_missing_image_path)
+        missing_entry.refresh_from_db()
+        self.assertEqual(missing_entry.image_path, expected_missing_image_path)
+        page.refresh_from_db()
+        self.assertEqual(page.generation_prompt, entry.surface)
+        self.assertEqual(page.image_path, "images/pages/page_001/variant_002.png")
+        missing_gloss_payload = read_stage_artifact(dictionary.project.artifact_dir() / "runs" / "run_picture_dictionary", "gloss")
+        self.assertEqual(missing_gloss_payload["pages"][-1]["segments"][0]["tokens"][0]["annotations"]["gloss"], "water")
 
     def test_organiser_can_edit_unified_picture_dictionary_view(self):
         CommunityMembership.objects.get_or_create(
@@ -1323,6 +1588,9 @@ class CommunityWorkflowTests(TestCase):
         pages = json.loads((subset_dir / "pages.json").read_text(encoding="utf-8"))["pages"]
         self.assertEqual(config["project_id"], subset_project.id)
         self.assertEqual([page["entry_id"] for page in pages], [entries[0].id, entries[2].id])
+        self.assertContains(response, "Beginner Kok Kaper set")
+        self.assertContains(response, "Create flashcards")
+        self.assertContains(response, "Test/manage exercises")
         self.assertNotContains(response, "Review images for Beginner Kok Kaper set")
 
         review_response = client.get(

@@ -9956,7 +9956,10 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
         .filter(community_id=community_id, is_active=True)
         .first()
     )
+    if picture_dictionary is None:
+        picture_dictionary = ensure_picture_dictionary_for_community(community=community, organiser=request.user)
     dictionary_entries: list[PictureDictionaryEntry] = []
+    picture_dictionary_entry_count = 0
     picture_dictionary_subsets: list[dict[str, Any]] = []
     picture_dictionary_subset_project_id_set: set[int] = set()
     picture_dictionary_background_information = ""
@@ -10051,6 +10054,24 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
                 and not prompt_is_missing
                 and entry.unified_image_path
             )
+    picture_dictionary_entry_count = len(dictionary_entries)
+    if picture_dictionary_subsets:
+        entries_by_id = {entry.id: entry for entry in dictionary_entries}
+        for subset in picture_dictionary_subsets:
+            preview_entries = []
+            for entry_id in subset.get("entry_ids", []):
+                entry = entries_by_id.get(int(entry_id)) if str(entry_id).isdigit() else None
+                if not entry:
+                    continue
+                preview_entries.append(
+                    {
+                        "surface": entry.unified_surface,
+                        "gloss": entry.unified_gloss,
+                        "image_path": entry.unified_image_path,
+                    }
+                )
+            subset["preview_entries"] = preview_entries
+
     picture_dictionary_compile_info: dict[str, Any] | None = None
     picture_dictionary_style_brief = ""
     if picture_dictionary:
@@ -10917,6 +10938,7 @@ def community_organiser_home(request: HttpRequest, community_id: int) -> HttpRes
             "picture_dictionary": picture_dictionary,
             "dictionary_entries": dictionary_entries,
             "picture_dictionary_compile_info": picture_dictionary_compile_info,
+            "picture_dictionary_entry_count": picture_dictionary_entry_count,
             "picture_dictionary_style_brief": picture_dictionary_style_brief,
             "picture_dictionary_background_information": picture_dictionary_background_information,
             "picture_dictionary_translation_language": picture_dictionary_translation_language,
