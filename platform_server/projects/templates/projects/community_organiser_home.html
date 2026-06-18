@@ -29,48 +29,17 @@
   <p>No members yet.</p>
 {% endif %}
 
-<h2>Picture dictionary (Phase A)</h2>
+<h2>Picture dictionary</h2>
 {% if picture_dictionary %}
-  <p>
-    Dictionary project:
-    <a href="{% url 'project-detail' picture_dictionary.project.id %}">{{ picture_dictionary.project.title }}</a>
-  </p>
-  {% if picture_dictionary_compile_info %}
-    <p>
-      Last dictionary compile: {{ picture_dictionary_compile_info.updated_at }} ({{ picture_dictionary_compile_info.entry_count }} entries).
-    </p>
-  {% endif %}
-  {% if picture_dictionary_style_brief %}
-    <p><strong>Current style brief:</strong> {{ picture_dictionary_style_brief }}</p>
-  {% endif %}
-  <p>
-    <a class="btn secondary" href="{% url 'manual-page-annotation' picture_dictionary.project.id %}">Review dictionary content (page-oriented editor)</a>
-  </p>
-{% else %}
-  <p>No picture dictionary exists yet for this community.</p>
+  <p><strong>Dictionary entries:</strong> {{ picture_dictionary_entry_count }}</p>
 {% endif %}
 <form method="post" style="margin: 0.75rem 0;">
   {% csrf_token %}
-  <p>
-    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="ensure">Ensure dictionary</button>
-    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="sync_placeholders">Sync dictionary text + placeholder stages (no image generation)</button>
-    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="compile" {% if low_resource_mode_recommended and low_resource_missing_rows > 0 %}disabled title="Add missing glosses/translations in the low-resource table or review editor first"{% endif %}>{% if low_resource_mode_recommended %}Create new images{% else %}Compile dictionary (sync pages + annotation + images){% endif %}</button>
-  </p>
-  <p>
-    <label for="picture_dictionary_style_brief">Style brief (used if style is missing):</label><br />
-    <textarea id="picture_dictionary_style_brief" name="picture_dictionary_style_brief" rows="3" style="width: 100%;">{{ picture_dictionary_style_brief }}</textarea>
-  </p>
-  <p>
-    <label>
-      <input type="checkbox" name="picture_dictionary_low_resource_mode" value="1" {% if low_resource_mode_recommended %}checked{% endif %} />
-      Low-resource compile mode (segmentation only + placeholder annotation stages + manual annotation handoff)
-    </label>
-  </p>
   {% if low_resource_mode_recommended %}
-    <p><small>This community language is configured as non-AI-enabled, so low-resource mode is preselected.</small></p>
+    <p><small>Non-AI language: use translations/glosses to guide AI helpers.</small></p>
     <p><small><strong>Pending new images:</strong> {{ picture_dictionary_pending_image_count }} dictionary entr{{ picture_dictionary_pending_image_count|pluralize:"y,ies" }} currently {{ picture_dictionary_pending_image_count|pluralize:"has,have" }} no image path.</small></p>
     {% if low_resource_missing_rows > 0 %}
-      <p><small><strong>Image creation temporarily blocked:</strong> {{ low_resource_missing_rows }} dictionary row(s) are missing gloss and/or translation. Re-add the row with gloss/translation below, or use “Review dictionary content (page-oriented editor)”.</small></p>
+      <p><small><strong>Image creation temporarily blocked:</strong> {{ low_resource_missing_rows }} dictionary row(s) are missing gloss and/or translation. Re-add the row with gloss/translation below, or use the unified dictionary view.</small></p>
       {% if low_resource_missing_row_details %}
         <details style="margin-top:0.4rem;">
           <summary><small>Show missing-row diagnostics</small></summary>
@@ -83,6 +52,35 @@
       {% endif %}
     {% endif %}
   {% endif %}
+  <p>
+    <label for="source_project_id">Community project:</label>
+    <select id="source_project_id" name="source_project_id">
+      <option value="">Select project…</option>
+      {% for project in community_projects %}
+        <option value="{{ project.id }}">{{ project.title }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="add_from_text">Add from text</button>
+    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="import_from_project" onclick="return confirm('Import the selected project as a modified picture-dictionary copy? This replaces the current dictionary project for this community.');">Import as dictionary copy</button>
+    <br />
+    <small>Import keeps pages with non-null translations and discards title/cover pages without translations.</small>
+  </p>
+  {% if dictionary_entries %}
+    <p><strong>Current entries (select to delete):</strong></p>
+    <div style="max-height: 12rem; overflow: auto; border: 1px solid #ddd; padding: 0.5rem; margin-bottom: 0.5rem;">
+      {% for entry in dictionary_entries %}
+        <label style="display: block;">
+          <input type="checkbox" name="remove_entry" value="{{ entry.id }}" />
+          {{ entry.display_label }}
+        </label>
+      {% endfor %}
+    </div>
+    <p>
+      <button class="btn secondary" type="submit" name="picture_dictionary_action" value="remove_selected">Remove selected entries</button>
+      <button class="btn secondary" type="submit" name="picture_dictionary_action" value="remove_all" onclick="return confirm('Remove all entries from this picture dictionary?');">Remove all entries</button>
+    </p>
+  {% endif %}
+
   {% if low_resource_mode_recommended %}
     <fieldset style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0;">
       <legend>Add new low-resource dictionary words</legend>
@@ -136,33 +134,113 @@
       <button class="btn secondary" type="submit" name="picture_dictionary_action" value="add">Add words</button>
     </p>
   {% endif %}
-  <p>
-    <label for="source_project_id">Community project:</label>
-    <select id="source_project_id" name="source_project_id">
-      <option value="">Select project…</option>
-      {% for project in community_projects %}
-        <option value="{{ project.id }}">{{ project.title }}</option>
-      {% endfor %}
-    </select>
-    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="add_from_text">Add from text</button>
-    <button class="btn secondary" type="submit" name="picture_dictionary_action" value="import_from_project" onclick="return confirm('Import the selected project as a modified picture-dictionary copy? This replaces the current dictionary project for this community.');">Import as dictionary copy</button>
-    <br />
-    <small>Import keeps pages with non-null translations and discards title/cover pages without translations.</small>
-  </p>
-  {% if dictionary_entries %}
-    <p><strong>Current entries (select to delete):</strong></p>
-    <div style="max-height: 12rem; overflow: auto; border: 1px solid #ddd; padding: 0.5rem; margin-bottom: 0.5rem;">
-      {% for entry in dictionary_entries %}
-        <label style="display: block;">
-          <input type="checkbox" name="remove_entry" value="{{ entry.id }}" />
-          {{ entry.display_label }}
+
+  {% if picture_dictionary and dictionary_entries %}
+    <fieldset style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0;">
+      <legend>Unified picture-dictionary view</legend>
+      <p><small>This is the first source-of-truth workspace: edit dictionary fields in one place, then save to synchronize the project source text, page records, and annotation stage artifacts. Gloss is also used as the page translation for image generation in low-resource dictionaries.</small></p>
+      <p>
+        <label for="picture_dictionary_background_information"><strong>Background information</strong> (used when creating prompts):</label><br />
+        <textarea id="picture_dictionary_background_information" name="picture_dictionary_background_information" rows="3" style="width:100%;" placeholder="Cultural, classroom, or visual context that should guide dictionary images.">{{ picture_dictionary_background_information }}</textarea>
+      </p>
+      <p style="display:flex; gap:1rem; flex-wrap:wrap; align-items:end;">
+        <label for="picture_dictionary_translation_language"><strong>Translation language</strong> (used for dictionary translations/glosses and synced to the associated project):<br />
+          <select id="picture_dictionary_translation_language" name="picture_dictionary_translation_language">
+            {% for value, label in language_choices %}
+              <option value="{{ value }}" {% if value == picture_dictionary_translation_language %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
         </label>
-      {% endfor %}
-    </div>
-    <p>
-      <button class="btn secondary" type="submit" name="picture_dictionary_action" value="remove_selected">Remove selected entries</button>
-      <button class="btn secondary" type="submit" name="picture_dictionary_action" value="remove_all" onclick="return confirm('Remove all entries from this picture dictionary?');">Remove all entries</button>
-    </p>
+        <label for="picture_dictionary_generation_prompt_language"><strong>Generation prompt language</strong> (used for AI-created image prompts):<br />
+          <select id="picture_dictionary_generation_prompt_language" name="picture_dictionary_generation_prompt_language">
+            {% for value, label in language_choices %}
+              <option value="{{ value }}" {% if value == picture_dictionary_generation_prompt_language %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </p>
+      <p>
+        <label for="picture_dictionary_style_brief_unified"><strong>Style brief</strong> (used if style is missing or when creating prompts):</label><br />
+        <textarea id="picture_dictionary_style_brief_unified" name="picture_dictionary_style_brief" rows="3" style="width: 100%;">{{ picture_dictionary_style_brief }}</textarea>
+      </p>
+      <p style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+        <strong>Selection:</strong>
+        <button id="unified-select-all" class="btn secondary" type="button">Select all</button>
+        <button id="unified-select-incomplete" class="btn secondary" type="button">Select incomplete</button>
+        <button id="unified-select-none" class="btn secondary" type="button">Select none</button>
+      </p>
+      <p style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+        <strong>Display:</strong>
+        <button id="unified-display-all" class="btn secondary" type="button">Display all</button>
+        <button id="unified-display-incomplete" class="btn secondary" type="button">Display incomplete only</button>
+      </p>
+      <div style="max-height:34rem; overflow:auto; border:1px solid #eee;">
+        <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:0.35rem; width:4rem;">Select</th>
+              <th style="text-align:left; padding:0.35rem;">Dictionary entry fields</th>
+              <th style="text-align:left; padding:0.35rem; width:170px;">Selected image</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in dictionary_entries %}
+              <tr class="unified-entry-row" data-incomplete="{% if entry.unified_incomplete %}1{% else %}0{% endif %}" style="border-top:1px solid #eee; vertical-align:top;">
+                <td style="padding:0.5rem;">
+                  <input class="unified-entry-select" type="checkbox" name="unified_selected_entry_id" value="{{ entry.id }}" data-incomplete="{% if entry.unified_incomplete %}1{% else %}0{% endif %}" />
+                </td>
+                <td style="padding:0.5rem;">
+                  <div style="display:grid; grid-template-columns: minmax(8rem, 1fr) minmax(8rem, 1fr) minmax(5rem, 0.6fr) minmax(9rem, 1fr); gap:0.45rem; align-items:end;">
+                    <label>Word<br /><input type="text" name="unified_surface_{{ entry.id }}" value="{{ entry.unified_surface }}" style="width:100%; box-sizing:border-box;" /></label>
+                    <label>Lemma<br /><input type="text" name="unified_lemma_{{ entry.id }}" value="{{ entry.unified_lemma }}" style="width:100%; box-sizing:border-box;" /></label>
+                    <label>POS<br /><input type="text" name="unified_pos_{{ entry.id }}" value="{{ entry.unified_pos }}" style="width:100%; box-sizing:border-box;" /></label>
+                    <label>Gloss / translation<br /><input type="text" name="unified_gloss_{{ entry.id }}" value="{{ entry.unified_gloss }}" style="width:100%; box-sizing:border-box;" /></label>
+                  </div>
+                  <div style="display:grid; grid-template-columns:minmax(12rem, 0.8fr) minmax(16rem, 1.2fr); gap:0.45rem; margin-top:0.5rem;">
+                    <label>Suggestion<br /><textarea name="unified_suggestion_{{ entry.id }}" rows="3" style="width:100%; box-sizing:border-box;" placeholder="Image idea, cultural note, or thing to avoid.">{{ entry.unified_suggestion }}</textarea></label>
+                    <label>Image-generation prompt<br /><textarea name="unified_prompt_{{ entry.id }}" rows="3" style="width:100%; box-sizing:border-box;">{{ entry.unified_prompt }}</textarea></label>
+                  </div>
+                </td>
+                <td style="padding:0.5rem;">
+                  {% if entry.unified_image_path %}
+                    <img src="{% url 'project-compiled' picture_dictionary.project.id entry.unified_image_path %}" alt="Image for {{ entry.unified_surface }}" style="max-width:150px; max-height:130px; height:auto;" />
+                    <br /><small>{{ entry.unified_image_path }}</small>
+                  {% else %}
+                    <small>No image yet.</small>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p>
+        <button class="btn secondary unified-action-button" type="submit" name="picture_dictionary_action" value="update_unified_entries" data-running-message="Saving unified dictionary edits…">Save unified dictionary edits</button>
+        <button class="btn secondary unified-action-button" type="submit" name="picture_dictionary_action" value="generate_unified_translations" data-running-message="Creating translations for selected rows…">Create translations for selected rows</button>
+        <button class="btn secondary unified-action-button" type="submit" name="picture_dictionary_action" value="generate_unified_prompts" data-running-message="Creating prompts for selected rows…">Create prompts for selected rows</button>
+        <button class="btn secondary unified-action-button" type="submit" name="picture_dictionary_action" value="generate_unified_images" data-running-message="Creating images for selected rows…" onclick="return confirm('Create images for the selected dictionary rows using their current prompts?');">Create images for selected rows</button>
+        <button class="btn secondary unified-action-button" type="submit" name="picture_dictionary_action" value="generate_unified_missing_info" data-running-message="Creating missing information, prompts, and images for selected rows as needed…">Create missing information for selected rows</button>
+      </p>
+      <div style="border-top:1px solid #eee; margin-top:0.75rem; padding-top:0.75rem;">
+        <strong>Exercises from this dictionary:</strong>
+        <a class="btn secondary" href="{% url 'project-generate-flashcards' picture_dictionary.project.id %}">Create flashcards</a>
+        <a class="btn secondary" href="{% url 'project-generate-word-scramble' picture_dictionary.project.id %}">Create word scramble</a>
+        <a class="btn secondary" href="{% url 'project-generate-crossword' picture_dictionary.project.id %}">Create crossword</a>
+        <div style="margin-top:0.5rem;">
+          <strong>Play created exercises:</strong>
+          {% if picture_dictionary_exercise_sets %}
+            {% for exercise_set in picture_dictionary_exercise_sets %}
+              <a class="btn secondary" href="{% url 'exercise-set-play' exercise_set.id %}?next={{ community_back_url|urlencode }}">{{ exercise_set.title|default:"Exercise set" }}</a>
+            {% endfor %}
+          {% else %}
+            <small>No exercises created yet.</small>
+          {% endif %}
+        </div>
+      </div>
+      <p id="unified-operation-status" style="display:none; padding:0.6rem; border:1px solid #ddd; background:#f8fbff;">
+        <strong>Working…</strong> <span id="unified-operation-status-text">The operation is running.</span>
+      </p>
+    </fieldset>
   {% endif %}
 
   {% if picture_dictionary and dictionary_entries %}
@@ -185,9 +263,49 @@
         </p>
         <ul>
           {% for subset in picture_dictionary_subsets %}
-            <li>
-              {% if subset.project %}<a href="{% url 'project-detail' subset.project.id %}">{{ subset.title }}</a>{% else %}{{ subset.title }}{% endif %}
-              — {{ subset.entry_count }} entr{{ subset.entry_count|pluralize:"y,ies" }}
+            <li style="margin-bottom:1rem;">
+              <div>
+                {% if subset.project %}<a href="{% url 'project-detail' subset.project.id %}">{{ subset.title }}</a>{% else %}{{ subset.title }}{% endif %}
+                — {{ subset.entry_count }} entr{{ subset.entry_count|pluralize:"y,ies" }}
+              </div>
+              {% if subset.preview_entries %}
+                <table style="width:100%; border-collapse:collapse; margin-top:0.35rem;">
+                  <thead>
+                    <tr><th style="text-align:left;">Word</th><th style="text-align:left;">Gloss / translation</th><th style="text-align:left;">Image</th></tr>
+                  </thead>
+                  <tbody>
+                    {% for row in subset.preview_entries %}
+                      <tr>
+                        <td>{{ row.surface }}</td>
+                        <td>{{ row.gloss }}</td>
+                        <td>
+                          {% if row.image_path %}
+                            <img src="{% url 'project-compiled' picture_dictionary.project.id row.image_path %}" alt="Image for {{ row.surface }}" style="max-width:90px; max-height:70px; height:auto;" />
+                          {% else %}
+                            <small>No image</small>
+                          {% endif %}
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              {% endif %}
+              {% if subset.project %}
+                <div style="margin-top:0.35rem;">
+                  <a class="btn secondary" href="{% url 'project-generate-flashcards' subset.project.id %}">Create flashcards</a>
+                  <a class="btn secondary" href="{% url 'project-generate-word-scramble' subset.project.id %}">Create word scramble</a>
+                  <a class="btn secondary" href="{% url 'project-generate-crossword' subset.project.id %}">Create crossword</a>
+                  <a class="btn secondary" href="{% url 'project-exercises-home' subset.project.id %}">Test/manage exercises</a>
+                  {% if subset.exercise_sets %}
+                    <div style="margin-top:0.5rem;">
+                      <strong>Play created exercises:</strong>
+                      {% for exercise_set in subset.exercise_sets %}
+                        <a class="btn secondary" href="{% url 'exercise-set-play' exercise_set.id %}?next={{ community_back_url|urlencode }}">{{ exercise_set.title|default:"Exercise set" }}</a>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </div>
+              {% endif %}
             </li>
           {% endfor %}
         </ul>
@@ -232,35 +350,58 @@
       </p>
     </fieldset>
   {% endif %}
+
+  {% if picture_dictionary %}
+    <p style="margin-top:1rem;"><small>Dictionary project (debugging): <a href="{% url 'project-detail' picture_dictionary.project.id %}">{{ picture_dictionary.project.title }}</a></small></p>
+  {% endif %}
 </form>
 
-<h2>Image review dashboard</h2>
-<p>Review community image judgements, see preferred page-image variants, and request additional variants for projects in this community.</p>
-<p id="review-consistency-status" style="display:none; padding:0.6rem; border:1px solid #ddd; background:#f8fbff;">
-  <strong>Checking dictionary/image consistency, please wait…</strong>
-  The review screen will open when the checks are complete.
-</p>
-<ul style="line-height: 2.4; padding-left: 1.4rem;">
-  {% for row in summary_rows %}
-    <li style="margin: 0.35rem 0;">
-      <a class="btn secondary review-project-link" href="{% url 'community-organiser-review-project' community.id row.project.id %}">Review images for {{ row.project.title }}</a>
-      {% if row.review %}
-        — reviewed at {{ row.review.updated_at }}{% if row.up_to_date %} (up to date){% else %} (new votes pending){% endif %}
-      {% else %}
-        — not reviewed yet
-      {% endif %}
-    </li>
-  {% empty %}
-    <li style="margin: 0.35rem 0;">No projects assigned to this community.</li>
-  {% endfor %}
-</ul>
 <script>
   (function () {
-    const status = document.getElementById("review-consistency-status");
-    if (!status) return;
-    document.querySelectorAll(".review-project-link").forEach(function (link) {
-      link.addEventListener("click", function () {
-        status.style.display = "block";
+    const selectAllButton = document.getElementById("unified-select-all");
+    const selectIncompleteButton = document.getElementById("unified-select-incomplete");
+    const selectNoneButton = document.getElementById("unified-select-none");
+    const displayAllButton = document.getElementById("unified-display-all");
+    const displayIncompleteButton = document.getElementById("unified-display-incomplete");
+    const checkboxes = Array.from(document.querySelectorAll(".unified-entry-select"));
+    const rows = Array.from(document.querySelectorAll(".unified-entry-row"));
+    if (selectAllButton) {
+      selectAllButton.addEventListener("click", function () {
+        checkboxes.forEach(function (checkbox) { checkbox.checked = true; });
+      });
+    }
+    if (selectIncompleteButton) {
+      selectIncompleteButton.addEventListener("click", function () {
+        checkboxes.forEach(function (checkbox) {
+          checkbox.checked = checkbox.dataset.incomplete === "1";
+        });
+      });
+    }
+    if (selectNoneButton) {
+      selectNoneButton.addEventListener("click", function () {
+        checkboxes.forEach(function (checkbox) { checkbox.checked = false; });
+      });
+    }
+    if (displayAllButton) {
+      displayAllButton.addEventListener("click", function () {
+        rows.forEach(function (row) { row.style.display = ""; });
+      });
+    }
+    if (displayIncompleteButton) {
+      displayIncompleteButton.addEventListener("click", function () {
+        rows.forEach(function (row) {
+          row.style.display = row.dataset.incomplete === "1" ? "" : "none";
+        });
+      });
+    }
+
+    const statusBox = document.getElementById("unified-operation-status");
+    const statusText = document.getElementById("unified-operation-status-text");
+    document.querySelectorAll(".unified-action-button").forEach(function (button) {
+      button.addEventListener("click", function () {
+        if (!statusBox || !statusText) return;
+        statusText.textContent = button.dataset.runningMessage || "The operation is running.";
+        statusBox.style.display = "block";
       });
     });
   })();
