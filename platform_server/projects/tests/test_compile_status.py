@@ -465,6 +465,7 @@ class CompileStatusViewTests(TestCase):
         self.assertContains(resp, '<select name="target_language"', html=False)
         self.assertContains(resp, "English")
         self.assertContains(resp, "German")
+        self.assertContains(resp, "Haitian Creole (Krèol)")
         self.assertContains(resp, "Persian")
         self.assertContains(resp, "Old Norse")
         self.assertContains(resp, '<option value="de" selected>German</option>', html=False)
