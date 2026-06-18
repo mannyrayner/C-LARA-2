@@ -384,6 +384,55 @@
       });
     });
   })();
+
+  (function () {
+    const selectAllButton = document.getElementById("unified-select-all");
+    const selectIncompleteButton = document.getElementById("unified-select-incomplete");
+    const selectNoneButton = document.getElementById("unified-select-none");
+    const displayAllButton = document.getElementById("unified-display-all");
+    const displayIncompleteButton = document.getElementById("unified-display-incomplete");
+    const checkboxes = Array.from(document.querySelectorAll(".unified-entry-select"));
+    const rows = Array.from(document.querySelectorAll(".unified-entry-row"));
+    if (selectAllButton) {
+      selectAllButton.addEventListener("click", function () {
+        checkboxes.forEach(function (checkbox) { checkbox.checked = true; });
+      });
+    }
+    if (selectIncompleteButton) {
+      selectIncompleteButton.addEventListener("click", function () {
+        checkboxes.forEach(function (checkbox) {
+          checkbox.checked = checkbox.dataset.incomplete === "1";
+        });
+      });
+    }
+    if (selectNoneButton) {
+      selectNoneButton.addEventListener("click", function () {
+        checkboxes.forEach(function (checkbox) { checkbox.checked = false; });
+      });
+    }
+    if (displayAllButton) {
+      displayAllButton.addEventListener("click", function () {
+        rows.forEach(function (row) { row.style.display = ""; });
+      });
+    }
+    if (displayIncompleteButton) {
+      displayIncompleteButton.addEventListener("click", function () {
+        rows.forEach(function (row) {
+          row.style.display = row.dataset.incomplete === "1" ? "" : "none";
+        });
+      });
+    }
+
+    const statusBox = document.getElementById("unified-operation-status");
+    const statusText = document.getElementById("unified-operation-status-text");
+    document.querySelectorAll(".unified-action-button").forEach(function (button) {
+      button.addEventListener("click", function () {
+        if (!statusBox || !statusText) return;
+        statusText.textContent = button.dataset.runningMessage || "The operation is running.";
+        statusBox.style.display = "block";
+      });
+    });
+  })();
   (function () {
     const suggestButton = document.getElementById("subset-suggest-button");
     const status = document.getElementById("subset-suggestion-status");
