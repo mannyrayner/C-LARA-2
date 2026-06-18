@@ -2,6 +2,7 @@
 {% block title %}Play exercises{% endblock %}
 {% block content %}
 <h1>{{ exercise_set.title|default:"Exercise set" }}</h1>
+{% if back_url %}<p><a class="btn secondary" href="{{ back_url }}">Back to community</a></p>{% endif %}
 {% if done %}
   <p>No items in this exercise set.</p>
 {% else %}
@@ -419,6 +420,7 @@
           {% endif %}
         </p>
       {% endfor %}
+      {% if back_url %}<input type="hidden" name="next" value="{{ back_url }}" />{% endif %}
       <button class="btn" type="submit">Check answer</button>
     </form>
   {% endif %}
@@ -432,7 +434,7 @@
   {% endif %}
 
   {% if next_index != None %}
-    <p><a class="btn secondary" href="{% url 'exercise-set-play' exercise_set.id %}?i={{ next_index }}">Next</a></p>
+    <p><a class="btn secondary" href="{% url 'exercise-set-play' exercise_set.id %}?i={{ next_index }}{% if back_url %}&next={{ back_url|urlencode }}{% endif %}">Next</a></p>
   {% endif %}
 {% endif %}
 {% endblock %}

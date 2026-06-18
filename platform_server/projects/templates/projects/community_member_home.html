@@ -17,4 +17,32 @@
     <li style="margin: 0.35rem 0;">No community projects assigned yet.</li>
   {% endfor %}
 </ul>
+
+{% if picture_dictionary %}
+  <h2>Picture dictionary exercises</h2>
+  {% if picture_dictionary_exercise_sets %}
+    <h3>Main dictionary</h3>
+    <ul style="line-height:2.2; padding-left:1.4rem;">
+      {% for exercise_set in picture_dictionary_exercise_sets %}
+        <li><a class="btn secondary" href="{% url 'exercise-set-play' exercise_set.id %}?next={{ community_back_url|urlencode }}">Play {{ exercise_set.title|default:"Exercise set" }}</a></li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  {% if picture_dictionary_subsets %}
+    <h3>Subset dictionaries</h3>
+    {% for subset in picture_dictionary_subsets %}
+      {% if subset.exercise_sets %}
+        <p><strong>{{ subset.title }}</strong></p>
+        <ul style="line-height:2.2; padding-left:1.4rem;">
+          {% for exercise_set in subset.exercise_sets %}
+            <li><a class="btn secondary" href="{% url 'exercise-set-play' exercise_set.id %}?next={{ community_back_url|urlencode }}">Play {{ exercise_set.title|default:"Exercise set" }}</a></li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+  {% if not picture_dictionary_exercise_sets and not picture_dictionary_subsets %}
+    <p>No picture-dictionary exercises have been created yet.</p>
+  {% endif %}
+{% endif %}
 {% endblock %}
