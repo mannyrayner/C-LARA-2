@@ -29,6 +29,29 @@ intermediate pipeline artifacts, and local scratch data. Few-shot curation and r
 `make curate RUN=1` and `make review RUN=1 ...` are written under `generated/few_shot_curation/` rather
 than `docs/few_shot_curation/`, so experiment runs can remain local until explicitly promoted.
 
+## Current corpus snapshot
+
+A maintainer run of `make summarize-corpus RUN=1` on 2026-06-19 against the laptop C-LARA-2 account for `mannyrayner` reported a sufficiently large French evaluation corpus:
+
+- 53 French (`fr`) projects, all with `segmentation_phase_2`;
+- 1600 segments;
+- 17344 current segmentation tokens total;
+- 10566 non-whitespace tokens and 6778 whitespace-only tokens;
+- 53625 token-surface characters including whitespace and 45704 excluding whitespace;
+- 60 empty-token segments and 0 empty token surfaces.
+
+This is enough material for a report-quality first experiment, provided that later targets create a deterministic development/test split and keep the held-out test portion isolated from prompt/evaluator iteration.
+
+## Next implementation targets
+
+I am taking the initiative to make the next targets data-oriented rather than immediately running more model calls. The next Makefile additions should be:
+
+1. `split-corpus` — consume `generated/corpus_summary/corpus_summary.json` and write deterministic development/test manifests under `generated/corpus_splits/`, ideally with project-level separation and stratification by project size.
+2. `derive-processing-examples` — convert accepted records from the audited `clitic_compound_v2` curation request into compact prompt-facing few-shot assets.
+3. `derive-evaluator-examples` — convert the same accepted records into evaluator exemplars/rubric material.
+4. `run-default` / `run-candidate` — run fixed split manifests through default and candidate `segmentation_phase_2` processing.
+5. `evaluate` / `compare` / `report` — produce paired judgements, aggregate results, and write a concise report artifact.
+
 ## Suggested workflow
 
 Start with dry-run planning commands:
