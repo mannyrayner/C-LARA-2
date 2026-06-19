@@ -36,6 +36,7 @@ Start with dry-run planning commands:
 ```bash
 make plan
 make validate-config
+make summarize-corpus
 make run-default
 make run-candidate
 make evaluate
@@ -48,11 +49,14 @@ command line for comparison runs. Set `RUN=1` when the corresponding management 
 exists and you want to execute it for real, for example:
 
 ```bash
+make summarize-corpus RUN=1
 make curate RUN=1
 make review RUN=1 REQUEST_ID=<curation-request-id>
 make audit-reviews RUN=1 REQUEST_ID=<curation-request-id> AUDIT_LIMIT=20
 make run-candidate RUN=1
 ```
+
+`make summarize-corpus RUN=1` writes JSON, CSV, and Markdown corpus summaries under `generated/corpus_summary/` for French projects owned by `mannyrayner` by default. Override `CORPUS_USER=...`, `CORPUS_LANGUAGE=...`, or `CORPUS_LANGUAGE_MATCH=prefix` when inspecting a different imported corpus. The summary includes per-project counts for pages, segments, current `segmentation_phase_2` tokens, non-whitespace tokens, whitespace-only tokens, source/segment/token character counts with and without whitespace, and simple anomaly counts.
 
 After `make review`, the review step writes `reviews/<request-id>.items.json`, a compact summary for human scanning.
 Use `make audit-reviews RUN=1 REQUEST_ID=<id>` to step through these items and write a local human audit JSONL file.
