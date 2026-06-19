@@ -19,6 +19,9 @@ REVIEW_PASSES ?= 3
 TIMEOUT_S ?= 600
 REQUEST_ID ?=
 AUDIT_LIMIT ?= 0
+CORPUS_USER ?= mannyrayner
+CORPUS_LANGUAGE ?= fr
+CORPUS_LANGUAGE_MATCH ?= exact
 RUN_LABEL ?= fr-boundary-first-clitic-compound-v2
 
 DEFAULT_PARAMS := configs/default_stage_parameters.json
@@ -27,21 +30,23 @@ EVALUATOR_CONFIG := configs/evaluator_config.json
 INPUT_RECORDS := fixtures/input_records.jsonl
 GENERATED_DIR := generated
 TMP_DIR := tmp
+CORPUS_SUMMARY_DIR := $(abspath $(GENERATED_DIR))/corpus_summary
 CURATION_ROOT := $(abspath $(GENERATED_DIR))/few_shot_curation
 
 PY_OS := $(shell $(PYTHON) -c 'import os; print(os.name)' 2>/dev/null || echo posix)
 python_path = $(shell if [ "$(PY_OS)" = "nt" ] && command -v cygpath >/dev/null 2>&1; then cygpath -am "$(1)"; else printf '%s' "$(1)"; fi)
 PY_ROOT_DIR := $(call python_path,$(ROOT_DIR))
 PY_CURATION_ROOT := $(call python_path,$(CURATION_ROOT))
+PY_CORPUS_SUMMARY_DIR := $(call python_path,$(CORPUS_SUMMARY_DIR))
 
 MANAGE = cd "$(PLATFORM_DIR)" && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help plan validate validate-config prepare curate review audit-reviews derive-processing-examples derive-evaluator-examples run-default run-candidate evaluate compare report clean
+.PHONY: help plan validate validate-config prepare summarize-corpus curate review audit-reviews derive-processing-examples derive-evaluator-examples run-default run-candidate evaluate compare report clean
 
 help:
 	@sed -n '1,220p' README.md
 	@echo
-	@echo "Common targets: plan validate-config curate review audit-reviews derive-processing-examples derive-evaluator-examples run-default run-candidate evaluate compare report"
+	@echo "Common targets: plan validate-config summarize-corpus curate review audit-reviews derive-processing-examples derive-evaluator-examples run-default run-candidate evaluate compare report"
 	@echo "Targets that call management commands default to dry-run. Set RUN=1 to execute."
 
 prepare:
@@ -64,6 +69,7 @@ plan: prepare
 	@echo
 	@echo "Generated data will be written under $(GENERATED_DIR)/ and $(TMP_DIR)/ (ignored by Git)."
 	@echo "Curation:  $(CURATION_ROOT)"
+	@echo "Corpus summary: $(CORPUS_SUMMARY_DIR)"
 
 validate: validate-config
 
@@ -72,6 +78,14 @@ validate-config:
 	@$(PYTHON) -m json.tool "$(CANDIDATE_PARAMS)" >/dev/null
 	@$(PYTHON) -m json.tool "$(EVALUATOR_CONFIG)" >/dev/null
 	@$(PYTHON) -c 'import json; from pathlib import Path; path=Path("$(INPUT_RECORDS)"); records=[json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]; [(_ for _ in ()).throw(SystemExit(f"{path}: record {idx} missing required keys")) for idx, payload in enumerate(records, start=1) if not {"record_id", "language", "input"}.issubset(payload)]; print(f"validated configs and {path} ({len(records)} records)")'
+
+summarize-corpus: prepare
+	@echo "+ $(MANAGE) summarize_french_evaluation_corpus --username $(CORPUS_USER) --language $(CORPUS_LANGUAGE) --language-match $(CORPUS_LANGUAGE_MATCH) --output-dir $(PY_CORPUS_SUMMARY_DIR) --json corpus_summary.json --csv corpus_summary.csv --markdown corpus_summary.md"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) summarize_french_evaluation_corpus --username "$(CORPUS_USER)" --language "$(CORPUS_LANGUAGE)" --language-match "$(CORPUS_LANGUAGE_MATCH)" --output-dir "$(PY_CORPUS_SUMMARY_DIR)" --json corpus_summary.json --csv corpus_summary.csv --markdown corpus_summary.md; \
+	else \
+		echo "dry-run only; set RUN=1 to inspect imported projects and write corpus summaries"; \
+	fi
 
 curate: prepare
 	@echo "+ $(MANAGE) curate_fewshots --operation $(OPERATION) --language $(LANGUAGE) --mechanism $(MECHANISM) --phenomena $(PHENOMENA) --count $(COUNT) --batch-size $(BATCH_SIZE) --max-concurrency $(MAX_CONCURRENCY) --target-set $(TARGET_SET) --model $(MODEL) --repo-root $(PY_ROOT_DIR) --curation-root $(PY_CURATION_ROOT)"
