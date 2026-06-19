@@ -268,8 +268,8 @@ Each specific experiment directory should own a small `Makefile` that documents 
 - `make split-corpus` — create deterministic development/test manifests from the summarized corpus before any evaluator tuning; this now maps to `split_french_evaluation_corpus` and writes `development.jsonl`, `test.jsonl`, and `split_manifest.json`;
 - `make curate` — call `python manage.py curate_fewshots ...` or document the existing curation request used as input;
 - `make review` — call `python manage.py review_fewshots ...`;
-- `make derive-processing-examples` — post-process accepted curation records into prompt-facing few-shot files or a staged candidate variant;
-- `make derive-evaluator-examples` — derive checking/rubric examples from the same accepted records;
+- `make derive-processing-examples` — post-process accepted curation records into prompt-facing few-shot files or a staged candidate variant; this now maps to `derive_fewshot_assets`;
+- `make derive-evaluator-examples` — derive checking/rubric examples from the same accepted records; this is currently produced by the same shared derivation command so processing and evaluator assets keep matching provenance;
 - `make run-default` — run `run_linguistic_pipeline_experiment` with default stage parameters;
 - `make run-candidate` — run the same inputs with curated-set stage parameters;
 - `make evaluate` — run the evaluator/repeated judges/panel over default and candidate outputs;
