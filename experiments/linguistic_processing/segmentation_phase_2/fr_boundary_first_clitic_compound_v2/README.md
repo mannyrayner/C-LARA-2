@@ -46,11 +46,25 @@ This is enough material for a report-quality first experiment, provided that lat
 
 I am taking the initiative to make the next targets data-oriented rather than immediately running more model calls. The next Makefile additions should be:
 
-1. `split-corpus` — consume `generated/corpus_summary/corpus_summary.json` and write deterministic development/test manifests under `generated/corpus_splits/`, ideally with project-level separation and stratification by project size.
+1. `split-corpus` — consume `generated/corpus_summary/corpus_summary.json` and write deterministic development/test manifests under `generated/corpus_splits/`, with project-level separation, size stratification, and segment caps controlled by `DEV_PROJECT_FRACTION`, `MAX_DEVELOPMENT_SEGMENTS`, and `MAX_TEST_SEGMENTS`.
 2. `derive-processing-examples` — convert accepted records from the audited `clitic_compound_v2` curation request into compact prompt-facing few-shot assets.
 3. `derive-evaluator-examples` — convert the same accepted records into evaluator exemplars/rubric material.
 4. `run-default` / `run-candidate` — run fixed split manifests through default and candidate `segmentation_phase_2` processing.
 5. `evaluate` / `compare` / `report` — produce paired judgements, aggregate results, and write a concise report artifact.
+
+## Hypotheses and human audit gates
+
+The first report experiment should test three explicit hypotheses:
+
+1. **H1 — candidate quality:** the curated French `boundary_first` `clitic_compound_v2` few-shot set improves `segmentation_phase_2` boundary quality over the default bundle on held-out imported French project segments.
+2. **H2 — evaluator usefulness:** repeated AI boundary-quality judgements can identify default-vs-candidate wins/losses accurately enough that targeted human audit confirms the aggregate direction.
+3. **H3 — anti-overfitting discipline:** deterministic project-level development/test separation reduces leakage when the AI adjusts prompts, examples, and evaluator wording.
+
+Human audit should happen at three gates rather than continuously:
+
+1. **Split audit before tuning:** inspect `generated/corpus_splits/split_manifest.json` and small samples from `development.jsonl` and `test.jsonl` to confirm project-level separation, size/genre coverage, and no obvious overrepresentation of malformed/empty segments.
+2. **Development audit during tuning:** audit a small sample of development-set AI evaluator decisions, plus all severe disagreements or surprising candidate wins/losses, while allowing prompt/evaluator changes only from development evidence.
+3. **Final test audit before reporting:** after the procedure is fixed, run the held-out test comparison once, then audit a stratified sample of test wins/losses/ties and all high-impact anomalies before making report claims.
 
 ## Suggested workflow
 
@@ -60,6 +74,7 @@ Start with dry-run planning commands:
 make plan
 make validate-config
 make summarize-corpus
+make split-corpus
 make run-default
 make run-candidate
 make evaluate
@@ -73,6 +88,7 @@ exists and you want to execute it for real, for example:
 
 ```bash
 make summarize-corpus RUN=1
+make split-corpus RUN=1
 make curate RUN=1
 make review RUN=1 REQUEST_ID=<curation-request-id>
 make audit-reviews RUN=1 REQUEST_ID=<curation-request-id> AUDIT_LIMIT=20
@@ -80,6 +96,8 @@ make run-candidate RUN=1
 ```
 
 `make summarize-corpus RUN=1` writes JSON, CSV, and Markdown corpus summaries under `generated/corpus_summary/` for French projects owned by `mannyrayner` by default. Override `CORPUS_USER=...`, `CORPUS_LANGUAGE=...`, or `CORPUS_LANGUAGE_MATCH=prefix` when inspecting a different imported corpus. The summary includes per-project counts for pages, segments, current `segmentation_phase_2` tokens, non-whitespace tokens, whitespace-only tokens, source/segment/token character counts with and without whitespace, and simple anomaly counts.
+
+`make split-corpus RUN=1` reads `generated/corpus_summary/corpus_summary.json` and writes `generated/corpus_splits/development.jsonl`, `generated/corpus_splits/test.jsonl`, and `generated/corpus_splits/split_manifest.json`. The split is deterministic for `SPLIT_SEED`, keeps projects in only one split, stratifies projects by size, and caps selected segment records so development stays small enough for iteration while test remains held out.
 
 After `make review`, the review step writes `reviews/<request-id>.items.json`, a compact summary for human scanning.
 Use `make audit-reviews RUN=1 REQUEST_ID=<id>` to step through these items and write a local human audit JSONL file.

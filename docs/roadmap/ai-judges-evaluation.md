@@ -265,7 +265,7 @@ The repo should contain the lightweight, reviewable orchestration files: `Makefi
 Each specific experiment directory should own a small `Makefile` that documents and runs the intended sequence. For the first French `segmentation_phase_2` experiment, targets should mirror the plan above:
 
 - `make summarize-corpus` — inspect the imported project corpus and write JSON/CSV/Markdown size and anomaly summaries;
-- `make split-corpus` — create deterministic development/test manifests from the summarized corpus before any evaluator tuning;
+- `make split-corpus` — create deterministic development/test manifests from the summarized corpus before any evaluator tuning; this now maps to `split_french_evaluation_corpus` and writes `development.jsonl`, `test.jsonl`, and `split_manifest.json`;
 - `make curate` — call `python manage.py curate_fewshots ...` or document the existing curation request used as input;
 - `make review` — call `python manage.py review_fewshots ...`;
 - `make derive-processing-examples` — post-process accepted curation records into prompt-facing few-shot files or a staged candidate variant;
@@ -276,7 +276,7 @@ Each specific experiment directory should own a small `Makefile` that documents 
 - `make compare` — aggregate default-vs-candidate results into win/loss/tie counts and flagged examples;
 - `make report` — build a concise Markdown summary suitable for human review and possible progress-report evidence.
 
-As of 2026-06-19, the first laptop corpus summary for `mannyrayner`/`fr` reported 53 projects, 1600 segments, and 17344 current segmentation tokens, so the first experiment can move from tiny fixtures to a held-out sample of real imported legacy projects. The next design decision should be a deterministic development/test split: development data is for prompt, few-shot, and evaluator iteration; test data is reserved for the reportable default-vs-candidate comparison.
+As of 2026-06-19, the first laptop corpus summary for `mannyrayner`/`fr` reported 53 projects, 1600 segments, and 17344 current segmentation tokens, so the first experiment can move from tiny fixtures to a held-out sample of real imported legacy projects. The next design decision has been made concrete as a deterministic development/test split target: development data is for prompt, few-shot, and evaluator iteration; test data is reserved for the reportable default-vs-candidate comparison.
 
 The top-level `experiments/` directory can later contain other tracks, for example `experiments/linguistic_processing/mwe/...` or `experiments/ui_regression/...`, but the first concrete path should stay narrow: French `segmentation_phase_2`, `boundary_first`, and the `clitic_compound_v2` curated set. This gives maintainers one obvious place to run and inspect the experiment while the underlying infrastructure is still being filled in.
 

@@ -22,6 +22,10 @@ AUDIT_LIMIT ?= 0
 CORPUS_USER ?= mannyrayner
 CORPUS_LANGUAGE ?= fr
 CORPUS_LANGUAGE_MATCH ?= exact
+SPLIT_SEED ?= fr-boundary-first-clitic-compound-v2
+DEV_PROJECT_FRACTION ?= 0.25
+MAX_DEVELOPMENT_SEGMENTS ?= 250
+MAX_TEST_SEGMENTS ?= 500
 RUN_LABEL ?= fr-boundary-first-clitic-compound-v2
 
 DEFAULT_PARAMS := configs/default_stage_parameters.json
@@ -31,6 +35,7 @@ INPUT_RECORDS := fixtures/input_records.jsonl
 GENERATED_DIR := generated
 TMP_DIR := tmp
 CORPUS_SUMMARY_DIR := $(abspath $(GENERATED_DIR))/corpus_summary
+CORPUS_SPLIT_DIR := $(abspath $(GENERATED_DIR))/corpus_splits
 CURATION_ROOT := $(abspath $(GENERATED_DIR))/few_shot_curation
 
 PY_OS := $(shell $(PYTHON) -c 'import os; print(os.name)' 2>/dev/null || echo posix)
@@ -38,15 +43,16 @@ python_path = $(shell if [ "$(PY_OS)" = "nt" ] && command -v cygpath >/dev/null 
 PY_ROOT_DIR := $(call python_path,$(ROOT_DIR))
 PY_CURATION_ROOT := $(call python_path,$(CURATION_ROOT))
 PY_CORPUS_SUMMARY_DIR := $(call python_path,$(CORPUS_SUMMARY_DIR))
+PY_CORPUS_SPLIT_DIR := $(call python_path,$(CORPUS_SPLIT_DIR))
 
 MANAGE = cd "$(PLATFORM_DIR)" && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help plan validate validate-config prepare summarize-corpus curate review audit-reviews derive-processing-examples derive-evaluator-examples run-default run-candidate evaluate compare report clean
+.PHONY: help plan validate validate-config prepare summarize-corpus split-corpus curate review audit-reviews derive-processing-examples derive-evaluator-examples run-default run-candidate evaluate compare report clean
 
 help:
 	@sed -n '1,220p' README.md
 	@echo
-	@echo "Common targets: plan validate-config summarize-corpus curate review audit-reviews derive-processing-examples derive-evaluator-examples run-default run-candidate evaluate compare report"
+	@echo "Common targets: plan validate-config summarize-corpus split-corpus curate review audit-reviews derive-processing-examples derive-evaluator-examples run-default run-candidate evaluate compare report"
 	@echo "Targets that call management commands default to dry-run. Set RUN=1 to execute."
 
 prepare:
@@ -70,6 +76,7 @@ plan: prepare
 	@echo "Generated data will be written under $(GENERATED_DIR)/ and $(TMP_DIR)/ (ignored by Git)."
 	@echo "Curation:  $(CURATION_ROOT)"
 	@echo "Corpus summary: $(CORPUS_SUMMARY_DIR)"
+	@echo "Corpus splits:  $(CORPUS_SPLIT_DIR)"
 
 validate: validate-config
 
@@ -85,6 +92,14 @@ summarize-corpus: prepare
 		$(MANAGE) summarize_french_evaluation_corpus --username "$(CORPUS_USER)" --language "$(CORPUS_LANGUAGE)" --language-match "$(CORPUS_LANGUAGE_MATCH)" --output-dir "$(PY_CORPUS_SUMMARY_DIR)" --json corpus_summary.json --csv corpus_summary.csv --markdown corpus_summary.md; \
 	else \
 		echo "dry-run only; set RUN=1 to inspect imported projects and write corpus summaries"; \
+	fi
+
+split-corpus: prepare
+	@echo "+ $(MANAGE) split_french_evaluation_corpus --corpus-summary-json $(PY_CORPUS_SUMMARY_DIR)/corpus_summary.json --output-dir $(PY_CORPUS_SPLIT_DIR) --seed $(SPLIT_SEED) --dev-project-fraction $(DEV_PROJECT_FRACTION) --max-development-segments $(MAX_DEVELOPMENT_SEGMENTS) --max-test-segments $(MAX_TEST_SEGMENTS)"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) split_french_evaluation_corpus --corpus-summary-json "$(PY_CORPUS_SUMMARY_DIR)/corpus_summary.json" --output-dir "$(PY_CORPUS_SPLIT_DIR)" --seed "$(SPLIT_SEED)" --dev-project-fraction "$(DEV_PROJECT_FRACTION)" --max-development-segments "$(MAX_DEVELOPMENT_SEGMENTS)" --max-test-segments "$(MAX_TEST_SEGMENTS)"; \
+	else \
+		echo "dry-run only; set RUN=1 after summarize-corpus has written corpus_summary.json"; \
 	fi
 
 curate: prepare
