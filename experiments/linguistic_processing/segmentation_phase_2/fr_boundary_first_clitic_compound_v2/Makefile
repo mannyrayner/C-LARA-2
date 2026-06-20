@@ -26,6 +26,7 @@ SPLIT_SEED ?= fr-boundary-first-clitic-compound-v2
 DEV_PROJECT_FRACTION ?= 0.25
 MAX_DEVELOPMENT_SEGMENTS ?= 250
 MAX_TEST_SEGMENTS ?= 500
+SPLIT ?= development
 RUN_LABEL ?= fr-boundary-first-clitic-compound-v2
 
 DEFAULT_PARAMS := configs/default_stage_parameters.json
@@ -36,6 +37,7 @@ GENERATED_DIR := generated
 TMP_DIR := tmp
 CORPUS_SUMMARY_DIR := $(abspath $(GENERATED_DIR))/corpus_summary
 CORPUS_SPLIT_DIR := $(abspath $(GENERATED_DIR))/corpus_splits
+SPLIT_RECORDS := $(CORPUS_SPLIT_DIR)/$(SPLIT).jsonl
 DERIVED_ASSETS_DIR := $(abspath $(GENERATED_DIR))/derived_assets
 PROMPT_VARIANT_DIR := $(ROOT_DIR)/prompts/$(OPERATION)/variants/$(TARGET_SET)
 CURATION_ROOT := $(abspath $(GENERATED_DIR))/few_shot_curation
@@ -46,6 +48,7 @@ PY_ROOT_DIR := $(call python_path,$(ROOT_DIR))
 PY_CURATION_ROOT := $(call python_path,$(CURATION_ROOT))
 PY_CORPUS_SUMMARY_DIR := $(call python_path,$(CORPUS_SUMMARY_DIR))
 PY_CORPUS_SPLIT_DIR := $(call python_path,$(CORPUS_SPLIT_DIR))
+PY_SPLIT_RECORDS := $(call python_path,$(SPLIT_RECORDS))
 PY_DERIVED_ASSETS_DIR := $(call python_path,$(DERIVED_ASSETS_DIR))
 PY_PROMPT_VARIANT_DIR := $(call python_path,$(PROMPT_VARIANT_DIR))
 
@@ -75,7 +78,8 @@ plan: prepare
 	@echo "  default:   $(DEFAULT_PARAMS)"
 	@echo "  candidate: $(CANDIDATE_PARAMS)"
 	@echo "  evaluator: $(EVALUATOR_CONFIG)"
-	@echo "  inputs:    $(INPUT_RECORDS)"
+	@echo "  fixtures:  $(INPUT_RECORDS)"
+	@echo "  split:     $(SPLIT_RECORDS)"
 	@echo
 	@echo "Generated data will be written under $(GENERATED_DIR)/ and $(TMP_DIR)/ (ignored by Git)."
 	@echo "Curation:  $(CURATION_ROOT)"
@@ -147,19 +151,19 @@ derive-evaluator-examples: derive-processing-examples
 	@echo "Evaluator examples are derived together with processing examples into $(DERIVED_ASSETS_DIR)/evaluator_examples.jsonl."
 
 run-default: prepare validate-config
-	@echo "+ $(MANAGE) run_linguistic_pipeline_experiment --input-records-jsonl $(abspath $(INPUT_RECORDS)) --start-stage segmentation_phase_1 --end-stage segmentation_phase_2 --stage-parameters-file $(abspath $(DEFAULT_PARAMS)) --run-label $(RUN_LABEL)-default --output-root $(abspath $(GENERATED_DIR))/default"
+	@echo "+ $(MANAGE) run_linguistic_pipeline_experiment --input-records-jsonl $(PY_SPLIT_RECORDS) --start-stage segmentation_phase_2 --end-stage segmentation_phase_2 --stage-parameters-file $(abspath $(DEFAULT_PARAMS)) --run-label $(RUN_LABEL)-$(SPLIT)-default --output-root $(abspath $(GENERATED_DIR))/default --language $(LANGUAGE) --overwrite"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) run_linguistic_pipeline_experiment --input-records-jsonl "$(abspath $(INPUT_RECORDS))" --start-stage segmentation_phase_1 --end-stage segmentation_phase_2 --stage-parameters-file "$(abspath $(DEFAULT_PARAMS))" --run-label "$(RUN_LABEL)-default" --output-root "$(abspath $(GENERATED_DIR))/default"; \
+		$(MANAGE) run_linguistic_pipeline_experiment --input-records-jsonl "$(PY_SPLIT_RECORDS)" --start-stage segmentation_phase_2 --end-stage segmentation_phase_2 --stage-parameters-file "$(abspath $(DEFAULT_PARAMS))" --run-label "$(RUN_LABEL)-$(SPLIT)-default" --output-root "$(abspath $(GENERATED_DIR))/default" --language "$(LANGUAGE)" --overwrite; \
 	else \
-		echo "dry-run only; target documents future command until run_linguistic_pipeline_experiment exists"; \
+		echo "dry-run only; set RUN=1 after split-corpus has written $(SPLIT_RECORDS)"; \
 	fi
 
 run-candidate: prepare validate-config
-	@echo "+ $(MANAGE) run_linguistic_pipeline_experiment --input-records-jsonl $(abspath $(INPUT_RECORDS)) --start-stage segmentation_phase_1 --end-stage segmentation_phase_2 --stage-parameters-file $(abspath $(CANDIDATE_PARAMS)) --run-label $(RUN_LABEL)-candidate --output-root $(abspath $(GENERATED_DIR))/candidate"
+	@echo "+ $(MANAGE) run_linguistic_pipeline_experiment --input-records-jsonl $(PY_SPLIT_RECORDS) --start-stage segmentation_phase_2 --end-stage segmentation_phase_2 --stage-parameters-file $(abspath $(CANDIDATE_PARAMS)) --run-label $(RUN_LABEL)-$(SPLIT)-candidate --output-root $(abspath $(GENERATED_DIR))/candidate --language $(LANGUAGE) --overwrite"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) run_linguistic_pipeline_experiment --input-records-jsonl "$(abspath $(INPUT_RECORDS))" --start-stage segmentation_phase_1 --end-stage segmentation_phase_2 --stage-parameters-file "$(abspath $(CANDIDATE_PARAMS))" --run-label "$(RUN_LABEL)-candidate" --output-root "$(abspath $(GENERATED_DIR))/candidate"; \
+		$(MANAGE) run_linguistic_pipeline_experiment --input-records-jsonl "$(PY_SPLIT_RECORDS)" --start-stage segmentation_phase_2 --end-stage segmentation_phase_2 --stage-parameters-file "$(abspath $(CANDIDATE_PARAMS))" --run-label "$(RUN_LABEL)-$(SPLIT)-candidate" --output-root "$(abspath $(GENERATED_DIR))/candidate" --language "$(LANGUAGE)" --overwrite; \
 	else \
-		echo "dry-run only; target documents future command until run_linguistic_pipeline_experiment exists"; \
+		echo "dry-run only; set RUN=1 after split-corpus and derive-processing-examples are ready"; \
 	fi
 
 evaluate: prepare validate-config

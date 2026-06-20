@@ -49,7 +49,7 @@ I am taking the initiative to make the next targets data-oriented rather than im
 1. `split-corpus` — consume `generated/corpus_summary/corpus_summary.json` and write deterministic development/test manifests under `generated/corpus_splits/`, with project-level separation, size stratification, and segment caps controlled by `DEV_PROJECT_FRACTION`, `MAX_DEVELOPMENT_SEGMENTS`, and `MAX_TEST_SEGMENTS`.
 2. `derive-processing-examples` — convert accepted records from the audited `clitic_compound_v2` curation request into compact prompt-facing few-shot assets under `prompts/segmentation_phase_2/variants/clitic_compound_v2/fewshots/`.
 3. `derive-evaluator-examples` — convert the same accepted records into evaluator exemplars/rubric material under `generated/derived_assets/evaluator_examples.jsonl`.
-4. `run-default` / `run-candidate` — run fixed split manifests through default and candidate `segmentation_phase_2` processing.
+4. `run-default` / `run-candidate` — run fixed split manifests through default and candidate `segmentation_phase_2` processing with `run_linguistic_pipeline_experiment`.
 5. `evaluate` / `compare` / `report` — produce paired judgements, aggregate results, and write a concise report artifact.
 
 ## Hypotheses and human audit gates
@@ -94,7 +94,10 @@ make derive-evaluator-examples RUN=1 REQUEST_ID=20260615-072115Z
 make curate RUN=1
 make review RUN=1 REQUEST_ID=<curation-request-id>
 make audit-reviews RUN=1 REQUEST_ID=<curation-request-id> AUDIT_LIMIT=20
-make run-candidate RUN=1
+make run-default RUN=1 SPLIT=development
+make run-candidate RUN=1 SPLIT=development
+make run-default RUN=1 SPLIT=test
+make run-candidate RUN=1 SPLIT=test
 ```
 
 `make summarize-corpus RUN=1` writes JSON, CSV, and Markdown corpus summaries under `generated/corpus_summary/` for French projects owned by `mannyrayner` by default. Override `CORPUS_USER=...`, `CORPUS_LANGUAGE=...`, or `CORPUS_LANGUAGE_MATCH=prefix` when inspecting a different imported corpus. The summary includes per-project counts for pages, segments, current `segmentation_phase_2` tokens, non-whitespace tokens, whitespace-only tokens, source/segment/token character counts with and without whitespace, and simple anomaly counts.
@@ -106,5 +109,7 @@ make run-candidate RUN=1
 After `make review`, the review step writes `reviews/<request-id>.items.json`, a compact summary for human scanning.
 Use `make audit-reviews RUN=1 REQUEST_ID=<id>` to step through these items and write a local human audit JSONL file.
 
+`make run-default RUN=1 SPLIT=development` and `make run-candidate RUN=1 SPLIT=development` run the default and candidate `segmentation_phase_2` parameter bundles over a split manifest. Use the development split while tuning prompts/evaluators; reserve `SPLIT=test` until the comparison procedure is fixed. Each run writes `outputs.jsonl`, per-record stage artifacts, and a run `manifest.json` under `generated/default/` or `generated/candidate/`.
+
 Some targets intentionally document future commands that still need implementation, especially
-`run_linguistic_pipeline_experiment` and the derivation/evaluator helpers.
+the evaluator/comparison/report helpers.

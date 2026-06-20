@@ -270,8 +270,8 @@ Each specific experiment directory should own a small `Makefile` that documents 
 - `make review` — call `python manage.py review_fewshots ...`;
 - `make derive-processing-examples` — post-process accepted curation records into prompt-facing few-shot files or a staged candidate variant; this now maps to `derive_fewshot_assets`;
 - `make derive-evaluator-examples` — derive checking/rubric examples from the same accepted records; this is currently produced by the same shared derivation command so processing and evaluator assets keep matching provenance;
-- `make run-default` — run `run_linguistic_pipeline_experiment` with default stage parameters;
-- `make run-candidate` — run the same inputs with curated-set stage parameters;
+- `make run-default` — run `run_linguistic_pipeline_experiment` with default stage parameters over the selected split manifest;
+- `make run-candidate` — run the same split inputs with curated-set stage parameters;
 - `make evaluate` — run the evaluator/repeated judges/panel over default and candidate outputs;
 - `make compare` — aggregate default-vs-candidate results into win/loss/tie counts and flagged examples;
 - `make report` — build a concise Markdown summary suitable for human review and possible progress-report evidence.
@@ -282,7 +282,7 @@ The top-level `experiments/` directory can later contain other tracks, for examp
 
 ## Manage.py experiment runner for processing + evaluation
 
-The near-term evaluator needs a CLI entry point that can run linguistic processing with explicit parameters and optionally apply evaluation methods to the resulting artifacts. This should be a management command rather than an admin-only UI feature at first, because report experiments need repeatable command lines, visible logs, and durable artifacts.
+The near-term evaluator needs a CLI entry point that can run linguistic processing with explicit parameters and optionally apply evaluation methods to the resulting artifacts. The first implemented slice now runs `segmentation_phase_2` over JSONL split manifests and writes per-record outputs/manifests; later iterations should extend it to broader stage ranges and evaluator execution. This should be a management command rather than an admin-only UI feature at first, because report experiments need repeatable command lines, visible logs, and durable artifacts.
 
 Provisional command:
 
