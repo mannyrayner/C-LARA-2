@@ -29,6 +29,43 @@ intermediate pipeline artifacts, and local scratch data. Few-shot curation and r
 `make curate RUN=1` and `make review RUN=1 ...` are written under `generated/few_shot_curation/` rather
 than `docs/few_shot_curation/`, so experiment runs can remain local until explicitly promoted.
 
+## Current corpus snapshot
+
+A maintainer run of `make summarize-corpus RUN=1` on 2026-06-19 against the laptop C-LARA-2 account for `mannyrayner` reported a sufficiently large French evaluation corpus:
+
+- 53 French (`fr`) projects, all with `segmentation_phase_2`;
+- 1600 segments;
+- 17344 current segmentation tokens total;
+- 10566 non-whitespace tokens and 6778 whitespace-only tokens;
+- 53625 token-surface characters including whitespace and 45704 excluding whitespace;
+- 60 empty-token segments and 0 empty token surfaces.
+
+This is enough material for a report-quality first experiment, provided that later targets create a deterministic development/test split and keep the held-out test portion isolated from prompt/evaluator iteration.
+
+## Next implementation targets
+
+I am taking the initiative to make the next targets data-oriented rather than immediately running more model calls. The current and next Makefile targets are:
+
+1. `split-corpus` — consume `generated/corpus_summary/corpus_summary.json` and write deterministic development/test manifests under `generated/corpus_splits/`, with project-level separation, size stratification, and segment caps controlled by `DEV_PROJECT_FRACTION`, `MAX_DEVELOPMENT_SEGMENTS`, and `MAX_TEST_SEGMENTS`.
+2. `derive-processing-examples` — convert accepted records from the audited `clitic_compound_v2` curation request into compact prompt-facing few-shot assets under `prompts/segmentation_phase_2/variants/clitic_compound_v2/fewshots/`.
+3. `derive-evaluator-examples` — convert the same accepted records into evaluator exemplars/rubric material under `generated/derived_assets/evaluator_examples.jsonl`.
+4. `run-default` / `run-candidate` — run fixed split manifests through default and candidate `segmentation_phase_2` processing with `run_linguistic_pipeline_experiment`.
+5. `evaluate` / `compare` / `report` — produce paired judgements, aggregate results, and write a concise report artifact.
+
+## Hypotheses and human audit gates
+
+The first report experiment should test three explicit hypotheses:
+
+1. **H1 — candidate quality:** the curated French `boundary_first` `clitic_compound_v2` few-shot set improves `segmentation_phase_2` boundary quality over the default bundle on held-out imported French project segments.
+2. **H2 — evaluator usefulness:** repeated AI boundary-quality judgements can identify default-vs-candidate wins/losses accurately enough that targeted human audit confirms the aggregate direction.
+3. **H3 — anti-overfitting discipline:** deterministic project-level development/test separation reduces leakage when the AI adjusts prompts, examples, and evaluator wording.
+
+Human audit should happen at three gates rather than continuously:
+
+1. **Split audit before tuning:** inspect `generated/corpus_splits/split_manifest.json` and small samples from `development.jsonl` and `test.jsonl` to confirm project-level separation, size/genre coverage, and no obvious overrepresentation of malformed/empty segments.
+2. **Development audit during tuning:** audit a small sample of development-set AI evaluator decisions, plus all severe disagreements or surprising candidate wins/losses, while allowing prompt/evaluator changes only from development evidence.
+3. **Final test audit before reporting:** after the procedure is fixed, run the held-out test comparison once, then audit a stratified sample of test wins/losses/ties and all high-impact anomalies before making report claims.
+
 ## Suggested workflow
 
 Start with dry-run planning commands:
@@ -36,6 +73,8 @@ Start with dry-run planning commands:
 ```bash
 make plan
 make validate-config
+make summarize-corpus
+make split-corpus
 make run-default
 make run-candidate
 make evaluate
@@ -48,14 +87,29 @@ command line for comparison runs. Set `RUN=1` when the corresponding management 
 exists and you want to execute it for real, for example:
 
 ```bash
+make summarize-corpus RUN=1
+make split-corpus RUN=1
+make derive-processing-examples RUN=1 REQUEST_ID=20260615-072115Z
+make derive-evaluator-examples RUN=1 REQUEST_ID=20260615-072115Z
 make curate RUN=1
 make review RUN=1 REQUEST_ID=<curation-request-id>
 make audit-reviews RUN=1 REQUEST_ID=<curation-request-id> AUDIT_LIMIT=20
-make run-candidate RUN=1
+make run-default RUN=1 SPLIT=development
+make run-candidate RUN=1 SPLIT=development
+make run-default RUN=1 SPLIT=test
+make run-candidate RUN=1 SPLIT=test
 ```
+
+`make summarize-corpus RUN=1` writes JSON, CSV, and Markdown corpus summaries under `generated/corpus_summary/` for French projects owned by `mannyrayner` by default. Override `CORPUS_USER=...`, `CORPUS_LANGUAGE=...`, or `CORPUS_LANGUAGE_MATCH=prefix` when inspecting a different imported corpus. The summary includes per-project counts for pages, segments, current `segmentation_phase_2` tokens, non-whitespace tokens, whitespace-only tokens, source/segment/token character counts with and without whitespace, and simple anomaly counts.
+
+`make split-corpus RUN=1` reads `generated/corpus_summary/corpus_summary.json` and writes `generated/corpus_splits/development.jsonl`, `generated/corpus_splits/test.jsonl`, and `generated/corpus_splits/split_manifest.json`. The split is deterministic for `SPLIT_SEED`, keeps projects in only one split, stratifies projects by size, and caps selected segment records so development stays small enough for iteration while test remains held out.
+
+`make derive-processing-examples RUN=1 REQUEST_ID=<audited-id>` requires a human-audit JSONL file unless the management command is explicitly run with `--allow-unaudited`. The target writes processing few-shots into the prompt variant directory and derives evaluator examples at the same time; `derive-evaluator-examples` is an alias/dependency target that documents the shared derivation step.
 
 After `make review`, the review step writes `reviews/<request-id>.items.json`, a compact summary for human scanning.
 Use `make audit-reviews RUN=1 REQUEST_ID=<id>` to step through these items and write a local human audit JSONL file.
 
+`make run-default RUN=1 SPLIT=development` and `make run-candidate RUN=1 SPLIT=development` run the default and candidate `segmentation_phase_2` parameter bundles over a split manifest. Use the development split while tuning prompts/evaluators; reserve `SPLIT=test` until the comparison procedure is fixed. Each run writes `outputs.jsonl`, per-record stage artifacts, and a run `manifest.json` under `generated/default/` or `generated/candidate/`.
+
 Some targets intentionally document future commands that still need implementation, especially
-`run_linguistic_pipeline_experiment` and the derivation/evaluator helpers.
+the evaluator/comparison/report helpers.
