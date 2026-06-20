@@ -27,6 +27,7 @@ DEV_PROJECT_FRACTION ?= 0.25
 MAX_DEVELOPMENT_SEGMENTS ?= 250
 MAX_TEST_SEGMENTS ?= 500
 SPLIT ?= development
+FEWSHOT_COUNT ?= small
 RUN_LABEL ?= fr-boundary-first-clitic-compound-v2
 
 DEFAULT_PARAMS := configs/default_stage_parameters.json
@@ -80,6 +81,7 @@ plan: prepare
 	@echo "  evaluator: $(EVALUATOR_CONFIG)"
 	@echo "  fixtures:  $(INPUT_RECORDS)"
 	@echo "  split:     $(SPLIT_RECORDS)"
+	@echo "  candidate few-shot count: $(FEWSHOT_COUNT)"
 	@echo
 	@echo "Generated data will be written under $(GENERATED_DIR)/ and $(TMP_DIR)/ (ignored by Git)."
 	@echo "Curation:  $(CURATION_ROOT)"
@@ -159,11 +161,11 @@ run-default: prepare validate-config
 	fi
 
 run-candidate: prepare validate-config
-	@echo "+ $(MANAGE) run_linguistic_pipeline_experiment --input-records-jsonl $(PY_SPLIT_RECORDS) --start-stage segmentation_phase_2 --end-stage segmentation_phase_2 --stage-parameters-file $(abspath $(CANDIDATE_PARAMS)) --run-label $(RUN_LABEL)-$(SPLIT)-candidate --output-root $(abspath $(GENERATED_DIR))/candidate --language $(LANGUAGE) --overwrite"
+	@echo "+ $(MANAGE) run_linguistic_pipeline_experiment --input-records-jsonl $(PY_SPLIT_RECORDS) --start-stage segmentation_phase_2 --end-stage segmentation_phase_2 --stage-parameters-file $(abspath $(CANDIDATE_PARAMS)) --set-stage-parameter segmentation_phase_2.fewshot_count=$(FEWSHOT_COUNT) --run-label $(RUN_LABEL)-$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT) --output-root $(abspath $(GENERATED_DIR))/candidate --language $(LANGUAGE) --overwrite"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) run_linguistic_pipeline_experiment --input-records-jsonl "$(PY_SPLIT_RECORDS)" --start-stage segmentation_phase_2 --end-stage segmentation_phase_2 --stage-parameters-file "$(abspath $(CANDIDATE_PARAMS))" --run-label "$(RUN_LABEL)-$(SPLIT)-candidate" --output-root "$(abspath $(GENERATED_DIR))/candidate" --language "$(LANGUAGE)" --overwrite; \
+		$(MANAGE) run_linguistic_pipeline_experiment --input-records-jsonl "$(PY_SPLIT_RECORDS)" --start-stage segmentation_phase_2 --end-stage segmentation_phase_2 --stage-parameters-file "$(abspath $(CANDIDATE_PARAMS))" --set-stage-parameter "segmentation_phase_2.fewshot_count=$(FEWSHOT_COUNT)" --run-label "$(RUN_LABEL)-$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT)" --output-root "$(abspath $(GENERATED_DIR))/candidate" --language "$(LANGUAGE)" --overwrite; \
 	else \
-		echo "dry-run only; set RUN=1 after split-corpus and derive-processing-examples are ready"; \
+		echo "dry-run only; set RUN=1 FEWSHOT_COUNT=<small|medium|all|N> after split-corpus and derive-processing-examples are ready"; \
 	fi
 
 evaluate: prepare validate-config

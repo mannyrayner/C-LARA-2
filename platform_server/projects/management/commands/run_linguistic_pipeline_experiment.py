@@ -36,6 +36,12 @@ class Command(BaseCommand):
         parser.add_argument("--run-label", required=True)
         parser.add_argument("--output-root", required=True)
         parser.add_argument("--language", default="fr")
+        parser.add_argument(
+            "--set-stage-parameter",
+            action="append",
+            default=[],
+            help="Override a stage parameter as stage.key=value; value is parsed as JSON when possible.",
+        )
         parser.add_argument("--overwrite", action="store_true")
 
     def handle(self, *args, **options):
@@ -57,6 +63,10 @@ class Command(BaseCommand):
             stage_parameters = json.loads(params_path.read_text(encoding="utf-8"))
         except Exception as exc:
             raise CommandError(f"Could not read stage parameters {params_path}: {exc}") from exc
+        try:
+            stage_parameters = apply_stage_parameter_overrides(stage_parameters, options.get("set_stage_parameter") or [])
+        except ValueError as exc:
+            raise CommandError(str(exc)) from exc
         records = load_input_records(input_path)
         if not records:
             raise CommandError(f"No input records found in {input_path}")
@@ -97,6 +107,29 @@ class Command(BaseCommand):
         self.stdout.write(f"Records: {len(outputs)}")
         self.stdout.write(f"Outputs: {output_records_path}")
         self.stdout.write(f"Manifest: {manifest_path}")
+
+
+def apply_stage_parameter_overrides(stage_parameters: dict[str, Any], overrides: list[str]) -> dict[str, Any]:
+    merged = json.loads(json.dumps(stage_parameters or {}))
+    for override in overrides:
+        stage_key, sep, raw_value = str(override).partition("=")
+        if not sep:
+            raise ValueError(f"stage parameter override must be stage.key=value: {override!r}")
+        stage, dot, key = stage_key.partition(".")
+        if not dot or not stage or not key:
+            raise ValueError(f"stage parameter override must be stage.key=value: {override!r}")
+        stage_payload = merged.setdefault(stage, {})
+        if not isinstance(stage_payload, dict):
+            raise ValueError(f"stage parameter override target is not an object: {stage!r}")
+        stage_payload[key] = parse_override_value(raw_value)
+    return merged
+
+
+def parse_override_value(raw: str) -> Any:
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return raw
 
 
 def load_input_records(path: Path) -> list[ExperimentInputRecord]:

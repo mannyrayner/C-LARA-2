@@ -271,7 +271,7 @@ Each specific experiment directory should own a small `Makefile` that documents 
 - `make derive-processing-examples` — post-process accepted curation records into prompt-facing few-shot files or a staged candidate variant; this now maps to `derive_fewshot_assets`;
 - `make derive-evaluator-examples` — derive checking/rubric examples from the same accepted records; this is currently produced by the same shared derivation command so processing and evaluator assets keep matching provenance;
 - `make run-default` — run `run_linguistic_pipeline_experiment` with default stage parameters over the selected split manifest;
-- `make run-candidate` — run the same split inputs with curated-set stage parameters;
+- `make run-candidate` — run the same split inputs with curated-set stage parameters, varying `FEWSHOT_COUNT` during development to estimate the useful tranche size;
 - `make evaluate` — run the evaluator/repeated judges/panel over default and candidate outputs;
 - `make compare` — aggregate default-vs-candidate results into win/loss/tie counts and flagged examples;
 - `make report` — build a concise Markdown summary suitable for human review and possible progress-report evidence.

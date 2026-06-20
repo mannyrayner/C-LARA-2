@@ -8,7 +8,12 @@ from unittest.mock import AsyncMock, patch
 from django.core.management import call_command
 from django.test import SimpleTestCase
 
-from projects.management.commands.run_linguistic_pipeline_experiment import load_input_records, safe_record_id, text_obj_for_record
+from projects.management.commands.run_linguistic_pipeline_experiment import (
+    apply_stage_parameter_overrides,
+    load_input_records,
+    safe_record_id,
+    text_obj_for_record,
+)
 
 
 class RunLinguisticPipelineExperimentTests(SimpleTestCase):
@@ -38,6 +43,19 @@ class RunLinguisticPipelineExperimentTests(SimpleTestCase):
             self.assertEqual(records[0].surface, "Bonjour le monde.")
             self.assertEqual(text_obj["pages"][0]["segments"][0]["surface"], "Bonjour le monde.")
             self.assertEqual(safe_record_id(records[0].record_id), "project_1_p1_s1")
+
+
+    def test_apply_stage_parameter_overrides_parses_values(self):
+        params = {"segmentation_phase_2": {"mechanism": "boundary_first", "fewshot_count": "small"}}
+
+        merged = apply_stage_parameter_overrides(
+            params,
+            ["segmentation_phase_2.fewshot_count=12", "segmentation_phase_2.variant=clitic_compound_v2"],
+        )
+
+        self.assertEqual(merged["segmentation_phase_2"]["fewshot_count"], 12)
+        self.assertEqual(merged["segmentation_phase_2"]["variant"], "clitic_compound_v2")
+        self.assertEqual(params["segmentation_phase_2"]["fewshot_count"], "small")
 
     def test_command_writes_outputs_and_manifest(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -75,6 +93,7 @@ class RunLinguisticPipelineExperimentTests(SimpleTestCase):
                     run_label="fixture-default",
                     output_root=str(output_root),
                     language="fr",
+                    set_stage_parameter=["segmentation_phase_2.fewshot_count=medium"],
                     overwrite=True,
                 )
 
@@ -84,4 +103,5 @@ class RunLinguisticPipelineExperimentTests(SimpleTestCase):
             self.assertEqual(len(outputs), 1)
             self.assertEqual(outputs[0]["record_id"], "r1")
             self.assertEqual(manifest["record_count"], 1)
+            self.assertEqual(manifest["stage_parameters"]["segmentation_phase_2"]["fewshot_count"], "medium")
             self.assertTrue((run_dir / "stage_outputs" / "r1" / "stages" / "segmentation_phase_2.json").exists())
