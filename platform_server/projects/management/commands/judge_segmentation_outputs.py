@@ -224,7 +224,8 @@ def load_judged_record_ids(path: Path) -> set[str]:
 
 def judgement_record_from_output(payload: dict[str, Any], *, run_label: str) -> dict[str, Any]:
     segmentation = payload.get("segmentation_phase_2") or {}
-    token_surfaces = extract_token_surfaces(segmentation)
+    raw_token_surfaces = extract_token_surfaces(segmentation)
+    token_surfaces = trim_boundary_whitespace_tokens(raw_token_surfaces)
     input_surface = str(payload.get("input_surface") or segmentation.get("surface") or "")
     segments_display = "|".join(token_surfaces)
     cache_key = segmentation_cache_key(input_surface, token_surfaces)
@@ -239,6 +240,7 @@ def judgement_record_from_output(payload: dict[str, Any], *, run_label: str) -> 
         "segment_index": payload.get("segment_index"),
         "input_surface": input_surface,
         "token_surfaces": token_surfaces,
+        "raw_token_surfaces": raw_token_surfaces,
         "segments_display": segments_display,
         "cache_key": cache_key,
     }
@@ -253,6 +255,16 @@ def extract_token_surfaces(segmentation: dict[str, Any]) -> list[str]:
         return []
     tokens = segments[0].get("tokens") or []
     return [str(token.get("surface") or "") for token in tokens if isinstance(token, dict)]
+
+
+def trim_boundary_whitespace_tokens(token_surfaces: list[str]) -> list[str]:
+    start = 0
+    end = len(token_surfaces)
+    while start < end and token_surfaces[start].strip() == "":
+        start += 1
+    while end > start and token_surfaces[end - 1].strip() == "":
+        end -= 1
+    return token_surfaces[start:end]
 
 
 def segmentation_cache_key(input_surface: str, token_surfaces: list[str]) -> str:

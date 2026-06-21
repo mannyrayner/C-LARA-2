@@ -11,6 +11,7 @@ from django.test import SimpleTestCase
 from projects.management.commands.judge_segmentation_outputs import (
     judgement_record_from_output,
     segmentation_cache_key,
+    trim_boundary_whitespace_tokens,
 )
 
 
@@ -27,6 +28,24 @@ class JudgeSegmentationOutputsTests(SimpleTestCase):
             record["cache_key"],
             segmentation_cache_key("\nDans un futur proche,", ["Dans", " ", "un", " ", "futur", " ", "proche", ","]),
         )
+
+
+    def test_cache_key_ignores_boundary_whitespace_tokens(self):
+        default_payload = output_payload()
+        candidate_payload = output_payload()
+        candidate_payload["segmentation_phase_2"]["pages"][0]["segments"][0]["tokens"] = [
+            {"surface": "\n"},
+            *candidate_payload["segmentation_phase_2"]["pages"][0]["segments"][0]["tokens"],
+            {"surface": " "},
+        ]
+
+        default_record = judgement_record_from_output(default_payload, run_label="default")
+        candidate_record = judgement_record_from_output(candidate_payload, run_label="candidate")
+
+        self.assertEqual(trim_boundary_whitespace_tokens(["\n", "Dans", " "]), ["Dans"])
+        self.assertEqual(candidate_record["segments_display"], "Dans| |un| |futur| |proche|,")
+        self.assertEqual(candidate_record["cache_key"], default_record["cache_key"])
+        self.assertEqual(candidate_record["raw_token_surfaces"][0], "\n")
 
     def test_command_appends_judgement_and_cache_then_reuses_cached_segmentation(self):
         with tempfile.TemporaryDirectory() as tmp:
