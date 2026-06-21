@@ -36,7 +36,7 @@ class JudgeSegmentationOutputsTests(SimpleTestCase):
             judgements_path = tmp_path / "judgements.jsonl"
             cache_path = tmp_path / "cache.json"
 
-            with patch("builtins.input", side_effect=["a", "good"]):
+            with patch("builtins.input", side_effect=["a", "good", "q"]):
                 call_command(
                     "judge_segmentation_outputs",
                     outputs_jsonl=str(outputs_path),
@@ -52,18 +52,43 @@ class JudgeSegmentationOutputsTests(SimpleTestCase):
             self.assertEqual(len(cache), 1)
 
             second_judgements = tmp_path / "second.jsonl"
-            call_command(
-                "judge_segmentation_outputs",
-                outputs_jsonl=str(outputs_path),
-                judgements_jsonl=str(second_judgements),
-                cache_json=str(cache_path),
-                run_label="fixture-run-2",
-                include_cached=True,
-            )
+            with patch("builtins.input", side_effect=["q"]):
+                call_command(
+                    "judge_segmentation_outputs",
+                    outputs_jsonl=str(outputs_path),
+                    judgements_jsonl=str(second_judgements),
+                    cache_json=str(cache_path),
+                    run_label="fixture-run-2",
+                    include_cached=True,
+                )
 
             reused = [json.loads(line) for line in second_judgements.read_text(encoding="utf-8").splitlines()]
             self.assertEqual(reused[0]["judgement"], "accept")
             self.assertTrue(reused[0]["reused_cached_judgement"])
+
+    def test_command_can_go_back_and_append_correction_after_completion(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            outputs_path = tmp_path / "outputs.jsonl"
+            outputs_path.write_text(json.dumps(output_payload()) + "\n", encoding="utf-8")
+            judgements_path = tmp_path / "judgements.jsonl"
+            cache_path = tmp_path / "cache.json"
+
+            with patch("builtins.input", side_effect=["a", "initial", "b 1", "r", "corrected", "q"]):
+                call_command(
+                    "judge_segmentation_outputs",
+                    outputs_jsonl=str(outputs_path),
+                    judgements_jsonl=str(judgements_path),
+                    cache_json=str(cache_path),
+                    run_label="fixture-run",
+                )
+
+            judgements = [json.loads(line) for line in judgements_path.read_text(encoding="utf-8").splitlines()]
+            cache = json.loads(cache_path.read_text(encoding="utf-8"))
+            self.assertEqual([payload["judgement"] for payload in judgements], ["accept", "reject"])
+            self.assertFalse(judgements[0]["is_correction"])
+            self.assertTrue(judgements[1]["is_correction"])
+            self.assertEqual(next(iter(cache.values()))["judgement"], "reject")
 
 
 def output_payload():

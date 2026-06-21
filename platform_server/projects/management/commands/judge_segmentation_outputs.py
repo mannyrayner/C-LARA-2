@@ -40,54 +40,82 @@ class Command(BaseCommand):
         run_label = str(options.get("run_label") or "")
         include_cached = bool(options.get("include_cached"))
 
-        records = load_output_records(outputs_path)
-        if not records:
+        payloads = load_output_records(outputs_path)
+        if not payloads:
             raise CommandError(f"No output records found in {outputs_path}")
+        records = [judgement_record_from_output(payload, run_label=run_label) for payload in payloads]
         cache = load_cache(cache_path)
         judged_record_ids = load_judged_record_ids(judgements_path)
+        initially_judged_record_ids = set(judged_record_ids)
         judgements_path.parent.mkdir(parents=True, exist_ok=True)
         cache_path.parent.mkdir(parents=True, exist_ok=True)
 
         prompted = 0
         appended = 0
         reused = 0
-        skipped_existing = 0
+        current_index = 0
         with judgements_path.open("a", encoding="utf-8") as out:
-            for position, payload in enumerate(records, start=1):
-                record = judgement_record_from_output(payload, run_label=run_label)
-                if record["record_id"] in judged_record_ids:
-                    skipped_existing += 1
+            while True:
+                next_index = next_unjudged_index(records, judged_record_ids, start=current_index)
+                if next_index is None:
+                    action, target = prompt_after_completion()
+                    if action == "quit":
+                        break
+                    if action == "back":
+                        correction_appended = self.rejudge_record(
+                            records,
+                            target,
+                            out=out,
+                            cache=cache,
+                            cache_path=cache_path,
+                            total=len(records),
+                        )
+                        appended += int(correction_appended)
                     continue
+
+                current_index = next_index
+                record = records[current_index]
                 cached = cache.get(record["cache_key"])
                 if cached:
                     reused += 1
+                    judged_record_ids.add(record["record_id"])
                     if include_cached:
                         write_judgement(out, record, cached["judgement"], cached.get("notes", ""), reused=True)
                         out.flush()
-                        judged_record_ids.add(record["record_id"])
                         appended += 1
+                    current_index += 1
                     continue
+
                 if limit and prompted >= limit:
                     break
                 prompted += 1
-                decision, notes = prompt_for_judgement(record, position=position, total=len(records))
-                if decision == "quit":
+                action, decision, notes, target = prompt_for_judgement(
+                    record, position=current_index + 1, total=len(records)
+                )
+                if action == "quit":
                     break
+                if action == "back":
+                    correction_appended = self.rejudge_record(
+                        records,
+                        target,
+                        out=out,
+                        cache=cache,
+                        cache_path=cache_path,
+                        total=len(records),
+                    )
+                    appended += int(correction_appended)
+                    continue
                 write_judgement(out, record, decision, notes, reused=False)
                 out.flush()
-                cache[record["cache_key"]] = {
-                    "judgement": decision,
-                    "notes": notes,
-                    "input_surface": record["input_surface"],
-                    "segments_display": record["segments_display"],
-                    "updated_at": utc_now(),
-                }
+                update_cache(cache, record, decision, notes)
                 write_cache(cache_path, cache)
                 judged_record_ids.add(record["record_id"])
                 appended += 1
+                current_index += 1
 
         if appended and not cache_path.exists():
             write_cache(cache_path, cache)
+        skipped_existing = len(initially_judged_record_ids.intersection({r["record_id"] for r in records}))
         self.stdout.write("Segmentation judgement pass complete")
         self.stdout.write(f"Outputs: {outputs_path}")
         self.stdout.write(f"Judgements: {judgements_path}")
@@ -96,6 +124,68 @@ class Command(BaseCommand):
             f"Records: {len(records)}; prompted: {prompted}; appended: {appended}; "
             f"reused_cached: {reused}; skipped_existing: {skipped_existing}"
         )
+
+    def rejudge_record(
+        self,
+        records: list[dict[str, Any]],
+        target: str,
+        *,
+        out: TextIO,
+        cache: dict[str, dict[str, Any]],
+        cache_path: Path,
+        total: int,
+    ) -> bool:
+        resolved = resolve_back_target(records, target)
+        if resolved is None:
+            self.stdout.write(f"No item found for {target!r}; continuing.")
+            return False
+        position, record = resolved
+        action, decision, notes, nested_target = prompt_for_judgement(
+            record, position=position, total=total, correction=True
+        )
+        if action == "quit":
+            return False
+        if action == "back":
+            return self.rejudge_record(records, nested_target, out=out, cache=cache, cache_path=cache_path, total=total)
+        write_judgement(out, record, decision, notes, reused=False, correction=True)
+        out.flush()
+        update_cache(cache, record, decision, notes)
+        write_cache(cache_path, cache)
+        return True
+
+
+def next_unjudged_index(records: list[dict[str, Any]], judged_record_ids: set[str], *, start: int) -> int | None:
+    for index in range(start, len(records)):
+        if records[index]["record_id"] not in judged_record_ids:
+            return index
+    for index in range(0, min(start, len(records))):
+        if records[index]["record_id"] not in judged_record_ids:
+            return index
+    return None
+
+
+def resolve_back_target(records: list[dict[str, Any]], target: str) -> tuple[int, dict[str, Any]] | None:
+    normalized = target.strip()
+    if not normalized:
+        return None
+    if normalized.isdigit():
+        position = int(normalized)
+        if 1 <= position <= len(records):
+            return position, records[position - 1]
+    for position, record in enumerate(records, start=1):
+        if record["record_id"] == normalized:
+            return position, record
+    return None
+
+
+def update_cache(cache: dict[str, dict[str, Any]], record: dict[str, Any], judgement: str, notes: str) -> None:
+    cache[record["cache_key"]] = {
+        "judgement": judgement,
+        "notes": notes,
+        "input_surface": record["input_surface"],
+        "segments_display": record["segments_display"],
+        "updated_at": utc_now(),
+    }
 
 
 def load_output_records(path: Path) -> list[dict[str, Any]]:
@@ -171,37 +261,72 @@ def segmentation_cache_key(input_surface: str, token_surfaces: list[str]) -> str
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
-def prompt_for_judgement(record: dict[str, Any], *, position: int, total: int) -> tuple[str, str]:
-    print(f"\nRecord {position}/{total}: {record['record_id']}")
+def prompt_for_judgement(
+    record: dict[str, Any], *, position: int, total: int, correction: bool = False
+) -> tuple[str, str, str, str]:
+    prefix = "Correction" if correction else "Record"
+    print(f"\n{prefix} {position}/{total}: {record['record_id']}")
     print(f"Input surface: {json.dumps(record['input_surface'], ensure_ascii=False)}")
     print(f"Segments: {json.dumps(record['segments_display'], ensure_ascii=False)}")
     while True:
-        raw = input("Judgement [a=accept, r=reject, s=skip, q=quit, ?=help]: ").strip().lower()
-        if raw in HELP_ALIASES:
-            print("accept = segmentation is good enough; reject = boundary error; skip = no judgement; quit = stop")
+        raw = input("Judgement [a=accept, r=reject, s=skip, b <id>=back, q=quit, ?=help]: ").strip()
+        lowered = raw.lower()
+        back_target = parse_back_command(raw)
+        if back_target is not None:
+            return "back", "", "", back_target
+        if lowered in HELP_ALIASES:
+            print(
+                "accept = segmentation is good enough; reject = boundary error; skip = no judgement; "
+                "b <id> = rejudge item number or record id; quit = stop"
+            )
             continue
-        if raw in QUIT_ALIASES:
+        if lowered in QUIT_ALIASES:
+            return "quit", "", "", ""
+        if lowered in ACCEPT_ALIASES:
+            return "judgement", "accept", prompt_notes(), ""
+        if lowered in REJECT_ALIASES:
+            return "judgement", "reject", prompt_notes(), ""
+        if lowered in SKIP_ALIASES:
+            return "judgement", "skip", prompt_notes(), ""
+        print("Please enter a, r, s, b <id>, q, or ?.")
+
+
+def prompt_after_completion() -> tuple[str, str]:
+    while True:
+        raw = input("All items are judged. Enter b <id> to correct an item, or q to quit: ").strip()
+        lowered = raw.lower()
+        back_target = parse_back_command(raw)
+        if back_target is not None:
+            return "back", back_target
+        if lowered in QUIT_ALIASES:
             return "quit", ""
-        if raw in ACCEPT_ALIASES:
-            return "accept", prompt_notes()
-        if raw in REJECT_ALIASES:
-            return "reject", prompt_notes()
-        if raw in SKIP_ALIASES:
-            return "skip", prompt_notes()
-        print("Please enter a, r, s, q, or ?.")
+        print("Please enter b <id> or q.")
+
+
+def parse_back_command(raw: str) -> str | None:
+    stripped = raw.strip()
+    parts = stripped.split(maxsplit=1)
+    if not parts or parts[0].lower() != "b":
+        return None
+    if len(parts) != 2 or not parts[1].strip():
+        return ""
+    return parts[1].strip()
 
 
 def prompt_notes() -> str:
     return input("Notes (optional): ").strip()
 
 
-def write_judgement(out: TextIO, record: dict[str, Any], judgement: str, notes: str, *, reused: bool) -> None:
+def write_judgement(
+    out: TextIO, record: dict[str, Any], judgement: str, notes: str, *, reused: bool, correction: bool = False
+) -> None:
     payload = dict(record)
     payload.update(
         {
             "judgement": judgement,
             "notes": notes,
             "reused_cached_judgement": reused,
+            "is_correction": correction,
             "judged_at": utc_now(),
         }
     )
