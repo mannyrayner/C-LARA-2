@@ -19,6 +19,7 @@ REVIEW_PASSES ?= 3
 TIMEOUT_S ?= 600
 REQUEST_ID ?=
 AUDIT_LIMIT ?= 0
+JUDGE_LIMIT ?= 0
 CORPUS_USER ?= mannyrayner
 CORPUS_LANGUAGE ?= fr
 CORPUS_LANGUAGE_MATCH ?= exact
@@ -42,6 +43,9 @@ SPLIT_RECORDS := $(CORPUS_SPLIT_DIR)/$(SPLIT).jsonl
 DERIVED_ASSETS_DIR := $(abspath $(GENERATED_DIR))/derived_assets
 PROMPT_VARIANT_DIR := $(ROOT_DIR)/prompts/$(OPERATION)/variants/$(TARGET_SET)
 CURATION_ROOT := $(abspath $(GENERATED_DIR))/few_shot_curation
+JUDGEMENT_DIR := $(abspath $(GENERATED_DIR))/human_judgements
+DEFAULT_RUN_DIR := $(abspath $(GENERATED_DIR))/default/$(RUN_LABEL)-$(SPLIT)-default
+CANDIDATE_RUN_DIR := $(abspath $(GENERATED_DIR))/candidate/$(RUN_LABEL)-$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT)
 
 PY_OS := $(shell $(PYTHON) -c 'import os; print(os.name)' 2>/dev/null || echo posix)
 python_path = $(shell if [ "$(PY_OS)" = "nt" ] && command -v cygpath >/dev/null 2>&1; then cygpath -am "$(1)"; else printf '%s' "$(1)"; fi)
@@ -56,15 +60,18 @@ PY_DEFAULT_PARAMS := $(call python_path,$(abspath $(DEFAULT_PARAMS)))
 PY_CANDIDATE_PARAMS := $(call python_path,$(abspath $(CANDIDATE_PARAMS)))
 PY_DEFAULT_OUTPUT_DIR := $(call python_path,$(abspath $(GENERATED_DIR))/default)
 PY_CANDIDATE_OUTPUT_DIR := $(call python_path,$(abspath $(GENERATED_DIR))/candidate)
+PY_JUDGEMENT_DIR := $(call python_path,$(JUDGEMENT_DIR))
+PY_DEFAULT_RUN_DIR := $(call python_path,$(DEFAULT_RUN_DIR))
+PY_CANDIDATE_RUN_DIR := $(call python_path,$(CANDIDATE_RUN_DIR))
 
 MANAGE = cd "$(PLATFORM_DIR)" && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help plan validate validate-config prepare summarize-corpus split-corpus curate review audit-reviews derive-processing-examples derive-evaluator-examples run-default run-candidate evaluate compare report clean
+.PHONY: help plan validate validate-config prepare summarize-corpus split-corpus curate review audit-reviews derive-processing-examples derive-evaluator-examples run-default run-candidate judge-default judge-candidate evaluate compare report clean
 
 help:
 	@sed -n '1,220p' README.md
 	@echo
-	@echo "Common targets: plan validate-config summarize-corpus split-corpus curate review audit-reviews derive-processing-examples derive-evaluator-examples run-default run-candidate evaluate compare report"
+	@echo "Common targets: plan validate-config summarize-corpus split-corpus curate review audit-reviews derive-processing-examples derive-evaluator-examples run-default run-candidate judge-default judge-candidate evaluate compare report"
 	@echo "Targets that call management commands default to dry-run. Set RUN=1 to execute."
 
 prepare:
@@ -92,6 +99,7 @@ plan: prepare
 	@echo "Corpus summary: $(CORPUS_SUMMARY_DIR)"
 	@echo "Corpus splits:  $(CORPUS_SPLIT_DIR)"
 	@echo "Derived assets: $(DERIVED_ASSETS_DIR)"
+	@echo "Judgements: $(JUDGEMENT_DIR)"
 	@echo "Prompt variant: $(PROMPT_VARIANT_DIR)"
 
 validate: validate-config
@@ -170,6 +178,22 @@ run-candidate: prepare validate-config
 		$(MANAGE) run_linguistic_pipeline_experiment --input-records-jsonl "$(PY_SPLIT_RECORDS)" --start-stage segmentation_phase_2 --end-stage segmentation_phase_2 --stage-parameters-file "$(PY_CANDIDATE_PARAMS)" --set-stage-parameter "segmentation_phase_2.fewshot_count=$(FEWSHOT_COUNT)" --run-label "$(RUN_LABEL)-$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT)" --output-root "$(PY_CANDIDATE_OUTPUT_DIR)" --language "$(LANGUAGE)" --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 FEWSHOT_COUNT=<small|medium|all|N> after split-corpus and derive-processing-examples are ready"; \
+	fi
+
+judge-default: prepare
+	@echo "+ $(MANAGE) judge_segmentation_outputs --outputs-jsonl $(PY_DEFAULT_RUN_DIR)/outputs.jsonl --judgements-jsonl $(PY_JUDGEMENT_DIR)/$(SPLIT)-default.jsonl --cache-json $(PY_JUDGEMENT_DIR)/segmentation_judgement_cache.json --run-label $(RUN_LABEL)-$(SPLIT)-default --limit $(JUDGE_LIMIT) --include-cached"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) judge_segmentation_outputs --outputs-jsonl "$(PY_DEFAULT_RUN_DIR)/outputs.jsonl" --judgements-jsonl "$(PY_JUDGEMENT_DIR)/$(SPLIT)-default.jsonl" --cache-json "$(PY_JUDGEMENT_DIR)/segmentation_judgement_cache.json" --run-label "$(RUN_LABEL)-$(SPLIT)-default" --limit "$(JUDGE_LIMIT)" --include-cached; \
+	else \
+		echo "dry-run only; set RUN=1 after run-default has produced outputs.jsonl"; \
+	fi
+
+judge-candidate: prepare
+	@echo "+ $(MANAGE) judge_segmentation_outputs --outputs-jsonl $(PY_CANDIDATE_RUN_DIR)/outputs.jsonl --judgements-jsonl $(PY_JUDGEMENT_DIR)/$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT).jsonl --cache-json $(PY_JUDGEMENT_DIR)/segmentation_judgement_cache.json --run-label $(RUN_LABEL)-$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT) --limit $(JUDGE_LIMIT) --include-cached"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) judge_segmentation_outputs --outputs-jsonl "$(PY_CANDIDATE_RUN_DIR)/outputs.jsonl" --judgements-jsonl "$(PY_JUDGEMENT_DIR)/$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT).jsonl" --cache-json "$(PY_JUDGEMENT_DIR)/segmentation_judgement_cache.json" --run-label "$(RUN_LABEL)-$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT)" --limit "$(JUDGE_LIMIT)" --include-cached; \
+	else \
+		echo "dry-run only; set RUN=1 FEWSHOT_COUNT=<small|medium|all|N> after run-candidate has produced outputs.jsonl"; \
 	fi
 
 evaluate: prepare validate-config

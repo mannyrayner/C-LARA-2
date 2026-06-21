@@ -50,7 +50,8 @@ I am taking the initiative to make the next targets data-oriented rather than im
 2. `derive-processing-examples` — convert accepted records from the audited `clitic_compound_v2` curation request into compact prompt-facing few-shot assets under `prompts/segmentation_phase_2/variants/clitic_compound_v2/fewshots/`.
 3. `derive-evaluator-examples` — convert the same accepted records into evaluator exemplars/rubric material under `generated/derived_assets/evaluator_examples.jsonl`.
 4. `run-default` / `run-candidate` — run fixed split manifests through default and candidate `segmentation_phase_2` processing with `run_linguistic_pipeline_experiment`; candidate runs can vary `FEWSHOT_COUNT=small|medium|all|N`.
-5. `evaluate` / `compare` / `report` — produce paired judgements, aggregate results, and write a concise report artifact.
+5. `judge-default` / `judge-candidate` — interactively audit segmentation outputs in a compact display, append judgements continuously, and reuse cached decisions for repeated identical segmentations.
+6. `evaluate` / `compare` / `report` — produce paired AI judgements, aggregate results, and write a concise report artifact.
 
 ## Hypotheses and human audit gates
 
@@ -77,6 +78,8 @@ make summarize-corpus
 make split-corpus
 make run-default
 make run-candidate
+make judge-default
+make judge-candidate
 make evaluate
 ```
 
@@ -100,6 +103,8 @@ make run-candidate RUN=1 SPLIT=development FEWSHOT_COUNT=medium
 make run-candidate RUN=1 SPLIT=development FEWSHOT_COUNT=all
 make run-default RUN=1 SPLIT=test
 make run-candidate RUN=1 SPLIT=test FEWSHOT_COUNT=<chosen>
+make judge-default RUN=1 SPLIT=development JUDGE_LIMIT=20
+make judge-candidate RUN=1 SPLIT=development FEWSHOT_COUNT=small JUDGE_LIMIT=20
 ```
 
 `make summarize-corpus RUN=1` writes JSON, CSV, and Markdown corpus summaries under `generated/corpus_summary/` for French projects owned by `mannyrayner` by default. Override `CORPUS_USER=...`, `CORPUS_LANGUAGE=...`, or `CORPUS_LANGUAGE_MATCH=prefix` when inspecting a different imported corpus. The summary includes per-project counts for pages, segments, current `segmentation_phase_2` tokens, non-whitespace tokens, whitespace-only tokens, source/segment/token character counts with and without whitespace, and simple anomaly counts.
@@ -113,6 +118,8 @@ Use `make audit-reviews RUN=1 REQUEST_ID=<id>` to step through these items and w
 
 `make run-default RUN=1 SPLIT=development` and `make run-candidate RUN=1 SPLIT=development FEWSHOT_COUNT=small` run the default and candidate `segmentation_phase_2` parameter bundles over a split manifest. Candidate runs override `segmentation_phase_2.fewshot_count` at the command line, so development experiments can test whether quality tops out or degrades as more accepted examples are included. Use the development split while tuning the few-shot tranche and evaluator; reserve `SPLIT=test` until the comparison procedure and chosen few-shot count are fixed. Each run writes `outputs.jsonl`, per-record stage artifacts, and a run `manifest.json` under `generated/default/` or `generated/candidate/`.
 When invoked from Cygwin with Windows Python, the Makefile converts the split manifest, stage-parameter file, prompt, curation, and output paths with `cygpath` before passing them to Django, and the runner applies the same path normalization for direct command-line use. The runner also uses extended-length Windows paths for nested per-record stage artifacts, since the generated run label plus record directory can otherwise exceed the classic Windows `MAX_PATH` limit.
+
+`make judge-default RUN=1` and `make judge-candidate RUN=1 FEWSHOT_COUNT=<count>` read the corresponding `outputs.jsonl` files and show each item as a compact human-audit prompt, for example `Input surface: "\nDans un futur proche,"` followed by `Segments: "Dans| |un| |futur| |proche|,"`. Judgements are appended immediately under `generated/human_judgements/` so interrupted sessions can resume, and the shared `segmentation_judgement_cache.json` avoids asking again when the same input/tokenization pair appears in another run; Make targets pass `--include-cached`, so reused judgements are still copied into the current run's judgement file for later comparison. Use `JUDGE_LIMIT=<N>` for short development audits and leave it at `0` for no explicit limit.
 
 Some targets intentionally document future commands that still need implementation, especially
 the evaluator/comparison/report helpers.
