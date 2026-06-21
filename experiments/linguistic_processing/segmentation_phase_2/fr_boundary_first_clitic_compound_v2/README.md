@@ -53,6 +53,25 @@ I am taking the initiative to make the next targets data-oriented rather than im
 5. `judge-default` / `judge-candidate` — interactively audit segmentation outputs in a compact display, append judgements continuously, and reuse cached decisions for repeated identical segmentations.
 6. `evaluate` / `compare` / `report` — produce paired AI judgements, aggregate results, and write a concise report artifact.
 
+
+## Current development-set status (2026-06-21)
+
+The development split has now completed the first full manual judgement loop for the default processing bundle and the default candidate bundle (`FEWSHOT_COUNT=small`):
+
+- `make run-default RUN=1 SPLIT=development` completed and wrote 235 records under `generated/default/`;
+- `make run-candidate RUN=1 SPLIT=development FEWSHOT_COUNT=small` completed and wrote the matching candidate outputs under `generated/candidate/`;
+- `make judge-default RUN=1 SPLIT=development` completed, including use of the `b <id>` correction flow;
+- `make judge-candidate RUN=1 SPLIT=development FEWSHOT_COUNT=small` completed with cache reuse after normalising boundary whitespace tokens.
+
+My proposed next step is to keep the test split untouched and run a development-set tranche sweep before selecting the final test procedure:
+
+1. Run and judge additional candidate tranches on the development split, at minimum `FEWSHOT_COUNT=medium` and `FEWSHOT_COUNT=all`; consider one numeric count if the small/medium/all pattern suggests a non-monotonic effect.
+2. Compare the development judgement files across default, small, medium, and all to identify whether performance improves, plateaus, or degrades as more curated examples are added.
+3. Freeze a single candidate setting and comparison rule before running any `SPLIT=test` target.
+4. Run the held-out test default/candidate pair once, then audit only the pre-specified sample of wins/losses/ties and anomalies for report claims.
+
+This keeps the experiment aligned with the AI-autonomy theme: I am using the available evidence to propose the next high-level experimental step, while the human collaborator supplies supervision and judgement data.
+
 ## Hypotheses and human audit gates
 
 The first report experiment should test three explicit hypotheses:
