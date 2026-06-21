@@ -52,6 +52,10 @@ PY_CORPUS_SPLIT_DIR := $(call python_path,$(CORPUS_SPLIT_DIR))
 PY_SPLIT_RECORDS := $(call python_path,$(SPLIT_RECORDS))
 PY_DERIVED_ASSETS_DIR := $(call python_path,$(DERIVED_ASSETS_DIR))
 PY_PROMPT_VARIANT_DIR := $(call python_path,$(PROMPT_VARIANT_DIR))
+PY_DEFAULT_PARAMS := $(call python_path,$(abspath $(DEFAULT_PARAMS)))
+PY_CANDIDATE_PARAMS := $(call python_path,$(abspath $(CANDIDATE_PARAMS)))
+PY_DEFAULT_OUTPUT_DIR := $(call python_path,$(abspath $(GENERATED_DIR))/default)
+PY_CANDIDATE_OUTPUT_DIR := $(call python_path,$(abspath $(GENERATED_DIR))/candidate)
 
 MANAGE = cd "$(PLATFORM_DIR)" && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
@@ -153,17 +157,17 @@ derive-evaluator-examples: derive-processing-examples
 	@echo "Evaluator examples are derived together with processing examples into $(DERIVED_ASSETS_DIR)/evaluator_examples.jsonl."
 
 run-default: prepare validate-config
-	@echo "+ $(MANAGE) run_linguistic_pipeline_experiment --input-records-jsonl $(PY_SPLIT_RECORDS) --start-stage segmentation_phase_2 --end-stage segmentation_phase_2 --stage-parameters-file $(abspath $(DEFAULT_PARAMS)) --run-label $(RUN_LABEL)-$(SPLIT)-default --output-root $(abspath $(GENERATED_DIR))/default --language $(LANGUAGE) --overwrite"
+	@echo "+ $(MANAGE) run_linguistic_pipeline_experiment --input-records-jsonl $(PY_SPLIT_RECORDS) --start-stage segmentation_phase_2 --end-stage segmentation_phase_2 --stage-parameters-file $(PY_DEFAULT_PARAMS) --run-label $(RUN_LABEL)-$(SPLIT)-default --output-root $(PY_DEFAULT_OUTPUT_DIR) --language $(LANGUAGE) --overwrite"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) run_linguistic_pipeline_experiment --input-records-jsonl "$(PY_SPLIT_RECORDS)" --start-stage segmentation_phase_2 --end-stage segmentation_phase_2 --stage-parameters-file "$(abspath $(DEFAULT_PARAMS))" --run-label "$(RUN_LABEL)-$(SPLIT)-default" --output-root "$(abspath $(GENERATED_DIR))/default" --language "$(LANGUAGE)" --overwrite; \
+		$(MANAGE) run_linguistic_pipeline_experiment --input-records-jsonl "$(PY_SPLIT_RECORDS)" --start-stage segmentation_phase_2 --end-stage segmentation_phase_2 --stage-parameters-file "$(PY_DEFAULT_PARAMS)" --run-label "$(RUN_LABEL)-$(SPLIT)-default" --output-root "$(PY_DEFAULT_OUTPUT_DIR)" --language "$(LANGUAGE)" --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 after split-corpus has written $(SPLIT_RECORDS)"; \
 	fi
 
 run-candidate: prepare validate-config
-	@echo "+ $(MANAGE) run_linguistic_pipeline_experiment --input-records-jsonl $(PY_SPLIT_RECORDS) --start-stage segmentation_phase_2 --end-stage segmentation_phase_2 --stage-parameters-file $(abspath $(CANDIDATE_PARAMS)) --set-stage-parameter segmentation_phase_2.fewshot_count=$(FEWSHOT_COUNT) --run-label $(RUN_LABEL)-$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT) --output-root $(abspath $(GENERATED_DIR))/candidate --language $(LANGUAGE) --overwrite"
+	@echo "+ $(MANAGE) run_linguistic_pipeline_experiment --input-records-jsonl $(PY_SPLIT_RECORDS) --start-stage segmentation_phase_2 --end-stage segmentation_phase_2 --stage-parameters-file $(PY_CANDIDATE_PARAMS) --set-stage-parameter segmentation_phase_2.fewshot_count=$(FEWSHOT_COUNT) --run-label $(RUN_LABEL)-$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT) --output-root $(PY_CANDIDATE_OUTPUT_DIR) --language $(LANGUAGE) --overwrite"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) run_linguistic_pipeline_experiment --input-records-jsonl "$(PY_SPLIT_RECORDS)" --start-stage segmentation_phase_2 --end-stage segmentation_phase_2 --stage-parameters-file "$(abspath $(CANDIDATE_PARAMS))" --set-stage-parameter "segmentation_phase_2.fewshot_count=$(FEWSHOT_COUNT)" --run-label "$(RUN_LABEL)-$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT)" --output-root "$(abspath $(GENERATED_DIR))/candidate" --language "$(LANGUAGE)" --overwrite; \
+		$(MANAGE) run_linguistic_pipeline_experiment --input-records-jsonl "$(PY_SPLIT_RECORDS)" --start-stage segmentation_phase_2 --end-stage segmentation_phase_2 --stage-parameters-file "$(PY_CANDIDATE_PARAMS)" --set-stage-parameter "segmentation_phase_2.fewshot_count=$(FEWSHOT_COUNT)" --run-label "$(RUN_LABEL)-$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT)" --output-root "$(PY_CANDIDATE_OUTPUT_DIR)" --language "$(LANGUAGE)" --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 FEWSHOT_COUNT=<small|medium|all|N> after split-corpus and derive-processing-examples are ready"; \
 	fi

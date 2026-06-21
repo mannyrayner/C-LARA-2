@@ -112,6 +112,7 @@ After `make review`, the review step writes `reviews/<request-id>.items.json`, a
 Use `make audit-reviews RUN=1 REQUEST_ID=<id>` to step through these items and write a local human audit JSONL file.
 
 `make run-default RUN=1 SPLIT=development` and `make run-candidate RUN=1 SPLIT=development FEWSHOT_COUNT=small` run the default and candidate `segmentation_phase_2` parameter bundles over a split manifest. Candidate runs override `segmentation_phase_2.fewshot_count` at the command line, so development experiments can test whether quality tops out or degrades as more accepted examples are included. Use the development split while tuning the few-shot tranche and evaluator; reserve `SPLIT=test` until the comparison procedure and chosen few-shot count are fixed. Each run writes `outputs.jsonl`, per-record stage artifacts, and a run `manifest.json` under `generated/default/` or `generated/candidate/`.
+When invoked from Cygwin with Windows Python, the Makefile converts the split manifest, stage-parameter file, prompt, curation, and output paths with `cygpath` before passing them to Django, and the runner applies the same path normalization for direct command-line use.
 
 Some targets intentionally document future commands that still need implementation, especially
 the evaluator/comparison/report helpers.

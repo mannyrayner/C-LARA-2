@@ -44,7 +44,6 @@ class RunLinguisticPipelineExperimentTests(SimpleTestCase):
             self.assertEqual(text_obj["pages"][0]["segments"][0]["surface"], "Bonjour le monde.")
             self.assertEqual(safe_record_id(records[0].record_id), "project_1_p1_s1")
 
-
     def test_apply_stage_parameter_overrides_parses_values(self):
         params = {"segmentation_phase_2": {"mechanism": "boundary_first", "fewshot_count": "small"}}
 
@@ -83,7 +82,13 @@ class RunLinguisticPipelineExperimentTests(SimpleTestCase):
                     "annotations": {},
                 }
             )
-            with patch("projects.management.commands.run_linguistic_pipeline_experiment.segmentation_phase_2", async_mock):
+            with (
+                patch("projects.management.commands.run_linguistic_pipeline_experiment.segmentation_phase_2", async_mock),
+                patch(
+                    "projects.management.commands.run_linguistic_pipeline_experiment._resolve_cli_path",
+                    side_effect=lambda value, default: Path(value or default).resolve(),
+                ) as resolve_mock,
+            ):
                 call_command(
                     "run_linguistic_pipeline_experiment",
                     input_records_jsonl=str(input_path),
@@ -96,6 +101,11 @@ class RunLinguisticPipelineExperimentTests(SimpleTestCase):
                     set_stage_parameter=["segmentation_phase_2.fewshot_count=medium"],
                     overwrite=True,
                 )
+
+            resolved_paths = [call_args.args[0] for call_args in resolve_mock.call_args_list]
+            self.assertIn(str(input_path), resolved_paths)
+            self.assertIn(str(params_path), resolved_paths)
+            self.assertIn(str(output_root), resolved_paths)
 
             run_dir = output_root / "fixture-default"
             outputs = [json.loads(line) for line in (run_dir / "outputs.jsonl").read_text(encoding="utf-8").splitlines()]

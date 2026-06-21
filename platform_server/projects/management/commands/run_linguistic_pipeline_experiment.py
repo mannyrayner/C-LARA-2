@@ -12,6 +12,8 @@ from django.core.management.base import BaseCommand, CommandError
 from pipeline.segmentation import SegmentationPhase2Spec, segmentation_phase_2
 from pipeline.stage_artifacts import write_stage_artifact
 
+from .review_fewshots import _resolve_cli_path
+
 
 @dataclass(frozen=True, slots=True)
 class ExperimentInputRecord:
@@ -49,9 +51,9 @@ class Command(BaseCommand):
         end_stage = str(options["end_stage"] or "")
         if start_stage != "segmentation_phase_2" or end_stage != "segmentation_phase_2":
             raise CommandError("initial experiment runner supports only segmentation_phase_2 -> segmentation_phase_2")
-        input_path = Path(options["input_records_jsonl"]).resolve()
-        params_path = Path(options["stage_parameters_file"]).resolve()
-        output_root = Path(options["output_root"]).resolve()
+        input_path = _resolve_cli_path(options["input_records_jsonl"], "")
+        params_path = _resolve_cli_path(options["stage_parameters_file"], "")
+        output_root = _resolve_cli_path(options["output_root"], "")
         run_dir = output_root / options["run_label"]
         if run_dir.exists() and not options["overwrite"]:
             raise CommandError(f"run output already exists: {run_dir}; pass --overwrite")
