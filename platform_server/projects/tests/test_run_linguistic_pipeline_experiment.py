@@ -13,6 +13,7 @@ from projects.management.commands.run_linguistic_pipeline_experiment import (
     load_input_records,
     safe_record_id,
     text_obj_for_record,
+    windows_long_path,
 )
 
 
@@ -43,6 +44,16 @@ class RunLinguisticPipelineExperimentTests(SimpleTestCase):
             self.assertEqual(records[0].surface, "Bonjour le monde.")
             self.assertEqual(text_obj["pages"][0]["segments"][0]["surface"], "Bonjour le monde.")
             self.assertEqual(safe_record_id(records[0].record_id), "project_1_p1_s1")
+
+    def test_windows_long_path_adds_extended_prefix_for_windows_paths(self):
+        class FakePath:
+            def resolve(self):
+                return "C:" + "\\" + "very" + "\\" + "long"
+
+        with patch("projects.management.commands.run_linguistic_pipeline_experiment.os.name", "nt"):
+            resolved = windows_long_path(FakePath())
+
+        self.assertEqual(str(resolved), "\\\\?\\C:" + "\\" + "very" + "\\" + "long")
 
     def test_apply_stage_parameter_overrides_parses_values(self):
         params = {"segmentation_phase_2": {"mechanism": "boundary_first", "fewshot_count": "small"}}

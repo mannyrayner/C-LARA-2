@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -87,9 +88,18 @@ class Command(BaseCommand):
                 out.write(json.dumps(payload, ensure_ascii=False) + "\n")
         stage_dir = run_dir / "stage_outputs"
         stage_dir.mkdir(parents=True, exist_ok=True)
+        self.stdout.write(f"Stage artifacts: {stage_dir}")
         for payload in outputs:
-            record_dir = stage_dir / safe_record_id(str(payload["record_id"]))
-            write_stage_artifact(record_dir, "segmentation_phase_2", payload["segmentation_phase_2"])
+            record_id = str(payload["record_id"])
+            record_dir = stage_dir / safe_record_id(record_id)
+            try:
+                write_stage_artifact(
+                    windows_long_path(record_dir), "segmentation_phase_2", payload["segmentation_phase_2"]
+                )
+            except Exception as exc:
+                raise CommandError(
+                    f"Could not write segmentation_phase_2 artifact for record {record_id!r} under {record_dir}: {exc}"
+                ) from exc
         manifest = build_manifest(
             input_path=input_path,
             params_path=params_path,
@@ -109,6 +119,21 @@ class Command(BaseCommand):
         self.stdout.write(f"Records: {len(outputs)}")
         self.stdout.write(f"Outputs: {output_records_path}")
         self.stdout.write(f"Manifest: {manifest_path}")
+
+
+def windows_long_path(path: Path) -> Path:
+    """Return an extended-length Windows path when needed for nested experiment artifacts."""
+
+    if os.name != "nt":
+        return path
+    raw = str(path.resolve())
+    backslash = "\\"
+    extended_prefix = backslash * 2 + "?" + backslash
+    if raw.startswith(extended_prefix):
+        return Path(raw)
+    if raw.startswith(backslash * 2):
+        return Path(extended_prefix + "UNC" + backslash + raw[2:])
+    return Path(extended_prefix + raw)
 
 
 def apply_stage_parameter_overrides(stage_parameters: dict[str, Any], overrides: list[str]) -> dict[str, Any]:
