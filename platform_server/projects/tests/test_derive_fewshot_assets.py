@@ -3,11 +3,12 @@ from __future__ import annotations
 import json
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 from django.core.management import call_command
 from django.test import SimpleTestCase
 
-from projects.management.commands.derive_fewshot_assets import accepted_review_items
+from projects.management.commands.derive_fewshot_assets import _load_audit_records, accepted_review_items
 
 
 class DeriveFewshotAssetsTests(SimpleTestCase):
@@ -25,6 +26,22 @@ class DeriveFewshotAssetsTests(SimpleTestCase):
         accepted = accepted_review_items(items, audit_by_example=audit, require_audit=True)
 
         self.assertEqual([item["example_id"] for item in accepted], ["EXAMPLE-0001"])
+
+    def test_load_audit_records_uses_filesystem_path_helper(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            filesystem_path = Path(tmp) / "audit.jsonl"
+            filesystem_path.write_text(
+                json.dumps({"example_id": "EXAMPLE-0001", "human_judgement": "correct"}) + "\n",
+                encoding="utf-8",
+            )
+            logical_path = Path("C:/very/deep/audit.jsonl")
+
+            with patch("projects.management.commands.derive_fewshot_assets._path_exists", return_value=True), patch(
+                "projects.management.commands.derive_fewshot_assets._filesystem_path", return_value=filesystem_path
+            ):
+                records = _load_audit_records(logical_path)
+
+        self.assertEqual(records["EXAMPLE-0001"]["human_judgement"], "correct")
 
     def test_command_derives_processing_and_evaluator_assets(self):
         with tempfile.TemporaryDirectory() as tmp:

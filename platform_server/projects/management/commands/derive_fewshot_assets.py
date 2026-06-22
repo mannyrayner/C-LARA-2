@@ -8,7 +8,14 @@ from typing import Any
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-from pipeline.fewshot_curation import FewshotCurationSpec, curation_root
+from pipeline.fewshot_curation import (
+    FewshotCurationSpec,
+    _filesystem_path,
+    _path_exists,
+    _read_json,
+    _write_text,
+    curation_root,
+)
 from .review_fewshots import _resolve_cli_path
 
 
@@ -44,7 +51,7 @@ class Command(BaseCommand):
         root = curation_root(repo_root, spec, curation_root_base=curation_root_base)
         reviews_dir = root / "reviews"
         items_path = reviews_dir / f"{spec.request_id}.items.json"
-        if not items_path.exists():
+        if not _path_exists(items_path):
             raise CommandError(f"review item summary not found: {items_path}. Run review_fewshots first.")
         items_payload = _read_json(items_path)
         items = items_payload.get("items")
@@ -78,23 +85,22 @@ class Command(BaseCommand):
         processing_dir = _resolve_output_path(options["processing_output_dir"], repo_root) if write_processing else None
         evaluator_jsonl = _resolve_output_path(options["evaluator_output_jsonl"], repo_root) if write_evaluator else None
         manifest_json = _resolve_output_path(options["manifest_json"], repo_root)
-        if processing_dir and processing_dir.exists() and not options["overwrite"]:
+        if processing_dir and _path_exists(processing_dir) and not options["overwrite"]:
             raise CommandError(f"processing output directory already exists: {processing_dir}; pass --overwrite")
-        if evaluator_jsonl and evaluator_jsonl.exists() and not options["overwrite"]:
+        if evaluator_jsonl and _path_exists(evaluator_jsonl) and not options["overwrite"]:
             raise CommandError(f"evaluator output already exists: {evaluator_jsonl}; pass --overwrite")
-        if manifest_json.exists() and not options["overwrite"]:
+        if _path_exists(manifest_json) and not options["overwrite"]:
             raise CommandError(f"manifest already exists: {manifest_json}; pass --overwrite")
 
         records = derive_records(accepted, repo_root=repo_root)
         processing_paths: list[Path] = []
         if processing_dir:
-            if processing_dir.exists():
-                shutil.rmtree(processing_dir)
-            processing_dir.mkdir(parents=True, exist_ok=True)
+            if _path_exists(processing_dir):
+                shutil.rmtree(_filesystem_path(processing_dir))
+            _filesystem_path(processing_dir).mkdir(parents=True, exist_ok=True)
             _ensure_boundary_first_template(processing_dir.parent, repo_root=repo_root, operation=spec.operation)
             processing_paths = write_processing_examples(processing_dir, records)
         if evaluator_jsonl:
-            evaluator_jsonl.parent.mkdir(parents=True, exist_ok=True)
             write_evaluator_examples(evaluator_jsonl, records)
         manifest = build_manifest(
             spec=spec,
@@ -107,8 +113,7 @@ class Command(BaseCommand):
             records=records,
             require_audit=not options["allow_unaudited"],
         )
-        manifest_json.parent.mkdir(parents=True, exist_ok=True)
-        manifest_json.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        _write_text(manifest_json, json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
 
         self.stdout.write("Derived few-shot assets")
         self.stdout.write(f"Accepted examples: {len(records)}")
@@ -180,30 +185,31 @@ def write_processing_examples(processing_dir: Path, records: list[dict[str, Any]
             },
         }
         path = processing_dir / f"example{idx}.json"
-        path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        _write_text(path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
         paths.append(path)
     return paths
 
 
 def write_evaluator_examples(path: Path, records: list[dict[str, Any]]) -> None:
-    with path.open("w", encoding="utf-8") as out:
-        for record in records:
-            payload = {
-                "example_id": record.get("example_id"),
-                "input": record.get("input"),
-                "boundary_marked": record.get("boundary_marked"),
-                "boundary_marker": "¦",
-                "expected_decision": "accept",
-                "expected_severity": "none" if record.get("review_severity") == "none" else record.get("review_severity"),
-                "phenomenon": record.get("phenomenon"),
-                "rationale": record.get("rationale"),
-                "provenance": {
-                    "candidate_path": record.get("candidate_path"),
-                    "review_path": record.get("review_path"),
-                    "human_audit": record.get("human_audit"),
-                },
-            }
-            out.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    lines = []
+    for record in records:
+        payload = {
+            "example_id": record.get("example_id"),
+            "input": record.get("input"),
+            "boundary_marked": record.get("boundary_marked"),
+            "boundary_marker": "¦",
+            "expected_decision": "accept",
+            "expected_severity": "none" if record.get("review_severity") == "none" else record.get("review_severity"),
+            "phenomenon": record.get("phenomenon"),
+            "rationale": record.get("rationale"),
+            "provenance": {
+                "candidate_path": record.get("candidate_path"),
+                "review_path": record.get("review_path"),
+                "human_audit": record.get("human_audit"),
+            },
+        }
+        lines.append(json.dumps(payload, ensure_ascii=False) + "\n")
+    _write_text(path, "".join(lines))
 
 
 def build_manifest(
@@ -248,10 +254,10 @@ def build_manifest(
 
 
 def _load_audit_records(path: Path) -> dict[str, dict[str, Any]]:
-    if not path.exists():
+    if not _path_exists(path):
         return {}
     records = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in _filesystem_path(path).read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
         payload = json.loads(line)
@@ -263,16 +269,16 @@ def _load_audit_records(path: Path) -> dict[str, dict[str, Any]]:
 
 def _ensure_boundary_first_template(variant_dir: Path, *, repo_root: Path, operation: str) -> None:
     target = variant_dir / "boundary_first_template.txt"
-    if target.exists():
+    if _path_exists(target):
         return
     candidates = [
         repo_root / "prompts" / operation / "variants" / "clitic_compound" / "boundary_first_template.txt",
         repo_root / "prompts" / operation / "strategies" / "boundary_first" / "template.txt",
     ]
     for candidate in candidates:
-        if candidate.exists():
-            variant_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(candidate, target)
+        if _path_exists(candidate):
+            _filesystem_path(variant_dir).mkdir(parents=True, exist_ok=True)
+            _write_text(target, _filesystem_path(candidate).read_text(encoding="utf-8"))
             return
 
 
@@ -288,7 +294,3 @@ def _resolve_record_path(value: str, *, repo_root: Path) -> Path:
     if not path.is_absolute():
         path = repo_root / path
     return path.resolve()
-
-
-def _read_json(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
