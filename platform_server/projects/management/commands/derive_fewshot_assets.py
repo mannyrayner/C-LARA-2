@@ -23,8 +23,9 @@ class Command(BaseCommand):
         parser.add_argument("--request-id", required=True)
         parser.add_argument("--repo-root", default="")
         parser.add_argument("--curation-root", default="")
-        parser.add_argument("--processing-output-dir", required=True)
-        parser.add_argument("--evaluator-output-jsonl", required=True)
+        parser.add_argument("--asset-kind", choices=["processing", "evaluator", "both"], default="both")
+        parser.add_argument("--processing-output-dir")
+        parser.add_argument("--evaluator-output-jsonl")
         parser.add_argument("--manifest-json", required=True)
         parser.add_argument("--max-examples", type=int, default=0)
         parser.add_argument("--allow-unaudited", action="store_true")
@@ -67,24 +68,34 @@ class Command(BaseCommand):
         if not accepted:
             raise CommandError("no accepted review items available for derivation")
 
-        processing_dir = _resolve_output_path(options["processing_output_dir"], repo_root)
-        evaluator_jsonl = _resolve_output_path(options["evaluator_output_jsonl"], repo_root)
+        asset_kind = options["asset_kind"]
+        write_processing = asset_kind in {"processing", "both"}
+        write_evaluator = asset_kind in {"evaluator", "both"}
+        if write_processing and not options.get("processing_output_dir"):
+            raise CommandError("--processing-output-dir is required when --asset-kind is processing or both")
+        if write_evaluator and not options.get("evaluator_output_jsonl"):
+            raise CommandError("--evaluator-output-jsonl is required when --asset-kind is evaluator or both")
+        processing_dir = _resolve_output_path(options["processing_output_dir"], repo_root) if write_processing else None
+        evaluator_jsonl = _resolve_output_path(options["evaluator_output_jsonl"], repo_root) if write_evaluator else None
         manifest_json = _resolve_output_path(options["manifest_json"], repo_root)
-        if processing_dir.exists() and not options["overwrite"]:
+        if processing_dir and processing_dir.exists() and not options["overwrite"]:
             raise CommandError(f"processing output directory already exists: {processing_dir}; pass --overwrite")
-        if evaluator_jsonl.exists() and not options["overwrite"]:
+        if evaluator_jsonl and evaluator_jsonl.exists() and not options["overwrite"]:
             raise CommandError(f"evaluator output already exists: {evaluator_jsonl}; pass --overwrite")
         if manifest_json.exists() and not options["overwrite"]:
             raise CommandError(f"manifest already exists: {manifest_json}; pass --overwrite")
 
         records = derive_records(accepted, repo_root=repo_root)
-        if processing_dir.exists():
-            shutil.rmtree(processing_dir)
-        processing_dir.mkdir(parents=True, exist_ok=True)
-        _ensure_boundary_first_template(processing_dir.parent, repo_root=repo_root, operation=spec.operation)
-        processing_paths = write_processing_examples(processing_dir, records)
-        evaluator_jsonl.parent.mkdir(parents=True, exist_ok=True)
-        write_evaluator_examples(evaluator_jsonl, records)
+        processing_paths: list[Path] = []
+        if processing_dir:
+            if processing_dir.exists():
+                shutil.rmtree(processing_dir)
+            processing_dir.mkdir(parents=True, exist_ok=True)
+            _ensure_boundary_first_template(processing_dir.parent, repo_root=repo_root, operation=spec.operation)
+            processing_paths = write_processing_examples(processing_dir, records)
+        if evaluator_jsonl:
+            evaluator_jsonl.parent.mkdir(parents=True, exist_ok=True)
+            write_evaluator_examples(evaluator_jsonl, records)
         manifest = build_manifest(
             spec=spec,
             root=root,
@@ -101,8 +112,10 @@ class Command(BaseCommand):
 
         self.stdout.write("Derived few-shot assets")
         self.stdout.write(f"Accepted examples: {len(records)}")
-        self.stdout.write(f"Processing fewshots: {processing_dir}")
-        self.stdout.write(f"Evaluator examples: {evaluator_jsonl}")
+        if processing_dir:
+            self.stdout.write(f"Processing fewshots: {processing_dir}")
+        if evaluator_jsonl:
+            self.stdout.write(f"Evaluator examples: {evaluator_jsonl}")
         self.stdout.write(f"Manifest: {manifest_json}")
 
 
@@ -199,8 +212,8 @@ def build_manifest(
     root: Path,
     items_path: Path,
     audit_path: Path | None,
-    processing_dir: Path,
-    evaluator_jsonl: Path,
+    processing_dir: Path | None,
+    evaluator_jsonl: Path | None,
     processing_paths: list[Path],
     records: list[dict[str, Any]],
     require_audit: bool,
@@ -217,9 +230,9 @@ def build_manifest(
         "audit_path": str(audit_path) if audit_path else "",
         "require_human_audit": require_audit,
         "accepted_count": len(records),
-        "processing_output_dir": str(processing_dir),
+        "processing_output_dir": str(processing_dir) if processing_dir else "",
         "processing_files": [str(path) for path in processing_paths],
-        "evaluator_output_jsonl": str(evaluator_jsonl),
+        "evaluator_output_jsonl": str(evaluator_jsonl) if evaluator_jsonl else "",
         "records": [
             {
                 "example_id": record.get("example_id"),

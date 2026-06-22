@@ -9,6 +9,9 @@ OPERATION := segmentation_phase_2
 LANGUAGE := fr
 MECHANISM := boundary_first
 TARGET_SET := clitic_compound_v2
+PROCESSING_TARGET_SET ?= $(TARGET_SET)
+EVALUATOR_TARGET_SET ?= $(TARGET_SET)_evaluator
+CURATION_TARGET_SET ?= $(PROCESSING_TARGET_SET)
 PHENOMENA := clitic,compound
 COUNT ?= 80
 BATCH_SIZE ?= 5
@@ -42,7 +45,9 @@ CORPUS_SUMMARY_DIR := $(abspath $(GENERATED_DIR))/corpus_summary
 CORPUS_SPLIT_DIR := $(abspath $(GENERATED_DIR))/corpus_splits
 SPLIT_RECORDS := $(CORPUS_SPLIT_DIR)/$(SPLIT).jsonl
 DERIVED_ASSETS_DIR := $(abspath $(GENERATED_DIR))/derived_assets
-PROMPT_VARIANT_DIR := $(ROOT_DIR)/prompts/$(OPERATION)/variants/$(TARGET_SET)
+PROCESSING_DERIVED_ASSETS_DIR := $(DERIVED_ASSETS_DIR)/processing
+EVALUATOR_DERIVED_ASSETS_DIR := $(DERIVED_ASSETS_DIR)/evaluator
+PROMPT_VARIANT_DIR := $(ROOT_DIR)/prompts/$(OPERATION)/variants/$(PROCESSING_TARGET_SET)
 CURATION_ROOT := $(abspath $(GENERATED_DIR))/few_shot_curation
 JUDGEMENT_DIR := $(abspath $(GENERATED_DIR))/human_judgements
 DEFAULT_RUN_DIR := $(abspath $(GENERATED_DIR))/default/$(RUN_LABEL)-$(SPLIT)-default
@@ -57,6 +62,8 @@ PY_CORPUS_SUMMARY_DIR := $(call python_path,$(CORPUS_SUMMARY_DIR))
 PY_CORPUS_SPLIT_DIR := $(call python_path,$(CORPUS_SPLIT_DIR))
 PY_SPLIT_RECORDS := $(call python_path,$(SPLIT_RECORDS))
 PY_DERIVED_ASSETS_DIR := $(call python_path,$(DERIVED_ASSETS_DIR))
+PY_PROCESSING_DERIVED_ASSETS_DIR := $(call python_path,$(PROCESSING_DERIVED_ASSETS_DIR))
+PY_EVALUATOR_DERIVED_ASSETS_DIR := $(call python_path,$(EVALUATOR_DERIVED_ASSETS_DIR))
 PY_PROMPT_VARIANT_DIR := $(call python_path,$(PROMPT_VARIANT_DIR))
 PY_DEFAULT_PARAMS := $(call python_path,$(abspath $(DEFAULT_PARAMS)))
 PY_CANDIDATE_PARAMS := $(call python_path,$(abspath $(CANDIDATE_PARAMS)))
@@ -88,6 +95,9 @@ plan: prepare
 	@echo "Language:   $(LANGUAGE)"
 	@echo "Mechanism:  $(MECHANISM)"
 	@echo "Target set: $(TARGET_SET)"
+	@echo "Processing target set: $(PROCESSING_TARGET_SET)"
+	@echo "Evaluator target set:  $(EVALUATOR_TARGET_SET)"
+	@echo "Curation target set:   $(CURATION_TARGET_SET)"
 	@echo
 	@echo "Tracked configs:"
 	@echo "  default:   $(DEFAULT_PARAMS)"
@@ -131,42 +141,48 @@ split-corpus: prepare
 	fi
 
 curate: prepare
-	@echo "+ $(MANAGE) curate_fewshots --operation $(OPERATION) --language $(LANGUAGE) --mechanism $(MECHANISM) --phenomena $(PHENOMENA) --count $(COUNT) --batch-size $(BATCH_SIZE) --max-concurrency $(MAX_CONCURRENCY) --target-set $(TARGET_SET) --model $(MODEL) --repo-root $(PY_ROOT_DIR) --curation-root $(PY_CURATION_ROOT)"
+	@echo "+ $(MANAGE) curate_fewshots --operation $(OPERATION) --language $(LANGUAGE) --mechanism $(MECHANISM) --phenomena $(PHENOMENA) --count $(COUNT) --batch-size $(BATCH_SIZE) --max-concurrency $(MAX_CONCURRENCY) --target-set $(CURATION_TARGET_SET) --model $(MODEL) --repo-root $(PY_ROOT_DIR) --curation-root $(PY_CURATION_ROOT)"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) curate_fewshots --operation "$(OPERATION)" --language "$(LANGUAGE)" --mechanism "$(MECHANISM)" --phenomena "$(PHENOMENA)" --count "$(COUNT)" --batch-size "$(BATCH_SIZE)" --max-concurrency "$(MAX_CONCURRENCY)" --target-set "$(TARGET_SET)" --model "$(MODEL)" --repo-root "$(PY_ROOT_DIR)" --curation-root "$(PY_CURATION_ROOT)"; \
+		$(MANAGE) curate_fewshots --operation "$(OPERATION)" --language "$(LANGUAGE)" --mechanism "$(MECHANISM)" --phenomena "$(PHENOMENA)" --count "$(COUNT)" --batch-size "$(BATCH_SIZE)" --max-concurrency "$(MAX_CONCURRENCY)" --target-set "$(CURATION_TARGET_SET)" --model "$(MODEL)" --repo-root "$(PY_ROOT_DIR)" --curation-root "$(PY_CURATION_ROOT)"; \
 	else \
 		echo "dry-run only; set RUN=1 to execute"; \
 	fi
 
 review: prepare
 	@if [ "$(RUN)" = "1" ] && [ -z "$(REQUEST_ID)" ]; then echo "Set REQUEST_ID=<curation-request-id>" >&2; exit 2; fi
-	@echo "+ $(MANAGE) review_fewshots --operation $(OPERATION) --language $(LANGUAGE) --mechanism $(MECHANISM) --target-set $(TARGET_SET) --request-id $${REQUEST_ID:-<request-id>} --model $(MODEL) --template-versions $(TEMPLATE_VERSIONS) --review-passes $(REVIEW_PASSES) --max-concurrency $(MAX_CONCURRENCY) --timeout-s $(TIMEOUT_S) --repo-root $(PY_ROOT_DIR) --curation-root $(PY_CURATION_ROOT)"
+	@echo "+ $(MANAGE) review_fewshots --operation $(OPERATION) --language $(LANGUAGE) --mechanism $(MECHANISM) --target-set $(CURATION_TARGET_SET) --request-id $${REQUEST_ID:-<request-id>} --model $(MODEL) --template-versions $(TEMPLATE_VERSIONS) --review-passes $(REVIEW_PASSES) --max-concurrency $(MAX_CONCURRENCY) --timeout-s $(TIMEOUT_S) --repo-root $(PY_ROOT_DIR) --curation-root $(PY_CURATION_ROOT)"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) review_fewshots --operation "$(OPERATION)" --language "$(LANGUAGE)" --mechanism "$(MECHANISM)" --target-set "$(TARGET_SET)" --request-id "$(REQUEST_ID)" --model "$(MODEL)" --template-versions "$(TEMPLATE_VERSIONS)" --review-passes "$(REVIEW_PASSES)" --max-concurrency "$(MAX_CONCURRENCY)" --timeout-s "$(TIMEOUT_S)" --repo-root "$(PY_ROOT_DIR)" --curation-root "$(PY_CURATION_ROOT)"; \
+		$(MANAGE) review_fewshots --operation "$(OPERATION)" --language "$(LANGUAGE)" --mechanism "$(MECHANISM)" --target-set "$(CURATION_TARGET_SET)" --request-id "$(REQUEST_ID)" --model "$(MODEL)" --template-versions "$(TEMPLATE_VERSIONS)" --review-passes "$(REVIEW_PASSES)" --max-concurrency "$(MAX_CONCURRENCY)" --timeout-s "$(TIMEOUT_S)" --repo-root "$(PY_ROOT_DIR)" --curation-root "$(PY_CURATION_ROOT)"; \
 	else \
 		echo "dry-run only; set RUN=1 REQUEST_ID=<id> to execute"; \
 	fi
 
 audit-reviews: prepare
 	@if [ "$(RUN)" = "1" ] && [ -z "$(REQUEST_ID)" ]; then echo "Set REQUEST_ID=<curation-request-id>" >&2; exit 2; fi
-	@echo "+ $(MANAGE) audit_fewshot_reviews --operation $(OPERATION) --language $(LANGUAGE) --mechanism $(MECHANISM) --target-set $(TARGET_SET) --request-id $${REQUEST_ID:-<request-id>} --limit $(AUDIT_LIMIT) --repo-root $(PY_ROOT_DIR) --curation-root $(PY_CURATION_ROOT)"
+	@echo "+ $(MANAGE) audit_fewshot_reviews --operation $(OPERATION) --language $(LANGUAGE) --mechanism $(MECHANISM) --target-set $(CURATION_TARGET_SET) --request-id $${REQUEST_ID:-<request-id>} --limit $(AUDIT_LIMIT) --repo-root $(PY_ROOT_DIR) --curation-root $(PY_CURATION_ROOT)"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) audit_fewshot_reviews --operation "$(OPERATION)" --language "$(LANGUAGE)" --mechanism "$(MECHANISM)" --target-set "$(TARGET_SET)" --request-id "$(REQUEST_ID)" --limit "$(AUDIT_LIMIT)" --repo-root "$(PY_ROOT_DIR)" --curation-root "$(PY_CURATION_ROOT)"; \
+		$(MANAGE) audit_fewshot_reviews --operation "$(OPERATION)" --language "$(LANGUAGE)" --mechanism "$(MECHANISM)" --target-set "$(CURATION_TARGET_SET)" --request-id "$(REQUEST_ID)" --limit "$(AUDIT_LIMIT)" --repo-root "$(PY_ROOT_DIR)" --curation-root "$(PY_CURATION_ROOT)"; \
 	else \
 		echo "dry-run only; set RUN=1 REQUEST_ID=<id> to audit interactively"; \
 	fi
 
 derive-processing-examples: prepare
-	@if [ "$(RUN)" = "1" ] && [ -z "$(REQUEST_ID)" ]; then echo "Set REQUEST_ID=<audited-curation-request-id>" >&2; exit 2; fi
-	@echo "+ $(MANAGE) derive_fewshot_assets --operation $(OPERATION) --language $(LANGUAGE) --mechanism $(MECHANISM) --target-set $(TARGET_SET) --request-id $${REQUEST_ID:-<request-id>} --repo-root $(PY_ROOT_DIR) --curation-root $(PY_CURATION_ROOT) --processing-output-dir $(PY_PROMPT_VARIANT_DIR)/fewshots --evaluator-output-jsonl $(PY_DERIVED_ASSETS_DIR)/evaluator_examples.jsonl --manifest-json $(PY_DERIVED_ASSETS_DIR)/derived_assets_manifest.json --overwrite"
+	@if [ "$(RUN)" = "1" ] && [ -z "$(REQUEST_ID)" ]; then echo "Set REQUEST_ID=<audited-processing-curation-request-id>" >&2; exit 2; fi
+	@echo "+ $(MANAGE) derive_fewshot_assets --asset-kind processing --operation $(OPERATION) --language $(LANGUAGE) --mechanism $(MECHANISM) --target-set $(PROCESSING_TARGET_SET) --request-id $${REQUEST_ID:-<request-id>} --repo-root $(PY_ROOT_DIR) --curation-root $(PY_CURATION_ROOT) --processing-output-dir $(PY_PROMPT_VARIANT_DIR)/fewshots --manifest-json $(PY_PROCESSING_DERIVED_ASSETS_DIR)/derived_assets_manifest.json --overwrite"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) derive_fewshot_assets --operation "$(OPERATION)" --language "$(LANGUAGE)" --mechanism "$(MECHANISM)" --target-set "$(TARGET_SET)" --request-id "$(REQUEST_ID)" --repo-root "$(PY_ROOT_DIR)" --curation-root "$(PY_CURATION_ROOT)" --processing-output-dir "$(PY_PROMPT_VARIANT_DIR)/fewshots" --evaluator-output-jsonl "$(PY_DERIVED_ASSETS_DIR)/evaluator_examples.jsonl" --manifest-json "$(PY_DERIVED_ASSETS_DIR)/derived_assets_manifest.json" --overwrite; \
+		$(MANAGE) derive_fewshot_assets --asset-kind processing --operation "$(OPERATION)" --language "$(LANGUAGE)" --mechanism "$(MECHANISM)" --target-set "$(PROCESSING_TARGET_SET)" --request-id "$(REQUEST_ID)" --repo-root "$(PY_ROOT_DIR)" --curation-root "$(PY_CURATION_ROOT)" --processing-output-dir "$(PY_PROMPT_VARIANT_DIR)/fewshots" --manifest-json "$(PY_PROCESSING_DERIVED_ASSETS_DIR)/derived_assets_manifest.json" --overwrite; \
 	else \
-		echo "dry-run only; set RUN=1 REQUEST_ID=<audited-curation-request-id> to derive assets"; \
+		echo "dry-run only; set RUN=1 REQUEST_ID=<audited-processing-curation-request-id> to derive processing assets"; \
 	fi
 
-derive-evaluator-examples: derive-processing-examples
-	@echo "Evaluator examples are derived together with processing examples into $(DERIVED_ASSETS_DIR)/evaluator_examples.jsonl."
+derive-evaluator-examples: prepare
+	@if [ "$(RUN)" = "1" ] && [ -z "$(REQUEST_ID)" ]; then echo "Set REQUEST_ID=<audited-evaluator-curation-request-id>" >&2; exit 2; fi
+	@echo "+ $(MANAGE) derive_fewshot_assets --asset-kind evaluator --operation $(OPERATION) --language $(LANGUAGE) --mechanism $(MECHANISM) --target-set $(EVALUATOR_TARGET_SET) --request-id $${REQUEST_ID:-<request-id>} --repo-root $(PY_ROOT_DIR) --curation-root $(PY_CURATION_ROOT) --evaluator-output-jsonl $(PY_EVALUATOR_DERIVED_ASSETS_DIR)/evaluator_examples.jsonl --manifest-json $(PY_EVALUATOR_DERIVED_ASSETS_DIR)/derived_assets_manifest.json --overwrite"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) derive_fewshot_assets --asset-kind evaluator --operation "$(OPERATION)" --language "$(LANGUAGE)" --mechanism "$(MECHANISM)" --target-set "$(EVALUATOR_TARGET_SET)" --request-id "$(REQUEST_ID)" --repo-root "$(PY_ROOT_DIR)" --curation-root "$(PY_CURATION_ROOT)" --evaluator-output-jsonl "$(PY_EVALUATOR_DERIVED_ASSETS_DIR)/evaluator_examples.jsonl" --manifest-json "$(PY_EVALUATOR_DERIVED_ASSETS_DIR)/derived_assets_manifest.json" --overwrite; \
+	else \
+		echo "dry-run only; set RUN=1 REQUEST_ID=<audited-evaluator-curation-request-id> EVALUATOR_TARGET_SET=$(EVALUATOR_TARGET_SET) to derive evaluator assets"; \
+	fi
 
 run-default: prepare validate-config
 	@echo "+ $(MANAGE) run_linguistic_pipeline_experiment --input-records-jsonl $(PY_SPLIT_RECORDS) --start-stage segmentation_phase_2 --end-stage segmentation_phase_2 --stage-parameters-file $(PY_DEFAULT_PARAMS) --run-label $(RUN_LABEL)-$(SPLIT)-default --output-root $(PY_DEFAULT_OUTPUT_DIR) --language $(LANGUAGE) --overwrite"
