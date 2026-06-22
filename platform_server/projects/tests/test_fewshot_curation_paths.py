@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from django.test import SimpleTestCase
 
-from pipeline.fewshot_curation import _display_path, _filesystem_path, _read_json, _strip_windows_long_path_prefix
+from pipeline.fewshot_curation import _display_path, _filesystem_path, _read_json, _strip_windows_long_path_prefix, _write_text
 
 
 class FewshotCurationPathTests(SimpleTestCase):
@@ -32,6 +32,17 @@ class FewshotCurationPathTests(SimpleTestCase):
         # On POSIX this remains absolute because Windows drive paths are not relative to C:/repo,
         # but the extended-length prefix should still be removed for manifests and review summaries.
         self.assertNotIn("\\\\?\\", display)
+
+    def test_write_text_uses_filesystem_path_helper(self):
+        logical_path = Path("deep/file.json")
+        filesystem_path = Path("/tmp/deep/write-file.json")
+        if filesystem_path.exists():
+            filesystem_path.unlink()
+
+        with patch("pipeline.fewshot_curation._filesystem_path", return_value=filesystem_path):
+            _write_text(logical_path, "hello")
+
+        self.assertEqual(filesystem_path.read_text(encoding="utf-8"), "hello")
 
     def test_read_json_uses_filesystem_path_helper(self):
         logical_path = Path("deep/file.json")

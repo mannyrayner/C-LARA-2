@@ -437,8 +437,7 @@ def _glob_paths(directory: Path, pattern: str) -> list[Path]:
     return sorted(_filesystem_path(directory).glob(pattern))
 
 
-def _write_json(path: Path, payload: Any) -> None:
-    text = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+def _write_text(path: Path, text: str) -> None:
     fs_path = _filesystem_path(path)
     fs_path.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -446,6 +445,11 @@ def _write_json(path: Path, payload: Any) -> None:
     except FileNotFoundError:
         fs_path.parent.mkdir(parents=True, exist_ok=True)
         fs_path.write_text(text, encoding="utf-8")
+
+
+def _write_json(path: Path, payload: Any) -> None:
+    text = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+    _write_text(path, text)
 
 
 def _next_prompt_example_index(prompt_dir: Path) -> int:
