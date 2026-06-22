@@ -52,7 +52,7 @@ I am taking the initiative to make the next targets data-oriented rather than im
 4. `run-default` / `run-candidate` — run fixed split manifests through default and candidate `segmentation_phase_2` processing with `run_linguistic_pipeline_experiment`; candidate runs can vary `FEWSHOT_COUNT=small|medium|all|N`.
 5. `judge-default` / `judge-candidate` — interactively audit segmentation outputs in a compact display, append judgements continuously, and reuse cached decisions for repeated identical segmentations.
 6. `evaluate` — compare the default judgements against one candidate tranche (`FEWSHOT_COUNT=<count>`) and write JSON/Markdown summaries plus flagged examples.
-7. `compare` / `report` — aggregate the development-set tranche sweep (`COMPARE_FEWSHOT_COUNTS`) and write a concise report artifact.
+7. `compare` / `analyze-sweep` / `report` — aggregate the development-set tranche sweep (`COMPARE_FEWSHOT_COUNTS`), analyze failure overlap and majority-vote proxy behaviour, and write a concise report artifact.
 
 
 ## Current development-set status (2026-06-21)
@@ -102,6 +102,7 @@ make judge-default
 make judge-candidate
 make evaluate
 make compare
+make analyze-sweep
 ```
 
 Targets default to dry-run mode where applicable. The default Makefile model is `gpt-4o` with three
@@ -128,6 +129,7 @@ make judge-default RUN=1 SPLIT=development JUDGE_LIMIT=20
 make judge-candidate RUN=1 SPLIT=development FEWSHOT_COUNT=small JUDGE_LIMIT=20
 make evaluate RUN=1 SPLIT=development FEWSHOT_COUNT=small
 make compare RUN=1 SPLIT=development COMPARE_FEWSHOT_COUNTS="small medium all"
+make analyze-sweep RUN=1 SPLIT=development COMPARE_FEWSHOT_COUNTS="small medium all"
 ```
 
 `make summarize-corpus RUN=1` writes JSON, CSV, and Markdown corpus summaries under `generated/corpus_summary/` for French projects owned by `mannyrayner` by default. Override `CORPUS_USER=...`, `CORPUS_LANGUAGE=...`, or `CORPUS_LANGUAGE_MATCH=prefix` when inspecting a different imported corpus. The summary includes per-project counts for pages, segments, current `segmentation_phase_2` tokens, non-whitespace tokens, whitespace-only tokens, source/segment/token character counts with and without whitespace, and simple anomaly counts.
@@ -141,6 +143,8 @@ Use `make audit-reviews RUN=1 REQUEST_ID=<id>` to step through these items and w
 
 `make run-default RUN=1 SPLIT=development` and `make run-candidate RUN=1 SPLIT=development FEWSHOT_COUNT=small` run the default and candidate `segmentation_phase_2` parameter bundles over a split manifest. Candidate runs override `segmentation_phase_2.fewshot_count` at the command line, so development experiments can test whether quality tops out or degrades as more accepted examples are included. Use the development split while tuning the few-shot tranche and evaluator; reserve `SPLIT=test` until the comparison procedure and chosen few-shot count are fixed. Each run writes `outputs.jsonl`, per-record stage artifacts, and a run `manifest.json` under `generated/default/` or `generated/candidate/`.
 When invoked from Cygwin with Windows Python, the Makefile converts the split manifest, stage-parameter file, prompt, curation, and output paths with `cygpath` before passing them to Django, and the runner applies the same path normalization for direct command-line use. The runner also uses extended-length Windows paths for nested per-record stage artifacts, since the generated run label plus record directory can otherwise exceed the classic Windows `MAX_PATH` limit.
+
+`make analyze-sweep RUN=1 COMPARE_FEWSHOT_COUNTS="small medium all"` investigates whether candidate failures are correlated across tranches. It writes `sweep_analysis.json`, `sweep_analysis.md`, and `sweep_patterns.jsonl` under `generated/evaluation/<split>-sweep-analysis/`, including pairwise failure-set overlap, accept/reject pattern counts such as `AAR`, and a judgement-level majority-vote proxy. The voting result is not yet a token-level ensemble decoder; it is a diagnostic for whether an ensemble-style strategy might be worth implementing.
 
 `make evaluate RUN=1 FEWSHOT_COUNT=<count>` compares the latest default and candidate **human judgement** records for a single candidate tranche. `make compare RUN=1 COMPARE_FEWSHOT_COUNTS="small medium all"` compares all listed judged tranches against the default. Both commands write `comparison_summary.json`, `comparison_summary.md`, and `flagged_examples.jsonl` under `generated/evaluation/`; corrections are handled by taking the latest JSONL judgement for each `record_id`. Candidate wins are cases where the default judgement is not `accept` and the candidate is `accept`; candidate losses are the reverse. These targets do not yet use `generated/derived_assets/evaluator_examples.jsonl`; those evaluator exemplars are staged for a later AI-judge command that can be calibrated against the human development judgements.
 

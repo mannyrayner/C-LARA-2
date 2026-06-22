@@ -69,12 +69,12 @@ PY_EVALUATION_DIR := $(call python_path,$(EVALUATION_DIR))
 
 MANAGE = cd "$(PLATFORM_DIR)" && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help plan validate validate-config prepare summarize-corpus split-corpus curate review audit-reviews derive-processing-examples derive-evaluator-examples run-default run-candidate judge-default judge-candidate evaluate compare report clean
+.PHONY: help plan validate validate-config prepare summarize-corpus split-corpus curate review audit-reviews derive-processing-examples derive-evaluator-examples run-default run-candidate judge-default judge-candidate evaluate compare analyze-sweep report clean
 
 help:
 	@sed -n '1,220p' README.md
 	@echo
-	@echo "Common targets: plan validate-config summarize-corpus split-corpus curate review audit-reviews derive-processing-examples derive-evaluator-examples run-default run-candidate judge-default judge-candidate evaluate compare report"
+	@echo "Common targets: plan validate-config summarize-corpus split-corpus curate review audit-reviews derive-processing-examples derive-evaluator-examples run-default run-candidate judge-default judge-candidate evaluate compare analyze-sweep report"
 	@echo "Targets that call management commands default to dry-run. Set RUN=1 to execute."
 
 prepare:
@@ -216,6 +216,18 @@ compare: prepare
 			candidate_args="$$candidate_args --candidate fewshots-$$count:$(PY_JUDGEMENT_DIR)/$(SPLIT)-candidate-fewshots-$$count.jsonl"; \
 		done; \
 		$(MANAGE) compare_segmentation_judgements --default-judgements "$(PY_JUDGEMENT_DIR)/$(SPLIT)-default.jsonl" $$candidate_args --output-dir "$(PY_EVALUATION_DIR)/$(SPLIT)-sweep" --split "$(SPLIT)"; \
+	else \
+		echo "dry-run only; set RUN=1 after judging COMPARE_FEWSHOT_COUNTS='$(COMPARE_FEWSHOT_COUNTS)'"; \
+	fi
+
+analyze-sweep: prepare
+	@echo "+ $(MANAGE) analyze_segmentation_judgement_sweep --default-judgements $(PY_JUDGEMENT_DIR)/$(SPLIT)-default.jsonl --candidate <fewshot-count judgement files> --output-dir $(PY_EVALUATION_DIR)/$(SPLIT)-sweep-analysis --split $(SPLIT)"
+	@if [ "$(RUN)" = "1" ]; then \
+		candidate_args=""; \
+		for count in $(COMPARE_FEWSHOT_COUNTS); do \
+			candidate_args="$$candidate_args --candidate fewshots-$$count:$(PY_JUDGEMENT_DIR)/$(SPLIT)-candidate-fewshots-$$count.jsonl"; \
+		done; \
+		$(MANAGE) analyze_segmentation_judgement_sweep --default-judgements "$(PY_JUDGEMENT_DIR)/$(SPLIT)-default.jsonl" $$candidate_args --output-dir "$(PY_EVALUATION_DIR)/$(SPLIT)-sweep-analysis" --split "$(SPLIT)"; \
 	else \
 		echo "dry-run only; set RUN=1 after judging COMPARE_FEWSHOT_COUNTS='$(COMPARE_FEWSHOT_COUNTS)'"; \
 	fi
