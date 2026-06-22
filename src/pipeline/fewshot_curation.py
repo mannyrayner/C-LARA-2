@@ -391,13 +391,25 @@ def curation_root(
     return base / spec.operation / spec.language / spec.mechanism / spec.target_set
 
 
+def _strip_windows_long_path_prefix(path: Path) -> Path:
+    """Return a display/logical path for a possibly extended-length Windows path."""
+
+    raw = str(path)
+    if raw.startswith("\\\\?\\UNC\\"):
+        return Path("\\\\" + raw[8:])
+    if raw.startswith("\\\\?\\"):
+        return Path(raw[4:])
+    return path
+
+
 def _display_path(path: Path, repo_root: Path) -> str:
     """Return a repo-relative path when possible, otherwise an absolute path."""
 
+    display_path = _strip_windows_long_path_prefix(path)
     try:
-        return str(path.relative_to(repo_root))
+        return str(display_path.relative_to(repo_root))
     except ValueError:
-        return str(path)
+        return str(display_path)
 
 
 def _filesystem_path(path: Path, *, os_name: str | None = None) -> Path:
@@ -411,6 +423,18 @@ def _filesystem_path(path: Path, *, os_name: str | None = None) -> Path:
     if raw.startswith("\\\\"):
         return Path("\\\\?\\UNC\\" + raw.lstrip("\\"))
     return Path("\\\\?\\" + raw)
+
+
+def _path_exists(path: Path) -> bool:
+    return _filesystem_path(path).exists()
+
+
+def _read_json(path: Path) -> Any:
+    return json.loads(_filesystem_path(path).read_text(encoding="utf-8"))
+
+
+def _glob_paths(directory: Path, pattern: str) -> list[Path]:
+    return sorted(_filesystem_path(directory).glob(pattern))
 
 
 def _write_json(path: Path, payload: Any) -> None:
@@ -942,8 +966,8 @@ async def ensure_review_template(
 
     template_dir = _review_template_dir(repo_root, spec, curation_root_base=curation_root_base)
     final_path = template_dir / "template.json"
-    if final_path.exists() and not spec.refresh_template:
-        existing_template = json.loads(final_path.read_text(encoding="utf-8"))
+    if _path_exists(final_path) and not spec.refresh_template:
+        existing_template = _read_json(final_path)
         if existing_template.get("prompt_version") == spec.prompt_version:
             if trace:
                 trace(f"using existing review template {final_path}")
@@ -959,8 +983,8 @@ async def ensure_review_template(
 
     async def make_draft(idx: int) -> dict[str, Any]:
         draft_path = template_dir / "drafts" / f"draft{idx}.json"
-        if draft_path.exists() and not spec.refresh_template:
-            existing_draft = json.loads(draft_path.read_text(encoding="utf-8"))
+        if _path_exists(draft_path) and not spec.refresh_template:
+            existing_draft = _read_json(draft_path)
             if existing_draft.get("prompt_version") == spec.prompt_version:
                 if trace:
                     trace(f"using existing review-template draft {idx}")
@@ -1024,9 +1048,9 @@ async def review_candidate_batch(
     ai_client = client or OpenAIClient()
     request_root = _curation_root_for_review_spec(repo_root, spec, curation_root_base=curation_root_base)
     request_path = request_root / "requests" / f"{spec.request_id}.json"
-    if not request_path.exists():
+    if not _path_exists(request_path):
         raise FileNotFoundError(_missing_request_message(request_path))
-    request = json.loads(request_path.read_text(encoding="utf-8"))
+    request = _read_json(request_path)
     template = await ensure_review_template(
         spec,
         repo_root=repo_root,
@@ -1037,11 +1061,11 @@ async def review_candidate_batch(
     curation_spec = _review_spec_from_request(request, spec)
     root = curation_root(repo_root, curation_spec, curation_root_base=curation_root_base)
     candidates_dir = root / "candidates"
-    candidate_paths = sorted(candidates_dir.glob(f"{spec.request_id}-EXAMPLE-*.json"))
+    candidate_paths = _glob_paths(candidates_dir, f"{spec.request_id}-EXAMPLE-*.json")
     review_jobs: list[tuple[Path, dict[str, Any]]] = []
     skipped_candidates: list[dict[str, Any]] = []
     for path in candidate_paths:
-        record = json.loads(path.read_text(encoding="utf-8"))
+        record = _read_json(path)
         validation = validate_candidate(spec.operation, record.get("candidate") if isinstance(record.get("candidate"), dict) else {})
         stored_validation = record.get("validation") if isinstance(record.get("validation"), dict) else {}
         if validation["schema_pass"] and stored_validation.get("schema_pass", True):
