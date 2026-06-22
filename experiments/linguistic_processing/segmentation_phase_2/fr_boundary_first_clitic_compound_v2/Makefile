@@ -20,6 +20,7 @@ TIMEOUT_S ?= 600
 REQUEST_ID ?=
 AUDIT_LIMIT ?= 0
 JUDGE_LIMIT ?= 0
+COMPARE_FEWSHOT_COUNTS ?= small medium all
 CORPUS_USER ?= mannyrayner
 CORPUS_LANGUAGE ?= fr
 CORPUS_LANGUAGE_MATCH ?= exact
@@ -46,6 +47,7 @@ CURATION_ROOT := $(abspath $(GENERATED_DIR))/few_shot_curation
 JUDGEMENT_DIR := $(abspath $(GENERATED_DIR))/human_judgements
 DEFAULT_RUN_DIR := $(abspath $(GENERATED_DIR))/default/$(RUN_LABEL)-$(SPLIT)-default
 CANDIDATE_RUN_DIR := $(abspath $(GENERATED_DIR))/candidate/$(RUN_LABEL)-$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT)
+EVALUATION_DIR := $(abspath $(GENERATED_DIR))/evaluation
 
 PY_OS := $(shell $(PYTHON) -c 'import os; print(os.name)' 2>/dev/null || echo posix)
 python_path = $(shell if [ "$(PY_OS)" = "nt" ] && command -v cygpath >/dev/null 2>&1; then cygpath -am "$(1)"; else printf '%s' "$(1)"; fi)
@@ -63,6 +65,7 @@ PY_CANDIDATE_OUTPUT_DIR := $(call python_path,$(abspath $(GENERATED_DIR))/candid
 PY_JUDGEMENT_DIR := $(call python_path,$(JUDGEMENT_DIR))
 PY_DEFAULT_RUN_DIR := $(call python_path,$(DEFAULT_RUN_DIR))
 PY_CANDIDATE_RUN_DIR := $(call python_path,$(CANDIDATE_RUN_DIR))
+PY_EVALUATION_DIR := $(call python_path,$(EVALUATION_DIR))
 
 MANAGE = cd "$(PLATFORM_DIR)" && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
@@ -100,6 +103,7 @@ plan: prepare
 	@echo "Corpus splits:  $(CORPUS_SPLIT_DIR)"
 	@echo "Derived assets: $(DERIVED_ASSETS_DIR)"
 	@echo "Judgements: $(JUDGEMENT_DIR)"
+	@echo "Evaluation: $(EVALUATION_DIR)"
 	@echo "Prompt variant: $(PROMPT_VARIANT_DIR)"
 
 validate: validate-config
@@ -197,11 +201,24 @@ judge-candidate: prepare
 	fi
 
 evaluate: prepare validate-config
-	@echo "TODO: run evaluator $(EVALUATOR_CONFIG) over generated/default and generated/candidate outputs."
-	@echo "Expected future command: $(MANAGE) run_linguistic_pipeline_experiment --evaluator-config $(abspath $(EVALUATOR_CONFIG)) --compare-with ..."
+	@echo "+ $(MANAGE) compare_segmentation_judgements --default-judgements $(PY_JUDGEMENT_DIR)/$(SPLIT)-default.jsonl --candidate fewshots-$(FEWSHOT_COUNT):$(PY_JUDGEMENT_DIR)/$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT).jsonl --output-dir $(PY_EVALUATION_DIR)/$(SPLIT)-fewshots-$(FEWSHOT_COUNT) --split $(SPLIT)"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) compare_segmentation_judgements --default-judgements "$(PY_JUDGEMENT_DIR)/$(SPLIT)-default.jsonl" --candidate "fewshots-$(FEWSHOT_COUNT):$(PY_JUDGEMENT_DIR)/$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT).jsonl" --output-dir "$(PY_EVALUATION_DIR)/$(SPLIT)-fewshots-$(FEWSHOT_COUNT)" --split "$(SPLIT)"; \
+	else \
+		echo "dry-run only; set RUN=1 after judging default and candidate FEWSHOT_COUNT=$(FEWSHOT_COUNT)"; \
+	fi
 
 compare: prepare
-	@echo "TODO: aggregate default-vs-candidate evaluator outputs into win/loss/tie counts and flagged examples."
+	@echo "+ $(MANAGE) compare_segmentation_judgements --default-judgements $(PY_JUDGEMENT_DIR)/$(SPLIT)-default.jsonl --candidate <fewshot-count judgement files> --output-dir $(PY_EVALUATION_DIR)/$(SPLIT)-sweep --split $(SPLIT)"
+	@if [ "$(RUN)" = "1" ]; then \
+		candidate_args=""; \
+		for count in $(COMPARE_FEWSHOT_COUNTS); do \
+			candidate_args="$$candidate_args --candidate fewshots-$$count:$(PY_JUDGEMENT_DIR)/$(SPLIT)-candidate-fewshots-$$count.jsonl"; \
+		done; \
+		$(MANAGE) compare_segmentation_judgements --default-judgements "$(PY_JUDGEMENT_DIR)/$(SPLIT)-default.jsonl" $$candidate_args --output-dir "$(PY_EVALUATION_DIR)/$(SPLIT)-sweep" --split "$(SPLIT)"; \
+	else \
+		echo "dry-run only; set RUN=1 after judging COMPARE_FEWSHOT_COUNTS='$(COMPARE_FEWSHOT_COUNTS)'"; \
+	fi
 
 report: prepare
 	@echo "TODO: build $(GENERATED_DIR)/report.md from comparison outputs."
