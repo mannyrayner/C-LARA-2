@@ -30,6 +30,7 @@ class Command(BaseCommand):
         parser.add_argument("--markdown", default="sweep_analysis.md")
         parser.add_argument("--patterns-jsonl", default="sweep_patterns.jsonl")
         parser.add_argument("--disagreements-jsonl", default="sweep_disagreements.jsonl")
+        parser.add_argument("--disagreements-markdown", default="sweep_disagreements.md")
 
     def handle(self, *args, **options):
         default_path = _resolve_cli_path(options["default_judgements"], "")
@@ -78,6 +79,7 @@ class Command(BaseCommand):
         markdown_path = output_dir / options["markdown"]
         patterns_path = output_dir / options["patterns_jsonl"]
         disagreements_path = output_dir / options["disagreements_jsonl"]
+        disagreements_markdown_path = output_dir / options["disagreements_markdown"]
         json_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         markdown_path.write_text(render_markdown(payload), encoding="utf-8")
         with patterns_path.open("w", encoding="utf-8") as out:
@@ -86,6 +88,10 @@ class Command(BaseCommand):
         with disagreements_path.open("w", encoding="utf-8") as out:
             for item in disagreement_examples:
                 out.write(json.dumps(item, ensure_ascii=False) + "\n")
+        disagreements_markdown_path.write_text(
+            render_disagreements_markdown(disagreement_examples, payload["candidate_labels"]),
+            encoding="utf-8",
+        )
 
         self.stdout.write("Segmentation judgement sweep analysis complete")
         self.stdout.write(f"Candidates: {', '.join(payload['candidate_labels'])}")
@@ -94,6 +100,7 @@ class Command(BaseCommand):
         self.stdout.write(f"Analysis Markdown: {markdown_path}")
         self.stdout.write(f"Flagged majority examples: {patterns_path}")
         self.stdout.write(f"Candidate disagreement examples: {disagreements_path}")
+        self.stdout.write(f"Candidate disagreement table: {disagreements_markdown_path}")
 
 
 def common_record_ids(default_records: dict[str, Any], candidate_records: list[dict[str, Any]]) -> list[str]:
@@ -181,6 +188,66 @@ def candidate_disagreement_examples(
             }
         )
     return examples
+
+
+def render_disagreements_markdown(examples: list[dict[str, Any]], candidate_labels: list[str]) -> str:
+    lines = [
+        "# Candidate disagreement examples",
+        "",
+        "This table lists records where the candidate runs disagree. `✅` marks an accepted segmentation and `❌` marks a rejected segmentation; rejected cells are bolded to make likely errors easy to scan.",
+        "",
+        f"Candidate order: {', '.join(f'`{label}`' for label in candidate_labels)}",
+        "",
+        "| Record | Input | Default | Pattern | Candidate segmentations |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+    if not examples:
+        lines.append("| — | No candidate disagreements found. | — | — | — |")
+        return "\n".join(lines).rstrip() + "\n"
+
+    for example in examples:
+        candidate_cells = [format_candidate_cell(candidate) for candidate in example["candidates"]]
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    markdown_escape(str(example.get("record_id", ""))),
+                    code_cell(example.get("input_surface")),
+                    format_judgement_cell(example.get("default_judgement"), example.get("default_segments")),
+                    f"`{markdown_escape(str(example.get('pattern', '')))}`",
+                    "<br>".join(candidate_cells),
+                ]
+            )
+            + " |"
+        )
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def format_candidate_cell(candidate: dict[str, Any]) -> str:
+    label = markdown_escape(str(candidate.get("label", "")))
+    return f"**{label}**: {format_judgement_cell(candidate.get('judgement'), candidate.get('segments'))}"
+
+
+def format_judgement_cell(judgement: Any, segments: Any) -> str:
+    normalised = normalise_judgement(judgement)
+    icon = "✅" if normalised == ACCEPT else "❌"
+    text = f"{icon} {markdown_escape(normalised)} {code_cell(segments)}"
+    return text if normalised == ACCEPT else f"**{text}**"
+
+
+def code_cell(value: Any) -> str:
+    text = "" if value is None else str(value)
+    return f"`{markdown_escape(text)}`"
+
+
+def markdown_escape(value: str) -> str:
+    return (
+        value.replace("\\", "\\\\")
+        .replace("`", "\\`")
+        .replace("|", "\\|")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+    )
 
 
 def majority_vote_summary(

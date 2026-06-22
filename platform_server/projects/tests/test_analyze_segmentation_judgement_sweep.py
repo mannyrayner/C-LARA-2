@@ -9,6 +9,7 @@ from django.test import SimpleTestCase
 
 from projects.management.commands.analyze_segmentation_judgement_sweep import (
     candidate_disagreement_examples,
+    render_disagreements_markdown,
     majority_vote_summary,
     pairwise_failure_overlap,
 )
@@ -48,6 +49,28 @@ class AnalyzeSegmentationJudgementSweepTests(SimpleTestCase):
         self.assertEqual(examples[0]["pattern"], "ARA")
         self.assertEqual(examples[0]["candidates"][1]["segments"], "medium seg")
 
+    def test_render_disagreements_markdown_highlights_rejected_runs(self):
+        examples = [
+            {
+                "record_id": "r1",
+                "input_surface": "d'une chose",
+                "default_judgement": "accept",
+                "default_segments": "d'|une| |chose",
+                "pattern": "ARA",
+                "candidates": [
+                    {"label": "small", "judgement": "accept", "segments": "d'|une| |chose"},
+                    {"label": "medium", "judgement": "reject", "segments": "d'une| |chose"},
+                    {"label": "all", "judgement": "accept", "segments": "d'|une| |chose"},
+                ],
+            }
+        ]
+
+        markdown = render_disagreements_markdown(examples, ["small", "medium", "all"])
+
+        self.assertIn("Candidate disagreement examples", markdown)
+        self.assertIn("**medium**: **❌ reject", markdown)
+        self.assertIn("d'\\|une", markdown)
+
     def test_command_writes_sweep_analysis(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
@@ -73,10 +96,12 @@ class AnalyzeSegmentationJudgementSweepTests(SimpleTestCase):
             markdown = (output_dir / "sweep_analysis.md").read_text(encoding="utf-8")
             flagged = [json.loads(line) for line in (output_dir / "sweep_patterns.jsonl").read_text(encoding="utf-8").splitlines()]
             disagreements = [json.loads(line) for line in (output_dir / "sweep_disagreements.jsonl").read_text(encoding="utf-8").splitlines()]
+            disagreement_table = (output_dir / "sweep_disagreements.md").read_text(encoding="utf-8")
             self.assertEqual(payload["pattern_counts"], {"AAR": 1, "RAA": 1})
             self.assertIn("Majority-vote proxy", markdown)
             self.assertEqual(flagged[0]["record_id"], "r1")
             self.assertEqual(disagreements[0]["pattern"], "AAR")
+            self.assertIn("Candidate disagreement examples", disagreement_table)
 
 
 def judgement(record_id: str, value: str) -> dict[str, object]:
