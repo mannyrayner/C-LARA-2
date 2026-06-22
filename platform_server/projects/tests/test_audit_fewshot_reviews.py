@@ -145,3 +145,92 @@ class AuditFewshotReviewsTests(SimpleTestCase):
 
             records = [json.loads(line) for line in audit_path.read_text(encoding="utf-8").splitlines()]
             self.assertEqual([record["human_judgement"] for record in records], ["skipped", "correct"])
+
+    def test_command_treats_a_as_correct_audit_judgement(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            curation_root = repo_root / "generated" / "few_shot_curation"
+            reviews_dir = (
+                curation_root
+                / "segmentation_phase_2"
+                / "fr"
+                / "boundary_first"
+                / "clitic_compound_v2_evaluator"
+                / "reviews"
+            )
+            reviews_dir.mkdir(parents=True)
+            (reviews_dir / "REQUEST.items.json").write_text(
+                json.dumps(
+                    {
+                        "items": [
+                            {"example_id": "EXAMPLE-0001", "decision": "accept", "severity": "none"},
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with patch("builtins.input", return_value="a"):
+                call_command(
+                    "audit_fewshot_reviews",
+                    operation="segmentation_phase_2",
+                    language="fr",
+                    mechanism="boundary_first",
+                    target_set="clitic_compound_v2_evaluator",
+                    request_id="REQUEST",
+                    repo_root=str(repo_root),
+                    curation_root=str(curation_root),
+                )
+
+            audit_path = reviews_dir / "REQUEST.human_audit.jsonl"
+            records = [json.loads(line) for line in audit_path.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual(records[0]["human_judgement"], "correct")
+
+    def test_command_back_corrects_prior_audit_judgement(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            curation_root = repo_root / "generated" / "few_shot_curation"
+            reviews_dir = (
+                curation_root
+                / "segmentation_phase_2"
+                / "fr"
+                / "boundary_first"
+                / "clitic_compound_v2_evaluator"
+                / "reviews"
+            )
+            reviews_dir.mkdir(parents=True)
+            (reviews_dir / "REQUEST.items.json").write_text(
+                json.dumps(
+                    {
+                        "items": [
+                            {"example_id": "EXAMPLE-0001", "decision": "accept", "severity": "none"},
+                            {"example_id": "EXAMPLE-0002", "decision": "accept", "severity": "none"},
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            responses = iter(["r", "b 1", "a", "a"])
+            with patch("builtins.input", side_effect=lambda _prompt="": next(responses)):
+                call_command(
+                    "audit_fewshot_reviews",
+                    operation="segmentation_phase_2",
+                    language="fr",
+                    mechanism="boundary_first",
+                    target_set="clitic_compound_v2_evaluator",
+                    request_id="REQUEST",
+                    repo_root=str(repo_root),
+                    curation_root=str(curation_root),
+                )
+
+            audit_path = reviews_dir / "REQUEST.human_audit.jsonl"
+            records = [json.loads(line) for line in audit_path.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual(
+                [(record["example_id"], record["human_judgement"]) for record in records],
+                [
+                    ("EXAMPLE-0001", "incorrect"),
+                    ("EXAMPLE-0001", "correct"),
+                    ("EXAMPLE-0002", "correct"),
+                ],
+            )
