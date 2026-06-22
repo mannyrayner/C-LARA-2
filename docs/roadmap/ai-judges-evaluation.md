@@ -264,21 +264,25 @@ The repo should contain the lightweight, reviewable orchestration files: `Makefi
 
 Each specific experiment directory should own a small `Makefile` that documents and runs the intended sequence. For the first French `segmentation_phase_2` experiment, targets should mirror the plan above:
 
+- `make summarize-corpus` — inspect the imported project corpus and write JSON/CSV/Markdown size and anomaly summaries;
+- `make split-corpus` — create deterministic development/test manifests from the summarized corpus before any evaluator tuning; this now maps to `split_french_evaluation_corpus` and writes `development.jsonl`, `test.jsonl`, and `split_manifest.json`;
 - `make curate` — call `python manage.py curate_fewshots ...` or document the existing curation request used as input;
 - `make review` — call `python manage.py review_fewshots ...`;
-- `make derive-processing-examples` — post-process accepted curation records into prompt-facing few-shot files or a staged candidate variant;
-- `make derive-evaluator-examples` — derive checking/rubric examples from the same accepted records;
-- `make run-default` — run `run_linguistic_pipeline_experiment` with default stage parameters;
-- `make run-candidate` — run the same inputs with curated-set stage parameters;
+- `make derive-processing-examples` — post-process accepted curation records into prompt-facing few-shot files or a staged candidate variant; this now maps to `derive_fewshot_assets`;
+- `make derive-evaluator-examples` — derive checking/rubric examples from the same accepted records; this is currently produced by the same shared derivation command so processing and evaluator assets keep matching provenance;
+- `make run-default` — run `run_linguistic_pipeline_experiment` with default stage parameters over the selected split manifest;
+- `make run-candidate` — run the same split inputs with curated-set stage parameters, varying `FEWSHOT_COUNT` during development to estimate the useful tranche size;
 - `make evaluate` — run the evaluator/repeated judges/panel over default and candidate outputs;
 - `make compare` — aggregate default-vs-candidate results into win/loss/tie counts and flagged examples;
 - `make report` — build a concise Markdown summary suitable for human review and possible progress-report evidence.
+
+As of 2026-06-19, the first laptop corpus summary for `mannyrayner`/`fr` reported 53 projects, 1600 segments, and 17344 current segmentation tokens, so the first experiment can move from tiny fixtures to a held-out sample of real imported legacy projects. The next design decision has been made concrete as a deterministic development/test split target: development data is for prompt, few-shot, and evaluator iteration; test data is reserved for the reportable default-vs-candidate comparison.
 
 The top-level `experiments/` directory can later contain other tracks, for example `experiments/linguistic_processing/mwe/...` or `experiments/ui_regression/...`, but the first concrete path should stay narrow: French `segmentation_phase_2`, `boundary_first`, and the `clitic_compound_v2` curated set. This gives maintainers one obvious place to run and inspect the experiment while the underlying infrastructure is still being filled in.
 
 ## Manage.py experiment runner for processing + evaluation
 
-The near-term evaluator needs a CLI entry point that can run linguistic processing with explicit parameters and optionally apply evaluation methods to the resulting artifacts. This should be a management command rather than an admin-only UI feature at first, because report experiments need repeatable command lines, visible logs, and durable artifacts.
+The near-term evaluator needs a CLI entry point that can run linguistic processing with explicit parameters and optionally apply evaluation methods to the resulting artifacts. The first implemented slice now runs `segmentation_phase_2` over JSONL split manifests and writes per-record outputs/manifests; later iterations should extend it to broader stage ranges and evaluator execution. This should be a management command rather than an admin-only UI feature at first, because report experiments need repeatable command lines, visible logs, and durable artifacts.
 
 Provisional command:
 
@@ -373,11 +377,12 @@ evaluation/phase_outputs/runs/<run_id>/
 For the First Progress Report, the target demonstration is:
 
 1. Create one or more curated few-shot sets, starting with French `segmentation_phase_2` / `boundary_first`.
-2. Run a default processing bundle and a curated-set candidate bundle over the same diagnostic inputs with `run_linguistic_pipeline_experiment`.
-3. Evaluate both outputs with a boundary-quality evaluator that can use curated examples as checking exemplars.
-4. Combine repeated or panel judgements by voting or reconciliation.
-5. Human spot-check the retained examples and the most important evaluator wins/losses.
-6. Report a cautious result: whether the curated set appears to improve boundary quality on the diagnostic sample, with artifacts and caveats.
+2. Summarize the imported French project corpus and create deterministic development/test manifests, keeping the test split held out from prompt/evaluator iteration.
+3. Run a default processing bundle and a curated-set candidate bundle over the same split inputs with `run_linguistic_pipeline_experiment`.
+4. Evaluate both outputs with a boundary-quality evaluator that can use curated examples as checking exemplars.
+5. Combine repeated or panel judgements by voting or reconciliation.
+6. Human spot-check the retained examples and the most important evaluator wins/losses.
+7. Report a cautious result: whether the curated set appears to improve boundary quality on the diagnostic sample, with artifacts and caveats.
 
 ## Report-driven first implementation: phase-output AI evaluator (ISSUE-0004)
 
