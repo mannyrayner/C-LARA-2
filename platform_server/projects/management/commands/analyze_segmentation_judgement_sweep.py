@@ -29,6 +29,7 @@ class Command(BaseCommand):
         parser.add_argument("--json", default="sweep_analysis.json")
         parser.add_argument("--markdown", default="sweep_analysis.md")
         parser.add_argument("--patterns-jsonl", default="sweep_patterns.jsonl")
+        parser.add_argument("--disagreements-jsonl", default="sweep_disagreements.jsonl")
 
     def handle(self, *args, **options):
         default_path = _resolve_cli_path(options["default_judgements"], "")
@@ -58,6 +59,7 @@ class Command(BaseCommand):
         pairwise = pairwise_failure_overlap(failure_sets)
         patterns = judgement_patterns(default_records, candidate_records, common_ids)
         majority_summary, majority_flagged = majority_vote_summary(default_path, default_records, candidate_records, common_ids)
+        disagreement_examples = candidate_disagreement_examples(default_records, candidate_records, common_ids)
         payload = {
             "schema_version": 1,
             "split": options["split"],
@@ -70,14 +72,19 @@ class Command(BaseCommand):
             "pattern_counts": patterns["counts"],
             "records_by_pattern": patterns["records_by_pattern"],
             "majority_vote": majority_summary,
+            "candidate_disagreement_count": len(disagreement_examples),
         }
         json_path = output_dir / options["json"]
         markdown_path = output_dir / options["markdown"]
         patterns_path = output_dir / options["patterns_jsonl"]
+        disagreements_path = output_dir / options["disagreements_jsonl"]
         json_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         markdown_path.write_text(render_markdown(payload), encoding="utf-8")
         with patterns_path.open("w", encoding="utf-8") as out:
             for item in majority_flagged:
+                out.write(json.dumps(item, ensure_ascii=False) + "\n")
+        with disagreements_path.open("w", encoding="utf-8") as out:
+            for item in disagreement_examples:
                 out.write(json.dumps(item, ensure_ascii=False) + "\n")
 
         self.stdout.write("Segmentation judgement sweep analysis complete")
@@ -86,6 +93,7 @@ class Command(BaseCommand):
         self.stdout.write(f"Analysis JSON: {json_path}")
         self.stdout.write(f"Analysis Markdown: {markdown_path}")
         self.stdout.write(f"Flagged majority examples: {patterns_path}")
+        self.stdout.write(f"Candidate disagreement examples: {disagreements_path}")
 
 
 def common_record_ids(default_records: dict[str, Any], candidate_records: list[dict[str, Any]]) -> list[str]:
@@ -133,6 +141,46 @@ def judgement_patterns(
         counts[pattern] += 1
         records_by_pattern.setdefault(pattern, []).append(record_id)
     return {"counts": dict(sorted(counts.items())), "records_by_pattern": records_by_pattern}
+
+
+def candidate_disagreement_examples(
+    default_records: dict[str, dict[str, Any]],
+    candidate_records: list[tuple[str, Path, dict[str, dict[str, Any]]]],
+    common_ids: list[str],
+) -> list[dict[str, Any]]:
+    examples: list[dict[str, Any]] = []
+    for record_id in common_ids:
+        candidate_payloads = []
+        pattern_chars = []
+        for label, _, records in candidate_records:
+            record = records[record_id]
+            judgement = normalise_judgement(record.get("judgement"))
+            pattern_chars.append("A" if judgement == ACCEPT else "R")
+            candidate_payloads.append(
+                {
+                    "label": label,
+                    "judgement": judgement,
+                    "segments": record.get("segments_display"),
+                    "notes": record.get("notes", ""),
+                }
+            )
+        if len(set(pattern_chars)) <= 1:
+            continue
+        default = default_records[record_id]
+        examples.append(
+            {
+                "record_id": record_id,
+                "project_id": default.get("project_id"),
+                "project_title": default.get("project_title"),
+                "split": default.get("split"),
+                "input_surface": default.get("input_surface"),
+                "default_judgement": normalise_judgement(default.get("judgement")),
+                "default_segments": default.get("segments_display"),
+                "pattern": "".join(pattern_chars),
+                "candidates": candidate_payloads,
+            }
+        )
+    return examples
 
 
 def majority_vote_summary(
@@ -199,6 +247,7 @@ def render_markdown(payload: dict[str, Any]) -> str:
             f"- Candidate wins: {majority['candidate_win_count']}",
             f"- Candidate losses: {majority['candidate_loss_count']}",
             f"- Net wins: {majority['net_win_count']}",
+            f"- Candidate disagreement examples: {payload['candidate_disagreement_count']}",
             "",
             "This is a judgement-level proxy, not yet an implemented token-level ensemble decoder.",
         ]

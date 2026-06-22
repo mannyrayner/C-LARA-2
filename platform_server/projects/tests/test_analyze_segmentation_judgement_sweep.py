@@ -8,6 +8,7 @@ from django.core.management import call_command
 from django.test import SimpleTestCase
 
 from projects.management.commands.analyze_segmentation_judgement_sweep import (
+    candidate_disagreement_examples,
     majority_vote_summary,
     pairwise_failure_overlap,
 )
@@ -33,6 +34,20 @@ class AnalyzeSegmentationJudgementSweepTests(SimpleTestCase):
         self.assertEqual(summary["candidate_judgements"]["accept"], 3)
         self.assertEqual(flagged[0]["record_id"], "r1")
 
+
+    def test_candidate_disagreement_examples_show_per_run_segments(self):
+        default = {"r1": judgement("r1", "accept")}
+        candidates = [
+            ("small", Path("small.jsonl"), {"r1": {**judgement("r1", "accept"), "segments_display": "small seg"}}),
+            ("medium", Path("medium.jsonl"), {"r1": {**judgement("r1", "reject"), "segments_display": "medium seg"}}),
+            ("all", Path("all.jsonl"), {"r1": {**judgement("r1", "accept"), "segments_display": "all seg"}}),
+        ]
+
+        examples = candidate_disagreement_examples(default, candidates, ["r1"])
+
+        self.assertEqual(examples[0]["pattern"], "ARA")
+        self.assertEqual(examples[0]["candidates"][1]["segments"], "medium seg")
+
     def test_command_writes_sweep_analysis(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
@@ -57,9 +72,11 @@ class AnalyzeSegmentationJudgementSweepTests(SimpleTestCase):
             payload = json.loads((output_dir / "sweep_analysis.json").read_text(encoding="utf-8"))
             markdown = (output_dir / "sweep_analysis.md").read_text(encoding="utf-8")
             flagged = [json.loads(line) for line in (output_dir / "sweep_patterns.jsonl").read_text(encoding="utf-8").splitlines()]
+            disagreements = [json.loads(line) for line in (output_dir / "sweep_disagreements.jsonl").read_text(encoding="utf-8").splitlines()]
             self.assertEqual(payload["pattern_counts"], {"AAR": 1, "RAA": 1})
             self.assertIn("Majority-vote proxy", markdown)
             self.assertEqual(flagged[0]["record_id"], "r1")
+            self.assertEqual(disagreements[0]["pattern"], "AAR")
 
 
 def judgement(record_id: str, value: str) -> dict[str, object]:
