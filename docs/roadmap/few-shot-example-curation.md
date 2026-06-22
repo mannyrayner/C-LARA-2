@@ -57,6 +57,51 @@ The short-term objective is now broader than the original tiny diagnostic sample
 
 Until these targets are complete, the roadmap should treat the Makefile as the most concrete source of truth for what happens next. The broader sections below describe the architecture we are building toward; the experiment workspace describes the first repeatable slice through that architecture.
 
+
+### Concrete evaluator-exemplar command sequence
+
+The evaluator few-shot examples should be produced by rerunning the same curation/review/audit pipeline, but with a **different target set** from the processing examples. This is the key safety valve against accidental overwrite and against methodological circularity. The original processing examples live under the `clitic_compound_v2` target set; evaluator examples should use a separate target such as `clitic_compound_v2_evaluator`. Because the target set is part of the curation directory path, using `CURATION_TARGET_SET=clitic_compound_v2_evaluator` writes a separate candidate/review/audit tree instead of replacing the existing `clitic_compound_v2` segmentation set.
+
+The intended command sequence is:
+
+```bash
+# 0. Work in the experiment directory. Dry-run first if unsure.
+cd experiments/linguistic_processing/segmentation_phase_2/fr_boundary_first_clitic_compound_v2
+make plan
+make validate-config
+
+# 1. Generate a separate evaluator candidate pool.
+#    This does NOT overwrite the segmentation/processing pool because the target set differs.
+make curate RUN=1 CURATION_TARGET_SET=clitic_compound_v2_evaluator
+
+# 2. Review the evaluator candidate pool. Use the request id printed by step 1.
+make review RUN=1 \
+  CURATION_TARGET_SET=clitic_compound_v2_evaluator \
+  REQUEST_ID=<evaluator-curation-request-id>
+
+# 3. Human-audit the evaluator review output. This creates the audit gate for evaluator examples.
+make audit-reviews RUN=1 \
+  CURATION_TARGET_SET=clitic_compound_v2_evaluator \
+  REQUEST_ID=<evaluator-curation-request-id> \
+  AUDIT_LIMIT=0
+
+# 4. Derive evaluator exemplars only. This reads the evaluator target set and writes
+#    generated/derived_assets/evaluator/evaluator_examples.jsonl plus a manifest;
+#    it does not touch prompts/segmentation_phase_2/variants/clitic_compound_v2/fewshots/.
+make derive-evaluator-examples RUN=1 \
+  EVALUATOR_TARGET_SET=clitic_compound_v2_evaluator \
+  REQUEST_ID=<evaluator-curation-request-id>
+```
+
+For comparison, the processing examples continue to use the existing processing target set and derivation command:
+
+```bash
+make derive-processing-examples RUN=1 REQUEST_ID=<audited-processing-request-id>
+```
+
+The next AI-evaluator implementation should consume `generated/derived_assets/evaluator/evaluator_examples.jsonl`, not the processing prompt few-shot directory. It should then compare AI evaluator decisions against the human judgement JSONL files already collected on the development split.
+
+
 ### Autonomy note for report evidence
 
 This experiment is also becoming a concrete example of AI autonomy in the project workflow. The AI assistant has not only implemented requested commands; it has proposed the experimental sequence, converted loose maintainer goals into reproducible Make targets, specified leakage controls, formulated hypotheses and audit gates, and updated the report-facing documentation as the design evolved. Human input has remained essential as supervision, plausibility checking, and acceptance, but the experimental design and implementation are increasingly AI-led. This should be cited cautiously in the report as process evidence rather than as a claim that the scientific conclusions are autonomous or unaudited.
