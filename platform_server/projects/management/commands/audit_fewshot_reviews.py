@@ -63,9 +63,13 @@ class Command(BaseCommand):
 
         audit_path = reviews_dir / f"{options['request_id']}.human_audit.jsonl"
         existing_audit_records = [] if options["overwrite"] else _load_existing_audit_records(audit_path)
-        existing_by_example = {str(record.get("example_id") or ""): record for record in existing_audit_records}
+        completed_existing_records = [record for record in existing_audit_records if _is_completed_audit_record(record)]
+        existing_by_example = {str(record.get("example_id") or ""): record for record in completed_existing_records}
         if existing_audit_records and not options["dry_run"]:
-            self.stdout.write(f"Resuming existing audit with {len(existing_audit_records)} saved judgement(s) from {audit_path}")
+            self.stdout.write(
+                f"Resuming existing audit with {len(existing_audit_records)} saved judgement(s) "
+                f"({len(completed_existing_records)} completed) from {audit_path}"
+            )
         items_to_audit = [item for item in items if str(item.get("example_id") or "") not in existing_by_example]
 
         audit_records: list[dict[str, object]] = list(existing_audit_records)
@@ -119,3 +123,7 @@ def _load_existing_audit_records(path: Path) -> list[dict[str, object]]:
         if isinstance(payload, dict):
             records.append(payload)
     return records
+
+
+def _is_completed_audit_record(record: dict[str, object]) -> bool:
+    return str(record.get("human_judgement") or "").lower() in {"correct", "incorrect"}
