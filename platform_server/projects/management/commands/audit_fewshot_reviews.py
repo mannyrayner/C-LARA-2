@@ -6,7 +6,7 @@ from pathlib import Path
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-from pipeline.fewshot_curation import FewshotCurationSpec, curation_root
+from pipeline.fewshot_curation import FewshotCurationSpec, _filesystem_path, _path_exists, _read_json, _write_text, curation_root
 from .review_fewshots import _resolve_cli_path
 
 
@@ -51,9 +51,9 @@ class Command(BaseCommand):
         root = curation_root(repo_root, spec, curation_root_base=curation_root_base)
         reviews_dir = root / "reviews"
         items_path = reviews_dir / f"{options['request_id']}.items.json"
-        if not items_path.exists():
+        if not _path_exists(items_path):
             raise CommandError(f"review item summary not found: {items_path}. Run review_fewshots first.")
-        payload = json.loads(items_path.read_text(encoding="utf-8"))
+        payload = _read_json(items_path)
         items = payload.get("items")
         if not isinstance(items, list):
             raise CommandError(f"review item summary has no items array: {items_path}")
@@ -62,14 +62,17 @@ class Command(BaseCommand):
             items = items[:limit]
 
         audit_path = reviews_dir / f"{options['request_id']}.human_audit.jsonl"
-        if audit_path.exists() and not (options["overwrite"] or options["dry_run"]):
-            raise CommandError(f"audit output already exists: {audit_path}; pass --overwrite to replace it")
+        existing_audit_records = [] if options["overwrite"] else _load_existing_audit_records(audit_path)
+        existing_by_example = {str(record.get("example_id") or ""): record for record in existing_audit_records}
+        if existing_audit_records and not options["dry_run"]:
+            self.stdout.write(f"Resuming existing audit with {len(existing_audit_records)} saved judgement(s) from {audit_path}")
+        items_to_audit = [item for item in items if str(item.get("example_id") or "") not in existing_by_example]
 
-        audit_records: list[dict[str, object]] = []
-        for idx, item in enumerate(items, start=1):
+        audit_records: list[dict[str, object]] = list(existing_audit_records)
+        for idx, item in enumerate(items_to_audit, start=1):
             self.stdout.write("\n" + "=" * 72)
             self.stdout.write(
-                f"{idx}/{len(items)} {item.get('example_id')}  "
+                f"{idx}/{len(items_to_audit)} {item.get('example_id')}  "
                 f"decision={item.get('decision')} severity={item.get('severity')}"
             )
             self.stdout.write(f"boundary_marked: {item.get('boundary_marked')}")
@@ -95,12 +98,24 @@ class Command(BaseCommand):
             )
 
         if options["dry_run"]:
-            self.stdout.write(self.style.SUCCESS(f"Displayed {len(items)} review item(s) from {items_path}"))
+            self.stdout.write(self.style.SUCCESS(f"Displayed {len(items_to_audit)} unaudited review item(s) from {items_path}"))
             return
 
-        audit_path.parent.mkdir(parents=True, exist_ok=True)
-        audit_path.write_text(
+        _write_text(
+            audit_path,
             "".join(json.dumps(record, ensure_ascii=False) + "\n" for record in audit_records),
-            encoding="utf-8",
         )
         self.stdout.write(self.style.SUCCESS(f"Wrote {len(audit_records)} human audit record(s) to {audit_path}"))
+
+
+def _load_existing_audit_records(path: Path) -> list[dict[str, object]]:
+    if not _path_exists(path):
+        return []
+    records: list[dict[str, object]] = []
+    for line in _filesystem_path(path).read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        payload = json.loads(line)
+        if isinstance(payload, dict):
+            records.append(payload)
+    return records
