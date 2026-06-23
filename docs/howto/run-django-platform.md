@@ -37,6 +37,18 @@ The `run-platform-with-real-q` target sets `DJANGO_Q_USE_REAL=1`, which gives pr
 
 The project-understanding worker inherits your shell environment. To test real Assistant queries locally, make sure your laptop shell can run Codex non-interactively and has any required `OPENAI_API_KEY`, `CODEX_HOME`, `HOME`, and Codex CLI path settings before invoking `make run-platform-with-real-q`.
 
+Codex repository inspection also needs the CLI sandbox helper to work in the same environment. On Linux/WSL2, install `bubblewrap` so `bwrap` is on `PATH` (for example, `sudo apt-get install bubblewrap` on Debian/Ubuntu/WSL2). Native Windows/Cygwin shells may report `bwrap=(not found)` and then fail Assistant requests with the same "Linux sandbox/command execution layer failed" message, even for simple queries such as "Summarise the project briefly." In that case, run the platform from WSL2 or another Codex-supported Unix-like environment rather than from Windows Python/Cygwin, then rerun the checks below.
+
+Before testing through the browser, run the worker-environment checks from the same shell you will use for `make run-platform-with-real-q`:
+
+```bash
+cd platform_server
+PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings python manage.py check_project_understanding_codex
+PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings python manage.py check_project_understanding_codex --smoke
+```
+
+If the smoke check cannot inspect the repository because `bwrap` is missing or `failed rtm_newaddr` is reported, fix the local Codex/bubblewrap/namespace setup first; the web Assistant and dedicated queue worker will fail the same way.
+
 The default `Q_CLUSTER` settings in `platform_server/settings.py` use a long timeout for compile jobs and a larger retry window (`retry` > `timeout`) so a real `django-q` install starts cleanly without warning about misconfiguration. If you override these values, keep that relationship in mind to avoid noisy startup warnings.
 
 ## Manual steps (if you prefer)
