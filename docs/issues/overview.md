@@ -4,7 +4,7 @@
 
 - Incorporated human suggestion #25 into **ISSUE-0034**, documenting a reproducible Assistant-tab self-query failure where Codex reports a Linux sandbox/command-execution error (`failed rtm_newaddr`).
 - Raised **ISSUE-0034** from P2 to P1 and moved it earlier in the focus index because the failure is user-visible and affects confidence in the restricted project-understanding assistant.
-- Updated local real-queue startup guidance so `make run-platform-with-real-q` also starts the dedicated project-understanding worker, shifted the recommended next diagnostic back to paired server-side smoke checks, and tightened the sandbox detector to ignore quoted repository evidence/source-code lines in self-understanding answers while reporting whether real detections came from Codex stdout or stderr.
+- Updated local real-queue startup guidance so `make run-platform-with-real-q` also starts the dedicated project-understanding worker, shifted the recommended next diagnostic back to paired server-side smoke checks, and added a model-based review step so heuristic sandbox detections can be classified as genuine live failures versus plausible answers quoting error-looking repository text.
 - Added an index snapshot for the focus-order change and regenerated this overview from canonical issue JSON so inventory status values match `docs/issues/issues/*.json`.
 
 ## Near-term priorities
@@ -31,7 +31,7 @@
 
 ## Notes/risks
 
-- **ISSUE-0034** server diagnostics confirmed detector false-positive risks: self-understanding answers may quote issue JSON or the detector source code itself. The detector now ignores grep-style evidence and source-code mentions such as `low_level_bwrap_failure = "failed rtm_newaddr" ...`, but the next production check should confirm Assistant self-queries complete successfully.
+- **ISSUE-0034** server diagnostics confirmed detector false-positive risks: self-understanding answers may quote issue JSON, source code, or Codex diagnostic examples. Heuristics now run first, then an OpenAI reviewer classifies the full stdout/stderr as `error`, `answer`, or `uncertain` before the platform rejects the result.
 - **ISSUE-0039** now avoids separating existing images from their original prompts, but laptop/Sophie testing should validate whether organisers need explicit prompt/image provenance or variant history.
 - **ISSUE-0037** remains active for the already implemented subdictionary/subset-project workflow and Sophie review, but its long-term data ownership should align with **ISSUE-0039**.
 - **ISSUE-0038** is closed for the low-resource dictionary deletion path, but **ISSUE-0039** should preserve stable entry/image identity so future synchronization no longer depends on page-number-only assumptions.

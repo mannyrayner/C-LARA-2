@@ -268,7 +268,34 @@ tokens used
                 openai_api_key="test-key",
                 base_environment={"PATH": "/bin"},
                 runner=runner,
+                sandbox_failure_reviewer=lambda **_: (True, "reviewer verdict=error; reason=test"),
             )
+
+    def test_codex_exec_sandbox_heuristic_can_be_overridden_by_reviewer(self) -> None:
+        runner = FakeCodexExecRunner(
+            """OpenAI Codex v0.137.0
+--------
+codex
+The assistant is implemented in code that includes the line
+`stdout="I cannot summarize because command access is failing: bubblewrap missing."`
+as an example diagnostic, but the feature itself is available from the Assistant tab.
+tokens used
+1,234
+""",
+            returncode=0,
+        )
+
+        result = answer_project_understanding_question_with_codex_exec(
+            "What does the Assistant tab do?",
+            repository_path="/srv/C-LARA-2",
+            openai_api_key="test-key",
+            base_environment={"PATH": "/bin"},
+            runner=runner,
+            sandbox_failure_reviewer=lambda **_: (False, "reviewer verdict=answer; reason=test"),
+        )
+
+        self.assertIn("Assistant tab", result.answer)
+        self.assertEqual(1234, result.tokens_used)
 
     def test_extract_codex_transcript_answer_and_tokens(self) -> None:
         transcript = """OpenAI Codex v0.135.0
