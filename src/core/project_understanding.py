@@ -115,7 +115,7 @@ def detect_codex_sandbox_access_failure(output: str) -> str:
             )
         )
         low_level_bwrap_failure = "failed rtm_newaddr" in line_lower and (
-            "bwrap" in line_lower or "bubblewrap" in line_lower or "loopback" in line_lower
+            "bwrap:" in line_lower or "bubblewrap:" in line_lower or "loopback" in line_lower
         )
         if direct_access_failure or low_level_bwrap_failure:
             return line.strip()[:500]
@@ -416,14 +416,17 @@ def answer_project_understanding_question_with_codex_exec(
 
     stdout = completed.stdout or ""
     stderr = completed.stderr or ""
-    combined_output = "\n".join([stdout, stderr])
-    sandbox_failure_detail = detect_codex_sandbox_access_failure(combined_output)
+    sandbox_failure_detail = detect_codex_sandbox_access_failure(stderr)
+    sandbox_failure_stream = "stderr"
+    if not sandbox_failure_detail:
+        sandbox_failure_detail = detect_codex_sandbox_access_failure(stdout)
+        sandbox_failure_stream = "stdout"
     if sandbox_failure_detail:
         raise CodexExecError(
             "codex exec completed, but Codex reported that it could not inspect the repository because "
             "the Linux sandbox/command execution layer failed. Check bubblewrap/user-namespace/systemd "
             "restrictions for the Unix user running the Assistant worker. "
-            f"Detail: {sandbox_failure_detail}"
+            f"Detected in Codex {sandbox_failure_stream}. Detail: {sandbox_failure_detail}"
         )
     if completed.returncode != 0:
         detail = (stderr or stdout).strip()

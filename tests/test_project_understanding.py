@@ -235,6 +235,13 @@ class ProjectUnderstandingTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual("", detail)
 
+    def test_detect_codex_sandbox_access_failure_ignores_source_code_mentions(self) -> None:
+        detail = detect_codex_sandbox_access_failure(
+            'low_level_bwrap_failure = "failed rtm_newaddr" in line_lower and ('
+        )
+
+        self.assertEqual("", detail)
+
     def test_detect_codex_sandbox_access_failure_flags_direct_bwrap_failure(self) -> None:
         detail = detect_codex_sandbox_access_failure(
             "bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted"
