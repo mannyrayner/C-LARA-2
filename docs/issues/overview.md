@@ -1,11 +1,11 @@
-# C-LARA-2 issue overview (refreshed 2026-06-18T10:15:00Z)
+# C-LARA-2 issue overview (refreshed 2026-06-23T00:00:00Z)
+
 ## Recent progress
-- Corrected **ISSUE-0039** prompt/image consistency: surface-only prompts are now considered missing only when the row has no image.
-- Preserved existing liked images by leaving their surface-only prompts unchanged unless the image itself is missing and will be regenerated.
-- Added standard-menu translation and generation-prompt language controls, selected-row translation generation, fan-out/fan-in for selected-row AI text operations plus page-image prompt construction, and POS/translation-aware image prompt construction for **ISSUE-0039**.
-- Simplified the organiser page around the source-of-truth dictionary model: automatic dictionary creation, fewer legacy project controls, moved add-word/debug controls, exercise creation/play links in dictionary/subset/member sections with community backlinks, subset word/gloss/image previews, and no old image-review dashboard.
-- Kept **ISSUE-0039** active/P0 because prompt-variant management, progress feedback depth, and tighter subset/exercise integration still need follow-up before Sophie review.
-- Regenerated this overview from canonical issue JSON so the complete inventory reflects all current `reported`, `active`, and `closed` states.
+
+- Incorporated human suggestion #25 into **ISSUE-0034**, documenting a reproducible Assistant-tab self-query failure where Codex reports a Linux sandbox/command-execution error (`failed rtm_newaddr`).
+- Raised **ISSUE-0034** from P2 to P1 and moved it earlier in the focus index because the failure is user-visible and affects confidence in the restricted project-understanding assistant.
+- Updated local real-queue startup guidance so `make run-platform-with-real-q` also starts the dedicated project-understanding worker, then shifted the recommended next diagnostic back to paired server-side smoke checks because WSL2/Linux setup is too heavy for a quick laptop comparison.
+- Added an index snapshot for the focus-order change and regenerated this overview from canonical issue JSON so inventory status values match `docs/issues/issues/*.json`.
 
 ## Near-term priorities
 
@@ -21,9 +21,9 @@
 10. **ISSUE-0025** — add systematic UI regression tracking for disappearing controls/content.
 11. **ISSUE-0010** — import a representative legacy C-LARA project corpus and add batch import tooling.
 12. **ISSUE-0013** — improve stage artifact persistence performance and timeout resilience.
-13. **ISSUE-0008** — write C-LARA-2 technical report and academic papers.
-14. **ISSUE-0033** — clean up and phase-track roadmap file maintenance.
-15. **ISSUE-0034** — add restricted project-understanding assistant with versioned evidence records.
+13. **ISSUE-0034** — add restricted project-understanding assistant with versioned evidence records.
+14. **ISSUE-0008** — write C-LARA-2 technical report and academic papers.
+15. **ISSUE-0033** — clean up and phase-track roadmap file maintenance.
 16. **ISSUE-0035** — track intermittent Codex PR update-branch refusal.
 17. **ISSUE-0006** — investigate segmentation_phase_2 token-span failures and rerun-path correctness.
 18. **ISSUE-0004** — introduce AI-based review gates for phase outputs with extensible evaluator architecture.
@@ -31,6 +31,7 @@
 
 ## Notes/risks
 
+- **ISSUE-0034** now needs focused server diagnostics: compare a known-good repository-summary smoke query with the suspect Assistant/self-understanding query under the production `project-understanding-worker` environment, and watch for detector false positives when successful answers quote issue-registry text about `failed rtm_newaddr`.
 - **ISSUE-0039** now avoids separating existing images from their original prompts, but laptop/Sophie testing should validate whether organisers need explicit prompt/image provenance or variant history.
 - **ISSUE-0037** remains active for the already implemented subdictionary/subset-project workflow and Sophie review, but its long-term data ownership should align with **ISSUE-0039**.
 - **ISSUE-0038** is closed for the low-resource dictionary deletion path, but **ISSUE-0039** should preserve stable entry/image identity so future synchronization no longer depends on page-number-only assumptions.
@@ -74,7 +75,7 @@
 | [ISSUE-0031](issues/ISSUE-0031.json) | reported | P1 | Improve compiled-content presentation context and configurable public access controls. |
 | [ISSUE-0032](issues/ISSUE-0032.json) | closed | P0 | Fix community judging image visibility for non-owner community members. |
 | [ISSUE-0033](issues/ISSUE-0033.json) | reported | P2 | Clean up and phase-track roadmap file maintenance. |
-| [ISSUE-0034](issues/ISSUE-0034.json) | active | P2 | Add restricted project-understanding assistant with versioned evidence records. |
+| [ISSUE-0034](issues/ISSUE-0034.json) | active | P1 | Add restricted project-understanding assistant with versioned evidence records. |
 | [ISSUE-0035](issues/ISSUE-0035.json) | reported | P2 | Track intermittent Codex PR update-branch refusal. |
 | [ISSUE-0036](issues/ISSUE-0036.json) | reported | P1 | Systematize creation and evaluation of few-shot examples for linguistic annotation. |
 | [ISSUE-0037](issues/ISSUE-0037.json) | active | P1 | Create subset projects from community picture dictionaries. |
