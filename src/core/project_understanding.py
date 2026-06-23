@@ -37,6 +37,7 @@ DEFAULT_EVIDENCE_PATHS = (
 
 _TOKEN_USAGE_RE = re.compile(r"tokens\s+used\s*\r?\n\s*([0-9][0-9,]*)", re.IGNORECASE)
 _ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+_REPOSITORY_QUOTE_RE = re.compile(r"^(?:\.?/|/)?(?:[A-Za-z0-9_.-]+/)+[^:\n]+:\d+:")
 _CODEX_SANDBOX_FAILURE_CONTEXTS = (
     "bwrap",
     "bubblewrap",
@@ -72,20 +73,53 @@ def detect_codex_sandbox_access_failure(output: str) -> str:
     if not lowered:
         return ""
 
-    has_context = any(marker in lowered for marker in _CODEX_SANDBOX_FAILURE_CONTEXTS)
-    has_symptom = any(marker in lowered for marker in _CODEX_SANDBOX_FAILURE_SYMPTOMS)
-    if not (has_context and has_symptom):
-        return ""
+    # Treat a line as a sandbox failure only when it is reporting the live
+    # Codex execution context failing, not merely discussing a known issue.
+    # Assistant self-queries can legitimately quote docs/issues text containing
+    # phrases like "failed rtm_newaddr"; those should not be converted into
+    # worker errors unless the transcript itself says access/commands failed.
+    for line in cleaned.splitlines():
+        line_lower = line.lower()
+        # Codex answers to self-understanding questions often include grep-style
+        # citations such as `docs/issues/issues/ISSUE-0034.json:10: ...`. Those
+        # are repository evidence lines, not live runtime diagnostics.
+        if _REPOSITORY_QUOTE_RE.match(line.strip()):
+            continue
 
-    for line in cleaned.splitlines():
-        line_lower = line.lower()
-        if any(marker in line_lower for marker in _CODEX_SANDBOX_FAILURE_SYMPTOMS):
+        has_context = any(marker in line_lower for marker in _CODEX_SANDBOX_FAILURE_CONTEXTS)
+        has_symptom = any(marker in line_lower for marker in _CODEX_SANDBOX_FAILURE_SYMPTOMS)
+        if not (has_context and has_symptom):
+            continue
+
+        direct_access_failure = any(
+            marker in line_lower
+            for marker in (
+                "i cannot",
+                "i can't",
+                "i can’t",
+                "i am unable",
+                "i'm unable",
+                "cannot inspect",
+                "could not inspect",
+                "couldn't inspect",
+                "unable to inspect",
+                "cannot access",
+                "can't access",
+                "can’t access",
+                "command access is currently blocked",
+                "command access is failing",
+                "shell commands are blocked",
+                "local file access is currently blocked",
+                "bwrap:",
+                "bubblewrap:",
+            )
+        )
+        low_level_bwrap_failure = "failed rtm_newaddr" in line_lower and (
+            "bwrap:" in line_lower or "bubblewrap:" in line_lower or "loopback" in line_lower
+        )
+        if direct_access_failure or low_level_bwrap_failure:
             return line.strip()[:500]
-    for line in cleaned.splitlines():
-        line_lower = line.lower()
-        if any(marker in line_lower for marker in _CODEX_SANDBOX_FAILURE_CONTEXTS):
-            return line.strip()[:500]
-    return cleaned[:500]
+    return ""
 
 
 
@@ -382,14 +416,17 @@ def answer_project_understanding_question_with_codex_exec(
 
     stdout = completed.stdout or ""
     stderr = completed.stderr or ""
-    combined_output = "\n".join([stdout, stderr])
-    sandbox_failure_detail = detect_codex_sandbox_access_failure(combined_output)
+    sandbox_failure_detail = detect_codex_sandbox_access_failure(stderr)
+    sandbox_failure_stream = "stderr"
+    if not sandbox_failure_detail:
+        sandbox_failure_detail = detect_codex_sandbox_access_failure(stdout)
+        sandbox_failure_stream = "stdout"
     if sandbox_failure_detail:
         raise CodexExecError(
             "codex exec completed, but Codex reported that it could not inspect the repository because "
             "the Linux sandbox/command execution layer failed. Check bubblewrap/user-namespace/systemd "
             "restrictions for the Unix user running the Assistant worker. "
-            f"Detail: {sandbox_failure_detail}"
+            f"Detected in Codex {sandbox_failure_stream}. Detail: {sandbox_failure_detail}"
         )
     if completed.returncode != 0:
         detail = (stderr or stdout).strip()
