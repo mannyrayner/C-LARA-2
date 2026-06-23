@@ -148,8 +148,9 @@ codex login
 codex login status
 
 # Run a local read-only smoke test from a C-LARA-2 checkout.
-# On Windows/Cygwin/Git Bash, use a forward-slash path such as
-# C:/cygwin64/home/github/c-lara-2 or normalize CLARA2 first.
+# Prefer Linux, macOS, or Windows through WSL2. Native Windows/Cygwin shells
+# can normalize paths, but may still fail if the Codex read-only sandbox cannot
+# find/use bubblewrap (`bwrap`).
 REPO_ROOT="/path/to/C-LARA-2"
 printf '%s\n' 'Summarise the repository in three bullet points; cite files if possible.' | \
   codex exec \
@@ -159,7 +160,7 @@ printf '%s\n' 'Summarise the repository in three bullet points; cite files if po
     --model gpt-5.3-codex -
 ```
 
-The smoke-test syntax above matches `codex-cli 0.135.0`, where `codex exec [OPTIONS] [PROMPT]` reads the prompt from stdin when `-` is used or when no prompt argument is provided. That version does **not** support the older `--ask-for-approval never` flag, so the wrapper should not include it. For a machine where `CLARA2` is set to a Windows-style path such as `C:\cygwin64\home\github\c-lara-2`, use `REPO_ROOT="${CLARA2//\\//}"` in Bash to pass `C:/cygwin64/home/github/c-lara-2` to `--cd`. A `401 Unauthorized` during the smoke test is an authentication problem, not a sandbox or repository-path problem: run `codex login status`, then sign in with ChatGPT, use device-code login, or pipe an OpenAI API key into `codex login --with-api-key`. If a later version reintroduces an approval-control option, the wrapper can fail closed unless the option is explicitly configured to refuse interactive/privileged escalation. In all versions, preserve the same safety properties: no shell interpolation of user text, fixed repository path, read-only sandbox, non-interactive operation, and bounded runtime.
+The smoke-test syntax above matches `codex-cli 0.135.0`, where `codex exec [OPTIONS] [PROMPT]` reads the prompt from stdin when `-` is used or when no prompt argument is provided. That version does **not** support the older `--ask-for-approval never` flag, so the wrapper should not include it. For a machine where `CLARA2` is set to a Windows-style path such as `C:\cygwin64\home\github\c-lara-2`, use `REPO_ROOT="${CLARA2//\\//}"` in Bash to pass `C:/cygwin64/home/github/c-lara-2` to `--cd`, but path normalization alone is not enough for Assistant/project-understanding runs. The Codex CLI must also be able to create its read-only Linux sandbox. If the Assistant live status says `bwrap=(not found)`, or the smoke test reports that the Linux sandbox/command execution layer failed, run from WSL2/Linux with `bubblewrap` installed (`sudo apt-get install bubblewrap` on Debian/Ubuntu/WSL2) or another supported Unix-like host before debugging Django queueing. A `401 Unauthorized` during the smoke test is an authentication problem, not a sandbox or repository-path problem: run `codex login status`, then sign in with ChatGPT, use device-code login, or pipe an OpenAI API key into `codex login --with-api-key`. If a later version reintroduces an approval-control option, the wrapper can fail closed unless the option is explicitly configured to refuse interactive/privileged escalation. In all versions, preserve the same safety properties: no shell interpolation of user text, fixed repository path, read-only sandbox, non-interactive operation, and bounded runtime.
 
 #### Laptop/AWS configuration contract
 
