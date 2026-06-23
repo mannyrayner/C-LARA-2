@@ -4,7 +4,7 @@
 
 - Incorporated human suggestion #25 into **ISSUE-0034**, documenting a reproducible Assistant-tab self-query failure where Codex reports a Linux sandbox/command-execution error (`failed rtm_newaddr`).
 - Raised **ISSUE-0034** from P2 to P1 and moved it earlier in the focus index because the failure is user-visible and affects confidence in the restricted project-understanding assistant.
-- Updated local real-queue startup guidance so `make run-platform-with-real-q` also starts the dedicated project-understanding worker, then shifted the recommended next diagnostic back to paired server-side smoke checks because WSL2/Linux setup is too heavy for a quick laptop comparison.
+- Updated local real-queue startup guidance so `make run-platform-with-real-q` also starts the dedicated project-understanding worker, shifted the recommended next diagnostic back to paired server-side smoke checks, and tightened the sandbox detector to ignore grep-style repository evidence lines quoted in self-understanding answers.
 - Added an index snapshot for the focus-order change and regenerated this overview from canonical issue JSON so inventory status values match `docs/issues/issues/*.json`.
 
 ## Near-term priorities
@@ -31,7 +31,7 @@
 
 ## Notes/risks
 
-- **ISSUE-0034** now needs focused server diagnostics: compare a known-good repository-summary smoke query with the suspect Assistant/self-understanding query under the production `project-understanding-worker` environment, and watch for detector false positives when successful answers quote issue-registry text about `failed rtm_newaddr`.
+- **ISSUE-0034** server diagnostics confirmed a detector false-positive risk: self-understanding answers may quote `docs/issues/issues/ISSUE-0034.json:10:` lines about past sandbox errors. The detector now ignores those grep-style repository evidence lines, but the next production check should confirm Assistant self-queries complete successfully.
 - **ISSUE-0039** now avoids separating existing images from their original prompts, but laptop/Sophie testing should validate whether organisers need explicit prompt/image provenance or variant history.
 - **ISSUE-0037** remains active for the already implemented subdictionary/subset-project workflow and Sophie review, but its long-term data ownership should align with **ISSUE-0039**.
 - **ISSUE-0038** is closed for the low-resource dictionary deletion path, but **ISSUE-0039** should preserve stable entry/image identity so future synchronization no longer depends on page-number-only assumptions.

@@ -37,6 +37,7 @@ DEFAULT_EVIDENCE_PATHS = (
 
 _TOKEN_USAGE_RE = re.compile(r"tokens\s+used\s*\r?\n\s*([0-9][0-9,]*)", re.IGNORECASE)
 _ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+_REPOSITORY_QUOTE_RE = re.compile(r"^(?:\.?/|/)?(?:[A-Za-z0-9_.-]+/)+[^:\n]+:\d+:")
 _CODEX_SANDBOX_FAILURE_CONTEXTS = (
     "bwrap",
     "bubblewrap",
@@ -79,6 +80,12 @@ def detect_codex_sandbox_access_failure(output: str) -> str:
     # worker errors unless the transcript itself says access/commands failed.
     for line in cleaned.splitlines():
         line_lower = line.lower()
+        # Codex answers to self-understanding questions often include grep-style
+        # citations such as `docs/issues/issues/ISSUE-0034.json:10: ...`. Those
+        # are repository evidence lines, not live runtime diagnostics.
+        if _REPOSITORY_QUOTE_RE.match(line.strip()):
+            continue
+
         has_context = any(marker in line_lower for marker in _CODEX_SANDBOX_FAILURE_CONTEXTS)
         has_symptom = any(marker in line_lower for marker in _CODEX_SANDBOX_FAILURE_SYMPTOMS)
         if not (has_context and has_symptom):

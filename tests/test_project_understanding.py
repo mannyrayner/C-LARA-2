@@ -226,6 +226,15 @@ class ProjectUnderstandingTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual("", detail)
 
+    def test_detect_codex_sandbox_access_failure_ignores_grep_style_issue_quotes(self) -> None:
+        detail = detect_codex_sandbox_access_failure(
+            'docs/issues/issues/ISSUE-0034.json:10: "notes": "Codex reported that it could not '
+            'inspect the repository because the Linux sandbox/command execution layer failed. '
+            'Detail: failed rtm_newaddr"'
+        )
+
+        self.assertEqual("", detail)
+
     def test_detect_codex_sandbox_access_failure_flags_direct_bwrap_failure(self) -> None:
         detail = detect_codex_sandbox_access_failure(
             "bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted"
