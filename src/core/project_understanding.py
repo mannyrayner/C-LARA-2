@@ -72,20 +72,47 @@ def detect_codex_sandbox_access_failure(output: str) -> str:
     if not lowered:
         return ""
 
-    has_context = any(marker in lowered for marker in _CODEX_SANDBOX_FAILURE_CONTEXTS)
-    has_symptom = any(marker in lowered for marker in _CODEX_SANDBOX_FAILURE_SYMPTOMS)
-    if not (has_context and has_symptom):
-        return ""
+    # Treat a line as a sandbox failure only when it is reporting the live
+    # Codex execution context failing, not merely discussing a known issue.
+    # Assistant self-queries can legitimately quote docs/issues text containing
+    # phrases like "failed rtm_newaddr"; those should not be converted into
+    # worker errors unless the transcript itself says access/commands failed.
+    for line in cleaned.splitlines():
+        line_lower = line.lower()
+        has_context = any(marker in line_lower for marker in _CODEX_SANDBOX_FAILURE_CONTEXTS)
+        has_symptom = any(marker in line_lower for marker in _CODEX_SANDBOX_FAILURE_SYMPTOMS)
+        if not (has_context and has_symptom):
+            continue
 
-    for line in cleaned.splitlines():
-        line_lower = line.lower()
-        if any(marker in line_lower for marker in _CODEX_SANDBOX_FAILURE_SYMPTOMS):
+        direct_access_failure = any(
+            marker in line_lower
+            for marker in (
+                "i cannot",
+                "i can't",
+                "i can’t",
+                "i am unable",
+                "i'm unable",
+                "cannot inspect",
+                "could not inspect",
+                "couldn't inspect",
+                "unable to inspect",
+                "cannot access",
+                "can't access",
+                "can’t access",
+                "command access is currently blocked",
+                "command access is failing",
+                "shell commands are blocked",
+                "local file access is currently blocked",
+                "bwrap:",
+                "bubblewrap:",
+            )
+        )
+        low_level_bwrap_failure = "failed rtm_newaddr" in line_lower and (
+            "bwrap" in line_lower or "bubblewrap" in line_lower or "loopback" in line_lower
+        )
+        if direct_access_failure or low_level_bwrap_failure:
             return line.strip()[:500]
-    for line in cleaned.splitlines():
-        line_lower = line.lower()
-        if any(marker in line_lower for marker in _CODEX_SANDBOX_FAILURE_CONTEXTS):
-            return line.strip()[:500]
-    return cleaned[:500]
+    return ""
 
 
 
