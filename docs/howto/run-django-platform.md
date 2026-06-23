@@ -33,7 +33,9 @@ pip install django-q2
 make run-platform-with-real-q
 ```
 
-The `run-platform-with-real-q` target sets `DJANGO_Q_USE_REAL=1`, which gives precedence to the installed `django_q` package so the genuine `qcluster` runs alongside the dev server. This is useful when debugging message delivery differences between the stub and a real queue service.
+The `run-platform-with-real-q` target sets `DJANGO_Q_USE_REAL=1`, which gives precedence to the installed `django_q` package so the genuine `qcluster` runs alongside the dev server. It also starts `python manage.py process_project_understanding_queue --worker-id local-project-understanding-worker` in the background, so local laptop runs can exercise the same dedicated Assistant/project-understanding queue path used on production. This is useful when debugging message delivery differences between the stub and a real queue service, and when checking whether Assistant-tab Codex failures reproduce outside AWS.
+
+The project-understanding worker inherits your shell environment. To test real Assistant queries locally, make sure your laptop shell can run Codex non-interactively and has any required `OPENAI_API_KEY`, `CODEX_HOME`, `HOME`, and Codex CLI path settings before invoking `make run-platform-with-real-q`.
 
 The default `Q_CLUSTER` settings in `platform_server/settings.py` use a long timeout for compile jobs and a larger retry window (`retry` > `timeout`) so a real `django-q` install starts cleanly without warning about misconfiguration. If you override these values, keep that relationship in mind to avoid noisy startup warnings.
 
@@ -41,7 +43,8 @@ The default `Q_CLUSTER` settings in `platform_server/settings.py` use a long tim
 ```bash
 cd platform_server
 python manage.py migrate
-python manage.py qcluster  # keep running in its own terminal to process tasks
+python manage.py qcluster  # keep running in its own terminal to process Django-Q tasks
+python manage.py process_project_understanding_queue  # keep running in another terminal for Assistant/Codex requests
 python manage.py runserver
 ```
 
