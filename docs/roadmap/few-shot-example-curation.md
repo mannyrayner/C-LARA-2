@@ -77,18 +77,15 @@ make split-corpus RUN=1
 make run-default RUN=1 SPLIT=test
 make run-candidate RUN=1 SPLIT=test FEWSHOT_COUNT=<chosen-processing-fewshot-count>
 
-# 3. Optional but report-quality: collect human gold judgements on the test split.
-#    This is the expensive gold-standard path; use it if we want final human-backed
-#    default-vs-candidate numbers rather than only AI-evaluator numbers.
+# 3. Collect human gold judgements on the test split. This is required if we
+#    want to measure how well the AI evaluator is working on held-out data.
 make judge-default RUN=1 SPLIT=test JUDGE_LIMIT=0
 make judge-candidate RUN=1 SPLIT=test FEWSHOT_COUNT=<chosen-processing-fewshot-count> JUDGE_LIMIT=0
-make evaluate RUN=1 SPLIT=test FEWSHOT_COUNT=<chosen-processing-fewshot-count>
 
 # 4. Run the original/base AI evaluator on the test default and candidate outputs.
 #    Repeat for small/medium/all if we want a base evaluator sweep on test.
 make ai-evaluate-default RUN=1 SPLIT=test EVALUATOR_FEWSHOT_COUNT=small
 make ai-evaluate-candidate RUN=1 SPLIT=test FEWSHOT_COUNT=<chosen-processing-fewshot-count> EVALUATOR_FEWSHOT_COUNT=small
-make compare-ai-evaluator RUN=1 SPLIT=test FEWSHOT_COUNT=<chosen-processing-fewshot-count> EVALUATOR_FEWSHOT_COUNT=small
 
 # 5. Run the augmented AI evaluator on the same held-out outputs, without
 #    overwriting the base evaluator files. Use the absolute path printed by `pwd`.
@@ -104,6 +101,44 @@ make ai-evaluate-candidate RUN=1 SPLIT=test \
   EVALUATOR_SCORE_PREFIX=evaluator-augmented-fewshots \
   EVALUATOR_ACCURACY_LABEL=augmented-accuracy \
   EVALUATOR_FEWSHOT_COUNT=small
+
+# 6. Score AI-vs-human agreement on the test split and review divergences.
+#    Correct only clear human slips; leave genuine/borderline disagreements unchanged.
+make score-ai-evaluator-default RUN=1 SPLIT=test EVALUATOR_FEWSHOT_COUNTS="small medium all"
+make score-ai-evaluator-candidate RUN=1 SPLIT=test FEWSHOT_COUNT=<chosen-processing-fewshot-count> EVALUATOR_FEWSHOT_COUNTS="small medium all"
+make score-ai-evaluator-default RUN=1 SPLIT=test \
+  EVALUATOR_SCORE_PREFIX=evaluator-augmented-fewshots \
+  EVALUATOR_ACCURACY_LABEL=augmented-accuracy \
+  EVALUATOR_FEWSHOT_COUNTS="small medium all"
+make score-ai-evaluator-candidate RUN=1 SPLIT=test \
+  FEWSHOT_COUNT=<chosen-processing-fewshot-count> \
+  EVALUATOR_SCORE_PREFIX=evaluator-augmented-fewshots \
+  EVALUATOR_ACCURACY_LABEL=augmented-accuracy \
+  EVALUATOR_FEWSHOT_COUNTS="small medium all"
+make review-ai-evaluator-default RUN=1 SPLIT=test \
+  EVALUATOR_SCORE_PREFIX=evaluator-augmented-fewshots \
+  EVALUATOR_ACCURACY_LABEL=augmented-accuracy \
+  REVIEW_DISAGREEMENT_LIMIT=0
+make review-ai-evaluator-candidate RUN=1 SPLIT=test \
+  FEWSHOT_COUNT=<chosen-processing-fewshot-count> \
+  EVALUATOR_SCORE_PREFIX=evaluator-augmented-fewshots \
+  EVALUATOR_ACCURACY_LABEL=augmented-accuracy \
+  REVIEW_DISAGREEMENT_LIMIT=0
+
+# 7. Re-score after any clear-slip corrections, then produce human and AI comparisons.
+make score-ai-evaluator-default RUN=1 SPLIT=test EVALUATOR_FEWSHOT_COUNTS="small medium all"
+make score-ai-evaluator-candidate RUN=1 SPLIT=test FEWSHOT_COUNT=<chosen-processing-fewshot-count> EVALUATOR_FEWSHOT_COUNTS="small medium all"
+make score-ai-evaluator-default RUN=1 SPLIT=test \
+  EVALUATOR_SCORE_PREFIX=evaluator-augmented-fewshots \
+  EVALUATOR_ACCURACY_LABEL=augmented-accuracy \
+  EVALUATOR_FEWSHOT_COUNTS="small medium all"
+make score-ai-evaluator-candidate RUN=1 SPLIT=test \
+  FEWSHOT_COUNT=<chosen-processing-fewshot-count> \
+  EVALUATOR_SCORE_PREFIX=evaluator-augmented-fewshots \
+  EVALUATOR_ACCURACY_LABEL=augmented-accuracy \
+  EVALUATOR_FEWSHOT_COUNTS="small medium all"
+make evaluate RUN=1 SPLIT=test FEWSHOT_COUNT=<chosen-processing-fewshot-count>
+make compare-ai-evaluator RUN=1 SPLIT=test FEWSHOT_COUNT=<chosen-processing-fewshot-count> EVALUATOR_FEWSHOT_COUNT=small
 make compare-ai-evaluator RUN=1 SPLIT=test \
   FEWSHOT_COUNT=<chosen-processing-fewshot-count> \
   EVALUATOR_EXAMPLES_JSONL="$AUGMENTED_EVALUATOR_EXAMPLES" \
@@ -112,7 +147,7 @@ make compare-ai-evaluator RUN=1 SPLIT=test \
   EVALUATOR_FEWSHOT_COUNT=small
 ```
 
-If we decide to run an evaluator sweep on the test split, repeat steps 4 and 5 with `EVALUATOR_FEWSHOT_COUNT=medium` and `EVALUATOR_FEWSHOT_COUNT=all`. Do **not** use test-set disagreements to create a new augmented evaluator set; any additional calibration must come from development data only. If human test judgements are collected, `make evaluate RUN=1 SPLIT=test ...` is the authoritative report number, and `compare-ai-evaluator` is supporting evidence about how well the AI evaluator tracks the same comparison. If no human test judgements are collected, the AI-evaluator comparison must be described as an automated proxy rather than a gold-standard result.
+If we decide to run an evaluator sweep on the test split, repeat steps 4 and 5 with `EVALUATOR_FEWSHOT_COUNT=medium` and `EVALUATOR_FEWSHOT_COUNT=all`, and set `EVALUATOR_SCORE_PREFIX=evaluator-augmented-fewshots EVALUATOR_ACCURACY_LABEL=augmented-accuracy` when scoring augmented evaluator files. Do **not** use test-set disagreements to create a new augmented evaluator set; any additional evaluator calibration must come from development data only. It is methodologically sound to use AI/human divergences on the test split to find likely human clerical slips, provided corrections are conservative: change only cases that are clearly careless annotation errors, keep borderline linguistic judgements unchanged, and preserve the correction log. After this audit pass, `make evaluate RUN=1 SPLIT=test ...` is the authoritative human-backed report number, while `compare-ai-evaluator` is supporting evidence about how closely the AI evaluator tracks the same comparison.
 
 
 ### Concrete evaluator-exemplar command sequence
