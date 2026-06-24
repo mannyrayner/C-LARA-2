@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+import asyncio
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -23,6 +24,7 @@ DEFAULT_PROJECT_UNDERSTANDING_MAX_OUTPUT_TOKENS = 3000
 PROJECT_UNDERSTANDING_PROMPT_VERSION = "project-understanding-v1"
 DEFAULT_CODEX_EXECUTABLE = "codex"
 DEFAULT_CODEX_EXEC_TIMEOUT_SECONDS = 300.0
+DEFAULT_SANDBOX_FAILURE_REVIEW_MODEL = "gpt-4o"
 
 DEFAULT_EVIDENCE_PATHS = (
     "docs/roadmap/",
@@ -37,6 +39,7 @@ DEFAULT_EVIDENCE_PATHS = (
 
 _TOKEN_USAGE_RE = re.compile(r"tokens\s+used\s*\r?\n\s*([0-9][0-9,]*)", re.IGNORECASE)
 _ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+_REPOSITORY_QUOTE_RE = re.compile(r"^(?:\.?/|/)?(?:[A-Za-z0-9_.-]+/)+[^:\n]+:\d+:")
 _CODEX_SANDBOX_FAILURE_CONTEXTS = (
     "bwrap",
     "bubblewrap",
@@ -72,21 +75,129 @@ def detect_codex_sandbox_access_failure(output: str) -> str:
     if not lowered:
         return ""
 
-    has_context = any(marker in lowered for marker in _CODEX_SANDBOX_FAILURE_CONTEXTS)
-    has_symptom = any(marker in lowered for marker in _CODEX_SANDBOX_FAILURE_SYMPTOMS)
-    if not (has_context and has_symptom):
-        return ""
-
+    # Treat a line as a sandbox failure only when it is reporting the live
+    # Codex execution context failing, not merely discussing a known issue.
+    # Assistant self-queries can legitimately quote docs/issues text containing
+    # phrases like "failed rtm_newaddr"; those should not be converted into
+    # worker errors unless the transcript itself says access/commands failed.
     for line in cleaned.splitlines():
         line_lower = line.lower()
-        if any(marker in line_lower for marker in _CODEX_SANDBOX_FAILURE_SYMPTOMS):
-            return line.strip()[:500]
-    for line in cleaned.splitlines():
-        line_lower = line.lower()
-        if any(marker in line_lower for marker in _CODEX_SANDBOX_FAILURE_CONTEXTS):
-            return line.strip()[:500]
-    return cleaned[:500]
+        # Codex answers to self-understanding questions often include grep-style
+        # citations such as `docs/issues/issues/ISSUE-0034.json:10: ...`. Those
+        # are repository evidence lines, not live runtime diagnostics.
+        if _REPOSITORY_QUOTE_RE.match(line.strip()):
+            continue
 
+        has_context = any(marker in line_lower for marker in _CODEX_SANDBOX_FAILURE_CONTEXTS)
+        has_symptom = any(marker in line_lower for marker in _CODEX_SANDBOX_FAILURE_SYMPTOMS)
+        if not (has_context and has_symptom):
+            continue
+
+        direct_access_failure = any(
+            marker in line_lower
+            for marker in (
+                "i cannot",
+                "i can't",
+                "i can’t",
+                "i am unable",
+                "i'm unable",
+                "cannot inspect",
+                "could not inspect",
+                "couldn't inspect",
+                "unable to inspect",
+                "cannot access",
+                "can't access",
+                "can’t access",
+                "command access is currently blocked",
+                "command access is failing",
+                "shell commands are blocked",
+                "local file access is currently blocked",
+                "bwrap:",
+                "bubblewrap:",
+            )
+        )
+        low_level_bwrap_failure = "failed rtm_newaddr" in line_lower and (
+            "bwrap:" in line_lower or "bubblewrap:" in line_lower or "loopback" in line_lower
+        )
+        if direct_access_failure or low_level_bwrap_failure:
+            return line.strip()[:500]
+    return ""
+
+
+
+def _truncate_for_review(text: str, *, limit: int = 6000) -> str:
+    text = text or ""
+    if len(text) <= limit:
+        return text
+    half = limit // 2
+    return f"{text[:half]}\n... [truncated] ...\n{text[-half:]}"
+
+
+async def _review_codex_sandbox_failure_with_ai_async(
+    *,
+    question: str,
+    stdout: str,
+    stderr: str,
+    detected_detail: str,
+    openai_api_key: str | None,
+    model: str = DEFAULT_SANDBOX_FAILURE_REVIEW_MODEL,
+) -> tuple[bool, str]:
+    prompt = f"""You are checking the result of a Codex CLI repository-inspection run.
+Decide whether the transcript is a genuine live sandbox/command-access failure,
+or whether it is a plausible answer that merely quotes repository text/source code
+mentioning old sandbox failures.
+
+Return JSON only, with fields:
+- verdict: one of "error", "answer", or "uncertain"
+- reason: one short sentence
+
+Classify as "error" only if the transcript itself says Codex could not inspect
+the repository in this run (for example live bwrap/bubblewrap/command-access
+failure). Classify as "answer" if the transcript appears to answer the user
+and sandbox phrases occur only inside quoted files, issue notes, source code, or
+other repository evidence.
+
+User question:
+{question}
+
+Heuristic detail that triggered review:
+{detected_detail}
+
+Codex stdout:
+{_truncate_for_review(stdout)}
+
+Codex stderr:
+{_truncate_for_review(stderr)}
+"""
+    client = OpenAIClient(config=OpenAIConfig(api_key=openai_api_key, model=model, timeout_s=30, max_retries=1))
+    try:
+        payload = await client.chat_json(prompt, model=model, temperature=None)
+    finally:
+        await client.aclose()
+    verdict = str(payload.get("verdict", "uncertain")).strip().lower()
+    reason = str(payload.get("reason", "")).strip()[:500]
+    return verdict == "error", f"reviewer verdict={verdict}; reason={reason or '(none)'}"
+
+
+def review_codex_sandbox_failure_with_ai(
+    *,
+    question: str,
+    stdout: str,
+    stderr: str,
+    detected_detail: str,
+    openai_api_key: str | None,
+    model: str = DEFAULT_SANDBOX_FAILURE_REVIEW_MODEL,
+) -> tuple[bool, str]:
+    return asyncio.run(
+        _review_codex_sandbox_failure_with_ai_async(
+            question=question,
+            stdout=stdout,
+            stderr=stderr,
+            detected_detail=detected_detail,
+            openai_api_key=openai_api_key,
+            model=model,
+        )
+    )
 
 
 @dataclass(frozen=True)
@@ -328,6 +439,8 @@ def answer_project_understanding_question_with_codex_exec(
     base_environment: Mapping[str, str] | None = None,
     runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
     monotonic: Callable[[], float] = time.perf_counter,
+    sandbox_failure_reviewer: Callable[..., tuple[bool, str]] | None = None,
+    sandbox_failure_review_model: str = DEFAULT_SANDBOX_FAILURE_REVIEW_MODEL,
 ) -> ProjectUnderstandingAnswer:
     """Answer a project-understanding question by safely wrapping `codex exec`.
 
@@ -382,15 +495,35 @@ def answer_project_understanding_question_with_codex_exec(
 
     stdout = completed.stdout or ""
     stderr = completed.stderr or ""
-    combined_output = "\n".join([stdout, stderr])
-    sandbox_failure_detail = detect_codex_sandbox_access_failure(combined_output)
+    sandbox_failure_detail = detect_codex_sandbox_access_failure(stderr)
+    sandbox_failure_stream = "stderr"
+    if not sandbox_failure_detail:
+        sandbox_failure_detail = detect_codex_sandbox_access_failure(stdout)
+        sandbox_failure_stream = "stdout"
     if sandbox_failure_detail:
-        raise CodexExecError(
-            "codex exec completed, but Codex reported that it could not inspect the repository because "
-            "the Linux sandbox/command execution layer failed. Check bubblewrap/user-namespace/systemd "
-            "restrictions for the Unix user running the Assistant worker. "
-            f"Detail: {sandbox_failure_detail}"
-        )
+        reviewer_note = "reviewer not run"
+        reviewer_confirms_error = True
+        reviewer = sandbox_failure_reviewer or review_codex_sandbox_failure_with_ai
+        if openai_api_key or sandbox_failure_reviewer is not None:
+            try:
+                reviewer_confirms_error, reviewer_note = reviewer(
+                    question=question,
+                    stdout=stdout,
+                    stderr=stderr,
+                    detected_detail=sandbox_failure_detail,
+                    openai_api_key=openai_api_key,
+                    model=sandbox_failure_review_model,
+                )
+            except Exception as exc:
+                reviewer_note = f"reviewer failed: {exc.__class__.__name__}: {exc}"
+                reviewer_confirms_error = True
+        if reviewer_confirms_error:
+            raise CodexExecError(
+                "codex exec completed, but Codex reported that it could not inspect the repository because "
+                "the Linux sandbox/command execution layer failed. Check bubblewrap/user-namespace/systemd "
+                "restrictions for the Unix user running the Assistant worker. "
+                f"Detected in Codex {sandbox_failure_stream}. Detail: {sandbox_failure_detail}. {reviewer_note}"
+            )
     if completed.returncode != 0:
         detail = (stderr or stdout).strip()
         if len(detail) > 500:
