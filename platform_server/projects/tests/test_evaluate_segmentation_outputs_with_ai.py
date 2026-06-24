@@ -32,13 +32,15 @@ class EvaluateSegmentationOutputsWithAITests(SimpleTestCase):
         self.assertIn("Je t'aime.", prompt)
         self.assertIn("Il| |m'|appelle|.", prompt)
         self.assertIn('"judgement"', prompt)
+        self.assertIn("Accept an unsplit ordinary word", prompt)
+        self.assertIn("a|voir", prompt)
 
     def test_normalise_ai_payload_rejects_unknown_decision(self):
         payload = normalise_ai_payload({"judgement": "maybe", "rationale": "unclear"})
         self.assertEqual(payload["judgement"], "reject")
         self.assertEqual(payload["severity"], "major")
 
-    def test_evaluator_cache_key_depends_on_examples(self):
+    def test_evaluator_cache_key_depends_on_examples_and_prompt_version(self):
         record = {"input_surface": "x", "segments_display": "x"}
         left = evaluator_cache_key(record, examples=[{"example_id": "a"}], model="m", variant_label="small")
         right = evaluator_cache_key(record, examples=[{"example_id": "b"}], model="m", variant_label="small")

@@ -19,6 +19,7 @@ from .review_fewshots import _resolve_cli_path
 ACCEPT = "accept"
 REJECT = "reject"
 VALID_JUDGEMENTS = {ACCEPT, REJECT}
+EVALUATOR_PROMPT_VERSION = "segmentation-boundary-evaluator-v2"
 
 
 class Command(BaseCommand):
@@ -120,6 +121,7 @@ async def evaluate_records(
             "input_surface": record.get("input_surface"),
             "segments_display": record.get("segments_display"),
             "example_ids": [example.get("example_id") for example in examples],
+            "prompt_version": EVALUATOR_PROMPT_VERSION,
             "updated_at": utc_now(),
         }
         return build_ai_judgement_record(record, normalised, model=model, variant_label=variant_label, cache_key=cache_key, reused=False)
@@ -174,14 +176,50 @@ def build_evaluator_prompt(record: dict[str, Any], examples: list[dict[str, Any]
         "candidate_segments": record.get("segments_display"),
         "boundary_separator": "|",
     }
+    built_in_rubric_examples = [
+        {
+            "input": "avoir",
+            "candidate_segments": "avoir",
+            "judgement": "accept",
+            "reason": "A single ordinary word with no clitic, contraction, punctuation, or compound boundary should stay unsplit.",
+        },
+        {
+            "input": "enfant",
+            "candidate_segments": "enfant",
+            "judgement": "accept",
+            "reason": "Not every word needs an internal boundary; preserving an ordinary word as one segment is correct.",
+        },
+        {
+            "input": "avoir",
+            "candidate_segments": "a|voir",
+            "judgement": "reject",
+            "reason": "This invents an internal split inside an ordinary word.",
+        },
+        {
+            "input": "Il m'appelle.",
+            "candidate_segments": "Il| |m'|appelle|.",
+            "judgement": "accept",
+            "reason": "The clitic/contraction boundary is learner-useful and the surface text is preserved.",
+        },
+    ]
     return f"""
 You are evaluating French segmentation_phase_2 boundary output for C-LARA.
 
 Task: decide whether the candidate segmentation is acceptable for language-learning annotation.
-Accept when clitics, contractions, punctuation, compounds, and whitespace boundaries are learner-useful and surface-preserving.
-Reject when the candidate wrongly splits inside ordinary words/names, fails to split learner-useful clitics/contractions, drops surface text, or treats a fixed compound/set expression misleadingly.
+The candidate uses `|` between proposed segment/token surfaces. If there is no `|`, the candidate is proposing one unsplit token.
 
-Positive evaluator exemplars (known acceptable boundary-marked outputs):
+Critical rubric:
+- Ordinary single words such as "avoir", "attraper", "oiseau", "aimer", "enfant", "homme", or "soleil" SHOULD normally remain unsplit. Accept an unsplit ordinary word.
+- Do NOT reject a candidate merely because it has no internal split. Missing an internal split is only a problem when there is a real learner-useful boundary such as a clitic/contraction, punctuation boundary, or justified compound boundary.
+- Reject invented splits inside ordinary words or names, for example `a|voir`, `saint|eté`, or `algo|rithmique`.
+- Accept learner-useful splits around French clitics/contractions when surface text is preserved, for example `m'|appelle` or `d'|une`.
+- Reject outputs that drop, duplicate, or reorder surface text.
+- Treat spaces and punctuation as visible segment surfaces; they may appear as separate segments.
+
+Built-in calibration examples:
+{json.dumps(built_in_rubric_examples, ensure_ascii=False, indent=2)}
+
+Positive evaluator exemplars from the audited evaluator set (known acceptable boundary-marked outputs):
 {json.dumps(example_lines, ensure_ascii=False, indent=2)}
 
 Candidate to judge:
@@ -242,6 +280,7 @@ def evaluator_cache_key(record: dict[str, Any], *, examples: list[dict[str, Any]
     payload = {
         "model": model,
         "variant_label": variant_label,
+        "prompt_version": EVALUATOR_PROMPT_VERSION,
         "example_ids": [example.get("example_id") for example in examples],
         "input_surface": record.get("input_surface"),
         "segments_display": record.get("segments_display"),
