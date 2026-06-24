@@ -61,7 +61,7 @@ class Command(BaseCommand):
                     if action == "back":
                         self.stdout.write("Nested back commands are ignored while correcting; returning to current item.")
                         continue
-                    append_review_records(
+                    did_append = append_review_records(
                         correction_item,
                         judgement=judgement,
                         notes=notes,
@@ -69,10 +69,10 @@ class Command(BaseCommand):
                         gold_out=gold_out,
                         reviewed_out=reviewed_out,
                     )
-                    appended += int(judgement != "skip")
+                    appended += int(did_append)
                     reviewed += 1
                     continue
-                append_review_records(
+                did_append = append_review_records(
                     item,
                     judgement=judgement,
                     notes=notes,
@@ -80,7 +80,7 @@ class Command(BaseCommand):
                     gold_out=gold_out,
                     reviewed_out=reviewed_out,
                 )
-                appended += int(judgement != "skip")
+                appended += int(did_append)
                 reviewed += 1
                 current += 1
 
@@ -117,21 +117,28 @@ def prompt_for_review(
     if item.get("evaluator_notes"):
         print(f"AI notes: {item.get('evaluator_notes')}")
     while True:
-        answer = input("Correct gold judgement? [a=accept, r=reject, s=skip, b <id>=back, q=quit]: ").strip().lower()
+        answer = (
+            input(
+                "Accept current gold standard judgement? "
+                "[a=accept/keep gold, r=reject gold/use AI judgement, s=skip, b <id>=back, q=quit]: "
+            )
+            .strip()
+            .lower()
+        )
         if answer in QUIT_ALIASES:
             return "quit", "", "", ""
         if answer.startswith("b "):
             return "back", "", "", answer.split(None, 1)[1]
         if answer in ACCEPT_ALIASES:
             notes = input("Notes (optional): ")
-            return "judgement", "accept", notes, ""
+            return "judgement", normalise_review_judgement(item.get("gold_judgement")), notes, ""
         if answer in REJECT_ALIASES:
-            notes = input("Notes (optional): ")
-            return "judgement", "reject", notes, ""
+            notes = input("Correction notes (optional): ")
+            return "judgement", normalise_review_judgement(item.get("evaluator_judgement")), notes, ""
         if answer in SKIP_ALIASES:
             notes = input("Skip notes (optional): ")
             return "judgement", "skip", notes, ""
-        print("Unrecognised response. Use a, r, s, b <id>, or q.")
+        print("Unrecognised response. Use a to keep gold, r to use the AI judgement, s, b <id>, or q.")
 
 
 def resolve_back_target(records: list[dict[str, Any]], target: str) -> tuple[int, dict[str, Any]] | None:
@@ -148,7 +155,7 @@ def resolve_back_target(records: list[dict[str, Any]], target: str) -> tuple[int
 
 def append_review_records(
     item: dict[str, Any], *, judgement: str, notes: str, run_label: str, gold_out: Any, reviewed_out: Any
-) -> None:
+) -> bool:
     reviewed_record = {
         "schema_version": 1,
         "reviewed_at": utc_now(),
@@ -166,8 +173,8 @@ def append_review_records(
     }
     reviewed_out.write(json.dumps(reviewed_record, ensure_ascii=False) + "\n")
     reviewed_out.flush()
-    if judgement == "skip":
-        return
+    if judgement == "skip" or judgement == normalise_review_judgement(item.get("gold_judgement")):
+        return False
     gold_record = {
         "schema_version": 1,
         "run_label": run_label,
@@ -184,6 +191,14 @@ def append_review_records(
     }
     gold_out.write(json.dumps(gold_record, ensure_ascii=False) + "\n")
     gold_out.flush()
+    return True
+
+
+def normalise_review_judgement(value: Any) -> str:
+    raw = str(value or "").strip().lower()
+    if raw in {"accept", "reject"}:
+        return raw
+    return "skip"
 
 
 def utc_now() -> str:

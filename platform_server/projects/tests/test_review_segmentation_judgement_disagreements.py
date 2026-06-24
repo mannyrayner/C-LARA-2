@@ -85,3 +85,35 @@ class ReviewSegmentationJudgementDisagreementsTests(SimpleTestCase):
                 )
             gold_records = [json.loads(line) for line in gold.read_text(encoding="utf-8").splitlines()]
             self.assertEqual([record["record_id"] for record in gold_records], ["r1", "r2"])
+
+    def test_command_accepting_current_gold_writes_review_log_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            disagreements = root / "disagreements.jsonl"
+            gold = root / "gold.jsonl"
+            reviewed = root / "reviewed.jsonl"
+            disagreements.write_text(
+                json.dumps(
+                    {
+                        "record_id": "r1",
+                        "input_surface": "avoir",
+                        "segments_display": "avoir",
+                        "gold_judgement": "accept",
+                        "evaluator_judgement": "reject",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            gold.write_text(json.dumps({"record_id": "r1", "judgement": "accept"}) + "\n", encoding="utf-8")
+            responses = iter(["a", "gold is correct"])
+            with patch("builtins.input", side_effect=lambda _prompt="": next(responses)):
+                call_command(
+                    "review_segmentation_judgement_disagreements",
+                    disagreements_jsonl=str(disagreements),
+                    gold_judgements=str(gold),
+                    reviewed_jsonl=str(reviewed),
+                )
+            self.assertEqual(len(gold.read_text(encoding="utf-8").splitlines()), 1)
+            reviewed_record = json.loads(reviewed.read_text(encoding="utf-8").splitlines()[0])
+            self.assertEqual(reviewed_record["corrected_gold_judgement"], "accept")
