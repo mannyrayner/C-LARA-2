@@ -161,13 +161,17 @@ class Command(BaseCommand):
                 )
             raise CommandError(f"codex exec smoke test failed with status {smoke.returncode}: {detail[:2000]}")
         output = (smoke.stdout or "").strip()
-        sandbox_failure_detail = detect_codex_sandbox_access_failure("\n".join([smoke.stdout or "", smoke.stderr or ""]))
+        sandbox_failure_detail = detect_codex_sandbox_access_failure(smoke.stderr or "")
+        sandbox_failure_stream = "stderr"
+        if not sandbox_failure_detail:
+            sandbox_failure_detail = detect_codex_sandbox_access_failure(smoke.stdout or "")
+            sandbox_failure_stream = "stdout"
         if sandbox_failure_detail:
             raise CommandError(
                 "codex exec exited successfully, but Codex reported that repository inspection was blocked by "
                 "the Linux sandbox/bubblewrap layer. This is usually a service-user or systemd namespace "
-                "configuration issue rather than a repository-file permission problem. Detail: "
-                f"{sandbox_failure_detail[:2000]}"
+                "configuration issue rather than a repository-file permission problem. Detected in Codex "
+                f"{sandbox_failure_stream}. Detail: {sandbox_failure_detail[:2000]}"
             )
         self.stdout.write(self.style.SUCCESS("codex exec smoke test succeeded."))
         if output:
