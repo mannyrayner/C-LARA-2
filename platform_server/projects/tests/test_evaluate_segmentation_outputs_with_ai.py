@@ -14,6 +14,7 @@ from projects.management.commands.evaluate_segmentation_outputs_with_ai import (
     normalise_ai_payload,
     select_evaluator_examples,
 )
+from projects.management.commands.augment_segmentation_evaluator_examples import disagreement_examples
 
 
 class EvaluateSegmentationOutputsWithAITests(SimpleTestCase):
@@ -35,10 +36,92 @@ class EvaluateSegmentationOutputsWithAITests(SimpleTestCase):
         self.assertIn("Accept an unsplit ordinary word", prompt)
         self.assertIn("a|voir", prompt)
 
+    def test_prompt_includes_reject_evaluator_examples(self):
+        prompt = build_evaluator_prompt(
+            {"input_surface": "elle a l'histoire", "segments_display": "elle| |a| |l'histoire"},
+            [
+                {
+                    "example_id": "DISAGREEMENT-0001",
+                    "input": "elle a l'histoire",
+                    "candidate_segments": "elle| |a| |l'histoire",
+                    "expected_decision": "reject",
+                    "rationale": "Gold rejects this false accept.",
+                }
+            ],
+        )
+        self.assertIn('"expected_judgement": "reject"', prompt)
+        self.assertIn("expected judgement", prompt)
+
     def test_normalise_ai_payload_rejects_unknown_decision(self):
         payload = normalise_ai_payload({"judgement": "maybe", "rationale": "unclear"})
         self.assertEqual(payload["judgement"], "reject")
         self.assertEqual(payload["severity"], "major")
+
+    def test_disagreement_examples_extracts_false_accepts_as_reject_exemplars(self):
+        examples = disagreement_examples(
+            [
+                {
+                    "record_id": "r1",
+                    "input_surface": "elle a l'histoire",
+                    "segments_display": "elle| |a| |l'histoire",
+                    "gold_judgement": "reject",
+                    "evaluator_judgement": "accept",
+                    "evaluator_notes": "looks okay",
+                },
+                {
+                    "record_id": "r2",
+                    "input_surface": "avoir",
+                    "segments_display": "avoir",
+                    "gold_judgement": "accept",
+                    "evaluator_judgement": "reject",
+                },
+            ],
+            include_gold="reject",
+            max_examples=0,
+            existing_keys=set(),
+        )
+        self.assertEqual(len(examples), 1)
+        self.assertEqual(examples[0]["expected_decision"], "reject")
+        self.assertEqual(examples[0]["candidate_segments"], "elle| |a| |l'histoire")
+
+    def test_augment_command_writes_combined_examples_and_manifest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            base = root / "base.jsonl"
+            disagreements = root / "disagreements.jsonl"
+            output = root / "augmented.jsonl"
+            manifest = root / "manifest.json"
+            base.write_text(
+                json.dumps({"example_id": "EXAMPLE-0001", "input": "avoir", "boundary_marked": "avoir", "expected_decision": "accept"})
+                + "\n",
+                encoding="utf-8",
+            )
+            disagreements.write_text(
+                json.dumps(
+                    {
+                        "record_id": "r1",
+                        "input_surface": "elle a l'histoire",
+                        "segments_display": "elle| |a| |l'histoire",
+                        "gold_judgement": "reject",
+                        "evaluator_judgement": "accept",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            call_command(
+                "augment_segmentation_evaluator_examples",
+                base_examples_jsonl=str(base),
+                disagreements_jsonl=str(disagreements),
+                output_jsonl=str(output),
+                manifest_json=str(manifest),
+                overwrite=True,
+            )
+            records = [json.loads(line) for line in output.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual(len(records), 2)
+            self.assertEqual(records[-1]["expected_decision"], "reject")
+            manifest_payload = json.loads(manifest.read_text(encoding="utf-8"))
+            self.assertEqual(manifest_payload["added_count"], 1)
 
     def test_evaluator_cache_key_depends_on_examples_and_prompt_version(self):
         record = {"input_surface": "x", "segments_display": "x"}

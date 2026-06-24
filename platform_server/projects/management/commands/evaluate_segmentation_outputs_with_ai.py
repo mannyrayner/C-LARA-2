@@ -166,7 +166,8 @@ def build_evaluator_prompt(record: dict[str, Any], examples: list[dict[str, Any]
             {
                 "example": idx,
                 "input": example.get("input"),
-                "correct_boundary_marked": example.get("boundary_marked"),
+                "candidate_segments": evaluator_example_segments(example),
+                "expected_judgement": example.get("expected_decision", ACCEPT),
                 "phenomenon": example.get("phenomenon"),
                 "rationale": example.get("rationale"),
             }
@@ -219,7 +220,7 @@ Critical rubric:
 Built-in calibration examples:
 {json.dumps(built_in_rubric_examples, ensure_ascii=False, indent=2)}
 
-Positive evaluator exemplars from the audited evaluator set (known acceptable boundary-marked outputs):
+Evaluator exemplars from the audited evaluator set and any adjudicated disagreements. Each exemplar includes the candidate segmentation and expected judgement:
 {json.dumps(example_lines, ensure_ascii=False, indent=2)}
 
 Candidate to judge:
@@ -232,6 +233,12 @@ Return only JSON in this exact shape:
   "rationale": "one concise sentence"
 }}
 """.strip()
+
+
+def evaluator_example_segments(example: dict[str, Any]) -> str:
+    if example.get("candidate_segments"):
+        return str(example.get("candidate_segments"))
+    return str(example.get("boundary_marked") or "").replace("¦", "|")
 
 
 def normalise_ai_payload(payload: dict[str, Any]) -> dict[str, Any]:
