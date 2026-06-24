@@ -71,6 +71,7 @@ AI_DEFAULT_EVAL_JSONL := $(AI_EVALUATION_DIR)/$(SPLIT)-default-$(EVALUATOR_VARIA
 AI_CANDIDATE_EVAL_JSONL := $(AI_EVALUATION_DIR)/$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT)-$(EVALUATOR_VARIANT_LABEL).jsonl
 AI_DEFAULT_ACCURACY_DIR := $(AI_EVALUATION_DIR)/$(SPLIT)-default-$(EVALUATOR_ACCURACY_LABEL)
 AI_CANDIDATE_ACCURACY_DIR := $(AI_EVALUATION_DIR)/$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT)-$(EVALUATOR_ACCURACY_LABEL)
+AI_COMPARISON_DIR := $(AI_EVALUATION_DIR)/$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT)-$(EVALUATOR_VARIANT_LABEL)-comparison
 AI_DEFAULT_REVIEW_LOG := $(AI_DEFAULT_ACCURACY_DIR)/gold_review_corrections.jsonl
 AI_CANDIDATE_REVIEW_LOG := $(AI_CANDIDATE_ACCURACY_DIR)/gold_review_corrections.jsonl
 
@@ -101,17 +102,18 @@ PY_AI_DEFAULT_EVAL_JSONL := $(call python_path,$(AI_DEFAULT_EVAL_JSONL))
 PY_AI_CANDIDATE_EVAL_JSONL := $(call python_path,$(AI_CANDIDATE_EVAL_JSONL))
 PY_AI_DEFAULT_ACCURACY_DIR := $(call python_path,$(AI_DEFAULT_ACCURACY_DIR))
 PY_AI_CANDIDATE_ACCURACY_DIR := $(call python_path,$(AI_CANDIDATE_ACCURACY_DIR))
+PY_AI_COMPARISON_DIR := $(call python_path,$(AI_COMPARISON_DIR))
 PY_AI_DEFAULT_REVIEW_LOG := $(call python_path,$(AI_DEFAULT_REVIEW_LOG))
 PY_AI_CANDIDATE_REVIEW_LOG := $(call python_path,$(AI_CANDIDATE_REVIEW_LOG))
 
 MANAGE = cd "$(PLATFORM_DIR)" && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help plan validate validate-config prepare summarize-corpus split-corpus curate review audit-reviews derive-processing-examples derive-evaluator-examples augment-evaluator-examples run-default run-candidate judge-default judge-candidate ai-evaluate-default ai-evaluate-candidate score-ai-evaluator-default score-ai-evaluator-candidate review-ai-evaluator-default review-ai-evaluator-candidate evaluate compare analyze-sweep report clean
+.PHONY: help plan validate validate-config prepare summarize-corpus split-corpus curate review audit-reviews derive-processing-examples derive-evaluator-examples augment-evaluator-examples run-default run-candidate judge-default judge-candidate ai-evaluate-default ai-evaluate-candidate score-ai-evaluator-default score-ai-evaluator-candidate review-ai-evaluator-default review-ai-evaluator-candidate compare-ai-evaluator evaluate compare analyze-sweep report clean
 
 help:
 	@sed -n '1,220p' README.md
 	@echo
-	@echo "Common targets: plan validate-config summarize-corpus split-corpus curate review audit-reviews derive-processing-examples derive-evaluator-examples augment-evaluator-examples run-default run-candidate judge-default judge-candidate ai-evaluate-default ai-evaluate-candidate score-ai-evaluator-default score-ai-evaluator-candidate review-ai-evaluator-default review-ai-evaluator-candidate evaluate compare analyze-sweep report"
+	@echo "Common targets: plan validate-config summarize-corpus split-corpus curate review audit-reviews derive-processing-examples derive-evaluator-examples augment-evaluator-examples run-default run-candidate judge-default judge-candidate ai-evaluate-default ai-evaluate-candidate score-ai-evaluator-default score-ai-evaluator-candidate review-ai-evaluator-default review-ai-evaluator-candidate compare-ai-evaluator evaluate compare analyze-sweep report"
 	@echo "Targets that call management commands default to dry-run. Set RUN=1 to execute."
 
 prepare:
@@ -312,6 +314,14 @@ review-ai-evaluator-candidate: prepare
 		$(MANAGE) review_segmentation_judgement_disagreements --disagreements-jsonl "$(PY_AI_CANDIDATE_ACCURACY_DIR)/evaluator_disagreements.jsonl" --gold-judgements "$(PY_JUDGEMENT_DIR)/$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT).jsonl" --reviewed-jsonl "$(PY_AI_CANDIDATE_REVIEW_LOG)" --run-label "$(RUN_LABEL)-$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT)-gold-review" --limit "$(REVIEW_DISAGREEMENT_LIMIT)"; \
 	else \
 		echo "dry-run only; set RUN=1 after score-ai-evaluator-candidate has written evaluator_disagreements.jsonl"; \
+	fi
+
+compare-ai-evaluator: prepare
+	@echo "+ $(MANAGE) compare_segmentation_judgements --default-judgements $(PY_AI_DEFAULT_EVAL_JSONL) --candidate fewshots-$(FEWSHOT_COUNT):$(PY_AI_CANDIDATE_EVAL_JSONL) --output-dir $(PY_AI_COMPARISON_DIR) --split $(SPLIT)"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) compare_segmentation_judgements --default-judgements "$(PY_AI_DEFAULT_EVAL_JSONL)" --candidate "fewshots-$(FEWSHOT_COUNT):$(PY_AI_CANDIDATE_EVAL_JSONL)" --output-dir "$(PY_AI_COMPARISON_DIR)" --split "$(SPLIT)"; \
+	else \
+		echo "dry-run only; set RUN=1 after ai-evaluate-default and ai-evaluate-candidate for EVALUATOR_VARIANT_LABEL=$(EVALUATOR_VARIANT_LABEL)"; \
 	fi
 
 evaluate: prepare validate-config

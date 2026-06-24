@@ -58,6 +58,63 @@ The short-term objective is now broader than the original tiny diagnostic sample
 Until these targets are complete, the roadmap should treat the Makefile as the most concrete source of truth for what happens next. The broader sections below describe the architecture we are building toward; the experiment workspace describes the first repeatable slice through that architecture.
 
 
+### Test-set run checklist for the French boundary-first experiment
+
+The development work has now chosen two evaluator sources worth preserving: the original evaluator exemplar set under `generated/derived_assets/evaluator/` and the augmented evaluator exemplar set under `generated/derived_assets/evaluator_augmented/`, which includes development-only adjudicated disagreement cases. The test set should be run once the chosen processing tranche and evaluator comparison settings have been frozen. The following commands are intended to be cut and pasted from the experiment directory; replace placeholders before running.
+
+```bash
+cd experiments/linguistic_processing/segmentation_phase_2/fr_boundary_first_clitic_compound_v2
+
+# 0. Orientation/sanity checks. These should not modify experiment results.
+make plan
+make validate-config
+
+# 1. Confirm the split manifests exist. Re-run only if generated/corpus_splits/
+#    is missing or known to be stale; the seed/caps must remain unchanged.
+make split-corpus RUN=1
+
+# 2. Run the frozen processing variants on the held-out test split.
+make run-default RUN=1 SPLIT=test
+make run-candidate RUN=1 SPLIT=test FEWSHOT_COUNT=<chosen-processing-fewshot-count>
+
+# 3. Optional but report-quality: collect human gold judgements on the test split.
+#    This is the expensive gold-standard path; use it if we want final human-backed
+#    default-vs-candidate numbers rather than only AI-evaluator numbers.
+make judge-default RUN=1 SPLIT=test JUDGE_LIMIT=0
+make judge-candidate RUN=1 SPLIT=test FEWSHOT_COUNT=<chosen-processing-fewshot-count> JUDGE_LIMIT=0
+make evaluate RUN=1 SPLIT=test FEWSHOT_COUNT=<chosen-processing-fewshot-count>
+
+# 4. Run the original/base AI evaluator on the test default and candidate outputs.
+#    Repeat for small/medium/all if we want a base evaluator sweep on test.
+make ai-evaluate-default RUN=1 SPLIT=test EVALUATOR_FEWSHOT_COUNT=small
+make ai-evaluate-candidate RUN=1 SPLIT=test FEWSHOT_COUNT=<chosen-processing-fewshot-count> EVALUATOR_FEWSHOT_COUNT=small
+make compare-ai-evaluator RUN=1 SPLIT=test FEWSHOT_COUNT=<chosen-processing-fewshot-count> EVALUATOR_FEWSHOT_COUNT=small
+
+# 5. Run the augmented AI evaluator on the same held-out outputs, without
+#    overwriting the base evaluator files. Use the absolute path printed by `pwd`.
+AUGMENTED_EVALUATOR_EXAMPLES="$(pwd)/generated/derived_assets/evaluator_augmented/evaluator_examples.jsonl"
+make ai-evaluate-default RUN=1 SPLIT=test \
+  EVALUATOR_EXAMPLES_JSONL="$AUGMENTED_EVALUATOR_EXAMPLES" \
+  EVALUATOR_SCORE_PREFIX=evaluator-augmented-fewshots \
+  EVALUATOR_ACCURACY_LABEL=augmented-accuracy \
+  EVALUATOR_FEWSHOT_COUNT=small
+make ai-evaluate-candidate RUN=1 SPLIT=test \
+  FEWSHOT_COUNT=<chosen-processing-fewshot-count> \
+  EVALUATOR_EXAMPLES_JSONL="$AUGMENTED_EVALUATOR_EXAMPLES" \
+  EVALUATOR_SCORE_PREFIX=evaluator-augmented-fewshots \
+  EVALUATOR_ACCURACY_LABEL=augmented-accuracy \
+  EVALUATOR_FEWSHOT_COUNT=small
+make compare-ai-evaluator RUN=1 SPLIT=test \
+  FEWSHOT_COUNT=<chosen-processing-fewshot-count> \
+  EVALUATOR_EXAMPLES_JSONL="$AUGMENTED_EVALUATOR_EXAMPLES" \
+  EVALUATOR_SCORE_PREFIX=evaluator-augmented-fewshots \
+  EVALUATOR_ACCURACY_LABEL=augmented-accuracy \
+  EVALUATOR_FEWSHOT_COUNT=small
+```
+
+If we decide to run an evaluator sweep on the test split, repeat steps 4 and 5 with `EVALUATOR_FEWSHOT_COUNT=medium` and `EVALUATOR_FEWSHOT_COUNT=all`. Do **not** use test-set disagreements to create a new augmented evaluator set; any additional calibration must come from development data only. If human test judgements are collected, `make evaluate RUN=1 SPLIT=test ...` is the authoritative report number, and `compare-ai-evaluator` is supporting evidence about how well the AI evaluator tracks the same comparison. If no human test judgements are collected, the AI-evaluator comparison must be described as an automated proxy rather than a gold-standard result.
+
+
 ### Concrete evaluator-exemplar command sequence
 
 The evaluator few-shot examples should be produced by rerunning the same curation/review/audit pipeline, but with a **different target set** from the processing examples. This is the key safety valve against accidental overwrite and against methodological circularity. The original processing examples live under the `clitic_compound_v2` target set; evaluator examples should use a separate target such as `clitic_compound_v2_evaluator`. Because the target set is part of the curation directory path, using `CURATION_TARGET_SET=clitic_compound_v2_evaluator` writes a separate candidate/review/audit tree instead of replacing the existing `clitic_compound_v2` segmentation set.
