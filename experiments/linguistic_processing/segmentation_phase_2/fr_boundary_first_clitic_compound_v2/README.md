@@ -53,8 +53,9 @@ I am taking the initiative to make the next targets data-oriented rather than im
 5. `judge-default` / `judge-candidate` — interactively audit segmentation outputs in a compact display, append judgements continuously, and reuse cached decisions for repeated identical segmentations.
 6. `ai-evaluate-default` / `ai-evaluate-candidate` — use the separately derived evaluator exemplars to run AI boundary-quality judgements over default or candidate `outputs.jsonl` files. Vary `EVALUATOR_FEWSHOT_COUNT=small|medium|all|N` to create an evaluator sweep.
 7. `score-ai-evaluator-default` / `score-ai-evaluator-candidate` — score the AI evaluator judgements against the existing human judgement JSONL files, including a majority-vote summary across `EVALUATOR_FEWSHOT_COUNTS`.
-8. `evaluate` — compare the default judgements against one candidate tranche (`FEWSHOT_COUNT=<count>`) and write JSON/Markdown summaries plus flagged examples.
-9. `compare` / `analyze-sweep` / `report` — aggregate the development-set tranche sweep (`COMPARE_FEWSHOT_COUNTS`), analyze failure overlap and majority-vote proxy behaviour, and write a concise report artifact.
+8. `review-ai-evaluator-default` / `review-ai-evaluator-candidate` — inspect AI/human disagreements, append corrected gold judgements to the human judgement JSONL, and write a review log.
+9. `evaluate` — compare the default judgements against one candidate tranche (`FEWSHOT_COUNT=<count>`) and write JSON/Markdown summaries plus flagged examples.
+10. `compare` / `analyze-sweep` / `report` — aggregate the development-set tranche sweep (`COMPARE_FEWSHOT_COUNTS`), analyze failure overlap and majority-vote proxy behaviour, and write a concise report artifact.
 
 
 ## Current development-set status (2026-06-21)
@@ -106,6 +107,8 @@ make ai-evaluate-default
 make ai-evaluate-candidate
 make score-ai-evaluator-default
 make score-ai-evaluator-candidate
+make review-ai-evaluator-default
+make review-ai-evaluator-candidate
 make evaluate
 make compare
 make analyze-sweep
@@ -137,6 +140,8 @@ make ai-evaluate-default RUN=1 SPLIT=development EVALUATOR_FEWSHOT_COUNT=small
 make ai-evaluate-candidate RUN=1 SPLIT=development FEWSHOT_COUNT=small EVALUATOR_FEWSHOT_COUNT=small
 make score-ai-evaluator-default RUN=1 SPLIT=development EVALUATOR_FEWSHOT_COUNTS="small medium all"
 make score-ai-evaluator-candidate RUN=1 SPLIT=development FEWSHOT_COUNT=small EVALUATOR_FEWSHOT_COUNTS="small medium all"
+make review-ai-evaluator-default RUN=1 SPLIT=development REVIEW_DISAGREEMENT_LIMIT=0
+make review-ai-evaluator-candidate RUN=1 SPLIT=development FEWSHOT_COUNT=small REVIEW_DISAGREEMENT_LIMIT=0
 make evaluate RUN=1 SPLIT=development FEWSHOT_COUNT=small
 make compare RUN=1 SPLIT=development COMPARE_FEWSHOT_COUNTS="small medium all"
 make analyze-sweep RUN=1 SPLIT=development COMPARE_FEWSHOT_COUNTS="small medium all"
@@ -156,7 +161,7 @@ When invoked from Cygwin with Windows Python, the Makefile converts the split ma
 
 `make analyze-sweep RUN=1 COMPARE_FEWSHOT_COUNTS="small medium all"` investigates whether candidate failures are correlated across tranches. It writes `sweep_analysis.json`, `sweep_analysis.md`, `sweep_patterns.jsonl`, `sweep_disagreements.jsonl`, and `sweep_disagreements.md` under `generated/evaluation/<split>-sweep-analysis/`, including pairwise failure-set overlap, accept/reject pattern counts such as `AAR`, inspectable examples where candidate runs disagree, a human-readable Markdown table that highlights rejected candidate segmentations, and a judgement-level majority-vote proxy. The voting result is not yet a token-level ensemble decoder; it is a diagnostic for whether an ensemble-style strategy might be worth implementing.
 
-`make ai-evaluate-default RUN=1 EVALUATOR_FEWSHOT_COUNT=<count>` and `make ai-evaluate-candidate RUN=1 FEWSHOT_COUNT=<processing-count> EVALUATOR_FEWSHOT_COUNT=<count>` use `generated/derived_assets/evaluator/evaluator_examples.jsonl` as evaluator few-shots. They write AI judgement JSONL files under `generated/ai_evaluator/` and share a cache keyed by input, displayed segmentation, model, evaluator variant, and selected exemplar IDs. Run these on the development split first with `EVALUATOR_FEWSHOT_COUNT=small`, `medium`, and `all`; then score the evaluator variants against human judgements with `make score-ai-evaluator-default RUN=1 EVALUATOR_FEWSHOT_COUNTS="small medium all"` or `make score-ai-evaluator-candidate RUN=1 FEWSHOT_COUNT=<processing-count> EVALUATOR_FEWSHOT_COUNTS="small medium all"`. The scoring target reports per-variant accuracy, false accepts, false rejects, and a majority-vote row.
+`make ai-evaluate-default RUN=1 EVALUATOR_FEWSHOT_COUNT=<count>` and `make ai-evaluate-candidate RUN=1 FEWSHOT_COUNT=<processing-count> EVALUATOR_FEWSHOT_COUNT=<count>` use `generated/derived_assets/evaluator/evaluator_examples.jsonl` as evaluator few-shots. They write AI judgement JSONL files under `generated/ai_evaluator/` and share a cache keyed by input, displayed segmentation, model, evaluator variant, and selected exemplar IDs. Run these on the development split first with `EVALUATOR_FEWSHOT_COUNT=small`, `medium`, and `all`; then score the evaluator variants against human judgements with `make score-ai-evaluator-default RUN=1 EVALUATOR_FEWSHOT_COUNTS="small medium all"` or `make score-ai-evaluator-candidate RUN=1 FEWSHOT_COUNT=<processing-count> EVALUATOR_FEWSHOT_COUNTS="small medium all"`. The scoring target reports per-variant accuracy, false accepts, false rejects, and a majority-vote row. If the disagreement file shows likely errors in the human gold judgements, use `make review-ai-evaluator-default RUN=1` or `make review-ai-evaluator-candidate RUN=1 FEWSHOT_COUNT=<processing-count>` to inspect those cases. The review target appends corrected gold records to the same human judgement JSONL file, so downstream scoring uses latest-judgement semantics. It also writes an audit trail to `gold_review_corrections.jsonl`.
 
 `make evaluate RUN=1 FEWSHOT_COUNT=<count>` compares the latest default and candidate **human judgement** records for a single candidate tranche. `make compare RUN=1 COMPARE_FEWSHOT_COUNTS="small medium all"` compares all listed judged tranches against the default. Both commands write `comparison_summary.json`, `comparison_summary.md`, and `flagged_examples.jsonl` under `generated/evaluation/`; corrections are handled by taking the latest JSONL judgement for each `record_id`. Candidate wins are cases where the default judgement is not `accept` and the candidate is `accept`; candidate losses are the reverse. These targets remain human-judgement comparison tools; the `ai-evaluate-*` and `score-ai-evaluator-*` targets are the new AI-evaluator calibration path.
 
