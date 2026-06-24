@@ -8,7 +8,7 @@ This is now a P1 roadmap item because maintainers are seeing many annotation err
 
 Related issue: [ISSUE-0036](../issues/issues/ISSUE-0036.json).
 
-## Current progress note (2026-06-15)
+## Current progress note (2026-06-19)
 
 The first French `segmentation_phase_2` / `boundary_first` curation workflow has now moved beyond the initial smoke test. The earlier 40-candidate `clitic_compound_v2` run established that the generate → validate → hostile-review → human-audit loop was useful: eight retained examples were all judged correct by maintainer review, and validation-failed candidates are now excluded from AI review.
 
@@ -18,57 +18,150 @@ On 2026-06-15, the first full-sized batch for this experiment was generated and 
 - `make review RUN=1 REQUEST_ID=20260615-072115Z` AI-reviewed all 80 candidates, with severity counts `fatal: 3`, `serious: 5`, `minor: 0`, and `none: 72`.
 - `make audit-reviews RUN=1 REQUEST_ID=20260615-072115Z` human-audited the AI review output. The human reviewer accepted all AI judgements, while noting that some decisions were borderline.
 
-This means the curation/review/audit part of the first French `clitic_compound_v2` experiment is no longer the blocker. The next stage is to turn the accepted records from request `20260615-072115Z` into usable derived assets: compact prompt-facing few-shot examples for the candidate processing run, and evaluator/checking examples or rubric material for the AI judge.
+On 2026-06-19, the imported French corpus was summarized using the new experiment target `make summarize-corpus RUN=1`. The maintainer-reported run for user `mannyrayner`, language `fr`, exact match found:
+
+- 53 French projects, all with `segmentation_phase_2` artifacts;
+- 1600 segments;
+- 17344 current segmentation tokens in total;
+- 10566 non-whitespace tokens and 6778 whitespace-only tokens;
+- 53625 token-surface characters including whitespace and 45704 excluding whitespace;
+- 60 segments with no tokens and no empty token surfaces.
+
+These figures are large enough for a meaningful first report experiment if we use the data conservatively. The corpus should not be treated as a single undifferentiated benchmark. The next autonomous planning step is to split it into a small development subset for prompt/few-shot/evaluator iteration and a held-out test subset for the first reportable comparison. The split should be deterministic, manifest-based, and stratified by project size where practical, so that subsequent Make targets can rerun the same inputs without accidental leakage from development decisions into the final test set.
 
 The run also exposed an important implementation lesson. One generated candidate in the earlier smoke test had lost interword spaces in the boundary-marked representation, e.g. an input like `L'ami de Marie habite ici.` paired with units that concatenated as `L'amideMariehabiteici.`. The deterministic validation logic already catches this by checking that concatenated unit surfaces exactly match the input, but the review command initially still sent validation-failed candidate records to AI review. That path has now been tightened so AI review only runs over schema-valid candidates and records skipped validation failures in the review summary. This reinforces the architecture: deterministic preservation/schema checks must be a hard gate before linguistic judgement.
 
-
 ## Short-term plan: first French boundary-first experiment
 
 The current working plan is concentrated in the versioned experiment workspace at
 `experiments/linguistic_processing/segmentation_phase_2/fr_boundary_first_clitic_compound_v2/`.
 That directory, and especially its `Makefile`, is the executable checklist for the first key experiment.
 Use it as the primary handover artifact when resuming this thread: it names the target operation, language,
-mechanism, curated set, input fixtures, parameter bundles, evaluator config, and the intended command sequence.
+mechanism, curated set, corpus summary outputs, input fixtures, parameter bundles, evaluator config, and the intended command sequence.
 
-The short-term objective is deliberately narrow: determine whether a curated French
-`segmentation_phase_2` / `boundary_first` few-shot set for clitics and transparent compounds can improve
-boundary quality on a small diagnostic sample, and whether AI judging can give useful comparative evidence.
-The planned sequence is:
+The short-term objective is now broader than the original tiny diagnostic sample but still narrow enough for a clean report result: determine whether a curated French `segmentation_phase_2` / `boundary_first` few-shot set for clitics and transparent compounds improves boundary quality on a held-out sample drawn from imported legacy French projects, and whether AI judging can provide useful comparative evidence with human spot-checking. I am taking the initiative to structure the next implementation steps as follows:
 
 1. **Done: orient and validate the experiment workspace.** Use `make plan` and `make validate-config` in the experiment directory to confirm the tracked default/candidate parameter files, evaluator config, and diagnostic inputs.
 2. **Done for request `20260615-072115Z`: curate, AI-review, and human-audit candidates.** `make curate RUN=1` generated 80 candidates; `make review RUN=1 REQUEST_ID=20260615-072115Z` reviewed all 80 with 72 `none`, 5 `serious`, and 3 `fatal` judgements; `make audit-reviews RUN=1 REQUEST_ID=20260615-072115Z` accepted the AI judgements after human audit.
-3. **Next: derive usable assets from accepted records.** Implement/fill the `derive-processing-examples` target so accepted curation records become compact prompt-facing few-shot assets for the `clitic_compound_v2` candidate variant. Then implement/fill `derive-evaluator-examples` so the same records can be wrapped as evaluator exemplars or rubric material.
-4. **Then: run default and candidate processing variants.** Implement `run_linguistic_pipeline_experiment` well enough for the Makefile's `run-default` and `run-candidate` targets to process the same fixtures with the default and curated-set parameter bundles.
-5. **Then: evaluate and compare.** Implement/fill `evaluate`, `compare`, and `report` so the experiment produces paired default-vs-candidate judgements, flagged examples, and a concise Markdown summary suitable for maintainer review and possible progress-report evidence.
+3. **Done for corpus sizing: summarize the imported French material.** `make summarize-corpus RUN=1` has produced JSON/CSV/Markdown summaries under `generated/corpus_summary/`; the reported run gives 53 projects and 1600 segments.
+4. **Implemented command/target: create deterministic corpus manifests.** `make split-corpus RUN=1` calls `split_french_evaluation_corpus` over `generated/corpus_summary/corpus_summary.json` and writes `generated/corpus_splits/development.jsonl`, `generated/corpus_splits/test.jsonl`, and `generated/corpus_splits/split_manifest.json`. The split uses project-level separation, size stratification, a stable seed, and segment caps; the development split is for prompt/evaluator adjustment, while the test split must remain untouched until the comparison procedure is fixed.
+5. **Implemented command/target: derive usable assets from accepted records.** `make derive-processing-examples RUN=1 REQUEST_ID=<audited-processing-id>` calls `derive_fewshot_assets --asset-kind processing`, reads reviewed and human-audited curation items for the processing target set, and writes compact prompt-facing examples for the `clitic_compound_v2` candidate variant. `make derive-evaluator-examples RUN=1 EVALUATOR_TARGET_SET=clitic_compound_v2_evaluator REQUEST_ID=<audited-evaluator-id>` now calls `derive_fewshot_assets --asset-kind evaluator` and writes a separate evaluator exemplar pool plus manifest under `generated/derived_assets/evaluator/`, so the evaluation prompt can avoid reusing the exact processing few-shot examples.
+6. **Implemented first runner: run default and candidate processing variants.** `run_linguistic_pipeline_experiment` now supports the first experiment slice: `segmentation_phase_2` over JSONL split manifests. The Makefile's `run-default` and `run-candidate` targets process the same `SPLIT=development` or `SPLIT=test` records with default or curated-set parameter bundles, writing `outputs.jsonl`, per-record stage artifacts, and a run manifest. Candidate runs now expose `FEWSHOT_COUNT=small|medium|all|N`, so the development split can test whether adding more accepted examples helps, tops out, or becomes counterproductive before locking a test-setting.
+7. **Implemented human spot-check target: judge segmentation outputs.** `judge-default` and `judge-candidate` call `judge_segmentation_outputs`, which displays each output as a compact `Input surface` / `Segments` prompt, appends judgements continuously for interruption-safe review, and shares a cache keyed by input surface plus the boundary-whitespace-trimmed token sequence so repeated identical segmentations are not judged twice while still being copied into the current run's judgement file for later comparison. The prompt supports `b <id>` corrections during judging and after a set is complete, giving the human supervisor an efficient development-audit loop before the automated evaluator/comparison targets are finalized.
+8. **Current development milestone: default vs small candidate judged.** The development split has now completed `run-default`, `run-candidate FEWSHOT_COUNT=small`, `judge-default`, and `judge-candidate`; the judgement tool's correction flow and boundary-whitespace-normalised cache reuse have both been exercised successfully by the human collaborator.
+9. **Next: development-set few-shot tranche sweep.** Keep the held-out test split untouched while running and judging additional development candidates, starting with `FEWSHOT_COUNT=medium` and `FEWSHOT_COUNT=all`. Compare default/small/medium/all judgement files on development data to decide whether more curated examples help, plateau, or hurt, then freeze one candidate setting and comparison rule before any test-set run.
+10. **Implemented first comparison layer, deliberately using human judgement files.** `compare_segmentation_judgements` powers the Makefile's current `evaluate` and `compare` targets over human judgement JSONL files, not over the derived evaluator exemplars. It takes the latest human judgement per record, compares default against one or more candidate tranches, emits JSON/Markdown summaries, and writes flagged candidate wins/losses/disagreements for review. The target name `evaluate` is therefore slightly provisional: at this stage it means "evaluate from collected human judgements" rather than "call an AI evaluator."
+11. **Implemented AI-evaluator calibration, with base and augmented exemplar sets kept separate.** The AI-evaluator targets consume `EVALUATOR_EXAMPLES_JSONL`, which defaults to `generated/derived_assets/evaluator/evaluator_examples.jsonl`, while `compare_segmentation_judgements` remains the human-judgement comparison layer. After scoring AI evaluator variants against development gold judgements, `make augment-evaluator-examples RUN=1` can extract adjudicated disagreement cases (by default false accepts where the corrected gold judgement is `reject`) into `generated/derived_assets/evaluator_augmented/evaluator_examples.jsonl`. This preserves the original evaluator exemplar set and gives us a controlled development-only comparison of base versus augmented evaluator prompts before freezing the evaluator source for held-out test use.
+12. **Implemented sweep-correlation diagnostics.** `analyze_segmentation_judgement_sweep` and the Makefile's `analyze-sweep` target measure pairwise failure overlap across candidate tranches, record accept/reject patterns, write explicit per-run disagreement examples plus a human-readable Markdown table with rejected segmentations highlighted, and compute a judgement-level majority-vote proxy. This directly addresses whether few-shot failures are correlated or close enough to independent that an ensemble strategy may be useful.
+13. **Then: report and test freeze.** Use the development comparison and sweep-analysis summaries to choose one candidate setting or ensemble strategy, decide whether/when to add the AI-evaluator layer, then run the held-out test default/candidate pair once and build `report` from the frozen comparison outputs.
 
-Until these targets are complete, the roadmap should treat the Makefile as the most concrete source of truth
-for what happens next. The broader sections below describe the architecture we are building toward; the
-experiment workspace describes the first repeatable slice through that architecture.
+Until these targets are complete, the roadmap should treat the Makefile as the most concrete source of truth for what happens next. The broader sections below describe the architecture we are building toward; the experiment workspace describes the first repeatable slice through that architecture.
 
 
-## Short-term plan: first French boundary-first experiment
+### Test-set run checklist for the French boundary-first experiment
 
-The current working plan is concentrated in the versioned experiment workspace at
-`experiments/linguistic_processing/segmentation_phase_2/fr_boundary_first_clitic_compound_v2/`.
-That directory, and especially its `Makefile`, is the executable checklist for the first key experiment.
-Use it as the primary handover artifact when resuming this thread: it names the target operation, language,
-mechanism, curated set, input fixtures, parameter bundles, evaluator config, and the intended command sequence.
+The development work has now chosen two evaluator sources worth preserving: the original evaluator exemplar set under `generated/derived_assets/evaluator/` and the augmented evaluator exemplar set under `generated/derived_assets/evaluator_augmented/`, which includes development-only adjudicated disagreement cases. The test set should be run once the chosen processing tranche and evaluator comparison settings have been frozen. The following commands are intended to be cut and pasted from the experiment directory; replace placeholders before running.
 
-The short-term objective is deliberately narrow: determine whether a curated French
-`segmentation_phase_2` / `boundary_first` few-shot set for clitics and transparent compounds can improve
-boundary quality on a small diagnostic sample, and whether AI judging can give useful comparative evidence.
-The planned sequence is:
+```bash
+cd experiments/linguistic_processing/segmentation_phase_2/fr_boundary_first_clitic_compound_v2
 
-1. **Orient and validate the experiment workspace.** Run `make plan` and `make validate-config` in the experiment directory to confirm the tracked default/candidate parameter files, evaluator config, and diagnostic inputs.
-2. **Curate and review candidates.** Use `make curate RUN=1` to generate additional candidates when needed, then `make review RUN=1 REQUEST_ID=<id>` and `make audit-reviews RUN=1 REQUEST_ID=<id>` to review them. The initial 40-candidate smoke test already produced eight maintainer-approved retained examples.
-3. **Derive usable assets from accepted records.** Implement/fill the `derive-processing-examples` target so accepted curation records become compact prompt-facing few-shot assets for the `clitic_compound_v2` candidate variant. Then implement/fill `derive-evaluator-examples` so the same records can be wrapped as evaluator exemplars or rubric material.
-4. **Run default and candidate processing variants.** Implement `run_linguistic_pipeline_experiment` well enough for the Makefile's `run-default` and `run-candidate` targets to process the same fixtures with the default and curated-set parameter bundles.
-5. **Evaluate and compare.** Implement/fill `evaluate`, `compare`, and `report` so the experiment produces paired default-vs-candidate judgements, flagged examples, and a concise Markdown summary suitable for maintainer review and possible progress-report evidence.
+# 0. Orientation/sanity checks. These should not modify experiment results.
+make plan
+make validate-config
 
-Until these targets are complete, the roadmap should treat the Makefile as the most concrete source of truth
-for what happens next. The broader sections below describe the architecture we are building toward; the
-experiment workspace describes the first repeatable slice through that architecture.
+# 1. Confirm the split manifests exist. Re-run only if generated/corpus_splits/
+#    is missing or known to be stale; the seed/caps must remain unchanged.
+make split-corpus RUN=1
+
+# 2. Run the frozen processing variants on the held-out test split.
+make run-default RUN=1 SPLIT=test
+make run-candidate RUN=1 SPLIT=test FEWSHOT_COUNT=<chosen-processing-fewshot-count>
+
+# 3. Optional but report-quality: collect human gold judgements on the test split.
+#    This is the expensive gold-standard path; use it if we want final human-backed
+#    default-vs-candidate numbers rather than only AI-evaluator numbers.
+make judge-default RUN=1 SPLIT=test JUDGE_LIMIT=0
+make judge-candidate RUN=1 SPLIT=test FEWSHOT_COUNT=<chosen-processing-fewshot-count> JUDGE_LIMIT=0
+make evaluate RUN=1 SPLIT=test FEWSHOT_COUNT=<chosen-processing-fewshot-count>
+
+# 4. Run the original/base AI evaluator on the test default and candidate outputs.
+#    Repeat for small/medium/all if we want a base evaluator sweep on test.
+make ai-evaluate-default RUN=1 SPLIT=test EVALUATOR_FEWSHOT_COUNT=small
+make ai-evaluate-candidate RUN=1 SPLIT=test FEWSHOT_COUNT=<chosen-processing-fewshot-count> EVALUATOR_FEWSHOT_COUNT=small
+make compare-ai-evaluator RUN=1 SPLIT=test FEWSHOT_COUNT=<chosen-processing-fewshot-count> EVALUATOR_FEWSHOT_COUNT=small
+
+# 5. Run the augmented AI evaluator on the same held-out outputs, without
+#    overwriting the base evaluator files. Use the absolute path printed by `pwd`.
+AUGMENTED_EVALUATOR_EXAMPLES="$(pwd)/generated/derived_assets/evaluator_augmented/evaluator_examples.jsonl"
+make ai-evaluate-default RUN=1 SPLIT=test \
+  EVALUATOR_EXAMPLES_JSONL="$AUGMENTED_EVALUATOR_EXAMPLES" \
+  EVALUATOR_SCORE_PREFIX=evaluator-augmented-fewshots \
+  EVALUATOR_ACCURACY_LABEL=augmented-accuracy \
+  EVALUATOR_FEWSHOT_COUNT=small
+make ai-evaluate-candidate RUN=1 SPLIT=test \
+  FEWSHOT_COUNT=<chosen-processing-fewshot-count> \
+  EVALUATOR_EXAMPLES_JSONL="$AUGMENTED_EVALUATOR_EXAMPLES" \
+  EVALUATOR_SCORE_PREFIX=evaluator-augmented-fewshots \
+  EVALUATOR_ACCURACY_LABEL=augmented-accuracy \
+  EVALUATOR_FEWSHOT_COUNT=small
+make compare-ai-evaluator RUN=1 SPLIT=test \
+  FEWSHOT_COUNT=<chosen-processing-fewshot-count> \
+  EVALUATOR_EXAMPLES_JSONL="$AUGMENTED_EVALUATOR_EXAMPLES" \
+  EVALUATOR_SCORE_PREFIX=evaluator-augmented-fewshots \
+  EVALUATOR_ACCURACY_LABEL=augmented-accuracy \
+  EVALUATOR_FEWSHOT_COUNT=small
+```
+
+If we decide to run an evaluator sweep on the test split, repeat steps 4 and 5 with `EVALUATOR_FEWSHOT_COUNT=medium` and `EVALUATOR_FEWSHOT_COUNT=all`. Do **not** use test-set disagreements to create a new augmented evaluator set; any additional calibration must come from development data only. If human test judgements are collected, `make evaluate RUN=1 SPLIT=test ...` is the authoritative report number, and `compare-ai-evaluator` is supporting evidence about how well the AI evaluator tracks the same comparison. If no human test judgements are collected, the AI-evaluator comparison must be described as an automated proxy rather than a gold-standard result.
+
+
+### Concrete evaluator-exemplar command sequence
+
+The evaluator few-shot examples should be produced by rerunning the same curation/review/audit pipeline, but with a **different target set** from the processing examples. This is the key safety valve against accidental overwrite and against methodological circularity. The original processing examples live under the `clitic_compound_v2` target set; evaluator examples should use a separate target such as `clitic_compound_v2_evaluator`. Because the target set is part of the curation directory path, using `CURATION_TARGET_SET=clitic_compound_v2_evaluator` writes a separate candidate/review/audit tree instead of replacing the existing `clitic_compound_v2` segmentation set.
+
+The intended command sequence is:
+
+```bash
+# 0. Work in the experiment directory. Dry-run first if unsure.
+cd experiments/linguistic_processing/segmentation_phase_2/fr_boundary_first_clitic_compound_v2
+make plan
+make validate-config
+
+# 1. Generate a separate evaluator candidate pool.
+#    This does NOT overwrite the segmentation/processing pool because the target set differs.
+make curate RUN=1 CURATION_TARGET_SET=clitic_compound_v2_evaluator
+
+# 2. Review the evaluator candidate pool. Use the request id printed by step 1.
+make review RUN=1 \
+  CURATION_TARGET_SET=clitic_compound_v2_evaluator \
+  REQUEST_ID=<evaluator-curation-request-id>
+
+# 3. Human-audit the evaluator review output. This creates the audit gate for evaluator examples.
+make audit-reviews RUN=1 \
+  CURATION_TARGET_SET=clitic_compound_v2_evaluator \
+  REQUEST_ID=<evaluator-curation-request-id> \
+  AUDIT_LIMIT=0
+
+# 4. Derive evaluator exemplars only. This reads the evaluator target set and writes
+#    generated/derived_assets/evaluator/evaluator_examples.jsonl plus a manifest;
+#    it does not touch prompts/segmentation_phase_2/variants/clitic_compound_v2/fewshots/.
+make derive-evaluator-examples RUN=1 \
+  EVALUATOR_TARGET_SET=clitic_compound_v2_evaluator \
+  REQUEST_ID=<evaluator-curation-request-id>
+```
+
+For comparison, the processing examples continue to use the existing processing target set and derivation command:
+
+```bash
+make derive-processing-examples RUN=1 REQUEST_ID=<audited-processing-request-id>
+```
+
+The next AI-evaluator implementation should consume `generated/derived_assets/evaluator/evaluator_examples.jsonl`, not the processing prompt few-shot directory. It should then compare AI evaluator decisions against the human judgement JSONL files already collected on the development split.
+
+
+### Autonomy note for report evidence
+
+This experiment is also becoming a concrete example of AI autonomy in the project workflow. The AI assistant has not only implemented requested commands; it has proposed the experimental sequence, converted loose maintainer goals into reproducible Make targets, specified leakage controls, formulated hypotheses and audit gates, and updated the report-facing documentation as the design evolved. Human input has remained essential as supervision, plausibility checking, and acceptance, but the experimental design and implementation are increasingly AI-led. This should be cited cautiously in the report as process evidence rather than as a claim that the scientific conclusions are autonomous or unaudited.
 
 ## Core architecture: generate → adversarial review → repair → gold acceptance
 
@@ -320,14 +413,15 @@ The immediate checklist is the French `clitic_compound_v2` Makefile workflow des
 3. **Done in minimal form:** implement a second-step AI review command that creates/reconciles language-specific word/unit-boundary review templates when needed, then runs hostile-review calls over generated candidates. The prompt avoids project-internal terms and focuses on whether proposed boundary markers define appropriate word-like or meaningful units.
 4. **Done in first smoke-test form:** run and manually inspect a French `clitic_compound_v2` batch; eight retained examples from an initial 40-candidate set were all judged correct by maintainer review, while validation-failed candidates are now excluded from AI review.
 5. **Done for the first full-sized batch:** generate 80 candidates with `make curate RUN=1`, review request `20260615-072115Z` with `make review RUN=1 REQUEST_ID=20260615-072115Z`, and human-audit the review output with `make audit-reviews RUN=1 REQUEST_ID=20260615-072115Z`. The AI review labelled 72 examples `none`, 5 `serious`, and 3 `fatal`; the human audit accepted all AI judgements, with some borderline cases noted.
-6. **Current executable handover:** keep `experiments/linguistic_processing/segmentation_phase_2/fr_boundary_first_clitic_compound_v2/Makefile` aligned with this plan and use its dry-run targets (`plan`, `validate-config`, `run-default`, `run-candidate`, `evaluate`) to show the intended sequence.
-7. **Next implementation step:** implement the derivation steps represented by `derive-processing-examples` and `derive-evaluator-examples`, so one accepted curation record can feed both processing prompts and judge rubrics.
-8. Add repair prompts and re-review loops for candidates with fatal/serious/minor findings.
-9. Expand persisted records from candidate/request/accepted/manifest files to include repair, arbiter, and human-review records.
-10. Implement `run_linguistic_pipeline_experiment`, a management command that runs selected pipeline stages with explicit stage parameters and stores resolved prompt/few-shot provenance; this unlocks the Makefile's `run-default` and `run-candidate` targets.
-11. Add evaluator prompts and comparison logic for outputs from two few-shot variants on the same input; this unlocks the Makefile's `evaluate`, `compare`, and `report` targets.
-12. Run the first documented default-vs-`clitic_compound_v2` experiment, inspect the flagged examples, and then decide whether the set remains experimental, needs more curation, or should be promoted toward default prompts.
-13. After the French segmentation slice is stable, reuse the same curation/evaluation pattern for MWE detection and additional languages.
+6. **Current executable handover:** keep `experiments/linguistic_processing/segmentation_phase_2/fr_boundary_first_clitic_compound_v2/Makefile` aligned with this plan and use its dry-run targets (`plan`, `validate-config`, `run-default`, `run-candidate`, `judge-default`, `judge-candidate`, `evaluate`, `compare`, `analyze-sweep`) to show the intended sequence.
+7. **Done in first implementation:** derive processing examples and evaluator exemplar assets with `derive_fewshot_assets`; processing and evaluator derivations can now be run separately over different target sets, so processing examples are active inputs to candidate runs while the independently curated evaluator exemplars are staged for a later AI-judge command.
+8. **Done in first implementation:** run `run_linguistic_pipeline_experiment` over deterministic split manifests and collect human judgements with `judge_segmentation_outputs`.
+9. **Done in first implementation:** compare default and candidate human judgement files with `compare_segmentation_judgements`; this is the current implementation behind `evaluate`/`compare`. Sweep-level overlap and voting diagnostics are handled by `analyze_segmentation_judgement_sweep`.
+10. **Next implementation step:** add an AI-evaluator command that consumes `generated/derived_assets/evaluator/evaluator_examples.jsonl` and the evaluator config to judge output pairs or individual segmentations, then compare its decisions against the human development judgements.
+11. Add repair prompts and re-review loops for candidates with fatal/serious/minor findings.
+12. Expand persisted records from candidate/request/accepted/manifest files to include repair, arbiter, and human-review records.
+13. Run the first documented default-vs-`clitic_compound_v2` held-out test experiment, inspect the flagged examples, and then decide whether the set remains experimental, needs more curation, or should be promoted toward default prompts.
+14. After the French segmentation slice is stable, reuse the same curation/evaluation pattern for MWE detection and additional languages.
 
 ## Relationship to other roadmap items
 
