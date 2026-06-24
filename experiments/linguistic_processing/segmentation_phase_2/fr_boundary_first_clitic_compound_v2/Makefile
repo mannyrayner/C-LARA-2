@@ -23,6 +23,10 @@ TIMEOUT_S ?= 600
 REQUEST_ID ?=
 AUDIT_LIMIT ?= 0
 JUDGE_LIMIT ?= 0
+EVALUATOR_LIMIT ?= 0
+EVALUATOR_FEWSHOT_COUNT ?= small
+EVALUATOR_FEWSHOT_COUNTS ?= small medium all
+EVALUATOR_MODEL ?= $(MODEL)
 COMPARE_FEWSHOT_COUNTS ?= small medium all
 CORPUS_USER ?= mannyrayner
 CORPUS_LANGUAGE ?= fr
@@ -53,6 +57,10 @@ JUDGEMENT_DIR := $(abspath $(GENERATED_DIR))/human_judgements
 DEFAULT_RUN_DIR := $(abspath $(GENERATED_DIR))/default/$(RUN_LABEL)-$(SPLIT)-default
 CANDIDATE_RUN_DIR := $(abspath $(GENERATED_DIR))/candidate/$(RUN_LABEL)-$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT)
 EVALUATION_DIR := $(abspath $(GENERATED_DIR))/evaluation
+AI_EVALUATION_DIR := $(abspath $(GENERATED_DIR))/ai_evaluator
+AI_EVALUATOR_CACHE := $(AI_EVALUATION_DIR)/segmentation_evaluator_cache.json
+AI_DEFAULT_EVAL_JSONL := $(AI_EVALUATION_DIR)/$(SPLIT)-default-evaluator-fewshots-$(EVALUATOR_FEWSHOT_COUNT).jsonl
+AI_CANDIDATE_EVAL_JSONL := $(AI_EVALUATION_DIR)/$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT)-evaluator-fewshots-$(EVALUATOR_FEWSHOT_COUNT).jsonl
 
 PY_OS := $(shell $(PYTHON) -c 'import os; print(os.name)' 2>/dev/null || echo posix)
 python_path = $(shell if [ "$(PY_OS)" = "nt" ] && command -v cygpath >/dev/null 2>&1; then cygpath -am "$(1)"; else printf '%s' "$(1)"; fi)
@@ -73,15 +81,19 @@ PY_JUDGEMENT_DIR := $(call python_path,$(JUDGEMENT_DIR))
 PY_DEFAULT_RUN_DIR := $(call python_path,$(DEFAULT_RUN_DIR))
 PY_CANDIDATE_RUN_DIR := $(call python_path,$(CANDIDATE_RUN_DIR))
 PY_EVALUATION_DIR := $(call python_path,$(EVALUATION_DIR))
+PY_AI_EVALUATION_DIR := $(call python_path,$(AI_EVALUATION_DIR))
+PY_AI_EVALUATOR_CACHE := $(call python_path,$(AI_EVALUATOR_CACHE))
+PY_AI_DEFAULT_EVAL_JSONL := $(call python_path,$(AI_DEFAULT_EVAL_JSONL))
+PY_AI_CANDIDATE_EVAL_JSONL := $(call python_path,$(AI_CANDIDATE_EVAL_JSONL))
 
 MANAGE = cd "$(PLATFORM_DIR)" && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help plan validate validate-config prepare summarize-corpus split-corpus curate review audit-reviews derive-processing-examples derive-evaluator-examples run-default run-candidate judge-default judge-candidate evaluate compare analyze-sweep report clean
+.PHONY: help plan validate validate-config prepare summarize-corpus split-corpus curate review audit-reviews derive-processing-examples derive-evaluator-examples run-default run-candidate judge-default judge-candidate ai-evaluate-default ai-evaluate-candidate score-ai-evaluator-default score-ai-evaluator-candidate evaluate compare analyze-sweep report clean
 
 help:
 	@sed -n '1,220p' README.md
 	@echo
-	@echo "Common targets: plan validate-config summarize-corpus split-corpus curate review audit-reviews derive-processing-examples derive-evaluator-examples run-default run-candidate judge-default judge-candidate evaluate compare analyze-sweep report"
+	@echo "Common targets: plan validate-config summarize-corpus split-corpus curate review audit-reviews derive-processing-examples derive-evaluator-examples run-default run-candidate judge-default judge-candidate ai-evaluate-default ai-evaluate-candidate score-ai-evaluator-default score-ai-evaluator-candidate evaluate compare analyze-sweep report"
 	@echo "Targets that call management commands default to dry-run. Set RUN=1 to execute."
 
 prepare:
@@ -106,6 +118,7 @@ plan: prepare
 	@echo "  fixtures:  $(INPUT_RECORDS)"
 	@echo "  split:     $(SPLIT_RECORDS)"
 	@echo "  candidate few-shot count: $(FEWSHOT_COUNT)"
+	@echo "  evaluator few-shot count: $(EVALUATOR_FEWSHOT_COUNT)"
 	@echo
 	@echo "Generated data will be written under $(GENERATED_DIR)/ and $(TMP_DIR)/ (ignored by Git)."
 	@echo "Curation:  $(CURATION_ROOT)"
@@ -114,6 +127,7 @@ plan: prepare
 	@echo "Derived assets: $(DERIVED_ASSETS_DIR)"
 	@echo "Judgements: $(JUDGEMENT_DIR)"
 	@echo "Evaluation: $(EVALUATION_DIR)"
+	@echo "AI evaluator: $(AI_EVALUATION_DIR)"
 	@echo "Prompt variant: $(PROMPT_VARIANT_DIR)"
 
 validate: validate-config
@@ -214,6 +228,46 @@ judge-candidate: prepare
 		$(MANAGE) judge_segmentation_outputs --outputs-jsonl "$(PY_CANDIDATE_RUN_DIR)/outputs.jsonl" --judgements-jsonl "$(PY_JUDGEMENT_DIR)/$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT).jsonl" --cache-json "$(PY_JUDGEMENT_DIR)/segmentation_judgement_cache.json" --run-label "$(RUN_LABEL)-$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT)" --limit "$(JUDGE_LIMIT)" --include-cached; \
 	else \
 		echo "dry-run only; set RUN=1 FEWSHOT_COUNT=<small|medium|all|N> after run-candidate has produced outputs.jsonl"; \
+	fi
+
+ai-evaluate-default: prepare
+	@echo "+ $(MANAGE) evaluate_segmentation_outputs_with_ai --outputs-jsonl $(PY_DEFAULT_RUN_DIR)/outputs.jsonl --evaluator-examples-jsonl $(PY_EVALUATOR_DERIVED_ASSETS_DIR)/evaluator_examples.jsonl --judgements-jsonl $(PY_AI_DEFAULT_EVAL_JSONL) --cache-json $(PY_AI_EVALUATOR_CACHE) --run-label $(RUN_LABEL)-$(SPLIT)-default --variant-label evaluator-fewshots-$(EVALUATOR_FEWSHOT_COUNT) --fewshot-count $(EVALUATOR_FEWSHOT_COUNT) --model $(EVALUATOR_MODEL) --max-concurrency $(MAX_CONCURRENCY) --timeout-s $(TIMEOUT_S) --limit $(EVALUATOR_LIMIT) --overwrite"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) evaluate_segmentation_outputs_with_ai --outputs-jsonl "$(PY_DEFAULT_RUN_DIR)/outputs.jsonl" --evaluator-examples-jsonl "$(PY_EVALUATOR_DERIVED_ASSETS_DIR)/evaluator_examples.jsonl" --judgements-jsonl "$(PY_AI_DEFAULT_EVAL_JSONL)" --cache-json "$(PY_AI_EVALUATOR_CACHE)" --run-label "$(RUN_LABEL)-$(SPLIT)-default" --variant-label "evaluator-fewshots-$(EVALUATOR_FEWSHOT_COUNT)" --fewshot-count "$(EVALUATOR_FEWSHOT_COUNT)" --model "$(EVALUATOR_MODEL)" --max-concurrency "$(MAX_CONCURRENCY)" --timeout-s "$(TIMEOUT_S)" --limit "$(EVALUATOR_LIMIT)" --overwrite; \
+	else \
+		echo "dry-run only; set RUN=1 after run-default and derive-evaluator-examples are ready"; \
+	fi
+
+ai-evaluate-candidate: prepare
+	@echo "+ $(MANAGE) evaluate_segmentation_outputs_with_ai --outputs-jsonl $(PY_CANDIDATE_RUN_DIR)/outputs.jsonl --evaluator-examples-jsonl $(PY_EVALUATOR_DERIVED_ASSETS_DIR)/evaluator_examples.jsonl --judgements-jsonl $(PY_AI_CANDIDATE_EVAL_JSONL) --cache-json $(PY_AI_EVALUATOR_CACHE) --run-label $(RUN_LABEL)-$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT) --variant-label evaluator-fewshots-$(EVALUATOR_FEWSHOT_COUNT) --fewshot-count $(EVALUATOR_FEWSHOT_COUNT) --model $(EVALUATOR_MODEL) --max-concurrency $(MAX_CONCURRENCY) --timeout-s $(TIMEOUT_S) --limit $(EVALUATOR_LIMIT) --overwrite"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) evaluate_segmentation_outputs_with_ai --outputs-jsonl "$(PY_CANDIDATE_RUN_DIR)/outputs.jsonl" --evaluator-examples-jsonl "$(PY_EVALUATOR_DERIVED_ASSETS_DIR)/evaluator_examples.jsonl" --judgements-jsonl "$(PY_AI_CANDIDATE_EVAL_JSONL)" --cache-json "$(PY_AI_EVALUATOR_CACHE)" --run-label "$(RUN_LABEL)-$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT)" --variant-label "evaluator-fewshots-$(EVALUATOR_FEWSHOT_COUNT)" --fewshot-count "$(EVALUATOR_FEWSHOT_COUNT)" --model "$(EVALUATOR_MODEL)" --max-concurrency "$(MAX_CONCURRENCY)" --timeout-s "$(TIMEOUT_S)" --limit "$(EVALUATOR_LIMIT)" --overwrite; \
+	else \
+		echo "dry-run only; set RUN=1 FEWSHOT_COUNT=<processing-count> EVALUATOR_FEWSHOT_COUNT=<small|medium|all|N> after run-candidate and derive-evaluator-examples are ready"; \
+	fi
+
+score-ai-evaluator-default: prepare
+	@echo "+ $(MANAGE) score_segmentation_evaluator_judgements --gold-judgements $(PY_JUDGEMENT_DIR)/$(SPLIT)-default.jsonl --evaluator <evaluator-count files> --output-dir $(PY_AI_EVALUATION_DIR)/$(SPLIT)-default-accuracy --split $(SPLIT)"
+	@if [ "$(RUN)" = "1" ]; then \
+		evaluator_args=""; \
+		for count in $(EVALUATOR_FEWSHOT_COUNTS); do \
+			evaluator_args="$$evaluator_args --evaluator evaluator-fewshots-$$count:$(PY_AI_EVALUATION_DIR)/$(SPLIT)-default-evaluator-fewshots-$$count.jsonl"; \
+		done; \
+		$(MANAGE) score_segmentation_evaluator_judgements --gold-judgements "$(PY_JUDGEMENT_DIR)/$(SPLIT)-default.jsonl" $$evaluator_args --output-dir "$(PY_AI_EVALUATION_DIR)/$(SPLIT)-default-accuracy" --split "$(SPLIT)"; \
+	else \
+		echo "dry-run only; set RUN=1 after ai-evaluate-default for EVALUATOR_FEWSHOT_COUNTS='$(EVALUATOR_FEWSHOT_COUNTS)'"; \
+	fi
+
+score-ai-evaluator-candidate: prepare
+	@echo "+ $(MANAGE) score_segmentation_evaluator_judgements --gold-judgements $(PY_JUDGEMENT_DIR)/$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT).jsonl --evaluator <evaluator-count files> --output-dir $(PY_AI_EVALUATION_DIR)/$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT)-accuracy --split $(SPLIT)"
+	@if [ "$(RUN)" = "1" ]; then \
+		evaluator_args=""; \
+		for count in $(EVALUATOR_FEWSHOT_COUNTS); do \
+			evaluator_args="$$evaluator_args --evaluator evaluator-fewshots-$$count:$(PY_AI_EVALUATION_DIR)/$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT)-evaluator-fewshots-$$count.jsonl"; \
+		done; \
+		$(MANAGE) score_segmentation_evaluator_judgements --gold-judgements "$(PY_JUDGEMENT_DIR)/$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT).jsonl" $$evaluator_args --output-dir "$(PY_AI_EVALUATION_DIR)/$(SPLIT)-candidate-fewshots-$(FEWSHOT_COUNT)-accuracy" --split "$(SPLIT)"; \
+	else \
+		echo "dry-run only; set RUN=1 after ai-evaluate-candidate for EVALUATOR_FEWSHOT_COUNTS='$(EVALUATOR_FEWSHOT_COUNTS)'"; \
 	fi
 
 evaluate: prepare validate-config
