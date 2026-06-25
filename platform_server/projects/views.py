@@ -279,6 +279,68 @@ def _projects_for_user(user):
     return Project.objects.filter(Q(owner=user) | Q(collaborators__user=user)).distinct()
 
 
+def _project_list_content_summary(projects: list[Project]) -> dict[str, int]:
+    """Return corpus/image totals for the projects currently visible in the list."""
+
+    totals = {
+        "project_count": len(projects),
+        "page_count": 0,
+        "segment_count": 0,
+        "non_space_content_element_count": 0,
+        "image_count": 0,
+    }
+    project_ids = [project.pk for project in projects if project.pk]
+    if not project_ids:
+        return totals
+
+    image_paths: set[str] = set()
+    for path in ProjectImageStyle.objects.filter(project_id__in=project_ids).values_list("sample_image_path", flat=True):
+        if str(path or "").strip():
+            image_paths.add(str(path))
+    for path in ProjectImageElement.objects.filter(project_id__in=project_ids).values_list("image_path", flat=True):
+        if str(path or "").strip():
+            image_paths.add(str(path))
+    for path in ProjectImagePage.objects.filter(project_id__in=project_ids).values_list("image_path", flat=True):
+        if str(path or "").strip():
+            image_paths.add(str(path))
+    for path in ProjectImagePageVariant.objects.filter(page__project_id__in=project_ids).values_list(
+        "image_path", flat=True
+    ):
+        if str(path or "").strip():
+            image_paths.add(str(path))
+    totals["image_count"] = len(image_paths)
+
+    for project in projects:
+        stage_meta = _stage_payload_with_meta(project, "segmentation_phase_2") or _stage_payload_with_meta(
+            project, "segmentation_phase_1"
+        )
+        payload = stage_meta.get("payload") if stage_meta else None
+        pages = payload.get("pages") if isinstance(payload, dict) else None
+        if not isinstance(pages, list):
+            continue
+        totals["page_count"] += len(pages)
+        for page in pages:
+            if not isinstance(page, dict):
+                continue
+            segments = page.get("segments") or []
+            if not isinstance(segments, list):
+                continue
+            totals["segment_count"] += len(segments)
+            for segment in segments:
+                if not isinstance(segment, dict):
+                    continue
+                tokens = segment.get("tokens") or []
+                if isinstance(tokens, list) and tokens:
+                    totals["non_space_content_element_count"] += sum(
+                        1
+                        for token in tokens
+                        if isinstance(token, dict) and str(token.get("surface") or "").strip()
+                    )
+                elif str(segment.get("surface") or "").strip():
+                    totals["non_space_content_element_count"] += 1
+    return totals
+
+
 def _default_start_stage_for_project(project: Project) -> str:
     freshest_stage: str | None = None
     freshest_mtime = float("-inf")
@@ -4739,6 +4801,7 @@ class ProjectListView(LoginRequiredMixin, ListView):
                 "gloss_language_filter": gloss_language_filter,
                 "title_substring_filter": title_substring_filter,
                 "project_language_choices": ProjectForm.LANGUAGE_CHOICES,
+                "project_list_summary": _project_list_content_summary(filtered_projects),
             }
         )
         return context
