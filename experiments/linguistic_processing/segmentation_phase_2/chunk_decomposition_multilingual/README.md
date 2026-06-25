@@ -33,3 +33,32 @@ Outputs are written under `generated/corpus_splits/`:
 - `<language>/validation.jsonl` — inner-loop validation records;
 - `<language>/test.jsonl` — held-out records;
 - `<language>/split_manifest.json` — per-language split manifest.
+
+## Human gold judging
+
+The extracted records are a starting point, not yet a gold standard. Use
+`judge-corpus` to accept the current decomposition or replace it with a corrected
+`|`-delimited decomposition. The correction must concatenate exactly to the
+displayed chunk, which catches accidental edits to the surface form.
+
+```bash
+make judge-corpus RUN=1 JUDGE_LANGUAGE=fr SPLIT=development
+```
+
+Useful controls:
+
+```bash
+make judge-corpus RUN=1 \
+  JUDGE_LANGUAGE=de \
+  SPLIT=validation \
+  JUDGE_LIMIT=50
+```
+
+The command writes append-only, resumable records to
+`generated/gold/<language>-<split>.jsonl`. Prompt commands are:
+
+- `a` — accept the displayed decomposition;
+- `c PART|PART` — replace it with a corrected decomposition;
+- `s` — skip the record for now;
+- `b <number-or-record-id>` — go back and rejudge a previous record;
+- `q` — quit, preserving judgements already written.
