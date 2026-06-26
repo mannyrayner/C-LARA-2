@@ -23,6 +23,8 @@ class Command(BaseCommand):
         parser.add_argument("--prompt-kind", choices=PROMPT_KINDS, default="segmentation")
         parser.add_argument("--model", default=DEFAULT_MODEL)
         parser.add_argument("--limit", type=int, default=0)
+        parser.add_argument("--max-concurrency", type=int, default=4)
+        parser.add_argument("--progress-every", type=int, default=25)
         parser.add_argument("--timeout-s", type=float, default=120.0)
         parser.add_argument("--heartbeat-s", type=float, default=20.0)
         parser.add_argument("--overwrite", action="store_true")
@@ -43,6 +45,8 @@ class Command(BaseCommand):
             records = records[:limit]
         if not records:
             raise CommandError(f"input JSONL contains no records to process: {input_path}")
+        max_concurrency = max(1, int(options["max_concurrency"] or 1))
+        progress_every = max(0, int(options["progress_every"] or 0))
         prompt_template = prompt_path.read_text(encoding="utf-8")
         client = OpenAIClient(config=OpenAIConfig(timeout_s=options["timeout_s"], heartbeat_s=options["heartbeat_s"]))
         predictions = asyncio.run(
@@ -52,6 +56,11 @@ class Command(BaseCommand):
                 prompt_kind=str(options["prompt_kind"]),
                 model=str(options["model"]),
                 client=client,
+                max_concurrency=max_concurrency,
+                progress_every=progress_every,
+                progress_callback=lambda completed, total: self.stdout.write(
+                    f"[run_chunk_prompt_on_corpus] completed {completed}/{total}"
+                ),
             )
         )
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -62,14 +71,34 @@ class Command(BaseCommand):
 
 
 async def run_records(
-    *, records: list[dict[str, Any]], prompt_template: str, prompt_kind: str, model: str, client: OpenAIClient
+    *,
+    records: list[dict[str, Any]],
+    prompt_template: str,
+    prompt_kind: str,
+    model: str,
+    client: OpenAIClient,
+    max_concurrency: int = 4,
+    progress_every: int = 25,
+    progress_callback=None,
 ) -> list[dict[str, Any]]:
-    predictions: list[dict[str, Any]] = []
-    for record in records:
+    semaphore = asyncio.Semaphore(max(1, max_concurrency))
+    predictions: list[dict[str, Any] | None] = [None] * len(records)
+
+    async def run_one(idx: int, record: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         prompt = build_prompt(prompt_template=prompt_template, prompt_kind=prompt_kind, record=record)
-        response = await client.chat_json(prompt, model=model, temperature=0)
-        predictions.append(normalize_response(record=record, response=response, prompt_kind=prompt_kind, model=model))
-    return predictions
+        async with semaphore:
+            response = await client.chat_json(prompt, model=model, temperature=0)
+        return idx, normalize_response(record=record, response=response, prompt_kind=prompt_kind, model=model)
+
+    completed = 0
+    tasks = [asyncio.create_task(run_one(idx, record)) for idx, record in enumerate(records)]
+    for task in asyncio.as_completed(tasks):
+        idx, prediction = await task
+        predictions[idx] = prediction
+        completed += 1
+        if progress_callback and progress_every and (completed % progress_every == 0 or completed == len(records)):
+            progress_callback(completed, len(records))
+    return [prediction for prediction in predictions if prediction is not None]
 
 
 def build_prompt(*, prompt_template: str, prompt_kind: str, record: dict[str, Any]) -> str:

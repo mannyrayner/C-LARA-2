@@ -59,6 +59,8 @@ class RunChunkPromptOnCorpusTests(SimpleTestCase):
                 output_jsonl=str(output_path),
                 prompt_kind="segmentation",
                 model="test-model",
+                max_concurrency=2,
+                progress_every=1,
                 overwrite=True,
             )
 

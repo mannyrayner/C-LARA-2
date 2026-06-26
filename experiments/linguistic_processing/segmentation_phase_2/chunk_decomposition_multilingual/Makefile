@@ -22,6 +22,8 @@ PROMPT_SUBDIR := $(if $(filter rating,$(PROMPT_KIND)),chunk_rating,chunk_segment
 CURRENT_PROMPT ?= prompts/$(PROMPT_SUBDIR)/$(JUDGE_LANGUAGE).md
 MODEL ?= gpt-4o
 PROMPT_LIMIT ?= 0
+MAX_CONCURRENCY ?= 4
+PROGRESS_EVERY ?= 25
 
 GENERATED_DIR := generated
 CORPUS_SPLIT_DIR := $(abspath $(GENERATED_DIR))/corpus_splits
@@ -73,6 +75,8 @@ help:
 	@echo "  PROMPT_KIND=$(PROMPT_KIND)"
 	@echo "  CURRENT_PROMPT=$(CURRENT_PROMPT)"
 	@echo "  PREDICTION_RECORDS=$(PREDICTION_RECORDS)"
+	@echo "  MAX_CONCURRENCY=$(MAX_CONCURRENCY)"
+	@echo "  PROGRESS_EVERY=$(PROGRESS_EVERY)"
 	@echo
 	@echo "Generated corpus splits: $(CORPUS_SPLIT_DIR)"
 	@echo "Gold judgements: $(GOLD_DIR)"
@@ -98,9 +102,9 @@ judge-corpus: prepare
 	fi
 
 run-prompt: prepare
-	@echo "+ $(MANAGE) run_chunk_prompt_on_corpus --input-jsonl $(PY_GOLD_RECORDS) --prompt-file $(PY_CURRENT_PROMPT) --output-jsonl $(PY_PREDICTION_RECORDS) --prompt-kind $(PROMPT_KIND) --model $(MODEL) --limit $(PROMPT_LIMIT) --overwrite"
+	@echo "+ $(MANAGE) run_chunk_prompt_on_corpus --input-jsonl $(PY_GOLD_RECORDS) --prompt-file $(PY_CURRENT_PROMPT) --output-jsonl $(PY_PREDICTION_RECORDS) --prompt-kind $(PROMPT_KIND) --model $(MODEL) --limit $(PROMPT_LIMIT) --max-concurrency $(MAX_CONCURRENCY) --progress-every $(PROGRESS_EVERY) --overwrite"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) run_chunk_prompt_on_corpus --input-jsonl "$(PY_GOLD_RECORDS)" --prompt-file "$(PY_CURRENT_PROMPT)" --output-jsonl "$(PY_PREDICTION_RECORDS)" --prompt-kind "$(PROMPT_KIND)" --model "$(MODEL)" --limit "$(PROMPT_LIMIT)" --overwrite; \
+		$(MANAGE) run_chunk_prompt_on_corpus --input-jsonl "$(PY_GOLD_RECORDS)" --prompt-file "$(PY_CURRENT_PROMPT)" --output-jsonl "$(PY_PREDICTION_RECORDS)" --prompt-kind "$(PROMPT_KIND)" --model "$(MODEL)" --limit "$(PROMPT_LIMIT)" --max-concurrency "$(MAX_CONCURRENCY)" --progress-every "$(PROGRESS_EVERY)" --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 to run $(CURRENT_PROMPT) over $(GOLD_RECORDS)"; \
 	fi

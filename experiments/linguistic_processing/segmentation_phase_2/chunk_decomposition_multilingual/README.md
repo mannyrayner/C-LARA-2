@@ -74,10 +74,17 @@ make run-prompt RUN=1 \
   JUDGE_LANGUAGE=fr \
   SPLIT=development \
   PROMPT_KIND=segmentation \
-  PROMPT_LIMIT=0
+  PROMPT_LIMIT=0 \
+  MAX_CONCURRENCY=4 \
+  PROGRESS_EVERY=25
 ```
 
 This writes `generated/predictions/<language>-<prompt-kind>-<split>.jsonl`.
+`run-prompt` uses fan-out/fan-in: it sends up to `MAX_CONCURRENCY` chunk requests
+at a time and writes the final JSONL in the original record order. Progress is
+reported every `PROGRESS_EVERY` completed records; set `PROGRESS_EVERY=0` to
+suppress progress updates.
+
 Then use `prepare-prompt-improvement` to compare the predictions with the
 human-gold file and produce a compact revision brief.
 
@@ -92,6 +99,25 @@ make prepare-prompt-improvement RUN=1 \
 For the independent rating-prompt track, switch `PROMPT_KIND=rating` and point
 `PREDICTION_RECORDS` at rating judgements for the same gold records.
 
+### Where prompts come from and where revisions go
+
+- `CURRENT_PROMPT` is the prompt being evaluated and improved. By default it is
+  selected from `PROMPT_KIND` and `JUDGE_LANGUAGE`: segmentation uses
+  `prompts/chunk_segmentation/<language>.md`, and rating uses
+  `prompts/chunk_rating/<language>.md`.
+- `run-prompt` reads `CURRENT_PROMPT` and writes predictions only. It does not
+  edit prompt files.
+- `prepare-prompt-improvement` reads `CURRENT_PROMPT`, the gold records, and the
+  prediction records, then writes a JSON/Markdown brief under
+  `generated/prompt_improvement/<language>-<prompt-kind>-<split>/`. It also does
+  not edit prompt files.
+- To iterate, create a new prompt file manually from the brief, for example
+  `prompts/chunk_segmentation/fr_v2.md`, then rerun `run-prompt` with
+  `CURRENT_PROMPT=prompts/chunk_segmentation/fr_v2.md` and a distinct
+  `PREDICTION_RECORDS=...fr-segmentation-development-v2.jsonl`.
+
+### Diagnostics
+
 The generated brief deliberately stresses anti-overfitting constraints:
 
 - keep the revised prompt small and principle-based;
@@ -103,3 +129,9 @@ The generated brief deliberately stresses anti-overfitting constraints:
 This gives us parallel, comparable improvement loops for (1) producing chunk
 segmentations directly and (2) judging whether a proposed chunk segmentation is
 correct.
+
+Use the development split for revision decisions. To check whether a revised
+prompt generalises, rerun `run-prompt` and `prepare-prompt-improvement` with
+`SPLIT=validation` and the same `CURRENT_PROMPT`; treat the validation brief as a
+diagnostic, not as another source of prompt edits. The held-out test split should
+remain untouched until the workflow and prompt choice are fixed.
