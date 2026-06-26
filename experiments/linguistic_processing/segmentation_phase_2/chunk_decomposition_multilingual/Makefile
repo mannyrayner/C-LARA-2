@@ -18,7 +18,10 @@ JUDGE_LANGUAGE ?= fr
 SPLIT ?= development
 JUDGE_LIMIT ?= 0
 PROMPT_KIND ?= segmentation
-CURRENT_PROMPT ?=
+PROMPT_SUBDIR := $(if $(filter rating,$(PROMPT_KIND)),chunk_rating,chunk_segmentation)
+CURRENT_PROMPT ?= prompts/$(PROMPT_SUBDIR)/$(JUDGE_LANGUAGE).md
+MODEL ?= gpt-4o
+PROMPT_LIMIT ?= 0
 
 GENERATED_DIR := generated
 CORPUS_SPLIT_DIR := $(abspath $(GENERATED_DIR))/corpus_splits
@@ -28,20 +31,22 @@ PROMPT_IMPROVEMENT_DIR := $(abspath $(GENERATED_DIR))/prompt_improvement/$(JUDGE
 CHUNK_RECORDS := $(CORPUS_SPLIT_DIR)/$(JUDGE_LANGUAGE)/$(SPLIT).jsonl
 GOLD_RECORDS := $(GOLD_DIR)/$(JUDGE_LANGUAGE)-$(SPLIT).jsonl
 PREDICTION_RECORDS ?= $(PREDICTIONS_DIR)/$(JUDGE_LANGUAGE)-$(PROMPT_KIND)-$(SPLIT).jsonl
+CURRENT_PROMPT_PATH := $(abspath $(CURRENT_PROMPT))
+PREDICTION_RECORDS_PATH := $(abspath $(PREDICTION_RECORDS))
 
 PY_OS := $(shell $(PYTHON) -c 'import os; print(os.name)' 2>/dev/null || echo posix)
 python_path = $(shell if [ "$(PY_OS)" = "nt" ] && command -v cygpath >/dev/null 2>&1; then cygpath -am "$(1)"; else printf '%s' "$(1)"; fi)
 PY_CORPUS_SPLIT_DIR := $(call python_path,$(CORPUS_SPLIT_DIR))
 PY_CHUNK_RECORDS := $(call python_path,$(CHUNK_RECORDS))
 PY_GOLD_RECORDS := $(call python_path,$(GOLD_RECORDS))
-PY_PREDICTION_RECORDS := $(call python_path,$(PREDICTION_RECORDS))
+PY_PREDICTION_RECORDS := $(call python_path,$(PREDICTION_RECORDS_PATH))
 PY_PROMPT_IMPROVEMENT_DIR := $(call python_path,$(PROMPT_IMPROVEMENT_DIR))
-PY_CURRENT_PROMPT := $(call python_path,$(CURRENT_PROMPT))
+PY_CURRENT_PROMPT := $(call python_path,$(CURRENT_PROMPT_PATH))
 CURRENT_PROMPT_ARG := $(if $(strip $(CURRENT_PROMPT)),--current-prompt $(PY_CURRENT_PROMPT),)
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help prepare extract-split-corpus judge-corpus prepare-prompt-improvement clean
+.PHONY: help prepare extract-split-corpus judge-corpus run-prompt prepare-prompt-improvement clean
 
 help:
 	@echo "Chunk-decomposition segmentation experiments (multilingual)"
@@ -49,6 +54,7 @@ help:
 	@echo "Targets:"
 	@echo "  extract-split-corpus  Extract whitespace chunk records and create dev/validation/test splits"
 	@echo "  judge-corpus          Accept/correct one language+split into a human gold JSONL"
+	@echo "  run-prompt            Run the current segmentation/rating prompt to create prediction JSONL"
 	@echo "  prepare-prompt-improvement  Summarize dev performance into an anti-overfitting prompt revision brief"
 	@echo "  clean                 Remove generated experiment artifacts"
 	@echo
@@ -65,6 +71,7 @@ help:
 	@echo "  SPLIT=$(SPLIT)"
 	@echo "  JUDGE_LIMIT=$(JUDGE_LIMIT)"
 	@echo "  PROMPT_KIND=$(PROMPT_KIND)"
+	@echo "  CURRENT_PROMPT=$(CURRENT_PROMPT)"
 	@echo "  PREDICTION_RECORDS=$(PREDICTION_RECORDS)"
 	@echo
 	@echo "Generated corpus splits: $(CORPUS_SPLIT_DIR)"
@@ -88,6 +95,14 @@ judge-corpus: prepare
 		$(MANAGE) judge_chunk_segmentation_corpus --input-jsonl "$(PY_CHUNK_RECORDS)" --output-jsonl "$(PY_GOLD_RECORDS)" --limit "$(JUDGE_LIMIT)"; \
 	else \
 		echo "dry-run only; set RUN=1 to judge $(JUDGE_LANGUAGE) $(SPLIT) chunks into $(GOLD_RECORDS)"; \
+	fi
+
+run-prompt: prepare
+	@echo "+ $(MANAGE) run_chunk_prompt_on_corpus --input-jsonl $(PY_GOLD_RECORDS) --prompt-file $(PY_CURRENT_PROMPT) --output-jsonl $(PY_PREDICTION_RECORDS) --prompt-kind $(PROMPT_KIND) --model $(MODEL) --limit $(PROMPT_LIMIT) --overwrite"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) run_chunk_prompt_on_corpus --input-jsonl "$(PY_GOLD_RECORDS)" --prompt-file "$(PY_CURRENT_PROMPT)" --output-jsonl "$(PY_PREDICTION_RECORDS)" --prompt-kind "$(PROMPT_KIND)" --model "$(MODEL)" --limit "$(PROMPT_LIMIT)" --overwrite; \
+	else \
+		echo "dry-run only; set RUN=1 to run $(CURRENT_PROMPT) over $(GOLD_RECORDS)"; \
 	fi
 
 prepare-prompt-improvement: prepare

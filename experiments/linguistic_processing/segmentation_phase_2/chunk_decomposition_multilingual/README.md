@@ -65,17 +65,28 @@ The command writes append-only, resumable records to
 
 ## Prompt-improvement briefs
 
-After a chunk-segmentation or chunk-rating run has produced prediction records for
-the development split, use `prepare-prompt-improvement` to compare those
-predictions with the human-gold file and produce a compact revision brief.
+Starter prompts live under `prompts/chunk_segmentation/` and
+`prompts/chunk_rating/`. After judging a split, first run the current prompt to
+create prediction records:
+
+```bash
+make run-prompt RUN=1 \
+  JUDGE_LANGUAGE=fr \
+  SPLIT=development \
+  PROMPT_KIND=segmentation \
+  PROMPT_LIMIT=0
+```
+
+This writes `generated/predictions/<language>-<prompt-kind>-<split>.jsonl`.
+Then use `prepare-prompt-improvement` to compare the predictions with the
+human-gold file and produce a compact revision brief.
 
 ```bash
 make prepare-prompt-improvement RUN=1 \
   JUDGE_LANGUAGE=fr \
   SPLIT=development \
   PROMPT_KIND=segmentation \
-  PREDICTION_RECORDS=generated/predictions/fr-segmentation-development.jsonl \
-  CURRENT_PROMPT=prompts/chunk_segmentation/fr.md
+  PREDICTION_RECORDS=generated/predictions/fr-segmentation-development.jsonl
 ```
 
 For the independent rating-prompt track, switch `PROMPT_KIND=rating` and point
