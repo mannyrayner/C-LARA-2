@@ -58,6 +58,18 @@
     <a class="btn secondary" href="{% url 'project-list' %}">Clear</a>
   </p>
 </form>
+{% if project_list_summary %}
+  <section aria-label="Filtered project totals" style="border:1px solid #ddd; padding:0.75rem; margin:0.75rem 0;">
+    <p><strong>Totals for current filter</strong></p>
+    <ul style="display:flex; flex-wrap:wrap; gap:1rem; list-style:none; padding-left:0; margin-bottom:0;">
+      <li><strong>{{ project_list_summary.project_count }}</strong> projects</li>
+      <li><strong>{{ project_list_summary.page_count }}</strong> pages</li>
+      <li><strong>{{ project_list_summary.segment_count }}</strong> segments</li>
+      <li><strong>{{ project_list_summary.non_space_content_element_count }}</strong> non-space content elements</li>
+      <li><strong>{{ project_list_summary.image_count }}</strong> images</li>
+    </ul>
+  </section>
+{% endif %}
 <p>
   <a class="btn" href="{% url 'project-create' %}">Create new project</a>
   <a class="btn secondary" href="{% url 'project-import-zip' %}">Import existing project from ZIP</a>
