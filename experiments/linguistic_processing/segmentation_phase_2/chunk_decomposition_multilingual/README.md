@@ -86,7 +86,8 @@ reported every `PROGRESS_EVERY` completed records; set `PROGRESS_EVERY=0` to
 suppress progress updates.
 
 Then use `prepare-prompt-improvement` to compare the predictions with the
-human-gold file and produce a compact revision brief.
+human-gold file, produce a compact revision brief, and by default ask the model
+to draft a revised prompt.
 
 ```bash
 make prepare-prompt-improvement RUN=1 \
@@ -109,12 +110,18 @@ For the independent rating-prompt track, switch `PROMPT_KIND=rating` and point
   edit prompt files.
 - `prepare-prompt-improvement` reads `CURRENT_PROMPT`, the gold records, and the
   prediction records, then writes a JSON/Markdown brief under
-  `generated/prompt_improvement/<language>-<prompt-kind>-<split>/`. It also does
-  not edit prompt files.
-- To iterate, create a new prompt file manually from the brief, for example
-  `prompts/chunk_segmentation/fr_v2.md`, then rerun `run-prompt` with
+  `generated/prompt_improvement/<language>-<prompt-kind>-<split>/`.
+- With the default `GENERATE_REVISED_PROMPT=1`, `prepare-prompt-improvement`
+  also writes `revised_prompt.md` and `prompt_revision.json` in that same
+  directory. These are generated artifacts; the command still does not edit the
+  checked-in prompt files under `prompts/`.
+- To iterate, inspect `revised_prompt.md`, copy or adapt it into a new prompt
+  file manually, for example `prompts/chunk_segmentation/fr_v2.md`, then rerun
+  `run-prompt` with
   `CURRENT_PROMPT=prompts/chunk_segmentation/fr_v2.md` and a distinct
   `PREDICTION_RECORDS=...fr-segmentation-development-v2.jsonl`.
+- Set `GENERATE_REVISED_PROMPT=0` if you only want the diagnostic brief and do
+  not want to spend an extra model call drafting a revised prompt.
 
 ### Diagnostics
 

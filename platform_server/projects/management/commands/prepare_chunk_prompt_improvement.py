@@ -7,6 +7,9 @@ from typing import Any
 
 from django.core.management.base import BaseCommand, CommandError
 
+from core.ai_api import OpenAIClient
+from core.config import DEFAULT_MODEL, OpenAIConfig
+
 PROMPT_KINDS = ("segmentation", "rating")
 
 
@@ -24,6 +27,10 @@ class Command(BaseCommand):
         parser.add_argument("--max-success-examples", type=int, default=8)
         parser.add_argument("--json", dest="json_name", default="prompt_improvement_brief.json")
         parser.add_argument("--markdown", dest="markdown_name", default="prompt_improvement_brief.md")
+        parser.add_argument("--generate-revised-prompt", action="store_true")
+        parser.add_argument("--revision-model", default=DEFAULT_MODEL)
+        parser.add_argument("--timeout-s", type=float, default=120.0)
+        parser.add_argument("--heartbeat-s", type=float, default=20.0)
         parser.add_argument("--overwrite", action="store_true")
 
     def handle(self, *args, **options):
@@ -67,11 +74,25 @@ class Command(BaseCommand):
         )
         json_path.write_text(json.dumps(brief, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         markdown_path.write_text(render_markdown(brief), encoding="utf-8")
+        if options["generate_revised_prompt"]:
+            client = OpenAIClient(config=OpenAIConfig(timeout_s=options["timeout_s"], heartbeat_s=options["heartbeat_s"]))
+            revision = generate_revised_prompt(
+                brief=brief,
+                brief_markdown=markdown_path.read_text(encoding="utf-8"),
+                client=client,
+                model=str(options["revision_model"]),
+            )
+            write_revision_files(output_dir, revision)
+            brief["revised_prompt_path"] = str(output_dir / "revised_prompt.md")
+            brief["prompt_revision_json"] = str(output_dir / "prompt_revision.json")
+            json_path.write_text(json.dumps(brief, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         self.stdout.write("Prepared chunk prompt-improvement brief")
         self.stdout.write(f"Records compared: {brief['summary']['records_compared']}")
         self.stdout.write(f"Errors: {brief['summary']['error_count']}")
         self.stdout.write(f"JSON: {json_path}")
         self.stdout.write(f"Markdown: {markdown_path}")
+        if options["generate_revised_prompt"]:
+            self.stdout.write(f"Revised prompt: {output_dir / 'revised_prompt.md'}")
 
 
 def compare_records(gold_records: dict[str, dict[str, Any]], prediction_records: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
@@ -223,6 +244,49 @@ def render_markdown(brief: dict[str, Any]) -> str:
     lines.extend(["", "## Correct examples", ""])
     lines.extend(render_examples(brief["selected_success_examples"]))
     return "\n".join(lines) + "\n"
+
+
+def generate_revised_prompt(
+    *, brief: dict[str, Any], brief_markdown: str, client: OpenAIClient, model: str
+) -> dict[str, Any]:
+    import asyncio
+
+    prompt = "\n\n".join(
+        [
+            "You revise compact C-LARA chunk prompts.",
+            "Use the brief below to produce a revised prompt, but avoid overfitting.",
+            "Return only JSON with keys: prompt, rationale, examples.",
+            "The prompt must be directly usable as a prompt file; do not wrap it in Markdown fences.",
+            f"Prompt kind: {brief['prompt_kind']}",
+            f"Language: {brief['language']}",
+            brief_markdown,
+        ]
+    )
+    response = asyncio.run(client.chat_json(prompt, model=model, temperature=0))
+    payload = response if isinstance(response, dict) else {}
+    revised_prompt = str(payload.get("prompt") or "").strip()
+    if not revised_prompt:
+        raise CommandError("revision model did not return a non-empty 'prompt' field")
+    examples = payload.get("examples")
+    if not isinstance(examples, list):
+        examples = []
+    return {
+        "schema_version": 1,
+        "model": model,
+        "language": brief["language"],
+        "prompt_kind": brief["prompt_kind"],
+        "prompt": revised_prompt,
+        "rationale": str(payload.get("rationale") or ""),
+        "examples": examples,
+    }
+
+
+def write_revision_files(output_dir: Path, revision: dict[str, Any]) -> None:
+    (output_dir / "revised_prompt.md").write_text(str(revision["prompt"]).rstrip() + "\n", encoding="utf-8")
+    (output_dir / "prompt_revision.json").write_text(
+        json.dumps(revision, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
 
 
 def render_examples(examples: list[dict[str, Any]]) -> list[str]:

@@ -24,6 +24,8 @@ MODEL ?= gpt-4o
 PROMPT_LIMIT ?= 0
 MAX_CONCURRENCY ?= 4
 PROGRESS_EVERY ?= 25
+GENERATE_REVISED_PROMPT ?= 1
+REVISION_MODEL ?= $(MODEL)
 
 GENERATED_DIR := generated
 CORPUS_SPLIT_DIR := $(abspath $(GENERATED_DIR))/corpus_splits
@@ -77,6 +79,8 @@ help:
 	@echo "  PREDICTION_RECORDS=$(PREDICTION_RECORDS)"
 	@echo "  MAX_CONCURRENCY=$(MAX_CONCURRENCY)"
 	@echo "  PROGRESS_EVERY=$(PROGRESS_EVERY)"
+	@echo "  GENERATE_REVISED_PROMPT=$(GENERATE_REVISED_PROMPT)"
+	@echo "  REVISION_MODEL=$(REVISION_MODEL)"
 	@echo
 	@echo "Generated corpus splits: $(CORPUS_SPLIT_DIR)"
 	@echo "Gold judgements: $(GOLD_DIR)"
@@ -110,9 +114,11 @@ run-prompt: prepare
 	fi
 
 prepare-prompt-improvement: prepare
-	@echo "+ $(MANAGE) prepare_chunk_prompt_improvement --gold-jsonl $(PY_GOLD_RECORDS) --predictions-jsonl $(PY_PREDICTION_RECORDS) --language $(JUDGE_LANGUAGE) --prompt-kind $(PROMPT_KIND) $(CURRENT_PROMPT_ARG) --output-dir $(PY_PROMPT_IMPROVEMENT_DIR) --overwrite"
+	@revision_arg=""; if [ "$(GENERATE_REVISED_PROMPT)" = "1" ]; then revision_arg="--generate-revised-prompt --revision-model $(REVISION_MODEL)"; fi; echo "+ $(MANAGE) prepare_chunk_prompt_improvement --gold-jsonl $(PY_GOLD_RECORDS) --predictions-jsonl $(PY_PREDICTION_RECORDS) --language $(JUDGE_LANGUAGE) --prompt-kind $(PROMPT_KIND) $(CURRENT_PROMPT_ARG) --output-dir $(PY_PROMPT_IMPROVEMENT_DIR) $$revision_arg --overwrite"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) prepare_chunk_prompt_improvement --gold-jsonl "$(PY_GOLD_RECORDS)" --predictions-jsonl "$(PY_PREDICTION_RECORDS)" --language "$(JUDGE_LANGUAGE)" --prompt-kind "$(PROMPT_KIND)" $(CURRENT_PROMPT_ARG) --output-dir "$(PY_PROMPT_IMPROVEMENT_DIR)" --overwrite; \
+		revision_arg=""; \
+		if [ "$(GENERATE_REVISED_PROMPT)" = "1" ]; then revision_arg="--generate-revised-prompt --revision-model $(REVISION_MODEL)"; fi; \
+		$(MANAGE) prepare_chunk_prompt_improvement --gold-jsonl "$(PY_GOLD_RECORDS)" --predictions-jsonl "$(PY_PREDICTION_RECORDS)" --language "$(JUDGE_LANGUAGE)" --prompt-kind "$(PROMPT_KIND)" $(CURRENT_PROMPT_ARG) --output-dir "$(PY_PROMPT_IMPROVEMENT_DIR)" $$revision_arg --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 after writing predictions to $(PREDICTION_RECORDS)"; \
 	fi

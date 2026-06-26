@@ -3,11 +3,24 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from django.core.management import call_command
 from django.test import SimpleTestCase
 
 from projects.management.commands.prepare_chunk_prompt_improvement import classify_error, compare_records
+
+
+class _RevisionClient:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    async def chat_json(self, prompt, model=None, temperature=0):
+        return {
+            "prompt": "Revised compact prompt",
+            "rationale": "Keeps general principles and avoids overfitting.",
+            "examples": [{"chunk": "1.", "parts": ["1", "."]}],
+        }
 
 
 class PrepareChunkPromptImprovementTests(SimpleTestCase):
@@ -81,3 +94,51 @@ class PrepareChunkPromptImprovementTests(SimpleTestCase):
             self.assertEqual(brief["summary"]["error_count"], 1)
             self.assertIn("Keep the revised prompt short", brief["anti_overfitting_requirements"][0])
             self.assertIn("under_split", markdown)
+
+    @patch("projects.management.commands.prepare_chunk_prompt_improvement.OpenAIClient", _RevisionClient)
+    def test_command_can_generate_revised_prompt_artifacts(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            gold_path = root / "gold.jsonl"
+            predictions_path = root / "predictions.jsonl"
+            output_dir = root / "brief"
+            record = {
+                "record_id": "de:1",
+                "language": "de",
+                "chunk_surface": "Langzeitspeicher).",
+                "segment_surface": "Langzeitspeicher).",
+                "gold_parts": ["Langzeit", "speicher", ")", "."],
+                "project_id": 1,
+                "project_title": "Fixture",
+            }
+            gold_path.write_text(json.dumps(record, ensure_ascii=False) + "\n", encoding="utf-8")
+            predictions_path.write_text(
+                json.dumps(
+                    {
+                        "record_id": "de:1",
+                        "chunk_surface": "Langzeitspeicher).",
+                        "predicted_parts": ["Langzeit", "speicher", ")."],
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            call_command(
+                "prepare_chunk_prompt_improvement",
+                gold_jsonl=str(gold_path),
+                predictions_jsonl=str(predictions_path),
+                language="de",
+                prompt_kind="segmentation",
+                output_dir=str(output_dir),
+                generate_revised_prompt=True,
+                revision_model="test-model",
+                overwrite=True,
+            )
+
+            self.assertEqual((output_dir / "revised_prompt.md").read_text(encoding="utf-8"), "Revised compact prompt\n")
+            revision = json.loads((output_dir / "prompt_revision.json").read_text(encoding="utf-8"))
+            self.assertEqual(revision["model"], "test-model")
+            brief = json.loads((output_dir / "prompt_improvement_brief.json").read_text(encoding="utf-8"))
+            self.assertTrue(brief["revised_prompt_path"].endswith("revised_prompt.md"))
