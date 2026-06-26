@@ -62,3 +62,33 @@ The command writes append-only, resumable records to
 - `s` — skip the record for now;
 - `b <number-or-record-id>` — go back and rejudge a previous record;
 - `q` — quit, preserving judgements already written.
+
+## Prompt-improvement briefs
+
+After a chunk-segmentation or chunk-rating run has produced prediction records for
+the development split, use `prepare-prompt-improvement` to compare those
+predictions with the human-gold file and produce a compact revision brief.
+
+```bash
+make prepare-prompt-improvement RUN=1 \
+  JUDGE_LANGUAGE=fr \
+  SPLIT=development \
+  PROMPT_KIND=segmentation \
+  PREDICTION_RECORDS=generated/predictions/fr-segmentation-development.jsonl \
+  CURRENT_PROMPT=prompts/chunk_segmentation/fr.md
+```
+
+For the independent rating-prompt track, switch `PROMPT_KIND=rating` and point
+`PREDICTION_RECORDS` at rating judgements for the same gold records.
+
+The generated brief deliberately stresses anti-overfitting constraints:
+
+- keep the revised prompt small and principle-based;
+- use only a minimal number of examples;
+- avoid memorising rare development-set chunks;
+- revise from development evidence, then check whether the change generalises on
+  validation before touching the held-out test split.
+
+This gives us parallel, comparable improvement loops for (1) producing chunk
+segmentations directly and (2) judging whether a proposed chunk segmentation is
+correct.
