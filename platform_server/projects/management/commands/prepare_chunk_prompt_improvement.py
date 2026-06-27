@@ -82,8 +82,9 @@ class Command(BaseCommand):
                 client=client,
                 model=str(options["revision_model"]),
             )
-            write_revision_files(output_dir, revision)
-            brief["revised_prompt_path"] = str(output_dir / "revised_prompt.md")
+            prompt_revision_path = write_revision_files(output_dir, revision)
+            brief["prompt_revision_path"] = str(prompt_revision_path)
+            brief["revised_prompt_path"] = str(prompt_revision_path)
             brief["prompt_revision_json"] = str(output_dir / "prompt_revision.json")
             json_path.write_text(json.dumps(brief, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         self.stdout.write("Prepared chunk prompt-improvement brief")
@@ -92,7 +93,7 @@ class Command(BaseCommand):
         self.stdout.write(f"JSON: {json_path}")
         self.stdout.write(f"Markdown: {markdown_path}")
         if options["generate_revised_prompt"]:
-            self.stdout.write(f"Revised prompt: {output_dir / 'revised_prompt.md'}")
+            self.stdout.write(f"Prompt revision: {output_dir / 'prompt_revision.md'}")
 
 
 def compare_records(gold_records: dict[str, dict[str, Any]], prediction_records: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
@@ -281,12 +282,17 @@ def generate_revised_prompt(
     }
 
 
-def write_revision_files(output_dir: Path, revision: dict[str, Any]) -> None:
-    (output_dir / "revised_prompt.md").write_text(str(revision["prompt"]).rstrip() + "\n", encoding="utf-8")
+def write_revision_files(output_dir: Path, revision: dict[str, Any]) -> Path:
+    prompt_revision_path = output_dir / "prompt_revision.md"
+    prompt_revision_text = str(revision["prompt"]).rstrip() + "\n"
+    prompt_revision_path.write_text(prompt_revision_text, encoding="utf-8")
+    # Compatibility alias for artifacts produced before cycle-specific prompt revisions.
+    (output_dir / "revised_prompt.md").write_text(prompt_revision_text, encoding="utf-8")
     (output_dir / "prompt_revision.json").write_text(
         json.dumps(revision, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+    return prompt_revision_path
 
 
 def render_examples(examples: list[dict[str, Any]]) -> list[str]:

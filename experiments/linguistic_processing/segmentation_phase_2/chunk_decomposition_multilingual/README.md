@@ -63,65 +63,91 @@ The command writes append-only, resumable records to
 - `b <number-or-record-id>` — go back and rejudge a previous record;
 - `q` — quit, preserving judgements already written.
 
-## Prompt-improvement briefs
+## Prompt-improvement cycles
 
 Starter prompts live under `prompts/chunk_segmentation/` and
-`prompts/chunk_rating/`. After judging a split, first run the current prompt to
-create prediction records:
+`prompts/chunk_rating/`, but iterative runs are kept in cycle-specific generated
+folders. Set `PROMPT_IMPROVEMENT_CYCLE_NUMBER` to choose the cycle. Cycle 1 copies
+`CURRENT_PROMPT` into `prompt.md`; cycle N>1 copies `prompt_revision.md` from
+cycle N-1 into the new cycle's `prompt.md`.
+
+First run the prompt for the current cycle:
 
 ```bash
 make run-prompt RUN=1 \
   JUDGE_LANGUAGE=fr \
   SPLIT=development \
   PROMPT_KIND=segmentation \
+  PROMPT_IMPROVEMENT_CYCLE_NUMBER=1 \
   PROMPT_LIMIT=0 \
   MAX_CONCURRENCY=4 \
   PROGRESS_EVERY=25
 ```
 
-This writes `generated/predictions/<language>-<prompt-kind>-<split>.jsonl`.
+This creates or reuses
+`generated/prompt_improvement/<language>-<prompt-kind>-<split>/cycle_<n>/prompt.md`
+and writes predictions to the same cycle directory as `predictions.jsonl`.
 `run-prompt` uses fan-out/fan-in: it sends up to `MAX_CONCURRENCY` chunk requests
 at a time and writes the final JSONL in the original record order. Progress is
 reported every `PROGRESS_EVERY` completed records; set `PROGRESS_EVERY=0` to
 suppress progress updates.
 
-Then use `prepare-prompt-improvement` to compare the predictions with the
+Then use `prepare-prompt-improvement` to compare the cycle predictions with the
 human-gold file, produce a compact revision brief, and by default ask the model
-to draft a revised prompt.
+to draft the next prompt revision.
 
 ```bash
 make prepare-prompt-improvement RUN=1 \
   JUDGE_LANGUAGE=fr \
   SPLIT=development \
   PROMPT_KIND=segmentation \
-  PREDICTION_RECORDS=generated/predictions/fr-segmentation-development.jsonl
+  PROMPT_IMPROVEMENT_CYCLE_NUMBER=1
 ```
 
-For the independent rating-prompt track, switch `PROMPT_KIND=rating` and point
-`PREDICTION_RECORDS` at rating judgements for the same gold records.
+Each cycle directory contains the full state needed to inspect or reproduce that
+pass:
+
+- `prompt.md` — the prompt evaluated during this cycle;
+- `predictions.jsonl` — model outputs for this prompt over the selected split;
+- `prompt_improvement_brief.json` and `prompt_improvement_brief.md` — error
+  summaries and selected examples;
+- `prompt_revision.md` and `prompt_revision.json` — the generated candidate
+  prompt for the next cycle when `GENERATE_REVISED_PROMPT=1`.
+
+For the independent rating-prompt track, switch `PROMPT_KIND=rating`. It uses the
+same cycle layout under `<language>-rating-<split>/`.
 
 ### Where prompts come from and where revisions go
 
-- `CURRENT_PROMPT` is the prompt being evaluated and improved. By default it is
-  selected from `PROMPT_KIND` and `JUDGE_LANGUAGE`: segmentation uses
+- `CURRENT_PROMPT` is only the seed prompt for cycle 1. By default it is selected
+  from `PROMPT_KIND` and `JUDGE_LANGUAGE`: segmentation uses
   `prompts/chunk_segmentation/<language>.md`, and rating uses
   `prompts/chunk_rating/<language>.md`.
-- `run-prompt` reads `CURRENT_PROMPT` and writes predictions only. It does not
-  edit prompt files.
-- `prepare-prompt-improvement` reads `CURRENT_PROMPT`, the gold records, and the
-  prediction records, then writes a JSON/Markdown brief under
-  `generated/prompt_improvement/<language>-<prompt-kind>-<split>/`.
-- With the default `GENERATE_REVISED_PROMPT=1`, `prepare-prompt-improvement`
-  also writes `revised_prompt.md` and `prompt_revision.json` in that same
-  directory. These are generated artifacts; the command still does not edit the
-  checked-in prompt files under `prompts/`.
-- To iterate, inspect `revised_prompt.md`, copy or adapt it into a new prompt
-  file manually, for example `prompts/chunk_segmentation/fr_v2.md`, then rerun
-  `run-prompt` with
-  `CURRENT_PROMPT=prompts/chunk_segmentation/fr_v2.md` and a distinct
-  `PREDICTION_RECORDS=...fr-segmentation-development-v2.jsonl`.
+- `run-prompt` evaluates the cycle-local `prompt.md`; it does not edit the
+  checked-in starter prompts under `prompts/`.
+- `prepare-prompt-improvement` reads the same cycle-local `prompt.md`, the gold
+  records, and the cycle's `predictions.jsonl`, then writes the brief and
+  `prompt_revision.md` into that cycle directory.
+- To start cycle 2, run the same targets with
+  `PROMPT_IMPROVEMENT_CYCLE_NUMBER=2`; the Makefile copies
+  `cycle_1/prompt_revision.md` to `cycle_2/prompt.md` if the cycle prompt does
+  not already exist.
+- If you want to discard manual edits in an existing cycle and recopy its source
+  prompt, set `RESET_CYCLE_PROMPT=1`.
 - Set `GENERATE_REVISED_PROMPT=0` if you only want the diagnostic brief and do
   not want to spend an extra model call drafting a revised prompt.
+
+Summarize progress across cycles with:
+
+```bash
+make summarize-prompt-improvement-cycles RUN=1 \
+  JUDGE_LANGUAGE=fr \
+  SPLIT=development \
+  PROMPT_KIND=segmentation
+```
+
+This writes `cycles_summary.json` and `cycles_summary.md` under the
+`generated/prompt_improvement/<language>-<prompt-kind>-<split>/` base directory.
 
 ### Diagnostics
 
@@ -138,7 +164,9 @@ segmentations directly and (2) judging whether a proposed chunk segmentation is
 correct.
 
 Use the development split for revision decisions. To check whether a revised
-prompt generalises, rerun `run-prompt` and `prepare-prompt-improvement` with
-`SPLIT=validation` and the same `CURRENT_PROMPT`; treat the validation brief as a
-diagnostic, not as another source of prompt edits. The held-out test split should
-remain untouched until the workflow and prompt choice are fixed.
+prompt generalises, run validation with `SPLIT=validation` and seed that
+validation cycle from the chosen development `prompt_revision.md` via
+`CURRENT_PROMPT=generated/prompt_improvement/<language>-<prompt-kind>-development/cycle_<n>/prompt_revision.md`.
+Treat the validation brief as a diagnostic, not as another source of prompt
+edits. The held-out test split should remain untouched until the workflow and
+prompt choice are fixed.
