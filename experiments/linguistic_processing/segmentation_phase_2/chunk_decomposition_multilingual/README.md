@@ -149,6 +149,19 @@ make summarize-prompt-improvement-cycles RUN=1 \
 This writes `cycles_summary.json` and `cycles_summary.md` under the
 `generated/prompt_improvement/<language>-<prompt-kind>-<split>/` base directory.
 
+
+### Surface-preservation guard
+
+`run-prompt` now wraps every cycle prompt with an explicit invariant: segment only
+`Record.chunk_surface`, never the surrounding `Record.segment_surface`, and return
+parts whose concatenation is exactly the chunk surface. If a model nevertheless
+returns sentence-level parts, the runner records the raw response, replaces the
+predicted parts with the unsplit chunk for downstream safety, and marks the record
+with `invalid_response=true` and `surface_preserved=false`. The improvement brief
+then classifies these cases as `invalid_surface`, making prompt-wiring failures
+visible instead of silently treating sentence-level segmentations as ordinary
+chunk decompositions.
+
 ### Diagnostics
 
 The generated brief deliberately stresses anti-overfitting constraints:

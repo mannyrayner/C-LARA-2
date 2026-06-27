@@ -105,7 +105,11 @@ def compare_records(gold_records: dict[str, dict[str, Any]], prediction_records:
             continue
         gold_parts = normalize_parts(gold.get("gold_parts") or gold.get("parts") or gold.get("expected_parts"))
         predicted_parts = normalize_prediction_parts(prediction)
-        status = "correct" if gold_parts == predicted_parts else classify_error(gold_parts, predicted_parts)
+        status = (
+            "invalid_surface"
+            if prediction.get("invalid_response") or prediction.get("surface_preserved") is False
+            else "correct" if gold_parts == predicted_parts else classify_error(gold_parts, predicted_parts)
+        )
         comparisons.append(
             {
                 "record_id": record_id,

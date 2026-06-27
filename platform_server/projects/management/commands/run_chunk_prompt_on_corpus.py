@@ -107,9 +107,17 @@ def build_prompt(*, prompt_template: str, prompt_kind: str, record: dict[str, An
         if prompt_kind == "segmentation"
         else '{"judgement": "accept|reject", "notes": "..."}'
     )
+    guard = (
+        "Critical invariant: use only Record.chunk_surface as the input chunk. "
+        "Do not segment Record.segment_surface or any surrounding sentence context. "
+        "For segmentation, the concatenation of JSON parts must exactly equal Record.chunk_surface."
+        if prompt_kind == "segmentation"
+        else "Use Record.chunk_surface and any candidate parts in the record; do not judge the surrounding sentence as the candidate."
+    )
     return "\n\n".join(
         [
             prompt_template.strip(),
+            guard,
             "Return only JSON matching this schema:",
             schema_hint,
             "Record:",
@@ -143,12 +151,20 @@ def normalize_response(*, record: dict[str, Any], response: Any, prompt_kind: st
             "notes": str(payload.get("notes") or ""),
         }
     parts = normalize_parts(payload.get("parts") or payload.get("predicted_parts"))
+    chunk_surface = str(record.get("chunk_surface") or "")
+    surface_preserved = "".join(parts) == chunk_surface
+    invalid_response_reason = ""
+    if not surface_preserved:
+        invalid_response_reason = "response parts do not concatenate to chunk_surface"
+        parts = [chunk_surface] if chunk_surface else []
     return {
         **base,
         "predicted_parts": parts,
         "predicted_segments_display": "|".join(parts),
         "notes": str(payload.get("notes") or ""),
-        "surface_preserved": "".join(parts) == str(record.get("chunk_surface") or ""),
+        "surface_preserved": surface_preserved,
+        "invalid_response": not surface_preserved,
+        "invalid_response_reason": invalid_response_reason,
     }
 
 

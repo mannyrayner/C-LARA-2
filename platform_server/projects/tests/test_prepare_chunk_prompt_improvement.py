@@ -39,6 +39,21 @@ class PrepareChunkPromptImprovementTests(SimpleTestCase):
         self.assertEqual([item["status"] for item in comparisons], ["under_split", "over_split"])
         self.assertEqual(classify_error(["a"], ["b"]), "boundary_mismatch")
 
+    def test_compare_records_marks_non_surface_preserving_predictions_invalid(self):
+        gold = {"one": {"record_id": "one", "chunk_surface": "Stadt", "gold_parts": ["Stadt"]}}
+        predictions = {
+            "one": {
+                "record_id": "one",
+                "predicted_parts": ["Stadt"],
+                "surface_preserved": False,
+                "invalid_response": True,
+            }
+        }
+
+        comparisons = compare_records(gold, predictions)
+
+        self.assertEqual(comparisons[0]["status"], "invalid_surface")
+
     def test_command_writes_anti_overfitting_brief(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
