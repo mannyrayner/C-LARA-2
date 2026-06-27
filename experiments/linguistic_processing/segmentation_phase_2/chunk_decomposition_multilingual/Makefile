@@ -18,6 +18,9 @@ JUDGE_LANGUAGE ?= fr
 SPLIT ?= development
 JUDGE_LIMIT ?= 0
 DIVERGENCE_REVIEW_LIMIT ?= 0
+DELETE_PROJECT_SUBDIR ?= generated
+DELETE_PROJECT_ID ?=
+DELETE_PROJECT_TITLE ?=
 PROMPT_KIND ?= segmentation
 PROMPT_SUBDIR := $(if $(filter rating,$(PROMPT_KIND)),chunk_rating,chunk_segmentation)
 CURRENT_PROMPT ?= prompts/$(PROMPT_SUBDIR)/$(JUDGE_LANGUAGE).md
@@ -59,11 +62,13 @@ PY_CYCLE_PROMPT := $(call python_path,$(CYCLE_PROMPT_PATH))
 PY_PROMPT_IMPROVEMENT_SUMMARY_JSON := $(call python_path,$(PROMPT_IMPROVEMENT_SUMMARY_JSON))
 PY_PROMPT_IMPROVEMENT_SUMMARY_MD := $(call python_path,$(PROMPT_IMPROVEMENT_SUMMARY_MD))
 PY_DIVERGENCE_REVIEW_RECORDS := $(call python_path,$(DIVERGENCE_REVIEW_RECORDS))
+DELETE_PROJECT_ROOT := $(abspath $(DELETE_PROJECT_SUBDIR))
+PY_DELETE_PROJECT_ROOT := $(call python_path,$(DELETE_PROJECT_ROOT))
 CURRENT_PROMPT_ARG := --current-prompt $(PY_CYCLE_PROMPT)
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help prepare prepare-cycle extract-split-corpus judge-corpus run-prompt prepare-prompt-improvement review-prompt-divergences summarize-prompt-improvement-cycles clean
+.PHONY: help prepare prepare-cycle extract-split-corpus judge-corpus run-prompt prepare-prompt-improvement review-prompt-divergences delete-project-data summarize-prompt-improvement-cycles clean
 
 help:
 	@echo "Chunk-decomposition segmentation experiments (multilingual)"
@@ -74,6 +79,7 @@ help:
 	@echo "  run-prompt            Run this cycle's segmentation/rating prompt to create prediction JSONL"
 	@echo "  prepare-prompt-improvement  Summarize cycle performance into an anti-overfitting prompt revision brief"
 	@echo "  review-prompt-divergences  Review prediction/gold divergences and optionally correct gold"
+	@echo "  delete-project-data  Remove JSONL records for one project under DELETE_PROJECT_SUBDIR"
 	@echo "  summarize-prompt-improvement-cycles  Summarize all completed prompt-improvement cycles"
 	@echo "  clean                 Remove generated experiment artifacts"
 	@echo
@@ -90,6 +96,9 @@ help:
 	@echo "  SPLIT=$(SPLIT)"
 	@echo "  JUDGE_LIMIT=$(JUDGE_LIMIT)"
 	@echo "  DIVERGENCE_REVIEW_LIMIT=$(DIVERGENCE_REVIEW_LIMIT)"
+	@echo "  DELETE_PROJECT_SUBDIR=$(DELETE_PROJECT_SUBDIR)"
+	@echo "  DELETE_PROJECT_ID=$(DELETE_PROJECT_ID)"
+	@echo "  DELETE_PROJECT_TITLE=$(DELETE_PROJECT_TITLE)"
 	@echo "  PROMPT_KIND=$(PROMPT_KIND)"
 	@echo "  CURRENT_PROMPT=$(CURRENT_PROMPT)"
 	@echo "  PROMPT_IMPROVEMENT_CYCLE_NUMBER=$(PROMPT_IMPROVEMENT_CYCLE_NUMBER)"
@@ -177,6 +186,18 @@ review-prompt-divergences: prepare-cycle
 		$(MANAGE) review_chunk_prompt_divergences --gold-jsonl "$(PY_GOLD_RECORDS)" --predictions-jsonl "$(PY_PREDICTION_RECORDS)" --review-jsonl "$(PY_DIVERGENCE_REVIEW_RECORDS)" --limit "$(DIVERGENCE_REVIEW_LIMIT)"; \
 	else \
 		echo "dry-run only; set RUN=1 to review $(PREDICTION_RECORDS) divergences against $(GOLD_RECORDS)"; \
+	fi
+
+delete-project-data: prepare
+	@if [ "$(RUN)" = "1" ]; then \
+		echo "+ $(MANAGE) prune_chunk_project_artifacts --root-dir $(PY_DELETE_PROJECT_ROOT) $(if $(strip $(DELETE_PROJECT_ID)),--project-id $(DELETE_PROJECT_ID),) $(if $(strip $(DELETE_PROJECT_TITLE)),--project-title "$(DELETE_PROJECT_TITLE)",) --apply"; \
+	else \
+		echo "+ $(MANAGE) prune_chunk_project_artifacts --root-dir $(PY_DELETE_PROJECT_ROOT) $(if $(strip $(DELETE_PROJECT_ID)),--project-id $(DELETE_PROJECT_ID),) $(if $(strip $(DELETE_PROJECT_TITLE)),--project-title "$(DELETE_PROJECT_TITLE)",)"; \
+	fi
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) prune_chunk_project_artifacts --root-dir "$(PY_DELETE_PROJECT_ROOT)" $(if $(strip $(DELETE_PROJECT_ID)),--project-id "$(DELETE_PROJECT_ID)",) $(if $(strip $(DELETE_PROJECT_TITLE)),--project-title "$(DELETE_PROJECT_TITLE)",) --apply; \
+	else \
+		$(MANAGE) prune_chunk_project_artifacts --root-dir "$(PY_DELETE_PROJECT_ROOT)" $(if $(strip $(DELETE_PROJECT_ID)),--project-id "$(DELETE_PROJECT_ID)",) $(if $(strip $(DELETE_PROJECT_TITLE)),--project-title "$(DELETE_PROJECT_TITLE)",); \
 	fi
 
 summarize-prompt-improvement-cycles: prepare

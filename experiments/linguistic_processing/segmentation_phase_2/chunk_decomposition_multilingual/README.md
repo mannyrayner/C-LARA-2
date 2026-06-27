@@ -63,6 +63,26 @@ The command writes append-only, resumable records to
 - `b <number-or-record-id>` — go back and rejudge a previous record;
 - `q` — quit, preserving judgements already written.
 
+
+## Deleting an incorrectly imported project from generated artifacts
+
+If an imported project has the wrong language metadata, prune it from the
+generated chunk-experiment artifacts before rerunning splits or prompt cycles.
+The target scans JSONL files under `DELETE_PROJECT_SUBDIR` and removes records
+matching either `DELETE_PROJECT_ID` or the exact `DELETE_PROJECT_TITLE`. It is a
+dry run unless `RUN=1` is supplied:
+
+```bash
+make delete-project-data RUN=1 \
+  DELETE_PROJECT_SUBDIR=generated \
+  DELETE_PROJECT_TITLE="Kok Kaper"
+```
+
+Prefer `DELETE_PROJECT_ID=<id>` when it is known, since titles are only matched
+exactly. The command rewrites JSONL files in place under the chosen subtree; if
+you prune corpus split or gold files, rerun the downstream prompt cycles that
+depended on those records.
+
 ## Prompt-improvement cycles
 
 Starter prompts live under `prompts/chunk_segmentation/` and
