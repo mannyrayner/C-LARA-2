@@ -150,6 +150,32 @@ This writes `cycles_summary.json` and `cycles_summary.md` under the
 `generated/prompt_improvement/<language>-<prompt-kind>-<split>/` base directory.
 
 
+
+### Reviewing prompt/gold divergences
+
+After `run-prompt` and `prepare-prompt-improvement`, use the cycle-local
+`review-prompt-divergences` target to inspect every non-matching prediction/gold
+pair and repair clear gold-standard slips before using the errors to revise the
+prompt further:
+
+```bash
+make review-prompt-divergences RUN=1 \
+  JUDGE_LANGUAGE=de \
+  SPLIT=development \
+  PROMPT_KIND=segmentation \
+  PROMPT_IMPROVEMENT_CYCLE_NUMBER=2 \
+  DIVERGENCE_REVIEW_LIMIT=0
+```
+
+The reviewer shows the segment, chunk, current gold decomposition, and cycle
+prediction. Use `a` when the gold standard is correct, `p` when the prediction
+should replace the gold decomposition, `c PART|PART` for a manual correction,
+`s` to skip, `b <number-or-record-id>` to go back, and `q` to quit. Corrections
+are appended to `generated/gold/<language>-<split>.jsonl`, so subsequent commands
+see the latest corrected gold record. Review decisions are logged in the cycle
+directory as `gold_divergence_review.jsonl`, which lets the target resume without
+showing already-reviewed divergences.
+
 ### Surface-preservation guard
 
 `run-prompt` now wraps every cycle prompt with an explicit invariant: segment only

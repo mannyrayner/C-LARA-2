@@ -17,6 +17,7 @@ MAX_TEST_CHUNKS ?= 800
 JUDGE_LANGUAGE ?= fr
 SPLIT ?= development
 JUDGE_LIMIT ?= 0
+DIVERGENCE_REVIEW_LIMIT ?= 0
 PROMPT_KIND ?= segmentation
 PROMPT_SUBDIR := $(if $(filter rating,$(PROMPT_KIND)),chunk_rating,chunk_segmentation)
 CURRENT_PROMPT ?= prompts/$(PROMPT_SUBDIR)/$(JUDGE_LANGUAGE).md
@@ -38,6 +39,7 @@ PROMPT_IMPROVEMENT_DIR := $(PROMPT_IMPROVEMENT_BASE_DIR)/cycle_$(PROMPT_IMPROVEM
 CYCLE_PROMPT := $(PROMPT_IMPROVEMENT_DIR)/prompt.md
 PROMPT_IMPROVEMENT_SUMMARY_JSON := $(PROMPT_IMPROVEMENT_BASE_DIR)/cycles_summary.json
 PROMPT_IMPROVEMENT_SUMMARY_MD := $(PROMPT_IMPROVEMENT_BASE_DIR)/cycles_summary.md
+DIVERGENCE_REVIEW_RECORDS := $(PROMPT_IMPROVEMENT_DIR)/gold_divergence_review.jsonl
 CHUNK_RECORDS := $(CORPUS_SPLIT_DIR)/$(JUDGE_LANGUAGE)/$(SPLIT).jsonl
 GOLD_RECORDS := $(GOLD_DIR)/$(JUDGE_LANGUAGE)-$(SPLIT).jsonl
 PREDICTION_RECORDS ?= $(PROMPT_IMPROVEMENT_DIR)/predictions.jsonl
@@ -56,11 +58,12 @@ PY_CURRENT_PROMPT := $(call python_path,$(CURRENT_PROMPT_PATH))
 PY_CYCLE_PROMPT := $(call python_path,$(CYCLE_PROMPT_PATH))
 PY_PROMPT_IMPROVEMENT_SUMMARY_JSON := $(call python_path,$(PROMPT_IMPROVEMENT_SUMMARY_JSON))
 PY_PROMPT_IMPROVEMENT_SUMMARY_MD := $(call python_path,$(PROMPT_IMPROVEMENT_SUMMARY_MD))
+PY_DIVERGENCE_REVIEW_RECORDS := $(call python_path,$(DIVERGENCE_REVIEW_RECORDS))
 CURRENT_PROMPT_ARG := --current-prompt $(PY_CYCLE_PROMPT)
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help prepare prepare-cycle extract-split-corpus judge-corpus run-prompt prepare-prompt-improvement summarize-prompt-improvement-cycles clean
+.PHONY: help prepare prepare-cycle extract-split-corpus judge-corpus run-prompt prepare-prompt-improvement review-prompt-divergences summarize-prompt-improvement-cycles clean
 
 help:
 	@echo "Chunk-decomposition segmentation experiments (multilingual)"
@@ -70,6 +73,7 @@ help:
 	@echo "  judge-corpus          Accept/correct one language+split into a human gold JSONL"
 	@echo "  run-prompt            Run this cycle's segmentation/rating prompt to create prediction JSONL"
 	@echo "  prepare-prompt-improvement  Summarize cycle performance into an anti-overfitting prompt revision brief"
+	@echo "  review-prompt-divergences  Review prediction/gold divergences and optionally correct gold"
 	@echo "  summarize-prompt-improvement-cycles  Summarize all completed prompt-improvement cycles"
 	@echo "  clean                 Remove generated experiment artifacts"
 	@echo
@@ -85,6 +89,7 @@ help:
 	@echo "  JUDGE_LANGUAGE=$(JUDGE_LANGUAGE)"
 	@echo "  SPLIT=$(SPLIT)"
 	@echo "  JUDGE_LIMIT=$(JUDGE_LIMIT)"
+	@echo "  DIVERGENCE_REVIEW_LIMIT=$(DIVERGENCE_REVIEW_LIMIT)"
 	@echo "  PROMPT_KIND=$(PROMPT_KIND)"
 	@echo "  CURRENT_PROMPT=$(CURRENT_PROMPT)"
 	@echo "  PROMPT_IMPROVEMENT_CYCLE_NUMBER=$(PROMPT_IMPROVEMENT_CYCLE_NUMBER)"
@@ -165,6 +170,14 @@ prepare-prompt-improvement: prepare-cycle
 		echo "dry-run only; set RUN=1 after writing predictions to $(PREDICTION_RECORDS)"; \
 	fi
 
+
+review-prompt-divergences: prepare-cycle
+	@echo "+ $(MANAGE) review_chunk_prompt_divergences --gold-jsonl $(PY_GOLD_RECORDS) --predictions-jsonl $(PY_PREDICTION_RECORDS) --review-jsonl $(PY_DIVERGENCE_REVIEW_RECORDS) --limit $(DIVERGENCE_REVIEW_LIMIT)"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) review_chunk_prompt_divergences --gold-jsonl "$(PY_GOLD_RECORDS)" --predictions-jsonl "$(PY_PREDICTION_RECORDS)" --review-jsonl "$(PY_DIVERGENCE_REVIEW_RECORDS)" --limit "$(DIVERGENCE_REVIEW_LIMIT)"; \
+	else \
+		echo "dry-run only; set RUN=1 to review $(PREDICTION_RECORDS) divergences against $(GOLD_RECORDS)"; \
+	fi
 
 summarize-prompt-improvement-cycles: prepare
 	@echo "+ $(MANAGE) summarize_chunk_prompt_improvement_cycles --cycles-dir $(call python_path,$(PROMPT_IMPROVEMENT_BASE_DIR)) --output-json $(PY_PROMPT_IMPROVEMENT_SUMMARY_JSON) --output-markdown $(PY_PROMPT_IMPROVEMENT_SUMMARY_MD) --overwrite"
