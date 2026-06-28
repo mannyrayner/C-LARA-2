@@ -47,6 +47,8 @@ PROMPT_IMPROVEMENT_DIR := $(PROMPT_IMPROVEMENT_BASE_DIR)/cycle_$(PROMPT_IMPROVEM
 CYCLE_PROMPT := $(PROMPT_IMPROVEMENT_DIR)/prompt.md
 PROMPT_IMPROVEMENT_SUMMARY_JSON := $(PROMPT_IMPROVEMENT_BASE_DIR)/cycles_summary.json
 PROMPT_IMPROVEMENT_SUMMARY_MD := $(PROMPT_IMPROVEMENT_BASE_DIR)/cycles_summary.md
+PROMPT_RESULTS_SUMMARY_JSON := $(abspath $(GENERATED_DIR))/prompt_results_summary.json
+PROMPT_RESULTS_SUMMARY_MD := $(abspath $(GENERATED_DIR))/prompt_results_summary.md
 DIVERGENCE_REVIEW_RECORDS := $(PROMPT_IMPROVEMENT_DIR)/gold_divergence_review.jsonl
 PROMPT_PREVIEW_TEXT := $(PROMPT_IMPROVEMENT_DIR)/full_api_prompt_preview.txt
 CHUNK_RECORDS := $(CORPUS_SPLIT_DIR)/$(JUDGE_LANGUAGE)/$(SPLIT).jsonl
@@ -73,6 +75,9 @@ PY_CURRENT_PROMPT := $(call python_path,$(CURRENT_PROMPT_PATH))
 PY_CYCLE_PROMPT := $(call python_path,$(CYCLE_PROMPT_PATH))
 PY_PROMPT_IMPROVEMENT_SUMMARY_JSON := $(call python_path,$(PROMPT_IMPROVEMENT_SUMMARY_JSON))
 PY_PROMPT_IMPROVEMENT_SUMMARY_MD := $(call python_path,$(PROMPT_IMPROVEMENT_SUMMARY_MD))
+PY_GENERATED_DIR := $(call python_path,$(abspath $(GENERATED_DIR)))
+PY_PROMPT_RESULTS_SUMMARY_JSON := $(call python_path,$(PROMPT_RESULTS_SUMMARY_JSON))
+PY_PROMPT_RESULTS_SUMMARY_MD := $(call python_path,$(PROMPT_RESULTS_SUMMARY_MD))
 PY_DIVERGENCE_REVIEW_RECORDS := $(call python_path,$(DIVERGENCE_REVIEW_RECORDS))
 PY_PROMPT_PREVIEW_TEXT := $(call python_path,$(PROMPT_PREVIEW_TEXT))
 PY_VALIDATION_DIR := $(call python_path,$(VALIDATION_DIR))
@@ -85,7 +90,7 @@ CURRENT_PROMPT_ARG := --current-prompt $(PY_CYCLE_PROMPT)
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help prepare prepare-cycle extract-split-corpus judge-corpus run-prompt preview-prompt prepare-prompt-improvement validate-development-prompt review-prompt-divergences delete-project-data summarize-prompt-improvement-cycles clean
+.PHONY: help prepare prepare-cycle extract-split-corpus judge-corpus run-prompt preview-prompt prepare-prompt-improvement validate-development-prompt review-prompt-divergences delete-project-data summarize-prompt-improvement-cycles summarize-prompt-results clean
 
 help:
 	@echo "Chunk-decomposition segmentation experiments (multilingual)"
@@ -100,6 +105,7 @@ help:
 	@echo "  review-prompt-divergences  Review prediction/gold divergences and optionally correct gold"
 	@echo "  delete-project-data  Remove JSONL records for one project under DELETE_PROJECT_SUBDIR"
 	@echo "  summarize-prompt-improvement-cycles  Summarize all completed prompt-improvement cycles"
+	@echo "  summarize-prompt-results  Summarize available dev/validation/test prompt results"
 	@echo "  clean                 Remove generated experiment artifacts"
 	@echo
 	@echo "Important variables:"
@@ -134,6 +140,8 @@ help:
 	@echo "  VALIDATION_SOURCE_CYCLE_NUMBER=$(VALIDATION_SOURCE_CYCLE_NUMBER)"
 	@echo "  VALIDATION_SPLIT=$(VALIDATION_SPLIT)"
 	@echo "  VALIDATION_DIR=$(VALIDATION_DIR)"
+	@echo "  PROMPT_RESULTS_SUMMARY_JSON=$(PROMPT_RESULTS_SUMMARY_JSON)"
+	@echo "  PROMPT_RESULTS_SUMMARY_MD=$(PROMPT_RESULTS_SUMMARY_MD)"
 	@echo
 	@echo "Generated corpus splits: $(CORPUS_SPLIT_DIR)"
 	@echo "Gold judgements: $(GOLD_DIR)"
@@ -257,6 +265,15 @@ summarize-prompt-improvement-cycles: prepare
 		$(MANAGE) summarize_chunk_prompt_improvement_cycles --cycles-dir "$(call python_path,$(PROMPT_IMPROVEMENT_BASE_DIR))" --output-json "$(PY_PROMPT_IMPROVEMENT_SUMMARY_JSON)" --output-markdown "$(PY_PROMPT_IMPROVEMENT_SUMMARY_MD)" --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 to summarize prompt-improvement cycles under $(PROMPT_IMPROVEMENT_BASE_DIR)"; \
+	fi
+
+
+summarize-prompt-results: prepare
+	@echo "+ $(MANAGE) summarize_chunk_prompt_results --generated-dir $(PY_GENERATED_DIR) --output-json $(PY_PROMPT_RESULTS_SUMMARY_JSON) --output-markdown $(PY_PROMPT_RESULTS_SUMMARY_MD) --languages $(LANGUAGES) --prompt-kind $(PROMPT_KIND) --overwrite"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) summarize_chunk_prompt_results --generated-dir "$(PY_GENERATED_DIR)" --output-json "$(PY_PROMPT_RESULTS_SUMMARY_JSON)" --output-markdown "$(PY_PROMPT_RESULTS_SUMMARY_MD)" --languages "$(LANGUAGES)" --prompt-kind "$(PROMPT_KIND)" --overwrite; \
+	else \
+		echo "dry-run only; set RUN=1 to summarize available $(PROMPT_KIND) prompt results for $(LANGUAGES)"; \
 	fi
 
 clean:

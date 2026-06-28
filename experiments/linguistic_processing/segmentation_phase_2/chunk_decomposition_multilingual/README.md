@@ -271,3 +271,27 @@ validation is a gate for deciding whether a development-chosen prompt appears to
 generalise, not a source of new prompt edits. Once the language, cycle, and
 comparison rule are frozen, the same target can be used with
 `VALIDATION_SPLIT=test` for a final held-out report run.
+
+
+## Cross-language result summary
+
+After running any mix of development cycles and validation/test checks, write one
+combined summary for all available language/split results with:
+
+```bash
+make summarize-prompt-results RUN=1 \
+  LANGUAGES=fr,de,en \
+  PROMPT_KIND=segmentation
+```
+
+This scans `generated/prompt_improvement/` for development-cycle briefs and
+`generated/prompt_validation/` for validation/test briefs, then writes:
+
+- `generated/prompt_results_summary.json` — machine-readable rows with language,
+  split, source development cycle, records, accuracy, error rate, error count,
+  status counts, and source artifact paths;
+- `generated/prompt_results_summary.md` — a single Markdown table suitable for
+  copying into notes or reports.
+
+Only existing briefs are included, so it is safe to run before every language has
+all three splits.
