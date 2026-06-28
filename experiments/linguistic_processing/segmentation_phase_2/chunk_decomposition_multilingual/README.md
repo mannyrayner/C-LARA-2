@@ -242,9 +242,32 @@ segmentations directly and (2) judging whether a proposed chunk segmentation is
 correct.
 
 Use the development split for revision decisions. To check whether a revised
-prompt generalises, run validation with `SPLIT=validation` and seed that
-validation cycle from the chosen development `prompt_revision.md` via
-`CURRENT_PROMPT=generated/prompt_improvement/<language>-<prompt-kind>-development/cycle_<n>/prompt_revision.md`.
-Treat the validation brief as a diagnostic, not as another source of prompt
-edits. The held-out test split should remain untouched until the workflow and
-prompt choice are fixed.
+prompt generalises, run the dedicated validation gate instead of creating another
+revision cycle:
+
+```bash
+make validate-development-prompt RUN=1 \
+  JUDGE_LANGUAGE=fr \
+  PROMPT_KIND=segmentation \
+  VALIDATION_SOURCE_CYCLE_NUMBER=3 \
+  VALIDATION_SPLIT=validation \
+  PROMPT_LIMIT=0 \
+  MAX_CONCURRENCY=4 \
+  PROGRESS_EVERY=25
+```
+
+The target copies
+`generated/prompt_improvement/<language>-<prompt-kind>-development/cycle_<n>/prompt_revision.md`
+to `generated/prompt_validation/<language>-<prompt-kind>-development-cycle_<n>-on-<split>/prompt.md`,
+runs that frozen development prompt over `generated/gold/<language>-<split>.jsonl`,
+and writes:
+
+- `predictions.jsonl` for the validation/test model outputs;
+- `prompt_improvement_brief.json` and `prompt_improvement_brief.md` as the score
+  and error report for the chosen prompt on that split.
+
+The validation target intentionally does **not** pass `--generate-revised-prompt`:
+validation is a gate for deciding whether a development-chosen prompt appears to
+generalise, not a source of new prompt edits. Once the language, cycle, and
+comparison rule are frozen, the same target can be used with
+`VALIDATION_SPLIT=test` for a final held-out report run.
