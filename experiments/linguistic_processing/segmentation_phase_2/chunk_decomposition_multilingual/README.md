@@ -257,9 +257,9 @@ make validate-development-prompt RUN=1 \
 ```
 
 The target copies
-`generated/prompt_improvement/<language>-<prompt-kind>-development/cycle_<n>/prompt_revision.md`
+`generated/prompt_improvement/<language>-<prompt-kind>-development/cycle_<n>/prompt.md`
 to `generated/prompt_validation/<language>-<prompt-kind>-development-cycle_<n>-on-<split>/prompt.md`,
-runs that frozen development prompt over `generated/gold/<language>-<split>.jsonl`,
+runs the exact prompt that was used for development cycle `<n>` over `generated/gold/<language>-<split>.jsonl`,
 and writes:
 
 - `predictions.jsonl` for the validation/test model outputs;
@@ -270,7 +270,9 @@ The validation target intentionally does **not** pass `--generate-revised-prompt
 validation is a gate for deciding whether a development-chosen prompt appears to
 generalise, not a source of new prompt edits. Once the language, cycle, and
 comparison rule are frozen, the same target can be used with
-`VALIDATION_SPLIT=test` for a final held-out report run.
+`VALIDATION_SPLIT=test` for a final held-out report run. If you want to validate
+the draft produced at the end of cycle `<n>`, first start cycle `<n+1>` so that
+the draft becomes that next cycle's `prompt.md`, then validate source cycle `<n+1>`.
 
 
 ## Cross-language result summary
