@@ -212,9 +212,9 @@ chunk decompositions.
 
 The generated brief deliberately stresses anti-overfitting constraints:
 
-- keep the revised prompt small and principle-based;
-- use only a minimal number of examples;
-- avoid memorising rare development-set chunks;
+- keep the revised prompt compact and principle-based without leaving important rules implicit;
+- include a small curated set of examples for distinct general rules and common edge cases;
+- avoid memorising rare development-set chunks or adding a large example catalogue;
 - revise from development evidence, then check whether the change generalises on
   validation before touching the held-out test split.
 

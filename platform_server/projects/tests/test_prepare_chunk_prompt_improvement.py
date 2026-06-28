@@ -107,7 +107,8 @@ class PrepareChunkPromptImprovementTests(SimpleTestCase):
             markdown = (output_dir / "prompt_improvement_brief.md").read_text(encoding="utf-8")
             self.assertEqual(brief["summary"]["records_compared"], 2)
             self.assertEqual(brief["summary"]["error_count"], 1)
-            self.assertIn("Keep the revised prompt short", brief["anti_overfitting_requirements"][0])
+            self.assertIn("compact and principle-based", brief["anti_overfitting_requirements"][0])
+            self.assertIn("small curated set of examples", brief["anti_overfitting_requirements"][1])
             self.assertIn("under_split", markdown)
 
     @patch("projects.management.commands.prepare_chunk_prompt_improvement.OpenAIClient", _RevisionClient)

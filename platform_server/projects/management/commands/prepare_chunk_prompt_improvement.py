@@ -197,8 +197,8 @@ def build_brief(
 
 def anti_overfitting_requirements(prompt_kind: str) -> list[str]:
     base = [
-        "Keep the revised prompt short and principle-based; do not encode a catalogue of development-set examples.",
-        "Use the smallest number of examples that illustrates distinct general rules.",
+        "Keep the revised prompt compact and principle-based, but not so terse that important rules are left implicit.",
+        "Include a small curated set of examples that illustrate distinct general rules and common edge cases.",
         "Avoid mentioning rare project-specific strings unless they instantiate a very common pattern.",
         "Prefer reusable language-specific constraints over memorised chunks.",
         "Make no claims based on validation or test data; use only development-set evidence for revisions.",
@@ -214,11 +214,11 @@ def improvement_instruction(prompt_kind: str) -> str:
     if prompt_kind == "rating":
         return (
             "Revise the chunk-segmentation rating prompt so it identifies the observed error patterns while remaining compact. "
-            "Return a prompt, a short rationale, and at most a handful of general examples."
+            "Return a prompt, a short rationale, and a small curated set of general examples."
         )
     return (
         "Revise the chunk-segmentation prompt so it fixes the observed error patterns while remaining compact. "
-        "Return a prompt, a short rationale, and at most a handful of general examples."
+        "Return a prompt, a short rationale, and a small curated set of general examples."
     )
 
 
@@ -259,7 +259,7 @@ def generate_revised_prompt(
     prompt = "\n\n".join(
         [
             "You revise compact C-LARA chunk prompts.",
-            "Use the brief below to produce a revised prompt, but avoid overfitting.",
+            "Use the brief below to produce a revised prompt, but avoid overfitting or under-specifying the rules.",
             "Return only JSON with keys: prompt, rationale, examples.",
             "The prompt must be directly usable as a prompt file; do not wrap it in Markdown fences.",
             f"Prompt kind: {brief['prompt_kind']}",
