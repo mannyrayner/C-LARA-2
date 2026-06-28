@@ -153,8 +153,11 @@ class PrepareChunkPromptImprovementTests(SimpleTestCase):
                 overwrite=True,
             )
 
-            self.assertEqual((output_dir / "prompt_revision.md").read_text(encoding="utf-8"), "Revised compact prompt\n")
-            self.assertEqual((output_dir / "revised_prompt.md").read_text(encoding="utf-8"), "Revised compact prompt\n")
+            prompt_revision = (output_dir / "prompt_revision.md").read_text(encoding="utf-8")
+            self.assertIn("Revised compact prompt", prompt_revision)
+            self.assertIn("Examples:", prompt_revision)
+            self.assertIn("`1.` → `1|.`", prompt_revision)
+            self.assertEqual((output_dir / "revised_prompt.md").read_text(encoding="utf-8"), prompt_revision)
             revision = json.loads((output_dir / "prompt_revision.json").read_text(encoding="utf-8"))
             self.assertEqual(revision["model"], "test-model")
             brief = json.loads((output_dir / "prompt_improvement_brief.json").read_text(encoding="utf-8"))

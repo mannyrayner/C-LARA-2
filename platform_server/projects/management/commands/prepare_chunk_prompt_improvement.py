@@ -261,7 +261,9 @@ def generate_revised_prompt(
             "You revise compact C-LARA chunk prompts.",
             "Use the brief below to produce a revised prompt, but avoid overfitting or under-specifying the rules.",
             "Return only JSON with keys: prompt, rationale, examples.",
-            "The prompt must be directly usable as a prompt file; do not wrap it in Markdown fences.",
+            "The prompt value must be the complete directly usable prompt file content, including examples when examples are useful.",
+            "Use the separate examples key for provenance/inspection only; do not rely on examples being injected later.",
+            "Do not wrap the prompt in Markdown fences.",
             f"Prompt kind: {brief['prompt_kind']}",
             f"Language: {brief['language']}",
             brief_markdown,
@@ -288,7 +290,7 @@ def generate_revised_prompt(
 
 def write_revision_files(output_dir: Path, revision: dict[str, Any]) -> Path:
     prompt_revision_path = output_dir / "prompt_revision.md"
-    prompt_revision_text = str(revision["prompt"]).rstrip() + "\n"
+    prompt_revision_text = render_revision_prompt_text(revision)
     prompt_revision_path.write_text(prompt_revision_text, encoding="utf-8")
     # Compatibility alias for artifacts produced before cycle-specific prompt revisions.
     (output_dir / "revised_prompt.md").write_text(prompt_revision_text, encoding="utf-8")
@@ -297,6 +299,28 @@ def write_revision_files(output_dir: Path, revision: dict[str, Any]) -> Path:
         encoding="utf-8",
     )
     return prompt_revision_path
+
+
+def render_revision_prompt_text(revision: dict[str, Any]) -> str:
+    prompt = str(revision["prompt"]).rstrip()
+    examples = revision.get("examples")
+    if isinstance(examples, list) and examples and "example" not in prompt.lower():
+        prompt = "\n\n".join([prompt, "Examples:", *[render_revision_example(example) for example in examples]])
+    return prompt.rstrip() + "\n"
+
+
+def render_revision_example(example: Any) -> str:
+    if isinstance(example, dict):
+        chunk = example.get("chunk") or example.get("input") or example.get("chunk_surface")
+        parts = example.get("parts") or example.get("output") or example.get("gold_parts")
+        if isinstance(parts, list):
+            parts_display = "|".join(str(part) for part in parts)
+        else:
+            parts_display = str(parts) if parts is not None else ""
+        if chunk is not None and parts_display:
+            return f"- `{chunk}` → `{parts_display}`"
+        return "- " + json.dumps(example, ensure_ascii=False, sort_keys=True)
+    return f"- {example}"
 
 
 def render_examples(examples: list[dict[str, Any]]) -> list[str]:

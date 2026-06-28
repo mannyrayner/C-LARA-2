@@ -28,6 +28,8 @@ PROMPT_IMPROVEMENT_CYCLE_NUMBER ?= 1
 RESET_CYCLE_PROMPT ?= 0
 MODEL ?= gpt-4o
 PROMPT_LIMIT ?= 0
+PROMPT_PREVIEW_RECORD_ID ?=
+PROMPT_PREVIEW_RECORD_NUMBER ?= 1
 MAX_CONCURRENCY ?= 4
 PROGRESS_EVERY ?= 25
 GENERATE_REVISED_PROMPT ?= 1
@@ -43,6 +45,7 @@ CYCLE_PROMPT := $(PROMPT_IMPROVEMENT_DIR)/prompt.md
 PROMPT_IMPROVEMENT_SUMMARY_JSON := $(PROMPT_IMPROVEMENT_BASE_DIR)/cycles_summary.json
 PROMPT_IMPROVEMENT_SUMMARY_MD := $(PROMPT_IMPROVEMENT_BASE_DIR)/cycles_summary.md
 DIVERGENCE_REVIEW_RECORDS := $(PROMPT_IMPROVEMENT_DIR)/gold_divergence_review.jsonl
+PROMPT_PREVIEW_TEXT := $(PROMPT_IMPROVEMENT_DIR)/full_api_prompt_preview.txt
 CHUNK_RECORDS := $(CORPUS_SPLIT_DIR)/$(JUDGE_LANGUAGE)/$(SPLIT).jsonl
 GOLD_RECORDS := $(GOLD_DIR)/$(JUDGE_LANGUAGE)-$(SPLIT).jsonl
 PREDICTION_RECORDS ?= $(PROMPT_IMPROVEMENT_DIR)/predictions.jsonl
@@ -62,13 +65,14 @@ PY_CYCLE_PROMPT := $(call python_path,$(CYCLE_PROMPT_PATH))
 PY_PROMPT_IMPROVEMENT_SUMMARY_JSON := $(call python_path,$(PROMPT_IMPROVEMENT_SUMMARY_JSON))
 PY_PROMPT_IMPROVEMENT_SUMMARY_MD := $(call python_path,$(PROMPT_IMPROVEMENT_SUMMARY_MD))
 PY_DIVERGENCE_REVIEW_RECORDS := $(call python_path,$(DIVERGENCE_REVIEW_RECORDS))
+PY_PROMPT_PREVIEW_TEXT := $(call python_path,$(PROMPT_PREVIEW_TEXT))
 DELETE_PROJECT_ROOT := $(abspath $(DELETE_PROJECT_SUBDIR))
 PY_DELETE_PROJECT_ROOT := $(call python_path,$(DELETE_PROJECT_ROOT))
 CURRENT_PROMPT_ARG := --current-prompt $(PY_CYCLE_PROMPT)
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help prepare prepare-cycle extract-split-corpus judge-corpus run-prompt prepare-prompt-improvement review-prompt-divergences delete-project-data summarize-prompt-improvement-cycles clean
+.PHONY: help prepare prepare-cycle extract-split-corpus judge-corpus run-prompt preview-prompt prepare-prompt-improvement review-prompt-divergences delete-project-data summarize-prompt-improvement-cycles clean
 
 help:
 	@echo "Chunk-decomposition segmentation experiments (multilingual)"
@@ -77,6 +81,7 @@ help:
 	@echo "  extract-split-corpus  Extract whitespace chunk records and create dev/validation/test splits"
 	@echo "  judge-corpus          Accept/correct one language+split into a human gold JSONL"
 	@echo "  run-prompt            Run this cycle's segmentation/rating prompt to create prediction JSONL"
+	@echo "  preview-prompt        Write one fully assembled API prompt for this cycle"
 	@echo "  prepare-prompt-improvement  Summarize cycle performance into an anti-overfitting prompt revision brief"
 	@echo "  review-prompt-divergences  Review prediction/gold divergences and optionally correct gold"
 	@echo "  delete-project-data  Remove JSONL records for one project under DELETE_PROJECT_SUBDIR"
@@ -100,6 +105,8 @@ help:
 	@echo "  DELETE_PROJECT_ID=$(DELETE_PROJECT_ID)"
 	@echo "  DELETE_PROJECT_TITLE=$(DELETE_PROJECT_TITLE)"
 	@echo "  PROMPT_KIND=$(PROMPT_KIND)"
+	@echo "  PROMPT_PREVIEW_RECORD_ID=$(PROMPT_PREVIEW_RECORD_ID)"
+	@echo "  PROMPT_PREVIEW_RECORD_NUMBER=$(PROMPT_PREVIEW_RECORD_NUMBER)"
 	@echo "  CURRENT_PROMPT=$(CURRENT_PROMPT)"
 	@echo "  PROMPT_IMPROVEMENT_CYCLE_NUMBER=$(PROMPT_IMPROVEMENT_CYCLE_NUMBER)"
 	@echo "  RESET_CYCLE_PROMPT=$(RESET_CYCLE_PROMPT)"
@@ -167,6 +174,14 @@ run-prompt: prepare-cycle
 		$(MANAGE) run_chunk_prompt_on_corpus --input-jsonl "$(PY_GOLD_RECORDS)" --prompt-file "$(PY_CYCLE_PROMPT)" --output-jsonl "$(PY_PREDICTION_RECORDS)" --prompt-kind "$(PROMPT_KIND)" --model "$(MODEL)" --limit "$(PROMPT_LIMIT)" --max-concurrency "$(MAX_CONCURRENCY)" --progress-every "$(PROGRESS_EVERY)" --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 to run $(CYCLE_PROMPT) over $(GOLD_RECORDS)"; \
+	fi
+
+preview-prompt: prepare-cycle
+	@echo "+ $(MANAGE) preview_chunk_prompt --input-jsonl $(PY_GOLD_RECORDS) --prompt-file $(PY_CYCLE_PROMPT) --output-text $(PY_PROMPT_PREVIEW_TEXT) --prompt-kind $(PROMPT_KIND) $(if $(strip $(PROMPT_PREVIEW_RECORD_ID)),--record-id $(PROMPT_PREVIEW_RECORD_ID),--record-number $(PROMPT_PREVIEW_RECORD_NUMBER)) --overwrite"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) preview_chunk_prompt --input-jsonl "$(PY_GOLD_RECORDS)" --prompt-file "$(PY_CYCLE_PROMPT)" --output-text "$(PY_PROMPT_PREVIEW_TEXT)" --prompt-kind "$(PROMPT_KIND)" $(if $(strip $(PROMPT_PREVIEW_RECORD_ID)),--record-id "$(PROMPT_PREVIEW_RECORD_ID)",--record-number "$(PROMPT_PREVIEW_RECORD_NUMBER)") --overwrite; \
+	else \
+		echo "dry-run only; set RUN=1 to write $(PROMPT_PREVIEW_TEXT)"; \
 	fi
 
 prepare-prompt-improvement: prepare-cycle

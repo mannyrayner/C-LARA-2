@@ -132,7 +132,26 @@ pass:
 - `prompt_improvement_brief.json` and `prompt_improvement_brief.md` — error
   summaries and selected examples;
 - `prompt_revision.md` and `prompt_revision.json` — the generated candidate
-  prompt for the next cycle when `GENERATE_REVISED_PROMPT=1`.
+  prompt for the next cycle when `GENERATE_REVISED_PROMPT=1`; `prompt_revision.md`
+  is self-contained and includes any generated examples that will be sent in the
+  next cycle.
+
+
+To inspect exactly what will be sent to the API for one record, write a full
+prompt preview:
+
+```bash
+make preview-prompt RUN=1 \
+  JUDGE_LANGUAGE=en \
+  SPLIT=development \
+  PROMPT_KIND=segmentation \
+  PROMPT_IMPROVEMENT_CYCLE_NUMBER=1 \
+  PROMPT_PREVIEW_RECORD_NUMBER=1
+```
+
+This writes `full_api_prompt_preview.txt` in the cycle directory. It includes the
+cycle-local prompt text, the surface-preservation guard, the JSON schema hint,
+and the selected record payload.
 
 For the independent rating-prompt track, switch `PROMPT_KIND=rating`. It uses the
 same cycle layout under `<language>-rating-<split>/`.
