@@ -232,6 +232,12 @@ def _fallback_tokenize_surface(surface: str) -> list[dict[str, Any]]:
     return [{"surface": p} for p in tokens if p != ""]
 
 
+def _whitespace_chunk_tokens(surface: str) -> list[dict[str, Any]]:
+    """Split a segment into whitespace and non-whitespace chunks only."""
+
+    return [{"surface": part} for part in re.findall(r"\s+|\S+", surface)]
+
+
 def _normalize_phase2_output(text_obj: dict[str, Any]) -> dict[str, Any]:
     for page in text_obj.get("pages", []) or []:
         for segment in page.get("segments", []) or []:
@@ -766,10 +772,7 @@ async def _segmentation_phase_2_chunk_decomposition(
     segment_tokens: dict[tuple[int, int], list[dict[str, Any]]] = {}
     for page_idx, page in enumerate(pages):
         for segment_idx, segment in enumerate(page.get("segments", []) or []):
-            source_tokens = segment.get("tokens")
-            if not isinstance(source_tokens, list) or not source_tokens:
-                source_tokens = _fallback_tokenize_surface(str(segment.get("surface", "")))
-            normalized_tokens = [tok if isinstance(tok, dict) else {"surface": str(tok)} for tok in source_tokens]
+            normalized_tokens = _whitespace_chunk_tokens(str(segment.get("surface", "")))
             segment_tokens[(page_idx, segment_idx)] = normalized_tokens
             for token_idx, token in enumerate(normalized_tokens):
                 surface = str(token.get("surface", ""))
@@ -788,6 +791,12 @@ async def _segmentation_phase_2_chunk_decomposition(
             prompt_template=prompt_template,
             language=spec.language,
             chunk_surface=surface,
+        )
+        telemetry.event(
+            op_id,
+            "info",
+            "chunk-decomposition segmentation_phase_2 unit",
+            {"chunk_surface": surface},
         )
         async with semaphore:
             response = await ai_client.chat_json(prompt, telemetry=telemetry, op_id=op_id)

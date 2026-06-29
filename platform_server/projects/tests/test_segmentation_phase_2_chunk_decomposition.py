@@ -96,3 +96,42 @@ class SegmentationPhase2ChunkDecompositionTests(SimpleTestCase):
 
         tokens = annotated["pages"][0]["segments"][0]["tokens"]
         self.assertEqual([token["surface"] for token in tokens], ["opened,"])
+
+    def test_chunk_decomposition_uses_whitespace_chunks_not_editable_token_boundaries(self):
+        text = {
+            "l2": "fr",
+            "surface": " Il l'aime bien.",
+            "pages": [
+                {
+                    "surface": " Il l'aime bien.",
+                    "segments": [{"surface": " Il l'aime bien.", "annotations": {}}],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        client = FakeChunkClient(
+            {
+                "Il": ["Il"],
+                "l'aime": ["l'", "aime"],
+                "bien.": ["bien", "."],
+            }
+        )
+
+        annotated = asyncio.run(
+            segmentation_phase_2(
+                SegmentationPhase2Spec(
+                    text=text,
+                    language="fr",
+                    mechanism="chunk_decomposition",
+                    chunk_prompt_cycle=3,
+                ),
+                client=client,  # type: ignore[arg-type]
+            )
+        )
+
+        prompts = "\n".join(client.prompts)
+        tokens = annotated["pages"][0]["segments"][0]["tokens"]
+        self.assertIn('"chunk_surface": "l\'aime"', prompts)
+        self.assertNotIn('"chunk_surface": "l"', prompts)
+        self.assertEqual([token["surface"] for token in tokens], [" ", "Il", " ", "l'", "aime", " ", "bien", "."])
