@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "variant": "chunk_decomposition_multilingual_v1",
+  "operation": "segmentation_phase_2",
+  "prompt_kind": "segmentation",
+  "source_split": "development",
+  "description": "Generated multilingual whitespace-chunk decomposition prompts promoted from the chunk_decomposition_multilingual workbench.",
+  "prompts": [
+    {
+      "language": "de",
+      "cycle_number": 1,
+      "path": "prompts/segmentation_phase_2/variants/chunk_decomposition_multilingual_v1/de/development/cycle_1/prompt.md"
+    },
+    {
+      "language": "de",
+      "cycle_number": 2,
+      "path": "prompts/segmentation_phase_2/variants/chunk_decomposition_multilingual_v1/de/development/cycle_2/prompt.md"
+    },
+    {
+      "language": "en",
+      "cycle_number": 1,
+      "path": "prompts/segmentation_phase_2/variants/chunk_decomposition_multilingual_v1/en/development/cycle_1/prompt.md"
+    },
+    {
+      "language": "en",
+      "cycle_number": 2,
+      "path": "prompts/segmentation_phase_2/variants/chunk_decomposition_multilingual_v1/en/development/cycle_2/prompt.md"
+    },
+    {
+      "language": "fr",
+      "cycle_number": 1,
+      "path": "prompts/segmentation_phase_2/variants/chunk_decomposition_multilingual_v1/fr/development/cycle_1/prompt.md"
+    },
+    {
+      "language": "fr",
+      "cycle_number": 2,
+      "path": "prompts/segmentation_phase_2/variants/chunk_decomposition_multilingual_v1/fr/development/cycle_2/prompt.md"
+    },
+    {
+      "language": "fr",
+      "cycle_number": 3,
+      "path": "prompts/segmentation_phase_2/variants/chunk_decomposition_multilingual_v1/fr/development/cycle_3/prompt.md"
+    }
+  ]
+}
