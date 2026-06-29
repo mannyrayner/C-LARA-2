@@ -740,7 +740,13 @@ def _chunk_decomposition_prompt(*, prompt_template: str, language: str, chunk_su
 
 def _normalize_chunk_parts(value: Any) -> list[str]:
     if isinstance(value, list):
-        return [str(item) for item in value]
+        parts: list[str] = []
+        for item in value:
+            if isinstance(item, str) and "|" in item:
+                parts.extend(part for part in item.split("|") if part != "")
+            else:
+                parts.append(str(item))
+        return parts
     if isinstance(value, str) and value:
         return [part for part in value.split("|") if part != ""]
     return []

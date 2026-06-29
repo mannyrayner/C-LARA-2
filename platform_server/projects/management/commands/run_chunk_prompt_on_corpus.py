@@ -170,7 +170,13 @@ def normalize_response(*, record: dict[str, Any], response: Any, prompt_kind: st
 
 def normalize_parts(value: Any) -> list[str]:
     if isinstance(value, list):
-        return [str(item) for item in value]
+        parts: list[str] = []
+        for item in value:
+            if isinstance(item, str) and "|" in item:
+                parts.extend(part for part in item.split("|") if part != "")
+            else:
+                parts.append(str(item))
+        return parts
     if isinstance(value, str) and value:
         return [part for part in value.split("|") if part != ""]
     return []

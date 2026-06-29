@@ -148,3 +148,36 @@ class SegmentationPhase2ChunkDecompositionTests(SimpleTestCase):
             },
             trace,
         )
+
+    def test_chunk_decomposition_splits_pipe_delimited_part_inside_response_list(self):
+        text = {
+            "l2": "fr",
+            "surface": " cordes.",
+            "pages": [
+                {
+                    "surface": " cordes.",
+                    "segments": [{"surface": " cordes.", "annotations": {}}],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        client = FakeChunkClient({"cordes.": ["cordes|."]})
+
+        annotated = asyncio.run(
+            segmentation_phase_2(
+                SegmentationPhase2Spec(
+                    text=text,
+                    language="fr",
+                    mechanism="chunk_decomposition",
+                    chunk_prompt_cycle=3,
+                ),
+                client=client,  # type: ignore[arg-type]
+            )
+        )
+
+        segment = annotated["pages"][0]["segments"][0]
+        trace = segment["annotations"]["segmentation_phase_2_chunk_trace"]
+        self.assertEqual([token["surface"] for token in segment["tokens"]], [" ", "cordes", "."])
+        self.assertEqual(trace[0]["predicted_parts"], ["cordes", "."])
+        self.assertTrue(trace[0]["surface_preserved"])

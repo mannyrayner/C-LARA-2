@@ -8,7 +8,7 @@ from unittest.mock import patch
 from django.core.management import call_command
 from django.test import SimpleTestCase
 
-from projects.management.commands.run_chunk_prompt_on_corpus import build_prompt
+from projects.management.commands.run_chunk_prompt_on_corpus import build_prompt, normalize_parts
 
 
 class _StubClient:
@@ -93,6 +93,9 @@ class RunChunkPromptOnCorpusTests(SimpleTestCase):
         self.assertIn("use only Record.chunk_surface", prompt)
         self.assertIn("Do not segment Record.segment_surface", prompt)
         self.assertIn("concatenation of JSON parts must exactly equal Record.chunk_surface", prompt)
+
+    def test_normalize_parts_splits_pipe_delimited_item_inside_list(self):
+        self.assertEqual(normalize_parts(["cordes|."]), ["cordes", "."])
 
     @patch("projects.management.commands.run_chunk_prompt_on_corpus.OpenAIClient", _InvalidSurfaceClient)
     def test_command_replaces_non_surface_preserving_segmentation_with_chunk(self):
