@@ -63,6 +63,23 @@ sudo journalctl -u djangoq-clara2 -n 120 --no-pager
 sudo journalctl -u project-understanding-worker -n 120 --no-pager
 ```
 
+Assistant self-query diagnostics on the server:
+
+```bash
+cd /srv/C-LARA-2/platform_server
+sudo -u ubuntu env CODEX_HOME=/var/lib/c-lara/codex \
+  DJANGO_SETTINGS_MODULE=platform_server.settings \
+  /srv/C-LARA-2/.venv/bin/python manage.py check_project_understanding_codex --smoke \
+  --question "Summarise the project briefly."
+sudo -u ubuntu env CODEX_HOME=/var/lib/c-lara/codex \
+  DJANGO_SETTINGS_MODULE=platform_server.settings \
+  /srv/C-LARA-2/.venv/bin/python manage.py check_project_understanding_codex --smoke \
+  --question "Is the self-understanding feature now available? If so, how do I access it?"
+sudo journalctl -u project-understanding-worker -n 200 --no-pager
+```
+
+Run the first command as a control query and the second as the suspect Assistant self-query. If the control succeeds but the self-query fails, compare the command output with the Assistant live-status messages and `project-understanding-worker` journal for the same timestamp. The current detector should not treat a successful answer as a sandbox failure merely because it quotes `docs/issues` text mentioning `failed rtm_newaddr`; if that still happens, capture the full stdout/stderr from the smoke command and the live request ID.
+
 ---
 
 ## 3) Edit environment variables safely
@@ -183,4 +200,3 @@ Check socket permissions (nginx ↔ gunicorn):
 sudo ls -ld /run/gunicorn-clara2
 sudo ls -l /run/gunicorn-clara2/gunicorn.sock
 ```
-
