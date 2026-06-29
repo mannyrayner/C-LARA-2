@@ -235,6 +235,17 @@ async def run_full_pipeline(
                             or seg2_params.get("fewshot_tranche")
                             or "all"
                         ),
+                        chunk_prompt_variant=str(
+                            seg2_params.get("chunk_prompt_variant")
+                            or "chunk_decomposition_multilingual_v1"
+                        ),
+                        chunk_prompt_split=str(seg2_params.get("chunk_prompt_split") or "development"),
+                        chunk_prompt_cycle=(
+                            int(seg2_params["chunk_prompt_cycle"])
+                            if seg2_params.get("chunk_prompt_cycle") is not None
+                            else None
+                        ),
+                        max_concurrency=int(seg2_params.get("max_concurrency") or 20),
                     ),
                     client=ai_client,
                 )
