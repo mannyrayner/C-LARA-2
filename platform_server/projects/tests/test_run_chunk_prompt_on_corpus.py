@@ -108,6 +108,25 @@ class RunChunkPromptOnCorpusTests(SimpleTestCase):
         self.assertEqual(prediction["predicted_parts"], ["qu’", "il"])
         self.assertTrue(prediction["surface_preserved"])
 
+    def test_normalize_response_repairs_quote_and_dash_glyphs_to_preserve_surface(self):
+        quote_prediction = normalize_response(
+            record={"record_id": "fr:1", "language": "fr", "chunk_surface": "«Bonjour»"},
+            response={"parts": ['"|Bonjour|"']},
+            prompt_kind="segmentation",
+            model="test-model",
+        )
+        dash_prediction = normalize_response(
+            record={"record_id": "fr:2", "language": "fr", "chunk_surface": "au‑dessus"},
+            response={"parts": ["au|-|dessus"]},
+            prompt_kind="segmentation",
+            model="test-model",
+        )
+
+        self.assertEqual(quote_prediction["predicted_parts"], ["«", "Bonjour", "»"])
+        self.assertTrue(quote_prediction["surface_preserved"])
+        self.assertEqual(dash_prediction["predicted_parts"], ["au", "‑", "dessus"])
+        self.assertTrue(dash_prediction["surface_preserved"])
+
     @patch("projects.management.commands.run_chunk_prompt_on_corpus.OpenAIClient", _InvalidSurfaceClient)
     def test_command_replaces_non_surface_preserving_segmentation_with_chunk(self):
         with TemporaryDirectory() as tmp:

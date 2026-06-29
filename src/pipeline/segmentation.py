@@ -465,7 +465,7 @@ class SegmentationPhase2Spec:
     chunk_prompt_variant: str = "chunk_decomposition_multilingual_v1"
     chunk_prompt_split: str = "development"
     chunk_prompt_cycle: int | None = None
-    max_concurrency: int = 4
+    max_concurrency: int = 20
 
 
 async def segmentation_phase_2(
@@ -752,20 +752,35 @@ def _normalize_chunk_parts(value: Any) -> list[str]:
     return []
 
 
-_APOSTROPHE_CHARS = {"'", "’", "‘", "`", "´"}
+_EQUIVALENT_GLYPH_GROUPS = (
+    ("'", {"'", "’", "‘", "`", "´", "ʼ"}),
+    ('"', {'"', "“", "”", "„", "‟", "«", "»"}),
+    ("-", {"-", "‐", "‑", "‒", "–", "—", "―", "−", "﹘", "－", "­"}),
+)
+_EQUIVALENT_GLYPH_CANONICAL = {
+    ch: canonical for canonical, group in _EQUIVALENT_GLYPH_GROUPS for ch in group
+}
 
 
-def _repair_apostrophe_variants(parts: list[str], surface: str) -> list[str]:
-    """Preserve model boundaries while matching the apostrophe glyph used by the input surface."""
+def _equivalent_glyph_key(ch: str) -> str:
+    return _EQUIVALENT_GLYPH_CANONICAL.get(ch, ch)
+
+
+def _repair_equivalent_glyph_variants(parts: list[str], surface: str) -> list[str]:
+    """Preserve model boundaries while matching equivalent glyphs used by the input surface.
+
+    Models sometimes normalize apostrophes, quotation marks/guillemets, or dash/hyphen
+    variants. If that is the only difference from the input surface, keep the model's
+    boundaries but substitute the exact glyphs from the source chunk.
+    """
 
     joined = "".join(parts)
     if joined == surface:
         return parts
+    if len(joined) != len(surface):
+        return parts
 
-    def _plain_apostrophes(text: str) -> str:
-        return "".join("'" if ch in _APOSTROPHE_CHARS else ch for ch in text)
-
-    if _plain_apostrophes(joined) != _plain_apostrophes(surface) or len(joined) != len(surface):
+    if "".join(_equivalent_glyph_key(ch) for ch in joined) != "".join(_equivalent_glyph_key(ch) for ch in surface):
         return parts
 
     repaired: list[str] = []
@@ -776,7 +791,7 @@ def _repair_apostrophe_variants(parts: list[str], surface: str) -> list[str]:
             surface_ch = surface[cursor]
             if ch == surface_ch:
                 chars.append(ch)
-            elif ch in _APOSTROPHE_CHARS and surface_ch in _APOSTROPHE_CHARS:
+            elif _equivalent_glyph_key(ch) == _equivalent_glyph_key(surface_ch):
                 chars.append(surface_ch)
             else:
                 return parts
@@ -841,7 +856,7 @@ async def _segmentation_phase_2_chunk_decomposition(
             response = await ai_client.chat_json(prompt, telemetry=telemetry, op_id=op_id)
         raw_response = response if isinstance(response, dict) else {}
         parts = _normalize_chunk_parts(raw_response.get("parts"))
-        parts = _repair_apostrophe_variants(parts, surface)
+        parts = _repair_equivalent_glyph_variants(parts, surface)
         surface_preserved = bool(parts) and "".join(parts) == surface
         if not surface_preserved:
             telemetry.event(
@@ -1066,7 +1081,7 @@ class SegmentationPipelineSpec:
     phase2_chunk_prompt_variant: str = "chunk_decomposition_multilingual_v1"
     phase2_chunk_prompt_split: str = "development"
     phase2_chunk_prompt_cycle: int | None = None
-    phase2_max_concurrency: int = 4
+    phase2_max_concurrency: int = 20
 
 
 async def segmentation(

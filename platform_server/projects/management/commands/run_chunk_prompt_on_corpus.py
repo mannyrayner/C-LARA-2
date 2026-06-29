@@ -23,7 +23,7 @@ class Command(BaseCommand):
         parser.add_argument("--prompt-kind", choices=PROMPT_KINDS, default="segmentation")
         parser.add_argument("--model", default=DEFAULT_MODEL)
         parser.add_argument("--limit", type=int, default=0)
-        parser.add_argument("--max-concurrency", type=int, default=4)
+        parser.add_argument("--max-concurrency", type=int, default=20)
         parser.add_argument("--progress-every", type=int, default=25)
         parser.add_argument("--timeout-s", type=float, default=120.0)
         parser.add_argument("--heartbeat-s", type=float, default=20.0)
@@ -77,7 +77,7 @@ async def run_records(
     prompt_kind: str,
     model: str,
     client: OpenAIClient,
-    max_concurrency: int = 4,
+    max_concurrency: int = 20,
     progress_every: int = 25,
     progress_callback=None,
 ) -> list[dict[str, Any]]:
@@ -152,7 +152,7 @@ def normalize_response(*, record: dict[str, Any], response: Any, prompt_kind: st
         }
     chunk_surface = str(record.get("chunk_surface") or "")
     parts = normalize_parts(payload.get("parts") or payload.get("predicted_parts"))
-    parts = repair_apostrophe_variants(parts, chunk_surface)
+    parts = repair_equivalent_glyph_variants(parts, chunk_surface)
     surface_preserved = "".join(parts) == chunk_surface
     invalid_response_reason = ""
     if not surface_preserved:
@@ -183,18 +183,27 @@ def normalize_parts(value: Any) -> list[str]:
     return []
 
 
-APOSTROPHE_CHARS = {"'", "’", "‘", "`", "´"}
+EQUIVALENT_GLYPH_GROUPS = (
+    ("'", {"'", "’", "‘", "`", "´", "ʼ"}),
+    ('"', {'"', "“", "”", "„", "‟", "«", "»"}),
+    ("-", {"-", "‐", "‑", "‒", "–", "—", "―", "−", "﹘", "－", "­"}),
+)
+EQUIVALENT_GLYPH_CANONICAL = {
+    ch: canonical for canonical, group in EQUIVALENT_GLYPH_GROUPS for ch in group
+}
 
 
-def repair_apostrophe_variants(parts: list[str], surface: str) -> list[str]:
+def equivalent_glyph_key(ch: str) -> str:
+    return EQUIVALENT_GLYPH_CANONICAL.get(ch, ch)
+
+
+def repair_equivalent_glyph_variants(parts: list[str], surface: str) -> list[str]:
     joined = "".join(parts)
     if joined == surface:
         return parts
-
-    def plain_apostrophes(text: str) -> str:
-        return "".join("'" if ch in APOSTROPHE_CHARS else ch for ch in text)
-
-    if plain_apostrophes(joined) != plain_apostrophes(surface) or len(joined) != len(surface):
+    if len(joined) != len(surface):
+        return parts
+    if "".join(equivalent_glyph_key(ch) for ch in joined) != "".join(equivalent_glyph_key(ch) for ch in surface):
         return parts
 
     repaired: list[str] = []
@@ -205,7 +214,7 @@ def repair_apostrophe_variants(parts: list[str], surface: str) -> list[str]:
             surface_ch = surface[cursor]
             if ch == surface_ch:
                 chars.append(ch)
-            elif ch in APOSTROPHE_CHARS and surface_ch in APOSTROPHE_CHARS:
+            elif equivalent_glyph_key(ch) == equivalent_glyph_key(surface_ch):
                 chars.append(surface_ch)
             else:
                 return parts

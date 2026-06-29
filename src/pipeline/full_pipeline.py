@@ -245,7 +245,7 @@ async def run_full_pipeline(
                             if seg2_params.get("chunk_prompt_cycle") is not None
                             else None
                         ),
-                        max_concurrency=int(seg2_params.get("max_concurrency") or 4),
+                        max_concurrency=int(seg2_params.get("max_concurrency") or 20),
                     ),
                     client=ai_client,
                 )

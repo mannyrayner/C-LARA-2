@@ -23,7 +23,7 @@ Example stage parameters:
     "chunk_prompt_variant": "chunk_decomposition_multilingual_v1",
     "chunk_prompt_split": "development",
     "chunk_prompt_cycle": 2,
-    "max_concurrency": 4
+    "max_concurrency": 20
   }
 }
 ```

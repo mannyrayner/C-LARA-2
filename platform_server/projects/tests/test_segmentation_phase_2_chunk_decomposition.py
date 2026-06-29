@@ -182,6 +182,72 @@ class SegmentationPhase2ChunkDecompositionTests(SimpleTestCase):
         self.assertEqual(trace[0]["predicted_parts"], ["cordes", "."])
         self.assertTrue(trace[0]["surface_preserved"])
 
+    def test_chunk_decomposition_repairs_quote_glyphs_to_preserve_surface(self):
+        text = {
+            "l2": "fr",
+            "surface": " «Bonjour»",
+            "pages": [
+                {
+                    "surface": " «Bonjour»",
+                    "segments": [{"surface": " «Bonjour»", "annotations": {}}],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        client = FakeChunkClient({"«Bonjour»": ['"|Bonjour|"']})
+
+        annotated = asyncio.run(
+            segmentation_phase_2(
+                SegmentationPhase2Spec(
+                    text=text,
+                    language="fr",
+                    mechanism="chunk_decomposition",
+                    chunk_prompt_cycle=3,
+                ),
+                client=client,  # type: ignore[arg-type]
+            )
+        )
+
+        segment = annotated["pages"][0]["segments"][0]
+        trace = segment["annotations"]["segmentation_phase_2_chunk_trace"]
+        self.assertEqual([token["surface"] for token in segment["tokens"]], [" ", "«", "Bonjour", "»"])
+        self.assertEqual(trace[0]["predicted_parts"], ["«", "Bonjour", "»"])
+        self.assertTrue(trace[0]["surface_preserved"])
+
+    def test_chunk_decomposition_repairs_dash_glyphs_to_preserve_surface(self):
+        text = {
+            "l2": "fr",
+            "surface": " au‑dessus",
+            "pages": [
+                {
+                    "surface": " au‑dessus",
+                    "segments": [{"surface": " au‑dessus", "annotations": {}}],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        client = FakeChunkClient({"au‑dessus": ["au|-|dessus"]})
+
+        annotated = asyncio.run(
+            segmentation_phase_2(
+                SegmentationPhase2Spec(
+                    text=text,
+                    language="fr",
+                    mechanism="chunk_decomposition",
+                    chunk_prompt_cycle=3,
+                ),
+                client=client,  # type: ignore[arg-type]
+            )
+        )
+
+        segment = annotated["pages"][0]["segments"][0]
+        trace = segment["annotations"]["segmentation_phase_2_chunk_trace"]
+        self.assertEqual([token["surface"] for token in segment["tokens"]], [" ", "au", "‑", "dessus"])
+        self.assertEqual(trace[0]["predicted_parts"], ["au", "‑", "dessus"])
+        self.assertTrue(trace[0]["surface_preserved"])
+
     def test_chunk_decomposition_repairs_apostrophe_glyph_to_preserve_surface(self):
         text = {
             "l2": "fr",
