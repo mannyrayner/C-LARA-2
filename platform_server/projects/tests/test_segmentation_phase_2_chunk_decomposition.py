@@ -12,9 +12,11 @@ class FakeChunkClient:
     def __init__(self, responses: dict[str, list[str]]) -> None:
         self.responses = responses
         self.prompts: list[str] = []
+        self.kwargs: list[dict[str, Any]] = []
 
     async def chat_json(self, prompt: str, **kwargs: Any) -> dict[str, Any]:
         self.prompts.append(prompt)
+        self.kwargs.append(kwargs)
         for surface, parts in self.responses.items():
             if f'"chunk_surface": "{surface}"' in prompt:
                 return {"parts": parts, "notes": "fixture"}
@@ -63,6 +65,7 @@ class SegmentationPhase2ChunkDecompositionTests(SimpleTestCase):
         self.assertEqual([token["surface"] for token in tokens], ["opened", ",", " ", "grandchildren"])
         self.assertEqual(len(client.prompts), 2)
         self.assertIn("Return only JSON", client.prompts[0])
+        self.assertNotIn("temperature", client.kwargs[0])
 
     def test_chunk_decomposition_keeps_source_token_when_response_breaks_surface_invariant(self):
         text = {

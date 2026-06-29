@@ -790,7 +790,7 @@ async def _segmentation_phase_2_chunk_decomposition(
             chunk_surface=surface,
         )
         async with semaphore:
-            response = await ai_client.chat_json(prompt, temperature=0, telemetry=telemetry, op_id=op_id)
+            response = await ai_client.chat_json(prompt, telemetry=telemetry, op_id=op_id)
         parts = _normalize_chunk_parts(response.get("parts") if isinstance(response, dict) else None)
         if not parts or "".join(parts) != surface:
             telemetry.event(
