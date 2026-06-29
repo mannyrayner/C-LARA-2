@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import tempfile
 from pathlib import Path
@@ -11,6 +12,7 @@ from django.test import SimpleTestCase
 from projects.management.commands.run_linguistic_pipeline_experiment import (
     apply_stage_parameter_overrides,
     load_input_records,
+    run_segmentation_phase_2_records,
     safe_record_id,
     text_obj_for_record,
     windows_long_path,
@@ -126,3 +128,38 @@ class RunLinguisticPipelineExperimentTests(SimpleTestCase):
             self.assertEqual(manifest["record_count"], 1)
             self.assertEqual(manifest["stage_parameters"]["segmentation_phase_2"]["fewshot_count"], "medium")
             self.assertTrue((run_dir / "stage_outputs" / "r1" / "stages" / "segmentation_phase_2.json").exists())
+
+    def test_runner_passes_chunk_decomposition_parameters_to_segmentation_phase_2(self):
+        record = load_input_records_from_payload({"record_id": "r1", "surface": "opened,", "split": "development"})[0]
+        async_mock = AsyncMock(return_value=text_obj_for_record(record, language="en"))
+
+        with patch("projects.management.commands.run_linguistic_pipeline_experiment.segmentation_phase_2", async_mock):
+            outputs = asyncio.run(
+                run_segmentation_phase_2_records(
+                    [record],
+                    language="en",
+                    run_label="fixture",
+                    stage_parameters={
+                        "segmentation_phase_2": {
+                            "mechanism": "chunk_decomposition",
+                            "chunk_prompt_variant": "chunk_decomposition_multilingual_v1",
+                            "chunk_prompt_cycle": 2,
+                            "max_concurrency": 3,
+                        }
+                    },
+                )
+            )
+
+        spec = async_mock.call_args.args[0]
+        self.assertEqual(outputs[0]["record_id"], "r1")
+        self.assertEqual(spec.mechanism, "chunk_decomposition")
+        self.assertEqual(spec.chunk_prompt_variant, "chunk_decomposition_multilingual_v1")
+        self.assertEqual(spec.chunk_prompt_cycle, 2)
+        self.assertEqual(spec.max_concurrency, 3)
+
+
+def load_input_records_from_payload(payload):
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "records.jsonl"
+        path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+        return load_input_records(path)

@@ -456,6 +456,10 @@ class SegmentationPhase2Spec:
     prompt_variant: str = ""
     fewshot_variant: str = ""
     fewshot_count: str | int = "all"
+    chunk_prompt_variant: str = "chunk_decomposition_multilingual_v1"
+    chunk_prompt_split: str = "development"
+    chunk_prompt_cycle: int | None = None
+    max_concurrency: int = 4
 
 
 async def segmentation_phase_2(
@@ -475,7 +479,7 @@ async def segmentation_phase_2(
         return _tokenize_with_jieba(spec.text, language=spec.language, telemetry=telemetry, op_id=spec.op_id)
     if method not in {"auto", "ai", "jieba"}:
         raise ValueError(f"Unknown segmentation method: {method}")
-    if mechanism not in {"json_direct", "boundary_first"}:
+    if mechanism not in {"json_direct", "boundary_first", "chunk_decomposition"}:
         raise ValueError(f"Unknown segmentation_phase_2 mechanism: {mechanism}")
 
     prompts_root = (
@@ -490,6 +494,12 @@ async def segmentation_phase_2(
         fewshots = _select_fewshot_tranche(fewshots, spec.fewshot_count)
         return await _segmentation_phase_2_boundary_first(
             spec, client=client, telemetry=telemetry, template=template, fewshots=fewshots
+        )
+
+    if mechanism == "chunk_decomposition":
+        prompt_template = _load_chunk_decomposition_prompt(spec, prompts_root=prompts_root)
+        return await _segmentation_phase_2_chunk_decomposition(
+            spec, client=client, telemetry=telemetry, prompt_template=prompt_template
         )
 
     template = (
@@ -663,6 +673,176 @@ def _tokens_from_boundary_marked_text(marked: str, *, surface: str) -> list[dict
     return [{"surface": part} for part in parts]
 
 
+def _load_chunk_decomposition_prompt(spec: SegmentationPhase2Spec, *, prompts_root: Path) -> str:
+    variant = _safe_variant_name(spec.chunk_prompt_variant or "chunk_decomposition_multilingual_v1")
+    split = _safe_variant_name(spec.chunk_prompt_split or "development")
+    language = spec.language.lower()
+    cycle = int(
+        spec.chunk_prompt_cycle
+        or _default_chunk_prompt_cycle(language, variant, split, prompts_root=prompts_root)
+    )
+    prompt_path = (
+        prompts_root
+        / "segmentation_phase_2"
+        / "variants"
+        / variant
+        / language
+        / split
+        / f"cycle_{cycle}"
+        / "prompt.md"
+    )
+    if not prompt_path.exists():
+        raise FileNotFoundError(
+            "No chunk decomposition segmentation_phase_2 prompt found for "
+            f"variant={variant!r}, language={language!r}, split={split!r}, cycle={cycle}"
+        )
+    return prompt_path.read_text(encoding="utf-8")
+
+
+def _default_chunk_prompt_cycle(language: str, variant: str, split: str, *, prompts_root: Path) -> int:
+    prompt_root = prompts_root / "segmentation_phase_2" / "variants" / variant / language / split
+    cycles: list[int] = []
+    for path in prompt_root.glob("cycle_*/prompt.md"):
+        match = re.fullmatch(r"cycle_(\d+)", path.parent.name)
+        if match:
+            cycles.append(int(match.group(1)))
+    if not cycles:
+        raise FileNotFoundError(
+            "No chunk decomposition segmentation_phase_2 prompt cycles found for "
+            f"variant={variant!r}, language={language!r}, split={split!r}"
+        )
+    return max(cycles)
+
+
+def _chunk_decomposition_prompt(*, prompt_template: str, language: str, chunk_surface: str) -> str:
+    record = {"language": language, "chunk_surface": chunk_surface}
+    return "\n\n".join(
+        [
+            prompt_template.strip(),
+            (
+                "Critical invariant: use only Record.chunk_surface as the input chunk. "
+                "Do not use surrounding sentence context. The concatenation of JSON parts must "
+                "exactly equal Record.chunk_surface."
+            ),
+            "Return only JSON matching this schema:",
+            '{"parts": ["..."], "notes": "..."}',
+            "Record:",
+            json.dumps(record, ensure_ascii=False, indent=2),
+        ]
+    )
+
+
+def _normalize_chunk_parts(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [str(item) for item in value]
+    if isinstance(value, str) and value:
+        return [part for part in value.split("|") if part != ""]
+    return []
+
+
+async def _segmentation_phase_2_chunk_decomposition(
+    spec: SegmentationPhase2Spec,
+    *,
+    client: OpenAIClient | None,
+    telemetry: Telemetry,
+    prompt_template: str,
+) -> dict[str, Any]:
+    ai_client = client or OpenAIClient()
+    base_op = spec.op_id or "segmentation_phase_2"
+    telemetry.event(
+        base_op,
+        "info",
+        "Using chunk-decomposition segmentation_phase_2 mechanism",
+        {
+            "language": spec.language,
+            "chunk_prompt_variant": spec.chunk_prompt_variant,
+            "chunk_prompt_split": spec.chunk_prompt_split,
+            "chunk_prompt_cycle": spec.chunk_prompt_cycle,
+        },
+    )
+
+    pages = spec.text.get("pages", []) or []
+    chunk_items: list[tuple[int, int, int, str, str]] = []
+    segment_tokens: dict[tuple[int, int], list[dict[str, Any]]] = {}
+    for page_idx, page in enumerate(pages):
+        for segment_idx, segment in enumerate(page.get("segments", []) or []):
+            source_tokens = segment.get("tokens")
+            if not isinstance(source_tokens, list) or not source_tokens:
+                source_tokens = _fallback_tokenize_surface(str(segment.get("surface", "")))
+            normalized_tokens = [tok if isinstance(tok, dict) else {"surface": str(tok)} for tok in source_tokens]
+            segment_tokens[(page_idx, segment_idx)] = normalized_tokens
+            for token_idx, token in enumerate(normalized_tokens):
+                surface = str(token.get("surface", ""))
+                if not surface or surface.isspace():
+                    continue
+                op_id = f"{base_op}-chunk-p{page_idx}-s{segment_idx}-t{token_idx}"
+                chunk_items.append((page_idx, segment_idx, token_idx, surface, op_id))
+
+    semaphore = asyncio.Semaphore(max(1, int(spec.max_concurrency or 1)))
+    cache: dict[str, list[str]] = {}
+
+    async def _annotate_chunk(surface: str, op_id: str) -> list[str]:
+        if surface in cache:
+            return cache[surface]
+        prompt = _chunk_decomposition_prompt(
+            prompt_template=prompt_template,
+            language=spec.language,
+            chunk_surface=surface,
+        )
+        async with semaphore:
+            response = await ai_client.chat_json(prompt, temperature=0, telemetry=telemetry, op_id=op_id)
+        parts = _normalize_chunk_parts(response.get("parts") if isinstance(response, dict) else None)
+        if not parts or "".join(parts) != surface:
+            telemetry.event(
+                op_id,
+                "warn",
+                "chunk-decomposition segmentation_phase_2 output failed preservation check; keeping source token",
+                {"surface_preview": surface[:80], "response": response if isinstance(response, dict) else {}},
+            )
+            parts = [surface]
+        cache[surface] = parts
+        return parts
+
+    tasks = [asyncio.create_task(_annotate_chunk(surface, op_id)) for _, _, _, surface, op_id in chunk_items]
+    responses = await asyncio.gather(*tasks) if tasks else []
+    parts_by_token = {
+        (page_idx, segment_idx, token_idx): parts
+        for (page_idx, segment_idx, token_idx, _, _), parts in zip(chunk_items, responses)
+    }
+
+    new_pages: list[dict[str, Any]] = []
+    for page_idx, page in enumerate(pages):
+        new_segments: list[dict[str, Any]] = []
+        for segment_idx, segment in enumerate(page.get("segments", []) or []):
+            merged = dict(segment)
+            tokens: list[dict[str, Any]] = []
+            for token_idx, token in enumerate(segment_tokens.get((page_idx, segment_idx), [])):
+                parts = parts_by_token.get((page_idx, segment_idx, token_idx))
+                if parts is None:
+                    tokens.append(dict(token))
+                else:
+                    tokens.extend({"surface": part} for part in parts)
+            merged["tokens"] = tokens
+            new_segments.append(merged)
+        new_pages.append(
+            {
+                "surface": page.get("surface", ""),
+                "segments": new_segments,
+                "annotations": page.get("annotations", {}),
+            }
+        )
+
+    normalized = {
+        "l2": spec.text.get("l2", spec.language),
+        "l1": spec.text.get("l1"),
+        "title": spec.text.get("title"),
+        "surface": spec.text.get("surface", ""),
+        "pages": new_pages,
+        "annotations": spec.text.get("annotations", {}),
+    }
+    return _normalize_phase2_output({k: v for k, v in normalized.items() if v is not None})
+
+
 async def _segmentation_phase_2_boundary_first(
     spec: SegmentationPhase2Spec,
     *,
@@ -800,6 +980,14 @@ class SegmentationPipelineSpec:
     language: str = "en"
     telemetry: Telemetry | None = None
     op_id: str | None = None
+    phase2_mechanism: str = "json_direct"
+    phase2_prompt_variant: str = ""
+    phase2_fewshot_variant: str = ""
+    phase2_fewshot_count: str | int = "all"
+    phase2_chunk_prompt_variant: str = "chunk_decomposition_multilingual_v1"
+    phase2_chunk_prompt_split: str = "development"
+    phase2_chunk_prompt_cycle: int | None = None
+    phase2_max_concurrency: int = 4
 
 
 async def segmentation(
@@ -828,6 +1016,14 @@ async def segmentation(
             language=spec.language,
             telemetry=telemetry,
             op_id=f"{spec.op_id}-phase2" if spec.op_id else None,
+            mechanism=spec.phase2_mechanism,
+            prompt_variant=spec.phase2_prompt_variant,
+            fewshot_variant=spec.phase2_fewshot_variant,
+            fewshot_count=spec.phase2_fewshot_count,
+            chunk_prompt_variant=spec.phase2_chunk_prompt_variant,
+            chunk_prompt_split=spec.phase2_chunk_prompt_split,
+            chunk_prompt_cycle=spec.phase2_chunk_prompt_cycle,
+            max_concurrency=spec.phase2_max_concurrency,
         ),
         client=ai_client,
     )
