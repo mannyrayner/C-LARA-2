@@ -34,6 +34,7 @@ MAX_CONCURRENCY ?= 4
 PROGRESS_EVERY ?= 25
 GENERATE_REVISED_PROMPT ?= 1
 REVISION_MODEL ?= $(MODEL)
+PROMPT_PACKAGE_SOURCE_SPLIT ?= development
 VALIDATION_SOURCE_SPLIT ?= development
 VALIDATION_SOURCE_CYCLE_NUMBER ?= $(PROMPT_IMPROVEMENT_CYCLE_NUMBER)
 VALIDATION_SPLIT ?= validation
@@ -49,6 +50,7 @@ PROMPT_IMPROVEMENT_SUMMARY_JSON := $(PROMPT_IMPROVEMENT_BASE_DIR)/cycles_summary
 PROMPT_IMPROVEMENT_SUMMARY_MD := $(PROMPT_IMPROVEMENT_BASE_DIR)/cycles_summary.md
 PROMPT_RESULTS_SUMMARY_JSON := $(abspath $(GENERATED_DIR))/prompt_results_summary.json
 PROMPT_RESULTS_SUMMARY_MD := $(abspath $(GENERATED_DIR))/prompt_results_summary.md
+PROMPT_PACKAGE_ZIP ?= $(abspath $(GENERATED_DIR))/prompt_packages/$(PROMPT_KIND)-$(PROMPT_PACKAGE_SOURCE_SPLIT)-prompts.zip
 DIVERGENCE_REVIEW_RECORDS := $(PROMPT_IMPROVEMENT_DIR)/gold_divergence_review.jsonl
 PROMPT_PREVIEW_TEXT := $(PROMPT_IMPROVEMENT_DIR)/full_api_prompt_preview.txt
 CHUNK_RECORDS := $(CORPUS_SPLIT_DIR)/$(JUDGE_LANGUAGE)/$(SPLIT).jsonl
@@ -78,6 +80,7 @@ PY_PROMPT_IMPROVEMENT_SUMMARY_MD := $(call python_path,$(PROMPT_IMPROVEMENT_SUMM
 PY_GENERATED_DIR := $(call python_path,$(abspath $(GENERATED_DIR)))
 PY_PROMPT_RESULTS_SUMMARY_JSON := $(call python_path,$(PROMPT_RESULTS_SUMMARY_JSON))
 PY_PROMPT_RESULTS_SUMMARY_MD := $(call python_path,$(PROMPT_RESULTS_SUMMARY_MD))
+PY_PROMPT_PACKAGE_ZIP := $(call python_path,$(PROMPT_PACKAGE_ZIP))
 PY_DIVERGENCE_REVIEW_RECORDS := $(call python_path,$(DIVERGENCE_REVIEW_RECORDS))
 PY_PROMPT_PREVIEW_TEXT := $(call python_path,$(PROMPT_PREVIEW_TEXT))
 PY_VALIDATION_DIR := $(call python_path,$(VALIDATION_DIR))
@@ -90,7 +93,7 @@ CURRENT_PROMPT_ARG := --current-prompt $(PY_CYCLE_PROMPT)
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help prepare prepare-cycle extract-split-corpus judge-corpus run-prompt preview-prompt prepare-prompt-improvement validate-development-prompt review-prompt-divergences delete-project-data summarize-prompt-improvement-cycles summarize-prompt-results clean
+.PHONY: help prepare prepare-cycle extract-split-corpus judge-corpus run-prompt preview-prompt prepare-prompt-improvement validate-development-prompt review-prompt-divergences delete-project-data summarize-prompt-improvement-cycles summarize-prompt-results package-prompts clean
 
 help:
 	@echo "Chunk-decomposition segmentation experiments (multilingual)"
@@ -106,6 +109,7 @@ help:
 	@echo "  delete-project-data  Remove JSONL records for one project under DELETE_PROJECT_SUBDIR"
 	@echo "  summarize-prompt-improvement-cycles  Summarize all completed prompt-improvement cycles"
 	@echo "  summarize-prompt-results  Summarize available dev/validation/test prompt results"
+	@echo "  package-prompts      Package generated cycle prompts into a zipfile for PR handoff"
 	@echo "  clean                 Remove generated experiment artifacts"
 	@echo
 	@echo "Important variables:"
@@ -136,6 +140,8 @@ help:
 	@echo "  PROGRESS_EVERY=$(PROGRESS_EVERY)"
 	@echo "  GENERATE_REVISED_PROMPT=$(GENERATE_REVISED_PROMPT)"
 	@echo "  REVISION_MODEL=$(REVISION_MODEL)"
+	@echo "  PROMPT_PACKAGE_SOURCE_SPLIT=$(PROMPT_PACKAGE_SOURCE_SPLIT)"
+	@echo "  PROMPT_PACKAGE_ZIP=$(PROMPT_PACKAGE_ZIP)"
 	@echo "  VALIDATION_SOURCE_SPLIT=$(VALIDATION_SOURCE_SPLIT)"
 	@echo "  VALIDATION_SOURCE_CYCLE_NUMBER=$(VALIDATION_SOURCE_CYCLE_NUMBER)"
 	@echo "  VALIDATION_SPLIT=$(VALIDATION_SPLIT)"
@@ -274,6 +280,15 @@ summarize-prompt-results: prepare
 		$(MANAGE) summarize_chunk_prompt_results --generated-dir "$(PY_GENERATED_DIR)" --output-json "$(PY_PROMPT_RESULTS_SUMMARY_JSON)" --output-markdown "$(PY_PROMPT_RESULTS_SUMMARY_MD)" --languages "$(LANGUAGES)" --prompt-kind "$(PROMPT_KIND)" --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 to summarize available $(PROMPT_KIND) prompt results for $(LANGUAGES)"; \
+	fi
+
+
+package-prompts: prepare
+	@echo "+ $(MANAGE) package_chunk_prompts --generated-dir $(PY_GENERATED_DIR) --output-zip $(PY_PROMPT_PACKAGE_ZIP) --languages $(LANGUAGES) --prompt-kind $(PROMPT_KIND) --source-split $(PROMPT_PACKAGE_SOURCE_SPLIT) --overwrite"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) package_chunk_prompts --generated-dir "$(PY_GENERATED_DIR)" --output-zip "$(PY_PROMPT_PACKAGE_ZIP)" --languages "$(LANGUAGES)" --prompt-kind "$(PROMPT_KIND)" --source-split "$(PROMPT_PACKAGE_SOURCE_SPLIT)" --overwrite; \
+	else \
+		echo "dry-run only; set RUN=1 to write $(PROMPT_PACKAGE_ZIP)"; \
 	fi
 
 clean:

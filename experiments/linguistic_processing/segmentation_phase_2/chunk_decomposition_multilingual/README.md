@@ -297,3 +297,26 @@ This scans `generated/prompt_improvement/` for development-cycle briefs and
 
 Only existing briefs are included, so it is safe to run before every language has
 all three splits.
+
+
+## Packaging prompts for repository promotion
+
+To hand off the generated development-cycle prompts for a PR, create a
+deterministic zipfile with:
+
+```bash
+make package-prompts RUN=1 \
+  LANGUAGES=fr,de,en \
+  PROMPT_KIND=segmentation \
+  PROMPT_PACKAGE_SOURCE_SPLIT=development
+```
+
+The target scans
+`generated/prompt_improvement/<language>-<prompt-kind>-<source-split>/cycle_*/prompt.md`
+for the requested languages and writes
+`generated/prompt_packages/<prompt-kind>-<source-split>-prompts.zip` by default.
+The archive contains each prompt under
+`prompts/<prompt-kind>/<language>/<source-split>/cycle_<n>/prompt.md` plus a
+`manifest.json` listing the source paths and archive paths. Attach this zipfile
+to the follow-up request so the prompts can be promoted through the normal PR
+workflow.
