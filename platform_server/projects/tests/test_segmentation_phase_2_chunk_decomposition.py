@@ -131,7 +131,20 @@ class SegmentationPhase2ChunkDecompositionTests(SimpleTestCase):
         )
 
         prompts = "\n".join(client.prompts)
-        tokens = annotated["pages"][0]["segments"][0]["tokens"]
+        segment = annotated["pages"][0]["segments"][0]
+        tokens = segment["tokens"]
+        trace = segment["annotations"]["segmentation_phase_2_chunk_trace"]
         self.assertIn('"chunk_surface": "l\'aime"', prompts)
         self.assertNotIn('"chunk_surface": "l"', prompts)
         self.assertEqual([token["surface"] for token in tokens], [" ", "Il", " ", "l'", "aime", " ", "bien", "."])
+        self.assertIn(
+            {
+                "token_index": 3,
+                "op_id": "segmentation_phase_2-chunk-p0-s0-t3",
+                "chunk_surface": "l'aime",
+                "predicted_parts": ["l'", "aime"],
+                "surface_preserved": True,
+                "raw_response": {"parts": ["l'", "aime"], "notes": "fixture"},
+            },
+            trace,
+        )

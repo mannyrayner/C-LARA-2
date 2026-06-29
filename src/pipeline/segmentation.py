@@ -782,9 +782,9 @@ async def _segmentation_phase_2_chunk_decomposition(
                 chunk_items.append((page_idx, segment_idx, token_idx, surface, op_id))
 
     semaphore = asyncio.Semaphore(max(1, int(spec.max_concurrency or 1)))
-    cache: dict[str, list[str]] = {}
+    cache: dict[str, tuple[list[str], bool, dict[str, Any]]] = {}
 
-    async def _annotate_chunk(surface: str, op_id: str) -> list[str]:
+    async def _annotate_chunk(surface: str, op_id: str) -> tuple[list[str], bool, dict[str, Any]]:
         if surface in cache:
             return cache[surface]
         prompt = _chunk_decomposition_prompt(
@@ -800,24 +800,51 @@ async def _segmentation_phase_2_chunk_decomposition(
         )
         async with semaphore:
             response = await ai_client.chat_json(prompt, telemetry=telemetry, op_id=op_id)
-        parts = _normalize_chunk_parts(response.get("parts") if isinstance(response, dict) else None)
-        if not parts or "".join(parts) != surface:
+        raw_response = response if isinstance(response, dict) else {}
+        parts = _normalize_chunk_parts(raw_response.get("parts"))
+        surface_preserved = bool(parts) and "".join(parts) == surface
+        if not surface_preserved:
             telemetry.event(
                 op_id,
                 "warn",
                 "chunk-decomposition segmentation_phase_2 output failed preservation check; keeping source token",
-                {"surface_preview": surface[:80], "response": response if isinstance(response, dict) else {}},
+                {"surface_preview": surface[:80], "response": raw_response},
             )
             parts = [surface]
-        cache[surface] = parts
-        return parts
+        telemetry.event(
+            op_id,
+            "info",
+            "chunk-decomposition segmentation_phase_2 result",
+            {
+                "chunk_surface": surface,
+                "predicted_parts": parts,
+                "surface_preserved": surface_preserved,
+                "raw_response": raw_response,
+            },
+        )
+        cache[surface] = (parts, surface_preserved, raw_response)
+        return cache[surface]
 
     tasks = [asyncio.create_task(_annotate_chunk(surface, op_id)) for _, _, _, surface, op_id in chunk_items]
     responses = await asyncio.gather(*tasks) if tasks else []
     parts_by_token = {
         (page_idx, segment_idx, token_idx): parts
-        for (page_idx, segment_idx, token_idx, _, _), parts in zip(chunk_items, responses)
+        for (page_idx, segment_idx, token_idx, _, _), (parts, _, _) in zip(chunk_items, responses)
     }
+    trace_by_segment: dict[tuple[int, int], list[dict[str, Any]]] = {}
+    for (page_idx, segment_idx, token_idx, surface, op_id), (parts, surface_preserved, raw_response) in zip(
+        chunk_items, responses
+    ):
+        trace_by_segment.setdefault((page_idx, segment_idx), []).append(
+            {
+                "token_index": token_idx,
+                "op_id": op_id,
+                "chunk_surface": surface,
+                "predicted_parts": parts,
+                "surface_preserved": surface_preserved,
+                "raw_response": raw_response,
+            }
+        )
 
     new_pages: list[dict[str, Any]] = []
     for page_idx, page in enumerate(pages):
@@ -832,6 +859,9 @@ async def _segmentation_phase_2_chunk_decomposition(
                 else:
                     tokens.extend({"surface": part} for part in parts)
             merged["tokens"] = tokens
+            annotations = dict(merged.get("annotations") or {})
+            annotations["segmentation_phase_2_chunk_trace"] = trace_by_segment.get((page_idx, segment_idx), [])
+            merged["annotations"] = annotations
             new_segments.append(merged)
         new_pages.append(
             {
