@@ -18,6 +18,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--generated-dir", required=True)
         parser.add_argument("--output-zip", required=True)
+        parser.add_argument("--output-markdown")
         parser.add_argument("--languages", default="fr,de,en")
         parser.add_argument("--prompt-kind", default="segmentation")
         parser.add_argument("--source-split", default="development")
@@ -26,6 +27,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         generated_dir = Path(options["generated_dir"]).resolve()
         output_zip = Path(options["output_zip"]).resolve()
+        output_markdown = Path(options["output_markdown"]).resolve() if options.get("output_markdown") else None
         languages = [item.strip() for item in options["languages"].split(",") if item.strip()]
         prompt_kind = str(options["prompt_kind"] or "segmentation")
         source_split = str(options["source_split"] or "development")
@@ -33,8 +35,13 @@ class Command(BaseCommand):
             raise CommandError(f"generated directory not found: {generated_dir}")
         if not generated_dir.is_dir():
             raise CommandError(f"generated path is not a directory: {generated_dir}")
-        if output_zip.exists() and not options["overwrite"]:
-            raise CommandError(f"output zip already exists: {output_zip}; pass --overwrite")
+        existing_outputs = [output_zip]
+        if output_markdown is not None:
+            existing_outputs.append(output_markdown)
+        if not options["overwrite"]:
+            for output_path in existing_outputs:
+                if output_path.exists():
+                    raise CommandError(f"output already exists: {output_path}; pass --overwrite")
 
         prompts = collect_prompts(
             generated_dir,
@@ -62,9 +69,14 @@ class Command(BaseCommand):
             archive.writestr("manifest.json", json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
             for prompt in prompts:
                 archive.write(prompt["source_path"], arcname=prompt["archive_path"])
+        if output_markdown is not None:
+            output_markdown.parent.mkdir(parents=True, exist_ok=True)
+            output_markdown.write_text(render_markdown_bundle(manifest), encoding="utf-8")
         self.stdout.write("Packaged chunk prompts")
         self.stdout.write(f"Prompts: {len(prompts)}")
         self.stdout.write(f"Zip: {output_zip}")
+        if output_markdown is not None:
+            self.stdout.write(f"Markdown: {output_markdown}")
 
 
 def collect_prompts(
@@ -98,3 +110,38 @@ def collect_prompts(
                 }
             )
     return sorted(prompts, key=lambda item: (item["language"], item["cycle_number"]))
+
+
+def render_markdown_bundle(manifest: dict[str, Any]) -> str:
+    lines = [
+        "# Chunk prompt package",
+        "",
+        "Paste this whole file into Codex when a zip attachment is not available.",
+        "",
+        "## Manifest",
+        "",
+        "```json",
+        json.dumps(manifest, ensure_ascii=False, indent=2),
+        "```",
+        "",
+        "## Prompts",
+        "",
+    ]
+    for prompt in manifest["prompts"]:
+        prompt_text = Path(prompt["source_path"]).read_text(encoding="utf-8")
+        lines.extend(
+            [
+                f"### {prompt['archive_path']}",
+                "",
+                f"- Language: `{prompt['language']}`",
+                f"- Source split: `{prompt['source_split']}`",
+                f"- Cycle: `{prompt['cycle_number']}`",
+                f"- Source path: `{prompt['source_path']}`",
+                "",
+                "```text",
+                prompt_text.rstrip(),
+                "```",
+                "",
+            ]
+        )
+    return "\n".join(lines)

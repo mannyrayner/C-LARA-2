@@ -51,6 +51,7 @@ PROMPT_IMPROVEMENT_SUMMARY_MD := $(PROMPT_IMPROVEMENT_BASE_DIR)/cycles_summary.m
 PROMPT_RESULTS_SUMMARY_JSON := $(abspath $(GENERATED_DIR))/prompt_results_summary.json
 PROMPT_RESULTS_SUMMARY_MD := $(abspath $(GENERATED_DIR))/prompt_results_summary.md
 PROMPT_PACKAGE_ZIP ?= $(abspath $(GENERATED_DIR))/prompt_packages/$(PROMPT_KIND)-$(PROMPT_PACKAGE_SOURCE_SPLIT)-prompts.zip
+PROMPT_PACKAGE_MD ?= $(abspath $(GENERATED_DIR))/prompt_packages/$(PROMPT_KIND)-$(PROMPT_PACKAGE_SOURCE_SPLIT)-prompts.md
 DIVERGENCE_REVIEW_RECORDS := $(PROMPT_IMPROVEMENT_DIR)/gold_divergence_review.jsonl
 PROMPT_PREVIEW_TEXT := $(PROMPT_IMPROVEMENT_DIR)/full_api_prompt_preview.txt
 CHUNK_RECORDS := $(CORPUS_SPLIT_DIR)/$(JUDGE_LANGUAGE)/$(SPLIT).jsonl
@@ -81,6 +82,7 @@ PY_GENERATED_DIR := $(call python_path,$(abspath $(GENERATED_DIR)))
 PY_PROMPT_RESULTS_SUMMARY_JSON := $(call python_path,$(PROMPT_RESULTS_SUMMARY_JSON))
 PY_PROMPT_RESULTS_SUMMARY_MD := $(call python_path,$(PROMPT_RESULTS_SUMMARY_MD))
 PY_PROMPT_PACKAGE_ZIP := $(call python_path,$(PROMPT_PACKAGE_ZIP))
+PY_PROMPT_PACKAGE_MD := $(call python_path,$(PROMPT_PACKAGE_MD))
 PY_DIVERGENCE_REVIEW_RECORDS := $(call python_path,$(DIVERGENCE_REVIEW_RECORDS))
 PY_PROMPT_PREVIEW_TEXT := $(call python_path,$(PROMPT_PREVIEW_TEXT))
 PY_VALIDATION_DIR := $(call python_path,$(VALIDATION_DIR))
@@ -142,6 +144,7 @@ help:
 	@echo "  REVISION_MODEL=$(REVISION_MODEL)"
 	@echo "  PROMPT_PACKAGE_SOURCE_SPLIT=$(PROMPT_PACKAGE_SOURCE_SPLIT)"
 	@echo "  PROMPT_PACKAGE_ZIP=$(PROMPT_PACKAGE_ZIP)"
+	@echo "  PROMPT_PACKAGE_MD=$(PROMPT_PACKAGE_MD)"
 	@echo "  VALIDATION_SOURCE_SPLIT=$(VALIDATION_SOURCE_SPLIT)"
 	@echo "  VALIDATION_SOURCE_CYCLE_NUMBER=$(VALIDATION_SOURCE_CYCLE_NUMBER)"
 	@echo "  VALIDATION_SPLIT=$(VALIDATION_SPLIT)"
@@ -284,11 +287,11 @@ summarize-prompt-results: prepare
 
 
 package-prompts: prepare
-	@echo "+ $(MANAGE) package_chunk_prompts --generated-dir $(PY_GENERATED_DIR) --output-zip $(PY_PROMPT_PACKAGE_ZIP) --languages $(LANGUAGES) --prompt-kind $(PROMPT_KIND) --source-split $(PROMPT_PACKAGE_SOURCE_SPLIT) --overwrite"
+	@echo "+ $(MANAGE) package_chunk_prompts --generated-dir $(PY_GENERATED_DIR) --output-zip $(PY_PROMPT_PACKAGE_ZIP) --output-markdown $(PY_PROMPT_PACKAGE_MD) --languages $(LANGUAGES) --prompt-kind $(PROMPT_KIND) --source-split $(PROMPT_PACKAGE_SOURCE_SPLIT) --overwrite"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) package_chunk_prompts --generated-dir "$(PY_GENERATED_DIR)" --output-zip "$(PY_PROMPT_PACKAGE_ZIP)" --languages "$(LANGUAGES)" --prompt-kind "$(PROMPT_KIND)" --source-split "$(PROMPT_PACKAGE_SOURCE_SPLIT)" --overwrite; \
+		$(MANAGE) package_chunk_prompts --generated-dir "$(PY_GENERATED_DIR)" --output-zip "$(PY_PROMPT_PACKAGE_ZIP)" --output-markdown "$(PY_PROMPT_PACKAGE_MD)" --languages "$(LANGUAGES)" --prompt-kind "$(PROMPT_KIND)" --source-split "$(PROMPT_PACKAGE_SOURCE_SPLIT)" --overwrite; \
 	else \
-		echo "dry-run only; set RUN=1 to write $(PROMPT_PACKAGE_ZIP)"; \
+		echo "dry-run only; set RUN=1 to write $(PROMPT_PACKAGE_ZIP) and $(PROMPT_PACKAGE_MD)"; \
 	fi
 
 clean:

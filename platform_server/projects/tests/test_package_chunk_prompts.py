@@ -17,11 +17,13 @@ class PackageChunkPromptsTests(SimpleTestCase):
             self._write_prompt(root, "en", 1, "English prompt")
             self._write_prompt(root, "fr", 3, "French prompt")
             output_zip = root / "prompt_packages" / "segmentation-development-prompts.zip"
+            output_markdown = root / "prompt_packages" / "segmentation-development-prompts.md"
 
             call_command(
                 "package_chunk_prompts",
                 generated_dir=str(root),
                 output_zip=str(output_zip),
+                output_markdown=str(output_markdown),
                 languages="fr,de,en",
                 prompt_kind="segmentation",
                 source_split="development",
@@ -40,6 +42,10 @@ class PackageChunkPromptsTests(SimpleTestCase):
                     [item["language"] for item in manifest["prompts"]],
                     ["de", "en", "fr"],
                 )
+            markdown = output_markdown.read_text(encoding="utf-8")
+            self.assertIn("# Chunk prompt package", markdown)
+            self.assertIn("### prompts/segmentation/de/development/cycle_2/prompt.md", markdown)
+            self.assertIn("German prompt", markdown)
 
     def _write_prompt(self, root: Path, language: str, cycle: int, text: str) -> None:
         path = root / "prompt_improvement" / f"{language}-segmentation-development" / f"cycle_{cycle}" / "prompt.md"

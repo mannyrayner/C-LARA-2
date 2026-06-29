@@ -314,9 +314,11 @@ make package-prompts RUN=1 \
 The target scans
 `generated/prompt_improvement/<language>-<prompt-kind>-<source-split>/cycle_*/prompt.md`
 for the requested languages and writes
-`generated/prompt_packages/<prompt-kind>-<source-split>-prompts.zip` by default.
+`generated/prompt_packages/<prompt-kind>-<source-split>-prompts.zip` and
+`generated/prompt_packages/<prompt-kind>-<source-split>-prompts.md` by default.
 The archive contains each prompt under
 `prompts/<prompt-kind>/<language>/<source-split>/cycle_<n>/prompt.md` plus a
-`manifest.json` listing the source paths and archive paths. Attach this zipfile
-to the follow-up request so the prompts can be promoted through the normal PR
-workflow.
+`manifest.json` listing the source paths and archive paths. If zip attachments are
+available, attach the zipfile to the follow-up request. If not, paste the
+Markdown bundle; it contains the same manifest and prompt text in fenced blocks
+so the prompts can still be promoted through the normal PR workflow.
