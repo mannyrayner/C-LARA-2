@@ -8,7 +8,7 @@ from unittest.mock import patch
 from django.core.management import call_command
 from django.test import SimpleTestCase
 
-from projects.management.commands.run_chunk_prompt_on_corpus import build_prompt, normalize_parts
+from projects.management.commands.run_chunk_prompt_on_corpus import build_prompt, normalize_parts, normalize_response
 
 
 class _StubClient:
@@ -96,6 +96,17 @@ class RunChunkPromptOnCorpusTests(SimpleTestCase):
 
     def test_normalize_parts_splits_pipe_delimited_item_inside_list(self):
         self.assertEqual(normalize_parts(["cordes|."]), ["cordes", "."])
+
+    def test_normalize_response_repairs_apostrophe_glyph_to_preserve_surface(self):
+        prediction = normalize_response(
+            record={"record_id": "fr:1", "language": "fr", "chunk_surface": "qu’il"},
+            response={"parts": ["qu'|il"]},
+            prompt_kind="segmentation",
+            model="test-model",
+        )
+
+        self.assertEqual(prediction["predicted_parts"], ["qu’", "il"])
+        self.assertTrue(prediction["surface_preserved"])
 
     @patch("projects.management.commands.run_chunk_prompt_on_corpus.OpenAIClient", _InvalidSurfaceClient)
     def test_command_replaces_non_surface_preserving_segmentation_with_chunk(self):

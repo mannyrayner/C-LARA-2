@@ -181,3 +181,36 @@ class SegmentationPhase2ChunkDecompositionTests(SimpleTestCase):
         self.assertEqual([token["surface"] for token in segment["tokens"]], [" ", "cordes", "."])
         self.assertEqual(trace[0]["predicted_parts"], ["cordes", "."])
         self.assertTrue(trace[0]["surface_preserved"])
+
+    def test_chunk_decomposition_repairs_apostrophe_glyph_to_preserve_surface(self):
+        text = {
+            "l2": "fr",
+            "surface": " qu’il",
+            "pages": [
+                {
+                    "surface": " qu’il",
+                    "segments": [{"surface": " qu’il", "annotations": {}}],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        client = FakeChunkClient({"qu’il": ["qu'|il"]})
+
+        annotated = asyncio.run(
+            segmentation_phase_2(
+                SegmentationPhase2Spec(
+                    text=text,
+                    language="fr",
+                    mechanism="chunk_decomposition",
+                    chunk_prompt_cycle=3,
+                ),
+                client=client,  # type: ignore[arg-type]
+            )
+        )
+
+        segment = annotated["pages"][0]["segments"][0]
+        trace = segment["annotations"]["segmentation_phase_2_chunk_trace"]
+        self.assertEqual([token["surface"] for token in segment["tokens"]], [" ", "qu’", "il"])
+        self.assertEqual(trace[0]["predicted_parts"], ["qu’", "il"])
+        self.assertTrue(trace[0]["surface_preserved"])

@@ -150,8 +150,9 @@ def normalize_response(*, record: dict[str, Any], response: Any, prompt_kind: st
             "evaluator_judgement": judgement,
             "notes": str(payload.get("notes") or ""),
         }
-    parts = normalize_parts(payload.get("parts") or payload.get("predicted_parts"))
     chunk_surface = str(record.get("chunk_surface") or "")
+    parts = normalize_parts(payload.get("parts") or payload.get("predicted_parts"))
+    parts = repair_apostrophe_variants(parts, chunk_surface)
     surface_preserved = "".join(parts) == chunk_surface
     invalid_response_reason = ""
     if not surface_preserved:
@@ -180,6 +181,37 @@ def normalize_parts(value: Any) -> list[str]:
     if isinstance(value, str) and value:
         return [part for part in value.split("|") if part != ""]
     return []
+
+
+APOSTROPHE_CHARS = {"'", "’", "‘", "`", "´"}
+
+
+def repair_apostrophe_variants(parts: list[str], surface: str) -> list[str]:
+    joined = "".join(parts)
+    if joined == surface:
+        return parts
+
+    def plain_apostrophes(text: str) -> str:
+        return "".join("'" if ch in APOSTROPHE_CHARS else ch for ch in text)
+
+    if plain_apostrophes(joined) != plain_apostrophes(surface) or len(joined) != len(surface):
+        return parts
+
+    repaired: list[str] = []
+    cursor = 0
+    for part in parts:
+        chars: list[str] = []
+        for ch in part:
+            surface_ch = surface[cursor]
+            if ch == surface_ch:
+                chars.append(ch)
+            elif ch in APOSTROPHE_CHARS and surface_ch in APOSTROPHE_CHARS:
+                chars.append(surface_ch)
+            else:
+                return parts
+            cursor += 1
+        repaired.append("".join(chars))
+    return repaired
 
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:

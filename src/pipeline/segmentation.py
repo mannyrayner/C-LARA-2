@@ -752,6 +752,39 @@ def _normalize_chunk_parts(value: Any) -> list[str]:
     return []
 
 
+_APOSTROPHE_CHARS = {"'", "’", "‘", "`", "´"}
+
+
+def _repair_apostrophe_variants(parts: list[str], surface: str) -> list[str]:
+    """Preserve model boundaries while matching the apostrophe glyph used by the input surface."""
+
+    joined = "".join(parts)
+    if joined == surface:
+        return parts
+
+    def _plain_apostrophes(text: str) -> str:
+        return "".join("'" if ch in _APOSTROPHE_CHARS else ch for ch in text)
+
+    if _plain_apostrophes(joined) != _plain_apostrophes(surface) or len(joined) != len(surface):
+        return parts
+
+    repaired: list[str] = []
+    cursor = 0
+    for part in parts:
+        chars: list[str] = []
+        for ch in part:
+            surface_ch = surface[cursor]
+            if ch == surface_ch:
+                chars.append(ch)
+            elif ch in _APOSTROPHE_CHARS and surface_ch in _APOSTROPHE_CHARS:
+                chars.append(surface_ch)
+            else:
+                return parts
+            cursor += 1
+        repaired.append("".join(chars))
+    return repaired
+
+
 async def _segmentation_phase_2_chunk_decomposition(
     spec: SegmentationPhase2Spec,
     *,
@@ -808,6 +841,7 @@ async def _segmentation_phase_2_chunk_decomposition(
             response = await ai_client.chat_json(prompt, telemetry=telemetry, op_id=op_id)
         raw_response = response if isinstance(response, dict) else {}
         parts = _normalize_chunk_parts(raw_response.get("parts"))
+        parts = _repair_apostrophe_variants(parts, surface)
         surface_preserved = bool(parts) and "".join(parts) == surface
         if not surface_preserved:
             telemetry.event(
