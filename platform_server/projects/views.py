@@ -61,6 +61,7 @@ from core.ai_api import OpenAIClient, normalize_json_text
 from core.project_understanding import answer_project_understanding_question_with_codex_exec
 from core.language_direction import language_direction
 from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pipeline
+from pipeline import annotation_prompts
 from pipeline.mwe import normalize_mwes
 from pipeline.stage_artifacts import read_stage_artifact, stage_artifact_path, write_stage_artifact
 
@@ -231,6 +232,7 @@ PAGE_IMAGE_PLACEMENT_CHOICES = ["none", "top", "bottom"]
 SEGMENTATION_METHOD_CHOICES = ["auto", "jieba", "ai"]
 ROMANIZATION_METHOD_CHOICES = ["auto", "pypinyin", "indic_transliteration", "ai"]
 LEGACY_IMPORT_PROCESSING_METHOD = "legacy_clara_import"
+CHUNK_DECOMPOSITION_PROMPT_VARIANT = "chunk_decomposition_multilingual_v1"
 CONTENT_DATE_FILTERS = {
     "any": None,
     "last_3_days": timedelta(days=3),
@@ -238,6 +240,93 @@ CONTENT_DATE_FILTERS = {
     "last_3_months": timedelta(days=90),
     "last_year": timedelta(days=365),
 }
+
+
+def _chunk_decomposition_prompt_manifest() -> dict[str, Any]:
+    manifest_path = (
+        annotation_prompts.default_prompts_root()
+        / "segmentation_phase_2"
+        / "variants"
+        / CHUNK_DECOMPOSITION_PROMPT_VARIANT
+        / "manifest.json"
+    )
+    try:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _latest_chunk_decomposition_cycle(language: str) -> int | None:
+    normalized_language = (language or "").strip().lower()[:2]
+    cycles: list[int] = []
+    for prompt in _chunk_decomposition_prompt_manifest().get("prompts", []) or []:
+        if not isinstance(prompt, dict):
+            continue
+        if str(prompt.get("language") or "").lower() != normalized_language:
+            continue
+        try:
+            cycles.append(int(prompt.get("cycle_number")))
+        except Exception:
+            continue
+    return max(cycles) if cycles else None
+
+
+def _chunk_decomposition_stage_parameters(language: str) -> dict[str, dict[str, Any]] | None:
+    cycle = _latest_chunk_decomposition_cycle(language)
+    if cycle is None:
+        return None
+    return {
+        "segmentation_phase_2": {
+            "mechanism": "chunk_decomposition",
+            "chunk_prompt_variant": CHUNK_DECOMPOSITION_PROMPT_VARIANT,
+            "chunk_prompt_split": "development",
+            "chunk_prompt_cycle": cycle,
+            "max_concurrency": 4,
+        }
+    }
+
+
+def _stage_parameter_presets(language: str) -> list[dict[str, Any]]:
+    presets: list[dict[str, Any]] = []
+    chunk_params = _chunk_decomposition_stage_parameters(language)
+    if chunk_params:
+        cycle = chunk_params["segmentation_phase_2"]["chunk_prompt_cycle"]
+        presets.append(
+            {
+                "value": "chunk_decomposition",
+                "label": f"Chunk decomposition segmentation_phase_2 (cycle {cycle})",
+                "description": (
+                    "Use the promoted whitespace-chunk prompt for this project's language. "
+                    "Available for de/en/fr prompt bundles."
+                ),
+                "parameters": chunk_params,
+                "json": json.dumps(chunk_params, ensure_ascii=False, indent=2),
+            }
+        )
+    return presets
+
+
+def _stage_parameter_preset_by_value(language: str, value: str) -> dict[str, dict[str, Any]] | None:
+    for preset in _stage_parameter_presets(language):
+        if preset["value"] == value:
+            return preset["parameters"]
+    return None
+
+
+def _merge_stage_parameters(
+    base: dict[str, dict[str, Any]], override: dict[str, dict[str, Any]]
+) -> dict[str, dict[str, Any]]:
+    merged = json.loads(json.dumps(base or {}))
+    for stage, params in (override or {}).items():
+        stage_payload = merged.setdefault(stage, {})
+        if isinstance(stage_payload, dict) and isinstance(params, dict):
+            stage_payload.update(params)
+        else:
+            merged[stage] = params
+    return merged
+
+
 CONTENT_DATE_ALIASES = {
     "today": "last_3_days",
     "last_7_days": "last_month",
@@ -4915,17 +5004,19 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["ai_models"] = AI_MODEL_CHOICES
         context["selected_ai_model"] = project.ai_model or DEFAULT_MODEL
         context["detailed_api_trace_default"] = False
-        context["stage_parameters_example"] = json.dumps(
-            {
-                "segmentation_phase_1": {"prioritise_sentences": True},
-                "segmentation_phase_2": {
-                    "mechanism": "boundary_first",
-                    "variant": "clitic_compound",
-                    "fewshot_count": "all",
-                },
+        stage_parameter_presets = _stage_parameter_presets(project.language)
+        context["stage_parameter_presets"] = stage_parameter_presets
+        example_stage_parameters: dict[str, dict[str, Any]] = {
+            "segmentation_phase_1": {"prioritise_sentences": True},
+            "segmentation_phase_2": {
+                "mechanism": "boundary_first",
+                "variant": "clitic_compound",
+                "fewshot_count": "all",
             },
-            indent=2,
-        )
+        }
+        if stage_parameter_presets:
+            example_stage_parameters = stage_parameter_presets[0]["parameters"]
+        context["stage_parameters_example"] = json.dumps(example_stage_parameters, ensure_ascii=False, indent=2)
         context["language_choices"] = ProjectForm.LANGUAGE_CHOICES
         context["project_text_direction"] = language_direction(project.language)
         context["project_annotation_direction"] = language_direction(project.target_language)
@@ -8199,6 +8290,13 @@ def compile_project(request: HttpRequest, pk: int) -> HttpResponse:
     if stage_parameters_error:
         messages.error(request, stage_parameters_error)
         return redirect(return_to)
+    stage_parameters_preset = (request.POST.get("stage_parameters_preset") or "").strip()
+    if stage_parameters_preset:
+        preset_stage_parameters = _stage_parameter_preset_by_value(project.language, stage_parameters_preset)
+        if preset_stage_parameters is None:
+            messages.error(request, "Unknown stage-parameter preset.")
+            return redirect(return_to)
+        stage_parameters = _merge_stage_parameters(preset_stage_parameters, stage_parameters)
     compose_latest_upstream = True
     confirm_compose_latest = True
 
