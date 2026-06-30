@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import re
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +9,7 @@ from django.core.management.base import BaseCommand, CommandError
 
 from core.ai_api import OpenAIClient
 from core.config import DEFAULT_MODEL, OpenAIConfig
+from pipeline.language_resources import is_known_abbreviation_surface
 
 PROMPT_KINDS = ("segmentation", "rating")
 
@@ -183,35 +183,6 @@ def normalize_parts(value: Any) -> list[str]:
     if isinstance(value, str) and value:
         return [part for part in value.split("|") if part != ""]
     return []
-
-
-COMMON_ABBREVIATION_SURFACES = {
-    "Mr.",
-    "Mrs.",
-    "Ms.",
-    "Dr.",
-    "Prof.",
-    "Jr.",
-    "Sr.",
-    "St.",
-    "vs.",
-    "etc.",
-    "e.g.",
-    "i.e.",
-}
-LANGUAGE_ABBREVIATION_SURFACES = {
-    "de": {"Dr.", "Prof.", "bzw.", "bspw.", "bsp.", "ca.", "z.B."},
-    "en": {"Mr.", "Mrs.", "Ms.", "Dr.", "Prof.", "Jr.", "Sr.", "St.", "vs.", "etc.", "e.g.", "i.e."},
-}
-
-
-def is_known_abbreviation_surface(surface: str, language: str) -> bool:
-    if surface in COMMON_ABBREVIATION_SURFACES:
-        return True
-    language_key = (language or "").lower().split("-", 1)[0]
-    if surface in LANGUAGE_ABBREVIATION_SURFACES.get(language_key, set()):
-        return True
-    return bool(re.fullmatch(r"(?:[A-Za-z]\.){2,}", surface))
 
 
 def merge_known_abbreviation_parts(parts: list[str], *, surface: str, language: str) -> list[str]:

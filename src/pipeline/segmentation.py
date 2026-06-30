@@ -12,6 +12,7 @@ from typing import Any, Iterable
 from core.ai_api import OpenAIClient
 from core.telemetry import NullTelemetry, Telemetry
 from . import annotation_prompts
+from .language_resources import is_known_abbreviation_surface
 from .generic_annotation import GenericAnnotationSpec, generic_annotation
 
 
@@ -506,7 +507,7 @@ async def segmentation_phase_2(
     if mechanism == "chunk_decomposition":
         prompt_template = _load_chunk_decomposition_prompt(spec, prompts_root=prompts_root)
         return await _segmentation_phase_2_chunk_decomposition(
-            spec, client=client, telemetry=telemetry, prompt_template=prompt_template
+            spec, client=client, telemetry=telemetry, prompt_template=prompt_template, prompts_root=prompts_root
         )
 
     template = (
@@ -801,39 +802,10 @@ def _repair_equivalent_glyph_variants(parts: list[str], surface: str) -> list[st
     return repaired
 
 
-_COMMON_ABBREVIATION_SURFACES = {
-    "Mr.",
-    "Mrs.",
-    "Ms.",
-    "Dr.",
-    "Prof.",
-    "Jr.",
-    "Sr.",
-    "St.",
-    "vs.",
-    "etc.",
-    "e.g.",
-    "i.e.",
-}
-_LANGUAGE_ABBREVIATION_SURFACES = {
-    "de": {"Dr.", "Prof.", "bzw.", "bspw.", "bsp.", "ca.", "z.B."},
-    "en": {"Mr.", "Mrs.", "Ms.", "Dr.", "Prof.", "Jr.", "Sr.", "St.", "vs.", "etc.", "e.g.", "i.e."},
-}
-
-
-def _is_known_abbreviation_surface(surface: str, language: str) -> bool:
-    if surface in _COMMON_ABBREVIATION_SURFACES:
-        return True
-    language_key = (language or "").lower().split("-", 1)[0]
-    if surface in _LANGUAGE_ABBREVIATION_SURFACES.get(language_key, set()):
-        return True
-    return bool(re.fullmatch(r"(?:[A-Za-z]\.){2,}", surface))
-
-
-def _merge_known_abbreviation_parts(parts: list[str], *, surface: str, language: str) -> list[str]:
+def _merge_known_abbreviation_parts(parts: list[str], *, surface: str, language: str, prompts_root: Path) -> list[str]:
     if len(parts) <= 1 or "".join(parts) != surface:
         return parts
-    if _is_known_abbreviation_surface(surface, language):
+    if is_known_abbreviation_surface(surface, language, prompts_root=prompts_root):
         return [surface]
     return parts
 
@@ -966,6 +938,7 @@ async def _segmentation_phase_2_chunk_decomposition(
     client: OpenAIClient | None,
     telemetry: Telemetry,
     prompt_template: str,
+    prompts_root: Path,
 ) -> dict[str, Any]:
     ai_client = client or OpenAIClient()
     base_op = spec.op_id or "segmentation_phase_2"
@@ -1018,7 +991,7 @@ async def _segmentation_phase_2_chunk_decomposition(
         raw_response = response if isinstance(response, dict) else {}
         parts = _normalize_chunk_parts(raw_response.get("parts"))
         parts = _repair_equivalent_glyph_variants(parts, surface)
-        parts = _merge_known_abbreviation_parts(parts, surface=surface, language=spec.language)
+        parts = _merge_known_abbreviation_parts(parts, surface=surface, language=spec.language, prompts_root=prompts_root)
         surface_preserved = bool(parts) and "".join(parts) == surface
         if not surface_preserved:
             telemetry.event(
