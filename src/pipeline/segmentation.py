@@ -848,10 +848,11 @@ def _core_parts_from_surface_parts(parts: list[str], *, prefix: str, core: str, 
         part_start = cursor
         part_end = cursor + len(part)
         cursor = part_end
-        overlap_start = max(part_start, core_start)
-        overlap_end = min(part_end, core_end)
-        if overlap_start < overlap_end:
-            core_parts.append(part[overlap_start - part_start : overlap_end - part_start])
+        if part_end <= core_start or part_start >= core_end:
+            continue
+        if part_start < core_start or part_end > core_end:
+            return []
+        core_parts.append(part)
     return core_parts if "".join(core_parts) == core else []
 
 

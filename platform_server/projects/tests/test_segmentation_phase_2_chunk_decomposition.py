@@ -277,6 +277,52 @@ class SegmentationPhase2ChunkDecompositionTests(SimpleTestCase):
         self.assertTrue(trace[0]["surface_preserved"])
 
 
+    def test_chunk_consistency_does_not_split_abbreviation_punctuation_by_default(self):
+        text = {
+            "l2": "en",
+            "surface": "Good advice, Mr. Cummins.",
+            "pages": [
+                {
+                    "surface": "Good advice, Mr. Cummins.",
+                    "segments": [{"surface": "Good advice, Mr. Cummins.", "annotations": {}}],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        client = FakeChunkClient(
+            {
+                "Good": ["Good"],
+                "advice,": ["advice", ","],
+                "Mr.": ["Mr."],
+                "Cummins.": ["Cummins", "."],
+            }
+        )
+
+        annotated = asyncio.run(
+            segmentation_phase_2(
+                SegmentationPhase2Spec(
+                    text=text,
+                    language="en",
+                    mechanism="chunk_decomposition",
+                    chunk_prompt_cycle=2,
+                    chunk_consistency=True,
+                ),
+                client=client,  # type: ignore[arg-type]
+            )
+        )
+
+        segment = annotated["pages"][0]["segments"][0]
+        trace = segment["annotations"]["segmentation_phase_2_chunk_trace"]
+        self.assertEqual(
+            [token["surface"] for token in segment["tokens"]],
+            ["Good", " ", "advice", ",", " ", "Mr.", " ", "Cummins", "."],
+        )
+        mr_trace = next(item for item in trace if item["chunk_surface"] == "Mr.")
+        self.assertEqual(mr_trace["predicted_parts"], ["Mr."])
+        self.assertFalse(mr_trace["consistency"]["changed"])
+        self.assertEqual(mr_trace["consistency"]["core_parts"], [])
+
     def test_chunk_consistency_reuses_unique_surface_calls(self):
         text = {
             "l2": "de",
