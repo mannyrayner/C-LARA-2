@@ -16,6 +16,17 @@ from pipeline.stage_artifacts import write_stage_artifact
 from .review_fewshots import _resolve_cli_path
 
 
+def _stage_parameter_bool(params: dict[str, Any], key: str, default: bool) -> bool:
+    value = params.get(key, default)
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return default
+    if isinstance(value, (int, float)):
+        return bool(value)
+    return str(value).strip().lower() not in {"0", "false", "no", "off"}
+
+
 @dataclass(frozen=True, slots=True)
 class ExperimentInputRecord:
     record_id: str
@@ -218,6 +229,7 @@ async def run_segmentation_phase_2_records(
                     else None
                 ),
                 max_concurrency=int(seg2_params.get("max_concurrency") or 20),
+                chunk_consistency=_stage_parameter_bool(seg2_params, "chunk_consistency", True),
             )
         )
         outputs.append(

@@ -33,6 +33,7 @@ class FullPipelineStageParameterTests(SimpleTestCase):
                                 "chunk_prompt_split": "development",
                                 "chunk_prompt_cycle": 2,
                                 "max_concurrency": 3,
+                                "chunk_consistency": False,
                             }
                         },
                     ),
@@ -47,3 +48,4 @@ class FullPipelineStageParameterTests(SimpleTestCase):
         self.assertEqual(spec.chunk_prompt_split, "development")
         self.assertEqual(spec.chunk_prompt_cycle, 2)
         self.assertEqual(spec.max_concurrency, 3)
+        self.assertFalse(spec.chunk_consistency)

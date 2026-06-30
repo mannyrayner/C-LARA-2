@@ -466,6 +466,7 @@ class SegmentationPhase2Spec:
     chunk_prompt_split: str = "development"
     chunk_prompt_cycle: int | None = None
     max_concurrency: int = 20
+    chunk_consistency: bool = True
 
 
 async def segmentation_phase_2(
@@ -800,6 +801,128 @@ def _repair_equivalent_glyph_variants(parts: list[str], surface: str) -> list[st
     return repaired
 
 
+_CHUNK_EDGE_CHARS = set(
+    "\"'“”„‟«»‘’`´ʼ()[]{}<>.,;:!?…¿¡"
+)
+
+
+def _chunk_consistency_record(*, surface: str, parts: list[str], surface_preserved: bool) -> dict[str, Any]:
+    prefix, core, suffix = _split_chunk_surface_for_consistency(surface)
+    core_parts = _core_parts_from_surface_parts(parts, prefix=prefix, core=core, suffix=suffix) if surface_preserved else []
+    key = _chunk_consistency_key(core) if core else ""
+    return {
+        "enabled": False,
+        "consistency_key": key,
+        "prefix": prefix,
+        "core_surface": core,
+        "suffix": suffix,
+        "core_parts": core_parts,
+        "canonical_parts": [],
+        "changed": False,
+        "cache_status": "disabled",
+    }
+
+
+def _split_chunk_surface_for_consistency(surface: str) -> tuple[str, str, str]:
+    start = 0
+    end = len(surface)
+    while start < end and surface[start] in _CHUNK_EDGE_CHARS:
+        start += 1
+    while end > start and surface[end - 1] in _CHUNK_EDGE_CHARS:
+        end -= 1
+    return surface[:start], surface[start:end], surface[end:]
+
+
+def _chunk_consistency_key(core: str) -> str:
+    return "".join(_equivalent_glyph_key(ch) for ch in core)
+
+
+def _core_parts_from_surface_parts(parts: list[str], *, prefix: str, core: str, suffix: str) -> list[str]:
+    if not core or "".join(parts) != f"{prefix}{core}{suffix}":
+        return []
+    core_start = len(prefix)
+    core_end = core_start + len(core)
+    cursor = 0
+    core_parts: list[str] = []
+    for part in parts:
+        part_start = cursor
+        part_end = cursor + len(part)
+        cursor = part_end
+        overlap_start = max(part_start, core_start)
+        overlap_end = min(part_end, core_end)
+        if overlap_start < overlap_end:
+            core_parts.append(part[overlap_start - part_start : overlap_end - part_start])
+    return core_parts if "".join(core_parts) == core else []
+
+
+def _wrap_core_parts(prefix: str, core_parts: list[str], suffix: str) -> list[str]:
+    wrapped: list[str] = []
+    if prefix:
+        wrapped.extend(prefix)
+    wrapped.extend(core_parts)
+    if suffix:
+        wrapped.extend(suffix)
+    return wrapped
+
+
+def _choose_canonical_core_parts(records: list[dict[str, Any]]) -> list[str]:
+    counts: dict[tuple[str, ...], int] = {}
+    first_seen: dict[tuple[str, ...], int] = {}
+    for idx, record in enumerate(records):
+        core_parts = record.get("core_parts") or []
+        if not core_parts:
+            continue
+        key = tuple(str(part) for part in core_parts)
+        counts[key] = counts.get(key, 0) + 1
+        first_seen.setdefault(key, idx)
+    if not counts:
+        return []
+    best = min(counts, key=lambda key: (-counts[key], first_seen[key]))
+    return list(best)
+
+
+def _apply_chunk_consistency(
+    chunk_items: list[tuple[int, int, int, str, str]],
+    responses: list[tuple[list[str], bool, dict[str, Any]]],
+    consistency_records: list[dict[str, Any]],
+) -> tuple[list[tuple[list[str], bool, dict[str, Any]]], list[dict[str, Any]]]:
+    records_by_key: dict[str, list[dict[str, Any]]] = {}
+    for record in consistency_records:
+        record["enabled"] = True
+        if record["consistency_key"] and record["core_parts"]:
+            records_by_key.setdefault(record["consistency_key"], []).append(record)
+
+    canonical_by_key = {
+        key: _choose_canonical_core_parts(records) for key, records in records_by_key.items()
+    }
+    seen_keys: set[str] = set()
+    adjusted_responses: list[tuple[list[str], bool, dict[str, Any]]] = []
+    adjusted_records: list[dict[str, Any]] = []
+    for (_, _, _, surface, _), (parts, surface_preserved, raw_response), record in zip(
+        chunk_items, responses, consistency_records
+    ):
+        key = str(record.get("consistency_key") or "")
+        canonical_core_parts = canonical_by_key.get(key) or []
+        adjusted_record = dict(record)
+        adjusted_record["canonical_parts"] = canonical_core_parts
+        adjusted_record["cache_status"] = "miss" if key and key not in seen_keys else "hit" if key else "skip"
+        if key:
+            seen_keys.add(key)
+        adjusted_parts = parts
+        if surface_preserved and canonical_core_parts:
+            candidate = _wrap_core_parts(
+                str(record.get("prefix") or ""),
+                canonical_core_parts,
+                str(record.get("suffix") or ""),
+            )
+            if "".join(candidate) == surface:
+                adjusted_parts = candidate
+                adjusted_record["changed"] = candidate != parts
+        adjusted_responses.append((adjusted_parts, surface_preserved, raw_response))
+        adjusted_records.append(adjusted_record)
+    return adjusted_responses, adjusted_records
+
+
 async def _segmentation_phase_2_chunk_decomposition(
     spec: SegmentationPhase2Spec,
     *,
@@ -818,6 +941,7 @@ async def _segmentation_phase_2_chunk_decomposition(
             "chunk_prompt_variant": spec.chunk_prompt_variant,
             "chunk_prompt_split": spec.chunk_prompt_split,
             "chunk_prompt_cycle": spec.chunk_prompt_cycle,
+            "chunk_consistency": spec.chunk_consistency,
         },
     )
 
@@ -880,15 +1004,31 @@ async def _segmentation_phase_2_chunk_decomposition(
         cache[surface] = (parts, surface_preserved, raw_response)
         return cache[surface]
 
-    tasks = [asyncio.create_task(_annotate_chunk(surface, op_id)) for _, _, _, surface, op_id in chunk_items]
-    responses = await asyncio.gather(*tasks) if tasks else []
+    if spec.chunk_consistency:
+        unique_surfaces = list(dict.fromkeys(surface for _, _, _, surface, _ in chunk_items))
+        surface_op_ids = {surface: f"{base_op}-chunk-surface-{idx}" for idx, surface in enumerate(unique_surfaces)}
+        surface_tasks = [asyncio.create_task(_annotate_chunk(surface, surface_op_ids[surface])) for surface in unique_surfaces]
+        surface_responses = await asyncio.gather(*surface_tasks) if surface_tasks else []
+        response_by_surface = dict(zip(unique_surfaces, surface_responses))
+        responses = [response_by_surface[surface] for _, _, _, surface, _ in chunk_items]
+    else:
+        tasks = [asyncio.create_task(_annotate_chunk(surface, op_id)) for _, _, _, surface, op_id in chunk_items]
+        responses = await asyncio.gather(*tasks) if tasks else []
+
+    consistency_records = [
+        _chunk_consistency_record(surface=surface, parts=parts, surface_preserved=surface_preserved)
+        for (_, _, _, surface, _), (parts, surface_preserved, _) in zip(chunk_items, responses)
+    ]
+    if spec.chunk_consistency:
+        responses, consistency_records = _apply_chunk_consistency(chunk_items, responses, consistency_records)
+
     parts_by_token = {
         (page_idx, segment_idx, token_idx): parts
         for (page_idx, segment_idx, token_idx, _, _), (parts, _, _) in zip(chunk_items, responses)
     }
     trace_by_segment: dict[tuple[int, int], list[dict[str, Any]]] = {}
-    for (page_idx, segment_idx, token_idx, surface, op_id), (parts, surface_preserved, raw_response) in zip(
-        chunk_items, responses
+    for (page_idx, segment_idx, token_idx, surface, op_id), (parts, surface_preserved, raw_response), consistency in zip(
+        chunk_items, responses, consistency_records
     ):
         trace_by_segment.setdefault((page_idx, segment_idx), []).append(
             {
@@ -898,6 +1038,7 @@ async def _segmentation_phase_2_chunk_decomposition(
                 "predicted_parts": parts,
                 "surface_preserved": surface_preserved,
                 "raw_response": raw_response,
+                "consistency": consistency,
             }
         )
 
@@ -1082,6 +1223,7 @@ class SegmentationPipelineSpec:
     phase2_chunk_prompt_split: str = "development"
     phase2_chunk_prompt_cycle: int | None = None
     phase2_max_concurrency: int = 20
+    phase2_chunk_consistency: bool = True
 
 
 async def segmentation(
@@ -1118,6 +1260,7 @@ async def segmentation(
             chunk_prompt_split=spec.phase2_chunk_prompt_split,
             chunk_prompt_cycle=spec.phase2_chunk_prompt_cycle,
             max_concurrency=spec.phase2_max_concurrency,
+            chunk_consistency=spec.phase2_chunk_consistency,
         ),
         client=ai_client,
     )

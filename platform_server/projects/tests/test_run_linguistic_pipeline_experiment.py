@@ -145,6 +145,7 @@ class RunLinguisticPipelineExperimentTests(SimpleTestCase):
                             "chunk_prompt_variant": "chunk_decomposition_multilingual_v1",
                             "chunk_prompt_cycle": 2,
                             "max_concurrency": 3,
+                            "chunk_consistency": False,
                         }
                     },
                 )
@@ -156,6 +157,7 @@ class RunLinguisticPipelineExperimentTests(SimpleTestCase):
         self.assertEqual(spec.chunk_prompt_variant, "chunk_decomposition_multilingual_v1")
         self.assertEqual(spec.chunk_prompt_cycle, 2)
         self.assertEqual(spec.max_concurrency, 3)
+        self.assertFalse(spec.chunk_consistency)
 
 
 def load_input_records_from_payload(payload):

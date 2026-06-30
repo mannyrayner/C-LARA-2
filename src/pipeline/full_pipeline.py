@@ -36,6 +36,17 @@ PIPELINE_ORDER = [
 ]
 
 
+def _stage_parameter_bool(params: dict[str, Any], key: str, default: bool) -> bool:
+    value = params.get(key, default)
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return default
+    if isinstance(value, (int, float)):
+        return bool(value)
+    return str(value).strip().lower() not in {"0", "false", "no", "off"}
+
+
 @dataclass(slots=True)
 class FullPipelineSpec:
     """Specification for the full annotation pipeline.
@@ -246,6 +257,7 @@ async def run_full_pipeline(
                             else None
                         ),
                         max_concurrency=int(seg2_params.get("max_concurrency") or 20),
+                        chunk_consistency=_stage_parameter_bool(seg2_params, "chunk_consistency", True),
                     ),
                     client=ai_client,
                 )

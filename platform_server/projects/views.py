@@ -283,6 +283,7 @@ def _chunk_decomposition_stage_parameters(language: str) -> dict[str, dict[str, 
             "chunk_prompt_split": "development",
             "chunk_prompt_cycle": cycle,
             "max_concurrency": 20,
+            "chunk_consistency": True,
         }
     }
 

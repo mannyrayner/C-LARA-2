@@ -137,17 +137,12 @@ class SegmentationPhase2ChunkDecompositionTests(SimpleTestCase):
         self.assertIn('"chunk_surface": "l\'aime"', prompts)
         self.assertNotIn('"chunk_surface": "l"', prompts)
         self.assertEqual([token["surface"] for token in tokens], [" ", "Il", " ", "l'", "aime", " ", "bien", "."])
-        self.assertIn(
-            {
-                "token_index": 3,
-                "op_id": "segmentation_phase_2-chunk-p0-s0-t3",
-                "chunk_surface": "l'aime",
-                "predicted_parts": ["l'", "aime"],
-                "surface_preserved": True,
-                "raw_response": {"parts": ["l'", "aime"], "notes": "fixture"},
-            },
-            trace,
-        )
+        l_aime_trace = next(item for item in trace if item["chunk_surface"] == "l'aime")
+        self.assertEqual(l_aime_trace["token_index"], 3)
+        self.assertEqual(l_aime_trace["op_id"], "segmentation_phase_2-chunk-p0-s0-t3")
+        self.assertEqual(l_aime_trace["predicted_parts"], ["l'", "aime"])
+        self.assertTrue(l_aime_trace["surface_preserved"])
+        self.assertEqual(l_aime_trace["raw_response"], {"parts": ["l'", "aime"], "notes": "fixture"})
 
     def test_chunk_decomposition_splits_pipe_delimited_part_inside_response_list(self):
         text = {
@@ -280,3 +275,123 @@ class SegmentationPhase2ChunkDecompositionTests(SimpleTestCase):
         self.assertEqual([token["surface"] for token in segment["tokens"]], [" ", "qu’", "il"])
         self.assertEqual(trace[0]["predicted_parts"], ["qu’", "il"])
         self.assertTrue(trace[0]["surface_preserved"])
+
+
+    def test_chunk_consistency_reuses_unique_surface_calls(self):
+        text = {
+            "l2": "de",
+            "surface": "Hallo Hallo",
+            "pages": [
+                {
+                    "surface": "Hallo Hallo",
+                    "segments": [{"surface": "Hallo Hallo", "annotations": {}}],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        client = FakeChunkClient({"Hallo": ["Hallo"]})
+
+        annotated = asyncio.run(
+            segmentation_phase_2(
+                SegmentationPhase2Spec(
+                    text=text,
+                    language="de",
+                    mechanism="chunk_decomposition",
+                    chunk_prompt_cycle=2,
+                    chunk_consistency=True,
+                ),
+                client=client,  # type: ignore[arg-type]
+            )
+        )
+
+        segment = annotated["pages"][0]["segments"][0]
+        trace = segment["annotations"]["segmentation_phase_2_chunk_trace"]
+        self.assertEqual(len(client.prompts), 1)
+        self.assertEqual([token["surface"] for token in segment["tokens"]], ["Hallo", " ", "Hallo"])
+        self.assertEqual([item["consistency"]["cache_status"] for item in trace], ["miss", "hit"])
+
+    def test_chunk_consistency_postprocesses_same_core_with_punctuation_variants(self):
+        text = {
+            "l2": "de",
+            "surface": "Donaudampfschiff Donaudampfschiff.",
+            "pages": [
+                {
+                    "surface": "Donaudampfschiff Donaudampfschiff.",
+                    "segments": [{"surface": "Donaudampfschiff Donaudampfschiff.", "annotations": {}}],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        client = FakeChunkClient(
+            {
+                "Donaudampfschiff": ["Donaudampfschiff"],
+                "Donaudampfschiff.": ["Donau|dampf|schiff|."],
+            }
+        )
+
+        annotated = asyncio.run(
+            segmentation_phase_2(
+                SegmentationPhase2Spec(
+                    text=text,
+                    language="de",
+                    mechanism="chunk_decomposition",
+                    chunk_prompt_cycle=2,
+                    chunk_consistency=True,
+                ),
+                client=client,  # type: ignore[arg-type]
+            )
+        )
+
+        segment = annotated["pages"][0]["segments"][0]
+        trace = segment["annotations"]["segmentation_phase_2_chunk_trace"]
+        self.assertEqual(
+            [token["surface"] for token in segment["tokens"]],
+            ["Donaudampfschiff", " ", "Donaudampfschiff", "."],
+        )
+        self.assertFalse(trace[0]["consistency"]["changed"])
+        self.assertTrue(trace[1]["consistency"]["changed"])
+        self.assertEqual(trace[1]["consistency"]["canonical_parts"], ["Donaudampfschiff"])
+
+    def test_chunk_consistency_can_be_disabled_for_experiments(self):
+        text = {
+            "l2": "de",
+            "surface": "Donaudampfschiff Donaudampfschiff.",
+            "pages": [
+                {
+                    "surface": "Donaudampfschiff Donaudampfschiff.",
+                    "segments": [{"surface": "Donaudampfschiff Donaudampfschiff.", "annotations": {}}],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        client = FakeChunkClient(
+            {
+                "Donaudampfschiff": ["Donaudampfschiff"],
+                "Donaudampfschiff.": ["Donau|dampf|schiff|."],
+            }
+        )
+
+        annotated = asyncio.run(
+            segmentation_phase_2(
+                SegmentationPhase2Spec(
+                    text=text,
+                    language="de",
+                    mechanism="chunk_decomposition",
+                    chunk_prompt_cycle=2,
+                    chunk_consistency=False,
+                ),
+                client=client,  # type: ignore[arg-type]
+            )
+        )
+
+        segment = annotated["pages"][0]["segments"][0]
+        trace = segment["annotations"]["segmentation_phase_2_chunk_trace"]
+        self.assertEqual(
+            [token["surface"] for token in segment["tokens"]],
+            ["Donaudampfschiff", " ", "Donau", "dampf", "schiff", "."],
+        )
+        self.assertFalse(trace[0]["consistency"]["enabled"])
+        self.assertFalse(trace[1]["consistency"]["enabled"])
