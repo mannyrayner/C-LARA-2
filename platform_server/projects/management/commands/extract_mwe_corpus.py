@@ -155,14 +155,18 @@ def _language_projects(*, user, language: str, language_match: str):
 
 
 def summarize_project_mwes(project: Project, language: str) -> dict[str, Any] | None:
+    source_chars = len(project.source_text or "")
     run_dir, stage_path, payload = latest_stage_payload(project, "mwe")
-    if not run_dir or not stage_path or not isinstance(payload, dict):
-        return None
-    pages = payload.get("pages")
-    if not isinstance(pages, list):
-        return None
-    records = list(iter_project_segment_records(project=project, language=language, stage_path=stage_path, pages=pages))
-    if not records:
+    records: list[MWESegmentRecord] = []
+    latest_mwe_run = ""
+    latest_mwe_path = ""
+    if run_dir and stage_path and isinstance(payload, dict):
+        pages = payload.get("pages")
+        if isinstance(pages, list):
+            records = list(iter_project_segment_records(project=project, language=language, stage_path=stage_path, pages=pages))
+            latest_mwe_run = run_dir.name
+            latest_mwe_path = str(stage_path)
+    if not source_chars and not records:
         return None
     token_count = sum(len(record.token_surfaces) for record in records)
     mwe_count = sum(len(record.gold_mwes) for record in records)
@@ -171,12 +175,12 @@ def summarize_project_mwes(project: Project, language: str) -> dict[str, Any] | 
         "title": project.title,
         "language": language,
         "target_language": project.target_language,
-        "source_chars": len(project.source_text or ""),
+        "source_chars": source_chars,
         "segment_count": len(records),
         "token_count": token_count,
         "mwe_count": mwe_count,
-        "latest_mwe_run": run_dir.name,
-        "latest_mwe_path": str(stage_path),
+        "latest_mwe_run": latest_mwe_run,
+        "latest_mwe_path": latest_mwe_path,
         "records": records,
     }
 
@@ -300,7 +304,7 @@ def split_names_for_count(count: int, *, development_project_fraction: float, va
 
 
 def stratify_projects(projects: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
-    ordered = sorted(projects, key=lambda project: int(project.get("segment_count") or 0))
+    ordered = sorted(projects, key=lambda project: int(project.get("source_chars") or 0))
     if len(ordered) < 3:
         return {"all": ordered}
     strata = {"small": [], "medium": [], "large": []}
@@ -313,6 +317,8 @@ def stratify_projects(projects: list[dict[str, Any]]) -> dict[str, list[dict[str
 def build_segment_records(assignments: list[ProjectAssignment]) -> dict[str, list[MWESegmentRecord]]:
     records = {split: [] for split in SPLITS}
     for assignment in assignments:
+        if not assignment.latest_mwe_path:
+            continue
         try:
             payload = json.loads(Path(assignment.latest_mwe_path).read_text(encoding="utf-8"))
         except Exception:

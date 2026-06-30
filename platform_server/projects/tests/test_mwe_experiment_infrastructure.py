@@ -98,6 +98,39 @@ class MWEExperimentInfrastructureTests(TestCase):
                 self.assertEqual(dev_segments[0]["language"], language)
                 self.assertIn("gold_mwes", dev_segments[0])
 
+    def test_extract_mwe_corpus_can_split_before_mwe_artifacts_exist(self):
+        for idx in range(4):
+            project = Project.objects.create(
+                owner=self.user,
+                title=f"unprocessed {idx}",
+                language="en",
+                target_language="fr",
+                source_text=f"source text {idx}",
+            )
+            self.projects.append(project)
+
+        with TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "pre_refresh_splits"
+            call_command(
+                "extract_mwe_corpus",
+                username="mannyrayner",
+                languages="en",
+                output_dir=str(output_dir),
+                seed="pre-refresh",
+                overwrite=True,
+            )
+
+            manifest = json.loads((output_dir / "multilingual_split_manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["languages_detail"]["en"]["project_count"], 4)
+            dev_projects = [
+                json.loads(line)
+                for line in (output_dir / "en" / "development_projects.jsonl").read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            dev_segments = (output_dir / "en" / "development_segments.jsonl").read_text(encoding="utf-8").splitlines()
+            self.assertTrue(dev_projects)
+            self.assertEqual(dev_segments, [])
+
     def test_refresh_command_dry_run_uses_split_manifest_project_ids(self):
         first = self._project_with_mwe(title="English one", language="en", idx=1)
         second = self._project_with_mwe(title="English two", language="en", idx=2)
