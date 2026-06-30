@@ -1,43 +1,57 @@
 # Focused multilingual MWE workbench
 
-This workbench prepares the English/French/German data needed before prompt-cycle
-experiments for focused MWE identification.
+This workbench mirrors the organisation of
+`segmentation_phase_2/chunk_decomposition_multilingual`, but extracts segment
+records rather than whitespace chunks. Splits are project-separated, so all
+segments from a project stay in the same development, validation, or test split.
 
 ## Goals
 
-1. Refresh each selected project through `segmentation_phase_2`, `translation`, and
-   `mwe`, so manual judging starts from current upstream annotations.
-2. Extract deterministic, project-level development/validation/test splits that can
-   be corrected in the existing manual annotation editor.
-3. Preserve segment-level JSONL records with current MWE annotations as a convenient
-   export for later prompt scoring and diagnostics.
+1. Start with `extract-split-corpus` to assign English/French/German projects to
+   deterministic development/validation/test splits.
+2. Refresh the selected projects through `segmentation_phase_2`, `translation`,
+   and `mwe`, so manual judging starts from current upstream annotations.
+3. Rerun `extract-split-corpus` after refresh or manual correction to export
+   segment-level JSONL records with the current MWE annotations for prompt
+   scoring and diagnostics.
+
+The split assignment is deterministic from project metadata and the seed, and it
+can be run before MWE artifacts exist. If MWE artifacts are not present yet, the
+project JSONL/manifests are still written and segment JSONL files are empty until
+the refresh pass creates current `mwe` stage artifacts.
 
 ## Commands
 
 ```bash
-make plan
+make help
 make validate-config
 ```
 
-Refresh selected projects by explicit ids:
+Create project-separated splits first:
+
+```bash
+make extract-split-corpus CORPUS_USER=mannyrayner LANGUAGES=en,fr,de
+```
+
+Refresh the projects from the generated split manifest:
+
+```bash
+make refresh-upstream RUN=1
+```
+
+You can also refresh a small explicit smoke set:
 
 ```bash
 make refresh-upstream PROJECT_IDS="101,102,103" RUN=1
 ```
 
-Or refresh the project ids from an existing split manifest:
+After refresh, export current segment records from the latest MWE artifacts:
 
 ```bash
-make refresh-upstream SPLIT_MANIFEST=experiments/linguistic_processing/mwe/focused_multilingual/artifacts/corpus/multilingual_split_manifest.json RUN=1
+make extract-split-corpus CORPUS_USER=mannyrayner LANGUAGES=en,fr,de
 ```
 
-After refresh, create the split manifests and segment exports:
-
-```bash
-make extract-corpus USERNAME=mannyrayner LANGUAGES=en,fr,de
-```
-
-The corpus target writes `artifacts/corpus/<language>/development_projects.jsonl`,
+The corpus target writes `generated/corpus_splits/<language>/development_projects.jsonl`,
 `validation_projects.jsonl`, `test_projects.jsonl`, matching `*_segments.jsonl`
 files, per-language `split_manifest.json`, and a top-level
 `multilingual_split_manifest.json`.
@@ -45,6 +59,6 @@ files, per-language `split_manifest.json`, and a top-level
 ## Manual gold workflow
 
 Use the project JSONL files to open the selected projects in the existing manual
-annotation editor. Correct MWE annotations there, then rerun `extract-corpus` to
-export gold-standard segment records from the latest MWE artifacts. Keep test
+annotation editor. Correct MWE annotations there, then rerun `extract-split-corpus`
+to export gold-standard segment records from the latest MWE artifacts. Keep test
 projects untouched while iterating prompts on development and validation.
