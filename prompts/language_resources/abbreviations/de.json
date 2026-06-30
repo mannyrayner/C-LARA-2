@@ -1,0 +1,13 @@
+{
+  "description": "German abbreviations that should remain one segmentation token.",
+  "abbreviations": [
+    "Dr.",
+    "Prof.",
+    "bzw.",
+    "bspw.",
+    "bsp.",
+    "ca.",
+    "z.B."
+  ],
+  "initialism_pattern": true
+}
