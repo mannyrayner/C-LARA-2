@@ -801,6 +801,42 @@ def _repair_equivalent_glyph_variants(parts: list[str], surface: str) -> list[st
     return repaired
 
 
+_COMMON_ABBREVIATION_SURFACES = {
+    "Mr.",
+    "Mrs.",
+    "Ms.",
+    "Dr.",
+    "Prof.",
+    "Jr.",
+    "Sr.",
+    "St.",
+    "vs.",
+    "etc.",
+    "e.g.",
+    "i.e.",
+}
+_LANGUAGE_ABBREVIATION_SURFACES = {
+    "de": {"Dr.", "Prof.", "bzw.", "bspw.", "bsp.", "ca.", "z.B."},
+    "en": {"Mr.", "Mrs.", "Ms.", "Dr.", "Prof.", "Jr.", "Sr.", "St.", "vs.", "etc.", "e.g.", "i.e."},
+}
+
+
+def _is_known_abbreviation_surface(surface: str, language: str) -> bool:
+    if surface in _COMMON_ABBREVIATION_SURFACES:
+        return True
+    language_key = (language or "").lower().split("-", 1)[0]
+    if surface in _LANGUAGE_ABBREVIATION_SURFACES.get(language_key, set()):
+        return True
+    return bool(re.fullmatch(r"(?:[A-Za-z]\.){2,}", surface))
+
+
+def _merge_known_abbreviation_parts(parts: list[str], *, surface: str, language: str) -> list[str]:
+    if len(parts) <= 1 or "".join(parts) != surface:
+        return parts
+    if _is_known_abbreviation_surface(surface, language):
+        return [surface]
+    return parts
+
 _CHUNK_EDGE_CHARS = set(
     "\"'“”„‟«»‘’`´ʼ()[]{}<>.,;:!?…¿¡"
 )
@@ -982,6 +1018,7 @@ async def _segmentation_phase_2_chunk_decomposition(
         raw_response = response if isinstance(response, dict) else {}
         parts = _normalize_chunk_parts(raw_response.get("parts"))
         parts = _repair_equivalent_glyph_variants(parts, surface)
+        parts = _merge_known_abbreviation_parts(parts, surface=surface, language=spec.language)
         surface_preserved = bool(parts) and "".join(parts) == surface
         if not surface_preserved:
             telemetry.event(

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -153,6 +154,7 @@ def normalize_response(*, record: dict[str, Any], response: Any, prompt_kind: st
     chunk_surface = str(record.get("chunk_surface") or "")
     parts = normalize_parts(payload.get("parts") or payload.get("predicted_parts"))
     parts = repair_equivalent_glyph_variants(parts, chunk_surface)
+    parts = merge_known_abbreviation_parts(parts, surface=chunk_surface, language=str(record.get("language") or ""))
     surface_preserved = "".join(parts) == chunk_surface
     invalid_response_reason = ""
     if not surface_preserved:
@@ -182,6 +184,42 @@ def normalize_parts(value: Any) -> list[str]:
         return [part for part in value.split("|") if part != ""]
     return []
 
+
+COMMON_ABBREVIATION_SURFACES = {
+    "Mr.",
+    "Mrs.",
+    "Ms.",
+    "Dr.",
+    "Prof.",
+    "Jr.",
+    "Sr.",
+    "St.",
+    "vs.",
+    "etc.",
+    "e.g.",
+    "i.e.",
+}
+LANGUAGE_ABBREVIATION_SURFACES = {
+    "de": {"Dr.", "Prof.", "bzw.", "bspw.", "bsp.", "ca.", "z.B."},
+    "en": {"Mr.", "Mrs.", "Ms.", "Dr.", "Prof.", "Jr.", "Sr.", "St.", "vs.", "etc.", "e.g.", "i.e."},
+}
+
+
+def is_known_abbreviation_surface(surface: str, language: str) -> bool:
+    if surface in COMMON_ABBREVIATION_SURFACES:
+        return True
+    language_key = (language or "").lower().split("-", 1)[0]
+    if surface in LANGUAGE_ABBREVIATION_SURFACES.get(language_key, set()):
+        return True
+    return bool(re.fullmatch(r"(?:[A-Za-z]\.){2,}", surface))
+
+
+def merge_known_abbreviation_parts(parts: list[str], *, surface: str, language: str) -> list[str]:
+    if len(parts) <= 1 or "".join(parts) != surface:
+        return parts
+    if is_known_abbreviation_surface(surface, language):
+        return [surface]
+    return parts
 
 EQUIVALENT_GLYPH_GROUPS = (
     ("'", {"'", "’", "‘", "`", "´", "ʼ"}),

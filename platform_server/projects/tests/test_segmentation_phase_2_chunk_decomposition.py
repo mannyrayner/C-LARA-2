@@ -294,7 +294,7 @@ class SegmentationPhase2ChunkDecompositionTests(SimpleTestCase):
             {
                 "Good": ["Good"],
                 "advice,": ["advice", ","],
-                "Mr.": ["Mr."],
+                "Mr.": ["Mr|."],
                 "Cummins.": ["Cummins", "."],
             }
         )
@@ -320,6 +320,7 @@ class SegmentationPhase2ChunkDecompositionTests(SimpleTestCase):
         )
         mr_trace = next(item for item in trace if item["chunk_surface"] == "Mr.")
         self.assertEqual(mr_trace["predicted_parts"], ["Mr."])
+        self.assertEqual(mr_trace["raw_response"], {"parts": ["Mr|."], "notes": "fixture"})
         self.assertFalse(mr_trace["consistency"]["changed"])
         self.assertEqual(mr_trace["consistency"]["core_parts"], [])
 
