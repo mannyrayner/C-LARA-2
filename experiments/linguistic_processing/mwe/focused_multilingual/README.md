@@ -64,10 +64,14 @@ make refresh-annotations RUN=1 RESUME_FROM_PROJECT_ID=245
 ```
 
 Each project is retried by default (`MAX_PROJECT_RETRIES=2`, i.e. up to three
-attempts total). Projects that still fail are skipped so later projects can
-continue; their diagnostics, including exception type and traceback, are written
-to `generated/refresh_failures.jsonl` by default. Use `FAIL_FAST=1` if you want
-the first exhausted project failure to abort the whole run instead.
+attempts total). On retry, the command inspects the run's completed stage
+artifacts and resumes from the processing phase after the newest valid artifact,
+so a timeout in `translation`, `mwe`, `lemma`, or `gloss` does not repeat earlier
+phases. Projects that still fail are skipped so later projects can continue;
+their diagnostics, including attempted start stage, input artifact, exception
+type, and traceback, are written to `generated/refresh_failures.jsonl` by
+default. Use `FAIL_FAST=1` if you want the first exhausted project failure to
+abort the whole run instead.
 
 After refresh, export current segment records from the latest MWE artifacts:
 

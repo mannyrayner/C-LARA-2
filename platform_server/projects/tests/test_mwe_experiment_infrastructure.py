@@ -203,11 +203,19 @@ class MWEExperimentInfrastructureTests(TestCase):
         self.assertEqual(spec.end_stage, "gloss")
         self.assertEqual(spec.stage_parameters["segmentation_phase_2"]["mechanism"], "chunk_decomposition")
 
-    def test_refresh_projects_retries_transient_failures(self):
-        project, seg1_payload = self._project_with_segmentation_phase_1()
-        runner = AsyncMock(side_effect=[TimeoutError("temporary API timeout"), seg1_payload])
+    def test_refresh_projects_retries_from_latest_completed_phase(self):
+        project, _ = self._project_with_segmentation_phase_1()
+        calls = []
+        seg2_payload = {"pages": [{"segments": [{"surface": "Page one", "tokens": [{"surface": "Page"}]}]}]}
 
-        with patch("projects.management.commands.refresh_mwe_experiment_projects.run_full_pipeline", runner):
+        async def fake_run_full_pipeline(spec):
+            calls.append(spec)
+            if len(calls) == 1:
+                write_stage_artifact(spec.output_dir, "segmentation_phase_2", seg2_payload)
+                raise TimeoutError("temporary API timeout in translation")
+            return {"text": seg2_payload}
+
+        with patch("projects.management.commands.refresh_mwe_experiment_projects.run_full_pipeline", fake_run_full_pipeline):
             results, failures = asyncio.run(
                 refresh_projects(
                     [project],
@@ -219,7 +227,10 @@ class MWEExperimentInfrastructureTests(TestCase):
                 )
             )
 
-        self.assertEqual(runner.await_count, 2)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0].start_stage, "segmentation_phase_2")
+        self.assertEqual(calls[1].start_stage, "translation")
+        self.assertEqual(calls[1].text_obj, seg2_payload)
         self.assertEqual(failures, [])
         self.assertEqual(results[0]["project_id"], project.id)
 

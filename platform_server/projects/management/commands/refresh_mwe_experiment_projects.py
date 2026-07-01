@@ -9,7 +9,7 @@ from typing import Any
 
 from django.core.management.base import BaseCommand, CommandError
 
-from pipeline.full_pipeline import FullPipelineSpec, run_full_pipeline
+from pipeline.full_pipeline import PIPELINE_ORDER, FullPipelineSpec, run_full_pipeline
 from pipeline.stage_artifacts import read_stage_artifact, stage_artifact_path
 from projects.models import Project
 
@@ -215,16 +215,33 @@ async def refresh_projects(
             )
         attempts_allowed = max(1, max_project_retries + 1)
         for attempt in range(1, attempts_allowed + 1):
+            attempt_state = build_attempt_state(
+                run_dir=run_dir,
+                configured_start_stage=start_stage,
+                end_stage=end_stage,
+                original_raw_text=raw_text,
+                original_text_obj=text_obj,
+                original_input_stage_path=input_stage_path,
+            )
+            if attempt_state["already_complete"]:
+                if log:
+                    log(f"  {project.id}: all requested stages already complete; skipping remaining retries")
+                break
+            if log and attempt_state.get("resume_from_stage"):
+                log(
+                    f"  {project.id}: resuming after {attempt_state['resume_from_stage']} "
+                    f"at {attempt_state['start_stage']}"
+                )
             try:
                 await run_full_pipeline(
                     FullPipelineSpec(
-                        text=raw_text,
-                        text_obj=text_obj,
+                        text=attempt_state["raw_text"],
+                        text_obj=attempt_state["text_obj"],
                         language=project.language,
                         target_language=project.target_language,
                         output_dir=run_dir,
                         op_id=run_label,
-                        start_stage=start_stage,
+                        start_stage=str(attempt_state["start_stage"]),
                         end_stage=end_stage,
                         persist_intermediates=True,
                         progress_callback=(
@@ -243,6 +260,9 @@ async def refresh_projects(
                     run_label=run_label,
                     run_dir=run_dir,
                     input_stage_path=input_stage_path,
+                    attempt_start_stage=str(attempt_state["start_stage"]),
+                    attempt_input_stage_path=str(attempt_state.get("input_stage_path") or ""),
+                    resume_from_stage=str(attempt_state.get("resume_from_stage") or ""),
                     attempt=attempt,
                     attempts_allowed=attempts_allowed,
                     exc=exc,
@@ -254,7 +274,7 @@ async def refresh_projects(
                     if fail_fast:
                         raise
                 elif log:
-                    log(f"  {project.id}: retrying")
+                    log(f"  {project.id}: retrying from latest completed stage")
         else:
             continue
         if failures and failures[-1].get("project_id") == project.id:
@@ -275,12 +295,72 @@ async def refresh_projects(
     return results, failures
 
 
+def build_attempt_state(
+    *,
+    run_dir: Path,
+    configured_start_stage: str,
+    end_stage: str,
+    original_raw_text: str | None,
+    original_text_obj: dict[str, Any] | None,
+    original_input_stage_path: str,
+) -> dict[str, Any]:
+    """Return the most advanced safe input for the next project retry attempt.
+
+    The refresh target persists every completed stage in ``run_dir``. If an API
+    timeout occurs in a downstream phase, retry from the stage after the newest
+    readable artifact instead of repeating already-completed phases.
+    """
+
+    stages = stage_slice(configured_start_stage, end_stage)
+    for completed_stage in reversed(stages):
+        payload = read_stage_artifact(run_dir, completed_stage, default=None)
+        if payload is None:
+            continue
+        if completed_stage == end_stage:
+            return {
+                "already_complete": True,
+                "start_stage": end_stage,
+                "raw_text": None,
+                "text_obj": payload,
+                "input_stage_path": str(stage_artifact_path(run_dir, completed_stage)),
+                "resume_from_stage": completed_stage,
+            }
+        next_stage = PIPELINE_ORDER[PIPELINE_ORDER.index(completed_stage) + 1]
+        return {
+            "already_complete": False,
+            "start_stage": next_stage,
+            "raw_text": None,
+            "text_obj": payload,
+            "input_stage_path": str(stage_artifact_path(run_dir, completed_stage)),
+            "resume_from_stage": completed_stage,
+        }
+    return {
+        "already_complete": False,
+        "start_stage": configured_start_stage,
+        "raw_text": original_raw_text,
+        "text_obj": original_text_obj,
+        "input_stage_path": original_input_stage_path or "source_text",
+        "resume_from_stage": "",
+    }
+
+
+def stage_slice(start_stage: str, end_stage: str) -> list[str]:
+    start_index = PIPELINE_ORDER.index(start_stage)
+    end_index = PIPELINE_ORDER.index(end_stage)
+    if start_index > end_index:
+        raise ValueError("start_stage must come before end_stage")
+    return PIPELINE_ORDER[start_index : end_index + 1]
+
+
 def build_failure_record(
     *,
     project: Project,
     run_label: str,
     run_dir: Path,
     input_stage_path: str,
+    attempt_start_stage: str,
+    attempt_input_stage_path: str,
+    resume_from_stage: str,
     attempt: int,
     attempts_allowed: int,
     exc: Exception,
@@ -293,6 +373,9 @@ def build_failure_record(
         "run_label": run_label,
         "run_dir": str(run_dir),
         "input_segmentation_phase_1_path": input_stage_path,
+        "attempt_start_stage": attempt_start_stage,
+        "attempt_input_stage_path": attempt_input_stage_path,
+        "resume_from_stage": resume_from_stage,
         "attempt": attempt,
         "attempts_allowed": attempts_allowed,
         "error_type": type(exc).__name__,
