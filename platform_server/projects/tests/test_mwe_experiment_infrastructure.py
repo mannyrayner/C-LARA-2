@@ -97,6 +97,10 @@ class MWEExperimentInfrastructureTests(TestCase):
                 self.assertTrue(dev_segments)
                 self.assertEqual(dev_segments[0]["language"], language)
                 self.assertIn("gold_mwes", dev_segments[0])
+                review_text = (output_dir / language / "segments_with_mwes.md").read_text(encoding="utf-8")
+                self.assertIn("Total MWEs:", review_text)
+                self.assertIn("take | off", review_text)
+                self.assertGreater(language_manifest["mwe_count"], 0)
 
     def test_extract_mwe_corpus_can_split_before_mwe_artifacts_exist(self):
         for idx in range(4):
@@ -130,6 +134,8 @@ class MWEExperimentInfrastructureTests(TestCase):
             dev_segments = (output_dir / "en" / "development_segments.jsonl").read_text(encoding="utf-8").splitlines()
             self.assertTrue(dev_projects)
             self.assertEqual(dev_segments, [])
+            review_text = (output_dir / "en" / "segments_with_mwes.md").read_text(encoding="utf-8")
+            self.assertIn("Total MWEs: 0", review_text)
 
     def test_refresh_command_dry_run_uses_split_manifest_project_ids(self):
         first = self._project_with_mwe(title="English one", language="en", idx=1)

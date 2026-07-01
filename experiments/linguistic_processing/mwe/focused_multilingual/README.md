@@ -53,7 +53,8 @@ make extract-split-corpus CORPUS_USER=mannyrayner LANGUAGES=en,fr,de
 
 The corpus target writes `generated/corpus_splits/<language>/development_projects.jsonl`,
 `validation_projects.jsonl`, `test_projects.jsonl`, matching `*_segments.jsonl`
-files, per-language `split_manifest.json`, and a top-level
+files, a `segments_with_mwes.md` review file with only MWE-bearing segments
+and the total MWE count, per-language `split_manifest.json`, and a top-level
 `multilingual_split_manifest.json`.
 
 ## Manual gold workflow

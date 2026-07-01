@@ -126,11 +126,14 @@ class Command(BaseCommand):
                     language_dir / f"{split}_projects.jsonl",
                     [asdict(item) for item in assignments if item.split == split],
                 )
+            mwe_review_path = language_dir / "segments_with_mwes.md"
+            mwe_review_summary = write_mwe_review_markdown(mwe_review_path, language=language, capped_records=capped_records)
             language_manifest = build_language_manifest(
                 language=language,
                 assignments=assignments,
                 capped_records=capped_records,
                 output_dir=language_dir,
+                mwe_review_summary=mwe_review_summary,
             )
             (language_dir / "split_manifest.json").write_text(
                 json.dumps(language_manifest, ensure_ascii=False, indent=2) + "\n",
@@ -346,7 +349,12 @@ def cap_records(records: list[MWESegmentRecord], cap: int, *, seed: str, split: 
 
 
 def build_language_manifest(
-    *, language: str, assignments: list[ProjectAssignment], capped_records: dict[str, list[MWESegmentRecord]], output_dir: Path
+    *,
+    language: str,
+    assignments: list[ProjectAssignment],
+    capped_records: dict[str, list[MWESegmentRecord]],
+    output_dir: Path,
+    mwe_review_summary: dict[str, Any],
 ) -> dict[str, Any]:
     split_project_ids = {split: sorted({item.project_id for item in assignments if item.split == split}) for split in SPLITS}
     overlaps = [
@@ -358,6 +366,9 @@ def build_language_manifest(
         "language": language,
         "project_count": len(assignments),
         "project_assignments": [asdict(item) for item in assignments],
+        "segments_with_mwes_markdown": str(output_dir / "segments_with_mwes.md"),
+        "segments_with_mwes_count": mwe_review_summary["segment_count"],
+        "mwe_count": mwe_review_summary["mwe_count"],
         "splits": {
             split: {
                 "segments_jsonl": str(output_dir / f"{split}_segments.jsonl"),
@@ -370,6 +381,47 @@ def build_language_manifest(
         },
         "project_level_separation": not any(overlaps),
     }
+
+
+def write_mwe_review_markdown(path: Path, *, language: str, capped_records: dict[str, list[MWESegmentRecord]]) -> dict[str, Any]:
+    records = [record for split in SPLITS for record in capped_records[split] if record.gold_mwes]
+    mwe_count = sum(len(record.gold_mwes) for record in records)
+    lines = [
+        f"# MWE-bearing segments for {language}",
+        "",
+        f"Total segments with non-null MWEs: {len(records)}",
+        f"Total MWEs: {mwe_count}",
+        "",
+    ]
+    if not records:
+        lines.append("No MWE-bearing segments found in the current extracted records.")
+        lines.append("")
+    for record in records:
+        lines.extend(
+            [
+                f"## {record.record_id}",
+                "",
+                f"- Split: `{record.split}`",
+                f"- Project: {record.project_title} (`{record.project_id}`)",
+                f"- Page/segment: {record.page_index}/{record.segment_index}",
+                "",
+                "```text",
+                record.segment_surface,
+                "```",
+                "",
+                "MWEs:",
+            ]
+        )
+        for mwe in record.gold_mwes:
+            mwe_id = str(mwe.get("id") or "")
+            label = str(mwe.get("label") or "")
+            tokens = mwe.get("tokens") if isinstance(mwe.get("tokens"), list) else []
+            token_text = " | ".join(str(token) for token in tokens)
+            parts = [part for part in [f"id={mwe_id}" if mwe_id else "", f"label={label}" if label else "", token_text] if part]
+            lines.append(f"- {'; '.join(parts)}")
+        lines.append("")
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return {"segment_count": len(records), "mwe_count": mwe_count}
 
 
 def write_jsonl(path: Path, records: list[dict[str, Any]]) -> None:
