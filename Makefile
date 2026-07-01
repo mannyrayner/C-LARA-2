@@ -1,4 +1,4 @@
-.PHONY: run-platform run-platform-with-q run-platform-with-real-q count-lines
+.PHONY: run-platform run-platform-with-q run-platform-with-real-q count-lines list-successfully-converted-legacy-projects
 
 # Launch the Django dev server (runs migrations first). We clear PYTHONPATH
 # to avoid host-level contamination (e.g., Windows user profiles with custom
@@ -46,3 +46,14 @@ count-lines:
 		fi; \
 	done; \
 	printf "%-16s %s\n" total $$total
+
+# List legacy projects whose first-stage conversion has produced both metadata.json
+# and source.zip. Override CLARA if the legacy workspace is outside this repo.
+CLARA ?= $(CURDIR)
+LEGACY_CONVERTED_PROJECTS_DIR ?= $(CLARA)/CLARADownloadedProjectsFromServer_v3_JSON
+LEGACY_CONVERTED_PROJECTS_LIST ?= $(CLARA)/successfully_converted_legacy_projects.tsv
+
+list-successfully-converted-legacy-projects:
+	$(PYTHON) scripts/list_converted_legacy_projects.py \
+		--input-dir "$(LEGACY_CONVERTED_PROJECTS_DIR)" \
+		--output "$(LEGACY_CONVERTED_PROJECTS_LIST)"
