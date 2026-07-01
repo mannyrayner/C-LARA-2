@@ -19,11 +19,14 @@ run-platform-with-q:
 
 # Run the Django dev server with a real django-q installation (requires django-q2
 # or compatible to be installed in your environment). This uses DJANGO_Q_USE_REAL
-# to avoid the local stub so the real qcluster is started.
+# to avoid the local stub so the real qcluster is started. It also starts the
+# dedicated project-understanding Codex worker so laptop runs exercise the same
+# Assistant queue path as production.
 run-platform-with-real-q:
 	cd platform_server && \
 		PYTHONPATH= DJANGO_Q_USE_REAL=1 DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py migrate && \
 		(PYTHONPATH= DJANGO_Q_USE_REAL=1 DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py qcluster & ) && \
+		(PYTHONPATH= DJANGO_Q_USE_REAL=1 DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py process_project_understanding_queue --worker-id local-project-understanding-worker & ) && \
 		PYTHONPATH= DJANGO_Q_USE_REAL=1 DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py runserver
 
 # Count tracked lines under key repository folders and print a grand total.
