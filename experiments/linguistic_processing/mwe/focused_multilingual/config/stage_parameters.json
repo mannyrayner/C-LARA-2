@@ -1,0 +1,9 @@
+{
+  "segmentation_phase_2": {
+    "mechanism": "chunk_decomposition",
+    "chunk_prompt_variant": "chunk_decomposition_multilingual_v1",
+    "chunk_prompt_split": "development",
+    "max_concurrency": 20,
+    "chunk_consistency": true
+  }
+}

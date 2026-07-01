@@ -46,6 +46,75 @@ Keeping this in one document makes it easier to track cross-stage decisions.
 - Add telemetry counters for dropped/repaired MWEs.
 - Add reviewer-facing cues in the manual annotation editor (e.g., visual highlighting for non-empty `mwe_id` cells) plus optional integrity warnings.
 
+### Phase D: focused MWE workbench and prompt-improvement loop
+
+After the current `segmentation_phase_2` chunk-decomposition round, the next
+quality-improvement target should be MWE detection. The task is harder than
+token splitting because it combines lexicalization, syntax, discontinuity, and
+language-specific false-positive traps, but it can reuse the same experiment
+discipline:
+
+1. **Build comparable corpora for English, French, and German.**
+   - Extract imported projects for `en`, `fr`, and `de` into manifest-backed
+     development/validation/test splits, analogous to the
+     `segmentation_phase_2` corpus split flow.
+   - Preserve project/page/segment/token IDs so gold MWE corrections can be
+     traced back to the manual annotation editor and to runner outputs.
+   - Stratify by project/segment size where practical, and keep held-out test
+     data untouched until the prompt cycle and evaluator rule are frozen.
+2. **Refresh upstream annotations before collecting MWE gold.**
+   - Add a runner target that can reprocess the selected texts through
+     `segmentation_phase_2`, `translation`, and `mwe` so the MWE workbench is
+     judging current upstream output rather than stale imported artifacts.
+   - Keep stage artifacts for all three stages, since MWE errors may be caused
+     by tokenization or translation context rather than by the MWE prompt alone.
+3. **Use the manual annotation editor as the gold-standard correction surface.**
+   - The existing editor is the right place for human correction because it is
+     ergonomic and already understands project artifacts.
+   - The workbench should therefore export/import MWE gold in a format that
+     round-trips cleanly through the editor, rather than creating a parallel
+     correction UI.
+   - Gold exports should include enough context to compare model decisions,
+     editor corrections, and later prompt-cycle predictions.
+4. **Decompose MWE identification into focused concurrent decisions.**
+   - Instead of asking one API call to find all MWEs in a segment, fan out
+     token-start candidates: pass the full segment plus a focused subsegment
+     beginning at token `i`, and ask whether an MWE starts at that token.
+   - The model response should be constrained to a small schema: no MWE here,
+     or an MWE beginning at this token with token indices/surfaces, expression
+     type, confidence/rationale, and whether the span is continuous or
+     discontinuous.
+   - Run token-start decisions concurrently, then fan them back in with a
+     deterministic resolver that removes duplicates, rejects overlaps according
+     to policy, normalizes IDs, and records trace metadata.
+5. **Start with a minimal, general prompt.**
+   - The initial prompt should emphasize lexicalized/fixed expressions,
+     language-learning usefulness, conservative false-positive avoidance, and
+     surface/index preservation.
+   - Language-specific guidance should be small but explicit: separable verbs
+     for German, clitic/verb or fixed prepositional patterns where relevant for
+     French, and phrasal verbs/light-verb constructions for English.
+6. **Score focused predictions against gold and iterate.**
+   - Because gold MWE annotations are available after manual correction, score
+     each token-start decision as true positive, false positive, false negative,
+     boundary/type mismatch, or overlap-resolution error.
+   - Generate per-language diagnostic briefs showing high-frequency false
+     positives, missed MWE types, discontinuous cases, and examples where
+     upstream tokenization likely caused the error.
+   - Use those briefs to produce the next prompt cycle, then rerun on the
+     development split. Validation should decide whether a prompt cycle
+     generalizes; test should remain frozen until the cycle and decision rule
+     are fixed.
+7. **Keep the design cross-stage and publication-ready.**
+   - Separable verbs and similar phenomena should not be patched only in
+     segmentation. The MWE output should provide the structure that later lemma
+     tagging can use to assign shared lemmas to separated and non-separated
+     forms.
+   - Store traces, gold corrections, prompt cycles, score summaries, and
+     disagreement examples as auditable artifacts. If successful, this becomes
+     a strong publication example: a harder linguistic task improved by a
+     repeatable AI/human prompt-workbench loop.
+
 ## Open policy questions
 
 - Should ID uniqueness be **page-level** or **global text-level** by default?
