@@ -39,6 +39,12 @@ Refresh the projects from the generated split manifest:
 make refresh-upstream RUN=1
 ```
 
+`refresh-upstream` uses `config/stage_parameters.json` by default. That file
+sets `segmentation_phase_2.mechanism` to `chunk_decomposition`, with the
+promoted `chunk_decomposition_multilingual_v1` prompts, `max_concurrency=20`,
+and `chunk_consistency=true`, so the refresh pass runs the new chunk-based
+segmentation before `translation` and `mwe`.
+
 You can also refresh a small explicit smoke set:
 
 ```bash
