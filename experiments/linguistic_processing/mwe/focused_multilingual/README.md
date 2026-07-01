@@ -56,6 +56,19 @@ You can also refresh a small explicit smoke set:
 make refresh-annotations PROJECT_IDS="101,102,103" RUN=1
 ```
 
+Large refreshes run projects in increasing project-id order, so a crashed run can
+be resumed without reattempting earlier ids:
+
+```bash
+make refresh-annotations RUN=1 RESUME_FROM_PROJECT_ID=245
+```
+
+Each project is retried by default (`MAX_PROJECT_RETRIES=2`, i.e. up to three
+attempts total). Projects that still fail are skipped so later projects can
+continue; their diagnostics, including exception type and traceback, are written
+to `generated/refresh_failures.jsonl` by default. Use `FAIL_FAST=1` if you want
+the first exhausted project failure to abort the whole run instead.
+
 After refresh, export current segment records from the latest MWE artifacts:
 
 ```bash

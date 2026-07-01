@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import shutil
+import traceback
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +31,10 @@ class Command(BaseCommand):
         parser.add_argument("--end-stage", default="gloss")
         parser.add_argument("--overwrite", action="store_true")
         parser.add_argument("--dry-run", action="store_true")
+        parser.add_argument("--resume-from-project-id", type=int, default=0)
+        parser.add_argument("--max-project-retries", type=int, default=2)
+        parser.add_argument("--failed-projects-jsonl", default="")
+        parser.add_argument("--fail-fast", action="store_true")
 
     def handle(self, *args, **options):
         stage_parameters = load_stage_parameters(options["stage_parameters_file"])
@@ -40,8 +45,13 @@ class Command(BaseCommand):
         )
         if not project_ids:
             raise CommandError("No projects selected; pass --project-ids or --split-manifest")
+        resume_from_project_id = int(options.get("resume_from_project_id") or 0)
+        if resume_from_project_id:
+            project_ids = [project_id for project_id in project_ids if project_id >= resume_from_project_id]
+        if not project_ids:
+            raise CommandError("No projects selected after applying --resume-from-project-id")
         self.stdout.write(f"Selected project ids: {', '.join(str(item) for item in project_ids)}")
-        projects = list(Project.objects.filter(id__in=project_ids).order_by("language", "title", "id"))
+        projects = list(Project.objects.filter(id__in=project_ids).order_by("id"))
         found_ids = {project.id for project in projects}
         missing_ids = sorted(set(project_ids) - found_ids)
         if missing_ids:
@@ -60,17 +70,23 @@ class Command(BaseCommand):
             if run_dir.exists():
                 shutil.rmtree(run_dir)
 
-        results = asyncio.run(
+        results, failures = asyncio.run(
             refresh_projects(
                 projects,
                 run_label_prefix=run_label_prefix,
                 start_stage=str(options["start_stage"] or "segmentation_phase_2"),
                 end_stage=str(options["end_stage"] or "gloss"),
                 stage_parameters=stage_parameters,
+                max_project_retries=int(options.get("max_project_retries") or 0),
+                fail_fast=bool(options.get("fail_fast")),
                 log=self.stdout.write,
             )
         )
-        self.stdout.write("MWE refresh complete")
+        failed_projects_path = str(options.get("failed_projects_jsonl") or "")
+        if failures and failed_projects_path:
+            write_jsonl(Path(failed_projects_path), failures)
+            self.stdout.write(f"Failed projects: {failed_projects_path}")
+        self.stdout.write("MWE refresh complete" if not failures else "MWE refresh complete with failures")
         for result in results:
             self.stdout.write(
                 f"project={result['project_id']} language={result['language']} run_dir={result['run_dir']} "
@@ -169,8 +185,11 @@ async def refresh_projects(
     end_stage: str,
     stage_parameters: dict[str, dict[str, Any]],
     log: Any | None = None,
-) -> list[dict[str, Any]]:
+    max_project_retries: int = 0,
+    fail_fast: bool = False,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     results: list[dict[str, Any]] = []
+    failures: list[dict[str, Any]] = []
     for project in projects:
         run_label = f"{run_label_prefix}_project_{project.id}"
         run_dir = project.artifact_dir() / "runs" / run_label
@@ -182,7 +201,7 @@ async def refresh_projects(
             if text_obj is None or stage_path is None:
                 raise CommandError(
                     f"Project {project.id} has no segmentation_phase_1 artifact; "
-                    "refresh-upstream preserves existing page/segment structure and starts at segmentation_phase_2"
+                    "refresh-annotations preserves existing page/segment structure and starts at segmentation_phase_2"
                 )
             input_stage_path = str(stage_path)
         elif start_stage == "segmentation_phase_1":
@@ -194,22 +213,52 @@ async def refresh_projects(
                 f"Refreshing project={project.id} title={project.title!r} language={project.language} "
                 f"start={start_stage} end={end_stage} input={input_stage_path or 'source_text'} run_dir={run_dir}"
             )
-        await run_full_pipeline(
-            FullPipelineSpec(
-                text=raw_text,
-                text_obj=text_obj,
-                language=project.language,
-                target_language=project.target_language,
-                output_dir=run_dir,
-                op_id=run_label,
-                start_stage=start_stage,
-                end_stage=end_stage,
-                persist_intermediates=True,
-                progress_callback=(lambda stage, status, timestamp: log(f"  {project.id}: {stage} {status} {timestamp}")) if log else None,
-                stage_parameters=stage_parameters,
-                audio_mode="none",
-            )
-        )
+        attempts_allowed = max(1, max_project_retries + 1)
+        for attempt in range(1, attempts_allowed + 1):
+            try:
+                await run_full_pipeline(
+                    FullPipelineSpec(
+                        text=raw_text,
+                        text_obj=text_obj,
+                        language=project.language,
+                        target_language=project.target_language,
+                        output_dir=run_dir,
+                        op_id=run_label,
+                        start_stage=start_stage,
+                        end_stage=end_stage,
+                        persist_intermediates=True,
+                        progress_callback=(
+                            (lambda stage, status, timestamp: log(f"  {project.id}: {stage} {status} {timestamp}"))
+                            if log
+                            else None
+                        ),
+                        stage_parameters=stage_parameters,
+                        audio_mode="none",
+                    )
+                )
+                break
+            except Exception as exc:
+                failure = build_failure_record(
+                    project=project,
+                    run_label=run_label,
+                    run_dir=run_dir,
+                    input_stage_path=input_stage_path,
+                    attempt=attempt,
+                    attempts_allowed=attempts_allowed,
+                    exc=exc,
+                )
+                if log:
+                    log(f"  {project.id}: attempt {attempt}/{attempts_allowed} failed: {exc}")
+                if attempt >= attempts_allowed:
+                    failures.append(failure)
+                    if fail_fast:
+                        raise
+                elif log:
+                    log(f"  {project.id}: retrying")
+        else:
+            continue
+        if failures and failures[-1].get("project_id") == project.id:
+            continue
         results.append(
             {
                 "project_id": project.id,
@@ -223,4 +272,37 @@ async def refresh_projects(
                 "gloss_path": str(stage_artifact_path(run_dir, "gloss")),
             }
         )
-    return results
+    return results, failures
+
+
+def build_failure_record(
+    *,
+    project: Project,
+    run_label: str,
+    run_dir: Path,
+    input_stage_path: str,
+    attempt: int,
+    attempts_allowed: int,
+    exc: Exception,
+) -> dict[str, Any]:
+    return {
+        "project_id": project.id,
+        "title": project.title,
+        "language": project.language,
+        "target_language": project.target_language,
+        "run_label": run_label,
+        "run_dir": str(run_dir),
+        "input_segmentation_phase_1_path": input_stage_path,
+        "attempt": attempt,
+        "attempts_allowed": attempts_allowed,
+        "error_type": type(exc).__name__,
+        "error": str(exc),
+        "traceback": traceback.format_exc(),
+    }
+
+
+def write_jsonl(path: Path, records: list[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as out:
+        for record in records:
+            out.write(json.dumps(record, ensure_ascii=False) + "\n")

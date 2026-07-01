@@ -19,6 +19,10 @@ RUN_LABEL_PREFIX ?= mwe_annotation_refresh_v1
 PROJECT_IDS ?=
 SPLIT_MANIFEST ?= $(CORPUS_SPLIT_DIR)/multilingual_split_manifest.json
 STAGE_PARAMETERS ?= config/stage_parameters.json
+RESUME_FROM_PROJECT_ID ?= 0
+MAX_PROJECT_RETRIES ?= 2
+FAILED_REFRESHES ?= $(abspath $(GENERATED_DIR))/refresh_failures.jsonl
+FAIL_FAST ?= 0
 
 GENERATED_DIR := generated
 CORPUS_SPLIT_DIR := $(abspath $(GENERATED_DIR))/corpus_splits
@@ -27,6 +31,8 @@ python_path = $(shell if [ "$(PY_OS)" = "nt" ] && command -v cygpath >/dev/null 
 PY_CORPUS_SPLIT_DIR := $(call python_path,$(CORPUS_SPLIT_DIR))
 PY_SPLIT_MANIFEST := $(call python_path,$(abspath $(SPLIT_MANIFEST)))
 PY_STAGE_PARAMETERS := $(call python_path,$(abspath $(STAGE_PARAMETERS)))
+PY_FAILED_REFRESHES := $(call python_path,$(FAILED_REFRESHES))
+FAIL_FAST_ARG := $(if $(filter 1,$(FAIL_FAST)),--fail-fast,)
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
@@ -56,6 +62,10 @@ help:
 	@echo "  PROJECT_IDS=$(PROJECT_IDS)"
 	@echo "  RUN_LABEL_PREFIX=$(RUN_LABEL_PREFIX)"
 	@echo "  STAGE_PARAMETERS=$(STAGE_PARAMETERS)"
+	@echo "  RESUME_FROM_PROJECT_ID=$(RESUME_FROM_PROJECT_ID)"
+	@echo "  MAX_PROJECT_RETRIES=$(MAX_PROJECT_RETRIES)"
+	@echo "  FAILED_REFRESHES=$(FAILED_REFRESHES)"
+	@echo "  FAIL_FAST=$(FAIL_FAST)"
 
 prepare:
 	@mkdir -p $(GENERATED_DIR)
@@ -87,6 +97,10 @@ ifeq ($(RUN),1)
 		--splits "$(SPLITS)" \
 		--run-label-prefix "$(RUN_LABEL_PREFIX)" \
 		--stage-parameters-file "$(PY_STAGE_PARAMETERS)" \
+		--resume-from-project-id "$(RESUME_FROM_PROJECT_ID)" \
+		--max-project-retries "$(MAX_PROJECT_RETRIES)" \
+		--failed-projects-jsonl "$(PY_FAILED_REFRESHES)" \
+		$(FAIL_FAST_ARG) \
 		--overwrite
 else
 	$(MAKE) refresh-annotations-dry-run
@@ -99,6 +113,7 @@ refresh-annotations-dry-run: validate-config
 		--splits "$(SPLITS)" \
 		--run-label-prefix "$(RUN_LABEL_PREFIX)" \
 		--stage-parameters-file "$(PY_STAGE_PARAMETERS)" \
+		--resume-from-project-id "$(RESUME_FROM_PROJECT_ID)" \
 		--dry-run
 
 refresh-upstream: refresh-annotations
