@@ -109,11 +109,28 @@
     <input type="hidden" name="segmentation_method" value="{{ selected_segmentation_method }}" />
     <input type="hidden" name="romanization_method" value="{{ selected_romanization_method }}" />
     <input type="hidden" name="return_to" value="{% url 'project-annotation-home' object.pk %}" />
+    {% if stage_parameter_presets %}
+      <label for="stage_parameters_preset" style="display:block; margin-top:0.75rem;">Stage option preset:</label>
+      <select name="stage_parameters_preset" id="stage_parameters_preset">
+        <option value="">Default pipeline settings</option>
+        {% for preset in stage_parameter_presets %}
+          <option value="{{ preset.value }}">{{ preset.label }}</option>
+        {% endfor %}
+      </select>
+      <details style="margin-top:0.5rem;">
+        <summary>What do these presets do?</summary>
+        {% for preset in stage_parameter_presets %}
+          <p><strong>{{ preset.label }}:</strong> {{ preset.description }}</p>
+          <pre style="white-space:pre-wrap;">{{ preset.json }}</pre>
+        {% endfor %}
+      </details>
+    {% endif %}
     <label for="stage_parameters" style="display:block; margin-top:0.75rem;">Stage parameters (JSON, optional):</label>
     <textarea name="stage_parameters" id="stage_parameters" rows="5" style="width:100%; font-family:monospace;" placeholder='{{ stage_parameters_example }}'></textarea>
     <small>Power-user overrides for this run only. Example: <code>{"segmentation_phase_1":{"prioritise_sentences":true}}</code>.
       For phase 2, combine options such as
       <code>{"segmentation_phase_2":{"mechanism":"boundary_first","variant":"clitic_compound","fewshot_count":"all"}}</code>;
+      or select the chunk-decomposition preset for supported languages and optionally override fields here.
       <code>fewshot_count</code> accepts <code>all</code>, <code>none</code>, a number, or tranche names like <code>small</code>.</small>
     <br />
     <label for="detailed_api_trace" class="ml-2">
