@@ -15,7 +15,7 @@ MAX_DEVELOPMENT_SEGMENTS ?= 600
 MAX_VALIDATION_SEGMENTS ?= 300
 MAX_TEST_SEGMENTS ?= 600
 SPLITS ?= development,validation,test
-RUN_LABEL_PREFIX ?= mwe_refresh_v1
+RUN_LABEL_PREFIX ?= mwe_annotation_refresh_v1
 PROJECT_IDS ?=
 SPLIT_MANIFEST ?= $(CORPUS_SPLIT_DIR)/multilingual_split_manifest.json
 STAGE_PARAMETERS ?= config/stage_parameters.json
@@ -30,20 +30,20 @@ PY_STAGE_PARAMETERS := $(call python_path,$(abspath $(STAGE_PARAMETERS)))
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help prepare extract-split-corpus refresh-upstream refresh-upstream-dry-run validate-config clean
+.PHONY: help prepare extract-split-corpus refresh-annotations refresh-annotations-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
 
 help:
 	@echo "Focused MWE experiments (multilingual)"
 	@echo
 	@echo "Targets:"
 	@echo "  extract-split-corpus  Extract segment records and create project-separated dev/validation/test splits"
-	@echo "  refresh-upstream      Rerun selected projects through segmentation_phase_2 -> translation -> mwe"
-	@echo "  validate-config       Validate stage-parameter JSON used by refresh-upstream"
+	@echo "  refresh-annotations   Rerun selected projects through segmentation_phase_2 -> translation -> mwe -> lemma -> gloss"
+	@echo "  validate-config       Validate stage-parameter JSON used by refresh-annotations"
 	@echo "  clean                 Remove generated experiment artifacts"
 	@echo
 	@echo "Typical setup:"
 	@echo "  1. make extract-split-corpus"
-	@echo "  2. make refresh-upstream RUN=1"
+	@echo "  2. make refresh-annotations RUN=1"
 	@echo "  3. make extract-split-corpus   # export refreshed segment records for judging"
 	@echo
 	@echo "Important variables:"
@@ -79,7 +79,7 @@ extract-split-corpus: prepare
 		--max-test-segments "$(MAX_TEST_SEGMENTS)" \
 		--overwrite
 
-refresh-upstream: validate-config
+refresh-annotations: validate-config
 ifeq ($(RUN),1)
 	$(MANAGE) refresh_mwe_experiment_projects \
 		--project-ids "$(PROJECT_IDS)" \
@@ -89,10 +89,10 @@ ifeq ($(RUN),1)
 		--stage-parameters-file "$(PY_STAGE_PARAMETERS)" \
 		--overwrite
 else
-	$(MAKE) refresh-upstream-dry-run
+	$(MAKE) refresh-annotations-dry-run
 endif
 
-refresh-upstream-dry-run: validate-config
+refresh-annotations-dry-run: validate-config
 	$(MANAGE) refresh_mwe_experiment_projects \
 		--project-ids "$(PROJECT_IDS)" \
 		--split-manifest "$(PY_SPLIT_MANIFEST)" \
@@ -100,6 +100,10 @@ refresh-upstream-dry-run: validate-config
 		--run-label-prefix "$(RUN_LABEL_PREFIX)" \
 		--stage-parameters-file "$(PY_STAGE_PARAMETERS)" \
 		--dry-run
+
+refresh-upstream: refresh-annotations
+
+refresh-upstream-dry-run: refresh-annotations-dry-run
 
 clean:
 	rm -rf "$(GENERATED_DIR)"

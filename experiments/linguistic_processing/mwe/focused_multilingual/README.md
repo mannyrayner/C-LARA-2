@@ -10,7 +10,8 @@ segments from a project stay in the same development, validation, or test split.
 1. Start with `extract-split-corpus` to assign English/French/German projects to
    deterministic development/validation/test splits.
 2. Refresh the selected projects through `segmentation_phase_2`, `translation`,
-   and `mwe`, so manual judging starts from current upstream annotations.
+   `mwe`, `lemma`, and `gloss`, so manual judging starts from current annotations
+   and the page-oriented editor has useful lemma/gloss context.
 3. Rerun `extract-split-corpus` after refresh or manual correction to export
    segment-level JSONL records with the current MWE annotations for prompt
    scoring and diagnostics.
@@ -33,26 +34,26 @@ Create project-separated splits first:
 make extract-split-corpus CORPUS_USER=mannyrayner LANGUAGES=en,fr,de
 ```
 
-Refresh the projects from the generated split manifest:
+Refresh the project annotations from the generated split manifest:
 
 ```bash
-make refresh-upstream RUN=1
+make refresh-annotations RUN=1
 ```
 
-`refresh-upstream` uses `config/stage_parameters.json` by default. It starts
+`refresh-annotations` uses `config/stage_parameters.json` by default. It starts
 from each project's latest `segmentation_phase_1` artifact, preserving the
 existing page and segment structure, then runs `segmentation_phase_2`,
-`translation`, and `mwe`. The config sets `segmentation_phase_2.mechanism` to
+`translation`, `mwe`, `lemma`, and `gloss`. The config sets `segmentation_phase_2.mechanism` to
 `chunk_decomposition`, with the promoted `chunk_decomposition_multilingual_v1`
 prompts, `max_concurrency=20`, and `chunk_consistency=true`, so the refresh pass
-runs the new chunk-based segmentation before `translation` and `mwe`. If
+runs the new chunk-based segmentation before the downstream annotation steps. If
 `PROJECT_IDS` is supplied, those explicit ids are used and the split manifest is
 ignored; otherwise the generated split manifest supplies the project ids.
 
 You can also refresh a small explicit smoke set:
 
 ```bash
-make refresh-upstream PROJECT_IDS="101,102,103" RUN=1
+make refresh-annotations PROJECT_IDS="101,102,103" RUN=1
 ```
 
 After refresh, export current segment records from the latest MWE artifacts:
@@ -73,3 +74,5 @@ Use the project JSONL files to open the selected projects in the existing manual
 annotation editor. Correct MWE annotations there, then rerun `extract-split-corpus`
 to export gold-standard segment records from the latest MWE artifacts. Keep test
 projects untouched while iterating prompts on development and validation.
+
+`refresh-upstream` remains as a compatibility alias for `refresh-annotations`, but new runs should use `refresh-annotations`.

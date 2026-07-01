@@ -14,7 +14,7 @@ from projects.models import Project
 
 
 class Command(BaseCommand):
-    help = "Refresh segmentation_phase_2, translation, and MWE artifacts for many projects."
+    help = "Refresh segmentation_phase_2 through gloss artifacts for many projects."
 
     def add_arguments(self, parser):
         parser.add_argument("--project-ids", default="", help="Comma-separated project ids to refresh.")
@@ -27,7 +27,7 @@ class Command(BaseCommand):
         parser.add_argument("--run-label-prefix", default="mwe_refresh")
         parser.add_argument("--stage-parameters-file", default="")
         parser.add_argument("--start-stage", default="segmentation_phase_2")
-        parser.add_argument("--end-stage", default="mwe")
+        parser.add_argument("--end-stage", default="gloss")
         parser.add_argument("--overwrite", action="store_true")
         parser.add_argument("--dry-run", action="store_true")
 
@@ -65,7 +65,7 @@ class Command(BaseCommand):
                 projects,
                 run_label_prefix=run_label_prefix,
                 start_stage=str(options["start_stage"] or "segmentation_phase_2"),
-                end_stage=str(options["end_stage"] or "mwe"),
+                end_stage=str(options["end_stage"] or "gloss"),
                 stage_parameters=stage_parameters,
                 log=self.stdout.write,
             )
@@ -73,7 +73,8 @@ class Command(BaseCommand):
         self.stdout.write("MWE refresh complete")
         for result in results:
             self.stdout.write(
-                f"project={result['project_id']} language={result['language']} run_dir={result['run_dir']} mwe={result['mwe_path']}"
+                f"project={result['project_id']} language={result['language']} run_dir={result['run_dir']} "
+                f"mwe={result['mwe_path']} lemma={result['lemma_path']} gloss={result['gloss_path']}"
             )
 
 
@@ -218,6 +219,8 @@ async def refresh_projects(
                 "segmentation_phase_2_path": str(stage_artifact_path(run_dir, "segmentation_phase_2")),
                 "translation_path": str(stage_artifact_path(run_dir, "translation")),
                 "mwe_path": str(stage_artifact_path(run_dir, "mwe")),
+                "lemma_path": str(stage_artifact_path(run_dir, "lemma")),
+                "gloss_path": str(stage_artifact_path(run_dir, "gloss")),
             }
         )
     return results

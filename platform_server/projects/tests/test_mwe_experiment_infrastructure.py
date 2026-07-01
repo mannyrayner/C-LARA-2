@@ -184,7 +184,7 @@ class MWEExperimentInfrastructureTests(TestCase):
                     [project],
                     run_label_prefix="refresh",
                     start_stage="segmentation_phase_2",
-                    end_stage="mwe",
+                    end_stage="gloss",
                     stage_parameters={"segmentation_phase_2": {"mechanism": "chunk_decomposition"}},
                 )
             )
@@ -193,7 +193,7 @@ class MWEExperimentInfrastructureTests(TestCase):
         self.assertIsNone(spec.text)
         self.assertEqual(spec.text_obj, seg1_payload)
         self.assertEqual(spec.start_stage, "segmentation_phase_2")
-        self.assertEqual(spec.end_stage, "mwe")
+        self.assertEqual(spec.end_stage, "gloss")
         self.assertEqual(spec.stage_parameters["segmentation_phase_2"]["mechanism"], "chunk_decomposition")
 
     def test_refresh_command_dry_run_uses_split_manifest_project_ids(self):
