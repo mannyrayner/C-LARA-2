@@ -1,0 +1,9 @@
+{
+  "description": "Abbreviations that are common enough across supported languages to keep as one segmentation token.",
+  "abbreviations": [
+    "Dr.",
+    "Prof.",
+    "etc."
+  ],
+  "initialism_pattern": true
+}
