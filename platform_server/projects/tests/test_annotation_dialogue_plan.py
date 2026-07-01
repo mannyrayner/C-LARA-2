@@ -51,6 +51,24 @@ class AnnotationDialoguePlanTests(TestCase):
         self.assertContains(resp, "Show plain text")
         self.assertContains(resp, "This is plain text.")
         self.assertContains(resp, "Show current plain text")
+        self.assertContains(resp, "Stage option preset")
+        self.assertContains(resp, "Chunk decomposition segmentation_phase_2")
+        self.assertContains(resp, "&quot;mechanism&quot;: &quot;chunk_decomposition&quot;", html=False)
+
+    def test_annotation_home_omits_chunk_decomposition_preset_for_unsupported_language(self):
+        project = Project.objects.create(
+            owner=self.user,
+            title="Plain Text Italian",
+            source_text="Questo è testo semplice.",
+            input_mode=Project.INPUT_SOURCE,
+            language="it",
+            target_language="en",
+        )
+
+        resp = self.client.get(reverse("project-annotation-home", args=[project.pk]))
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, "Chunk decomposition segmentation_phase_2")
 
     def test_annotation_home_open_compiled_html_points_to_compiled_output(self):
         project = Project.objects.create(

@@ -1,0 +1,18 @@
+{
+  "description": "English titles and common abbreviations that should remain one segmentation token.",
+  "abbreviations": [
+    "Mr.",
+    "Mrs.",
+    "Ms.",
+    "Dr.",
+    "Prof.",
+    "Jr.",
+    "Sr.",
+    "St.",
+    "vs.",
+    "etc.",
+    "e.g.",
+    "i.e."
+  ],
+  "initialism_pattern": true
+}

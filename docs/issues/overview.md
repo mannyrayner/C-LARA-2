@@ -1,10 +1,10 @@
-# C-LARA-2 issue overview (refreshed 2026-06-18T10:15:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-01T13:36:21Z)
+
 ## Recent progress
-- Corrected **ISSUE-0039** prompt/image consistency: surface-only prompts are now considered missing only when the row has no image.
-- Preserved existing liked images by leaving their surface-only prompts unchanged unless the image itself is missing and will be regenerated.
-- Added standard-menu translation and generation-prompt language controls, selected-row translation generation, fan-out/fan-in for selected-row AI text operations plus page-image prompt construction, and POS/translation-aware image prompt construction for **ISSUE-0039**.
-- Simplified the organiser page around the source-of-truth dictionary model: automatic dictionary creation, fewer legacy project controls, moved add-word/debug controls, exercise creation/play links in dictionary/subset/member sections with community backlinks, subset word/gloss/image previews, and no old image-review dashboard.
-- Kept **ISSUE-0039** active/P0 because prompt-variant management, progress feedback depth, and tighter subset/exercise integration still need follow-up before Sophie review.
+
+- Incorporated human suggestion #30 as an update to **ISSUE-0013** rather than opening a duplicate issue: the MWE batch refresh now highlights the need for phase-level and eventually per-call retry/checkpointing, not just whole-project retry.
+- Kept **ISSUE-0013** at P1 and moved it higher in the near-term focus list because large-project annotation refreshes are now a practical blocker for the MWE experiment workflow.
+- Retained **ISSUE-0036** as the main few-shot/MWE experiment-quality track; retry granularity belongs under the lower-level persistence/resilience work in **ISSUE-0013**.
 - Regenerated this overview from canonical issue JSON so the complete inventory reflects all current `reported`, `active`, and `closed` states.
 
 ## Near-term priorities
@@ -18,9 +18,9 @@
 7. **ISSUE-0005** — tune segmentation_phase_1 prompting to improve segment granularity by genre.
 8. **ISSUE-0003** — add efficient end-to-end pipeline test runner for systematic quality checks.
 9. **ISSUE-0036** — systematize creation and evaluation of few-shot examples for linguistic annotation.
-10. **ISSUE-0025** — add systematic UI regression tracking for disappearing controls/content.
-11. **ISSUE-0010** — import a representative legacy C-LARA project corpus and add batch import tooling.
-12. **ISSUE-0013** — improve stage artifact persistence performance and timeout resilience.
+10. **ISSUE-0013** — improve stage artifact persistence performance and timeout resilience.
+11. **ISSUE-0025** — add systematic UI regression tracking for disappearing controls/content.
+12. **ISSUE-0010** — import a representative legacy C-LARA project corpus and add batch import tooling.
 13. **ISSUE-0008** — write C-LARA-2 technical report and academic papers.
 14. **ISSUE-0033** — clean up and phase-track roadmap file maintenance.
 15. **ISSUE-0034** — add restricted project-understanding assistant with versioned evidence records.
@@ -31,10 +31,9 @@
 
 ## Notes/risks
 
-- **ISSUE-0039** now avoids separating existing images from their original prompts, but laptop/Sophie testing should validate whether organisers need explicit prompt/image provenance or variant history.
-- **ISSUE-0037** remains active for the already implemented subdictionary/subset-project workflow and Sophie review, but its long-term data ownership should align with **ISSUE-0039**.
-- **ISSUE-0038** is closed for the low-resource dictionary deletion path, but **ISSUE-0039** should preserve stable entry/image identity so future synchronization no longer depends on page-number-only assumptions.
-- **ISSUE-0005** should be handled together with **ISSUE-0003**, **ISSUE-0004**, and **ISSUE-0036** so segmentation prompt changes are evaluated against repeatable examples rather than anecdotal improvements.
+- **ISSUE-0013** should distinguish three resilience levels: batch continuation after project failure, phase-level resume from valid artifacts, and call-level retry/checkpointing for expensive per-segment/per-chunk API calls. The new suggestion specifically asks for the latter two levels.
+- **ISSUE-0036** and the MWE workbench can proceed with project-level retries, but large-project costs will remain high until **ISSUE-0013** provides finer-grained checkpointing.
+- **ISSUE-0039** remains active/P0 for Sophie-facing picture-dictionary workflow completion; avoid letting MWE experiment infrastructure displace the current UI/product review blockers.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated pipeline and UI coverage.
 
 ## Complete issue inventory
