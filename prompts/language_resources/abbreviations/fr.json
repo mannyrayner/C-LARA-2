@@ -1,0 +1,16 @@
+{
+  "description": "French titles and common abbreviations that should remain one segmentation token.",
+  "abbreviations": [
+    "M.",
+    "Mme.",
+    "Mlle.",
+    "Mlle",
+    "Mme",
+    "Dr.",
+    "Pr.",
+    "etc.",
+    "p.ex.",
+    "c.-à-d."
+  ],
+  "initialism_pattern": true
+}

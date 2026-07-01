@@ -1,3 +1,4 @@
+import shutil
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -5,8 +6,16 @@ from django.core.management import call_command
 from django.test import Client, TestCase
 from django.urls import reverse
 
+from pipeline.stage_artifacts import write_stage_artifact
 from projects import views
-from projects.models import Profile, Project
+from projects.models import (
+    Profile,
+    Project,
+    ProjectImageElement,
+    ProjectImagePage,
+    ProjectImagePageVariant,
+    ProjectImageStyle,
+)
 
 
 class _StubProjectCreateClient:
@@ -35,6 +44,10 @@ class ProjectDialogueEntryTests(TestCase):
             discovery_keywords=["éléphant", "cirque"],
             discovery_keywords_en=["elephant", "circus"],
         )
+
+    def tearDown(self):
+        for project in Project.objects.all():
+            shutil.rmtree(project.artifact_dir(), ignore_errors=True)
 
     @patch("projects.views._parse_nl_project_open_request")
     def test_project_list_supports_nl_open_request_box(self, mock_parse):
@@ -91,6 +104,67 @@ class ProjectDialogueEntryTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Elephant Story")
+
+    def test_project_list_summary_matches_current_simple_filters(self):
+        other = Project.objects.create(
+            owner=self.user,
+            title="Mouse Story",
+            source_text="source",
+            language="en",
+            target_language="fr",
+        )
+        write_stage_artifact(
+            self.project.artifact_dir() / "runs" / "run_summary",
+            "segmentation_phase_2",
+            {
+                "pages": [
+                    {
+                        "segments": [
+                            {
+                                "surface": "Bonjour le monde",
+                                "tokens": [
+                                    {"surface": "Bonjour"},
+                                    {"surface": " "},
+                                    {"surface": "monde"},
+                                ],
+                            },
+                            {"surface": "Encore", "tokens": [{"surface": "Encore"}]},
+                        ]
+                    },
+                    {"segments": [{"surface": "Fin", "tokens": []}]},
+                ]
+            },
+        )
+        write_stage_artifact(
+            other.artifact_dir() / "runs" / "run_summary",
+            "segmentation_phase_2",
+            {"pages": [{"segments": [{"surface": "Mouse", "tokens": [{"surface": "Mouse"}]}]}]},
+        )
+        ProjectImageStyle.objects.create(project=self.project, sample_image_path="images/style.png")
+        ProjectImageElement.objects.create(project=self.project, name="elephant", image_path="images/element.png")
+        image_page = ProjectImagePage.objects.create(
+            project=self.project,
+            page_number=1,
+            image_path="images/page.png",
+        )
+        ProjectImagePageVariant.objects.create(
+            page=image_page,
+            variant_index=1,
+            image_path="images/page-variant.png",
+        )
+        ProjectImageElement.objects.create(project=other, name="mouse", image_path="images/mouse.png")
+
+        resp = self.client.get(reverse("project-list"), {"text_language": "fr"})
+
+        self.assertEqual(resp.status_code, 200)
+        summary = resp.context["project_list_summary"]
+        self.assertEqual(summary["project_count"], 1)
+        self.assertEqual(summary["page_count"], 2)
+        self.assertEqual(summary["segment_count"], 3)
+        self.assertEqual(summary["non_space_content_element_count"], 4)
+        self.assertEqual(summary["image_count"], 4)
+        self.assertContains(resp, "Totals for current filter")
+        self.assertContains(resp, "4</strong> non-space content elements", html=False)
 
     @patch("projects.views._parse_nl_project_open_request")
     def test_project_open_parsing_receives_previous_profile_context(self, mock_parse):
