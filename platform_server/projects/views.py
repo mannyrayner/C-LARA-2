@@ -6279,7 +6279,14 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
                         metadata={"before_text_hash": base_hash, "after_text_hash": edited_hash, "mode": "page_oriented"},
                         run_dir=seg1_run,
                     )
-                    messages.success(request, "Saved segmentation phase 2 from page-oriented editor.")
+                    save_segment = str(request.POST.get("save_segment") or "")
+                    if save_segment:
+                        messages.success(
+                            request,
+                            f"Saved segment {save_segment.replace('_', '.')} token boundaries from page-oriented editor.",
+                        )
+                    else:
+                        messages.success(request, "Saved segmentation phase 2 from page-oriented editor.")
                     return redirect("manual-page-annotation", pk=project.pk)
         return render(
             request,
@@ -6419,7 +6426,14 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
             )
         target_run = _ensure_stage_run_dir(project)
         _invalidate_downstream_stage_files(target_run, "pinyin")
-        messages.success(request, "Saved page-oriented manual annotations (translation, MWE, lemma, gloss, pinyin).")
+        save_segment = str(request.POST.get("save_segment") or "")
+        if save_segment:
+            messages.success(
+                request,
+                f"Saved segment {save_segment.replace('_', '.')} page-oriented manual annotations.",
+            )
+        else:
+            messages.success(request, "Saved page-oriented manual annotations (translation, MWE, lemma, gloss, pinyin).")
         return redirect("manual-page-annotation", pk=project.pk)
 
     return render(

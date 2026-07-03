@@ -1,10 +1,9 @@
-# C-LARA-2 issue overview (refreshed 2026-07-03T03:15:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-03T04:00:00Z)
 
 ## Recent progress
 
-- Implemented a first browser-local autosave safety net for **ISSUE-0040** in the page-oriented manual annotation view so maintainers can test whether drafts survive large-form save failures.
-- Recorded the maintainer follow-up that autosave or per-segment save controls look like the most promising mitigation directions; the issue now recommends autosave/draft preservation as the primary protection, with explicit segment/page checkpoints where practical.
-- Kept **ISSUE-0040** at P1 and marked it active because the first client-side draft autosave cut is ready for maintainer testing but server-backed/chunked-save follow-up may still be needed.
+- Added per-segment **Save this segment** controls and per-segment status text to the page-oriented manual annotation view for **ISSUE-0040**, complementing the browser-local autosave safety net.
+- Kept **ISSUE-0040** active/P1 because the combined autosave plus segment-level checkpoint implementation is ready for maintainer testing, but server-backed/chunked-save follow-up may still be useful after large-project testing.
 - Regenerated this overview from canonical issue JSON so the complete inventory reflects all current `reported`, `active`, and `closed` states.
 
 ## Near-term priorities
@@ -32,7 +31,7 @@
 
 ## Notes/risks
 
-- **ISSUE-0040** now has a first browser-local autosave implementation, but this does not yet reduce the size of the eventual POST. Follow-up should test recovery after `TooManyFieldsSent` and then decide whether to add server-backed drafts, dirty-field/page-level submission, or per-segment/per-page checkpoints.
+- **ISSUE-0040** now has browser-local autosave plus per-segment save controls. Maintainer testing should confirm that segment saves avoid `TooManyFieldsSent` on the originally problematic large project and that autosaved drafts remain recoverable after failed full-form submissions.
 - **ISSUE-0013** should distinguish three resilience levels: batch continuation after project failure, phase-level resume from valid artifacts, and call-level retry/checkpointing for expensive per-segment/per-chunk API calls.
 - **ISSUE-0039** remains active/P0 for Sophie-facing picture-dictionary workflow completion; avoid letting infrastructure tasks displace the current UI/product review blockers.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated pipeline and UI coverage.

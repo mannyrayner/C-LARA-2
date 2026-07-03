@@ -30,10 +30,14 @@
   {% elif mode == "phase2" %}
     <p><strong>Step 2: Edit content-element boundaries using <code>|</code> separators (or <code>¦</code>).</strong></p>
     {% for row in token_rows %}
-      <section style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0;">
+      <section data-manual-segment="{{ row.page_index }}_{{ row.segment_index }}" style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0;">
         <h2>Page {{ row.page_index }}</h2>
         <p><strong>Segment {{ row.segment_index }}</strong>: {{ row.segment_surface }}</p>
-        <textarea name="tokenized_text_{{ row.page_index }}_{{ row.segment_index }}" rows="3" style="width:100%;">{{ row.tokenized_text }}</textarea>
+        <textarea data-segment-control="{{ row.page_index }}_{{ row.segment_index }}" name="tokenized_text_{{ row.page_index }}_{{ row.segment_index }}" rows="3" style="width:100%;">{{ row.tokenized_text }}</textarea>
+        <p>
+          <button class="btn secondary" type="submit" name="save_segment" value="{{ row.page_index }}_{{ row.segment_index }}" data-save-segment="{{ row.page_index }}_{{ row.segment_index }}">Save this segment</button>
+          <span data-segment-status="{{ row.page_index }}_{{ row.segment_index }}">Not saved in this session.</span>
+        </p>
       </section>
     {% endfor %}
     <p><button class="btn" type="submit">Save token boundaries</button></p>
@@ -54,11 +58,11 @@
           <label><input type="checkbox" checked onclick="togglePageLayer({{ page.page_number }}, 'pinyin')"> Romanization</label>
         </p>
         {% for segment in page.segments %}
-          <div style="border-top:1px dashed #ddd; padding-top:0.5rem; margin-top:0.5rem;">
+          <div data-manual-segment="{{ page.page_index }}_{{ segment.segment_index }}" style="border-top:1px dashed #ddd; padding-top:0.5rem; margin-top:0.5rem;">
             <p><strong>Segment {{ forloop.counter }}:</strong> {{ segment.surface }}</p>
             <div class="layer-{{ page.page_number }}-translation">
               <label>Translation</label>
-              <input type="text" name="translation_text_{{ page.page_index }}_{{ segment.segment_index }}" value="{{ segment.translation_text }}" style="width:100%;" />
+              <input data-segment-control="{{ page.page_index }}_{{ segment.segment_index }}" type="text" name="translation_text_{{ page.page_index }}_{{ segment.segment_index }}" value="{{ segment.translation_text }}" style="width:100%;" />
             </div>
             <table border="1" cellpadding="4" cellspacing="0" style="margin-top:0.4rem; width:100%;">
               <thead>
@@ -76,16 +80,20 @@
                   {% if not token.is_whitespace %}
                   <tr>
                     <td><code lang="{{ project.language }}">{{ token.surface }}</code></td>
-                    <td class="layer-{{ page.page_number }}-mwe"><input type="text" name="mwe_id_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.mwe_id }}" /></td>
-                    <td class="layer-{{ page.page_number }}-lemma"><input type="text" name="lemma_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.lemma }}" /></td>
-                    <td class="layer-{{ page.page_number }}-lemma"><input type="text" name="pos_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.pos }}" /></td>
-                    <td class="layer-{{ page.page_number }}-gloss"><input type="text" name="gloss_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.gloss }}" /></td>
-                    <td class="layer-{{ page.page_number }}-pinyin"><input type="text" name="pinyin_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.pinyin }}" /></td>
+                    <td class="layer-{{ page.page_number }}-mwe"><input data-segment-control="{{ page.page_index }}_{{ segment.segment_index }}" type="text" name="mwe_id_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.mwe_id }}" /></td>
+                    <td class="layer-{{ page.page_number }}-lemma"><input data-segment-control="{{ page.page_index }}_{{ segment.segment_index }}" type="text" name="lemma_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.lemma }}" /></td>
+                    <td class="layer-{{ page.page_number }}-lemma"><input data-segment-control="{{ page.page_index }}_{{ segment.segment_index }}" type="text" name="pos_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.pos }}" /></td>
+                    <td class="layer-{{ page.page_number }}-gloss"><input data-segment-control="{{ page.page_index }}_{{ segment.segment_index }}" type="text" name="gloss_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.gloss }}" /></td>
+                    <td class="layer-{{ page.page_number }}-pinyin"><input data-segment-control="{{ page.page_index }}_{{ segment.segment_index }}" type="text" name="pinyin_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.pinyin }}" /></td>
                   </tr>
                   {% endif %}
                 {% endfor %}
               </tbody>
             </table>
+            <p>
+              <button class="btn secondary" type="submit" name="save_segment" value="{{ page.page_index }}_{{ segment.segment_index }}" data-save-segment="{{ page.page_index }}_{{ segment.segment_index }}">Save this segment</button>
+              <span data-segment-status="{{ page.page_index }}_{{ segment.segment_index }}">Not saved in this session.</span>
+            </p>
           </div>
         {% endfor %}
       </section>
@@ -122,7 +130,7 @@
 
   function editableControls() {
     return Array.prototype.slice.call(form.querySelectorAll('input, textarea, select')).filter(function (control) {
-      return control.name && control.name !== 'csrfmiddlewaretoken' && !control.disabled;
+      return control.name && control.name !== 'csrfmiddlewaretoken';
     });
   }
 
@@ -209,6 +217,25 @@
     });
   }
 
+  function setGlobalStatus(text) {
+    message.textContent = text;
+  }
+
+  function setSegmentStatus(segmentKey, text) {
+    var segmentStatus = form.querySelector('[data-segment-status="' + segmentKey + '"]');
+    if (segmentStatus) {
+      segmentStatus.textContent = text;
+    }
+  }
+
+  function disableControlsOutsideSegment(segmentKey) {
+    editableControls().forEach(function (control) {
+      if (control.getAttribute('data-segment-control') && control.getAttribute('data-segment-control') !== segmentKey) {
+        control.disabled = true;
+      }
+    });
+  }
+
   if (sessionStorage.getItem(submitKey) && pageShowsSuccessfulSave()) {
     localStorage.removeItem(autosaveKey);
     sessionStorage.removeItem(submitKey);
@@ -216,6 +243,16 @@
 
   form.addEventListener('input', scheduleSave);
   form.addEventListener('change', scheduleSave);
+  form.querySelectorAll('[data-save-segment]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var segmentKey = button.getAttribute('data-save-segment');
+      saveDraft();
+      setSegmentStatus(segmentKey, 'Saving this segment...');
+      setGlobalStatus('saving segment ' + segmentKey.replace('_', '.') + '...');
+      disableControlsOutsideSegment(segmentKey);
+    });
+  });
+
   form.addEventListener('submit', function () {
     window.clearTimeout(saveTimer);
     saveDraft();
