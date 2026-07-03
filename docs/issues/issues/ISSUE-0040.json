@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "issue_id": "ISSUE-0040",
+  "title": "Make page-oriented manual annotation saves resilient for large projects",
+  "state": "reported",
+  "priority": "P1",
+  "created_at": "2026-07-03T01:15:44Z",
+  "updated_at": "2026-07-03T02:00:00Z",
+  "origin": "human-suggestion",
+  "notes": "Created from human suggestion #31 (submitted by mannyrayner on 2026-07-03). A user made many edits in the page-oriented manual annotation view at `projects/<id>/annotation/manual/page-oriented/`, but saving failed before the view could process the form because Django raised `TooManyFieldsSent`: the number of POST parameters exceeded `settings.DATA_UPLOAD_MAX_NUMBER_FIELDS`. This is a P1 reliability/data-loss risk because the page-oriented editor renders one form field for each editable translation segment plus MWE, lemma, POS, gloss, and pinyin field for each non-whitespace token across the whole project, so realistic long projects can exceed Django's default field-count limit after substantial manual work. Investigate short-term protection, such as increasing `DATA_UPLOAD_MAX_NUMBER_FIELDS` only if safe and documented, warning users before a page becomes too large to save, or splitting saves by page/chunk/layer. Prefer a robust design that avoids giant whole-project POSTs: page-level or incremental saves, dirty-row submission, autosave/draft persistence, or a JSON payload/API that validates size explicitly and preserves CSRF/security properties. Include regression coverage using a synthetic large page-oriented project/form that would previously exceed the field limit, and make sure failed saves return actionable feedback without discarding user edits.",
+  "deadline": null,
+  "dependencies": [
+    "ISSUE-0025"
+  ]
+}
