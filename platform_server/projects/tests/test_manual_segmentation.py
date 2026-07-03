@@ -1013,8 +1013,13 @@ class ManualSegmentationEditorTests(TestCase):
                     "surface": "Hello world",
                     "segments": [
                         {
-                            "surface": "Hello world",
-                            "tokens": [{"surface": "Hello"}, {"surface": " "}, {"surface": "world"}],
+                            "surface": "Hello there",
+                            "tokens": [{"surface": "Hello"}, {"surface": "there"}],
+                            "annotations": {},
+                        },
+                        {
+                            "surface": "world",
+                            "tokens": [{"surface": "world"}],
                             "annotations": {},
                         }
                     ],
@@ -1028,8 +1033,69 @@ class ManualSegmentationEditorTests(TestCase):
         resp = self.client.get(reverse("manual-page-annotation", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Page-oriented manual annotation")
+        self.assertContains(resp, "Draft autosave:")
+        self.assertContains(resp, "Restore autosaved draft")
+        self.assertContains(resp, "clara:manual-page-annotation:")
+        self.assertContains(resp, "Save this segment")
+        self.assertContains(resp, "data-segment-status=\"0_0\"")
+        self.assertNotContains(resp, "Not saved in this session.")
+        self.assertNotContains(resp, "Save page-oriented manual annotations")
+        self.assertContains(resp, "Global edit status:")
+        self.assertContains(resp, "Unsaved changes.")
         self.assertContains(resp, "Translation")
         self.assertContains(resp, "Romanization")
+
+        mismatch_resp = self.client.post(
+            reverse("manual-page-annotation", args=[self.project.pk]),
+            {
+                "save_segment": "0_0",
+                "translation_text_0_0": "Bonjour",
+                "mwe_id_0_0_0": "mwe-a",
+                "lemma_0_0_0": "hello",
+                "pos_0_0_0": "INTJ",
+                "gloss_0_0_0": "bonjour",
+                "pinyin_0_0_0": "",
+                "mwe_id_0_0_1": "mwe-a",
+                "lemma_0_0_1": "there",
+                "pos_0_0_1": "ADV",
+                "gloss_0_0_1": "là",
+                "pinyin_0_0_1": "",
+            },
+            follow=True,
+        )
+        self.assertEqual(mismatch_resp.status_code, 200)
+        self.assertEqual(mismatch_resp.redirect_chain, [])
+        self.assertContains(mismatch_resp, "MWE consistency error for &#x27;mwe-a&#x27;")
+        self.assertContains(mismatch_resp, "same lemma, POS and gloss")
+        self.assertContains(mismatch_resp, 'name="lemma_0_0_1" value="there"', html=False)
+        self.assertContains(mismatch_resp, 'name="gloss_0_0_1" value="là"', html=False)
+        mismatch_html = mismatch_resp.content.decode("utf-8")
+        save_button_index = mismatch_html.index('value="0_0" data-save-segment="0_0"')
+        error_index = mismatch_html.index("MWE consistency error")
+        self.assertGreater(error_index, save_button_index)
+
+        save_resp = self.client.post(
+            reverse("manual-page-annotation", args=[self.project.pk]),
+            {
+                "save_segment": "0_0",
+                "translation_text_0_0": "Bonjour le monde",
+                "mwe_id_0_0_0": "mwe-a",
+                "lemma_0_0_0": "hello",
+                "pos_0_0_0": "INTJ",
+                "gloss_0_0_0": "bonjour",
+                "pinyin_0_0_0": "",
+                "mwe_id_0_0_1": "mwe-a",
+                "lemma_0_0_1": "hello",
+                "pos_0_0_1": "INTJ",
+                "gloss_0_0_1": "bonjour",
+                "pinyin_0_0_1": "",
+            },
+            follow=True,
+        )
+        self.assertEqual(save_resp.status_code, 200)
+        self.assertTrue(save_resp.redirect_chain)
+        self.assertTrue(save_resp.redirect_chain[0][0].endswith("#segment-0_1"))
+        self.assertContains(save_resp, "Saved segment 0.0 page-oriented manual annotations.")
 
     def test_page_oriented_manual_annotation_link_location(self):
         ann = self.client.get(reverse("project-annotation-home", args=[self.project.pk]))
