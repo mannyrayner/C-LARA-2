@@ -1031,18 +1031,34 @@ class ManualSegmentationEditorTests(TestCase):
         }
         (run_dir / "segmentation_phase_1.json").write_text(json.dumps(seg1_payload), encoding="utf-8")
         (run_dir / "segmentation_phase_2.json").write_text(json.dumps(seg2_payload), encoding="utf-8")
+        mwe_payload = json.loads(json.dumps(seg2_payload))
+        mwe_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"] = {"mwe_id": "preexisting-mwe"}
+        mwe_payload["pages"][0]["segments"][0]["tokens"][1]["annotations"] = {"mwe_id": "preexisting-mwe"}
+        lemma_payload = json.loads(json.dumps(mwe_payload))
+        lemma_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"].update({"lemma": "hello", "pos": "INTJ"})
+        lemma_payload["pages"][0]["segments"][0]["tokens"][1]["annotations"].update({"lemma": "there", "pos": "ADV"})
+        gloss_payload = json.loads(json.dumps(lemma_payload))
+        gloss_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"]["gloss"] = "bonjour"
+        gloss_payload["pages"][0]["segments"][0]["tokens"][1]["annotations"]["gloss"] = "là"
+        (run_dir / "mwe.json").write_text(json.dumps(mwe_payload), encoding="utf-8")
+        (run_dir / "lemma.json").write_text(json.dumps(lemma_payload), encoding="utf-8")
+        (run_dir / "gloss.json").write_text(json.dumps(gloss_payload), encoding="utf-8")
         resp = self.client.get(reverse("manual-page-annotation", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Page-oriented manual annotation")
-        self.assertContains(resp, "Draft autosave:")
-        self.assertContains(resp, "Restore autosaved draft")
-        self.assertContains(resp, "clara:manual-page-annotation:")
+        self.assertContains(resp, "Save status:")
+        self.assertContains(resp, "Browser autosave is currently off")
+        self.assertNotContains(resp, "Draft autosave:")
+        self.assertNotContains(resp, "Restore autosaved draft")
+        self.assertNotContains(resp, "clara:manual-page-annotation:")
         self.assertContains(resp, "Save this segment")
         self.assertContains(resp, "data-segment-status=\"0_0\"")
         self.assertNotContains(resp, "Not saved in this session.")
         self.assertNotContains(resp, "Save page-oriented manual annotations")
         self.assertContains(resp, "Global edit status:")
         self.assertContains(resp, "Unsaved changes.")
+        self.assertContains(resp, "MWE consistency error")
+        self.assertContains(resp, "after-segment-0_0")
         self.assertContains(resp, "Translation")
         self.assertContains(resp, "Romanization")
 

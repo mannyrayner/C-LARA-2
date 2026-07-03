@@ -3,21 +3,30 @@
 {% block content %}
 <h1>Page-oriented manual annotation (first cut)</h1>
 <p><a class="btn secondary" href="{% url 'project-annotation-home' project.pk %}">← Back to annotation home</a></p>
+<style>
+  .unsaved-change-label {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.35rem 0.55rem;
+    border: 2px solid #b00020;
+    border-radius: 0.25rem;
+    background: #fff0f0;
+    color: #b00020;
+    font-weight: bold;
+  }
+</style>
 
 <section
-  id="manual-page-autosave-status"
-  data-autosave-key="clara:manual-page-annotation:{{ project.pk }}:{{ mode }}:{{ base_hash|default:'' }}"
+  id="manual-page-save-status"
   style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0; background:#fafafa;"
 >
-  <strong>Draft autosave:</strong>
-  <span data-autosave-message>waiting for edits.</span>
-  <span data-global-unsaved hidden style="font-weight:bold; color:#9a6700;">Unsaved changes.</span>
-  <button class="btn secondary" type="button" data-autosave-restore hidden>Restore autosaved draft</button>
-  <button class="btn secondary" type="button" data-autosave-discard hidden>Discard autosaved draft</button>
+  <strong>Save status:</strong>
+  <span data-save-message>no unsaved changes detected in this browser.</span>
+  <span class="unsaved-change-label" data-global-unsaved hidden>Unsaved changes — save the edited segment before leaving.</span>
   <p style="margin-bottom:0;">
     <small>
-      Edits are saved in this browser before you press Save. If a large form fails to submit,
-      return to this page and restore the autosaved draft.
+      Browser autosave is currently off for this large editor. Use the <strong>Save this segment</strong>
+      controls to checkpoint your work in smaller submissions.
     </small>
   </p>
 </section>
@@ -103,7 +112,7 @@
     {% endfor %}
     <p style="border-top:1px solid #ddd; padding-top:0.75rem;">
       <strong>Global edit status:</strong>
-      <span data-global-unsaved hidden style="font-weight:bold; color:#9a6700;">Unsaved changes.</span>
+      <span class="unsaved-change-label" data-global-unsaved hidden>Unsaved changes — save the edited segment before leaving.</span>
       <span data-global-saved-note>No unsaved changes detected in this browser.</span>
     </p>
   {% endif %}
@@ -121,108 +130,18 @@
 <script>
 (function () {
   var form = document.getElementById('manual-page-annotation-form');
-  var statusBox = document.getElementById('manual-page-autosave-status');
-  if (!form || !statusBox || !window.localStorage) {
+  var statusBox = document.getElementById('manual-page-save-status');
+  if (!form || !statusBox) {
     return;
   }
 
-  var autosaveKey = statusBox.getAttribute('data-autosave-key');
-  var submitKey = autosaveKey + ':submitted';
-  var message = statusBox.querySelector('[data-autosave-message]');
-  var restoreButton = statusBox.querySelector('[data-autosave-restore]');
-  var discardButton = statusBox.querySelector('[data-autosave-discard]');
+  var message = statusBox.querySelector('[data-save-message]');
   var globalUnsavedLabels = Array.prototype.slice.call(document.querySelectorAll('[data-global-unsaved]'));
   var globalSavedNotes = Array.prototype.slice.call(document.querySelectorAll('[data-global-saved-note]'));
-  var saveTimer = null;
-  var dirty = false;
-  var restoring = false;
 
   function editableControls() {
     return Array.prototype.slice.call(form.querySelectorAll('input, textarea, select')).filter(function (control) {
       return control.name && control.name !== 'csrfmiddlewaretoken';
-    });
-  }
-
-  function currentFields() {
-    var fields = {};
-    editableControls().forEach(function (control) {
-      if (control.type === 'checkbox' || control.type === 'radio') {
-        fields[control.name] = control.checked;
-      } else {
-        fields[control.name] = control.value;
-      }
-    });
-    return fields;
-  }
-
-  function setFields(fields) {
-    editableControls().forEach(function (control) {
-      if (!Object.prototype.hasOwnProperty.call(fields, control.name)) {
-        return;
-      }
-      if (control.type === 'checkbox' || control.type === 'radio') {
-        control.checked = Boolean(fields[control.name]);
-      } else {
-        control.value = fields[control.name];
-      }
-    });
-  }
-
-  function fieldsDiffer(left, right) {
-    var names = {};
-    Object.keys(left || {}).forEach(function (name) { names[name] = true; });
-    Object.keys(right || {}).forEach(function (name) { names[name] = true; });
-    return Object.keys(names).some(function (name) {
-      return String((left || {})[name]) !== String((right || {})[name]);
-    });
-  }
-
-  function draftPayload() {
-    var raw = localStorage.getItem(autosaveKey);
-    if (!raw) {
-      return null;
-    }
-    return JSON.parse(raw);
-  }
-
-  function updateDraftControls() {
-    var draft = null;
-    try {
-      draft = draftPayload();
-    } catch (error) {
-      localStorage.removeItem(autosaveKey);
-    }
-    var hasDifferentDraft = draft && draft.fields && fieldsDiffer(draft.fields, currentFields());
-    restoreButton.hidden = !hasDifferentDraft;
-    discardButton.hidden = !draft;
-    if (hasDifferentDraft) {
-      message.textContent = 'autosaved draft available from ' + new Date(draft.savedAt).toLocaleString() + '.';
-    } else if (draft) {
-      message.textContent = 'current edits are autosaved.';
-    } else {
-      message.textContent = 'waiting for edits.';
-    }
-  }
-
-  function saveDraft() {
-    if (restoring) {
-      return;
-    }
-    localStorage.setItem(autosaveKey, JSON.stringify({ savedAt: new Date().toISOString(), fields: currentFields() }));
-    dirty = false;
-    updateDraftControls();
-  }
-
-  function scheduleSave() {
-    dirty = true;
-    message.textContent = 'saving draft...';
-    window.clearTimeout(saveTimer);
-    saveTimer = window.setTimeout(saveDraft, 600);
-  }
-
-  function pageShowsSuccessfulSave() {
-    return Array.prototype.slice.call(document.querySelectorAll('.messages li')).some(function (item) {
-      return item.textContent.indexOf('Saved') !== -1;
     });
   }
 
@@ -255,71 +174,30 @@
     });
   }
 
-  if (sessionStorage.getItem(submitKey) && pageShowsSuccessfulSave()) {
-    localStorage.removeItem(autosaveKey);
-    sessionStorage.removeItem(submitKey);
-  }
-
   function markControlSegmentUnsaved(control) {
     var segmentKey = control && control.getAttribute && control.getAttribute('data-segment-control');
     if (segmentKey) {
       setSegmentStatus(segmentKey, 'Unsaved changes.');
     }
+    setGlobalStatus('unsaved changes detected.');
     setGlobalUnsaved(true);
   }
 
   form.addEventListener('input', function (event) {
     markControlSegmentUnsaved(event.target);
-    scheduleSave();
   });
   form.addEventListener('change', function (event) {
     markControlSegmentUnsaved(event.target);
-    scheduleSave();
   });
   form.querySelectorAll('[data-save-segment]').forEach(function (button) {
     button.addEventListener('click', function () {
       var segmentKey = button.getAttribute('data-save-segment');
-      saveDraft();
       setSegmentStatus(segmentKey, 'Saving this segment...');
       setGlobalStatus('saving segment ' + segmentKey.replace('_', '.') + '...');
       setGlobalUnsaved(false);
       disableControlsOutsideSegment(segmentKey);
     });
   });
-
-  form.addEventListener('submit', function () {
-    window.clearTimeout(saveTimer);
-    saveDraft();
-    sessionStorage.setItem(submitKey, '1');
-  });
-
-  restoreButton.addEventListener('click', function () {
-    var draft = draftPayload();
-    if (!draft || !draft.fields) {
-      return;
-    }
-    restoring = true;
-    setFields(draft.fields);
-    restoring = false;
-    dirty = false;
-    message.textContent = 'autosaved draft restored; press Save when ready.';
-    updateDraftControls();
-  });
-
-  discardButton.addEventListener('click', function () {
-    localStorage.removeItem(autosaveKey);
-    sessionStorage.removeItem(submitKey);
-    dirty = false;
-    updateDraftControls();
-  });
-
-  window.addEventListener('beforeunload', function () {
-    if (dirty) {
-      saveDraft();
-    }
-  });
-
-  updateDraftControls();
 }());
 </script>
 {% if focus_segment_anchor %}

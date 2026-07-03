@@ -6416,6 +6416,29 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
         for page in pages_data
         for segment in page["segments"]
     ]
+    initial_mwe_consistency_error = _validate_manual_page_mwe_consistency(pages_data)
+    if request.method == "GET" and initial_mwe_consistency_error:
+        error_segment_key = initial_mwe_consistency_error["segment_key"]
+        for page in pages_data:
+            for segment in page["segments"]:
+                if f"{page['page_index']}_{segment['segment_index']}" == error_segment_key:
+                    segment["save_error"] = initial_mwe_consistency_error["message"]
+        return render(
+            request,
+            "projects/manual_page_annotation.html",
+            {
+                "project": project,
+                "mode": "annotation",
+                "pages": pages_data,
+                "show_translation_default": True,
+                "show_mwe_default": True,
+                "show_lemma_default": True,
+                "show_gloss_default": True,
+                "show_pinyin_default": True,
+                "base_hash": base_hash,
+                "focus_segment_anchor": f"after-segment-{error_segment_key}",
+            },
+        )
     if request.method == "POST":
         for page in pages_data:
             for segment in page["segments"]:
