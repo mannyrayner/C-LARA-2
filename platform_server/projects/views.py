@@ -6219,6 +6219,38 @@ def _manual_page_annotation_redirect_url(project: Project, segment_keys: list[st
     return f"{url}#segment-{target_segment}"
 
 
+def _validate_manual_page_mwe_consistency(pages_data: list[dict[str, Any]]) -> str | None:
+    seen: dict[str, dict[str, str]] = {}
+    for page in pages_data:
+        page_number = page.get("page_number", page.get("page_index", 0) + 1)
+        for segment in page["segments"]:
+            segment_number = segment["segment_index"] + 1
+            for token in segment["tokens"]:
+                mwe_id = str(token.get("mwe_id") or "").strip()
+                if not mwe_id:
+                    continue
+                current = {
+                    "lemma": str(token.get("lemma") or "").strip(),
+                    "pos": str(token.get("pos") or "").strip(),
+                    "gloss": str(token.get("gloss") or "").strip(),
+                    "location": f"page {page_number}, segment {segment_number}, token {token['token_index'] + 1}",
+                }
+                previous = seen.get(mwe_id)
+                if previous and (
+                    previous["lemma"] != current["lemma"]
+                    or previous["pos"] != current["pos"]
+                    or previous["gloss"] != current["gloss"]
+                ):
+                    return (
+                        f"MWE consistency error for '{mwe_id}': {current['location']} has "
+                        f"lemma/POS/gloss ({current['lemma'] or '∅'}, {current['pos'] or '∅'}, {current['gloss'] or '∅'}), "
+                        f"but {previous['location']} has ({previous['lemma'] or '∅'}, {previous['pos'] or '∅'}, {previous['gloss'] or '∅'}). "
+                        "Lines with the same MWE annotation must have the same lemma, POS and gloss."
+                    )
+                seen[mwe_id] = current
+    return None
+
+
 @login_required
 def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
@@ -6391,6 +6423,12 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
                     token["gloss"] = request.POST.get(f"gloss_{key}", token["gloss"])
                     token["pinyin"] = request.POST.get(f"pinyin_{key}", token["pinyin"])
 
+        save_segment = str(request.POST.get("save_segment") or "")
+        mwe_consistency_error = _validate_manual_page_mwe_consistency(pages_data)
+        if mwe_consistency_error:
+            messages.error(request, mwe_consistency_error)
+            return redirect(_manual_page_annotation_redirect_url(project, segment_keys, save_segment))
+
         edited_translation = json.loads(json.dumps(seg2_payload))
         edited_mwe = json.loads(json.dumps(seg2_payload))
         for page in pages_data:
@@ -6441,7 +6479,6 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
             )
         target_run = _ensure_stage_run_dir(project)
         _invalidate_downstream_stage_files(target_run, "pinyin")
-        save_segment = str(request.POST.get("save_segment") or "")
         if save_segment:
             messages.success(
                 request,

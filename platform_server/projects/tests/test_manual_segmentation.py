@@ -1013,8 +1013,8 @@ class ManualSegmentationEditorTests(TestCase):
                     "surface": "Hello world",
                     "segments": [
                         {
-                            "surface": "Hello",
-                            "tokens": [{"surface": "Hello"}],
+                            "surface": "Hello there",
+                            "tokens": [{"surface": "Hello"}, {"surface": "there"}],
                             "annotations": {},
                         },
                         {
@@ -1039,19 +1039,49 @@ class ManualSegmentationEditorTests(TestCase):
         self.assertContains(resp, "Save this segment")
         self.assertContains(resp, "data-segment-status=\"0_0\"")
         self.assertNotContains(resp, "Not saved in this session.")
+        self.assertNotContains(resp, "Save page-oriented manual annotations")
+        self.assertContains(resp, "Global edit status:")
+        self.assertContains(resp, "Unsaved changes.")
         self.assertContains(resp, "Translation")
         self.assertContains(resp, "Romanization")
+
+        mismatch_resp = self.client.post(
+            reverse("manual-page-annotation", args=[self.project.pk]),
+            {
+                "save_segment": "0_0",
+                "translation_text_0_0": "Bonjour",
+                "mwe_id_0_0_0": "mwe-a",
+                "lemma_0_0_0": "hello",
+                "pos_0_0_0": "INTJ",
+                "gloss_0_0_0": "bonjour",
+                "pinyin_0_0_0": "",
+                "mwe_id_0_0_1": "mwe-a",
+                "lemma_0_0_1": "there",
+                "pos_0_0_1": "ADV",
+                "gloss_0_0_1": "là",
+                "pinyin_0_0_1": "",
+            },
+            follow=True,
+        )
+        self.assertEqual(mismatch_resp.status_code, 200)
+        self.assertContains(mismatch_resp, "MWE consistency error for &#x27;mwe-a&#x27;")
+        self.assertContains(mismatch_resp, "same lemma, POS and gloss")
 
         save_resp = self.client.post(
             reverse("manual-page-annotation", args=[self.project.pk]),
             {
                 "save_segment": "0_0",
                 "translation_text_0_0": "Bonjour le monde",
-                "mwe_id_0_0_0": "",
+                "mwe_id_0_0_0": "mwe-a",
                 "lemma_0_0_0": "hello",
                 "pos_0_0_0": "INTJ",
                 "gloss_0_0_0": "bonjour",
                 "pinyin_0_0_0": "",
+                "mwe_id_0_0_1": "mwe-a",
+                "lemma_0_0_1": "hello",
+                "pos_0_0_1": "INTJ",
+                "gloss_0_0_1": "bonjour",
+                "pinyin_0_0_1": "",
             },
             follow=True,
         )

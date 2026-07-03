@@ -11,6 +11,7 @@
 >
   <strong>Draft autosave:</strong>
   <span data-autosave-message>waiting for edits.</span>
+  <span data-global-unsaved hidden style="font-weight:bold; color:#9a6700;">Unsaved changes.</span>
   <button class="btn secondary" type="button" data-autosave-restore hidden>Restore autosaved draft</button>
   <button class="btn secondary" type="button" data-autosave-discard hidden>Discard autosaved draft</button>
   <p style="margin-bottom:0;">
@@ -42,8 +43,6 @@
     {% endfor %}
     <p><button class="btn" type="submit">Save token boundaries</button></p>
   {% else %}
-    <p><button class="btn" type="submit">Save page-oriented manual annotations</button></p>
-
     {% for page in pages %}
       <section style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0;">
         <h2>Page {{ page.page_number }}</h2>
@@ -98,7 +97,11 @@
         {% endfor %}
       </section>
     {% endfor %}
-    <p><button class="btn" type="submit">Save page-oriented manual annotations</button></p>
+    <p style="border-top:1px solid #ddd; padding-top:0.75rem;">
+      <strong>Global edit status:</strong>
+      <span data-global-unsaved hidden style="font-weight:bold; color:#9a6700;">Unsaved changes.</span>
+      <span data-global-saved-note>No unsaved changes detected in this browser.</span>
+    </p>
   {% endif %}
 </form>
 
@@ -124,6 +127,8 @@
   var message = statusBox.querySelector('[data-autosave-message]');
   var restoreButton = statusBox.querySelector('[data-autosave-restore]');
   var discardButton = statusBox.querySelector('[data-autosave-discard]');
+  var globalUnsavedLabels = Array.prototype.slice.call(document.querySelectorAll('[data-global-unsaved]'));
+  var globalSavedNotes = Array.prototype.slice.call(document.querySelectorAll('[data-global-saved-note]'));
   var saveTimer = null;
   var dirty = false;
   var restoring = false;
@@ -221,6 +226,15 @@
     message.textContent = text;
   }
 
+  function setGlobalUnsaved(isUnsaved) {
+    globalUnsavedLabels.forEach(function (label) {
+      label.hidden = !isUnsaved;
+    });
+    globalSavedNotes.forEach(function (note) {
+      note.hidden = isUnsaved;
+    });
+  }
+
   function setSegmentStatus(segmentKey, text) {
     var segmentStatus = form.querySelector('[data-segment-status="' + segmentKey + '"]');
     if (segmentStatus) {
@@ -247,6 +261,7 @@
     if (segmentKey) {
       setSegmentStatus(segmentKey, 'Unsaved changes.');
     }
+    setGlobalUnsaved(true);
   }
 
   form.addEventListener('input', function (event) {
@@ -263,6 +278,7 @@
       saveDraft();
       setSegmentStatus(segmentKey, 'Saving this segment...');
       setGlobalStatus('saving segment ' + segmentKey.replace('_', '.') + '...');
+      setGlobalUnsaved(false);
       disableControlsOutsideSegment(segmentKey);
     });
   });
