@@ -1137,7 +1137,7 @@ class ManualSegmentationEditorTests(TestCase):
         )
         self.assertEqual(save_resp.status_code, 200)
         self.assertTrue(save_resp.redirect_chain)
-        self.assertTrue(save_resp.redirect_chain[0][0].endswith("#segment-0_1"))
+        self.assertTrue(save_resp.redirect_chain[0][0].endswith("?saved_segment=0_0#segment-0_1"))
         self.assertContains(save_resp, "Saved segment 0.0 page-oriented manual annotations.")
 
     def test_page_oriented_manual_annotation_link_location(self):

@@ -6216,7 +6216,7 @@ def _manual_page_annotation_redirect_url(project: Project, segment_keys: list[st
         return url
     saved_index = segment_keys.index(saved_segment)
     target_segment = segment_keys[saved_index + 1] if saved_index + 1 < len(segment_keys) else saved_segment
-    return f"{url}#segment-{target_segment}"
+    return f"{url}?saved_segment={saved_segment}#segment-{target_segment}"
 
 
 def _validate_manual_page_mwe_consistency(pages_data: list[dict[str, Any]]) -> dict[str, str] | None:
@@ -6417,7 +6417,7 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
         for segment in page["segments"]
     ]
     initial_mwe_consistency_error = _validate_manual_page_mwe_consistency(pages_data)
-    if request.method == "GET" and initial_mwe_consistency_error:
+    if request.method == "GET" and not request.GET.get("saved_segment") and initial_mwe_consistency_error:
         error_segment_key = initial_mwe_consistency_error["segment_key"]
         for page in pages_data:
             for segment in page["segments"]:

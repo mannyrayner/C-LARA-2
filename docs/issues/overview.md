@@ -1,9 +1,9 @@
-# C-LARA-2 issue overview (refreshed 2026-07-03T06:30:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-03T07:00:00Z)
 
 ## Recent progress
 
-- Refined **ISSUE-0040** for very large editors: browser-local autosave is now off to avoid possible freeze-inducing full-form serialization, global unsaved-change labels are more salient, and initial page load flags pre-existing segment-local MWE inconsistencies inline.
-- Kept **ISSUE-0040** active/P1 because segment-level checkpoints are now the primary mitigation and need maintainer testing on the large project that exposed freezes.
+- Adjusted **ISSUE-0040** post-save behavior: immediate redisplay after a successful segment save now skips the initial-load MWE scan, avoiding confusing reappearance of a different pre-existing inconsistency right after the user fixed the current segment.
+- Recorded that continued freezing after disabling autosave points to the giant rendered DOM as the likely remaining bottleneck; if confirmed, the next implementation should paginate or window the page-oriented editor by segment.
 - Regenerated this overview from canonical issue JSON so the complete inventory reflects all current `reported`, `active`, and `closed` states.
 
 ## Near-term priorities
@@ -31,7 +31,7 @@
 
 ## Notes/risks
 
-- **ISSUE-0040** now relies on per-segment saves rather than browser-local autosave for large page-oriented annotation screens. Maintainer testing should confirm that this removes freezing while segment saves still avoid `TooManyFieldsSent`; if data-loss risk remains, consider a server-backed draft API that stores only the active segment rather than serializing the whole form.
+- **ISSUE-0040** now relies on per-segment saves rather than browser-local autosave for large page-oriented annotation screens. If freezing continues, the likely cause is no longer autosave but the cost of rendering and editing one very large DOM; consider paginated/windowed segment rendering as the next step.
 - **ISSUE-0013** should distinguish three resilience levels: batch continuation after project failure, phase-level resume from valid artifacts, and call-level retry/checkpointing for expensive per-segment/per-chunk API calls.
 - **ISSUE-0039** remains active/P0 for Sophie-facing picture-dictionary workflow completion; avoid letting infrastructure tasks displace the current UI/product review blockers.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated pipeline and UI coverage.
