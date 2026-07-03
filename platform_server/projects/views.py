@@ -6219,7 +6219,7 @@ def _manual_page_annotation_redirect_url(project: Project, segment_keys: list[st
     return f"{url}#segment-{target_segment}"
 
 
-def _validate_manual_page_mwe_consistency(pages_data: list[dict[str, Any]]) -> str | None:
+def _validate_manual_page_mwe_consistency(pages_data: list[dict[str, Any]]) -> dict[str, str] | None:
     seen: dict[str, dict[str, str]] = {}
     for page in pages_data:
         page_number = page.get("page_number", page.get("page_index", 0) + 1)
@@ -6241,12 +6241,15 @@ def _validate_manual_page_mwe_consistency(pages_data: list[dict[str, Any]]) -> s
                     or previous["pos"] != current["pos"]
                     or previous["gloss"] != current["gloss"]
                 ):
-                    return (
-                        f"MWE consistency error for '{mwe_id}': {current['location']} has "
-                        f"lemma/POS/gloss ({current['lemma'] or '∅'}, {current['pos'] or '∅'}, {current['gloss'] or '∅'}), "
-                        f"but {previous['location']} has ({previous['lemma'] or '∅'}, {previous['pos'] or '∅'}, {previous['gloss'] or '∅'}). "
-                        "Lines with the same MWE annotation must have the same lemma, POS and gloss."
-                    )
+                    return {
+                        "segment_key": f"{page['page_index']}_{segment['segment_index']}",
+                        "message": (
+                            f"MWE consistency error for '{mwe_id}': {current['location']} has "
+                            f"lemma/POS/gloss ({current['lemma'] or '∅'}, {current['pos'] or '∅'}, {current['gloss'] or '∅'}), "
+                            f"but {previous['location']} has ({previous['lemma'] or '∅'}, {previous['pos'] or '∅'}, {previous['gloss'] or '∅'}). "
+                            "Lines with the same MWE annotation must have the same lemma, POS and gloss."
+                        ),
+                    }
                 seen[mwe_id] = current
     return None
 
@@ -6426,8 +6429,26 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
         save_segment = str(request.POST.get("save_segment") or "")
         mwe_consistency_error = _validate_manual_page_mwe_consistency(pages_data)
         if mwe_consistency_error:
-            messages.error(request, mwe_consistency_error)
-            return redirect(_manual_page_annotation_redirect_url(project, segment_keys, save_segment))
+            error_segment_key = save_segment or mwe_consistency_error["segment_key"]
+            for page in pages_data:
+                for segment in page["segments"]:
+                    if f"{page['page_index']}_{segment['segment_index']}" == error_segment_key:
+                        segment["save_error"] = mwe_consistency_error["message"]
+            return render(
+                request,
+                "projects/manual_page_annotation.html",
+                {
+                    "project": project,
+                    "mode": "annotation",
+                    "pages": pages_data,
+                    "show_translation_default": True,
+                    "show_mwe_default": True,
+                    "show_lemma_default": True,
+                    "show_gloss_default": True,
+                    "show_pinyin_default": True,
+                    "base_hash": base_hash,
+                },
+            )
 
         edited_translation = json.loads(json.dumps(seg2_payload))
         edited_mwe = json.loads(json.dumps(seg2_payload))

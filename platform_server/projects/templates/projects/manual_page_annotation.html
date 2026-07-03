@@ -93,6 +93,9 @@
               <button class="btn secondary" type="submit" name="save_segment" value="{{ page.page_index }}_{{ segment.segment_index }}" data-save-segment="{{ page.page_index }}_{{ segment.segment_index }}">Save this segment</button>
               <span data-segment-status="{{ page.page_index }}_{{ segment.segment_index }}" hidden></span>
             </p>
+            {% if segment.save_error %}
+              <p style="color:#b00020; font-weight:bold;">{{ segment.save_error }}</p>
+            {% endif %}
           </div>
         {% endfor %}
       </section>

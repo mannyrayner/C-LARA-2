@@ -1064,8 +1064,15 @@ class ManualSegmentationEditorTests(TestCase):
             follow=True,
         )
         self.assertEqual(mismatch_resp.status_code, 200)
+        self.assertEqual(mismatch_resp.redirect_chain, [])
         self.assertContains(mismatch_resp, "MWE consistency error for &#x27;mwe-a&#x27;")
         self.assertContains(mismatch_resp, "same lemma, POS and gloss")
+        self.assertContains(mismatch_resp, 'name="lemma_0_0_1" value="there"', html=False)
+        self.assertContains(mismatch_resp, 'name="gloss_0_0_1" value="là"', html=False)
+        mismatch_html = mismatch_resp.content.decode("utf-8")
+        save_button_index = mismatch_html.index('value="0_0" data-save-segment="0_0"')
+        error_index = mismatch_html.index("MWE consistency error")
+        self.assertGreater(error_index, save_button_index)
 
         save_resp = self.client.post(
             reverse("manual-page-annotation", args=[self.project.pk]),
