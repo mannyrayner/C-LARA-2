@@ -4,7 +4,24 @@
 <h1>Page-oriented manual annotation (first cut)</h1>
 <p><a class="btn secondary" href="{% url 'project-annotation-home' project.pk %}">← Back to annotation home</a></p>
 
-<form method="post">
+<section
+  id="manual-page-autosave-status"
+  data-autosave-key="clara:manual-page-annotation:{{ project.pk }}:{{ mode }}:{{ base_hash|default:'' }}"
+  style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0; background:#fafafa;"
+>
+  <strong>Draft autosave:</strong>
+  <span data-autosave-message>waiting for edits.</span>
+  <button class="btn secondary" type="button" data-autosave-restore hidden>Restore autosaved draft</button>
+  <button class="btn secondary" type="button" data-autosave-discard hidden>Discard autosaved draft</button>
+  <p style="margin-bottom:0;">
+    <small>
+      Edits are saved in this browser before you press Save. If a large form fails to submit,
+      return to this page and restore the autosaved draft.
+    </small>
+  </p>
+</section>
+
+<form id="manual-page-annotation-form" method="post">
   {% csrf_token %}
   {% if mode == "phase1" %}
     <p><strong>Step 1: Add <code>&lt;page&gt;</code> and <code>||</code> tags to define page and segment boundaries.</strong></p>
@@ -86,4 +103,152 @@
   }
   </script>
 {% endif %}
+<script>
+(function () {
+  var form = document.getElementById('manual-page-annotation-form');
+  var statusBox = document.getElementById('manual-page-autosave-status');
+  if (!form || !statusBox || !window.localStorage) {
+    return;
+  }
+
+  var autosaveKey = statusBox.getAttribute('data-autosave-key');
+  var submitKey = autosaveKey + ':submitted';
+  var message = statusBox.querySelector('[data-autosave-message]');
+  var restoreButton = statusBox.querySelector('[data-autosave-restore]');
+  var discardButton = statusBox.querySelector('[data-autosave-discard]');
+  var saveTimer = null;
+  var dirty = false;
+  var restoring = false;
+
+  function editableControls() {
+    return Array.prototype.slice.call(form.querySelectorAll('input, textarea, select')).filter(function (control) {
+      return control.name && control.name !== 'csrfmiddlewaretoken' && !control.disabled;
+    });
+  }
+
+  function currentFields() {
+    var fields = {};
+    editableControls().forEach(function (control) {
+      if (control.type === 'checkbox' || control.type === 'radio') {
+        fields[control.name] = control.checked;
+      } else {
+        fields[control.name] = control.value;
+      }
+    });
+    return fields;
+  }
+
+  function setFields(fields) {
+    editableControls().forEach(function (control) {
+      if (!Object.prototype.hasOwnProperty.call(fields, control.name)) {
+        return;
+      }
+      if (control.type === 'checkbox' || control.type === 'radio') {
+        control.checked = Boolean(fields[control.name]);
+      } else {
+        control.value = fields[control.name];
+      }
+    });
+  }
+
+  function fieldsDiffer(left, right) {
+    var names = {};
+    Object.keys(left || {}).forEach(function (name) { names[name] = true; });
+    Object.keys(right || {}).forEach(function (name) { names[name] = true; });
+    return Object.keys(names).some(function (name) {
+      return String((left || {})[name]) !== String((right || {})[name]);
+    });
+  }
+
+  function draftPayload() {
+    var raw = localStorage.getItem(autosaveKey);
+    if (!raw) {
+      return null;
+    }
+    return JSON.parse(raw);
+  }
+
+  function updateDraftControls() {
+    var draft = null;
+    try {
+      draft = draftPayload();
+    } catch (error) {
+      localStorage.removeItem(autosaveKey);
+    }
+    var hasDifferentDraft = draft && draft.fields && fieldsDiffer(draft.fields, currentFields());
+    restoreButton.hidden = !hasDifferentDraft;
+    discardButton.hidden = !draft;
+    if (hasDifferentDraft) {
+      message.textContent = 'autosaved draft available from ' + new Date(draft.savedAt).toLocaleString() + '.';
+    } else if (draft) {
+      message.textContent = 'current edits are autosaved.';
+    } else {
+      message.textContent = 'waiting for edits.';
+    }
+  }
+
+  function saveDraft() {
+    if (restoring) {
+      return;
+    }
+    localStorage.setItem(autosaveKey, JSON.stringify({ savedAt: new Date().toISOString(), fields: currentFields() }));
+    dirty = false;
+    updateDraftControls();
+  }
+
+  function scheduleSave() {
+    dirty = true;
+    message.textContent = 'saving draft...';
+    window.clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(saveDraft, 600);
+  }
+
+  function pageShowsSuccessfulSave() {
+    return Array.prototype.slice.call(document.querySelectorAll('.messages li')).some(function (item) {
+      return item.textContent.indexOf('Saved') !== -1;
+    });
+  }
+
+  if (sessionStorage.getItem(submitKey) && pageShowsSuccessfulSave()) {
+    localStorage.removeItem(autosaveKey);
+    sessionStorage.removeItem(submitKey);
+  }
+
+  form.addEventListener('input', scheduleSave);
+  form.addEventListener('change', scheduleSave);
+  form.addEventListener('submit', function () {
+    window.clearTimeout(saveTimer);
+    saveDraft();
+    sessionStorage.setItem(submitKey, '1');
+  });
+
+  restoreButton.addEventListener('click', function () {
+    var draft = draftPayload();
+    if (!draft || !draft.fields) {
+      return;
+    }
+    restoring = true;
+    setFields(draft.fields);
+    restoring = false;
+    dirty = false;
+    message.textContent = 'autosaved draft restored; press Save when ready.';
+    updateDraftControls();
+  });
+
+  discardButton.addEventListener('click', function () {
+    localStorage.removeItem(autosaveKey);
+    sessionStorage.removeItem(submitKey);
+    dirty = false;
+    updateDraftControls();
+  });
+
+  window.addEventListener('beforeunload', function () {
+    if (dirty) {
+      saveDraft();
+    }
+  });
+
+  updateDraftControls();
+}());
+</script>
 {% endblock %}

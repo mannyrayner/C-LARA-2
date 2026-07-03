@@ -1,10 +1,10 @@
-# C-LARA-2 issue overview (refreshed 2026-07-03T02:30:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-03T03:15:00Z)
 
 ## Recent progress
 
-- Incorporated human suggestion #31 as new **ISSUE-0040** to track the page-oriented manual annotation save failure caused by Django's POST field-count limit on large projects.
+- Implemented a first browser-local autosave safety net for **ISSUE-0040** in the page-oriented manual annotation view so maintainers can test whether drafts survive large-form save failures.
 - Recorded the maintainer follow-up that autosave or per-segment save controls look like the most promising mitigation directions; the issue now recommends autosave/draft preservation as the primary protection, with explicit segment/page checkpoints where practical.
-- Prioritized **ISSUE-0040** as P1 because it can turn substantial manual annotation work into an unsavable form submission; placed it near other data-loss/resilience work in the focus list.
+- Kept **ISSUE-0040** at P1 and marked it active because the first client-side draft autosave cut is ready for maintainer testing but server-backed/chunked-save follow-up may still be needed.
 - Regenerated this overview from canonical issue JSON so the complete inventory reflects all current `reported`, `active`, and `closed` states.
 
 ## Near-term priorities
@@ -32,7 +32,7 @@
 
 ## Notes/risks
 
-- **ISSUE-0040** should prefer autosave/draft preservation over a settings-only fix, because autosave protects against navigation mistakes, validation failures, transient server errors, and POST-size failures before the user presses Save. Per-segment or per-page save controls can complement autosave as visible checkpoints for long review sessions.
+- **ISSUE-0040** now has a first browser-local autosave implementation, but this does not yet reduce the size of the eventual POST. Follow-up should test recovery after `TooManyFieldsSent` and then decide whether to add server-backed drafts, dirty-field/page-level submission, or per-segment/per-page checkpoints.
 - **ISSUE-0013** should distinguish three resilience levels: batch continuation after project failure, phase-level resume from valid artifacts, and call-level retry/checkpointing for expensive per-segment/per-chunk API calls.
 - **ISSUE-0039** remains active/P0 for Sophie-facing picture-dictionary workflow completion; avoid letting infrastructure tasks displace the current UI/product review blockers.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated pipeline and UI coverage.
@@ -80,4 +80,4 @@
 | [ISSUE-0037](issues/ISSUE-0037.json) | active | P1 | Create subset projects from community picture dictionaries. |
 | [ISSUE-0038](issues/ISSUE-0038.json) | closed | P1 | Keep picture-dictionary images synchronized when words are deleted. |
 | [ISSUE-0039](issues/ISSUE-0039.json) | active | P0 | Build a unified picture-dictionary source-of-truth workspace. |
-| [ISSUE-0040](issues/ISSUE-0040.json) | reported | P1 | Make page-oriented manual annotation saves resilient for large projects. |
+| [ISSUE-0040](issues/ISSUE-0040.json) | active | P1 | Make page-oriented manual annotation saves resilient for large projects. |
