@@ -30,13 +30,13 @@
   {% elif mode == "phase2" %}
     <p><strong>Step 2: Edit content-element boundaries using <code>|</code> separators (or <code>¦</code>).</strong></p>
     {% for row in token_rows %}
-      <section data-manual-segment="{{ row.page_index }}_{{ row.segment_index }}" style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0;">
+      <section id="segment-{{ row.page_index }}_{{ row.segment_index }}" data-manual-segment="{{ row.page_index }}_{{ row.segment_index }}" style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0;">
         <h2>Page {{ row.page_index }}</h2>
         <p><strong>Segment {{ row.segment_index }}</strong>: {{ row.segment_surface }}</p>
         <textarea data-segment-control="{{ row.page_index }}_{{ row.segment_index }}" name="tokenized_text_{{ row.page_index }}_{{ row.segment_index }}" rows="3" style="width:100%;">{{ row.tokenized_text }}</textarea>
         <p>
           <button class="btn secondary" type="submit" name="save_segment" value="{{ row.page_index }}_{{ row.segment_index }}" data-save-segment="{{ row.page_index }}_{{ row.segment_index }}">Save this segment</button>
-          <span data-segment-status="{{ row.page_index }}_{{ row.segment_index }}">Not saved in this session.</span>
+          <span data-segment-status="{{ row.page_index }}_{{ row.segment_index }}" hidden></span>
         </p>
       </section>
     {% endfor %}
@@ -58,7 +58,7 @@
           <label><input type="checkbox" checked onclick="togglePageLayer({{ page.page_number }}, 'pinyin')"> Romanization</label>
         </p>
         {% for segment in page.segments %}
-          <div data-manual-segment="{{ page.page_index }}_{{ segment.segment_index }}" style="border-top:1px dashed #ddd; padding-top:0.5rem; margin-top:0.5rem;">
+          <div id="segment-{{ page.page_index }}_{{ segment.segment_index }}" data-manual-segment="{{ page.page_index }}_{{ segment.segment_index }}" style="border-top:1px dashed #ddd; padding-top:0.5rem; margin-top:0.5rem;">
             <p><strong>Segment {{ forloop.counter }}:</strong> {{ segment.surface }}</p>
             <div class="layer-{{ page.page_number }}-translation">
               <label>Translation</label>
@@ -92,7 +92,7 @@
             </table>
             <p>
               <button class="btn secondary" type="submit" name="save_segment" value="{{ page.page_index }}_{{ segment.segment_index }}" data-save-segment="{{ page.page_index }}_{{ segment.segment_index }}">Save this segment</button>
-              <span data-segment-status="{{ page.page_index }}_{{ segment.segment_index }}">Not saved in this session.</span>
+              <span data-segment-status="{{ page.page_index }}_{{ segment.segment_index }}" hidden></span>
             </p>
           </div>
         {% endfor %}
@@ -225,6 +225,7 @@
     var segmentStatus = form.querySelector('[data-segment-status="' + segmentKey + '"]');
     if (segmentStatus) {
       segmentStatus.textContent = text;
+      segmentStatus.hidden = !text;
     }
   }
 
@@ -241,8 +242,21 @@
     sessionStorage.removeItem(submitKey);
   }
 
-  form.addEventListener('input', scheduleSave);
-  form.addEventListener('change', scheduleSave);
+  function markControlSegmentUnsaved(control) {
+    var segmentKey = control && control.getAttribute && control.getAttribute('data-segment-control');
+    if (segmentKey) {
+      setSegmentStatus(segmentKey, 'Unsaved changes.');
+    }
+  }
+
+  form.addEventListener('input', function (event) {
+    markControlSegmentUnsaved(event.target);
+    scheduleSave();
+  });
+  form.addEventListener('change', function (event) {
+    markControlSegmentUnsaved(event.target);
+    scheduleSave();
+  });
   form.querySelectorAll('[data-save-segment]').forEach(function (button) {
     button.addEventListener('click', function () {
       var segmentKey = button.getAttribute('data-save-segment');

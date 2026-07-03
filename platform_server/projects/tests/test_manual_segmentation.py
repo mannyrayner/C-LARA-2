@@ -1013,8 +1013,13 @@ class ManualSegmentationEditorTests(TestCase):
                     "surface": "Hello world",
                     "segments": [
                         {
-                            "surface": "Hello world",
-                            "tokens": [{"surface": "Hello"}, {"surface": " "}, {"surface": "world"}],
+                            "surface": "Hello",
+                            "tokens": [{"surface": "Hello"}],
+                            "annotations": {},
+                        },
+                        {
+                            "surface": "world",
+                            "tokens": [{"surface": "world"}],
                             "annotations": {},
                         }
                     ],
@@ -1032,7 +1037,8 @@ class ManualSegmentationEditorTests(TestCase):
         self.assertContains(resp, "Restore autosaved draft")
         self.assertContains(resp, "clara:manual-page-annotation:")
         self.assertContains(resp, "Save this segment")
-        self.assertContains(resp, "Not saved in this session.")
+        self.assertContains(resp, "data-segment-status=\"0_0\"")
+        self.assertNotContains(resp, "Not saved in this session.")
         self.assertContains(resp, "Translation")
         self.assertContains(resp, "Romanization")
 
@@ -1046,15 +1052,12 @@ class ManualSegmentationEditorTests(TestCase):
                 "pos_0_0_0": "INTJ",
                 "gloss_0_0_0": "bonjour",
                 "pinyin_0_0_0": "",
-                "mwe_id_0_0_2": "",
-                "lemma_0_0_2": "world",
-                "pos_0_0_2": "NOUN",
-                "gloss_0_0_2": "monde",
-                "pinyin_0_0_2": "",
             },
             follow=True,
         )
         self.assertEqual(save_resp.status_code, 200)
+        self.assertTrue(save_resp.redirect_chain)
+        self.assertTrue(save_resp.redirect_chain[0][0].endswith("#segment-0_1"))
         self.assertContains(save_resp, "Saved segment 0.0 page-oriented manual annotations.")
 
     def test_page_oriented_manual_annotation_link_location(self):

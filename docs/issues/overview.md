@@ -1,8 +1,8 @@
-# C-LARA-2 issue overview (refreshed 2026-07-03T04:00:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-03T04:30:00Z)
 
 ## Recent progress
 
-- Added per-segment **Save this segment** controls and per-segment status text to the page-oriented manual annotation view for **ISSUE-0040**, complementing the browser-local autosave safety net.
+- Refined the **ISSUE-0040** per-segment save UX: segment status text is now shown only when a segment has unsaved edits or is being saved, and segment saves return the user to the following segment anchor where possible.
 - Kept **ISSUE-0040** active/P1 because the combined autosave plus segment-level checkpoint implementation is ready for maintainer testing, but server-backed/chunked-save follow-up may still be useful after large-project testing.
 - Regenerated this overview from canonical issue JSON so the complete inventory reflects all current `reported`, `active`, and `closed` states.
 
@@ -31,7 +31,7 @@
 
 ## Notes/risks
 
-- **ISSUE-0040** now has browser-local autosave plus per-segment save controls. Maintainer testing should confirm that segment saves avoid `TooManyFieldsSent` on the originally problematic large project and that autosaved drafts remain recoverable after failed full-form submissions.
+- **ISSUE-0040** now has browser-local autosave plus per-segment save controls with quieter status text and post-save anchor navigation. Maintainer testing should confirm that segment saves avoid `TooManyFieldsSent` on the originally problematic large project and that autosaved drafts remain recoverable after failed full-form submissions.
 - **ISSUE-0013** should distinguish three resilience levels: batch continuation after project failure, phase-level resume from valid artifacts, and call-level retry/checkpointing for expensive per-segment/per-chunk API calls.
 - **ISSUE-0039** remains active/P0 for Sophie-facing picture-dictionary workflow completion; avoid letting infrastructure tasks displace the current UI/product review blockers.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated pipeline and UI coverage.
