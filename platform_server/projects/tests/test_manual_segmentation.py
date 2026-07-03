@@ -1028,6 +1028,9 @@ class ManualSegmentationEditorTests(TestCase):
         resp = self.client.get(reverse("manual-page-annotation", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Page-oriented manual annotation")
+        self.assertContains(resp, "Draft autosave:")
+        self.assertContains(resp, "Restore autosaved draft")
+        self.assertContains(resp, "clara:manual-page-annotation:")
         self.assertContains(resp, "Translation")
         self.assertContains(resp, "Romanization")
 
