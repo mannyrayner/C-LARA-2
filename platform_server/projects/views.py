@@ -6220,10 +6220,10 @@ def _manual_page_annotation_redirect_url(project: Project, segment_keys: list[st
 
 
 def _validate_manual_page_mwe_consistency(pages_data: list[dict[str, Any]]) -> dict[str, str] | None:
-    seen: dict[str, dict[str, str]] = {}
     for page in pages_data:
         page_number = page.get("page_number", page.get("page_index", 0) + 1)
         for segment in page["segments"]:
+            seen: dict[str, dict[str, str]] = {}
             segment_number = segment["segment_index"] + 1
             for token in segment["tokens"]:
                 mwe_id = str(token.get("mwe_id") or "").strip()
@@ -6236,18 +6236,23 @@ def _validate_manual_page_mwe_consistency(pages_data: list[dict[str, Any]]) -> d
                     "location": f"page {page_number}, segment {segment_number}, token {token['token_index'] + 1}",
                 }
                 previous = seen.get(mwe_id)
-                if previous and (
-                    previous["lemma"] != current["lemma"]
-                    or previous["pos"] != current["pos"]
-                    or previous["gloss"] != current["gloss"]
-                ):
+                if previous:
+                    mismatched_components = [
+                        label
+                        for label, field in (("LEMMA", "lemma"), ("POS", "pos"), ("GLOSS", "gloss"))
+                        if previous[field] != current[field]
+                    ]
+                else:
+                    mismatched_components = []
+                if mismatched_components:
                     return {
                         "segment_key": f"{page['page_index']}_{segment['segment_index']}",
                         "message": (
                             f"MWE consistency error for '{mwe_id}': {current['location']} has "
                             f"lemma/POS/gloss ({current['lemma'] or '∅'}, {current['pos'] or '∅'}, {current['gloss'] or '∅'}), "
                             f"but {previous['location']} has ({previous['lemma'] or '∅'}, {previous['pos'] or '∅'}, {previous['gloss'] or '∅'}). "
-                            "Lines with the same MWE annotation must have the same lemma, POS and gloss."
+                            f"Mismatched component(s): {', '.join(mismatched_components)}. "
+                            "Within a segment, lines with the same MWE annotation must have the same lemma, POS and gloss."
                         ),
                     }
                 seen[mwe_id] = current
@@ -6447,6 +6452,7 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
                     "show_gloss_default": True,
                     "show_pinyin_default": True,
                     "base_hash": base_hash,
+                    "focus_segment_anchor": f"after-segment-{error_segment_key}",
                 },
             )
 

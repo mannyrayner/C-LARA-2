@@ -94,8 +94,9 @@
               <span data-segment-status="{{ page.page_index }}_{{ segment.segment_index }}" hidden></span>
             </p>
             {% if segment.save_error %}
-              <p style="color:#b00020; font-weight:bold;">{{ segment.save_error }}</p>
+              <p id="segment-error-{{ page.page_index }}_{{ segment.segment_index }}" style="color:#b00020; font-weight:bold;">{{ segment.save_error }}</p>
             {% endif %}
+            <span id="after-segment-{{ page.page_index }}_{{ segment.segment_index }}"></span>
           </div>
         {% endfor %}
       </section>
@@ -321,4 +322,14 @@
   updateDraftControls();
 }());
 </script>
+{% if focus_segment_anchor %}
+  <script>
+  window.setTimeout(function () {
+    var target = document.getElementById('{{ focus_segment_anchor }}');
+    if (target) {
+      target.scrollIntoView();
+    }
+  }, 0);
+  </script>
+{% endif %}
 {% endblock %}

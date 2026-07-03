@@ -9,6 +9,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from projects.models import Project
+from projects.views import _validate_manual_page_mwe_consistency
 
 
 class ManualSegmentationEditorTests(TestCase):
@@ -1066,13 +1067,39 @@ class ManualSegmentationEditorTests(TestCase):
         self.assertEqual(mismatch_resp.status_code, 200)
         self.assertEqual(mismatch_resp.redirect_chain, [])
         self.assertContains(mismatch_resp, "MWE consistency error for &#x27;mwe-a&#x27;")
+        self.assertContains(mismatch_resp, "Mismatched component(s): LEMMA, POS, GLOSS")
         self.assertContains(mismatch_resp, "same lemma, POS and gloss")
         self.assertContains(mismatch_resp, 'name="lemma_0_0_1" value="there"', html=False)
         self.assertContains(mismatch_resp, 'name="gloss_0_0_1" value="là"', html=False)
+        self.assertContains(mismatch_resp, "after-segment-0_0")
         mismatch_html = mismatch_resp.content.decode("utf-8")
         save_button_index = mismatch_html.index('value="0_0" data-save-segment="0_0"')
         error_index = mismatch_html.index("MWE consistency error")
         self.assertGreater(error_index, save_button_index)
+
+        cross_segment_duplicate = _validate_manual_page_mwe_consistency(
+            [
+                {
+                    "page_number": 1,
+                    "page_index": 0,
+                    "segments": [
+                        {
+                            "segment_index": 0,
+                            "tokens": [
+                                {"token_index": 0, "mwe_id": "local-id", "lemma": "alpha", "pos": "NOUN", "gloss": "a"}
+                            ],
+                        },
+                        {
+                            "segment_index": 1,
+                            "tokens": [
+                                {"token_index": 0, "mwe_id": "local-id", "lemma": "beta", "pos": "VERB", "gloss": "b"}
+                            ],
+                        },
+                    ],
+                }
+            ]
+        )
+        self.assertIsNone(cross_segment_duplicate)
 
         save_resp = self.client.post(
             reverse("manual-page-annotation", args=[self.project.pk]),
