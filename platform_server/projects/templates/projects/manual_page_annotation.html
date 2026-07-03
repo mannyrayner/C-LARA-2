@@ -4,7 +4,24 @@
 <h1>Page-oriented manual annotation (first cut)</h1>
 <p><a class="btn secondary" href="{% url 'project-annotation-home' project.pk %}">← Back to annotation home</a></p>
 
-<form method="post">
+<section
+  id="manual-page-autosave-status"
+  data-autosave-key="clara:manual-page-annotation:{{ project.pk }}:{{ mode }}:{{ base_hash|default:'' }}"
+  style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0; background:#fafafa;"
+>
+  <strong>Draft autosave:</strong>
+  <span data-autosave-message>waiting for edits.</span>
+  <button class="btn secondary" type="button" data-autosave-restore hidden>Restore autosaved draft</button>
+  <button class="btn secondary" type="button" data-autosave-discard hidden>Discard autosaved draft</button>
+  <p style="margin-bottom:0;">
+    <small>
+      Edits are saved in this browser before you press Save. If a large form fails to submit,
+      return to this page and restore the autosaved draft.
+    </small>
+  </p>
+</section>
+
+<form id="manual-page-annotation-form" method="post">
   {% csrf_token %}
   {% if mode == "phase1" %}
     <p><strong>Step 1: Add <code>&lt;page&gt;</code> and <code>||</code> tags to define page and segment boundaries.</strong></p>
@@ -13,10 +30,14 @@
   {% elif mode == "phase2" %}
     <p><strong>Step 2: Edit content-element boundaries using <code>|</code> separators (or <code>¦</code>).</strong></p>
     {% for row in token_rows %}
-      <section style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0;">
+      <section id="segment-{{ row.page_index }}_{{ row.segment_index }}" data-manual-segment="{{ row.page_index }}_{{ row.segment_index }}" style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0;">
         <h2>Page {{ row.page_index }}</h2>
         <p><strong>Segment {{ row.segment_index }}</strong>: {{ row.segment_surface }}</p>
-        <textarea name="tokenized_text_{{ row.page_index }}_{{ row.segment_index }}" rows="3" style="width:100%;">{{ row.tokenized_text }}</textarea>
+        <textarea data-segment-control="{{ row.page_index }}_{{ row.segment_index }}" name="tokenized_text_{{ row.page_index }}_{{ row.segment_index }}" rows="3" style="width:100%;">{{ row.tokenized_text }}</textarea>
+        <p>
+          <button class="btn secondary" type="submit" name="save_segment" value="{{ row.page_index }}_{{ row.segment_index }}" data-save-segment="{{ row.page_index }}_{{ row.segment_index }}">Save this segment</button>
+          <span data-segment-status="{{ row.page_index }}_{{ row.segment_index }}" hidden></span>
+        </p>
       </section>
     {% endfor %}
     <p><button class="btn" type="submit">Save token boundaries</button></p>
@@ -37,11 +58,11 @@
           <label><input type="checkbox" checked onclick="togglePageLayer({{ page.page_number }}, 'pinyin')"> Romanization</label>
         </p>
         {% for segment in page.segments %}
-          <div style="border-top:1px dashed #ddd; padding-top:0.5rem; margin-top:0.5rem;">
+          <div id="segment-{{ page.page_index }}_{{ segment.segment_index }}" data-manual-segment="{{ page.page_index }}_{{ segment.segment_index }}" style="border-top:1px dashed #ddd; padding-top:0.5rem; margin-top:0.5rem;">
             <p><strong>Segment {{ forloop.counter }}:</strong> {{ segment.surface }}</p>
             <div class="layer-{{ page.page_number }}-translation">
               <label>Translation</label>
-              <input type="text" name="translation_text_{{ page.page_index }}_{{ segment.segment_index }}" value="{{ segment.translation_text }}" style="width:100%;" />
+              <input data-segment-control="{{ page.page_index }}_{{ segment.segment_index }}" type="text" name="translation_text_{{ page.page_index }}_{{ segment.segment_index }}" value="{{ segment.translation_text }}" style="width:100%;" />
             </div>
             <table border="1" cellpadding="4" cellspacing="0" style="margin-top:0.4rem; width:100%;">
               <thead>
@@ -59,16 +80,20 @@
                   {% if not token.is_whitespace %}
                   <tr>
                     <td><code lang="{{ project.language }}">{{ token.surface }}</code></td>
-                    <td class="layer-{{ page.page_number }}-mwe"><input type="text" name="mwe_id_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.mwe_id }}" /></td>
-                    <td class="layer-{{ page.page_number }}-lemma"><input type="text" name="lemma_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.lemma }}" /></td>
-                    <td class="layer-{{ page.page_number }}-lemma"><input type="text" name="pos_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.pos }}" /></td>
-                    <td class="layer-{{ page.page_number }}-gloss"><input type="text" name="gloss_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.gloss }}" /></td>
-                    <td class="layer-{{ page.page_number }}-pinyin"><input type="text" name="pinyin_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.pinyin }}" /></td>
+                    <td class="layer-{{ page.page_number }}-mwe"><input data-segment-control="{{ page.page_index }}_{{ segment.segment_index }}" type="text" name="mwe_id_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.mwe_id }}" /></td>
+                    <td class="layer-{{ page.page_number }}-lemma"><input data-segment-control="{{ page.page_index }}_{{ segment.segment_index }}" type="text" name="lemma_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.lemma }}" /></td>
+                    <td class="layer-{{ page.page_number }}-lemma"><input data-segment-control="{{ page.page_index }}_{{ segment.segment_index }}" type="text" name="pos_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.pos }}" /></td>
+                    <td class="layer-{{ page.page_number }}-gloss"><input data-segment-control="{{ page.page_index }}_{{ segment.segment_index }}" type="text" name="gloss_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.gloss }}" /></td>
+                    <td class="layer-{{ page.page_number }}-pinyin"><input data-segment-control="{{ page.page_index }}_{{ segment.segment_index }}" type="text" name="pinyin_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.pinyin }}" /></td>
                   </tr>
                   {% endif %}
                 {% endfor %}
               </tbody>
             </table>
+            <p>
+              <button class="btn secondary" type="submit" name="save_segment" value="{{ page.page_index }}_{{ segment.segment_index }}" data-save-segment="{{ page.page_index }}_{{ segment.segment_index }}">Save this segment</button>
+              <span data-segment-status="{{ page.page_index }}_{{ segment.segment_index }}" hidden></span>
+            </p>
           </div>
         {% endfor %}
       </section>
@@ -86,4 +111,195 @@
   }
   </script>
 {% endif %}
+<script>
+(function () {
+  var form = document.getElementById('manual-page-annotation-form');
+  var statusBox = document.getElementById('manual-page-autosave-status');
+  if (!form || !statusBox || !window.localStorage) {
+    return;
+  }
+
+  var autosaveKey = statusBox.getAttribute('data-autosave-key');
+  var submitKey = autosaveKey + ':submitted';
+  var message = statusBox.querySelector('[data-autosave-message]');
+  var restoreButton = statusBox.querySelector('[data-autosave-restore]');
+  var discardButton = statusBox.querySelector('[data-autosave-discard]');
+  var saveTimer = null;
+  var dirty = false;
+  var restoring = false;
+
+  function editableControls() {
+    return Array.prototype.slice.call(form.querySelectorAll('input, textarea, select')).filter(function (control) {
+      return control.name && control.name !== 'csrfmiddlewaretoken';
+    });
+  }
+
+  function currentFields() {
+    var fields = {};
+    editableControls().forEach(function (control) {
+      if (control.type === 'checkbox' || control.type === 'radio') {
+        fields[control.name] = control.checked;
+      } else {
+        fields[control.name] = control.value;
+      }
+    });
+    return fields;
+  }
+
+  function setFields(fields) {
+    editableControls().forEach(function (control) {
+      if (!Object.prototype.hasOwnProperty.call(fields, control.name)) {
+        return;
+      }
+      if (control.type === 'checkbox' || control.type === 'radio') {
+        control.checked = Boolean(fields[control.name]);
+      } else {
+        control.value = fields[control.name];
+      }
+    });
+  }
+
+  function fieldsDiffer(left, right) {
+    var names = {};
+    Object.keys(left || {}).forEach(function (name) { names[name] = true; });
+    Object.keys(right || {}).forEach(function (name) { names[name] = true; });
+    return Object.keys(names).some(function (name) {
+      return String((left || {})[name]) !== String((right || {})[name]);
+    });
+  }
+
+  function draftPayload() {
+    var raw = localStorage.getItem(autosaveKey);
+    if (!raw) {
+      return null;
+    }
+    return JSON.parse(raw);
+  }
+
+  function updateDraftControls() {
+    var draft = null;
+    try {
+      draft = draftPayload();
+    } catch (error) {
+      localStorage.removeItem(autosaveKey);
+    }
+    var hasDifferentDraft = draft && draft.fields && fieldsDiffer(draft.fields, currentFields());
+    restoreButton.hidden = !hasDifferentDraft;
+    discardButton.hidden = !draft;
+    if (hasDifferentDraft) {
+      message.textContent = 'autosaved draft available from ' + new Date(draft.savedAt).toLocaleString() + '.';
+    } else if (draft) {
+      message.textContent = 'current edits are autosaved.';
+    } else {
+      message.textContent = 'waiting for edits.';
+    }
+  }
+
+  function saveDraft() {
+    if (restoring) {
+      return;
+    }
+    localStorage.setItem(autosaveKey, JSON.stringify({ savedAt: new Date().toISOString(), fields: currentFields() }));
+    dirty = false;
+    updateDraftControls();
+  }
+
+  function scheduleSave() {
+    dirty = true;
+    message.textContent = 'saving draft...';
+    window.clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(saveDraft, 600);
+  }
+
+  function pageShowsSuccessfulSave() {
+    return Array.prototype.slice.call(document.querySelectorAll('.messages li')).some(function (item) {
+      return item.textContent.indexOf('Saved') !== -1;
+    });
+  }
+
+  function setGlobalStatus(text) {
+    message.textContent = text;
+  }
+
+  function setSegmentStatus(segmentKey, text) {
+    var segmentStatus = form.querySelector('[data-segment-status="' + segmentKey + '"]');
+    if (segmentStatus) {
+      segmentStatus.textContent = text;
+      segmentStatus.hidden = !text;
+    }
+  }
+
+  function disableControlsOutsideSegment(segmentKey) {
+    editableControls().forEach(function (control) {
+      if (control.getAttribute('data-segment-control') && control.getAttribute('data-segment-control') !== segmentKey) {
+        control.disabled = true;
+      }
+    });
+  }
+
+  if (sessionStorage.getItem(submitKey) && pageShowsSuccessfulSave()) {
+    localStorage.removeItem(autosaveKey);
+    sessionStorage.removeItem(submitKey);
+  }
+
+  function markControlSegmentUnsaved(control) {
+    var segmentKey = control && control.getAttribute && control.getAttribute('data-segment-control');
+    if (segmentKey) {
+      setSegmentStatus(segmentKey, 'Unsaved changes.');
+    }
+  }
+
+  form.addEventListener('input', function (event) {
+    markControlSegmentUnsaved(event.target);
+    scheduleSave();
+  });
+  form.addEventListener('change', function (event) {
+    markControlSegmentUnsaved(event.target);
+    scheduleSave();
+  });
+  form.querySelectorAll('[data-save-segment]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var segmentKey = button.getAttribute('data-save-segment');
+      saveDraft();
+      setSegmentStatus(segmentKey, 'Saving this segment...');
+      setGlobalStatus('saving segment ' + segmentKey.replace('_', '.') + '...');
+      disableControlsOutsideSegment(segmentKey);
+    });
+  });
+
+  form.addEventListener('submit', function () {
+    window.clearTimeout(saveTimer);
+    saveDraft();
+    sessionStorage.setItem(submitKey, '1');
+  });
+
+  restoreButton.addEventListener('click', function () {
+    var draft = draftPayload();
+    if (!draft || !draft.fields) {
+      return;
+    }
+    restoring = true;
+    setFields(draft.fields);
+    restoring = false;
+    dirty = false;
+    message.textContent = 'autosaved draft restored; press Save when ready.';
+    updateDraftControls();
+  });
+
+  discardButton.addEventListener('click', function () {
+    localStorage.removeItem(autosaveKey);
+    sessionStorage.removeItem(submitKey);
+    dirty = false;
+    updateDraftControls();
+  });
+
+  window.addEventListener('beforeunload', function () {
+    if (dirty) {
+      saveDraft();
+    }
+  });
+
+  updateDraftControls();
+}());
+</script>
 {% endblock %}
