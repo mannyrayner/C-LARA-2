@@ -1,10 +1,10 @@
-# C-LARA-2 issue overview (refreshed 2026-07-01T13:36:21Z)
+# C-LARA-2 issue overview (refreshed 2026-07-03T02:30:00Z)
 
 ## Recent progress
 
-- Incorporated human suggestion #30 as an update to **ISSUE-0013** rather than opening a duplicate issue: the MWE batch refresh now highlights the need for phase-level and eventually per-call retry/checkpointing, not just whole-project retry.
-- Kept **ISSUE-0013** at P1 and moved it higher in the near-term focus list because large-project annotation refreshes are now a practical blocker for the MWE experiment workflow.
-- Retained **ISSUE-0036** as the main few-shot/MWE experiment-quality track; retry granularity belongs under the lower-level persistence/resilience work in **ISSUE-0013**.
+- Incorporated human suggestion #31 as new **ISSUE-0040** to track the page-oriented manual annotation save failure caused by Django's POST field-count limit on large projects.
+- Recorded the maintainer follow-up that autosave or per-segment save controls look like the most promising mitigation directions; the issue now recommends autosave/draft preservation as the primary protection, with explicit segment/page checkpoints where practical.
+- Prioritized **ISSUE-0040** as P1 because it can turn substantial manual annotation work into an unsavable form submission; placed it near other data-loss/resilience work in the focus list.
 - Regenerated this overview from canonical issue JSON so the complete inventory reflects all current `reported`, `active`, and `closed` states.
 
 ## Near-term priorities
@@ -13,27 +13,28 @@
 2. **ISSUE-0031** — improve compiled-content presentation context and configurable public access controls.
 3. **ISSUE-0030** — fix image-generation workflow UX around element expansion auto-refresh and selection confirmation.
 4. **ISSUE-0029** — autosave community judging inputs to prevent accidental data loss.
-5. **ISSUE-0037** — create subset projects from community picture dictionaries.
-6. **ISSUE-0026** — define next-step community-recorded audio workflow for non-TTS languages.
-7. **ISSUE-0005** — tune segmentation_phase_1 prompting to improve segment granularity by genre.
-8. **ISSUE-0003** — add efficient end-to-end pipeline test runner for systematic quality checks.
-9. **ISSUE-0036** — systematize creation and evaluation of few-shot examples for linguistic annotation.
-10. **ISSUE-0013** — improve stage artifact persistence performance and timeout resilience.
-11. **ISSUE-0025** — add systematic UI regression tracking for disappearing controls/content.
-12. **ISSUE-0010** — import a representative legacy C-LARA project corpus and add batch import tooling.
-13. **ISSUE-0008** — write C-LARA-2 technical report and academic papers.
-14. **ISSUE-0033** — clean up and phase-track roadmap file maintenance.
-15. **ISSUE-0034** — add restricted project-understanding assistant with versioned evidence records.
-16. **ISSUE-0035** — track intermittent Codex PR update-branch refusal.
-17. **ISSUE-0006** — investigate segmentation_phase_2 token-span failures and rerun-path correctness.
-18. **ISSUE-0004** — introduce AI-based review gates for phase outputs with extensible evaluator architecture.
-19. **ISSUE-0001** — support hosted compiled legacy content registration in C-LARA-2.
+5. **ISSUE-0040** — make page-oriented manual annotation saves resilient for large projects.
+6. **ISSUE-0037** — create subset projects from community picture dictionaries.
+7. **ISSUE-0026** — define next-step community-recorded audio workflow for non-TTS languages.
+8. **ISSUE-0005** — tune segmentation_phase_1 prompting to improve segment granularity by genre.
+9. **ISSUE-0003** — add efficient end-to-end pipeline test runner for systematic quality checks.
+10. **ISSUE-0036** — systematize creation and evaluation of few-shot examples for linguistic annotation.
+11. **ISSUE-0013** — improve stage artifact persistence performance and timeout resilience.
+12. **ISSUE-0025** — add systematic UI regression tracking for disappearing controls/content.
+13. **ISSUE-0010** — import a representative legacy C-LARA project corpus and add batch import tooling.
+14. **ISSUE-0008** — write C-LARA-2 technical report and academic papers.
+15. **ISSUE-0033** — clean up and phase-track roadmap file maintenance.
+16. **ISSUE-0034** — add restricted project-understanding assistant with versioned evidence records.
+17. **ISSUE-0035** — track intermittent Codex PR update-branch refusal.
+18. **ISSUE-0006** — investigate segmentation_phase_2 token-span failures and rerun-path correctness.
+19. **ISSUE-0004** — introduce AI-based review gates for phase outputs with extensible evaluator architecture.
+20. **ISSUE-0001** — support hosted compiled legacy content registration in C-LARA-2.
 
 ## Notes/risks
 
-- **ISSUE-0013** should distinguish three resilience levels: batch continuation after project failure, phase-level resume from valid artifacts, and call-level retry/checkpointing for expensive per-segment/per-chunk API calls. The new suggestion specifically asks for the latter two levels.
-- **ISSUE-0036** and the MWE workbench can proceed with project-level retries, but large-project costs will remain high until **ISSUE-0013** provides finer-grained checkpointing.
-- **ISSUE-0039** remains active/P0 for Sophie-facing picture-dictionary workflow completion; avoid letting MWE experiment infrastructure displace the current UI/product review blockers.
+- **ISSUE-0040** should prefer autosave/draft preservation over a settings-only fix, because autosave protects against navigation mistakes, validation failures, transient server errors, and POST-size failures before the user presses Save. Per-segment or per-page save controls can complement autosave as visible checkpoints for long review sessions.
+- **ISSUE-0013** should distinguish three resilience levels: batch continuation after project failure, phase-level resume from valid artifacts, and call-level retry/checkpointing for expensive per-segment/per-chunk API calls.
+- **ISSUE-0039** remains active/P0 for Sophie-facing picture-dictionary workflow completion; avoid letting infrastructure tasks displace the current UI/product review blockers.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated pipeline and UI coverage.
 
 ## Complete issue inventory
@@ -79,3 +80,4 @@
 | [ISSUE-0037](issues/ISSUE-0037.json) | active | P1 | Create subset projects from community picture dictionaries. |
 | [ISSUE-0038](issues/ISSUE-0038.json) | closed | P1 | Keep picture-dictionary images synchronized when words are deleted. |
 | [ISSUE-0039](issues/ISSUE-0039.json) | active | P0 | Build a unified picture-dictionary source-of-truth workspace. |
+| [ISSUE-0040](issues/ISSUE-0040.json) | reported | P1 | Make page-oriented manual annotation saves resilient for large projects. |
