@@ -1028,8 +1028,34 @@ class ManualSegmentationEditorTests(TestCase):
         resp = self.client.get(reverse("manual-page-annotation", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Page-oriented manual annotation")
+        self.assertContains(resp, "Draft autosave:")
+        self.assertContains(resp, "Restore autosaved draft")
+        self.assertContains(resp, "clara:manual-page-annotation:")
+        self.assertContains(resp, "Save this segment")
+        self.assertContains(resp, "Not saved in this session.")
         self.assertContains(resp, "Translation")
         self.assertContains(resp, "Romanization")
+
+        save_resp = self.client.post(
+            reverse("manual-page-annotation", args=[self.project.pk]),
+            {
+                "save_segment": "0_0",
+                "translation_text_0_0": "Bonjour le monde",
+                "mwe_id_0_0_0": "",
+                "lemma_0_0_0": "hello",
+                "pos_0_0_0": "INTJ",
+                "gloss_0_0_0": "bonjour",
+                "pinyin_0_0_0": "",
+                "mwe_id_0_0_2": "",
+                "lemma_0_0_2": "world",
+                "pos_0_0_2": "NOUN",
+                "gloss_0_0_2": "monde",
+                "pinyin_0_0_2": "",
+            },
+            follow=True,
+        )
+        self.assertEqual(save_resp.status_code, 200)
+        self.assertContains(save_resp, "Saved segment 0.0 page-oriented manual annotations.")
 
     def test_page_oriented_manual_annotation_link_location(self):
         ann = self.client.get(reverse("project-annotation-home", args=[self.project.pk]))
