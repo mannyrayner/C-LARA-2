@@ -9,6 +9,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from projects.models import Project
+from projects.views import _validate_manual_page_mwe_consistency
 
 
 class ManualSegmentationEditorTests(TestCase):
@@ -1001,35 +1002,160 @@ class ManualSegmentationEditorTests(TestCase):
         run_dir.mkdir(parents=True, exist_ok=True)
         seg1_payload = {
             "l2": "en",
-            "surface": "Hello world",
-            "pages": [{"surface": "Hello world", "segments": [{"surface": "Hello world"}], "annotations": {}}],
+            "surface": "Hello world. Goodbye moon.",
+            "pages": [
+                {"surface": "Hello world", "segments": [{"surface": "Hello world"}], "annotations": {}},
+                {"surface": "Goodbye moon", "segments": [{"surface": "Goodbye moon"}], "annotations": {}},
+            ],
             "annotations": {},
         }
         seg2_payload = {
             "l2": "en",
-            "surface": "Hello world",
+            "surface": "Hello world. Goodbye moon.",
             "pages": [
                 {
                     "surface": "Hello world",
                     "segments": [
                         {
-                            "surface": "Hello world",
-                            "tokens": [{"surface": "Hello"}, {"surface": " "}, {"surface": "world"}],
+                            "surface": "Hello there",
+                            "tokens": [{"surface": "Hello"}, {"surface": "there"}],
+                            "annotations": {},
+                        },
+                        {
+                            "surface": "world",
+                            "tokens": [{"surface": "world"}],
                             "annotations": {},
                         }
                     ],
                     "annotations": {},
-                }
+                },
+                {
+                    "surface": "Goodbye moon",
+                    "segments": [
+                        {
+                            "surface": "Goodbye moon",
+                            "tokens": [{"surface": "Goodbye"}, {"surface": "moon"}],
+                            "annotations": {},
+                        }
+                    ],
+                    "annotations": {},
+                },
             ],
             "annotations": {},
         }
         (run_dir / "segmentation_phase_1.json").write_text(json.dumps(seg1_payload), encoding="utf-8")
         (run_dir / "segmentation_phase_2.json").write_text(json.dumps(seg2_payload), encoding="utf-8")
+        mwe_payload = json.loads(json.dumps(seg2_payload))
+        mwe_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"] = {"mwe_id": "preexisting-mwe"}
+        mwe_payload["pages"][0]["segments"][0]["tokens"][1]["annotations"] = {"mwe_id": "preexisting-mwe"}
+        lemma_payload = json.loads(json.dumps(mwe_payload))
+        lemma_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"].update({"lemma": "hello", "pos": "INTJ"})
+        lemma_payload["pages"][0]["segments"][0]["tokens"][1]["annotations"].update({"lemma": "there", "pos": "ADV"})
+        gloss_payload = json.loads(json.dumps(lemma_payload))
+        gloss_payload["pages"][0]["segments"][0]["tokens"][0]["annotations"]["gloss"] = "bonjour"
+        gloss_payload["pages"][0]["segments"][0]["tokens"][1]["annotations"]["gloss"] = "là"
+        (run_dir / "mwe.json").write_text(json.dumps(mwe_payload), encoding="utf-8")
+        (run_dir / "lemma.json").write_text(json.dumps(lemma_payload), encoding="utf-8")
+        (run_dir / "gloss.json").write_text(json.dumps(gloss_payload), encoding="utf-8")
         resp = self.client.get(reverse("manual-page-annotation", args=[self.project.pk]))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Page-oriented manual annotation")
+        self.assertContains(resp, "Save status:")
+        self.assertContains(resp, "Browser autosave is currently off")
+        self.assertNotContains(resp, "Draft autosave:")
+        self.assertNotContains(resp, "Restore autosaved draft")
+        self.assertNotContains(resp, "clara:manual-page-annotation:")
+        self.assertContains(resp, "Save this segment")
+        self.assertContains(resp, "data-segment-status=\"0_0\"")
+        self.assertNotContains(resp, "Not saved in this session.")
+        self.assertNotContains(resp, "Save page-oriented manual annotations")
+        self.assertContains(resp, "Page 1 of 2")
+        self.assertContains(resp, "Next page")
+        self.assertContains(resp, "Go to page")
+        self.assertContains(resp, "Global edit status:")
+        self.assertContains(resp, "Unsaved changes.")
+        self.assertContains(resp, "MWE consistency error")
+        self.assertContains(resp, "after-segment-0_0")
         self.assertContains(resp, "Translation")
         self.assertContains(resp, "Romanization")
+
+        mismatch_resp = self.client.post(
+            reverse("manual-page-annotation", args=[self.project.pk]),
+            {
+                "save_segment": "0_0",
+                "translation_text_0_0": "Bonjour",
+                "mwe_id_0_0_0": "mwe-a",
+                "lemma_0_0_0": "hello",
+                "pos_0_0_0": "INTJ",
+                "gloss_0_0_0": "bonjour",
+                "pinyin_0_0_0": "",
+                "mwe_id_0_0_1": "mwe-a",
+                "lemma_0_0_1": "there",
+                "pos_0_0_1": "ADV",
+                "gloss_0_0_1": "là",
+                "pinyin_0_0_1": "",
+            },
+            follow=True,
+        )
+        self.assertEqual(mismatch_resp.status_code, 200)
+        self.assertEqual(mismatch_resp.redirect_chain, [])
+        self.assertContains(mismatch_resp, "MWE consistency error for &#x27;mwe-a&#x27;")
+        self.assertContains(mismatch_resp, "Mismatched component(s): LEMMA, POS, GLOSS")
+        self.assertContains(mismatch_resp, "same lemma, POS and gloss")
+        self.assertContains(mismatch_resp, 'name="lemma_0_0_1" value="there"', html=False)
+        self.assertContains(mismatch_resp, 'name="gloss_0_0_1" value="là"', html=False)
+        self.assertContains(mismatch_resp, "after-segment-0_0")
+        mismatch_html = mismatch_resp.content.decode("utf-8")
+        save_button_index = mismatch_html.index('value="0_0" data-save-segment="0_0"')
+        error_index = mismatch_html.index("MWE consistency error")
+        self.assertGreater(error_index, save_button_index)
+
+        cross_segment_duplicate = _validate_manual_page_mwe_consistency(
+            [
+                {
+                    "page_number": 1,
+                    "page_index": 0,
+                    "segments": [
+                        {
+                            "segment_index": 0,
+                            "tokens": [
+                                {"token_index": 0, "mwe_id": "local-id", "lemma": "alpha", "pos": "NOUN", "gloss": "a"}
+                            ],
+                        },
+                        {
+                            "segment_index": 1,
+                            "tokens": [
+                                {"token_index": 0, "mwe_id": "local-id", "lemma": "beta", "pos": "VERB", "gloss": "b"}
+                            ],
+                        },
+                    ],
+                }
+            ]
+        )
+        self.assertIsNone(cross_segment_duplicate)
+
+        save_resp = self.client.post(
+            reverse("manual-page-annotation", args=[self.project.pk]),
+            {
+                "save_segment": "0_0",
+                "translation_text_0_0": "Bonjour le monde",
+                "mwe_id_0_0_0": "mwe-a",
+                "lemma_0_0_0": "hello",
+                "pos_0_0_0": "INTJ",
+                "gloss_0_0_0": "bonjour",
+                "pinyin_0_0_0": "",
+                "mwe_id_0_0_1": "mwe-a",
+                "lemma_0_0_1": "hello",
+                "pos_0_0_1": "INTJ",
+                "gloss_0_0_1": "bonjour",
+                "pinyin_0_0_1": "",
+            },
+            follow=True,
+        )
+        self.assertEqual(save_resp.status_code, 200)
+        self.assertTrue(save_resp.redirect_chain)
+        self.assertTrue(save_resp.redirect_chain[0][0].endswith("?saved_segment=0_0&page=1#segment-0_1"))
+        self.assertContains(save_resp, "Saved segment 0.0 page-oriented manual annotations.")
 
     def test_page_oriented_manual_annotation_link_location(self):
         ann = self.client.get(reverse("project-annotation-home", args=[self.project.pk]))
