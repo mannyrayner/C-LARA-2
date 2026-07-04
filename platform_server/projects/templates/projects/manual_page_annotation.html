@@ -3,8 +3,46 @@
 {% block content %}
 <h1>Page-oriented manual annotation (first cut)</h1>
 <p><a class="btn secondary" href="{% url 'project-annotation-home' project.pk %}">← Back to annotation home</a></p>
+<style>
+  .unsaved-change-label {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.35rem 0.55rem;
+    border: 2px solid #b00020;
+    border-radius: 0.25rem;
+    background: #fff0f0;
+    color: #b00020;
+    font-weight: bold;
+  }
+  .unsaved-change-label[hidden] {
+    display: none;
+  }
+</style>
 
-<form method="post">
+<section
+  id="manual-page-save-status"
+  style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0; background:#fafafa;"
+>
+  <strong>Save status:</strong>
+  <span data-save-message>no unsaved changes detected in this browser.</span>
+  <span class="unsaved-change-label" data-global-unsaved hidden>Unsaved changes — save the edited segment before leaving.</span>
+  <p style="margin-bottom:0;">
+    <small>
+      Browser autosave is currently off for this large editor. Use the <strong>Save this segment</strong>
+      controls to checkpoint your work in smaller submissions.
+    </small>
+  </p>
+  {% if mwe_inconsistency_pages %}
+    <p style="margin-bottom:0; color:#b00020; font-weight:bold;">
+      MWE consistency issues found on page{{ mwe_inconsistency_pages|length|pluralize }}:
+      {% for page_number in mwe_inconsistency_pages %}
+        <a href="?page={{ page_number }}">page {{ page_number }}</a>{% if not forloop.last %}, {% endif %}
+      {% endfor %}
+    </p>
+  {% endif %}
+</section>
+
+<form id="manual-page-annotation-form" method="post">
   {% csrf_token %}
   {% if mode == "phase1" %}
     <p><strong>Step 1: Add <code>&lt;page&gt;</code> and <code>||</code> tags to define page and segment boundaries.</strong></p>
@@ -13,16 +51,35 @@
   {% elif mode == "phase2" %}
     <p><strong>Step 2: Edit content-element boundaries using <code>|</code> separators (or <code>¦</code>).</strong></p>
     {% for row in token_rows %}
-      <section style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0;">
+      <section id="segment-{{ row.page_index }}_{{ row.segment_index }}" data-manual-segment="{{ row.page_index }}_{{ row.segment_index }}" style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0;">
         <h2>Page {{ row.page_index }}</h2>
         <p><strong>Segment {{ row.segment_index }}</strong>: {{ row.segment_surface }}</p>
-        <textarea name="tokenized_text_{{ row.page_index }}_{{ row.segment_index }}" rows="3" style="width:100%;">{{ row.tokenized_text }}</textarea>
+        <textarea data-segment-control="{{ row.page_index }}_{{ row.segment_index }}" name="tokenized_text_{{ row.page_index }}_{{ row.segment_index }}" rows="3" style="width:100%;">{{ row.tokenized_text }}</textarea>
+        <p>
+          <button class="btn secondary" type="submit" name="save_segment" value="{{ row.page_index }}_{{ row.segment_index }}" data-save-segment="{{ row.page_index }}_{{ row.segment_index }}">Save this segment</button>
+          <span data-segment-status="{{ row.page_index }}_{{ row.segment_index }}" hidden></span>
+        </p>
       </section>
     {% endfor %}
     <p><button class="btn" type="submit">Save token boundaries</button></p>
   {% else %}
-    <p><button class="btn" type="submit">Save page-oriented manual annotations</button></p>
-
+    <input type="hidden" name="current_page" value="{{ page_nav.current }}" />
+    {% if page_nav.total > 1 %}
+      <nav style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0; background:#f8f8f8;">
+        <strong>Page {{ page_nav.current }} of {{ page_nav.total }}</strong>
+        {% if page_nav.previous %}
+          <a class="btn secondary" href="?page={{ page_nav.previous }}">Previous page</a>
+        {% endif %}
+        {% if page_nav.next %}
+          <a class="btn secondary" href="?page={{ page_nav.next }}">Next page</a>
+        {% endif %}
+        <label>
+          Go to page
+          <input type="number" min="1" max="{{ page_nav.total }}" value="{{ page_nav.current }}" data-page-jump-input style="width:5rem;" />
+        </label>
+        <button class="btn secondary" type="button" data-page-jump-button>Go</button>
+      </nav>
+    {% endif %}
     {% for page in pages %}
       <section style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0;">
         <h2>Page {{ page.page_number }}</h2>
@@ -37,11 +94,11 @@
           <label><input type="checkbox" checked onclick="togglePageLayer({{ page.page_number }}, 'pinyin')"> Romanization</label>
         </p>
         {% for segment in page.segments %}
-          <div style="border-top:1px dashed #ddd; padding-top:0.5rem; margin-top:0.5rem;">
+          <div id="segment-{{ page.page_index }}_{{ segment.segment_index }}" data-manual-segment="{{ page.page_index }}_{{ segment.segment_index }}" style="border-top:1px dashed #ddd; padding-top:0.5rem; margin-top:0.5rem;">
             <p><strong>Segment {{ forloop.counter }}:</strong> {{ segment.surface }}</p>
             <div class="layer-{{ page.page_number }}-translation">
               <label>Translation</label>
-              <input type="text" name="translation_text_{{ page.page_index }}_{{ segment.segment_index }}" value="{{ segment.translation_text }}" style="width:100%;" />
+              <input data-segment-control="{{ page.page_index }}_{{ segment.segment_index }}" type="text" name="translation_text_{{ page.page_index }}_{{ segment.segment_index }}" value="{{ segment.translation_text }}" style="width:100%;" />
             </div>
             <table border="1" cellpadding="4" cellspacing="0" style="margin-top:0.4rem; width:100%;">
               <thead>
@@ -59,21 +116,44 @@
                   {% if not token.is_whitespace %}
                   <tr>
                     <td><code lang="{{ project.language }}">{{ token.surface }}</code></td>
-                    <td class="layer-{{ page.page_number }}-mwe"><input type="text" name="mwe_id_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.mwe_id }}" /></td>
-                    <td class="layer-{{ page.page_number }}-lemma"><input type="text" name="lemma_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.lemma }}" /></td>
-                    <td class="layer-{{ page.page_number }}-lemma"><input type="text" name="pos_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.pos }}" /></td>
-                    <td class="layer-{{ page.page_number }}-gloss"><input type="text" name="gloss_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.gloss }}" /></td>
-                    <td class="layer-{{ page.page_number }}-pinyin"><input type="text" name="pinyin_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.pinyin }}" /></td>
+                    <td class="layer-{{ page.page_number }}-mwe"><input data-segment-control="{{ page.page_index }}_{{ segment.segment_index }}" type="text" name="mwe_id_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.mwe_id }}" /></td>
+                    <td class="layer-{{ page.page_number }}-lemma"><input data-segment-control="{{ page.page_index }}_{{ segment.segment_index }}" type="text" name="lemma_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.lemma }}" /></td>
+                    <td class="layer-{{ page.page_number }}-lemma"><input data-segment-control="{{ page.page_index }}_{{ segment.segment_index }}" type="text" name="pos_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.pos }}" /></td>
+                    <td class="layer-{{ page.page_number }}-gloss"><input data-segment-control="{{ page.page_index }}_{{ segment.segment_index }}" type="text" name="gloss_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.gloss }}" /></td>
+                    <td class="layer-{{ page.page_number }}-pinyin"><input data-segment-control="{{ page.page_index }}_{{ segment.segment_index }}" type="text" name="pinyin_{{ page.page_index }}_{{ segment.segment_index }}_{{ token.token_index }}" value="{{ token.pinyin }}" /></td>
                   </tr>
                   {% endif %}
                 {% endfor %}
               </tbody>
             </table>
+            <p>
+              <button class="btn secondary" type="submit" name="save_segment" value="{{ page.page_index }}_{{ segment.segment_index }}" data-save-segment="{{ page.page_index }}_{{ segment.segment_index }}">Save this segment</button>
+              <span data-segment-status="{{ page.page_index }}_{{ segment.segment_index }}" hidden></span>
+            </p>
+            {% if segment.save_error %}
+              <p id="segment-error-{{ page.page_index }}_{{ segment.segment_index }}" style="color:#b00020; font-weight:bold;">{{ segment.save_error }}</p>
+            {% endif %}
+            <span id="after-segment-{{ page.page_index }}_{{ segment.segment_index }}"></span>
           </div>
         {% endfor %}
       </section>
     {% endfor %}
-    <p><button class="btn" type="submit">Save page-oriented manual annotations</button></p>
+    <p style="border-top:1px solid #ddd; padding-top:0.75rem;">
+      <strong>Global edit status:</strong>
+      <span class="unsaved-change-label" data-global-unsaved hidden>Unsaved changes — save the edited segment before leaving.</span>
+      <span data-global-saved-note>No unsaved changes detected in this browser.</span>
+    </p>
+    {% if page_nav.total > 1 %}
+      <nav style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0; background:#f8f8f8;">
+        <strong>Page {{ page_nav.current }} of {{ page_nav.total }}</strong>
+        {% if page_nav.previous %}
+          <a class="btn secondary" href="?page={{ page_nav.previous }}">Previous page</a>
+        {% endif %}
+        {% if page_nav.next %}
+          <a class="btn secondary" href="?page={{ page_nav.next }}">Next page</a>
+        {% endif %}
+      </nav>
+    {% endif %}
   {% endif %}
 </form>
 
@@ -84,6 +164,97 @@
       el.style.display = (el.style.display === 'none') ? '' : 'none';
     });
   }
+  </script>
+{% endif %}
+<script>
+(function () {
+  var form = document.getElementById('manual-page-annotation-form');
+  var statusBox = document.getElementById('manual-page-save-status');
+  if (!form || !statusBox) {
+    return;
+  }
+
+  var message = statusBox.querySelector('[data-save-message]');
+  var globalUnsavedLabels = Array.prototype.slice.call(document.querySelectorAll('[data-global-unsaved]'));
+  var globalSavedNotes = Array.prototype.slice.call(document.querySelectorAll('[data-global-saved-note]'));
+
+  function editableControls() {
+    return Array.prototype.slice.call(form.querySelectorAll('input, textarea, select')).filter(function (control) {
+      return control.name && control.name !== 'csrfmiddlewaretoken';
+    });
+  }
+
+  function setGlobalStatus(text) {
+    message.textContent = text;
+  }
+
+  function setGlobalUnsaved(isUnsaved) {
+    globalUnsavedLabels.forEach(function (label) {
+      label.hidden = !isUnsaved;
+    });
+    globalSavedNotes.forEach(function (note) {
+      note.hidden = isUnsaved;
+    });
+  }
+
+  function setSegmentStatus(segmentKey, text) {
+    var segmentStatus = form.querySelector('[data-segment-status="' + segmentKey + '"]');
+    if (segmentStatus) {
+      segmentStatus.textContent = text;
+      segmentStatus.hidden = !text;
+    }
+  }
+
+  function disableControlsOutsideSegment(segmentKey) {
+    editableControls().forEach(function (control) {
+      if (control.getAttribute('data-segment-control') && control.getAttribute('data-segment-control') !== segmentKey) {
+        control.disabled = true;
+      }
+    });
+  }
+
+  function markControlSegmentUnsaved(control) {
+    var segmentKey = control && control.getAttribute && control.getAttribute('data-segment-control');
+    if (segmentKey) {
+      setSegmentStatus(segmentKey, 'Unsaved changes.');
+    }
+    setGlobalStatus('unsaved changes detected.');
+    setGlobalUnsaved(true);
+  }
+
+  form.addEventListener('input', function (event) {
+    markControlSegmentUnsaved(event.target);
+  });
+  form.addEventListener('change', function (event) {
+    markControlSegmentUnsaved(event.target);
+  });
+  form.querySelectorAll('[data-save-segment]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var segmentKey = button.getAttribute('data-save-segment');
+      setSegmentStatus(segmentKey, 'Saving this segment...');
+      setGlobalStatus('saving segment ' + segmentKey.replace('_', '.') + '...');
+      setGlobalUnsaved(false);
+      disableControlsOutsideSegment(segmentKey);
+    });
+  });
+  document.querySelectorAll('[data-page-jump-button]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var input = document.querySelector('[data-page-jump-input]');
+      if (input && input.value) {
+        window.location.href = '?page=' + encodeURIComponent(input.value);
+      }
+    });
+  });
+}());
+</script>
+{% if focus_segment_anchor %}
+  <script>
+  window.setTimeout(function () {
+    var target = document.getElementById('{{ focus_segment_anchor }}');
+    if (target) {
+      target.scrollIntoView();
+    }
+  }, 0);
   </script>
 {% endif %}
 {% endblock %}
