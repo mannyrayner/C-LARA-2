@@ -1,9 +1,9 @@
-# C-LARA-2 issue overview (refreshed 2026-07-04T00:30:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-04T01:00:00Z)
 
 ## Recent progress
 
-- Implemented page-windowed rendering for **ISSUE-0040**: the page-oriented full annotation editor now shows one page at a time with previous/next and go-to-page navigation, reducing the large-project DOM size directly.
-- Segment saves now preserve page context and redirect to the page containing the next segment where applicable; initial MWE pre-checking is scoped to the visible page.
+- Polished **ISSUE-0040** global status UX: the unsaved-change badge now stays hidden until edits occur, and the top panel lists pages with MWE consistency issues using direct page links.
+- Kept **ISSUE-0040** active/P1 while page-windowed rendering and per-segment saves continue maintainer testing on large texts.
 - Regenerated this overview from canonical issue JSON so the complete inventory reflects all current `reported`, `active`, and `closed` states.
 
 ## Near-term priorities
@@ -31,7 +31,7 @@
 
 ## Notes/risks
 
-- **ISSUE-0040** now targets both POST size and browser freezes by saving per segment and rendering one page at a time. Maintainer testing should confirm whether page-windowing resolves the large-text freezes; if not, the next step is deeper profiling of per-page DOM cost and server-side stage reconciliation.
+- **ISSUE-0040** now targets both POST size and browser freezes by saving per segment and rendering one page at a time, with a top-level MWE issue page list. Maintainer testing should confirm whether page-windowing resolves large-text freezes and whether the page-level error index is sufficient for navigation.
 - **ISSUE-0013** should distinguish three resilience levels: batch continuation after project failure, phase-level resume from valid artifacts, and call-level retry/checkpointing for expensive per-segment/per-chunk API calls.
 - **ISSUE-0039** remains active/P0 for Sophie-facing picture-dictionary workflow completion; avoid letting infrastructure tasks displace the current UI/product review blockers.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated pipeline and UI coverage.

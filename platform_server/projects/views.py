@@ -6274,6 +6274,14 @@ def _validate_manual_page_mwe_consistency(
     return None
 
 
+def _manual_page_mwe_inconsistency_pages(pages_data: list[dict[str, Any]]) -> list[int]:
+    page_numbers: list[int] = []
+    for page in pages_data:
+        if _validate_manual_page_mwe_consistency([page]):
+            page_numbers.append(int(page.get("page_number", page.get("page_index", 0) + 1)))
+    return page_numbers
+
+
 @login_required
 def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
@@ -6453,6 +6461,7 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
         "previous": current_page_number - 1 if current_page_number > 1 else None,
         "next": current_page_number + 1 if current_page_number < total_pages else None,
     }
+    mwe_inconsistency_pages = _manual_page_mwe_inconsistency_pages(pages_data)
     initial_mwe_consistency_error = _validate_manual_page_mwe_consistency(visible_pages)
     if request.method == "GET" and not request.GET.get("saved_segment") and initial_mwe_consistency_error:
         error_segment_key = initial_mwe_consistency_error["segment_key"]
@@ -6468,6 +6477,7 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
                 "mode": "annotation",
                 "pages": visible_pages,
                 "page_nav": page_nav,
+                "mwe_inconsistency_pages": mwe_inconsistency_pages,
                 "show_translation_default": True,
                 "show_mwe_default": True,
                 "show_lemma_default": True,
@@ -6493,6 +6503,7 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
                     token["pinyin"] = request.POST.get(f"pinyin_{key}", token["pinyin"])
 
         save_segment = str(request.POST.get("save_segment") or "")
+        mwe_inconsistency_pages = _manual_page_mwe_inconsistency_pages(pages_data)
         mwe_consistency_error = _validate_manual_page_mwe_consistency(pages_data, only_segment_key=save_segment or None)
         if mwe_consistency_error:
             error_segment_key = save_segment or mwe_consistency_error["segment_key"]
@@ -6508,6 +6519,7 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
                     "mode": "annotation",
                     "pages": visible_pages,
                     "page_nav": page_nav,
+                    "mwe_inconsistency_pages": mwe_inconsistency_pages,
                     "show_translation_default": True,
                     "show_mwe_default": True,
                     "show_lemma_default": True,
@@ -6585,6 +6597,7 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
             "mode": "annotation",
             "pages": visible_pages,
             "page_nav": page_nav,
+            "mwe_inconsistency_pages": mwe_inconsistency_pages,
             "show_translation_default": True,
             "show_mwe_default": True,
             "show_lemma_default": True,

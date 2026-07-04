@@ -14,6 +14,9 @@
     color: #b00020;
     font-weight: bold;
   }
+  .unsaved-change-label[hidden] {
+    display: none;
+  }
 </style>
 
 <section
@@ -29,6 +32,14 @@
       controls to checkpoint your work in smaller submissions.
     </small>
   </p>
+  {% if mwe_inconsistency_pages %}
+    <p style="margin-bottom:0; color:#b00020; font-weight:bold;">
+      MWE consistency issues found on page{{ mwe_inconsistency_pages|length|pluralize }}:
+      {% for page_number in mwe_inconsistency_pages %}
+        <a href="?page={{ page_number }}">page {{ page_number }}</a>{% if not forloop.last %}, {% endif %}
+      {% endfor %}
+    </p>
+  {% endif %}
 </section>
 
 <form id="manual-page-annotation-form" method="post">
