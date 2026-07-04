@@ -217,9 +217,9 @@
     var segmentKey = control && control.getAttribute && control.getAttribute('data-segment-control');
     if (segmentKey) {
       setSegmentStatus(segmentKey, 'Unsaved changes.');
+      setGlobalStatus('unsaved changes detected.');
+      setGlobalUnsaved(true);
     }
-    setGlobalStatus('unsaved changes detected.');
-    setGlobalUnsaved(true);
   }
 
   form.addEventListener('input', function (event) {

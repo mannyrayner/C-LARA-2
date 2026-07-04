@@ -1,8 +1,8 @@
-# C-LARA-2 issue overview (refreshed 2026-07-04T01:00:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-04T01:20:00Z)
 
 ## Recent progress
 
-- Polished **ISSUE-0040** global status UX: the unsaved-change badge now stays hidden until edits occur, and the top panel lists pages with MWE consistency issues using direct page links.
+- Fixed an **ISSUE-0040** page-navigation dirty-state bug: editing the go-to-page field no longer shows the unsaved-change warning, because only segment annotation controls now mark saveable edits dirty.
 - Kept **ISSUE-0040** active/P1 while page-windowed rendering and per-segment saves continue maintainer testing on large texts.
 - Regenerated this overview from canonical issue JSON so the complete inventory reflects all current `reported`, `active`, and `closed` states.
 
