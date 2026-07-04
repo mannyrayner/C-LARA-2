@@ -36,7 +36,7 @@ FAIL_FAST_ARG := $(if $(filter 1,$(FAIL_FAST)),--fail-fast,)
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help prepare extract-split-corpus refresh-annotations refresh-annotations-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
+.PHONY: help prepare extract-split-corpus refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
 
 help:
 	@echo "Focused MWE experiments (multilingual)"
@@ -44,6 +44,7 @@ help:
 	@echo "Targets:"
 	@echo "  extract-split-corpus  Extract segment records and create project-separated dev/validation/test splits"
 	@echo "  refresh-annotations   Rerun selected projects through segmentation_phase_2 -> translation -> mwe -> lemma -> gloss"
+	@echo "  refresh-project-metadata  Keep existing splits/projects but refresh mwe_count from latest saved artifacts"
 	@echo "  validate-config       Validate stage-parameter JSON used by refresh-annotations"
 	@echo "  clean                 Remove generated experiment artifacts"
 	@echo
@@ -88,6 +89,12 @@ extract-split-corpus: prepare
 		--max-validation-segments "$(MAX_VALIDATION_SEGMENTS)" \
 		--max-test-segments "$(MAX_TEST_SEGMENTS)" \
 		--overwrite
+
+refresh-project-metadata: prepare
+	$(MANAGE) refresh_mwe_corpus_metadata \
+		--corpus-split-dir "$(PY_CORPUS_SPLIT_DIR)" \
+		--languages "$(LANGUAGES)" \
+		--splits "$(SPLITS)"
 
 refresh-annotations: validate-config
 ifeq ($(RUN),1)
