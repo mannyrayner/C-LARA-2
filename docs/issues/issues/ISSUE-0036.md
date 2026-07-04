@@ -3,7 +3,7 @@
 - **Status:** reported
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-06-20T12:00:00Z
+- **Updated:** 2026-07-04T02:10:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -105,3 +105,13 @@ stage.key=value` overrides, and the French experiment Makefile's `run-candidate`
 `FEWSHOT_COUNT` through to `segmentation_phase_2.fewshot_count`. This lets development runs compare
 small, medium, all, or numeric accepted-example counts before locking the held-out test setting,
 addressing the risk that more few-shot examples may top out or become counterproductive.
+
+Follow-up on 2026-07-04: the next concrete slice for this issue is an English MWE prompt-improvement
+pilot built from seven hand-annotated development projects in the focused multilingual MWE
+workbench. After page-oriented manual annotation and metadata refresh, the sample contains 336
+segments, 5,104 tokens, and 140 manually corrected MWEs across projects 239, 245, 254, 255, 257,
+261, and 263. Treat this as development data only: use it for baseline scoring, error analysis, and
+prompt/few-shot iteration; keep validation/test projects untouched until the comparison procedure is
+fixed. This is also useful report evidence for AI autonomy because the AI proposed the experiment
+structure, implemented metadata refresh tooling, and maintained the issue/roadmap/report trail,
+while the human supplied domain judgement, manual gold corrections, and go/no-go decisions.
