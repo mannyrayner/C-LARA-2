@@ -54,6 +54,7 @@ import zipfile
 import urllib.error
 import urllib.request
 from urllib.parse import unquote
+from urllib.parse import urlencode
 from urllib.parse import quote
 
 from core.config import DEFAULT_MODEL, OpenAIConfig
@@ -6210,19 +6211,33 @@ def manual_top_level(request: HttpRequest, pk: int) -> HttpResponse:
     return render(request, "projects/manual_top_level.html", context)
 
 
-def _manual_page_annotation_redirect_url(project: Project, segment_keys: list[str], saved_segment: str = "") -> str:
+def _manual_page_annotation_redirect_url(
+    project: Project,
+    segment_keys: list[str],
+    saved_segment: str = "",
+    segment_pages: dict[str, int] | None = None,
+) -> str:
     url = reverse("manual-page-annotation", args=[project.pk])
     if not saved_segment or saved_segment not in segment_keys:
         return url
     saved_index = segment_keys.index(saved_segment)
     target_segment = segment_keys[saved_index + 1] if saved_index + 1 < len(segment_keys) else saved_segment
-    return f"{url}?saved_segment={saved_segment}#segment-{target_segment}"
+    query: dict[str, str | int] = {"saved_segment": saved_segment}
+    if segment_pages and target_segment in segment_pages:
+        query["page"] = segment_pages[target_segment]
+    return f"{url}?{urlencode(query)}#segment-{target_segment}"
 
 
-def _validate_manual_page_mwe_consistency(pages_data: list[dict[str, Any]]) -> dict[str, str] | None:
+def _validate_manual_page_mwe_consistency(
+    pages_data: list[dict[str, Any]],
+    only_segment_key: str | None = None,
+) -> dict[str, str] | None:
     for page in pages_data:
         page_number = page.get("page_number", page.get("page_index", 0) + 1)
         for segment in page["segments"]:
+            segment_key = f"{page['page_index']}_{segment['segment_index']}"
+            if only_segment_key and segment_key != only_segment_key:
+                continue
             seen: dict[str, dict[str, str]] = {}
             segment_number = segment["segment_index"] + 1
             for token in segment["tokens"]:
@@ -6246,7 +6261,7 @@ def _validate_manual_page_mwe_consistency(pages_data: list[dict[str, Any]]) -> d
                     mismatched_components = []
                 if mismatched_components:
                     return {
-                        "segment_key": f"{page['page_index']}_{segment['segment_index']}",
+                        "segment_key": segment_key,
                         "message": (
                             f"MWE consistency error for '{mwe_id}': {current['location']} has "
                             f"lemma/POS/gloss ({current['lemma'] or '∅'}, {current['pos'] or '∅'}, {current['gloss'] or '∅'}), "
@@ -6416,10 +6431,32 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
         for page in pages_data
         for segment in page["segments"]
     ]
-    initial_mwe_consistency_error = _validate_manual_page_mwe_consistency(pages_data)
+    segment_pages = {
+        f"{page['page_index']}_{segment['segment_index']}": page["page_number"]
+        for page in pages_data
+        for segment in page["segments"]
+    }
+    total_pages = len(pages_data)
+    try:
+        current_page_number = int(request.POST.get("current_page") or request.GET.get("page") or "1")
+    except (TypeError, ValueError):
+        current_page_number = 1
+    if total_pages:
+        current_page_number = max(1, min(total_pages, current_page_number))
+        visible_pages = [pages_data[current_page_number - 1]]
+    else:
+        current_page_number = 1
+        visible_pages = []
+    page_nav = {
+        "current": current_page_number,
+        "total": total_pages,
+        "previous": current_page_number - 1 if current_page_number > 1 else None,
+        "next": current_page_number + 1 if current_page_number < total_pages else None,
+    }
+    initial_mwe_consistency_error = _validate_manual_page_mwe_consistency(visible_pages)
     if request.method == "GET" and not request.GET.get("saved_segment") and initial_mwe_consistency_error:
         error_segment_key = initial_mwe_consistency_error["segment_key"]
-        for page in pages_data:
+        for page in visible_pages:
             for segment in page["segments"]:
                 if f"{page['page_index']}_{segment['segment_index']}" == error_segment_key:
                     segment["save_error"] = initial_mwe_consistency_error["message"]
@@ -6429,7 +6466,8 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
             {
                 "project": project,
                 "mode": "annotation",
-                "pages": pages_data,
+                "pages": visible_pages,
+                "page_nav": page_nav,
                 "show_translation_default": True,
                 "show_mwe_default": True,
                 "show_lemma_default": True,
@@ -6455,10 +6493,10 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
                     token["pinyin"] = request.POST.get(f"pinyin_{key}", token["pinyin"])
 
         save_segment = str(request.POST.get("save_segment") or "")
-        mwe_consistency_error = _validate_manual_page_mwe_consistency(pages_data)
+        mwe_consistency_error = _validate_manual_page_mwe_consistency(pages_data, only_segment_key=save_segment or None)
         if mwe_consistency_error:
             error_segment_key = save_segment or mwe_consistency_error["segment_key"]
-            for page in pages_data:
+            for page in visible_pages:
                 for segment in page["segments"]:
                     if f"{page['page_index']}_{segment['segment_index']}" == error_segment_key:
                         segment["save_error"] = mwe_consistency_error["message"]
@@ -6468,7 +6506,8 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
                 {
                     "project": project,
                     "mode": "annotation",
-                    "pages": pages_data,
+                    "pages": visible_pages,
+                    "page_nav": page_nav,
                     "show_translation_default": True,
                     "show_mwe_default": True,
                     "show_lemma_default": True,
@@ -6536,7 +6575,7 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
             )
         else:
             messages.success(request, "Saved page-oriented manual annotations (translation, MWE, lemma, gloss, pinyin).")
-        return redirect(_manual_page_annotation_redirect_url(project, segment_keys, save_segment))
+        return redirect(_manual_page_annotation_redirect_url(project, segment_keys, save_segment, segment_pages))
 
     return render(
         request,
@@ -6544,7 +6583,8 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
         {
             "project": project,
             "mode": "annotation",
-            "pages": pages_data,
+            "pages": visible_pages,
+            "page_nav": page_nav,
             "show_translation_default": True,
             "show_mwe_default": True,
             "show_lemma_default": True,

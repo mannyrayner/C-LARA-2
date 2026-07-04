@@ -1002,13 +1002,16 @@ class ManualSegmentationEditorTests(TestCase):
         run_dir.mkdir(parents=True, exist_ok=True)
         seg1_payload = {
             "l2": "en",
-            "surface": "Hello world",
-            "pages": [{"surface": "Hello world", "segments": [{"surface": "Hello world"}], "annotations": {}}],
+            "surface": "Hello world. Goodbye moon.",
+            "pages": [
+                {"surface": "Hello world", "segments": [{"surface": "Hello world"}], "annotations": {}},
+                {"surface": "Goodbye moon", "segments": [{"surface": "Goodbye moon"}], "annotations": {}},
+            ],
             "annotations": {},
         }
         seg2_payload = {
             "l2": "en",
-            "surface": "Hello world",
+            "surface": "Hello world. Goodbye moon.",
             "pages": [
                 {
                     "surface": "Hello world",
@@ -1025,7 +1028,18 @@ class ManualSegmentationEditorTests(TestCase):
                         }
                     ],
                     "annotations": {},
-                }
+                },
+                {
+                    "surface": "Goodbye moon",
+                    "segments": [
+                        {
+                            "surface": "Goodbye moon",
+                            "tokens": [{"surface": "Goodbye"}, {"surface": "moon"}],
+                            "annotations": {},
+                        }
+                    ],
+                    "annotations": {},
+                },
             ],
             "annotations": {},
         }
@@ -1055,6 +1069,9 @@ class ManualSegmentationEditorTests(TestCase):
         self.assertContains(resp, "data-segment-status=\"0_0\"")
         self.assertNotContains(resp, "Not saved in this session.")
         self.assertNotContains(resp, "Save page-oriented manual annotations")
+        self.assertContains(resp, "Page 1 of 2")
+        self.assertContains(resp, "Next page")
+        self.assertContains(resp, "Go to page")
         self.assertContains(resp, "Global edit status:")
         self.assertContains(resp, "Unsaved changes.")
         self.assertContains(resp, "MWE consistency error")
@@ -1137,7 +1154,7 @@ class ManualSegmentationEditorTests(TestCase):
         )
         self.assertEqual(save_resp.status_code, 200)
         self.assertTrue(save_resp.redirect_chain)
-        self.assertTrue(save_resp.redirect_chain[0][0].endswith("?saved_segment=0_0#segment-0_1"))
+        self.assertTrue(save_resp.redirect_chain[0][0].endswith("?saved_segment=0_0&page=1#segment-0_1"))
         self.assertContains(save_resp, "Saved segment 0.0 page-oriented manual annotations.")
 
     def test_page_oriented_manual_annotation_link_location(self):

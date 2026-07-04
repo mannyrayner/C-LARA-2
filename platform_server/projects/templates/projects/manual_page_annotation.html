@@ -52,6 +52,23 @@
     {% endfor %}
     <p><button class="btn" type="submit">Save token boundaries</button></p>
   {% else %}
+    <input type="hidden" name="current_page" value="{{ page_nav.current }}" />
+    {% if page_nav.total > 1 %}
+      <nav style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0; background:#f8f8f8;">
+        <strong>Page {{ page_nav.current }} of {{ page_nav.total }}</strong>
+        {% if page_nav.previous %}
+          <a class="btn secondary" href="?page={{ page_nav.previous }}">Previous page</a>
+        {% endif %}
+        {% if page_nav.next %}
+          <a class="btn secondary" href="?page={{ page_nav.next }}">Next page</a>
+        {% endif %}
+        <label>
+          Go to page
+          <input type="number" min="1" max="{{ page_nav.total }}" value="{{ page_nav.current }}" data-page-jump-input style="width:5rem;" />
+        </label>
+        <button class="btn secondary" type="button" data-page-jump-button>Go</button>
+      </nav>
+    {% endif %}
     {% for page in pages %}
       <section style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0;">
         <h2>Page {{ page.page_number }}</h2>
@@ -115,6 +132,17 @@
       <span class="unsaved-change-label" data-global-unsaved hidden>Unsaved changes — save the edited segment before leaving.</span>
       <span data-global-saved-note>No unsaved changes detected in this browser.</span>
     </p>
+    {% if page_nav.total > 1 %}
+      <nav style="border:1px solid #ddd; padding:0.75rem; margin:1rem 0; background:#f8f8f8;">
+        <strong>Page {{ page_nav.current }} of {{ page_nav.total }}</strong>
+        {% if page_nav.previous %}
+          <a class="btn secondary" href="?page={{ page_nav.previous }}">Previous page</a>
+        {% endif %}
+        {% if page_nav.next %}
+          <a class="btn secondary" href="?page={{ page_nav.next }}">Next page</a>
+        {% endif %}
+      </nav>
+    {% endif %}
   {% endif %}
 </form>
 
@@ -196,6 +224,14 @@
       setGlobalStatus('saving segment ' + segmentKey.replace('_', '.') + '...');
       setGlobalUnsaved(false);
       disableControlsOutsideSegment(segmentKey);
+    });
+  });
+  document.querySelectorAll('[data-page-jump-button]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var input = document.querySelector('[data-page-jump-input]');
+      if (input && input.value) {
+        window.location.href = '?page=' + encodeURIComponent(input.value);
+      }
     });
   });
 }());
