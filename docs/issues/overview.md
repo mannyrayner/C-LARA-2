@@ -12,21 +12,22 @@
 2. **ISSUE-0031** — improve compiled-content presentation context and configurable public access controls.
 3. **ISSUE-0030** — fix image-generation workflow UX around element expansion auto-refresh and selection confirmation.
 4. **ISSUE-0029** — autosave community judging inputs to prevent accidental data loss.
-5. **ISSUE-0037** — create subset projects from community picture dictionaries.
-6. **ISSUE-0026** — define next-step community-recorded audio workflow for non-TTS languages.
-7. **ISSUE-0005** — tune segmentation_phase_1 prompting to improve segment granularity by genre.
-8. **ISSUE-0003** — add efficient end-to-end pipeline test runner for systematic quality checks.
-9. **ISSUE-0036** — systematize creation and evaluation of few-shot examples for linguistic annotation.
-10. **ISSUE-0013** — improve stage artifact persistence performance and timeout resilience.
-11. **ISSUE-0025** — add systematic UI regression tracking for disappearing controls/content.
-12. **ISSUE-0010** — import a representative legacy C-LARA project corpus and add batch import tooling.
-13. **ISSUE-0008** — write C-LARA-2 technical report and academic papers.
-14. **ISSUE-0033** — clean up and phase-track roadmap file maintenance.
-15. **ISSUE-0034** — add restricted project-understanding assistant with versioned evidence records.
-16. **ISSUE-0035** — track intermittent Codex PR update-branch refusal.
-17. **ISSUE-0006** — investigate segmentation_phase_2 token-span failures and rerun-path correctness.
-18. **ISSUE-0004** — introduce AI-based review gates for phase outputs with extensible evaluator architecture.
-19. **ISSUE-0001** — support hosted compiled legacy content registration in C-LARA-2.
+5. **ISSUE-0040** — make page-oriented manual annotation saves resilient for large projects.
+6. **ISSUE-0037** — create subset projects from community picture dictionaries.
+7. **ISSUE-0026** — define next-step community-recorded audio workflow for non-TTS languages.
+8. **ISSUE-0005** — tune segmentation_phase_1 prompting to improve segment granularity by genre.
+9. **ISSUE-0003** — add efficient end-to-end pipeline test runner for systematic quality checks.
+10. **ISSUE-0036** — systematize creation and evaluation of few-shot examples for linguistic annotation.
+11. **ISSUE-0013** — improve stage artifact persistence performance and timeout resilience.
+12. **ISSUE-0025** — add systematic UI regression tracking for disappearing controls/content.
+13. **ISSUE-0010** — import a representative legacy C-LARA project corpus and add batch import tooling.
+14. **ISSUE-0008** — write C-LARA-2 technical report and academic papers.
+15. **ISSUE-0033** — clean up and phase-track roadmap file maintenance.
+16. **ISSUE-0034** — add restricted project-understanding assistant with versioned evidence records.
+17. **ISSUE-0035** — track intermittent Codex PR update-branch refusal.
+18. **ISSUE-0006** — investigate segmentation_phase_2 token-span failures and rerun-path correctness.
+19. **ISSUE-0004** — introduce AI-based review gates for phase outputs with extensible evaluator architecture.
+20. **ISSUE-0001** — support hosted compiled legacy content registration in C-LARA-2.
 
 ## Notes/risks
 
