@@ -20,6 +20,22 @@
   .unsaved-change-label[hidden] {
     display: none;
   }
+  .segment-save-status {
+    display: inline-block;
+    margin-left: 0.5rem;
+  }
+  .segment-save-status.segment-save-status-unsaved {
+    padding: 0.35rem 0.6rem;
+    border: 2px solid #8a0018;
+    border-radius: 0.35rem;
+    background: #fff3cd;
+    color: #8a0018;
+    box-shadow: 0 0 0 2px #ffd6dc;
+    font-weight: 800;
+  }
+  .segment-save-status[hidden] {
+    display: none;
+  }
 </style>
 
 <section
@@ -60,7 +76,7 @@
         <textarea data-segment-control="{{ row.page_index }}_{{ row.segment_index }}" name="tokenized_text_{{ row.page_index }}_{{ row.segment_index }}" rows="3" style="width:100%;">{{ row.tokenized_text }}</textarea>
         <p>
           <button class="btn secondary" type="submit" name="save_segment" value="{{ row.page_index }}_{{ row.segment_index }}" data-save-segment="{{ row.page_index }}_{{ row.segment_index }}">Save this segment</button>
-          <span data-segment-status="{{ row.page_index }}_{{ row.segment_index }}" hidden></span>
+          <span class="segment-save-status" data-segment-status="{{ row.page_index }}_{{ row.segment_index }}" hidden></span>
         </p>
       </section>
     {% endfor %}
@@ -131,7 +147,7 @@
             </table>
             <p>
               <button class="btn secondary" type="submit" name="save_segment" value="{{ page.page_index }}_{{ segment.segment_index }}" data-save-segment="{{ page.page_index }}_{{ segment.segment_index }}">Save this segment</button>
-              <span data-segment-status="{{ page.page_index }}_{{ segment.segment_index }}" hidden></span>
+              <span class="segment-save-status" data-segment-status="{{ page.page_index }}_{{ segment.segment_index }}" hidden></span>
             </p>
             {% if segment.save_error %}
               <p id="segment-error-{{ page.page_index }}_{{ segment.segment_index }}" style="color:#b00020; font-weight:bold;">{{ segment.save_error }}</p>
@@ -204,6 +220,7 @@
     var segmentStatus = form.querySelector('[data-segment-status="' + segmentKey + '"]');
     if (segmentStatus) {
       segmentStatus.textContent = text;
+      segmentStatus.classList.toggle('segment-save-status-unsaved', text === '⚠ Unsaved changes.');
       segmentStatus.hidden = !text;
     }
   }
@@ -219,7 +236,7 @@
   function markControlSegmentUnsaved(control) {
     var segmentKey = control && control.getAttribute && control.getAttribute('data-segment-control');
     if (segmentKey) {
-      setSegmentStatus(segmentKey, 'Unsaved changes.');
+      setSegmentStatus(segmentKey, '⚠ Unsaved changes.');
       setGlobalStatus('unsaved changes detected.');
       setGlobalUnsaved(true);
     }

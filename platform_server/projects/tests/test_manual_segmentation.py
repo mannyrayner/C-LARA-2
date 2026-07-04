@@ -1068,6 +1068,7 @@ class ManualSegmentationEditorTests(TestCase):
         self.assertNotContains(resp, "clara:manual-page-annotation:")
         self.assertContains(resp, "Save this segment")
         self.assertContains(resp, "data-segment-status=\"0_0\"")
+        self.assertContains(resp, "segment-save-status-unsaved")
         self.assertNotContains(resp, "Not saved in this session.")
         self.assertNotContains(resp, "Save page-oriented manual annotations")
         self.assertContains(resp, "Page 1 of 2")

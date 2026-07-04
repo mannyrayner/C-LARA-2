@@ -1,8 +1,8 @@
-# C-LARA-2 issue overview (refreshed 2026-07-04T01:40:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-04T01:50:00Z)
 
 ## Recent progress
 
-- Closed **ISSUE-0040** after maintainer testing confirmed the page-oriented editor fixes, then applied a final visual polish so the global unsaved-change warning is much harder to miss.
+- Closed **ISSUE-0040** after maintainer testing confirmed the page-oriented editor fixes, then applied final visual polish so both global and per-segment unsaved-change warnings are much harder to miss.
 - Added human-readable Markdown companion pages for every `docs/issues/issues/ISSUE-XXXX.json` file, while keeping JSON as the canonical source of truth.
 - Updated the complete issue inventory to link to the Markdown issue pages so GitHub readers no longer have to read long JSON `notes` lines.
 
