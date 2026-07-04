@@ -1,0 +1,114 @@
+# ISSUE-0039: Build a unified picture-dictionary source-of-truth workspace
+
+- **Status:** active
+- **Priority:** P0
+- **Created:** 2026-06-16T11:43:14Z
+- **Updated:** 2026-06-18T10:15:00Z
+- **Origin:** human-suggestion
+- **Deadline:** 2026-07-13
+- **Dependencies:** [ISSUE-0011](ISSUE-0011.md), [ISSUE-0020](ISSUE-0020.md), [ISSUE-0028](ISSUE-0028.md), [ISSUE-0030](ISSUE-0030.md), [ISSUE-0037](ISSUE-0037.md), [ISSUE-0038](ISSUE-0038.md)
+- **Canonical JSON:** [ISSUE-0039.json](ISSUE-0039.json)
+
+## Notes
+
+Created from human suggestion #29 (submitted by mannyrayner on 2026-06-16). Current Kok Kaper
+picture-dictionary work has exposed a broader product/design problem: dictionary information is
+spread across project pages, annotation stages, image-generation artifacts, subset artifacts, and
+organiser review screens, making the workflow fragile and hard to explain before the target date of
+2026-07-13 for making Kok Kaper classroom use viable and the EuroCALL 2026 paper deadline on
+2026-07-31. Reframe the picture dictionary as the organiser-facing source of truth, associated with
+but distinct from a C-LARA-2 project; derived projects, subset projects, stage artifacts, images,
+and exercises should be regenerated/synchronized from dictionary entries rather than edited
+independently. Each entry should expose and persist at least surface word, lemma, POS,
+gloss/translation, image-generation suggestions, concrete generated prompt variants,
+selected/generated image variants, and readiness/approval metadata. The dictionary itself should
+include style description and optional background information used when generating prompts. The
+organiser workspace should provide a configurable tabular/card overview, direct editing of fields,
+batch prompt generation, batch image generation/regeneration, subdictionary creation/update, and
+exercise creation from either the whole dictionary or a subdictionary. This issue intentionally
+supersedes fragmented follow-up items where they are better handled by a unified workspace, while
+preserving specific bug/feature tickets such as ISSUE-0037 when they are already active. First step:
+flesh out docs/roadmap/picture-dictionaries.md with the source-of-truth architecture, entity model,
+and sequencing plan; then implement a minimal integrated Kok Kaper-ready workspace before Sophie
+review if feasible.
+
+First implementation cut on 2026-06-16: the community organiser page now includes a unified
+picture-dictionary view that displays surface word, lemma, POS, gloss/translation, current
+image-generation prompt, and selected image together. Organisers can edit the textual fields and
+prompts in one table; saving synchronizes the picture-dictionary registry, derived project
+source/pages, and annotation stage artifacts, while preserving existing image identity. This does
+not close the issue: next cuts should add richer prompt variant management, batch image generation
+from the unified view, dictionary-level background/context fields, and tighter subset/exercise
+integration before Sophie review for possible Kok Kaper classroom use around 2026-07-13.
+
+Second implementation cut on 2026-06-16: the unified organiser block now includes dictionary-level
+background information, keeps the style brief next to it, adds per-row selection checkboxes and
+organiser image suggestions, persists background/suggestions in a workspace metadata artifact, and
+adds selected-row controls for prompt creation, image creation, or prompt-plus-image creation.
+Prompt creation currently uses the row word/lemma/POS/gloss, background information, style brief,
+and organiser suggestion to write concrete page image-generation prompts; image creation reuses the
+selected rows' current prompts through the existing page-variant generation path.
+
+Follow-up fix on 2026-06-16 after laptop testing: selected-row prompt creation now asks the
+configured text model to produce a concrete editable image prompt from the row metadata, background,
+style, and organiser suggestion instead of saving the intermediate metadata template. Selected-row
+image creation now marks the newest generated variant as preferred for each selected page before
+synchronizing image paths back to dictionary entries, so the unified dictionary rows show the newly
+generated images immediately.
+
+UX cleanup on 2026-06-17: the unified table was narrowed by grouping each entry into two middle rows
+of fields (word/lemma/POS/gloss above suggestion/prompt) with selection on the left and image
+preview on the right. Added top-level Select all and Select incomplete controls; incomplete
+currently means entries missing either a prompt or an image.
+
+Additional UX cleanup on 2026-06-17: added Select none to the selection controls and a separate
+Display control block with Display all and Display incomplete only. Display incomplete only
+temporarily hides rows that already have both a prompt and image, without changing which rows are
+selected.
+
+AI-supported-language UX update on 2026-06-17: incomplete rows now include entries missing lemma,
+POS, or gloss/translation as well as prompt/image. The top placeholder/compile controls were removed
+from the organiser page in favour of direct picture-dictionary operations. The former
+prompts-plus-images button was replaced by Create missing information for selected rows, which uses
+the configured text model to fill missing lemma, POS, and translation/gloss values for selected
+entries before synchronizing the dictionary registry and annotation stages.
+
+Missing-information follow-up on 2026-06-17: Create missing information for selected rows now covers
+missing/default image-generation prompts and missing images as well as lemma/POS/gloss. A default
+prompt that is only the surface word is treated as missing, so the action can replace it with an
+AI-generated concrete prompt before generating the image. The unified action buttons now show an
+immediate in-page running notice under the controls while the request is being submitted.
+
+Prompt/image consistency correction on 2026-06-17: surface-only prompts are now treated as missing
+only when the row has no image. If an entry already has an image, Create missing information leaves
+a surface-only prompt and existing image together rather than replacing the prompt without
+regenerating the image.
+
+Translation/prompt follow-up on 2026-06-17: the unified workspace now exposes dictionary-level
+translation language and persists it in workspace metadata while syncing it to the associated
+project and subset projects. Added a selected-row Create translations action for retesting/repairing
+glosses in the declared translation language. AI text operations for missing lexical info,
+translations, and prompt creation now use fan-out/fan-in over selected rows. Image prompt
+construction now explicitly instructs the AI to use POS and translation/gloss to disambiguate words
+such as French rose as ADJ=pink rather than NOUN=flower.
+
+Prompt-language/image fan-out follow-up on 2026-06-17: translation language and image-generation
+prompt language now use the standard project language menu. Prompt language defaults to the
+source/text language when it is AI-supported and otherwise falls back to the translation language,
+while organisers can override it for debugging. AI prompt-construction requests now specify the
+selected prompt language so selected rows should produce prompts in a uniform language. Community
+image generation now fans out both prompt-construction calls and image-rendering calls before
+fan-in/persistence.
+
+Source-of-truth UX cleanup on 2026-06-18: the organiser page now creates the dictionary
+automatically, removes the explicit ensure/low-resource compile/page-oriented review controls,
+shortens the low-resource notice, hides the old image review dashboard, and treats the associated
+dictionary project mainly as a debugging link. The unified dictionary and subset sections now
+include exercise creation/testing links, and saved subset rows show non-editable word/gloss/image
+previews so organisers can review subset contents without opening the derived project.
+
+Exercise access follow-up on 2026-06-18: the add-words controls were moved after the current-entry
+list, the dictionary project debugging link was moved to the end of the organiser view, and created
+exercise play links are now surfaced from both organiser and community-member dictionary pages.
+Exercise detail/play pages accept a safe next URL so community-launched exercise sessions link back
+to the community dictionary page rather than the subsidiary project.
