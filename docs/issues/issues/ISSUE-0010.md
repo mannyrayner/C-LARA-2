@@ -1,0 +1,104 @@
+# ISSUE-0010: Import a representative legacy C-LARA project corpus and add batch import tooling
+
+- **Status:** active
+- **Priority:** P1
+- **Created:** 2026-05-09T00:37:55Z
+- **Updated:** 2026-06-05T00:00:00Z
+- **Origin:** human-suggestion
+- **Deadline:** None
+- **Dependencies:** [ISSUE-0002](ISSUE-0002.md)
+- **Canonical JSON:** [ISSUE-0010.json](ISSUE-0010.json)
+
+## Notes
+
+Suggestion #9 from admin export (submitted by mannyrayner on 2026-05-09), updated by follow-up
+suggestion #2 on 2026-05-10, with a first implementation pass on 2026-05-10. Now that supported
+legacy C-LARA JSON ZIP import is available, import a substantial representative corpus of legacy
+projects into C-LARA-2. The Adelaide legacy export folder currently contains per-project bundle
+directories named by project number, which makes browsing hard, but each directory has a top-level
+metadata.json containing fields such as id, title, l2, l1, owner_username, size_bytes, and sha256.
+First cut implemented: a build_legacy_bundle_metadata management command scans a folder of such
+bundle directories and creates a global metadata file; the project list now links to a dedicated
+Import from ZIP view; the view supports the original local ZIP upload path and an admin-only
+legacy-server corpus mode that reads the global metadata file, filters bundles by partial title,
+owner/userid, source language, and target language, and imports a selected bundle through the same
+source/legacy ZIP importer. Remaining work: run this on the Adelaide corpus, import roughly a dozen
+representative projects to exercise the importer against real data, collect diagnostics, identify
+unsupported legacy fields or media/reference edge cases, and extend the admin corpus mode to support
+selecting and importing many bundles in one run with heartbeat-style progress updates and per-bundle
+success/failure diagnostics. Use the imported corpus as test material for ISSUE-0001 hosted compiled
+legacy content registration. The real Adelaide folder has now been uploaded to
+`/srv/c-lara/legacy-bundles/adelaide/` on the AWS server. The transfer required two operational
+details that should stay in the runbook: adjusting the EC2/security-policy inbound SSH rule so TCP
+port 22 was reachable from the uploader's current IP address, and invoking rsync with the EC2
+private key explicitly, e.g. `rsync -avh --progress --partial --append-verify -e "ssh -i
+/home/CLARA2/EC2KeyPairForClara2.pem" /home/CLARADownloadedProjectsFromServer_v2/
+ubuntu@c-lara-2.c-lara.org:/srv/c-lara/legacy-bundles/adelaide/`. Next steps start from the verified
+server-side folder: build the global metadata file on AWS, configure the web process to point at it,
+import representative projects, and record diagnostics. Follow-up operational note from 2026-05-11:
+building `legacy_bundle_metadata.json` on AWS exposed a write-permission trap. The command may be
+able to read the uploaded bundle tree but still fail when creating
+`/srv/c-lara/legacy-bundles/adelaide/legacy_bundle_metadata.json` if it is run as a Linux user that
+is not `ubuntu` and not in the writable group, or if an existing metadata file has awkward
+ownership. The runbook now says to check `whoami`, `id`, `namei -l`, and `ls -ld`, repair
+`/srv/c-lara/legacy-bundles` ownership/modes if needed, remove or chown an existing metadata file,
+and run the command as `ubuntu` with `/srv/C-LARA-2/.venv/bin/python`. Follow-up operational note
+from 2026-05-11 after the metadata file was successfully built: exporting
+`C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT` in an SSH shell does not configure the already-running
+Gunicorn/Django process. The import page now includes an admin-only legacy-library diagnostics panel
+showing the Django setting values, resolved paths, metadata existence, whether the relevant
+environment variables are visible to the web process, and the process id. The runbook now says to
+add `C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT=/srv/c-lara/legacy-bundles/adelaide` and
+`C_LARA_LEGACY_BUNDLE_LIBRARY_METADATA=legacy_bundle_metadata.json` to the service environment file,
+likely `/etc/clara2.env`, then restart `gunicorn-clara2` and `djangoq-clara2`. Follow-up operational
+note from 2026-05-11 after the library became visible: Adelaide project directories contain a
+top-level `metadata.json` beside `source.zip`. The metadata builder records `source.zip` as the
+import payload, so the server-side import path now treats that pair as one legacy bundle: when
+`source.zip` contains `annotated_text.json` but lacks its own `metadata.json`, the importer injects
+the sibling metadata into the temporary ZIP before running the legacy JSON importer. This keeps
+Adelaide server-folder imports consistent with ordinary legacy ZIP imports while leaving native
+C-LARA-2 source-bundle imports unchanged. Follow-up implementation note from 2026-05-11: the sidecar
+metadata injection was made more robust by adding the sibling metadata next to every
+`annotated_text.json` found in the selected server-side `source.zip` when that ZIP has no internal
+metadata file. This covers both flat `annotated_text.json` exports and single-root exports such as
+`AdelaideJSON/annotated_text.json`, and the fallback error now says when a ZIP looks legacy-like but
+still has no adjacent metadata. Follow-up diagnostics note from 2026-05-11: the server-side import
+error path now includes an `Import trace` when a selected bundle falls through to the native
+source-bundle importer and reports missing project metadata. The trace reports the selected path,
+path type, source ZIP path, sidecar metadata path/existence, injected metadata entries, ZIP entry
+count, annotated_text entries, metadata entries, detected legacy root, and first ZIP entries, so the
+next Adelaide failure should show exactly what the web process opened. Follow-up fix from 2026-05-11
+after trace showed no `annotated_text.json`: real Adelaide `source.zip` files can be legacy
+project-directory exports with root `metadata.json`, `project_dir/metadata.json`, and artifacts
+under folders such as `project_dir/plain/`, `project_dir/segmented/`, `audio/`, and `images/`. The
+importer now detects this `project_dir` layout, creates a C-LARA-2 project from the sidecar/root
+metadata plus the best available plain text, preserves the full original tree under `legacy_clara/`,
+writes normal stage artifacts and a `legacy_import_summary.json`, and records a diagnostic that
+detailed annotations may need regeneration. Follow-up troubleshooting note from 2026-05-12: an
+`unreadable project_dir/metadata.json` error after the ZIP trace lists that entry is probably not
+just directory permissions, because the web process can already open `source.zip` and enumerate the
+member. The runbook now distinguishes OS permission checks (`namei -l`, `sudo -u ubuntu/www-data
+test -r`, `zipinfo`, `unzip -t`) from ZIP-member/content checks (`unzip -p ...
+project_dir/metadata.json`, `python3 -m json.tool`). If `unzip -p` works as the service user but
+JSON validation fails, the next task is importer/parser support for the actual legacy metadata
+format rather than more chmod/chown changes. Follow-up suggestion #1 from admin export (submitted by
+mannyrayner on 2026-05-13): the Adelaide import path is now working well enough to create C-LARA-2
+projects on AWS from C-LARA projects downloaded from the Adelaide server. Remaining corpus-import
+work should now include systematic comparison/triage of imported projects, because at least one
+definite content divergence has been observed: in the long English story with Chinese glosses `The
+Dragon and the Cube`, the C-LARA-2 version has a corrupted first page. Treat this as a concrete
+regression fixture for the import/conversion path and for the future ISSUE-0003 pipeline comparison
+runner. The same suggestion also identified AWS compilation performance and timeout failures as a
+separate platform issue; this has been split out as ISSUE-0013.
+
+Update from human suggestion #16 (submitted 2026-05-25 by mannyrayner): after upload-limit
+improvements associated with ISSUE-0014, large legacy projects including 'The Dragon and the Cube'
+and 'Den lille havfrue' were successfully imported to C-LARA-2. This de-risks corpus-scale migration
+and shifts emphasis to building/using batch tooling to import the full legacy content set. Follow-up
+on 2026-06-05: legacy corpus import has advanced substantially beyond the earlier
+representative-dozen target. The platform now has about 30 imported pieces of legacy content,
+including the largest and most challenging examples, and maintainers can quickly import additional
+items if needed. For current evaluator/few-shot work, ISSUE-0010 should now be treated less as a
+blocker and more as a source of realistic regression/evaluation material; remaining work is to
+organize the imported set into documented diagnostic subsets and keep enough import diagnostics to
+explain any unsupported legacy edge cases.
