@@ -3,7 +3,7 @@
 - **Status:** closed
 - **Priority:** P1
 - **Created:** 2026-07-03T01:15:44Z
-- **Updated:** 2026-07-04T01:30:00Z
+- **Updated:** 2026-07-04T01:40:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0025](ISSUE-0025.md)
@@ -116,3 +116,7 @@ saves, MWE validation/error navigation, global MWE page listings, and the page-j
 addressed the reported large-editor save/freeze/data-loss workflow for this round. Future extensions
 to apply similar segment/page-save ergonomics to other manual editing views should be tracked as
 separate issues if needed.
+
+Post-closure polish on 2026-07-04: the global Unsaved changes labels were made more visually salient
+with a warning marker, stronger red styling, heavier font weight, and a high-contrast outline so
+annotators are less likely to miss dirty segment state before leaving a page.

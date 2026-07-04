@@ -7,12 +7,15 @@
   .unsaved-change-label {
     display: inline-block;
     margin-left: 0.5rem;
-    padding: 0.35rem 0.55rem;
-    border: 2px solid #b00020;
-    border-radius: 0.25rem;
-    background: #fff0f0;
-    color: #b00020;
-    font-weight: bold;
+    padding: 0.55rem 0.8rem;
+    border: 3px solid #8a0018;
+    border-radius: 0.4rem;
+    background: #b00020;
+    color: #fff;
+    box-shadow: 0 0 0 3px #ffd6dc;
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
   }
   .unsaved-change-label[hidden] {
     display: none;
@@ -25,7 +28,7 @@
 >
   <strong>Save status:</strong>
   <span data-save-message>no unsaved changes detected in this browser.</span>
-  <span class="unsaved-change-label" data-global-unsaved hidden>Unsaved changes — save the edited segment before leaving.</span>
+  <span class="unsaved-change-label" data-global-unsaved hidden>⚠ Unsaved changes — save the edited segment before leaving.</span>
   <p style="margin-bottom:0;">
     <small>
       Browser autosave is currently off for this large editor. Use the <strong>Save this segment</strong>
@@ -140,7 +143,7 @@
     {% endfor %}
     <p style="border-top:1px solid #ddd; padding-top:0.75rem;">
       <strong>Global edit status:</strong>
-      <span class="unsaved-change-label" data-global-unsaved hidden>Unsaved changes — save the edited segment before leaving.</span>
+      <span class="unsaved-change-label" data-global-unsaved hidden>⚠ Unsaved changes — save the edited segment before leaving.</span>
       <span data-global-saved-note>No unsaved changes detected in this browser.</span>
     </p>
     {% if page_nav.total > 1 %}
