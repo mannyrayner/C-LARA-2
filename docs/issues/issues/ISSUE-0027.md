@@ -1,0 +1,26 @@
+# ISSUE-0027: Add user credit transfer and user-provided OpenAI API key billing option
+
+- **Status:** closed
+- **Priority:** P2
+- **Created:** 2026-05-23T22:55:41Z
+- **Updated:** 2026-05-24T14:01:41Z
+- **Origin:** human-suggestion
+- **Deadline:** None
+- **Dependencies:** None
+- **Canonical JSON:** [ISSUE-0027.json](ISSUE-0027.json)
+
+## Notes
+
+Suggestion #17 from admin export (submitted by mannyrayner on 2026-05-23). Requested scope: (1)
+allow users with positive credit to transfer part of their balance to another user; negative
+transfer amounts are forbidden and transfer workflow should include validation/confirmation/abuse
+safeguards. (2) allow users to register an OpenAI API key and choose to bill C-LARA-2 AI operations
+to that key (BYOK billing path). These capabilities existed in C-LARA and should be restored in
+C-LARA-2. Track this issue in tandem with docs/roadmap/credits-and-billing.md, with explicit
+cross-references.
+
+Priority downgraded to P2 on 2026-05-23 after delivery/validation of urgent user-to-user credit
+transfer functionality needed for Sophie's Kok Kaper visit support.
+
+Marked closed on 2026-05-24 from human update suggestion #14 (submitter: mannyrayner): issue can now
+be marked as closed.
