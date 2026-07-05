@@ -1,12 +1,13 @@
 # C-LARA-2 internal issues format (Phase B baseline)
 
-This folder contains the canonical, Codex-first issue registry used for project-internal issue tracking.
+This folder contains the canonical, Codex-first issue registry used for project-internal issue tracking. The per-issue JSON files remain the source of truth; the companion Markdown issue files are derived human-readable renderings for GitHub browsing.
 
 ## Layout
 
 - `index.json`: current focus list (issues currently prioritized).
 - `index-archive/`: timestamped snapshots of previous `index.json` states.
 - `issues/ISSUE-XXXX.json`: one JSON file per issue.
+- `issues/ISSUE-XXXX.md`: human-readable Markdown rendering of the corresponding JSON issue.
 
 ## Issue schema (baseline)
 
@@ -71,3 +72,13 @@ This checks:
 - dependency references to existing issues
 - index references to existing issues
 - archive filename pattern and basic index schema
+
+### Render human-readable issue Markdown
+
+Run:
+
+```bash
+python scripts/render_issue_markdown.py
+```
+
+This regenerates `docs/issues/issues/ISSUE-XXXX.md` from canonical JSON for easier GitHub browsing.

@@ -1,0 +1,31 @@
+# ISSUE-0035: Track intermittent Codex PR update-branch refusal
+
+- **Status:** reported
+- **Priority:** P2
+- **Created:** 2026-05-31T09:29:15Z
+- **Updated:** 2026-06-03T12:30:00Z
+- **Origin:** human-suggestion
+- **Deadline:** None
+- **Dependencies:** None
+- **Canonical JSON:** [ISSUE-0035.json](ISSUE-0035.json)
+
+## Notes
+
+Created from human suggestion #25 (submitted by mannyrayner on 2026-05-31). Starting on 2026-05-30,
+maintainers have intermittently seen anomalous Codex responses while using the Codex PR 'Update
+branch' flow, including the message 'Codex does not currently support updating PRs that are updated
+outside of Codex. For now, please create a new PR.' Scope: track occurrences with dates, affected
+PR/session context, whether the branch had actually been updated outside Codex, and available
+workarounds; determine whether this is a Codex product limitation, a GitHub branch-state edge case,
+or a C-LARA-2 workflow/documentation issue; update maintainer guidance if needed. Priority is P2
+because the issue can disrupt AI-assisted maintenance and PR hygiene, but the current workaround is
+to create a new PR and it does not directly affect deployed C-LARA-2 user functionality. Follow-up
+on 2026-06-03: the same refusal occurred again while trying to update a Codex-created PR for the
+few-shot curation/segmentation/stage-parameter work; the maintainer reported that the PR had
+evidently not been updated outside Codex and requested a replacement PR as the workaround. This
+occurrence strengthens the hypothesis that the refusal can be a Codex/GitHub branch-state false
+positive rather than a confirmed external modification. Follow-up later on 2026-06-03: creating a
+replacement PR from the same Codex branch did not resolve the maintainer's Update branch problem;
+the same false-positive refusal still appeared. The next attempted workaround is to create a
+replacement PR from a freshly named branch with a new tracking commit, so the GitHub/Codex branch
+provenance metadata is different from the affected PR branch.

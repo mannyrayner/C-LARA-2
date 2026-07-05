@@ -164,6 +164,69 @@ class MWEExperimentInfrastructureTests(TestCase):
             self.assertIn("Total MWEs: 0", review_text)
 
 
+    def test_refresh_mwe_corpus_metadata_recounts_token_mwe_ids_in_existing_splits(self):
+        project = self._project_with_mwe(title="Manual English", language="en", idx=1)
+
+        with TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "mwe_splits"
+            call_command(
+                "extract_mwe_corpus",
+                username="mannyrayner",
+                languages="en",
+                output_dir=str(output_dir),
+                seed="metadata-refresh",
+                overwrite=True,
+            )
+            project_files = sorted((output_dir / "en").glob("*_projects.jsonl"))
+            original_records = [
+                json.loads(line)
+                for path in project_files
+                for line in path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            self.assertEqual(original_records[0]["mwe_count"], 1)
+
+            write_stage_artifact(
+                project.artifact_dir() / "runs" / "run_manual_page_edit",
+                "mwe",
+                {
+                    "pages": [
+                        {
+                            "segments": [
+                                {
+                                    "surface": "take off and look up",
+                                    "tokens": [
+                                        {"surface": "take", "annotations": {"mwe_id": "m1"}},
+                                        {"surface": " "},
+                                        {"surface": "off", "annotations": {"mwe_id": "m1"}},
+                                        {"surface": " and "},
+                                        {"surface": "look", "annotations": {"mwe_id": "m2"}},
+                                        {"surface": " "},
+                                        {"surface": "up", "annotations": {"mwe_id": "m2"}},
+                                    ],
+                                    "annotations": {},
+                                }
+                            ]
+                        }
+                    ]
+                },
+            )
+
+            call_command("refresh_mwe_corpus_metadata", corpus_split_dir=str(output_dir), languages="en")
+
+            refreshed_records = [
+                json.loads(line)
+                for path in project_files
+                for line in path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            self.assertEqual(refreshed_records[0]["mwe_count"], 2)
+            self.assertEqual(refreshed_records[0]["latest_mwe_run"], "run_manual_page_edit")
+            self.assertIn("run_manual_page_edit", refreshed_records[0]["latest_mwe_path"])
+            language_manifest = json.loads((output_dir / "en" / "split_manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(language_manifest["mwe_count"], 2)
+
+
     def test_explicit_project_ids_ignore_split_manifest(self):
         first = self._project_with_mwe(title="English one", language="en", idx=1)
         second = self._project_with_mwe(title="German one", language="de", idx=2)

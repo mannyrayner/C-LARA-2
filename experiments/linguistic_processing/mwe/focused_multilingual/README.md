@@ -79,6 +79,14 @@ After refresh, export current segment records from the latest MWE artifacts:
 make extract-split-corpus CORPUS_USER=mannyrayner LANGUAGES=en,fr,de
 ```
 
+If the split membership is already fixed and you only need to refresh project-level metadata after manual annotation, use:
+
+```bash
+make refresh-project-metadata CORPUS_USER=mannyrayner LANGUAGES=en,fr,de
+```
+
+This keeps the existing `development`/`validation`/`test` project lists but recalculates `mwe_count`, token/segment counts, and latest MWE artifact paths from each project's newest saved `mwe.json` artifact, including artifacts updated by the manual page-oriented editor.
+
 The corpus target writes `generated/corpus_splits/<language>/development_projects.jsonl`,
 `validation_projects.jsonl`, `test_projects.jsonl`, matching `*_segments.jsonl`
 files, a `segments_with_mwes.md` review file with only MWE-bearing segments

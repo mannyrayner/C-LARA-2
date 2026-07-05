@@ -1,0 +1,28 @@
+# ISSUE-0007: Use LLM prompt-construction indirection for page-image generation prompts
+
+- **Status:** closed
+- **Priority:** P2
+- **Created:** 2026-05-04T01:13:22Z
+- **Updated:** 2026-06-02T00:00:00Z
+- **Origin:** human-suggestion
+- **Deadline:** None
+- **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
+- **Canonical JSON:** [ISSUE-0007.json](ISSUE-0007.json)
+
+## Notes
+
+Suggestion #7 from admin export (submitted by mannyrayner on 2026-05-04). Improve page-image quality
+by introducing AI indirection: pass style/page/context elements to a text model that composes the
+image-generation prompt, then send that prompt to the image model. Current direct Python prompt
+assembly appears to reduce text-image coherence and often yields unwanted text in images. Persist
+generated prompts in the same editable store currently used so users can review and manually refine
+prompts before image generation. Follow-up suggestion #7 from 2026-05-18 places this
+prompt-indirection work inside the broader page-image generation/review roadmap tracked as
+ISSUE-0017 and documented in `docs/roadmap/page-image-generation-improvements.md`; prompt
+indirection should support both initial page-image generation and organiser/community-informed
+regeneration. Closed on 2026-06-02 after maintainer review: this prompt-construction indirection has
+already been implemented as part of the page-image generation/review work. The current page-image
+flow builds per-page constructor payloads, calls a text model to produce the final image-generation
+prompt, normalizes/falls back when needed, and records construction telemetry; future page-image
+refinements should be tracked under ISSUE-0017 follow-ons or new specific issues rather than keeping
+this standalone issue open.
