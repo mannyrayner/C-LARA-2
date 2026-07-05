@@ -234,10 +234,7 @@ def iter_project_segment_records(*, project: Project, language: str, stage_path:
             ]
             if not token_surfaces:
                 continue
-            annotations = segment.get("annotations") if isinstance(segment.get("annotations"), dict) else {}
-            gold_mwes = annotations.get("mwes") if isinstance(annotations, dict) else []
-            if not isinstance(gold_mwes, list):
-                gold_mwes = []
+            gold_mwes = segment_gold_mwes(segment)
             yield MWESegmentRecord(
                 record_id=f"{language}:project_{project.id}:p{page_index}:s{segment_index}",
                 split="",
@@ -249,7 +246,7 @@ def iter_project_segment_records(*, project: Project, language: str, stage_path:
                 segment_index=segment_index,
                 segment_surface=str(segment.get("surface") or ""),
                 token_surfaces=token_surfaces,
-                gold_mwes=[item for item in gold_mwes if isinstance(item, dict)],
+                gold_mwes=gold_mwes,
                 latest_mwe_path=str(stage_path),
             )
 
@@ -428,6 +425,28 @@ def write_jsonl(path: Path, records: list[dict[str, Any]]) -> None:
     with path.open("w", encoding="utf-8") as out:
         for record in records:
             out.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+def segment_gold_mwes(segment: dict[str, Any]) -> list[dict[str, Any]]:
+    annotations = segment.get("annotations") if isinstance(segment.get("annotations"), dict) else {}
+    annotated_mwes = annotations.get("mwes") if isinstance(annotations.get("mwes"), list) else []
+    annotated_mwes = [item for item in annotated_mwes if isinstance(item, dict)]
+    if annotated_mwes:
+        return annotated_mwes
+
+    grouped_tokens: dict[str, list[str]] = {}
+    for token in segment.get("tokens") or []:
+        if not isinstance(token, dict):
+            continue
+        surface = str(token.get("surface") or "")
+        if not surface.strip():
+            continue
+        token_annotations = token.get("annotations") if isinstance(token.get("annotations"), dict) else {}
+        mwe_id = str(token_annotations.get("mwe_id") or "").strip()
+        if not mwe_id:
+            continue
+        grouped_tokens.setdefault(mwe_id, []).append(surface)
+    return [{"id": mwe_id, "tokens": tokens} for mwe_id, tokens in sorted(grouped_tokens.items())]
 
 
 def _stable_hash(*parts: str) -> str:
