@@ -1,0 +1,28 @@
+# ISSUE-0017: Improve page-image generation, review, and regeneration workflows
+
+- **Status:** closed
+- **Priority:** P1
+- **Created:** 2026-05-18T09:00:03Z
+- **Updated:** 2026-05-23T00:10:17Z
+- **Origin:** human-suggestion
+- **Deadline:** None
+- **Dependencies:** [ISSUE-0007](ISSUE-0007.md), [ISSUE-0011](ISSUE-0011.md)
+- **Canonical JSON:** [ISSUE-0017.json](ISSUE-0017.json)
+
+## Notes
+
+Suggestion #7 from admin export (submitted by mannyrayner on 2026-05-18). Create and execute a
+focused roadmap for page image generation improvements. The scope covers additive generation of new
+page-image variants without replacing existing variants; generation for selected page subsets such
+as missing-image pages, pages without approved/preferred images, pages where all variants are
+unacceptable, and manually selected pages; integration of ISSUE-0007 LLM prompt-construction
+indirection into initial generation and regeneration; richer community member review context showing
+source page text and page translation; an organiser image-review dashboard linked from the organiser
+area that displays collected judgements/suggestions, highlights preferred variants, allows
+preferred/approval/unacceptable decisions, and submits regeneration tasks informed by community
+notes; and ensuring HTML compilation uses each page's preferred image with safe fallback/omission
+when no usable image exists. The initial documentation work has been added in
+`docs/roadmap/page-image-generation-improvements.md`, which should guide phased implementation and
+tests. Update suggestion #8 (submitted by mannyrayner on 2026-05-23) indicates the page-image
+generation/review/regeneration umbrella work is reasonably complete for now; close and track any
+future specific regressions or enhancements as new issues.

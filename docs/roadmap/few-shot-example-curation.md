@@ -492,3 +492,11 @@ The immediate checklist is the French `clitic_compound_v2` Makefile workflow des
 - Adversarial critics and repair steps improve the accepted library rather than just rejecting many examples.
 - AI-based evaluators can show whether a prompt/few-shot change improves outputs on representative cases.
 - The First Progress Report can cite at least one concrete example where evaluation of few-shot variants led to a better processing choice.
+
+## 2026-07-04 English MWE development pilot
+
+The focused multilingual MWE workbench has produced a small but useful first English development sample after page-oriented manual correction. Seven EN development projects (`239`, `245`, `254`, `255`, `257`, `261`, `263`) now have refreshed project metadata showing 336 segments, 5,104 tokens, and 140 manually corrected MWEs. This is not large enough for a final benchmark claim, but it is large enough for a first prompt-improvement loop because the current baseline MWE quality is poor and the error patterns should be visible.
+
+Use this sample as **development gold only**. The next experiment should freeze the project IDs above, export segment records from the latest corrected `mwe.json` artifacts, score the current MWE prompt against those gold token groups, and then run one or two prompt/few-shot variants before touching validation or test projects. The comparison should score token-set MWE groups within segments rather than relying on local MWE ID strings, since MWE IDs are bookkeeping labels local to a segment.
+
+This is also a report-facing AI-autonomy vignette. The human collaborator supplied expert MWE corrections and judged that the refreshed counts looked plausible; the AI assistant diagnosed the metadata-counting problem, added tooling to refresh fixed-split project metadata from latest artifacts, proposed a leakage-controlled experimental sequence, and recorded the evolving plan in issue, roadmap, and report files. The report should present this as supervised AI-led experimental orchestration, not as unsupervised scientific conclusion-making.

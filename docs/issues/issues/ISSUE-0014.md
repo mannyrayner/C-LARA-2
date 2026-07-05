@@ -1,0 +1,31 @@
+# ISSUE-0014: Audit and adjust AWS service limits before broader rollout
+
+- **Status:** closed
+- **Priority:** P1
+- **Created:** 2026-05-16T13:51:52Z
+- **Updated:** 2026-05-23T00:10:17Z
+- **Origin:** human-suggestion
+- **Deadline:** None
+- **Dependencies:** None
+- **Canonical JSON:** [ISSUE-0014.json](ISSUE-0014.json)
+
+## Notes
+
+Suggestion #4 from admin export (submitted by mannyrayner on 2026-05-16). AWS has warned that the
+account has exceeded 85% of the May Free Tier usage limit for one or more services while C-LARA-2 is
+still essentially in initial Manny-only development use. Before inviting broader use, audit the AWS
+services driving the alert, estimate expected usage/cost under beta traffic, and either raise/adjust
+appropriate service quotas, right-size resources, or add guardrails so the platform does not hit
+service, free-tier, billing, or availability limits immediately after launch. Include billing
+budgets/alerts, service-quota checks, storage/egress/database/runtime cost review, and a short
+operational runbook documenting the chosen limits and escalation path. Treat this as a pre-rollout
+operational readiness blocker rather than an application feature. Update suggestion #5 submitted by
+mannyrayner on 2026-05-16 adds initial AWS billing triage: the AWS Bills page shows approximately
+USD 20 spent in April and approximately USD 67 so far by May 17. Roughly three quarters of current
+spend is Elastic Compute Cloud and most of the remainder is Relational Database Service. This
+suggests the current spend may be plausible for the deployed architecture, but it strengthens the
+need for ongoing cost tracking before wider rollout. Follow-up should include AWS Budgets/alerts,
+service-level cost breakdown monitoring, EC2/RDS right-sizing or scheduling review, and an expected
+monthly run-rate estimate for beta usage. Update suggestion #7 (submitted by mannyrayner on
+2026-05-23) indicates AWS service-limit audit/adjustment work is reasonably complete for current
+rollout scope; close and reopen targeted follow-up issues if new concrete gaps appear.
