@@ -9,7 +9,7 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from projects.models import Project, ProjectImagePage, ProjectImagePageVariant, ProjectImageStyle
-from projects.snapshots import list_project_snapshots, restore_project_snapshot, save_project_snapshot
+from projects.snapshots import _iter_artifact_paths, list_project_snapshots, restore_project_snapshot, save_project_snapshot
 
 
 class ProjectSnapshotTests(TestCase):
@@ -110,6 +110,19 @@ class ProjectSnapshotTests(TestCase):
         )
         self.assertFalse((snapshot.path / "artifacts" / "snapshots" / "old" / "manifest.json").exists())
         self.assertEqual(list_project_snapshots(self.project)[0].gold_standard_components, ("segmentation", "MWE"))
+
+    def test_artifact_iterator_prunes_snapshots_directory(self):
+        root = self.project.artifact_dir()
+        (root / "snapshots" / "current" / "artifacts" / "recursive.txt").parent.mkdir(parents=True, exist_ok=True)
+        (root / "snapshots" / "current" / "artifacts" / "recursive.txt").write_text("skip", encoding="utf-8")
+        kept_path = root / "runs" / "run_demo" / "stages" / "manual_versions" / "mwe.json"
+        kept_path.parent.mkdir(parents=True, exist_ok=True)
+        kept_path.write_text("keep", encoding="utf-8")
+
+        rel_paths = {path.relative_to(root).as_posix() for path in _iter_artifact_paths(root)}
+
+        self.assertIn("runs/run_demo/stages/manual_versions/mwe.json", rel_paths)
+        self.assertNotIn("snapshots/current/artifacts/recursive.txt", rel_paths)
 
     def test_platform_save_and_restore_views(self):
         client = Client()

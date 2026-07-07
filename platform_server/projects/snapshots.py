@@ -87,10 +87,8 @@ def _copy_project_artifacts(source_root: Path, target_root: Path) -> None:
         return
 
     _mkdir(target_root)
-    for source_path in source_root.rglob("*"):
+    for source_path in _iter_artifact_paths(source_root):
         rel_path = source_path.relative_to(source_root)
-        if SNAPSHOTS_DIRNAME in rel_path.parts:
-            continue
         target_path = target_root / rel_path
         if source_path.is_dir():
             _mkdir(target_path)
@@ -99,6 +97,31 @@ def _copy_project_artifacts(source_root: Path, target_root: Path) -> None:
             continue
         _mkdir(target_path.parent)
         shutil.copy2(_windows_long_path(source_path), _windows_long_path(target_path))
+
+
+def _iter_artifact_paths(source_root: Path):
+    """Yield artifact paths while pruning nested snapshot directories.
+
+    ``Path.rglob`` cannot prune after it has yielded a directory.  Because new
+    snapshots live under the artifact root, using rglob can accidentally descend
+    into the snapshot currently being written.  This explicit stack walk skips
+    any directory named ``snapshots`` before recursing.
+    """
+
+    stack = [source_root]
+    while stack:
+        directory = stack.pop()
+        try:
+            entries = list(os.scandir(_windows_long_path(directory)))
+        except FileNotFoundError:
+            continue
+        for entry in entries:
+            source_path = directory / entry.name
+            if entry.is_dir(follow_symlinks=False):
+                if entry.name == SNAPSHOTS_DIRNAME:
+                    continue
+                stack.append(source_path)
+            yield source_path
 
 
 def _mkdir(path: Path) -> None:

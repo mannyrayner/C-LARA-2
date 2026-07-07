@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-07-06T18:33:22Z
-- **Updated:** 2026-07-07T22:30:00Z
+- **Updated:** 2026-07-07T23:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0013](ISSUE-0013.md), [ISSUE-0036](ISSUE-0036.md)
@@ -53,3 +53,9 @@ Additional Windows/Cygwin snapshot follow-up on 2026-07-07: maintainer testing e
 long-path failure while creating deep target directories inside
 legacy_clara/coherent_images_v2_project_dir. Directory creation and partial-snapshot cleanup now
 also route through the extended-length Windows path helper, not just file copies.
+
+Snapshot recursion fix on 2026-07-07: maintainer testing showed the explicit recursive copy still
+used Path.rglob, which could descend into the snapshot currently being written because snapshots
+live below the project artifact root. Replaced rglob with an explicit os.scandir stack walk that
+prunes any directory named snapshots before recursion, preventing self-copy recursion and related
+FileNotFoundError failures under deep legacy artifact paths.
