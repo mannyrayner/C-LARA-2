@@ -282,6 +282,43 @@ ProjectImagePageFormSet = modelformset_factory(
 )
 
 
+class ProjectSnapshotForm(forms.Form):
+    GOLD_STANDARD_COMPONENT_CHOICES = [
+        ("all linguistic annotation data", "All linguistic annotation data"),
+        ("all image data", "All image data"),
+        ("source text", "Source text"),
+        ("segmentation phase 1", "Segmentation phase 1"),
+        ("segmentation phase 2", "Segmentation phase 2"),
+        ("translation", "Translation"),
+        ("MWE annotations", "MWE annotations"),
+        ("lemma annotations", "Lemma annotations"),
+        ("gloss annotations", "Gloss annotations"),
+        ("pinyin annotations", "Pinyin annotations"),
+        ("audio data", "Audio data"),
+        ("image style data", "Image style data"),
+        ("image element data", "Image element data"),
+        ("page image data", "Page image data"),
+        ("exercise data", "Exercise data"),
+    ]
+
+    name = forms.CharField(
+        max_length=120,
+        label="Snapshot name",
+        help_text="Use a short descriptive name, e.g. before MWE prompt experiment.",
+    )
+    contains_gold_standard = forms.BooleanField(
+        required=False,
+        label="Contains gold-standard data",
+    )
+    gold_standard_components = forms.MultipleChoiceField(
+        choices=GOLD_STANDARD_COMPONENT_CHOICES,
+        required=False,
+        label="Gold-standard components",
+        help_text="Optional components covered by gold-standard data.",
+        widget=forms.CheckboxSelectMultiple,
+    )
+
+
 class IssueSuggestionForm(forms.ModelForm):
     class Meta:
         model = IssueSuggestion
