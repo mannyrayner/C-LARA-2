@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-07T02:00:00Z
+- **Updated:** 2026-07-07T23:30:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -125,3 +125,8 @@ MWE spans against extracted gold spans, and write conservative prompt-improvemen
 false-positive/false-negative examples. The improvement proposal is intentionally general and does
 not edit production prompts automatically; it is meant to support human review and avoid overfitting
 to development examples.
+
+MWE experiment progress follow-up on 2026-07-07: maintainer testing showed run-current-mwe looked
+idle while processing API calls. The run_mwe_prompt_experiment command now prints per-record
+running/finished/error messages, writes progress.jsonl incrementally, and appends outputs.jsonl one
+record at a time so long runs expose current position and partial results before completion.

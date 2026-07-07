@@ -163,6 +163,7 @@ make propose-mwe-prompt-improvement RUN=1 \
 Expected outputs are:
 
 - `generated/mwe_prompt_runs/$MWE_RUN_LABEL/outputs.jsonl`
+- `generated/mwe_prompt_runs/$MWE_RUN_LABEL/progress.jsonl`
 - `generated/mwe_prompt_scores/$MWE_RUN_LABEL/summary.json`
 - `generated/mwe_prompt_scores/$MWE_RUN_LABEL/summary.md`
 - `generated/mwe_prompt_improvements/$MWE_RUN_LABEL/prompt_improvement.md`
@@ -188,9 +189,7 @@ Expected outputs are:
   rerun `make extract-split-corpus CORPUS_USER=mannyrayner LANGUAGES=en` before
   the prompt run, then inspect `generated/corpus_splits/en/development_projects.jsonl`.
 
-`run-current-mwe` processes each extracted segment through the current MWE prompt,
-`score-current-mwe` compares predicted MWE spans with the extracted gold spans,
-and `propose-mwe-prompt-improvement` writes conservative guidance under
+`run-current-mwe` processes each extracted segment through the current MWE prompt. It prints per-record progress and appends `progress.jsonl` and `outputs.jsonl` incrementally, so a long run should no longer look idle. `score-current-mwe` compares predicted MWE spans with the extracted gold spans, and `propose-mwe-prompt-improvement` writes conservative guidance under
 `generated/mwe_prompt_improvements/`. The proposal step is intentionally general:
 it highlights false positives/false negatives and suggests simple language-neutral
 prompt principles rather than hard-coding project-specific examples.

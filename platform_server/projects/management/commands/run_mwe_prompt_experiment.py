@@ -4,7 +4,7 @@ import asyncio
 import json
 import shutil
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from django.core.management.base import BaseCommand, CommandError
 
@@ -35,20 +35,52 @@ class Command(BaseCommand):
         records = load_mwe_records(input_path, limit=int(options.get("limit") or 0))
         if not records:
             raise CommandError(f"No records found in {input_path}")
-        outputs = asyncio.run(run_records(records, run_label=str(options["run_label"])))
         outputs_path = run_dir / "outputs.jsonl"
-        write_jsonl(outputs_path, outputs)
+        progress_path = run_dir / "progress.jsonl"
+        output_count = 0
+
+        def record_progress(event: dict[str, Any]) -> None:
+            with progress_path.open("a", encoding="utf-8") as progress_out:
+                progress_out.write(json.dumps(event, ensure_ascii=False) + "\n")
+            status = event.get("status")
+            idx = event.get("index")
+            total = event.get("total")
+            record_id = event.get("record_id")
+            if status == "running":
+                self.stdout.write(f"[{idx}/{total}] running MWE prompt for {record_id}")
+            elif status == "finished":
+                self.stdout.write(f"[{idx}/{total}] finished {record_id}")
+            elif status == "error":
+                self.stdout.write(f"[{idx}/{total}] error {record_id}: {event.get('error')}")
+
+        def record_output(payload: dict[str, Any]) -> None:
+            nonlocal output_count
+            with outputs_path.open("a", encoding="utf-8") as outputs_out:
+                outputs_out.write(json.dumps(payload, ensure_ascii=False) + "\n")
+            output_count += 1
+
+        self.stdout.write(f"Loaded {len(records)} MWE records from {input_path}")
+        asyncio.run(
+            run_records(
+                records,
+                run_label=str(options["run_label"]),
+                on_progress=record_progress,
+                on_output=record_output,
+            )
+        )
         manifest = {
             "schema_version": 1,
             "input_records_jsonl": str(input_path),
             "run_label": str(options["run_label"]),
-            "record_count": len(outputs),
+            "record_count": output_count,
             "outputs_jsonl": str(outputs_path),
+            "progress_jsonl": str(progress_path),
         }
         manifest_path = run_dir / "manifest.json"
         manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        self.stdout.write(f"MWE prompt run complete: {len(outputs)} records")
+        self.stdout.write(f"MWE prompt run complete: {output_count} records")
         self.stdout.write(f"Outputs: {outputs_path}")
+        self.stdout.write(f"Progress: {progress_path}")
 
 
 def load_mwe_records(path: Path, *, limit: int = 0) -> list[dict[str, Any]]:
@@ -65,35 +97,59 @@ def load_mwe_records(path: Path, *, limit: int = 0) -> list[dict[str, Any]]:
     return records
 
 
-async def run_records(records: list[dict[str, Any]], *, run_label: str) -> list[dict[str, Any]]:
+async def run_records(
+    records: list[dict[str, Any]],
+    *,
+    run_label: str,
+    on_progress: Callable[[dict[str, Any]], None] | None = None,
+    on_output: Callable[[dict[str, Any]], None] | None = None,
+) -> list[dict[str, Any]]:
     outputs: list[dict[str, Any]] = []
+    total = len(records)
     for idx, record in enumerate(records, start=1):
         text_obj = record_to_text_obj(record)
-        annotated = await annotate_mwes(
-            MWESpec(
-                text=text_obj,
-                language=str(record.get("language") or "en"),
-                op_id=f"{run_label}:record_{idx}:mwe",
+        progress_payload = {
+            "index": idx,
+            "total": total,
+            "record_id": record.get("record_id"),
+            "project_id": record.get("project_id"),
+            "language": record.get("language"),
+        }
+        if on_progress:
+            on_progress({**progress_payload, "status": "running"})
+        try:
+            annotated = await annotate_mwes(
+                MWESpec(
+                    text=text_obj,
+                    language=str(record.get("language") or "en"),
+                    op_id=f"{run_label}:record_{idx}:mwe",
+                )
             )
-        )
+        except Exception as exc:
+            if on_progress:
+                on_progress({**progress_payload, "status": "error", "error": f"{type(exc).__name__}: {exc}"})
+            raise
         segment = annotated.get("pages", [{}])[0].get("segments", [{}])[0]
         predicted_mwes = ((segment.get("annotations") or {}).get("mwes") or []) if isinstance(segment, dict) else []
-        outputs.append(
-            {
-                "record_id": record.get("record_id"),
-                "split": record.get("split"),
-                "language": record.get("language"),
-                "project_id": record.get("project_id"),
-                "project_title": record.get("project_title"),
-                "page_index": record.get("page_index"),
-                "segment_index": record.get("segment_index"),
-                "segment_surface": record.get("segment_surface"),
-                "token_surfaces": record.get("token_surfaces") or [],
-                "gold_mwes": record.get("gold_mwes") or [],
-                "predicted_mwes": predicted_mwes,
-                "annotated_segment": segment,
-            }
-        )
+        output_payload = {
+            "record_id": record.get("record_id"),
+            "split": record.get("split"),
+            "language": record.get("language"),
+            "project_id": record.get("project_id"),
+            "project_title": record.get("project_title"),
+            "page_index": record.get("page_index"),
+            "segment_index": record.get("segment_index"),
+            "segment_surface": record.get("segment_surface"),
+            "token_surfaces": record.get("token_surfaces") or [],
+            "gold_mwes": record.get("gold_mwes") or [],
+            "predicted_mwes": predicted_mwes,
+            "annotated_segment": segment,
+        }
+        outputs.append(output_payload)
+        if on_output:
+            on_output(output_payload)
+        if on_progress:
+            on_progress({**progress_payload, "status": "finished"})
     return outputs
 
 

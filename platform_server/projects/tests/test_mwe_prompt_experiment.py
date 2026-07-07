@@ -3,6 +3,7 @@ import shutil
 import tempfile
 from io import StringIO
 from pathlib import Path
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
@@ -63,3 +64,55 @@ class MWEPromptExperimentCommandTests(TestCase):
         summary = summarize_scores([scored], split="development", outputs_path=Path("outputs.jsonl"))
         self.assertAlmostEqual(summary["precision"], 0.5)
         self.assertAlmostEqual(summary["recall"], 1.0)
+
+    def test_run_mwe_prompt_experiment_writes_incremental_progress(self):
+        input_path = Path(self.tmpdir) / "records.jsonl"
+        output_dir = Path(self.tmpdir) / "runs"
+        input_path.write_text(
+            json.dumps(
+                {
+                    "record_id": "r1",
+                    "split": "development",
+                    "language": "en",
+                    "project_id": self.project.id,
+                    "project_title": self.project.title,
+                    "segment_surface": "take off now",
+                    "token_surfaces": ["take", "off", "now"],
+                    "gold_mwes": [{"tokens": ["take", "off"]}],
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        async def fake_annotate(spec):  # noqa: ARG001
+            return {
+                "pages": [
+                    {
+                        "segments": [
+                            {
+                                "annotations": {"mwes": [{"id": "m1", "tokens": ["take", "off"]}]},
+                                "tokens": [{"surface": "take"}, {"surface": "off"}, {"surface": "now"}],
+                            }
+                        ]
+                    }
+                ]
+            }
+
+        with patch("projects.management.commands.run_mwe_prompt_experiment.annotate_mwes", side_effect=fake_annotate):
+            out = StringIO()
+            call_command(
+                "run_mwe_prompt_experiment",
+                input_records_jsonl=str(input_path),
+                output_dir=str(output_dir),
+                run_label="test-run",
+                overwrite=True,
+                stdout=out,
+            )
+
+        self.assertIn("[1/1] running MWE prompt for r1", out.getvalue())
+        self.assertIn("[1/1] finished r1", out.getvalue())
+        progress_lines = (output_dir / "test-run" / "progress.jsonl").read_text(encoding="utf-8").splitlines()
+        self.assertEqual([json.loads(line)["status"] for line in progress_lines], ["running", "finished"])
+        output_payload = json.loads((output_dir / "test-run" / "outputs.jsonl").read_text(encoding="utf-8"))
+        self.assertEqual(output_payload["predicted_mwes"][0]["tokens"], ["take", "off"])

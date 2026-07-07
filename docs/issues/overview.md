@@ -1,8 +1,8 @@
-# C-LARA-2 issue overview (refreshed 2026-07-07T23:00:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-07T23:30:00Z)
 ## Recent progress
-- Fixed **ISSUE-0041** snapshot self-copy recursion by replacing `Path.rglob` with an explicit artifact walk that prunes `snapshots/` before descending.
-- Added regression coverage proving the artifact iterator includes normal nested stage artifacts while excluding the snapshot directory tree.
-- Revalidated the overview inventory against canonical per-issue JSON after updating **ISSUE-0041**.
+- Added visible per-record progress and incremental `progress.jsonl`/`outputs.jsonl` writes to the **ISSUE-0036** MWE current-prompt run command so long API runs no longer look idle.
+- Kept the snapshot and MWE prompt-scoring workflow active for maintainer testing on the seven-project English development set.
+- Revalidated the overview inventory against canonical per-issue JSON after updating **ISSUE-0036**.
 
 ## Near-term priorities
 1. **ISSUE-0039** — Build a unified picture-dictionary source-of-truth workspace.
@@ -27,7 +27,7 @@
 20. **ISSUE-0001** — Support hosted compiled legacy content registration in C-LARA-2.
 
 ## Notes/risks
-- **ISSUE-0036** now has an MWE prompt-scoring scaffold, but it intentionally writes candidate guidance rather than auto-editing production prompts; human review should guard against overfitting to development projects.
+- **ISSUE-0036** now has an MWE prompt-scoring scaffold with incremental run tracking, but it intentionally writes candidate guidance rather than auto-editing production prompts; human review should guard against overfitting to development projects.
 - **ISSUE-0041** snapshot save/restore now prunes nested snapshots before recursion and handles deep artifact directory/file copies more robustly on Windows/Cygwin, but destructive restore still needs careful UX/audit hardening before adding partial component restores.
 - **ISSUE-0039** remains active/P0 for Sophie-facing picture-dictionary workflow completion; avoid letting infrastructure tasks displace the current UI/product review blockers.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated pipeline and UI coverage.
