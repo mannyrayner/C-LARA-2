@@ -109,14 +109,84 @@ explicit smoke set, or `SPLITS=development` to restrict the manifest-driven
 selection. The target calls the same file-backed snapshot implementation used by
 the platform UI.
 
-The first prompt-scoring loop mirrors the earlier `segmentation_phase_2`
-experiment structure, but operates on extracted MWE segment records:
+### Initial seven-project development experiment
+
+For the initial manually corrected English development set, use exactly these
+seven project ids:
 
 ```bash
-make run-current-mwe RUN=1 MWE_LANGUAGE=en SPLIT=development
-make score-current-mwe RUN=1 MWE_LANGUAGE=en SPLIT=development
-make propose-mwe-prompt-improvement RUN=1 MWE_LANGUAGE=en SPLIT=development
+MWE_PROJECT_IDS="239,245,254,255,257,261,263"
+MWE_RUN_LABEL="mwe-current-prompt-en-development-20260707"
 ```
+
+First, preview the snapshot operation. This should print a JSON dry-run manifest
+and should not write snapshots:
+
+```bash
+make snapshot-gold-projects \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  SPLITS=development \
+  SNAPSHOT_NAME_PREFIX="MWE development gold checkpoint"
+```
+
+Then save the snapshots for the same projects. These snapshots mark **MWE
+annotations**, **gloss annotations**, and **lemma annotations** as gold-standard
+components:
+
+```bash
+make snapshot-gold-projects RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  SPLITS=development \
+  SNAPSHOT_NAME_PREFIX="MWE development gold checkpoint"
+```
+
+Next, run the current MWE prompt over the extracted English development segment
+records, score it, and write conservative prompt-improvement guidance:
+
+```bash
+make run-current-mwe RUN=1 \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_RUN_LABEL="$MWE_RUN_LABEL"
+
+make score-current-mwe RUN=1 \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_RUN_LABEL="$MWE_RUN_LABEL"
+
+make propose-mwe-prompt-improvement RUN=1 \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_RUN_LABEL="$MWE_RUN_LABEL"
+```
+
+Expected outputs are:
+
+- `generated/mwe_prompt_runs/$MWE_RUN_LABEL/outputs.jsonl`
+- `generated/mwe_prompt_scores/$MWE_RUN_LABEL/summary.json`
+- `generated/mwe_prompt_scores/$MWE_RUN_LABEL/summary.md`
+- `generated/mwe_prompt_improvements/$MWE_RUN_LABEL/prompt_improvement.md`
+- `generated/mwe_prompt_improvements/$MWE_RUN_LABEL/candidate_prompt_guidance.txt`
+
+### How `PROJECT_IDS`, `SPLITS`, and `SPLIT` interact
+
+- `PROJECT_IDS` is an explicit comma-separated override for project-selection
+  commands such as `snapshot-gold-projects`. When `PROJECT_IDS` is supplied, the
+  split manifest is not used to choose projects.
+- `SPLITS` is plural and only matters for manifest-driven project-selection
+  commands. It says which manifest splits to read when `PROJECT_IDS` is empty.
+  Passing `SPLITS=development` together with explicit `PROJECT_IDS` is harmless
+  documentation of intent, but the explicit ids are what control the snapshot
+  target above.
+- `SPLIT` is singular and controls prompt-run/scoring paths. For
+  `run-current-mwe`, it selects the input records file through
+  `MWE_SPLIT_RECORDS`, which defaults to
+  `generated/corpus_splits/$(MWE_LANGUAGE)/$(SPLIT)_segments.jsonl`. It does not
+  filter by `PROJECT_IDS`.
+- To run exactly the seven projects above, make sure the development segment file
+  was produced from the split manifest containing those projects. If in doubt,
+  rerun `make extract-split-corpus CORPUS_USER=mannyrayner LANGUAGES=en` before
+  the prompt run, then inspect `generated/corpus_splits/en/development_projects.jsonl`.
 
 `run-current-mwe` processes each extracted segment through the current MWE prompt,
 `score-current-mwe` compares predicted MWE spans with the extracted gold spans,
