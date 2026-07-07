@@ -1,8 +1,8 @@
-# C-LARA-2 issue overview (refreshed 2026-07-06T18:45:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-07T00:00:00Z)
 ## Recent progress
-- Added **ISSUE-0041** from human suggestion #32 to track named project snapshots, restore controls, and gold-standard snapshot metadata for reversible project editing and prompt-learning experiments.
-- Refreshed the focus index and overview in the canonical format, including removal of closed **ISSUE-0040** from near-term focus while keeping it in the complete inventory as closed.
-- Regenerated human-readable issue Markdown from canonical per-issue JSON so the new snapshot issue has a companion page.
+- Implemented the first **ISSUE-0041** slice: a reusable project snapshot service, owner-facing save/restore controls on the platform project page, and a `project_snapshot` management command for prompt-learning experiments.
+- Kept **ISSUE-0041** active because the first version intentionally captures full snapshots only; partial snapshot semantics, broader specialised related-model coverage, and richer restore previews remain follow-up work.
+- Revalidated the overview inventory against canonical per-issue JSON after changing **ISSUE-0041** from reported to active.
 
 ## Near-term priorities
 1. **ISSUE-0039** — Build a unified picture-dictionary source-of-truth workspace.
@@ -27,7 +27,7 @@
 20. **ISSUE-0001** — Support hosted compiled legacy content registration in C-LARA-2.
 
 ## Notes/risks
-- **ISSUE-0041** should start with a safe full-project snapshot/restore path before adding partial snapshots; partial restore semantics could otherwise corrupt stage artifacts, selected images, or gold-standard records.
+- **ISSUE-0041** now has a first full-project snapshot path, but destructive restore still needs careful UX/audit hardening before adding partial component restores.
 - **ISSUE-0041** overlaps with **ISSUE-0036** because prompt-learning experiments need auditable gold-standard checkpoints, and with **ISSUE-0013** where snapshot storage touches stage artifact persistence and timeout resilience.
 - **ISSUE-0039** remains active/P0 for Sophie-facing picture-dictionary workflow completion; avoid letting infrastructure tasks displace the current UI/product review blockers.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated pipeline and UI coverage.
@@ -75,4 +75,4 @@
 | [ISSUE-0038](issues/ISSUE-0038.md) | closed | P1 | Keep picture-dictionary images synchronized when words are deleted. |
 | [ISSUE-0039](issues/ISSUE-0039.md) | active | P0 | Build a unified picture-dictionary source-of-truth workspace. |
 | [ISSUE-0040](issues/ISSUE-0040.md) | closed | P1 | Make page-oriented manual annotation saves resilient for large projects. |
-| [ISSUE-0041](issues/ISSUE-0041.md) | reported | P1 | Add named project snapshots with restore and gold-standard metadata. |
+| [ISSUE-0041](issues/ISSUE-0041.md) | active | P1 | Add named project snapshots with restore and gold-standard metadata. |

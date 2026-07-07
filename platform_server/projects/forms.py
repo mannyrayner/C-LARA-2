@@ -282,6 +282,29 @@ ProjectImagePageFormSet = modelformset_factory(
 )
 
 
+class ProjectSnapshotForm(forms.Form):
+    name = forms.CharField(
+        max_length=120,
+        label="Snapshot name",
+        help_text="Use a short descriptive name, e.g. before MWE prompt experiment.",
+    )
+    contains_gold_standard = forms.BooleanField(
+        required=False,
+        label="Contains gold-standard data",
+    )
+    gold_standard_components = forms.CharField(
+        required=False,
+        label="Gold-standard components",
+        help_text="Optional comma-separated components, e.g. segmentation, MWE, gloss.",
+    )
+
+    def clean_gold_standard_components(self):
+        raw = (self.cleaned_data.get("gold_standard_components") or "").strip()
+        if not raw:
+            return []
+        return [part.strip() for part in raw.split(",") if part.strip()]
+
+
 class IssueSuggestionForm(forms.ModelForm):
     class Meta:
         model = IssueSuggestion

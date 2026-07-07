@@ -1,9 +1,9 @@
 # ISSUE-0041: Add named project snapshots with restore and gold-standard metadata
 
-- **Status:** reported
+- **Status:** active
 - **Priority:** P1
 - **Created:** 2026-07-06T18:33:22Z
-- **Updated:** 2026-07-06T18:33:22Z
+- **Updated:** 2026-07-07T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0013](ISSUE-0013.md), [ISSUE-0036](ISSUE-0036.md)
@@ -26,3 +26,13 @@ prompt-learning experiments, gold-standard curation, and manual annotation all n
 checkpoints and systematic gold-data handling; coordinate with ISSUE-0036 for
 prompt-learning/few-shot experiment gold-standard workflows and with persistence/export issues where
 snapshot storage overlaps stage artifacts or bundles.
+
+First implementation cut on 2026-07-07: added a file-backed full-project snapshot service callable
+from code, a platform project-detail UI for owner save/restore, and a project_snapshot management
+command for prompt-learning experiments and other programmatic workflows. The initial snapshot
+captures core project fields, image style/element/page/variant rows including preferred variants,
+and the project artifact tree while excluding prior snapshots to avoid recursive copies. Restore
+replaces the captured project fields, image rows, and non-snapshot artifacts while preserving the
+snapshot directory. Remaining follow-up work should consider richer partial snapshot semantics,
+broader related-model coverage for specialised workflows, and restore previews/audit trails before
+destructive restore operations.
