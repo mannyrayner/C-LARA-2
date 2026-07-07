@@ -115,6 +115,59 @@
   {% endif %}
 </div>
 
+
+{% if current_user_role == "owner" %}
+  <div style="border: 1px solid #ddd; padding: 0.75rem; margin: 0.75rem 0; background: #fafafa;">
+    <h3>Project snapshots</h3>
+    <p><small>Save a named checkpoint of the project database state, stage artifacts, image prompts, and generated/selected images. Restore overwrites the current project state.</small></p>
+    <form method="post" action="{% url 'project-snapshot-save' object.pk %}">
+      {% csrf_token %}
+      <p>
+        <label for="id_snapshot_name"><strong>Snapshot name:</strong></label>
+        <input id="id_snapshot_name" name="name" type="text" maxlength="120" required style="min-width: 20rem;" />
+      </p>
+      <p>
+        <label><input name="contains_gold_standard" type="checkbox" /> Contains gold-standard data</label>
+      </p>
+      <p>
+        <label for="id_snapshot_gold_components">Gold-standard components:</label><br />
+        <input id="id_snapshot_gold_components" name="gold_standard_components" type="text" placeholder="segmentation, MWE, gloss" style="min-width: 24rem;" />
+      </p>
+      <button class="btn secondary" type="submit">Save snapshot</button>
+    </form>
+    {% if project_snapshots %}
+      <table border="1" cellpadding="4" cellspacing="0" style="margin-top: 0.75rem;">
+        <thead>
+          <tr><th>Name</th><th>Created</th><th>Gold standard</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          {% for snapshot in project_snapshots %}
+            <tr>
+              <td>{{ snapshot.name }}</td>
+              <td>{{ snapshot.created_at }}</td>
+              <td>
+                {% if snapshot.contains_gold_standard %}
+                  yes{% if snapshot.gold_standard_components %}: {{ snapshot.gold_standard_components|join:", " }}{% endif %}
+                {% else %}
+                  no
+                {% endif %}
+              </td>
+              <td>
+                <form method="post" action="{% url 'project-snapshot-restore' object.pk snapshot.snapshot_id %}" onsubmit="return confirm('Restore this snapshot? This overwrites the current project data and artifacts.');">
+                  {% csrf_token %}
+                  <button class="btn secondary" type="submit">Restore</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p><small>No snapshots saved yet.</small></p>
+    {% endif %}
+  </div>
+{% endif %}
+
 {% if current_user_role == "owner" %}
   <form method="post" action="{% url 'project-clone' object.pk %}" onsubmit="return confirm('Clone this project and copy latest run files?');">{% csrf_token %}
     <button class="btn secondary" type="submit">Clone project</button>
