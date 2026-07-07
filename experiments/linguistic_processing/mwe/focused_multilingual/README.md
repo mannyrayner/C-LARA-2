@@ -93,6 +93,38 @@ files, a `segments_with_mwes.md` review file with only MWE-bearing segments
 and the total MWE count, per-language `split_manifest.json`, and a top-level
 `multilingual_split_manifest.json`.
 
+## Snapshot and prompt-scoring workflow
+
+Before running prompt experiments over manually corrected projects, save project
+snapshots that explicitly mark the current MWE, lemma, and gloss annotations as
+gold-standard data:
+
+```bash
+make snapshot-gold-projects RUN=1
+```
+
+By default this reads `generated/corpus_splits/multilingual_split_manifest.json`
+and covers all configured splits. Use `PROJECT_IDS="239,245,254"` to snapshot an
+explicit smoke set, or `SPLITS=development` to restrict the manifest-driven
+selection. The target calls the same file-backed snapshot implementation used by
+the platform UI.
+
+The first prompt-scoring loop mirrors the earlier `segmentation_phase_2`
+experiment structure, but operates on extracted MWE segment records:
+
+```bash
+make run-current-mwe RUN=1 MWE_LANGUAGE=en SPLIT=development
+make score-current-mwe RUN=1 MWE_LANGUAGE=en SPLIT=development
+make propose-mwe-prompt-improvement RUN=1 MWE_LANGUAGE=en SPLIT=development
+```
+
+`run-current-mwe` processes each extracted segment through the current MWE prompt,
+`score-current-mwe` compares predicted MWE spans with the extracted gold spans,
+and `propose-mwe-prompt-improvement` writes conservative guidance under
+`generated/mwe_prompt_improvements/`. The proposal step is intentionally general:
+it highlights false positives/false negatives and suggests simple language-neutral
+prompt principles rather than hard-coding project-specific examples.
+
 ## Manual gold workflow
 
 Use the project JSONL files to open the selected projects in the existing manual

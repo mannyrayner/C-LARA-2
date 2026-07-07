@@ -1,8 +1,8 @@
-# C-LARA-2 issue overview (refreshed 2026-07-07T01:00:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-07T02:00:00Z)
 ## Recent progress
-- Improved the **ISSUE-0041** snapshot save UI by replacing free-text gold-standard components with checkbox choices, including group choices for all linguistic annotation data and all image data.
-- Kept **ISSUE-0041** active because the first version still captures full snapshots only; partial snapshot semantics, broader specialised related-model coverage, and richer restore previews remain follow-up work.
-- Revalidated the overview inventory against canonical per-issue JSON after updating **ISSUE-0041**.
+- Extended the focused multilingual MWE workbench with snapshot-backed gold checkpointing and current-prompt run/score/propose targets for **ISSUE-0036**.
+- Marked **ISSUE-0036** active while preserving the conservative prompt-improvement constraint: generated guidance should remain simple, language-neutral, and human-reviewed before production prompt edits.
+- Revalidated the overview inventory against canonical per-issue JSON after updating **ISSUE-0036**.
 
 ## Near-term priorities
 1. **ISSUE-0039** — Build a unified picture-dictionary source-of-truth workspace.
@@ -27,8 +27,8 @@
 20. **ISSUE-0001** — Support hosted compiled legacy content registration in C-LARA-2.
 
 ## Notes/risks
+- **ISSUE-0036** now has an MWE prompt-scoring scaffold, but it intentionally writes candidate guidance rather than auto-editing production prompts; human review should guard against overfitting to development projects.
 - **ISSUE-0041** now has a first full-project snapshot path and a clearer gold-standard metadata UI, but destructive restore still needs careful UX/audit hardening before adding partial component restores.
-- **ISSUE-0041** overlaps with **ISSUE-0036** because prompt-learning experiments need auditable gold-standard checkpoints, and with **ISSUE-0013** where snapshot storage touches stage artifact persistence and timeout resilience.
 - **ISSUE-0039** remains active/P0 for Sophie-facing picture-dictionary workflow completion; avoid letting infrastructure tasks displace the current UI/product review blockers.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated pipeline and UI coverage.
 
@@ -70,7 +70,7 @@
 | [ISSUE-0033](issues/ISSUE-0033.md) | reported | P2 | Clean up and phase-track roadmap file maintenance. |
 | [ISSUE-0034](issues/ISSUE-0034.md) | active | P1 | Add restricted project-understanding assistant with versioned evidence records. |
 | [ISSUE-0035](issues/ISSUE-0035.md) | reported | P2 | Track intermittent Codex PR update-branch refusal. |
-| [ISSUE-0036](issues/ISSUE-0036.md) | reported | P1 | Systematize creation and evaluation of few-shot examples for linguistic annotation. |
+| [ISSUE-0036](issues/ISSUE-0036.md) | active | P1 | Systematize creation and evaluation of few-shot examples for linguistic annotation. |
 | [ISSUE-0037](issues/ISSUE-0037.md) | active | P1 | Create subset projects from community picture dictionaries. |
 | [ISSUE-0038](issues/ISSUE-0038.md) | closed | P1 | Keep picture-dictionary images synchronized when words are deleted. |
 | [ISSUE-0039](issues/ISSUE-0039.md) | active | P0 | Build a unified picture-dictionary source-of-truth workspace. |
