@@ -129,10 +129,16 @@
       <p>
         <label><input name="contains_gold_standard" type="checkbox" /> Contains gold-standard data</label>
       </p>
-      <p>
-        <label for="id_snapshot_gold_components">Gold-standard components:</label><br />
-        <input id="id_snapshot_gold_components" name="gold_standard_components" type="text" placeholder="segmentation, MWE, gloss" style="min-width: 24rem;" />
-      </p>
+      <fieldset style="border: 1px solid #ddd; padding: 0.5rem; margin: 0.5rem 0;">
+        <legend>Gold-standard components</legend>
+        <p><small>Select any components that this snapshot should be treated as preserving gold-standard data for.</small></p>
+        {% for value, label in snapshot_gold_standard_component_choices %}
+          <label style="display: block; margin: 0.25rem 0;">
+            <input name="gold_standard_components" type="checkbox" value="{{ value }}" />
+            {{ label }}
+          </label>
+        {% endfor %}
+      </fieldset>
       <button class="btn secondary" type="submit">Save snapshot</button>
     </form>
     {% if project_snapshots %}

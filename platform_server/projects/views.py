@@ -5089,6 +5089,7 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["can_assign_project_community"] = bool(self.request.user == project.owner and eligible_communities.exists())
         context["exercise_sets"] = project.exercise_sets.all()[:20]
         context["snapshot_form"] = ProjectSnapshotForm()
+        context["snapshot_gold_standard_component_choices"] = ProjectSnapshotForm.GOLD_STANDARD_COMPONENT_CHOICES
         context["project_snapshots"] = list_project_snapshots(project)
         return context
 
@@ -5105,7 +5106,10 @@ def save_project_snapshot_view(request: HttpRequest, pk: int) -> HttpResponse:
                 project,
                 name=form.cleaned_data["name"],
                 created_by=getattr(request.user, "username", ""),
-                contains_gold_standard=form.cleaned_data.get("contains_gold_standard", False),
+                contains_gold_standard=bool(
+                    form.cleaned_data.get("contains_gold_standard")
+                    or form.cleaned_data.get("gold_standard_components")
+                ),
                 gold_standard_components=form.cleaned_data.get("gold_standard_components") or [],
             )
         except ValidationError as exc:

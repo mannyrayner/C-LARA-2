@@ -93,12 +93,13 @@ class ProjectSnapshotTests(TestCase):
             {
                 "name": "UI checkpoint",
                 "contains_gold_standard": "on",
-                "gold_standard_components": "gloss, translation",
+                "gold_standard_components": ["gloss annotations", "all image data"],
             },
             follow=True,
         )
         self.assertEqual(response.status_code, 200)
         snapshot = list_project_snapshots(self.project)[0]
+        self.assertEqual(snapshot.gold_standard_components, ("gloss annotations", "all image data"))
         self.project.source_text = "Changed in UI test"
         self.project.save()
 

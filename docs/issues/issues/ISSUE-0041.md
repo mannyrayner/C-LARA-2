@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-07-06T18:33:22Z
-- **Updated:** 2026-07-07T00:00:00Z
+- **Updated:** 2026-07-07T01:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0013](ISSUE-0013.md), [ISSUE-0036](ISSUE-0036.md)
@@ -36,3 +36,9 @@ replaces the captured project fields, image rows, and non-snapshot artifacts whi
 snapshot directory. Remaining follow-up work should consider richer partial snapshot semantics,
 broader related-model coverage for specialised workflows, and restore previews/audit trails before
 destructive restore operations.
+
+UI follow-up on 2026-07-07: replaced the free-text gold-standard components field in the snapshot
+save UI with checkbox choices for common project components, including group checkboxes for all
+linguistic annotation data and all image data. The save view now treats selected components as
+sufficient to mark the snapshot as containing gold-standard data, reducing the chance that a user
+selects components but forgets the separate gold-standard checkbox.
