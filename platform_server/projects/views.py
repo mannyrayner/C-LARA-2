@@ -30,7 +30,7 @@ from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.core.cache import cache
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.management import call_command
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -86,12 +86,14 @@ from .forms import (
     IssueUpdateSuggestionForm,
     ProjectDiscoveryMetadataForm,
     ProjectForm,
+    ProjectSnapshotForm,
     ProjectImageElementFormSet,
     ProjectImagePageFormSet,
     ProjectImageStyleForm,
     RegistrationForm,
 )
 from .metadata import update_project_discovery_metadata
+from .snapshots import list_project_snapshots, restore_project_snapshot, save_project_snapshot
 from .legacy_clara_import import (
     LegacyClaraImportError,
     find_legacy_clara_bundle_root,
@@ -5086,7 +5088,58 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context["eligible_project_communities"] = eligible_communities
         context["can_assign_project_community"] = bool(self.request.user == project.owner and eligible_communities.exists())
         context["exercise_sets"] = project.exercise_sets.all()[:20]
+        context["snapshot_form"] = ProjectSnapshotForm()
+        context["snapshot_gold_standard_component_choices"] = ProjectSnapshotForm.GOLD_STANDARD_COMPONENT_CHOICES
+        context["project_snapshots"] = list_project_snapshots(project)
         return context
+
+
+@login_required
+def save_project_snapshot_view(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
+    if request.method != "POST":
+        return redirect("project-detail", pk=project.pk)
+    form = ProjectSnapshotForm(request.POST)
+    if form.is_valid():
+        try:
+            snapshot = save_project_snapshot(
+                project,
+                name=form.cleaned_data["name"],
+                created_by=getattr(request.user, "username", ""),
+                contains_gold_standard=bool(
+                    form.cleaned_data.get("contains_gold_standard")
+                    or form.cleaned_data.get("gold_standard_components")
+                ),
+                gold_standard_components=form.cleaned_data.get("gold_standard_components") or [],
+            )
+        except ValidationError as exc:
+            for message in exc.messages:
+                messages.error(request, message)
+        else:
+            messages.success(request, f"Saved project snapshot '{snapshot.name}'.")
+    else:
+        for error in form.errors.get("__all__", []):
+            messages.error(request, error)
+        for field, errors in form.errors.items():
+            if field == "__all__":
+                continue
+            for error in errors:
+                messages.error(request, f"Snapshot {field}: {error}")
+    return redirect("project-detail", pk=project.pk)
+
+
+@login_required
+def restore_project_snapshot_view(request: HttpRequest, pk: int, snapshot_id: str) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
+    if request.method != "POST":
+        return redirect("project-detail", pk=project.pk)
+    try:
+        snapshot = restore_project_snapshot(project, snapshot_id=snapshot_id)
+    except FileNotFoundError:
+        messages.error(request, "Snapshot not found.")
+    else:
+        messages.success(request, f"Restored project snapshot '{snapshot.name}'.")
+    return redirect("project-detail", pk=project.pk)
 
 
 class ProjectAnnotationView(ProjectDetailView):
