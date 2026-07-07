@@ -1,43 +1,38 @@
-# C-LARA-2 issue overview (refreshed 2026-07-04T01:50:00Z)
-
+# C-LARA-2 issue overview (refreshed 2026-07-06T18:45:00Z)
 ## Recent progress
-
-- Closed **ISSUE-0040** after maintainer testing confirmed the page-oriented editor fixes, then applied final visual polish so both global and per-segment unsaved-change warnings are much harder to miss.
-- Added human-readable Markdown companion pages for every `docs/issues/issues/ISSUE-XXXX.json` file, while keeping JSON as the canonical source of truth.
-- Updated the complete issue inventory to link to the Markdown issue pages so GitHub readers no longer have to read long JSON `notes` lines.
+- Added **ISSUE-0041** from human suggestion #32 to track named project snapshots, restore controls, and gold-standard snapshot metadata for reversible project editing and prompt-learning experiments.
+- Refreshed the focus index and overview in the canonical format, including removal of closed **ISSUE-0040** from near-term focus while keeping it in the complete inventory as closed.
+- Regenerated human-readable issue Markdown from canonical per-issue JSON so the new snapshot issue has a companion page.
 
 ## Near-term priorities
-
-1. **ISSUE-0039** — build a unified picture-dictionary source-of-truth workspace.
-2. **ISSUE-0031** — improve compiled-content presentation context and configurable public access controls.
-3. **ISSUE-0030** — fix image-generation workflow UX around element expansion auto-refresh and selection confirmation.
-4. **ISSUE-0029** — autosave community judging inputs to prevent accidental data loss.
-5. **ISSUE-0040** — make page-oriented manual annotation saves resilient for large projects.
-6. **ISSUE-0037** — create subset projects from community picture dictionaries.
-7. **ISSUE-0026** — define next-step community-recorded audio workflow for non-TTS languages.
-8. **ISSUE-0005** — tune segmentation_phase_1 prompting to improve segment granularity by genre.
-9. **ISSUE-0003** — add efficient end-to-end pipeline test runner for systematic quality checks.
-10. **ISSUE-0036** — systematize creation and evaluation of few-shot examples for linguistic annotation.
-11. **ISSUE-0013** — improve stage artifact persistence performance and timeout resilience.
-12. **ISSUE-0025** — add systematic UI regression tracking for disappearing controls/content.
-13. **ISSUE-0010** — import a representative legacy C-LARA project corpus and add batch import tooling.
-14. **ISSUE-0008** — write C-LARA-2 technical report and academic papers.
-15. **ISSUE-0033** — clean up and phase-track roadmap file maintenance.
-16. **ISSUE-0034** — add restricted project-understanding assistant with versioned evidence records.
-17. **ISSUE-0035** — track intermittent Codex PR update-branch refusal.
-18. **ISSUE-0006** — investigate segmentation_phase_2 token-span failures and rerun-path correctness.
-19. **ISSUE-0004** — introduce AI-based review gates for phase outputs with extensible evaluator architecture.
-20. **ISSUE-0001** — support hosted compiled legacy content registration in C-LARA-2.
+1. **ISSUE-0039** — Build a unified picture-dictionary source-of-truth workspace.
+2. **ISSUE-0031** — Improve compiled-content presentation context and configurable public access controls.
+3. **ISSUE-0030** — Fix image-generation workflow UX around element expansion auto-refresh and selection confirmation.
+4. **ISSUE-0029** — Autosave community judging inputs to prevent accidental data loss.
+5. **ISSUE-0037** — Create subset projects from community picture dictionaries.
+6. **ISSUE-0026** — Define next-step community-recorded audio workflow for non-TTS languages.
+7. **ISSUE-0005** — Tune segmentation_phase_1 prompting to improve segment granularity by genre.
+8. **ISSUE-0003** — Add efficient end-to-end pipeline test runner for systematic quality checks.
+9. **ISSUE-0036** — Systematize creation and evaluation of few-shot examples for linguistic annotation.
+10. **ISSUE-0041** — Add named project snapshots with restore and gold-standard metadata.
+11. **ISSUE-0013** — Improve stage artifact persistence performance and timeout resilience.
+12. **ISSUE-0025** — Add systematic UI regression tracking for disappearing controls/content.
+13. **ISSUE-0010** — Import a representative legacy C-LARA project corpus and add batch import tooling.
+14. **ISSUE-0008** — Write C-LARA-2 technical report and academic papers.
+15. **ISSUE-0033** — Clean up and phase-track roadmap file maintenance.
+16. **ISSUE-0034** — Add restricted project-understanding assistant with versioned evidence records.
+17. **ISSUE-0035** — Track intermittent Codex PR update-branch refusal.
+18. **ISSUE-0006** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness.
+19. **ISSUE-0004** — Introduce AI-based review gates for phase outputs with extensible evaluator architecture.
+20. **ISSUE-0001** — Support hosted compiled legacy content registration in C-LARA-2.
 
 ## Notes/risks
-
-- **ISSUE-0040** is closed for the current page-oriented editor round. If similar save/checkpoint ergonomics are needed in other manual editing views, open a follow-up issue rather than reopening the completed large page-oriented editor item.
-- **ISSUE-0013** should distinguish three resilience levels: batch continuation after project failure, phase-level resume from valid artifacts, and call-level retry/checkpointing for expensive per-segment/per-chunk API calls.
+- **ISSUE-0041** should start with a safe full-project snapshot/restore path before adding partial snapshots; partial restore semantics could otherwise corrupt stage artifacts, selected images, or gold-standard records.
+- **ISSUE-0041** overlaps with **ISSUE-0036** because prompt-learning experiments need auditable gold-standard checkpoints, and with **ISSUE-0013** where snapshot storage touches stage artifact persistence and timeout resilience.
 - **ISSUE-0039** remains active/P0 for Sophie-facing picture-dictionary workflow completion; avoid letting infrastructure tasks displace the current UI/product review blockers.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated pipeline and UI coverage.
 
 ## Complete issue inventory
-
 | Issue | Status | Priority | Summary |
 |---|---|---|---|
 | [ISSUE-0001](issues/ISSUE-0001.md) | reported | P2 | Support hosted compiled legacy content registration in C-LARA-2. |
@@ -80,3 +75,4 @@
 | [ISSUE-0038](issues/ISSUE-0038.md) | closed | P1 | Keep picture-dictionary images synchronized when words are deleted. |
 | [ISSUE-0039](issues/ISSUE-0039.md) | active | P0 | Build a unified picture-dictionary source-of-truth workspace. |
 | [ISSUE-0040](issues/ISSUE-0040.md) | closed | P1 | Make page-oriented manual annotation saves resilient for large projects. |
+| [ISSUE-0041](issues/ISSUE-0041.md) | reported | P1 | Add named project snapshots with restore and gold-standard metadata. |
