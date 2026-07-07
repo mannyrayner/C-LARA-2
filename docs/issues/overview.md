@@ -1,7 +1,7 @@
-# C-LARA-2 issue overview (refreshed 2026-07-07T22:00:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-07T22:30:00Z)
 ## Recent progress
-- Fixed **ISSUE-0041** snapshot copying on Windows/Cygwin by replacing `shutil.copytree` with a parent-creating recursive copy that skips nested snapshots and uses extended-length Windows paths.
-- Added regression coverage for snapshotting nested `manual_versions` stage artifacts while excluding previous snapshots from the copied artifact tree.
+- Extended the **ISSUE-0041** Windows/Cygwin snapshot-copy fix so deep target directory creation and partial-snapshot cleanup also use extended-length Windows paths.
+- Kept regression coverage for snapshotting nested `manual_versions` stage artifacts while excluding previous snapshots from the copied artifact tree.
 - Revalidated the overview inventory against canonical per-issue JSON after updating **ISSUE-0041**.
 
 ## Near-term priorities
@@ -28,7 +28,7 @@
 
 ## Notes/risks
 - **ISSUE-0036** now has an MWE prompt-scoring scaffold, but it intentionally writes candidate guidance rather than auto-editing production prompts; human review should guard against overfitting to development projects.
-- **ISSUE-0041** snapshot save/restore now handles deep artifact copies more robustly on Windows/Cygwin, but destructive restore still needs careful UX/audit hardening before adding partial component restores.
+- **ISSUE-0041** snapshot save/restore now handles deep artifact directory and file copies more robustly on Windows/Cygwin, but destructive restore still needs careful UX/audit hardening before adding partial component restores.
 - **ISSUE-0039** remains active/P0 for Sophie-facing picture-dictionary workflow completion; avoid letting infrastructure tasks displace the current UI/product review blockers.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated pipeline and UI coverage.
 

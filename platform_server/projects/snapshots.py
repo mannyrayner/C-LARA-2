@@ -83,22 +83,34 @@ def _manifest_path(project: Project, snapshot_id: str) -> Path:
 
 def _copy_project_artifacts(source_root: Path, target_root: Path) -> None:
     if not source_root.exists():
-        target_root.mkdir(parents=True, exist_ok=True)
+        _mkdir(target_root)
         return
 
-    target_root.mkdir(parents=True, exist_ok=True)
+    _mkdir(target_root)
     for source_path in source_root.rglob("*"):
         rel_path = source_path.relative_to(source_root)
         if SNAPSHOTS_DIRNAME in rel_path.parts:
             continue
         target_path = target_root / rel_path
         if source_path.is_dir():
-            target_path.mkdir(parents=True, exist_ok=True)
+            _mkdir(target_path)
             continue
         if not source_path.exists():
             continue
-        target_path.parent.mkdir(parents=True, exist_ok=True)
+        _mkdir(target_path.parent)
         shutil.copy2(_windows_long_path(source_path), _windows_long_path(target_path))
+
+
+def _mkdir(path: Path) -> None:
+    """Create a directory, using extended-length paths on Windows."""
+
+    Path(_windows_long_path(path)).mkdir(parents=True, exist_ok=True)
+
+
+def _remove_tree(path: Path) -> None:
+    """Remove a directory tree, using extended-length paths on Windows."""
+
+    shutil.rmtree(_windows_long_path(path), ignore_errors=True)
 
 
 def _windows_long_path(path: Path) -> Path:
@@ -123,7 +135,7 @@ def _replace_project_artifacts(project: Project, snapshot_artifacts: Path) -> No
         if child == preserved_snapshots:
             continue
         if child.is_dir():
-            shutil.rmtree(child)
+            _remove_tree(child)
         else:
             child.unlink()
     _copy_project_artifacts(snapshot_artifacts, artifact_root)
@@ -226,7 +238,7 @@ def save_project_snapshot(
     try:
         _copy_project_artifacts(project.artifact_dir(), snapshot_root / ARTIFACTS_DIRNAME)
     except Exception:
-        shutil.rmtree(snapshot_root, ignore_errors=True)
+        _remove_tree(snapshot_root)
         raise
     manifest = {
         "schema_version": 1,

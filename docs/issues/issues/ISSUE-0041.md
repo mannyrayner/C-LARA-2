@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-07-06T18:33:22Z
-- **Updated:** 2026-07-07T22:00:00Z
+- **Updated:** 2026-07-07T22:30:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0013](ISSUE-0013.md), [ISSUE-0036](ISSUE-0036.md)
@@ -48,3 +48,8 @@ explicit recursive copy that creates target parents for every file, skips nested
 extended-length Windows paths when running on Windows, and removes a partially created snapshot
 directory if copying fails. This addresses maintainer testing where deep manual_versions files under
 MWE experiment runs failed during shutil.copytree with a destination ENOENT on Windows/Cygwin paths.
+
+Additional Windows/Cygwin snapshot follow-up on 2026-07-07: maintainer testing exposed a second
+long-path failure while creating deep target directories inside
+legacy_clara/coherent_images_v2_project_dir. Directory creation and partial-snapshot cleanup now
+also route through the extended-length Windows path helper, not just file copies.
