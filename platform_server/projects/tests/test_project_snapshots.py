@@ -51,6 +51,19 @@ class ProjectSnapshotTests(TestCase):
         stage_path.write_text('{"segments": ["original"]}', encoding="utf-8")
 
     def test_programmatic_save_and_restore_restores_db_rows_and_artifacts(self):
+        ignored_old_snapshot = self.project.artifact_dir() / "snapshots" / "old" / "manifest.json"
+        ignored_old_snapshot.parent.mkdir(parents=True, exist_ok=True)
+        ignored_old_snapshot.write_text("old snapshot", encoding="utf-8")
+        nested_manual_version = (
+            self.project.artifact_dir()
+            / "runs"
+            / "run_demo"
+            / "stages"
+            / "manual_versions"
+            / "gloss_20260703T023826357632Z.json"
+        )
+        nested_manual_version.parent.mkdir(parents=True, exist_ok=True)
+        nested_manual_version.write_text('{"gloss": "manual"}', encoding="utf-8")
         snapshot = save_project_snapshot(
             self.project,
             name="Before experiment",
@@ -83,6 +96,19 @@ class ProjectSnapshotTests(TestCase):
             (self.project.artifact_dir() / "runs" / "run_demo" / "stages" / "segmentation_phase_1.json").read_text(encoding="utf-8"),
             '{"segments": ["original"]}',
         )
+        self.assertEqual(
+            (
+                snapshot.path
+                / "artifacts"
+                / "runs"
+                / "run_demo"
+                / "stages"
+                / "manual_versions"
+                / "gloss_20260703T023826357632Z.json"
+            ).read_text(encoding="utf-8"),
+            '{"gloss": "manual"}',
+        )
+        self.assertFalse((snapshot.path / "artifacts" / "snapshots" / "old" / "manifest.json").exists())
         self.assertEqual(list_project_snapshots(self.project)[0].gold_standard_components, ("segmentation", "MWE"))
 
     def test_platform_save_and_restore_views(self):

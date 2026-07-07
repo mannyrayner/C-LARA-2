@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import os
 import shutil
 from pathlib import Path
 from typing import Any
@@ -85,10 +86,33 @@ def _copy_project_artifacts(source_root: Path, target_root: Path) -> None:
         target_root.mkdir(parents=True, exist_ok=True)
         return
 
-    def ignore_snapshots(_directory: str, names: list[str]) -> set[str]:
-        return {SNAPSHOTS_DIRNAME} if SNAPSHOTS_DIRNAME in names else set()
+    target_root.mkdir(parents=True, exist_ok=True)
+    for source_path in source_root.rglob("*"):
+        rel_path = source_path.relative_to(source_root)
+        if SNAPSHOTS_DIRNAME in rel_path.parts:
+            continue
+        target_path = target_root / rel_path
+        if source_path.is_dir():
+            target_path.mkdir(parents=True, exist_ok=True)
+            continue
+        if not source_path.exists():
+            continue
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(_windows_long_path(source_path), _windows_long_path(target_path))
 
-    shutil.copytree(source_root, target_root, ignore=ignore_snapshots, dirs_exist_ok=True)
+
+def _windows_long_path(path: Path) -> Path:
+    """Return an extended-length Windows path for robust deep artifact copies."""
+
+    if os.name != "nt":
+        return path
+    raw = str(path.resolve())
+    extended_prefix = "\\\\?\\"
+    if raw.startswith(extended_prefix):
+        return Path(raw)
+    if raw.startswith("\\\\"):
+        return Path(f"{extended_prefix}UNC\\{raw[2:]}")
+    return Path(f"{extended_prefix}{raw}")
 
 
 def _replace_project_artifacts(project: Project, snapshot_artifacts: Path) -> None:
@@ -199,7 +223,11 @@ def save_project_snapshot(
     if snapshot_root.exists():
         raise ValidationError(f"Snapshot {snapshot_id!r} already exists.")
     snapshot_root.mkdir(parents=True)
-    _copy_project_artifacts(project.artifact_dir(), snapshot_root / ARTIFACTS_DIRNAME)
+    try:
+        _copy_project_artifacts(project.artifact_dir(), snapshot_root / ARTIFACTS_DIRNAME)
+    except Exception:
+        shutil.rmtree(snapshot_root, ignore_errors=True)
+        raise
     manifest = {
         "schema_version": 1,
         "snapshot_id": snapshot_id,
