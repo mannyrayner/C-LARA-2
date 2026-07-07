@@ -1,0 +1,118 @@
+import json
+import shutil
+import tempfile
+from io import StringIO
+from pathlib import Path
+from unittest.mock import patch
+
+from django.contrib.auth import get_user_model
+from django.core.management import call_command
+from django.test import TestCase, override_settings
+
+from projects.management.commands.run_mwe_prompt_experiment import record_to_text_obj
+from projects.management.commands.score_mwe_prompt_outputs import score_record, summarize_scores
+from projects.models import Project
+
+
+class MWEPromptExperimentCommandTests(TestCase):
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.override = override_settings(MEDIA_ROOT=self.tmpdir, PIPELINE_OUTPUT_ROOT=Path(self.tmpdir) / "users")
+        self.override.enable()
+        self.addCleanup(self.override.disable)
+        self.addCleanup(lambda: shutil.rmtree(self.tmpdir, ignore_errors=True))
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user(username="mweuser", password="pw")
+        self.project = Project.objects.create(owner=self.user, title="MWE Gold", source_text="take off", language="en")
+
+    def test_snapshot_mwe_experiment_projects_dry_run_marks_gold_components(self):
+        out = StringIO()
+        call_command(
+            "snapshot_mwe_experiment_projects",
+            project_ids=str(self.project.id),
+            dry_run=True,
+            stdout=out,
+        )
+        payload_text = out.getvalue()[out.getvalue().find("{") :]
+        payload = json.loads(payload_text)
+        self.assertEqual(payload["project_ids"], [self.project.id])
+        self.assertEqual(payload["gold_standard_components"], ["MWE annotations", "gloss annotations", "lemma annotations"])
+        self.assertTrue(payload["snapshots"][0]["would_save"])
+
+    def test_record_to_text_obj_preserves_tokens_for_mwe_prompt_run(self):
+        text_obj = record_to_text_obj(
+            {
+                "segment_surface": "take off now",
+                "token_surfaces": ["take", "off", "now"],
+            }
+        )
+        tokens = text_obj["pages"][0]["segments"][0]["tokens"]
+        self.assertEqual([token["surface"] for token in tokens], ["take", "off", "now"])
+
+    def test_score_record_exact_span_metrics(self):
+        scored = score_record(
+            {
+                "record_id": "r1",
+                "segment_surface": "take off now",
+                "gold_mwes": [{"tokens": ["take", "off"]}],
+                "predicted_mwes": [{"tokens": ["take", "off"]}, {"tokens": ["off", "now"]}],
+            }
+        )
+        self.assertEqual(scored["true_positive"], 1)
+        self.assertEqual(scored["false_positive"], 1)
+        self.assertEqual(scored["false_negative"], 0)
+        summary = summarize_scores([scored], split="development", outputs_path=Path("outputs.jsonl"))
+        self.assertAlmostEqual(summary["precision"], 0.5)
+        self.assertAlmostEqual(summary["recall"], 1.0)
+
+    def test_run_mwe_prompt_experiment_writes_incremental_progress(self):
+        input_path = Path(self.tmpdir) / "records.jsonl"
+        output_dir = Path(self.tmpdir) / "runs"
+        input_path.write_text(
+            json.dumps(
+                {
+                    "record_id": "r1",
+                    "split": "development",
+                    "language": "en",
+                    "project_id": self.project.id,
+                    "project_title": self.project.title,
+                    "segment_surface": "take off now",
+                    "token_surfaces": ["take", "off", "now"],
+                    "gold_mwes": [{"tokens": ["take", "off"]}],
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        async def fake_annotate(spec):  # noqa: ARG001
+            return {
+                "pages": [
+                    {
+                        "segments": [
+                            {
+                                "annotations": {"mwes": [{"id": "m1", "tokens": ["take", "off"]}]},
+                                "tokens": [{"surface": "take"}, {"surface": "off"}, {"surface": "now"}],
+                            }
+                        ]
+                    }
+                ]
+            }
+
+        with patch("projects.management.commands.run_mwe_prompt_experiment.annotate_mwes", side_effect=fake_annotate):
+            out = StringIO()
+            call_command(
+                "run_mwe_prompt_experiment",
+                input_records_jsonl=str(input_path),
+                output_dir=str(output_dir),
+                run_label="test-run",
+                overwrite=True,
+                stdout=out,
+            )
+
+        self.assertIn("[1/1] running MWE prompt for r1", out.getvalue())
+        self.assertIn("[1/1] finished r1", out.getvalue())
+        progress_lines = (output_dir / "test-run" / "progress.jsonl").read_text(encoding="utf-8").splitlines()
+        self.assertEqual([json.loads(line)["status"] for line in progress_lines], ["running", "finished"])
+        output_payload = json.loads((output_dir / "test-run" / "outputs.jsonl").read_text(encoding="utf-8"))
+        self.assertEqual(output_payload["predicted_mwes"][0]["tokens"], ["take", "off"])
