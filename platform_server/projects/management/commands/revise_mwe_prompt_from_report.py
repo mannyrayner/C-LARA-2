@@ -8,7 +8,9 @@ from typing import Any
 from django.core.management.base import BaseCommand, CommandError
 
 from core.ai_api import OpenAIClient
-from core.config import DEFAULT_MODEL, OpenAIConfig
+from core.config import OpenAIConfig
+
+DEFAULT_MWE_REVISION_MODEL = "gpt-5.5"
 
 from .review_fewshots import _resolve_cli_path
 
@@ -22,7 +24,7 @@ class Command(BaseCommand):
         parser.add_argument("--candidate-guidance", default="")
         parser.add_argument("--output-template", required=True)
         parser.add_argument("--output-json", default="")
-        parser.add_argument("--model", default=DEFAULT_MODEL)
+        parser.add_argument("--model", default=DEFAULT_MWE_REVISION_MODEL)
         parser.add_argument("--timeout-s", type=float, default=180.0)
         parser.add_argument("--heartbeat-s", type=float, default=20.0)
         parser.add_argument("--overwrite", action="store_true")

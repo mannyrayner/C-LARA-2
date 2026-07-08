@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-08T03:10:00Z
+- **Updated:** 2026-07-08T03:35:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -158,4 +158,6 @@ preserved in current-prompt outputs. Follow-up on 2026-07-08: added an AI-assist
 prompt-revision command and Make target revise-mwe-prompt-cycle-template, which reads the current
 cycle prompt plus prompt_improvement.md/candidate_prompt_guidance.txt and writes an auditable
 next-cycle template_revision.txt plus template_revision.json while instructing the model to keep
-changes simple, general, and non-memorised.
+changes simple, general, and non-memorised. Follow-up later on 2026-07-08: changed the MWE
+prompt-revision default model to gpt-5.5 because this is the highest-leverage once-per-cycle step,
+while keeping MWE_REVISION_MODEL overridable for cheaper smoke tests.

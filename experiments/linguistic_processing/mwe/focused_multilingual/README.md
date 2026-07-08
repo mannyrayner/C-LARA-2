@@ -283,6 +283,10 @@ with a complete prompt generated from the current cycle prompt plus
 revision prompt explicitly asks for simple, general changes and forbids memorising
 project-specific answers, so the output should still be reviewed before use.
 
+By default, this target uses `MWE_REVISION_MODEL=gpt-5.5`, since prompt revision
+is only run once per cycle and is the highest-leverage step. Override
+`MWE_REVISION_MODEL=...` on the command line if you need a cheaper smoke test.
+
 After the proposal target finishes, inspect:
 
 - `generated/mwe_prompt_cycles/en-development/cycle_1/template.txt` — the prompt

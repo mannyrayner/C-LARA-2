@@ -51,7 +51,7 @@ MWE_CYCLE_SCORE_DIR := $(MWE_PROMPT_CYCLE_DIR)/score
 MWE_CYCLE_IMPROVEMENT_DIR := $(MWE_PROMPT_CYCLE_DIR)/improvement
 MWE_CYCLE_REVISION := $(MWE_CYCLE_IMPROVEMENT_DIR)/template_revision.txt
 MWE_CYCLE_REVISION_JSON := $(MWE_CYCLE_IMPROVEMENT_DIR)/template_revision.json
-MWE_REVISION_MODEL ?= gpt-4o
+MWE_REVISION_MODEL ?= gpt-5.5
 CORPUS_SPLIT_DIR := $(abspath $(GENERATED_DIR))/corpus_splits
 PY_OS := $(shell $(PYTHON) -c 'import os; print(os.name)' 2>/dev/null || echo posix)
 python_path = $(shell if [ "$(PY_OS)" = "nt" ] && command -v cygpath >/dev/null 2>&1; then cygpath -am "$(1)"; else printf '%s' "$(1)"; fi)

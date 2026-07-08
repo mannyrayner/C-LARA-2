@@ -1,5 +1,6 @@
-# C-LARA-2 issue overview (refreshed 2026-07-08T03:10:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-08T03:35:00Z)
 ## Recent progress
+- Set the AI-assisted MWE prompt-revision default model to `gpt-5.5`, while keeping `MWE_REVISION_MODEL` overridable for cheaper smoke tests.
 - Added an AI-assisted MWE prompt-revision target for **ISSUE-0036** so cycle reports can produce auditable next-cycle prompt drafts while preserving anti-overfitting guardrails.
 - Wired current-prompt MWE runs to the explicit selected-project gold JSONL by default, preserving declared `gold_mwes` in sanity-check outputs.
 - Added explicit MWE gold declaration/check targets and high-level cycle/result targets to **ISSUE-0036**, so selected-project gold records are exported and verified before prompt cycles run.
