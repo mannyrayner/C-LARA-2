@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-07T23:55:00Z
+- **Updated:** 2026-07-08T00:20:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -134,4 +134,9 @@ Follow-up on 2026-07-07: the first 600-record MWE run showed that the developmen
 contain projects outside the seven-project hand-curated subset if PROJECT_IDS is not applied to the
 run/score stages. The focused MWE Make targets and commands now pass and honor --project-ids for
 run-current-mwe and score-current-mwe, so existing broad outputs can be rescored for only the
-selected projects and new prompt runs can avoid processing out-of-scope records.
+selected projects and new prompt runs can avoid processing out-of-scope records. Follow-up on
+2026-07-08: maintainer testing found one remaining subset leak because
+propose-mwe-prompt-improvement read the existing score directory without honoring PROJECT_IDS. The
+proposal command and Make target now accept --project-ids, filter per-record score examples before
+building prompt_improvement.md, recompute the displayed score summary for the selected subset, and
+print trace counts showing total scored records versus records used after filtering.

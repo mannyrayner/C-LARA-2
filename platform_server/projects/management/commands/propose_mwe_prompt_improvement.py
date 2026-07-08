@@ -16,6 +16,7 @@ class Command(BaseCommand):
         parser.add_argument("--output-dir", required=True)
         parser.add_argument("--max-examples", type=int, default=20)
         parser.add_argument("--overwrite", action="store_true")
+        parser.add_argument("--project-ids", default="", help="Optional comma-separated project ids to include from the score records.")
 
     def handle(self, *args, **options):
         score_dir = _resolve_cli_path(options["score_dir"], "")
@@ -26,15 +27,65 @@ class Command(BaseCommand):
         summary_path = score_dir / "summary.json"
         per_record_path = score_dir / "per_record_scores.jsonl"
         summary = json.loads(summary_path.read_text(encoding="utf-8"))
-        errors = [json.loads(line) for line in per_record_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        project_ids = parse_project_ids(str(options.get("project_ids") or ""))
+        all_errors = [json.loads(line) for line in per_record_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        errors = all_errors
+        if project_ids:
+            errors = [record for record in all_errors if int(record.get("project_id") or 0) in project_ids]
+            summary = summarize_scored_records(errors, base_summary=summary, project_ids=project_ids)
+        self.stdout.write(
+            f"Loaded {len(all_errors)} scored records; using {len(errors)}"
+            + (f" after PROJECT_IDS filter {sorted(project_ids)}" if project_ids else "")
+        )
         false_positive = [record for record in errors if record.get("false_positive")][: int(options["max_examples"])]
         false_negative = [record for record in errors if record.get("false_negative")][: int(options["max_examples"])]
         report_path = output_dir / "prompt_improvement.md"
         report_path.write_text(build_report(summary, false_positive=false_positive, false_negative=false_negative), encoding="utf-8")
         candidate_path = output_dir / "candidate_prompt_guidance.txt"
         candidate_path.write_text(CANDIDATE_GUIDANCE, encoding="utf-8")
+        self.stdout.write(f"Prompt-improvement examples: false_positive={len(false_positive)} false_negative={len(false_negative)}")
         self.stdout.write(f"Prompt-improvement report: {report_path}")
         self.stdout.write(f"Conservative candidate guidance: {candidate_path}")
+
+
+def parse_project_ids(raw: str) -> set[int]:
+    ids: set[int] = set()
+    for part in raw.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            ids.add(int(part))
+        except ValueError as exc:
+            raise CommandError(f"Invalid project id in --project-ids: {part}") from exc
+    return ids
+
+
+def summarize_scored_records(records: list[dict], *, base_summary: dict, project_ids: set[int]) -> dict:
+    tp = sum(int(record.get("true_positive") or 0) for record in records)
+    fp = sum(int(record.get("false_positive") or 0) for record in records)
+    fn = sum(int(record.get("false_negative") or 0) for record in records)
+    precision = tp / (tp + fp) if tp + fp else 1.0 if not any(record.get("gold_spans") for record in records) else 0.0
+    recall = tp / (tp + fn) if tp + fn else 1.0
+    f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+    exact = sum(1 for record in records if record.get("exact_match"))
+    summary = dict(base_summary)
+    summary.update(
+        {
+            "record_count": len(records),
+            "exact_match_count": exact,
+            "exact_match_rate": exact / len(records) if records else 0.0,
+            "true_positive": tp,
+            "false_positive": fp,
+            "false_negative": fn,
+            "precision": precision,
+            "recall": recall,
+            "f1": f1,
+            "project_ids": sorted(project_ids),
+            "filtered_for_prompt_improvement": True,
+        }
+    )
+    return summary
 
 
 def build_report(summary: dict, *, false_positive: list[dict], false_negative: list[dict]) -> str:
@@ -46,6 +97,7 @@ def build_report(summary: dict, *, false_positive: list[dict], false_negative: l
         "## Current score",
         "",
         f"- Records: {summary.get('record_count')}",
+        f"- Project IDs: {summary.get('project_ids') or 'all records in score directory'}",
         f"- Precision: {float(summary.get('precision') or 0):.3f}",
         f"- Recall: {float(summary.get('recall') or 0):.3f}",
         f"- F1: {float(summary.get('f1') or 0):.3f}",

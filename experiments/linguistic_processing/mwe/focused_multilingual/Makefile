@@ -146,9 +146,9 @@ score-current-mwe: prepare
 	fi
 
 propose-mwe-prompt-improvement: prepare
-	@echo "+ $(MANAGE) propose_mwe_prompt_improvement --score-dir $(PY_MWE_SCORE_DIR) --output-dir $(PY_MWE_PROMPT_IMPROVEMENT_DIR) --overwrite"
+	@echo "+ $(MANAGE) propose_mwe_prompt_improvement --score-dir $(PY_MWE_SCORE_DIR) --output-dir $(PY_MWE_PROMPT_IMPROVEMENT_DIR) --project-ids $(PROJECT_IDS) --overwrite"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) propose_mwe_prompt_improvement --score-dir "$(PY_MWE_SCORE_DIR)" --output-dir "$(PY_MWE_PROMPT_IMPROVEMENT_DIR)" --overwrite; \
+		$(MANAGE) propose_mwe_prompt_improvement --score-dir "$(PY_MWE_SCORE_DIR)" --output-dir "$(PY_MWE_PROMPT_IMPROVEMENT_DIR)" --project-ids "$(PROJECT_IDS)" --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 after score-current-mwe has produced a score directory"; \
 	fi

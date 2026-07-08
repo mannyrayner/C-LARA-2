@@ -157,6 +157,7 @@ make score-current-mwe RUN=1 \
   MWE_RUN_LABEL="$MWE_RUN_LABEL"
 
 make propose-mwe-prompt-improvement RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
   MWE_LANGUAGE=en \
   SPLIT=development \
   MWE_RUN_LABEL="$MWE_RUN_LABEL"
@@ -175,9 +176,10 @@ Expected outputs are:
 
 - `PROJECT_IDS` is an explicit comma-separated override. For project-selection
   commands such as `snapshot-gold-projects`, it chooses projects directly and the
-  split manifest is not used to choose projects. For `run-current-mwe` and
-  `score-current-mwe`, it filters the selected segment/output records to those
-  projects, which is the safest way to run a small hand-curated subset.
+  split manifest is not used to choose projects. For `run-current-mwe`,
+  `score-current-mwe`, and `propose-mwe-prompt-improvement`, it filters the
+  selected segment/output/score records to those projects, which is the safest
+  way to run a small hand-curated subset.
 - `SPLITS` is plural and only matters for manifest-driven project-selection
   commands. It says which manifest splits to read when `PROJECT_IDS` is empty.
   Passing `SPLITS=development` together with explicit `PROJECT_IDS` is harmless
@@ -190,8 +192,8 @@ Expected outputs are:
   `PROJECT_IDS` is also supplied, only records from those projects are run or
   scored.
 - To run exactly the seven projects above, pass
-  `PROJECT_IDS="$MWE_PROJECT_IDS"` to both `run-current-mwe` and
-  `score-current-mwe`. The development segment file may contain other projects;
+  `PROJECT_IDS="$MWE_PROJECT_IDS"` to `run-current-mwe`, `score-current-mwe`, and
+  `propose-mwe-prompt-improvement`. The development segment file may contain other projects;
   the explicit `PROJECT_IDS` filter keeps them out of this small experiment.
 
 `run-current-mwe` processes each selected extracted segment through the current MWE prompt. It prints per-record progress and appends `progress.jsonl` and `outputs.jsonl` incrementally, so a long run should no longer look idle. `score-current-mwe` compares predicted MWE spans with the extracted gold spans, and `propose-mwe-prompt-improvement` writes conservative guidance under

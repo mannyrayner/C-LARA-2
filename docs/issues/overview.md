@@ -1,6 +1,6 @@
-# C-LARA-2 issue overview (refreshed 2026-07-07T23:55:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-08T00:20:00Z)
 ## Recent progress
-- Added explicit `PROJECT_IDS` filtering to **ISSUE-0036** MWE run/score targets so the seven-project hand-curated subset does not accidentally include broader development-set records.
+- Added explicit `PROJECT_IDS` filtering to **ISSUE-0036** MWE run/score/proposal targets so the seven-project hand-curated subset does not accidentally include broader development-set records or examples.
 - Added visible per-record progress and incremental `progress.jsonl`/`outputs.jsonl` writes to the **ISSUE-0036** MWE current-prompt run command so long API runs no longer look idle.
 - Kept the snapshot and MWE prompt-scoring workflow active for maintainer testing on the seven-project English development set.
 - Revalidated the overview inventory against canonical per-issue JSON after updating **ISSUE-0036**.
@@ -28,7 +28,7 @@
 20. **ISSUE-0001** — Support hosted compiled legacy content registration in C-LARA-2.
 
 ## Notes/risks
-- **ISSUE-0036** now has an MWE prompt-scoring scaffold with incremental run tracking and explicit subset filtering, but it intentionally writes candidate guidance rather than auto-editing production prompts; human review should guard against overfitting to development projects and should pass `PROJECT_IDS` when evaluating hand-curated subsets.
+- **ISSUE-0036** now has an MWE prompt-scoring scaffold with incremental run tracking, proposal trace counts, and explicit subset filtering, but it intentionally writes candidate guidance rather than auto-editing production prompts; human review should guard against overfitting to development projects and should pass `PROJECT_IDS` when evaluating hand-curated subsets.
 - **ISSUE-0041** snapshot save/restore now prunes nested snapshots before recursion and handles deep artifact directory/file copies more robustly on Windows/Cygwin, but destructive restore still needs careful UX/audit hardening before adding partial component restores.
 - **ISSUE-0039** remains active/P0 for Sophie-facing picture-dictionary workflow completion; avoid letting infrastructure tasks displace the current UI/product review blockers.
 - Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated pipeline and UI coverage.

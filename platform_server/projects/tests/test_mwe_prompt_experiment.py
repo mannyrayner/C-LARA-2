@@ -114,6 +114,68 @@ class MWEPromptExperimentCommandTests(TestCase):
         self.assertEqual(summary["project_ids"], [self.project.id])
         self.assertEqual(json.loads(scored_lines[0])["record_id"], "keep")
 
+
+    def test_propose_command_filters_scored_records_by_project_ids(self):
+        score_dir = Path(self.tmpdir) / "scores_for_proposal"
+        output_dir = Path(self.tmpdir) / "proposal"
+        score_dir.mkdir()
+        summary = {
+            "record_count": 2,
+            "precision": 0.5,
+            "recall": 0.5,
+            "f1": 0.5,
+            "exact_match_count": 0,
+            "exact_match_rate": 0.0,
+            "true_positive": 1,
+            "false_positive": 1,
+            "false_negative": 1,
+        }
+        (score_dir / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
+        records = [
+            {
+                "record_id": "keep",
+                "project_id": self.project.id,
+                "segment_surface": "take off now",
+                "gold_spans": [["take", "off"]],
+                "predicted_spans": [],
+                "true_positive": 0,
+                "false_positive": 0,
+                "false_negative": 1,
+                "exact_match": False,
+            },
+            {
+                "record_id": "drop",
+                "project_id": self.project.id + 1,
+                "segment_surface": "look up later",
+                "gold_spans": [],
+                "predicted_spans": [["look", "up"]],
+                "true_positive": 0,
+                "false_positive": 1,
+                "false_negative": 0,
+                "exact_match": False,
+            },
+        ]
+        (score_dir / "per_record_scores.jsonl").write_text(
+            "".join(json.dumps(record) + "\n" for record in records),
+            encoding="utf-8",
+        )
+
+        out = StringIO()
+        call_command(
+            "propose_mwe_prompt_improvement",
+            score_dir=str(score_dir),
+            output_dir=str(output_dir),
+            project_ids=str(self.project.id),
+            overwrite=True,
+            stdout=out,
+        )
+
+        report = (output_dir / "prompt_improvement.md").read_text(encoding="utf-8")
+        self.assertIn("using 1 after PROJECT_IDS filter", out.getvalue())
+        self.assertIn("- Project IDs: [", report)
+        self.assertIn("keep", report)
+        self.assertNotIn("drop", report)
+
     def test_run_mwe_prompt_experiment_writes_incremental_progress(self):
         input_path = Path(self.tmpdir) / "records.jsonl"
         output_dir = Path(self.tmpdir) / "runs"
