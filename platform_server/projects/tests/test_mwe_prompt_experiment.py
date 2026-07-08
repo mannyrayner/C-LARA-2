@@ -80,6 +80,63 @@ class MWEPromptExperimentCommandTests(TestCase):
 
 
 
+
+    def test_export_mwe_gold_subset_writes_all_selected_records_and_summary(self):
+        run_stage = self.project.artifact_dir() / "runs" / "gold_run" / "stages" / "mwe.json"
+        run_stage.parent.mkdir(parents=True, exist_ok=True)
+        run_stage.write_text(
+            json.dumps(
+                {
+                    "pages": [
+                        {
+                            "segments": [
+                                {
+                                    "surface": "take off now",
+                                    "tokens": [
+                                        {"surface": "take", "annotations": {"mwe_id": "m1"}},
+                                        {"surface": "off", "annotations": {"mwe_id": "m1"}},
+                                        {"surface": "now"},
+                                    ],
+                                    "annotations": {},
+                                },
+                                {
+                                    "surface": "ordinary text",
+                                    "tokens": [{"surface": "ordinary"}, {"surface": "text"}],
+                                    "annotations": {},
+                                },
+                            ]
+                        }
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+        output_jsonl = Path(self.tmpdir) / "gold" / "selected_segments.jsonl"
+        summary_json = Path(self.tmpdir) / "gold" / "summary.json"
+        review_markdown = Path(self.tmpdir) / "gold" / "review.md"
+
+        call_command(
+            "export_mwe_gold_subset",
+            project_ids=str(self.project.id),
+            language="en",
+            split="development",
+            output_jsonl=str(output_jsonl),
+            summary_json=str(summary_json),
+            review_markdown=str(review_markdown),
+            require_gold=True,
+            overwrite=True,
+            stdout=StringIO(),
+        )
+
+        records = [json.loads(line) for line in output_jsonl.read_text(encoding="utf-8").splitlines()]
+        summary = json.loads(summary_json.read_text(encoding="utf-8"))
+        self.assertEqual(len(records), 2)
+        self.assertEqual(summary["record_count"], 2)
+        self.assertEqual(summary["records_with_gold_mwes"], 1)
+        self.assertEqual(summary["gold_mwe_count"], 1)
+        self.assertEqual(records[0]["gold_mwes"], [{"id": "m1", "tokens": ["take", "off"]}])
+        self.assertIn("take off now", review_markdown.read_text(encoding="utf-8"))
+
     def test_run_mwe_prompt_experiment_passes_template_file_to_mwe_spec(self):
         input_path = Path(self.tmpdir) / "records.jsonl"
         output_dir = Path(self.tmpdir) / "template-runs"

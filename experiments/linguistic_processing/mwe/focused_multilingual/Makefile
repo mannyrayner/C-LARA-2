@@ -32,6 +32,11 @@ MWE_RUN_OUTPUT_DIR ?= $(abspath $(GENERATED_DIR))/mwe_prompt_runs
 MWE_SCORE_DIR ?= $(abspath $(GENERATED_DIR))/mwe_prompt_scores/$(MWE_RUN_LABEL)
 MWE_PROMPT_IMPROVEMENT_DIR ?= $(abspath $(GENERATED_DIR))/mwe_prompt_improvements/$(MWE_RUN_LABEL)
 MWE_LIMIT ?= 0
+MWE_GOLD_DIR ?= $(abspath $(GENERATED_DIR))/mwe_gold/$(MWE_LANGUAGE)-$(SPLIT)
+MWE_GOLD_RECORDS ?= $(MWE_GOLD_DIR)/selected_segments.jsonl
+MWE_GOLD_SUMMARY ?= $(MWE_GOLD_DIR)/summary.json
+MWE_GOLD_REVIEW ?= $(MWE_GOLD_DIR)/review.md
+MWE_CYCLE_RECORDS ?= $(MWE_GOLD_RECORDS)
 GENERATED_DIR := generated
 MWE_PROMPT_CYCLE_NUMBER ?= 1
 MWE_CYCLE_RUN_LABEL ?= run
@@ -55,6 +60,10 @@ PY_MWE_SPLIT_RECORDS := $(call python_path,$(MWE_SPLIT_RECORDS))
 PY_MWE_RUN_OUTPUT_DIR := $(call python_path,$(MWE_RUN_OUTPUT_DIR))
 PY_MWE_SCORE_DIR := $(call python_path,$(MWE_SCORE_DIR))
 PY_MWE_PROMPT_IMPROVEMENT_DIR := $(call python_path,$(MWE_PROMPT_IMPROVEMENT_DIR))
+PY_MWE_GOLD_RECORDS := $(call python_path,$(MWE_GOLD_RECORDS))
+PY_MWE_GOLD_SUMMARY := $(call python_path,$(MWE_GOLD_SUMMARY))
+PY_MWE_GOLD_REVIEW := $(call python_path,$(MWE_GOLD_REVIEW))
+PY_MWE_CYCLE_RECORDS := $(call python_path,$(MWE_CYCLE_RECORDS))
 PY_MWE_PROMPT_CYCLE_DIR := $(call python_path,$(MWE_PROMPT_CYCLE_DIR))
 PY_MWE_CYCLE_TEMPLATE := $(call python_path,$(MWE_CYCLE_TEMPLATE))
 PY_MWE_CYCLE_OUTPUTS_JSONL := $(call python_path,$(MWE_CYCLE_OUTPUTS_JSONL))
@@ -64,7 +73,7 @@ FAIL_FAST_ARG := $(if $(filter 1,$(FAIL_FAST)),--fail-fast,)
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help prepare prepare-mwe-prompt-cycle run-mwe-prompt-cycle score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
+.PHONY: help prepare declare-mwe-gold check-mwe-gold mwe-prompt-cycle show-mwe-prompt-cycle-results prepare-mwe-prompt-cycle run-mwe-prompt-cycle score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
 
 help:
 	@echo "Focused MWE experiments (multilingual)"
@@ -75,6 +84,10 @@ help:
 	@echo "  run-current-mwe    Run current MWE prompt over extracted segment records"
 	@echo "  score-current-mwe  Score current MWE prompt output against gold MWEs"
 	@echo "  propose-mwe-prompt-improvement  Write conservative prompt-improvement guidance from score errors"
+	@echo "  declare-mwe-gold  Snapshot selected projects and export explicit gold records"
+	@echo "  check-mwe-gold    Re-export selected gold records and fail if no gold MWEs are found"
+	@echo "  mwe-prompt-cycle  Run prepare/run/score/propose for the selected cycle"
+	@echo "  show-mwe-prompt-cycle-results  Print cycle summary and per-segment score path"
 	@echo "  prepare-mwe-prompt-cycle  Create/reuse a cycle-specific MWE prompt template"
 	@echo "  run-mwe-prompt-cycle      Run a cycle-specific MWE prompt template"
 	@echo "  score-mwe-prompt-cycle    Score a cycle-specific MWE prompt run"
@@ -106,6 +119,7 @@ help:
 	@echo "  MWE_LANGUAGE=$(MWE_LANGUAGE)"
 	@echo "  MWE_SPLIT_RECORDS=$(MWE_SPLIT_RECORDS)"
 	@echo "  MWE_RUN_LABEL=$(MWE_RUN_LABEL)"
+	@echo "  MWE_GOLD_RECORDS=$(MWE_GOLD_RECORDS)"
 	@echo "  MWE_PROMPT_CYCLE_NUMBER=$(MWE_PROMPT_CYCLE_NUMBER)"
 	@echo "  MWE_PROMPT_CYCLE_DIR=$(MWE_PROMPT_CYCLE_DIR)"
 
@@ -149,6 +163,35 @@ snapshot-gold-projects-dry-run: prepare
 		--splits "$(SPLITS)" \
 		--snapshot-name-prefix "$(SNAPSHOT_NAME_PREFIX)" \
 		--dry-run
+
+declare-mwe-gold: prepare
+	@echo "+ snapshot selected projects and export explicit MWE gold records to $(PY_MWE_GOLD_RECORDS)"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) snapshot_mwe_experiment_projects --project-ids "$(PROJECT_IDS)" --split-manifest "$(PY_SPLIT_MANIFEST)" --splits "$(SPLIT)" --snapshot-name-prefix "$(SNAPSHOT_NAME_PREFIX)"; \
+		$(MANAGE) export_mwe_gold_subset --project-ids "$(PROJECT_IDS)" --language "$(MWE_LANGUAGE)" --split "$(SPLIT)" --output-jsonl "$(PY_MWE_GOLD_RECORDS)" --summary-json "$(PY_MWE_GOLD_SUMMARY)" --review-markdown "$(PY_MWE_GOLD_REVIEW)" --overwrite; \
+	else \
+		echo "dry-run only; set RUN=1 to snapshot selected projects and export gold records"; \
+	fi
+
+check-mwe-gold: prepare
+	@echo "+ $(MANAGE) export_mwe_gold_subset --project-ids $(PROJECT_IDS) --language $(MWE_LANGUAGE) --split $(SPLIT) --output-jsonl $(PY_MWE_GOLD_RECORDS) --summary-json $(PY_MWE_GOLD_SUMMARY) --review-markdown $(PY_MWE_GOLD_REVIEW) --require-gold --overwrite"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) export_mwe_gold_subset --project-ids "$(PROJECT_IDS)" --language "$(MWE_LANGUAGE)" --split "$(SPLIT)" --output-jsonl "$(PY_MWE_GOLD_RECORDS)" --summary-json "$(PY_MWE_GOLD_SUMMARY)" --review-markdown "$(PY_MWE_GOLD_REVIEW)" --require-gold --overwrite; \
+	else \
+		echo "dry-run only; set RUN=1 to verify selected gold records contain at least one gold MWE"; \
+	fi
+
+mwe-prompt-cycle: run-mwe-prompt-cycle score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement
+	@echo "MWE prompt cycle $(MWE_PROMPT_CYCLE_NUMBER) complete."
+	@echo "Summary: $(MWE_CYCLE_SCORE_DIR)/summary.md"
+	@echo "Per-segment scores: $(MWE_CYCLE_SCORE_DIR)/per_record_scores.jsonl"
+	@echo "Improvement report: $(MWE_CYCLE_IMPROVEMENT_DIR)/prompt_improvement.md"
+
+show-mwe-prompt-cycle-results: prepare
+	@if [ -f "$(MWE_CYCLE_SCORE_DIR)/summary.md" ]; then cat "$(MWE_CYCLE_SCORE_DIR)/summary.md"; else echo "Missing $(MWE_CYCLE_SCORE_DIR)/summary.md" >&2; exit 1; fi
+	@echo
+	@echo "Per-segment scores: $(MWE_CYCLE_SCORE_DIR)/per_record_scores.jsonl"
+	@echo "Improvement report: $(MWE_CYCLE_IMPROVEMENT_DIR)/prompt_improvement.md"
 
 run-current-mwe: prepare
 	@echo "+ $(MANAGE) run_mwe_prompt_experiment --input-records-jsonl $(PY_MWE_SPLIT_RECORDS) --output-dir $(PY_MWE_RUN_OUTPUT_DIR) --run-label $(MWE_RUN_LABEL) --limit $(MWE_LIMIT) --project-ids $(PROJECT_IDS) --overwrite"
@@ -203,11 +246,11 @@ prepare-mwe-prompt-cycle: prepare
 	fi
 
 run-mwe-prompt-cycle: prepare-mwe-prompt-cycle
-	@echo "+ $(MANAGE) run_mwe_prompt_experiment --input-records-jsonl $(PY_MWE_SPLIT_RECORDS) --output-dir $(PY_MWE_PROMPT_CYCLE_DIR) --run-label $(MWE_CYCLE_RUN_LABEL) --limit $(MWE_LIMIT) --project-ids $(PROJECT_IDS) --template-file $(PY_MWE_CYCLE_TEMPLATE) --overwrite"
+	@echo "+ $(MANAGE) run_mwe_prompt_experiment --input-records-jsonl $(PY_MWE_CYCLE_RECORDS) --output-dir $(PY_MWE_PROMPT_CYCLE_DIR) --run-label $(MWE_CYCLE_RUN_LABEL) --limit $(MWE_LIMIT) --project-ids $(PROJECT_IDS) --template-file $(PY_MWE_CYCLE_TEMPLATE) --overwrite"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) run_mwe_prompt_experiment --input-records-jsonl "$(PY_MWE_SPLIT_RECORDS)" --output-dir "$(PY_MWE_PROMPT_CYCLE_DIR)" --run-label "$(MWE_CYCLE_RUN_LABEL)" --limit "$(MWE_LIMIT)" --project-ids "$(PROJECT_IDS)" --template-file "$(PY_MWE_CYCLE_TEMPLATE)" --overwrite; \
+		$(MANAGE) run_mwe_prompt_experiment --input-records-jsonl "$(PY_MWE_CYCLE_RECORDS)" --output-dir "$(PY_MWE_PROMPT_CYCLE_DIR)" --run-label "$(MWE_CYCLE_RUN_LABEL)" --limit "$(MWE_LIMIT)" --project-ids "$(PROJECT_IDS)" --template-file "$(PY_MWE_CYCLE_TEMPLATE)" --overwrite; \
 	else \
-		echo "dry-run only; set RUN=1 to run $(MWE_CYCLE_TEMPLATE)"; \
+		echo "dry-run only; set RUN=1 after declare-mwe-gold has written $(MWE_CYCLE_RECORDS), then run $(MWE_CYCLE_TEMPLATE)"; \
 	fi
 
 score-mwe-prompt-cycle: prepare

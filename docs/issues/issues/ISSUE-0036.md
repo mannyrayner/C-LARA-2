@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-08T01:10:00Z
+- **Updated:** 2026-07-08T02:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -144,4 +144,9 @@ print trace counts showing total scored records versus records used after filter
 supports cycle-specific generated prompt templates, a --template-file path for
 run_mwe_prompt_experiment, Make targets to prepare/run/score/propose per-cycle prompts, and README
 instructions for the seven-project sanity-check cycle before scaling to larger annotated
-English/French/German data.
+English/French/German data. Follow-up on 2026-07-08: clarified and implemented explicit MWE gold
+declaration for the seven-project sanity-check workflow. Added export_mwe_gold_subset to write all
+selected-project segment records directly from latest MWE artifacts, with summary/review files and a
+require-gold check; added Make targets declare-mwe-gold and check-mwe-gold, made cycle runs consume
+the explicit gold JSONL, and added a high-level mwe-prompt-cycle target plus results display so
+progress is visible through gold scores and per-segment score records.

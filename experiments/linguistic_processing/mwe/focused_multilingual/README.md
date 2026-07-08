@@ -129,16 +129,35 @@ make snapshot-gold-projects \
   SNAPSHOT_NAME_PREFIX="MWE development gold checkpoint"
 ```
 
-Then save the snapshots for the same projects. These snapshots mark **MWE
-annotations**, **gloss annotations**, and **lemma annotations** as gold-standard
-components:
+Then declare the gold data for the same projects. This target does two things:
+first it saves gold-standard project snapshots, then it exports an explicit
+seven-project gold JSONL from the projects' latest MWE artifacts. This explicit
+JSONL is what the iterative prompt-cycle targets use; the snapshots are the
+rollback/provenance checkpoint.
 
 ```bash
-make snapshot-gold-projects RUN=1 \
+make declare-mwe-gold RUN=1 \
   PROJECT_IDS="$MWE_PROJECT_IDS" \
-  SPLITS=development \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
   SNAPSHOT_NAME_PREFIX="MWE development gold checkpoint"
 ```
+
+Now check that the exported gold data is really present. This target rewrites the
+same explicit gold JSONL and fails if no gold MWEs are found:
+
+```bash
+make check-mwe-gold RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development
+```
+
+Inspect the high-level gold-data files if anything looks wrong:
+
+- `generated/mwe_gold/en-development/summary.json`
+- `generated/mwe_gold/en-development/review.md`
+- `generated/mwe_gold/en-development/selected_segments.jsonl`
 
 Next, run the current MWE prompt over the extracted English development segment
 records, score it, and write conservative prompt-improvement guidance:
@@ -165,6 +184,9 @@ make propose-mwe-prompt-improvement RUN=1 \
 
 Expected outputs are:
 
+- `generated/mwe_gold/en-development/selected_segments.jsonl`
+- `generated/mwe_gold/en-development/summary.json`
+- `generated/mwe_gold/en-development/review.md`
 - `generated/mwe_prompt_runs/$MWE_RUN_LABEL/outputs.jsonl`
 - `generated/mwe_prompt_runs/$MWE_RUN_LABEL/progress.jsonl`
 - `generated/mwe_prompt_scores/$MWE_RUN_LABEL/summary.json`
@@ -217,36 +239,28 @@ The proposal target seeds that `template_revision.txt` from the just-run cycle
 prompt; edit it using `candidate_prompt_guidance.txt` and `prompt_improvement.md`
 before preparing the next cycle.
 
-For the current seven-project sanity-check set, a full cycle 1 run is:
+For the current seven-project sanity-check set, first run `declare-mwe-gold` and
+`check-mwe-gold` as above. Then a full high-level cycle 1 run is:
 
 ```bash
 MWE_PROJECT_IDS="239,245,254,255,257,261,263"
 MWE_PROMPT_CYCLE_NUMBER=1
 
-make prepare-mwe-prompt-cycle RUN=1 \
+make mwe-prompt-cycle RUN=1 \
   PROJECT_IDS="$MWE_PROJECT_IDS" \
   MWE_LANGUAGE=en \
   SPLIT=development \
   MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
 
-make run-mwe-prompt-cycle RUN=1 \
-  PROJECT_IDS="$MWE_PROJECT_IDS" \
-  MWE_LANGUAGE=en \
-  SPLIT=development \
-  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
-
-make score-mwe-prompt-cycle RUN=1 \
-  PROJECT_IDS="$MWE_PROJECT_IDS" \
-  MWE_LANGUAGE=en \
-  SPLIT=development \
-  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
-
-make propose-mwe-prompt-cycle-improvement RUN=1 \
-  PROJECT_IDS="$MWE_PROJECT_IDS" \
+make show-mwe-prompt-cycle-results \
   MWE_LANGUAGE=en \
   SPLIT=development \
   MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
 ```
+
+If you want to run the steps separately for debugging, use
+`prepare-mwe-prompt-cycle`, `run-mwe-prompt-cycle`, `score-mwe-prompt-cycle`, and
+`propose-mwe-prompt-cycle-improvement` with the same variables.
 
 After the proposal target finishes, inspect:
 
@@ -262,7 +276,7 @@ After the proposal target finishes, inspect:
   — an editable copy of the cycle prompt to revise for cycle 2.
 
 For cycle 2, edit `cycle_1/improvement/template_revision.txt` using only general,
-language-neutral prompt changes, then rerun the same four targets with
+language-neutral prompt changes, then rerun `mwe-prompt-cycle` with
 `MWE_PROMPT_CYCLE_NUMBER=2`. Keep development cycles separate from future
 validation/test runs; once the machinery is stable, use larger annotated
 English/French/German development sets for prompt iteration and reserve held-out
