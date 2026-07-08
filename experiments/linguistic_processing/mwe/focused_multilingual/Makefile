@@ -36,6 +36,7 @@ MWE_GOLD_DIR ?= $(abspath $(GENERATED_DIR))/mwe_gold/$(MWE_LANGUAGE)-$(SPLIT)
 MWE_GOLD_RECORDS ?= $(MWE_GOLD_DIR)/selected_segments.jsonl
 MWE_GOLD_SUMMARY ?= $(MWE_GOLD_DIR)/summary.json
 MWE_GOLD_REVIEW ?= $(MWE_GOLD_DIR)/review.md
+MWE_RUN_RECORDS ?= $(MWE_GOLD_RECORDS)
 MWE_CYCLE_RECORDS ?= $(MWE_GOLD_RECORDS)
 GENERATED_DIR := generated
 MWE_PROMPT_CYCLE_NUMBER ?= 1
@@ -63,6 +64,7 @@ PY_MWE_PROMPT_IMPROVEMENT_DIR := $(call python_path,$(MWE_PROMPT_IMPROVEMENT_DIR
 PY_MWE_GOLD_RECORDS := $(call python_path,$(MWE_GOLD_RECORDS))
 PY_MWE_GOLD_SUMMARY := $(call python_path,$(MWE_GOLD_SUMMARY))
 PY_MWE_GOLD_REVIEW := $(call python_path,$(MWE_GOLD_REVIEW))
+PY_MWE_RUN_RECORDS := $(call python_path,$(MWE_RUN_RECORDS))
 PY_MWE_CYCLE_RECORDS := $(call python_path,$(MWE_CYCLE_RECORDS))
 PY_MWE_PROMPT_CYCLE_DIR := $(call python_path,$(MWE_PROMPT_CYCLE_DIR))
 PY_MWE_CYCLE_TEMPLATE := $(call python_path,$(MWE_CYCLE_TEMPLATE))
@@ -120,6 +122,7 @@ help:
 	@echo "  MWE_SPLIT_RECORDS=$(MWE_SPLIT_RECORDS)"
 	@echo "  MWE_RUN_LABEL=$(MWE_RUN_LABEL)"
 	@echo "  MWE_GOLD_RECORDS=$(MWE_GOLD_RECORDS)"
+	@echo "  MWE_RUN_RECORDS=$(MWE_RUN_RECORDS)"
 	@echo "  MWE_PROMPT_CYCLE_NUMBER=$(MWE_PROMPT_CYCLE_NUMBER)"
 	@echo "  MWE_PROMPT_CYCLE_DIR=$(MWE_PROMPT_CYCLE_DIR)"
 
@@ -194,11 +197,11 @@ show-mwe-prompt-cycle-results: prepare
 	@echo "Improvement report: $(MWE_CYCLE_IMPROVEMENT_DIR)/prompt_improvement.md"
 
 run-current-mwe: prepare
-	@echo "+ $(MANAGE) run_mwe_prompt_experiment --input-records-jsonl $(PY_MWE_SPLIT_RECORDS) --output-dir $(PY_MWE_RUN_OUTPUT_DIR) --run-label $(MWE_RUN_LABEL) --limit $(MWE_LIMIT) --project-ids $(PROJECT_IDS) --overwrite"
+	@echo "+ $(MANAGE) run_mwe_prompt_experiment --input-records-jsonl $(PY_MWE_RUN_RECORDS) --output-dir $(PY_MWE_RUN_OUTPUT_DIR) --run-label $(MWE_RUN_LABEL) --limit $(MWE_LIMIT) --project-ids $(PROJECT_IDS) --overwrite"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) run_mwe_prompt_experiment --input-records-jsonl "$(PY_MWE_SPLIT_RECORDS)" --output-dir "$(PY_MWE_RUN_OUTPUT_DIR)" --run-label "$(MWE_RUN_LABEL)" --limit "$(MWE_LIMIT)" --project-ids "$(PROJECT_IDS)" --overwrite; \
+		$(MANAGE) run_mwe_prompt_experiment --input-records-jsonl "$(PY_MWE_RUN_RECORDS)" --output-dir "$(PY_MWE_RUN_OUTPUT_DIR)" --run-label "$(MWE_RUN_LABEL)" --limit "$(MWE_LIMIT)" --project-ids "$(PROJECT_IDS)" --overwrite; \
 	else \
-		echo "dry-run only; set RUN=1 after extract-split-corpus has written $(MWE_SPLIT_RECORDS)"; \
+		echo "dry-run only; set RUN=1 after declare-mwe-gold has written $(MWE_RUN_RECORDS)"; \
 	fi
 
 score-current-mwe: prepare

@@ -159,8 +159,8 @@ Inspect the high-level gold-data files if anything looks wrong:
 - `generated/mwe_gold/en-development/review.md`
 - `generated/mwe_gold/en-development/selected_segments.jsonl`
 
-Next, run the current MWE prompt over the extracted English development segment
-records, score it, and write conservative prompt-improvement guidance:
+Next, run the current MWE prompt over the explicit gold records exported by
+`declare-mwe-gold`, score it, and write conservative prompt-improvement guidance:
 
 ```bash
 make run-current-mwe RUN=1 \
@@ -207,18 +207,18 @@ Expected outputs are:
   Passing `SPLITS=development` together with explicit `PROJECT_IDS` is harmless
   documentation of intent, but the explicit ids are what control the snapshot
   target above.
-- `SPLIT` is singular and controls prompt-run/scoring paths. For
-  `run-current-mwe`, it selects the input records file through
-  `MWE_SPLIT_RECORDS`, which defaults to
-  `generated/corpus_splits/$(MWE_LANGUAGE)/$(SPLIT)_segments.jsonl`. If
-  `PROJECT_IDS` is also supplied, only records from those projects are run or
-  scored.
-- To run exactly the seven projects above, pass
-  `PROJECT_IDS="$MWE_PROJECT_IDS"` to `run-current-mwe`, `score-current-mwe`, and
-  `propose-mwe-prompt-improvement`. The development segment file may contain other projects;
-  the explicit `PROJECT_IDS` filter keeps them out of this small experiment.
+- `SPLIT` is singular and controls output paths and the default gold-record path.
+  For `run-current-mwe`, the input is `MWE_RUN_RECORDS`, which defaults to
+  `MWE_GOLD_RECORDS` (`generated/mwe_gold/$(MWE_LANGUAGE)-$(SPLIT)/selected_segments.jsonl`).
+  `PROJECT_IDS` is still passed as a safety filter, but after `declare-mwe-gold`
+  the file should already contain only the selected projects.
+- To run exactly the seven projects above, first run `declare-mwe-gold` with
+  `PROJECT_IDS="$MWE_PROJECT_IDS"`, then pass the same `PROJECT_IDS` to
+  `run-current-mwe`, `score-current-mwe`, and `propose-mwe-prompt-improvement`.
+  The explicit gold file should already contain only those projects; the repeated
+  `PROJECT_IDS` arguments are a safety filter.
 
-`run-current-mwe` processes each selected extracted segment through the current MWE prompt. It prints per-record progress and appends `progress.jsonl` and `outputs.jsonl` incrementally, so a long run should no longer look idle. `score-current-mwe` compares predicted MWE spans with the extracted gold spans, and `propose-mwe-prompt-improvement` writes conservative guidance under
+`run-current-mwe` processes `MWE_RUN_RECORDS`, which defaults to the explicit `MWE_GOLD_RECORDS` file written by `declare-mwe-gold`. It prints per-record progress and appends `progress.jsonl` and `outputs.jsonl` incrementally, so a long run should no longer look idle. `score-current-mwe` compares predicted MWE spans with the extracted gold spans, and `propose-mwe-prompt-improvement` writes conservative guidance under
 `generated/mwe_prompt_improvements/`. The proposal step is intentionally general:
 it highlights false positives/false negatives and suggests simple language-neutral
 prompt principles rather than hard-coding project-specific examples.

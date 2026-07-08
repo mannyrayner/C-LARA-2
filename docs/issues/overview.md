@@ -1,5 +1,6 @@
-# C-LARA-2 issue overview (refreshed 2026-07-08T02:00:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-08T02:25:00Z)
 ## Recent progress
+- Wired current-prompt MWE runs to the explicit selected-project gold JSONL by default, preserving declared `gold_mwes` in sanity-check outputs.
 - Added explicit MWE gold declaration/check targets and high-level cycle/result targets to **ISSUE-0036**, so selected-project gold records are exported and verified before prompt cycles run.
 - Added first cycle-specific prompt machinery to **ISSUE-0036** so MWE experiments can prepare, run, score, and propose improvements for generated prompt templates without editing production prompts.
 - Added explicit `PROJECT_IDS` filtering to **ISSUE-0036** MWE run/score/proposal targets so the seven-project hand-curated subset does not accidentally include broader development-set records or examples.

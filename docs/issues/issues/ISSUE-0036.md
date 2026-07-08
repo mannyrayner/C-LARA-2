@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-08T02:00:00Z
+- **Updated:** 2026-07-08T02:25:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -149,4 +149,9 @@ declaration for the seven-project sanity-check workflow. Added export_mwe_gold_s
 selected-project segment records directly from latest MWE artifacts, with summary/review files and a
 require-gold check; added Make targets declare-mwe-gold and check-mwe-gold, made cycle runs consume
 the explicit gold JSONL, and added a high-level mwe-prompt-cycle target plus results display so
-progress is visible through gold scores and per-segment score records.
+progress is visible through gold scores and per-segment score records. Follow-up later on
+2026-07-08: fixed a workflow inconsistency found during maintainer testing. The current-prompt
+sanity-check target run-current-mwe now reads MWE_RUN_RECORDS, defaulting to the explicit
+selected-project MWE_GOLD_RECORDS produced by declare-mwe-gold, instead of the older capped corpus
+split JSONL. README guidance now states this directly so gold_mwes from selected_segments.jsonl are
+preserved in current-prompt outputs.
