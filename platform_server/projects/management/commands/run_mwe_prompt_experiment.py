@@ -22,6 +22,7 @@ class Command(BaseCommand):
         parser.add_argument("--run-label", required=True)
         parser.add_argument("--limit", type=int, default=0)
         parser.add_argument("--overwrite", action="store_true")
+        parser.add_argument("--project-ids", default="", help="Optional comma-separated project ids to include from the input records.")
 
     def handle(self, *args, **options):
         input_path = _resolve_cli_path(options["input_records_jsonl"], "")
@@ -32,7 +33,8 @@ class Command(BaseCommand):
         if run_dir.exists():
             shutil.rmtree(run_dir)
         run_dir.mkdir(parents=True, exist_ok=True)
-        records = load_mwe_records(input_path, limit=int(options.get("limit") or 0))
+        project_ids = parse_project_ids(str(options.get("project_ids") or ""))
+        records = load_mwe_records(input_path, limit=int(options.get("limit") or 0), project_ids=project_ids)
         if not records:
             raise CommandError(f"No records found in {input_path}")
         outputs_path = run_dir / "outputs.jsonl"
@@ -73,6 +75,7 @@ class Command(BaseCommand):
             "input_records_jsonl": str(input_path),
             "run_label": str(options["run_label"]),
             "record_count": output_count,
+            "project_ids": sorted(project_ids),
             "outputs_jsonl": str(outputs_path),
             "progress_jsonl": str(progress_path),
         }
@@ -83,13 +86,28 @@ class Command(BaseCommand):
         self.stdout.write(f"Progress: {progress_path}")
 
 
-def load_mwe_records(path: Path, *, limit: int = 0) -> list[dict[str, Any]]:
+def parse_project_ids(raw: str) -> set[int]:
+    ids: set[int] = set()
+    for part in raw.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            ids.add(int(part))
+        except ValueError as exc:
+            raise CommandError(f"Invalid project id in --project-ids: {part}") from exc
+    return ids
+
+
+def load_mwe_records(path: Path, *, limit: int = 0, project_ids: set[int] | None = None) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     for line in path.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
         payload = json.loads(line)
         if not payload.get("token_surfaces"):
+            continue
+        if project_ids and int(payload.get("project_id") or 0) not in project_ids:
             continue
         records.append(payload)
         if limit and len(records) >= limit:

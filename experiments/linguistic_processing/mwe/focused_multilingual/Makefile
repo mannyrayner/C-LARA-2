@@ -130,17 +130,17 @@ snapshot-gold-projects-dry-run: prepare
 		--dry-run
 
 run-current-mwe: prepare
-	@echo "+ $(MANAGE) run_mwe_prompt_experiment --input-records-jsonl $(PY_MWE_SPLIT_RECORDS) --output-dir $(PY_MWE_RUN_OUTPUT_DIR) --run-label $(MWE_RUN_LABEL) --limit $(MWE_LIMIT) --overwrite"
+	@echo "+ $(MANAGE) run_mwe_prompt_experiment --input-records-jsonl $(PY_MWE_SPLIT_RECORDS) --output-dir $(PY_MWE_RUN_OUTPUT_DIR) --run-label $(MWE_RUN_LABEL) --limit $(MWE_LIMIT) --project-ids $(PROJECT_IDS) --overwrite"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) run_mwe_prompt_experiment --input-records-jsonl "$(PY_MWE_SPLIT_RECORDS)" --output-dir "$(PY_MWE_RUN_OUTPUT_DIR)" --run-label "$(MWE_RUN_LABEL)" --limit "$(MWE_LIMIT)" --overwrite; \
+		$(MANAGE) run_mwe_prompt_experiment --input-records-jsonl "$(PY_MWE_SPLIT_RECORDS)" --output-dir "$(PY_MWE_RUN_OUTPUT_DIR)" --run-label "$(MWE_RUN_LABEL)" --limit "$(MWE_LIMIT)" --project-ids "$(PROJECT_IDS)" --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 after extract-split-corpus has written $(MWE_SPLIT_RECORDS)"; \
 	fi
 
 score-current-mwe: prepare
-	@echo "+ $(MANAGE) score_mwe_prompt_outputs --outputs-jsonl $(PY_MWE_RUN_OUTPUT_DIR)/$(MWE_RUN_LABEL)/outputs.jsonl --output-dir $(PY_MWE_SCORE_DIR) --split $(SPLIT) --overwrite"
+	@echo "+ $(MANAGE) score_mwe_prompt_outputs --outputs-jsonl $(PY_MWE_RUN_OUTPUT_DIR)/$(MWE_RUN_LABEL)/outputs.jsonl --output-dir $(PY_MWE_SCORE_DIR) --split $(SPLIT) --project-ids $(PROJECT_IDS) --overwrite"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) score_mwe_prompt_outputs --outputs-jsonl "$(PY_MWE_RUN_OUTPUT_DIR)/$(MWE_RUN_LABEL)/outputs.jsonl" --output-dir "$(PY_MWE_SCORE_DIR)" --split "$(SPLIT)" --overwrite; \
+		$(MANAGE) score_mwe_prompt_outputs --outputs-jsonl "$(PY_MWE_RUN_OUTPUT_DIR)/$(MWE_RUN_LABEL)/outputs.jsonl" --output-dir "$(PY_MWE_SCORE_DIR)" --split "$(SPLIT)" --project-ids "$(PROJECT_IDS)" --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 after run-current-mwe has produced outputs.jsonl"; \
 	fi

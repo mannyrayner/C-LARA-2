@@ -145,11 +145,13 @@ records, score it, and write conservative prompt-improvement guidance:
 
 ```bash
 make run-current-mwe RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
   MWE_LANGUAGE=en \
   SPLIT=development \
   MWE_RUN_LABEL="$MWE_RUN_LABEL"
 
 make score-current-mwe RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
   MWE_LANGUAGE=en \
   SPLIT=development \
   MWE_RUN_LABEL="$MWE_RUN_LABEL"
@@ -171,9 +173,11 @@ Expected outputs are:
 
 ### How `PROJECT_IDS`, `SPLITS`, and `SPLIT` interact
 
-- `PROJECT_IDS` is an explicit comma-separated override for project-selection
-  commands such as `snapshot-gold-projects`. When `PROJECT_IDS` is supplied, the
-  split manifest is not used to choose projects.
+- `PROJECT_IDS` is an explicit comma-separated override. For project-selection
+  commands such as `snapshot-gold-projects`, it chooses projects directly and the
+  split manifest is not used to choose projects. For `run-current-mwe` and
+  `score-current-mwe`, it filters the selected segment/output records to those
+  projects, which is the safest way to run a small hand-curated subset.
 - `SPLITS` is plural and only matters for manifest-driven project-selection
   commands. It says which manifest splits to read when `PROJECT_IDS` is empty.
   Passing `SPLITS=development` together with explicit `PROJECT_IDS` is harmless
@@ -182,14 +186,15 @@ Expected outputs are:
 - `SPLIT` is singular and controls prompt-run/scoring paths. For
   `run-current-mwe`, it selects the input records file through
   `MWE_SPLIT_RECORDS`, which defaults to
-  `generated/corpus_splits/$(MWE_LANGUAGE)/$(SPLIT)_segments.jsonl`. It does not
-  filter by `PROJECT_IDS`.
-- To run exactly the seven projects above, make sure the development segment file
-  was produced from the split manifest containing those projects. If in doubt,
-  rerun `make extract-split-corpus CORPUS_USER=mannyrayner LANGUAGES=en` before
-  the prompt run, then inspect `generated/corpus_splits/en/development_projects.jsonl`.
+  `generated/corpus_splits/$(MWE_LANGUAGE)/$(SPLIT)_segments.jsonl`. If
+  `PROJECT_IDS` is also supplied, only records from those projects are run or
+  scored.
+- To run exactly the seven projects above, pass
+  `PROJECT_IDS="$MWE_PROJECT_IDS"` to both `run-current-mwe` and
+  `score-current-mwe`. The development segment file may contain other projects;
+  the explicit `PROJECT_IDS` filter keeps them out of this small experiment.
 
-`run-current-mwe` processes each extracted segment through the current MWE prompt. It prints per-record progress and appends `progress.jsonl` and `outputs.jsonl` incrementally, so a long run should no longer look idle. `score-current-mwe` compares predicted MWE spans with the extracted gold spans, and `propose-mwe-prompt-improvement` writes conservative guidance under
+`run-current-mwe` processes each selected extracted segment through the current MWE prompt. It prints per-record progress and appends `progress.jsonl` and `outputs.jsonl` incrementally, so a long run should no longer look idle. `score-current-mwe` compares predicted MWE spans with the extracted gold spans, and `propose-mwe-prompt-improvement` writes conservative guidance under
 `generated/mwe_prompt_improvements/`. The proposal step is intentionally general:
 it highlights false positives/false negatives and suggests simple language-neutral
 prompt principles rather than hard-coding project-specific examples.

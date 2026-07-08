@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.test import TestCase, override_settings
 
-from projects.management.commands.run_mwe_prompt_experiment import record_to_text_obj
+from projects.management.commands.run_mwe_prompt_experiment import load_mwe_records, record_to_text_obj
 from projects.management.commands.score_mwe_prompt_outputs import score_record, summarize_scores
 from projects.models import Project
 
@@ -49,6 +49,19 @@ class MWEPromptExperimentCommandTests(TestCase):
         tokens = text_obj["pages"][0]["segments"][0]["tokens"]
         self.assertEqual([token["surface"] for token in tokens], ["take", "off", "now"])
 
+
+    def test_load_mwe_records_filters_explicit_project_ids(self):
+        input_path = Path(self.tmpdir) / "records.jsonl"
+        records = [
+            {"record_id": "keep", "project_id": self.project.id, "token_surfaces": ["take", "off"]},
+            {"record_id": "drop", "project_id": self.project.id + 1, "token_surfaces": ["look", "up"]},
+        ]
+        input_path.write_text("".join(json.dumps(record) + "\n" for record in records), encoding="utf-8")
+
+        loaded = load_mwe_records(input_path, project_ids={self.project.id})
+
+        self.assertEqual([record["record_id"] for record in loaded], ["keep"])
+
     def test_score_record_exact_span_metrics(self):
         scored = score_record(
             {
@@ -64,6 +77,42 @@ class MWEPromptExperimentCommandTests(TestCase):
         summary = summarize_scores([scored], split="development", outputs_path=Path("outputs.jsonl"))
         self.assertAlmostEqual(summary["precision"], 0.5)
         self.assertAlmostEqual(summary["recall"], 1.0)
+
+
+    def test_score_command_filters_explicit_project_ids(self):
+        outputs_path = Path(self.tmpdir) / "outputs.jsonl"
+        output_dir = Path(self.tmpdir) / "scores"
+        records = [
+            {
+                "record_id": "keep",
+                "project_id": self.project.id,
+                "gold_mwes": [{"tokens": ["take", "off"]}],
+                "predicted_mwes": [{"tokens": ["take", "off"]}],
+            },
+            {
+                "record_id": "drop",
+                "project_id": self.project.id + 1,
+                "gold_mwes": [{"tokens": ["look", "up"]}],
+                "predicted_mwes": [],
+            },
+        ]
+        outputs_path.write_text("".join(json.dumps(record) + "\n" for record in records), encoding="utf-8")
+
+        call_command(
+            "score_mwe_prompt_outputs",
+            outputs_jsonl=str(outputs_path),
+            output_dir=str(output_dir),
+            split="development",
+            project_ids=str(self.project.id),
+            overwrite=True,
+            stdout=StringIO(),
+        )
+
+        summary = json.loads((output_dir / "summary.json").read_text(encoding="utf-8"))
+        scored_lines = (output_dir / "per_record_scores.jsonl").read_text(encoding="utf-8").splitlines()
+        self.assertEqual(summary["record_count"], 1)
+        self.assertEqual(summary["project_ids"], [self.project.id])
+        self.assertEqual(json.loads(scored_lines[0])["record_id"], "keep")
 
     def test_run_mwe_prompt_experiment_writes_incremental_progress(self):
         input_path = Path(self.tmpdir) / "records.jsonl"
@@ -107,6 +156,7 @@ class MWEPromptExperimentCommandTests(TestCase):
                 output_dir=str(output_dir),
                 run_label="test-run",
                 overwrite=True,
+                project_ids=str(self.project.id),
                 stdout=out,
             )
 

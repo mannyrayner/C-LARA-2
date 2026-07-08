@@ -17,6 +17,7 @@ class Command(BaseCommand):
         parser.add_argument("--output-dir", required=True)
         parser.add_argument("--split", default="development")
         parser.add_argument("--overwrite", action="store_true")
+        parser.add_argument("--project-ids", default="", help="Optional comma-separated project ids to score from the outputs file.")
 
     def handle(self, *args, **options):
         outputs_path = _resolve_cli_path(options["outputs_jsonl"], "")
@@ -24,9 +25,13 @@ class Command(BaseCommand):
         if output_dir.exists() and any(output_dir.iterdir()) and not options["overwrite"]:
             raise CommandError(f"output directory already exists and is not empty: {output_dir}; pass --overwrite")
         output_dir.mkdir(parents=True, exist_ok=True)
+        project_ids = parse_project_ids(str(options.get("project_ids") or ""))
         records = [json.loads(line) for line in outputs_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        if project_ids:
+            records = [record for record in records if int(record.get("project_id") or 0) in project_ids]
         scored = [score_record(record) for record in records]
         summary = summarize_scores(scored, split=str(options["split"] or ""), outputs_path=outputs_path)
+        summary["project_ids"] = sorted(project_ids)
         per_record_path = output_dir / "per_record_scores.jsonl"
         with per_record_path.open("w", encoding="utf-8") as out:
             for record in scored:
@@ -37,6 +42,19 @@ class Command(BaseCommand):
         write_markdown(output_dir / "summary.md", summary=summary, scored=scored)
         self.stdout.write(f"MWE scoring complete: F1={summary['f1']:.3f} precision={summary['precision']:.3f} recall={summary['recall']:.3f}")
         self.stdout.write(f"Summary: {summary_path}")
+
+
+def parse_project_ids(raw: str) -> set[int]:
+    ids: set[int] = set()
+    for part in raw.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            ids.add(int(part))
+        except ValueError as exc:
+            raise CommandError(f"Invalid project id in --project-ids: {part}") from exc
+    return ids
 
 
 def mwe_spans(mwes: list[Any]) -> set[tuple[str, ...]]:
