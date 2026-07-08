@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-08T03:35:00Z
+- **Updated:** 2026-07-08T03:55:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -160,4 +160,6 @@ cycle prompt plus prompt_improvement.md/candidate_prompt_guidance.txt and writes
 next-cycle template_revision.txt plus template_revision.json while instructing the model to keep
 changes simple, general, and non-memorised. Follow-up later on 2026-07-08: changed the MWE
 prompt-revision default model to gpt-5.5 because this is the highest-leverage once-per-cycle step,
-while keeping MWE_REVISION_MODEL overridable for cheaper smoke tests.
+while keeping MWE_REVISION_MODEL overridable for cheaper smoke tests. Follow-up later on 2026-07-08:
+removed the explicit temperature=0 override from MWE prompt revision calls so gpt-5.5 can use its
+supported default temperature.

@@ -353,9 +353,10 @@ class MWEPromptExperimentCommandTests(TestCase):
         report.write_text("# Report\nFalse positives include overly long spans.\n", encoding="utf-8")
         guidance.write_text("Prefer precision.\n", encoding="utf-8")
 
-        async def fake_chat_json(prompt, **kwargs):  # noqa: ARG001
+        async def fake_chat_json(prompt, **kwargs):
             self.assertIn("Current prompt", prompt)
             self.assertIn("False positives", prompt)
+            self.assertIsNone(kwargs.get("temperature"))
             return {
                 "prompt": "Revised prompt\nReturn JSON.",
                 "rationale": "Tightened span boundaries.",

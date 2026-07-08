@@ -59,7 +59,7 @@ class Command(BaseCommand):
         )
         self.stdout.write(f"Requesting revised MWE prompt with model {options['model']}...")
         client = OpenAIClient(config=OpenAIConfig(timeout_s=options["timeout_s"], heartbeat_s=options["heartbeat_s"]))
-        payload = asyncio.run(client.chat_json(prompt, model=str(options["model"]), temperature=0))
+        payload = asyncio.run(client.chat_json(prompt, model=str(options["model"]), temperature=None))
         revision = normalize_revision_payload(payload)
 
         output_template_path.parent.mkdir(parents=True, exist_ok=True)
