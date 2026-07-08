@@ -236,8 +236,9 @@ Cycle 1 copies `prompts/mwe/$(MWE_LANGUAGE)/template.txt` when it exists, fallin
 back to `prompts/mwe/default/template.txt`. Cycle N>1 copies
 `generated/mwe_prompt_cycles/<language>-<split>/cycle_<N-1>/improvement/template_revision.txt`.
 The proposal target seeds that `template_revision.txt` from the just-run cycle
-prompt; edit it using `candidate_prompt_guidance.txt` and `prompt_improvement.md`
-before preparing the next cycle.
+prompt. You can either edit it manually using `candidate_prompt_guidance.txt` and
+`prompt_improvement.md`, or run the AI revision target described below to produce a
+first next-cycle draft while still keeping the revision auditable and development-only.
 
 For the current seven-project sanity-check set, first run `declare-mwe-gold` and
 `check-mwe-gold` as above. Then a full high-level cycle 1 run is:
@@ -262,6 +263,26 @@ If you want to run the steps separately for debugging, use
 `prepare-mwe-prompt-cycle`, `run-mwe-prompt-cycle`, `score-mwe-prompt-cycle`, and
 `propose-mwe-prompt-cycle-improvement` with the same variables.
 
+To ask AI to draft a non-trivial but conservative next-cycle prompt from the cycle
+report, run this after `mwe-prompt-cycle` has produced the score and improvement
+files:
+
+```bash
+make revise-mwe-prompt-cycle-template RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
+```
+
+This overwrites
+`generated/mwe_prompt_cycles/en-development/cycle_1/improvement/template_revision.txt`
+with a complete prompt generated from the current cycle prompt plus
+`prompt_improvement.md` and `candidate_prompt_guidance.txt`. It also writes
+`template_revision.json` with the model rationale, listed changes, and risks. The
+revision prompt explicitly asks for simple, general changes and forbids memorising
+project-specific answers, so the output should still be reviewed before use.
+
 After the proposal target finishes, inspect:
 
 - `generated/mwe_prompt_cycles/en-development/cycle_1/template.txt` — the prompt
@@ -275,9 +296,9 @@ After the proposal target finishes, inspect:
 - `generated/mwe_prompt_cycles/en-development/cycle_1/improvement/template_revision.txt`
   — an editable copy of the cycle prompt to revise for cycle 2.
 
-For cycle 2, edit `cycle_1/improvement/template_revision.txt` using only general,
-language-neutral prompt changes, then rerun `mwe-prompt-cycle` with
-`MWE_PROMPT_CYCLE_NUMBER=2`. Keep development cycles separate from future
+For cycle 2, review and optionally edit `cycle_1/improvement/template_revision.txt`
+(using only general, language-neutral prompt changes), then rerun `mwe-prompt-cycle`
+with `MWE_PROMPT_CYCLE_NUMBER=2`. Keep development cycles separate from future
 validation/test runs; once the machinery is stable, use larger annotated
 English/French/German development sets for prompt iteration and reserve held-out
 validation/test projects for final checks.

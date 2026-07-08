@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-08T02:25:00Z
+- **Updated:** 2026-07-08T03:10:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -154,4 +154,8 @@ progress is visible through gold scores and per-segment score records. Follow-up
 sanity-check target run-current-mwe now reads MWE_RUN_RECORDS, defaulting to the explicit
 selected-project MWE_GOLD_RECORDS produced by declare-mwe-gold, instead of the older capped corpus
 split JSONL. README guidance now states this directly so gold_mwes from selected_segments.jsonl are
-preserved in current-prompt outputs.
+preserved in current-prompt outputs. Follow-up on 2026-07-08: added an AI-assisted MWE
+prompt-revision command and Make target revise-mwe-prompt-cycle-template, which reads the current
+cycle prompt plus prompt_improvement.md/candidate_prompt_guidance.txt and writes an auditable
+next-cycle template_revision.txt plus template_revision.json while instructing the model to keep
+changes simple, general, and non-memorised.

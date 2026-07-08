@@ -50,6 +50,8 @@ MWE_CYCLE_OUTPUTS_JSONL := $(MWE_PROMPT_CYCLE_DIR)/$(MWE_CYCLE_RUN_LABEL)/output
 MWE_CYCLE_SCORE_DIR := $(MWE_PROMPT_CYCLE_DIR)/score
 MWE_CYCLE_IMPROVEMENT_DIR := $(MWE_PROMPT_CYCLE_DIR)/improvement
 MWE_CYCLE_REVISION := $(MWE_CYCLE_IMPROVEMENT_DIR)/template_revision.txt
+MWE_CYCLE_REVISION_JSON := $(MWE_CYCLE_IMPROVEMENT_DIR)/template_revision.json
+MWE_REVISION_MODEL ?= gpt-4o
 CORPUS_SPLIT_DIR := $(abspath $(GENERATED_DIR))/corpus_splits
 PY_OS := $(shell $(PYTHON) -c 'import os; print(os.name)' 2>/dev/null || echo posix)
 python_path = $(shell if [ "$(PY_OS)" = "nt" ] && command -v cygpath >/dev/null 2>&1; then cygpath -am "$(1)"; else printf '%s' "$(1)"; fi)
@@ -71,11 +73,13 @@ PY_MWE_CYCLE_TEMPLATE := $(call python_path,$(MWE_CYCLE_TEMPLATE))
 PY_MWE_CYCLE_OUTPUTS_JSONL := $(call python_path,$(MWE_CYCLE_OUTPUTS_JSONL))
 PY_MWE_CYCLE_SCORE_DIR := $(call python_path,$(MWE_CYCLE_SCORE_DIR))
 PY_MWE_CYCLE_IMPROVEMENT_DIR := $(call python_path,$(MWE_CYCLE_IMPROVEMENT_DIR))
+PY_MWE_CYCLE_REVISION := $(call python_path,$(MWE_CYCLE_REVISION))
+PY_MWE_CYCLE_REVISION_JSON := $(call python_path,$(MWE_CYCLE_REVISION_JSON))
 FAIL_FAST_ARG := $(if $(filter 1,$(FAIL_FAST)),--fail-fast,)
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help prepare declare-mwe-gold check-mwe-gold mwe-prompt-cycle show-mwe-prompt-cycle-results prepare-mwe-prompt-cycle run-mwe-prompt-cycle score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
+.PHONY: help prepare declare-mwe-gold check-mwe-gold mwe-prompt-cycle show-mwe-prompt-cycle-results prepare-mwe-prompt-cycle run-mwe-prompt-cycle score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement revise-mwe-prompt-cycle-template extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
 
 help:
 	@echo "Focused MWE experiments (multilingual)"
@@ -94,6 +98,7 @@ help:
 	@echo "  run-mwe-prompt-cycle      Run a cycle-specific MWE prompt template"
 	@echo "  score-mwe-prompt-cycle    Score a cycle-specific MWE prompt run"
 	@echo "  propose-mwe-prompt-cycle-improvement  Write cycle-specific improvement guidance"
+	@echo "  revise-mwe-prompt-cycle-template  Use AI to write the next-cycle prompt draft"
 	@echo "  refresh-annotations   Rerun selected projects through segmentation_phase_2 -> translation -> mwe -> lemma -> gloss"
 	@echo "  refresh-project-metadata  Keep existing splits/projects but refresh mwe_count from latest saved artifacts"
 	@echo "  validate-config       Validate stage-parameter JSON used by refresh-annotations"
@@ -125,6 +130,7 @@ help:
 	@echo "  MWE_RUN_RECORDS=$(MWE_RUN_RECORDS)"
 	@echo "  MWE_PROMPT_CYCLE_NUMBER=$(MWE_PROMPT_CYCLE_NUMBER)"
 	@echo "  MWE_PROMPT_CYCLE_DIR=$(MWE_PROMPT_CYCLE_DIR)"
+	@echo "  MWE_REVISION_MODEL=$(MWE_REVISION_MODEL)"
 
 prepare:
 	@mkdir -p $(GENERATED_DIR)
@@ -272,6 +278,14 @@ propose-mwe-prompt-cycle-improvement: prepare
 		echo "Editable next-cycle prompt draft: $(MWE_CYCLE_REVISION)"; \
 	else \
 		echo "dry-run only; set RUN=1 after score-mwe-prompt-cycle has produced $(MWE_CYCLE_SCORE_DIR)"; \
+	fi
+
+revise-mwe-prompt-cycle-template: prepare
+	@echo "+ $(MANAGE) revise_mwe_prompt_from_report --current-template $(PY_MWE_CYCLE_TEMPLATE) --improvement-report $(PY_MWE_CYCLE_IMPROVEMENT_DIR)/prompt_improvement.md --candidate-guidance $(PY_MWE_CYCLE_IMPROVEMENT_DIR)/candidate_prompt_guidance.txt --output-template $(PY_MWE_CYCLE_REVISION) --output-json $(PY_MWE_CYCLE_REVISION_JSON) --model $(MWE_REVISION_MODEL) --overwrite"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) revise_mwe_prompt_from_report --current-template "$(PY_MWE_CYCLE_TEMPLATE)" --improvement-report "$(PY_MWE_CYCLE_IMPROVEMENT_DIR)/prompt_improvement.md" --candidate-guidance "$(PY_MWE_CYCLE_IMPROVEMENT_DIR)/candidate_prompt_guidance.txt" --output-template "$(PY_MWE_CYCLE_REVISION)" --output-json "$(PY_MWE_CYCLE_REVISION_JSON)" --model "$(MWE_REVISION_MODEL)" --overwrite; \
+	else \
+		echo "dry-run only; set RUN=1 after propose-mwe-prompt-cycle-improvement has produced $(MWE_CYCLE_IMPROVEMENT_DIR)/prompt_improvement.md"; \
 	fi
 
 refresh-project-metadata: prepare

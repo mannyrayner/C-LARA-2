@@ -339,3 +339,50 @@ class MWEPromptExperimentCommandTests(TestCase):
         self.assertEqual([json.loads(line)["status"] for line in progress_lines], ["running", "finished"])
         output_payload = json.loads((output_dir / "test-run" / "outputs.jsonl").read_text(encoding="utf-8"))
         self.assertEqual(output_payload["predicted_mwes"][0]["tokens"], ["take", "off"])
+
+    def test_revise_mwe_prompt_from_report_writes_ai_revision(self):
+        cycle_dir = Path(self.tmpdir) / "cycle_1"
+        improvement_dir = cycle_dir / "improvement"
+        improvement_dir.mkdir(parents=True)
+        current_template = cycle_dir / "template.txt"
+        report = improvement_dir / "prompt_improvement.md"
+        guidance = improvement_dir / "candidate_prompt_guidance.txt"
+        output_template = improvement_dir / "template_revision.txt"
+        output_json = improvement_dir / "template_revision.json"
+        current_template.write_text("Current prompt\nReturn JSON.\n", encoding="utf-8")
+        report.write_text("# Report\nFalse positives include overly long spans.\n", encoding="utf-8")
+        guidance.write_text("Prefer precision.\n", encoding="utf-8")
+
+        async def fake_chat_json(prompt, **kwargs):  # noqa: ARG001
+            self.assertIn("Current prompt", prompt)
+            self.assertIn("False positives", prompt)
+            return {
+                "prompt": "Revised prompt\nReturn JSON.",
+                "rationale": "Tightened span boundaries.",
+                "changes": ["Prefer shorter lexicalized spans."],
+                "risks": ["May reduce recall."],
+            }
+
+        class FakeClient:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            chat_json = staticmethod(fake_chat_json)
+
+        with patch("projects.management.commands.revise_mwe_prompt_from_report.OpenAIClient", FakeClient):
+            out = StringIO()
+            call_command(
+                "revise_mwe_prompt_from_report",
+                current_template=str(current_template),
+                improvement_report=str(report),
+                candidate_guidance=str(guidance),
+                output_template=str(output_template),
+                output_json=str(output_json),
+                overwrite=True,
+                stdout=out,
+            )
+
+        self.assertEqual(output_template.read_text(encoding="utf-8"), "Revised prompt\nReturn JSON.\n")
+        metadata = json.loads(output_json.read_text(encoding="utf-8"))
+        self.assertEqual(metadata["rationale"], "Tightened span boundaries.")
+        self.assertIn("Revised prompt template", out.getvalue())

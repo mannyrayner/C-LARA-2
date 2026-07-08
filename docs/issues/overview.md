@@ -1,5 +1,6 @@
-# C-LARA-2 issue overview (refreshed 2026-07-08T02:25:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-08T03:10:00Z)
 ## Recent progress
+- Added an AI-assisted MWE prompt-revision target for **ISSUE-0036** so cycle reports can produce auditable next-cycle prompt drafts while preserving anti-overfitting guardrails.
 - Wired current-prompt MWE runs to the explicit selected-project gold JSONL by default, preserving declared `gold_mwes` in sanity-check outputs.
 - Added explicit MWE gold declaration/check targets and high-level cycle/result targets to **ISSUE-0036**, so selected-project gold records are exported and verified before prompt cycles run.
 - Added first cycle-specific prompt machinery to **ISSUE-0036** so MWE experiments can prepare, run, score, and propose improvements for generated prompt templates without editing production prompts.
