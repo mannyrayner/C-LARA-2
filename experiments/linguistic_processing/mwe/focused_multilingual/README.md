@@ -201,6 +201,73 @@ Expected outputs are:
 it highlights false positives/false negatives and suggests simple language-neutral
 prompt principles rather than hard-coding project-specific examples.
 
+
+## Iterative prompt-improvement cycles
+
+The baseline `run-current-mwe` / `score-current-mwe` /
+`propose-mwe-prompt-improvement` targets are useful for sanity checks against the
+production prompt. For iterative prompt development, use cycle-specific prompt
+files under `generated/mwe_prompt_cycles/<language>-<split>/cycle_<n>/` so that
+production prompts under `prompts/mwe/` are not edited during development.
+
+Cycle 1 copies `prompts/mwe/$(MWE_LANGUAGE)/template.txt` when it exists, falling
+back to `prompts/mwe/default/template.txt`. Cycle N>1 copies
+`generated/mwe_prompt_cycles/<language>-<split>/cycle_<N-1>/improvement/template_revision.txt`.
+The proposal target seeds that `template_revision.txt` from the just-run cycle
+prompt; edit it using `candidate_prompt_guidance.txt` and `prompt_improvement.md`
+before preparing the next cycle.
+
+For the current seven-project sanity-check set, a full cycle 1 run is:
+
+```bash
+MWE_PROJECT_IDS="239,245,254,255,257,261,263"
+MWE_PROMPT_CYCLE_NUMBER=1
+
+make prepare-mwe-prompt-cycle RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
+
+make run-mwe-prompt-cycle RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
+
+make score-mwe-prompt-cycle RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
+
+make propose-mwe-prompt-cycle-improvement RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
+```
+
+After the proposal target finishes, inspect:
+
+- `generated/mwe_prompt_cycles/en-development/cycle_1/template.txt` — the prompt
+  actually evaluated;
+- `generated/mwe_prompt_cycles/en-development/cycle_1/run/outputs.jsonl` and
+  `progress.jsonl` — the MWE run output and trace;
+- `generated/mwe_prompt_cycles/en-development/cycle_1/score/summary.md` — the
+  cycle score;
+- `generated/mwe_prompt_cycles/en-development/cycle_1/improvement/prompt_improvement.md`
+  and `candidate_prompt_guidance.txt` — conservative error-analysis guidance;
+- `generated/mwe_prompt_cycles/en-development/cycle_1/improvement/template_revision.txt`
+  — an editable copy of the cycle prompt to revise for cycle 2.
+
+For cycle 2, edit `cycle_1/improvement/template_revision.txt` using only general,
+language-neutral prompt changes, then rerun the same four targets with
+`MWE_PROMPT_CYCLE_NUMBER=2`. Keep development cycles separate from future
+validation/test runs; once the machinery is stable, use larger annotated
+English/French/German development sets for prompt iteration and reserve held-out
+validation/test projects for final checks.
+
 ## Manual gold workflow
 
 Use the project JSONL files to open the selected projects in the existing manual

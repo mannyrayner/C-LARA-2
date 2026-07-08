@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-08T00:20:00Z
+- **Updated:** 2026-07-08T01:10:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -139,4 +139,9 @@ selected projects and new prompt runs can avoid processing out-of-scope records.
 propose-mwe-prompt-improvement read the existing score directory without honoring PROJECT_IDS. The
 proposal command and Make target now accept --project-ids, filter per-record score examples before
 building prompt_improvement.md, recompute the displayed score summary for the selected subset, and
-print trace counts showing total scored records versus records used after filtering.
+print trace counts showing total scored records versus records used after filtering. Follow-up on
+2026-07-08: added the first MWE iterative prompt-cycle machinery. The focused MWE workbench now
+supports cycle-specific generated prompt templates, a --template-file path for
+run_mwe_prompt_experiment, Make targets to prepare/run/score/propose per-cycle prompts, and README
+instructions for the seven-project sanity-check cycle before scaling to larger annotated
+English/French/German data.

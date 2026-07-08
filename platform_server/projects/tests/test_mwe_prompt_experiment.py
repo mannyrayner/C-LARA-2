@@ -79,6 +79,60 @@ class MWEPromptExperimentCommandTests(TestCase):
         self.assertAlmostEqual(summary["recall"], 1.0)
 
 
+
+    def test_run_mwe_prompt_experiment_passes_template_file_to_mwe_spec(self):
+        input_path = Path(self.tmpdir) / "records.jsonl"
+        output_dir = Path(self.tmpdir) / "template-runs"
+        template_path = Path(self.tmpdir) / "template.txt"
+        template_path.write_text("Find only conservative MWEs.", encoding="utf-8")
+        input_path.write_text(
+            json.dumps(
+                {
+                    "record_id": "r1",
+                    "split": "development",
+                    "language": "en",
+                    "project_id": self.project.id,
+                    "project_title": self.project.title,
+                    "segment_surface": "take off now",
+                    "token_surfaces": ["take", "off", "now"],
+                    "gold_mwes": [{"tokens": ["take", "off"]}],
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        seen_template_paths = []
+
+        async def fake_annotate(spec):
+            seen_template_paths.append(spec.template_path)
+            return {
+                "pages": [
+                    {
+                        "segments": [
+                            {
+                                "annotations": {"mwes": []},
+                                "tokens": [{"surface": "take"}, {"surface": "off"}, {"surface": "now"}],
+                            }
+                        ]
+                    }
+                ]
+            }
+
+        with patch("projects.management.commands.run_mwe_prompt_experiment.annotate_mwes", side_effect=fake_annotate):
+            call_command(
+                "run_mwe_prompt_experiment",
+                input_records_jsonl=str(input_path),
+                output_dir=str(output_dir),
+                run_label="template-run",
+                template_file=str(template_path),
+                overwrite=True,
+                stdout=StringIO(),
+            )
+
+        manifest = json.loads((output_dir / "template-run" / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(seen_template_paths, [template_path])
+        self.assertEqual(manifest["template_file"], str(template_path))
+
     def test_score_command_filters_explicit_project_ids(self):
         outputs_path = Path(self.tmpdir) / "outputs.jsonl"
         output_dir = Path(self.tmpdir) / "scores"

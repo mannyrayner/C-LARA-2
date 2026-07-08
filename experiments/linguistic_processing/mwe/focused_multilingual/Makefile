@@ -32,8 +32,18 @@ MWE_RUN_OUTPUT_DIR ?= $(abspath $(GENERATED_DIR))/mwe_prompt_runs
 MWE_SCORE_DIR ?= $(abspath $(GENERATED_DIR))/mwe_prompt_scores/$(MWE_RUN_LABEL)
 MWE_PROMPT_IMPROVEMENT_DIR ?= $(abspath $(GENERATED_DIR))/mwe_prompt_improvements/$(MWE_RUN_LABEL)
 MWE_LIMIT ?= 0
-
 GENERATED_DIR := generated
+MWE_PROMPT_CYCLE_NUMBER ?= 1
+MWE_CYCLE_RUN_LABEL ?= run
+MWE_PROMPT_CYCLE_BASE_DIR ?= $(abspath $(GENERATED_DIR))/mwe_prompt_cycles/$(MWE_LANGUAGE)-$(SPLIT)
+MWE_PROMPT_CYCLE_DIR := $(MWE_PROMPT_CYCLE_BASE_DIR)/cycle_$(MWE_PROMPT_CYCLE_NUMBER)
+MWE_CYCLE_TEMPLATE := $(MWE_PROMPT_CYCLE_DIR)/template.txt
+MWE_BASE_TEMPLATE ?= $(ROOT_DIR)/prompts/mwe/$(MWE_LANGUAGE)/template.txt
+MWE_DEFAULT_TEMPLATE ?= $(ROOT_DIR)/prompts/mwe/default/template.txt
+MWE_CYCLE_OUTPUTS_JSONL := $(MWE_PROMPT_CYCLE_DIR)/$(MWE_CYCLE_RUN_LABEL)/outputs.jsonl
+MWE_CYCLE_SCORE_DIR := $(MWE_PROMPT_CYCLE_DIR)/score
+MWE_CYCLE_IMPROVEMENT_DIR := $(MWE_PROMPT_CYCLE_DIR)/improvement
+MWE_CYCLE_REVISION := $(MWE_CYCLE_IMPROVEMENT_DIR)/template_revision.txt
 CORPUS_SPLIT_DIR := $(abspath $(GENERATED_DIR))/corpus_splits
 PY_OS := $(shell $(PYTHON) -c 'import os; print(os.name)' 2>/dev/null || echo posix)
 python_path = $(shell if [ "$(PY_OS)" = "nt" ] && command -v cygpath >/dev/null 2>&1; then cygpath -am "$(1)"; else printf '%s' "$(1)"; fi)
@@ -45,11 +55,16 @@ PY_MWE_SPLIT_RECORDS := $(call python_path,$(MWE_SPLIT_RECORDS))
 PY_MWE_RUN_OUTPUT_DIR := $(call python_path,$(MWE_RUN_OUTPUT_DIR))
 PY_MWE_SCORE_DIR := $(call python_path,$(MWE_SCORE_DIR))
 PY_MWE_PROMPT_IMPROVEMENT_DIR := $(call python_path,$(MWE_PROMPT_IMPROVEMENT_DIR))
+PY_MWE_PROMPT_CYCLE_DIR := $(call python_path,$(MWE_PROMPT_CYCLE_DIR))
+PY_MWE_CYCLE_TEMPLATE := $(call python_path,$(MWE_CYCLE_TEMPLATE))
+PY_MWE_CYCLE_OUTPUTS_JSONL := $(call python_path,$(MWE_CYCLE_OUTPUTS_JSONL))
+PY_MWE_CYCLE_SCORE_DIR := $(call python_path,$(MWE_CYCLE_SCORE_DIR))
+PY_MWE_CYCLE_IMPROVEMENT_DIR := $(call python_path,$(MWE_CYCLE_IMPROVEMENT_DIR))
 FAIL_FAST_ARG := $(if $(filter 1,$(FAIL_FAST)),--fail-fast,)
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help prepare extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
+.PHONY: help prepare prepare-mwe-prompt-cycle run-mwe-prompt-cycle score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
 
 help:
 	@echo "Focused MWE experiments (multilingual)"
@@ -60,6 +75,10 @@ help:
 	@echo "  run-current-mwe    Run current MWE prompt over extracted segment records"
 	@echo "  score-current-mwe  Score current MWE prompt output against gold MWEs"
 	@echo "  propose-mwe-prompt-improvement  Write conservative prompt-improvement guidance from score errors"
+	@echo "  prepare-mwe-prompt-cycle  Create/reuse a cycle-specific MWE prompt template"
+	@echo "  run-mwe-prompt-cycle      Run a cycle-specific MWE prompt template"
+	@echo "  score-mwe-prompt-cycle    Score a cycle-specific MWE prompt run"
+	@echo "  propose-mwe-prompt-cycle-improvement  Write cycle-specific improvement guidance"
 	@echo "  refresh-annotations   Rerun selected projects through segmentation_phase_2 -> translation -> mwe -> lemma -> gloss"
 	@echo "  refresh-project-metadata  Keep existing splits/projects but refresh mwe_count from latest saved artifacts"
 	@echo "  validate-config       Validate stage-parameter JSON used by refresh-annotations"
@@ -87,6 +106,8 @@ help:
 	@echo "  MWE_LANGUAGE=$(MWE_LANGUAGE)"
 	@echo "  MWE_SPLIT_RECORDS=$(MWE_SPLIT_RECORDS)"
 	@echo "  MWE_RUN_LABEL=$(MWE_RUN_LABEL)"
+	@echo "  MWE_PROMPT_CYCLE_NUMBER=$(MWE_PROMPT_CYCLE_NUMBER)"
+	@echo "  MWE_PROMPT_CYCLE_DIR=$(MWE_PROMPT_CYCLE_DIR)"
 
 prepare:
 	@mkdir -p $(GENERATED_DIR)
@@ -151,6 +172,60 @@ propose-mwe-prompt-improvement: prepare
 		$(MANAGE) propose_mwe_prompt_improvement --score-dir "$(PY_MWE_SCORE_DIR)" --output-dir "$(PY_MWE_PROMPT_IMPROVEMENT_DIR)" --project-ids "$(PROJECT_IDS)" --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 after score-current-mwe has produced a score directory"; \
+	fi
+
+prepare-mwe-prompt-cycle: prepare
+	@if [ "$(RUN)" != "1" ]; then \
+		echo "dry-run only; cycle $(MWE_PROMPT_CYCLE_NUMBER) prompt would be prepared at $(MWE_CYCLE_TEMPLATE)"; \
+		exit 0; \
+	fi; \
+	if [ "$(MWE_PROMPT_CYCLE_NUMBER)" -lt 1 ]; then \
+		echo "MWE_PROMPT_CYCLE_NUMBER must be >= 1" >&2; \
+		exit 1; \
+	fi; \
+	mkdir -p "$(MWE_PROMPT_CYCLE_DIR)"; \
+	if [ "$(MWE_PROMPT_CYCLE_NUMBER)" = "1" ]; then \
+		if [ -f "$(MWE_BASE_TEMPLATE)" ]; then source_prompt="$(MWE_BASE_TEMPLATE)"; else source_prompt="$(MWE_DEFAULT_TEMPLATE)"; fi; \
+	else \
+		previous_cycle=$$(( $(MWE_PROMPT_CYCLE_NUMBER) - 1 )); \
+		source_prompt="$(MWE_PROMPT_CYCLE_BASE_DIR)/cycle_$${previous_cycle}/improvement/template_revision.txt"; \
+	fi; \
+	if [ ! -f "$$source_prompt" ]; then \
+		echo "source prompt not found: $$source_prompt" >&2; \
+		echo "For cycle >1, copy/edit the previous cycle template into its improvement/template_revision.txt before preparing the next cycle." >&2; \
+		exit 1; \
+	fi; \
+	if [ ! -f "$(MWE_CYCLE_TEMPLATE)" ]; then \
+		cp "$$source_prompt" "$(MWE_CYCLE_TEMPLATE)"; \
+		echo "Prepared MWE cycle prompt: $(MWE_CYCLE_TEMPLATE)"; \
+	else \
+		echo "Using existing MWE cycle prompt: $(MWE_CYCLE_TEMPLATE)"; \
+	fi
+
+run-mwe-prompt-cycle: prepare-mwe-prompt-cycle
+	@echo "+ $(MANAGE) run_mwe_prompt_experiment --input-records-jsonl $(PY_MWE_SPLIT_RECORDS) --output-dir $(PY_MWE_PROMPT_CYCLE_DIR) --run-label $(MWE_CYCLE_RUN_LABEL) --limit $(MWE_LIMIT) --project-ids $(PROJECT_IDS) --template-file $(PY_MWE_CYCLE_TEMPLATE) --overwrite"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) run_mwe_prompt_experiment --input-records-jsonl "$(PY_MWE_SPLIT_RECORDS)" --output-dir "$(PY_MWE_PROMPT_CYCLE_DIR)" --run-label "$(MWE_CYCLE_RUN_LABEL)" --limit "$(MWE_LIMIT)" --project-ids "$(PROJECT_IDS)" --template-file "$(PY_MWE_CYCLE_TEMPLATE)" --overwrite; \
+	else \
+		echo "dry-run only; set RUN=1 to run $(MWE_CYCLE_TEMPLATE)"; \
+	fi
+
+score-mwe-prompt-cycle: prepare
+	@echo "+ $(MANAGE) score_mwe_prompt_outputs --outputs-jsonl $(PY_MWE_CYCLE_OUTPUTS_JSONL) --output-dir $(PY_MWE_CYCLE_SCORE_DIR) --split $(SPLIT) --project-ids $(PROJECT_IDS) --overwrite"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) score_mwe_prompt_outputs --outputs-jsonl "$(PY_MWE_CYCLE_OUTPUTS_JSONL)" --output-dir "$(PY_MWE_CYCLE_SCORE_DIR)" --split "$(SPLIT)" --project-ids "$(PROJECT_IDS)" --overwrite; \
+	else \
+		echo "dry-run only; set RUN=1 after run-mwe-prompt-cycle has produced $(MWE_CYCLE_OUTPUTS_JSONL)"; \
+	fi
+
+propose-mwe-prompt-cycle-improvement: prepare
+	@echo "+ $(MANAGE) propose_mwe_prompt_improvement --score-dir $(PY_MWE_CYCLE_SCORE_DIR) --output-dir $(PY_MWE_CYCLE_IMPROVEMENT_DIR) --project-ids $(PROJECT_IDS) --overwrite"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) propose_mwe_prompt_improvement --score-dir "$(PY_MWE_CYCLE_SCORE_DIR)" --output-dir "$(PY_MWE_CYCLE_IMPROVEMENT_DIR)" --project-ids "$(PROJECT_IDS)" --overwrite; \
+		if [ ! -f "$(MWE_CYCLE_REVISION)" ]; then cp "$(MWE_CYCLE_TEMPLATE)" "$(MWE_CYCLE_REVISION)"; fi; \
+		echo "Editable next-cycle prompt draft: $(MWE_CYCLE_REVISION)"; \
+	else \
+		echo "dry-run only; set RUN=1 after score-mwe-prompt-cycle has produced $(MWE_CYCLE_SCORE_DIR)"; \
 	fi
 
 refresh-project-metadata: prepare

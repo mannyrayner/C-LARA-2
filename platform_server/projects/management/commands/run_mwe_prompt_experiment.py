@@ -23,6 +23,7 @@ class Command(BaseCommand):
         parser.add_argument("--limit", type=int, default=0)
         parser.add_argument("--overwrite", action="store_true")
         parser.add_argument("--project-ids", default="", help="Optional comma-separated project ids to include from the input records.")
+        parser.add_argument("--template-file", default="", help="Optional MWE prompt template file to use instead of the production prompt.")
 
     def handle(self, *args, **options):
         input_path = _resolve_cli_path(options["input_records_jsonl"], "")
@@ -34,6 +35,7 @@ class Command(BaseCommand):
             shutil.rmtree(run_dir)
         run_dir.mkdir(parents=True, exist_ok=True)
         project_ids = parse_project_ids(str(options.get("project_ids") or ""))
+        template_path = _resolve_cli_path(options["template_file"], "") if options.get("template_file") else None
         records = load_mwe_records(input_path, limit=int(options.get("limit") or 0), project_ids=project_ids)
         if not records:
             raise CommandError(f"No records found in {input_path}")
@@ -68,6 +70,7 @@ class Command(BaseCommand):
                 run_label=str(options["run_label"]),
                 on_progress=record_progress,
                 on_output=record_output,
+                template_path=template_path,
             )
         )
         manifest = {
@@ -78,6 +81,7 @@ class Command(BaseCommand):
             "project_ids": sorted(project_ids),
             "outputs_jsonl": str(outputs_path),
             "progress_jsonl": str(progress_path),
+            "template_file": str(template_path) if template_path else None,
         }
         manifest_path = run_dir / "manifest.json"
         manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -121,6 +125,7 @@ async def run_records(
     run_label: str,
     on_progress: Callable[[dict[str, Any]], None] | None = None,
     on_output: Callable[[dict[str, Any]], None] | None = None,
+    template_path: Path | None = None,
 ) -> list[dict[str, Any]]:
     outputs: list[dict[str, Any]] = []
     total = len(records)
@@ -141,6 +146,7 @@ async def run_records(
                     text=text_obj,
                     language=str(record.get("language") or "en"),
                     op_id=f"{run_label}:record_{idx}:mwe",
+                    template_path=template_path,
                 )
             )
         except Exception as exc:
