@@ -1,9 +1,9 @@
 # ISSUE-0036: Systematize creation and evaluation of few-shot examples for linguistic annotation
 
-- **Status:** reported
+- **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-04T02:10:00Z
+- **Updated:** 2026-07-08T00:20:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -115,3 +115,28 @@ prompt/few-shot iteration; keep validation/test projects untouched until the com
 fixed. This is also useful report evidence for AI autonomy because the AI proposed the experiment
 structure, implemented metadata refresh tooling, and maintained the issue/roadmap/report trail,
 while the human supplied domain judgement, manual gold corrections, and go/no-go decisions.
+
+Implementation follow-up on 2026-07-07: extended the focused multilingual MWE workbench with the
+first snapshot-backed prompt-scoring loop. Added a snapshot_mwe_experiment_projects management
+command and Make target to save snapshots for selected split projects, marking MWE annotations,
+gloss annotations, and lemma annotations as gold-standard components. Added Make targets and
+management commands to run current MWE prompts over extracted MWE segment records, score predicted
+MWE spans against extracted gold spans, and write conservative prompt-improvement guidance from
+false-positive/false-negative examples. The improvement proposal is intentionally general and does
+not edit production prompts automatically; it is meant to support human review and avoid overfitting
+to development examples.
+
+MWE experiment progress follow-up on 2026-07-07: maintainer testing showed run-current-mwe looked
+idle while processing API calls. The run_mwe_prompt_experiment command now prints per-record
+running/finished/error messages, writes progress.jsonl incrementally, and appends outputs.jsonl one
+record at a time so long runs expose current position and partial results before completion.
+Follow-up on 2026-07-07: the first 600-record MWE run showed that the development segment file can
+contain projects outside the seven-project hand-curated subset if PROJECT_IDS is not applied to the
+run/score stages. The focused MWE Make targets and commands now pass and honor --project-ids for
+run-current-mwe and score-current-mwe, so existing broad outputs can be rescored for only the
+selected projects and new prompt runs can avoid processing out-of-scope records. Follow-up on
+2026-07-08: maintainer testing found one remaining subset leak because
+propose-mwe-prompt-improvement read the existing score directory without honoring PROJECT_IDS. The
+proposal command and Make target now accept --project-ids, filter per-record score examples before
+building prompt_improvement.md, recompute the displayed score summary for the selected subset, and
+print trace counts showing total scored records versus records used after filtering.
