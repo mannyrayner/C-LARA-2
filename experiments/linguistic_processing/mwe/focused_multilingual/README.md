@@ -93,6 +93,181 @@ files, a `segments_with_mwes.md` review file with only MWE-bearing segments
 and the total MWE count, per-language `split_manifest.json`, and a top-level
 `multilingual_split_manifest.json`.
 
+## Snapshot and prompt-scoring workflow
+
+Before running prompt experiments over manually corrected projects, save project
+snapshots that explicitly mark the current MWE, lemma, and gloss annotations as
+gold-standard data:
+
+```bash
+make snapshot-gold-projects RUN=1
+```
+
+By default this reads `generated/corpus_splits/multilingual_split_manifest.json`
+and covers all configured splits. Use `PROJECT_IDS="239,245,254"` to snapshot an
+explicit smoke set, or `SPLITS=development` to restrict the manifest-driven
+selection. The target calls the same file-backed snapshot implementation used by
+the platform UI.
+
+### Initial seven-project development experiment
+
+For the initial manually corrected English development set, use exactly these
+seven project ids:
+
+```bash
+MWE_PROJECT_IDS="239,245,254,255,257,261,263"
+MWE_RUN_LABEL="mwe-current-prompt-en-development-20260707"
+```
+
+First, preview the snapshot operation. This should print a JSON dry-run manifest
+and should not write snapshots:
+
+```bash
+make snapshot-gold-projects \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  SPLITS=development \
+  SNAPSHOT_NAME_PREFIX="MWE development gold checkpoint"
+```
+
+Then save the snapshots for the same projects. These snapshots mark **MWE
+annotations**, **gloss annotations**, and **lemma annotations** as gold-standard
+components:
+
+```bash
+make snapshot-gold-projects RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  SPLITS=development \
+  SNAPSHOT_NAME_PREFIX="MWE development gold checkpoint"
+```
+
+Next, run the current MWE prompt over the extracted English development segment
+records, score it, and write conservative prompt-improvement guidance:
+
+```bash
+make run-current-mwe RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_RUN_LABEL="$MWE_RUN_LABEL"
+
+make score-current-mwe RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_RUN_LABEL="$MWE_RUN_LABEL"
+
+make propose-mwe-prompt-improvement RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_RUN_LABEL="$MWE_RUN_LABEL"
+```
+
+Expected outputs are:
+
+- `generated/mwe_prompt_runs/$MWE_RUN_LABEL/outputs.jsonl`
+- `generated/mwe_prompt_runs/$MWE_RUN_LABEL/progress.jsonl`
+- `generated/mwe_prompt_scores/$MWE_RUN_LABEL/summary.json`
+- `generated/mwe_prompt_scores/$MWE_RUN_LABEL/summary.md`
+- `generated/mwe_prompt_improvements/$MWE_RUN_LABEL/prompt_improvement.md`
+- `generated/mwe_prompt_improvements/$MWE_RUN_LABEL/candidate_prompt_guidance.txt`
+
+### How `PROJECT_IDS`, `SPLITS`, and `SPLIT` interact
+
+- `PROJECT_IDS` is an explicit comma-separated override. For project-selection
+  commands such as `snapshot-gold-projects`, it chooses projects directly and the
+  split manifest is not used to choose projects. For `run-current-mwe`,
+  `score-current-mwe`, and `propose-mwe-prompt-improvement`, it filters the
+  selected segment/output/score records to those projects, which is the safest
+  way to run a small hand-curated subset.
+- `SPLITS` is plural and only matters for manifest-driven project-selection
+  commands. It says which manifest splits to read when `PROJECT_IDS` is empty.
+  Passing `SPLITS=development` together with explicit `PROJECT_IDS` is harmless
+  documentation of intent, but the explicit ids are what control the snapshot
+  target above.
+- `SPLIT` is singular and controls prompt-run/scoring paths. For
+  `run-current-mwe`, it selects the input records file through
+  `MWE_SPLIT_RECORDS`, which defaults to
+  `generated/corpus_splits/$(MWE_LANGUAGE)/$(SPLIT)_segments.jsonl`. If
+  `PROJECT_IDS` is also supplied, only records from those projects are run or
+  scored.
+- To run exactly the seven projects above, pass
+  `PROJECT_IDS="$MWE_PROJECT_IDS"` to `run-current-mwe`, `score-current-mwe`, and
+  `propose-mwe-prompt-improvement`. The development segment file may contain other projects;
+  the explicit `PROJECT_IDS` filter keeps them out of this small experiment.
+
+`run-current-mwe` processes each selected extracted segment through the current MWE prompt. It prints per-record progress and appends `progress.jsonl` and `outputs.jsonl` incrementally, so a long run should no longer look idle. `score-current-mwe` compares predicted MWE spans with the extracted gold spans, and `propose-mwe-prompt-improvement` writes conservative guidance under
+`generated/mwe_prompt_improvements/`. The proposal step is intentionally general:
+it highlights false positives/false negatives and suggests simple language-neutral
+prompt principles rather than hard-coding project-specific examples.
+
+
+## Iterative prompt-improvement cycles
+
+The baseline `run-current-mwe` / `score-current-mwe` /
+`propose-mwe-prompt-improvement` targets are useful for sanity checks against the
+production prompt. For iterative prompt development, use cycle-specific prompt
+files under `generated/mwe_prompt_cycles/<language>-<split>/cycle_<n>/` so that
+production prompts under `prompts/mwe/` are not edited during development.
+
+Cycle 1 copies `prompts/mwe/$(MWE_LANGUAGE)/template.txt` when it exists, falling
+back to `prompts/mwe/default/template.txt`. Cycle N>1 copies
+`generated/mwe_prompt_cycles/<language>-<split>/cycle_<N-1>/improvement/template_revision.txt`.
+The proposal target seeds that `template_revision.txt` from the just-run cycle
+prompt; edit it using `candidate_prompt_guidance.txt` and `prompt_improvement.md`
+before preparing the next cycle.
+
+For the current seven-project sanity-check set, a full cycle 1 run is:
+
+```bash
+MWE_PROJECT_IDS="239,245,254,255,257,261,263"
+MWE_PROMPT_CYCLE_NUMBER=1
+
+make prepare-mwe-prompt-cycle RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
+
+make run-mwe-prompt-cycle RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
+
+make score-mwe-prompt-cycle RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
+
+make propose-mwe-prompt-cycle-improvement RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
+```
+
+After the proposal target finishes, inspect:
+
+- `generated/mwe_prompt_cycles/en-development/cycle_1/template.txt` — the prompt
+  actually evaluated;
+- `generated/mwe_prompt_cycles/en-development/cycle_1/run/outputs.jsonl` and
+  `progress.jsonl` — the MWE run output and trace;
+- `generated/mwe_prompt_cycles/en-development/cycle_1/score/summary.md` — the
+  cycle score;
+- `generated/mwe_prompt_cycles/en-development/cycle_1/improvement/prompt_improvement.md`
+  and `candidate_prompt_guidance.txt` — conservative error-analysis guidance;
+- `generated/mwe_prompt_cycles/en-development/cycle_1/improvement/template_revision.txt`
+  — an editable copy of the cycle prompt to revise for cycle 2.
+
+For cycle 2, edit `cycle_1/improvement/template_revision.txt` using only general,
+language-neutral prompt changes, then rerun the same four targets with
+`MWE_PROMPT_CYCLE_NUMBER=2`. Keep development cycles separate from future
+validation/test runs; once the machinery is stable, use larger annotated
+English/French/German development sets for prompt iteration and reserve held-out
+validation/test projects for final checks.
+
 ## Manual gold workflow
 
 Use the project JSONL files to open the selected projects in the existing manual
