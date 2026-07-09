@@ -449,6 +449,20 @@ make format-mwe-prompt-cycle-output RUN=1 \
   MWE_PROMPT_CYCLE_NUMBER=2
 ```
 
+If the cycle stopped before creating `score/` and `improvement/` as well, use
+the recovery target. It still treats `run/outputs.jsonl` as the source of truth
+and rebuilds the readable output, score directory, and improvement directory
+without rerunning the prompt:
+
+```bash
+make recover-mwe-prompt-cycle-after-run RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES=translation_context_analysis_v1 \
+  MWE_PROMPT_CYCLE_NUMBER=2
+```
+
 To ask AI to draft a non-trivial but conservative next-cycle prompt from the cycle
 report, run this after `mwe-prompt-cycle` has produced the score and improvement
 files:

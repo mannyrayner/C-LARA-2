@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-09T04:35:00Z
+- **Updated:** 2026-07-09T04:50:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -204,4 +204,7 @@ formatter after maintainer testing found that some model analysis fields can be 
 rather than strings; formatter text fields now coerce lists/dicts safely when building Markdown.
 Follow-up later on 2026-07-09: documented the standalone format-mwe-prompt-cycle-output recovery
 command so maintainers can regenerate run/outputs.md from an existing outputs.jsonl without
-rerunning expensive MWE prompt API calls.
+rerunning expensive MWE prompt API calls. Follow-up later on 2026-07-09: added a
+recover-mwe-prompt-cycle-after-run Make target and README command to rebuild outputs.md, score/, and
+improvement/ from an existing run/outputs.jsonl after a post-run formatting/scoring/proposal
+failure, without rerunning expensive prompt calls.

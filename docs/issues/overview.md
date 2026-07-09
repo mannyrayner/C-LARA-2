@@ -1,5 +1,6 @@
-# C-LARA-2 issue overview (refreshed 2026-07-09T04:35:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-09T04:50:00Z)
 ## Recent progress
+- Added `recover-mwe-prompt-cycle-after-run` for **ISSUE-0036** to rebuild formatted output, score, and improvement artifacts from existing MWE run output without rerunning prompt calls.
 - Documented the standalone `format-mwe-prompt-cycle-output` recovery command for **ISSUE-0036** so readable outputs can be regenerated without rerunning MWE API calls.
 - Hardened the MWE output Markdown formatter for **ISSUE-0036** so structured model-analysis values cannot abort cycle formatting.
 - Added readable Markdown formatting for MWE cycle `outputs.jsonl` under **ISSUE-0036**, including segment text, gold/predicted MWEs, model analysis, and translation context.

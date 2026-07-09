@@ -91,7 +91,7 @@ MWE_TRANSLATION_CONTEXT_ARG := $(if $(filter 1,$(MWE_USE_TRANSLATION_CONTEXT)),-
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help prepare declare-mwe-gold check-mwe-gold check-mwe-translation-context mwe-prompt-cycle show-mwe-prompt-cycle-results compare-mwe-prompt-cycles prepare-mwe-prompt-cycle run-mwe-prompt-cycle format-mwe-prompt-cycle-output score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement revise-mwe-prompt-cycle-template extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
+.PHONY: help prepare declare-mwe-gold check-mwe-gold check-mwe-translation-context mwe-prompt-cycle recover-mwe-prompt-cycle-after-run show-mwe-prompt-cycle-results compare-mwe-prompt-cycles prepare-mwe-prompt-cycle run-mwe-prompt-cycle format-mwe-prompt-cycle-output score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement revise-mwe-prompt-cycle-template extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
 
 help:
 	@echo "Focused MWE experiments (multilingual)"
@@ -106,6 +106,7 @@ help:
 	@echo "  check-mwe-gold    Re-export selected gold records and fail if no gold MWEs are found"
 	@echo "  check-mwe-translation-context  Count records with exported translation_context"
 	@echo "  mwe-prompt-cycle  Run prepare/run/score/propose for the selected cycle"
+	@echo "  recover-mwe-prompt-cycle-after-run  Rebuild formatted output, score, and improvement artifacts from an existing cycle run"
 	@echo "  show-mwe-prompt-cycle-results  Print cycle summary and per-segment score path"
 	@echo "  compare-mwe-prompt-cycles  Collect score/prompt-size trends across completed cycles"
 	@echo "  prepare-mwe-prompt-cycle  Create/reuse a cycle-specific MWE prompt template"
@@ -215,6 +216,13 @@ check-mwe-translation-context: prepare
 
 mwe-prompt-cycle: run-mwe-prompt-cycle format-mwe-prompt-cycle-output score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement
 	@echo "MWE prompt cycle $(MWE_PROMPT_CYCLE_NUMBER) complete."
+	@echo "Readable outputs: $(MWE_CYCLE_OUTPUTS_MARKDOWN)"
+	@echo "Summary: $(MWE_CYCLE_SCORE_DIR)/summary.md"
+	@echo "Per-segment scores: $(MWE_CYCLE_SCORE_DIR)/per_record_scores.jsonl"
+	@echo "Improvement report: $(MWE_CYCLE_IMPROVEMENT_DIR)/prompt_improvement.md"
+
+recover-mwe-prompt-cycle-after-run: format-mwe-prompt-cycle-output score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement
+	@echo "Recovered MWE prompt cycle $(MWE_PROMPT_CYCLE_NUMBER) artifacts from existing run output."
 	@echo "Readable outputs: $(MWE_CYCLE_OUTPUTS_MARKDOWN)"
 	@echo "Summary: $(MWE_CYCLE_SCORE_DIR)/summary.md"
 	@echo "Per-segment scores: $(MWE_CYCLE_SCORE_DIR)/per_record_scores.jsonl"
