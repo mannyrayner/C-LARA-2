@@ -47,13 +47,12 @@ def _build_prompt(
         "For each token that belongs to an MWE, set token.annotations.mwe_id to the corresponding MWE id.",
     ]
 
-    # Only send token-level material for MWE analysis.
-    # Segment-level fields such as translation can distract the model and are not
-    # required to identify MWEs.
+    segment_payload: dict[str, Any] = {"tokens": segment.get("tokens", [])}
+    translation_context = (segment.get("annotations") or {}).get("mwe_translation_context")
+    if isinstance(translation_context, list) and translation_context:
+        segment_payload["translation_context"] = translation_context
     segment_json = json.dumps(
-        {
-            "tokens": segment.get("tokens", []),
-        },
+        segment_payload,
         ensure_ascii=False,
         indent=2,
     )
