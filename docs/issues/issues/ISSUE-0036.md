@@ -1,9 +1,9 @@
 # ISSUE-0036: Systematize creation and evaluation of few-shot examples for linguistic annotation
 
-- **Status:** reported
+- **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-04T02:10:00Z
+- **Updated:** 2026-07-09T03:05:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -115,3 +115,77 @@ prompt/few-shot iteration; keep validation/test projects untouched until the com
 fixed. This is also useful report evidence for AI autonomy because the AI proposed the experiment
 structure, implemented metadata refresh tooling, and maintained the issue/roadmap/report trail,
 while the human supplied domain judgement, manual gold corrections, and go/no-go decisions.
+
+Implementation follow-up on 2026-07-07: extended the focused multilingual MWE workbench with the
+first snapshot-backed prompt-scoring loop. Added a snapshot_mwe_experiment_projects management
+command and Make target to save snapshots for selected split projects, marking MWE annotations,
+gloss annotations, and lemma annotations as gold-standard components. Added Make targets and
+management commands to run current MWE prompts over extracted MWE segment records, score predicted
+MWE spans against extracted gold spans, and write conservative prompt-improvement guidance from
+false-positive/false-negative examples. The improvement proposal is intentionally general and does
+not edit production prompts automatically; it is meant to support human review and avoid overfitting
+to development examples.
+
+MWE experiment progress follow-up on 2026-07-07: maintainer testing showed run-current-mwe looked
+idle while processing API calls. The run_mwe_prompt_experiment command now prints per-record
+running/finished/error messages, writes progress.jsonl incrementally, and appends outputs.jsonl one
+record at a time so long runs expose current position and partial results before completion.
+Follow-up on 2026-07-07: the first 600-record MWE run showed that the development segment file can
+contain projects outside the seven-project hand-curated subset if PROJECT_IDS is not applied to the
+run/score stages. The focused MWE Make targets and commands now pass and honor --project-ids for
+run-current-mwe and score-current-mwe, so existing broad outputs can be rescored for only the
+selected projects and new prompt runs can avoid processing out-of-scope records. Follow-up on
+2026-07-08: maintainer testing found one remaining subset leak because
+propose-mwe-prompt-improvement read the existing score directory without honoring PROJECT_IDS. The
+proposal command and Make target now accept --project-ids, filter per-record score examples before
+building prompt_improvement.md, recompute the displayed score summary for the selected subset, and
+print trace counts showing total scored records versus records used after filtering. Follow-up on
+2026-07-08: added the first MWE iterative prompt-cycle machinery. The focused MWE workbench now
+supports cycle-specific generated prompt templates, a --template-file path for
+run_mwe_prompt_experiment, Make targets to prepare/run/score/propose per-cycle prompts, and README
+instructions for the seven-project sanity-check cycle before scaling to larger annotated
+English/French/German data. Follow-up on 2026-07-08: clarified and implemented explicit MWE gold
+declaration for the seven-project sanity-check workflow. Added export_mwe_gold_subset to write all
+selected-project segment records directly from latest MWE artifacts, with summary/review files and a
+require-gold check; added Make targets declare-mwe-gold and check-mwe-gold, made cycle runs consume
+the explicit gold JSONL, and added a high-level mwe-prompt-cycle target plus results display so
+progress is visible through gold scores and per-segment score records. Follow-up later on
+2026-07-08: fixed a workflow inconsistency found during maintainer testing. The current-prompt
+sanity-check target run-current-mwe now reads MWE_RUN_RECORDS, defaulting to the explicit
+selected-project MWE_GOLD_RECORDS produced by declare-mwe-gold, instead of the older capped corpus
+split JSONL. README guidance now states this directly so gold_mwes from selected_segments.jsonl are
+preserved in current-prompt outputs. Follow-up on 2026-07-08: added an AI-assisted MWE
+prompt-revision command and Make target revise-mwe-prompt-cycle-template, which reads the current
+cycle prompt plus prompt_improvement.md/candidate_prompt_guidance.txt and writes an auditable
+next-cycle template_revision.txt plus template_revision.json while instructing the model to keep
+changes simple, general, and non-memorised. Follow-up later on 2026-07-08: changed the MWE
+prompt-revision default model to gpt-5.5 because this is the highest-leverage once-per-cycle step,
+while keeping MWE_REVISION_MODEL overridable for cheaper smoke tests. Follow-up later on 2026-07-08:
+removed the explicit temperature=0 override from MWE prompt revision calls so gpt-5.5 can use its
+supported default temperature. Follow-up on 2026-07-09: after five MWE prompt cycles, added
+summarize_mwe_prompt_cycles and a compare-mwe-prompt-cycles Make target to collect per-cycle
+precision/recall/F1, exact-match, TP/FP/FN, prompt length, revision length, and artifact paths in
+one report. README now records the next hypothesis to test: whether supplying whole-segment
+translation context improves MWE recall, starting with the gloss-language translation as a
+controlled cycle variant. Follow-up later on 2026-07-09: implemented the first translation-context
+MWE variant. Gold export now carries a translation_context list from the latest translation stage
+when available, run_mwe_prompt_experiment can pass it via --use-translation-context, pipeline.mwe
+includes the context only under an explicit mwe_translation_context annotation, and prompt revision
+now asks for concise translation-aware revisions rather than longer over-elaborate prompts.
+Follow-up later on 2026-07-09: added MWE_PROMPT_CYCLE_SERIES so translation-context prompt cycles
+can start from cycle_1 in a separate subdirectory instead of continuing the prompt-only series;
+README now gives cut-and-paste commands for the translation_context series and explains comparing
+its cycle_comparison.md with the prompt-only report. Follow-up later on 2026-07-09: README now
+includes cut-and-paste translation-context commands beginning with declare-mwe-gold, a Python sanity
+check for translation_context records, mwe-prompt-cycle, revise-mwe-prompt-cycle-template, and
+compare-mwe-prompt-cycles; run_mwe_prompt_experiment now prints and records
+translation_context_record_count when translation context is enabled. Follow-up later on 2026-07-09:
+replaced the inline README Python translation_context sanity check with a
+check-mwe-translation-context Make target so the translation-context workflow remains consistently
+Make-driven. Follow-up later on 2026-07-09: fixed check-mwe-translation-context to use the
+Python-normalized MWE gold path, matching other Make targets on Windows/Cygwin; no
+SNAPSHOT_NAME_PREFIX is required for the check target. Follow-up later on 2026-07-09: documented
+translation-context sanity-check findings in the focused MWE README. The initial translation-context
+series underperformed the prompt-only series, so next proposed variants are explicit translation-use
+guidance plus a two-step analysis-before-selection prompt, and a prompt-only analysis variant to
+separate reasoning-structure effects from translation-context effects.
