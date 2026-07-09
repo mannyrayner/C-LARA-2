@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-09T04:25:00Z
+- **Updated:** 2026-07-09T04:35:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -202,3 +202,6 @@ so cycle outputs.jsonl can be rendered as readable Markdown with segment text, g
 model analysis, and translation context. Follow-up later on 2026-07-09: hardened the MWE output
 formatter after maintainer testing found that some model analysis fields can be structured values
 rather than strings; formatter text fields now coerce lists/dicts safely when building Markdown.
+Follow-up later on 2026-07-09: documented the standalone format-mwe-prompt-cycle-output recovery
+command so maintainers can regenerate run/outputs.md from an existing outputs.jsonl without
+rerunning expensive MWE prompt API calls.

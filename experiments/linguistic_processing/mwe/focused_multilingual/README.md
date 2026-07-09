@@ -437,6 +437,18 @@ If you want to run the steps separately for debugging, use
 `format-mwe-prompt-cycle-output`, `score-mwe-prompt-cycle`, and
 `propose-mwe-prompt-cycle-improvement` with the same variables.
 
+If a cycle has already finished `run-mwe-prompt-cycle` and only the Markdown
+formatting step failed, rerun just the formatter; this reads the existing
+`run/outputs.jsonl` and writes `run/outputs.md` without repeating the API calls:
+
+```bash
+make format-mwe-prompt-cycle-output RUN=1 \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES=translation_context_analysis_v1 \
+  MWE_PROMPT_CYCLE_NUMBER=2
+```
+
 To ask AI to draft a non-trivial but conservative next-cycle prompt from the cycle
 report, run this after `mwe-prompt-cycle` has produced the score and improvement
 files:
