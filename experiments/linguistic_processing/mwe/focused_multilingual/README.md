@@ -230,7 +230,10 @@ The baseline `run-current-mwe` / `score-current-mwe` /
 `propose-mwe-prompt-improvement` targets are useful for sanity checks against the
 production prompt. For iterative prompt development, use cycle-specific prompt
 files under `generated/mwe_prompt_cycles/<language>-<split>/cycle_<n>/` so that
-production prompts under `prompts/mwe/` are not edited during development.
+production prompts under `prompts/mwe/` are not edited during development. Set
+`MWE_PROMPT_CYCLE_SERIES=<name>` to put an alternative series under
+`generated/mwe_prompt_cycles/<language>-<split>/<name>/cycle_<n>/` and keep
+methodologically distinct variants separate.
 
 Cycle 1 copies `prompts/mwe/$(MWE_LANGUAGE)/template.txt` when it exists, falling
 back to `prompts/mwe/default/template.txt`. Cycle N>1 copies
@@ -280,23 +283,35 @@ mixing it silently into the existing prompt-only run.
 
 ### Translation-context cycle variant
 
-To test the simple segment-translation hypothesis without mixing it into the
-existing prompt-only series, run a new cycle number with translation context enabled:
+To test the simple segment-translation hypothesis cleanly, start a new named
+series instead of continuing the prompt-only `cycle_1` ... `cycle_5` series. The
+`MWE_PROMPT_CYCLE_SERIES` variable appends a subdirectory under
+`generated/mwe_prompt_cycles/<language>-<split>/`, so these results do not mix
+with the original prompt-only cycles.
 
 ```bash
-MWE_PROMPT_CYCLE_NUMBER=6
+MWE_PROMPT_CYCLE_SERIES=translation_context
+MWE_PROMPT_CYCLE_NUMBER=1
 
 make mwe-prompt-cycle RUN=1 \
   PROJECT_IDS="$MWE_PROJECT_IDS" \
   MWE_LANGUAGE=en \
   SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_PROMPT_CYCLE_SERIES" \
   MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER" \
   MWE_USE_TRANSLATION_CONTEXT=1
 
 make compare-mwe-prompt-cycles RUN=1 \
   MWE_LANGUAGE=en \
-  SPLIT=development
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_PROMPT_CYCLE_SERIES"
 ```
+
+This writes translation-context outputs under
+`generated/mwe_prompt_cycles/en-development/translation_context/`, including
+`translation_context/cycle_comparison.md`. The earlier prompt-only comparison
+remains at `generated/mwe_prompt_cycles/en-development/cycle_comparison.md`; compare
+those two reports to decide whether translation context is helping.
 
 `declare-mwe-gold` now exports `translation_context` records from the latest
 translation stage when available. `MWE_USE_TRANSLATION_CONTEXT=1` passes those

@@ -1,5 +1,6 @@
-# C-LARA-2 issue overview (refreshed 2026-07-09T01:05:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-09T01:30:00Z)
 ## Recent progress
+- Added `MWE_PROMPT_CYCLE_SERIES` for **ISSUE-0036** so translation-context MWE cycles can run in a separate comparable series directory.
 - Added an explicit translation-context MWE cycle variant for **ISSUE-0036**, passing latest segment translations as optional prompt evidence while keeping prompt revision concise.
 - Added a cross-cycle MWE comparison target for **ISSUE-0036** to summarize score trends, prompt growth, and artifact paths after multi-cycle prompt iteration.
 - Removed the explicit `temperature=0` override from AI-assisted MWE prompt revision calls so `gpt-5.5` can use its supported default temperature.

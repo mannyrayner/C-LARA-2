@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-09T01:05:00Z
+- **Updated:** 2026-07-09T01:30:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -172,3 +172,7 @@ MWE variant. Gold export now carries a translation_context list from the latest 
 when available, run_mwe_prompt_experiment can pass it via --use-translation-context, pipeline.mwe
 includes the context only under an explicit mwe_translation_context annotation, and prompt revision
 now asks for concise translation-aware revisions rather than longer over-elaborate prompts.
+Follow-up later on 2026-07-09: added MWE_PROMPT_CYCLE_SERIES so translation-context prompt cycles
+can start from cycle_1 in a separate subdirectory instead of continuing the prompt-only series;
+README now gives cut-and-paste commands for the translation_context series and explains comparing
+its cycle_comparison.md with the prompt-only report.
