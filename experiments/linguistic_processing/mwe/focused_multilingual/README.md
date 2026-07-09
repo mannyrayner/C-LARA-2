@@ -93,6 +93,388 @@ files, a `segments_with_mwes.md` review file with only MWE-bearing segments
 and the total MWE count, per-language `split_manifest.json`, and a top-level
 `multilingual_split_manifest.json`.
 
+## Snapshot and prompt-scoring workflow
+
+Before running prompt experiments over manually corrected projects, save project
+snapshots that explicitly mark the current MWE, lemma, and gloss annotations as
+gold-standard data:
+
+```bash
+make snapshot-gold-projects RUN=1
+```
+
+By default this reads `generated/corpus_splits/multilingual_split_manifest.json`
+and covers all configured splits. Use `PROJECT_IDS="239,245,254"` to snapshot an
+explicit smoke set, or `SPLITS=development` to restrict the manifest-driven
+selection. The target calls the same file-backed snapshot implementation used by
+the platform UI.
+
+### Initial seven-project development experiment
+
+For the initial manually corrected English development set, use exactly these
+seven project ids:
+
+```bash
+MWE_PROJECT_IDS="239,245,254,255,257,261,263"
+MWE_RUN_LABEL="mwe-current-prompt-en-development-20260707"
+```
+
+First, preview the snapshot operation. This should print a JSON dry-run manifest
+and should not write snapshots:
+
+```bash
+make snapshot-gold-projects \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  SPLITS=development \
+  SNAPSHOT_NAME_PREFIX="MWE development gold checkpoint"
+```
+
+Then declare the gold data for the same projects. This target does two things:
+first it saves gold-standard project snapshots, then it exports an explicit
+seven-project gold JSONL from the projects' latest MWE artifacts. This explicit
+JSONL is what the iterative prompt-cycle targets use; the snapshots are the
+rollback/provenance checkpoint.
+
+```bash
+make declare-mwe-gold RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  SNAPSHOT_NAME_PREFIX="MWE development gold checkpoint"
+```
+
+Now check that the exported gold data is really present. This target rewrites the
+same explicit gold JSONL and fails if no gold MWEs are found:
+
+```bash
+make check-mwe-gold RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development
+```
+
+Inspect the high-level gold-data files if anything looks wrong:
+
+- `generated/mwe_gold/en-development/summary.json`
+- `generated/mwe_gold/en-development/review.md`
+- `generated/mwe_gold/en-development/selected_segments.jsonl`
+
+Next, run the current MWE prompt over the explicit gold records exported by
+`declare-mwe-gold`, score it, and write conservative prompt-improvement guidance:
+
+```bash
+make run-current-mwe RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_RUN_LABEL="$MWE_RUN_LABEL"
+
+make score-current-mwe RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_RUN_LABEL="$MWE_RUN_LABEL"
+
+make propose-mwe-prompt-improvement RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_RUN_LABEL="$MWE_RUN_LABEL"
+```
+
+Expected outputs are:
+
+- `generated/mwe_gold/en-development/selected_segments.jsonl`
+- `generated/mwe_gold/en-development/summary.json`
+- `generated/mwe_gold/en-development/review.md`
+- `generated/mwe_prompt_runs/$MWE_RUN_LABEL/outputs.jsonl`
+- `generated/mwe_prompt_runs/$MWE_RUN_LABEL/progress.jsonl`
+- `generated/mwe_prompt_scores/$MWE_RUN_LABEL/summary.json`
+- `generated/mwe_prompt_scores/$MWE_RUN_LABEL/summary.md`
+- `generated/mwe_prompt_improvements/$MWE_RUN_LABEL/prompt_improvement.md`
+- `generated/mwe_prompt_improvements/$MWE_RUN_LABEL/candidate_prompt_guidance.txt`
+
+### How `PROJECT_IDS`, `SPLITS`, and `SPLIT` interact
+
+- `PROJECT_IDS` is an explicit comma-separated override. For project-selection
+  commands such as `snapshot-gold-projects`, it chooses projects directly and the
+  split manifest is not used to choose projects. For `run-current-mwe`,
+  `score-current-mwe`, and `propose-mwe-prompt-improvement`, it filters the
+  selected segment/output/score records to those projects, which is the safest
+  way to run a small hand-curated subset.
+- `SPLITS` is plural and only matters for manifest-driven project-selection
+  commands. It says which manifest splits to read when `PROJECT_IDS` is empty.
+  Passing `SPLITS=development` together with explicit `PROJECT_IDS` is harmless
+  documentation of intent, but the explicit ids are what control the snapshot
+  target above.
+- `SPLIT` is singular and controls output paths and the default gold-record path.
+  For `run-current-mwe`, the input is `MWE_RUN_RECORDS`, which defaults to
+  `MWE_GOLD_RECORDS` (`generated/mwe_gold/$(MWE_LANGUAGE)-$(SPLIT)/selected_segments.jsonl`).
+  `PROJECT_IDS` is still passed as a safety filter, but after `declare-mwe-gold`
+  the file should already contain only the selected projects.
+- To run exactly the seven projects above, first run `declare-mwe-gold` with
+  `PROJECT_IDS="$MWE_PROJECT_IDS"`, then pass the same `PROJECT_IDS` to
+  `run-current-mwe`, `score-current-mwe`, and `propose-mwe-prompt-improvement`.
+  The explicit gold file should already contain only those projects; the repeated
+  `PROJECT_IDS` arguments are a safety filter.
+
+`run-current-mwe` processes `MWE_RUN_RECORDS`, which defaults to the explicit `MWE_GOLD_RECORDS` file written by `declare-mwe-gold`. It prints per-record progress and appends `progress.jsonl` and `outputs.jsonl` incrementally, so a long run should no longer look idle. `score-current-mwe` compares predicted MWE spans with the extracted gold spans, and `propose-mwe-prompt-improvement` writes conservative guidance under
+`generated/mwe_prompt_improvements/`. The proposal step is intentionally general:
+it highlights false positives/false negatives and suggests simple language-neutral
+prompt principles rather than hard-coding project-specific examples.
+
+
+## Iterative prompt-improvement cycles
+
+The baseline `run-current-mwe` / `score-current-mwe` /
+`propose-mwe-prompt-improvement` targets are useful for sanity checks against the
+production prompt. For iterative prompt development, use cycle-specific prompt
+files under `generated/mwe_prompt_cycles/<language>-<split>/cycle_<n>/` so that
+production prompts under `prompts/mwe/` are not edited during development. Set
+`MWE_PROMPT_CYCLE_SERIES=<name>` to put an alternative series under
+`generated/mwe_prompt_cycles/<language>-<split>/<name>/cycle_<n>/` and keep
+methodologically distinct variants separate.
+
+Cycle 1 copies `prompts/mwe/$(MWE_LANGUAGE)/template.txt` when it exists, falling
+back to `prompts/mwe/default/template.txt`. Cycle N>1 copies
+`generated/mwe_prompt_cycles/<language>-<split>/cycle_<N-1>/improvement/template_revision.txt`.
+The proposal target seeds that `template_revision.txt` from the just-run cycle
+prompt. You can either edit it manually using `candidate_prompt_guidance.txt` and
+`prompt_improvement.md`, or run the AI revision target described below to produce a
+first next-cycle draft while still keeping the revision auditable and development-only.
+
+For the current seven-project sanity-check set, first run `declare-mwe-gold` and
+`check-mwe-gold` as above. Then a full high-level cycle 1 run is:
+
+```bash
+MWE_PROJECT_IDS="239,245,254,255,257,261,263"
+MWE_PROMPT_CYCLE_NUMBER=1
+
+make mwe-prompt-cycle RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
+
+make show-mwe-prompt-cycle-results \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
+
+make compare-mwe-prompt-cycles RUN=1 \
+  MWE_LANGUAGE=en \
+  SPLIT=development
+```
+
+
+`compare-mwe-prompt-cycles` writes one cross-cycle review page at
+`generated/mwe_prompt_cycles/en-development/cycle_comparison.md` plus a JSON copy.
+It lists precision, recall, F1, exact-match rate, TP/FP/FN counts, prompt length,
+and revision length for each completed cycle. This is intended to make regressions
+like "cycle 5 got worse than cycle 4" easy to spot and to show whether prompt
+growth is correlating with a plateau or decline.
+
+Current hypothesis to investigate next: if recall remains poor after prompt-only
+iterations, add whole-segment translation context to the MWE-location prompt. Start
+with the gloss-language translation because it is cheap and already aligned with
+the task; if helpful, compare one translation against multiple translations before
+using validation/test projects. Keep this as a controlled cycle variant rather than
+mixing it silently into the existing prompt-only run.
+
+### Translation-context cycle variant
+
+To test the simple segment-translation hypothesis cleanly, start a new named
+series instead of continuing the prompt-only `cycle_1` ... `cycle_5` series. The
+`MWE_PROMPT_CYCLE_SERIES` variable appends a subdirectory under
+`generated/mwe_prompt_cycles/<language>-<split>/`, so these results do not mix
+with the original prompt-only cycles.
+
+```bash
+MWE_PROJECT_IDS="239,245,254,255,257,261,263"
+
+make declare-mwe-gold RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  SNAPSHOT_NAME_PREFIX="MWE development translation-context gold checkpoint"
+
+make check-mwe-translation-context \
+  MWE_LANGUAGE=en \
+  SPLIT=development
+
+MWE_PROMPT_CYCLE_SERIES=translation_context
+MWE_PROMPT_CYCLE_NUMBER=1
+
+make mwe-prompt-cycle RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_PROMPT_CYCLE_SERIES" \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER" \
+  MWE_USE_TRANSLATION_CONTEXT=1
+
+make revise-mwe-prompt-cycle-template RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_PROMPT_CYCLE_SERIES" \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
+
+make compare-mwe-prompt-cycles RUN=1 \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_PROMPT_CYCLE_SERIES"
+```
+
+This writes translation-context outputs under
+`generated/mwe_prompt_cycles/en-development/translation_context/`, including
+`translation_context/cycle_comparison.md`. The earlier prompt-only comparison
+remains at `generated/mwe_prompt_cycles/en-development/cycle_comparison.md`; compare
+those two reports to decide whether translation context is helping.
+
+`declare-mwe-gold` now exports `translation_context` records from the latest
+translation stage when available. `MWE_USE_TRANSLATION_CONTEXT=1` passes those
+records into the MWE prompt as `translation_context`, currently a list so later
+experiments can add more than one translation without changing the run format.
+The prompt-revision step is also instructed to use translations as optional
+evidence for expressions that translate as phrases, while keeping the prompt short
+and avoiding over-elaborate instructions.
+
+When `MWE_USE_TRANSLATION_CONTEXT=1`, `run_mwe_prompt_experiment` prints a trace
+line like `Translation context enabled: N/M records have translation_context` and
+records the same count in the run `manifest.json`, so you can confirm that the
+cycle is actually using the exported translations.
+
+
+## Translation-context sanity-check findings and next options
+
+The first `translation_context` series was worse than the prompt-only series in
+this seven-project sanity check. The best prompt-only run so far was cycle 4
+(F1 about 0.374), while the best translation-context run reported so far was
+cycle 2 (F1 about 0.307). This does not show that translations are useless, but
+it does show that simply making translations available is not yet enough.
+
+Current working hypotheses:
+
+1. **Prompt length needs a middle ground.** The first prompt-only series may have
+   become too long by cycle 5, but the translation-context revisions may have
+   become too terse. A useful next revision should keep the prompt compact while
+   retaining concrete decision procedure instructions.
+2. **Translation use is not explicit enough.** If revised prompts do not mention
+   how to use `translation_context`, the revision process may be treating the
+   extra field as incidental. The next translation-aware prompt should explicitly
+   say that translations are optional evidence for source-token groups that are
+   rendered as phrases, while source-language conventionality remains decisive.
+3. **Reintroduce analysis-before-selection.** The earlier C-LARA MWE identification
+   prompt asked the model first to briefly analyse candidate MWEs with reasons for
+   and against, then to select plausible MWEs. A controlled next variant should
+   test this two-step reasoning structure while still returning the required JSON
+   annotation object.
+4. **Add prompt/payload inspection before more cycles.** Before running many more
+   cycles, inspect a few actual MWE prompt payloads or add a small trace mode so we
+   can verify that `translation_context` is present and that the active prompt tells
+   the model what to do with it.
+
+Suggested next controlled variants, in order:
+
+- **translation_context_analysis_v1**: start a new `MWE_PROMPT_CYCLE_SERIES`, keep
+  `MWE_USE_TRANSLATION_CONTEXT=1`, seed cycle 1 from a hand-reviewed prompt that
+  explicitly includes the two-step analyse-then-select procedure and concise
+  translation-use guidance.
+- **prompt_only_analysis_v1**: run the same two-step decision procedure without
+  translations, to separate the effect of analysis-before-selection from the effect
+  of translation context.
+- Only after one of these improves development F1 should we scale to larger
+  English/French/German annotated development sets and reserve held-out
+  validation/test projects for final checks.
+
+### `translation_context_analysis_v1` controlled series
+
+This is the next recommended controlled variant after the initial translation-context
+sanity check. It starts a fresh series, keeps translation context enabled, and seeds
+cycle 1 from a concise hand-reviewed prompt that explicitly says how to use
+translations and restores the analyse-before-selection decision procedure.
+
+```bash
+MWE_PROJECT_IDS="239,245,254,255,257,261,263"
+MWE_PROMPT_CYCLE_SERIES=translation_context_analysis_v1
+MWE_PROMPT_CYCLE_NUMBER=1
+MWE_ANALYSIS_TEMPLATE="config/mwe_translation_context_analysis_template.txt"
+
+make mwe-prompt-cycle RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_PROMPT_CYCLE_SERIES" \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER" \
+  MWE_CYCLE_INITIAL_TEMPLATE="$MWE_ANALYSIS_TEMPLATE" \
+  MWE_USE_TRANSLATION_CONTEXT=1
+
+make revise-mwe-prompt-cycle-template RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_PROMPT_CYCLE_SERIES" \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
+
+make compare-mwe-prompt-cycles RUN=1 \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_PROMPT_CYCLE_SERIES"
+```
+
+The seed prompt is `config/mwe_translation_context_analysis_template.txt`. It is
+intended to be long enough to specify a decision procedure, but short enough to
+avoid the prompt-bloat problem seen in later prompt-only cycles.
+
+If you want to run the steps separately for debugging, use
+`prepare-mwe-prompt-cycle`, `run-mwe-prompt-cycle`, `score-mwe-prompt-cycle`, and
+`propose-mwe-prompt-cycle-improvement` with the same variables.
+
+To ask AI to draft a non-trivial but conservative next-cycle prompt from the cycle
+report, run this after `mwe-prompt-cycle` has produced the score and improvement
+files:
+
+```bash
+make revise-mwe-prompt-cycle-template RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
+```
+
+This overwrites
+`generated/mwe_prompt_cycles/en-development/cycle_1/improvement/template_revision.txt`
+with a complete prompt generated from the current cycle prompt plus
+`prompt_improvement.md` and `candidate_prompt_guidance.txt`. It also writes
+`template_revision.json` with the model rationale, listed changes, and risks. The
+revision prompt explicitly asks for simple, general changes and forbids memorising
+project-specific answers, so the output should still be reviewed before use.
+
+By default, this target uses `MWE_REVISION_MODEL=gpt-5.5`, since prompt revision
+is only run once per cycle and is the highest-leverage step. Override
+`MWE_REVISION_MODEL=...` on the command line if you need a cheaper smoke test.
+
+After the proposal target finishes, inspect:
+
+- `generated/mwe_prompt_cycles/en-development/cycle_1/template.txt` — the prompt
+  actually evaluated;
+- `generated/mwe_prompt_cycles/en-development/cycle_1/run/outputs.jsonl` and
+  `progress.jsonl` — the MWE run output and trace;
+- `generated/mwe_prompt_cycles/en-development/cycle_1/score/summary.md` — the
+  cycle score;
+- `generated/mwe_prompt_cycles/en-development/cycle_1/improvement/prompt_improvement.md`
+  and `candidate_prompt_guidance.txt` — conservative error-analysis guidance;
+- `generated/mwe_prompt_cycles/en-development/cycle_1/improvement/template_revision.txt`
+  — an editable copy of the cycle prompt to revise for cycle 2.
+
+For cycle 2, review and optionally edit `cycle_1/improvement/template_revision.txt`
+(using only general, language-neutral prompt changes), then rerun `mwe-prompt-cycle`
+with `MWE_PROMPT_CYCLE_NUMBER=2`. Keep development cycles separate from future
+validation/test runs; once the machinery is stable, use larger annotated
+English/French/German development sets for prompt iteration and reserve held-out
+validation/test projects for final checks.
+
 ## Manual gold workflow
 
 Use the project JSONL files to open the selected projects in the existing manual
