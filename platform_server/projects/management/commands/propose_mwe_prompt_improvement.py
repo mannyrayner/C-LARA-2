@@ -132,6 +132,7 @@ def append_examples(lines: list[str], records: list[dict]) -> None:
                 "",
                 f"- Gold spans: {record.get('gold_spans')}",
                 f"- Predicted spans: {record.get('predicted_spans')}",
+                f"- Model analysis: {record.get('mwe_analysis') or 'not recorded'}",
                 "",
             ]
         )

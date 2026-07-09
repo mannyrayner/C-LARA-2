@@ -164,7 +164,9 @@ async def run_records(
                 on_progress({**progress_payload, "status": "error", "error": f"{type(exc).__name__}: {exc}"})
             raise
         segment = annotated.get("pages", [{}])[0].get("segments", [{}])[0]
-        predicted_mwes = ((segment.get("annotations") or {}).get("mwes") or []) if isinstance(segment, dict) else []
+        segment_annotations = (segment.get("annotations") or {}) if isinstance(segment, dict) else {}
+        predicted_mwes = segment_annotations.get("mwes") or []
+        mwe_analysis = segment_annotations.get("mwe_analysis") or ""
         output_payload = {
             "record_id": record.get("record_id"),
             "split": record.get("split"),
@@ -177,6 +179,7 @@ async def run_records(
             "token_surfaces": record.get("token_surfaces") or [],
             "gold_mwes": record.get("gold_mwes") or [],
             "predicted_mwes": predicted_mwes,
+            "mwe_analysis": mwe_analysis,
             "annotated_segment": segment,
             "translation_context": record.get("translation_context") or [],
         }

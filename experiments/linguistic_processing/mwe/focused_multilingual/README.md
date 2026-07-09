@@ -426,6 +426,11 @@ make compare-mwe-prompt-cycles RUN=1 \
 The seed prompt is `config/mwe_translation_context_analysis_template.txt`. It is
 intended to be long enough to specify a decision procedure, but short enough to
 avoid the prompt-bloat problem seen in later prompt-only cycles.
+For this series, the run output records both the final selected MWEs and the
+model's brief candidate analysis: `outputs.jsonl` has a top-level
+`mwe_analysis` field copied from `annotated_segment.annotations.mwe_analysis`,
+and the score/proposal reports carry that analysis forward so
+`revise-mwe-prompt-cycle-template` can use it when drafting the next prompt.
 
 If you want to run the steps separately for debugging, use
 `prepare-mwe-prompt-cycle`, `run-mwe-prompt-cycle`, `score-mwe-prompt-cycle`, and
@@ -440,6 +445,7 @@ make revise-mwe-prompt-cycle-template RUN=1 \
   PROJECT_IDS="$MWE_PROJECT_IDS" \
   MWE_LANGUAGE=en \
   SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_PROMPT_CYCLE_SERIES" \
   MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
 ```
 
@@ -460,7 +466,8 @@ After the proposal target finishes, inspect:
 - `generated/mwe_prompt_cycles/en-development/cycle_1/template.txt` — the prompt
   actually evaluated;
 - `generated/mwe_prompt_cycles/en-development/cycle_1/run/outputs.jsonl` and
-  `progress.jsonl` — the MWE run output and trace;
+  `progress.jsonl` — the MWE run output and trace, including `mwe_analysis`
+  when the prompt asks for analysis-before-selection;
 - `generated/mwe_prompt_cycles/en-development/cycle_1/score/summary.md` — the
   cycle score;
 - `generated/mwe_prompt_cycles/en-development/cycle_1/improvement/prompt_improvement.md`

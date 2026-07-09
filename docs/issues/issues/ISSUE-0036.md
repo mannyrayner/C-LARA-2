@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-09T03:25:00Z
+- **Updated:** 2026-07-09T03:45:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -193,4 +193,7 @@ separate reasoning-structure effects from translation-context effects. Follow-up
 concise analysis-before-selection seed prompt, a Makefile MWE_CYCLE_INITIAL_TEMPLATE override for
 cycle 1 seeding, and README cut-and-paste commands to run the fresh translation-aware series with
 explicit translation-use guidance while keeping prior prompt-only and translation_context series
-comparable.
+comparable. Follow-up later on 2026-07-09: extended translation_context_analysis_v1 outputs to
+preserve the model candidate analysis as mwe_analysis alongside selected MWEs. Scoring and
+prompt-improvement reports now carry that analysis forward, giving revise-mwe-prompt-cycle-template
+richer evidence about why false positives and false negatives occurred.

@@ -101,11 +101,13 @@ class MWEPromptExperimentCommandTests(TestCase):
                 "segment_surface": "take off now",
                 "gold_mwes": [{"tokens": ["take", "off"]}],
                 "predicted_mwes": [{"tokens": ["take", "off"]}, {"tokens": ["off", "now"]}],
+                "mwe_analysis": "take off is a phrasal verb; off now is compositional.",
             }
         )
         self.assertEqual(scored["true_positive"], 1)
         self.assertEqual(scored["false_positive"], 1)
         self.assertEqual(scored["false_negative"], 0)
+        self.assertIn("phrasal verb", scored["mwe_analysis"])
         summary = summarize_scores([scored], split="development", outputs_path=Path("outputs.jsonl"))
         self.assertAlmostEqual(summary["precision"], 0.5)
         self.assertAlmostEqual(summary["recall"], 1.0)
@@ -239,6 +241,7 @@ class MWEPromptExperimentCommandTests(TestCase):
                 "project_id": self.project.id,
                 "gold_mwes": [{"tokens": ["take", "off"]}],
                 "predicted_mwes": [{"tokens": ["take", "off"]}],
+                "mwe_analysis": "take off is selected as a phrasal verb.",
             },
             {
                 "record_id": "drop",
@@ -263,7 +266,9 @@ class MWEPromptExperimentCommandTests(TestCase):
         scored_lines = (output_dir / "per_record_scores.jsonl").read_text(encoding="utf-8").splitlines()
         self.assertEqual(summary["record_count"], 1)
         self.assertEqual(summary["project_ids"], [self.project.id])
-        self.assertEqual(json.loads(scored_lines[0])["record_id"], "keep")
+        scored_record = json.loads(scored_lines[0])
+        self.assertEqual(scored_record["record_id"], "keep")
+        self.assertIn("phrasal verb", scored_record["mwe_analysis"])
 
 
     def test_propose_command_filters_scored_records_by_project_ids(self):
@@ -293,6 +298,7 @@ class MWEPromptExperimentCommandTests(TestCase):
                 "false_positive": 0,
                 "false_negative": 1,
                 "exact_match": False,
+                "mwe_analysis": "The model incorrectly rejected take off despite its phrasal-verb reading.",
             },
             {
                 "record_id": "drop",
@@ -325,6 +331,8 @@ class MWEPromptExperimentCommandTests(TestCase):
         self.assertIn("using 1 after PROJECT_IDS filter", out.getvalue())
         self.assertIn("- Project IDs: [", report)
         self.assertIn("keep", report)
+        self.assertIn("Model analysis", report)
+        self.assertIn("phrasal-verb reading", report)
         self.assertNotIn("drop", report)
 
     def test_run_mwe_prompt_experiment_writes_incremental_progress(self):
@@ -353,7 +361,10 @@ class MWEPromptExperimentCommandTests(TestCase):
                     {
                         "segments": [
                             {
-                                "annotations": {"mwes": [{"id": "m1", "tokens": ["take", "off"]}]},
+                                "annotations": {
+                                    "mwes": [{"id": "m1", "tokens": ["take", "off"]}],
+                                    "mwe_analysis": "take off is a phrasal verb.",
+                                },
                                 "tokens": [{"surface": "take"}, {"surface": "off"}, {"surface": "now"}],
                             }
                         ]
@@ -379,6 +390,7 @@ class MWEPromptExperimentCommandTests(TestCase):
         self.assertEqual([json.loads(line)["status"] for line in progress_lines], ["running", "finished"])
         output_payload = json.loads((output_dir / "test-run" / "outputs.jsonl").read_text(encoding="utf-8"))
         self.assertEqual(output_payload["predicted_mwes"][0]["tokens"], ["take", "off"])
+        self.assertIn("phrasal verb", output_payload["mwe_analysis"])
 
     def test_revise_mwe_prompt_from_report_writes_ai_revision(self):
         cycle_dir = Path(self.tmpdir) / "cycle_1"

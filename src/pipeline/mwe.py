@@ -43,6 +43,7 @@ def _build_prompt(
         "Return a JSON object representing the segment.",
         "Preserve the original surface and tokens.",
         "If MWEs are found, attach segment.annotations.mwes as a list of objects with keys id, tokens (array of token surfaces), and label.",
+        "Also attach segment.annotations.mwe_analysis as a brief explanation of the candidate MWEs considered and why the final MWEs were selected or rejected.",
         "Only include MWEs containing at least two tokens; never mark single-token expressions as MWEs.",
         "For each token that belongs to an MWE, set token.annotations.mwe_id to the corresponding MWE id.",
     ]

@@ -1,5 +1,6 @@
-# C-LARA-2 issue overview (refreshed 2026-07-09T03:25:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-09T03:45:00Z)
 ## Recent progress
+- Carried MWE candidate analysis through `translation_context_analysis_v1` run, score, and proposal artifacts for **ISSUE-0036** so prompt revision can inspect model reasoning as well as final spans.
 - Added a seeded `translation_context_analysis_v1` MWE cycle recipe for **ISSUE-0036**, with a concise analysis-before-selection prompt and `MWE_CYCLE_INITIAL_TEMPLATE` support.
 - Documented translation-context MWE findings for **ISSUE-0036** and proposed analysis-before-selection variants for the next controlled tests.
 - Fixed `check-mwe-translation-context` path normalization for Windows/Cygwin; it does not require `SNAPSHOT_NAME_PREFIX`.

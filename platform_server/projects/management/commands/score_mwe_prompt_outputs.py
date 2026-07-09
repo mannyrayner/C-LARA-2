@@ -84,6 +84,7 @@ def score_record(record: dict[str, Any]) -> dict[str, Any]:
         "segment_surface": record.get("segment_surface"),
         "gold_spans": [list(span) for span in sorted(gold)],
         "predicted_spans": [list(span) for span in sorted(predicted)],
+        "mwe_analysis": record.get("mwe_analysis") or "",
         "true_positive": tp,
         "false_positive": fp,
         "false_negative": fn,
@@ -141,6 +142,7 @@ def write_markdown(path: Path, *, summary: dict[str, Any], scored: list[dict[str
                 "",
                 f"- Gold: {record['gold_spans']}",
                 f"- Predicted: {record['predicted_spans']}",
+                f"- Model analysis: {record.get('mwe_analysis') or 'not recorded'}",
                 "",
             ]
         )
