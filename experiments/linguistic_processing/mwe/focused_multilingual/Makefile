@@ -88,7 +88,7 @@ MWE_TRANSLATION_CONTEXT_ARG := $(if $(filter 1,$(MWE_USE_TRANSLATION_CONTEXT)),-
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help prepare declare-mwe-gold check-mwe-gold mwe-prompt-cycle show-mwe-prompt-cycle-results compare-mwe-prompt-cycles prepare-mwe-prompt-cycle run-mwe-prompt-cycle score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement revise-mwe-prompt-cycle-template extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
+.PHONY: help prepare declare-mwe-gold check-mwe-gold check-mwe-translation-context mwe-prompt-cycle show-mwe-prompt-cycle-results compare-mwe-prompt-cycles prepare-mwe-prompt-cycle run-mwe-prompt-cycle score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement revise-mwe-prompt-cycle-template extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
 
 help:
 	@echo "Focused MWE experiments (multilingual)"
@@ -101,6 +101,7 @@ help:
 	@echo "  propose-mwe-prompt-improvement  Write conservative prompt-improvement guidance from score errors"
 	@echo "  declare-mwe-gold  Snapshot selected projects and export explicit gold records"
 	@echo "  check-mwe-gold    Re-export selected gold records and fail if no gold MWEs are found"
+	@echo "  check-mwe-translation-context  Count records with exported translation_context"
 	@echo "  mwe-prompt-cycle  Run prepare/run/score/propose for the selected cycle"
 	@echo "  show-mwe-prompt-cycle-results  Print cycle summary and per-segment score path"
 	@echo "  compare-mwe-prompt-cycles  Collect score/prompt-size trends across completed cycles"
@@ -203,6 +204,9 @@ check-mwe-gold: prepare
 	else \
 		echo "dry-run only; set RUN=1 to verify selected gold records contain at least one gold MWE"; \
 	fi
+
+check-mwe-translation-context: prepare
+	@MWE_GOLD_RECORDS="$(MWE_GOLD_RECORDS)" $(PYTHON) -c 'import json, os; from pathlib import Path; path = Path(os.environ["MWE_GOLD_RECORDS"]); records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]; with_translation = [record for record in records if record.get("translation_context")]; print(f"records={len(records)} records_with_translation_context={len(with_translation)}"); print(with_translation[0]["record_id"], with_translation[0]["translation_context"][0]) if with_translation else None'
 
 mwe-prompt-cycle: run-mwe-prompt-cycle score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement
 	@echo "MWE prompt cycle $(MWE_PROMPT_CYCLE_NUMBER) complete."

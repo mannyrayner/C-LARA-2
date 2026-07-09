@@ -1,5 +1,6 @@
-# C-LARA-2 issue overview (refreshed 2026-07-09T02:00:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-09T02:20:00Z)
 ## Recent progress
+- Added `check-mwe-translation-context` for **ISSUE-0036** so translation-context sanity checks are Make-driven.
 - Added cut-and-paste translation-context MWE commands and translation-context trace counts for **ISSUE-0036**.
 - Added `MWE_PROMPT_CYCLE_SERIES` for **ISSUE-0036** so translation-context MWE cycles can run in a separate comparable series directory.
 - Added an explicit translation-context MWE cycle variant for **ISSUE-0036**, passing latest segment translations as optional prompt evidence while keeping prompt revision concise.

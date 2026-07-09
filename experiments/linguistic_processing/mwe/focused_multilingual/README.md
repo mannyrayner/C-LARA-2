@@ -298,17 +298,9 @@ make declare-mwe-gold RUN=1 \
   SPLIT=development \
   SNAPSHOT_NAME_PREFIX="MWE development translation-context gold checkpoint"
 
-python - <<'PY'
-import json
-from pathlib import Path
-path = Path("generated/mwe_gold/en-development/selected_segments.jsonl")
-records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
-with_translation = [record for record in records if record.get("translation_context")]
-print(f"records={len(records)} records_with_translation_context={len(with_translation)}")
-if with_translation:
-    sample = with_translation[0]
-    print(sample["record_id"], sample["translation_context"][0])
-PY
+make check-mwe-translation-context \
+  MWE_LANGUAGE=en \
+  SPLIT=development
 
 MWE_PROMPT_CYCLE_SERIES=translation_context
 MWE_PROMPT_CYCLE_NUMBER=1

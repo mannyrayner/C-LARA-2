@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-09T02:00:00Z
+- **Updated:** 2026-07-09T02:20:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -179,4 +179,7 @@ its cycle_comparison.md with the prompt-only report. Follow-up later on 2026-07-
 includes cut-and-paste translation-context commands beginning with declare-mwe-gold, a Python sanity
 check for translation_context records, mwe-prompt-cycle, revise-mwe-prompt-cycle-template, and
 compare-mwe-prompt-cycles; run_mwe_prompt_experiment now prints and records
-translation_context_record_count when translation context is enabled.
+translation_context_record_count when translation context is enabled. Follow-up later on 2026-07-09:
+replaced the inline README Python translation_context sanity check with a
+check-mwe-translation-context Make target so the translation-context workflow remains consistently
+Make-driven.
