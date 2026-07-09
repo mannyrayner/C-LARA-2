@@ -206,7 +206,7 @@ check-mwe-gold: prepare
 	fi
 
 check-mwe-translation-context: prepare
-	@MWE_GOLD_RECORDS="$(MWE_GOLD_RECORDS)" $(PYTHON) -c 'import json, os; from pathlib import Path; path = Path(os.environ["MWE_GOLD_RECORDS"]); records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]; with_translation = [record for record in records if record.get("translation_context")]; print(f"records={len(records)} records_with_translation_context={len(with_translation)}"); print(with_translation[0]["record_id"], with_translation[0]["translation_context"][0]) if with_translation else None'
+	@MWE_GOLD_RECORDS="$(PY_MWE_GOLD_RECORDS)" $(PYTHON) -c 'import json, os; from pathlib import Path; path = Path(os.environ["MWE_GOLD_RECORDS"]); records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]; with_translation = [record for record in records if record.get("translation_context")]; print(f"records={len(records)} records_with_translation_context={len(with_translation)}"); print(with_translation[0]["record_id"], with_translation[0]["translation_context"][0]) if with_translation else None'
 
 mwe-prompt-cycle: run-mwe-prompt-cycle score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement
 	@echo "MWE prompt cycle $(MWE_PROMPT_CYCLE_NUMBER) complete."
