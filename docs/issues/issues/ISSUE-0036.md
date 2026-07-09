@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-09T00:20:00Z
+- **Updated:** 2026-07-09T01:05:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -167,4 +167,8 @@ summarize_mwe_prompt_cycles and a compare-mwe-prompt-cycles Make target to colle
 precision/recall/F1, exact-match, TP/FP/FN, prompt length, revision length, and artifact paths in
 one report. README now records the next hypothesis to test: whether supplying whole-segment
 translation context improves MWE recall, starting with the gloss-language translation as a
-controlled cycle variant.
+controlled cycle variant. Follow-up later on 2026-07-09: implemented the first translation-context
+MWE variant. Gold export now carries a translation_context list from the latest translation stage
+when available, run_mwe_prompt_experiment can pass it via --use-translation-context, pipeline.mwe
+includes the context only under an explicit mwe_translation_context annotation, and prompt revision
+now asks for concise translation-aware revisions rather than longer over-elaborate prompts.

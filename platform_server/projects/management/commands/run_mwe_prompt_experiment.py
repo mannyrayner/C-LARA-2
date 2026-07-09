@@ -24,6 +24,7 @@ class Command(BaseCommand):
         parser.add_argument("--overwrite", action="store_true")
         parser.add_argument("--project-ids", default="", help="Optional comma-separated project ids to include from the input records.")
         parser.add_argument("--template-file", default="", help="Optional MWE prompt template file to use instead of the production prompt.")
+        parser.add_argument("--use-translation-context", action="store_true", help="Include record translations in segment annotations for translation-aware MWE prompts.")
 
     def handle(self, *args, **options):
         input_path = _resolve_cli_path(options["input_records_jsonl"], "")
@@ -71,6 +72,7 @@ class Command(BaseCommand):
                 on_progress=record_progress,
                 on_output=record_output,
                 template_path=template_path,
+                use_translation_context=bool(options.get("use_translation_context")),
             )
         )
         manifest = {
@@ -82,6 +84,7 @@ class Command(BaseCommand):
             "outputs_jsonl": str(outputs_path),
             "progress_jsonl": str(progress_path),
             "template_file": str(template_path) if template_path else None,
+            "use_translation_context": bool(options.get("use_translation_context")),
         }
         manifest_path = run_dir / "manifest.json"
         manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -126,11 +129,12 @@ async def run_records(
     on_progress: Callable[[dict[str, Any]], None] | None = None,
     on_output: Callable[[dict[str, Any]], None] | None = None,
     template_path: Path | None = None,
+    use_translation_context: bool = False,
 ) -> list[dict[str, Any]]:
     outputs: list[dict[str, Any]] = []
     total = len(records)
     for idx, record in enumerate(records, start=1):
-        text_obj = record_to_text_obj(record)
+        text_obj = record_to_text_obj(record, use_translation_context=use_translation_context)
         progress_payload = {
             "index": idx,
             "total": total,
@@ -168,6 +172,7 @@ async def run_records(
             "gold_mwes": record.get("gold_mwes") or [],
             "predicted_mwes": predicted_mwes,
             "annotated_segment": segment,
+            "translation_context": record.get("translation_context") or [],
         }
         outputs.append(output_payload)
         if on_output:
@@ -177,10 +182,35 @@ async def run_records(
     return outputs
 
 
-def record_to_text_obj(record: dict[str, Any]) -> dict[str, Any]:
+def record_to_text_obj(record: dict[str, Any], *, use_translation_context: bool = False) -> dict[str, Any]:
     tokens = [{"surface": str(surface), "annotations": {}} for surface in (record.get("token_surfaces") or [])]
     surface = str(record.get("segment_surface") or " ".join(token["surface"] for token in tokens))
-    return {"pages": [{"segments": [{"surface": surface, "tokens": tokens, "annotations": {}}]}]}
+    annotations: dict[str, Any] = {}
+    if use_translation_context:
+        translation_context = normalize_translation_context(record.get("translation_context") or [])
+        if translation_context:
+            annotations["mwe_translation_context"] = translation_context
+    return {"pages": [{"segments": [{"surface": surface, "tokens": tokens, "annotations": annotations}]}]}
+
+
+def normalize_translation_context(raw: Any) -> list[dict[str, str]]:
+    if not isinstance(raw, list):
+        return []
+    context: list[dict[str, str]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        text = str(item.get("text") or item.get("translation") or "").strip()
+        if not text:
+            continue
+        context.append(
+            {
+                "language": str(item.get("language") or item.get("target_language") or "").strip(),
+                "source": str(item.get("source") or "segment_translation").strip(),
+                "text": text,
+            }
+        )
+    return context
 
 
 def write_jsonl(path: Path, records: list[dict[str, Any]]) -> None:

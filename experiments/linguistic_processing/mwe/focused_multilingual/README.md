@@ -278,6 +278,34 @@ the task; if helpful, compare one translation against multiple translations befo
 using validation/test projects. Keep this as a controlled cycle variant rather than
 mixing it silently into the existing prompt-only run.
 
+### Translation-context cycle variant
+
+To test the simple segment-translation hypothesis without mixing it into the
+existing prompt-only series, run a new cycle number with translation context enabled:
+
+```bash
+MWE_PROMPT_CYCLE_NUMBER=6
+
+make mwe-prompt-cycle RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER" \
+  MWE_USE_TRANSLATION_CONTEXT=1
+
+make compare-mwe-prompt-cycles RUN=1 \
+  MWE_LANGUAGE=en \
+  SPLIT=development
+```
+
+`declare-mwe-gold` now exports `translation_context` records from the latest
+translation stage when available. `MWE_USE_TRANSLATION_CONTEXT=1` passes those
+records into the MWE prompt as `translation_context`, currently a list so later
+experiments can add more than one translation without changing the run format.
+The prompt-revision step is also instructed to use translations as optional
+evidence for expressions that translate as phrases, while keeping the prompt short
+and avoiding over-elaborate instructions.
+
 If you want to run the steps separately for debugging, use
 `prepare-mwe-prompt-cycle`, `run-mwe-prompt-cycle`, `score-mwe-prompt-cycle`, and
 `propose-mwe-prompt-cycle-improvement` with the same variables.

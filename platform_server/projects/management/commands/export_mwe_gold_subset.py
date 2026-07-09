@@ -49,6 +49,10 @@ class Command(BaseCommand):
         project_summaries = []
         for project in projects:
             run_dir, stage_path, payload = latest_stage_payload(project, "mwe")
+            _translation_run_dir, _translation_path, translation_payload = latest_stage_payload(project, "translation")
+            translation_map = build_translation_context_map(
+                translation_payload, target_language=getattr(project, "target_language", "") or ""
+            )
             project_records = []
             if run_dir and stage_path and isinstance(payload, dict) and isinstance(payload.get("pages"), list):
                 for record in iter_project_segment_records(
@@ -57,9 +61,9 @@ class Command(BaseCommand):
                     stage_path=stage_path,
                     pages=payload["pages"],
                 ):
-                    project_records.append(
-                        {**asdict(record), "split": str(options["split"] or "development"), "stratum": "explicit-gold-subset"}
-                    )
+                    payload_record = {**asdict(record), "split": str(options["split"] or "development"), "stratum": "explicit-gold-subset"}
+                    payload_record["translation_context"] = translation_map.get((record.page_index, record.segment_index), [])
+                    project_records.append(payload_record)
             records.extend(project_records)
             project_summaries.append(
                 {
@@ -144,3 +148,31 @@ def write_review_markdown(path: Path, *, summary: dict[str, Any], records: list[
             ]
         )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def build_translation_context_map(payload: dict[str, Any] | None, *, target_language: str) -> dict[tuple[int, int], list[dict[str, str]]]:
+    context: dict[tuple[int, int], list[dict[str, str]]] = {}
+    if not isinstance(payload, dict):
+        return context
+    pages = payload.get("pages")
+    if not isinstance(pages, list):
+        return context
+    for page_index, page in enumerate(pages, start=1):
+        if not isinstance(page, dict):
+            continue
+        segments = page.get("segments")
+        if not isinstance(segments, list):
+            continue
+        for segment_index, segment in enumerate(segments, start=1):
+            if not isinstance(segment, dict):
+                continue
+            translation = str((segment.get("annotations") or {}).get("translation") or "").strip()
+            if translation:
+                context[(page_index, segment_index)] = [
+                    {
+                        "language": str(target_language or ""),
+                        "source": "latest_translation_stage",
+                        "text": translation,
+                    }
+                ]
+    return context

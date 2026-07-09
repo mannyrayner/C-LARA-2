@@ -10,6 +10,7 @@ from django.core.management import call_command
 from django.test import TestCase, override_settings
 
 from projects.management.commands.run_mwe_prompt_experiment import load_mwe_records, record_to_text_obj
+from projects.management.commands.export_mwe_gold_subset import build_translation_context_map
 from projects.management.commands.score_mwe_prompt_outputs import score_record, summarize_scores
 from projects.models import Project
 
@@ -49,6 +50,37 @@ class MWEPromptExperimentCommandTests(TestCase):
         tokens = text_obj["pages"][0]["segments"][0]["tokens"]
         self.assertEqual([token["surface"] for token in tokens], ["take", "off", "now"])
 
+
+
+    def test_record_to_text_obj_can_include_translation_context_for_mwe_prompt_run(self):
+        text_obj = record_to_text_obj(
+            {
+                "segment_surface": "take off now",
+                "token_surfaces": ["take", "off", "now"],
+                "translation_context": [{"language": "fr", "source": "latest_translation_stage", "text": "décoller maintenant"}],
+            },
+            use_translation_context=True,
+        )
+        annotations = text_obj["pages"][0]["segments"][0]["annotations"]
+        self.assertEqual(annotations["mwe_translation_context"][0]["text"], "décoller maintenant")
+
+    def test_build_translation_context_map_reads_segment_translations(self):
+        payload = {
+            "pages": [
+                {
+                    "segments": [
+                        {"annotations": {"translation": "prendre son envol"}},
+                        {"annotations": {}},
+                    ]
+                }
+            ]
+        }
+
+        context = build_translation_context_map(payload, target_language="fr")
+
+        self.assertEqual(context[(1, 1)][0]["language"], "fr")
+        self.assertEqual(context[(1, 1)][0]["text"], "prendre son envol")
+        self.assertNotIn((1, 2), context)
 
     def test_load_mwe_records_filters_explicit_project_ids(self):
         input_path = Path(self.tmpdir) / "records.jsonl"
@@ -153,6 +185,7 @@ class MWEPromptExperimentCommandTests(TestCase):
                     "segment_surface": "take off now",
                     "token_surfaces": ["take", "off", "now"],
                     "gold_mwes": [{"tokens": ["take", "off"]}],
+                    "translation_context": [{"language": "fr", "text": "décoller maintenant"}],
                 }
             )
             + "\n",
@@ -162,6 +195,8 @@ class MWEPromptExperimentCommandTests(TestCase):
 
         async def fake_annotate(spec):
             seen_template_paths.append(spec.template_path)
+            segment_annotations = spec.text["pages"][0]["segments"][0]["annotations"]
+            self.assertEqual(segment_annotations["mwe_translation_context"][0]["text"], "décoller maintenant")
             return {
                 "pages": [
                     {
@@ -183,12 +218,14 @@ class MWEPromptExperimentCommandTests(TestCase):
                 run_label="template-run",
                 template_file=str(template_path),
                 overwrite=True,
+                use_translation_context=True,
                 stdout=StringIO(),
             )
 
         manifest = json.loads((output_dir / "template-run" / "manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(seen_template_paths, [template_path])
         self.assertEqual(manifest["template_file"], str(template_path))
+        self.assertTrue(manifest["use_translation_context"])
 
     def test_score_command_filters_explicit_project_ids(self):
         outputs_path = Path(self.tmpdir) / "outputs.jsonl"

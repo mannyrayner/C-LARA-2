@@ -54,6 +54,7 @@ MWE_CYCLE_REVISION_JSON := $(MWE_CYCLE_IMPROVEMENT_DIR)/template_revision.json
 MWE_CYCLE_COMPARISON_JSON := $(MWE_PROMPT_CYCLE_BASE_DIR)/cycle_comparison.json
 MWE_CYCLE_COMPARISON_MD := $(MWE_PROMPT_CYCLE_BASE_DIR)/cycle_comparison.md
 MWE_REVISION_MODEL ?= gpt-5.5
+MWE_USE_TRANSLATION_CONTEXT ?= 0
 CORPUS_SPLIT_DIR := $(abspath $(GENERATED_DIR))/corpus_splits
 PY_OS := $(shell $(PYTHON) -c 'import os; print(os.name)' 2>/dev/null || echo posix)
 python_path = $(shell if [ "$(PY_OS)" = "nt" ] && command -v cygpath >/dev/null 2>&1; then cygpath -am "$(1)"; else printf '%s' "$(1)"; fi)
@@ -81,6 +82,7 @@ PY_MWE_CYCLE_REVISION_JSON := $(call python_path,$(MWE_CYCLE_REVISION_JSON))
 PY_MWE_CYCLE_COMPARISON_JSON := $(call python_path,$(MWE_CYCLE_COMPARISON_JSON))
 PY_MWE_CYCLE_COMPARISON_MD := $(call python_path,$(MWE_CYCLE_COMPARISON_MD))
 FAIL_FAST_ARG := $(if $(filter 1,$(FAIL_FAST)),--fail-fast,)
+MWE_TRANSLATION_CONTEXT_ARG := $(if $(filter 1,$(MWE_USE_TRANSLATION_CONTEXT)),--use-translation-context,)
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
@@ -138,6 +140,7 @@ help:
 	@echo "  MWE_PROMPT_CYCLE_DIR=$(MWE_PROMPT_CYCLE_DIR)"
 	@echo "  MWE_REVISION_MODEL=$(MWE_REVISION_MODEL)"
 	@echo "  MWE_CYCLE_COMPARISON_MD=$(MWE_CYCLE_COMPARISON_MD)"
+	@echo "  MWE_USE_TRANSLATION_CONTEXT=$(MWE_USE_TRANSLATION_CONTEXT)"
 
 prepare:
 	@mkdir -p $(GENERATED_DIR)
@@ -210,9 +213,9 @@ show-mwe-prompt-cycle-results: prepare
 	@echo "Improvement report: $(MWE_CYCLE_IMPROVEMENT_DIR)/prompt_improvement.md"
 
 run-current-mwe: prepare
-	@echo "+ $(MANAGE) run_mwe_prompt_experiment --input-records-jsonl $(PY_MWE_RUN_RECORDS) --output-dir $(PY_MWE_RUN_OUTPUT_DIR) --run-label $(MWE_RUN_LABEL) --limit $(MWE_LIMIT) --project-ids $(PROJECT_IDS) --overwrite"
+	@echo "+ $(MANAGE) run_mwe_prompt_experiment --input-records-jsonl $(PY_MWE_RUN_RECORDS) --output-dir $(PY_MWE_RUN_OUTPUT_DIR) --run-label $(MWE_RUN_LABEL) --limit $(MWE_LIMIT) --project-ids $(PROJECT_IDS) $(MWE_TRANSLATION_CONTEXT_ARG) --overwrite"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) run_mwe_prompt_experiment --input-records-jsonl "$(PY_MWE_RUN_RECORDS)" --output-dir "$(PY_MWE_RUN_OUTPUT_DIR)" --run-label "$(MWE_RUN_LABEL)" --limit "$(MWE_LIMIT)" --project-ids "$(PROJECT_IDS)" --overwrite; \
+		$(MANAGE) run_mwe_prompt_experiment --input-records-jsonl "$(PY_MWE_RUN_RECORDS)" --output-dir "$(PY_MWE_RUN_OUTPUT_DIR)" --run-label "$(MWE_RUN_LABEL)" --limit "$(MWE_LIMIT)" --project-ids "$(PROJECT_IDS)" $(MWE_TRANSLATION_CONTEXT_ARG) --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 after declare-mwe-gold has written $(MWE_RUN_RECORDS)"; \
 	fi
@@ -270,9 +273,9 @@ prepare-mwe-prompt-cycle: prepare
 	fi
 
 run-mwe-prompt-cycle: prepare-mwe-prompt-cycle
-	@echo "+ $(MANAGE) run_mwe_prompt_experiment --input-records-jsonl $(PY_MWE_CYCLE_RECORDS) --output-dir $(PY_MWE_PROMPT_CYCLE_DIR) --run-label $(MWE_CYCLE_RUN_LABEL) --limit $(MWE_LIMIT) --project-ids $(PROJECT_IDS) --template-file $(PY_MWE_CYCLE_TEMPLATE) --overwrite"
+	@echo "+ $(MANAGE) run_mwe_prompt_experiment --input-records-jsonl $(PY_MWE_CYCLE_RECORDS) --output-dir $(PY_MWE_PROMPT_CYCLE_DIR) --run-label $(MWE_CYCLE_RUN_LABEL) --limit $(MWE_LIMIT) --project-ids $(PROJECT_IDS) --template-file $(PY_MWE_CYCLE_TEMPLATE) $(MWE_TRANSLATION_CONTEXT_ARG) --overwrite"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) run_mwe_prompt_experiment --input-records-jsonl "$(PY_MWE_CYCLE_RECORDS)" --output-dir "$(PY_MWE_PROMPT_CYCLE_DIR)" --run-label "$(MWE_CYCLE_RUN_LABEL)" --limit "$(MWE_LIMIT)" --project-ids "$(PROJECT_IDS)" --template-file "$(PY_MWE_CYCLE_TEMPLATE)" --overwrite; \
+		$(MANAGE) run_mwe_prompt_experiment --input-records-jsonl "$(PY_MWE_CYCLE_RECORDS)" --output-dir "$(PY_MWE_PROMPT_CYCLE_DIR)" --run-label "$(MWE_CYCLE_RUN_LABEL)" --limit "$(MWE_LIMIT)" --project-ids "$(PROJECT_IDS)" --template-file "$(PY_MWE_CYCLE_TEMPLATE)" $(MWE_TRANSLATION_CONTEXT_ARG) --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 after declare-mwe-gold has written $(MWE_CYCLE_RECORDS), then run $(MWE_CYCLE_TEMPLATE)"; \
 	fi

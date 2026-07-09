@@ -95,6 +95,8 @@ def build_revision_prompt(*, current_template: str, improvement_report: str, can
             "Do not memorise project-specific answers, titles, named characters, or exact spans from the report.",
             "Do not add long lists of examples from the development set. If examples are needed, make them short and generic.",
             "Prefer changes that address recurring error patterns: overly long spans, missing fixed expressions, including surrounding function words/pronouns, and compositional phrase overmarking.",
+            "If segment JSON includes translation_context, revise the prompt so it uses translations as optional evidence for expressions that translate as phrases, while still deciding from source-language tokens.",
+            "Keep the revised prompt shorter and simpler than the current prompt when possible; overly long, highly nested instructions may be counterproductive.",
             "Preserve any required response-format instructions from the current prompt unless they clearly conflict with the report.",
             "If the report is insufficient for a safe non-trivial change, still return a complete prompt but keep edits conservative.",
             "## Current prompt template",
