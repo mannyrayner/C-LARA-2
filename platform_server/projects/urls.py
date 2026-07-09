@@ -63,6 +63,12 @@ urlpatterns = [
     path("projects/new/", views.ProjectCreateView.as_view(), name="project-create"),
     path("projects/<int:pk>/", views.ProjectDetailView.as_view(), name="project-detail"),
     path("projects/<int:pk>/annotation/", views.ProjectAnnotationView.as_view(), name="project-annotation-home"),
+    path("projects/<int:pk>/snapshots/save/", views.save_project_snapshot_view, name="project-snapshot-save"),
+    path(
+        "projects/<int:pk>/snapshots/<slug:snapshot_id>/restore/",
+        views.restore_project_snapshot_view,
+        name="project-snapshot-restore",
+    ),
     path(
         "projects/<int:pk>/annotation/manual/top-level/",
         views.manual_top_level,
