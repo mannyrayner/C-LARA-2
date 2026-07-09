@@ -345,6 +345,49 @@ line like `Translation context enabled: N/M records have translation_context` an
 records the same count in the run `manifest.json`, so you can confirm that the
 cycle is actually using the exported translations.
 
+
+## Translation-context sanity-check findings and next options
+
+The first `translation_context` series was worse than the prompt-only series in
+this seven-project sanity check. The best prompt-only run so far was cycle 4
+(F1 about 0.374), while the best translation-context run reported so far was
+cycle 2 (F1 about 0.307). This does not show that translations are useless, but
+it does show that simply making translations available is not yet enough.
+
+Current working hypotheses:
+
+1. **Prompt length needs a middle ground.** The first prompt-only series may have
+   become too long by cycle 5, but the translation-context revisions may have
+   become too terse. A useful next revision should keep the prompt compact while
+   retaining concrete decision procedure instructions.
+2. **Translation use is not explicit enough.** If revised prompts do not mention
+   how to use `translation_context`, the revision process may be treating the
+   extra field as incidental. The next translation-aware prompt should explicitly
+   say that translations are optional evidence for source-token groups that are
+   rendered as phrases, while source-language conventionality remains decisive.
+3. **Reintroduce analysis-before-selection.** The earlier C-LARA MWE identification
+   prompt asked the model first to briefly analyse candidate MWEs with reasons for
+   and against, then to select plausible MWEs. A controlled next variant should
+   test this two-step reasoning structure while still returning the required JSON
+   annotation object.
+4. **Add prompt/payload inspection before more cycles.** Before running many more
+   cycles, inspect a few actual MWE prompt payloads or add a small trace mode so we
+   can verify that `translation_context` is present and that the active prompt tells
+   the model what to do with it.
+
+Suggested next controlled variants, in order:
+
+- **translation_context_analysis_v1**: start a new `MWE_PROMPT_CYCLE_SERIES`, keep
+  `MWE_USE_TRANSLATION_CONTEXT=1`, seed cycle 1 from a hand-reviewed prompt that
+  explicitly includes the two-step analyse-then-select procedure and concise
+  translation-use guidance.
+- **prompt_only_analysis_v1**: run the same two-step decision procedure without
+  translations, to separate the effect of analysis-before-selection from the effect
+  of translation context.
+- Only after one of these improves development F1 should we scale to larger
+  English/French/German annotated development sets and reserve held-out
+  validation/test projects for final checks.
+
 If you want to run the steps separately for debugging, use
 `prepare-mwe-prompt-cycle`, `run-mwe-prompt-cycle`, `score-mwe-prompt-cycle`, and
 `propose-mwe-prompt-cycle-improvement` with the same variables.

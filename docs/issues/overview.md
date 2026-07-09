@@ -1,5 +1,6 @@
-# C-LARA-2 issue overview (refreshed 2026-07-09T02:40:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-09T03:05:00Z)
 ## Recent progress
+- Documented translation-context MWE findings for **ISSUE-0036** and proposed analysis-before-selection variants for the next controlled tests.
 - Fixed `check-mwe-translation-context` path normalization for Windows/Cygwin; it does not require `SNAPSHOT_NAME_PREFIX`.
 - Added `check-mwe-translation-context` for **ISSUE-0036** so translation-context sanity checks are Make-driven.
 - Added cut-and-paste translation-context MWE commands and translation-context trace counts for **ISSUE-0036**.

@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-09T02:40:00Z
+- **Updated:** 2026-07-09T03:05:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -184,4 +184,8 @@ replaced the inline README Python translation_context sanity check with a
 check-mwe-translation-context Make target so the translation-context workflow remains consistently
 Make-driven. Follow-up later on 2026-07-09: fixed check-mwe-translation-context to use the
 Python-normalized MWE gold path, matching other Make targets on Windows/Cygwin; no
-SNAPSHOT_NAME_PREFIX is required for the check target.
+SNAPSHOT_NAME_PREFIX is required for the check target. Follow-up later on 2026-07-09: documented
+translation-context sanity-check findings in the focused MWE README. The initial translation-context
+series underperformed the prompt-only series, so next proposed variants are explicit translation-use
+guidance plus a two-step analysis-before-selection prompt, and a prompt-only analysis variant to
+separate reasoning-structure effects from translation-context effects.
