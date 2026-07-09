@@ -211,6 +211,7 @@ class MWEPromptExperimentCommandTests(TestCase):
             }
 
         with patch("projects.management.commands.run_mwe_prompt_experiment.annotate_mwes", side_effect=fake_annotate):
+            out = StringIO()
             call_command(
                 "run_mwe_prompt_experiment",
                 input_records_jsonl=str(input_path),
@@ -219,13 +220,15 @@ class MWEPromptExperimentCommandTests(TestCase):
                 template_file=str(template_path),
                 overwrite=True,
                 use_translation_context=True,
-                stdout=StringIO(),
+                stdout=out,
             )
 
         manifest = json.loads((output_dir / "template-run" / "manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(seen_template_paths, [template_path])
         self.assertEqual(manifest["template_file"], str(template_path))
         self.assertTrue(manifest["use_translation_context"])
+        self.assertEqual(manifest["translation_context_record_count"], 1)
+        self.assertIn("Translation context enabled: 1/1", out.getvalue())
 
     def test_score_command_filters_explicit_project_ids(self):
         outputs_path = Path(self.tmpdir) / "outputs.jsonl"

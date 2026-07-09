@@ -64,7 +64,12 @@ class Command(BaseCommand):
                 outputs_out.write(json.dumps(payload, ensure_ascii=False) + "\n")
             output_count += 1
 
+        translation_context_records = count_records_with_translation_context(records)
         self.stdout.write(f"Loaded {len(records)} MWE records from {input_path}")
+        if options.get("use_translation_context"):
+            self.stdout.write(
+                f"Translation context enabled: {translation_context_records}/{len(records)} records have translation_context"
+            )
         asyncio.run(
             run_records(
                 records,
@@ -85,6 +90,7 @@ class Command(BaseCommand):
             "progress_jsonl": str(progress_path),
             "template_file": str(template_path) if template_path else None,
             "use_translation_context": bool(options.get("use_translation_context")),
+            "translation_context_record_count": translation_context_records if options.get("use_translation_context") else 0,
         }
         manifest_path = run_dir / "manifest.json"
         manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -212,6 +218,10 @@ def normalize_translation_context(raw: Any) -> list[dict[str, str]]:
         )
     return context
 
+
+
+def count_records_with_translation_context(records: list[dict[str, Any]]) -> int:
+    return sum(1 for record in records if normalize_translation_context(record.get("translation_context") or []))
 
 def write_jsonl(path: Path, records: list[dict[str, Any]]) -> None:
     with path.open("w", encoding="utf-8") as out:

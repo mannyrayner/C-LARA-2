@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-09T01:30:00Z
+- **Updated:** 2026-07-09T02:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -175,4 +175,8 @@ now asks for concise translation-aware revisions rather than longer over-elabora
 Follow-up later on 2026-07-09: added MWE_PROMPT_CYCLE_SERIES so translation-context prompt cycles
 can start from cycle_1 in a separate subdirectory instead of continuing the prompt-only series;
 README now gives cut-and-paste commands for the translation_context series and explains comparing
-its cycle_comparison.md with the prompt-only report.
+its cycle_comparison.md with the prompt-only report. Follow-up later on 2026-07-09: README now
+includes cut-and-paste translation-context commands beginning with declare-mwe-gold, a Python sanity
+check for translation_context records, mwe-prompt-cycle, revise-mwe-prompt-cycle-template, and
+compare-mwe-prompt-cycles; run_mwe_prompt_experiment now prints and records
+translation_context_record_count when translation context is enabled.

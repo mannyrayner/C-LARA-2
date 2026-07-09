@@ -290,6 +290,26 @@ series instead of continuing the prompt-only `cycle_1` ... `cycle_5` series. The
 with the original prompt-only cycles.
 
 ```bash
+MWE_PROJECT_IDS="239,245,254,255,257,261,263"
+
+make declare-mwe-gold RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  SNAPSHOT_NAME_PREFIX="MWE development translation-context gold checkpoint"
+
+python - <<'PY'
+import json
+from pathlib import Path
+path = Path("generated/mwe_gold/en-development/selected_segments.jsonl")
+records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+with_translation = [record for record in records if record.get("translation_context")]
+print(f"records={len(records)} records_with_translation_context={len(with_translation)}")
+if with_translation:
+    sample = with_translation[0]
+    print(sample["record_id"], sample["translation_context"][0])
+PY
+
 MWE_PROMPT_CYCLE_SERIES=translation_context
 MWE_PROMPT_CYCLE_NUMBER=1
 
@@ -300,6 +320,13 @@ make mwe-prompt-cycle RUN=1 \
   MWE_PROMPT_CYCLE_SERIES="$MWE_PROMPT_CYCLE_SERIES" \
   MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER" \
   MWE_USE_TRANSLATION_CONTEXT=1
+
+make revise-mwe-prompt-cycle-template RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_PROMPT_CYCLE_SERIES" \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
 
 make compare-mwe-prompt-cycles RUN=1 \
   MWE_LANGUAGE=en \
@@ -320,6 +347,11 @@ experiments can add more than one translation without changing the run format.
 The prompt-revision step is also instructed to use translations as optional
 evidence for expressions that translate as phrases, while keeping the prompt short
 and avoiding over-elaborate instructions.
+
+When `MWE_USE_TRANSLATION_CONTEXT=1`, `run_mwe_prompt_experiment` prints a trace
+line like `Translation context enabled: N/M records have translation_context` and
+records the same count in the run `manifest.json`, so you can confirm that the
+cycle is actually using the exported translations.
 
 If you want to run the steps separately for debugging, use
 `prepare-mwe-prompt-cycle`, `run-mwe-prompt-cycle`, `score-mwe-prompt-cycle`, and
