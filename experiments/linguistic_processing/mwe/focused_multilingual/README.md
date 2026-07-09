@@ -388,6 +388,45 @@ Suggested next controlled variants, in order:
   English/French/German annotated development sets and reserve held-out
   validation/test projects for final checks.
 
+### `translation_context_analysis_v1` controlled series
+
+This is the next recommended controlled variant after the initial translation-context
+sanity check. It starts a fresh series, keeps translation context enabled, and seeds
+cycle 1 from a concise hand-reviewed prompt that explicitly says how to use
+translations and restores the analyse-before-selection decision procedure.
+
+```bash
+MWE_PROJECT_IDS="239,245,254,255,257,261,263"
+MWE_PROMPT_CYCLE_SERIES=translation_context_analysis_v1
+MWE_PROMPT_CYCLE_NUMBER=1
+MWE_ANALYSIS_TEMPLATE="config/mwe_translation_context_analysis_template.txt"
+
+make mwe-prompt-cycle RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_PROMPT_CYCLE_SERIES" \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER" \
+  MWE_CYCLE_INITIAL_TEMPLATE="$MWE_ANALYSIS_TEMPLATE" \
+  MWE_USE_TRANSLATION_CONTEXT=1
+
+make revise-mwe-prompt-cycle-template RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_PROMPT_CYCLE_SERIES" \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
+
+make compare-mwe-prompt-cycles RUN=1 \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_PROMPT_CYCLE_SERIES"
+```
+
+The seed prompt is `config/mwe_translation_context_analysis_template.txt`. It is
+intended to be long enough to specify a decision procedure, but short enough to
+avoid the prompt-bloat problem seen in later prompt-only cycles.
+
 If you want to run the steps separately for debugging, use
 `prepare-mwe-prompt-cycle`, `run-mwe-prompt-cycle`, `score-mwe-prompt-cycle`, and
 `propose-mwe-prompt-cycle-improvement` with the same variables.

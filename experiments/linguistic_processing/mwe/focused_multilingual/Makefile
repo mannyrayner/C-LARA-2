@@ -48,6 +48,7 @@ MWE_PROMPT_CYCLE_DIR := $(MWE_PROMPT_CYCLE_BASE_DIR)/cycle_$(MWE_PROMPT_CYCLE_NU
 MWE_CYCLE_TEMPLATE := $(MWE_PROMPT_CYCLE_DIR)/template.txt
 MWE_BASE_TEMPLATE ?= $(ROOT_DIR)/prompts/mwe/$(MWE_LANGUAGE)/template.txt
 MWE_DEFAULT_TEMPLATE ?= $(ROOT_DIR)/prompts/mwe/default/template.txt
+MWE_CYCLE_INITIAL_TEMPLATE ?=
 MWE_CYCLE_OUTPUTS_JSONL := $(MWE_PROMPT_CYCLE_DIR)/$(MWE_CYCLE_RUN_LABEL)/outputs.jsonl
 MWE_CYCLE_SCORE_DIR := $(MWE_PROMPT_CYCLE_DIR)/score
 MWE_CYCLE_IMPROVEMENT_DIR := $(MWE_PROMPT_CYCLE_DIR)/improvement
@@ -144,6 +145,7 @@ help:
 	@echo "  MWE_PROMPT_CYCLE_SERIES=$(MWE_PROMPT_CYCLE_SERIES)"
 	@echo "  MWE_PROMPT_CYCLE_DIR=$(MWE_PROMPT_CYCLE_DIR)"
 	@echo "  MWE_REVISION_MODEL=$(MWE_REVISION_MODEL)"
+	@echo "  MWE_CYCLE_INITIAL_TEMPLATE=$(MWE_CYCLE_INITIAL_TEMPLATE)"
 	@echo "  MWE_CYCLE_COMPARISON_MD=$(MWE_CYCLE_COMPARISON_MD)"
 	@echo "  MWE_USE_TRANSLATION_CONTEXT=$(MWE_USE_TRANSLATION_CONTEXT)"
 
@@ -263,7 +265,7 @@ prepare-mwe-prompt-cycle: prepare
 	fi; \
 	mkdir -p "$(MWE_PROMPT_CYCLE_DIR)"; \
 	if [ "$(MWE_PROMPT_CYCLE_NUMBER)" = "1" ]; then \
-		if [ -f "$(MWE_BASE_TEMPLATE)" ]; then source_prompt="$(MWE_BASE_TEMPLATE)"; else source_prompt="$(MWE_DEFAULT_TEMPLATE)"; fi; \
+		if [ -n "$(MWE_CYCLE_INITIAL_TEMPLATE)" ]; then source_prompt="$(MWE_CYCLE_INITIAL_TEMPLATE)"; elif [ -f "$(MWE_BASE_TEMPLATE)" ]; then source_prompt="$(MWE_BASE_TEMPLATE)"; else source_prompt="$(MWE_DEFAULT_TEMPLATE)"; fi; \
 	else \
 		previous_cycle=$$(( $(MWE_PROMPT_CYCLE_NUMBER) - 1 )); \
 		source_prompt="$(MWE_PROMPT_CYCLE_BASE_DIR)/cycle_$${previous_cycle}/improvement/template_revision.txt"; \

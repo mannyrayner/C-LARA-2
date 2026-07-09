@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-09T03:05:00Z
+- **Updated:** 2026-07-09T03:25:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -188,4 +188,9 @@ SNAPSHOT_NAME_PREFIX is required for the check target. Follow-up later on 2026-0
 translation-context sanity-check findings in the focused MWE README. The initial translation-context
 series underperformed the prompt-only series, so next proposed variants are explicit translation-use
 guidance plus a two-step analysis-before-selection prompt, and a prompt-only analysis variant to
-separate reasoning-structure effects from translation-context effects.
+separate reasoning-structure effects from translation-context effects. Follow-up later on
+2026-07-09: prepared the translation_context_analysis_v1 controlled MWE cycle series. Added a
+concise analysis-before-selection seed prompt, a Makefile MWE_CYCLE_INITIAL_TEMPLATE override for
+cycle 1 seeding, and README cut-and-paste commands to run the fresh translation-aware series with
+explicit translation-use guidance while keeping prior prompt-only and translation_context series
+comparable.
