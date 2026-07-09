@@ -85,7 +85,7 @@ def build_markdown(records: list[dict[str, Any]], *, source_path: Path) -> str:
                 "",
                 "### Segment",
                 "",
-                record.get("segment_surface") or "",
+                markdown_text(record.get("segment_surface")),
                 "",
                 "### Gold MWEs",
                 "",
@@ -97,7 +97,7 @@ def build_markdown(records: list[dict[str, Any]], *, source_path: Path) -> str:
                 "",
                 "### Model analysis",
                 "",
-                record.get("mwe_analysis") or "not recorded",
+                markdown_text(record.get("mwe_analysis"), default="not recorded"),
                 "",
             ]
         )
@@ -109,7 +109,7 @@ def build_markdown(records: list[dict[str, Any]], *, source_path: Path) -> str:
                     continue
                 label = item.get("language") or "unknown"
                 source = item.get("source") or "unknown source"
-                text = item.get("text") or ""
+                text = markdown_text(item.get("text"))
                 lines.append(f"- **{label}** ({source}): {text}")
             lines.append("")
     return "\n".join(lines) + "\n"
@@ -119,3 +119,13 @@ def format_spans(span_list: list[list[str]]) -> str:
     if not span_list:
         return "None"
     return "\n".join(f"- {' '.join(span)}" for span in span_list)
+
+
+def markdown_text(value: Any, *, default: str = "") -> str:
+    if value is None or value == "":
+        return default
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (list, dict)):
+        return json.dumps(value, ensure_ascii=False)
+    return str(value)

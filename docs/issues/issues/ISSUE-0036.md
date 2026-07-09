@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-09T04:05:00Z
+- **Updated:** 2026-07-09T04:25:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -199,4 +199,6 @@ prompt-improvement reports now carry that analysis forward, giving revise-mwe-pr
 richer evidence about why false positives and false negatives occurred. Follow-up later on
 2026-07-09: added a format_mwe_prompt_outputs command and format-mwe-prompt-cycle-output Make target
 so cycle outputs.jsonl can be rendered as readable Markdown with segment text, gold/predicted MWEs,
-model analysis, and translation context.
+model analysis, and translation context. Follow-up later on 2026-07-09: hardened the MWE output
+formatter after maintainer testing found that some model analysis fields can be structured values
+rather than strings; formatter text fields now coerce lists/dicts safely when building Markdown.

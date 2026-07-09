@@ -282,7 +282,7 @@ class MWEPromptExperimentCommandTests(TestCase):
             "segment_surface": "Emma's days were filled with joy.",
             "gold_mwes": [{"tokens": ["filled", "with"]}],
             "predicted_mwes": [{"tokens": ["filled", "with"]}],
-            "mwe_analysis": "filled with is selected as a stable phrase.",
+            "mwe_analysis": ["filled with is selected as a stable phrase."],
             "translation_context": [{"language": "fr", "source": "latest_translation_stage", "text": "Les journées d'Emma étaient remplies de joie."}],
         }
         outputs_path.write_text(json.dumps(record) + "\n", encoding="utf-8")
