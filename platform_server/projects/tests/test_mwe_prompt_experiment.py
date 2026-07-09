@@ -270,6 +270,38 @@ class MWEPromptExperimentCommandTests(TestCase):
         self.assertEqual(scored_record["record_id"], "keep")
         self.assertIn("phrasal verb", scored_record["mwe_analysis"])
 
+    def test_format_mwe_prompt_outputs_writes_readable_markdown(self):
+        outputs_path = Path(self.tmpdir) / "outputs.jsonl"
+        output_markdown = Path(self.tmpdir) / "outputs.md"
+        record = {
+            "record_id": "r1",
+            "project_id": self.project.id,
+            "project_title": self.project.title,
+            "page_index": 1,
+            "segment_index": 2,
+            "segment_surface": "Emma's days were filled with joy.",
+            "gold_mwes": [{"tokens": ["filled", "with"]}],
+            "predicted_mwes": [{"tokens": ["filled", "with"]}],
+            "mwe_analysis": "filled with is selected as a stable phrase.",
+            "translation_context": [{"language": "fr", "source": "latest_translation_stage", "text": "Les journées d'Emma étaient remplies de joie."}],
+        }
+        outputs_path.write_text(json.dumps(record) + "\n", encoding="utf-8")
+
+        call_command(
+            "format_mwe_prompt_outputs",
+            outputs_jsonl=str(outputs_path),
+            output_markdown=str(output_markdown),
+            overwrite=True,
+            stdout=StringIO(),
+        )
+
+        markdown = output_markdown.read_text(encoding="utf-8")
+        self.assertIn("## r1", markdown)
+        self.assertIn("### Gold MWEs", markdown)
+        self.assertIn("- filled with", markdown)
+        self.assertIn("filled with is selected", markdown)
+        self.assertIn("Les journées", markdown)
+
 
     def test_propose_command_filters_scored_records_by_project_ids(self):
         score_dir = Path(self.tmpdir) / "scores_for_proposal"

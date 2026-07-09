@@ -50,6 +50,7 @@ MWE_BASE_TEMPLATE ?= $(ROOT_DIR)/prompts/mwe/$(MWE_LANGUAGE)/template.txt
 MWE_DEFAULT_TEMPLATE ?= $(ROOT_DIR)/prompts/mwe/default/template.txt
 MWE_CYCLE_INITIAL_TEMPLATE ?=
 MWE_CYCLE_OUTPUTS_JSONL := $(MWE_PROMPT_CYCLE_DIR)/$(MWE_CYCLE_RUN_LABEL)/outputs.jsonl
+MWE_CYCLE_OUTPUTS_MARKDOWN := $(MWE_PROMPT_CYCLE_DIR)/$(MWE_CYCLE_RUN_LABEL)/outputs.md
 MWE_CYCLE_SCORE_DIR := $(MWE_PROMPT_CYCLE_DIR)/score
 MWE_CYCLE_IMPROVEMENT_DIR := $(MWE_PROMPT_CYCLE_DIR)/improvement
 MWE_CYCLE_REVISION := $(MWE_CYCLE_IMPROVEMENT_DIR)/template_revision.txt
@@ -78,6 +79,7 @@ PY_MWE_PROMPT_CYCLE_BASE_DIR := $(call python_path,$(MWE_PROMPT_CYCLE_BASE_DIR))
 PY_MWE_PROMPT_CYCLE_DIR := $(call python_path,$(MWE_PROMPT_CYCLE_DIR))
 PY_MWE_CYCLE_TEMPLATE := $(call python_path,$(MWE_CYCLE_TEMPLATE))
 PY_MWE_CYCLE_OUTPUTS_JSONL := $(call python_path,$(MWE_CYCLE_OUTPUTS_JSONL))
+PY_MWE_CYCLE_OUTPUTS_MARKDOWN := $(call python_path,$(MWE_CYCLE_OUTPUTS_MARKDOWN))
 PY_MWE_CYCLE_SCORE_DIR := $(call python_path,$(MWE_CYCLE_SCORE_DIR))
 PY_MWE_CYCLE_IMPROVEMENT_DIR := $(call python_path,$(MWE_CYCLE_IMPROVEMENT_DIR))
 PY_MWE_CYCLE_REVISION := $(call python_path,$(MWE_CYCLE_REVISION))
@@ -89,7 +91,7 @@ MWE_TRANSLATION_CONTEXT_ARG := $(if $(filter 1,$(MWE_USE_TRANSLATION_CONTEXT)),-
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help prepare declare-mwe-gold check-mwe-gold check-mwe-translation-context mwe-prompt-cycle show-mwe-prompt-cycle-results compare-mwe-prompt-cycles prepare-mwe-prompt-cycle run-mwe-prompt-cycle score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement revise-mwe-prompt-cycle-template extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
+.PHONY: help prepare declare-mwe-gold check-mwe-gold check-mwe-translation-context mwe-prompt-cycle show-mwe-prompt-cycle-results compare-mwe-prompt-cycles prepare-mwe-prompt-cycle run-mwe-prompt-cycle format-mwe-prompt-cycle-output score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement revise-mwe-prompt-cycle-template extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
 
 help:
 	@echo "Focused MWE experiments (multilingual)"
@@ -108,6 +110,7 @@ help:
 	@echo "  compare-mwe-prompt-cycles  Collect score/prompt-size trends across completed cycles"
 	@echo "  prepare-mwe-prompt-cycle  Create/reuse a cycle-specific MWE prompt template"
 	@echo "  run-mwe-prompt-cycle      Run a cycle-specific MWE prompt template"
+	@echo "  format-mwe-prompt-cycle-output  Render cycle outputs.jsonl as readable Markdown"
 	@echo "  score-mwe-prompt-cycle    Score a cycle-specific MWE prompt run"
 	@echo "  propose-mwe-prompt-cycle-improvement  Write cycle-specific improvement guidance"
 	@echo "  revise-mwe-prompt-cycle-template  Use AI to write the next-cycle prompt draft"
@@ -210,8 +213,9 @@ check-mwe-gold: prepare
 check-mwe-translation-context: prepare
 	@MWE_GOLD_RECORDS="$(PY_MWE_GOLD_RECORDS)" $(PYTHON) -c 'import json, os; from pathlib import Path; path = Path(os.environ["MWE_GOLD_RECORDS"]); records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]; with_translation = [record for record in records if record.get("translation_context")]; print(f"records={len(records)} records_with_translation_context={len(with_translation)}"); print(with_translation[0]["record_id"], with_translation[0]["translation_context"][0]) if with_translation else None'
 
-mwe-prompt-cycle: run-mwe-prompt-cycle score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement
+mwe-prompt-cycle: run-mwe-prompt-cycle format-mwe-prompt-cycle-output score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement
 	@echo "MWE prompt cycle $(MWE_PROMPT_CYCLE_NUMBER) complete."
+	@echo "Readable outputs: $(MWE_CYCLE_OUTPUTS_MARKDOWN)"
 	@echo "Summary: $(MWE_CYCLE_SCORE_DIR)/summary.md"
 	@echo "Per-segment scores: $(MWE_CYCLE_SCORE_DIR)/per_record_scores.jsonl"
 	@echo "Improvement report: $(MWE_CYCLE_IMPROVEMENT_DIR)/prompt_improvement.md"
@@ -288,6 +292,14 @@ run-mwe-prompt-cycle: prepare-mwe-prompt-cycle
 		$(MANAGE) run_mwe_prompt_experiment --input-records-jsonl "$(PY_MWE_CYCLE_RECORDS)" --output-dir "$(PY_MWE_PROMPT_CYCLE_DIR)" --run-label "$(MWE_CYCLE_RUN_LABEL)" --limit "$(MWE_LIMIT)" --project-ids "$(PROJECT_IDS)" --template-file "$(PY_MWE_CYCLE_TEMPLATE)" $(MWE_TRANSLATION_CONTEXT_ARG) --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 after declare-mwe-gold has written $(MWE_CYCLE_RECORDS), then run $(MWE_CYCLE_TEMPLATE)"; \
+	fi
+
+format-mwe-prompt-cycle-output: prepare
+	@echo "+ $(MANAGE) format_mwe_prompt_outputs --outputs-jsonl $(PY_MWE_CYCLE_OUTPUTS_JSONL) --output-markdown $(PY_MWE_CYCLE_OUTPUTS_MARKDOWN) --overwrite"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) format_mwe_prompt_outputs --outputs-jsonl "$(PY_MWE_CYCLE_OUTPUTS_JSONL)" --output-markdown "$(PY_MWE_CYCLE_OUTPUTS_MARKDOWN)" --overwrite; \
+	else \
+		echo "dry-run only; set RUN=1 after run-mwe-prompt-cycle has produced $(MWE_CYCLE_OUTPUTS_JSONL)"; \
 	fi
 
 score-mwe-prompt-cycle: prepare

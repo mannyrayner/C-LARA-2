@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-09T03:45:00Z
+- **Updated:** 2026-07-09T04:05:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -196,4 +196,7 @@ explicit translation-use guidance while keeping prior prompt-only and translatio
 comparable. Follow-up later on 2026-07-09: extended translation_context_analysis_v1 outputs to
 preserve the model candidate analysis as mwe_analysis alongside selected MWEs. Scoring and
 prompt-improvement reports now carry that analysis forward, giving revise-mwe-prompt-cycle-template
-richer evidence about why false positives and false negatives occurred.
+richer evidence about why false positives and false negatives occurred. Follow-up later on
+2026-07-09: added a format_mwe_prompt_outputs command and format-mwe-prompt-cycle-output Make target
+so cycle outputs.jsonl can be rendered as readable Markdown with segment text, gold/predicted MWEs,
+model analysis, and translation context.

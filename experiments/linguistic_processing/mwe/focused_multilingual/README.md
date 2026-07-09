@@ -433,7 +433,8 @@ and the score/proposal reports carry that analysis forward so
 `revise-mwe-prompt-cycle-template` can use it when drafting the next prompt.
 
 If you want to run the steps separately for debugging, use
-`prepare-mwe-prompt-cycle`, `run-mwe-prompt-cycle`, `score-mwe-prompt-cycle`, and
+`prepare-mwe-prompt-cycle`, `run-mwe-prompt-cycle`,
+`format-mwe-prompt-cycle-output`, `score-mwe-prompt-cycle`, and
 `propose-mwe-prompt-cycle-improvement` with the same variables.
 
 To ask AI to draft a non-trivial but conservative next-cycle prompt from the cycle
@@ -468,6 +469,9 @@ After the proposal target finishes, inspect:
 - `generated/mwe_prompt_cycles/en-development/cycle_1/run/outputs.jsonl` and
   `progress.jsonl` — the MWE run output and trace, including `mwe_analysis`
   when the prompt asks for analysis-before-selection;
+- `generated/mwe_prompt_cycles/en-development/cycle_1/run/outputs.md` — a
+  human-readable rendering of each segment with gold MWEs, predicted MWEs, model
+  analysis, and translation context;
 - `generated/mwe_prompt_cycles/en-development/cycle_1/score/summary.md` — the
   cycle score;
 - `generated/mwe_prompt_cycles/en-development/cycle_1/improvement/prompt_improvement.md`
