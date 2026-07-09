@@ -387,3 +387,47 @@ class MWEPromptExperimentCommandTests(TestCase):
         metadata = json.loads(output_json.read_text(encoding="utf-8"))
         self.assertEqual(metadata["rationale"], "Tightened span boundaries.")
         self.assertIn("Revised prompt template", out.getvalue())
+
+    def test_summarize_mwe_prompt_cycles_collects_score_and_prompt_lengths(self):
+        base_dir = Path(self.tmpdir) / "cycles"
+        for cycle, f1, prompt in [(1, 0.25, "short prompt\n"), (2, 0.40, "longer prompt\nwith rule\n")]:
+            cycle_dir = base_dir / f"cycle_{cycle}"
+            (cycle_dir / "score").mkdir(parents=True)
+            (cycle_dir / "improvement").mkdir()
+            (cycle_dir / "template.txt").write_text(prompt, encoding="utf-8")
+            (cycle_dir / "improvement" / "template_revision.txt").write_text(prompt + "revision\n", encoding="utf-8")
+            (cycle_dir / "score" / "summary.json").write_text(
+                json.dumps(
+                    {
+                        "record_count": 3,
+                        "precision": f1,
+                        "recall": f1,
+                        "f1": f1,
+                        "exact_match_rate": 0.1,
+                        "true_positive": cycle,
+                        "false_positive": cycle + 1,
+                        "false_negative": cycle + 2,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+        output_json = Path(self.tmpdir) / "cycle_comparison.json"
+        output_markdown = Path(self.tmpdir) / "cycle_comparison.md"
+        out = StringIO()
+        call_command(
+            "summarize_mwe_prompt_cycles",
+            cycle_base_dir=str(base_dir),
+            output_json=str(output_json),
+            output_markdown=str(output_markdown),
+            overwrite=True,
+            stdout=out,
+        )
+
+        payload = json.loads(output_json.read_text(encoding="utf-8"))
+        self.assertEqual(payload["cycle_count"], 2)
+        self.assertEqual(payload["best_cycle"]["cycle"], 2)
+        report = output_markdown.read_text(encoding="utf-8")
+        self.assertIn("cycle 2", report.lower())
+        self.assertIn("Prompt chars", report)
+        self.assertIn("MWE cycle summary", out.getvalue())

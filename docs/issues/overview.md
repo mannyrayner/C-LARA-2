@@ -1,5 +1,6 @@
-# C-LARA-2 issue overview (refreshed 2026-07-08T03:55:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-09T00:20:00Z)
 ## Recent progress
+- Added a cross-cycle MWE comparison target for **ISSUE-0036** to summarize score trends, prompt growth, and artifact paths after multi-cycle prompt iteration.
 - Removed the explicit `temperature=0` override from AI-assisted MWE prompt revision calls so `gpt-5.5` can use its supported default temperature.
 - Set the AI-assisted MWE prompt-revision default model to `gpt-5.5`, while keeping `MWE_REVISION_MODEL` overridable for cheaper smoke tests.
 - Added an AI-assisted MWE prompt-revision target for **ISSUE-0036** so cycle reports can produce auditable next-cycle prompt drafts while preserving anti-overfitting guardrails.

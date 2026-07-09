@@ -51,6 +51,8 @@ MWE_CYCLE_SCORE_DIR := $(MWE_PROMPT_CYCLE_DIR)/score
 MWE_CYCLE_IMPROVEMENT_DIR := $(MWE_PROMPT_CYCLE_DIR)/improvement
 MWE_CYCLE_REVISION := $(MWE_CYCLE_IMPROVEMENT_DIR)/template_revision.txt
 MWE_CYCLE_REVISION_JSON := $(MWE_CYCLE_IMPROVEMENT_DIR)/template_revision.json
+MWE_CYCLE_COMPARISON_JSON := $(MWE_PROMPT_CYCLE_BASE_DIR)/cycle_comparison.json
+MWE_CYCLE_COMPARISON_MD := $(MWE_PROMPT_CYCLE_BASE_DIR)/cycle_comparison.md
 MWE_REVISION_MODEL ?= gpt-5.5
 CORPUS_SPLIT_DIR := $(abspath $(GENERATED_DIR))/corpus_splits
 PY_OS := $(shell $(PYTHON) -c 'import os; print(os.name)' 2>/dev/null || echo posix)
@@ -68,6 +70,7 @@ PY_MWE_GOLD_SUMMARY := $(call python_path,$(MWE_GOLD_SUMMARY))
 PY_MWE_GOLD_REVIEW := $(call python_path,$(MWE_GOLD_REVIEW))
 PY_MWE_RUN_RECORDS := $(call python_path,$(MWE_RUN_RECORDS))
 PY_MWE_CYCLE_RECORDS := $(call python_path,$(MWE_CYCLE_RECORDS))
+PY_MWE_PROMPT_CYCLE_BASE_DIR := $(call python_path,$(MWE_PROMPT_CYCLE_BASE_DIR))
 PY_MWE_PROMPT_CYCLE_DIR := $(call python_path,$(MWE_PROMPT_CYCLE_DIR))
 PY_MWE_CYCLE_TEMPLATE := $(call python_path,$(MWE_CYCLE_TEMPLATE))
 PY_MWE_CYCLE_OUTPUTS_JSONL := $(call python_path,$(MWE_CYCLE_OUTPUTS_JSONL))
@@ -75,11 +78,13 @@ PY_MWE_CYCLE_SCORE_DIR := $(call python_path,$(MWE_CYCLE_SCORE_DIR))
 PY_MWE_CYCLE_IMPROVEMENT_DIR := $(call python_path,$(MWE_CYCLE_IMPROVEMENT_DIR))
 PY_MWE_CYCLE_REVISION := $(call python_path,$(MWE_CYCLE_REVISION))
 PY_MWE_CYCLE_REVISION_JSON := $(call python_path,$(MWE_CYCLE_REVISION_JSON))
+PY_MWE_CYCLE_COMPARISON_JSON := $(call python_path,$(MWE_CYCLE_COMPARISON_JSON))
+PY_MWE_CYCLE_COMPARISON_MD := $(call python_path,$(MWE_CYCLE_COMPARISON_MD))
 FAIL_FAST_ARG := $(if $(filter 1,$(FAIL_FAST)),--fail-fast,)
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help prepare declare-mwe-gold check-mwe-gold mwe-prompt-cycle show-mwe-prompt-cycle-results prepare-mwe-prompt-cycle run-mwe-prompt-cycle score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement revise-mwe-prompt-cycle-template extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
+.PHONY: help prepare declare-mwe-gold check-mwe-gold mwe-prompt-cycle show-mwe-prompt-cycle-results compare-mwe-prompt-cycles prepare-mwe-prompt-cycle run-mwe-prompt-cycle score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement revise-mwe-prompt-cycle-template extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
 
 help:
 	@echo "Focused MWE experiments (multilingual)"
@@ -94,6 +99,7 @@ help:
 	@echo "  check-mwe-gold    Re-export selected gold records and fail if no gold MWEs are found"
 	@echo "  mwe-prompt-cycle  Run prepare/run/score/propose for the selected cycle"
 	@echo "  show-mwe-prompt-cycle-results  Print cycle summary and per-segment score path"
+	@echo "  compare-mwe-prompt-cycles  Collect score/prompt-size trends across completed cycles"
 	@echo "  prepare-mwe-prompt-cycle  Create/reuse a cycle-specific MWE prompt template"
 	@echo "  run-mwe-prompt-cycle      Run a cycle-specific MWE prompt template"
 	@echo "  score-mwe-prompt-cycle    Score a cycle-specific MWE prompt run"
@@ -131,6 +137,7 @@ help:
 	@echo "  MWE_PROMPT_CYCLE_NUMBER=$(MWE_PROMPT_CYCLE_NUMBER)"
 	@echo "  MWE_PROMPT_CYCLE_DIR=$(MWE_PROMPT_CYCLE_DIR)"
 	@echo "  MWE_REVISION_MODEL=$(MWE_REVISION_MODEL)"
+	@echo "  MWE_CYCLE_COMPARISON_MD=$(MWE_CYCLE_COMPARISON_MD)"
 
 prepare:
 	@mkdir -p $(GENERATED_DIR)
@@ -224,6 +231,14 @@ propose-mwe-prompt-improvement: prepare
 		$(MANAGE) propose_mwe_prompt_improvement --score-dir "$(PY_MWE_SCORE_DIR)" --output-dir "$(PY_MWE_PROMPT_IMPROVEMENT_DIR)" --project-ids "$(PROJECT_IDS)" --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 after score-current-mwe has produced a score directory"; \
+	fi
+
+compare-mwe-prompt-cycles: prepare
+	@echo "+ $(MANAGE) summarize_mwe_prompt_cycles --cycle-base-dir $(PY_MWE_PROMPT_CYCLE_BASE_DIR) --output-json $(PY_MWE_CYCLE_COMPARISON_JSON) --output-markdown $(PY_MWE_CYCLE_COMPARISON_MD) --overwrite"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) summarize_mwe_prompt_cycles --cycle-base-dir "$(PY_MWE_PROMPT_CYCLE_BASE_DIR)" --output-json "$(PY_MWE_CYCLE_COMPARISON_JSON)" --output-markdown "$(PY_MWE_CYCLE_COMPARISON_MD)" --overwrite; \
+	else \
+		echo "dry-run only; set RUN=1 after at least one cycle has produced score/summary.json"; \
 	fi
 
 prepare-mwe-prompt-cycle: prepare

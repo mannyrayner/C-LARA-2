@@ -257,7 +257,26 @@ make show-mwe-prompt-cycle-results \
   MWE_LANGUAGE=en \
   SPLIT=development \
   MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
+
+make compare-mwe-prompt-cycles RUN=1 \
+  MWE_LANGUAGE=en \
+  SPLIT=development
 ```
+
+
+`compare-mwe-prompt-cycles` writes one cross-cycle review page at
+`generated/mwe_prompt_cycles/en-development/cycle_comparison.md` plus a JSON copy.
+It lists precision, recall, F1, exact-match rate, TP/FP/FN counts, prompt length,
+and revision length for each completed cycle. This is intended to make regressions
+like "cycle 5 got worse than cycle 4" easy to spot and to show whether prompt
+growth is correlating with a plateau or decline.
+
+Current hypothesis to investigate next: if recall remains poor after prompt-only
+iterations, add whole-segment translation context to the MWE-location prompt. Start
+with the gloss-language translation because it is cheap and already aligned with
+the task; if helpful, compare one translation against multiple translations before
+using validation/test projects. Keep this as a controlled cycle variant rather than
+mixing it silently into the existing prompt-only run.
 
 If you want to run the steps separately for debugging, use
 `prepare-mwe-prompt-cycle`, `run-mwe-prompt-cycle`, `score-mwe-prompt-cycle`, and

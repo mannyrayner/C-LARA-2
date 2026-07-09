@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-08T03:55:00Z
+- **Updated:** 2026-07-09T00:20:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -162,4 +162,9 @@ changes simple, general, and non-memorised. Follow-up later on 2026-07-08: chang
 prompt-revision default model to gpt-5.5 because this is the highest-leverage once-per-cycle step,
 while keeping MWE_REVISION_MODEL overridable for cheaper smoke tests. Follow-up later on 2026-07-08:
 removed the explicit temperature=0 override from MWE prompt revision calls so gpt-5.5 can use its
-supported default temperature.
+supported default temperature. Follow-up on 2026-07-09: after five MWE prompt cycles, added
+summarize_mwe_prompt_cycles and a compare-mwe-prompt-cycles Make target to collect per-cycle
+precision/recall/F1, exact-match, TP/FP/FN, prompt length, revision length, and artifact paths in
+one report. README now records the next hypothesis to test: whether supplying whole-segment
+translation context improves MWE recall, starting with the gloss-language translation as a
+controlled cycle variant.
