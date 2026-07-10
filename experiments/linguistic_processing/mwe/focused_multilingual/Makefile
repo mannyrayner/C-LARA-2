@@ -59,6 +59,8 @@ MWE_CYCLE_COMPARISON_JSON := $(MWE_PROMPT_CYCLE_BASE_DIR)/cycle_comparison.json
 MWE_CYCLE_COMPARISON_MD := $(MWE_PROMPT_CYCLE_BASE_DIR)/cycle_comparison.md
 MWE_REVISION_MODEL ?= gpt-5.5
 MWE_USE_TRANSLATION_CONTEXT ?= 0
+MWE_RECONCILE_ANALYSIS_TEMPLATE_DIR ?= config/translation_context_reconcile_v1/analysis
+MWE_RECONCILE_TEMPLATE ?= config/translation_context_reconcile_v1/reconcile.txt
 CORPUS_SPLIT_DIR := $(abspath $(GENERATED_DIR))/corpus_splits
 PY_OS := $(shell $(PYTHON) -c 'import os; print(os.name)' 2>/dev/null || echo posix)
 python_path = $(shell if [ "$(PY_OS)" = "nt" ] && command -v cygpath >/dev/null 2>&1; then cygpath -am "$(1)"; else printf '%s' "$(1)"; fi)
@@ -86,12 +88,14 @@ PY_MWE_CYCLE_REVISION := $(call python_path,$(MWE_CYCLE_REVISION))
 PY_MWE_CYCLE_REVISION_JSON := $(call python_path,$(MWE_CYCLE_REVISION_JSON))
 PY_MWE_CYCLE_COMPARISON_JSON := $(call python_path,$(MWE_CYCLE_COMPARISON_JSON))
 PY_MWE_CYCLE_COMPARISON_MD := $(call python_path,$(MWE_CYCLE_COMPARISON_MD))
+PY_MWE_RECONCILE_ANALYSIS_TEMPLATE_DIR := $(call python_path,$(abspath $(MWE_RECONCILE_ANALYSIS_TEMPLATE_DIR)))
+PY_MWE_RECONCILE_TEMPLATE := $(call python_path,$(abspath $(MWE_RECONCILE_TEMPLATE)))
 FAIL_FAST_ARG := $(if $(filter 1,$(FAIL_FAST)),--fail-fast,)
 MWE_TRANSLATION_CONTEXT_ARG := $(if $(filter 1,$(MWE_USE_TRANSLATION_CONTEXT)),--use-translation-context,)
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help prepare declare-mwe-gold check-mwe-gold check-mwe-translation-context mwe-prompt-cycle recover-mwe-prompt-cycle-after-run show-mwe-prompt-cycle-results compare-mwe-prompt-cycles prepare-mwe-prompt-cycle run-mwe-prompt-cycle resume-mwe-prompt-cycle format-mwe-prompt-cycle-output score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement revise-mwe-prompt-cycle-template extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
+.PHONY: help prepare declare-mwe-gold check-mwe-gold check-mwe-translation-context mwe-prompt-cycle mwe-reconcile-prompt-cycle recover-mwe-prompt-cycle-after-run show-mwe-prompt-cycle-results compare-mwe-prompt-cycles prepare-mwe-prompt-cycle run-mwe-prompt-cycle run-mwe-reconcile-prompt-cycle resume-mwe-prompt-cycle format-mwe-prompt-cycle-output score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement revise-mwe-prompt-cycle-template extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
 
 help:
 	@echo "Focused MWE experiments (multilingual)"
@@ -106,11 +110,13 @@ help:
 	@echo "  check-mwe-gold    Re-export selected gold records and fail if no gold MWEs are found"
 	@echo "  check-mwe-translation-context  Count records with exported translation_context"
 	@echo "  mwe-prompt-cycle  Run prepare/run/score/propose for the selected cycle"
+	@echo "  mwe-reconcile-prompt-cycle  Run three analysis prompts plus reconciliation, then format/score/propose"
 	@echo "  recover-mwe-prompt-cycle-after-run  Rebuild formatted output, score, and improvement artifacts from an existing cycle run"
 	@echo "  show-mwe-prompt-cycle-results  Print cycle summary and per-segment score path"
 	@echo "  compare-mwe-prompt-cycles  Collect score/prompt-size trends across completed cycles"
 	@echo "  prepare-mwe-prompt-cycle  Create/reuse a cycle-specific MWE prompt template"
 	@echo "  run-mwe-prompt-cycle      Run a cycle-specific MWE prompt template"
+	@echo "  run-mwe-reconcile-prompt-cycle  Run three MWE analyses plus reconciliation for a cycle"
 	@echo "  resume-mwe-prompt-cycle   Run missing records for a cycle with an existing run/outputs.jsonl"
 	@echo "  format-mwe-prompt-cycle-output  Render cycle outputs.jsonl as readable Markdown"
 	@echo "  score-mwe-prompt-cycle    Score a cycle-specific MWE prompt run"
@@ -222,6 +228,13 @@ mwe-prompt-cycle: run-mwe-prompt-cycle format-mwe-prompt-cycle-output score-mwe-
 	@echo "Per-segment scores: $(MWE_CYCLE_SCORE_DIR)/per_record_scores.jsonl"
 	@echo "Improvement report: $(MWE_CYCLE_IMPROVEMENT_DIR)/prompt_improvement.md"
 
+mwe-reconcile-prompt-cycle: run-mwe-reconcile-prompt-cycle format-mwe-prompt-cycle-output score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement
+	@echo "MWE reconcile prompt cycle $(MWE_PROMPT_CYCLE_NUMBER) complete."
+	@echo "Readable outputs: $(MWE_CYCLE_OUTPUTS_MARKDOWN)"
+	@echo "Summary: $(MWE_CYCLE_SCORE_DIR)/summary.md"
+	@echo "Per-segment scores: $(MWE_CYCLE_SCORE_DIR)/per_record_scores.jsonl"
+	@echo "Improvement report: $(MWE_CYCLE_IMPROVEMENT_DIR)/prompt_improvement.md"
+
 recover-mwe-prompt-cycle-after-run: resume-mwe-prompt-cycle format-mwe-prompt-cycle-output score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement
 	@echo "Recovered MWE prompt cycle $(MWE_PROMPT_CYCLE_NUMBER) artifacts from existing run output."
 	@echo "Readable outputs: $(MWE_CYCLE_OUTPUTS_MARKDOWN)"
@@ -301,6 +314,14 @@ run-mwe-prompt-cycle: prepare-mwe-prompt-cycle
 		$(MANAGE) run_mwe_prompt_experiment --input-records-jsonl "$(PY_MWE_CYCLE_RECORDS)" --output-dir "$(PY_MWE_PROMPT_CYCLE_DIR)" --run-label "$(MWE_CYCLE_RUN_LABEL)" --limit "$(MWE_LIMIT)" --project-ids "$(PROJECT_IDS)" --template-file "$(PY_MWE_CYCLE_TEMPLATE)" $(MWE_TRANSLATION_CONTEXT_ARG) --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 after declare-mwe-gold has written $(MWE_CYCLE_RECORDS), then run $(MWE_CYCLE_TEMPLATE)"; \
+	fi
+
+run-mwe-reconcile-prompt-cycle: prepare
+	@echo "+ $(MANAGE) run_mwe_reconcile_prompt_experiment --input-records-jsonl $(PY_MWE_CYCLE_RECORDS) --output-dir $(PY_MWE_PROMPT_CYCLE_DIR) --run-label $(MWE_CYCLE_RUN_LABEL) --limit $(MWE_LIMIT) --project-ids $(PROJECT_IDS) --analysis-template-dir $(PY_MWE_RECONCILE_ANALYSIS_TEMPLATE_DIR) --reconcile-template $(PY_MWE_RECONCILE_TEMPLATE) --overwrite"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) run_mwe_reconcile_prompt_experiment --input-records-jsonl "$(PY_MWE_CYCLE_RECORDS)" --output-dir "$(PY_MWE_PROMPT_CYCLE_DIR)" --run-label "$(MWE_CYCLE_RUN_LABEL)" --limit "$(MWE_LIMIT)" --project-ids "$(PROJECT_IDS)" --analysis-template-dir "$(PY_MWE_RECONCILE_ANALYSIS_TEMPLATE_DIR)" --reconcile-template "$(PY_MWE_RECONCILE_TEMPLATE)" --overwrite; \
+	else \
+		echo "dry-run only; set RUN=1 after declare-mwe-gold has written $(MWE_CYCLE_RECORDS)"; \
 	fi
 
 resume-mwe-prompt-cycle: prepare-mwe-prompt-cycle

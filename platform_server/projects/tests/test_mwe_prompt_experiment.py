@@ -302,6 +302,78 @@ class MWEPromptExperimentCommandTests(TestCase):
         self.assertIn("filled with is selected", markdown)
         self.assertIn("Les journées", markdown)
 
+    def test_run_mwe_reconcile_prompt_experiment_writes_reconciled_output(self):
+        input_path = Path(self.tmpdir) / "reconcile_records.jsonl"
+        output_dir = Path(self.tmpdir) / "reconcile_runs"
+        analysis_dir = Path(self.tmpdir) / "analysis_templates"
+        analysis_dir.mkdir()
+        for name in ("a", "b", "c"):
+            (analysis_dir / f"{name}.txt").write_text(f"Analysis prompt {name}", encoding="utf-8")
+        reconcile_template = Path(self.tmpdir) / "reconcile.txt"
+        reconcile_template.write_text("Reconcile prompt", encoding="utf-8")
+        input_path.write_text(
+            json.dumps(
+                {
+                    "record_id": "r1",
+                    "split": "development",
+                    "language": "en",
+                    "project_id": self.project.id,
+                    "project_title": self.project.title,
+                    "page_index": 1,
+                    "segment_index": 1,
+                    "segment_surface": "The kids looked up in wonder.",
+                    "token_surfaces": ["The", "kids", "looked", "up", "in", "wonder", "."],
+                    "gold_mwes": [{"tokens": ["looked", "up"]}],
+                    "translation_context": [{"language": "fr", "source": "latest_translation_stage", "text": "Les enfants ont levé les yeux avec admiration."}],
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        class FakeClient:
+            def __init__(self, *args, **kwargs):
+                self.calls = 0
+
+            async def chat_json(self, prompt, **kwargs):  # noqa: ARG002
+                self.calls += 1
+                if self.calls <= 3:
+                    return {"candidates": [{"tokens": ["looked", "up"], "decision": "select"}]}
+                return {
+                    "surface": "The kids looked up in wonder.",
+                    "tokens": [
+                        {"surface": "The"},
+                        {"surface": "kids"},
+                        {"surface": "looked", "annotations": {"mwe_id": "m1"}},
+                        {"surface": "up", "annotations": {"mwe_id": "m1"}},
+                        {"surface": "in"},
+                        {"surface": "wonder"},
+                        {"surface": "."},
+                    ],
+                    "annotations": {
+                        "mwes": [{"id": "m1", "tokens": ["looked", "up"], "label": "phrasal_verb"}],
+                        "mwe_analysis": "Reconciled analyses selected looked up for glossing.",
+                    },
+                }
+
+        with patch("projects.management.commands.run_mwe_reconcile_prompt_experiment.OpenAIClient", FakeClient):
+            out = StringIO()
+            call_command(
+                "run_mwe_reconcile_prompt_experiment",
+                input_records_jsonl=str(input_path),
+                output_dir=str(output_dir),
+                run_label="reconcile-run",
+                analysis_template_dir=str(analysis_dir),
+                reconcile_template=str(reconcile_template),
+                overwrite=True,
+                stdout=out,
+            )
+
+        payload = json.loads((output_dir / "reconcile-run" / "outputs.jsonl").read_text(encoding="utf-8"))
+        self.assertEqual(payload["predicted_mwes"][0]["tokens"], ["looked", "up"])
+        self.assertEqual(len(payload["mwe_candidate_analyses"]), 3)
+        self.assertIn("Reconciled MWE prompt run complete: 1 records", out.getvalue())
+
 
     def test_propose_command_filters_scored_records_by_project_ids(self):
         score_dir = Path(self.tmpdir) / "scores_for_proposal"

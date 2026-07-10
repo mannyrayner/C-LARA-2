@@ -437,6 +437,40 @@ If you want to run the steps separately for debugging, use
 `format-mwe-prompt-cycle-output`, `score-mwe-prompt-cycle`, and
 `propose-mwe-prompt-cycle-improvement` with the same variables.
 
+### `translation_context_reconcile_v1` controlled series
+
+If the formatted output shows that the model's prose analysis and final
+`predicted_mwes` disagree, run a reconciliation variant instead of continuing a
+single-prompt cycle. This first version runs three independent analysis prompts
+and then a fourth reconciliation prompt that produces the final JSON annotation.
+The prompts make the C-LARA purpose explicit: MWEs are identified to support
+glossing, so the gloss-language translation is strong evidence when source words
+need to be understood or rendered as a phrase.
+
+```bash
+MWE_PROJECT_IDS="239,245,254,255,257,261,263"
+MWE_PROMPT_CYCLE_SERIES=translation_context_reconcile_v1
+MWE_PROMPT_CYCLE_NUMBER=1
+
+make mwe-reconcile-prompt-cycle RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_PROMPT_CYCLE_SERIES" \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
+
+make compare-mwe-prompt-cycles RUN=1 \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_PROMPT_CYCLE_SERIES"
+```
+
+The analysis prompts live in
+`config/translation_context_reconcile_v1/analysis/`; the reconciliation prompt is
+`config/translation_context_reconcile_v1/reconcile.txt`. The output schema stays
+compatible with the existing formatter, scorer, and proposal steps, and adds
+`mwe_candidate_analyses` to each `outputs.jsonl` record for audit.
+
 If a cycle has already finished `run-mwe-prompt-cycle` and only the Markdown
 formatting step failed, rerun just the formatter; this reads the existing
 `run/outputs.jsonl` and writes `run/outputs.md` without repeating the API calls:

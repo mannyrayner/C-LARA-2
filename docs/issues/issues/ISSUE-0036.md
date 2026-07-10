@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-10T00:20:00Z
+- **Updated:** 2026-07-10T01:10:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -212,4 +212,8 @@ prompt-cycle runs after a late-cycle malformed model response. run_mwe_prompt_ex
 each record up to three attempts, can resume an existing run by appending only missing records, and
 recover-mwe-prompt-cycle-after-run now resumes missing records before rebuilding formatted output,
 score, and improvement artifacts. The generic annotation merger also ignores non-dict annotation
-payloads instead of crashing on values such as integers.
+payloads instead of crashing on values such as integers. Follow-up on 2026-07-10: added the first
+translation_context_reconcile_v1 MWE experiment variant. It runs three independent glossing-aware
+MWE analysis prompts, then reconciles them into a final JSON annotation using a fourth prompt. The
+Makefile now has mwe-reconcile-prompt-cycle, and outputs remain compatible with existing
+format/score/propose cycle artifacts while adding mwe_candidate_analyses for audit.
