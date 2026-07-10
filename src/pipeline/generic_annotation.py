@@ -115,10 +115,10 @@ def _merge_segment(
 
 
 def _merge_annotations(
-    base: dict[str, Any] | None, updates: dict[str, Any] | None
+    base: dict[str, Any] | None, updates: Any
 ) -> dict[str, Any]:
     base = dict(base or {})
-    if updates:
+    if isinstance(updates, dict):
         for key, value in updates.items():
             if value is None:
                 continue
