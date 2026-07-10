@@ -374,6 +374,59 @@ class MWEPromptExperimentCommandTests(TestCase):
         self.assertEqual(len(payload["mwe_candidate_analyses"]), 3)
         self.assertIn("Reconciled MWE prompt run complete: 1 records", out.getvalue())
 
+    def test_revise_mwe_reconcile_prompts_from_report_writes_four_prompts(self):
+        analysis_dir = Path(self.tmpdir) / "current_analysis"
+        output_analysis_dir = Path(self.tmpdir) / "revised_analysis"
+        analysis_dir.mkdir()
+        for name in ("source_conservative", "translation_glossing", "boundary_precision"):
+            (analysis_dir / f"{name}.txt").write_text(f"Current {name}", encoding="utf-8")
+        reconcile_template = Path(self.tmpdir) / "current_reconcile.txt"
+        reconcile_template.write_text("Current reconcile", encoding="utf-8")
+        improvement_report = Path(self.tmpdir) / "prompt_improvement.md"
+        improvement_report.write_text("# Report\nUse translation more consistently.", encoding="utf-8")
+        candidate_guidance = Path(self.tmpdir) / "candidate_prompt_guidance.txt"
+        candidate_guidance.write_text("Keep prompts concise.", encoding="utf-8")
+        output_reconcile = Path(self.tmpdir) / "revised_reconcile.txt"
+        output_json = Path(self.tmpdir) / "revised_reconcile.json"
+
+        class FakeClient:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def chat_json(self, prompt, **kwargs):  # noqa: ARG002
+                return {
+                    "analysis_prompts": {
+                        "boundary_precision.txt": "Revised boundary prompt",
+                        "source_conservative.txt": "Revised source prompt",
+                        "translation_glossing.txt": "Revised translation prompt",
+                    },
+                    "reconcile_prompt": "Revised reconcile prompt",
+                    "rationale": "Revise all four prompts together.",
+                    "changes": ["Added glossing purpose"],
+                    "risks": ["May still overmark"],
+                }
+
+        with patch("projects.management.commands.revise_mwe_reconcile_prompts_from_report.OpenAIClient", FakeClient):
+            out = StringIO()
+            call_command(
+                "revise_mwe_reconcile_prompts_from_report",
+                current_analysis_template_dir=str(analysis_dir),
+                current_reconcile_template=str(reconcile_template),
+                improvement_report=str(improvement_report),
+                candidate_guidance=str(candidate_guidance),
+                output_analysis_template_dir=str(output_analysis_dir),
+                output_reconcile_template=str(output_reconcile),
+                output_json=str(output_json),
+                overwrite=True,
+                stdout=out,
+            )
+
+        self.assertEqual((output_analysis_dir / "source_conservative.txt").read_text(encoding="utf-8").strip(), "Revised source prompt")
+        self.assertEqual(output_reconcile.read_text(encoding="utf-8").strip(), "Revised reconcile prompt")
+        metadata = json.loads(output_json.read_text(encoding="utf-8"))
+        self.assertEqual(metadata["analysis_prompts"]["translation_glossing.txt"], "Revised translation prompt")
+        self.assertIn("Revised reconciliation prompt", out.getvalue())
+
 
     def test_propose_command_filters_scored_records_by_project_ids(self):
         score_dir = Path(self.tmpdir) / "scores_for_proposal"

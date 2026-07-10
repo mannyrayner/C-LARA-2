@@ -471,6 +471,38 @@ The analysis prompts live in
 compatible with the existing formatter, scorer, and proposal steps, and adds
 `mwe_candidate_analyses` to each `outputs.jsonl` record for audit.
 
+After a reconcile cycle has produced `score/` and `improvement/`, revise the
+four prompts with the reconcile-specific revision target. This updates the three
+analysis prompts together with the reconciliation prompt, rather than using the
+single-template `revise-mwe-prompt-cycle-template` target:
+
+```bash
+make revise-mwe-reconcile-prompt-cycle-templates RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_PROMPT_CYCLE_SERIES" \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
+```
+
+The revised prompt set is written under
+`generated/mwe_prompt_cycles/en-development/translation_context_reconcile_v1/cycle_1/improvement/reconcile_prompt_revisions/`.
+For the next cycle, point the reconcile runner at those revised prompts:
+
+```bash
+MWE_PROMPT_CYCLE_NUMBER=2
+PREVIOUS_RECONCILE_REVISION_DIR="generated/mwe_prompt_cycles/en-development/translation_context_reconcile_v1/cycle_1/improvement/reconcile_prompt_revisions"
+
+make mwe-reconcile-prompt-cycle RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" \
+  MWE_LANGUAGE=en \
+  SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_PROMPT_CYCLE_SERIES" \
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER" \
+  MWE_RECONCILE_ANALYSIS_TEMPLATE_DIR="$PREVIOUS_RECONCILE_REVISION_DIR/analysis" \
+  MWE_RECONCILE_TEMPLATE="$PREVIOUS_RECONCILE_REVISION_DIR/reconcile.txt"
+```
+
 If a cycle has already finished `run-mwe-prompt-cycle` and only the Markdown
 formatting step failed, rerun just the formatter; this reads the existing
 `run/outputs.jsonl` and writes `run/outputs.md` without repeating the API calls:

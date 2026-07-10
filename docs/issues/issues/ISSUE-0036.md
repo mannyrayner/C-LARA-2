@@ -216,4 +216,9 @@ payloads instead of crashing on values such as integers. Follow-up on 2026-07-10
 translation_context_reconcile_v1 MWE experiment variant. It runs three independent glossing-aware
 MWE analysis prompts, then reconciles them into a final JSON annotation using a fourth prompt. The
 Makefile now has mwe-reconcile-prompt-cycle, and outputs remain compatible with existing
-format/score/propose cycle artifacts while adding mwe_candidate_analyses for audit.
+format/score/propose cycle artifacts while adding mwe_candidate_analyses for audit. Follow-up on
+2026-07-10: added reconcile-specific prompt revision support. The
+revise_mwe_reconcile_prompts_from_report command and revise-mwe-reconcile-prompt-cycle-templates
+Make target revise the three analysis prompts and reconciliation prompt together after a
+translation_context_reconcile_v1 cycle, then document how to pass the revised prompt set into the
+next cycle.
