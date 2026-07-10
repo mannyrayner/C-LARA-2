@@ -22,6 +22,8 @@ class Command(BaseCommand):
         parser.add_argument("--run-label", required=True)
         parser.add_argument("--limit", type=int, default=0)
         parser.add_argument("--overwrite", action="store_true")
+        parser.add_argument("--resume", action="store_true", help="Append missing records to an existing run instead of deleting it.")
+        parser.add_argument("--max-record-attempts", type=int, default=3, help="Maximum attempts per record before failing the run.")
         parser.add_argument("--project-ids", default="", help="Optional comma-separated project ids to include from the input records.")
         parser.add_argument("--template-file", default="", help="Optional MWE prompt template file to use instead of the production prompt.")
         parser.add_argument("--use-translation-context", action="store_true", help="Include record translations in segment annotations for translation-aware MWE prompts.")
@@ -30,9 +32,12 @@ class Command(BaseCommand):
         input_path = _resolve_cli_path(options["input_records_jsonl"], "")
         output_root = _resolve_cli_path(options["output_dir"], "")
         run_dir = output_root / str(options["run_label"])
-        if run_dir.exists() and not options["overwrite"]:
+        resume = bool(options.get("resume"))
+        if resume and options["overwrite"]:
+            raise CommandError("--resume and --overwrite cannot be used together")
+        if run_dir.exists() and not options["overwrite"] and not resume:
             raise CommandError(f"run output already exists: {run_dir}; pass --overwrite")
-        if run_dir.exists():
+        if run_dir.exists() and options["overwrite"]:
             shutil.rmtree(run_dir)
         run_dir.mkdir(parents=True, exist_ok=True)
         project_ids = parse_project_ids(str(options.get("project_ids") or ""))
@@ -42,7 +47,11 @@ class Command(BaseCommand):
             raise CommandError(f"No records found in {input_path}")
         outputs_path = run_dir / "outputs.jsonl"
         progress_path = run_dir / "progress.jsonl"
-        output_count = 0
+        existing_outputs = load_existing_outputs(outputs_path) if resume else {}
+        if existing_outputs:
+            records = [record for record in records if str(record.get("record_id") or "") not in existing_outputs]
+            self.stdout.write(f"Resume enabled: found {len(existing_outputs)} existing outputs; {len(records)} records remain")
+        output_count = len(existing_outputs)
 
         def record_progress(event: dict[str, Any]) -> None:
             with progress_path.open("a", encoding="utf-8") as progress_out:
@@ -57,6 +66,10 @@ class Command(BaseCommand):
                 self.stdout.write(f"[{idx}/{total}] finished {record_id}")
             elif status == "error":
                 self.stdout.write(f"[{idx}/{total}] error {record_id}: {event.get('error')}")
+            elif status == "retry":
+                self.stdout.write(
+                    f"[{idx}/{total}] retry {event.get('attempt')}/{event.get('max_attempts')} for {record_id}: {event.get('error')}"
+                )
 
         def record_output(payload: dict[str, Any]) -> None:
             nonlocal output_count
@@ -70,27 +83,34 @@ class Command(BaseCommand):
             self.stdout.write(
                 f"Translation context enabled: {translation_context_records}/{len(records)} records have translation_context"
             )
-        asyncio.run(
-            run_records(
-                records,
-                run_label=str(options["run_label"]),
-                on_progress=record_progress,
-                on_output=record_output,
-                template_path=template_path,
-                use_translation_context=bool(options.get("use_translation_context")),
+        if records:
+            asyncio.run(
+                run_records(
+                    records,
+                    run_label=str(options["run_label"]),
+                    on_progress=record_progress,
+                    on_output=record_output,
+                    template_path=template_path,
+                    use_translation_context=bool(options.get("use_translation_context")),
+                    max_record_attempts=max(1, int(options.get("max_record_attempts") or 1)),
+                )
             )
-        )
+        else:
+            self.stdout.write("No remaining records to run.")
         manifest = {
             "schema_version": 1,
             "input_records_jsonl": str(input_path),
             "run_label": str(options["run_label"]),
             "record_count": output_count,
+            "resumed": resume,
+            "existing_output_count": len(existing_outputs),
             "project_ids": sorted(project_ids),
             "outputs_jsonl": str(outputs_path),
             "progress_jsonl": str(progress_path),
             "template_file": str(template_path) if template_path else None,
             "use_translation_context": bool(options.get("use_translation_context")),
             "translation_context_record_count": translation_context_records if options.get("use_translation_context") else 0,
+            "max_record_attempts": max(1, int(options.get("max_record_attempts") or 1)),
         }
         manifest_path = run_dir / "manifest.json"
         manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -128,6 +148,23 @@ def load_mwe_records(path: Path, *, limit: int = 0, project_ids: set[int] | None
     return records
 
 
+def load_existing_outputs(path: Path) -> dict[str, dict[str, Any]]:
+    outputs: dict[str, dict[str, Any]] = {}
+    if not path.exists():
+        return outputs
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise CommandError(f"Invalid JSON in existing outputs on line {line_number} of {path}: {exc}") from exc
+        record_id = str(payload.get("record_id") or "")
+        if record_id:
+            outputs[record_id] = payload
+    return outputs
+
+
 async def run_records(
     records: list[dict[str, Any]],
     *,
@@ -136,6 +173,7 @@ async def run_records(
     on_output: Callable[[dict[str, Any]], None] | None = None,
     template_path: Path | None = None,
     use_translation_context: bool = False,
+    max_record_attempts: int = 3,
 ) -> list[dict[str, Any]]:
     outputs: list[dict[str, Any]] = []
     total = len(records)
@@ -148,21 +186,37 @@ async def run_records(
             "project_id": record.get("project_id"),
             "language": record.get("language"),
         }
-        if on_progress:
-            on_progress({**progress_payload, "status": "running"})
-        try:
-            annotated = await annotate_mwes(
-                MWESpec(
-                    text=text_obj,
-                    language=str(record.get("language") or "en"),
-                    op_id=f"{run_label}:record_{idx}:mwe",
-                    template_path=template_path,
-                )
-            )
-        except Exception as exc:
+        annotated = None
+        max_attempts = max(1, max_record_attempts)
+        for attempt in range(1, max_attempts + 1):
             if on_progress:
-                on_progress({**progress_payload, "status": "error", "error": f"{type(exc).__name__}: {exc}"})
-            raise
+                on_progress({**progress_payload, "status": "running", "attempt": attempt, "max_attempts": max_attempts})
+            try:
+                annotated = await annotate_mwes(
+                    MWESpec(
+                        text=text_obj,
+                        language=str(record.get("language") or "en"),
+                        op_id=f"{run_label}:record_{idx}:attempt_{attempt}:mwe",
+                        template_path=template_path,
+                    )
+                )
+                break
+            except Exception as exc:
+                error = f"{type(exc).__name__}: {exc}"
+                if on_progress:
+                    on_progress(
+                        {
+                            **progress_payload,
+                            "status": "retry" if attempt < max_attempts else "error",
+                            "attempt": attempt,
+                            "max_attempts": max_attempts,
+                            "error": error,
+                        }
+                    )
+                if attempt >= max_attempts:
+                    raise
+        if annotated is None:
+            raise RuntimeError(f"MWE annotation failed without an exception for {record.get('record_id')}")
         segment = annotated.get("pages", [{}])[0].get("segments", [{}])[0]
         segment_annotations = (segment.get("annotations") or {}) if isinstance(segment, dict) else {}
         predicted_mwes = segment_annotations.get("mwes") or []

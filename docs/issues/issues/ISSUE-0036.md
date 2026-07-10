@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-09T04:50:00Z
+- **Updated:** 2026-07-10T00:20:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -207,4 +207,9 @@ command so maintainers can regenerate run/outputs.md from an existing outputs.js
 rerunning expensive MWE prompt API calls. Follow-up later on 2026-07-09: added a
 recover-mwe-prompt-cycle-after-run Make target and README command to rebuild outputs.md, score/, and
 improvement/ from an existing run/outputs.jsonl after a post-run formatting/scoring/proposal
-failure, without rerunning expensive prompt calls.
+failure, without rerunning expensive prompt calls. Follow-up on 2026-07-10: hardened MWE
+prompt-cycle runs after a late-cycle malformed model response. run_mwe_prompt_experiment now retries
+each record up to three attempts, can resume an existing run by appending only missing records, and
+recover-mwe-prompt-cycle-after-run now resumes missing records before rebuilding formatted output,
+score, and improvement artifacts. The generic annotation merger also ignores non-dict annotation
+payloads instead of crashing on values such as integers.

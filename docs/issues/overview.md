@@ -1,5 +1,6 @@
-# C-LARA-2 issue overview (refreshed 2026-07-09T04:50:00Z)
+# C-LARA-2 issue overview (refreshed 2026-07-10T00:20:00Z)
 ## Recent progress
+- Hardened **ISSUE-0036** MWE prompt cycles with per-record retries, resumable run output appends, and recovery that completes missing records before rebuilding downstream artifacts.
 - Added `recover-mwe-prompt-cycle-after-run` for **ISSUE-0036** to rebuild formatted output, score, and improvement artifacts from existing MWE run output without rerunning prompt calls.
 - Documented the standalone `format-mwe-prompt-cycle-output` recovery command for **ISSUE-0036** so readable outputs can be regenerated without rerunning MWE API calls.
 - Hardened the MWE output Markdown formatter for **ISSUE-0036** so structured model-analysis values cannot abort cycle formatting.

@@ -424,6 +424,117 @@ class MWEPromptExperimentCommandTests(TestCase):
         self.assertEqual(output_payload["predicted_mwes"][0]["tokens"], ["take", "off"])
         self.assertIn("phrasal verb", output_payload["mwe_analysis"])
 
+    def test_run_mwe_prompt_experiment_retries_record_failures(self):
+        input_path = Path(self.tmpdir) / "retry_records.jsonl"
+        output_dir = Path(self.tmpdir) / "retry_runs"
+        input_path.write_text(
+            json.dumps(
+                {
+                    "record_id": "retry-me",
+                    "split": "development",
+                    "language": "en",
+                    "project_id": self.project.id,
+                    "segment_surface": "take off now",
+                    "token_surfaces": ["take", "off", "now"],
+                    "gold_mwes": [{"tokens": ["take", "off"]}],
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        attempts = {"count": 0}
+
+        async def flaky_annotate(spec):  # noqa: ARG001
+            attempts["count"] += 1
+            if attempts["count"] == 1:
+                raise AttributeError("'int' object has no attribute 'items'")
+            return {
+                "pages": [
+                    {
+                        "segments": [
+                            {
+                                "annotations": {"mwes": [{"id": "m1", "tokens": ["take", "off"]}]},
+                                "tokens": [{"surface": "take"}, {"surface": "off"}, {"surface": "now"}],
+                            }
+                        ]
+                    }
+                ]
+            }
+
+        with patch("projects.management.commands.run_mwe_prompt_experiment.annotate_mwes", side_effect=flaky_annotate):
+            call_command(
+                "run_mwe_prompt_experiment",
+                input_records_jsonl=str(input_path),
+                output_dir=str(output_dir),
+                run_label="retry-run",
+                overwrite=True,
+                max_record_attempts=2,
+                stdout=StringIO(),
+            )
+
+        progress = [json.loads(line) for line in (output_dir / "retry-run" / "progress.jsonl").read_text(encoding="utf-8").splitlines()]
+        self.assertEqual([event["status"] for event in progress], ["running", "retry", "running", "finished"])
+        self.assertEqual(attempts["count"], 2)
+        self.assertEqual(len((output_dir / "retry-run" / "outputs.jsonl").read_text(encoding="utf-8").splitlines()), 1)
+
+    def test_run_mwe_prompt_experiment_resume_appends_missing_records(self):
+        input_path = Path(self.tmpdir) / "resume_records.jsonl"
+        output_dir = Path(self.tmpdir) / "resume_runs"
+        run_dir = output_dir / "resume-run"
+        run_dir.mkdir(parents=True)
+        input_records = [
+            {
+                "record_id": "done",
+                "split": "development",
+                "language": "en",
+                "project_id": self.project.id,
+                "segment_surface": "take off now",
+                "token_surfaces": ["take", "off", "now"],
+            },
+            {
+                "record_id": "missing",
+                "split": "development",
+                "language": "en",
+                "project_id": self.project.id,
+                "segment_surface": "look up later",
+                "token_surfaces": ["look", "up", "later"],
+            },
+        ]
+        input_path.write_text("".join(json.dumps(record) + "\n" for record in input_records), encoding="utf-8")
+        (run_dir / "outputs.jsonl").write_text(json.dumps({"record_id": "done", "predicted_mwes": []}) + "\n", encoding="utf-8")
+
+        async def fake_annotate(spec):  # noqa: ARG001
+            return {
+                "pages": [
+                    {
+                        "segments": [
+                            {
+                                "annotations": {"mwes": [{"id": "m1", "tokens": ["look", "up"]}]},
+                                "tokens": [{"surface": "look"}, {"surface": "up"}, {"surface": "later"}],
+                            }
+                        ]
+                    }
+                ]
+            }
+
+        with patch("projects.management.commands.run_mwe_prompt_experiment.annotate_mwes", side_effect=fake_annotate):
+            out = StringIO()
+            call_command(
+                "run_mwe_prompt_experiment",
+                input_records_jsonl=str(input_path),
+                output_dir=str(output_dir),
+                run_label="resume-run",
+                resume=True,
+                stdout=out,
+            )
+
+        outputs = [json.loads(line) for line in (run_dir / "outputs.jsonl").read_text(encoding="utf-8").splitlines()]
+        self.assertIn("Resume enabled: found 1 existing outputs; 1 records remain", out.getvalue())
+        self.assertEqual([record["record_id"] for record in outputs], ["done", "missing"])
+        manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+        self.assertTrue(manifest["resumed"])
+        self.assertEqual(manifest["record_count"], 2)
+
     def test_revise_mwe_prompt_from_report_writes_ai_revision(self):
         cycle_dir = Path(self.tmpdir) / "cycle_1"
         improvement_dir = cycle_dir / "improvement"
