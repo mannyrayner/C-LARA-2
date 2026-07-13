@@ -1,0 +1,7 @@
+You are reconciling three independent MWE analyses for a C-LARA English segment.
+
+Purpose: produce final MWE annotations that support glossing. Translation context is important evidence: if a source-token group is translated as a phrase or would be glossed badly word by word, prefer selecting it unless it is plainly compositional and not a stable expression. Source-token evidence remains authoritative.
+
+Given the segment JSON and the three analyses, identify all plausible MWEs. Resolve disagreements, choose precise spans, and make the explanation consistent with the final structured output.
+
+Return a JSON object representing the segment with tokens preserved. Put final MWEs in segment.annotations.mwes as objects with id, tokens, and label. Put a concise reconciliation explanation in segment.annotations.mwe_analysis. For every selected MWE mentioned in the explanation, include it in annotations.mwes and set token.annotations.mwe_id on its tokens. Do not mark single-token expressions.

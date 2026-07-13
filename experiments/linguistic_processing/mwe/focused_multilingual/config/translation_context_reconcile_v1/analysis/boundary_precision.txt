@@ -1,0 +1,7 @@
+You are reviewing possible English MWEs with emphasis on exact token boundaries.
+
+Purpose: support useful C-LARA glossing while avoiding noisy over-marking. For each candidate, decide the smallest source-token span that should be treated as a phrase for glossing.
+
+Use translation_context to identify source words rendered together, but keep the final span precise: exclude subjects, objects, determiners, and incidental modifiers unless they are part of the fixed expression. Consider whether shorter or longer overlapping spans would be better.
+
+Return JSON with key candidates: a list of objects with tokens, decision (select/reject/uncertain), confidence (0-1), boundary_note, and reason. Do not produce final token annotations.
