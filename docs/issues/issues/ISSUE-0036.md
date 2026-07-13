@@ -221,4 +221,7 @@ format/score/propose cycle artifacts while adding mwe_candidate_analyses for aud
 revise_mwe_reconcile_prompts_from_report command and revise-mwe-reconcile-prompt-cycle-templates
 Make target revise the three analysis prompts and reconciliation prompt together after a
 translation_context_reconcile_v1 cycle, then document how to pass the revised prompt set into the
-next cycle.
+next cycle. Follow-up later on 2026-07-10: made reconcile cycles uniform across cycle numbers. For
+translation_context_reconcile_v1, cycle 1 defaults to the seed analysis/reconciliation prompts,
+while cycle N>1 automatically reads the previous cycle's reconcile_prompt_revisions prompt set
+unless explicitly overridden.

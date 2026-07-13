@@ -1,6 +1,6 @@
-# Issues Overview (updated 2026-07-10T01:30:00Z)
+# Issues Overview (updated 2026-07-10T01:40:00Z)
 ## Recent progress
-_Focus: Added reconcile-specific prompt-revision support for ISSUE-0036 so translation_context_reconcile_v1 can revise all three analysis prompts plus the reconciliation prompt together; ISSUE-0041 remains active._
+_Focus: Made ISSUE-0036 reconcile prompt cycles uniform: cycle 1 uses seed prompts and later translation_context_reconcile_v1 cycles automatically use the previous cycle revisions; ISSUE-0041 remains active._
 - Hardened **ISSUE-0036** MWE prompt cycles with per-record retries, resumable run output appends, and recovery that completes missing records before rebuilding downstream artifacts.
 - Added `recover-mwe-prompt-cycle-after-run` for **ISSUE-0036** to rebuild formatted output, score, and improvement artifacts from existing MWE run output without rerunning prompt calls.
 - Documented the standalone `format-mwe-prompt-cycle-output` recovery command for **ISSUE-0036** so readable outputs can be regenerated without rerunning MWE API calls.

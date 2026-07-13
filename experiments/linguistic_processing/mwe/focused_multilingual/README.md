@@ -487,20 +487,21 @@ make revise-mwe-reconcile-prompt-cycle-templates RUN=1 \
 
 The revised prompt set is written under
 `generated/mwe_prompt_cycles/en-development/translation_context_reconcile_v1/cycle_1/improvement/reconcile_prompt_revisions/`.
-For the next cycle, point the reconcile runner at those revised prompts:
+For the next cycle, keep the same command shape and only advance
+`MWE_PROMPT_CYCLE_NUMBER`. The Makefile automatically uses the previous cycle's
+`improvement/reconcile_prompt_revisions/analysis/` and
+`improvement/reconcile_prompt_revisions/reconcile.txt` as the four reconcile
+prompts when `MWE_PROMPT_CYCLE_NUMBER` is greater than 1:
 
 ```bash
 MWE_PROMPT_CYCLE_NUMBER=2
-PREVIOUS_RECONCILE_REVISION_DIR="generated/mwe_prompt_cycles/en-development/translation_context_reconcile_v1/cycle_1/improvement/reconcile_prompt_revisions"
 
 make mwe-reconcile-prompt-cycle RUN=1 \
   PROJECT_IDS="$MWE_PROJECT_IDS" \
   MWE_LANGUAGE=en \
   SPLIT=development \
   MWE_PROMPT_CYCLE_SERIES="$MWE_PROMPT_CYCLE_SERIES" \
-  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER" \
-  MWE_RECONCILE_ANALYSIS_TEMPLATE_DIR="$PREVIOUS_RECONCILE_REVISION_DIR/analysis" \
-  MWE_RECONCILE_TEMPLATE="$PREVIOUS_RECONCILE_REVISION_DIR/reconcile.txt"
+  MWE_PROMPT_CYCLE_NUMBER="$MWE_PROMPT_CYCLE_NUMBER"
 ```
 
 If a cycle has already finished `run-mwe-prompt-cycle` and only the Markdown
