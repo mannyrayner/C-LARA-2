@@ -439,13 +439,19 @@ If you want to run the steps separately for debugging, use
 
 ### `translation_context_reconcile_v1` controlled series
 
-If the formatted output shows that the model's prose analysis and final
-`predicted_mwes` disagree, run a reconciliation variant instead of continuing a
-single-prompt cycle. This first version runs three independent analysis prompts
-and then a fourth reconciliation prompt that produces the final JSON annotation.
-The prompts make the C-LARA purpose explicit: MWEs are identified to support
-glossing, so the gloss-language translation is strong evidence when source words
-need to be understood or rendered as a phrase.
+The motivation for this variant is that, in single-prompt runs, the model can
+sometimes discuss an MWE in its free-form analysis but omit it from the final
+`predicted_mwes` structure. In `translation_context_reconcile_v1`, reconciliation
+is not an occasional repair step; it is the normal architecture for every
+record. The run always asks three independent analysis prompts to propose
+candidate MWE selections, then asks a fourth reconciliation prompt to compare
+those candidate selections and produce the final JSON annotation. The free-form
+analyses are not expected to be identical. The useful comparison is whether the
+candidate MWE selections agree, partly agree, or disagree, and the reconciliation
+prompt decides the final `predicted_mwes` from that evidence. The prompts make
+the C-LARA purpose explicit: MWEs are identified to support glossing, so the
+gloss-language translation is strong evidence when source words need to be
+understood or rendered as a phrase.
 
 ```bash
 MWE_PROJECT_IDS="239,245,254,255,257,261,263"
