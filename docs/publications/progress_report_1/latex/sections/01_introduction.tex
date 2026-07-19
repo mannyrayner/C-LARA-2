@@ -1,2 +1,75 @@
 \section{Introduction}
-\todo{Draft this section.}
+
+C-LARA-2 is an AI-based online platform for creating and using multimodal
+language-learning materials. It is a complete reimplementation of C-LARA, a
+platform developed to bring together texts, linguistic annotation,
+translations, audio, images and interactive learning activities. C-LARA-2
+retains those pedagogical purposes while rebuilding the platform around a
+cleaner technical architecture and a distinctive development method: the
+project delegates extensive operational work to an AI coding agent while
+retaining human responsibility for strategy, values, evaluation and
+acceptance.
+
+The central claim of this report is consequently not that C-LARA-2 is a
+finished system, nor that every component is equally mature. It is that the
+project is an ongoing experiment in \emph{AI autonomy under strategic human
+supervision}. Human collaborators decide what the project is for, identify
+learner and community needs, supply linguistic and pedagogical expertise,
+set ethical constraints, assess proposed solutions and decide whether they
+are acceptable. Codex takes responsibility for much of the technical work:
+interpreting requirements, inspecting the repository, designing and changing
+code, writing tests, maintaining documentation, organising experiments and
+preparing technical and publication drafts. The division is deliberately
+asymmetric. The AI has substantial freedom over operational means, but does
+not acquire authority to set the project's purposes or standards.
+
+This model matters because conventional academic software projects often
+face a mismatch between the breadth of their ambitions and the development
+capacity available to a small, distributed consortium. A coding agent can
+make implementation and revision much faster, but speed is not itself the
+point. Its value is that it can make specialised, user-led changes practical:
+for example, a picture-dictionary interface can be redesigned after users
+reject the first interaction model without discarding the underlying data
+representation; documentation, roadmaps and issue records can be kept close
+to the implementation they describe; and an evolving platform can be
+re-examined and redirected at relatively low operational cost. These gains
+also create a verification burden. Producing code, documentation and prose
+quickly does not make them correct. The project therefore treats version
+control, tests, inspectable documentation, issue records, human review and
+reversible changes as necessary counterparts to operational autonomy.
+
+The report is posted when its drafting cycle is complete, rather than delayed
+until a conventional publication timetable. It can therefore describe a
+current project snapshot in more detail than a short conference paper. Along
+with core platform capabilities, it records selected episodes that make the
+development model concrete: the annotation and image-generation pipelines,
+picture dictionaries and the learning activities derived from them, project
+management and deployment work, and the repository-grounded Assistant that
+can answer questions about the platform while distinguishing implemented
+behaviour from planned work. These examples are evidence about a method of
+organising work, not proof that the platform or its AI processes are
+complete, autonomous in every sense, or free of error.
+
+A further strand concerns spoken conversational practice. Sarah Wright has
+conducted regular sessions using ChatGPT Pro Tier Voice Mode as a conversation
+partner. These sessions provide a practically important contrast and
+complement to C-LARA-2's text-centred multimodal resources: a learner can
+work with a prepared text and then sustain spoken interaction around it with
+a responsive AI partner. The resulting experience is promising, but the two
+environments are not yet naturally integrated. The report will document what
+these sessions suggest about the pedagogical opportunity, the present
+workarounds, and the interface and evidence questions that must be addressed
+before any stronger claim is made about an integrated conversational
+functionality.
+
+The remainder of the report is organised as follows. Section~2 describes the
+history of C-LARA and C-LARA-2 and explains the human/AI development method.
+Section~3 gives a platform overview. Sections~4--6 cover the annotation
+pipeline, image generation and picture dictionaries; Section~7 addresses
+project management; and Section~8 records deployment work. Section~9
+examines the project-understanding Assistant, while Section~10 develops the
+Voice Mode and conversational-practice thread. Section~11 identifies future
+directions, including stronger evaluation and integration work. Finally,
+Section~12 draws together the report's conclusions about the benefits,
+limits and governance requirements of operational AI autonomy under strategic
+human supervision.
