@@ -1,0 +1,656 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=2.4cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xurl}
+\usepackage{enumitem}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.65em}
+\setlist{nosep}
+\urlstyle{same}
+
+\title{C-LARA-2: a CALL project organised around\\
+AI autonomy under human supervision}
+\author{Branislav Bédi, ChatGPT C-LARA-Instance, Belinda Chiera, Cathy Chua,\\
+Stéphanie Geneix-Rabault, Christèle Maizonniaux, Manny Rayner,\\
+Sophie Rendina, Sarah Wright, and Rina Zviel-Girshin}
+\date{EuroCALL 2026 paper --- repository background version}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+\small
+The Árni Magnússon Institute for Icelandic Studies; OpenAI/C-LARA Project; Adelaide University; University of New Caledonia; Flinders University; University of New England; Ruppin Academic Center.
+\end{center}
+
+\begin{abstract}
+
+C-LARA-2 is a complete reimplementation of C-LARA, an AI-based online
+platform for creating multimodal language-learning materials. Because of
+the widespread adoption of Generative Artificial Intelligence (Gen-AI)
+coding assistants over the last year, AI-based systems in general now
+often evolve faster than the academic publication cycle. We therefore
+present C-LARA-2 not as a fixed collection of functionalities, but as an
+experiment in organising a computer-assisted language learning (CALL)
+project around limited AI autonomy. By this, we mean the following.
+Human participants retain strategic responsibility for overall project
+goals, pedagogical requirements, ethical constraints and acceptance
+decisions; but OpenAI Codex, a popular AI coding assistant, has been
+given full operational responsibility for implementation, testing and
+technical documentation. Two case studies illustrate the model. In the
+first, picture-dictionary functionality for minority and Indigenous
+language contexts was radically redesigned after users rejected the
+initial interaction model; Codex reconstructed the interface within
+hours while preserving the underlying representation. In the second, an
+AI Assistant with access to the code repository answers freely expressed
+natural language questions by inspecting source code and AI-maintained
+documentation, displaying explanations which include links to relevant
+locations in the repository. We argue that C-LARA-2's main significance
+lies in its development methodology. Small academic teams can delegate
+much of the operational work of software construction, technical
+documentation and revision while maintaining human strategic control.
+Human project members thus need to spend little time addressing
+requirements at the software level, allowing them to concentrate on the
+higher-level challenges of project planning, user needs and verification
+of system reliability.
+
+\end{abstract}
+
+\noindent\textbf{Keywords:} AI autonomy; computer-assisted language
+learning; AI coding assistants; multimodal language learning.
+
+\section{Introduction: describing a very rapidly evolving system}
+
+C-LARA-2 is a new AI-based online platform for creating and using
+multimodal language-learning materials. It is the successor to C-LARA, a
+platform developed over several years to support the construction of
+texts combining linguistic annotation, translations, audio and images,
+and particularly for AI-generated pedagogical picture books tailored to
+specific learners and languages (Bédi et al., 2025). C-LARA-2 keeps
+these broad pedagogical goals but completely reimplements the platform,
+adding a more systematic software architecture, better support for
+multimodal content and a development process organised around extensive
+software-level autonomy using AI coding agents. Before describing the
+system and several representative areas of functionality, however, it is
+useful to situate the project within a broader change in the
+relationship between artificial intelligence, academic work and software
+development. C-LARA-2 forms part of a rapidly expanding body of work
+exploring the possibilities and limitations of generative AI in language
+teaching and learning (Law, 2024).
+
+Until recently, an academic paper about a software system could
+reasonably assume that the system described in the submitted version
+would be roughly the one that existed when the paper was published. Due
+to the widespread introduction of AI coding agents, this assumption is
+now often not valid. The rapid software development permitted by coding
+agents means that the publication process cannot keep up with the speed
+at which the systems change. Based on the C-LARA-2 project's evolution
+so far, we expect that a detailed catalogue of the platform's July 2026
+functionality would be seriously out of date by the time the article is
+published in December 2026. Recent large-scale evidence confirms that
+coding agents are already widely used in real-world software
+development: the AIDev dataset contains more than 900,000 agent-authored
+pull requests across over 100,000 GitHub repositories (Li et al., 2026).
+
+This reflects a broader mismatch between established academic publishing
+practices and AI-mediated research and development. AI systems now
+contribute substantially to software, documentation, analysis and
+academic writing, while the resulting division of labour is often
+described inconsistently or not at all. Manabu (2026) argues that
+generative AI is exposing fundamental tensions in a publication system
+organised around the production of countable textual artefacts, and
+large-scale studies provide strong aggregate evidence that LLM-assisted
+scholarly writing has already become widespread (Kobak et al., 2025).
+
+We do not attempt to resolve these wider questions here. Our narrower
+concern is how a specific academic CALL project, C-LARA-2, can use
+extensive generative AI participation productively while retaining clear
+human responsibility for goals, values and evaluation. In particular,
+our study addresses two closely related consequences of AI-driven
+change. First, it makes AI participation explicit rather than concealing
+it behind the conventional language of human authorship. Second, because
+both the underlying technology and the platform itself are developing
+rapidly, we deliberately avoid presenting C-LARA-2 as a completed or
+stable artefact. Instead, we focus on the more general question of how
+much operational responsibility can usefully be delegated to an AI, with
+the overall aim of enabling a small, distributed consortium of human
+users to respond quickly to new pedagogical and technical demands that
+would otherwise exceed its available development capacity.
+
+The paper consequently focuses on project goals and philosophy,
+supported by a few representative episodes. Its central claim is that
+C-LARA-2 is best understood as an experiment in reorganising a CALL
+project around \emph{limited AI autonomy}: humans maintain strategic
+responsibility for goals, priorities, values and acceptance decisions,
+while an AI coding agent performs implementation, refactoring, testing,
+documentation, experimental organisation and drafting. The resulting
+model does not try to resolve the wider problems identified by Manabu.
+It does, however, offer one concrete example of how academic work can
+acknowledge extensive AI participation openly and employ it for
+tangible, useful ends, while maintaining identifiable human
+responsibility for the purposes and direction of the project.
+
+\section{From C-LARA to C-LARA-2}
+
+C-LARA, the ChatGPT-Based Learning And Reading Assistant, was developed, starting shortly after the release of ChatGPT-4 in March 2023, to support the creation of a multimodal online
+language-learning environment for a wide range of languages. A typical
+C-LARA project begins with an uploaded or AI-generated text and enriches
+it with several interconnected annotation layers, including
+segmentation, translation, lemmas, glosses, audio and images. The
+resulting material can be rendered as an interactive learning resource
+in which learners move between the text and its linguistic, auditory and
+visual representations. The platform has been used to create several
+kinds of resources, including pedagogical picture books (Bédi et al.,
+2025), pronunciation-oriented texts and picture-based vocabulary
+materials.
+
+C-LARA has been used with both widely taught and low-resource languages.
+Earlier work evaluated GPT-4 processing for English, Farsi, Faroese,
+Mandarin and Russian (ChatGPT, C. et al., 2023), while projects
+involving the Kanak languages Drehu and Iaai combined native-speaker
+audio, AI-generated illustrations, linguistic annotation and culturally
+grounded content (Bae et al., 2025; Chiera et al., 2025; Welby et al.,
+2024). These studies do not show that AI processing works equally well
+for every language\footnote{In particular, for low-resource languages
+  like Drehu and Iaai, the AI processing offered by the platform is
+  limited to image generation, mediated through translations provided by
+  humans in an AI-comprehensible language like English or French.}, but
+they demonstrate that the platform can support useful multimodal work
+across varied linguistic and sociocultural settings.
+
+The original implementation grew incrementally over several years. GPT-4
+and later ChatGPT models wrote a substantial proportion of the code
+under close human supervision; our informal estimate is approximately
+75\%. This AI-assisted development model made it possible for a small
+academic consortium to build a platform whose scope would otherwise have
+required a much larger conventional software team. At the same time,
+C-LARA retained many characteristics of a system that had evolved
+through repeated local extensions: accumulated architectural
+compromises, uneven documentation and components that had become
+increasingly difficult to understand and maintain.
+
+C-LARA-2 consequently began in November 2025 as a rational
+rewrite\footnote{For a few months, work on both C-LARA and C-LARA-2
+  proceeded in parallel while we compared the two systems. In March
+  2026, development work on C-LARA was halted, since it had become clear
+  that C-LARA-2 was far superior. At this point, about one quarter of
+  the current (July 2026) C-LARA-2 repository content had been created.}.
+Its initial purpose was to preserve the successful pedagogical concepts
+of C-LARA while replacing the implementation with a cleaner and more
+systematic architecture. The availability of Codex through the ChatGPT
+Pro Tier changed the nature of the exercise. Rather than merely
+assisting human coders, Codex could feasibly become responsible for the
+entire implementation layer. At the time of writing, it has produced
+100\% of the program code, tests and repository documentation. Human
+collaborators have supplied requirements, domain knowledge, examples,
+evaluation and strategic decisions, but they have not directly authored
+the implementation.
+
+This distinction is central to the project. C-LARA-2 is not simply a
+conventionally written system accelerated by code completion. Program
+code, tests, roadmaps, issue descriptions, technical explanations and
+user-oriented documentation are maintained together in the open-source
+GitHub repository\footnote{\url{https://github.com/mannyrayner/C-LARA-2}.}
+and can all be inspected and revised by OpenAI's Codex AI agent;
+crucially, responsibility for extending and maintaining the repository
+has been entirely delegated to this agent. The rewrite thus developed
+into a broader experiment: not only whether an AI could generate a
+complex CALL platform, but whether it could assume continuing
+responsibility for the evolving technical representation of the project.
+
+\section{Operational AI autonomy under strategic human direction}
+
+The term \emph{autonomy} might suggest an unconstrained system pursuing
+self-selected goals. That is not what we mean here. As shown in Table~\ref{tab:responsibility},
+C-LARA-2 separates strategic and operational responsibility.
+
+\begin{table}[htbp]
+\centering
+\caption{Indicative division of responsibility in C-LARA-2.}
+\label{tab:responsibility}
+\begin{tabularx}{\textwidth}{>{\bfseries}p{0.27\textwidth}X}
+\toprule
+Human strategic responsibility & Defining project goals; identifying user needs; setting ethical and privacy constraints; prioritising work; supplying examples and domain knowledge; assessing pedagogical usefulness; accepting, rejecting or redirecting proposed solutions; preparing drafts of technical reports and papers. \\
+\midrule
+AI operational responsibility & Designing and implementing code; writing tests; refactoring; producing and maintaining documentation; analysing repository state; organising experiments; processing results; suggesting and finalising technical reports and papers. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The resulting model can be summarised as \emph{operational autonomy
+under strategic human direction}. The human role is closer to that of a
+project owner, domain expert, evaluator and research supervisor than to
+that of a coder issuing detailed line-by-line instructions. Human
+participants describe the desired outcome, explain relevant constraints,
+evaluate the results, and provide feedback about issues that have
+arisen. Codex is responsible for translating this guidance into changes
+to the technical artefacts of the project.
+
+Codex also maintains extensive project documentation alongside the code.
+The repository contains roadmaps recording the history and intended
+direction of major features, how-to documents for tasks requiring human
+action, and issue records tracking focused problems and ongoing work.
+Together, these materials provide a persistent project memory that can
+be read by both Codex and human collaborators.
+
+Table~\ref{tab:repo-size} shows that documentation is not a minor supplement to the
+software: more than 13,000 lines of the repository describe project
+history, design decisions, plans and procedures. This makes it possible
+for the AI to maintain continuity across a rapidly evolving platform and
+for human collaborators to understand and redirect the work. The figures
+are a transient snapshot rather than a measure of software quality.
+
+The approach depends on safeguards. All work is version-controlled.
+Changes can be inspected, tested and rolled back. Agent access is
+limited according to task: the public Assistant described below is only
+permitted to read information from the repository (`read-only sandbox'),
+while code-changing workflows are constrained to designated repository
+locations. Automated tests do not guarantee correctness, but they reduce
+the cost of repeated revision and provide a persistent representation of
+agreed behaviour. Human review remains necessary, especially for
+learner-facing content and culturally sensitive material.
+
+\begin{table}[htbp]
+\centering
+\caption{Repository size by content category in the 11 July 2026 version of the system.}
+\label{tab:repo-size}
+\begin{tabular}{lr}
+\toprule
+Category & Lines \\
+\midrule
+Documentation (\texttt{docs}) & 13,461 \\
+Experiments (\texttt{experiments}) & 2,326 \\
+Django platform (\texttt{platform\_server}) & 49,897 \\
+Prompts (\texttt{prompts}) & 1,697 \\
+Core source code (\texttt{src}) & 7,540 \\
+Tests (\texttt{tests}) & 6,297 \\
+\midrule
+\textbf{Total} & \textbf{81,218} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+A major issue, still only partially resolved, is the \emph{verification
+burden}. AI agents can produce code and text faster than humans can
+examine them. The bottleneck therefore shifts from production to
+specification, sampling, testing and judgement. High autonomy is useful
+only when the project also develops mechanisms that make outputs
+inspectable, project history recoverable and failures reversible. In
+C-LARA-2, the repository documentation, issue structure, tests and
+version-control history are intended to provide that supporting
+infrastructure.
+
+\section{Case study 1: picture dictionaries and rapid redesign}
+
+A first case study arose from requests by consortium members working
+with minority and Indigenous language communities. Picture-based
+resources can be particularly valuable when learners have limited
+literacy, when an orthography is still being consolidated, or when
+community members wish to create accessible materials for young
+learners. This case is pedagogically central because it concerns not
+only software efficiency, but whether community members can
+realistically author and review learning materials themselves.
+
+The initial design built on the existing C-LARA-2 representation in a
+natural way. A picture dictionary was represented as an ordinary
+C-LARA-2 project whose text contained one lexical item on each page,
+which allowed the picture-dictionary functionality to reuse the
+platform's existing text, image and project-management infrastructure.
+C-LARA-2 already supported page-level image creation: an AI-generated
+prompt could be derived from the text on a page and passed to an
+image-generation model, with the resulting image stored as part of the
+project (Rendina et al., 2025).
+
+The underlying representation proved successful, but the first user
+interface did not. Ordinary C-LARA-2 projects typically contain extended
+texts, with linguistic annotation and image generation presented as
+separate activities. This division is appropriate when pages contain
+complex text and the project language can itself be processed by an AI.
+A picture dictionary is a much more constrained case: each page contains
+a single word or lexicalised expression, and the relevant linguistic and
+visual information is tightly connected. Moreover, many of the intended
+users are minority language community contributors rather than technical
+specialists, and the project language may not be understood reliably, or
+at all, by the available AI systems.
+
+Applying the general project interface to this specialised task
+consequently introduced complexity without providing a corresponding
+benefit. Users had to move between separate annotation and
+image-generation workflows in order to manage information that
+conceptually belonged to a single dictionary entry. Early testing showed
+that this interaction model was difficult to understand and cumbersome
+to use.
+
+Following discussion with the intended users, we retained the underlying
+representation of a picture dictionary as a C-LARA-2 project but
+replaced the user-experience layer with an interface designed
+specifically for dictionary construction. As illustrated in Figure~\ref{fig:picture-dictionary-editor},
+the revised editor displays one integrated block for each lexical item.
+The block contains the word, its lemma and part of speech, a gloss or
+translation in a language that the AI can process, optional human
+guidance, the (initially AI-generated) prompt supplied to the
+image-generation model, and the currently selected image. Controls allow
+contributors to request missing translations, prompts or images for
+multiple selected entries while keeping the ability to inspect and edit
+each component manually.
+
+Codex produced a usable implementation of the redesigned interface
+within a few hours, and the consortium members involved in testing
+responded very positively.\footnote{A caveat is in order: the relevant
+  consortium members were less positive about the image generation
+  process itself, and stressed that more work was required here. We
+  postpone further discussion to a later paper.} The episode is
+significant because the revised system was not a minor visual
+improvement to the first design. It embodied a different conceptual
+model of the task. The original implementation treated
+picture-dictionary construction as a sequence of already existing
+C-LARA-2 operations; the replacement treated the dictionary entry itself
+as the unit around which all relevant operations should be organised.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/figure_media_1.jpg}
+\caption{Part of the specialised C-LARA-2 picture-dictionary editor
+display. Linguistic information, image-generation instructions and the
+selected image are presented together for each lexical item. A French
+example is shown here rather than community language data because work
+involving Indigenous languages may be subject to cultural-sensitivity
+and data-sovereignty constraints.}
+\label{fig:picture-dictionary-editor}
+\end{figure}
+
+This illustrates a broader consequence of AI-mediated development: it
+reduces the human time and organisational effort required to abandon a
+poor implementation while preserving useful underlying components.
+Conventional software projects are strongly affected by the familiar
+sunk-cost effect, in which prior investment of time or effort creates
+pressure to continue with an existing approach (Arkes \& Blumer, 1985).
+In this case, however, once the human participants recognised that the
+interaction model was wrong, Codex made it practical to throw away and
+reconstruct the user-facing layer almost immediately.
+
+The episode also clarifies the respective roles of human and AI
+autonomy. The AI did not independently recognise the community need or
+identify the usability failure. Human collaborators supplied the
+pedagogical purpose, knowledge of the intended users and the judgement
+that the first design was inappropriate. Codex provided rapid
+operational execution once the revised conceptual model had been agreed.
+The successful outcome therefore depended not on replacing human
+expertise, but on making it possible to translate that expertise into a
+radically revised implementation with very little additional development
+time.
+
+The same picture-dictionary entries are already reused in several
+learner-facing activities. In picture glossing, clicking a word or
+expression in a C-LARA-2 text displays its picture, plays its audio and
+shows concordance examples. The platform also creates multiple-choice
+exercises in both directions---picture to word and word to
+picture---with distractors selected by the AI model, together with word
+scrambles and simple crosswords using picture clues. Codex produced
+useful initial versions of all four functions rapidly, illustrating how
+a single community-authored resource can support several forms of
+multimodal practice. Figure~\ref{fig:word-scramble} shows a partially completed word-scramble
+exercise generated from a French picture-dictionary.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[height=0.72\textheight]{figures/figure_media_2.jpg}
+\caption{A word-scramble exercise with a picture clue. Two words have
+already been found. The learner selects adjacent letters in the grid to
+spell the next target word.}
+\label{fig:word-scramble}
+\end{figure}
+
+\section{Case study 2: a project that can explain itself}
+
+Our second case study is the C-LARA-2 Assistant. Through the online
+platform's Assistant tab, users can ask unconstrained natural language
+questions about C-LARA-2 itself\footnote{So far, most of our testing has
+  used questions submitted in English. Based on a few samples, however,
+  it seems that queries can also be submitted in other major languages,
+  with equally good results. The Assistant responds in the same
+  language.}. Codex answers by accessing the current repository in a
+read-only environment. Its references to relevant files and line numbers
+are converted into clickable links, allowing users to inspect the
+evidence behind the answer.
+
+The Assistant is not a conventional FAQ system or a manually maintained
+database of answers. It retrieves information directly from the GitHub
+repository using the same AI system that develops and maintains it. Over
+many months of intensive use, we have found its retrieval of relevant
+files and code locations highly reliable. Questions include whether a
+capability is supported and how to use it, the status of a planned
+feature or known problem, and the reasons behind a design decision.
+
+Figure~\ref{fig:mandarin-pinyin} shows a representative interaction. The user asks whether the
+platform can produce Mandarin texts with pinyin\footnote{`Pinyin' refers
+  to the practice of annotating Chinese characters with Roman letters,
+  normally placed directly above the characters, to show pronunciation.}
+annotations; the Assistant consults several separate parts of the
+repository: language choices and project models, the Mandarin
+text-generation prompt, tokenisation code, automatic and manual pinyin
+processing, conversion to HTML, and dependencies on other software
+packages.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/figure_media_3.jpg}\par\medskip
+\includegraphics[width=\linewidth]{figures/figure_media_4.jpg}
+\caption{A C-LARA-2 Assistant interaction concerning Mandarin text
+generation and pinyin annotation. The answer is constructed by
+inspecting several parts of the current repository and includes links to
+the supporting source files.}
+\label{fig:mandarin-pinyin}
+\end{figure}
+
+Figure~\ref{fig:haitian-audio} illustrates a different kind of answer. A user asks whether
+native-speaker audio can be recorded directly in the platform for
+Haitian Creole, because current text-to-speech output is unsuitable. The
+Assistant correctly distinguishes what is implemented from what is
+merely planned: it identifies the present option for suppressing
+synthetic audio, then links to documents describing planned browser
+recording and community approval workflows. The example shows why the
+AI-maintained documentation matters pedagogically: the Assistant can
+give a useful and honest answer even when the requested function is not
+yet available.
+
+Answering such questions may require several kinds of evidence. Source
+code and tests describe current behaviour; roadmap files record the
+history and intended direction of larger areas of work; issue files
+track focused tasks and unresolved problems; and how-to documents
+describe operations that need to be carried out by human project
+members. An answer can therefore reflect not only what the software
+does, but why it was designed that way and what remains incomplete.
+
+In a deliberately limited functional sense, the project can thus be said
+to \emph{understand itself}: it contains an interface through which an
+AI can inspect the artefacts constituting the project and explain their
+relationships to users and developers. We make no claim about
+consciousness or human-like comprehension. The claim is operational: the
+system can construct useful, context-sensitive accounts of its own
+current implementation, history and planned development.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/figure_media_5.jpg}\par\medskip
+\includegraphics[width=\linewidth]{figures/figure_media_6.jpg}
+\caption{An Assistant response to a request for native-speaker audio recording in Haitian Creole. The answer separates current functionality, planned work and a partial workaround, with links to source code, roadmaps and issue records.}
+\label{fig:haitian-audio}
+\end{figure}
+
+ The Assistant cannot be perfect. Documentation may lag behind code,
+record an abandoned intention, or omit a relevant relationship; a
+response can also be accurate without being optimally helpful. Its
+answers should therefore be treated as informed, inspectable accounts
+rather than definitive statements. Nevertheless, when code, tests,
+documentation, roadmaps and issues are accessible to the same agent, the
+repository becomes more than a container for software. It is in fact
+more accurate to think of it as a project memory accessible both to the
+AI and to the human participants.
+
+\section{Further directions: integration with spoken conversational functionalities}
+
+As already noted, C-LARA-2 is evolving rapidly, and we expect many new
+functionalities to have been added by the time this paper is published.
+One specific point is central enough that it needs to be mentioned
+explicitly. Current systems still separate modalities awkwardly.
+C-LARA-2 can create multimodal texts, and modern voice systems like
+ChatGPT Voice Mode can sustain increasingly sophisticated spoken
+conversational interaction, but these capabilities are not integrated in
+a natural way. Ideally, a learner should be able to open a C-LARA-2
+text, discuss it in Voice Mode, and move flexibly between the written
+material and the spoken interaction. This direction is consistent with a
+growing CALL literature on voice-based AI chatbots and their potential
+to support spoken language practice (Koç \& Savaş, 2025).
+
+Experiments reported in another paper we are presenting at EuroCALL 2026
+suggest that much of the required infrastructure already exists. A
+primitive integration can be achieved now by opening C-LARA-2 and
+ChatGPT Pro Tier in separate browser windows, uploading a screenshot of
+the current C-LARA-2 page to ChatGPT and then switching to Voice Mode.
+This workflow is obviously too cumbersome for practical use, but the
+quality of the resulting interaction suggests that a smooth integration
+would require comparatively modest interface engineering rather than
+substantial architecture changes.
+
+\section{Summary, discussion and conclusions}
+
+The significance of C-LARA-2 is not simply that AI can help coders work
+faster. The deeper change is that CALL platforms can become continuously
+adaptable rather than functioning as relatively fixed products. Teachers
+and researchers may increasingly be able to express requirements in
+ordinary language, after which an AI agent modifies code, prompts,
+workflows, interfaces, tests and documentation. For small languages and
+specialised learner populations, this is particularly important, as
+features needed by these communities may be impossible to justify within
+a conventional development model. By greatly reducing the human
+development time and organisational effort required for implementation
+and revision, AI-assisted development can make highly specialised
+functionality realistic. The picture-dictionary work offers an early
+example, and in particular shows that a flawed interaction model can be
+discarded without prohibitive loss of human development time.
+
+C-LARA-2 also makes the division of labour unusually explicit: Codex
+writes and maintains the repository, while human collaborators define
+pedagogical goals, evaluate results and retain final responsibility.
+This transparency is important, but the main educational significance
+lies in the capacity to respond rapidly to learner and community needs.
+More generally, AI changes the relationship between implementation and
+educational design. The same agent that writes a feature can document it
+and answer questions about it, while human collaborators can redirect
+any stage of the process.
+
+C-LARA-2 therefore represents more than a rewrite of an existing CALL
+platform. It is an experiment in transferring operational responsibility
+to an AI agent while humans retain strategic responsibility for goals,
+values, evaluation and acceptance. By the time this paper appears, many
+implementation details will have changed. That is part of the argument:
+the project should be understood not as a finished artefact, but as
+evidence for an emerging mode of CALL development that is strategically
+human-directed, operationally AI-autonomous, continuously documented and
+capable of rapid response to new needs.
+
+\section*{Using C-LARA-2}
+
+C-LARA-2 is openly available at \url{https://c-lara-2.c-lara.org/}.
+Creating a user account is free. To use the AI-based functions, users
+must connect an OpenAI API key associated with a valid payment method
+through the ``Use my OpenAI API key'' control in the Profile tab.
+
+\section*{Division of labour statement}
+
+The C-LARA-2 platform has been developed in a close collaboration
+between Manny Rayner (human) and ChatGPT C-LARA Instance (AI), with the
+first providing fine-grained strategic guidance and the second
+operational responsibility. This paper has mainly been written in the
+same way, though with the human author also doing some direct editing of
+the text. The other authors have made many contributions in terms of
+further strategic advice. In particular, the reconfiguration of the
+picture dictionary user interface described in Section 4 was almost
+entirely based on suggestions from Sophie Rendina, and Branislav Bédi
+had numerous suggestions about how to reorganise the AI's original draft
+of the paper to make it suitable for presentation at a CALL conference.
+
+\section*{References}
+\begingroup
+\setlength{\parindent}{-1.5em}
+\setlength{\leftskip}{1.5em}
+
+Arkes, H. R., \& Blumer, C. (1985). The psychology of sunk cost.
+Organizational Behavior and Human Decision Processes, 35(1), 124--140.
+\url{https://doi.org/10.1016/0749-5978(85)90049-4}
+
+Bae, W. D., ChatGPT-Four, C., Chiera, B., Dotte, A.-L., Geneix-Rabault,
+S., Guathoti, L., Maizonniaux, C., Rayner, M., Wacalie, F. S., \& Welby,
+P. (2025, June). Creating multimedia resources for Kanak languages using
+the C-LARA platform: Case studies in Iaai and Drehu. \emph{Proceedings
+of the 13th Conference on Oceanic Linguistics}.
+\url{https://hal.science/hal-05171752/}
+
+Bédi, B., Beedar, H., Chiera, B., Chua, C., Geneix-Rabault, S., Kreusch,
+V., Maizonniaux, C., Rayner, M., Rendina, S., Ryan-Cooper, E., Sukhyi,
+V., Vargova, I., Wright, S., Yao, C., \& Zviel-Girshin, R. (2025).
+AI-generated tailor-made pedagogical picture books: How close are we?
+\emph{Education Sciences}, \emph{15}(12), 1704.
+\url{https://www.mdpi.com/2227-7102/15/12/1704}
+
+ChatGPT, C., Chiera, B., Chua, C., Raheb, C., Rayner, M., Simonsen, A.,
+Xiang, Z., \& Zviel-Girshin, R. (2023). Using C-LARA to evaluate GPT-4's
+multilingual processing. \emph{Proceedings of the 21st Annual Workshop
+of the Australasian Language Technology Association}, 20--29.
+\url{https://aclanthology.org/2023.alta-1.3/}
+
+Chiera, B., Dotte, A.-L., Geneix-Rabault, S., Maizonniaux, C., Rendina,
+S., Rayner, M., Wacalie, F., \& Welby, P. (2025, March). Building
+culturally relevant multimedia resources for Indigenous languages using
+AI tools and collaborative development. \emph{Proceedings of the Eighth
+Workshop on the Use of Computational Methods in the Study of Endangered
+Languages}.
+\url{https://computel-workshop.org/wp-content/uploads/2025/03/ChatGPT_C_LARA_Instance_EtAl.pdf}
+
+Koç, F. Ş., \& Savaş, P. (2025). The use of artificially intelligent
+chatbots in English language learning: A systematic meta-synthesis study
+of articles published between 2010 and 2024. ReCALL, 37(1), 4--21.
+\url{https://doi.org/10.1017/S0958344024000168}
+
+Kobak, D., González-Márquez, R., Horvát, E.-Á., \& Lause, J. (2025).
+Delving into LLM-assisted writing in biomedical publications through
+excess vocabulary. \emph{Science Advances}, \emph{11}(27), eadt3813.
+\url{https://www.science.org/doi/10.1126/sciadv.adt3813}
+
+Law, L. (2024). Application of generative artificial intelligence
+(GenAI) in language teaching and learning: A scoping literature review.
+Computers and Education Open, 6, 100174.
+\url{https://doi.org/10.1016/j.caeo.2024.100174}
+
+Li, H., Zhang, H., \& Hassan, A. E. (2026). AIDev: Studying AI coding
+agents on GitHub. arXiv preprint arXiv:2602.09185.
+\url{https://doi.org/10.48550/arXiv.2602.09185}
+
+Manabu, T. (2026). The machine consumes itself: Artificial Intelligence
+and the end of publish-or-perish. Postdigital Science and Education.
+\url{https://doi.org/10.1007/s42438-026-00666-0}
+
+Rendina, S., Rayner, M., Bédi, B., \& Beedar, H. (2025). Harnessing
+GPT-Image-1 to create high-quality illustrated texts. \emph{Proceedings
+of the 10th Workshop on Speech and Language Technology in Education}.
+\url{https://www.isca-archive.org/slate_2025/rendina25_slate.pdf}
+
+Welby, P., Wacalie, F., Rayner, M., \& ChatGPT C-LARA-Instance. (2024).
+T is for \emph{treu}, but how do you pronounce that? Using C-LARA to
+create phonetic texts for Kanak languages. \emph{Proceedings of the
+Seventh Workshop on the Use of Computational Methods in the Study of
+Endangered Languages}, 21--26.
+\url{https://aclanthology.org/2024.computel-1.4/}
+\endgroup
+
+\end{document}
