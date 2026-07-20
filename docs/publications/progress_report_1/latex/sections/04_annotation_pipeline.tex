@@ -1,0 +1,129 @@
+\section{Linguistic annotation}
+
+\subsection{Overview: annotation as a coherent editable representation}
+
+Linguistic annotation is central to the learner-facing value of a C-LARA-2
+text. A project may contain page and segment structure, lexical tokens,
+segment translations, multi-word expressions (MWEs), lemmas, parts of speech,
+glosses, pinyin or other romanisation information where appropriate, and
+audio-related annotations. From a user's point of view these are connected
+views of the same text, not independent decorations. A correction to a token
+boundary or an MWE must remain intelligible in the lemma, gloss and display
+layers that depend on it.
+
+This requirement exposed a limitation of the original C-LARA architecture.
+Annotated segments were often represented as encoded strings when sent to an
+API or edited manually; a French-glossed English example might look like
+\texttt{I/je love/aime you/te}. Such strings were useful for an early system,
+but are brittle: separators and ordering conventions must be preserved,
+segmentation edits can invalidate later layers, and MWEs are difficult to
+present or correct ergonomically. C-LARA-2 instead treats the segment, its
+tokens and their related annotations as structured data. This permits stages
+to validate the representation they receive and lets users edit visible
+fields rather than reconstructing an implicit encoding.
+
+\subsection{The linguistic annotation pipeline}
+
+Segmentation is structurally different from the later operations because it
+creates the units on which they depend. The first phase divides source text
+into pages and segments. The second phase divides each segment into lexical
+tokens, including language-sensitive decompositions where a whitespace form is
+not the right annotation unit. Its manual editor keeps the source text
+read-only and lets a reviewer change only explicit token-boundary separators;
+this makes the structural correction auditable and avoids accidentally
+changing the underlying text. Errors at either stage propagate to translation,
+MWE, lemma/POS, gloss and display work; making this shared structure explicit
+is therefore a primary consistency measure.
+
+After segmentation, the pipeline adds segment translations, MWE markings,
+lemma/POS information and glosses. Pinyin annotation is a further,
+language-specific extension: Mandarin tokenisation can use the dedicated
+\texttt{jieba} Python package, and pinyin annotation can use \texttt{pypinyin};
+both remain reviewable and manually correctable as structured token
+information before learner-facing rendering. Hindi romanisation similarly has
+dedicated support through the \texttt{indic\_transliteration} Python package.
+These specialised methods complement the general AI-assisted pipeline rather
+than replacing human review. The aim is not to claim uniform linguistic
+accuracy across languages, but to ensure that each stage works with and
+preserves a common representation that can be inspected and corrected.
+
+\subsection{Annotation prompts, fan-out/fan-in and efficiency}
+
+Most post-segmentation operations use a uniform fan-out/fan-in architecture.
+The system selects the relevant structured units, fans out independent
+requests---normally one per segment---runs them concurrently, validates and
+collects responses, then fans the results back into the shared project
+representation. This improves efficiency, isolates failures to identifiable
+units, and leaves inputs, prompts, outputs and validation results available
+for review. The first segmentation phase is exceptional because it must start
+from the source text to establish pages and segments; once those exist, the
+second phase and later segment-level stages can use the common pattern.
+
+Prompts are first-class project artefacts rather than incidental API text.
+They specify the task, input representation, examples, output format and
+constraints needed to remain consistent with earlier stages. The architecture
+can make outputs consistently structured without making the underlying
+linguistic decisions correct. Improving annotation prompts, few-shot examples
+and evaluation is consequently a major item of further work: the present
+system provides a better basis for diagnosis and revision, not a claim that
+automatic annotation is solved.
+
+\subsection{The linguistic annotation editor}
+
+The structured editor is the human counterpart to the pipeline. Its current
+design presents all relevant information for a segment together: the source
+tokens, translation, MWE marking, lemma/POS labels, glosses and applicable
+additional annotations. This makes cross-layer review possible without asking
+a user to edit encoded strings or infer how one view relates to another.
+
+The design required several iterations. First, MWE marking is not simply a
+property of one token: an editor must make a relationship among tokens visible
+without hiding their individual annotations. The intended complex examples
+show both the reason for review and the form it takes. For the French MWE
+\emph{vous moquez de}, an AI-generated surface-like lemma (\emph{vous moquez
+de}) can be corrected to the appropriate reflexive infinitive \emph{se moquer
+de}; the three token rows retain their shared MWE identifier, lemma/POS and
+gloss while remaining individually editable. Second, displaying an entire
+large project at once proved impractical and could crash the browser. Codex
+rapidly redesigned the interface around page-at-a-time review, which is both
+more stable and a more manageable unit of human work. Third, review work is
+valuable and error-prone; clear indication of unsaved changes was required so
+users could tell when a correction had not yet been persisted.
+
+% The repository figure files are intentionally text-only placeholders. Replace
+% them with the supplied JPEGs in Overleaf before enabling these figure blocks.
+% \begin{figure}[htbp]
+% \centering
+% \includegraphics[width=0.88\linewidth]{manual_segmentation_phase_2.jpg}
+% \caption{Manual phase-2 segmentation: source text is read-only and the
+% reviewer adjusts explicit token-boundary separators.}
+% \label{fig:manual-segmentation}
+% \end{figure}
+%
+% \begin{figure}[htbp]
+% \centering
+% \includegraphics[width=0.88\linewidth]{annotation_editor_segment.jpg}
+% \caption{A simple page-by-page annotation-editor example.}
+% \label{fig:annotation-editor-simple}
+% \end{figure}
+%
+% \begin{figure}[htbp]
+% \centering
+% \includegraphics[width=0.88\linewidth]{annotation_editor_segment_2_raw.jpg}
+% \caption{An unedited MWE example with a surface-like AI-generated lemma.}
+% \label{fig:annotation-editor-mwe-raw}
+% \end{figure}
+%
+% \begin{figure}[htbp]
+% \centering
+% \includegraphics[width=0.88\linewidth]{annotation_editor_segment_2_edited.jpg}
+% \caption{The corrected MWE example, with explicit unsaved-change warnings.}
+% \label{fig:annotation-editor-mwe-edited}
+% \end{figure}
+
+The current editor should not be treated as a final solution. It is an example
+of the project method: human use revealed requirements that the first designs
+missed, while Codex could implement and document the necessary redesigns
+quickly. Together, structured representation, staged validation, inspectable
+prompts and an editable interface provide a more reliable basis for
+learner-facing materials and for continued AI-assisted improvement.
