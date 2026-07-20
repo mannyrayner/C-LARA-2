@@ -1,6 +1,6 @@
 TEXTUAL FIGURE PLACEHOLDER -- replace with the supplied JPEG screenshot in Overleaf.
 
-Proposed caption: The same complex example after human correction. The three
-MWE tokens share the corrected lemma `se moquer de', POS VERB and gloss `are
-mocking me'. Prominent per-segment and global warnings state that the edit is
-unsaved and must be saved before the user leaves the page.
+Proposed caption: The same complex example after human correction. The MWE
+tokens share the corrected lemma `se moquer de', POS VERB and gloss `are making
+fun of'. A prominent unsaved-changes warning shows that the edit must be saved
+before the reviewer leaves the page.

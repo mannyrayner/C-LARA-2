@@ -1,7 +1,6 @@
 TEXTUAL FIGURE PLACEHOLDER -- replace with the supplied JPEG screenshot in Overleaf.
 
-Proposed caption: An unedited complex annotation example for ``Vous vous
-moquez de moi,'' dit-elle. The MWE identifier p0m1 groups `vous moquez de', but
-the AI-generated lemma is the surface-like `vous moquez de' rather than the
-correct infinitive/reflexive form `se moquer de'. This example motivates human
-review of structured token-level fields.
+Proposed caption: The unedited complex example for ``« Vous vous moquez de
+moi », dit-elle.'' The MWE identifier p1m1 groups `vous moquez de', but the
+AI-generated lemma is the surface-like `vous moquez de' and its gloss is `are
+mocking at', rather than the appropriate reflexive infinitive and gloss.
