@@ -37,9 +37,13 @@ is therefore a primary consistency measure.
 
 After segmentation, the pipeline adds segment translations, MWE markings,
 lemma/POS information and glosses. Pinyin annotation is a further,
-language-specific extension: for Mandarin it can be generated, reviewed and
-manually corrected as structured token information, then used by the
-learner-facing rendering layer. The aim is not to claim uniform linguistic
+language-specific extension: Mandarin tokenisation can use the dedicated
+\texttt{jieba} Python package, and pinyin annotation can use \texttt{pypinyin};
+both remain reviewable and manually correctable as structured token
+information before learner-facing rendering. Hindi romanisation similarly has
+dedicated support through the \texttt{indic\_transliteration} Python package.
+These specialised methods complement the general AI-assisted pipeline rather
+than replacing human review. The aim is not to claim uniform linguistic
 accuracy across languages, but to ensure that each stage works with and
 preserves a common representation that can be inspected and corrected.
 
