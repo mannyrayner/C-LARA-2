@@ -74,29 +74,32 @@ a user to edit encoded strings or infer how one view relates to another.
 
 The design required several iterations. First, MWE marking is not simply a
 property of one token: an editor must make a relationship among tokens visible
-without hiding their individual annotations. Second, displaying an entire
+without hiding their individual annotations. In the French example in
+the intended MWE editor examples, the three tokens \emph{vous moquez de} share an MWE identifier, lemma and gloss while remaining visible as separate editable tokens. Second, displaying an entire
 large project at once proved impractical and could crash the browser. Codex
 rapidly redesigned the interface around page-at-a-time review, which is both
 more stable and a more manageable unit of human work. Third, review work is
 valuable and error-prone; clear indication of unsaved changes was required so
 users could tell when a correction had not yet been persisted.
 
-% The repository placeholders are intentionally text, not image data. Replace
+% The manual-segmentation placeholder remains text-only; replace it with a
+% real screenshot in Overleaf before enabling an includegraphics block for it.
+% The MWE figure placeholders are intentionally text, not image data. Replace
 % them with real JPEGs in Overleaf before enabling these includegraphics blocks.
 % \begin{figure}[htbp]
 % \centering
-% \includegraphics[width=0.9\linewidth]{manual_segmentation_phase_2.jpg}
-% \caption{Manual phase-2 segmentation: the source text is read-only and the
-% reviewer adjusts explicit token-boundary separators.}
-% \label{fig:manual-segmentation}
+% \includegraphics[width=0.88\linewidth]{annotation_editor_mwe_unsaved.jpg}
+% \caption{The page-by-page annotation editor showing the French MWE \emph{vous
+% moquez de}, with token-level shared MWE, lemma/POS and gloss information and
+% explicit unsaved-change warnings.}
+% \label{fig:annotation-editor-mwe-unsaved}
 % \end{figure}
 %
 % \begin{figure}[htbp]
 % \centering
-% \includegraphics[width=\linewidth]{annotation_editor_segment.jpg}
-% \caption{The page-by-page C-LARA-2 annotation editor, showing a segment's
-% translation, token sequence, MWE, lemma/POS and gloss information together.}
-% \label{fig:annotation-editor}
+% \includegraphics[width=0.88\linewidth]{annotation_editor_mwe_saved.jpg}
+% \caption{The same annotation-editor view after saving.}
+% \label{fig:annotation-editor-mwe-saved}
 % \end{figure}
 
 The current editor should not be treated as a final solution. It is an example
