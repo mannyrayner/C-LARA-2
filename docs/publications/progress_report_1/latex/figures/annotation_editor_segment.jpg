@@ -1,7 +1,7 @@
 TEXTUAL FIGURE PLACEHOLDER -- replace with a real JPEG screenshot in Overleaf.
 
-Proposed caption: The C-LARA-2 linguistic annotation editor for one page.
-The screenshot should show one segment with its token sequence and the
-associated translation, MWE markings, lemma/POS labels, glosses, and editing
-controls presented together. It should visibly show page-at-a-time navigation
-and a clear unsaved-changes warning or save-state indicator.
+Proposed caption: The C-LARA-2 page-by-page linguistic annotation editor.
+Page-level layer controls select translation, MWE, lemma/POS, gloss and
+romanisation. One segment is displayed with its translation and an editable
+token table whose columns show token, MWE, lemma, POS and gloss; the page view
+ends with an explicit per-segment save control.

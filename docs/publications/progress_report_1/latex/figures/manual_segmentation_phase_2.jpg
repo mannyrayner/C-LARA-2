@@ -1,0 +1,7 @@
+TEXTUAL FIGURE PLACEHOLDER -- replace with a real JPEG screenshot in Overleaf.
+
+Proposed caption: The C-LARA-2 manual segmentation phase 2 editor. The source
+text is read-only; the user corrects only token boundaries by inserting or
+removing vertical-bar separators. The page/segment preview, text hash,
+per-segment editable tokenisation field, and explicit save control make the
+structural task visible without exposing later annotation layers.

@@ -28,7 +28,10 @@ Segmentation is structurally different from the later operations because it
 creates the units on which they depend. The first phase divides source text
 into pages and segments. The second phase divides each segment into lexical
 tokens, including language-sensitive decompositions where a whitespace form is
-not the right annotation unit. Errors at either stage propagate to translation,
+not the right annotation unit. Its manual editor keeps the source text
+read-only and lets a reviewer change only explicit token-boundary separators;
+this makes the structural correction auditable and avoids accidentally
+changing the underlying text. Errors at either stage propagate to translation,
 MWE, lemma/POS, gloss and display work; making this shared structure explicit
 is therefore a primary consistency measure.
 
@@ -78,13 +81,21 @@ more stable and a more manageable unit of human work. Third, review work is
 valuable and error-prone; clear indication of unsaved changes was required so
 users could tell when a correction had not yet been persisted.
 
-% The repository placeholder is intentionally text, not image data. Replace it
-% with a real JPEG in Overleaf before enabling the following includegraphics.
+% The repository placeholders are intentionally text, not image data. Replace
+% them with real JPEGs in Overleaf before enabling these includegraphics blocks.
+% \begin{figure}[htbp]
+% \centering
+% \includegraphics[width=0.9\linewidth]{manual_segmentation_phase_2.jpg}
+% \caption{Manual phase-2 segmentation: the source text is read-only and the
+% reviewer adjusts explicit token-boundary separators.}
+% \label{fig:manual-segmentation}
+% \end{figure}
+%
 % \begin{figure}[htbp]
 % \centering
 % \includegraphics[width=\linewidth]{annotation_editor_segment.jpg}
-% \caption{The C-LARA-2 linguistic annotation editor showing one page and a
-% segment's related annotations together.}
+% \caption{The page-by-page C-LARA-2 annotation editor, showing a segment's
+% translation, token sequence, MWE, lemma/POS and gloss information together.}
 % \label{fig:annotation-editor}
 % \end{figure}
 
