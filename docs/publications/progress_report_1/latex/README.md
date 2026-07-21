@@ -11,3 +11,6 @@ remain repository documentation rather than compilable image assets.
 Section 5 expects four real PNG files in `images/` when compiled in Overleaf:
 `femme_element.png`, `homme_element.png`, `homme_femme_page_1_image.png`, and
 `homme_femme_page_2_image.png`.
+
+Section 6 expects `picture_dictionary_editor.jpg` and `word_scramble.jpg` in
+Overleaf's `images/` directory.
