@@ -11,6 +11,22 @@ They also make a demanding requirement especially clear: community members
 must be able to author and review individual lexical entries without having to
 master the technical workflow that underlies a general-purpose annotated text.
 
+The original technical motivation for adding picture dictionaries was picture
+glossing. In this learner-facing functionality, a word or expression in a
+C-LARA-2 text is associated with a dictionary entry; clicking it can display
+the corresponding picture alongside other support such as audio playback and
+concordance information. The required infrastructure is a reviewed, reusable
+association between lexical items and images. Picture glossing has now been
+implemented, but has not yet been tested in learner use.
+
+In practice, the first substantial demand for picture dictionaries has come
+from collaborators working in Indigenous community contexts, where the
+immediate use cases are not identical to the original picture-glossing
+scenario. Contributors need accessible ways to create, inspect and control
+picture-based lexical resources and to reuse them in exercises. These needs
+made the dictionary-entry workflow, including visible cultural guidance and
+human review of images, the more urgent design problem.
+
 A picture dictionary is represented internally as an ordinary C-LARA-2 project
 whose text has one lexical item or lexicalised expression per page. This was a
 useful reuse decision: it made existing project, annotation, image and
@@ -84,8 +100,12 @@ layer. The image-generation process itself still requires further work and
 careful human review; rapid implementation is not evidence that generated
 images are automatically pedagogically or culturally appropriate.
 
-\subsection{From dictionary entries to learner activities}
+\subsection{Current exercises and future picture glossing}
 
+At present, the picture-dictionary infrastructure is being used most
+concretely to support picture-based exercises in Indigenous community
+contexts. Picture glossing is also implemented, but should be treated as an
+untested next application rather than as a demonstrated educational result.
 The same community-authored lexical entries can support more than a dictionary
 display. In picture glossing, clicking a word or expression in a C-LARA-2 text
 can show its picture, play audio and provide concordance examples. The
@@ -110,3 +130,16 @@ receives feedback and moves to the next item. The relevant innovation is not
 that a word scramble is novel in itself; it is that a reviewed dictionary
 entry can be reused rapidly as one component of an integrated, multimodal
 learning resource.
+
+The project intends to return to the original picture-glossing idea in a
+context involving multimodal texts for children or beginner learners. For
+picture glossing to be useful throughout a text, a dictionary is likely to
+need coverage of at least several hundred common words and expressions. Most
+of the operational work can in principle be automated: candidate vocabulary
+can be identified, translations and prompts proposed, candidate images
+generated, and dictionary entries linked to textual tokens. Human review
+remains necessary, but it can focus on accepting, correcting or rejecting
+proposed entries rather than manually constructing the whole resource. This
+is a promising area for pedagogical discussion with picture-based-learning
+specialists, including Christ\`ele Maizonniaux, whose research interests are
+closely relevant to the design choices involved.
