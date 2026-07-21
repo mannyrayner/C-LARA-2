@@ -1,0 +1,107 @@
+\section{Project memory, roadmaps and issue tracking}
+
+\subsection{Why a substantial project needs external memory}
+
+C-LARA-2 is now a substantial evolving repository: the July 2026 snapshot
+contains approximately 82,740 tracked lines accumulated over about nine
+months. No participant, human or AI, can reliably retain all relevant
+architectural decisions, experiments, operational procedures, unresolved
+problems, user requirements and publication claims in conversational working
+memory. The project therefore treats the repository as more than a container
+for code. It is a version-controlled external memory that records current
+behaviour, past decisions, intended direction and the procedures through which
+people can inspect or change the system.
+
+This external memory must be searchable, structured, linked to the code it
+describes and maintained as the project changes. It is useful to human
+collaborators, who need to understand and redirect work without becoming
+full-time programmers or system administrators. It is equally useful to
+Codex, which can inspect the same records when implementing a change,
+diagnosing a failure, planning an experiment or preparing a report. The aim is
+not to replace human judgement with accumulated text, but to make project
+history and current constraints available for human review and AI-supported
+operational work.
+
+\subsection{Roadmaps and how-to documentation}
+
+Roadmap files have been part of C-LARA-2 from the start. They record why a
+feature area matters, describe current architecture and design choices,
+preserve the history of false starts or revisions, identify priorities and
+dependencies, and link to relevant issues, tests, commands and operational
+procedures. A roadmap is consequently not a static feature wish list. It is a
+maintained account of how a part of the project reached its current state and
+what work should happen next.
+
+How-to files translate that memory into procedures that human collaborators
+can follow. They cover development setup, backups, deployment, server
+administration, migration and diagnostics. These documents are especially
+important in an AI-centred project because a human participant may need to
+perform an action in a production environment while relying on Codex to
+inspect repository context, explain the reason for the action and formulate
+safe, concrete steps. The documents preserve that operational knowledge for
+the next occasion rather than leaving it only in a transient conversation.
+
+\subsection{Issues as AI-maintained project records}
+
+Focused issue records were added in early May 2026. They can be entered and
+updated by human collaborators through a tab in the online platform, but they
+are not simply conventional tickets in a separate tracking system. Codex also
+reads, revises and cross-links their repository representations as part of
+ordinary project maintenance. An issue can therefore connect a human
+observation or suggestion to a roadmap, code change, test, operational note
+and later status update.
+
+This makes the records semantically richer than a minimal ``report, assign,
+close'' workflow. An issue is a maintained account of a bounded problem and
+its relationship to the project memory. It also creates a responsibility:
+AI-maintained records can become stale, misunderstand a human concern or
+overstate completion unless humans review their framing. The point is not that
+conventional issue trackers are unnecessary, but that the issue record can
+participate directly in the technical and documentary work needed to resolve
+it.
+
+\subsection{Operational documentation and AWS work}
+
+The most important how-to material concerns use of the AWS server. None of the
+human participants is a specialist system administrator, but Codex has been
+able to guide them through nontrivial server tasks by turning repository and
+deployment context into human-executable diagnostic and repair procedures.
+Humans perform and supervise the actions, retain responsibility for production
+access and decide whether a proposed change is acceptable; Codex supplies much
+of the operational interpretation and step-by-step guidance.
+
+One important example is the installation and diagnosis of the read-only
+sandbox later used by the project-understanding Assistant. The technical
+function of the Assistant is discussed in Section~9. The relevant point here
+is methodological: Codex could inspect the deployment context, propose
+concrete procedures, and preserve the resulting operational knowledge in
+version-controlled documentation. This allowed a team without prior sysadmin
+specialism to carry out work that would otherwise have been difficult to
+plan, explain and repeat.
+
+\subsection{Current scale and limits}
+
+\begin{table}[htbp]
+\centering
+\caption{Selected project-memory artefacts in the July 2026 repository snapshot.}
+\begin{tabular}{lr}
+\toprule
+Artefact type & Count \\
+\midrule
+Roadmap files & 31 \\
+How-to files & 11 \\
+Canonical issue records & 41 \\
+Tracked repository lines & 82,740 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+These figures do not measure software quality, and more documentation does not
+automatically produce coherence. The records must be reviewed, corrected and
+kept aligned with the code and deployment state they describe. Their value is
+that they make a larger amount of project history, operational knowledge and
+planned work available for inspection and redirection. In that sense, the
+roadmaps, how-to files and issues are not secondary administrative outputs;
+they are part of the infrastructure through which C-LARA-2 remains intelligible
+and revisable as it grows. They also provide an evidential basis for the
+repository-grounded Assistant discussed later in the report.
