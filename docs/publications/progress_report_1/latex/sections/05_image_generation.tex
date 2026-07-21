@@ -1,2 +1,111 @@
 \section{Image generation}
-\todo{Draft this section.}
+
+\subsection{Purpose and workflow}
+
+C-LARA-2 retains the image-generation workflow developed in the final versions
+of C-LARA. Its purpose is not merely to attach an attractive image to each
+page. A multi-page pedagogical text needs illustrations that fit the content
+of individual pages while also forming a coherent visual world: recurring
+people, objects and locations should remain recognisable, and linework,
+colour, tone and degree of realism should not vary arbitrarily. The
+availability of GPT-Image-1 to the project in 2025 made this workflow much
+more practical than it had been with earlier image-generation models
+\citep{RendinaEtAl2025}.
+
+The workflow separates three reviewable stages. First, a human author supplies
+a short style brief. The system expands it into a fuller description and
+creates a sample image; the author can inspect, edit or regenerate both before
+continuing. Second, the system proposes recurring visual \emph{elements}---for
+example, people, objects and locations. The author can remove unsuitable
+proposals or add missing ones, and the platform creates descriptions and
+reference images for the selected elements. Finally, it creates one or more
+candidate page images using the page text, approved style, relevant element
+references and any page-level guidance. Independent element and page requests
+can be run in parallel, but selection and acceptance remain human decisions.
+
+\subsection{A two-page French example}
+
+We illustrate the workflow with the small French dialogue already used in the
+annotation discussion:
+
+\begin{quote}
+\textbf{Page 1:} «~Je t'aime~», dit-il.\\
+\textbf{Page 2:} «~Vous vous moquez de moi~», dit-elle.
+\end{quote}
+
+The example is deliberately minimal. Its purpose is not to claim literary or
+pedagogical depth, but to make the relationship among style, elements and
+page-level generation visible. The two lines create a small unresolved story:
+a declaration is followed by a response suggesting that the woman believes the
+man is making fun of her. This gives the generator a local emotional task on
+each page while requiring continuity of character and visual atmosphere.
+
+For the style stage, the author supplied the brief ``Late nineteenth-century
+French lithograph-inspired illustration, with restrained hand-coloured tones,
+fine ink linework, soft paper texture, and a slightly melancholic literary
+atmosphere.'' The brief also requested suitability for adult or older teenage
+language learners and prohibited visible written text, speech balloons, labels
+and signage. The platform expanded this in French into a more detailed prompt
+specifying delicate ink lines, muted hand-coloured tones, paper texture, soft
+light, subdued shadows and an intimate, contemplative composition. This is a
+useful example of the division of labour: the human supplied the historical
+and pedagogical intention, while the AI converted it into a fuller operational
+specification that remained available for human review.
+
+\subsection{Recurring elements and page images}
+
+Element discovery proposed \emph{l'homme} and \emph{la femme}. Their expanded
+descriptions specify nineteenth-century dress, fine ink detail, muted colour,
+soft lighting and emotionally expressive but restrained faces. The resulting
+reference images establish a recognisable visual identity for each person.
+They are then provided as relevant element references for both page prompts,
+so that the system has an explicit continuity mechanism rather than relying
+only on repeated textual descriptions.
+
+The page prompts are intentionally close to the element and style
+specifications. Page 1 foregrounds the man and the emotionally tentative
+moment of the declaration; Page 2 foregrounds the woman and her more guarded
+response. Both prompts retain references to the woman and the man, even where
+only one is foregrounded. Three variants were requested for each page, after
+which a human author selected the preferred variant. This is an important
+practical point: generation produces candidates, not an automatically accepted
+final illustration.
+
+% Repository figure files remain text-only placeholders. In Overleaf, replace
+% them with a montage of the selected element-reference and page-image JPEGs.
+% \begin{figure}[htbp]
+% \centering
+% \includegraphics[width=\linewidth]{images/lithograph_elements.jpg}
+% \caption{Reference images for \emph{l'homme} and \emph{la femme}, generated
+% from the approved late-nineteenth-century French lithograph style.}
+% \label{fig:lithograph-elements}
+% \end{figure}
+%
+% \begin{figure}[htbp]
+% \centering
+% \includegraphics[width=\linewidth]{images/lithograph_pages.jpg}
+% \caption{Selected page-image variants for the two-page French dialogue. The
+% common style and element references aim to preserve visual continuity while
+% allowing the emotional focus to change between pages.}
+% \label{fig:lithograph-pages}
+% \end{figure}
+
+\subsection{Human review and limitations}
+
+The example illustrates why image generation is organised as a staged
+workflow. A single page prompt can produce a plausible isolated picture, but
+it gives little control over cross-page consistency. Separating style,
+recurring elements and page images gives a human author several points at
+which to inspect and redirect the process. It also makes failures easier to
+locate: a problem may concern the style description, an element identity, a
+page prompt or the selection among generated variants.
+
+The workflow does not make visual or cultural judgement automatic. Generated
+images can still misrepresent a relationship, omit a relevant detail, produce
+inconsistent character appearances or be inappropriate for a learner or
+community context. Visible text in images may also be actively undesirable,
+particularly for picture-based exercises. For this reason, C-LARA-2 treats
+image generation as AI-supported production under human review, with editing,
+regeneration and selection available throughout. These concerns become still
+more important for the specialised picture-dictionary workflow discussed in
+the next section.
