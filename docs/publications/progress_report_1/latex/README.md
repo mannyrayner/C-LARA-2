@@ -7,3 +7,7 @@ Each `sections/*.tex` file is an intentionally empty drafting placeholder. Add f
 For Overleaf compilation, place the real JPEGs in `images/`. The report source
 uses that directory first; the text-only figure descriptions in `figures/`
 remain repository documentation rather than compilable image assets.
+
+Section 5 expects four real PNG files in `images/` when compiled in Overleaf:
+`femme_element.png`, `homme_element.png`, `homme_femme_page_1_image.png`, and
+`homme_femme_page_2_image.png`.

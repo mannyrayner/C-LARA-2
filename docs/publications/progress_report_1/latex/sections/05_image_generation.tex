@@ -71,24 +71,84 @@ which a human author selected the preferred variant. This is an important
 practical point: generation produces candidates, not an automatically accepted
 final illustration.
 
-% Repository figure files remain text-only placeholders. In Overleaf, replace
-% them with a montage of the selected element-reference and page-image JPEGs.
-% \begin{figure}[htbp]
-% \centering
-% \includegraphics[width=\linewidth]{images/lithograph_elements.jpg}
-% \caption{Reference images for \emph{l'homme} and \emph{la femme}, generated
-% from the approved late-nineteenth-century French lithograph style.}
-% \label{fig:lithograph-elements}
-% \end{figure}
-%
-% \begin{figure}[htbp]
-% \centering
-% \includegraphics[width=\linewidth]{images/lithograph_pages.jpg}
-% \caption{Selected page-image variants for the two-page French dialogue. The
-% common style and element references aim to preserve visual continuity while
-% allowing the emotional focus to change between pages.}
-% \label{fig:lithograph-pages}
-% \end{figure}
+\begin{figure}[htbp]
+\centering
+\begin{minipage}[t]{0.48\linewidth}
+\centering
+\includegraphics[width=\linewidth]{images/femme_element.png}\\[-0.25em]
+\small \emph{La femme}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\linewidth}
+\centering
+\includegraphics[width=\linewidth]{images/homme_element.png}\\[-0.25em]
+\small \emph{L'homme}
+\end{minipage}
+\caption{Reference images for the two recurring elements, generated from the
+approved lithograph-style specification. These images establish visual
+identities that are supplied as continuity references for both page prompts.}
+\label{fig:lithograph-elements}
+\end{figure}
+
+\noindent\textbf{Style and element prompts.}
+\begin{quote}\small\ttfamily
+Base style brief: Late nineteenth-century French lithograph-inspired
+illustration, with restrained hand-coloured tones, fine ink linework, soft
+paper texture, and a slightly melancholic literary atmosphere. Suitable for
+adult or older teenage language learners. No visible written text, speech
+balloons, labels, or signage.
+\end{quote}
+
+\begin{quote}\small\ttfamily
+Expanded style prompt (French): L'illustration doit s'inspirer des
+lithographies françaises de la fin du XIXe siècle, offrant une atmosphère
+littéraire légèrement mélancolique. Utiliser des tons colorés avec retenue qui
+semblent peints à la main, et un tracé fin à l'encre pour les détails. La
+texture douce du papier doit être perceptible. La lumière doit être douce,
+avec des ombres feutrées qui créent une ambiance intime et contemplative,
+sans texte visible.
+\end{quote}
+
+\begin{figure}[htbp]
+\centering
+\begin{minipage}[t]{0.48\linewidth}
+\centering
+\includegraphics[width=\linewidth]{images/homme_femme_page_1_image.png}\\[-0.25em]
+\small Page 1: «~Je t'aime~», dit-il.
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\linewidth}
+\centering
+\includegraphics[width=\linewidth]{images/homme_femme_page_2_image.png}\\[-0.25em]
+\small Page 2: «~Vous vous moquez de moi~», dit-elle.
+\end{minipage}
+\caption{Human-selected page-image variants for the two-page dialogue. Three
+variants were requested for each page. The common style and both character
+references support continuity while the emotional focus changes between pages.}
+\label{fig:lithograph-pages}
+\end{figure}
+
+\noindent\textbf{Page prompts.}
+\begin{quote}\small\ttfamily
+Page 1: Illustrer un homme selon les lithographies françaises de la fin du
+XIXe siècle, capturant une aura mélancolique avec des traits d'encre fins et
+délicats. Utiliser des nuances de couleur douces pour créer une ambiance
+intime avec une lumière tamisée et des ombres feutrées. L'homme doit porter
+des vêtements d'époque, son expression doit suggérer des émotions profondes,
+centrée sur l'instant présent, sans texte visible, afin de saisir un moment
+émouvant et contemplatif de la déclaration «~Je t'aime~», dit-il. Relevant
+element references: femme (images/elements/femme/reference.png); homme
+(images/elements/homme/reference.png).
+\end{quote}
+
+\begin{quote}\small\ttfamily
+Page 2: Représenter une femme avec des traits délicats et une expression
+mélancolique, inspirée par les lithographies françaises du XIXe siècle. Ses
+vêtements sont d'époque, avec des détails fins tracés à l'encre. Utiliser une
+palette de couleurs pastel et une lumière douce pour créer des ombres feutrées.
+L'atmosphère doit être intime et contemplative, centrée sur l'émotion
+intérieure de la femme, sans texte visible. Relevant element references:
+femme (images/elements/femme/reference.png); homme
+(images/elements/homme/reference.png).
+\end{quote}
 
 \subsection{Human review and limitations}
 
