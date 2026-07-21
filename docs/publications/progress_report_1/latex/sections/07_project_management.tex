@@ -17,10 +17,17 @@ describes and maintained as the project changes. It is useful to human
 collaborators, who need to understand and redirect work without becoming
 full-time programmers or system administrators. It is equally useful to
 Codex, which can inspect the same records when implementing a change,
-diagnosing a failure, planning an experiment or preparing a report. The aim is
-not to replace human judgement with accumulated text, but to make project
-history and current constraints available for human review and AI-supported
-operational work.
+diagnosing a failure, planning an experiment or preparing a report.
+
+The roadmaps, how-to files and issue records are entirely authored by Codex.
+They are normally prompted by human input, but the input may be a short
+suggestion, observation or request rather than a pre-written specification.
+Codex expands it into a detailed plan, operational procedure, issue record or
+other project document, sometimes extending to a page or more. Human
+collaborators can correct the framing, add constraints or request revisions,
+but Codex writes the resulting repository text. The aim is not to replace
+human judgement with accumulated text, but to make project history and current
+constraints available for human review and AI-supported operational work.
 
 \subsection{Roadmaps and how-to documentation}
 
@@ -33,7 +40,10 @@ approaches that proved to be false starts, links to relevant issues and tests,
 and the evidence on which an objective appears to have succeeded. A roadmap
 is therefore neither a static feature wish list nor a retrospective report. It
 is a maintained account of a feature area's changing state, history and next
-likely steps.
+likely steps. This is more efficient than asking human collaborators to
+maintain long planning documents themselves: Codex can convert a concise
+suggestion into a fuller account and often recognises when the same suggestion
+requires coordinated updates to several roadmap, how-to or issue files.
 
 Most project actions are carried out by Codex inside the repository:
 inspecting existing material, writing and revising code, adding tests,
@@ -64,7 +74,9 @@ are not simply conventional tickets in a separate tracking system. Codex also
 reads, revises and cross-links their repository representations as part of
 ordinary project maintenance. An issue can therefore connect a human
 observation or suggestion to a roadmap, code change, test, operational note
-and later status update.
+and later status update. A short user report may thus become a detailed,
+AI-authored issue record and coordinated updates elsewhere in the project
+memory.
 
 This makes the records semantically richer than a minimal ``report, assign,
 close'' workflow. An issue is a maintained account of a bounded problem and
