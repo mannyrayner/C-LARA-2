@@ -1,0 +1,145 @@
+\section{Picture dictionaries and multimodal practice}
+
+\subsection{Why picture dictionaries matter}
+
+Picture dictionaries are a useful point of contact between C-LARA-2's
+multimodal authoring infrastructure and the needs of minority and Indigenous
+language communities. Picture-based resources can support learners with
+limited literacy, communities whose orthographies are still being consolidated,
+and contributors who want to create accessible resources for younger learners.
+They also make a demanding requirement especially clear: community members
+must be able to author and review individual lexical entries without having to
+master the technical workflow that underlies a general-purpose annotated text.
+
+The original technical motivation for adding picture dictionaries was picture
+glossing. In this learner-facing functionality, a word or expression in a
+C-LARA-2 text is associated with a dictionary entry; clicking it can display
+the corresponding picture alongside other support such as audio playback and
+concordance information. The required infrastructure is a reviewed, reusable
+association between lexical items and images. Picture glossing has now been
+implemented, but has not yet been tested in learner use.
+
+In practice, the first substantial demand for picture dictionaries has come
+from collaborators working in Indigenous community contexts, where the
+immediate use cases are not identical to the original picture-glossing
+scenario. Contributors need accessible ways to create, inspect and control
+picture-based lexical resources and to reuse them in exercises. These needs
+made the dictionary-entry workflow, including visible cultural guidance and
+human review of images, the more urgent design problem.
+
+A picture dictionary is represented internally as an ordinary C-LARA-2 project
+whose text has one lexical item or lexicalised expression per page. This was a
+useful reuse decision: it made existing project, annotation, image and
+compilation infrastructure available without introducing a separate data
+model. It did not, however, imply that the standard project interface was the
+right interface for dictionary construction.
+
+\subsection{Why the general-purpose workflow was not enough}
+
+The annotation interface described in Section~4 is designed for an extended
+text containing pages, segments and token-level linguistic analysis. The image
+workflow in Section~5 is designed for page-level scenes whose style and
+recurring visual elements must be coordinated. Both workflows are appropriate
+for their intended tasks. A picture dictionary is more constrained: the
+relevant unit is a lexical entry, which needs a word, perhaps a lemma and part
+of speech, a gloss or translation, optional human guidance, an image prompt
+and a selected image considered together.
+
+The initial picture-dictionary design exposed the underlying project as a
+sequence of existing annotation and page-image operations. Contributors had to
+move between separate views to manage information that conceptually belonged
+to one entry. This created complexity without a corresponding benefit,
+particularly where contributors were community members rather than technical
+specialists, or where the project language could not itself be processed
+reliably by the available AI model. In such cases, a human-provided English or
+French translation may be needed to mediate prompt creation, while cultural
+notes or restrictions must remain visible to the person reviewing the image.
+
+\subsection{A dictionary-entry-centred interface}
+
+Following discussion with intended users, C-LARA-2 retained the project-based
+representation but replaced the user-experience layer with a specialised
+picture-dictionary editor. Each lexical entry is displayed as an integrated
+block containing the word, lemma, part of speech, gloss or translation,
+optional suggestion, image-generation prompt and selected image. Contributors
+can inspect and edit each component directly; they can also select entries in
+bulk to create missing translations, prompts, images or other information.
+The interface thus exposes the relevant parts of the annotation and image
+workflows without asking a contributor to navigate the complete pipelines for
+every word.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{images/picture_dictionary_editor.jpg}
+\caption{Part of the specialised C-LARA-2 picture-dictionary editor. Each
+lexical entry brings together word, lemma/POS information, gloss or
+translation, optional human guidance, image-generation prompt and selected
+image. Controls support review and batch generation for selected entries. A
+French example is shown rather than community-language data because work
+involving Indigenous languages may be subject to cultural-sensitivity and
+data-sovereignty constraints.}
+\label{fig:picture-dictionary-editor}
+\end{figure}
+
+The redesign was not merely cosmetic. The earlier interface treated dictionary
+construction as a sequence of operations inherited from the general project
+workflow; the replacement treats the dictionary entry as the organising unit.
+Codex produced a usable implementation within a few hours once the revised
+conceptual model had been agreed, and the consortium members involved in
+testing responded positively. This is a useful example of AI-centred
+development under human supervision: the AI did not independently identify the
+community need or diagnose the usability problem; human collaborators supplied
+those judgements, while Codex carried out the rapid operational redesign.
+
+The episode also illustrates a practical consequence of AI-mediated
+development. Conventional software work is subject to a sunk-cost pressure:
+prior effort can make it difficult to abandon an unsuitable design
+\citep{ArkesBlumer1985}. Here, the project was able to preserve the useful
+underlying representation while discarding and rebuilding the user-facing
+layer. The image-generation process itself still requires further work and
+careful human review; rapid implementation is not evidence that generated
+images are automatically pedagogically or culturally appropriate.
+
+\subsection{Current exercises and future picture glossing}
+
+At present, the picture-dictionary infrastructure is being used most
+concretely to support picture-based exercises in Indigenous community
+contexts. Picture glossing is also implemented, but should be treated as an
+untested next application rather than as a demonstrated educational result.
+The same community-authored lexical entries can support more than a dictionary
+display. In picture glossing, clicking a word or expression in a C-LARA-2 text
+can show its picture, play audio and provide concordance examples. The
+platform can also create picture-to-word and word-to-picture multiple-choice
+exercises, word scrambles and simple crosswords using picture clues. This
+reuse matters: effort invested in reviewing a lexical entry can support
+several forms of multimodal practice rather than one isolated artefact.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[height=0.72\textheight]{images/word_scramble.jpg}
+\caption{A picture-clue word-scramble exercise generated from a French picture
+dictionary. The learner selects adjacent letters in the grid to spell the
+lexical item represented by the image; two target words have already been
+found.}
+\label{fig:word-scramble}
+\end{figure}
+
+The word-scramble example is intentionally modest, but it makes the point
+concrete. The learner receives a visual clue, performs an active lexical task,
+receives feedback and moves to the next item. The relevant innovation is not
+that a word scramble is novel in itself; it is that a reviewed dictionary
+entry can be reused rapidly as one component of an integrated, multimodal
+learning resource.
+
+The project intends to return to the original picture-glossing idea in a
+context involving multimodal texts for children or beginner learners. For
+picture glossing to be useful throughout a text, a dictionary is likely to
+need coverage of at least several hundred common words and expressions. Most
+of the operational work can in principle be automated: candidate vocabulary
+can be identified, translations and prompts proposed, candidate images
+generated, and dictionary entries linked to textual tokens. Human review
+remains necessary, but it can focus on accepting, correcting or rejecting
+proposed entries rather than manually constructing the whole resource. This
+is a promising area for pedagogical discussion with picture-based-learning
+specialists, including Christ\`ele Maizonniaux, whose research interests are
+closely relevant to the design choices involved.

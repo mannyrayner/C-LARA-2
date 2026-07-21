@@ -1,0 +1,42 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.4cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern,microtype,graphicx,booktabs,longtable,tabularx,enumitem,xcolor,url}
+\usepackage[round,authoryear]{natbib}
+\usepackage[hidelinks]{hyperref}
+\graphicspath{{images/}{figures/}}
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{TODO:} #1}}
+\title{C-LARA-2: Initial Project Report\\AI Autonomy Under Human Supervision in a Multimodal CALL Platform}
+\author{\todo{Final author list}\\\textit{C-LARA Project}}
+\date{\todo{Month 2026}}
+\begin{document}
+\maketitle
+\begin{abstract}
+\todo{Write last. State what C-LARA-2 is, its relation to C-LARA, the AI-autonomy model, the implemented areas covered, and the report's status as a current project snapshot.}
+\end{abstract}
+\tableofcontents
+\clearpage
+% During drafting, use e.g. \includeonly{sections/04_annotation_pipeline}
+% \include starts each major section on a new page. Change to \input later if a compact layout is preferred.
+\include{sections/01_introduction}
+\include{sections/02_history_and_methodology}
+\include{sections/03_platform_overview}
+\include{sections/04_annotation_pipeline}
+\include{sections/05_image_generation}
+\include{sections/06_picture_dictionaries}
+\include{sections/07_project_management}
+\include{sections/08_deployment}
+\include{sections/09_assistant}
+\include{sections/10_voice_mode}
+\include{sections/11_future_directions}
+\include{sections/12_discussion_conclusion}
+\section*{Using C-LARA-2}
+C-LARA-2 is openly available at \url{https://c-lara-2.c-lara.org/}. \todo{Update current account/API-key instructions.}
+\section*{Production and contribution statement}
+\todo{Describe human, Codex and ChatGPT C-LARA-Instance contributions after the workflow is complete.}
+\section*{Acknowledgements}
+\todo{Funding, consortium members, community partners and institutional support.}
+\bibliographystyle{apalike}
+\bibliography{references}
+\end{document}
