@@ -1,2 +1,75 @@
-\section{Deployment}
-\todo{Draft this section.}
+\section{Deployment and operational administration}
+
+\subsection{Why deployment remains a human-executed task}
+
+Most C-LARA-2 work takes place inside the repository. Codex can inspect
+existing material, write and revise code, add tests, maintain documentation
+and update the project-memory records described in the preceding section.
+Deployment crosses a different boundary. It requires actions in AWS, SSH
+sessions, process-management tools, browser or cloud-provider interfaces, and
+production-server environments. For safety and practical reasons, human
+collaborators execute and authorise those external actions; Codex does not
+hold unrestricted production access.
+
+This does not mean that humans must already possess the relevant system
+administration knowledge. Codex can inspect repository and deployment context,
+explain the purpose of an operation, formulate concrete diagnostic or repair
+steps, interpret returned results and preserve the resulting procedure. The
+human role is to perform, supervise and accept the external operation. The AI
+role is broad operational guidance in a domain that is only partly accessible
+from the repository itself.
+
+\subsection{One-off provisioning and recurrent administration}
+
+Two kinds of operational documentation support the AWS deployment. The
+one-off task of provisioning, configuring and validating the server is
+recorded in the deployment-and-migration roadmap. Like other roadmaps, it
+captures the intended outcome, design choices, migration and validation steps,
+recovery considerations and lessons learned while the work was carried out.
+It is not expected to be followed repeatedly from beginning to end.
+
+Recurrent tasks are documented separately in the server-administration
+how-to file. The most important of these is installing a new version of the
+platform and checking that the running service is healthy afterwards. The
+separation is useful: a historical roadmap records why the deployment was
+constructed in a particular way, while a concise runbook gives human
+collaborators a repeatable procedure for operating it. Both documents are
+maintained by Codex in response to human needs and operational evidence.
+
+\subsection{The read-only Assistant sandbox}
+
+The most complicated external task so far was configuring the read-only
+sandbox needed by the project-understanding Assistant. The Assistant must be
+able to inspect the repository and answer questions about C-LARA-2, but it
+must not receive unrestricted authority to alter the repository or production
+server. Achieving that limited capability required interaction among several
+unfamiliar technologies and system policies, including Bubblewrap and
+AppArmor.
+
+The human collaborators did not merely lack the commands needed to configure
+these mechanisms; they had not previously encountered them or known what role
+they played in the deployment. Codex investigated failure modes, interpreted
+diagnostics, identified relevant constraints, proposed changes to the
+procedure and revised the documentation as the configuration evolved. Humans
+performed the external operations and checked the results. The technical
+functionality and user-facing role of the resulting Assistant are discussed in
+Section~9; the point here is that a difficult systems-administration problem
+could be converted into a sequence of inspectable, human-executable steps and
+preserved for later reuse.
+
+\subsection{Lessons for delegated responsibility}
+
+The deployment work provides a concrete example of responsibility expanding
+through demonstrated competence. Codex was initially used to guide humans
+through tasks they could not otherwise have planned or explained. As it
+successfully analysed failures, revised procedures and preserved operational
+knowledge, it became reasonable to delegate a larger part of the sysadmin role
+to it, while humans retained production access and final acceptance.
+
+This does not establish that every strategic, cultural or ethical decision
+should be transferred to an AI. It does show that responsibility need not be
+fixed. Within a bounded domain, delegation can increase when competence,
+constraints, evidence, logging and human oversight make the arrangement
+justified. The deployment case is consequently relevant to the broader future
+question of how operational and strategic responsibilities might progressively
+be shared between human collaborators and an AI agent.
