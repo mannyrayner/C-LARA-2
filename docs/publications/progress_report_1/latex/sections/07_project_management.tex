@@ -24,22 +24,37 @@ operational work.
 
 \subsection{Roadmaps and how-to documentation}
 
-Roadmap files have been part of C-LARA-2 from the start. They record why a
-feature area matters, describe current architecture and design choices,
-preserve the history of false starts or revisions, identify priorities and
-dependencies, and link to relevant issues, tests, commands and operational
-procedures. A roadmap is consequently not a static feature wish list. It is a
-maintained account of how a part of the project reached its current state and
-what work should happen next.
+Roadmap files have been part of C-LARA-2 from the start. A roadmap normally
+begins by recording an intention: why a feature area matters, the initial
+understanding of the problem, and perhaps a first plan for realising it. As
+work progresses, the file accumulates more detail. It records design
+decisions, implementation steps, experiments, approaches that worked,
+approaches that proved to be false starts, links to relevant issues and tests,
+and the evidence on which an objective appears to have succeeded. A roadmap
+is therefore neither a static feature wish list nor a retrospective report. It
+is a maintained account of a feature area's changing state, history and next
+likely steps.
 
-How-to files translate that memory into procedures that human collaborators
-can follow. They cover development setup, backups, deployment, server
-administration, migration and diagnostics. These documents are especially
-important in an AI-centred project because a human participant may need to
-perform an action in a production environment while relying on Codex to
-inspect repository context, explain the reason for the action and formulate
-safe, concrete steps. The documents preserve that operational knowledge for
-the next occasion rather than leaving it only in a transient conversation.
+Most project actions are carried out by Codex inside the repository:
+inspecting existing material, writing and revising code, adding tests,
+maintaining documentation, updating roadmaps and issue records, and preparing
+publication drafts. Some actions cannot yet be carried out entirely in this
+way. They require a human participant to operate outside the repository, for
+example in a cloud-provider console, an SSH session, a local browser, or a
+production-server environment. How-to files document these comparatively
+special but important procedures. They are not necessarily associated with
+individual roadmap files; rather, they preserve operational knowledge that
+humans need when repository-grounded guidance must be translated into an
+external action.
+
+Server setup, deployment and operation are the most important examples. The
+team does not include a specialist system administrator, yet it needs to run
+and maintain an AWS deployment. Codex can inspect repository and deployment
+context, explain a task, formulate concrete diagnostic or repair steps, and
+record the resulting procedure. Human collaborators perform and supervise the
+external operations and retain responsibility for production access and
+acceptance. The documentation preserves that knowledge for later use rather
+than leaving it only in a transient conversation.
 
 \subsection{Issues as AI-maintained project records}
 
