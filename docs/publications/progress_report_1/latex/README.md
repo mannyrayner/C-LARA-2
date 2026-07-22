@@ -3,7 +3,7 @@
 `progress_report_1.tex` is the repository source for the Initial C-LARA-2
 Project Report. It contains the title material, abstract, full section drafts,
 references and publication statements. The report is a current working draft;
-the acknowledgements and final Overleaf layout remain to be completed.
+the final Overleaf layout remains to be completed.
 
 For Overleaf compilation, place the real JPEGs in `images/`. The report source
 uses that directory first; the text-only figure descriptions in `figures/`
