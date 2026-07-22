@@ -14,3 +14,7 @@ Section 5 expects four real PNG files in `images/` when compiled in Overleaf:
 
 Section 6 expects `picture_dictionary_editor.jpg` and `word_scramble.jpg` in
 Overleaf's `images/` directory.
+
+Section 9 expects three montage PNGs in Overleaf's `images/` directory:
+`assistant_mandarin_pinyin.png`, `assistant_haitian_audio.png`, and
+`assistant_french_roadmap_issues.png`.

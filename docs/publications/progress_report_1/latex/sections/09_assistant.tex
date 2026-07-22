@@ -1,2 +1,122 @@
-\section{Project-understanding Assistant}
-\todo{Draft this section.}
+\section{A project that can explain itself}
+
+\subsection{The project-understanding Assistant}
+
+The project-understanding Assistant is an authenticated C-LARA-2 feature
+through which users can ask unconstrained natural-language questions about the
+platform itself. It is neither a conventional FAQ system nor a manually
+maintained database of answers. Instead, Codex receives the question in the
+read-only restricted environment described in Section~8, inspects the current
+repository, and returns an answer grounded in source code, tests, roadmaps,
+issue records and operational documentation. References to repository files
+and line numbers are converted into clickable links, allowing a user to
+inspect the evidence behind an answer.
+
+The deployment constraints described in Section~8 are central to this design.
+The Assistant needs enough access to inspect a current repository checkout,
+but it must not receive general authority to modify the repository or control
+the production server. The resulting arrangement makes repository-grounded
+explanation available inside the platform while constraining the powers of the
+agent providing it.
+
+\subsection{Repository-grounded answers and inspectable evidence}
+
+Different repository artefacts answer different parts of a project question.
+Source code and tests describe current implemented behaviour; roadmaps record
+the history and intended direction of larger areas of work; issue records
+track focused problems and unresolved tasks; and how-to files describe
+operations that human collaborators may need to perform. The Assistant can
+therefore address not only whether a capability is implemented, but also why a
+design was chosen, what remains planned, and what workaround is currently
+available.
+
+This capability depends on the shared project memory described in Section~7.
+The Assistant does not acquire information by introspection or make a claim to
+human-like comprehension. In a deliberately limited operational sense, it can
+inspect the artefacts through which the project records its implementation,
+history and planned development, and construct a context-sensitive,
+evidence-linked account for users and collaborators.
+
+\subsection{Implemented capability: Mandarin and pinyin}
+
+A first example concerns whether the platform can create Mandarin texts and
+add pinyin annotations. The Assistant answers that Mandarin is supported as a
+project and text-pipeline language, then locates evidence across several parts
+of the repository: language choices and project models, the Mandarin
+text-generation prompt, tokenisation using \texttt{jieba}, pinyin processing
+using \texttt{pypinyin}, manual editing support, and ruby-style HTML
+rendering. This is a useful test because no single file contains the complete
+answer; the Assistant must connect several implementation layers. The
+annotation architecture underlying those layers is described in Section~4.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{images/assistant_mandarin_pinyin.png}
+\caption{A project-understanding Assistant interaction concerning Mandarin
+text generation and pinyin annotation. The answer is constructed by inspecting
+several parts of the current repository and includes links to the supporting
+source files.}
+\label{fig:mandarin-pinyin}
+\end{figure}
+
+\subsection{Honest answers about planned work}
+
+A second example concerns native-speaker audio recording for Haitian Creole,
+where current synthetic speech may be unsuitable. The Assistant distinguishes
+what is implemented from what is only planned. It identifies the present
+no-audio/skip-TTS option, explains that recording through the platform is not
+yet an implemented feature, and links to the relevant roadmap and issue
+record for the planned community recording/upload workflow. This kind of
+answer is valuable because it gives a useful, evidence-linked ``not yet''
+response rather than presenting a roadmap aspiration as current functionality.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{images/assistant_haitian_audio.png}
+\caption{An Assistant response to a request for native-speaker audio recording
+in Haitian Creole. The answer separates current functionality, planned work
+and a partial workaround, with links to source code, roadmaps and issue
+records.}
+\label{fig:haitian-audio}
+\end{figure}
+
+\subsection{Multilingual questions}
+
+Although much early testing used English questions, the Assistant can also
+respond usefully to questions in other major languages. Figure~\ref{fig:french-roadmap-issues}
+shows a French question asking why C-LARA-2 uses roadmap and issue files in
+the repository. The answer remains in French and explains the complementary
+roles of roadmaps as structured planning and longer-term direction, and issue
+records as canonical operational tracking of focused tasks. It also links to
+the evidence that supports this account. This example reinforces the point
+that the Assistant is not limited to a fixed English help system; it can
+construct repository-grounded explanations in the language of the question.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{images/assistant_french_roadmap_issues.png}
+\caption{A French project-understanding question and answer about the
+complementary roles of roadmaps and issue files. The Assistant answers in
+French and links to the relevant repository evidence.}
+\label{fig:french-roadmap-issues}
+\end{figure}
+
+% TODO after the full draft is stable: add a reviewed Assistant interaction
+% asking about this report's central claims and the evidence supporting them.
+
+\subsection{Limits, review and future evidence records}
+
+The Assistant cannot be perfect. Documentation may lag behind code, preserve
+an abandoned intention, or omit a relevant relationship; a cited file may be
+relevant without being sufficient; and an answer can be accurate without being
+optimally helpful. Its answers should therefore be treated as informed,
+inspectable accounts rather than definitive statements. Important answers will
+need a future workflow for export, versioning and human assessment if they are
+to become durable evidence for project claims.
+
+Nevertheless, when code, tests, documentation, roadmaps and issues are
+accessible to the same constrained agent, the repository becomes more than a
+container for software. Its external memory becomes actively usable: the
+Assistant can help human collaborators and users navigate current behaviour,
+history, plans and limitations, while making its evidence available for
+inspection.
