@@ -124,8 +124,39 @@ French and links to the relevant repository evidence.}
 \label{fig:french-roadmap-issues}
 \end{figure}
 
-% TODO after the full draft is stable: add a reviewed Assistant interaction
-% asking about this report's central claims and the evidence supporting them.
+\subsection{Explaining the report itself}
+
+Once the current report had been committed to the repository and deployed with
+the current platform version, the Assistant could also answer a question about
+the report itself. Figure~\ref{fig:report-speech-recognition} shows a user who
+had been skimming the report asking whether C-LARA-2 can use speech recognition
+and, if so, how to invoke it. The response correctly answers that speech
+recognition is not an implemented C-LARA-2 feature. It links to Section~10,
+which states that spoken learner input is not currently supported; to
+Section~11, which presents speech recognition for whole-text alignment as
+future work; and to the current audio pipeline, which offers text-to-speech or
+no-audio/skip-TTS modes but no ASR/transcription stage.
+
+This is a useful self-referential test. The answer does not merely retrieve a
+sentence from the report: it reconciles the report's statements about planned
+work with source-code evidence about the current implementation, then gives a
+clear answer to the practical question of what a user can invoke now. It also
+illustrates why a repository-resident report can become part of the project's
+usable memory rather than remaining a static publication artefact.
+
+\begin{figure}[htbp]
+\centering
+\begin{minipage}{\linewidth}
+\centering
+\includegraphics[width=\linewidth]{images/assistant_report_speech_recognition_question.jpg}\par\medskip
+\includegraphics[width=\linewidth]{images/assistant_report_speech_recognition_answer.jpg}
+\end{minipage}
+\caption{A self-referential Assistant interaction concerning the Initial
+C-LARA-2 Project Report. The answer distinguishes speech recognition as future
+work from the currently implemented TTS and no-audio modes, using both the
+report and current repository code as evidence.}
+\label{fig:report-speech-recognition}
+\end{figure}
 
 \subsection{Limits, review and future evidence records}
 
