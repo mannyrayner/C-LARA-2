@@ -39,8 +39,9 @@ evidence-linked account for users and collaborators.
 
 \subsection{Implemented capability: Mandarin and pinyin}
 
-A first example concerns whether the platform can create Mandarin texts and
-add pinyin annotations. The Assistant answers that Mandarin is supported as a
+A first example, shown in Figure~\ref{fig:mandarin-pinyin}, concerns whether
+the platform can create Mandarin texts and add pinyin annotations. The
+Assistant answers that Mandarin is supported as a
 project and text-pipeline language, then locates evidence across several parts
 of the repository: language choices and project models, the Mandarin
 text-generation prompt, tokenisation using \texttt{jieba}, pinyin processing
@@ -65,8 +66,9 @@ source files.}
 
 \subsection{Honest answers about planned work}
 
-A second example concerns native-speaker audio recording for Haitian Creole,
-where current synthetic speech may be unsuitable. The Assistant distinguishes
+A second example, shown in Figure~\ref{fig:haitian-audio}, concerns
+native-speaker audio recording for Haitian Creole, where current synthetic
+speech may be unsuitable. The Assistant distinguishes
 what is implemented from what is only planned. It identifies the present
 no-audio/skip-TTS option, explains that recording through the platform is not
 yet an implemented feature, and links to the relevant roadmap and issue
@@ -93,12 +95,21 @@ records.}
 Although much early testing used English questions, the Assistant can also
 respond usefully to questions in other major languages. Figure~\ref{fig:french-roadmap-issues}
 shows a French question asking why C-LARA-2 uses roadmap and issue files in
-the repository. The answer remains in French and explains the complementary
-roles of roadmaps as structured planning and longer-term direction, and issue
-records as canonical operational tracking of focused tasks. It also links to
-the evidence that supports this account. This example reinforces the point
-that the Assistant is not limited to a fixed English help system; it can
-construct repository-grounded explanations in the language of the question.
+the repository: \emph{Pourquoi C-LARA-2 utilise-t-il des fichiers de feuille
+de route et des fichiers d'incidents dans le dépôt ?} In English, this asks:
+``Why does C-LARA-2 use roadmap files and issue files in the repository?''
+
+The answer remains in French and explains that roadmaps provide structured
+planning and longer-term direction: objectives, architecture, phases,
+priorities and a record of what is complete, in progress or planned. Issue
+records provide canonical operational tracking of focused problems and tasks,
+including state, priority, dependencies and current work. It then explains
+why the separation is useful: humans steer priorities while Codex maintains an
+auditable repository memory linking longer-term planning to an executable,
+versioned short-term backlog. The answer links to the repository evidence that
+supports this account. This example reinforces the point that the Assistant is
+not limited to a fixed English help system; it can construct repository-grounded
+explanations in the language of the question.
 
 \begin{figure}[htbp]
 \centering
