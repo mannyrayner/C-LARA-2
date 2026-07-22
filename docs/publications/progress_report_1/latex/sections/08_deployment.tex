@@ -8,8 +8,8 @@ and update the project-memory records described in the preceding section.
 Deployment crosses a different boundary. It requires actions in AWS, SSH
 sessions, process-management tools, browser or cloud-provider interfaces, and
 production-server environments. For safety and practical reasons, human
-collaborators execute and authorise those external actions; Codex does not
-hold unrestricted production access.
+collaborators execute and authorise those external actions; Codex does not hold
+unrestricted production access.
 
 This does not mean that humans must already possess the relevant system
 administration knowledge. Codex can inspect repository and deployment context,
@@ -38,38 +38,62 @@ maintained by Codex in response to human needs and operational evidence.
 
 \subsection{The read-only Assistant sandbox}
 
-The most complicated external task so far was configuring the read-only
-sandbox needed by the project-understanding Assistant. The Assistant must be
-able to inspect the repository and answer questions about C-LARA-2, but it
-must not receive unrestricted authority to alter the repository or production
-server. Achieving that limited capability required interaction among several
-unfamiliar technologies and system policies, including Bubblewrap and
-AppArmor.
+One important case, discussed in more detail in Section~9, is the
+project-understanding Assistant. The Assistant must be able to inspect the
+current repository and answer questions about C-LARA-2 with evidence, but it
+must not receive unrestricted authority to alter the repository or the
+production server. Deploying this capability therefore required a read-only,
+restricted execution environment.
+
+The most complicated operational work concerned configuring that environment
+using Bubblewrap\footnote{Bubblewrap is a Linux sandboxing tool that can run a
+process in a restricted filesystem and operating-system environment rather
+than giving it the ordinary permissions of the surrounding server.} and
+AppArmor\footnote{AppArmor is a Linux security framework that applies profiles
+restricting what a program may read, write, execute, or otherwise access.}.
+In broad terms, these mechanisms were needed because repository inspection by
+a coding agent is useful only if it can be separated from broader powers to
+modify files, access unrelated server material, execute unsafe commands or
+affect the running service.
 
 The human collaborators did not merely lack the commands needed to configure
-these mechanisms; they had not previously encountered them or known what role
-they played in the deployment. Codex investigated failure modes, interpreted
-diagnostics, identified relevant constraints, proposed changes to the
-procedure and revised the documentation as the configuration evolved. Humans
-performed the external operations and checked the results. The technical
-functionality and user-facing role of the resulting Assistant are discussed in
-Section~9; the point here is that a difficult systems-administration problem
-could be converted into a sequence of inspectable, human-executable steps and
-preserved for later reuse.
+these mechanisms; they had not previously encountered Bubblewrap or AppArmor
+or understood their role in the deployment. Codex investigated failure modes,
+interpreted diagnostics, identified relevant constraints, proposed and revised
+procedures, and recorded the resulting knowledge in version-controlled
+documentation. Humans performed the external operations and checked the
+results.
+
+This episode illustrates an important qualification to the phrase ``human
+supervision.'' Humans retained credentials, production access and final
+acceptance, but they could not independently reconstruct the specialist
+systems-administration reasoning behind every action. They therefore placed
+bounded trust in Codex's technical judgement, using restricted permissions,
+diagnostics, reversibility, documentation and post-change checks to make that
+trust inspectable. The result was not autonomous AI control of the AWS server;
+it was a form of human--AI cooperation in which human authority was retained
+but technical competence was substantially delegated.
 
 \subsection{Lessons for delegated responsibility}
+
+The deployment episode may foreshadow a broader pattern in AI-assisted work.
+As coding assistants become capable of reasoning across codebases,
+infrastructure, diagnostics and operational documentation, human collaborators
+may increasingly retain formal authority while relying on AI systems for
+technical judgement that they cannot independently reproduce. The important
+research question is not whether such reliance occurs, but how it can be made
+appropriately bounded, transparent, auditable and reversible.
 
 The deployment work provides a concrete example of responsibility expanding
 through demonstrated competence. Codex was initially used to guide humans
 through tasks they could not otherwise have planned or explained. As it
 successfully analysed failures, revised procedures and preserved operational
 knowledge, it became reasonable to delegate a larger part of the sysadmin role
-to it, while humans retained production access and final acceptance.
-
-This does not establish that every strategic, cultural or ethical decision
-should be transferred to an AI. It does show that responsibility need not be
-fixed. Within a bounded domain, delegation can increase when competence,
-constraints, evidence, logging and human oversight make the arrangement
-justified. The deployment case is consequently relevant to the broader future
-question of how operational and strategic responsibilities might progressively
-be shared between human collaborators and an AI agent.
+to it, while humans retained production access and final acceptance. This does
+not establish that every strategic, cultural or ethical decision should be
+transferred to an AI. It does show that responsibility need not be fixed.
+Within a bounded domain, delegation can increase when competence, constraints,
+evidence, logging and human oversight make the arrangement justified. C-LARA-2
+therefore offers one early case in which this arrangement made a difficult
+project goal achievable for a team that otherwise lacked the required
+specialist expertise.
