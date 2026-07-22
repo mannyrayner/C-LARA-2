@@ -1,9 +1,8 @@
-# Initial Project Report LaTeX source
+# Initial Project Report LaTeX outline
 
-`progress_report_1.tex` is the repository source for the Initial C-LARA-2
-Project Report. It contains the title material, abstract, full section drafts,
-references and publication statements. The report is a current working draft;
-the acknowledgements and final Overleaf layout remain to be completed.
+`progress_report_1.tex` is the LaTeX outline supplied for the Initial C-LARA-2 Project Report.
+Each `sections/*.tex` file is an intentionally empty drafting placeholder. Add figure assets under
+`figures/` and bibliography entries to `references.bib` as the report develops.
 
 For Overleaf compilation, place the real JPEGs in `images/`. The report source
 uses that directory first; the text-only figure descriptions in `figures/`
