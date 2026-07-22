@@ -15,4 +15,8 @@ Section 5 expects four real PNG files in `images/` when compiled in Overleaf:
 Section 6 expects `picture_dictionary_editor.jpg` and `word_scramble.jpg` in
 Overleaf's `images/` directory.
 
-Section 9 expects six question/answer JPEGs in Overleaf's `images/` directory: `assistant_mandarin_pinyin_question.jpg`, `assistant_mandarin_pinyin_answer.jpg`, `assistant_haitian_audio_question.jpg`, `assistant_haitian_audio_answer.jpg`, `assistant_french_roadmap_issues_question.jpg`, and `assistant_french_roadmap_issues_answer.jpg`.
+Section 9 expects six question/answer JPEGs in Overleaf's `images/` directory:
+`assistant_mandarin_pinyin_question.jpg`, `assistant_mandarin_pinyin_answer.jpg`,
+`assistant_haitian_audio_question.jpg`, `assistant_haitian_audio_answer.jpg`,
+`assistant_french_roadmap_issues_question.jpg`, and
+`assistant_french_roadmap_issues_answer.jpg`.

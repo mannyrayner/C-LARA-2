@@ -8,12 +8,20 @@
 \graphicspath{{images/}{figures/}}
 \newcommand{\todo}[1]{\textcolor{red}{\textbf{TODO:} #1}}
 \title{C-LARA-2: Initial Project Report\\AI Autonomy Under Human Supervision in a Multimodal CALL Platform}
-\author{\todo{Final author list}\\\textit{C-LARA Project}}
-\date{\todo{Month 2026}}
+\author{%
+\begin{tabular}{c}
+\normalsize Branislav B{\'e}di\textsuperscript{1}, ChatGPT C-LARA-Instance\textsuperscript{2}, Belinda Chiera\textsuperscript{3}, and Cathy Chua\textsuperscript{4}\\
+\normalsize St{\'e}phanie Geneix-Rabault\textsuperscript{5}, Christ{\`e}le Maizonniaux\textsuperscript{6}, Manny Rayner\textsuperscript{4}, and Sophie Rendina\textsuperscript{7}\\
+\normalsize Sarah Wright\textsuperscript{4} and Rina Zviel-Girshin\textsuperscript{8}\\[0.65em]
+\footnotesize \textsuperscript{1}The {\'A}rni Magn{\'u}sson Institute for Icelandic Studies, Iceland; \textsuperscript{2}OpenAI large language model instance participating in the C-LARA project\\
+\footnotesize \textsuperscript{3}Adelaide University, Australia; \textsuperscript{4}C-LARA Project, Australia; \textsuperscript{5}University of New Caledonia, New Caledonia\\
+\footnotesize \textsuperscript{6}Flinders University, Australia; \textsuperscript{7}University of New England, New South Wales, Australia; \textsuperscript{8}Ruppin Academic Center, Israel
+\end{tabular}}
+\date{July 2026}
 \begin{document}
 \maketitle
 \begin{abstract}
-\todo{Write last. State what C-LARA-2 is, its relation to C-LARA, the AI-autonomy model, the implemented areas covered, and the report's status as a current project snapshot.}
+C-LARA-2 is a new, AI-mediated implementation of the C-LARA platform for creating multimodal language-learning resources. This initial report records the first nine months of development and examines both the emerging platform and the development method: a small international team has used a high-capability AI coding assistant to write code, tests, documentation, roadmaps and much of the report itself, under strategic human supervision. We describe the modular linguistic-annotation pipeline, image-generation and community-review workflows, specialised picture dictionaries, repository-based project management, AWS deployment, a project-understanding Assistant and an exploratory use of Voice Mode for spoken practice. The report draws in part on two related EuroCALL papers while providing a broader, repository-grounded account of the project's current state, limitations and plans. The case studies suggest that AI assistance can greatly reduce the cost of implementation, redesign, documentation and operational work, while leaving human collaborators responsible for pedagogical purpose, community knowledge, governance and review. We conclude by considering how AI autonomy, including strategic and ethical advice, might be progressively delegated while preserving accountable human and community control.
 \end{abstract}
 \tableofcontents
 \clearpage
@@ -32,9 +40,27 @@
 \include{sections/11_future_directions}
 \include{sections/12_discussion_conclusion}
 \section*{Using C-LARA-2}
-C-LARA-2 is openly available at \url{https://c-lara-2.c-lara.org/}. \todo{Update current account/API-key instructions.}
-\section*{Production and contribution statement}
-\todo{Describe human, Codex and ChatGPT C-LARA-Instance contributions after the workflow is complete.}
+C-LARA-2 is openly available at \url{https://c-lara-2.c-lara.org/}.
+Creating a user account is free. To use the AI-based functions, users must
+connect an OpenAI API key associated with a valid payment method through the
+``Use my OpenAI API key'' control in the Profile tab.
+
+\section*{Division of labour statement}
+The C-LARA-2 platform has been developed through a close collaboration between
+Manny Rayner (human) and ChatGPT C-LARA-Instance (AI), with the former providing
+fine-grained strategic guidance and the latter taking primary operational
+responsibility for implementation, tests, documentation and repository
+maintenance. This report has mainly been written in the same way, with direct
+human editing and revision. It is partly based on two related EuroCALL papers
+prepared by the same author group, but recasts and extends their material as a
+repository-grounded project report.
+
+The other authors have contributed strategic, pedagogical, linguistic,
+community-focused and domain-specific advice. In particular, the specialised
+picture-dictionary interface described in Section~6 was largely prompted by
+suggestions from Sophie Rendina. The Voice Mode case study in Section~10 draws
+substantially on contributions from Sarah Wright, who was the principal learner
+in the anecdotal study reported there.
 \section*{Acknowledgements}
 \todo{Funding, consortium members, community partners and institutional support.}
 \bibliographystyle{apalike}
