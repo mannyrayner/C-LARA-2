@@ -1,0 +1,6 @@
+TEXTUAL FIGURE PLACEHOLDER -- replace with a montage PNG in Overleaf.
+
+Proposed figure: an English question asks whether C-LARA-2 can produce
+Mandarin texts and add pinyin. The linked answer confirms support and cites
+language choices, text generation, jieba tokenisation, pypinyin, manual
+editing and ruby HTML rendering.
