@@ -1,0 +1,127 @@
+\section{Discussion and conclusion}
+
+This report has documented the first nine months of C-LARA-2 as both a
+multimodal CALL platform and an experiment in AI-mediated project development.
+We described a modular annotation pipeline and its manual alternatives; an
+image-generation workflow built around reviewable intermediate artefacts;
+picture dictionaries redesigned around the needs of their community authors;
+and a repository that functions as an external project memory through roadmaps,
+how-to material, issue records and the project-understanding Assistant. We
+also described the deployment work needed to make the platform available,
+preliminary evidence about Voice Mode as a spoken-practice resource, and the
+near-term programme for annotation quality, images, recorded audio, mobile
+access and spoken interaction.
+
+The common theme is not that the AI has replaced the expertise of linguists,
+teachers, community contributors or project leads. It has been that an AI
+coding assistant can turn human purposes, examples and judgements into
+working software, documentation, tests and revised plans at a speed that
+changes what a small research team can attempt. The picture-dictionary case is
+especially clear: the community collaborators identified that an inherited
+interaction model was wrong, while Codex made it practicable to replace the
+user-facing layer without abandoning the useful underlying representation.
+Likewise, the project's roadmaps, issue files and how-to material are not
+passive documentation. They form a maintained memory that supports both
+human work and the Assistant's inspectable answers about current behaviour,
+known limitations and planned development.
+
+\subsection{What is distinctive about this workflow?}
+
+From one perspective, the project has done nothing mysterious: it has applied
+an AI coding assistant consistently to the ordinary tasks involved in an
+academic software project. Other groups may well be doing comparable work, and
+this report cannot establish how unusual the present workflow is. Two
+observations nevertheless suggest that sustained end-to-end use remains less
+common than it might soon become.
+
+First, the work would not have been feasible for this team without a ChatGPT
+Pro subscription or an equivalent high-end service. The subscription was paid
+for personally, rather than supplied through an academic institution. That is
+a mundane but consequential constraint: universities and research groups may
+be reluctant or unable to fund premium AI access, even when it is the resource
+that enables a small team to build, document and operate a substantial system.
+The resulting unequal access deserves attention in discussions of AI-enabled
+research capacity.
+
+Second, using Codex to draft this report exposed a practical limitation in the
+current publication workflow. The environment can inspect images supplied in
+conversation, but its pull-request path did not reliably accept binary image
+assets. We therefore retained textual figure placeholders in the repository
+and prepared the real screenshots separately for Overleaf. This workaround
+does not affect the substantive platform claims, but it shows that supposedly
+end-to-end AI-assisted repository maintenance still meets tool assumptions
+that are poorly matched to the production of an illustrated academic report.
+The limitation is also suggestive: if an apparently natural use case is not
+well supported, it may be because consistent use of an AI assistant across
+software, documentation and publication remains uncommon.
+
+\subsection{From supervised autonomy to progressive delegation}
+
+The organising phrase for the project has been \emph{AI autonomy under human
+supervision}. It remains useful, but the deployment work in Section~8 reveals
+an important qualification. The human participants formally controlled the
+AWS deployment: they selected the goal, supplied credentials where necessary,
+ran the instructed commands and could stop the process. Yet in difficult parts
+of the work, particularly the read-only Assistant sandbox, they did not fully
+understand the relevant techniques or sometimes know that such techniques
+existed. In practice they had to decide whether to trust a detailed AI-proposed
+solution.
+
+This is not an exceptional logical possibility but a likely pattern of
+human--AI work as technical systems become more capable. Whenever an AI can
+demonstrably perform a task better than the available human participants,
+practical authority may be handed over before human understanding catches up.
+The shift need not be abrupt or all-or-nothing. It can take the form of
+progressively larger delegated tasks, clear success criteria, bounded choices
+among pre-authorised options, logging and retrospective audit, and an explicit
+human right to override or halt a process. These mechanisms do not remove the
+need to assign human accountability; they make it possible to distinguish
+formal authority from the actual distribution of knowledge and operational
+control.
+
+The same question extends beyond technical execution to strategy and ethics.
+Codex already expands brief user suggestions into detailed plans, identifies
+dependencies across several documents and proposes priorities. Modern AI
+systems can also offer reasoned ethical advice---for example, recommending an
+action, warning against one, and explaining the considerations involved.
+People may reasonably be reluctant to delegate fully autonomous ethical
+decisions, especially where cultural authority, safety, rights or community
+data sovereignty are at stake. But the boundary is not a simple fixed line
+between ``ethical advice'' and ``ethical responsibility''. It is an empirical
+and governance question: which forms of advice, initiative and bounded choice
+are useful; what evidence, escalation rules and review are required; and when
+should a human or community authority make the final decision? We regard
+AI-maintained strategy plans, ethical-risk advice and explicit escalation
+charters as promising subjects for future investigation, rather than as a
+reason to assume that strategic work must remain wholly outside AI autonomy.
+
+\subsection{Implications for CALL}
+
+The report does not claim to have demonstrated learning gains, nor does it
+claim that C-LARA-2 is ready to provide a complete individual language tutor.
+Important work remains on annotation quality, culturally appropriate images,
+human audio, mobile access, spoken interaction, cost and classroom-oriented
+evaluation. Nevertheless, the combination now becoming available is striking:
+AI systems can help create learner-specific multimodal materials, support
+community review and authoring, provide extended spoken practice, and maintain
+much of the software and project memory required to improve those facilities.
+
+This makes it plausible that CALL is approaching a major advance within the
+next two years. The aspiration is not new. The classic ``two sigma'' result
+showed the potential of one-to-one tutoring to outperform conventional group
+instruction substantially \citep{Bloom1984}; \citet{Mollick2024} has recently
+argued that widely available AI systems make forms of scalable, individualised
+assistance newly practical. We do not infer a two-sigma effect for language
+learning from the present work. Rather, we see a credible path towards
+individual language tutors that combine plentiful conversational practice with
+materials, feedback and review adapted to an individual learner and to the
+knowledge of teachers and communities.
+
+C-LARA-2 is best understood as an early, inspectable contribution to that
+path. Its value lies as much in the development method as in its current
+features: human collaborators define purposes, standards and boundaries; AI
+systems help formulate, implement, test, document and sometimes operationalise
+the work; and the repository preserves the evidence from which both groups can
+learn. The next phase will test how far this model can be extended while
+retaining meaningful community control, pedagogical quality and accountable
+human governance.

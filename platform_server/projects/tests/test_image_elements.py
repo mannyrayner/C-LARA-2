@@ -515,3 +515,27 @@ class ProjectImageElementsViewTests(TestCase):
         self.assertTrue(any("Using gpt-image-1 instead." in msg for msg in msgs))
         element.refresh_from_db()
         self.assertEqual(element.image_model, "gpt-image-1")
+
+    def test_manual_element_can_be_saved_without_discovery(self):
+        response = self.client.post(
+            reverse("project-image-elements", args=[self.project.pk]),
+            {
+                "form-TOTAL_FORMS": "1",
+                "form-INITIAL_FORMS": "0",
+                "form-MIN_NUM_FORMS": "0",
+                "form-MAX_NUM_FORMS": "1000",
+                "form-0-name": "the young man",
+                "form-0-element_type": "character",
+                "form-0-page_refs": "1,2",
+                "form-0-why_consistency_matters": "Appears on both pages",
+                "form-0-expanded_description": "",
+                "form-0-expanded_prompt": "",
+                "form-0-image_model": "gpt-image-1",
+                "form-0-image_revised_prompt": "",
+                "action": "save",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        element = ProjectImageElement.objects.get(project=self.project, name="the young man")
+        self.assertEqual(element.element_type, "character")
+        self.assertEqual(element.page_refs, "1,2")

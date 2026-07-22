@@ -1,0 +1,94 @@
+\section{History and methodology}
+
+\subsection{C-LARA: pedagogical aims and workflow}
+
+C-LARA, the ChatGPT-Based Learning And Reading Assistant, was developed
+shortly after the release of GPT-4 in March 2023. Its purpose was to make it
+practical to create multimodal language-learning materials for a wide range
+of languages and learners. A typical project starts with a text supplied by a
+user or generated from a short specification. The text is then enriched with
+interconnected linguistic and pedagogical resources: page and segment
+structure, lexical segmentation, translations, multi-word expressions,
+lemmas, parts of speech, glosses, audio and illustrations. The resulting
+material can be compiled as an interactive web resource in which learners
+move among textual, linguistic, auditory and visual representations.
+
+The workflow was designed as an end-to-end authoring route rather than a
+collection of isolated tools. A user can create or import text; invoke
+successive annotation operations, either as a sequence or with review between
+stages; create page-aligned illustrations; and deploy the compiled resource
+as interactive HTML. Annotation operations include segmentation, segment
+translation, MWE identification, lemma/POS tagging, glossing and audio
+attachment. Image creation can use a style description, reusable visual
+elements and page-level images. The details have evolved, but the pedagogical
+principle remains stable: AI services should make it easier for teachers and
+other domain experts to create, inspect and revise materials rather than
+replace their judgement \citep{ChatGPTetal2023,RendinaEtAl2025}.
+
+\subsection{Experience across languages and communities}
+
+C-LARA has been used with both widely taught and low-resource languages.
+Earlier work evaluated GPT-4 processing for English, Farsi, Faroese, Mandarin
+and Russian \citep{ChatGPTetal2023}. Work involving the Kanak languages
+Drehu and Iaai combined native-speaker audio, AI-generated illustrations,
+linguistic annotation and culturally grounded content
+\citep{BaeEtAl2025,ChieraEtAl2025,WelbyEtAl2024}. These examples do not show
+that AI processing is equally reliable for every language. In particular,
+where the project language is not well supported by an available model,
+human-provided translations in a language such as English or French may
+mediate some operations, notably image generation. Community knowledge,
+cultural permission, data sovereignty, linguistic judgement and audio remain
+human responsibilities.
+
+The history is important because it established both the opportunity and the
+limit of the platform. A small consortium can create useful multimodal
+materials for specialised communities when AI reduces routine operational
+work. But the value of the result depends on human collaborators who know the
+learners, language and community context well enough to set requirements and
+assess outcomes.
+
+\subsection{Why a rewrite was necessary}
+
+The original implementation grew incrementally over several years. GPT-4 and
+later ChatGPT models wrote a substantial proportion of the code under close
+human supervision; the project's informal estimate is approximately 75\%.
+That AI-assisted model made a broad platform feasible for a small academic
+consortium. It also left the familiar consequences of repeated local
+extension: accumulated architectural compromises, uneven documentation and
+components that became difficult to understand or maintain.
+
+C-LARA-2 began in November 2025 as a rational rewrite. The aim was not to
+abandon C-LARA's pedagogical model, but to preserve its successful concepts
+in a cleaner and more systematic technical architecture. For several months,
+the two systems were developed in parallel while the project compared them.
+In March 2026, development on C-LARA was halted after C-LARA-2 had become the
+clearly preferable platform. The rewrite was thus also an opportunity to
+reconsider how the technical representation of the project itself could be
+maintained.
+
+\subsection{From AI-assisted development to operational AI autonomy}
+
+The availability of Codex through the ChatGPT Pro Tier changed the nature of
+that opportunity. Instead of using an AI principally as a closely supervised
+source of implementation suggestions, C-LARA-2 assigned it broad operational
+responsibility for the evolving repository. At the time of this report, Codex
+has produced all committed program code, tests and repository documentation.
+It also maintains roadmaps, issue records, technical explanations, operational
+notes, experiment organisation and publication drafts. Human collaborators
+provide requirements, examples, linguistic and pedagogical expertise,
+strategic priorities, ethical constraints, review and acceptance decisions;
+they do not directly author the implementation.
+
+This distinction is central. C-LARA-2 is not simply a conventionally written
+system accelerated by code completion. Code, tests, documentation, roadmaps
+and issue records are maintained together as a shared project memory that can
+be inspected by both the human collaborators and the AI agent. The project is
+therefore testing whether an AI can assume continuing responsibility for the
+operational representation of a complex CALL platform while humans retain
+strategic authority over its purposes, values and standards. This delegation
+does not eliminate the need for verification; it makes version control,
+testing, inspectable documentation, human review and reversible change more
+important.
+
+The next section describes the July 2026 C-LARA-2 platform that resulted from
+this history and organisational model.
