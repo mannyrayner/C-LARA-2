@@ -21,9 +21,13 @@
 \date{July 2026}
 \begin{document}
 \maketitle
+\phantomsection
+\addcontentsline{toc}{section}{Abstract}
 \begin{abstract}
 C-LARA-2 is a new, AI-mediated implementation of the C-LARA platform for creating multimodal language-learning resources. This initial report records the first nine months of development and examines both the emerging platform and the development method: a small international team has used a high-capability AI coding assistant to write code, tests, documentation, roadmaps and much of the report itself, under strategic human supervision. We describe the modular linguistic-annotation pipeline, image-generation and community-review workflows, specialised picture dictionaries, repository-based project management, AWS deployment, a project-understanding Assistant and an exploratory use of Voice Mode for spoken practice. The report draws in part on two related EuroCALL papers while providing a broader, repository-grounded account of the project's current state, limitations and plans. The case studies suggest that AI assistance can greatly reduce the cost of implementation, redesign, documentation and operational work, while leaving human collaborators responsible for pedagogical purpose, community knowledge, governance and review. We conclude by considering how AI autonomy, including strategic and ethical advice, might be progressively delegated while preserving accountable human and community control.
 \end{abstract}
+\phantomsection
+\addcontentsline{toc}{section}{Table of contents}
 \tableofcontents
 \clearpage
 % During drafting, use e.g. \includeonly{sections/04_annotation_pipeline}
@@ -40,12 +44,16 @@ C-LARA-2 is a new, AI-mediated implementation of the C-LARA platform for creatin
 \include{sections/10_voice_mode}
 \include{sections/11_future_directions}
 \include{sections/12_discussion_conclusion}
+\phantomsection
+\addcontentsline{toc}{section}{Using C-LARA-2}
 \section*{Using C-LARA-2}
 C-LARA-2 is openly available at \url{https://c-lara-2.c-lara.org/}.
 Creating a user account is free. To use the AI-based functions, users must
 connect an OpenAI API key associated with a valid payment method through the
 ``Use my OpenAI API key'' control in the Profile tab.
 
+\phantomsection
+\addcontentsline{toc}{section}{Division of labour statement}
 \section*{Division of labour statement}
 The C-LARA-2 platform has been developed through a close collaboration between
 Manny Rayner (human) and ChatGPT C-LARA-Instance (AI), with the former providing
@@ -61,6 +69,8 @@ was the principal learner in the anecdotal study reported there. The content is
 partly based on two related EuroCALL papers prepared by the same author group,
 but recasts and extends their material as a repository-grounded project report.
 
+\phantomsection
+\addcontentsline{toc}{section}{Funding}
 \section*{Funding}
 The ChatGPT Pro subscription and AWS hosting used by the project have been
 funded privately by consortium members Manny Rayner and Cathy Chua. OpenAI API
@@ -72,6 +82,8 @@ budget of only approximately USD~600 per month. This modest cost, relative to
 the amount of software development, documentation and operational work
 reported here, underlines the potentially transformative effect of coding
 assistants on the scale and organisation of academic research.
+\phantomsection
+\addcontentsline{toc}{section}{References}
 \bibliographystyle{apalike}
 \bibliography{references}
 \end{document}
