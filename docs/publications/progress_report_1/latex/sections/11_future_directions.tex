@@ -1,0 +1,129 @@
+\section{Future directions}
+
+C-LARA-2 is not a finished system but a rapidly developing platform. The
+priorities outlined here are intended to guide work over the next six to eight
+months. They combine problems revealed by the current implementation with
+requests from the communities, teachers and learners for whom the platform is
+being developed. We expect the detailed order to change as experience and
+feedback accumulate, but the following directions are already sufficiently
+clear to inform planning.
+
+\subsection{Improving linguistic annotation through curated examples}
+
+The most urgent priority concerns linguistic annotation. C-LARA-2 has a more
+modular and inspectable architecture than its predecessor C-LARA, but its
+performance on central annotation tasks---segmentation, lemmatisation,
+glossing, multi-word expressions and related operations---has so far sometimes
+appeared weaker. Our working explanation is not that the new architecture is
+incapable of good results, but that the prompts used by the new pipeline are
+not yet as effective as those developed for C-LARA. The older prompts were
+hand-written and refined over time; the C-LARA-2 prompts have, consistently
+with the project's general development model, been AI-generated.
+
+A simple response would be to import the older prompts or to rewrite them by
+hand. This would probably improve the immediate output, but it would evade the
+more important question: how can an AI-assisted project systematically acquire
+and improve high-quality prompts? Our current priority is therefore to develop
+a repeatable example-curation method in which linguists supply moderately small
+sets of carefully chosen examples, including difficult and representative
+cases, and the AI derives and evaluates prompt variants from them. The work
+will use deterministic checks to ensure that proposed annotations preserve the
+input and obey the required schema, alongside AI review and targeted human
+audit. Held-out examples and versioned experiment records should make it
+possible to test whether a change genuinely improves performance rather than
+merely producing a more persuasive-looking prompt. This is both a practical
+need and an important test of the wider claim that AI can maintain the
+project's technical knowledge under human supervision.
+
+\subsection{More community-controlled image workflows}
+
+The quality of generated images is a less acute but highly visible concern.
+It is particularly important in the Indigenous-language contexts central to the
+project, where an image can be culturally inappropriate, depict an item in an
+unfamiliar way, or simply fail to represent what a community contributor had
+in mind. The existing review and regeneration workflow already provides useful
+controls (Section~5), but feedback suggests two complementary extensions.
+
+First, contributors should be able to upload a reference image and ask the
+system to adapt it to the selected project style. This would preserve a
+locally meaningful visual starting point while retaining stylistic coherence
+across a text or picture dictionary. Second, the image flow should include an
+AI-based analysis and quality-control pass. The analysis would compare a
+candidate image with its prompt, relevant text and, where appropriate,
+community guidance. It could then support a transparent decision to retain the
+image, choose among alternatives, regenerate it, or revise the prompt before
+trying again. Neither mechanism removes the need for human review: their
+purpose is to make repeated image generation more targeted and less laborious,
+while giving community contributors stronger control and final authority over
+what is accepted.
+
+A related priority is a user-friendly, community-centred interface through
+which under-resourced language communities can engage with AI tools without
+having to master the platform's underlying technical pipelines. At present,
+C-LARA and C-LARA-2 have mainly collaborated with under-resourced language
+projects that have found AI-generated illustrations especially valuable. It
+will be important to learn whether this reflects the needs of these particular
+projects or whether other priorities emerge as a wider range of under-resourced
+and minority-language projects begin using C-LARA-2. The answer should be
+shaped by sustained community feedback and by governance arrangements that
+respect cultural authority and Indigenous data sovereignty.
+
+\subsection{Human-recorded audio and rapid alignment}
+
+Human-recorded audio is another major requirement, especially for languages
+for which available text-to-speech output is absent or unsuitable. One
+near-term route is a simple recording interface that presents the segments or
+lexical items required by a project and lets a contributor record or rerecord
+them in the browser. Recordings can then be reviewed, approved and associated
+with the corresponding items in the compiled document. This would provide a
+practical community-recording path without requiring contributors to master
+audio-processing tools.
+
+A more ambitious route begins with a recording of an entire text. The system
+would split the recording at silences, use speech recognition to align the
+resulting audio pieces with the text, and construct the corresponding
+C-LARA-2 document. A predecessor of this workflow was implemented in LARA and
+reported by \citet{RaynerChieraChua2022}: public-domain text, human audio and
+translations were combined using silence detection, speech recognition and
+alignment, with encouraging results even for substantial literary texts. In a
+C-LARA-2 implementation, this could offer a rapid way to turn existing
+high-quality recordings into learner resources, while retaining a review step
+for imperfect alignments and respecting copyright, consent and community data
+sovereignty.
+
+\subsection{Mobile access and spoken interaction}
+
+Many prospective users have asked for at least the learner-facing parts of the
+platform to work well on phones and tablets. The first target is therefore a
+responsive web experience rather than a separate native application: reading
+compiled texts, playing audio, viewing images, using touch-friendly
+annotations and completing exercises should all work reliably on ordinary
+mobile devices. A later phase can offer a compact, default-driven creation
+flow and selected review actions. Dense linguistic annotation and bulk editing
+will remain desktop-first until they have been explicitly redesigned for small
+screens.
+
+Section~10 described preliminary evidence that high-quality spoken AI
+interaction can give learners valuable low-pressure conversational practice.
+The corresponding longer-term design opportunity is to integrate a spoken
+conversation mode with C-LARA-2 materials. A crude demonstration is already
+possible: a user can open C-LARA-2 in one browser window, upload a screenshot
+of a page to a ChatGPT Pro Voice Mode conversation in another, and discuss the
+page orally. This confirms that texts, images and exercises can provide useful
+shared material for spoken interaction, but the manual screenshot-and-switch
+procedure is far too cumbersome for ordinary use. Future work should explore
+more direct ways to ground spoken conversation in a C-LARA-2 page, and to turn
+post-session vocabulary, corrections and summaries into follow-up learning
+material.
+
+\subsection{Demand-driven development}
+
+Finally, these larger directions do not exhaust the work required. A living
+platform will continue to generate smaller usability problems, language-
+specific needs and requests from particular user groups. The roadmap, issue
+and how-to mechanisms described in Section~7 are intended to make this work
+visible and cumulative: user suggestions can be turned into concrete plans,
+implemented changes can be tested and documented, and priorities can be
+revised without losing the history of earlier decisions. We therefore expect
+the next phase to combine the strategic work above with continuing,
+demand-driven refinement of the platform.

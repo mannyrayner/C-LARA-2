@@ -1,0 +1,178 @@
+\section{Image generation}
+
+\subsection{Purpose and workflow}
+
+C-LARA-2 retains the image-generation workflow developed in the final versions
+of C-LARA. Its purpose is not merely to attach an attractive image to each
+page. A multi-page pedagogical text needs illustrations that fit the content
+of individual pages while also forming a coherent visual world: recurring
+people, objects and locations should remain recognisable, and linework,
+colour, tone and degree of realism should not vary arbitrarily. The
+availability of GPT-Image-1 to the project in 2025 made this workflow much
+more practical than it had been with earlier image-generation models
+\citep{RendinaEtAl2025}.
+
+The workflow separates three reviewable stages. First, a human author supplies
+a short style brief. The system expands it into a fuller description and
+creates a sample image; the author can inspect, edit or regenerate both before
+continuing. Second, the system proposes recurring visual \emph{elements}---for
+example, people, objects and locations. The author can remove unsuitable
+proposals or add missing ones, and the platform creates descriptions and
+reference images for the selected elements. Finally, it creates one or more
+candidate page images using the page text, approved style, relevant element
+references and any page-level guidance. Independent element and page requests
+can be run in parallel, but selection and acceptance remain human decisions.
+
+\subsection{A two-page French example}
+
+We illustrate the workflow with the small French dialogue already used in the
+annotation discussion:
+
+\begin{quote}
+\textbf{Page 1:} «~Je t'aime~», dit-il.\\
+\textbf{Page 2:} «~Vous vous moquez de moi~», dit-elle.
+\end{quote}
+
+The example is deliberately minimal. Its purpose is not to claim literary or
+pedagogical depth, but to make the relationship among style, elements and
+page-level generation visible. The two lines create a small unresolved story:
+a declaration is followed by a response suggesting that the woman believes the
+man is making fun of her. This gives the generator a local emotional task on
+each page while requiring continuity of character and visual atmosphere.
+
+For the style stage, the author supplied the brief ``Late nineteenth-century
+French lithograph-inspired illustration, with restrained hand-coloured tones,
+fine ink linework, soft paper texture, and a slightly melancholic literary
+atmosphere.'' The brief also requested suitability for adult or older teenage
+language learners and prohibited visible written text, speech balloons, labels
+and signage. The platform expanded this in French into a more detailed prompt
+specifying delicate ink lines, muted hand-coloured tones, paper texture, soft
+light, subdued shadows and an intimate, contemplative composition. This is a
+useful example of the division of labour: the human supplied the historical
+and pedagogical intention, while the AI converted it into a fuller operational
+specification that remained available for human review.
+
+\subsection{Recurring elements and page images}
+
+Element discovery proposed \emph{l'homme} and \emph{la femme}. Their expanded
+descriptions specify nineteenth-century dress, fine ink detail, muted colour,
+soft lighting and emotionally expressive but restrained faces. The resulting
+reference images establish a recognisable visual identity for each person.
+They are then provided as relevant element references for both page prompts,
+so that the system has an explicit continuity mechanism rather than relying
+only on repeated textual descriptions.
+
+The page prompts are intentionally close to the element and style
+specifications. Page 1 foregrounds the man and the emotionally tentative
+moment of the declaration; Page 2 foregrounds the woman and her more guarded
+response. Both prompts retain references to the woman and the man, even where
+only one is foregrounded. Three variants were requested for each page, after
+which a human author selected the preferred variant. This is an important
+practical point: generation produces candidates, not an automatically accepted
+final illustration.
+
+\begin{figure}[htbp]
+\centering
+\begin{minipage}[t]{0.48\linewidth}
+\centering
+\includegraphics[width=\linewidth]{images/femme_element.png}\\[-0.25em]
+\small \emph{La femme}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\linewidth}
+\centering
+\includegraphics[width=\linewidth]{images/homme_element.png}\\[-0.25em]
+\small \emph{L'homme}
+\end{minipage}
+\caption{Reference images for the two recurring elements, generated from the
+approved lithograph-style specification. These images establish visual
+identities that are supplied as continuity references for both page prompts.}
+\label{fig:lithograph-elements}
+\end{figure}
+
+\noindent\textbf{Style and element prompts.}
+\begin{quote}\small\ttfamily
+Base style brief: Late nineteenth-century French lithograph-inspired
+illustration, with restrained hand-coloured tones, fine ink linework, soft
+paper texture, and a slightly melancholic literary atmosphere. Suitable for
+adult or older teenage language learners. No visible written text, speech
+balloons, labels, or signage.
+\end{quote}
+
+\begin{quote}\small\ttfamily
+Expanded style prompt (French): L'illustration doit s'inspirer des
+lithographies françaises de la fin du XIXe siècle, offrant une atmosphère
+littéraire légèrement mélancolique. Utiliser des tons colorés avec retenue qui
+semblent peints à la main, et un tracé fin à l'encre pour les détails. La
+texture douce du papier doit être perceptible. La lumière doit être douce,
+avec des ombres feutrées qui créent une ambiance intime et contemplative,
+sans texte visible.
+\end{quote}
+
+\begin{figure}[htbp]
+\centering
+\begin{minipage}[t]{0.48\linewidth}
+\centering
+\includegraphics[width=\linewidth]{images/homme_femme_page_1_image.png}\\[-0.25em]
+\small Page 1: «~Je t'aime~», dit-il.
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\linewidth}
+\centering
+\includegraphics[width=\linewidth]{images/homme_femme_page_2_image.png}\\[-0.25em]
+\small Page 2: «~Vous vous moquez de moi~», dit-elle.
+\end{minipage}
+\caption{Human-selected page-image variants for the two-page dialogue. Three
+variants were requested for each page. The common style and both character
+references support continuity while the emotional focus changes between pages.}
+\label{fig:lithograph-pages}
+\end{figure}
+
+\noindent\textbf{Page prompts.}
+\begin{quote}\small\ttfamily
+Page 1: Illustrer un homme selon les lithographies françaises de la fin du
+XIXe siècle, capturant une aura mélancolique avec des traits d'encre fins et
+délicats. Utiliser des nuances de couleur douces pour créer une ambiance
+intime avec une lumière tamisée et des ombres feutrées. L'homme doit porter
+des vêtements d'époque, son expression doit suggérer des émotions profondes,
+centrée sur l'instant présent, sans texte visible, afin de saisir un moment
+émouvant et contemplatif de la déclaration «~Je t'aime~», dit-il. Relevant
+element references: femme (images/elements/femme/reference.png); homme
+(images/elements/homme/reference.png).
+\end{quote}
+
+\begin{quote}\small\ttfamily
+Page 2: Représenter une femme avec des traits délicats et une expression
+mélancolique, inspirée par les lithographies françaises du XIXe siècle. Ses
+vêtements sont d'époque, avec des détails fins tracés à l'encre. Utiliser une
+palette de couleurs pastel et une lumière douce pour créer des ombres feutrées.
+L'atmosphère doit être intime et contemplative, centrée sur l'émotion
+intérieure de la femme, sans texte visible. Relevant element references:
+femme (images/elements/femme/reference.png); homme
+(images/elements/homme/reference.png).
+\end{quote}
+
+\subsection{Human review and limitations}
+
+The example illustrates why image generation is organised as a staged
+workflow. A single page prompt can produce a plausible isolated picture, but
+it gives little control over cross-page consistency. Separating style,
+recurring elements and page images gives a human author several points at
+which to inspect and redirect the process. It also makes failures easier to
+locate: a problem may concern the style description, an element identity, a
+page prompt or the selection among generated variants.
+
+The workflow does not make visual or cultural judgement automatic. Generated
+images can still misrepresent a relationship, omit a relevant detail, produce
+inconsistent character appearances or be inappropriate for a learner or
+community context. Visible text in images may also be actively undesirable,
+particularly for picture-based exercises. For this reason, C-LARA-2 treats
+image generation as AI-supported production under human review, with editing,
+regeneration and selection available throughout. In Indigenous and other
+under-resourced-language contexts, these controls must be usable by community
+contributors themselves: they need to be able to author, inspect and review
+images and lexical entries without mastering the technical workflow behind a
+general-purpose annotated text. Indigenous data sovereignty is also a material
+limitation and design obligation, not a resolved checklist item. Questions of
+who may supply, access, retain, reuse or approve community knowledge and media
+will become increasingly central as AI-supported workflows expand. These
+concerns become still more important for the specialised picture-dictionary
+workflow discussed in the next section.
