@@ -1,0 +1,7 @@
+TEXTUAL FIGURE PLACEHOLDER -- replace with the supplied JPEG screenshot in Overleaf.
+
+Proposed figure: the specialised picture-dictionary editor, showing French
+entries such as aimer, attraper and avoir. Each row contains word, lemma, POS,
+gloss/translation, optional suggestion, image-generation prompt and selected
+image. Selection, display, batch translation/prompt/image-generation and
+unified-save controls make the lexical entry the organising unit.
