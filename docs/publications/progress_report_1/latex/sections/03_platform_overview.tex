@@ -1,0 +1,64 @@
+\section{Platform overview and report scope}
+
+This report describes the July 2026 version of C-LARA-2 as a current project
+snapshot. It draws on the implemented platform, repository source code and
+tests, roadmap and issue records, operational documentation, selected
+experiments and human collaborator experience. The aim is not to provide a
+controlled evaluation of every capability, but to give an inspectable account
+of the platform's principal functional areas, the development model through
+which they are being extended, and the limitations that remain.
+
+At the highest level, C-LARA-2 supports the construction and use of
+multimodal language-learning projects. Users can create or import texts;
+annotate them with linguistic, translation and audio information; generate
+and select images; compile the results as interactive web resources; and
+manage projects and their versions. The platform retains the C-LARA idea that
+these activities are connected stages in the production of learner-facing
+material, while providing more systematic support for specialised workflows,
+revision and operational visibility.
+
+The first group of functions concerns text creation and linguistic
+processing. A user can begin with source text or an AI-generated text, choose
+relevant project and glossing languages, and run an annotation pipeline that
+includes segmentation, translation, MWE analysis, lemma/POS tagging and
+glossing. The pipeline is not treated as an infallible black box: users can
+review and edit outputs, and the repository retains prompts, tests,
+experiments and issue records through which processing behaviour can be
+examined and improved.
+
+A second group concerns multimodal presentation. Image-generation workflows
+can produce page illustrations and support consistent visual style; picture
+dictionaries adapt the underlying project representation to a task in which a
+lexical entry, its translation, its image-generation prompt and its selected
+image should be managed together. The same resources can support picture
+glossing and picture-based exercises. These functions are especially relevant
+where accessible visual materials can help learners or community contributors,
+but their use remains subject to human pedagogical review and, where
+appropriate, cultural constraints.
+
+A third group concerns the infrastructure that makes an evolving platform
+usable and inspectable. Project-management features, deployment work,
+roadmaps, issue records and operational documentation make it possible to
+track work beyond an individual interaction with an AI agent. The
+project-understanding Assistant builds on this repository memory: it can
+inspect current project artefacts and answer natural-language questions about
+implemented behaviour, planned work and design decisions, with links back to
+the supporting repository evidence. This is an early, limited form of project
+self-understanding rather than a claim of perfect knowledge or autonomous
+judgement.
+
+Finally, C-LARA-2 is beginning to explore how prepared multimodal texts might
+relate to spoken conversational practice. Sarah Wright's regular sessions with
+ChatGPT Pro Tier Voice Mode illustrate a promising conversational complement
+to the platform's text-centred resources. The two environments are not yet
+naturally integrated, and the report distinguishes present workarounds from
+implemented C-LARA-2 functionality.
+
+Sections~4--10 examine these areas in more detail: the annotation pipeline,
+image generation, picture dictionaries, project management, deployment, the
+project-understanding Assistant and Voice Mode. The organisation is
+deliberately selective. It foregrounds functions and episodes that clarify
+the C-LARA-2 development model, rather than attempting a complete feature
+manual. Sections~11 and~12 then identify the most important unfinished work
+and draw together the report's conclusions about operational AI autonomy under
+strategic human supervision.
