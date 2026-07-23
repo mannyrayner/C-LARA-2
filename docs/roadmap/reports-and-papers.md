@@ -50,6 +50,8 @@ The report workspace and this roadmap should stay synchronized. The current Mark
 
 ### Target B — EuroCALL 2026 paper
 
+- **Repository source package:** `docs/publications/eurocall_2026/latex/` now preserves the submitted repository-background LaTeX conversion, including textual descriptions of six submitted figures. Its README records the Word v6e provenance and the post-v6e chronology correction.
+
 - **Status:** accepted; full paper preparation prioritised.
 - **Deadline:** **2026-07-31**.
 - **Purpose:** extract a focused CALL paper from the first progress report.

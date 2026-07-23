@@ -1,0 +1,7 @@
+TEXTUAL FIGURE PLACEHOLDER -- replace with the supplied JPEG screenshot in Overleaf.
+
+Proposed caption: A simple page-by-page annotation-editor example for the
+French segment ``« Je t'aime », dit-il.'' The editor tokenises the French
+guillemets and punctuation as separate items, displays an English translation,
+and presents token, MWE, lemma, POS and gloss columns with a `Save this
+segment' control.
