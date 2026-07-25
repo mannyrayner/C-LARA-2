@@ -6,7 +6,7 @@
 \usepackage[round,authoryear]{natbib}
 \usepackage[hidelinks]{hyperref}
 \graphicspath{{images/}{figures/}}
-\title{C-LARA-2: Initial Project Report\\AI Autonomy Under Human Supervision\\in a Multimodal CALL Platform}
+\title{An AI-Based Platform That Can Explain Its Own Functioning:\\Why Your Project Should Be Fully Codex-Generated}
 \author{%
 \parbox{0.95\textwidth}{\centering
 \normalsize Branislav B{\'e}di\textsuperscript{1}, ChatGPT C-LARA-Instance\textsuperscript{2}, Belinda Chiera\textsuperscript{3}, and Cathy Chua\textsuperscript{4}\\
@@ -24,7 +24,7 @@
 \phantomsection
 \addcontentsline{toc}{section}{Abstract}
 \begin{abstract}
-C-LARA-2 is a new, AI-mediated implementation of the C-LARA platform for creating multimodal language-learning resources. This initial report records the first nine months of development and examines both the emerging platform and the development method: a small international team has used a high-capability AI coding assistant to write code, tests, documentation, roadmaps and much of the report itself, under strategic human supervision. We describe the modular linguistic-annotation pipeline, image-generation and community-review workflows, specialised picture dictionaries, repository-based project management, AWS deployment, a project-understanding Assistant and an exploratory use of Voice Mode for spoken practice. The report draws in part on two related EuroCALL papers while providing a broader, repository-grounded account of the project's current state, limitations and plans. The case studies suggest that AI assistance can greatly reduce the cost of implementation, redesign, documentation and operational work, while leaving human collaborators responsible for pedagogical purpose, community knowledge, governance and review. We conclude by considering how AI autonomy, including strategic and ethical advice, might be progressively delegated while preserving accountable human and community control.
+C-LARA-2 is a complete rewrite of C-LARA, our earlier platform for creating multimodal language-learning resources. Its architecture and development process have been reorganised so that Codex, working under human supervision, carries out 100\% of the implementation work: writing the code, tests, documentation, roadmaps and operational material. This change may at first appear mainly procedural, but it has had far-reaching consequences. Most unusually, the combination of Codex and the well-structured C-LARA-2 repository gives the platform a strong ability to understand and explain its own functioning: users can ask its project-understanding Assistant detailed questions about the system and receive repository-grounded answers. The same organisation has greatly reduced the time required to add or redesign features and to perform deployment and maintenance work. This initial report records the first nine months of development, describing the architecture and development method together with selected examples including linguistic annotation, image generation, specialised picture dictionaries, low-resource-language support, community review, AWS deployment and spoken practice. It also considers the limits of the current system and how greater AI autonomy can be combined with accountable human and community control. Like everything else in C-LARA-2, the report itself was written by Codex. The sole exception is the Afterword, in which one of the human authors explains why, in their opinion, the AI satisfies all the criteria for being listed as an author.
 \end{abstract}
 \phantomsection
 \addcontentsline{toc}{section}{Table of contents}
@@ -59,8 +59,8 @@ The C-LARA-2 platform has been developed through a close collaboration between
 Manny Rayner (human) and ChatGPT C-LARA-Instance (AI), with the former providing
 fine-grained strategic guidance and the latter taking primary operational
 responsibility for implementation, tests, documentation and repository
-maintenance. This report has mainly been written in the same way, with direct
-human editing and revision. The other authors have contributed strategic,
+maintenance. Codex also wrote this report; the sole exception is the Afterword,
+which was written by the primary human author. The other authors have contributed strategic,
 pedagogical, linguistic, community-focused and domain-specific advice. In
 particular, the specialised picture-dictionary interface described in Section~6
 was largely prompted by suggestions from Sophie Rendina. The Voice Mode case
