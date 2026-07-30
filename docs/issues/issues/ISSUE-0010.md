@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-05-09T00:37:55Z
-- **Updated:** 2026-06-05T00:00:00Z
+- **Updated:** 2026-07-30T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0002](ISSUE-0002.md)
@@ -102,3 +102,14 @@ items if needed. For current evaluator/few-shot work, ISSUE-0010 should now be t
 blocker and more as a source of realistic regression/evaluation material; remaining work is to
 organize the imported set into documented diagnostic subsets and keep enough import diagnostics to
 explain any unsupported legacy edge cases.
+
+Update from 2026-07-30: the `adelaide-v3` library is now uploaded and visible on AWS. It contains
+652 per-project metadata directories and 485 successful `source.zip` conversions; all 485 ZIPs
+passed integrity validation. Next implement the provenance-aware, idempotent batch importer
+described in `docs/roadmap/unified-content-catalogue-and-legacy-migration.md`: reconcile earlier
+manual imports by stable source-system/legacy-ID identity, provide dry-run/resume/skip/retry/limit
+controls, isolate per-project transactions, persist checksums and outcomes, and create unified
+catalogue records. Important terminology and data-loss correction: some newly included legacy
+projects originally contained a phonetic layer, but the converter discarded that layer because
+C-LARA-2 cannot currently represent it. Do not call the resulting imports phonetic projects; record
+the discarded layer explicitly in provenance and diagnostics.
