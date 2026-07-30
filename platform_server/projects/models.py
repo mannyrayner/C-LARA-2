@@ -102,6 +102,61 @@ class Project(models.Model):
         return None
 
 
+class LegacyProjectImport(models.Model):
+    """Durable provenance and retry state for a legacy C-LARA import."""
+
+    STATUS_PENDING = "pending"
+    STATUS_IMPORTING = "importing"
+    STATUS_IMPORTED = "imported"
+    STATUS_FAILED = "failed"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_IMPORTING, "Importing"),
+        (STATUS_IMPORTED, "Imported"),
+        (STATUS_FAILED, "Failed"),
+    ]
+
+    source_system = models.CharField(max_length=64)
+    legacy_project_id = models.CharField(max_length=128)
+    library_version = models.CharField(max_length=64, blank=True, default="")
+    bundle_relative_path = models.CharField(max_length=1024, blank=True, default="")
+    source_sha256 = models.CharField(max_length=64, blank=True, default="")
+    source_title = models.CharField(max_length=200, blank=True, default="")
+    original_owner_username = models.CharField(max_length=150, blank=True, default="")
+    project = models.ForeignKey(
+        Project,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="legacy_import_records",
+    )
+    imported_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="legacy_project_imports",
+    )
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    attempt_count = models.PositiveIntegerField(default=0)
+    diagnostics = models.JSONField(default=list, blank=True)
+    error = models.TextField(blank=True, default="")
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("source_system", "legacy_project_id"),
+                name="unique_legacy_project_source_identity",
+            )
+        ]
+        ordering = ["source_system", "legacy_project_id"]
+
+    def __str__(self) -> str:
+        return f"{self.source_system}:{self.legacy_project_id} ({self.status})"
+
+
 class Profile(models.Model):
     user = models.OneToOneField(
         get_user_model(), on_delete=models.CASCADE, related_name="profile"

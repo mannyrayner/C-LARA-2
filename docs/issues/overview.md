@@ -1,6 +1,8 @@
-# Issues Overview (updated 2026-07-13T00:00:00Z)
+# Issues Overview (updated 2026-07-30T00:00:00Z)
 ## Recent progress
-_Focus: Clarified ISSUE-0036 translation_context_reconcile_v1 documentation: reconciliation is the normal per-record architecture comparing candidate MWE selections, not a requirement that free-form analyses match; ISSUE-0041 remains active._
+_Focus: Approved the unified content-catalogue design for ISSUE-0001 and the provenance-aware bulk-import plan for ISSUE-0010; clarified that legacy phonetic layers were discarded rather than imported._
+- Promoted **ISSUE-0001** to active P1 and added the unified catalogue/legacy migration roadmap covering native C-LARA-2, imported C-LARA, server-hosted LARA, and external LARA content.
+- Recorded the uploaded **ISSUE-0010** Adelaide v3 inventory (652 metadata directories, 485 validated ZIPs) and the idempotent batch-import requirements.
 - Hardened **ISSUE-0036** MWE prompt cycles with per-record retries, resumable run output appends, and recovery that completes missing records before rebuilding downstream artifacts.
 - Added `recover-mwe-prompt-cycle-after-run` for **ISSUE-0036** to rebuild formatted output, score, and improvement artifacts from existing MWE run output without rerunning prompt calls.
 - Documented the standalone `format-mwe-prompt-cycle-output` recovery command for **ISSUE-0036** so readable outputs can be regenerated without rerunning MWE API calls.
@@ -57,7 +59,7 @@ _Focus: Clarified ISSUE-0036 translation_context_reconcile_v1 documentation: rec
 ## Complete issue inventory
 | Issue | Status | Priority | Summary |
 |---|---|---|---|
-| [ISSUE-0001](issues/ISSUE-0001.md) | reported | P2 | Support hosted compiled legacy content registration in C-LARA-2. |
+| [ISSUE-0001](issues/ISSUE-0001.md) | active | P1 | Support hosted compiled legacy content registration in C-LARA-2. |
 | [ISSUE-0002](issues/ISSUE-0002.md) | closed | P1 | Support migration of legacy C-LARA projects into C-LARA-2. |
 | [ISSUE-0003](issues/ISSUE-0003.md) | reported | P1 | Add efficient end-to-end pipeline test runner for systematic quality checks. |
 | [ISSUE-0004](issues/ISSUE-0004.md) | reported | P2 | Introduce AI-based review gates for phase outputs with extensible evaluator architecture. |
