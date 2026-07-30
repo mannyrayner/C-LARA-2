@@ -14418,7 +14418,17 @@ def _filter_legacy_bundle_rows(rows: list[dict[str, Any]], query: dict[str, str]
         if not contains(row.get("l1") or row.get("target_language"), l1):
             continue
         filtered.append(row)
-    return filtered
+    return sorted(filtered, key=_legacy_bundle_row_sort_key)
+
+
+def _legacy_bundle_row_sort_key(row: dict[str, Any]) -> tuple[int, int | str, str]:
+    """Sort numeric legacy identifiers naturally, with stable text fallbacks."""
+
+    value = row.get("id") or row.get("directory_name") or ""
+    try:
+        return 0, int(value), str(row.get("title") or "").casefold()
+    except (TypeError, ValueError):
+        return 1, str(value).casefold(), str(row.get("title") or "").casefold()
 
 
 def _legacy_bundle_row_key(row: dict[str, Any]) -> str:
@@ -14895,7 +14905,7 @@ def import_project_zip(request: HttpRequest) -> HttpResponse:
     }
     if request.user.is_staff:
         all_rows, legacy_error = _load_legacy_bundle_library()
-        legacy_rows = _filter_legacy_bundle_rows(all_rows, legacy_query)[:200]
+        legacy_rows = _filter_legacy_bundle_rows(all_rows, legacy_query)
 
     if request.method == "POST":
         mode = (request.POST.get("import_mode") or "upload").strip()

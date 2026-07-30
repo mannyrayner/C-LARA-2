@@ -167,6 +167,8 @@ Status: **Partly delivered.**
 
 ### Phase D — automation and ops support
 
+- Coordinate bulk provenance, idempotency, and catalogue creation with
+  [`unified-content-catalogue-and-legacy-migration.md`](unified-content-catalogue-and-legacy-migration.md).
 - CLI/admin automation for batch export/import.
 - Nightly backup/export pipelines and restore drills.
 - Document and preserve deployment-transfer runbooks for large legacy corpora, including AWS security-group inbound SSH rules, explicit EC2 `.pem` key usage, and resumable `rsync` options such as `--partial --append-verify`.
@@ -178,6 +180,8 @@ Status: **Core legacy JSON import delivered; follow-ups only as needed.**
 - Add regression fixtures for additional real legacy C-LARA archives when they become available.
 - Track unsupported legacy fields as specific issues with examples rather than reopening the broad migration task.
 - Consider batch/admin tooling for importing many legacy JSON export bundles.
+- When importing projects whose legacy source included a phonetic layer, report that the conversion discarded that
+  layer; C-LARA-2 does not currently preserve it.
 
 ## Success criteria
 
