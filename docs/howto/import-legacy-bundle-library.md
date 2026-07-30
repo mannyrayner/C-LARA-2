@@ -252,6 +252,57 @@ export C_LARA_LEGACY_BUNDLE_LIBRARY_METADATA=metadata/all_bundles.json
 
 The selected bundle is imported as a new C-LARA-2 project using the same source/legacy ZIP importer as the ordinary upload flow. For Adelaide-style directories containing `metadata.json` plus `source.zip`, the server-side importer combines those two files in memory before invoking the legacy importer; it does not require you to manually unzip or repackage each directory.
 
+## Step 5: bulk-import ZIP-backed projects
+
+After applying migrations, administrators can use the provenance-aware management command to import all ZIP-backed
+rows idempotently. Start with a dry run and a small limit:
+
+```bash
+cd /srv/C-LARA-2/platform_server
+set -a && . /etc/clara2.env && set +a
+/srv/C-LARA-2/.venv/bin/python manage.py migrate
+/srv/C-LARA-2/.venv/bin/python manage.py import_legacy_bundle_library \
+  --owner <c-lara-2-username> \
+  --source-system clara_adelaide \
+  --library-version v3 \
+  --dry-run \
+  --limit 5 \
+  --report /tmp/legacy-import-dry-run.jsonl
+```
+
+The owner is the existing C-LARA-2 account that will own newly created projects. The command defaults to the library
+root and metadata filename configured for Django. It ignores metadata-only rows without a ZIP, resolves every payload
+below the configured root, and orders numeric legacy IDs naturally.
+
+Review the dry-run report, then import a small smoke-test batch:
+
+```bash
+/srv/C-LARA-2/.venv/bin/python manage.py import_legacy_bundle_library \
+  --owner <c-lara-2-username> \
+  --source-system clara_adelaide \
+  --library-version v3 \
+  --limit 5 \
+  --report /tmp/legacy-import-smoke.jsonl
+```
+
+After inspecting those projects, omit `--limit` for the full run. The command stores one durable provenance record per
+`(source_system, legacy_project_id)`, reconciles earlier manual imports through their
+`legacy_import_summary.json`, imports each new bundle in an independent transaction, and continues after individual
+failures. Re-running it skips successful records. Failed records are skipped unless explicitly retried:
+
+```bash
+/srv/C-LARA-2/.venv/bin/python manage.py import_legacy_bundle_library \
+  --owner <c-lara-2-username> \
+  --source-system clara_adelaide \
+  --library-version v3 \
+  --retry-failed \
+  --report /tmp/legacy-import-retry.jsonl
+```
+
+Use repeatable `--only-id <legacy-id>` options to target specific projects. The Django admin lists provenance records
+with their source identity, status, project, attempt count, diagnostics, and error. If legacy phonetic files are
+detectable in a ZIP, the import record explicitly notes that the phonetic layer was not imported into C-LARA-2 stages.
+
 ## What gets imported
 
 For supported legacy bundles, C-LARA-2 imports:
@@ -269,7 +320,8 @@ Imported projects are normal C-LARA-2 projects and can be inspected from the pro
 - The server-side library picker is shown only to staff/admin users.
 - The configured metadata file must be inside the configured library root.
 - Bundle paths from the metadata file are resolved relative to the configured root and rejected if they escape that root.
-- The current implementation imports one selected bundle at a time. Multi-select/batch import with heartbeat-style progress is planned as a later extension.
+- The web picker imports one selected bundle at a time. The management command provides idempotent bulk import with
+  line-by-line progress and JSONL reports; a multi-select/background-task web UI remains a possible later extension.
 
 ## Troubleshooting
 

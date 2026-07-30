@@ -113,3 +113,13 @@ catalogue records. Important terminology and data-loss correction: some newly in
 projects originally contained a phonetic layer, but the converter discarded that layer because
 C-LARA-2 cannot currently represent it. Do not call the resulting imports phonetic projects; record
 the discarded layer explicitly in provenance and diagnostics.
+
+Implementation update from 2026-07-30: added the first bulk importer. `LegacyProjectImport` now
+persists the unique source-system/legacy-ID identity, library version/path/checksum, original
+metadata, owner, destination project, status, attempts, diagnostics, errors, and timestamps.
+`import_legacy_bundle_library` supports dry runs and JSONL reports, natural numeric ordering,
+`--limit`, repeatable `--only-id`, reconciliation of prior manual imports through
+`legacy_import_summary.json`, idempotent skips, independent per-bundle transactions, and explicit
+`--retry-failed`. Shared server-bundle ZIP preparation was moved out of the view into a reusable
+safe helper, and import records are inspectable in Django admin. The AWS operator runbook now
+prescribes migrate, dry-run, limited smoke import, review, then the full run.

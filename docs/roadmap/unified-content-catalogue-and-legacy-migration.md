@@ -118,6 +118,11 @@ The existing Content tab remains the single discovery entry point. Catalogue lis
 
 ### Phase 2 — C-LARA batch importer
 
+Status: **initial implementation delivered.** `import_legacy_bundle_library` now provides persistent source identity,
+dry-run/reporting, natural ID ordering, limits, repeatable ID selection, existing-import reconciliation, independent
+transactions, idempotent skip behavior, and explicit failed-record retries. Deployment still requires migration plus a
+small smoke-test batch before the full Adelaide run.
+
 - Add persistent import provenance and reconcile existing imports.
 - Implement dry-run and resumable batch management commands with reports.
 - Smoke-test small, large, media-rich, and formerly phonetic-layer bundles before importing the remainder.
