@@ -51,7 +51,7 @@ class LegacyBundleLibraryBulkImportTests(TestCase):
                             "annotations": {"translated": "Hello", "mwes": [], "page_number": 1},
                         }
                     ],
-                    "annotations": {"title": metadata["title"]},
+                    "annotations": {},
                 }
             ],
         }
@@ -119,6 +119,20 @@ class LegacyBundleLibraryBulkImportTests(TestCase):
             / "source_text.txt"
         )
         self.assertTrue(source_path.exists())
+
+    def test_rerun_repairs_placeholder_title_from_library_metadata(self):
+        self._add_bundle(5, title="Metadata title")
+        self._build_metadata()
+        self._run()
+        record = LegacyProjectImport.objects.get(legacy_project_id="5")
+        record.project.title = "Imported legacy C-LARA project (9)"
+        record.project.save(update_fields=["title", "updated_at"])
+
+        output = self._run()
+
+        self.assertIn("refreshed_title=1", output)
+        record.project.refresh_from_db()
+        self.assertEqual(record.project.title, "Metadata title")
 
     def test_failed_bundle_requires_retry_flag(self):
         self._add_bundle(3, valid=False)

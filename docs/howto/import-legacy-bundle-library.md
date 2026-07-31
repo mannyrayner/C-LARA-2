@@ -381,6 +381,13 @@ This split is intentional: use `ssm-user` for Git operations on its checkout, bu
 account for commands that create project media. The failed `sudo -u ubuntu ... source /etc/clara2.env` attempt stops
 before selecting candidates or importing projects; it is safe to retry through the wrapper above.
 
+The importer takes the project title from the sidecar `metadata.json`, falling back to annotated-text page metadata
+only when necessary. If projects were imported by the earlier implementation with placeholder names such as
+`Imported legacy C-LARA project (2)`, deploy the title fix and rerun the same command and source-system namespace. An
+idempotent rerun does not reimport those projects; it changes only recognized placeholder titles to the library metadata
+title (adding a normal numeric suffix if that title is already used). Human-edited, non-placeholder titles are never
+changed automatically.
+
 After inspecting those projects, omit `--limit` for the full run. The command stores one durable provenance record per
 `(source_system, legacy_project_id)`, reconciles earlier manual imports through their
 `legacy_import_summary.json`, imports each new bundle in an independent transaction, and continues after individual

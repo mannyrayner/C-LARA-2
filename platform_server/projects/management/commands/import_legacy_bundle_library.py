@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import zipfile
 from collections import Counter, defaultdict
 from pathlib import Path, PurePosixPath
@@ -23,6 +24,8 @@ from projects.legacy_clara_import import (
     legacy_clara_project_dir_bundle_title,
 )
 from projects.models import LegacyProjectImport, Project
+
+_PLACEHOLDER_TITLE_RE = re.compile(r"^Imported legacy C-LARA project(?: \(\d+\))?$", re.IGNORECASE)
 
 
 class Command(BaseCommand):
@@ -148,6 +151,26 @@ class Command(BaseCommand):
             legacy_project_id=legacy_id,
         ).select_related("project").first()
         if record and record.status == LegacyProjectImport.STATUS_IMPORTED and record.project_id:
+            source_title = str(row.get("title") or "").strip()
+            if source_title and _PLACEHOLDER_TITLE_RE.fullmatch(record.project.title.strip()):
+                if dry_run:
+                    return {
+                        **base,
+                        "status": "would_refresh_title",
+                        "message": f"would rename project {record.project_id} to {source_title}",
+                        "project_id": record.project_id,
+                    }
+                old_title = record.project.title
+                record.project.title = self._unique_title(owner, source_title)
+                record.project.save(update_fields=["title", "updated_at"])
+                record.source_title = source_title[:200]
+                record.save(update_fields=["source_title", "updated_at"])
+                return {
+                    **base,
+                    "status": "refreshed_title",
+                    "message": f"renamed project {record.project_id} from {old_title} to {record.project.title}",
+                    "project_id": record.project_id,
+                }
             return {
                 **base,
                 "status": "skipped_existing",
