@@ -960,6 +960,33 @@ class CompileStatusViewTests(TestCase):
         self.assertContains(resp, "Django setting LEGACY_CLARA_BUNDLE_LIBRARY_ROOT")
         self.assertContains(resp, "interactive shell export does not change an already-running web process")
 
+    def test_import_zip_view_admin_lists_entire_library_in_numeric_id_order(self):
+        User = get_user_model()
+        User.objects.create_user(username="library_admin", password="pw", is_staff=True)
+        self.client.logout()
+        self.client.login(username="library_admin", password="pw")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            library_root = Path(tmpdir) / "legacy_library"
+            library_root.mkdir()
+            bundles = [
+                {"id": project_id, "title": f"Legacy project {project_id}"}
+                for project_id in range(1, 206)
+            ]
+            (library_root / "legacy_bundle_metadata.json").write_text(
+                json.dumps({"bundles": list(reversed(bundles))}),
+                encoding="utf-8",
+            )
+
+            with override_settings(LEGACY_CLARA_BUNDLE_LIBRARY_ROOT=str(library_root)):
+                resp = self.client.get(reverse("project-import-zip"))
+
+        self.assertEqual(resp.status_code, 200)
+        rows = resp.context["legacy_rows"]
+        self.assertEqual(len(rows), 205)
+        self.assertEqual([row["id"] for row in rows], list(range(1, 206)))
+        self.assertContains(resp, "Legacy project 205")
+
     def test_build_legacy_bundle_metadata_reports_write_permission_error(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             library_root = Path(tmpdir) / "legacy_library"
