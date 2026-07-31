@@ -29,14 +29,26 @@ class Command(BaseCommand):
     help = "Idempotently bulk-import a configured legacy C-LARA bundle library."
 
     def add_arguments(self, parser):
-        parser.add_argument("--owner", required=True, help="C-LARA-2 username that will own newly imported projects.")
+        parser.add_argument(
+            "--owner",
+            required=True,
+            help="Existing C-LARA-2 website username that will own newly imported projects (not a Linux username).",
+        )
         parser.add_argument("--root", help="Bundle-library root; defaults to C_LARA_LEGACY_BUNDLE_LIBRARY_ROOT.")
         parser.add_argument(
             "--metadata",
             help="Global metadata path, absolute or relative to --root; defaults to the configured metadata filename.",
         )
-        parser.add_argument("--source-system", default="clara_adelaide")
-        parser.add_argument("--library-version", default="")
+        parser.add_argument(
+            "--source-system",
+            default="clara_adelaide",
+            help="Stable provenance namespace paired with each legacy project ID; default: clara_adelaide.",
+        )
+        parser.add_argument(
+            "--library-version",
+            default="",
+            help="Conversion/library generation label such as v3; this may change without changing source identity.",
+        )
         parser.add_argument("--dry-run", action="store_true", help="Plan actions without changing the database or files.")
         parser.add_argument("--limit", type=int, help="Process at most this many ZIP-backed candidate rows.")
         parser.add_argument("--only-id", action="append", default=[], help="Process only this legacy ID; repeatable.")
