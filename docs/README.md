@@ -29,6 +29,7 @@ Welcome! This folder collects specifications, architecture notes, and delivery r
 - **Dialogue top-level roadmap (new)**: [roadmap/dialogue-top-level.md](roadmap/dialogue-top-level.md)
 - **AI-judges evaluation roadmap (new)**: [roadmap/ai-judges-evaluation.md](roadmap/ai-judges-evaluation.md)
 - **Source project export/import roadmap (initial implementation delivered)**: [roadmap/source-project-bundles.md](roadmap/source-project-bundles.md)
+- **Unified content catalogue and legacy migration roadmap (new)**: [roadmap/unified-content-catalogue-and-legacy-migration.md](roadmap/unified-content-catalogue-and-legacy-migration.md)
 - **Conventional UX roadmap (new)**: [roadmap/conventional-ux.md](roadmap/conventional-ux.md)
 - **Credits and billing roadmap (new)**: [roadmap/credits-and-billing.md](roadmap/credits-and-billing.md)
 - **RTL support roadmap (new)**: [roadmap/rtl-support.md](roadmap/rtl-support.md)
