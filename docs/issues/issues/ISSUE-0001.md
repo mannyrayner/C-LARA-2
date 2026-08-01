@@ -1,9 +1,9 @@
 # ISSUE-0001: Support hosted compiled legacy content registration in C-LARA-2
 
-- **Status:** reported
-- **Priority:** P2
+- **Status:** active
+- **Priority:** P1
 - **Created:** 2026-05-03T08:13:34Z
-- **Updated:** 2026-05-11T09:17:04Z
+- **Updated:** 2026-07-30T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** None
@@ -29,3 +29,20 @@ address and that the `.pem` file has restrictive permissions, e.g. `chmod 600
 /home/CLARA2/EC2KeyPairForClara2.pem`. After transfer, verify the server directory layout and then
 design the registration metadata/import UI around stable hosted URLs, ownership/security rules,
 language metadata, and publication dates.
+
+Update from 2026-07-30 planning discussion: promote this work to active P1 and implement the
+approved unified-catalogue option. The single Content tab must include native C-LARA-2 projects,
+imported C-LARA projects, server-hosted compiled LARA, and externally hosted compiled LARA.
+Introduce a catalogue-level record for every published item, with provenance displayed/filterable
+but excluded from ranking; common free-text/language search, comments, ratings, and access counting;
+and original-creator attribution separate from the hidden administrative owner. The approximately 9
+GB compiled LARA collection contains about 50 one-project-per-directory resources. Each project
+directory has exactly one immediate subdirectory whose `_hyperlinked_text_.html` file is the entry
+point; assets are relative and self-contained. Metadata was not downloaded and must be curated from
+the live C-LARA service into a versioned manifest. Transfer to `/srv/c-lara/legacy-compiled/lara/`,
+validate disk capacity and entry paths, and initially serve through Nginx; the two large Proust
+volumes (about 1 GB and 2 GB) require explicit mobile audio/range-request checks. `Basic Course in
+Pitjantjatjara` is the sole external-hosting exception: keep its public authorised URL, allow
+ordinary discovery/comments/ratings/outbound counts/availability checks, and do not copy, proxy,
+scrape, thumbnail, cache, or send it to AI services. Full decisions and phases are in
+`docs/roadmap/unified-content-catalogue-and-legacy-migration.md`.

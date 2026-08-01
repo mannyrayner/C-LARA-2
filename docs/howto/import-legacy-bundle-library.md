@@ -252,6 +252,160 @@ export C_LARA_LEGACY_BUNDLE_LIBRARY_METADATA=metadata/all_bundles.json
 
 The selected bundle is imported as a new C-LARA-2 project using the same source/legacy ZIP importer as the ordinary upload flow. For Adelaide-style directories containing `metadata.json` plus `source.zip`, the server-side importer combines those two files in memory before invoking the legacy importer; it does not require you to manually unzip or repackage each directory.
 
+## Step 5: bulk-import ZIP-backed projects
+
+After applying migrations, administrators can use the provenance-aware management command to import all ZIP-backed
+rows idempotently. Start with a dry run and a small limit:
+
+```bash
+cd /srv/C-LARA-2/platform_server
+set -a && . /etc/clara2.env && set +a
+/srv/C-LARA-2/.venv/bin/python manage.py migrate
+/srv/C-LARA-2/.venv/bin/python manage.py import_legacy_bundle_library \
+  --owner <c-lara-2-username> \
+  --source-system clara_adelaide \
+  --library-version v3 \
+  --dry-run \
+  --limit 5 \
+  --report /tmp/legacy-import-dry-run.jsonl
+```
+
+### Choosing `--owner`
+
+`--owner` is the **C-LARA-2 website username** whose account will own the newly created `Project` rows. For the current
+Adelaide migration this should be the administrator account used to log in to `https://c-lara-2.c-lara.org/` and manage
+the imported projects. It is **not**:
+
+- the AWS/Linux login (`ssm-user` or `ubuntu`);
+- an original C-LARA project owner's username from `metadata.json`; or
+- the name of the bundle directory.
+
+The original C-LARA owner is retained separately in import provenance and is not replaced by this administrative
+owner. If the website navigation says `Hello, manny`, for example, use `--owner manny`. To list the exact C-LARA-2
+usernames from the server before choosing, run:
+
+```bash
+/srv/C-LARA-2/.venv/bin/python manage.py shell -c \
+  'from django.contrib.auth import get_user_model; print("\\n".join(get_user_model().objects.order_by("username").values_list("username", flat=True)))'
+```
+
+The command rejects a username that does not already exist. It does not create a new website account.
+
+### Choosing `--source-system`
+
+`--source-system` is a stable **provenance namespace**, not a hostname, directory, account, or setting discovered by
+`build_legacy_bundle_metadata`. Legacy numeric project IDs are unique only within their original system, so the importer
+uses `(source_system, legacy_project_id)` as the idempotency key. This prevents a future corpus from another C-LARA
+installation whose project `42` collides with Adelaide project `42`.
+
+For the material downloaded from the Adelaide C-LARA server and uploaded to the configured `adelaide-v3` library, use:
+
+```text
+--source-system clara_adelaide
+```
+
+That is also the command's default, so it may be omitted for this corpus. Once a real import or reconciliation has been
+run, keep using exactly the same value on all reruns and retries; changing it would create a different provenance
+namespace and defeat duplicate protection.
+
+`--library-version v3` records which conversion/upload generation supplied the bundle. Unlike `--source-system`, the
+library version may change on a later reconversion while the stable source identity remains `clara_adelaide` plus the
+legacy project ID.
+
+The command defaults to the library root and metadata filename configured for Django. It ignores metadata-only rows
+without a ZIP, resolves every payload below the configured root, and orders numeric legacy IDs naturally.
+
+Review the dry-run report, then import a small smoke-test batch:
+
+```bash
+/srv/C-LARA-2/.venv/bin/python manage.py import_legacy_bundle_library \
+  --owner <c-lara-2-username> \
+  --source-system clara_adelaide \
+  --library-version v3 \
+  --limit 5 \
+  --report /tmp/legacy-import-smoke.jsonl
+```
+
+### When the repository and runtime use different Linux accounts
+
+On the current AWS host, the Git checkout may be owned by `ssm-user` while Gunicorn/Django-Q and normal project
+artifacts use `ubuntu`. The service environment file is deliberately restricted (`root:ssm-user`, mode `640`), so this
+will **not** work:
+
+```bash
+sudo -u ubuntu -H bash -lc '. /etc/clara2.env; ...'
+```
+
+The `ubuntu` process cannot read that secrets file directly. Do not loosen `/etc/clara2.env` permissions merely for
+the import. Instead, let a root shell source the file and then use `runuser` to execute Django as the runtime account;
+non-identity environment variables are retained while the process identity and home are changed safely:
+
+```bash
+sudo bash -lc '
+  set -a
+  . /etc/clara2.env
+  set +a
+  cd /srv/C-LARA-2/platform_server
+  exec runuser -u ubuntu -- \
+    /srv/C-LARA-2/.venv/bin/python manage.py import_legacy_bundle_library \
+      --owner <c-lara-2-username> \
+      --source-system clara_adelaide \
+      --library-version v3 \
+      --limit 5 \
+      --report /tmp/legacy-import-smoke.jsonl
+'
+```
+
+Before the first real import, confirm the service identity:
+
+```bash
+sudo systemctl show gunicorn-clara2 djangoq-clara2 -p User -p Group
+```
+
+If both services use a different common runtime user, substitute it for `ubuntu`. Also verify that the wrapped command
+sees PostgreSQL rather than silently using a local fallback database, without printing credentials:
+
+```bash
+sudo bash -lc '
+  set -a
+  . /etc/clara2.env
+  set +a
+  cd /srv/C-LARA-2/platform_server
+  exec runuser -u ubuntu -- \
+    /srv/C-LARA-2/.venv/bin/python manage.py shell -c \
+      "from django.db import connection; print(connection.vendor, connection.settings_dict[\"NAME\"])"
+'
+```
+
+This split is intentional: use `ssm-user` for Git operations on its checkout, but use the confirmed Django runtime
+account for commands that create project media. The failed `sudo -u ubuntu ... source /etc/clara2.env` attempt stops
+before selecting candidates or importing projects; it is safe to retry through the wrapper above.
+
+The importer takes the project title from the sidecar `metadata.json`, falling back to annotated-text page metadata
+only when necessary. If projects were imported by the earlier implementation with placeholder names such as
+`Imported legacy C-LARA project (2)`, deploy the title fix and rerun the same command and source-system namespace. An
+idempotent rerun does not reimport those projects; it changes only recognized placeholder titles to the library metadata
+title (adding a normal numeric suffix if that title is already used). Human-edited, non-placeholder titles are never
+changed automatically.
+
+After inspecting those projects, omit `--limit` for the full run. The command stores one durable provenance record per
+`(source_system, legacy_project_id)`, reconciles earlier manual imports through their
+`legacy_import_summary.json`, imports each new bundle in an independent transaction, and continues after individual
+failures. Re-running it skips successful records. Failed records are skipped unless explicitly retried:
+
+```bash
+/srv/C-LARA-2/.venv/bin/python manage.py import_legacy_bundle_library \
+  --owner <c-lara-2-username> \
+  --source-system clara_adelaide \
+  --library-version v3 \
+  --retry-failed \
+  --report /tmp/legacy-import-retry.jsonl
+```
+
+Use repeatable `--only-id <legacy-id>` options to target specific projects. The Django admin lists provenance records
+with their source identity, status, project, attempt count, diagnostics, and error. If legacy phonetic files are
+detectable in a ZIP, the import record explicitly notes that the phonetic layer was not imported into C-LARA-2 stages.
+
 ## What gets imported
 
 For supported legacy bundles, C-LARA-2 imports:
@@ -269,7 +423,8 @@ Imported projects are normal C-LARA-2 projects and can be inspected from the pro
 - The server-side library picker is shown only to staff/admin users.
 - The configured metadata file must be inside the configured library root.
 - Bundle paths from the metadata file are resolved relative to the configured root and rejected if they escape that root.
-- The current implementation imports one selected bundle at a time. Multi-select/batch import with heartbeat-style progress is planned as a later extension.
+- The web picker imports one selected bundle at a time. The management command provides idempotent bulk import with
+  line-by-line progress and JSONL reports; a multi-select/background-task web UI remains a possible later extension.
 
 ## Troubleshooting
 
