@@ -1,0 +1,5 @@
+TEXTUAL FIGURE PLACEHOLDER -- replace with the supplied JPEG screenshot in Overleaf.
+Answer: explains that speech recognition is not an implemented C-LARA-2
+feature; it is future work for whole-recording alignment. The current pipeline
+has TTS and no-audio/skip-TTS modes but no ASR/transcription stage, with links
+to Sections 10 and 11 of the report and current repository evidence.

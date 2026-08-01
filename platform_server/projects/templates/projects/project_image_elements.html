@@ -61,9 +61,9 @@
     <button class="btn" style="cursor:pointer" type="submit" name="action" value="discover" data-long-action="true" data-busy-label="Discovering elements...">Discover elements</button>
   </p>
   <h3>2) Edit elements list</h3>
-  <p><small>Review discovered rows, remove irrelevant items, and add new elements in the blank row.</small></p>
+  <p><small>Review discovered rows, remove irrelevant items, or add a new element in the blank row. You may save a manually added element even when discovery returns no rows.</small></p>
   <p>
-    <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="save" {% if not elements_count %}disabled title="Discover elements first"{% endif %}>Save edits</button>
+    <button class="btn secondary" style="cursor:pointer" type="submit" name="action" value="save">Save edits</button>
   </p>
   <h3>3) Generate expanded prompts</h3>
   <p>
