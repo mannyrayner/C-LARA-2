@@ -1,0 +1,9 @@
+TEXTUAL FIGURE PLACEHOLDER -- replace with the supplied JPEG screenshot in Overleaf.
+
+Proposed caption: The C-LARA-2 manual segmentation phase-2 editor for the
+two-page French example. A structure-only notice states that source text is
+read-only and that the reviewer may edit only token boundaries by inserting or
+removing `|' separators. A current boundary preview lists both pages; separate
+editable tokenisation fields show ``« Je t'aime », dit-il.'' and ``« Vous vous
+moquez de moi », dit-elle.''; an explicit save control persists the phase-2
+manual segmentation.

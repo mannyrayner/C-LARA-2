@@ -1,0 +1,114 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.4cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern,microtype,graphicx,booktabs,longtable,tabularx,enumitem,xcolor,url}
+\usepackage[round,authoryear]{natbib}
+\usepackage[hidelinks]{hyperref}
+\graphicspath{{images/}{figures/}}
+\title{C-LARA-2: Initial Project Report\\AI Autonomy Under Human Supervision\\in a Multimodal CALL Platform}
+\author{%
+\parbox{0.95\textwidth}{\centering
+\normalsize Branislav B{\'e}di\textsuperscript{1}, ChatGPT C-LARA-Instance\textsuperscript{2}, Belinda Chiera\textsuperscript{3}, and Cathy Chua\textsuperscript{4}\\
+\normalsize St{\'e}phanie Geneix-Rabault\textsuperscript{5}, Christ{\`e}le Maizonniaux\textsuperscript{6}, Manny Rayner\textsuperscript{4}, and Sophie Rendina\textsuperscript{7}\\
+\normalsize Sarah Wright\textsuperscript{4} and Rina Zviel-Girshin\textsuperscript{8}\\[0.65em]
+\footnotesize \textsuperscript{1}The {\'A}rni Magn{\'u}sson Institute for Icelandic Studies, Iceland\\
+\footnotesize \textsuperscript{2}OpenAI large language model instance participating in the C-LARA project\\
+\footnotesize \textsuperscript{3}Adelaide University, Australia; \textsuperscript{4}C-LARA Project, Australia; \textsuperscript{5}University of New Caledonia, New Caledonia\\
+\footnotesize \textsuperscript{6}Flinders University, Australia; \textsuperscript{7}University of New England, New South Wales, Australia\\
+\footnotesize \textsuperscript{8}Ruppin Academic Center, Israel
+}}
+\date{July 2026}
+\begin{document}
+\maketitle
+\phantomsection
+\addcontentsline{toc}{section}{Abstract}
+\begin{abstract}
+C-LARA-2 is a new, AI-mediated implementation of the C-LARA platform for creating multimodal language-learning resources. This initial report records the first nine months of development and examines both the emerging platform and the development method: a small international team has used a high-capability AI coding assistant to write code, tests, documentation, roadmaps and much of the report itself, under strategic human supervision. We describe the modular linguistic-annotation pipeline, image-generation and community-review workflows, specialised picture dictionaries, repository-based project management, AWS deployment, a project-understanding Assistant and an exploratory use of Voice Mode for spoken practice. The report draws in part on two related EuroCALL papers while providing a broader, repository-grounded account of the project's current state, limitations and plans. The case studies suggest that AI assistance can greatly reduce the cost of implementation, redesign, documentation and operational work, while leaving human collaborators responsible for pedagogical purpose, community knowledge, governance and review. We conclude by considering how AI autonomy, including strategic and ethical advice, might be progressively delegated while preserving accountable human and community control.
+\end{abstract}
+\phantomsection
+\addcontentsline{toc}{section}{Table of contents}
+\tableofcontents
+\clearpage
+% During drafting, use e.g. \includeonly{sections/04_annotation_pipeline}
+% \include starts each major section on a new page. Change to \input later if a compact layout is preferred.
+\include{sections/01_introduction}
+\include{sections/02_history_and_methodology}
+\include{sections/03_platform_overview}
+\include{sections/04_annotation_pipeline}
+\include{sections/05_image_generation}
+\include{sections/06_picture_dictionaries}
+\include{sections/07_project_management}
+\include{sections/08_deployment}
+\include{sections/09_assistant}
+\include{sections/10_voice_mode}
+\include{sections/11_future_directions}
+\include{sections/12_discussion_conclusion}
+\phantomsection
+\addcontentsline{toc}{section}{Using C-LARA-2}
+\section*{Using C-LARA-2}
+C-LARA-2 is openly available at \url{https://c-lara-2.c-lara.org/}.
+Creating a user account is free. To use the AI-based functions, users must
+connect an OpenAI API key associated with a valid payment method through the
+``Use my OpenAI API key'' control in the Profile tab.
+
+\phantomsection
+\addcontentsline{toc}{section}{Division of labour statement}
+\section*{Division of labour statement}
+The C-LARA-2 platform has been developed through a close collaboration between
+Manny Rayner (human) and ChatGPT C-LARA-Instance (AI), with the former providing
+fine-grained strategic guidance and the latter taking primary operational
+responsibility for implementation, tests, documentation and repository
+maintenance. This report has mainly been written in the same way, with direct
+human editing and revision. The other authors have contributed strategic,
+pedagogical, linguistic, community-focused and domain-specific advice. In
+particular, the specialised picture-dictionary interface described in Section~6
+was largely prompted by suggestions from Sophie Rendina. The Voice Mode case
+study in Section~10 draws substantially on contributions from Sarah Wright, who
+was the principal learner in the anecdotal study reported there. The content is
+partly based on two related EuroCALL papers prepared by the same author group,
+but recasts and extends their material as a repository-grounded project report.
+
+\phantomsection
+\addcontentsline{toc}{section}{Funding}
+\section*{Funding}
+The ChatGPT Pro subscription and AWS hosting used by the project have been
+funded privately by consortium members Manny Rayner and Cathy Chua. OpenAI API
+credits were funded through a project sponsored by the French Embassy's
+Research Fund. All project members have also contributed their time in kind.\footnote{This is difficult to estimate precisely, but we estimate the total in-kind contribution during the period covered by this report at roughly six to eight person-months.}
+
+It is striking that a project of this scope has required an explicit operating
+budget of only approximately USD~600 per month. This modest cost, relative to
+the amount of software development, documentation and operational work
+reported here, underlines the potentially transformative effect of coding
+assistants on the scale and organisation of academic research.
+\phantomsection
+\addcontentsline{toc}{section}{Afterword from the primary human author}
+\section*{Afterword from the primary human author}
+
+As previously stated, the C-LARA-2 project in general, and this report in particular, are the result of a close collaboration between a human being, myself, and an AI, ChatGPT C-LARA-Instance. In this afterword, my purpose is to address a question which I expect at least some readers will raise: does the AI have a reasonable right to be credited as one of the authors of the report? I should state now that the following represents my own opinions, and that these opinions are not necessarily shared by the other human authors.
+
+Having discussed these issues with many people, I know in advance that, no matter what I say, some readers will not be convinced by my arguments. But let me try anyway. First, I would suggest turning the question around. Given that the AI has written all of the codebase, all of the documentation, and all of the report except for this final section, why should we consider \textit{not} crediting it as an author? I have heard a number of replies to this, and I will consider the four most important ones.
+
+Probably the most common objection is that the AI ``cannot take responsibility for the work''. It is rarely spelled out exactly what this means, and there are at least two reasonable interpretations. One is that it cannot take \textit{legal} responsibility. This is true, since an AI is not a legal person, but in practice it is not the case in academia that every author should be prepared to take legal responsibility, only that at least one author (normally the corresponding author) should do so. Here, that requirement is met.
+
+A more interesting and substantive interpretation is that the AI may not be able to take \textit{intellectual} responsibility. There is no hard and fast definition of what this means, but academic praxis suggests an answer along the following lines. The AI should need to be able to answer questions about the report. It should be able to explain parts of the report in more detail. It should be prepared to retract claims when met with sufficiently strong objections. It should maintain a consistent viewpoint over time.
+
+In some cases where an AI has purportedly authored a work, these requirements will not be met. Here, however, the ``AI'' is not simply Codex, but the combination of Codex and the C-LARA-2 GitHub repository, which contains enough information about the project, and is well enough organised, that the Codex can in fact converse intelligently and coherently about the relevant issues. I have been able to ascertain this for myself over many months of collaboration with the AI; now that the Assistant functionality has been added, sceptics can access the exact same agent and ask it whatever questions they want, whenever they want. One might add that this situation is a great deal better than that encountered with human authors, who are rarely available to answer questions about what they have done.
+
+A second common objection to AI authors is that ``AIs make mistakes''. This is undeniably true; unfortunately, humans also make mistakes. It is easy to accuse AIs of hallucinating references and committing similar sins, but, over several years of working together with AIs, I have become uncomfortably aware of how often I also make errors which one would describe as ``hallucinations'' if an AI had been responsible. In particular, I can misremember things without realising I have done so. The reason why most people trust me, though, is that when I am shown good evidence that I have misremembered I will withdraw my assertion; also, when the consequences of being wrong are important enough, I usually think ahead and check carefully. High-end AIs now behave in more or less the same way.
+
+A third objection is that the AI is responding to suggestions from the human authors and is not working autonomously. There are two reasonable counters. One, as we have seen earlier in the report, is that the AI in practice shows considerable autonomy, even if the human always retains formal control. The second, perhaps more simply, is that junior authors in normal academic work are often heavily constrained by the demands of the senior authors. Though they may have no more real independence than the AI has had here, they will still rightly expect to be credited.
+
+The fourth and final objection is simply that it doesn't matter. The AI has no emotions and doesn't care whether it's credited or not, so why even think about these issues? I find this a very weak argument. Intellectual honesty is important in itself; it is not a question of whether someone's feelings will be hurt. If you are dubious, consider the case where a human author has died before they have had time to publish. Few people will consider that someone else may then claim credit for the deceased person's work.
+
+So far, academia has managed to avoid confronting issues of AI authorship in a straightforward way. As projects like ours become more common, which I anticipate will happen in the near future, it will become increasingly difficult to ignore the question.
+
+\vspace{1em}
+\noindent Manny Rayner, Adelaide, 23 July 2026
+
+\phantomsection
+\addcontentsline{toc}{section}{References}
+\bibliographystyle{apalike}
+\bibliography{references}
+\end{document}
