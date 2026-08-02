@@ -50,6 +50,13 @@ Admin workflows may be technically accessible on mobile but are not an initial t
 
 The first mobile milestone should focus narrowly on browsing compiled texts because this is the most common learner-facing case and carries the least risk to project data. Once mobile reading is reliable, the next major creation milestone should be a default-driven background generation flow rather than a full mobile annotation editor.
 
+The initial regression corpus should combine native C-LARA-2 projects, converted C-LARA projects, server-hosted
+compiled LARA projects, and the externally hosted Pitjantjatjara link described in
+[`unified-content-catalogue-and-legacy-migration.md`](unified-content-catalogue-and-legacy-migration.md). Include the
+large audio-aligned Proust volumes for loading/range-request checks. Some converted projects originally had a phonetic
+layer, but conversion discarded that layer because C-LARA-2 cannot currently represent it; they must not be described
+or tested as imported phonetic projects.
+
 ### Phase 1: mobile audit for compiled output
 
 - Inventory the HTML/CSS/JS used by compiled text pages.
