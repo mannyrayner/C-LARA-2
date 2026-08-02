@@ -150,8 +150,17 @@
     <pre style="white-space:pre-wrap;">{{ annotation_plain_text }}</pre>
   </details>
 {% endif %}
-{% if annotation_segmentation_review_href %}
-  <p><a class="btn secondary" href="{{ annotation_segmentation_review_href }}">Review/edit segmentation</a></p>
+{% if annotation_segmentation_phase_1_review_href %}
+  <p>
+    <a class="btn secondary" href="{{ annotation_segmentation_phase_1_review_href }}">Review/edit segmentation phase 1</a><br />
+    <small>Review and edit page and segment boundaries.</small>
+  </p>
+{% endif %}
+{% if annotation_segmentation_phase_2_review_href %}
+  <p>
+    <a class="btn secondary" href="{{ annotation_segmentation_phase_2_review_href }}">Review/edit segmentation phase 2</a><br />
+    <small>Review and edit word, clitic, and compound boundaries inside segments.</small>
+  </p>
 {% endif %}
 {% if object.compiled_path %}
   <p>

@@ -5154,10 +5154,17 @@ class ProjectAnnotationView(ProjectDetailView):
         context = super().get_context_data(**kwargs)
         project: Project = context["object"]
         annotation_home = reverse("project-annotation-home", args=[project.pk])
-        seg_review = reverse("manual-segmentation-phase-1", args=[project.pk])
+        segmentation_phase_1_review = reverse("manual-segmentation-phase-1", args=[project.pk])
         context["annotation_dialogue_plan"] = _annotation_dialogue_plan(project)
         context["annotation_plain_text"] = _base_text_for_segmentation_phase_1(project).strip()
-        context["annotation_segmentation_review_href"] = f"{seg_review}?return_to={quote(annotation_home)}"
+        context["annotation_segmentation_phase_1_review_href"] = (
+            f"{segmentation_phase_1_review}?return_to={quote(annotation_home)}"
+        )
+        if context["has_segmentation_phase_1"]:
+            segmentation_phase_2_review = reverse("manual-segmentation-phase-2", args=[project.pk])
+            context["annotation_segmentation_phase_2_review_href"] = (
+                f"{segmentation_phase_2_review}?return_to={quote(annotation_home)}"
+            )
         return context
 
 
@@ -5240,8 +5247,8 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                 *(
                     [
                         {
-                            "label": "Review/edit segmentation",
-                            "description": "Open manual segmentation view to inspect and adjust boundaries.",
+                            "label": "Review/edit segmentation phase 1",
+                            "description": "Open phase 1 to inspect and adjust page and segment boundaries.",
                             "href": segmentation_review_href,
                         },
                         {
@@ -5289,8 +5296,8 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
             *(
                 [
                     {
-                        "label": "Review/edit segmentation",
-                        "description": "Open manual segmentation view to inspect and adjust boundaries.",
+                        "label": "Review/edit segmentation phase 1",
+                        "description": "Open phase 1 to inspect and adjust page and segment boundaries.",
                         "href": segmentation_review_href,
                     }
                 ]
@@ -12116,6 +12123,29 @@ def set_project_target_language(request: HttpRequest, pk: int) -> HttpResponse:
         request,
         f"Glossing language changed to {new_target_language}. Removed {removed_files} translation/gloss stage file(s).",
     )
+    return redirect("project-detail", pk=project.pk)
+
+
+@login_required
+def rename_project(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
+    if request.method != "POST":
+        return redirect("project-detail", pk=project.pk)
+
+    new_title = (request.POST.get("title") or "").strip()
+    if not new_title:
+        messages.error(request, "Project name cannot be empty.")
+    elif len(new_title) > Project._meta.get_field("title").max_length:
+        messages.error(request, "Project name cannot be longer than 200 characters.")
+    elif Project.objects.filter(owner=project.owner, title=new_title).exclude(pk=project.pk).exists():
+        messages.error(request, "You already have a project with that name.")
+    elif new_title == project.title:
+        messages.info(request, "Project name unchanged.")
+    else:
+        old_title = project.title
+        project.title = new_title
+        project.save(update_fields=["title", "updated_at"])
+        messages.success(request, f"Renamed project '{old_title}' to '{new_title}'.")
     return redirect("project-detail", pk=project.pk)
 
 

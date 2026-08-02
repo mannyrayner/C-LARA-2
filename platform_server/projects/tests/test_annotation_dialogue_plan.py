@@ -86,6 +86,7 @@ class AnnotationDialoguePlanTests(TestCase):
         seg_file = project.artifact_dir() / "runs" / "run_demo" / "stages" / "segmentation_phase_2.json"
         seg_file.parent.mkdir(parents=True, exist_ok=True)
         seg_file.write_text("{}", encoding="utf-8")
+        (seg_file.parent / "segmentation_phase_1.json").write_text("{}", encoding="utf-8")
 
         resp = self.client.get(reverse("project-annotation-home", args=[project.pk]))
         self.assertEqual(resp.status_code, 200)
@@ -93,7 +94,8 @@ class AnnotationDialoguePlanTests(TestCase):
             resp,
             reverse("project-compiled", args=[project.pk, "runs/run_demo/html/page_1.html"]),
         )
-        self.assertContains(resp, "Review/edit segmentation")
+        self.assertContains(resp, "Review/edit segmentation phase 1")
+        self.assertContains(resp, "Review/edit segmentation phase 2")
         self.assertContains(resp, "Open page-by-page manual editor")
         self.assertContains(resp, "Compile HTML now")
 
@@ -109,6 +111,7 @@ class AnnotationDialoguePlanTests(TestCase):
         seg_file = project.artifact_dir() / "runs" / "run_seg" / "stages" / "segmentation_phase_2.json"
         seg_file.parent.mkdir(parents=True, exist_ok=True)
         seg_file.write_text("{}", encoding="utf-8")
+        (seg_file.parent / "segmentation_phase_1.json").write_text("{}", encoding="utf-8")
 
         resp = self.client.get(reverse("project-annotation-home", args=[project.pk]))
         self.assertEqual(resp.status_code, 200)
@@ -120,6 +123,29 @@ class AnnotationDialoguePlanTests(TestCase):
             resp,
             f"{reverse('manual-segmentation-phase-1', args=[project.pk])}?return_to={reverse('project-annotation-home', args=[project.pk])}",
         )
+        self.assertContains(
+            resp,
+            f"{reverse('manual-segmentation-phase-2', args=[project.pk])}?return_to={reverse('project-annotation-home', args=[project.pk])}",
+        )
+        self.assertContains(resp, "Review/edit segmentation phase 1")
+        self.assertContains(resp, "Review/edit segmentation phase 2")
         self.assertContains(resp, reverse("manual-page-annotation", args=[project.pk]))
         self.assertContains(resp, reverse("project-images-home", args=[project.pk]))
         self.assertContains(resp, "Power-user pipeline controls")
+
+    def test_annotation_home_hides_phase_two_editor_until_phase_one_exists(self):
+        project = Project.objects.create(
+            owner=self.user,
+            title="Unsegmented",
+            source_text="One. Two.",
+            input_mode=Project.INPUT_SOURCE,
+            language="en",
+            target_language="fr",
+        )
+
+        resp = self.client.get(reverse("project-annotation-home", args=[project.pk]))
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Review/edit segmentation phase 1")
+        self.assertNotContains(resp, "Review/edit segmentation phase 2")
+        self.assertNotContains(resp, reverse("manual-segmentation-phase-2", args=[project.pk]))
