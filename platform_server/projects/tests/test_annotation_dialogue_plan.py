@@ -96,6 +96,14 @@ class AnnotationDialoguePlanTests(TestCase):
         )
         self.assertContains(resp, "Review/edit segmentation phase 1")
         self.assertContains(resp, "Review/edit segmentation phase 2")
+        dialogue_choices = resp.context["annotation_dialogue_plan"]["choices"]
+        dialogue_labels = [choice["label"] for choice in dialogue_choices]
+        phase_1_index = dialogue_labels.index("Review/edit segmentation phase 1")
+        self.assertEqual(dialogue_labels[phase_1_index + 1], "Review/edit segmentation phase 2")
+        self.assertEqual(
+            dialogue_choices[phase_1_index + 1]["href"],
+            f"{reverse('manual-segmentation-phase-2', args=[project.pk])}?return_to={reverse('project-annotation-home', args=[project.pk])}",
+        )
         self.assertContains(resp, "Open page-by-page manual editor")
         self.assertContains(resp, "Compile HTML now")
 
@@ -129,6 +137,10 @@ class AnnotationDialoguePlanTests(TestCase):
         )
         self.assertContains(resp, "Review/edit segmentation phase 1")
         self.assertContains(resp, "Review/edit segmentation phase 2")
+        dialogue_choices = resp.context["annotation_dialogue_plan"]["choices"]
+        dialogue_labels = [choice["label"] for choice in dialogue_choices]
+        phase_1_index = dialogue_labels.index("Review/edit segmentation phase 1")
+        self.assertEqual(dialogue_labels[phase_1_index + 1], "Review/edit segmentation phase 2")
         self.assertContains(resp, reverse("manual-page-annotation", args=[project.pk]))
         self.assertContains(resp, reverse("project-images-home", args=[project.pk]))
         self.assertContains(resp, "Power-user pipeline controls")

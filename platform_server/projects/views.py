@@ -5172,8 +5172,11 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
     has_plain_text = bool(_base_text_for_segmentation_phase_1(project).strip())
     latest_segmentation = _find_latest_stage_file(project, "segmentation_phase_2.json")
     has_segmented = latest_segmentation is not None
-    segmentation_review_href = (
+    segmentation_phase_1_review_href = (
         f"{reverse('manual-segmentation-phase-1', args=[project.pk])}?return_to={quote(annotation_home)}"
+    )
+    segmentation_phase_2_review_href = (
+        f"{reverse('manual-segmentation-phase-2', args=[project.pk])}?return_to={quote(annotation_home)}"
     )
     image_workflow_href = reverse("project-images-home", args=[project.pk])
     page_by_page_manual_href = reverse("manual-page-annotation", args=[project.pk])
@@ -5248,7 +5251,12 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                         {
                             "label": "Review/edit segmentation phase 1",
                             "description": "Open phase 1 to inspect and adjust page and segment boundaries.",
-                            "href": segmentation_review_href,
+                            "href": segmentation_phase_1_review_href,
+                        },
+                        {
+                            "label": "Review/edit segmentation phase 2",
+                            "description": "Open phase 2 to inspect and adjust word, clitic, and compound boundaries.",
+                            "href": segmentation_phase_2_review_href,
                         },
                         {
                             "label": "Open page-by-page manual editor",
@@ -5297,7 +5305,12 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                     {
                         "label": "Review/edit segmentation phase 1",
                         "description": "Open phase 1 to inspect and adjust page and segment boundaries.",
-                        "href": segmentation_review_href,
+                        "href": segmentation_phase_1_review_href,
+                    },
+                    {
+                        "label": "Review/edit segmentation phase 2",
+                        "description": "Open phase 2 to inspect and adjust word, clitic, and compound boundaries.",
+                        "href": segmentation_phase_2_review_href,
                     }
                 ]
                 if has_segmented
