@@ -2,6 +2,14 @@
 {% block title %}Project: {{ object.title }}{% endblock %}
 {% block content %}
 <h1>{{ object.title }}</h1>
+{% if current_user_role == "owner" %}
+  <form method="post" action="{% url 'project-rename' object.pk %}" style="margin:0.5rem 0 1rem;">
+    {% csrf_token %}
+    <label for="id_project_title"><strong>Project name:</strong></label>
+    <input id="id_project_title" name="title" type="text" maxlength="200" value="{{ object.title }}" required style="min-width:20rem;" />
+    <button class="btn secondary" type="submit">Rename project</button>
+  </form>
+{% endif %}
 <p>{{ object.description }}</p>
 <p>Language: {{ object.language }} → {{ object.target_language }}</p>
 <p>Audio: {{ object.get_audio_mode_display }}</p>

@@ -331,3 +331,17 @@ Focus:
 - Markdown-first publication workspace for the first progress report (target 2026-06-15).
 - Structured section outline with later LaTeX conversion path.
 - Explicit links from publication drafting to issue/roadmap evidence.
+
+### 28. Unified content catalogue and legacy migration roadmap
+
+Status: **Active P1 roadmap.** See
+[roadmap/unified-content-catalogue-and-legacy-migration.md](unified-content-catalogue-and-legacy-migration.md).
+
+Focus:
+- One Content tab for native C-LARA-2, imported C-LARA, server-hosted LARA, and externally hosted LARA.
+- Catalogue-level provenance, original-creator attribution, comments, ratings, discovery, and access counting.
+- Idempotent bulk import of the 485 valid Adelaide C-LARA bundles with durable per-project diagnostics.
+- Manifest-driven registration of approximately 9 GB of compiled LARA content, including large Proust audio projects.
+- External-link registration for *Basic Course in Pitjantjatjara* without copying or proxying the resource.
+- Explicitly record that phonetic layers were discarded during C-LARA conversion because C-LARA-2 cannot yet represent
+  them; do not describe the resulting imports as phonetic projects.

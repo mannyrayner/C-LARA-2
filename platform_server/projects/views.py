@@ -103,6 +103,11 @@ from .legacy_clara_import import (
     legacy_clara_bundle_title,
     legacy_clara_project_dir_bundle_title,
 )
+from .legacy_bundle_library import (
+    legacy_zip_trace as _legacy_zip_trace,
+    open_server_bundle_for_import as _open_server_bundle_for_import,
+    safe_import_path as _safe_legacy_import_path,
+)
 from .billing import (
     apply_credit_delta,
     credits_enabled,
@@ -5149,10 +5154,16 @@ class ProjectAnnotationView(ProjectDetailView):
         context = super().get_context_data(**kwargs)
         project: Project = context["object"]
         annotation_home = reverse("project-annotation-home", args=[project.pk])
-        seg_review = reverse("manual-segmentation-phase-1", args=[project.pk])
+        segmentation_phase_1_review = reverse("manual-segmentation-phase-1", args=[project.pk])
         context["annotation_dialogue_plan"] = _annotation_dialogue_plan(project)
         context["annotation_plain_text"] = _base_text_for_segmentation_phase_1(project).strip()
-        context["annotation_segmentation_review_href"] = f"{seg_review}?return_to={quote(annotation_home)}"
+        context["annotation_segmentation_phase_1_review_href"] = (
+            f"{segmentation_phase_1_review}?return_to={quote(annotation_home)}"
+        )
+        segmentation_phase_2_review = reverse("manual-segmentation-phase-2", args=[project.pk])
+        context["annotation_segmentation_phase_2_review_href"] = (
+            f"{segmentation_phase_2_review}?return_to={quote(annotation_home)}"
+        )
         return context
 
 
@@ -5161,8 +5172,11 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
     has_plain_text = bool(_base_text_for_segmentation_phase_1(project).strip())
     latest_segmentation = _find_latest_stage_file(project, "segmentation_phase_2.json")
     has_segmented = latest_segmentation is not None
-    segmentation_review_href = (
+    segmentation_phase_1_review_href = (
         f"{reverse('manual-segmentation-phase-1', args=[project.pk])}?return_to={quote(annotation_home)}"
+    )
+    segmentation_phase_2_review_href = (
+        f"{reverse('manual-segmentation-phase-2', args=[project.pk])}?return_to={quote(annotation_home)}"
     )
     image_workflow_href = reverse("project-images-home", args=[project.pk])
     page_by_page_manual_href = reverse("manual-page-annotation", args=[project.pk])
@@ -5235,9 +5249,14 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                 *(
                     [
                         {
-                            "label": "Review/edit segmentation",
-                            "description": "Open manual segmentation view to inspect and adjust boundaries.",
-                            "href": segmentation_review_href,
+                            "label": "Review/edit segmentation phase 1",
+                            "description": "Open phase 1 to inspect and adjust page and segment boundaries.",
+                            "href": segmentation_phase_1_review_href,
+                        },
+                        {
+                            "label": "Review/edit segmentation phase 2",
+                            "description": "Open phase 2 to inspect and adjust word, clitic, and compound boundaries.",
+                            "href": segmentation_phase_2_review_href,
                         },
                         {
                             "label": "Open page-by-page manual editor",
@@ -5284,9 +5303,14 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
             *(
                 [
                     {
-                        "label": "Review/edit segmentation",
-                        "description": "Open manual segmentation view to inspect and adjust boundaries.",
-                        "href": segmentation_review_href,
+                        "label": "Review/edit segmentation phase 1",
+                        "description": "Open phase 1 to inspect and adjust page and segment boundaries.",
+                        "href": segmentation_phase_1_review_href,
+                    },
+                    {
+                        "label": "Review/edit segmentation phase 2",
+                        "description": "Open phase 2 to inspect and adjust word, clitic, and compound boundaries.",
+                        "href": segmentation_phase_2_review_href,
                     }
                 ]
                 if has_segmented
@@ -12114,6 +12138,29 @@ def set_project_target_language(request: HttpRequest, pk: int) -> HttpResponse:
     return redirect("project-detail", pk=project.pk)
 
 
+@login_required
+def rename_project(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_OWNER)
+    if request.method != "POST":
+        return redirect("project-detail", pk=project.pk)
+
+    new_title = (request.POST.get("title") or "").strip()
+    if not new_title:
+        messages.error(request, "Project name cannot be empty.")
+    elif len(new_title) > Project._meta.get_field("title").max_length:
+        messages.error(request, "Project name cannot be longer than 200 characters.")
+    elif Project.objects.filter(owner=project.owner, title=new_title).exclude(pk=project.pk).exists():
+        messages.error(request, "You already have a project with that name.")
+    elif new_title == project.title:
+        messages.info(request, "Project name unchanged.")
+    else:
+        old_title = project.title
+        project.title = new_title
+        project.save(update_fields=["title", "updated_at"])
+        messages.success(request, f"Renamed project '{old_title}' to '{new_title}'.")
+    return redirect("project-detail", pk=project.pk)
+
+
 @xframe_options_sameorigin
 def serve_compiled(request: HttpRequest, pk: int, path: str) -> HttpResponse:
     """Serve compiled artifacts from a project's run directory.
@@ -14418,7 +14465,17 @@ def _filter_legacy_bundle_rows(rows: list[dict[str, Any]], query: dict[str, str]
         if not contains(row.get("l1") or row.get("target_language"), l1):
             continue
         filtered.append(row)
-    return filtered
+    return sorted(filtered, key=_legacy_bundle_row_sort_key)
+
+
+def _legacy_bundle_row_sort_key(row: dict[str, Any]) -> tuple[int, int | str, str]:
+    """Sort numeric legacy identifiers naturally, with stable text fallbacks."""
+
+    value = row.get("id") or row.get("directory_name") or ""
+    try:
+        return 0, int(value), str(row.get("title") or "").casefold()
+    except (TypeError, ValueError):
+        return 1, str(value).casefold(), str(row.get("title") or "").casefold()
 
 
 def _legacy_bundle_row_key(row: dict[str, Any]) -> str:
@@ -14437,65 +14494,6 @@ def _find_legacy_bundle_row(rows: list[dict[str, Any]], selection: str) -> dict[
         if _legacy_bundle_row_key(row) == selection:
             return row
     return None
-
-
-def _safe_legacy_import_path(root: Path, row: dict[str, Any]) -> Path | None:
-    raw = (
-        row.get("import_relative_path")
-        or row.get("zip_relative_path")
-        or row.get("relative_path")
-        or row.get("directory_name")
-        or ""
-    )
-    if not raw:
-        return None
-    candidate = Path(str(raw))
-    if candidate.is_absolute():
-        return None
-    resolved = (root / candidate).resolve()
-    try:
-        resolved.relative_to(root)
-    except ValueError:
-        return None
-    return resolved
-
-
-def _zip_directory_to_spooled_file(directory: Path):
-    spool = tempfile.SpooledTemporaryFile(max_size=20 * 1024 * 1024)
-    with zipfile.ZipFile(spool, "w", zipfile.ZIP_DEFLATED) as zf:
-        for path in sorted(directory.rglob("*")):
-            if path.is_file():
-                zf.write(path, path.relative_to(directory).as_posix())
-    spool.seek(0)
-    return spool
-
-
-def _metadata_arcnames_for_legacy_source_zip(names: list[str]) -> list[str]:
-    """Return sidecar metadata locations for a legacy source.zip, if needed."""
-
-    if any(PurePosixPath(name).name == "metadata.json" for name in names):
-        return []
-
-    arcnames: list[str] = []
-    for name in names:
-        path = PurePosixPath(name)
-        if path.name != "annotated_text.json":
-            continue
-        parent = path.parent.as_posix()
-        arcnames.append("metadata.json" if parent == "." else f"{parent}/metadata.json")
-    return list(dict.fromkeys(arcnames))
-
-
-def _legacy_zip_trace(names: list[str], *, limit: int = 20) -> dict[str, Any]:
-    annotated = [name for name in names if PurePosixPath(name).name == "annotated_text.json"]
-    metadata = [name for name in names if PurePosixPath(name).name == "metadata.json"]
-    return {
-        "entry_count": len(names),
-        "first_entries": names[:limit],
-        "annotated_text_entries": annotated[:limit],
-        "metadata_entries": metadata[:limit],
-        "legacy_root_detected": find_legacy_clara_bundle_root(names),
-    }
 
 
 def _format_legacy_import_trace(trace: dict[str, Any] | None) -> str:
@@ -14519,70 +14517,6 @@ def _format_legacy_import_trace(trace: dict[str, Any] | None) -> str:
         if key in trace:
             parts.append(f"{key}={trace[key]}")
     return " Import trace: " + "; ".join(parts) if parts else ""
-
-
-def _zip_with_sidecar_legacy_metadata(zip_path: Path, metadata_path: Path):
-    """Copy a legacy source.zip to a spool, adding sibling metadata.json if needed."""
-
-    spool = tempfile.SpooledTemporaryFile(max_size=20 * 1024 * 1024)
-    with zipfile.ZipFile(zip_path) as source_zf:
-        names = source_zf.namelist()
-        metadata_arcnames = _metadata_arcnames_for_legacy_source_zip(names)
-        trace = {
-            **_legacy_zip_trace(names),
-            "source_zip_path": str(zip_path),
-            "sidecar_metadata_path": str(metadata_path),
-            "sidecar_metadata_exists": metadata_path.exists(),
-            "injected_metadata_entries": metadata_arcnames if metadata_path.exists() else [],
-        }
-        if not metadata_arcnames or not metadata_path.exists():
-            spool.write(zip_path.read_bytes())
-        else:
-            metadata_text = metadata_path.read_text(encoding="utf-8")
-            with zipfile.ZipFile(spool, "w", zipfile.ZIP_DEFLATED) as target_zf:
-                for info in source_zf.infolist():
-                    target_zf.writestr(info, source_zf.read(info.filename))
-                for metadata_arcname in metadata_arcnames:
-                    target_zf.writestr(metadata_arcname, metadata_text)
-            trace.update(_legacy_zip_trace(names + metadata_arcnames))
-    spool.seek(0)
-    return spool, trace
-
-
-def _open_server_bundle_for_import(import_path: Path):
-    """Return a spooled ZIP and trace data for a configured server-side bundle path."""
-
-    base_trace = {
-        "selected_import_path": str(import_path),
-        "selected_import_path_type": "directory" if import_path.is_dir() else "file",
-    }
-
-    if import_path.is_dir():
-        zip_candidates = sorted(import_path.glob("*.zip"), key=lambda p: (p.name != "source.zip", p.name))
-        metadata_path = import_path / "metadata.json"
-        if zip_candidates and metadata_path.exists():
-            spool, trace = _zip_with_sidecar_legacy_metadata(zip_candidates[0], metadata_path)
-            trace.update(base_trace)
-            return spool, trace
-        spool = _zip_directory_to_spooled_file(import_path)
-        with zipfile.ZipFile(spool) as zf:
-            trace = {**base_trace, **_legacy_zip_trace(zf.namelist())}
-        spool.seek(0)
-        return spool, trace
-
-    metadata_path = import_path.with_name("metadata.json")
-    if import_path.suffix.lower() == ".zip" and metadata_path.exists():
-        spool, trace = _zip_with_sidecar_legacy_metadata(import_path, metadata_path)
-        trace.update(base_trace)
-        return spool, trace
-
-    spool = tempfile.SpooledTemporaryFile(max_size=20 * 1024 * 1024)
-    spool.write(import_path.read_bytes())
-    spool.seek(0)
-    with zipfile.ZipFile(spool) as zf:
-        trace = {**base_trace, **_legacy_zip_trace(zf.namelist())}
-    spool.seek(0)
-    return spool, trace
 
 
 def _import_open_project_source_zip(
@@ -14895,7 +14829,7 @@ def import_project_zip(request: HttpRequest) -> HttpResponse:
     }
     if request.user.is_staff:
         all_rows, legacy_error = _load_legacy_bundle_library()
-        legacy_rows = _filter_legacy_bundle_rows(all_rows, legacy_query)[:200]
+        legacy_rows = _filter_legacy_bundle_rows(all_rows, legacy_query)
 
     if request.method == "POST":
         mode = (request.POST.get("import_mode") or "upload").strip()

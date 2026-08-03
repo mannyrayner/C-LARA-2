@@ -123,6 +123,11 @@ def legacy_clara_project_dir_bundle_title(zf: zipfile.ZipFile) -> str:
 def legacy_clara_bundle_title(zf: zipfile.ZipFile, root: str) -> str:
     """Return a best-effort title for a legacy C-LARA JSON export."""
 
+    metadata = _read_optional_json(zf, _bundle_member(root, LEGACY_CLARA_METADATA))
+    if isinstance(metadata, dict):
+        for key in ("title", "name", "project_title"):
+            if metadata.get(key):
+                return str(metadata[key])
     annotated = _read_json(zf, _bundle_member(root, LEGACY_CLARA_ANNOTATED_TEXT))
     if isinstance(annotated, dict):
         return _title_from_annotated_text(annotated)
