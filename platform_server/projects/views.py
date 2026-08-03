@@ -5160,11 +5160,10 @@ class ProjectAnnotationView(ProjectDetailView):
         context["annotation_segmentation_phase_1_review_href"] = (
             f"{segmentation_phase_1_review}?return_to={quote(annotation_home)}"
         )
-        if context["has_segmentation_phase_1"]:
-            segmentation_phase_2_review = reverse("manual-segmentation-phase-2", args=[project.pk])
-            context["annotation_segmentation_phase_2_review_href"] = (
-                f"{segmentation_phase_2_review}?return_to={quote(annotation_home)}"
-            )
+        segmentation_phase_2_review = reverse("manual-segmentation-phase-2", args=[project.pk])
+        context["annotation_segmentation_phase_2_review_href"] = (
+            f"{segmentation_phase_2_review}?return_to={quote(annotation_home)}"
+        )
         return context
 
 

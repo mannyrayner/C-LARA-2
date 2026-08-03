@@ -133,7 +133,7 @@ class AnnotationDialoguePlanTests(TestCase):
         self.assertContains(resp, reverse("project-images-home", args=[project.pk]))
         self.assertContains(resp, "Power-user pipeline controls")
 
-    def test_annotation_home_hides_phase_two_editor_until_phase_one_exists(self):
+    def test_annotation_home_shows_phase_two_editor_with_prerequisite_note_before_phase_one_exists(self):
         project = Project.objects.create(
             owner=self.user,
             title="Unsegmented",
@@ -147,5 +147,6 @@ class AnnotationDialoguePlanTests(TestCase):
 
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Review/edit segmentation phase 1")
-        self.assertNotContains(resp, "Review/edit segmentation phase 2")
-        self.assertNotContains(resp, reverse("manual-segmentation-phase-2", args=[project.pk]))
+        self.assertContains(resp, "Review/edit segmentation phase 2")
+        self.assertContains(resp, reverse("manual-segmentation-phase-2", args=[project.pk]))
+        self.assertContains(resp, "Segmentation phase 1 must be saved before this editor can be opened.")
