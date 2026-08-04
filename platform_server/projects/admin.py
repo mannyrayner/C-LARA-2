@@ -17,6 +17,7 @@ from .models import (
     CreditLedgerEntry,
     AIUsageCharge,
     OpenAIModelPricing,
+    LegacyProjectImport,
 )
 
 @admin.register(Project)
@@ -24,6 +25,27 @@ class ProjectAdmin(admin.ModelAdmin):
     list_display = ("title", "owner", "is_published", "access_scope", "community", "updated_at")
     search_fields = ("title", "owner__username")
     list_filter = ("is_published", "access_scope", "community")
+
+
+@admin.register(LegacyProjectImport)
+class LegacyProjectImportAdmin(admin.ModelAdmin):
+    list_display = (
+        "source_system",
+        "legacy_project_id",
+        "source_title",
+        "status",
+        "project",
+        "attempt_count",
+        "updated_at",
+    )
+    search_fields = (
+        "legacy_project_id",
+        "source_title",
+        "original_owner_username",
+        "project__title",
+    )
+    list_filter = ("source_system", "library_version", "status")
+    readonly_fields = ("created_at", "updated_at", "started_at", "completed_at")
 
 
 @admin.register(Community)

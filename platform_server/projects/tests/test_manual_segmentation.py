@@ -50,6 +50,29 @@ class ManualSegmentationEditorTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, f'href="{ann_home}"', html=False)
 
+    def test_phase_2_editor_back_link_prefers_return_to_annotation_home(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_phase_2_back" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        seg1_payload = {
+            "l2": "en",
+            "surface": "Hello world",
+            "pages": [{"surface": "Hello world", "segments": [{"surface": "Hello world"}], "annotations": {}}],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_1.json").write_text(
+            json.dumps(seg1_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        ann_home = reverse("project-annotation-home", args=[self.project.pk])
+
+        resp = self.client.get(
+            f"{reverse('manual-segmentation-phase-2', args=[self.project.pk])}?return_to={ann_home}"
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, f'href="{ann_home}"', html=False)
+        self.assertContains(resp, f'name="return_to" value="{ann_home}"', html=False)
+
     def test_phase_1_save_writes_versioned_payload_with_hash_metadata(self):
         resp = self.client.post(
             reverse("manual-segmentation-phase-1", args=[self.project.pk]),

@@ -2,7 +2,7 @@
 {% block title %}Manual segmentation phase 2: {{ project.title }}{% endblock %}
 {% block content %}
 <h1>Manual segmentation phase 2</h1>
-<p><a class="btn secondary" href="{% url 'manual-top-level' project.pk %}">← Back to manual annotation top level</a></p>
+<p><a class="btn secondary" href="{{ back_href }}">← Back</a></p>
 <p>
   Structure-only editor: text is read-only. Edit token boundaries by inserting/removing <code>¦</code> separators.
 </p>
@@ -13,6 +13,7 @@
 
 <form method="post">
   {% csrf_token %}
+  <input type="hidden" name="return_to" value="{{ return_to }}" />
   {% for row in token_rows %}
     <div style="border:1px solid #ddd; padding:0.75rem; margin-bottom:0.75rem;">
       <div><strong>Page {{ row.page_index }}, Segment {{ row.segment_index }}</strong></div>

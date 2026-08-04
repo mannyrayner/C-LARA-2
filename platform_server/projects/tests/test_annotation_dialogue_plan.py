@@ -50,7 +50,6 @@ class AnnotationDialoguePlanTests(TestCase):
         self.assertContains(resp, "Run segmentation_phase_1 → segmentation_phase_2")
         self.assertContains(resp, "Show plain text")
         self.assertContains(resp, "This is plain text.")
-        self.assertContains(resp, "Show current plain text")
         self.assertContains(resp, "Stage option preset")
         self.assertContains(resp, "Chunk decomposition segmentation_phase_2")
         self.assertContains(resp, "&quot;mechanism&quot;: &quot;chunk_decomposition&quot;", html=False)
@@ -86,6 +85,7 @@ class AnnotationDialoguePlanTests(TestCase):
         seg_file = project.artifact_dir() / "runs" / "run_demo" / "stages" / "segmentation_phase_2.json"
         seg_file.parent.mkdir(parents=True, exist_ok=True)
         seg_file.write_text("{}", encoding="utf-8")
+        (seg_file.parent / "segmentation_phase_1.json").write_text("{}", encoding="utf-8")
 
         resp = self.client.get(reverse("project-annotation-home", args=[project.pk]))
         self.assertEqual(resp.status_code, 200)
@@ -93,7 +93,16 @@ class AnnotationDialoguePlanTests(TestCase):
             resp,
             reverse("project-compiled", args=[project.pk, "runs/run_demo/html/page_1.html"]),
         )
-        self.assertContains(resp, "Review/edit segmentation")
+        self.assertContains(resp, "Review/edit segmentation phase 1")
+        self.assertContains(resp, "Review/edit segmentation phase 2")
+        dialogue_choices = resp.context["annotation_dialogue_plan"]["choices"]
+        dialogue_labels = [choice["label"] for choice in dialogue_choices]
+        phase_1_index = dialogue_labels.index("Review/edit segmentation phase 1")
+        self.assertEqual(dialogue_labels[phase_1_index + 1], "Review/edit segmentation phase 2")
+        self.assertEqual(
+            dialogue_choices[phase_1_index + 1]["href"],
+            f"{reverse('manual-segmentation-phase-2', args=[project.pk])}?return_to={reverse('project-annotation-home', args=[project.pk])}",
+        )
         self.assertContains(resp, "Open page-by-page manual editor")
         self.assertContains(resp, "Compile HTML now")
 
@@ -109,6 +118,7 @@ class AnnotationDialoguePlanTests(TestCase):
         seg_file = project.artifact_dir() / "runs" / "run_seg" / "stages" / "segmentation_phase_2.json"
         seg_file.parent.mkdir(parents=True, exist_ok=True)
         seg_file.write_text("{}", encoding="utf-8")
+        (seg_file.parent / "segmentation_phase_1.json").write_text("{}", encoding="utf-8")
 
         resp = self.client.get(reverse("project-annotation-home", args=[project.pk]))
         self.assertEqual(resp.status_code, 200)
@@ -120,6 +130,37 @@ class AnnotationDialoguePlanTests(TestCase):
             resp,
             f"{reverse('manual-segmentation-phase-1', args=[project.pk])}?return_to={reverse('project-annotation-home', args=[project.pk])}",
         )
+        self.assertContains(
+            resp,
+            f"{reverse('manual-segmentation-phase-2', args=[project.pk])}?return_to={reverse('project-annotation-home', args=[project.pk])}",
+        )
+        self.assertContains(resp, "Review/edit segmentation phase 1")
+        self.assertContains(resp, "Review/edit segmentation phase 2")
+        dialogue_choices = resp.context["annotation_dialogue_plan"]["choices"]
+        dialogue_labels = [choice["label"] for choice in dialogue_choices]
+        phase_1_index = dialogue_labels.index("Review/edit segmentation phase 1")
+        self.assertEqual(dialogue_labels[phase_1_index + 1], "Review/edit segmentation phase 2")
         self.assertContains(resp, reverse("manual-page-annotation", args=[project.pk]))
         self.assertContains(resp, reverse("project-images-home", args=[project.pk]))
         self.assertContains(resp, "Power-user pipeline controls")
+        self.assertNotContains(resp, "Manual annotation editors")
+        self.assertNotContains(resp, "Open manual annotation top level")
+        self.assertIn("Show plain text", dialogue_labels)
+
+    def test_annotation_home_keeps_plain_text_in_dialogue_and_omits_duplicate_manual_section(self):
+        project = Project.objects.create(
+            owner=self.user,
+            title="Unsegmented",
+            source_text="One. Two.",
+            input_mode=Project.INPUT_SOURCE,
+            language="en",
+            target_language="fr",
+        )
+
+        resp = self.client.get(reverse("project-annotation-home", args=[project.pk]))
+
+        self.assertEqual(resp.status_code, 200)
+        dialogue_labels = [choice["label"] for choice in resp.context["annotation_dialogue_plan"]["choices"]]
+        self.assertIn("Show plain text", dialogue_labels)
+        self.assertNotContains(resp, "Manual annotation editors")
+        self.assertNotContains(resp, "Open manual annotation top level")
