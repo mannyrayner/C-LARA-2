@@ -5223,7 +5223,7 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                     "href": image_workflow_href,
                 },
                 {
-                    "label": "Show current plain text",
+                    "label": "Show plain text",
                     "description": "Review the generated/source text before segmentation.",
                     "href": "#plain-text-preview",
                 },
@@ -5262,7 +5262,12 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                             "label": "Open page-by-page manual editor",
                             "description": "Edit translation and word-level annotations page by page.",
                             "href": page_by_page_manual_href,
-                        }
+                        },
+                        {
+                            "label": "Show plain text",
+                            "description": "Review the plain text currently feeding annotation.",
+                            "href": "#plain-text-preview",
+                        },
                     ]
                     if has_segmented
                     else []
@@ -5317,7 +5322,7 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                 else []
             ),
             {
-                "label": "Show current plain text",
+                "label": "Show plain text",
                 "description": "Review the plain text currently feeding annotation.",
                 "href": "#plain-text-preview",
             },
@@ -6761,6 +6766,7 @@ def manual_segmentation_phase_1(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 def manual_segmentation_phase_2(request: HttpRequest, pk: int) -> HttpResponse:
     project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    return_to = _annotation_return_to(request, project, default_manual=True)
     seg1_run = _find_run_with_stage(project, "segmentation_phase_1")
     seg1_payload = _load_stage_payload(project, "segmentation_phase_1", run_dir=seg1_run) if seg1_run else None
     if not seg1_payload:
@@ -6768,7 +6774,7 @@ def manual_segmentation_phase_2(request: HttpRequest, pk: int) -> HttpResponse:
             request,
             "Manual segmentation phase 2 requires segmentation phase 1 annotated text.",
         )
-        return redirect("project-annotation-home", pk=project.pk)
+        return redirect(return_to)
 
     seg2_run = _find_run_with_stage(project, "segmentation_phase_2") or seg1_run
     seg2_payload = _load_stage_payload(project, "segmentation_phase_2", run_dir=seg2_run) if seg2_run else None
@@ -6814,13 +6820,17 @@ def manual_segmentation_phase_2(request: HttpRequest, pk: int) -> HttpResponse:
                     metadata={"before_text_hash": base_hash, "after_text_hash": edited_hash},
                 )
                 messages.success(request, "Saved manual segmentation phase 2.")
-                return redirect("manual-segmentation-phase-2", pk=project.pk)
+                return redirect(
+                    f"{reverse('manual-segmentation-phase-2', args=[project.pk])}?return_to={quote(return_to)}"
+                )
 
     return render(
         request,
         "projects/manual_segmentation_phase_2.html",
         {
             "project": project,
+            "back_href": return_to,
+            "return_to": return_to,
             "token_rows": token_rows,
             "base_hash": base_hash,
             "preview": _phase2_preview_from_payload(seg2_payload),

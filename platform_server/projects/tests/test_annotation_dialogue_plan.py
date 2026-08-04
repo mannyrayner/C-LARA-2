@@ -50,7 +50,6 @@ class AnnotationDialoguePlanTests(TestCase):
         self.assertContains(resp, "Run segmentation_phase_1 → segmentation_phase_2")
         self.assertContains(resp, "Show plain text")
         self.assertContains(resp, "This is plain text.")
-        self.assertContains(resp, "Show current plain text")
         self.assertContains(resp, "Stage option preset")
         self.assertContains(resp, "Chunk decomposition segmentation_phase_2")
         self.assertContains(resp, "&quot;mechanism&quot;: &quot;chunk_decomposition&quot;", html=False)
@@ -144,8 +143,11 @@ class AnnotationDialoguePlanTests(TestCase):
         self.assertContains(resp, reverse("manual-page-annotation", args=[project.pk]))
         self.assertContains(resp, reverse("project-images-home", args=[project.pk]))
         self.assertContains(resp, "Power-user pipeline controls")
+        self.assertNotContains(resp, "Manual annotation editors")
+        self.assertNotContains(resp, "Open manual annotation top level")
+        self.assertIn("Show plain text", dialogue_labels)
 
-    def test_annotation_home_shows_phase_two_editor_with_prerequisite_note_before_phase_one_exists(self):
+    def test_annotation_home_keeps_plain_text_in_dialogue_and_omits_duplicate_manual_section(self):
         project = Project.objects.create(
             owner=self.user,
             title="Unsegmented",
@@ -158,7 +160,7 @@ class AnnotationDialoguePlanTests(TestCase):
         resp = self.client.get(reverse("project-annotation-home", args=[project.pk]))
 
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "Review/edit segmentation phase 1")
-        self.assertContains(resp, "Review/edit segmentation phase 2")
-        self.assertContains(resp, reverse("manual-segmentation-phase-2", args=[project.pk]))
-        self.assertContains(resp, "Segmentation phase 1 must be saved before this editor can be opened.")
+        dialogue_labels = [choice["label"] for choice in resp.context["annotation_dialogue_plan"]["choices"]]
+        self.assertIn("Show plain text", dialogue_labels)
+        self.assertNotContains(resp, "Manual annotation editors")
+        self.assertNotContains(resp, "Open manual annotation top level")
