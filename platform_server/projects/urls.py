@@ -75,6 +75,11 @@ urlpatterns = [
         name="manual-top-level",
     ),
     path(
+        "projects/<int:pk>/annotation/manual/plain-text/",
+        views.manual_plain_text,
+        name="manual-plain-text",
+    ),
+    path(
         "projects/<int:pk>/annotation/manual/segmentation-phase-1/",
         views.manual_segmentation_phase_1,
         name="manual-segmentation-phase-1",
@@ -166,6 +171,7 @@ urlpatterns = [
     path("projects/import-zip/", views.import_project_zip, name="project-import-zip"),
     path("projects/<int:pk>/publish/", views.toggle_publish, name="project-publish"),
     path("projects/<int:pk>/discovery-metadata/", views.set_project_discovery_metadata, name="project-discovery-metadata"),
+    path("projects/<int:pk>/rename/", views.rename_project, name="project-rename"),
     path("projects/<int:pk>/target-language/", views.set_project_target_language, name="project-target-language"),
     path("projects/<int:pk>/clone/", views.clone_project, name="project-clone"),
     path("projects/<int:pk>/delete/", views.delete_project, name="project-delete"),
