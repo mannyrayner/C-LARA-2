@@ -73,6 +73,45 @@ class ManualSegmentationEditorTests(TestCase):
         self.assertContains(resp, f'href="{ann_home}"', html=False)
         self.assertContains(resp, f'name="return_to" value="{ann_home}"', html=False)
 
+    def test_plain_text_editor_has_editable_text_and_back_link(self):
+        ann_home = reverse("project-annotation-home", args=[self.project.pk])
+
+        resp = self.client.get(f"{reverse('manual-plain-text', args=[self.project.pk])}?return_to={ann_home}")
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Review and adjust plain text")
+        self.assertContains(resp, 'name="plain_text"', html=False)
+        self.assertContains(resp, "Hello world")
+        self.assertContains(resp, f'href="{ann_home}"', html=False)
+
+    def test_plain_text_save_updates_source_and_invalidates_downstream_artifacts(self):
+        stage_dir = self.project.artifact_dir() / "runs" / "run_plain_text" / "stages"
+        stage_dir.mkdir(parents=True, exist_ok=True)
+        for stage in ("segmentation_phase_1", "segmentation_phase_2", "translation", "compile_html"):
+            (stage_dir / f"{stage}.json").write_text("{}", encoding="utf-8")
+        self.project.compiled_path = "runs/run_plain_text/html/page_1.html"
+        self.project.save(update_fields=["compiled_path", "updated_at"])
+        ann_home = reverse("project-annotation-home", args=[self.project.pk])
+
+        resp = self.client.post(
+            reverse("manual-plain-text", args=[self.project.pk]),
+            {"plain_text": "Hello revised world", "return_to": ann_home},
+            follow=True,
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Saved plain text and cleared 4 downstream stage file(s).")
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.source_text, "Hello revised world")
+        self.assertEqual(self.project.input_mode, Project.INPUT_SOURCE)
+        self.assertEqual(self.project.compiled_path, "")
+        for stage in ("segmentation_phase_1", "segmentation_phase_2", "translation", "compile_html"):
+            self.assertFalse((stage_dir / f"{stage}.json").exists())
+        self.assertEqual(
+            (self.project.artifact_dir() / "source" / "source_text.txt").read_text(encoding="utf-8"),
+            "Hello revised world",
+        )
+
     def test_phase_1_save_writes_versioned_payload_with_hash_metadata(self):
         resp = self.client.post(
             reverse("manual-segmentation-phase-1", args=[self.project.pk]),

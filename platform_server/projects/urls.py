@@ -75,6 +75,11 @@ urlpatterns = [
         name="manual-top-level",
     ),
     path(
+        "projects/<int:pk>/annotation/manual/plain-text/",
+        views.manual_plain_text,
+        name="manual-plain-text",
+    ),
+    path(
         "projects/<int:pk>/annotation/manual/segmentation-phase-1/",
         views.manual_segmentation_phase_1,
         name="manual-segmentation-phase-1",

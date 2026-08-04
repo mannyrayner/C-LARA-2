@@ -5153,17 +5153,7 @@ class ProjectAnnotationView(ProjectDetailView):
     def get_context_data(self, **kwargs):  # type: ignore[override]
         context = super().get_context_data(**kwargs)
         project: Project = context["object"]
-        annotation_home = reverse("project-annotation-home", args=[project.pk])
-        segmentation_phase_1_review = reverse("manual-segmentation-phase-1", args=[project.pk])
         context["annotation_dialogue_plan"] = _annotation_dialogue_plan(project)
-        context["annotation_plain_text"] = _base_text_for_segmentation_phase_1(project).strip()
-        context["annotation_segmentation_phase_1_review_href"] = (
-            f"{segmentation_phase_1_review}?return_to={quote(annotation_home)}"
-        )
-        segmentation_phase_2_review = reverse("manual-segmentation-phase-2", args=[project.pk])
-        context["annotation_segmentation_phase_2_review_href"] = (
-            f"{segmentation_phase_2_review}?return_to={quote(annotation_home)}"
-        )
         return context
 
 
@@ -5177,6 +5167,9 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
     )
     segmentation_phase_2_review_href = (
         f"{reverse('manual-segmentation-phase-2', args=[project.pk])}?return_to={quote(annotation_home)}"
+    )
+    plain_text_review_href = (
+        f"{reverse('manual-plain-text', args=[project.pk])}?return_to={quote(annotation_home)}"
     )
     image_workflow_href = reverse("project-images-home", args=[project.pk])
     page_by_page_manual_href = reverse("manual-page-annotation", args=[project.pk])
@@ -5223,9 +5216,9 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                     "href": image_workflow_href,
                 },
                 {
-                    "label": "Show plain text",
-                    "description": "Review the generated/source text before segmentation.",
-                    "href": "#plain-text-preview",
+                    "label": "Review and adjust plain text",
+                    "description": "Open an editor for the plain text that feeds segmentation.",
+                    "href": plain_text_review_href,
                 },
             ],
         }
@@ -5264,9 +5257,9 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                             "href": page_by_page_manual_href,
                         },
                         {
-                            "label": "Show plain text",
-                            "description": "Review the plain text currently feeding annotation.",
-                            "href": "#plain-text-preview",
+                            "label": "Review and adjust plain text",
+                            "description": "Open an editor for the plain text that feeds segmentation.",
+                            "href": plain_text_review_href,
                         },
                     ]
                     if has_segmented
@@ -5322,9 +5315,9 @@ def _annotation_dialogue_plan(project: Project) -> dict[str, Any]:
                 else []
             ),
             {
-                "label": "Show plain text",
-                "description": "Review the plain text currently feeding annotation.",
-                "href": "#plain-text-preview",
+                "label": "Review and adjust plain text",
+                "description": "Open an editor for the plain text that feeds segmentation.",
+                "href": plain_text_review_href,
             },
         ],
     }
@@ -6291,6 +6284,54 @@ def manual_top_level(request: HttpRequest, pk: int) -> HttpResponse:
     context = {"project": project}
     context.update(_manual_annotation_context(project))
     return render(request, "projects/manual_top_level.html", context)
+
+
+@login_required
+def manual_plain_text(request: HttpRequest, pk: int) -> HttpResponse:
+    project = _get_project_for_user(pk=pk, user=request.user, min_role=ProjectCollaborator.ROLE_ANNOTATOR)
+    return_to = _annotation_return_to(request, project)
+    current_text = _base_text_for_segmentation_phase_1(project).replace("\r\n", "\n")
+    editable_text = current_text
+
+    if request.method == "POST":
+        editable_text = str(request.POST.get("plain_text") or "").replace("\r\n", "\n")
+        if not editable_text.strip():
+            messages.error(request, "Plain text cannot be empty.")
+        elif editable_text == current_text and project.source_text == editable_text:
+            messages.info(request, "Plain text unchanged.")
+        else:
+            invalidated_files = 0
+            for run_dir in _iter_runs(project):
+                before = {
+                    stage: stage_artifact_path(run_dir, stage).exists()
+                    for stage in PIPELINE_ORDER[PIPELINE_ORDER.index("text_gen") + 1 :]
+                }
+                _invalidate_downstream_stage_files(run_dir, "text_gen")
+                invalidated_files += sum(before.values())
+
+            project.source_text = editable_text
+            project.input_mode = Project.INPUT_SOURCE
+            project.compiled_path = ""
+            project.save(update_fields=["source_text", "input_mode", "compiled_path", "updated_at"])
+            _persist_project_source(project)
+            messages.success(
+                request,
+                f"Saved plain text and cleared {invalidated_files} downstream stage file(s).",
+            )
+            return redirect(
+                f"{reverse('manual-plain-text', args=[project.pk])}?return_to={quote(return_to)}"
+            )
+
+    return render(
+        request,
+        "projects/manual_plain_text.html",
+        {
+            "project": project,
+            "back_href": return_to,
+            "return_to": return_to,
+            "plain_text": editable_text,
+        },
+    )
 
 
 def _manual_page_annotation_redirect_url(

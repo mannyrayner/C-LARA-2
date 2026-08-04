@@ -1,0 +1,13 @@
+{% extends "projects/base.html" %}
+{% block title %}Review plain text: {{ project.title }}{% endblock %}
+{% block content %}
+<h1>Review and adjust plain text</h1>
+<p><a class="btn secondary" href="{{ back_href }}">← Back</a></p>
+<p>Edit the plain text that feeds segmentation. Saving changes clears existing downstream annotation and compiled-output references.</p>
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="return_to" value="{{ return_to }}" />
+  <textarea name="plain_text" rows="20" style="width:100%; font-family:monospace;">{{ plain_text }}</textarea>
+  <p><button class="btn" type="submit">Save plain text</button></p>
+</form>
+{% endblock %}

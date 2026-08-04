@@ -48,8 +48,12 @@ class AnnotationDialoguePlanTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "split into pages/segments")
         self.assertContains(resp, "Run segmentation_phase_1 → segmentation_phase_2")
-        self.assertContains(resp, "Show plain text")
-        self.assertContains(resp, "This is plain text.")
+        self.assertContains(resp, "Review and adjust plain text")
+        self.assertContains(
+            resp,
+            f"{reverse('manual-plain-text', args=[project.pk])}?return_to={reverse('project-annotation-home', args=[project.pk])}",
+        )
+        self.assertNotContains(resp, "Plain text source")
         self.assertContains(resp, "Stage option preset")
         self.assertContains(resp, "Chunk decomposition segmentation_phase_2")
         self.assertContains(resp, "&quot;mechanism&quot;: &quot;chunk_decomposition&quot;", html=False)
@@ -145,7 +149,7 @@ class AnnotationDialoguePlanTests(TestCase):
         self.assertContains(resp, "Power-user pipeline controls")
         self.assertNotContains(resp, "Manual annotation editors")
         self.assertNotContains(resp, "Open manual annotation top level")
-        self.assertIn("Show plain text", dialogue_labels)
+        self.assertIn("Review and adjust plain text", dialogue_labels)
 
     def test_annotation_home_keeps_plain_text_in_dialogue_and_omits_duplicate_manual_section(self):
         project = Project.objects.create(
@@ -161,6 +165,6 @@ class AnnotationDialoguePlanTests(TestCase):
 
         self.assertEqual(resp.status_code, 200)
         dialogue_labels = [choice["label"] for choice in resp.context["annotation_dialogue_plan"]["choices"]]
-        self.assertIn("Show plain text", dialogue_labels)
+        self.assertIn("Review and adjust plain text", dialogue_labels)
         self.assertNotContains(resp, "Manual annotation editors")
         self.assertNotContains(resp, "Open manual annotation top level")
