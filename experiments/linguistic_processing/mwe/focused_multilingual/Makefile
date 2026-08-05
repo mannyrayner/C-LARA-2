@@ -4,6 +4,12 @@ ROOT_DIR := $(abspath ../../../..)
 PLATFORM_DIR := $(ROOT_DIR)/platform_server
 PYTHON ?= python3
 RUN ?= 0
+MODEL ?= gpt-5.6
+EXPERIMENT_SERIES ?= gpt-5.6-prompt-learning-v1
+LEGACY_GENERATED_DIR := generated
+ARCHIVE_ROOT ?= archive
+ARCHIVE_NAME ?= pre-gpt-5.6-manually-cleaned-seven-en
+ARCHIVE_DIR := $(ARCHIVE_ROOT)/$(ARCHIVE_NAME)
 
 CORPUS_USER ?= mannyrayner
 LANGUAGES ?= en,fr,de
@@ -17,12 +23,17 @@ MAX_TEST_SEGMENTS ?= 600
 SPLITS ?= development,validation,test
 SPLIT ?= development
 RUN_LABEL_PREFIX ?= mwe_annotation_refresh_v1
+SEGMENTATION_RUN_LABEL_PREFIX ?= segmentation_phase_2_5_6_refresh_v1
 PROJECT_IDS ?=
 SPLIT_MANIFEST ?= $(CORPUS_SPLIT_DIR)/multilingual_split_manifest.json
 STAGE_PARAMETERS ?= config/stage_parameters.json
 RESUME_FROM_PROJECT_ID ?= 0
 MAX_PROJECT_RETRIES ?= 2
 FAILED_REFRESHES ?= $(abspath $(GENERATED_DIR))/refresh_failures.jsonl
+INITIAL_SEGMENTATION_ARCHIVE_DIR ?= $(abspath $(GENERATED_DIR))/segmentation_phase_2_initial_outputs
+INITIAL_SEGMENTATION_ARCHIVE_LABEL ?= initial-gpt-5.6-segmentation-phase-2
+REFRESH_START_STAGE ?= segmentation_phase_2
+REFRESH_END_STAGE ?= gloss
 FAIL_FAST ?= 0
 SNAPSHOT_NAME_PREFIX ?= MWE gold checkpoint
 MWE_RUN_LABEL ?= mwe-current-prompt-$(SPLIT)
@@ -38,7 +49,7 @@ MWE_GOLD_SUMMARY ?= $(MWE_GOLD_DIR)/summary.json
 MWE_GOLD_REVIEW ?= $(MWE_GOLD_DIR)/review.md
 MWE_RUN_RECORDS ?= $(MWE_GOLD_RECORDS)
 MWE_CYCLE_RECORDS ?= $(MWE_GOLD_RECORDS)
-GENERATED_DIR := generated
+GENERATED_DIR := $(LEGACY_GENERATED_DIR)/$(EXPERIMENT_SERIES)
 MWE_PROMPT_CYCLE_NUMBER ?= 1
 MWE_CYCLE_RUN_LABEL ?= run
 MWE_PROMPT_CYCLE_ROOT_DIR ?= $(abspath $(GENERATED_DIR))/mwe_prompt_cycles/$(MWE_LANGUAGE)-$(SPLIT)
@@ -60,7 +71,7 @@ MWE_CYCLE_REVISION := $(MWE_CYCLE_IMPROVEMENT_DIR)/template_revision.txt
 MWE_CYCLE_REVISION_JSON := $(MWE_CYCLE_IMPROVEMENT_DIR)/template_revision.json
 MWE_CYCLE_COMPARISON_JSON := $(MWE_PROMPT_CYCLE_BASE_DIR)/cycle_comparison.json
 MWE_CYCLE_COMPARISON_MD := $(MWE_PROMPT_CYCLE_BASE_DIR)/cycle_comparison.md
-MWE_REVISION_MODEL ?= gpt-5.5
+MWE_REVISION_MODEL ?= $(MODEL)
 MWE_USE_TRANSLATION_CONTEXT ?= 0
 MWE_INITIAL_RECONCILE_ANALYSIS_TEMPLATE_DIR ?= config/translation_context_reconcile_v1/analysis
 MWE_INITIAL_RECONCILE_TEMPLATE ?= config/translation_context_reconcile_v1/reconcile.txt
@@ -77,6 +88,7 @@ PY_CORPUS_SPLIT_DIR := $(call python_path,$(CORPUS_SPLIT_DIR))
 PY_SPLIT_MANIFEST := $(call python_path,$(abspath $(SPLIT_MANIFEST)))
 PY_STAGE_PARAMETERS := $(call python_path,$(abspath $(STAGE_PARAMETERS)))
 PY_FAILED_REFRESHES := $(call python_path,$(FAILED_REFRESHES))
+PY_INITIAL_SEGMENTATION_ARCHIVE_DIR := $(call python_path,$(INITIAL_SEGMENTATION_ARCHIVE_DIR))
 PY_MWE_SPLIT_RECORDS := $(call python_path,$(MWE_SPLIT_RECORDS))
 PY_MWE_RUN_OUTPUT_DIR := $(call python_path,$(MWE_RUN_OUTPUT_DIR))
 PY_MWE_SCORE_DIR := $(call python_path,$(MWE_SCORE_DIR))
@@ -107,12 +119,13 @@ MWE_TRANSLATION_CONTEXT_ARG := $(if $(filter 1,$(MWE_USE_TRANSLATION_CONTEXT)),-
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help prepare declare-mwe-gold check-mwe-gold check-mwe-translation-context mwe-prompt-cycle mwe-reconcile-prompt-cycle recover-mwe-prompt-cycle-after-run show-mwe-prompt-cycle-results compare-mwe-prompt-cycles prepare-mwe-prompt-cycle run-mwe-prompt-cycle run-mwe-reconcile-prompt-cycle resume-mwe-prompt-cycle format-mwe-prompt-cycle-output score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement revise-mwe-prompt-cycle-template revise-mwe-reconcile-prompt-cycle-templates extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
+.PHONY: archive-pre-5-6 archive-pre-5-6-dry-run help prepare declare-mwe-gold check-mwe-gold check-mwe-translation-context mwe-prompt-cycle mwe-reconcile-prompt-cycle recover-mwe-prompt-cycle-after-run show-mwe-prompt-cycle-results compare-mwe-prompt-cycles prepare-mwe-prompt-cycle run-mwe-prompt-cycle run-mwe-reconcile-prompt-cycle resume-mwe-prompt-cycle format-mwe-prompt-cycle-output score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement revise-mwe-prompt-cycle-template revise-mwe-reconcile-prompt-cycle-templates extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-segmentation-phase-2 refresh-segmentation-phase-2-dry-run archive-initial-segmentation-phase-2 archive-initial-segmentation-phase-2-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
 
 help:
 	@echo "Focused MWE experiments (multilingual)"
 	@echo
 	@echo "Targets:"
+	@echo "  archive-pre-5-6  Archive old flat generated data before starting the 5.6-only series (RUN=1)"
 	@echo "  extract-split-corpus  Extract segment records and create project-separated dev/validation/test splits"
 	@echo "  snapshot-gold-projects  Save project snapshots marking MWE, gloss, and lemma as gold standard"
 	@echo "  run-current-mwe    Run current MWE prompt over extracted segment records"
@@ -135,6 +148,8 @@ help:
 	@echo "  propose-mwe-prompt-cycle-improvement  Write cycle-specific improvement guidance"
 	@echo "  revise-mwe-prompt-cycle-template  Use AI to write the next-cycle prompt draft"
 	@echo "  revise-mwe-reconcile-prompt-cycle-templates  Use AI to revise the three analysis prompts and reconciliation prompt"
+	@echo "  refresh-segmentation-phase-2  Rerun selected projects through segmentation_phase_2 only, creating the upstream artifacts for manual correction"
+	@echo "  archive-initial-segmentation-phase-2  Copy current segmentation_phase_2 artifacts before manual correction"
 	@echo "  refresh-annotations   Rerun selected projects through segmentation_phase_2 -> translation -> mwe -> lemma -> gloss"
 	@echo "  refresh-project-metadata  Keep existing splits/projects but refresh mwe_count from latest saved artifacts"
 	@echo "  validate-config       Validate stage-parameter JSON used by refresh-annotations"
@@ -147,6 +162,9 @@ help:
 	@echo
 	@echo "Important variables:"
 	@echo "  RUN=$(RUN)"
+	@echo "  MODEL=$(MODEL)"
+	@echo "  EXPERIMENT_SERIES=$(EXPERIMENT_SERIES)"
+	@echo "  ARCHIVE_DIR=$(ARCHIVE_DIR)"
 	@echo "  CORPUS_USER=$(CORPUS_USER)"
 	@echo "  LANGUAGES=$(LANGUAGES)"
 	@echo "  SPLIT_SEED=$(SPLIT_SEED)"
@@ -154,10 +172,15 @@ help:
 	@echo "  SPLIT_MANIFEST=$(SPLIT_MANIFEST)"
 	@echo "  PROJECT_IDS=$(PROJECT_IDS)"
 	@echo "  RUN_LABEL_PREFIX=$(RUN_LABEL_PREFIX)"
+	@echo "  SEGMENTATION_RUN_LABEL_PREFIX=$(SEGMENTATION_RUN_LABEL_PREFIX)"
 	@echo "  STAGE_PARAMETERS=$(STAGE_PARAMETERS)"
+	@echo "  REFRESH_START_STAGE=$(REFRESH_START_STAGE)"
+	@echo "  REFRESH_END_STAGE=$(REFRESH_END_STAGE)"
 	@echo "  RESUME_FROM_PROJECT_ID=$(RESUME_FROM_PROJECT_ID)"
 	@echo "  MAX_PROJECT_RETRIES=$(MAX_PROJECT_RETRIES)"
 	@echo "  FAILED_REFRESHES=$(FAILED_REFRESHES)"
+	@echo "  INITIAL_SEGMENTATION_ARCHIVE_DIR=$(INITIAL_SEGMENTATION_ARCHIVE_DIR)"
+	@echo "  INITIAL_SEGMENTATION_ARCHIVE_LABEL=$(INITIAL_SEGMENTATION_ARCHIVE_LABEL)"
 	@echo "  FAIL_FAST=$(FAIL_FAST)"
 	@echo "  MWE_LANGUAGE=$(MWE_LANGUAGE)"
 	@echo "  MWE_SPLIT_RECORDS=$(MWE_SPLIT_RECORDS)"
@@ -175,6 +198,26 @@ help:
 
 prepare:
 	@mkdir -p $(GENERATED_DIR)
+
+archive-pre-5-6:
+ifeq ($(RUN),1)
+	@test ! -e "$(ARCHIVE_DIR)" || (echo "Archive already exists: $(ARCHIVE_DIR)" >&2; exit 1)
+	@mkdir -p "$(ARCHIVE_DIR)"
+	@found=0; for path in "$(LEGACY_GENERATED_DIR)"/*; do \
+		[ -e "$$path" ] || continue; \
+		[ "$$(basename "$$path")" = "$(EXPERIMENT_SERIES)" ] && continue; \
+		mv "$$path" "$(ARCHIVE_DIR)/"; found=1; \
+	done; \
+	printf 'archive_name=%s\narchived_at_utc=%s\nreplacement_series=%s\nmodel=%s\n' \
+		'$(ARCHIVE_NAME)' "$$(date -u +%Y-%m-%dT%H:%M:%SZ)" '$(EXPERIMENT_SERIES)' '$(MODEL)' > "$(ARCHIVE_DIR)/ARCHIVE_MANIFEST.txt"; \
+	if [ "$$found" = 0 ]; then echo "No legacy generated entries were present; wrote manifest only."; fi
+else
+	$(MAKE) archive-pre-5-6-dry-run
+endif
+
+archive-pre-5-6-dry-run:
+	@echo "Would move old flat entries from $(LEGACY_GENERATED_DIR)/ to $(ARCHIVE_DIR)/"
+	@echo "The active $(EXPERIMENT_SERIES) directory is excluded. Set RUN=1 to archive."
 
 validate-config:
 	@test -f "$(STAGE_PARAMETERS)" || (echo "Missing $(STAGE_PARAMETERS)" && exit 1)
@@ -262,9 +305,9 @@ show-mwe-prompt-cycle-results: prepare
 	@echo "Improvement report: $(MWE_CYCLE_IMPROVEMENT_DIR)/prompt_improvement.md"
 
 run-current-mwe: prepare
-	@echo "+ $(MANAGE) run_mwe_prompt_experiment --input-records-jsonl $(PY_MWE_RUN_RECORDS) --output-dir $(PY_MWE_RUN_OUTPUT_DIR) --run-label $(MWE_RUN_LABEL) --limit $(MWE_LIMIT) --project-ids $(PROJECT_IDS) $(MWE_TRANSLATION_CONTEXT_ARG) --overwrite"
+	@echo "+ $(MANAGE) run_mwe_prompt_experiment --model "$(MODEL)" --input-records-jsonl $(PY_MWE_RUN_RECORDS) --output-dir $(PY_MWE_RUN_OUTPUT_DIR) --run-label $(MWE_RUN_LABEL) --limit $(MWE_LIMIT) --project-ids $(PROJECT_IDS) $(MWE_TRANSLATION_CONTEXT_ARG) --overwrite"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) run_mwe_prompt_experiment --input-records-jsonl "$(PY_MWE_RUN_RECORDS)" --output-dir "$(PY_MWE_RUN_OUTPUT_DIR)" --run-label "$(MWE_RUN_LABEL)" --limit "$(MWE_LIMIT)" --project-ids "$(PROJECT_IDS)" $(MWE_TRANSLATION_CONTEXT_ARG) --overwrite; \
+		$(MANAGE) run_mwe_prompt_experiment --model "$(MODEL)" --input-records-jsonl "$(PY_MWE_RUN_RECORDS)" --output-dir "$(PY_MWE_RUN_OUTPUT_DIR)" --run-label "$(MWE_RUN_LABEL)" --limit "$(MWE_LIMIT)" --project-ids "$(PROJECT_IDS)" $(MWE_TRANSLATION_CONTEXT_ARG) --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 after declare-mwe-gold has written $(MWE_RUN_RECORDS)"; \
 	fi
@@ -322,25 +365,25 @@ prepare-mwe-prompt-cycle: prepare
 	fi
 
 run-mwe-prompt-cycle: prepare-mwe-prompt-cycle
-	@echo "+ $(MANAGE) run_mwe_prompt_experiment --input-records-jsonl $(PY_MWE_CYCLE_RECORDS) --output-dir $(PY_MWE_PROMPT_CYCLE_DIR) --run-label $(MWE_CYCLE_RUN_LABEL) --limit $(MWE_LIMIT) --project-ids $(PROJECT_IDS) --template-file $(PY_MWE_CYCLE_TEMPLATE) $(MWE_TRANSLATION_CONTEXT_ARG) --overwrite"
+	@echo "+ $(MANAGE) run_mwe_prompt_experiment --model "$(MODEL)" --input-records-jsonl $(PY_MWE_CYCLE_RECORDS) --output-dir $(PY_MWE_PROMPT_CYCLE_DIR) --run-label $(MWE_CYCLE_RUN_LABEL) --limit $(MWE_LIMIT) --project-ids $(PROJECT_IDS) --template-file $(PY_MWE_CYCLE_TEMPLATE) $(MWE_TRANSLATION_CONTEXT_ARG) --overwrite"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) run_mwe_prompt_experiment --input-records-jsonl "$(PY_MWE_CYCLE_RECORDS)" --output-dir "$(PY_MWE_PROMPT_CYCLE_DIR)" --run-label "$(MWE_CYCLE_RUN_LABEL)" --limit "$(MWE_LIMIT)" --project-ids "$(PROJECT_IDS)" --template-file "$(PY_MWE_CYCLE_TEMPLATE)" $(MWE_TRANSLATION_CONTEXT_ARG) --overwrite; \
+		$(MANAGE) run_mwe_prompt_experiment --model "$(MODEL)" --input-records-jsonl "$(PY_MWE_CYCLE_RECORDS)" --output-dir "$(PY_MWE_PROMPT_CYCLE_DIR)" --run-label "$(MWE_CYCLE_RUN_LABEL)" --limit "$(MWE_LIMIT)" --project-ids "$(PROJECT_IDS)" --template-file "$(PY_MWE_CYCLE_TEMPLATE)" $(MWE_TRANSLATION_CONTEXT_ARG) --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 after declare-mwe-gold has written $(MWE_CYCLE_RECORDS), then run $(MWE_CYCLE_TEMPLATE)"; \
 	fi
 
 run-mwe-reconcile-prompt-cycle: prepare
-	@echo "+ $(MANAGE) run_mwe_reconcile_prompt_experiment --input-records-jsonl $(PY_MWE_CYCLE_RECORDS) --output-dir $(PY_MWE_PROMPT_CYCLE_DIR) --run-label $(MWE_CYCLE_RUN_LABEL) --limit $(MWE_LIMIT) --project-ids $(PROJECT_IDS) --analysis-template-dir $(PY_MWE_RECONCILE_ANALYSIS_TEMPLATE_DIR) --reconcile-template $(PY_MWE_RECONCILE_TEMPLATE) --overwrite"
+	@echo "+ $(MANAGE) run_mwe_reconcile_prompt_experiment --model "$(MODEL)" --input-records-jsonl $(PY_MWE_CYCLE_RECORDS) --output-dir $(PY_MWE_PROMPT_CYCLE_DIR) --run-label $(MWE_CYCLE_RUN_LABEL) --limit $(MWE_LIMIT) --project-ids $(PROJECT_IDS) --analysis-template-dir $(PY_MWE_RECONCILE_ANALYSIS_TEMPLATE_DIR) --reconcile-template $(PY_MWE_RECONCILE_TEMPLATE) --overwrite"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) run_mwe_reconcile_prompt_experiment --input-records-jsonl "$(PY_MWE_CYCLE_RECORDS)" --output-dir "$(PY_MWE_PROMPT_CYCLE_DIR)" --run-label "$(MWE_CYCLE_RUN_LABEL)" --limit "$(MWE_LIMIT)" --project-ids "$(PROJECT_IDS)" --analysis-template-dir "$(PY_MWE_RECONCILE_ANALYSIS_TEMPLATE_DIR)" --reconcile-template "$(PY_MWE_RECONCILE_TEMPLATE)" --overwrite; \
+		$(MANAGE) run_mwe_reconcile_prompt_experiment --model "$(MODEL)" --input-records-jsonl "$(PY_MWE_CYCLE_RECORDS)" --output-dir "$(PY_MWE_PROMPT_CYCLE_DIR)" --run-label "$(MWE_CYCLE_RUN_LABEL)" --limit "$(MWE_LIMIT)" --project-ids "$(PROJECT_IDS)" --analysis-template-dir "$(PY_MWE_RECONCILE_ANALYSIS_TEMPLATE_DIR)" --reconcile-template "$(PY_MWE_RECONCILE_TEMPLATE)" --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 after declare-mwe-gold has written $(MWE_CYCLE_RECORDS)"; \
 	fi
 
 resume-mwe-prompt-cycle: prepare-mwe-prompt-cycle
-	@echo "+ $(MANAGE) run_mwe_prompt_experiment --input-records-jsonl $(PY_MWE_CYCLE_RECORDS) --output-dir $(PY_MWE_PROMPT_CYCLE_DIR) --run-label $(MWE_CYCLE_RUN_LABEL) --limit $(MWE_LIMIT) --project-ids $(PROJECT_IDS) --template-file $(PY_MWE_CYCLE_TEMPLATE) $(MWE_TRANSLATION_CONTEXT_ARG) --resume"
+	@echo "+ $(MANAGE) run_mwe_prompt_experiment --model "$(MODEL)" --input-records-jsonl $(PY_MWE_CYCLE_RECORDS) --output-dir $(PY_MWE_PROMPT_CYCLE_DIR) --run-label $(MWE_CYCLE_RUN_LABEL) --limit $(MWE_LIMIT) --project-ids $(PROJECT_IDS) --template-file $(PY_MWE_CYCLE_TEMPLATE) $(MWE_TRANSLATION_CONTEXT_ARG) --resume"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) run_mwe_prompt_experiment --input-records-jsonl "$(PY_MWE_CYCLE_RECORDS)" --output-dir "$(PY_MWE_PROMPT_CYCLE_DIR)" --run-label "$(MWE_CYCLE_RUN_LABEL)" --limit "$(MWE_LIMIT)" --project-ids "$(PROJECT_IDS)" --template-file "$(PY_MWE_CYCLE_TEMPLATE)" $(MWE_TRANSLATION_CONTEXT_ARG) --resume; \
+		$(MANAGE) run_mwe_prompt_experiment --model "$(MODEL)" --input-records-jsonl "$(PY_MWE_CYCLE_RECORDS)" --output-dir "$(PY_MWE_PROMPT_CYCLE_DIR)" --run-label "$(MWE_CYCLE_RUN_LABEL)" --limit "$(MWE_LIMIT)" --project-ids "$(PROJECT_IDS)" --template-file "$(PY_MWE_CYCLE_TEMPLATE)" $(MWE_TRANSLATION_CONTEXT_ARG) --resume; \
 	else \
 		echo "dry-run only; set RUN=1 to append missing records to $(MWE_CYCLE_OUTPUTS_JSONL)"; \
 	fi
@@ -389,6 +432,49 @@ revise-mwe-reconcile-prompt-cycle-templates: prepare
 		echo "dry-run only; set RUN=1 after propose-mwe-prompt-cycle-improvement has produced $(MWE_CYCLE_IMPROVEMENT_DIR)/prompt_improvement.md"; \
 	fi
 
+refresh-segmentation-phase-2:
+	$(MAKE) refresh-annotations \
+		RUN=$(RUN) \
+		MODEL="$(MODEL)" \
+		PROJECT_IDS="$(PROJECT_IDS)" \
+		SPLITS="$(SPLITS)" \
+		RUN_LABEL_PREFIX="$(SEGMENTATION_RUN_LABEL_PREFIX)" \
+		REFRESH_START_STAGE=segmentation_phase_2 \
+		REFRESH_END_STAGE=segmentation_phase_2
+
+refresh-segmentation-phase-2-dry-run:
+	$(MAKE) refresh-annotations-dry-run \
+		RUN=0 \
+		MODEL="$(MODEL)" \
+		PROJECT_IDS="$(PROJECT_IDS)" \
+		SPLITS="$(SPLITS)" \
+		RUN_LABEL_PREFIX="$(SEGMENTATION_RUN_LABEL_PREFIX)" \
+		REFRESH_START_STAGE=segmentation_phase_2 \
+		REFRESH_END_STAGE=segmentation_phase_2
+
+archive-initial-segmentation-phase-2: prepare
+ifeq ($(RUN),1)
+	$(MANAGE) archive_segmentation_phase_2_outputs \
+		--model "$(MODEL)" \
+		--project-ids "$(PROJECT_IDS)" \
+		--split-manifest "$(PY_SPLIT_MANIFEST)" \
+		--splits "$(SPLITS)" \
+		--archive-label "$(INITIAL_SEGMENTATION_ARCHIVE_LABEL)" \
+		--output-dir "$(PY_INITIAL_SEGMENTATION_ARCHIVE_DIR)"
+else
+	$(MAKE) archive-initial-segmentation-phase-2-dry-run
+endif
+
+archive-initial-segmentation-phase-2-dry-run: prepare
+	$(MANAGE) archive_segmentation_phase_2_outputs \
+		--model "$(MODEL)" \
+		--project-ids "$(PROJECT_IDS)" \
+		--split-manifest "$(PY_SPLIT_MANIFEST)" \
+		--splits "$(SPLITS)" \
+		--archive-label "$(INITIAL_SEGMENTATION_ARCHIVE_LABEL)" \
+		--output-dir "$(PY_INITIAL_SEGMENTATION_ARCHIVE_DIR)" \
+		--dry-run
+
 refresh-project-metadata: prepare
 	$(MANAGE) refresh_mwe_corpus_metadata \
 		--corpus-split-dir "$(PY_CORPUS_SPLIT_DIR)" \
@@ -398,11 +484,14 @@ refresh-project-metadata: prepare
 refresh-annotations: validate-config
 ifeq ($(RUN),1)
 	$(MANAGE) refresh_mwe_experiment_projects \
+		--model "$(MODEL)" \
 		--project-ids "$(PROJECT_IDS)" \
 		--split-manifest "$(PY_SPLIT_MANIFEST)" \
 		--splits "$(SPLITS)" \
 		--run-label-prefix "$(RUN_LABEL_PREFIX)" \
 		--stage-parameters-file "$(PY_STAGE_PARAMETERS)" \
+		--start-stage "$(REFRESH_START_STAGE)" \
+		--end-stage "$(REFRESH_END_STAGE)" \
 		--resume-from-project-id "$(RESUME_FROM_PROJECT_ID)" \
 		--max-project-retries "$(MAX_PROJECT_RETRIES)" \
 		--failed-projects-jsonl "$(PY_FAILED_REFRESHES)" \
@@ -414,11 +503,14 @@ endif
 
 refresh-annotations-dry-run: validate-config
 	$(MANAGE) refresh_mwe_experiment_projects \
+		--model "$(MODEL)" \
 		--project-ids "$(PROJECT_IDS)" \
 		--split-manifest "$(PY_SPLIT_MANIFEST)" \
 		--splits "$(SPLITS)" \
 		--run-label-prefix "$(RUN_LABEL_PREFIX)" \
 		--stage-parameters-file "$(PY_STAGE_PARAMETERS)" \
+		--start-stage "$(REFRESH_START_STAGE)" \
+		--end-stage "$(REFRESH_END_STAGE)" \
 		--resume-from-project-id "$(RESUME_FROM_PROJECT_ID)" \
 		--dry-run
 

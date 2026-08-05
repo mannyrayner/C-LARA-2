@@ -9,6 +9,8 @@ from typing import Any
 
 from django.core.management.base import BaseCommand, CommandError
 
+from core.ai_api import OpenAIClient
+from core.config import OpenAIConfig
 from pipeline.full_pipeline import PIPELINE_ORDER, FullPipelineSpec, run_full_pipeline
 from pipeline.stage_artifacts import read_stage_artifact, stage_artifact_path
 from projects.models import Project
@@ -35,6 +37,7 @@ class Command(BaseCommand):
         parser.add_argument("--max-project-retries", type=int, default=2)
         parser.add_argument("--failed-projects-jsonl", default="")
         parser.add_argument("--fail-fast", action="store_true")
+        parser.add_argument("--model", default="", help="OpenAI model used for all refreshed pipeline stages.")
 
     def handle(self, *args, **options):
         stage_parameters = load_stage_parameters(options["stage_parameters_file"])
@@ -70,6 +73,7 @@ class Command(BaseCommand):
             if run_dir.exists():
                 shutil.rmtree(run_dir)
 
+        model = str(options.get("model") or "")
         results, failures = asyncio.run(
             refresh_projects(
                 projects,
@@ -80,6 +84,7 @@ class Command(BaseCommand):
                 max_project_retries=int(options.get("max_project_retries") or 0),
                 fail_fast=bool(options.get("fail_fast")),
                 log=self.stdout.write,
+                ai_client=OpenAIClient(config=OpenAIConfig(model=model)) if model else None,
             )
         )
         failed_projects_path = str(options.get("failed_projects_jsonl") or "")
@@ -187,6 +192,7 @@ async def refresh_projects(
     log: Any | None = None,
     max_project_retries: int = 0,
     fail_fast: bool = False,
+    ai_client: OpenAIClient | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     results: list[dict[str, Any]] = []
     failures: list[dict[str, Any]] = []
@@ -233,6 +239,7 @@ async def refresh_projects(
                     f"at {attempt_state['start_stage']}"
                 )
             try:
+                pipeline_kwargs = {"client": ai_client} if ai_client is not None else {}
                 await run_full_pipeline(
                     FullPipelineSpec(
                         text=attempt_state["raw_text"],
@@ -251,7 +258,8 @@ async def refresh_projects(
                         ),
                         stage_parameters=stage_parameters,
                         audio_mode="none",
-                    )
+                    ),
+                    **pipeline_kwargs,
                 )
                 break
             except Exception as exc:
