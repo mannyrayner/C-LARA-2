@@ -8,6 +8,8 @@ from typing import Any, Callable
 
 from django.core.management.base import BaseCommand, CommandError
 
+from core.ai_api import OpenAIClient
+from core.config import OpenAIConfig
 from pipeline.mwe import MWESpec, annotate_mwes
 
 from .review_fewshots import _resolve_cli_path
@@ -27,6 +29,7 @@ class Command(BaseCommand):
         parser.add_argument("--project-ids", default="", help="Optional comma-separated project ids to include from the input records.")
         parser.add_argument("--template-file", default="", help="Optional MWE prompt template file to use instead of the production prompt.")
         parser.add_argument("--use-translation-context", action="store_true", help="Include record translations in segment annotations for translation-aware MWE prompts.")
+        parser.add_argument("--model", default="", help="OpenAI model used for every MWE annotation call.")
 
     def handle(self, *args, **options):
         input_path = _resolve_cli_path(options["input_records_jsonl"], "")
@@ -84,6 +87,7 @@ class Command(BaseCommand):
                 f"Translation context enabled: {translation_context_records}/{len(records)} records have translation_context"
             )
         if records:
+            model = str(options.get("model") or "")
             asyncio.run(
                 run_records(
                     records,
@@ -93,6 +97,7 @@ class Command(BaseCommand):
                     template_path=template_path,
                     use_translation_context=bool(options.get("use_translation_context")),
                     max_record_attempts=max(1, int(options.get("max_record_attempts") or 1)),
+                    client=OpenAIClient(config=OpenAIConfig(model=model)) if model else None,
                 )
             )
         else:
@@ -111,6 +116,7 @@ class Command(BaseCommand):
             "use_translation_context": bool(options.get("use_translation_context")),
             "translation_context_record_count": translation_context_records if options.get("use_translation_context") else 0,
             "max_record_attempts": max(1, int(options.get("max_record_attempts") or 1)),
+            "model": str(options.get("model") or "") or None,
         }
         manifest_path = run_dir / "manifest.json"
         manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -171,6 +177,7 @@ async def run_records(
     run_label: str,
     on_progress: Callable[[dict[str, Any]], None] | None = None,
     on_output: Callable[[dict[str, Any]], None] | None = None,
+    client: OpenAIClient | None = None,
     template_path: Path | None = None,
     use_translation_context: bool = False,
     max_record_attempts: int = 3,
@@ -192,13 +199,15 @@ async def run_records(
             if on_progress:
                 on_progress({**progress_payload, "status": "running", "attempt": attempt, "max_attempts": max_attempts})
             try:
+                annotate_kwargs = {"client": client} if client is not None else {}
                 annotated = await annotate_mwes(
                     MWESpec(
                         text=text_obj,
                         language=str(record.get("language") or "en"),
                         op_id=f"{run_label}:record_{idx}:attempt_{attempt}:mwe",
                         template_path=template_path,
-                    )
+                    ),
+                    **annotate_kwargs,
                 )
                 break
             except Exception as exc:

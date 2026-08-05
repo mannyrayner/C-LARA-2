@@ -323,6 +323,32 @@ class MWEExperimentInfrastructureTests(TestCase):
         self.assertEqual(failures[0]["error_type"], "RuntimeError")
         self.assertIn("second timeout", failures[0]["error"])
 
+    def test_archive_segmentation_phase_2_outputs_copies_latest_artifacts(self):
+        first, _ = self._project_with_segmentation_phase_1(title="first")
+        second, _ = self._project_with_segmentation_phase_1(title="second")
+        first_payload = {"pages": [{"segments": [{"surface": "First", "tokens": [{"surface": "First"}]}]}]}
+        second_payload = {"pages": [{"segments": [{"surface": "Second", "tokens": [{"surface": "Second"}]}]}]}
+        write_stage_artifact(first.artifact_dir() / "runs" / "seg_5_6", "segmentation_phase_2", first_payload)
+        write_stage_artifact(second.artifact_dir() / "runs" / "seg_5_6", "segmentation_phase_2", second_payload)
+
+        with TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "initial_segmentation_archive"
+            call_command(
+                "archive_segmentation_phase_2_outputs",
+                project_ids=f"{first.id},{second.id}",
+                output_dir=str(output_dir),
+                model="gpt-5.6",
+                overwrite=True,
+            )
+
+            manifest = json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["model"], "gpt-5.6")
+            self.assertEqual(manifest["project_ids"], [first.id, second.id])
+            first_archive = output_dir / f"project_{first.id}" / "segmentation_phase_2.json"
+            second_archive = output_dir / f"project_{second.id}" / "segmentation_phase_2.json"
+            self.assertEqual(json.loads(first_archive.read_text(encoding="utf-8")), first_payload)
+            self.assertEqual(json.loads(second_archive.read_text(encoding="utf-8")), second_payload)
+
     def test_refresh_command_resume_from_filters_lower_project_ids(self):
         first, _ = self._project_with_segmentation_phase_1(title="first")
         second, _ = self._project_with_segmentation_phase_1(title="second")

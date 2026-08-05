@@ -247,6 +247,76 @@ class ManualSegmentationEditorTests(TestCase):
         self.assertContains(resp, "First mismatch at character 6")
         self.assertContains(resp, "edited=&#x27;x&#x27; (U+0078), expected=&#x27;w&#x27; (U+0077)")
 
+    def test_phase_2_save_allows_empty_segments_without_empty_token_error(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_seed_empty_segment" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        seg1_payload = {
+            "l2": "en",
+            "surface": "Madame Bovary retold",
+            "pages": [
+                {
+                    "surface": "Madame Bovary retold",
+                    "segments": [
+                        {"surface": ""},
+                        {"surface": "Madame Bovary retold"},
+                        {"surface": ""},
+                    ],
+                    "annotations": {},
+                }
+            ],
+            "annotations": {},
+        }
+        seg2_payload = json.loads(json.dumps(seg1_payload))
+        seg2_payload["pages"][0]["segments"][0]["tokens"] = [{"surface": ""}]
+        seg2_payload["pages"][0]["segments"][1]["tokens"] = [
+            {"surface": "Madame"},
+            {"surface": " "},
+            {"surface": "Bovary"},
+            {"surface": " "},
+            {"surface": "retold"},
+        ]
+        seg2_payload["pages"][0]["segments"][2]["tokens"] = [{"surface": ""}]
+        (run_dir / "segmentation_phase_1.json").write_text(json.dumps(seg1_payload), encoding="utf-8")
+        (run_dir / "segmentation_phase_2.json").write_text(json.dumps(seg2_payload), encoding="utf-8")
+
+        resp = self.client.post(
+            reverse("manual-segmentation-phase-2", args=[self.project.pk]),
+            {
+                "tokenized_text_1_1": "",
+                "tokenized_text_1_2": "Madame¦ ¦Bovary¦ ¦retold",
+                "tokenized_text_1_3": "",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Saved manual segmentation phase 2.")
+        self.assertNotContains(resp, "contains an empty token")
+        stage_dir = self._latest_run_stage_dir()
+        payload = json.loads((stage_dir / "segmentation_phase_2.json").read_text(encoding="utf-8"))
+        self.assertEqual(payload["pages"][0]["segments"][0]["tokens"], [])
+        self.assertEqual(payload["pages"][0]["segments"][2]["tokens"], [])
+
+    def test_error_messages_are_visually_prominent_alerts(self):
+        run_dir = self.project.artifact_dir() / "runs" / "run_seed_mismatch_alert" / "stages"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        seg1_payload = {
+            "l2": "en",
+            "surface": "Milo was.",
+            "pages": [{"surface": "Milo was.", "segments": [{"surface": "Milo was."}], "annotations": {}}],
+            "annotations": {},
+        }
+        (run_dir / "segmentation_phase_1.json").write_text(json.dumps(seg1_payload), encoding="utf-8")
+
+        resp = self.client.post(
+            reverse("manual-segmentation-phase-2", args=[self.project.pk]),
+            {"tokenized_text_1_1": "Milo¦ ¦xas."},
+            follow=True,
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'class="error" role="alert" aria-live="assertive"', html=False)
+
     def test_phase_2_save_reconciles_outer_whitespace_only_difference(self):
         run_dir = self.project.artifact_dir() / "runs" / "run_seed_outer_ws" / "stages"
         run_dir.mkdir(parents=True, exist_ok=True)
