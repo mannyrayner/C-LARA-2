@@ -202,18 +202,22 @@ async def refresh_projects(
         text_obj: dict[str, Any] | None = None
         raw_text: str | None = None
         input_stage_path = ""
-        if start_stage == "segmentation_phase_2":
-            stage_path, text_obj = latest_stage_payload(project, "segmentation_phase_1")
-            if text_obj is None or stage_path is None:
-                raise CommandError(
-                    f"Project {project.id} has no segmentation_phase_1 artifact; "
-                    "refresh-annotations preserves existing page/segment structure and starts at segmentation_phase_2"
-                )
-            input_stage_path = str(stage_path)
-        elif start_stage == "segmentation_phase_1":
+        if start_stage == "segmentation_phase_1":
             if not project.source_text:
                 raise CommandError(f"Project {project.id} has no source_text; cannot refresh from segmentation_phase_1")
             raw_text = project.source_text
+        else:
+            try:
+                previous_stage = PIPELINE_ORDER[PIPELINE_ORDER.index(start_stage) - 1]
+            except (ValueError, IndexError) as exc:
+                raise CommandError(f"Unknown or unsupported start stage: {start_stage}") from exc
+            stage_path, text_obj = latest_stage_payload(project, previous_stage)
+            if text_obj is None or stage_path is None:
+                raise CommandError(
+                    f"Project {project.id} has no {previous_stage} artifact; "
+                    f"refresh from {start_stage} requires the latest saved {previous_stage} payload as input"
+                )
+            input_stage_path = str(stage_path)
         if log:
             log(
                 f"Refreshing project={project.id} title={project.title!r} language={project.language} "

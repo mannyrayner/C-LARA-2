@@ -266,6 +266,30 @@ class MWEExperimentInfrastructureTests(TestCase):
         self.assertEqual(spec.end_stage, "gloss")
         self.assertEqual(spec.stage_parameters["segmentation_phase_2"]["mechanism"], "chunk_decomposition")
 
+    def test_refresh_projects_starting_at_translation_uses_latest_segmentation_phase_2_artifact(self):
+        project, _ = self._project_with_segmentation_phase_1()
+        seg2_payload = {"pages": [{"segments": [{"surface": "Page one", "tokens": [{"surface": "Page"}]}]}]}
+        write_stage_artifact(project.artifact_dir() / "runs" / "segmentation_corrected", "segmentation_phase_2", seg2_payload)
+
+        with patch("projects.management.commands.refresh_mwe_experiment_projects.run_full_pipeline", AsyncMock(return_value=seg2_payload)) as runner:
+            results, failures = asyncio.run(
+                refresh_projects(
+                    [project],
+                    run_label_prefix="refresh_downstream",
+                    start_stage="translation",
+                    end_stage="gloss",
+                    stage_parameters={},
+                )
+            )
+
+        self.assertEqual(failures, [])
+        self.assertEqual(results[0]["project_id"], project.id)
+        spec = runner.await_args.args[0]
+        self.assertIsNone(spec.text)
+        self.assertEqual(spec.text_obj, seg2_payload)
+        self.assertEqual(spec.start_stage, "translation")
+        self.assertEqual(spec.end_stage, "gloss")
+
     def test_refresh_projects_retries_from_latest_completed_phase(self):
         project, _ = self._project_with_segmentation_phase_1()
         calls = []
