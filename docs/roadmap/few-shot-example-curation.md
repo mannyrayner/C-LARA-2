@@ -31,6 +31,55 @@ These figures are large enough for a meaningful first report experiment if we us
 
 The run also exposed an important implementation lesson. One generated candidate in the earlier smoke test had lost interword spaces in the boundary-marked representation, e.g. an input like `L'ami de Marie habite ici.` paired with units that concatenated as `L'amideMariehabiteici.`. The deterministic validation logic already catches this by checking that concatenated unit surfaces exactly match the input, but the review command initially still sent validation-failed candidate records to AI review. That path has now been tightened so AI review only runs over schema-valid candidates and records skipped validation failures in the review summary. This reinforces the architecture: deterministic preservation/schema checks must be a hard gate before linguistic judgement.
 
+
+## Preliminary reset step: redo `segmentation_phase_2` with 5.6 before MWE work
+
+Before restarting MWE prompt learning on the seven English texts, redo the upstream
+`segmentation_phase_2` artifacts with `gpt-5.6` and manually freeze those
+segmentations. This is not a 5.5-vs-5.6 comparison; it is the clean starting
+point for the 5.6-only prompt-learning series, so downstream MWE, lemma, and
+gloss gold must be derived only after the new segmentation is accepted.
+
+Use the MWE workbench target, because it writes the refreshed
+`segmentation_phase_2.json` artifacts into the normal per-project run directories
+that the manual editor and the later MWE refresh/export commands treat as the
+latest project state. The workbench's generated bookkeeping remains under
+`generated/gpt-5.6-prompt-learning-v1/`, while the processing output that MWE
+needs is the latest saved project artifact, not a copied JSONL file in the
+segmentation workbench.
+
+```bash
+cd experiments/linguistic_processing/mwe/focused_multilingual
+
+# Preserve old flat generated/ outputs first; the archive is provenance only.
+make archive-pre-5-6 RUN=1
+
+# Optional: establish or refresh the project split manifests in the 5.6 namespace.
+make extract-split-corpus CORPUS_USER=mannyrayner LANGUAGES=en
+
+# Rebuild only segmentation_phase_2 for the seven English projects with gpt-5.6.
+make refresh-segmentation-phase-2 RUN=1 \
+  PROJECT_IDS="239,245,254,255,257,261,263"
+```
+
+After that command, review and correct `segmentation_phase_2` in the ordinary
+project/manual annotation workflow until these seven projects are frozen. Only
+then continue downstream, preserving the corrected segmentation by starting the
+full MWE-side refresh at `translation` rather than rerunning segmentation again:
+
+```bash
+make refresh-annotations RUN=1 \
+  PROJECT_IDS="239,245,254,255,257,261,263" \
+  REFRESH_START_STAGE=translation \
+  REFRESH_END_STAGE=gloss
+
+make extract-split-corpus CORPUS_USER=mannyrayner LANGUAGES=en
+```
+
+This sequencing prevents the earlier problem from recurring: MWE, lemma, and
+gloss manual cleanup cannot become gold evidence until it is anchored to the new
+5.6 `segmentation_phase_2` artifacts.
+
 ## Short-term plan: first French boundary-first experiment
 
 The current working plan is concentrated in the versioned experiment workspace at
