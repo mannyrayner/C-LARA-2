@@ -5508,7 +5508,9 @@ def _phase2_payload_from_bar_rows(seg1_payload: dict[str, Any], rows: list[dict[
                     f"Page {row['page_index']} segment {row['segment_index']} changes text content; "
                     f"only token separators may be inserted or removed. {mismatch}"
                 )
-        if any(tok == "" for tok in tokens):
+        if segment_text == "" and edited_without_bars == "":
+            tokens = []
+        elif any(tok == "" for tok in tokens):
             raise ValueError(
                 f"Page {row['page_index']} segment {row['segment_index']} contains an empty token "
                 "(adjacent/leading/trailing separators are not allowed)."
@@ -5518,7 +5520,7 @@ def _phase2_payload_from_bar_rows(seg1_payload: dict[str, Any], rows: list[dict[
     for p_idx, page in enumerate(edited.get("pages") or [], start=1):
         for s_idx, segment in enumerate(page.get("segments") or [], start=1):
             token_surfaces = token_map.get((p_idx, s_idx))
-            if not token_surfaces:
+            if token_surfaces is None:
                 token_surfaces = [str(segment.get("surface") or "")]
             segment["tokens"] = [{"surface": surface} for surface in token_surfaces]
     return edited
@@ -6262,8 +6264,10 @@ def _validate_phase2_structure(seg1_payload: dict[str, Any], edited_payload: dic
             return f"Page {p_idx} must keep the same number of segments as segmentation phase 1."
         for s_idx, (base_segment, edited_segment) in enumerate(zip(base_segments, edited_segments), start=1):
             base_surface = str(base_segment.get("surface") or "")
-            tokens = edited_segment.get("tokens") or []
-            if not isinstance(tokens, list) or not tokens:
+            tokens = edited_segment.get("tokens")
+            if not isinstance(tokens, list):
+                return f"Page {p_idx} segment {s_idx} must contain a token list."
+            if not tokens and base_surface != "":
                 return f"Page {p_idx} segment {s_idx} must contain a non-empty token list."
             rebuilt = ""
             for token in tokens:
