@@ -23,12 +23,15 @@ MAX_TEST_SEGMENTS ?= 600
 SPLITS ?= development,validation,test
 SPLIT ?= development
 RUN_LABEL_PREFIX ?= mwe_annotation_refresh_v1
+SEGMENTATION_RUN_LABEL_PREFIX ?= segmentation_phase_2_5_6_refresh_v1
 PROJECT_IDS ?=
 SPLIT_MANIFEST ?= $(CORPUS_SPLIT_DIR)/multilingual_split_manifest.json
 STAGE_PARAMETERS ?= config/stage_parameters.json
 RESUME_FROM_PROJECT_ID ?= 0
 MAX_PROJECT_RETRIES ?= 2
 FAILED_REFRESHES ?= $(abspath $(GENERATED_DIR))/refresh_failures.jsonl
+REFRESH_START_STAGE ?= segmentation_phase_2
+REFRESH_END_STAGE ?= gloss
 FAIL_FAST ?= 0
 SNAPSHOT_NAME_PREFIX ?= MWE gold checkpoint
 MWE_RUN_LABEL ?= mwe-current-prompt-$(SPLIT)
@@ -113,7 +116,7 @@ MWE_TRANSLATION_CONTEXT_ARG := $(if $(filter 1,$(MWE_USE_TRANSLATION_CONTEXT)),-
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: archive-pre-5-6 archive-pre-5-6-dry-run help prepare declare-mwe-gold check-mwe-gold check-mwe-translation-context mwe-prompt-cycle mwe-reconcile-prompt-cycle recover-mwe-prompt-cycle-after-run show-mwe-prompt-cycle-results compare-mwe-prompt-cycles prepare-mwe-prompt-cycle run-mwe-prompt-cycle run-mwe-reconcile-prompt-cycle resume-mwe-prompt-cycle format-mwe-prompt-cycle-output score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement revise-mwe-prompt-cycle-template revise-mwe-reconcile-prompt-cycle-templates extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
+.PHONY: archive-pre-5-6 archive-pre-5-6-dry-run help prepare declare-mwe-gold check-mwe-gold check-mwe-translation-context mwe-prompt-cycle mwe-reconcile-prompt-cycle recover-mwe-prompt-cycle-after-run show-mwe-prompt-cycle-results compare-mwe-prompt-cycles prepare-mwe-prompt-cycle run-mwe-prompt-cycle run-mwe-reconcile-prompt-cycle resume-mwe-prompt-cycle format-mwe-prompt-cycle-output score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement revise-mwe-prompt-cycle-template revise-mwe-reconcile-prompt-cycle-templates extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-segmentation-phase-2 refresh-segmentation-phase-2-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
 
 help:
 	@echo "Focused MWE experiments (multilingual)"
@@ -142,6 +145,7 @@ help:
 	@echo "  propose-mwe-prompt-cycle-improvement  Write cycle-specific improvement guidance"
 	@echo "  revise-mwe-prompt-cycle-template  Use AI to write the next-cycle prompt draft"
 	@echo "  revise-mwe-reconcile-prompt-cycle-templates  Use AI to revise the three analysis prompts and reconciliation prompt"
+	@echo "  refresh-segmentation-phase-2  Rerun selected projects through segmentation_phase_2 only, creating the upstream artifacts for manual correction"
 	@echo "  refresh-annotations   Rerun selected projects through segmentation_phase_2 -> translation -> mwe -> lemma -> gloss"
 	@echo "  refresh-project-metadata  Keep existing splits/projects but refresh mwe_count from latest saved artifacts"
 	@echo "  validate-config       Validate stage-parameter JSON used by refresh-annotations"
@@ -164,7 +168,10 @@ help:
 	@echo "  SPLIT_MANIFEST=$(SPLIT_MANIFEST)"
 	@echo "  PROJECT_IDS=$(PROJECT_IDS)"
 	@echo "  RUN_LABEL_PREFIX=$(RUN_LABEL_PREFIX)"
+	@echo "  SEGMENTATION_RUN_LABEL_PREFIX=$(SEGMENTATION_RUN_LABEL_PREFIX)"
 	@echo "  STAGE_PARAMETERS=$(STAGE_PARAMETERS)"
+	@echo "  REFRESH_START_STAGE=$(REFRESH_START_STAGE)"
+	@echo "  REFRESH_END_STAGE=$(REFRESH_END_STAGE)"
 	@echo "  RESUME_FROM_PROJECT_ID=$(RESUME_FROM_PROJECT_ID)"
 	@echo "  MAX_PROJECT_RETRIES=$(MAX_PROJECT_RETRIES)"
 	@echo "  FAILED_REFRESHES=$(FAILED_REFRESHES)"
@@ -419,6 +426,26 @@ revise-mwe-reconcile-prompt-cycle-templates: prepare
 		echo "dry-run only; set RUN=1 after propose-mwe-prompt-cycle-improvement has produced $(MWE_CYCLE_IMPROVEMENT_DIR)/prompt_improvement.md"; \
 	fi
 
+refresh-segmentation-phase-2:
+	$(MAKE) refresh-annotations \
+		RUN=$(RUN) \
+		MODEL="$(MODEL)" \
+		PROJECT_IDS="$(PROJECT_IDS)" \
+		SPLITS="$(SPLITS)" \
+		RUN_LABEL_PREFIX="$(SEGMENTATION_RUN_LABEL_PREFIX)" \
+		REFRESH_START_STAGE=segmentation_phase_2 \
+		REFRESH_END_STAGE=segmentation_phase_2
+
+refresh-segmentation-phase-2-dry-run:
+	$(MAKE) refresh-annotations-dry-run \
+		RUN=0 \
+		MODEL="$(MODEL)" \
+		PROJECT_IDS="$(PROJECT_IDS)" \
+		SPLITS="$(SPLITS)" \
+		RUN_LABEL_PREFIX="$(SEGMENTATION_RUN_LABEL_PREFIX)" \
+		REFRESH_START_STAGE=segmentation_phase_2 \
+		REFRESH_END_STAGE=segmentation_phase_2
+
 refresh-project-metadata: prepare
 	$(MANAGE) refresh_mwe_corpus_metadata \
 		--corpus-split-dir "$(PY_CORPUS_SPLIT_DIR)" \
@@ -434,6 +461,8 @@ ifeq ($(RUN),1)
 		--splits "$(SPLITS)" \
 		--run-label-prefix "$(RUN_LABEL_PREFIX)" \
 		--stage-parameters-file "$(PY_STAGE_PARAMETERS)" \
+		--start-stage "$(REFRESH_START_STAGE)" \
+		--end-stage "$(REFRESH_END_STAGE)" \
 		--resume-from-project-id "$(RESUME_FROM_PROJECT_ID)" \
 		--max-project-retries "$(MAX_PROJECT_RETRIES)" \
 		--failed-projects-jsonl "$(PY_FAILED_REFRESHES)" \
@@ -451,6 +480,8 @@ refresh-annotations-dry-run: validate-config
 		--splits "$(SPLITS)" \
 		--run-label-prefix "$(RUN_LABEL_PREFIX)" \
 		--stage-parameters-file "$(PY_STAGE_PARAMETERS)" \
+		--start-stage "$(REFRESH_START_STAGE)" \
+		--end-stage "$(REFRESH_END_STAGE)" \
 		--resume-from-project-id "$(RESUME_FROM_PROJECT_ID)" \
 		--dry-run
 

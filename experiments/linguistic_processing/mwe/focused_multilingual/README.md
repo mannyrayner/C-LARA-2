@@ -19,6 +19,25 @@ manual MWE, lemma, or gloss annotations as gold, few-shots, scores, or revision
 examples. Override `EXPERIMENT_SERIES` or `ARCHIVE_NAME` only when intentionally
 starting a separately named series/archive.
 
+For the preliminary 5.6 segmentation rebuild, run only the upstream stage and
+write its artifacts into the projects' normal run directories, where the manual
+editor and later MWE commands will see them as the latest saved project state:
+
+```bash
+make refresh-segmentation-phase-2 RUN=1 \
+  PROJECT_IDS="239,245,254,255,257,261,263"
+```
+
+After manual `segmentation_phase_2` correction is frozen, continue downstream
+without rerunning segmentation by starting at `translation`:
+
+```bash
+make refresh-annotations RUN=1 \
+  PROJECT_IDS="239,245,254,255,257,261,263" \
+  REFRESH_START_STAGE=translation \
+  REFRESH_END_STAGE=gloss
+```
+
 This workbench mirrors the organisation of
 `segmentation_phase_2/chunk_decomposition_multilingual`, but extracts segment
 records rather than whitespace chunks. Splits are project-separated, so all
