@@ -12,7 +12,10 @@
     nav form { display: inline; margin: 0; }
     nav form button { margin-right: 1rem; font: inherit; }
     .messages { margin: 1rem 0; padding: 0; list-style: none; }
-    .messages li { padding: 0.5rem; background: #f5f5f5; margin-bottom: 0.5rem; }
+    .messages li { padding: 0.75rem; background: #f5f5f5; margin-bottom: 0.5rem; border-left: 0.35rem solid #999; }
+    .messages li.error { background: #fff1f0; border-color: #d1242f; color: #5c0006; font-weight: 700; }
+    .messages li.success { background: #dafbe1; border-color: #1a7f37; }
+    .messages li.warning { background: #fff8c5; border-color: #9a6700; }
     textarea { width: 100%; }
     .btn { padding: 0.4rem 0.8rem; background: #0366d6; color: white; border: none; text-decoration: none; }
     .btn.secondary { background: #444; }
@@ -50,7 +53,7 @@
 </nav>
 <ul class="messages">
   {% for message in messages %}
-    <li>{{ message }}</li>
+    <li{% if message.tags %} class="{{ message.tags }}"{% endif %}{% if 'error' in message.tags %} role="alert" aria-live="assertive"{% endif %}>{{ message }}</li>
   {% endfor %}
 </ul>
 {% block content %}{% endblock %}
