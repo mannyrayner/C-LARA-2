@@ -26,7 +26,16 @@ editor and later MWE commands will see them as the latest saved project state:
 ```bash
 make refresh-segmentation-phase-2 RUN=1 \
   PROJECT_IDS="239,245,254,255,257,261,263"
+
+make archive-initial-segmentation-phase-2 RUN=1 \
+  PROJECT_IDS="239,245,254,255,257,261,263"
 ```
+
+Run the archive command before manual correction. It copies each project's
+current latest `segmentation_phase_2.json` to
+`generated/gpt-5.6-prompt-learning-v1/segmentation_phase_2_initial_outputs/`,
+with a manifest, so later analysis can compare the initial 5.6 output against
+the corrected segmentation.
 
 After manual `segmentation_phase_2` correction is frozen, continue downstream
 without rerunning segmentation by starting at `translation`:

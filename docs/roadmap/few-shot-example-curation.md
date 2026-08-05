@@ -60,7 +60,20 @@ make extract-split-corpus CORPUS_USER=mannyrayner LANGUAGES=en
 # Rebuild only segmentation_phase_2 for the seven English projects with gpt-5.6.
 make refresh-segmentation-phase-2 RUN=1 \
   PROJECT_IDS="239,245,254,255,257,261,263"
+
+# Before any manual correction, archive these initial 5.6 outputs for later
+# accuracy/error analysis against the corrected segmentation.
+make archive-initial-segmentation-phase-2 RUN=1 \
+  PROJECT_IDS="239,245,254,255,257,261,263"
 ```
+
+The archive target copies the current latest `segmentation_phase_2.json` for each
+selected project to
+`generated/gpt-5.6-prompt-learning-v1/segmentation_phase_2_initial_outputs/`
+and writes a manifest recording source project ids, source artifact paths, model,
+and archive paths. Run it after the 5.6 segmentation refresh has completed and
+before opening the annotations for manual correction; otherwise the preserved
+"initial output" may already include human edits.
 
 After that command, review and correct `segmentation_phase_2` in the ordinary
 project/manual annotation workflow until these seven projects are frozen. Only
