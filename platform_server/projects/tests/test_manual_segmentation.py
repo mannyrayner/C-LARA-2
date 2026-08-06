@@ -1469,6 +1469,41 @@ class ManualSegmentationEditorTests(TestCase):
         self.assertContains(resp, "name=\"mwe_id_0_0_2\"")
         self.assertNotContains(resp, "name=\"mwe_id_0_0_1\"")
 
+    def test_page_oriented_mwe_consistency_ignores_spurious_whitespace_annotations(self):
+        error = _validate_manual_page_mwe_consistency(
+            [
+                {
+                    "page_number": 3,
+                    "page_index": 2,
+                    "segments": [
+                        {
+                            "segment_index": 2,
+                            "tokens": [
+                                {
+                                    "token_index": 0,
+                                    "surface": "Much",
+                                    "mwe_id": "p2m3",
+                                    "lemma": "Much to her surprise",
+                                    "pos": "ADV",
+                                    "gloss": "à sa grande surprise",
+                                },
+                                {
+                                    "token_index": 1,
+                                    "surface": " ",
+                                    "mwe_id": "p2m3",
+                                    "lemma": "Much to her surprise",
+                                    "pos": "",
+                                    "gloss": "",
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ]
+        )
+
+        self.assertIsNone(error)
+
     def test_page_oriented_manual_annotation_save_writes_stage_payloads(self):
         run_dir = self.project.artifact_dir() / "runs" / "run_page_oriented_save" / "stages"
         run_dir.mkdir(parents=True, exist_ok=True)

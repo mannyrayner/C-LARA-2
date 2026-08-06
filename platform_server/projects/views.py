@@ -65,6 +65,7 @@ from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pi
 from pipeline import annotation_prompts
 from pipeline.mwe import normalize_mwes
 from pipeline.stage_artifacts import read_stage_artifact, stage_artifact_path, write_stage_artifact
+from pipeline.token_annotations import strip_whitespace_token_annotations
 
 from .forms import (
     AdminCommunityForm,
@@ -6368,6 +6369,8 @@ def _validate_manual_page_mwe_consistency(
             seen: dict[str, dict[str, str]] = {}
             segment_number = segment["segment_index"] + 1
             for token in segment["tokens"]:
+                if not str(token.get("surface") or "").strip():
+                    continue
                 mwe_id = str(token.get("mwe_id") or "").strip()
                 if not mwe_id:
                     continue
@@ -6504,6 +6507,9 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
     gloss_payload, _ = _reconcile_gloss_payload_with_lemma(lemma_payload, gloss_payload or json.loads(json.dumps(lemma_payload)))
     pinyin_payload = _load_stage_payload(project, "pinyin", run_dir=_find_run_with_stage(project, "pinyin")) or {}
     pinyin_payload, _ = _reconcile_pinyin_payload_with_gloss(gloss_payload, pinyin_payload or json.loads(json.dumps(gloss_payload)))
+
+    for payload in (mwe_payload, lemma_payload, gloss_payload, pinyin_payload):
+        strip_whitespace_token_annotations(payload)
 
     image_by_page = {row.page_number: row.image_path for row in project.image_pages.exclude(image_path="")}
     pages_data: list[dict[str, Any]] = []
@@ -6693,6 +6699,8 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
             ("gloss", edited_gloss),
             ("pinyin", edited_pinyin),
         ]
+        for _, payload in payloads_to_save:
+            strip_whitespace_token_annotations(payload)
         for stage_name, payload in payloads_to_save:
             if _stable_text_hash(str(payload.get("surface") or "")) != base_hash:
                 messages.error(request, f"Text hash mismatch while saving {stage_name}; structure edits are not allowed.")
