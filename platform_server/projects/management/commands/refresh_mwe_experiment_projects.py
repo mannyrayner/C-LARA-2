@@ -9,6 +9,8 @@ from typing import Any
 
 from django.core.management.base import BaseCommand, CommandError
 
+from core.ai_api import OpenAIClient
+from core.config import OpenAIConfig
 from pipeline.full_pipeline import PIPELINE_ORDER, FullPipelineSpec, run_full_pipeline
 from pipeline.stage_artifacts import read_stage_artifact, stage_artifact_path
 from projects.models import Project
@@ -35,6 +37,7 @@ class Command(BaseCommand):
         parser.add_argument("--max-project-retries", type=int, default=2)
         parser.add_argument("--failed-projects-jsonl", default="")
         parser.add_argument("--fail-fast", action="store_true")
+        parser.add_argument("--model", default="", help="OpenAI model used for all refreshed pipeline stages.")
 
     def handle(self, *args, **options):
         stage_parameters = load_stage_parameters(options["stage_parameters_file"])
@@ -70,6 +73,7 @@ class Command(BaseCommand):
             if run_dir.exists():
                 shutil.rmtree(run_dir)
 
+        model = str(options.get("model") or "")
         results, failures = asyncio.run(
             refresh_projects(
                 projects,
@@ -80,6 +84,7 @@ class Command(BaseCommand):
                 max_project_retries=int(options.get("max_project_retries") or 0),
                 fail_fast=bool(options.get("fail_fast")),
                 log=self.stdout.write,
+                ai_client=OpenAIClient(config=OpenAIConfig(model=model)) if model else None,
             )
         )
         failed_projects_path = str(options.get("failed_projects_jsonl") or "")
@@ -187,6 +192,7 @@ async def refresh_projects(
     log: Any | None = None,
     max_project_retries: int = 0,
     fail_fast: bool = False,
+    ai_client: OpenAIClient | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     results: list[dict[str, Any]] = []
     failures: list[dict[str, Any]] = []
@@ -196,18 +202,22 @@ async def refresh_projects(
         text_obj: dict[str, Any] | None = None
         raw_text: str | None = None
         input_stage_path = ""
-        if start_stage == "segmentation_phase_2":
-            stage_path, text_obj = latest_stage_payload(project, "segmentation_phase_1")
-            if text_obj is None or stage_path is None:
-                raise CommandError(
-                    f"Project {project.id} has no segmentation_phase_1 artifact; "
-                    "refresh-annotations preserves existing page/segment structure and starts at segmentation_phase_2"
-                )
-            input_stage_path = str(stage_path)
-        elif start_stage == "segmentation_phase_1":
+        if start_stage == "segmentation_phase_1":
             if not project.source_text:
                 raise CommandError(f"Project {project.id} has no source_text; cannot refresh from segmentation_phase_1")
             raw_text = project.source_text
+        else:
+            try:
+                previous_stage = PIPELINE_ORDER[PIPELINE_ORDER.index(start_stage) - 1]
+            except (ValueError, IndexError) as exc:
+                raise CommandError(f"Unknown or unsupported start stage: {start_stage}") from exc
+            stage_path, text_obj = latest_stage_payload(project, previous_stage)
+            if text_obj is None or stage_path is None:
+                raise CommandError(
+                    f"Project {project.id} has no {previous_stage} artifact; "
+                    f"refresh from {start_stage} requires the latest saved {previous_stage} payload as input"
+                )
+            input_stage_path = str(stage_path)
         if log:
             log(
                 f"Refreshing project={project.id} title={project.title!r} language={project.language} "
@@ -233,6 +243,7 @@ async def refresh_projects(
                     f"at {attempt_state['start_stage']}"
                 )
             try:
+                pipeline_kwargs = {"client": ai_client} if ai_client is not None else {}
                 await run_full_pipeline(
                     FullPipelineSpec(
                         text=attempt_state["raw_text"],
@@ -251,7 +262,8 @@ async def refresh_projects(
                         ),
                         stage_parameters=stage_parameters,
                         audio_mode="none",
-                    )
+                    ),
+                    **pipeline_kwargs,
                 )
                 break
             except Exception as exc:
