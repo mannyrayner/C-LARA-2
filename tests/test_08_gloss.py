@@ -249,7 +249,15 @@ class GlossUnitTests(unittest.IsolatedAsyncioTestCase):
                     "segments": [
                         {
                             "tokens": [
-                                {"surface": " ", "annotations": {"gloss": "WRONG"}},
+                                {
+                                    "surface": " ",
+                                    "annotations": {
+                                        "mwe_id": "m1",
+                                        "lemma": "wrong",
+                                        "pos": "ADV",
+                                        "gloss": "WRONG",
+                                    },
+                                },
                                 {"surface": "Aisha", "annotations": {"pos": "PROPN", "gloss": "-"}},
                             ]
                         }

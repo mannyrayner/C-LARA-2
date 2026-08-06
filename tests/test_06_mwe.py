@@ -100,7 +100,7 @@ class MWEUnitTests(unittest.IsolatedAsyncioTestCase):
             "surface": self.sample_segment["surface"],
             "tokens": [
                 {"surface": "She"},
-                {"surface": " ", "annotations": {}},
+                {"surface": " ", "annotations": {"mwe_id": "m1"}},
                 {"surface": "put", "annotations": {"mwe_id": "m1"}},
                 {"surface": " ", "annotations": {}},
                 {"surface": "up", "annotations": {"mwe_id": "m1"}},
@@ -126,6 +126,7 @@ class MWEUnitTests(unittest.IsolatedAsyncioTestCase):
 
         mwe_ids = [t.get("annotations", {}).get("mwe_id") for t in segment.get("tokens", [])]
         self.assertTrue(any(str(mid).startswith("p0m") for mid in mwe_ids if mid))
+        self.assertNotIn("mwe_id", segment["tokens"][1].get("annotations", {}))
         self.assertEqual("phrasal verb", segment.get("annotations", {}).get("mwes", [{}])[0].get("label"))
         self.assertTrue(client.prompts)
 

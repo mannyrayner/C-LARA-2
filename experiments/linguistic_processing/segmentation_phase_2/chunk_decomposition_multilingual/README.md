@@ -1,5 +1,21 @@
 # Multilingual chunk-decomposition segmentation experiments
 
+## 5.6-only reset
+
+This workbench now defaults both inference and prompt revision to `gpt-5.6` and
+writes new artifacts under `generated/gpt-5.6-prompt-learning-v1/`. Preserve the
+old flat layout before starting the new prompt-learning series:
+
+```bash
+make archive-pre-5-6          # preview
+make archive-pre-5-6 RUN=1    # archive old entries and write a manifest
+```
+
+For the seven English projects `239,245,254,255,257,261,263`, rebuild from the
+pre-`segmentation_phase_2` artifacts and manually establish segmentation gold
+before any downstream MWE, lemma, or gloss correction. The goal is prompt learning
+with 5.6; a new 5.5-versus-5.6 comparison is explicitly out of scope.
+
 This workspace is for the redesigned `segmentation_phase_2` experiments where the
 operation is constrained to decompose each whitespace-delimited chunk independently.
 Later MWE processing remains responsible for joining material across whitespace.
