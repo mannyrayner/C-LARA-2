@@ -54,6 +54,13 @@ class Command(BaseCommand):
         parser.add_argument("--username", default="mannyrayner")
         parser.add_argument("--languages", default="fr,de,en", help="Comma-separated source language codes.")
         parser.add_argument("--language-match", choices=("exact", "prefix"), default="exact")
+        parser.add_argument("--project-ids", default="", help="Optional comma-separated project allowlist.")
+        parser.add_argument(
+            "--selected-projects-split",
+            choices=SPLITS,
+            default="",
+            help="Put every allowlisted project in one split instead of assigning deterministic splits.",
+        )
         parser.add_argument("--output-dir", required=True)
         parser.add_argument("--seed", default="chunk-decomposition-v1")
         parser.add_argument("--development-project-fraction", type=float, default=0.5)
@@ -70,6 +77,14 @@ class Command(BaseCommand):
             raise CommandError("--username must not be empty")
         if not languages:
             raise CommandError("--languages must contain at least one language code")
+        project_ids = {
+            int(item.strip())
+            for item in str(options["project_ids"] or "").split(",")
+            if item.strip()
+        }
+        selected_projects_split = str(options["selected_projects_split"] or "").strip()
+        if selected_projects_split and not project_ids:
+            raise CommandError("--selected-projects-split requires --project-ids")
         dev_fraction = float(options["development_project_fraction"])
         validation_fraction = float(options["validation_project_fraction"])
         if dev_fraction <= 0 or validation_fraction < 0 or dev_fraction + validation_fraction >= 1:
@@ -98,6 +113,8 @@ class Command(BaseCommand):
             "username": username,
             "languages": languages,
             "language_match": options["language_match"],
+            "project_ids": sorted(project_ids),
+            "selected_projects_split": selected_projects_split,
             "seed": options["seed"],
             "development_project_fraction": dev_fraction,
             "validation_project_fraction": validation_fraction,
@@ -106,12 +123,18 @@ class Command(BaseCommand):
         }
         for language in languages:
             projects = _language_projects(user=user, language=language, language_match=options["language_match"])
+            if project_ids:
+                projects = projects.filter(id__in=project_ids)
             project_payloads = [payload for project in projects if (payload := summarize_project_chunks(project, language))]
-            assignments = assign_project_splits(
-                project_payloads,
-                seed=options["seed"],
-                development_project_fraction=dev_fraction,
-                validation_project_fraction=validation_fraction,
+            assignments = (
+                assign_projects_to_split(project_payloads, split=selected_projects_split)
+                if selected_projects_split
+                else assign_project_splits(
+                    project_payloads,
+                    seed=options["seed"],
+                    development_project_fraction=dev_fraction,
+                    validation_project_fraction=validation_fraction,
+                )
             )
             records_by_split = build_chunk_records(assignments)
             capped_records = {
@@ -284,6 +307,22 @@ def assign_project_splits(
                 )
             )
     return sorted(assignments, key=lambda item: (item.language, item.split, item.stratum, item.project_id))
+
+
+def assign_projects_to_split(projects: list[dict[str, Any]], *, split: str) -> list[ProjectAssignment]:
+    return [
+        ProjectAssignment(
+            project_id=int(project["project_id"]),
+            title=str(project["title"]),
+            language=str(project["language"]),
+            split=split,
+            stratum="explicit-gold-subset",
+            chunk_count=int(project["chunk_count"]),
+            latest_segmentation_run=str(project["latest_segmentation_run"]),
+            latest_segmentation_path=str(project["latest_segmentation_path"]),
+        )
+        for project in sorted(projects, key=lambda item: int(item["project_id"]))
+    ]
 
 
 def split_names_for_count(count: int, *, development_project_fraction: float, validation_project_fraction: float) -> list[str]:

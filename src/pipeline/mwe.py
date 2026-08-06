@@ -11,6 +11,7 @@ from core.telemetry import NullTelemetry, Telemetry
 
 from . import annotation_prompts
 from .generic_annotation import GenericAnnotationSpec, generic_annotation
+from .token_annotations import strip_whitespace_token_annotations
 
 
 def _load_template(language: str, *, prompts_root: Path) -> str:
@@ -141,6 +142,7 @@ def _restore_token_surfaces(original: dict[str, Any], annotated: dict[str, Any])
 
 
 def normalize_mwes(text: dict[str, Any]) -> dict[str, Any]:
+    strip_whitespace_token_annotations(text)
     pages = text.get("pages")
     if not isinstance(pages, list):
         return text
