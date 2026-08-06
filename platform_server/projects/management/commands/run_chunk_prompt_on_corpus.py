@@ -88,7 +88,9 @@ async def run_records(
     async def run_one(idx: int, record: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         prompt = build_prompt(prompt_template=prompt_template, prompt_kind=prompt_kind, record=record)
         async with semaphore:
-            response = await client.chat_json(prompt, model=model, temperature=0)
+            # Leave temperature unset. Newer GPT models such as gpt-5.6 only
+            # accept their model default and reject an explicit zero value.
+            response = await client.chat_json(prompt, model=model)
         return idx, normalize_response(record=record, response=response, prompt_kind=prompt_kind, model=model)
 
     completed = 0
@@ -115,6 +117,7 @@ def build_prompt(*, prompt_template: str, prompt_kind: str, record: dict[str, An
         if prompt_kind == "segmentation"
         else "Use Record.chunk_surface and any candidate parts in the record; do not judge the surrounding sentence as the candidate."
     )
+    prompt_record = model_input_record(record, prompt_kind=prompt_kind)
     return "\n\n".join(
         [
             prompt_template.strip(),
@@ -122,9 +125,25 @@ def build_prompt(*, prompt_template: str, prompt_kind: str, record: dict[str, An
             "Return only JSON matching this schema:",
             schema_hint,
             "Record:",
-            json.dumps(record, ensure_ascii=False, indent=2),
+            json.dumps(prompt_record, ensure_ascii=False, indent=2),
         ]
     )
+
+
+def model_input_record(record: dict[str, Any], *, prompt_kind: str) -> dict[str, Any]:
+    """Return only fields that the model is allowed to see for this task.
+
+    Corpus records also contain gold decompositions for local scoring. Passing
+    the entire record to a segmentation prompt leaks the answer and can produce
+    a meaningless perfect score.
+    """
+
+    model_record = {"chunk_surface": str(record.get("chunk_surface") or "")}
+    if prompt_kind == "rating":
+        model_record["candidate_parts"] = list(
+            record.get("candidate_parts") or record.get("predicted_parts") or []
+        )
+    return model_record
 
 
 def normalize_response(*, record: dict[str, Any], response: Any, prompt_kind: str, model: str) -> dict[str, Any]:

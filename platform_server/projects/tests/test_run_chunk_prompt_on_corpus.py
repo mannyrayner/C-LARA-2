@@ -12,10 +12,13 @@ from projects.management.commands.run_chunk_prompt_on_corpus import build_prompt
 
 
 class _StubClient:
+    calls = []
+
     def __init__(self, *args, **kwargs):
         pass
 
-    async def chat_json(self, prompt, model=None, temperature=0):
+    async def chat_json(self, prompt, **kwargs):
+        self.calls.append(kwargs)
         if "L'amour" in prompt:
             return {"parts": ["L'", "amour"], "notes": "clitic article"}
         return {"parts": ["revient"], "notes": "whole chunk"}
@@ -35,6 +38,7 @@ class _InvalidSurfaceClient:
 class RunChunkPromptOnCorpusTests(SimpleTestCase):
     @patch("projects.management.commands.run_chunk_prompt_on_corpus.OpenAIClient", _StubClient)
     def test_command_writes_segmentation_predictions(self):
+        _StubClient.calls = []
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             input_path = root / "gold.jsonl"
@@ -82,17 +86,45 @@ class RunChunkPromptOnCorpusTests(SimpleTestCase):
             self.assertEqual(predictions[0]["predicted_parts"], ["L'", "amour"])
             self.assertTrue(predictions[0]["surface_preserved"])
             self.assertEqual(predictions[0]["model"], "test-model")
+            self.assertTrue(_StubClient.calls)
+            self.assertTrue(all("temperature" not in call for call in _StubClient.calls))
 
     def test_build_prompt_emphasizes_chunk_surface_invariant(self):
         prompt = build_prompt(
             prompt_template="Segment compactly",
             prompt_kind="segmentation",
-            record={"chunk_surface": "Stadt", "segment_surface": "In einer kleinen Stadt"},
+            record={
+                "chunk_surface": "Stadt",
+                "segment_surface": "In einer kleinen Stadt",
+                "gold_parts": ["Sta", "dt"],
+                "gold_segments_display": "Sta|dt",
+            },
         )
 
         self.assertIn("use only Record.chunk_surface", prompt)
         self.assertIn("Do not segment Record.segment_surface", prompt)
         self.assertIn("concatenation of JSON parts must exactly equal Record.chunk_surface", prompt)
+        self.assertIn('"chunk_surface": "Stadt"', prompt)
+        self.assertNotIn("In einer kleinen Stadt", prompt)
+        self.assertNotIn("gold_parts", prompt)
+        self.assertNotIn("gold_segments_display", prompt)
+        self.assertNotIn("Sta|dt", prompt)
+
+    def test_rating_prompt_includes_candidate_but_not_gold(self):
+        prompt = build_prompt(
+            prompt_template="Rate this decomposition",
+            prompt_kind="rating",
+            record={
+                "chunk_surface": "don't",
+                "candidate_parts": ["do", "n't"],
+                "gold_parts": ["don", "'t"],
+            },
+        )
+
+        self.assertIn("candidate_parts", prompt)
+        self.assertIn("n't", prompt)
+        self.assertNotIn("gold_parts", prompt)
+        self.assertNotIn('"don"', prompt)
 
     def test_normalize_parts_splits_pipe_delimited_item_inside_list(self):
         self.assertEqual(normalize_parts(["cordes|."]), ["cordes", "."])
