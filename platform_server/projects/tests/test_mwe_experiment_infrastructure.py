@@ -266,6 +266,30 @@ class MWEExperimentInfrastructureTests(TestCase):
         self.assertEqual(spec.end_stage, "gloss")
         self.assertEqual(spec.stage_parameters["segmentation_phase_2"]["mechanism"], "chunk_decomposition")
 
+    def test_refresh_projects_starting_at_translation_uses_latest_segmentation_phase_2_artifact(self):
+        project, _ = self._project_with_segmentation_phase_1()
+        seg2_payload = {"pages": [{"segments": [{"surface": "Page one", "tokens": [{"surface": "Page"}]}]}]}
+        write_stage_artifact(project.artifact_dir() / "runs" / "segmentation_corrected", "segmentation_phase_2", seg2_payload)
+
+        with patch("projects.management.commands.refresh_mwe_experiment_projects.run_full_pipeline", AsyncMock(return_value=seg2_payload)) as runner:
+            results, failures = asyncio.run(
+                refresh_projects(
+                    [project],
+                    run_label_prefix="refresh_downstream",
+                    start_stage="translation",
+                    end_stage="gloss",
+                    stage_parameters={},
+                )
+            )
+
+        self.assertEqual(failures, [])
+        self.assertEqual(results[0]["project_id"], project.id)
+        spec = runner.await_args.args[0]
+        self.assertIsNone(spec.text)
+        self.assertEqual(spec.text_obj, seg2_payload)
+        self.assertEqual(spec.start_stage, "translation")
+        self.assertEqual(spec.end_stage, "gloss")
+
     def test_refresh_projects_retries_from_latest_completed_phase(self):
         project, _ = self._project_with_segmentation_phase_1()
         calls = []
@@ -322,6 +346,32 @@ class MWEExperimentInfrastructureTests(TestCase):
         self.assertEqual(failures[0]["attempts_allowed"], 2)
         self.assertEqual(failures[0]["error_type"], "RuntimeError")
         self.assertIn("second timeout", failures[0]["error"])
+
+    def test_archive_segmentation_phase_2_outputs_copies_latest_artifacts(self):
+        first, _ = self._project_with_segmentation_phase_1(title="first")
+        second, _ = self._project_with_segmentation_phase_1(title="second")
+        first_payload = {"pages": [{"segments": [{"surface": "First", "tokens": [{"surface": "First"}]}]}]}
+        second_payload = {"pages": [{"segments": [{"surface": "Second", "tokens": [{"surface": "Second"}]}]}]}
+        write_stage_artifact(first.artifact_dir() / "runs" / "seg_5_6", "segmentation_phase_2", first_payload)
+        write_stage_artifact(second.artifact_dir() / "runs" / "seg_5_6", "segmentation_phase_2", second_payload)
+
+        with TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "initial_segmentation_archive"
+            call_command(
+                "archive_segmentation_phase_2_outputs",
+                project_ids=f"{first.id},{second.id}",
+                output_dir=str(output_dir),
+                model="gpt-5.6",
+                overwrite=True,
+            )
+
+            manifest = json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["model"], "gpt-5.6")
+            self.assertEqual(manifest["project_ids"], [first.id, second.id])
+            first_archive = output_dir / f"project_{first.id}" / "segmentation_phase_2.json"
+            second_archive = output_dir / f"project_{second.id}" / "segmentation_phase_2.json"
+            self.assertEqual(json.loads(first_archive.read_text(encoding="utf-8")), first_payload)
+            self.assertEqual(json.loads(second_archive.read_text(encoding="utf-8")), second_payload)
 
     def test_refresh_command_resume_from_filters_lower_project_ids(self):
         first, _ = self._project_with_segmentation_phase_1(title="first")

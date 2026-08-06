@@ -114,7 +114,9 @@ async def evaluate_records(
         async with semaphore:
             if trace:
                 trace(f"evaluating {index}/{len(records)} {record.get('record_id')}")
-            payload = await client.chat_json(prompt, model=model, temperature=0)
+            # Some newer GPT models reject custom temperatures, including an
+            # explicit zero. Use the configured/model default.
+            payload = await client.chat_json(prompt, model=model)
         normalised = normalise_ai_payload(payload)
         cache[cache_key] = {
             **normalised,

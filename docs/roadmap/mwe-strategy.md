@@ -48,6 +48,36 @@ Keeping this in one document makes it easier to track cross-stage decisions.
 
 ### Phase D: focused MWE workbench and prompt-improvement loop
 
+#### August 2026 reset: 5.6-only prompt learning
+
+The immediate research objective is now **getting strong, reproducible prompt-learning
+results with `gpt-5.6`**, not spending a cycle on a 5.5-versus-5.6 model comparison.
+Model comparisons age quickly; an auditable human/AI prompt-learning result is the
+more durable contribution.
+
+The seven manually cleaned English projects (`239,245,254,255,257,261,263`) must
+be restarted. Their MWE, lemma, and gloss corrections were made on top of
+occasionally incorrect `segmentation_phase_2` output, so they are not trustworthy
+gold. Preserve the old generated artifacts in a dated archive, but exclude them
+from gold, few-shots, scoring, and prompt-revision evidence.
+
+The reset workflow is:
+
+1. Archive the old flat experiment outputs with their manifest; do not delete or
+   silently overwrite them.
+2. Start a new `gpt-5.6-prompt-learning-v1` artifact namespace and use `gpt-5.6`
+   for segmentation inference, MWE inference/reconciliation, and prompt revision.
+3. Regenerate the seven projects from their pre-`segmentation_phase_2` artifacts,
+   manually correct segmentation only, and freeze that checkpoint.
+4. Generate MWE annotations from the frozen segmentation, manually correct and
+   freeze MWE gold, and only then regenerate lemma and gloss.
+5. Iterate prompts on development gold, use validation for promotion decisions,
+   and leave test projects untouched until the prompt and decision rule are frozen.
+
+Every new run manifest must record its model. A 5.5 baseline may be retained in
+the archive for provenance, but producing a fresh model-comparison study is not a
+milestone for this workstream.
+
 After the current `segmentation_phase_2` chunk-decomposition round, the next
 quality-improvement target should be MWE detection. The task is harder than
 token splitting because it combines lexicalization, syntax, discontinuity, and
