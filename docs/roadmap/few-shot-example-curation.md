@@ -31,6 +31,351 @@ These figures are large enough for a meaningful first report experiment if we us
 
 The run also exposed an important implementation lesson. One generated candidate in the earlier smoke test had lost interword spaces in the boundary-marked representation, e.g. an input like `L'ami de Marie habite ici.` paired with units that concatenated as `L'amideMariehabiteici.`. The deterministic validation logic already catches this by checking that concatenated unit surfaces exactly match the input, but the review command initially still sent validation-failed candidate records to AI review. That path has now been tightened so AI review only runs over schema-valid candidates and records skipped validation failures in the review summary. This reinforces the architecture: deterministic preservation/schema checks must be a hard gate before linguistic judgement.
 
+
+## Preliminary reset step: redo `segmentation_phase_2` with 5.6 before MWE work
+
+Before restarting MWE prompt learning on the seven English texts, redo the upstream
+`segmentation_phase_2` artifacts with `gpt-5.6` and manually freeze those
+segmentations. This is not a 5.5-vs-5.6 comparison; it is the clean starting
+point for the 5.6-only prompt-learning series, so downstream MWE, lemma, and
+gloss gold must be derived only after the new segmentation is accepted.
+
+Use the MWE workbench target, because it writes the refreshed
+`segmentation_phase_2.json` artifacts into the normal per-project run directories
+that the manual editor and the later MWE refresh/export commands treat as the
+latest project state. The workbench's generated bookkeeping remains under
+`generated/gpt-5.6-prompt-learning-v1/`, while the processing output that MWE
+needs is the latest saved project artifact, not a copied JSONL file in the
+segmentation workbench.
+
+```bash
+cd experiments/linguistic_processing/mwe/focused_multilingual
+
+# Preserve old flat generated/ outputs first; the archive is provenance only.
+make archive-pre-5-6 RUN=1
+
+# Optional: establish or refresh the project split manifests in the 5.6 namespace.
+make extract-split-corpus CORPUS_USER=mannyrayner LANGUAGES=en
+
+# Rebuild only segmentation_phase_2 for the seven English projects with gpt-5.6.
+make refresh-segmentation-phase-2 RUN=1 \
+  PROJECT_IDS="239,245,254,255,257,261,263"
+
+# Before any manual correction, archive these initial 5.6 outputs for later
+# accuracy/error analysis against the corrected segmentation.
+make archive-initial-segmentation-phase-2 RUN=1 \
+  PROJECT_IDS="239,245,254,255,257,261,263"
+```
+
+The archive target copies the current latest `segmentation_phase_2.json` for each
+selected project to
+`generated/gpt-5.6-prompt-learning-v1/segmentation_phase_2_initial_outputs/`
+and writes a manifest recording source project ids, source artifact paths, model,
+and archive paths. Run it after the 5.6 segmentation refresh has completed and
+before opening the annotations for manual correction; otherwise the preserved
+"initial output" may already include human edits.
+
+After that command, review and correct `segmentation_phase_2` in the ordinary
+project/manual annotation workflow until these seven projects are frozen. Only
+then continue downstream, preserving the corrected segmentation by starting the
+full MWE-side refresh at `translation` rather than rerunning segmentation again:
+
+```bash
+make refresh-annotations RUN=1 \
+  PROJECT_IDS="239,245,254,255,257,261,263" \
+  REFRESH_START_STAGE=translation \
+  REFRESH_END_STAGE=gloss
+
+make extract-split-corpus CORPUS_USER=mannyrayner LANGUAGES=en
+```
+
+This sequencing prevents the earlier problem from recurring: MWE, lemma, and
+gloss manual cleanup cannot become gold evidence until it is anchored to the new
+5.6 `segmentation_phase_2` artifacts.
+
+### Seven-English-project checkpoint and prompt provenance (2026-08-06)
+
+Manual correction is complete on the laptop for English projects
+`239,245,254,255,257,261,263`. The reviewer reports that the page-oriented
+workflow completed without further problems and that the 5.6 MWE output is
+visibly better than the earlier material. These seven projects now form a small
+development gold set, not a held-out test set.
+
+Freeze both layers before doing any more processing on these projects:
+
+```bash
+cd experiments/linguistic_processing/mwe/focused_multilingual
+
+# Preserve the corrected segmentation payloads separately from the archived
+# uncorrected 5.6 outputs.
+make archive-corrected-segmentation-phase-2 RUN=1 \
+  PROJECT_IDS="239,245,254,255,257,261,263"
+
+# Snapshot the projects and export an explicit, immutable-by-convention MWE
+# gold subset plus summary and review files in the 5.6 experiment namespace.
+make declare-mwe-gold RUN=1 \
+  PROJECT_IDS="239,245,254,255,257,261,263" \
+  MWE_LANGUAGE=en SPLIT=development
+
+make check-mwe-gold RUN=1 \
+  PROJECT_IDS="239,245,254,255,257,261,263" \
+  MWE_LANGUAGE=en SPLIT=development
+```
+
+The corrected segmentation archive is written under
+`generated/gpt-5.6-prompt-learning-v1/segmentation_phase_2_gold/seven-en/` with
+a provenance manifest. The MWE command creates named project snapshots and
+exports `selected_segments.jsonl`, `summary.json`, and `review.md` under
+`generated/gpt-5.6-prompt-learning-v1/mwe_gold/en-development/`. Copy or commit
+these experiment outputs to the normal backed-up experiment-results location
+before modifying the seven projects again.
+
+For this checkpoint, the prompt provenance implied by the tracked command and
+configuration is:
+
+- **Model:** `gpt-5.6`.
+- **English `segmentation_phase_2`:** mechanism `chunk_decomposition`, prompt
+  variant `chunk_decomposition_multilingual_v1`, source split `development`,
+  with chunk consistency enabled. No `chunk_prompt_cycle` was pinned in
+  `config/stage_parameters.json`, so the runtime selected the latest available
+  English development cycle: cycle 2,
+  `prompts/segmentation_phase_2/variants/chunk_decomposition_multilingual_v1/en/development/cycle_2/prompt.md`.
+- **English MWE:** `prompts/mwe/en/template.txt`, together with the two sorted
+  few-shot files `prompts/mwe/en/fewshots/example1.json` and `example2.json`.
+  No replacement MWE template was supplied by `refresh-annotations`.
+
+This provenance should be made stronger in future runs: manifests should record
+the resolved prompt path, cycle, few-shot paths, and content hashes rather than
+requiring reconstruction from the checkout and stage parameters.
+
+### Immediate measurements and next experiment sequence
+
+First quantify the current 5.6 MWE baseline against the newly frozen gold:
+
+```bash
+make run-current-mwe RUN=1 \
+  PROJECT_IDS="239,245,254,255,257,261,263" \
+  MWE_LANGUAGE=en SPLIT=development
+
+make score-current-mwe RUN=1 \
+  PROJECT_IDS="239,245,254,255,257,261,263" \
+  MWE_LANGUAGE=en SPLIT=development
+```
+
+The score output is the baseline for prompt learning, not a publishable test
+estimate: the same seven projects will be used to diagnose errors and revise the
+prompt. Report exact-match and component-level MWE measures together with raw
+counts, and retain per-segment errors for qualitative analysis.
+
+The first 5.6 MWE baseline was run on 2026-08-06 and scored **F1 0.862,
+precision 0.863, recall 0.860** on this seven-project development gold set. This
+is a substantial practical improvement over the earlier work, while remaining a
+development result rather than a held-out estimate.
+
+For `segmentation_phase_2`, compare the already archived initial 5.6 payloads
+against the newly archived corrected payloads. Add a deterministic paired scorer
+that reports at least exact tokenization, boundary precision/recall/F1, projects,
+segments, tokens, and error counts grouped by phenomenon. The first explicit
+English diagnostic category must be apostrophe clitics and contractions such as
+`it's`, `we'll`, and `don't`; cycle 2 currently says not to split morphology
+unless it is a standalone word and gives no English-clitic rule, which is a
+plausible source of the observed errors.
+
+Then proceed in this order:
+
+1. Use only the seven-project development gold to run 5.6-based prompt-learning
+   cycles for both `segmentation_phase_2` and MWE. Preserve baseline and every
+   candidate prompt, manifest, score, and error report.
+2. Draw additional English projects from the unused training/development pool.
+   Freeze the prompt-learning procedure before treating a separate subset as
+   validation; do not repeatedly tune on validation or test.
+3. Start French and German with small manually audited development samples and
+   the same archive -> correct -> freeze -> baseline -> learn protocol. Keep
+   language-specific phenomena and prompts separate while sharing metrics and
+   reporting structure.
+4. Work backward from the ALTA 2026 deadline of 11 September: freeze the research
+   questions and evaluation protocol early, reserve a genuinely untouched test
+   set, and prioritize reproducible 5.6 prompt-learning gains plus error analysis
+   over a transient 5.5-vs-5.6 comparison.
+
+### English 5.6 recursive `segmentation_phase_2` prompt-learning runbook
+
+Use the existing chunk-decomposition recursive improvement workbench, but start
+a fresh 5.6 series from the seven manually corrected English projects. Do not run
+the ordinary multilingual splitter for this first baseline: it would distribute
+the seven projects between development, validation, and test. Instead, explicitly
+extract all seven as development gold:
+
+```bash
+cd experiments/linguistic_processing/segmentation_phase_2/chunk_decomposition_multilingual
+
+make prepare-seven-en-development-gold RUN=1 \
+  EXPERIMENT_SERIES=gpt-5.6-seven-en-prompt-learning-v1 \
+  PROJECT_IDS="239,245,254,255,257,261,263" \
+  CORPUS_USER=mannyrayner MAX_DEVELOPMENT_CHUNKS=100000
+```
+
+This reads the latest, manually corrected `segmentation_phase_2` artifacts,
+creates chunk records only for the selected projects, assigns all of them to
+development, and freezes the resulting records as
+`generated/gpt-5.6-seven-en-prompt-learning-v1/gold/en-development.jsonl`. The
+dedicated series name prevents this extraction and its cycle numbers from
+overwriting other 5.6 multilingual experiments. Confirm from
+the generated manifest that the development project ids are exactly the seven
+ids above before spending API calls.
+
+Run cycle 1 with the same English cycle-2 prompt used for the initial 5.6 project
+processing, so the score is an apples-to-apples baseline:
+
+The runner deliberately leaves `temperature` unset: `gpt-5.6` accepts only its
+default value and rejects the formerly hard-coded `temperature=0`. If a run made
+with the older runner failed with that 400 error, update the checkout and rerun
+the same command; predictions are written only after the batch completes and the
+target uses `--overwrite`.
+
+**Invalidated first attempt:** an initial run reported 4370/4370 correct. This
+was gold leakage, not model performance: the runner serialized the complete
+local scoring record into the API prompt, including `gold_parts` and
+`gold_segments_display`. The runner now constructs an explicit model-facing
+record containing only `chunk_surface` for segmentation (or `chunk_surface` and
+candidate parts for rating). Discard any predictions, briefs, or revisions made
+with the leaking runner and rerun cycle 1 from the unchanged seed prompt. Do not
+advance to cycle 2 from the invalidated perfect-score revision.
+
+```bash
+make run-prompt RUN=1 \
+  EXPERIMENT_SERIES=gpt-5.6-seven-en-prompt-learning-v1 \
+  MODEL=gpt-5.6 REVISION_MODEL=gpt-5.6 \
+  JUDGE_LANGUAGE=en SPLIT=development PROMPT_KIND=segmentation \
+  CURRENT_PROMPT=../../../../prompts/segmentation_phase_2/variants/chunk_decomposition_multilingual_v1/en/development/cycle_2/prompt.md \
+  PROMPT_IMPROVEMENT_CYCLE_NUMBER=1 \
+  PROMPT_LIMIT=0 MAX_CONCURRENCY=20 PROGRESS_EVERY=25
+
+make prepare-prompt-improvement RUN=1 \
+  EXPERIMENT_SERIES=gpt-5.6-seven-en-prompt-learning-v1 \
+  MODEL=gpt-5.6 REVISION_MODEL=gpt-5.6 \
+  JUDGE_LANGUAGE=en SPLIT=development PROMPT_KIND=segmentation \
+  CURRENT_PROMPT=../../../../prompts/segmentation_phase_2/variants/chunk_decomposition_multilingual_v1/en/development/cycle_2/prompt.md \
+  PROMPT_IMPROVEMENT_CYCLE_NUMBER=1
+```
+
+Inspect `cycle_1/prompt_improvement_brief.md` and `prompt_revision.md`. Review
+every divergence before trusting the revision; use this to catch extraction or
+gold slips, but do not change a defensible gold decision merely because the
+model disagrees:
+
+```bash
+make review-prompt-divergences RUN=1 \
+  EXPERIMENT_SERIES=gpt-5.6-seven-en-prompt-learning-v1 \
+  JUDGE_LANGUAGE=en SPLIT=development PROMPT_KIND=segmentation \
+  PROMPT_IMPROVEMENT_CYCLE_NUMBER=1 DIVERGENCE_REVIEW_LIMIT=0
+```
+
+If review changes any gold record, rerun `run-prompt` and
+`prepare-prompt-improvement` for the same cycle before advancing. Then run cycle
+2; its `prompt.md` is copied automatically from cycle 1's
+`prompt_revision.md`:
+
+```bash
+make run-prompt RUN=1 \
+  EXPERIMENT_SERIES=gpt-5.6-seven-en-prompt-learning-v1 \
+  MODEL=gpt-5.6 REVISION_MODEL=gpt-5.6 \
+  JUDGE_LANGUAGE=en SPLIT=development PROMPT_KIND=segmentation \
+  PROMPT_IMPROVEMENT_CYCLE_NUMBER=2 \
+  PROMPT_LIMIT=0 MAX_CONCURRENCY=20 PROGRESS_EVERY=25
+
+make prepare-prompt-improvement RUN=1 \
+  EXPERIMENT_SERIES=gpt-5.6-seven-en-prompt-learning-v1 \
+  MODEL=gpt-5.6 REVISION_MODEL=gpt-5.6 \
+  JUDGE_LANGUAGE=en SPLIT=development PROMPT_KIND=segmentation \
+  PROMPT_IMPROVEMENT_CYCLE_NUMBER=2
+
+make review-prompt-divergences RUN=1 \
+  EXPERIMENT_SERIES=gpt-5.6-seven-en-prompt-learning-v1 \
+  JUDGE_LANGUAGE=en SPLIT=development PROMPT_KIND=segmentation \
+  PROMPT_IMPROVEMENT_CYCLE_NUMBER=2 DIVERGENCE_REVIEW_LIMIT=0
+```
+
+Repeat the run -> improvement brief/revision -> human divergence review loop
+only while development performance or the qualitative error analysis improves.
+Track contraction/clitic errors separately rather than allowing a high overall
+accuracy to conceal them. Summarize all completed cycles with:
+
+```bash
+make summarize-prompt-improvement-cycles RUN=1 \
+  EXPERIMENT_SERIES=gpt-5.6-seven-en-prompt-learning-v1 \
+  JUDGE_LANGUAGE=en SPLIT=development PROMPT_KIND=segmentation
+```
+
+Do not run `validate-development-prompt` yet: this explicitly selected corpus
+contains development gold only. First choose a promising cycle and freeze the
+learning procedure, then manually establish gold for unused English projects in
+a separate validation subset. Validation may select among already-defined
+candidates but must not generate another revision; test remains untouched until
+the cycle-selection rule is fixed.
+
+Before selecting more texts, rerun cycle 1 with the non-leaking runner and obtain
+the real seven-project baseline. The reported 100% result cannot be used to
+decide whether another sample is needed or whether cycle 2 is better.
+
+After the corrected baseline and at least one development revision, selecting
+two or three unused English projects is a good next step. First inspect what is
+actually left in the original MWE development assignment on the laptop (the
+generated manifests are intentionally not in Git):
+
+```bash
+cd experiments/linguistic_processing/mwe/focused_multilingual
+
+python3 - <<'PY'
+import json
+from pathlib import Path
+
+used = {239, 245, 254, 255, 257, 261, 263}
+path = Path("generated/gpt-5.6-prompt-learning-v1/corpus_splits/en/split_manifest.json")
+manifest = json.loads(path.read_text(encoding="utf-8"))
+rows = [
+    row for row in manifest["project_assignments"]
+    if row["split"] == "development" and int(row["project_id"]) not in used
+]
+for row in sorted(rows, key=lambda item: (item.get("source_chars", 0), item["project_id"])):
+    print(row["project_id"], row.get("source_chars", 0), row["title"])
+print(f"remaining development projects: {len(rows)}")
+PY
+```
+
+If this prints at least three candidates, choose a small, medium, and larger text
+where practical. Process them with 5.6, archive the untouched outputs, and only
+then review them in the manual editor. Keep this sample separate from the seven
+projects. If its results influence another prompt revision, call it additional
+development data; if it is used only once to choose among already-frozen cycles,
+call it validation. Never call it test after inspecting or correcting it.
+
+For selected ids `<NEW_PROJECT_IDS>`, use the MWE workbench sequence:
+
+```bash
+# Generate and preserve the new segmentation baseline.
+make refresh-segmentation-phase-2 RUN=1 PROJECT_IDS="<NEW_PROJECT_IDS>"
+make archive-initial-segmentation-phase-2 RUN=1 \
+  PROJECT_IDS="<NEW_PROJECT_IDS>" \
+  INITIAL_SEGMENTATION_ARCHIVE_DIR="generated/gpt-5.6-prompt-learning-v1/segmentation_phase_2_initial_outputs_followup_en" \
+  INITIAL_SEGMENTATION_ARCHIVE_LABEL="initial-gpt-5.6-followup-en-segmentation-phase-2"
+
+# Manually review/correct segmentation_phase_2, then run the downstream stages
+# without overwriting that correction.
+make refresh-annotations RUN=1 \
+  PROJECT_IDS="<NEW_PROJECT_IDS>" \
+  REFRESH_START_STAGE=translation REFRESH_END_STAGE=gloss
+
+# Preserve the generated downstream baseline before manually reviewing MWE.
+make snapshot-gold-projects RUN=1 \
+  PROJECT_IDS="<NEW_PROJECT_IDS>" \
+  SNAPSHOT_NAME_PREFIX="Pre-manual-MWE gpt-5.6 follow-up English baseline"
+```
+
+Then review MWE in the page-oriented editor. This yields a second paired sample:
+uncorrected/corrected segmentation plus uncorrected/corrected MWE, without
+contaminating either baseline through premature manual editing.
+
 ## Short-term plan: first French boundary-first experiment
 
 The current working plan is concentrated in the versioned experiment workspace at
