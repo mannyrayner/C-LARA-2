@@ -69,6 +69,7 @@ MWE_CYCLE_OUTPUTS_JSONL := $(MWE_PROMPT_CYCLE_DIR)/$(MWE_CYCLE_RUN_LABEL)/output
 MWE_CYCLE_OUTPUTS_MARKDOWN := $(MWE_PROMPT_CYCLE_DIR)/$(MWE_CYCLE_RUN_LABEL)/outputs.md
 MWE_CYCLE_SCORE_DIR := $(MWE_PROMPT_CYCLE_DIR)/score
 MWE_CYCLE_IMPROVEMENT_DIR := $(MWE_PROMPT_CYCLE_DIR)/improvement
+MWE_CYCLE_REVIEW_JSONL := $(MWE_PROMPT_CYCLE_DIR)/gold_divergence_review.jsonl
 MWE_CYCLE_REVISION := $(MWE_CYCLE_IMPROVEMENT_DIR)/template_revision.txt
 MWE_CYCLE_REVISION_JSON := $(MWE_CYCLE_IMPROVEMENT_DIR)/template_revision.json
 MWE_CYCLE_COMPARISON_JSON := $(MWE_PROMPT_CYCLE_BASE_DIR)/cycle_comparison.json
@@ -122,7 +123,7 @@ MWE_TRANSLATION_CONTEXT_ARG := $(if $(filter 1,$(MWE_USE_TRANSLATION_CONTEXT)),-
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: archive-pre-5-6 archive-pre-5-6-dry-run help prepare declare-mwe-gold check-mwe-gold check-mwe-translation-context mwe-prompt-cycle mwe-reconcile-prompt-cycle recover-mwe-prompt-cycle-after-run show-mwe-prompt-cycle-results compare-mwe-prompt-cycles prepare-mwe-prompt-cycle run-mwe-prompt-cycle run-mwe-reconcile-prompt-cycle resume-mwe-prompt-cycle format-mwe-prompt-cycle-output score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement revise-mwe-prompt-cycle-template revise-mwe-reconcile-prompt-cycle-templates extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-segmentation-phase-2 refresh-segmentation-phase-2-dry-run archive-initial-segmentation-phase-2 archive-initial-segmentation-phase-2-dry-run archive-corrected-segmentation-phase-2 archive-corrected-segmentation-phase-2-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
+.PHONY: archive-pre-5-6 archive-pre-5-6-dry-run help prepare declare-mwe-gold check-mwe-gold check-mwe-translation-context mwe-prompt-cycle mwe-reconcile-prompt-cycle recover-mwe-prompt-cycle-after-run show-mwe-prompt-cycle-results compare-mwe-prompt-cycles prepare-mwe-prompt-cycle run-mwe-prompt-cycle run-mwe-reconcile-prompt-cycle resume-mwe-prompt-cycle format-mwe-prompt-cycle-output score-mwe-prompt-cycle review-mwe-prompt-divergences propose-mwe-prompt-cycle-improvement revise-mwe-prompt-cycle-template revise-mwe-reconcile-prompt-cycle-templates extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-segmentation-phase-2 refresh-segmentation-phase-2-dry-run archive-initial-segmentation-phase-2 archive-initial-segmentation-phase-2-dry-run archive-corrected-segmentation-phase-2 archive-corrected-segmentation-phase-2-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
 
 help:
 	@echo "Focused MWE experiments (multilingual)"
@@ -148,6 +149,7 @@ help:
 	@echo "  resume-mwe-prompt-cycle   Run missing records for a cycle with an existing run/outputs.jsonl"
 	@echo "  format-mwe-prompt-cycle-output  Render cycle outputs.jsonl as readable Markdown"
 	@echo "  score-mwe-prompt-cycle    Score a cycle-specific MWE prompt run"
+	@echo "  review-mwe-prompt-divergences  Audit prompt/gold disagreements and correct experimental gold"
 	@echo "  propose-mwe-prompt-cycle-improvement  Write cycle-specific improvement guidance"
 	@echo "  revise-mwe-prompt-cycle-template  Use AI to write the next-cycle prompt draft"
 	@echo "  revise-mwe-reconcile-prompt-cycle-templates  Use AI to revise the three analysis prompts and reconciliation prompt"
@@ -403,10 +405,16 @@ format-mwe-prompt-cycle-output: prepare
 score-mwe-prompt-cycle: prepare
 	@echo "+ $(MANAGE) score_mwe_prompt_outputs --outputs-jsonl $(PY_MWE_CYCLE_OUTPUTS_JSONL) --output-dir $(PY_MWE_CYCLE_SCORE_DIR) --split $(SPLIT) --project-ids $(PROJECT_IDS) --overwrite"
 	@if [ "$(RUN)" = "1" ]; then \
-		$(MANAGE) score_mwe_prompt_outputs --outputs-jsonl "$(PY_MWE_CYCLE_OUTPUTS_JSONL)" --output-dir "$(PY_MWE_CYCLE_SCORE_DIR)" --split "$(SPLIT)" --project-ids "$(PROJECT_IDS)" --overwrite; \
+		$(MANAGE) score_mwe_prompt_outputs --outputs-jsonl "$(PY_MWE_CYCLE_OUTPUTS_JSONL)" --gold-jsonl "$(PY_MWE_CYCLE_RECORDS)" --output-dir "$(PY_MWE_CYCLE_SCORE_DIR)" --split "$(SPLIT)" --project-ids "$(PROJECT_IDS)" --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 after run-mwe-prompt-cycle has produced $(MWE_CYCLE_OUTPUTS_JSONL)"; \
 	fi
+
+review-mwe-prompt-divergences: prepare
+	$(MANAGE) review_mwe_prompt_divergences \
+		--gold-jsonl "$(PY_MWE_CYCLE_RECORDS)" \
+		--outputs-jsonl "$(PY_MWE_CYCLE_OUTPUTS_JSONL)" \
+		--review-jsonl "$(call python_path,$(MWE_CYCLE_REVIEW_JSONL))"
 
 propose-mwe-prompt-cycle-improvement: prepare
 	@echo "+ $(MANAGE) propose_mwe_prompt_improvement --score-dir $(PY_MWE_CYCLE_SCORE_DIR) --output-dir $(PY_MWE_CYCLE_IMPROVEMENT_DIR) --project-ids $(PROJECT_IDS) --overwrite"

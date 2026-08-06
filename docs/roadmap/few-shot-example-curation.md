@@ -369,6 +369,69 @@ near-term ALTA narrative—two different annotation tasks improved by the same
 5.6-based learning method—while French and German provide the multilingual
 extension once the protocol is stable.
 
+### English 5.6 MWE recursive prompt-learning calls
+
+After freezing segmentation cycle 2, start a separate named MWE cycle series on
+the already exported seven-project gold. MWE membership is less sharply defined
+than token boundaries, so every prompt/gold disagreement must be reviewed rather
+than automatically counted as a model error.
+
+```bash
+cd experiments/linguistic_processing/mwe/focused_multilingual
+
+MWE_PROJECT_IDS="239,245,254,255,257,261,263"
+MWE_SERIES="seven-en-gpt-5.6-v1"
+
+# Cycle 1: run the current English prompt, format, score, and diagnose.
+make mwe-prompt-cycle RUN=1 \
+  MODEL=gpt-5.6 MWE_REVISION_MODEL=gpt-5.6 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" MWE_LANGUAGE=en SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_SERIES" MWE_PROMPT_CYCLE_NUMBER=1
+
+make show-mwe-prompt-cycle-results \
+  MWE_LANGUAGE=en SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_SERIES" MWE_PROMPT_CYCLE_NUMBER=1
+
+# Audit every cycle-1 prediction/gold disagreement interactively.
+make review-mwe-prompt-divergences \
+  PROJECT_IDS="$MWE_PROJECT_IDS" MWE_LANGUAGE=en SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_SERIES" MWE_PROMPT_CYCLE_NUMBER=1
+```
+
+The review commands are `a` (gold is right), `p` (prediction is better gold),
+`n` (there is no MWE), `c [["token", "token"], ...]` (enter corrected MWE token
+groups as JSON), `s` (skip), and `q` (quit). Record a short reason, especially
+for borderline compositionality, discontinuity, or language-learning usefulness.
+Corrections are appended to the experimental gold JSONL and decisions to the
+cycle review log; the original project annotations are not silently changed.
+
+After review, rescore the **existing** predictions against the latest corrected
+gold, regenerate the diagnostic guidance, and ask 5.6 for the cycle-2 draft:
+
+```bash
+make score-mwe-prompt-cycle RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" MWE_LANGUAGE=en SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_SERIES" MWE_PROMPT_CYCLE_NUMBER=1
+
+make propose-mwe-prompt-cycle-improvement RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" MWE_LANGUAGE=en SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_SERIES" MWE_PROMPT_CYCLE_NUMBER=1
+
+make revise-mwe-prompt-cycle-template RUN=1 \
+  MODEL=gpt-5.6 MWE_REVISION_MODEL=gpt-5.6 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" MWE_LANGUAGE=en SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_SERIES" MWE_PROMPT_CYCLE_NUMBER=1
+```
+
+Inspect `cycle_1/improvement/template_revision.txt`, then run cycle 2 by changing
+only `MWE_PROMPT_CYCLE_NUMBER=2` in the three-step run/show/review sequence above.
+Cycle 2 automatically copies the reviewed cycle-1 revision. As with segmentation,
+rescore after gold review before deciding whether the prompt improved. Do not
+interpret disagreements as errors until the MWE policy has been made explicit;
+the review log should become evidence for a short annotation guideline covering
+lexicalization, compositional phrases, discontinuous expressions, overlaps, and
+whether pedagogical usefulness is part of the inclusion criterion.
+
 Do not run `validate-development-prompt` yet: this explicitly selected corpus
 contains development gold only. First choose a promising cycle and freeze the
 learning procedure, then manually establish gold for unused English projects in
