@@ -242,6 +242,16 @@ candidate parts for rating). Discard any predictions, briefs, or revisions made
 with the leaking runner and rerun cycle 1 from the unchanged seed prompt. Do not
 advance to cycle 2 from the invalidated perfect-score revision.
 
+**Corrected cycle-1 baseline (2026-08-06):** after removing gold fields from the
+model-facing record, the same 4,370 development chunks scored **accuracy
+0.9881**, with 4,318 correct chunks, 40 over-splits, and 12 under-splits. This is
+chunk exact-match accuracy, not boundary F1. The errors are strongly concentrated
+in English apostrophe clitics/contractions, with a smaller hyphen-separation
+class. The generated cycle-1 revision addresses these patterns with general
+rules and examples for possessive/contracted `'s`, other apostrophe clitics,
+negative `n't`, surrounding quotation marks, and hyphens. Preserve the cycle-1
+brief and revision as experiment evidence.
+
 ```bash
 make run-prompt RUN=1 \
   EXPERIMENT_SERIES=gpt-5.6-seven-en-prompt-learning-v1 \
@@ -275,6 +285,11 @@ If review changes any gold record, rerun `run-prompt` and
 `prepare-prompt-improvement` for the same cycle before advancing. Then run cycle
 2; its `prompt.md` is copied automatically from cycle 1's
 `prompt_revision.md`:
+
+Before running the commands below, confirm that divergence review is complete
+and that any gold corrections have been followed by a fresh cycle-1 run and
+brief. No `CURRENT_PROMPT` override is needed for cycle 2: `prepare-cycle` uses
+`cycle_1/prompt_revision.md` as its source.
 
 ```bash
 make run-prompt RUN=1 \
