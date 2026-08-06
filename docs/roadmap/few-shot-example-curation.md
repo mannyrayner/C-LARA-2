@@ -281,14 +281,16 @@ make review-prompt-divergences RUN=1 \
   PROMPT_IMPROVEMENT_CYCLE_NUMBER=1 DIVERGENCE_REVIEW_LIMIT=0
 ```
 
-If review changes any gold record, rerun `run-prompt` and
-`prepare-prompt-improvement` for the same cycle before advancing. Then run cycle
-2; its `prompt.md` is copied automatically from cycle 1's
+If review changes any gold record, rerun `prepare-prompt-improvement` for the
+same cycle before advancing. A new `run-prompt` is unnecessary because the model
+sees only `chunk_surface`, not gold fields; retaining predictions also avoids
+introducing variation from another model sample. Then run cycle 2; its `prompt.md`
+is copied automatically from cycle 1's
 `prompt_revision.md`:
 
 Before running the commands below, confirm that divergence review is complete
-and that any gold corrections have been followed by a fresh cycle-1 run and
-brief. No `CURRENT_PROMPT` override is needed for cycle 2: `prepare-cycle` uses
+and that any gold corrections have been followed by a fresh cycle-1 brief. No
+`CURRENT_PROMPT` override is needed for cycle 2: `prepare-cycle` uses
 `cycle_1/prompt_revision.md` as its source.
 
 ```bash
@@ -322,6 +324,51 @@ make summarize-prompt-improvement-cycles RUN=1 \
   JUDGE_LANGUAGE=en SPLIT=development PROMPT_KIND=segmentation
 ```
 
+**Cycle-2 result (2026-08-06):** 4,359/4,370 chunks matched the current gold
+(accuracy 0.9975; 7 apparent over-splits and 4 apparent under-splits). Inspection
+shows that the remaining 11 divergences are dominated by inconsistent gold, not
+a coherent new model-error class. For example, cycle-1 gold treated possessive
+`'s` and negative `n't` as intact clitics and split `high-tech`, while the cycle-2
+divergence list contains gold entries that split apostrophe from `s`, leave
+`didn't` intact, or inconsistently leave similar hyphenated compounds intact.
+Do not generate or adopt cycle 3 from these unreviewed discrepancies.
+
+Audit all 11 cycle-2 divergences with the existing review target:
+
+```bash
+make review-prompt-divergences RUN=1 \
+  EXPERIMENT_SERIES=gpt-5.6-seven-en-prompt-learning-v1 \
+  JUDGE_LANGUAGE=en SPLIT=development PROMPT_KIND=segmentation \
+  PROMPT_IMPROVEMENT_CYCLE_NUMBER=2 DIVERGENCE_REVIEW_LIMIT=0
+```
+
+Because the segmentation model sees only `chunk_surface`, correcting gold does
+not change the cycle-2 model input. Preserve the existing predictions and
+recompute the brief against corrected gold without asking for a cycle-3 draft:
+
+```bash
+make prepare-prompt-improvement RUN=1 \
+  EXPERIMENT_SERIES=gpt-5.6-seven-en-prompt-learning-v1 \
+  MODEL=gpt-5.6 REVISION_MODEL=gpt-5.6 \
+  JUDGE_LANGUAGE=en SPLIT=development PROMPT_KIND=segmentation \
+  PROMPT_IMPROVEMENT_CYCLE_NUMBER=2 GENERATE_REVISED_PROMPT=0
+```
+
+Treat any already-created cycle-2 `prompt_revision.md` as provisional and do not
+use it for cycle 3. If the corrected brief has zero errors, freeze cycle 2 as the
+English development candidate. If one or two genuine errors remain, record them
+qualitatively; at 0.9975 before gold cleanup, another recursive revision is more
+likely to overfit than to add useful generality.
+
+The recommended next research order is: (1) finish this 11-item audit and freeze
+the English segmentation candidate; (2) run the existing English MWE recursive
+prompt-learning workflow from its 0.862-F1 baseline; (3) evaluate both frozen
+English prompts on newly corrected, previously unused English projects; and only
+then (4) repeat the protocol for French and German. This produces the strongest
+near-term ALTA narrative—two different annotation tasks improved by the same
+5.6-based learning method—while French and German provide the multilingual
+extension once the protocol is stable.
+
 Do not run `validate-development-prompt` yet: this explicitly selected corpus
 contains development gold only. First choose a promising cycle and freeze the
 learning procedure, then manually establish gold for unused English projects in
@@ -329,12 +376,8 @@ a separate validation subset. Validation may select among already-defined
 candidates but must not generate another revision; test remains untouched until
 the cycle-selection rule is fixed.
 
-Before selecting more texts, rerun cycle 1 with the non-leaking runner and obtain
-the real seven-project baseline. The reported 100% result cannot be used to
-decide whether another sample is needed or whether cycle 2 is better.
-
-After the corrected baseline and at least one development revision, selecting
-two or three unused English projects is a good next step. First inspect what is
+After the cycle-2 gold audit and prompt freeze, selecting two or three unused
+English projects is a good next step. First inspect what is
 actually left in the original MWE development assignment on the laptop (the
 generated manifests are intentionally not in Git):
 
