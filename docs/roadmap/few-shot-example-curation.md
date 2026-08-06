@@ -227,6 +227,12 @@ ids above before spending API calls.
 Run cycle 1 with the same English cycle-2 prompt used for the initial 5.6 project
 processing, so the score is an apples-to-apples baseline:
 
+The runner deliberately leaves `temperature` unset: `gpt-5.6` accepts only its
+default value and rejects the formerly hard-coded `temperature=0`. If a run made
+with the older runner failed with that 400 error, update the checkout and rerun
+the same command; predictions are written only after the batch completes and the
+target uses `--overwrite`.
+
 ```bash
 make run-prompt RUN=1 \
   EXPERIMENT_SERIES=gpt-5.6-seven-en-prompt-learning-v1 \

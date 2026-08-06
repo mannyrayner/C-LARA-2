@@ -88,7 +88,9 @@ async def run_records(
     async def run_one(idx: int, record: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         prompt = build_prompt(prompt_template=prompt_template, prompt_kind=prompt_kind, record=record)
         async with semaphore:
-            response = await client.chat_json(prompt, model=model, temperature=0)
+            # Leave temperature unset. Newer GPT models such as gpt-5.6 only
+            # accept their model default and reject an explicit zero value.
+            response = await client.chat_json(prompt, model=model)
         return idx, normalize_response(record=record, response=response, prompt_kind=prompt_kind, model=model)
 
     completed = 0

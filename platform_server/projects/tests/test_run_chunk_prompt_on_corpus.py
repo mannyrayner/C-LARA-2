@@ -12,10 +12,13 @@ from projects.management.commands.run_chunk_prompt_on_corpus import build_prompt
 
 
 class _StubClient:
+    calls = []
+
     def __init__(self, *args, **kwargs):
         pass
 
-    async def chat_json(self, prompt, model=None, temperature=0):
+    async def chat_json(self, prompt, **kwargs):
+        self.calls.append(kwargs)
         if "L'amour" in prompt:
             return {"parts": ["L'", "amour"], "notes": "clitic article"}
         return {"parts": ["revient"], "notes": "whole chunk"}
@@ -35,6 +38,7 @@ class _InvalidSurfaceClient:
 class RunChunkPromptOnCorpusTests(SimpleTestCase):
     @patch("projects.management.commands.run_chunk_prompt_on_corpus.OpenAIClient", _StubClient)
     def test_command_writes_segmentation_predictions(self):
+        _StubClient.calls = []
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             input_path = root / "gold.jsonl"
@@ -82,6 +86,8 @@ class RunChunkPromptOnCorpusTests(SimpleTestCase):
             self.assertEqual(predictions[0]["predicted_parts"], ["L'", "amour"])
             self.assertTrue(predictions[0]["surface_preserved"])
             self.assertEqual(predictions[0]["model"], "test-model")
+            self.assertTrue(_StubClient.calls)
+            self.assertTrue(all("temperature" not in call for call in _StubClient.calls))
 
     def test_build_prompt_emphasizes_chunk_surface_invariant(self):
         prompt = build_prompt(
