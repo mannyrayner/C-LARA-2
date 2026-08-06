@@ -88,7 +88,10 @@ class LemmaUnitTests(unittest.IsolatedAsyncioTestCase):
             "surface": self.sample_segment["surface"],
             "tokens": [
                 {"surface": "She", "annotations": {"lemma": "she", "pos": "PRON"}},
-                {"surface": " ", "annotations": {}},
+                {
+                    "surface": " ",
+                    "annotations": {"mwe_id": "m1", "lemma": "put up with", "pos": "VERB"},
+                },
                 {"surface": "put", "annotations": {"mwe_id": "m1", "lemma": "put up with", "pos": "VERB"}},
                 {"surface": " ", "annotations": {}},
                 {"surface": "up", "annotations": {"mwe_id": "m1", "lemma": "put up with", "pos": "VERB"}},
@@ -110,6 +113,7 @@ class LemmaUnitTests(unittest.IsolatedAsyncioTestCase):
 
         lemmas = [t.get("annotations", {}).get("lemma") for t in segment.get("tokens", []) if t.get("annotations")]
         self.assertIn("put up with", lemmas)
+        self.assertNotIn("annotations", segment["tokens"][1])
         self.assertTrue(client.prompts)
 
         log_test_case(
