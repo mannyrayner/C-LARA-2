@@ -32,6 +32,8 @@ MAX_PROJECT_RETRIES ?= 2
 FAILED_REFRESHES ?= $(abspath $(GENERATED_DIR))/refresh_failures.jsonl
 INITIAL_SEGMENTATION_ARCHIVE_DIR ?= $(abspath $(GENERATED_DIR))/segmentation_phase_2_initial_outputs
 INITIAL_SEGMENTATION_ARCHIVE_LABEL ?= initial-gpt-5.6-segmentation-phase-2
+CORRECTED_SEGMENTATION_GOLD_DIR ?= $(abspath $(GENERATED_DIR))/segmentation_phase_2_gold/seven-en
+CORRECTED_SEGMENTATION_GOLD_LABEL ?= corrected-gpt-5.6-seven-en-segmentation-phase-2-gold
 REFRESH_START_STAGE ?= segmentation_phase_2
 REFRESH_END_STAGE ?= gloss
 FAIL_FAST ?= 0
@@ -89,6 +91,7 @@ PY_SPLIT_MANIFEST := $(call python_path,$(abspath $(SPLIT_MANIFEST)))
 PY_STAGE_PARAMETERS := $(call python_path,$(abspath $(STAGE_PARAMETERS)))
 PY_FAILED_REFRESHES := $(call python_path,$(FAILED_REFRESHES))
 PY_INITIAL_SEGMENTATION_ARCHIVE_DIR := $(call python_path,$(INITIAL_SEGMENTATION_ARCHIVE_DIR))
+PY_CORRECTED_SEGMENTATION_GOLD_DIR := $(call python_path,$(CORRECTED_SEGMENTATION_GOLD_DIR))
 PY_MWE_SPLIT_RECORDS := $(call python_path,$(MWE_SPLIT_RECORDS))
 PY_MWE_RUN_OUTPUT_DIR := $(call python_path,$(MWE_RUN_OUTPUT_DIR))
 PY_MWE_SCORE_DIR := $(call python_path,$(MWE_SCORE_DIR))
@@ -119,7 +122,7 @@ MWE_TRANSLATION_CONTEXT_ARG := $(if $(filter 1,$(MWE_USE_TRANSLATION_CONTEXT)),-
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: archive-pre-5-6 archive-pre-5-6-dry-run help prepare declare-mwe-gold check-mwe-gold check-mwe-translation-context mwe-prompt-cycle mwe-reconcile-prompt-cycle recover-mwe-prompt-cycle-after-run show-mwe-prompt-cycle-results compare-mwe-prompt-cycles prepare-mwe-prompt-cycle run-mwe-prompt-cycle run-mwe-reconcile-prompt-cycle resume-mwe-prompt-cycle format-mwe-prompt-cycle-output score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement revise-mwe-prompt-cycle-template revise-mwe-reconcile-prompt-cycle-templates extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-segmentation-phase-2 refresh-segmentation-phase-2-dry-run archive-initial-segmentation-phase-2 archive-initial-segmentation-phase-2-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
+.PHONY: archive-pre-5-6 archive-pre-5-6-dry-run help prepare declare-mwe-gold check-mwe-gold check-mwe-translation-context mwe-prompt-cycle mwe-reconcile-prompt-cycle recover-mwe-prompt-cycle-after-run show-mwe-prompt-cycle-results compare-mwe-prompt-cycles prepare-mwe-prompt-cycle run-mwe-prompt-cycle run-mwe-reconcile-prompt-cycle resume-mwe-prompt-cycle format-mwe-prompt-cycle-output score-mwe-prompt-cycle propose-mwe-prompt-cycle-improvement revise-mwe-prompt-cycle-template revise-mwe-reconcile-prompt-cycle-templates extract-split-corpus snapshot-gold-projects snapshot-gold-projects-dry-run run-current-mwe score-current-mwe propose-mwe-prompt-improvement refresh-project-metadata refresh-annotations refresh-annotations-dry-run refresh-segmentation-phase-2 refresh-segmentation-phase-2-dry-run archive-initial-segmentation-phase-2 archive-initial-segmentation-phase-2-dry-run archive-corrected-segmentation-phase-2 archive-corrected-segmentation-phase-2-dry-run refresh-upstream refresh-upstream-dry-run validate-config clean
 
 help:
 	@echo "Focused MWE experiments (multilingual)"
@@ -150,6 +153,7 @@ help:
 	@echo "  revise-mwe-reconcile-prompt-cycle-templates  Use AI to revise the three analysis prompts and reconciliation prompt"
 	@echo "  refresh-segmentation-phase-2  Rerun selected projects through segmentation_phase_2 only, creating the upstream artifacts for manual correction"
 	@echo "  archive-initial-segmentation-phase-2  Copy current segmentation_phase_2 artifacts before manual correction"
+	@echo "  archive-corrected-segmentation-phase-2  Freeze manually corrected segmentation_phase_2 gold artifacts"
 	@echo "  refresh-annotations   Rerun selected projects through segmentation_phase_2 -> translation -> mwe -> lemma -> gloss"
 	@echo "  refresh-project-metadata  Keep existing splits/projects but refresh mwe_count from latest saved artifacts"
 	@echo "  validate-config       Validate stage-parameter JSON used by refresh-annotations"
@@ -473,6 +477,29 @@ archive-initial-segmentation-phase-2-dry-run: prepare
 		--splits "$(SPLITS)" \
 		--archive-label "$(INITIAL_SEGMENTATION_ARCHIVE_LABEL)" \
 		--output-dir "$(PY_INITIAL_SEGMENTATION_ARCHIVE_DIR)" \
+		--dry-run
+
+archive-corrected-segmentation-phase-2: prepare
+ifeq ($(RUN),1)
+	$(MANAGE) archive_segmentation_phase_2_outputs \
+		--model "$(MODEL)" \
+		--project-ids "$(PROJECT_IDS)" \
+		--split-manifest "$(PY_SPLIT_MANIFEST)" \
+		--splits "$(SPLITS)" \
+		--archive-label "$(CORRECTED_SEGMENTATION_GOLD_LABEL)" \
+		--output-dir "$(PY_CORRECTED_SEGMENTATION_GOLD_DIR)"
+else
+	$(MAKE) archive-corrected-segmentation-phase-2-dry-run
+endif
+
+archive-corrected-segmentation-phase-2-dry-run: prepare
+	$(MANAGE) archive_segmentation_phase_2_outputs \
+		--model "$(MODEL)" \
+		--project-ids "$(PROJECT_IDS)" \
+		--split-manifest "$(PY_SPLIT_MANIFEST)" \
+		--splits "$(SPLITS)" \
+		--archive-label "$(CORRECTED_SEGMENTATION_GOLD_LABEL)" \
+		--output-dir "$(PY_CORRECTED_SEGMENTATION_GOLD_DIR)" \
 		--dry-run
 
 refresh-project-metadata: prepare

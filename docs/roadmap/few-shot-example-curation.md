@@ -93,6 +93,106 @@ This sequencing prevents the earlier problem from recurring: MWE, lemma, and
 gloss manual cleanup cannot become gold evidence until it is anchored to the new
 5.6 `segmentation_phase_2` artifacts.
 
+### Seven-English-project checkpoint and prompt provenance (2026-08-06)
+
+Manual correction is complete on the laptop for English projects
+`239,245,254,255,257,261,263`. The reviewer reports that the page-oriented
+workflow completed without further problems and that the 5.6 MWE output is
+visibly better than the earlier material. These seven projects now form a small
+development gold set, not a held-out test set.
+
+Freeze both layers before doing any more processing on these projects:
+
+```bash
+cd experiments/linguistic_processing/mwe/focused_multilingual
+
+# Preserve the corrected segmentation payloads separately from the archived
+# uncorrected 5.6 outputs.
+make archive-corrected-segmentation-phase-2 RUN=1 \
+  PROJECT_IDS="239,245,254,255,257,261,263"
+
+# Snapshot the projects and export an explicit, immutable-by-convention MWE
+# gold subset plus summary and review files in the 5.6 experiment namespace.
+make declare-mwe-gold RUN=1 \
+  PROJECT_IDS="239,245,254,255,257,261,263" \
+  MWE_LANGUAGE=en SPLIT=development
+
+make check-mwe-gold RUN=1 \
+  PROJECT_IDS="239,245,254,255,257,261,263" \
+  MWE_LANGUAGE=en SPLIT=development
+```
+
+The corrected segmentation archive is written under
+`generated/gpt-5.6-prompt-learning-v1/segmentation_phase_2_gold/seven-en/` with
+a provenance manifest. The MWE command creates named project snapshots and
+exports `selected_segments.jsonl`, `summary.json`, and `review.md` under
+`generated/gpt-5.6-prompt-learning-v1/mwe_gold/en-development/`. Copy or commit
+these experiment outputs to the normal backed-up experiment-results location
+before modifying the seven projects again.
+
+For this checkpoint, the prompt provenance implied by the tracked command and
+configuration is:
+
+- **Model:** `gpt-5.6`.
+- **English `segmentation_phase_2`:** mechanism `chunk_decomposition`, prompt
+  variant `chunk_decomposition_multilingual_v1`, source split `development`,
+  with chunk consistency enabled. No `chunk_prompt_cycle` was pinned in
+  `config/stage_parameters.json`, so the runtime selected the latest available
+  English development cycle: cycle 2,
+  `prompts/segmentation_phase_2/variants/chunk_decomposition_multilingual_v1/en/development/cycle_2/prompt.md`.
+- **English MWE:** `prompts/mwe/en/template.txt`, together with the two sorted
+  few-shot files `prompts/mwe/en/fewshots/example1.json` and `example2.json`.
+  No replacement MWE template was supplied by `refresh-annotations`.
+
+This provenance should be made stronger in future runs: manifests should record
+the resolved prompt path, cycle, few-shot paths, and content hashes rather than
+requiring reconstruction from the checkout and stage parameters.
+
+### Immediate measurements and next experiment sequence
+
+First quantify the current 5.6 MWE baseline against the newly frozen gold:
+
+```bash
+make run-current-mwe RUN=1 \
+  PROJECT_IDS="239,245,254,255,257,261,263" \
+  MWE_LANGUAGE=en SPLIT=development
+
+make score-current-mwe RUN=1 \
+  PROJECT_IDS="239,245,254,255,257,261,263" \
+  MWE_LANGUAGE=en SPLIT=development
+```
+
+The score output is the baseline for prompt learning, not a publishable test
+estimate: the same seven projects will be used to diagnose errors and revise the
+prompt. Report exact-match and component-level MWE measures together with raw
+counts, and retain per-segment errors for qualitative analysis.
+
+For `segmentation_phase_2`, compare the already archived initial 5.6 payloads
+against the newly archived corrected payloads. Add a deterministic paired scorer
+that reports at least exact tokenization, boundary precision/recall/F1, projects,
+segments, tokens, and error counts grouped by phenomenon. The first explicit
+English diagnostic category must be apostrophe clitics and contractions such as
+`it's`, `we'll`, and `don't`; cycle 2 currently says not to split morphology
+unless it is a standalone word and gives no English-clitic rule, which is a
+plausible source of the observed errors.
+
+Then proceed in this order:
+
+1. Use only the seven-project development gold to run 5.6-based prompt-learning
+   cycles for both `segmentation_phase_2` and MWE. Preserve baseline and every
+   candidate prompt, manifest, score, and error report.
+2. Draw additional English projects from the unused training/development pool.
+   Freeze the prompt-learning procedure before treating a separate subset as
+   validation; do not repeatedly tune on validation or test.
+3. Start French and German with small manually audited development samples and
+   the same archive -> correct -> freeze -> baseline -> learn protocol. Keep
+   language-specific phenomena and prompts separate while sharing metrics and
+   reporting structure.
+4. Work backward from the ALTA 2026 deadline of 11 September: freeze the research
+   questions and evaluation protocol early, reserve a genuinely untouched test
+   set, and prioritize reproducible 5.6 prompt-learning gains plus error analysis
+   over a transient 5.5-vs-5.6 comparison.
+
 ## Short-term plan: first French boundary-first experiment
 
 The current working plan is concentrated in the versioned experiment workspace at
