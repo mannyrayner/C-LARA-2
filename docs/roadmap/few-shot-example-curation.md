@@ -167,6 +167,11 @@ estimate: the same seven projects will be used to diagnose errors and revise the
 prompt. Report exact-match and component-level MWE measures together with raw
 counts, and retain per-segment errors for qualitative analysis.
 
+The first 5.6 MWE baseline was run on 2026-08-06 and scored **F1 0.862,
+precision 0.863, recall 0.860** on this seven-project development gold set. This
+is a substantial practical improvement over the earlier work, while remaining a
+development result rather than a held-out estimate.
+
 For `segmentation_phase_2`, compare the already archived initial 5.6 payloads
 against the newly archived corrected payloads. Add a deterministic paired scorer
 that reports at least exact tokenization, boundary precision/recall/F1, projects,
@@ -192,6 +197,107 @@ Then proceed in this order:
    questions and evaluation protocol early, reserve a genuinely untouched test
    set, and prioritize reproducible 5.6 prompt-learning gains plus error analysis
    over a transient 5.5-vs-5.6 comparison.
+
+### English 5.6 recursive `segmentation_phase_2` prompt-learning runbook
+
+Use the existing chunk-decomposition recursive improvement workbench, but start
+a fresh 5.6 series from the seven manually corrected English projects. Do not run
+the ordinary multilingual splitter for this first baseline: it would distribute
+the seven projects between development, validation, and test. Instead, explicitly
+extract all seven as development gold:
+
+```bash
+cd experiments/linguistic_processing/segmentation_phase_2/chunk_decomposition_multilingual
+
+make prepare-seven-en-development-gold RUN=1 \
+  EXPERIMENT_SERIES=gpt-5.6-seven-en-prompt-learning-v1 \
+  PROJECT_IDS="239,245,254,255,257,261,263" \
+  CORPUS_USER=mannyrayner MAX_DEVELOPMENT_CHUNKS=100000
+```
+
+This reads the latest, manually corrected `segmentation_phase_2` artifacts,
+creates chunk records only for the selected projects, assigns all of them to
+development, and freezes the resulting records as
+`generated/gpt-5.6-seven-en-prompt-learning-v1/gold/en-development.jsonl`. The
+dedicated series name prevents this extraction and its cycle numbers from
+overwriting other 5.6 multilingual experiments. Confirm from
+the generated manifest that the development project ids are exactly the seven
+ids above before spending API calls.
+
+Run cycle 1 with the same English cycle-2 prompt used for the initial 5.6 project
+processing, so the score is an apples-to-apples baseline:
+
+```bash
+make run-prompt RUN=1 \
+  EXPERIMENT_SERIES=gpt-5.6-seven-en-prompt-learning-v1 \
+  MODEL=gpt-5.6 REVISION_MODEL=gpt-5.6 \
+  JUDGE_LANGUAGE=en SPLIT=development PROMPT_KIND=segmentation \
+  CURRENT_PROMPT=../../../../prompts/segmentation_phase_2/variants/chunk_decomposition_multilingual_v1/en/development/cycle_2/prompt.md \
+  PROMPT_IMPROVEMENT_CYCLE_NUMBER=1 \
+  PROMPT_LIMIT=0 MAX_CONCURRENCY=20 PROGRESS_EVERY=25
+
+make prepare-prompt-improvement RUN=1 \
+  EXPERIMENT_SERIES=gpt-5.6-seven-en-prompt-learning-v1 \
+  MODEL=gpt-5.6 REVISION_MODEL=gpt-5.6 \
+  JUDGE_LANGUAGE=en SPLIT=development PROMPT_KIND=segmentation \
+  CURRENT_PROMPT=../../../../prompts/segmentation_phase_2/variants/chunk_decomposition_multilingual_v1/en/development/cycle_2/prompt.md \
+  PROMPT_IMPROVEMENT_CYCLE_NUMBER=1
+```
+
+Inspect `cycle_1/prompt_improvement_brief.md` and `prompt_revision.md`. Review
+every divergence before trusting the revision; use this to catch extraction or
+gold slips, but do not change a defensible gold decision merely because the
+model disagrees:
+
+```bash
+make review-prompt-divergences RUN=1 \
+  EXPERIMENT_SERIES=gpt-5.6-seven-en-prompt-learning-v1 \
+  JUDGE_LANGUAGE=en SPLIT=development PROMPT_KIND=segmentation \
+  PROMPT_IMPROVEMENT_CYCLE_NUMBER=1 DIVERGENCE_REVIEW_LIMIT=0
+```
+
+If review changes any gold record, rerun `run-prompt` and
+`prepare-prompt-improvement` for the same cycle before advancing. Then run cycle
+2; its `prompt.md` is copied automatically from cycle 1's
+`prompt_revision.md`:
+
+```bash
+make run-prompt RUN=1 \
+  EXPERIMENT_SERIES=gpt-5.6-seven-en-prompt-learning-v1 \
+  MODEL=gpt-5.6 REVISION_MODEL=gpt-5.6 \
+  JUDGE_LANGUAGE=en SPLIT=development PROMPT_KIND=segmentation \
+  PROMPT_IMPROVEMENT_CYCLE_NUMBER=2 \
+  PROMPT_LIMIT=0 MAX_CONCURRENCY=20 PROGRESS_EVERY=25
+
+make prepare-prompt-improvement RUN=1 \
+  EXPERIMENT_SERIES=gpt-5.6-seven-en-prompt-learning-v1 \
+  MODEL=gpt-5.6 REVISION_MODEL=gpt-5.6 \
+  JUDGE_LANGUAGE=en SPLIT=development PROMPT_KIND=segmentation \
+  PROMPT_IMPROVEMENT_CYCLE_NUMBER=2
+
+make review-prompt-divergences RUN=1 \
+  EXPERIMENT_SERIES=gpt-5.6-seven-en-prompt-learning-v1 \
+  JUDGE_LANGUAGE=en SPLIT=development PROMPT_KIND=segmentation \
+  PROMPT_IMPROVEMENT_CYCLE_NUMBER=2 DIVERGENCE_REVIEW_LIMIT=0
+```
+
+Repeat the run -> improvement brief/revision -> human divergence review loop
+only while development performance or the qualitative error analysis improves.
+Track contraction/clitic errors separately rather than allowing a high overall
+accuracy to conceal them. Summarize all completed cycles with:
+
+```bash
+make summarize-prompt-improvement-cycles RUN=1 \
+  EXPERIMENT_SERIES=gpt-5.6-seven-en-prompt-learning-v1 \
+  JUDGE_LANGUAGE=en SPLIT=development PROMPT_KIND=segmentation
+```
+
+Do not run `validate-development-prompt` yet: this explicitly selected corpus
+contains development gold only. First choose a promising cycle and freeze the
+learning procedure, then manually establish gold for unused English projects in
+a separate validation subset. Validation may select among already-defined
+candidates but must not generate another revision; test remains untouched until
+the cycle-selection rule is fixed.
 
 ## Short-term plan: first French boundary-first experiment
 

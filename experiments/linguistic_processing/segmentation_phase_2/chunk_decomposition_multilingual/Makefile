@@ -11,6 +11,7 @@ ARCHIVE_NAME ?= pre-gpt-5.6-manually-cleaned-seven-en
 ARCHIVE_DIR := $(ARCHIVE_ROOT)/$(ARCHIVE_NAME)
 
 CORPUS_USER ?= mannyrayner
+PROJECT_IDS ?=
 LANGUAGES ?= fr,de,en
 LANGUAGE_MATCH ?= exact
 SPLIT_SEED ?= chunk-decomposition-multilingual-v1
@@ -100,7 +101,7 @@ CURRENT_PROMPT_ARG := --current-prompt $(PY_CYCLE_PROMPT)
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: archive-pre-5-6 archive-pre-5-6-dry-run help prepare prepare-cycle extract-split-corpus judge-corpus run-prompt preview-prompt prepare-prompt-improvement validate-development-prompt review-prompt-divergences delete-project-data summarize-prompt-improvement-cycles summarize-prompt-results package-prompts clean
+.PHONY: archive-pre-5-6 archive-pre-5-6-dry-run help prepare prepare-cycle extract-split-corpus prepare-seven-en-development-gold judge-corpus run-prompt preview-prompt prepare-prompt-improvement validate-development-prompt review-prompt-divergences delete-project-data summarize-prompt-improvement-cycles summarize-prompt-results package-prompts clean
 
 help:
 	@echo "Chunk-decomposition segmentation experiments (multilingual)"
@@ -109,6 +110,7 @@ help:
 	@echo "  archive-pre-5-6  Archive old flat generated data before starting the 5.6-only series (RUN=1)"
 	@echo "  extract-split-corpus  Extract whitespace chunk records and create dev/validation/test splits"
 	@echo "  judge-corpus          Accept/correct one language+split into a human gold JSONL"
+	@echo "  prepare-seven-en-development-gold  Extract the corrected seven-project English development gold"
 	@echo "  run-prompt            Run this cycle's segmentation/rating prompt to create prediction JSONL"
 	@echo "  preview-prompt        Write one fully assembled API prompt for this cycle"
 	@echo "  prepare-prompt-improvement  Summarize cycle performance into an anti-overfitting prompt revision brief"
@@ -222,6 +224,16 @@ extract-split-corpus: prepare
 		$(MANAGE) extract_chunk_segmentation_corpus --username "$(CORPUS_USER)" --languages "$(LANGUAGES)" --language-match "$(LANGUAGE_MATCH)" --output-dir "$(PY_CORPUS_SPLIT_DIR)" --seed "$(SPLIT_SEED)" --development-project-fraction "$(DEVELOPMENT_PROJECT_FRACTION)" --validation-project-fraction "$(VALIDATION_PROJECT_FRACTION)" --max-development-chunks "$(MAX_DEVELOPMENT_CHUNKS)" --max-validation-chunks "$(MAX_VALIDATION_CHUNKS)" --max-test-chunks "$(MAX_TEST_CHUNKS)" --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 to extract chunk records and write multilingual splits"; \
+	fi
+
+prepare-seven-en-development-gold: prepare
+	@if [ -z "$(strip $(PROJECT_IDS))" ]; then echo "PROJECT_IDS is required" >&2; exit 1; fi
+	@echo "+ extract selected English projects directly into development and freeze them as chunk gold"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) extract_chunk_segmentation_corpus --username "$(CORPUS_USER)" --languages en --language-match exact --project-ids "$(PROJECT_IDS)" --selected-projects-split development --output-dir "$(PY_CORPUS_SPLIT_DIR)" --seed "$(SPLIT_SEED)" --development-project-fraction "$(DEVELOPMENT_PROJECT_FRACTION)" --validation-project-fraction "$(VALIDATION_PROJECT_FRACTION)" --max-development-chunks "$(MAX_DEVELOPMENT_CHUNKS)" --max-validation-chunks "$(MAX_VALIDATION_CHUNKS)" --max-test-chunks "$(MAX_TEST_CHUNKS)" --overwrite; \
+		cp "$(CORPUS_SPLIT_DIR)/en/development.jsonl" "$(GOLD_DIR)/en-development.jsonl"; \
+	else \
+		echo "dry-run only; set RUN=1 to extract the selected corrected projects and write $(GOLD_DIR)/en-development.jsonl"; \
 	fi
 
 judge-corpus: prepare
