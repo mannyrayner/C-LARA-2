@@ -233,6 +233,15 @@ with the older runner failed with that 400 error, update the checkout and rerun
 the same command; predictions are written only after the batch completes and the
 target uses `--overwrite`.
 
+**Invalidated first attempt:** an initial run reported 4370/4370 correct. This
+was gold leakage, not model performance: the runner serialized the complete
+local scoring record into the API prompt, including `gold_parts` and
+`gold_segments_display`. The runner now constructs an explicit model-facing
+record containing only `chunk_surface` for segmentation (or `chunk_surface` and
+candidate parts for rating). Discard any predictions, briefs, or revisions made
+with the leaking runner and rerun cycle 1 from the unchanged seed prompt. Do not
+advance to cycle 2 from the invalidated perfect-score revision.
+
 ```bash
 make run-prompt RUN=1 \
   EXPERIMENT_SERIES=gpt-5.6-seven-en-prompt-learning-v1 \
@@ -304,6 +313,68 @@ learning procedure, then manually establish gold for unused English projects in
 a separate validation subset. Validation may select among already-defined
 candidates but must not generate another revision; test remains untouched until
 the cycle-selection rule is fixed.
+
+Before selecting more texts, rerun cycle 1 with the non-leaking runner and obtain
+the real seven-project baseline. The reported 100% result cannot be used to
+decide whether another sample is needed or whether cycle 2 is better.
+
+After the corrected baseline and at least one development revision, selecting
+two or three unused English projects is a good next step. First inspect what is
+actually left in the original MWE development assignment on the laptop (the
+generated manifests are intentionally not in Git):
+
+```bash
+cd experiments/linguistic_processing/mwe/focused_multilingual
+
+python3 - <<'PY'
+import json
+from pathlib import Path
+
+used = {239, 245, 254, 255, 257, 261, 263}
+path = Path("generated/gpt-5.6-prompt-learning-v1/corpus_splits/en/split_manifest.json")
+manifest = json.loads(path.read_text(encoding="utf-8"))
+rows = [
+    row for row in manifest["project_assignments"]
+    if row["split"] == "development" and int(row["project_id"]) not in used
+]
+for row in sorted(rows, key=lambda item: (item.get("source_chars", 0), item["project_id"])):
+    print(row["project_id"], row.get("source_chars", 0), row["title"])
+print(f"remaining development projects: {len(rows)}")
+PY
+```
+
+If this prints at least three candidates, choose a small, medium, and larger text
+where practical. Process them with 5.6, archive the untouched outputs, and only
+then review them in the manual editor. Keep this sample separate from the seven
+projects. If its results influence another prompt revision, call it additional
+development data; if it is used only once to choose among already-frozen cycles,
+call it validation. Never call it test after inspecting or correcting it.
+
+For selected ids `<NEW_PROJECT_IDS>`, use the MWE workbench sequence:
+
+```bash
+# Generate and preserve the new segmentation baseline.
+make refresh-segmentation-phase-2 RUN=1 PROJECT_IDS="<NEW_PROJECT_IDS>"
+make archive-initial-segmentation-phase-2 RUN=1 \
+  PROJECT_IDS="<NEW_PROJECT_IDS>" \
+  INITIAL_SEGMENTATION_ARCHIVE_DIR="generated/gpt-5.6-prompt-learning-v1/segmentation_phase_2_initial_outputs_followup_en" \
+  INITIAL_SEGMENTATION_ARCHIVE_LABEL="initial-gpt-5.6-followup-en-segmentation-phase-2"
+
+# Manually review/correct segmentation_phase_2, then run the downstream stages
+# without overwriting that correction.
+make refresh-annotations RUN=1 \
+  PROJECT_IDS="<NEW_PROJECT_IDS>" \
+  REFRESH_START_STAGE=translation REFRESH_END_STAGE=gloss
+
+# Preserve the generated downstream baseline before manually reviewing MWE.
+make snapshot-gold-projects RUN=1 \
+  PROJECT_IDS="<NEW_PROJECT_IDS>" \
+  SNAPSHOT_NAME_PREFIX="Pre-manual-MWE gpt-5.6 follow-up English baseline"
+```
+
+Then review MWE in the page-oriented editor. This yields a second paired sample:
+uncorrected/corrected segmentation plus uncorrected/corrected MWE, without
+contaminating either baseline through premature manual editing.
 
 ## Short-term plan: first French boundary-first experiment
 
