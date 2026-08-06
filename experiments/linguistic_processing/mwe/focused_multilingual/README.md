@@ -1,5 +1,52 @@
 # Focused multilingual MWE workbench
 
+## 5.6-only reset
+
+The active layout is `generated/gpt-5.6-prompt-learning-v1/`, and all inference,
+reconciliation, and prompt-revision targets default to `gpt-5.6`. Before starting
+the reset, preserve old flat `generated/` entries (including the invalidated seven
+English projects) without treating them as gold:
+
+```bash
+make archive-pre-5-6          # preview
+make archive-pre-5-6 RUN=1    # move old outputs and write an archive manifest
+```
+
+Then regenerate projects `239,245,254,255,257,261,263`, correct and freeze
+`segmentation_phase_2` before creating MWE gold, and regenerate lemma/gloss only
+after MWE has been corrected. The archive is provenance only: do not reuse its
+manual MWE, lemma, or gloss annotations as gold, few-shots, scores, or revision
+examples. Override `EXPERIMENT_SERIES` or `ARCHIVE_NAME` only when intentionally
+starting a separately named series/archive.
+
+For the preliminary 5.6 segmentation rebuild, run only the upstream stage and
+write its artifacts into the projects' normal run directories, where the manual
+editor and later MWE commands will see them as the latest saved project state:
+
+```bash
+make refresh-segmentation-phase-2 RUN=1 \
+  PROJECT_IDS="239,245,254,255,257,261,263"
+
+make archive-initial-segmentation-phase-2 RUN=1 \
+  PROJECT_IDS="239,245,254,255,257,261,263"
+```
+
+Run the archive command before manual correction. It copies each project's
+current latest `segmentation_phase_2.json` to
+`generated/gpt-5.6-prompt-learning-v1/segmentation_phase_2_initial_outputs/`,
+with a manifest, so later analysis can compare the initial 5.6 output against
+the corrected segmentation.
+
+After manual `segmentation_phase_2` correction is frozen, continue downstream
+without rerunning segmentation by starting at `translation`:
+
+```bash
+make refresh-annotations RUN=1 \
+  PROJECT_IDS="239,245,254,255,257,261,263" \
+  REFRESH_START_STAGE=translation \
+  REFRESH_END_STAGE=gloss
+```
+
 This workbench mirrors the organisation of
 `segmentation_phase_2/chunk_decomposition_multilingual`, but extracts segment
 records rather than whitespace chunks. Splits are project-separated, so all
@@ -562,7 +609,7 @@ with a complete prompt generated from the current cycle prompt plus
 revision prompt explicitly asks for simple, general changes and forbids memorising
 project-specific answers, so the output should still be reviewed before use.
 
-By default, this target uses `MWE_REVISION_MODEL=gpt-5.5`, since prompt revision
+By default, this target uses `MWE_REVISION_MODEL=gpt-5.6`, since prompt revision
 is only run once per cycle and is the highest-leverage step. Override
 `MWE_REVISION_MODEL=...` on the command line if you need a cheaper smoke test.
 
