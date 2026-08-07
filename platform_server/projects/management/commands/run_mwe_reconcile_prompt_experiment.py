@@ -9,6 +9,7 @@ from typing import Any, Callable
 from django.core.management.base import BaseCommand, CommandError
 
 from core.ai_api import OpenAIClient
+from core.config import OpenAIConfig
 
 from .review_fewshots import _resolve_cli_path
 from .run_mwe_prompt_experiment import (
@@ -90,7 +91,8 @@ class Command(BaseCommand):
         self.stdout.write(f"Reconcile analysis templates: {', '.join(name for name, _ in analysis_templates)}")
         self.stdout.write(f"Translation context available: {count_records_with_translation_context(records)}/{len(records)} records")
         if records:
-            client = OpenAIClient()
+            model = str(options.get("model") or "")
+            client = OpenAIClient(config=OpenAIConfig(model=model)) if model else OpenAIClient()
             asyncio.run(
                 run_reconciled_records(
                     records,
@@ -120,6 +122,7 @@ class Command(BaseCommand):
             "analysis_templates": [name for name, _ in analysis_templates],
             "reconcile_template": str(reconcile_template_path),
             "max_record_attempts": max(1, int(options.get("max_record_attempts") or 1)),
+            "model": str(options.get("model") or "") or None,
         }
         (run_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         self.stdout.write(f"Reconciled MWE prompt run complete: {output_count} records")

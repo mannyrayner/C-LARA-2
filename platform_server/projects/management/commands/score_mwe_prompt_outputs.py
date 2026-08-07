@@ -14,6 +14,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--outputs-jsonl", required=True)
+        parser.add_argument("--gold-jsonl", default="", help="Optional latest gold records to override gold embedded in outputs.")
         parser.add_argument("--output-dir", required=True)
         parser.add_argument("--split", default="development")
         parser.add_argument("--overwrite", action="store_true")
@@ -27,6 +28,13 @@ class Command(BaseCommand):
         output_dir.mkdir(parents=True, exist_ok=True)
         project_ids = parse_project_ids(str(options.get("project_ids") or ""))
         records = [json.loads(line) for line in outputs_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        if options.get("gold_jsonl"):
+            gold_path = _resolve_cli_path(options["gold_jsonl"], "")
+            latest_gold = latest_records(gold_path)
+            records = [
+                {**record, "gold_mwes": latest_gold.get(str(record.get("record_id") or ""), {}).get("gold_mwes", record.get("gold_mwes") or [])}
+                for record in records
+            ]
         if project_ids:
             records = [record for record in records if int(record.get("project_id") or 0) in project_ids]
         scored = [score_record(record) for record in records]
@@ -42,6 +50,17 @@ class Command(BaseCommand):
         write_markdown(output_dir / "summary.md", summary=summary, scored=scored)
         self.stdout.write(f"MWE scoring complete: F1={summary['f1']:.3f} precision={summary['precision']:.3f} recall={summary['recall']:.3f}")
         self.stdout.write(f"Summary: {summary_path}")
+
+
+def latest_records(path: Path) -> dict[str, dict[str, Any]]:
+    records: dict[str, dict[str, Any]] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            record = json.loads(line)
+            record_id = str(record.get("record_id") or "")
+            if record_id:
+                records[record_id] = record
+    return records
 
 
 def parse_project_ids(raw: str) -> set[int]:

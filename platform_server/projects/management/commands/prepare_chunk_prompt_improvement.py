@@ -269,7 +269,9 @@ def generate_revised_prompt(
             brief_markdown,
         ]
     )
-    response = asyncio.run(client.chat_json(prompt, model=model, temperature=0))
+    # Leave temperature unset so models such as gpt-5.6 can use their required
+    # default value.
+    response = asyncio.run(client.chat_json(prompt, model=model))
     payload = response if isinstance(response, dict) else {}
     revised_prompt = str(payload.get("prompt") or "").strip()
     if not revised_prompt:
