@@ -11,6 +11,7 @@ from core.telemetry import NullTelemetry, Telemetry
 
 from . import annotation_prompts
 from .generic_annotation import GenericAnnotationSpec, generic_annotation
+from .token_annotations import strip_whitespace_token_annotations
 
 
 def _simplify_segment(segment: dict[str, Any]) -> dict[str, Any]:
@@ -168,6 +169,8 @@ async def annotate_gloss(
 def _postprocess_glosses(text: dict[str, Any]) -> None:
     """Normalize known bad gloss patterns from model output."""
 
+    strip_whitespace_token_annotations(text)
+
     for page in text.get("pages", []):
         for segment in page.get("segments", []):
             for token in segment.get("tokens", []):
@@ -177,12 +180,6 @@ def _postprocess_glosses(text: dict[str, Any]) -> None:
                     continue
                 gloss_value = annotations.get("gloss")
                 if gloss_value is None:
-                    continue
-
-                if surface.isspace():
-                    annotations.pop("gloss", None)
-                    if not annotations:
-                        token.pop("annotations", None)
                     continue
 
                 pos = str(annotations.get("pos", "")).upper()

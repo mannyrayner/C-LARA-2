@@ -4,8 +4,14 @@ ROOT_DIR := $(abspath ../../../..)
 PLATFORM_DIR := $(ROOT_DIR)/platform_server
 PYTHON ?= python3
 RUN ?= 0
+EXPERIMENT_SERIES ?= gpt-5.6-prompt-learning-v1
+LEGACY_GENERATED_DIR := generated
+ARCHIVE_ROOT ?= archive
+ARCHIVE_NAME ?= pre-gpt-5.6-manually-cleaned-seven-en
+ARCHIVE_DIR := $(ARCHIVE_ROOT)/$(ARCHIVE_NAME)
 
 CORPUS_USER ?= mannyrayner
+PROJECT_IDS ?=
 LANGUAGES ?= fr,de,en
 LANGUAGE_MATCH ?= exact
 SPLIT_SEED ?= chunk-decomposition-multilingual-v1
@@ -26,7 +32,7 @@ PROMPT_SUBDIR := $(if $(filter rating,$(PROMPT_KIND)),chunk_rating,chunk_segment
 CURRENT_PROMPT ?= prompts/$(PROMPT_SUBDIR)/$(JUDGE_LANGUAGE).md
 PROMPT_IMPROVEMENT_CYCLE_NUMBER ?= 1
 RESET_CYCLE_PROMPT ?= 0
-MODEL ?= gpt-4o
+MODEL ?= gpt-5.6
 PROMPT_LIMIT ?= 0
 PROMPT_PREVIEW_RECORD_ID ?=
 PROMPT_PREVIEW_RECORD_NUMBER ?= 1
@@ -39,7 +45,7 @@ VALIDATION_SOURCE_SPLIT ?= development
 VALIDATION_SOURCE_CYCLE_NUMBER ?= $(PROMPT_IMPROVEMENT_CYCLE_NUMBER)
 VALIDATION_SPLIT ?= validation
 
-GENERATED_DIR := generated
+GENERATED_DIR := $(LEGACY_GENERATED_DIR)/$(EXPERIMENT_SERIES)
 CORPUS_SPLIT_DIR := $(abspath $(GENERATED_DIR))/corpus_splits
 GOLD_DIR := $(abspath $(GENERATED_DIR))/gold
 PREDICTIONS_DIR := $(abspath $(GENERATED_DIR))/predictions
@@ -95,14 +101,16 @@ CURRENT_PROMPT_ARG := --current-prompt $(PY_CYCLE_PROMPT)
 
 MANAGE := cd $(PLATFORM_DIR) && PYTHONPATH= DJANGO_SETTINGS_MODULE=platform_server.settings $(PYTHON) manage.py
 
-.PHONY: help prepare prepare-cycle extract-split-corpus judge-corpus run-prompt preview-prompt prepare-prompt-improvement validate-development-prompt review-prompt-divergences delete-project-data summarize-prompt-improvement-cycles summarize-prompt-results package-prompts clean
+.PHONY: archive-pre-5-6 archive-pre-5-6-dry-run help prepare prepare-cycle extract-split-corpus prepare-seven-en-development-gold judge-corpus run-prompt preview-prompt prepare-prompt-improvement validate-development-prompt review-prompt-divergences delete-project-data summarize-prompt-improvement-cycles summarize-prompt-results package-prompts clean
 
 help:
 	@echo "Chunk-decomposition segmentation experiments (multilingual)"
 	@echo
 	@echo "Targets:"
+	@echo "  archive-pre-5-6  Archive old flat generated data before starting the 5.6-only series (RUN=1)"
 	@echo "  extract-split-corpus  Extract whitespace chunk records and create dev/validation/test splits"
 	@echo "  judge-corpus          Accept/correct one language+split into a human gold JSONL"
+	@echo "  prepare-seven-en-development-gold  Extract the corrected seven-project English development gold"
 	@echo "  run-prompt            Run this cycle's segmentation/rating prompt to create prediction JSONL"
 	@echo "  preview-prompt        Write one fully assembled API prompt for this cycle"
 	@echo "  prepare-prompt-improvement  Summarize cycle performance into an anti-overfitting prompt revision brief"
@@ -116,6 +124,9 @@ help:
 	@echo
 	@echo "Important variables:"
 	@echo "  RUN=$(RUN)"
+	@echo "  MODEL=$(MODEL)"
+	@echo "  EXPERIMENT_SERIES=$(EXPERIMENT_SERIES)"
+	@echo "  ARCHIVE_DIR=$(ARCHIVE_DIR)"
 	@echo "  CORPUS_USER=$(CORPUS_USER)"
 	@echo "  LANGUAGES=$(LANGUAGES)"
 	@echo "  DEVELOPMENT_PROJECT_FRACTION=$(DEVELOPMENT_PROJECT_FRACTION)"
@@ -160,6 +171,26 @@ help:
 prepare:
 	@mkdir -p "$(GENERATED_DIR)" "$(CORPUS_SPLIT_DIR)" "$(GOLD_DIR)" "$(PREDICTIONS_DIR)" "$(PROMPT_IMPROVEMENT_BASE_DIR)" "$(VALIDATION_BASE_DIR)"
 
+archive-pre-5-6:
+ifeq ($(RUN),1)
+	@test ! -e "$(ARCHIVE_DIR)" || (echo "Archive already exists: $(ARCHIVE_DIR)" >&2; exit 1)
+	@mkdir -p "$(ARCHIVE_DIR)"
+	@found=0; for path in "$(LEGACY_GENERATED_DIR)"/*; do \
+		[ -e "$$path" ] || continue; \
+		[ "$$(basename "$$path")" = "$(EXPERIMENT_SERIES)" ] && continue; \
+		mv "$$path" "$(ARCHIVE_DIR)/"; found=1; \
+	done; \
+	printf 'archive_name=%s\narchived_at_utc=%s\nreplacement_series=%s\nmodel=%s\n' \
+		'$(ARCHIVE_NAME)' "$$(date -u +%Y-%m-%dT%H:%M:%SZ)" '$(EXPERIMENT_SERIES)' '$(MODEL)' > "$(ARCHIVE_DIR)/ARCHIVE_MANIFEST.txt"; \
+	if [ "$$found" = 0 ]; then echo "No legacy generated entries were present; wrote manifest only."; fi
+else
+	$(MAKE) archive-pre-5-6-dry-run
+endif
+
+archive-pre-5-6-dry-run:
+	@echo "Would move old flat entries from $(LEGACY_GENERATED_DIR)/ to $(ARCHIVE_DIR)/"
+	@echo "The active $(EXPERIMENT_SERIES) directory is excluded. Set RUN=1 to archive."
+
 prepare-cycle: prepare
 	@if [ "$(RUN)" != "1" ]; then \
 		echo "dry-run only; cycle $(PROMPT_IMPROVEMENT_CYCLE_NUMBER) prompt would be prepared at $(CYCLE_PROMPT)"; \
@@ -193,6 +224,16 @@ extract-split-corpus: prepare
 		$(MANAGE) extract_chunk_segmentation_corpus --username "$(CORPUS_USER)" --languages "$(LANGUAGES)" --language-match "$(LANGUAGE_MATCH)" --output-dir "$(PY_CORPUS_SPLIT_DIR)" --seed "$(SPLIT_SEED)" --development-project-fraction "$(DEVELOPMENT_PROJECT_FRACTION)" --validation-project-fraction "$(VALIDATION_PROJECT_FRACTION)" --max-development-chunks "$(MAX_DEVELOPMENT_CHUNKS)" --max-validation-chunks "$(MAX_VALIDATION_CHUNKS)" --max-test-chunks "$(MAX_TEST_CHUNKS)" --overwrite; \
 	else \
 		echo "dry-run only; set RUN=1 to extract chunk records and write multilingual splits"; \
+	fi
+
+prepare-seven-en-development-gold: prepare
+	@if [ -z "$(strip $(PROJECT_IDS))" ]; then echo "PROJECT_IDS is required" >&2; exit 1; fi
+	@echo "+ extract selected English projects directly into development and freeze them as chunk gold"
+	@if [ "$(RUN)" = "1" ]; then \
+		$(MANAGE) extract_chunk_segmentation_corpus --username "$(CORPUS_USER)" --languages en --language-match exact --project-ids "$(PROJECT_IDS)" --selected-projects-split development --output-dir "$(PY_CORPUS_SPLIT_DIR)" --seed "$(SPLIT_SEED)" --development-project-fraction "$(DEVELOPMENT_PROJECT_FRACTION)" --validation-project-fraction "$(VALIDATION_PROJECT_FRACTION)" --max-development-chunks "$(MAX_DEVELOPMENT_CHUNKS)" --max-validation-chunks "$(MAX_VALIDATION_CHUNKS)" --max-test-chunks "$(MAX_TEST_CHUNKS)" --overwrite; \
+		cp "$(CORPUS_SPLIT_DIR)/en/development.jsonl" "$(GOLD_DIR)/en-development.jsonl"; \
+	else \
+		echo "dry-run only; set RUN=1 to extract the selected corrected projects and write $(GOLD_DIR)/en-development.jsonl"; \
 	fi
 
 judge-corpus: prepare
