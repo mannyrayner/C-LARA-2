@@ -104,3 +104,32 @@ class ExtractChunkSegmentationCorpusTests(TestCase):
                 self.assertEqual(dev_records[0]["language"], language)
                 self.assertIn("chunk_surface", dev_records[0])
                 self.assertIn("gold_parts", dev_records[0])
+
+    def test_command_can_put_an_explicit_project_subset_in_development(self):
+        selected = [
+            self._project_with_segmentation(title=f"selected {idx}", language="en", project_index=idx)
+            for idx in range(2)
+        ]
+        self._project_with_segmentation(title="not selected", language="en", project_index=99)
+
+        with TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "splits"
+            call_command(
+                "extract_chunk_segmentation_corpus",
+                username="mannyrayner",
+                languages="en",
+                project_ids=",".join(str(project.id) for project in selected),
+                selected_projects_split="development",
+                output_dir=str(output_dir),
+                max_development_chunks=100,
+                max_validation_chunks=100,
+                max_test_chunks=100,
+                overwrite=True,
+            )
+
+            manifest = json.loads((output_dir / "multilingual_split_manifest.json").read_text(encoding="utf-8"))
+            language_manifest = manifest["languages_detail"]["en"]
+            self.assertEqual(language_manifest["splits"]["development"]["project_ids"], [p.id for p in selected])
+            self.assertEqual(language_manifest["splits"]["validation"]["project_ids"], [])
+            self.assertEqual(language_manifest["splits"]["test"]["project_ids"], [])
+            self.assertEqual(manifest["selected_projects_split"], "development")
