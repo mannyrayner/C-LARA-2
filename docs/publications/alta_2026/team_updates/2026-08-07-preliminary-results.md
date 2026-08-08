@@ -43,6 +43,24 @@ questions, and a possible ALTA study using project-separated unseen data. Englis
 French, and German currently appear to be the realistic language scope, subject
 to corpus inventory and reviewer capacity.
 
+### Experiment-only acceptable alternatives
+
+For the next review pass we will retain one **primary** MWE annotation for the
+page editor, HTML markup, and normal C-LARA-2 processing. When a disagreement has
+two pedagogically defensible analyses, the reviewer may additionally record the
+prediction as a complete experiment-only acceptable alternative. This avoids
+making the learner-facing editor display overlapping analyses while acknowledging
+that some items do not have a unique defensible reference annotation.
+
+Evaluation will therefore retain the strict primary-gold score and add a clearly
+labelled ambiguity-aware score. The latter matches a prediction against each
+complete accepted analysis separately; it does not create an artificially easy
+reference by unioning spans from different analyses. Review logs will also count
+confirmed gold, corrected gold, both-acceptable cases, and diagnostic categories
+such as lexicalization, proper names, boundaries, pedagogical usefulness, and
+translation context. Prompt revision will use only disagreements that remain
+under this ambiguity-aware comparison.
+
 ## What has been done
 
 We restarted the earlier experiments rather than trying to salvage annotations

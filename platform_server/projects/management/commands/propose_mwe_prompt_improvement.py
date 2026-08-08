@@ -37,8 +37,8 @@ class Command(BaseCommand):
             f"Loaded {len(all_errors)} scored records; using {len(errors)}"
             + (f" after PROJECT_IDS filter {sorted(project_ids)}" if project_ids else "")
         )
-        false_positive = [record for record in errors if record.get("false_positive")][: int(options["max_examples"])]
-        false_negative = [record for record in errors if record.get("false_negative")][: int(options["max_examples"])]
+        false_positive = [record for record in errors if record.get("ambiguity_aware_false_positive", record.get("false_positive"))][: int(options["max_examples"])]
+        false_negative = [record for record in errors if record.get("ambiguity_aware_false_negative", record.get("false_negative"))][: int(options["max_examples"])]
         report_path = output_dir / "prompt_improvement.md"
         report_path.write_text(build_report(summary, false_positive=false_positive, false_negative=false_negative), encoding="utf-8")
         candidate_path = output_dir / "candidate_prompt_guidance.txt"
@@ -85,6 +85,30 @@ def summarize_scored_records(records: list[dict], *, base_summary: dict, project
             "filtered_for_prompt_improvement": True,
         }
     )
+    ambiguity_records = [
+        {
+            **record,
+            "true_positive": record.get("ambiguity_aware_true_positive", record.get("true_positive", 0)),
+            "false_positive": record.get("ambiguity_aware_false_positive", record.get("false_positive", 0)),
+            "false_negative": record.get("ambiguity_aware_false_negative", record.get("false_negative", 0)),
+            "gold_spans": record.get("ambiguity_aware_gold_spans", record.get("gold_spans", [])),
+            "exact_match": record.get("ambiguity_aware_exact_match", record.get("exact_match", False)),
+        }
+        for record in records
+    ]
+    if any("ambiguity_aware_true_positive" in record for record in records):
+        a_tp = sum(int(record["true_positive"]) for record in ambiguity_records)
+        a_fp = sum(int(record["false_positive"]) for record in ambiguity_records)
+        a_fn = sum(int(record["false_negative"]) for record in ambiguity_records)
+        a_precision = a_tp / (a_tp + a_fp) if a_tp + a_fp else 1.0 if not any(record["gold_spans"] for record in ambiguity_records) else 0.0
+        a_recall = a_tp / (a_tp + a_fn) if a_tp + a_fn else 1.0
+        a_f1 = 2 * a_precision * a_recall / (a_precision + a_recall) if a_precision + a_recall else 0.0
+        a_exact = sum(1 for record in ambiguity_records if record["exact_match"])
+        summary["ambiguity_aware"] = {
+            "exact_match_count": a_exact, "exact_match_rate": a_exact / len(records) if records else 0.0,
+            "true_positive": a_tp, "false_positive": a_fp, "false_negative": a_fn,
+            "precision": a_precision, "recall": a_recall, "f1": a_f1,
+        }
     return summary
 
 
@@ -101,6 +125,11 @@ def build_report(summary: dict, *, false_positive: list[dict], false_negative: l
         f"- Precision: {float(summary.get('precision') or 0):.3f}",
         f"- Recall: {float(summary.get('recall') or 0):.3f}",
         f"- F1: {float(summary.get('f1') or 0):.3f}",
+        *( [
+            f"- Ambiguity-aware precision: {float(summary['ambiguity_aware'].get('precision') or 0):.3f}",
+            f"- Ambiguity-aware recall: {float(summary['ambiguity_aware'].get('recall') or 0):.3f}",
+            f"- Ambiguity-aware F1: {float(summary['ambiguity_aware'].get('f1') or 0):.3f}",
+        ] if summary.get("ambiguity_aware") else [] ),
         "",
         "## General revision principles",
         "",
@@ -130,7 +159,8 @@ def append_examples(lines: list[str], records: list[dict]) -> None:
                 "",
                 record.get("segment_surface") or "",
                 "",
-                f"- Gold spans: {record.get('gold_spans')}",
+                f"- Accepted reference spans: {record.get('ambiguity_aware_gold_spans', record.get('gold_spans'))}",
+                f"- Selected reference: {record.get('ambiguity_aware_reference', 'primary')}",
                 f"- Predicted spans: {record.get('predicted_spans')}",
                 f"- Model analysis: {record.get('mwe_analysis') or 'not recorded'}",
                 "",

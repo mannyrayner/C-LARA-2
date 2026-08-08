@@ -398,12 +398,25 @@ make review-mwe-prompt-divergences \
   MWE_PROMPT_CYCLE_SERIES="$MWE_SERIES" MWE_PROMPT_CYCLE_NUMBER=1
 ```
 
-The review commands are `a` (gold is right), `p` (prediction is better gold),
+The review commands are `a` (the primary gold is right), `b` (**both complete
+analyses are acceptable**), `p` (the prediction should replace primary gold),
 `n` (there is no MWE), `c [["token", "token"], ...]` (enter corrected MWE token
-groups as JSON), `s` (skip), and `q` (quit). Record a short reason, especially
-for borderline compositionality, discontinuity, or language-learning usefulness.
-Corrections are appended to the experimental gold JSONL and decisions to the
-cycle review log; the original project annotations are not silently changed.
+groups as JSON), `s` (skip), and `q` (quit). Choose a diagnostic category and
+record a short reason, especially for borderline lexicalization, names, span
+boundaries, discontinuity, translation dependence, or pedagogical usefulness.
+
+`b` preserves the primary annotation used by the page editor and rendered HTML,
+and appends the prediction as a complete experiment-only analysis in
+`acceptable_mwe_analyses`. Alternatives are never combined into a union of
+individually acceptable spans: each is scored as a mutually exclusive complete
+analysis. Nothing in this review flow changes the project annotations or adds
+alternate MWE markup to the manual editor.
+
+Review decisions are appended to the cycle review JSONL. The command also writes
+`gold_divergence_review_summary.json` and a readable `.md` companion beside it,
+with decision and diagnostic category counts. These counts distinguish confirmed
+primary gold, corrected gold, and cases where both analyses are acceptable,
+making the next rule revision more focused.
 
 After review, rescore the **existing** predictions against the latest corrected
 gold, regenerate the diagnostic guidance, and ask 5.6 for the cycle-2 draft:
@@ -422,6 +435,15 @@ make revise-mwe-prompt-cycle-template RUN=1 \
   PROJECT_IDS="$MWE_PROJECT_IDS" MWE_LANGUAGE=en SPLIT=development \
   MWE_PROMPT_CYCLE_SERIES="$MWE_SERIES" MWE_PROMPT_CYCLE_NUMBER=1
 ```
+
+The score directory now reports two views. The existing top-level/strict score
+uses only `gold_mwes`, preserving comparability with earlier runs. The
+`ambiguity_aware` score accepts an exact match against either the primary or one
+reviewed complete alternative, and reports how often a prediction was accepted
+only through an alternative. Prompt-improvement examples use the
+ambiguity-aware remaining errors, so a reviewed defensible analysis is not fed
+back to the model as an error. Report both figures in research notes; do not
+replace the strict score silently.
 
 Inspect `cycle_1/improvement/template_revision.txt`, then run cycle 2 by changing
 only `MWE_PROMPT_CYCLE_NUMBER=2` in the three-step run/show/review sequence above.
