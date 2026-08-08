@@ -11,6 +11,7 @@ from core.telemetry import NullTelemetry, Telemetry
 
 from . import annotation_prompts
 from .generic_annotation import GenericAnnotationSpec, generic_annotation
+from .token_annotations import strip_whitespace_token_annotations
 
 
 def _load_template(language: str, *, prompts_root: Path) -> str:
@@ -96,7 +97,8 @@ async def annotate_lemmas(
         client=ai_client,
     )
 
-    return _normalize_mwe_lemmas_to_surface(annotated)
+    normalized = _normalize_mwe_lemmas_to_surface(annotated)
+    return strip_whitespace_token_annotations(normalized)
 
 
 def _normalize_mwe_lemmas_to_surface(text: dict[str, Any]) -> dict[str, Any]:

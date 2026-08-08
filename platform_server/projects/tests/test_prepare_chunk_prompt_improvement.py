@@ -12,10 +12,13 @@ from projects.management.commands.prepare_chunk_prompt_improvement import classi
 
 
 class _RevisionClient:
+    calls = []
+
     def __init__(self, *args, **kwargs):
         pass
 
-    async def chat_json(self, prompt, model=None, temperature=0):
+    async def chat_json(self, prompt, **kwargs):
+        self.calls.append(kwargs)
         return {
             "prompt": "Revised compact prompt",
             "rationale": "Keeps general principles and avoids overfitting.",
@@ -113,6 +116,7 @@ class PrepareChunkPromptImprovementTests(SimpleTestCase):
 
     @patch("projects.management.commands.prepare_chunk_prompt_improvement.OpenAIClient", _RevisionClient)
     def test_command_can_generate_revised_prompt_artifacts(self):
+        _RevisionClient.calls = []
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             gold_path = root / "gold.jsonl"
@@ -160,6 +164,8 @@ class PrepareChunkPromptImprovementTests(SimpleTestCase):
             self.assertEqual((output_dir / "revised_prompt.md").read_text(encoding="utf-8"), prompt_revision)
             revision = json.loads((output_dir / "prompt_revision.json").read_text(encoding="utf-8"))
             self.assertEqual(revision["model"], "test-model")
+            self.assertTrue(_RevisionClient.calls)
+            self.assertTrue(all("temperature" not in call for call in _RevisionClient.calls))
             brief = json.loads((output_dir / "prompt_improvement_brief.json").read_text(encoding="utf-8"))
             self.assertTrue(brief["prompt_revision_path"].endswith("prompt_revision.md"))
             self.assertTrue(brief["revised_prompt_path"].endswith("prompt_revision.md"))

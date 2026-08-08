@@ -65,6 +65,7 @@ from pipeline.full_pipeline import FullPipelineSpec, PIPELINE_ORDER, run_full_pi
 from pipeline import annotation_prompts
 from pipeline.mwe import normalize_mwes
 from pipeline.stage_artifacts import read_stage_artifact, stage_artifact_path, write_stage_artifact
+from pipeline.token_annotations import strip_whitespace_token_annotations
 
 from .forms import (
     AdminCommunityForm,
@@ -5508,7 +5509,9 @@ def _phase2_payload_from_bar_rows(seg1_payload: dict[str, Any], rows: list[dict[
                     f"Page {row['page_index']} segment {row['segment_index']} changes text content; "
                     f"only token separators may be inserted or removed. {mismatch}"
                 )
-        if any(tok == "" for tok in tokens):
+        if segment_text == "" and edited_without_bars == "":
+            tokens = []
+        elif any(tok == "" for tok in tokens):
             raise ValueError(
                 f"Page {row['page_index']} segment {row['segment_index']} contains an empty token "
                 "(adjacent/leading/trailing separators are not allowed)."
@@ -5518,7 +5521,7 @@ def _phase2_payload_from_bar_rows(seg1_payload: dict[str, Any], rows: list[dict[
     for p_idx, page in enumerate(edited.get("pages") or [], start=1):
         for s_idx, segment in enumerate(page.get("segments") or [], start=1):
             token_surfaces = token_map.get((p_idx, s_idx))
-            if not token_surfaces:
+            if token_surfaces is None:
                 token_surfaces = [str(segment.get("surface") or "")]
             segment["tokens"] = [{"surface": surface} for surface in token_surfaces]
     return edited
@@ -6262,8 +6265,10 @@ def _validate_phase2_structure(seg1_payload: dict[str, Any], edited_payload: dic
             return f"Page {p_idx} must keep the same number of segments as segmentation phase 1."
         for s_idx, (base_segment, edited_segment) in enumerate(zip(base_segments, edited_segments), start=1):
             base_surface = str(base_segment.get("surface") or "")
-            tokens = edited_segment.get("tokens") or []
-            if not isinstance(tokens, list) or not tokens:
+            tokens = edited_segment.get("tokens")
+            if not isinstance(tokens, list):
+                return f"Page {p_idx} segment {s_idx} must contain a token list."
+            if not tokens and base_surface != "":
                 return f"Page {p_idx} segment {s_idx} must contain a non-empty token list."
             rebuilt = ""
             for token in tokens:
@@ -6364,6 +6369,8 @@ def _validate_manual_page_mwe_consistency(
             seen: dict[str, dict[str, str]] = {}
             segment_number = segment["segment_index"] + 1
             for token in segment["tokens"]:
+                if not str(token.get("surface") or "").strip():
+                    continue
                 mwe_id = str(token.get("mwe_id") or "").strip()
                 if not mwe_id:
                     continue
@@ -6500,6 +6507,9 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
     gloss_payload, _ = _reconcile_gloss_payload_with_lemma(lemma_payload, gloss_payload or json.loads(json.dumps(lemma_payload)))
     pinyin_payload = _load_stage_payload(project, "pinyin", run_dir=_find_run_with_stage(project, "pinyin")) or {}
     pinyin_payload, _ = _reconcile_pinyin_payload_with_gloss(gloss_payload, pinyin_payload or json.loads(json.dumps(gloss_payload)))
+
+    for payload in (mwe_payload, lemma_payload, gloss_payload, pinyin_payload):
+        strip_whitespace_token_annotations(payload)
 
     image_by_page = {row.page_number: row.image_path for row in project.image_pages.exclude(image_path="")}
     pages_data: list[dict[str, Any]] = []
@@ -6689,6 +6699,8 @@ def manual_page_annotation(request: HttpRequest, pk: int) -> HttpResponse:
             ("gloss", edited_gloss),
             ("pinyin", edited_pinyin),
         ]
+        for _, payload in payloads_to_save:
+            strip_whitespace_token_annotations(payload)
         for stage_name, payload in payloads_to_save:
             if _stable_text_hash(str(payload.get("surface") or "")) != base_hash:
                 messages.error(request, f"Text hash mismatch while saving {stage_name}; structure edits are not allowed.")
