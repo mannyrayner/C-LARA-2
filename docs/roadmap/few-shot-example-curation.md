@@ -445,14 +445,54 @@ ambiguity-aware remaining errors, so a reviewed defensible analysis is not fed
 back to the model as an error. Report both figures in research notes; do not
 replace the strict score silently.
 
-Inspect `cycle_1/improvement/template_revision.txt`, then run cycle 2 by changing
-only `MWE_PROMPT_CYCLE_NUMBER=2` in the three-step run/show/review sequence above.
-Cycle 2 automatically copies the reviewed cycle-1 revision. As with segmentation,
-rescore after gold review before deciding whether the prompt improved. Do not
-interpret disagreements as errors until the MWE policy has been made explicit;
-the review log should become evidence for a short annotation guideline covering
-lexicalization, compositional phrases, discontinuous expressions, overlaps, and
-whether pedagogical usefulness is part of the inclusion criterion.
+An ambiguity-aware F1 materially above the strict score, together with a compact
+set of remaining disagreements, is a good reason to run cycle 2. It is not a
+reason to revise the gold again before seeing cycle-2 predictions, or to assume
+that every item listed in both the false-positive and false-negative sections is
+two independent errors: one segment can contribute both kinds of span error.
+
+First confirm that the revision command above produced
+`cycle_1/improvement/template_revision.txt`. Read that file and check that it
+states general C-LARA-2 decisions rather than copying the remaining development
+sentences. Then run the complete cycle-2 sequence:
+
+```bash
+# Run the reviewed cycle-1 revision as cycle 2, then format, score, and diagnose.
+make mwe-prompt-cycle RUN=1 \
+  MODEL=gpt-5.6 MWE_REVISION_MODEL=gpt-5.6 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" MWE_LANGUAGE=en SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_SERIES" MWE_PROMPT_CYCLE_NUMBER=2
+
+make show-mwe-prompt-cycle-results \
+  MWE_LANGUAGE=en SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_SERIES" MWE_PROMPT_CYCLE_NUMBER=2
+
+# Review only genuine cycle-2 divergences. Continue to use b where both complete
+# analyses are acceptable; do not change the learner-facing primary by default.
+make review-mwe-prompt-divergences \
+  PROJECT_IDS="$MWE_PROJECT_IDS" MWE_LANGUAGE=en SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_SERIES" MWE_PROMPT_CYCLE_NUMBER=2
+
+# Recompute both strict and ambiguity-aware figures against the reviewed gold.
+make score-mwe-prompt-cycle RUN=1 \
+  PROJECT_IDS="$MWE_PROJECT_IDS" MWE_LANGUAGE=en SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_SERIES" MWE_PROMPT_CYCLE_NUMBER=2
+
+# Compare cycles only after the cycle-2 review and rescore are complete.
+make compare-mwe-prompt-cycles RUN=1 \
+  MWE_LANGUAGE=en SPLIT=development \
+  MWE_PROMPT_CYCLE_SERIES="$MWE_SERIES"
+```
+
+Cycle 2 automatically copies the reviewed cycle-1 revision. Do not generate a
+cycle-3 revision immediately. First compare cycle 1 and cycle 2 on both strict
+and ambiguity-aware metrics, inspect the number accepted via alternatives, and
+read `cycle_2/gold_divergence_review_summary.md`. The primary decision criterion
+is whether genuine model errors fall without a proliferation of acceptable
+alternatives or a longer, development-specific prompt. The review log should
+also become evidence for a short annotation guideline covering lexicalization,
+compositional phrases, discontinuous expressions, overlaps, and whether
+pedagogical usefulness is part of the inclusion criterion.
 
 Do not run `validate-development-prompt` yet: this explicitly selected corpus
 contains development gold only. First choose a promising cycle and freeze the
