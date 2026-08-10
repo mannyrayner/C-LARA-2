@@ -2,7 +2,7 @@
 title: "Session Report: AI-Led Language Practice (Session 3)"
 session_number: 3
 session_date: 2026-04-22
-session_date_note: "The day and month were supplied as 22 April; the year is inferred from the paper's 2026 study context."
+session_date_note: "Manny Rayner confirmed that the year is 2026."
 participants:
   - "Sarah Wright (learner)"
   - "Manny Rayner (facilitator)"

@@ -2,6 +2,7 @@
 title: "Session Report: AI-Led Roleplay Language Learning (Session 1)"
 session_number: 1
 session_date: null
+session_year: 2026
 duration: "approximately 60–90 minutes"
 participants:
   - "Sarah Wright (learner)"
@@ -191,4 +192,3 @@ real-world communicator, rather than only as a learner.
 
 It proposes comparing Sessions 1 and 2 or beginning to structure the findings
 as a paper draft for Branislav, and concludes that the material is promising.
-

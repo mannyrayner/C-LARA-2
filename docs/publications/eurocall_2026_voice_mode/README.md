@@ -22,10 +22,10 @@ affiliation block supplied for the paper and are intentionally public.
 - [`latex/`](latex/) contains the repository-oriented LaTeX manuscript and
   bibliography.
 - [`session_summaries/`](session_summaries/) contains Markdown versions of the
-  AI-generated post-session summaries used as the study's main dataset, with
-  repository provenance and permission metadata.
+  AI-generated post-session summaries used as the study's main dataset, along
+  with related human-authored session notes. Each record includes repository
+  provenance and permission metadata.
 
-The session summaries are supporting research records, not transcripts. The
-sessions were not recorded or formally transcribed, and the summaries should
-not be treated as verbatim accounts of everything said.
-
+The session records are supporting research evidence, not transcripts. The
+sessions documented so far were not recorded or formally transcribed, and the
+records should not be treated as verbatim accounts of everything said.
