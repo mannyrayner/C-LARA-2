@@ -1,17 +1,16 @@
 ---
-title: "Session Notes (Session 4)"
+title: "Session Report: AI-Led Language Practice (Session 4)"
 session_number: 4
 session_date: 2026-04-22
-session_date_note: "Manny Rayner corrected and confirmed the Session 4 date as 22 April 2026. The note body says 7 May, so its file association must be reviewed before the source text is changed."
+session_date_note: "Manny Rayner confirmed this file was one position early in the sequence and belongs to Session 4, held on 22 April 2026."
 participants:
   - "Sarah Wright (learner)"
-  - "Manny Rayner (facilitator and note author)"
-  - "ChatGPT C-LARA-Instance (AI conversation partner)"
+  - "Manny Rayner (facilitator)"
+  - "ChatGPT C-LARA-Instance (AI interlocutor)"
 target_language: German
 summary_language: English
-record_author: "Manny Rayner"
-source_type: "human-authored contemporaneous post-session notes"
-original_format: "pasted text"
+source_type: "AI-generated post-session summary"
+original_format: ".docx"
 repository_source: "text pasted by Manny Rayner"
 source_supplied: 2026-08-10
 markdown_conversion: 2026-08-10
@@ -19,81 +18,187 @@ session_recording: false
 formal_transcript: false
 repository_visibility: public
 permission: "Sarah Wright approved repository upload of the session summaries; approval reported by Manny Rayner on 2026-08-10."
-editorial_note: "Encoding artefacts, paragraph structure, and evident typographical errors were regularised during Markdown conversion; substantive observations were preserved. The corrected session-date metadata conflicts with the 7 May date in the supplied note body, indicating a likely file-pointer mismatch that has not yet been resolved."
+editorial_note: "The supplied summary was converted to Markdown with light formatting and copy-editing. It was initially filed as Session 3 and was moved to Session 4 after Manny Rayner corrected the file sequence. Its observations were not independently validated against a recording or transcript."
 ---
 
-# Session Notes (Session 4)
+# Session Report: AI-Led Language Practice (Session 4)
 
 ## Evidence status
 
-These are human-authored notes written by Manny Rayner shortly after the
-session, rather than an AI-generated summary, recording, formal transcript, or
-independently checked assessment. The comments about system behaviour are the
-participants' observations and hypotheses at the time.
+This file preserves the AI-generated post-session summary supplied for Session
+4. It is a retrospective analysis rather than a recording, formal transcript,
+or independently checked assessment. Evaluative statements below are therefore
+attributed to the source summary.
 
-## Session context
+## 1. Overview
 
-Sarah and Manny met on the afternoon of 7 May 2026 for their usual weekly German
-session. Manny wrote the following points soon afterwards so that the
-conversation would not be forgotten.
-
-## Paper planning
-
-The collaborators needed two Zoom calls to discuss the paper:
-
-1. a call within the next couple of weeks to agree on the paper's structure;
-2. a call during the second half of June to finalise the paper.
-
-They could communicate by email between the calls. Sarah's evening availability
-was very constrained, so she would suggest possible dates.
-
-## Overall assessment
-
-Manny considered the approach to be working very well despite the participants
-not doing anything technically or pedagogically elaborate. He saw the paper's
-novelty as demonstrating that high-end AI platforms were already excellent
-conversation partners. In his view, most teachers had not yet recognised this,
-partly because the systems were still expensive, although he expected their
-price to fall.
-
-## Observed strengths of the AI
-
-The notes identify several strengths:
-
-- It could conduct constrained scenarios when asked, but was equally capable of
-  free-form conversation.
-- It could switch seamlessly between constrained scenarios and free
+- **Participants:** Sarah (learner), Manny (facilitator), and ChatGPT (AI
+  interlocutor).
+- **Session focus:**
+  - medical and emergency scenarios as the primary focus;
+  - travel safety and logistics;
+  - cultural and linguistic discussion; and
+  - personal narrative involving music, identity, and social connections.
+- **Format:** AI-led roleplay, guided interaction, and extended free
   conversation.
-- It was consistently polite and constructive.
-- It tried to understand the speakers and sustain the conversation even when
-  they did not express themselves well.
-- It adjusted its grammar, vocabulary, and speaking rate to the human
-  participant or participants.
-- It usually gave implicit feedback on incorrect language by echoing the
-  learner's contribution in some form while using correct German.
-- It delivered this feedback tactfully, so that the interaction felt like a
-  conversation rather than an explicit correction exercise.
 
-## Perceived improvement and possible explanations
+## 2. Main pedagogical focus
 
-The participants believed that the AI was performing better than when the
-sessions began. In particular, it had previously often inferred incorrectly
-that they wanted to end the conversation, but was no longer doing so.
+### Scenario 9: Medical and emergency situations
 
-They did not know why this apparent improvement had occurred. The notes propose
-three possibilities:
+The main communicative tasks were:
 
-1. the platform may have improved generally, perhaps in response to many people
-   using it for similar purposes;
-2. the platform may have adjusted to the participants; or
-3. the participants may have adjusted to the platform.
+- describing accidents, such as a climbing injury;
+- calling the emergency services on 112;
+- asking about hospitals, costs, and waiting times; and
+- understanding insurance and healthcare systems.
 
-To investigate these possibilities, they planned to start a new conversation
-thread during the following week's session and see whether that changed the
-interaction.
+The summary reports that Sarah successfully engaged in realistic, high-stakes
+scenarios and maintained communication despite linguistic limitations.
 
-## Possible presentation evidence
+## 3. Language performance
 
-The participants considered recording some or all of a future session so that
-an extract could be played during the conference presentation. The notes record
-this as a proposal only; they do not say that Session 4 was recorded.
+### Fluency
+
+- High willingness to speak at length.
+- Ability to sustain extended discourse across topics.
+- Increasing confidence in role-based interaction.
+
+### Accuracy
+
+The observed grammar issues included:
+
+- **Articles:** *ein Wohnungsort* → *einen Wohnort*.
+- **Plurals:** *zwei Nacht* → *zwei Nächte*, described as persisting from
+  earlier sessions.
+- **Word order:** occasional English-influenced structures.
+
+The summary identifies intact functional sentence formation as a strength and
+reports that errors rarely blocked communication.
+
+### Vocabulary
+
+**Strengths:**
+
+- strong everyday vocabulary relating to travel, food, and social interaction;
+- increasing domain-specific vocabulary, including the medical terms *Impfung*,
+  *Krankenhaus*, and *Notruf*; and
+- increasing travel-logistics vocabulary.
+
+**Gaps:**
+
+- technical terms were still approximated; and
+- occasional lexical mixing occurred across languages.
+
+## 4. Listening and speaking
+
+The summary identifies a persistent pattern: good comprehension of slow,
+adapted German, but difficulty with fast speech and unfamiliar phonological
+forms. It characterises the learner profile as reading competence exceeding
+listening competence.
+
+## 5. Communicative strategies
+
+Sarah consistently used:
+
+- **code-switching** between German, English, Swedish, and Dutch;
+- **approximation**, describing unknown words indirectly; and
+- **narrative expansion**, turning simple prompts into extended stories.
+
+The summary concludes that these strategies enabled high communicative success
+despite limited accuracy.
+
+## 6. Cognitive and interactional observations
+
+### 6.1 Scenario-based learning
+
+The medical scenarios produced focused language use and clear communicative
+goals. The summary evaluates them as highly effective for functional language
+development.
+
+### 6.2 Transition to free conversation
+
+The session naturally shifted towards personal storytelling about music,
+relationships, and travel history, as well as abstract topics involving
+language systems, culture, and safety. The summary interprets this as indicating
+increasing linguistic confidence.
+
+### 6.3 Multilingual awareness
+
+The session included metalinguistic discussion of:
+
+- German and English, including *Freiheit* compared with *liberty* and
+  *freedom*;
+- Germanic and Romance vocabulary; and
+- Scandinavian language comparisons.
+
+The summary interprets this as evidence of linguistic awareness beyond a basic
+learner level.
+
+## 7. Affective and identity factors
+
+Strong personal themes included:
+
+- music as identity, including flute, piccolo, and performance;
+- social belonging through bands, friends, and shared activities; and
+- travel as personal development.
+
+The summary notes that language use became deeply autobiographical and
+meaningful.
+
+## 8. Special observation: music and language
+
+Music was described as central to Sarah's identity through her long-term flute
+playing, experience in international ensembles, and desire to continue music
+while travelling. The pedagogical interpretation is that music functions as
+both a motivational anchor and a social bridge across cultures.
+
+## 9. Travel and real-world readiness
+
+Topics included European healthcare systems, emergency procedures, insurance,
+and safety issues such as theft and camping risks. The summary concludes that
+Sarah was developing practical communicative competence for real-world travel.
+
+## 10. Development profile
+
+| Area | Level |
+|---|---|
+| Fluency | High |
+| Accuracy | Moderate |
+| Listening | Developing |
+| Strategic competence | High |
+| Confidence | Increasing |
+
+## 11. Key development needs
+
+1. **Listening comprehension:** the priority area, requiring targeted practice.
+2. **Grammatical stabilisation:** articles, plural forms, and word order.
+3. **Lexical precision:** especially in technical domains.
+
+## 12. Implications for the study
+
+The summary argues that this session strengthens the case that AI-supported
+interaction enables sustained communication, low-anxiety practice, and flexible
+topic exploration.
+
+Its key emerging claim is that learners can reach functional communicative
+competence through sustained, meaning-driven interaction even when grammatical
+control remains imperfect.
+
+## 13. Relevance for EuroCALL 2026
+
+Although the work was initially framed as anecdotal, the summary notes that the
+dataset now includes repeated sessions, observable development patterns, and
+consistent pedagogical intervention. It suggests that the work may consequently
+be described as a small-scale qualitative study with longitudinal elements.
+
+## Final conclusion
+
+The summary presents the session as showing clear progression. It characterises
+Sarah not as a beginner, but as a multilingual communicator navigating
+real-world scenarios. The remaining gap is described as one of precision and
+processing speed rather than basic ability to communicate.
+
+The source concludes by proposing either integration of all sessions into a
+coherent paper draft or the design of Session 4 around controlled comparison
+tasks that could strengthen the research claims.

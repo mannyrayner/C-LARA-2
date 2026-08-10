@@ -1,15 +1,16 @@
 ---
-title: "Summary of German Conversation Session (Session 5)"
+title: "Session Notes (Session 5)"
 session_number: 5
-session_date: 2026-05-14
-session_date_note: "The date was supplied as 14 May, and Manny Rayner confirmed that all session years are 2026."
+session_date: 2026-05-07
+session_date_note: "Manny Rayner confirmed this file was one position early in the sequence and belongs to Session 5, held on 7 May 2026."
 participants:
   - "Sarah Wright (learner)"
-  - "Manny Rayner (facilitator and secondary learner)"
+  - "Manny Rayner (facilitator and note author)"
   - "ChatGPT C-LARA-Instance (AI conversation partner)"
 target_language: German
 summary_language: English
-source_type: "AI-generated post-session summary"
+record_author: "Manny Rayner"
+source_type: "human-authored contemporaneous post-session notes"
 original_format: "pasted text"
 repository_source: "text pasted by Manny Rayner"
 source_supplied: 2026-08-10
@@ -18,144 +19,81 @@ session_recording: false
 formal_transcript: false
 repository_visibility: public
 permission: "Sarah Wright approved repository upload of the session summaries; approval reported by Manny Rayner on 2026-08-10."
-editorial_note: "The supplied summary was converted to Markdown with light formatting and copy-editing. Its observations were not independently validated against a recording or transcript."
+editorial_note: "Encoding artefacts, paragraph structure, and evident typographical errors were regularised during Markdown conversion; substantive observations were preserved. The file was initially labelled Session 4 and was moved to Session 5 after Manny Rayner corrected the file sequence."
 ---
 
-# Summary of German Conversation Session (Session 5)
+# Session Notes (Session 5)
 
 ## Evidence status
 
-This file preserves the AI-generated post-session summary supplied for Session
-5. It is a retrospective analysis rather than a recording, formal transcript,
-or independently checked assessment. Evaluative statements below are therefore
-attributed to the source summary.
+These are human-authored notes written by Manny Rayner shortly after the
+session, rather than an AI-generated summary, recording, formal transcript, or
+independently checked assessment. The comments about system behaviour are the
+participants' observations and hypotheses at the time.
 
-## Session overview
+## Session context
 
-The session was an informal spoken German practice conversation involving
-Manny, Sarah, and ChatGPT. Its main aim was conversational fluency rather than
-formal accuracy. The interaction included frequent code-switching between
-German and English, occasional references to Swedish, Danish, and French, and
-many learner-like formulations. ChatGPT generally responded in German and
-provided encouragement, vocabulary support, and topical continuity.
+Sarah and Manny met on the afternoon of 7 May 2026 for their usual weekly German
+session. Manny wrote the following points soon afterwards so that the
+conversation would not be forgotten.
 
-## Paris, vocabulary, and tourist safety
+## Paper planning
 
-Sarah began by describing a previous short trip to Paris with her German
-exchange family. The weather had been poor, and the group had mostly visited
-tourist sites including the Hard Rock Café and the Eiffel Tower.
+The collaborators needed two Zoom calls to discuss the paper:
 
-Vocabulary points included:
+1. a call within the next couple of weeks to agree on the paper's structure;
+2. a call during the second half of June to finalise the paper.
 
-- *La Tour Eiffel* → *der Eiffelturm*; and
-- "bracelet" → *das Armband*.
+They could communicate by email between the calls. Sarah's evening availability
+was very constrained, so she would suggest possible dates.
 
-Sarah described a tourist scam near the Eiffel Tower in which someone put a
-bracelet on her arm and then tried to make her pay for it. This led into a
-discussion of tourist areas, safety, and impressions of Paris.
+## Overall assessment
 
-## Travel preferences and cities
+Manny considered the approach to be working very well despite the participants
+not doing anything technically or pedagogically elaborate. He saw the paper's
+novelty as demonstrating that high-end AI platforms were already excellent
+conversation partners. In his view, most teachers had not yet recognised this,
+partly because the systems were still expensive, although he expected their
+price to fall.
 
-Manny and Sarah compared Paris with Berlin, Austria, Vienna, London, Stockholm,
-and Nürnberg. Paris was described as beautiful but perhaps not especially warm
-or comfortable as a tourist destination, while Berlin and Austria had left
-better impressions.
+## Observed strengths of the AI
 
-Nürnberg was praised as a smaller city with a strong historical identity, where
-the principal sights and museums are accessible without the overwhelming scale
-of a metropolis. A broader observation was that large cities often become more
-enjoyable once one knows them better.
+The notes identify several strengths:
 
-## Music and opera
+- It could conduct constrained scenarios when asked, but was equally capable of
+  free-form conversation.
+- It could switch seamlessly between constrained scenarios and free
+  conversation.
+- It was consistently polite and constructive.
+- It tried to understand the speakers and sustain the conversation even when
+  they did not express themselves well.
+- It adjusted its grammar, vocabulary, and speaking rate to the human
+  participant or participants.
+- It usually gave implicit feedback on incorrect language by echoing the
+  learner's contribution in some form while using correct German.
+- It delivered this feedback tactfully, so that the interaction felt like a
+  conversation rather than an explicit correction exercise.
 
-Sarah discussed playing the flute, particularly in bands and orchestral
-settings, and explained that she preferred music in which the flute has melodic,
-singing lines.
+## Perceived improvement and possible explanations
 
-The works and composers discussed included:
+The participants believed that the AI was performing better than when the
+sessions began. In particular, it had previously often inferred incorrectly
+that they wanted to end the conversation, but was no longer doing so.
 
-- George Gershwin's *An American in Paris*, *Porgy and Bess*, and *Cuban
-  Overture*, which Sarah found difficult but rewarding to play;
-- Mozart's *Die Zauberflöte*, including Ingmar Bergman's film version and the
-  small red-haired girl in the audience whose perspective allows the opera to
-  be seen "with childlike eyes";
-- *Madame Butterfly*;
-- Gounod's *Roméo et Juliette*; and
-- Rossini's *La Cenerentola*.
+They did not know why this apparent improvement had occurred. The notes propose
+three possibilities:
 
-The participants also discussed a musical version of *The Princess and the
-Pea*. The title was identified as *Die Prinzessin auf der Erbse*, and the story
-as a Hans Christian Andersen tale rather than a Brothers Grimm tale.
+1. the platform may have improved generally, perhaps in response to many people
+   using it for similar purposes;
+2. the platform may have adjusted to the participants; or
+3. the participants may have adjusted to the platform.
 
-## Fairy tales
+To investigate these possibilities, they planned to start a new conversation
+thread during the following week's session and see whether that changed the
+interaction.
 
-The final major topic compared the Brothers Grimm with Hans Christian Andersen.
-Examples included:
+## Possible presentation evidence
 
-- *Rotkäppchen*;
-- *Aschenputtel*;
-- *Der Eisenhans*;
-- *Die Gänsemagd*;
-- *Jorinde und Joringel*;
-- *Die wilden Schwäne*;
-- *Die Schneekönigin*; and
-- *Die kleine Meerjungfrau*.
-
-ChatGPT supplied short plot summaries and helped clarify German titles.
-Andersen's stories were characterised as often tragic or bittersweet rather
-than conventionally happy, while Disney adaptations were described as softer,
-safer, and more child-friendly than many original versions.
-
-The discussion of *Die wilden Schwäne* included the detail that the sister must
-silently weave shirts from nettles to save her brothers after they are
-transformed into swans.
-
-## Relevance to the EuroCALL paper
-
-The source summary presents the session as a useful example of conversational
-AI acting as an informal language-practice partner. It identifies the following
-strengths:
-
-- sustaining a long, multilingual spoken interaction;
-- providing vocabulary support on demand;
-- correcting or supplying cultural facts;
-- maintaining conversational flow across a wide range of topics; and
-- responding supportively to partially formed or grammatically inaccurate
-  utterances without over-correcting them.
-
-## Observed limitations
-
-The summary also identifies several limitations:
-
-- speech transcription was often noisy;
-- ChatGPT sometimes misinterpreted phrases;
-- it sometimes responded too generically rather than asking for clarification;
-- in a few places, it prematurely treated the conversation as ending when the
-  speakers intended to continue; and
-- it missed opportunities for explicit language teaching, usually leaving
-  errors involving case, word order, gender, and verb forms uncorrected unless
-  a direct vocabulary question was asked.
-
-The source presents these limitations as illustrating the difference between a
-general conversation partner and a structured CALL tutor.
-
-## Possible C-LARA development directions
-
-The summary proposes that a future C-LARA-style conversational mode could add:
-
-- adjustable correction intensity;
-- clearer handling of speech-recognition errors;
-- optional post-session vocabulary summaries;
-- grammar points and useful reformulations;
-- corrected sentence examples; and
-- topic-based reading or listening activities.
-
-## Overall conclusion
-
-The summary concludes that AI-mediated spoken-language practice can support
-natural, enjoyable, and culturally rich conversation even when learner language
-is imperfect and speech transcription is noisy.
-
-It identifies better clarification strategies, selective correction,
-learner-sensitive pacing, and integration with follow-up learning materials as
-specific ways to increase pedagogical value.
+The participants considered recording some or all of a future session so that
+an extract could be played during the conference presentation. The notes record
+this as a proposal only; they do not say that Session 4 was recorded.
