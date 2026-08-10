@@ -202,3 +202,144 @@ without measuring project monitoring. Safeguards should include:
   factual/risk summary—or is discontinued if it does not.
 - Increased autonomy remains bounded, observable, reversible, and aligned with human review.
 
+## First implementation decision (August 2026)
+
+The first implementation will deliberately separate **autonomous assessment** from **authorized
+mutation**. Codex may inspect the full checked-out repository in a read-only sandbox and exercise
+broad judgement about what evidence matters, but the review process will not give that invocation a
+writable repository or a tool that changes canonical state.
+
+### Reuse the existing Codex integration
+
+C-LARA already has the appropriate execution mechanism in
+`src/core/project_understanding.py`: a non-interactive `codex exec` argument vector, stdin prompt
+passing, `--sandbox read-only`, `--ephemeral`, a fixed configured checkout, a reduced environment,
+timeouts, stdout/stderr capture, token extraction, and a dedicated Assistant worker. The meta-review
+should reuse and factor this wrapper rather than introduce another LLM monitoring component or a
+second subprocess implementation.
+
+The current wrapper is answer-oriented and does **not** yet capture the repository commit SHA in its
+result, despite the Assistant roadmap listing that as a requirement. The shared invocation result
+should therefore be extended with commit SHA, Codex CLI version when obtainable without another
+model call, run ID, prompt/condition version, sandbox mode, start/end time, and the explicit input
+artifact set. The SHA must be resolved by trusted application code immediately before invocation;
+it should not be inferred from model output. The run should fail or be labelled non-reproducible if
+the checkout is dirty, unless a manifest also records the diff hash and the experiment explicitly
+permits that condition.
+
+### Manual trigger before scheduling
+
+The Sprint MVP is a laptop management command invoked explicitly by Manny. This provides a simpler
+authorization and filesystem boundary than adding another web action under deadline. Once dry runs
+establish cost, duration, failure handling, and useful output, the same service can be queued by the
+existing dedicated worker. Periodic scheduling is deferred until the manual loop is stable; a
+scheduled observer should never imply scheduled authorization to mutate state.
+
+### Structural write boundary
+
+The observer invocation will run against a clean commit with `--sandbox read-only` and emit its
+candidate document to stdout. Trusted wrapper code—not Codex—will save stdout and the run manifest
+under a configured proposal directory outside the checkout (on the laptop for the Sprint MVP).
+This is simpler and stronger than granting write access to a repository subdirectory: it avoids
+relying on Codex to respect a path convention and prevents generated repository content from
+affecting the same observation.
+
+Proposal application is a separate, explicit command. It accepts a reviewer-edited proposal,
+validates its schema and evidence references, and is hard-coded to write only the canonical
+`docs/global_workspace/current_state.json` plus its derived Markdown companion. It must reject
+symlinks, path overrides, extra target files, a base SHA that differs from the reviewed proposal,
+and unreviewed/rejected proposals. It must show the resulting diff and require Manny's affirmative
+authorization. The result then follows the normal Git diff/commit/PR review path. Arbitrary Codex
+repository mutation is not needed to apply this narrowly defined state transition.
+
+### Review and advisory roles
+
+Manny is the initial technical authorizer. A proposal record supports `accept`, `reject`,
+`revision_requested`, and `partially_accept`, with reviewer comments and per-item dispositions for
+selective acceptance. ChatGPT C-LARA-Instance may provide separately attributed advisory comments,
+but those comments do not authorize a write. Original Codex output is immutable research evidence;
+reviewer edits produce a distinct reviewed candidate so later analysis can measure disagreement and
+whether affective wording influenced decisions.
+
+### Minimal end-to-end flow before 14 August
+
+1. Manny invokes `manage.py propose_global_workspace_review` in a clean laptop checkout.
+2. Trusted code records the commit and run metadata, constructs the versioned meta-review prompt,
+   and calls the factored read-only Codex wrapper.
+3. Codex returns one schema-conforming proposal containing a full candidate next state and an
+   explicit delta from the current state; it cannot write files.
+4. The wrapper validates and stores the raw proposal and manifest outside the checkout.
+5. Manny optionally obtains ChatGPT advice, then records a decision and any per-item edits in a
+   reviewed copy.
+6. `manage.py apply_global_workspace_review` checks authorization and base SHA, updates only the two
+   canonical workspace files, renders Markdown deterministically, and displays the Git diff.
+7. The update is committed and reviewed normally. The raw proposal, manifest, decision, and outcome
+   can then be copied into a separately defined experiment archive without changing the live state.
+8. The existing Assistant can immediately answer questions from the committed workspace because
+   its read-only Codex process already inspects repository documentation.
+
+The first dry runs should be factual-only and factual-plus-optional-affect conditions over the same
+base commit. A neutral factual baseline should not be generated from the affective proposal after
+the fact, since that can leak its framing. Both conditions should use independently generated but
+schema-equivalent prompts, randomized ordering where practical, and outcome fields fixed before
+review.
+
+### Assistant interface decision
+
+No new Global Workspace tab is part of the Sprint MVP. Add `docs/global_workspace/` to the Assistant
+prompt's preferred evidence paths and instruct the Assistant to distinguish the approved current
+state from unapproved proposals or historical experiment records. The existing Assistant is already
+authenticated, read-only, asynchronous, instrumented, and capable of repository-wide questions.
+This makes it suitable for conversational queries about current concerns, successes, conflicts,
+human decisions, changes, and resolved concerns.
+
+The existing Assistant still lacks reviewer assessment controls, hard budget/rate limits, and a
+committed export flow. These are reasons not to use an ordinary free-form Assistant question as the
+canonical meta-review trigger: its answer record and prompt contract are not a state-update proposal
+protocol. A dedicated tab should be considered only if observed use shows that question answering,
+decision review, and current-state display cannot be made clear through the Assistant plus normal
+proposal-review artifacts.
+
+### Canonical ownership
+
+- `docs/roadmap/`: long-term strategy, architecture, and research programme.
+- `docs/issues/issues/*.json`: tactical work state, priority, dependencies, and issue deadlines.
+- `docs/issues/index.json`: ordered current issue focus.
+- `docs/workplan/project-intentions.md`: human-owned cross-cutting intent that cannot be derived
+  reliably from individual issues (goal relationships, external commitments, resource assumptions,
+  strategic trade-offs, and explicit deferrals). It links rather than copies issue facts.
+- `docs/global_workspace/current_state.json`: approved, revisable workspace state at one commit.
+- `docs/global_workspace/current_state.md`: deterministically rendered human companion; never edited
+  independently.
+- Proposal/run/decision/outcome records: immutable experimental artifacts, separate from the live
+  workspace and initially outside the checkout until a reviewed archival convention is approved.
+
+This deliberately starts with one workplan document rather than separate goals, dependencies,
+deadlines, priorities, and constraints files. Splitting those concepts now would duplicate canonical
+issue fields and create synchronization failures. If repeated reviews show that Codex cannot
+reliably parse the Markdown intentions, stable intention IDs can later move to JSON with a rendered
+companion.
+
+### Proposed workspace and proposal schema
+
+The version-1 current state should include:
+
+- schema version, workspace revision, `as_of`, assessed commit SHA, and approved proposal/run ID;
+- persistent goal references and current focus summary;
+- factual observations with stable IDs, evidence paths, observed dates, and confidence;
+- separate project-valence assessments linked to observation and goal IDs;
+- optional reported-valence text linked to the assessment that grounds it (or an explicit absence);
+- uncertainties/conflicts, requested human decisions, and proposed next actions;
+- predictions with operational outcome, horizon, probability/confidence, and resolution status;
+- resolved/retired item IDs needed to explain changes without retaining obsolete prose as current;
+- human approval metadata and comments.
+
+A proposal adds the base workspace revision/SHA, a material-change summary, and explicit `add`,
+`revise`, `retain`, and `retire` operations. It also contains a complete candidate next state so the
+reviewed result is unambiguous. Evidence paths must be repository-relative; claims about issue
+state, priority, deadlines, or dependencies should point to canonical JSON rather than derived
+overview prose. Free-form affective text is permitted but never required and cannot stand without a
+linked project-valence assessment.
+
+Detailed directory ownership and authoring rules are recorded in `docs/workplan/README.md` and
+`docs/global_workspace/README.md`.

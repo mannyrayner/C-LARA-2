@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P0
 - **Created:** 2026-08-10T00:00:00Z
-- **Updated:** 2026-08-10T00:00:00Z
+- **Updated:** 2026-08-10T12:30:00Z
 - **Origin:** human-suggestion
 - **Deadline:** 2026-08-14T00:00:00Z
 - **Dependencies:** None
@@ -62,3 +62,33 @@ remains current and explicitly retires resolved concerns.
 Sprint outputs should include reusable infrastructure and a brief methods/results record, including
 null or negative findings. This issue is time-bounded to Sprint preparation and execution, but the
 linked roadmap is an ongoing C-LARA programme.
+
+First implementation design decision on 2026-08-10: separate autonomous assessment from authorized
+mutation. Reuse and factor the existing project-understanding `codex exec` integration rather than
+adding another LLM monitor. The observer runs on Manny's laptop first, against a clean recorded
+commit, with the existing read-only/ephemeral sandbox and no writable repository output. Trusted
+wrapper code captures the proposal and manifest outside the checkout. Manny is the initial
+authorizer; ChatGPT C-LARA-Instance advice is separately attributed but non-authorizing. A separate
+deterministic application command accepts only a validated reviewed proposal, verifies its base SHA,
+writes only canonical global-workspace JSON plus derived Markdown, displays the diff, and leaves
+commit/PR review to the normal workflow.
+
+The smallest coherent pre-Sprint implementation is: (1) add `docs/workplan/project-intentions.md`
+with human-confirmed persistent goals, commitments, strategic guidance, resource assumptions, and
+deferrals while leaving issue facts canonical in issue JSON; (2) define and validate version-1
+current-state, proposal, manifest, review-decision, and prediction/outcome schemas; (3) factor the
+existing Codex CLI wrapper and add trusted commit-SHA/run metadata capture; (4) add
+`propose_global_workspace_review` and `apply_global_workspace_review` laptop management commands
+with the structural write allowlist; (5) deterministically render
+`docs/global_workspace/current_state.md`; (6) add `docs/global_workspace/` to the existing
+Assistant's preferred evidence paths and prompt it to distinguish approved live state from
+proposals/history; (7) run fact-only and fact-plus-optional-affect dry runs on the same clean base
+commit before 14 August. Scheduling and a dedicated Global Workspace tab are explicitly deferred.
+
+Dry-run acceptance criteria: the observer cannot alter the checkout; raw output and reviewed edits
+remain distinguishable; every material assessment links facts and goals; issue facts cite canonical
+JSON; selective acceptance is representable; stale base SHA or missing authorization prevents
+application; only the two workspace files can change; run records include commit, condition/prompt
+version, model/tool metadata, times, files/input set, stdout/stderr/exit status, and cost/token data
+where available; and Assistant queries can accurately describe current concerns, successes,
+conflicts, human-decision requests, changes, and retired concerns from the approved workspace.
