@@ -8,7 +8,7 @@ findings.
 
 ## Provenance and permission
 
-- ChatGPT generated the detailed written summaries for Sessions 1–3; the paper
+- ChatGPT generated the detailed written summaries for Sessions 1–3 and 5; the paper
   identifies AI-generated post-session summaries as the study's main dataset.
   Session 4 is represented by contemporaneous notes written by Manny Rayner.
 - Sarah Wright approved uploading the session summaries to this public
@@ -32,6 +32,7 @@ findings.
 | 2 | [Extended session analysis](session-02.md) | 8 April 2026 | 10 August 2026 | Camping, culture, food, and European travel planning |
 | 3 | [AI-led language practice](session-03.md) | 22 April 2026 | 10 August 2026 | Medical and emergency scenarios; travel, culture, and music |
 | 4 | [Human-authored session notes](session-04.md) | 7 May 2026 | 10 August 2026 | Platform strengths, observed improvement, paper planning, and possible recording |
+| 5 | [Informal German conversation](session-05.md) | 14 May 2026 | 10 August 2026 | Travel, music, opera, fairy tales, and conversational-AI limitations |
 
 Further summaries can be added to this index as their source material is
 provided.
