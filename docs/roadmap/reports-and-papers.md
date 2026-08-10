@@ -7,7 +7,7 @@ Linked issues and companion docs:
 - [ISSUE-0008](../issues/issues/ISSUE-0008.json) — report/papers umbrella issue.
 - [roadmap-cleanup.md](roadmap-cleanup.md) — tracks the cleanup pass that produced this clearer structure.
 - `docs/publications/progress_report_1/markdown/` — Markdown-first draft report workspace.
-- `docs/publications/eurocall_2026_voice_mode/latex/` — repository LaTeX source for the ChatGPT Voice Mode German-practice case study.
+- `docs/publications/eurocall_2026_voice_mode/` — repository source and approved session-summary evidence for the ChatGPT Voice Mode German-practice case study.
 
 ## Current status snapshot
 
@@ -52,7 +52,7 @@ The report workspace and this roadmap should stay synchronized. The current Mark
 ### Target B — EuroCALL 2026 paper
 
 - **Repository source package:** `docs/publications/eurocall_2026/latex/` now preserves the submitted repository-background LaTeX conversion, including textual descriptions of six submitted figures. Its README records the Word v6e provenance and the post-v6e chronology correction.
-- **Companion Voice Mode paper:** `docs/publications/eurocall_2026_voice_mode/latex/` preserves the case study of ChatGPT Voice Mode for spoken German practice. The session summaries are deliberately excluded pending participant approval, and the final proceedings editors and DOI remain to be supplied.
+- **Companion Voice Mode paper:** `docs/publications/eurocall_2026_voice_mode/` preserves the case study of ChatGPT Voice Mode for spoken German practice. Sarah Wright has approved adding the session summaries to the public repository; Markdown summaries are being added with source, conversion, permission, and evidentiary-status metadata so that the C-LARA-2 Assistant can relate them to the paper without treating them as transcripts. The final proceedings editors and DOI remain to be supplied.
 
 - **Status:** accepted; full paper preparation prioritised.
 - **Deadline:** **2026-07-31**.
