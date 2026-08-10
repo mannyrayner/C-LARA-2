@@ -10,7 +10,8 @@ not be attached to the repository task.
 - The provisional proceedings citation in the Word manuscript still contained
   editor-name and DOI placeholders, so it has not been presented as a final
   citation in this conversion.
-- The session summaries are not included. Publication of those records remains
-  subject to confirmation from Sarah Wright.
+- Sarah Wright has approved publication of the session summaries in this public
+  repository. Markdown conversions and their provenance metadata are indexed
+  in [`../session_summaries/`](../session_summaries/).
 - The conversion corrects evident typographical and formatting artefacts in the
   pasted Word text but does not intentionally change its substantive claims.
