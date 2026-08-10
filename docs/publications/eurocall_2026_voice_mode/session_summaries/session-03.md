@@ -2,7 +2,7 @@
 title: "Session Report: AI-Led Language Practice (Session 3)"
 session_number: 3
 session_date: 2026-04-16
-session_date_note: "Manny Rayner corrected and confirmed the date as 16 April 2026."
+session_date_note: "Manny Rayner identified this as the Session 3 record and confirmed the date as 16 April 2026."
 participants:
   - "Sarah Wright (learner)"
   - "Manny Rayner (facilitator)"
@@ -10,7 +10,7 @@ participants:
 target_language: German
 summary_language: English
 source_type: "AI-generated post-session summary"
-original_format: ".docx"
+original_format: "pasted text"
 repository_source: "text pasted by Manny Rayner"
 source_supplied: 2026-08-10
 markdown_conversion: 2026-08-10
@@ -18,187 +18,179 @@ session_recording: false
 formal_transcript: false
 repository_visibility: public
 permission: "Sarah Wright approved repository upload of the session summaries; approval reported by Manny Rayner on 2026-08-10."
-editorial_note: "The supplied summary was converted to Markdown with light formatting and copy-editing. Its observations were not independently validated against a recording or transcript."
+editorial_note: "The supplied summary was converted to Markdown with light formatting and copy-editing. Its embedded heading calls it Session 2 and its closing offer refers to designing Session 3; those source inconsistencies are documented rather than silently corrected. Its observations were not independently validated against a recording or transcript."
 ---
 
 # Session Report: AI-Led Language Practice (Session 3)
 
-## Evidence status
+## Evidence status and source-label caveat
 
-This file preserves the AI-generated post-session summary supplied for Session
-3. It is a retrospective analysis rather than a recording, formal transcript,
-or independently checked assessment. Evaluative statements below are therefore
+Manny Rayner identified this as the AI-generated summary for Session 3, held on
+16 April 2026. The text itself contains two inconsistent sequence references:
+its embedded subtitle says "Ongoing Case Study (Session 2)", and its closing
+offer proposes designing "Session 3" next. These labels are preserved here as
+features of the source record and should not override the supplied repository
+metadata.
+
+This is a retrospective summary rather than a recording, formal transcript, or
+independently checked assessment. Evaluative statements below are therefore
 attributed to the source summary.
 
-## 1. Overview
+## 1. Context
+
+**Embedded source subtitle:** *EUROCALL 2026 – Ongoing Case Study (Session 2)*.
 
 - **Participants:** Sarah (learner), Manny (facilitator), and ChatGPT (AI
   interlocutor).
-- **Session focus:**
-  - medical and emergency scenarios as the primary focus;
-  - travel safety and logistics;
-  - cultural and linguistic discussion; and
-  - personal narrative involving music, identity, and social connections.
-- **Format:** AI-led roleplay, guided interaction, and extended free
-  conversation.
+- **Session type:** AI-led conversational practice with roleplay.
+- **Focus areas:**
+  - scenario-based German involving camping, travel, and medical situations;
+  - extended spontaneous conversation about culture, travel planning, and
+    geopolitics.
+- **Pedagogical approach:** task-based interaction with minimal explicit
+  instruction.
 
-## 2. Main pedagogical focus
+## 2. Session structure
 
-### Scenario 9: Medical and emergency situations
+The session evolved through three phases.
 
-The main communicative tasks were:
+### Phase 1: Structured roleplay
 
-- describing accidents, such as a climbing injury;
-- calling the emergency services on 112;
-- asking about hospitals, costs, and waiting times; and
-- understanding insurance and healthcare systems.
+- camping scenario involving booking, facilities, and practical needs;
+- pharmacy or medical scenario involving symptoms, treatment, and logistics.
 
-The summary reports that Sarah successfully engaged in realistic, high-stakes
-scenarios and maintained communication despite linguistic limitations.
+### Phase 2: Semi-structured interaction
+
+- travel planning from the Netherlands through Germany and Scandinavia to
+  southern Europe;
+- practical issues involving fuel costs, car ownership, insurance, and visa or
+  work considerations.
+
+### Phase 3: Free conversation
+
+- **Cultural topics:** Scandinavian and German food, and comparison among
+  Germanic languages.
+- **Abstract topics:** healthcare systems, geopolitical conflict involving Iran,
+  and personal or emotional connections.
 
 ## 3. Language performance
 
 ### Fluency
 
-- High willingness to speak at length.
-- Ability to sustain extended discourse across topics.
-- Increasing confidence in role-based interaction.
+- High willingness to speak continuously.
+- Successful communication despite linguistic gaps.
+- Strong use of communicative strategies including rephrasing and
+  code-switching.
 
 ### Accuracy
 
-The observed grammar issues included:
+The source rates accuracy as moderate, with persistent errors involving gender,
+plural marking, and word order, as well as occasional lexical imprecision.
 
-- **Articles:** *ein Wohnungsort* → *einen Wohnort*.
-- **Plurals:** *zwei Nacht* → *zwei Nächte*, described as persisting from
-  earlier sessions.
-- **Word order:** occasional English-influenced structures.
+### Comprehension
 
-The summary identifies intact functional sentence formation as a strength and
-reports that errors rarely blocked communication.
+The summary reports good comprehension with slowed and simplified input, but
+persistent difficulty with natural-speed auditory input.
+
+## 4. Linguistic observations
+
+### Grammar
+
+The typical pattern identified was word order influenced by English syntax.
 
 ### Vocabulary
 
-**Strengths:**
+- Strong general vocabulary.
+- Gaps in domain-specific terms such as *Stellplatz* and *Versicherung*.
+- Frequent reliance on circumlocution.
 
-- strong everyday vocabulary relating to travel, food, and social interaction;
-- increasing domain-specific vocabulary, including the medical terms *Impfung*,
-  *Krankenhaus*, and *Notruf*; and
-- increasing travel-logistics vocabulary.
+### Multilingual interaction
 
-**Gaps:**
+German and English were actively involved. The source identifies lexical
+transfer and phonological interference, but also facilitated comprehension and
+flexibility.
 
-- technical terms were still approximated; and
-- occasional lexical mixing occurred across languages.
+## 5. Interactional strategies
 
-## 4. Listening and speaking
+Observed behaviours included:
 
-The summary identifies a persistent pattern: good comprehension of slow,
-adapted German, but difficulty with fast speech and unfamiliar phonological
-forms. It characterises the learner profile as reading competence exceeding
-listening competence.
+- code-switching across languages;
+- approximation of target structures; and
+- self-repair in the middle of an utterance.
 
-## 5. Communicative strategies
+The summary interprets these as signs of advanced communicative competence
+rather than failure.
 
-Sarah consistently used:
+## 6. Pedagogical insights
 
-- **code-switching** between German, English, Swedish, and Dutch;
-- **approximation**, describing unknown words indirectly; and
-- **narrative expansion**, turning simple prompts into extended stories.
+### 6.1 Effectiveness of roleplay
 
-The summary concludes that these strategies enabled high communicative success
-despite limited accuracy.
+Roleplay was described as highly effective for engagement, retention, and
+confidence, particularly in concrete real-world scenarios.
 
-## 6. Cognitive and interactional observations
+### 6.2 AI as interlocutor
 
-### 6.1 Scenario-based learning
+The AI reportedly:
 
-The medical scenarios produced focused language use and clear communicative
-goals. The summary evaluates them as highly effective for functional language
-development.
+- maintained conversational continuity over an extended interaction;
+- adapted linguistic complexity dynamically; and
+- provided implicit correction without interrupting the flow.
 
-### 6.2 Transition to free conversation
+The source notes that no breakdown occurred despite noisy input, mixed
+languages, and topic changes.
 
-The session naturally shifted towards personal storytelling about music,
-relationships, and travel history, as well as abstract topics involving
-language systems, culture, and safety. The summary interprets this as indicating
-increasing linguistic confidence.
+### 6.3 Cognitive load
 
-### 6.3 Multilingual awareness
+Performance was reported to improve in concrete, embodied scenarios and decline
+in abstract discussions involving topics such as politics and systems.
 
-The session included metalinguistic discussion of:
+## 7. Affective dimension
 
-- German and English, including *Freiheit* compared with *liberty* and
-  *freedom*;
-- Germanic and Romance vocabulary; and
-- Scandinavian language comparisons.
+Motivational factors included:
 
-The summary interprets this as evidence of linguistic awareness beyond a basic
-learner level.
+- upcoming long-term travel;
+- a desire for cultural integration; and
+- avoidance of "tourist-only" interaction.
 
-## 7. Affective and identity factors
+During discussion of conflict involving Iran, the summary reports that language
+use became more deliberate and emotionally grounded.
 
-Strong personal themes included:
+## 8. Emerging pattern
 
-- music as identity, including flute, piccolo, and performance;
-- social belonging through bands, friends, and shared activities; and
-- travel as personal development.
+The source characterises Sarah as moving from the role of "language learner"
+towards that of a functional multilingual communicator.
 
-The summary notes that language use became deeply autobiographical and
-meaningful.
+## 9. Key development needs
 
-## 8. Special observation: music and language
+1. **Listening comprehension**, especially real-time spoken input.
+2. **Grammatical stabilisation**, including articles, plurals, and sentence
+   structure.
+3. **Expansion of domain-specific vocabulary.**
 
-Music was described as central to Sarah's identity through her long-term flute
-playing, experience in international ensembles, and desire to continue music
-while travelling. The pedagogical interpretation is that music functions as
-both a motivational anchor and a social bridge across cultures.
+## 10. Implications for the study
 
-## 9. Travel and real-world readiness
+The summary argues that the session strengthens the central hypothesis that
+AI-led roleplay provides an effective, low-anxiety environment for developing
+real-world communicative competence in multilingual learners.
 
-Topics included European healthcare systems, emergency procedures, insurance,
-and safety issues such as theft and camping risks. The summary concludes that
-Sarah was developing practical communicative competence for real-world travel.
+## 11. Positioning for EuroCALL
 
-## 10. Development profile
+Although the work was framed as anecdotal, the source says that the data already
+support:
 
-| Area | Level |
-|---|---|
-| Fluency | High |
-| Accuracy | Moderate |
-| Listening | Developing |
-| Strategic competence | High |
-| Confidence | Increasing |
+- micro-level interaction analysis;
+- observable developmental patterns; and
+- a replicable pedagogical approach.
 
-## 11. Key development needs
+It proposes that two or three additional sessions could turn the work into a
+small but robust qualitative study.
 
-1. **Listening comprehension:** the priority area, requiring targeted practice.
-2. **Grammatical stabilisation:** articles, plural forms, and word order.
-3. **Lexical precision:** especially in technical domains.
+## Final note
 
-## 12. Implications for the study
+The summary concludes that sustained, meaningful interaction grounded in
+real-life scenarios and supported by adaptive AI can produce rapid functional
+language development, even for learners with limited formal instruction.
 
-The summary argues that this session strengthens the case that AI-supported
-interaction enables sustained communication, low-anxiety practice, and flexible
-topic exploration.
-
-Its key emerging claim is that learners can reach functional communicative
-competence through sustained, meaning-driven interaction even when grammatical
-control remains imperfect.
-
-## 13. Relevance for EuroCALL 2026
-
-Although the work was initially framed as anecdotal, the summary notes that the
-dataset now includes repeated sessions, observable development patterns, and
-consistent pedagogical intervention. It suggests that the work may consequently
-be described as a small-scale qualitative study with longitudinal elements.
-
-## Final conclusion
-
-The summary presents the session as showing clear progression. It characterises
-Sarah not as a beginner, but as a multilingual communicator navigating
-real-world scenarios. The remaining gap is described as one of precision and
-processing speed rather than basic ability to communicate.
-
-The source concludes by proposing either integration of all sessions into a
-coherent paper draft or the design of Session 4 around controlled comparison
-tasks that could strengthen the research claims.
+The source ends by offering either to develop a paper draft or to design
+"Session 3" explicitly to strengthen the research claims. This closing wording
+is retained as further evidence of the source's internal numbering mismatch.
