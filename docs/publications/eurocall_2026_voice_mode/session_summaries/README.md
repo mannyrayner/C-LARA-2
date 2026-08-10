@@ -28,9 +28,11 @@ findings.
 |---|---|---|---|---|
 | 1 | [AI-led roleplay language learning](session-01.md) | Not supplied | 10 August 2026 | Camping and travel roleplay; adaptive conversation |
 | 2 | [Extended session analysis](session-02.md) | 8 April 2026 | 10 August 2026 | Camping, culture, food, and European travel planning |
+| 3 | [AI-led language practice](session-03.md) | 22 April 2026 | 10 August 2026 | Medical and emergency scenarios; travel, culture, and music |
 
 Further summaries can be added to this index as their source material is
 provided.
 
-The year in the Session 2 date is inferred from the paper's 2026 study context;
-the supplied description identified the session as taking place on 8 April.
+The years in the Session 2 and Session 3 dates are inferred from the paper's
+2026 study context; the supplied descriptions identified the sessions as taking
+place on 8 April and 22 April, respectively.
