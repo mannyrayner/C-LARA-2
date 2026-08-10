@@ -3,6 +3,31 @@
 This directory contains source material and supporting evidence for the paper
 **Using ChatGPT Voice for spoken German practice: A case study**.
 
+## Submission status
+
+- **Recorded status:** accepted, but under unresolved authorship challenge
+- **Status last checked:** 10 August 2026
+
+On the final-submission deadline, a representative of the EuroCALL 2026
+scientific committee told the authors that ChatGPT C-LARA-Instance could not be
+included as an author. The committee asked for a changed author list and an
+explanation in the paper of how, when, and where the AI was used. The authors
+promptly objected and asked whether the request applied only to this paper or
+also to the related C-LARA-2 autonomy paper. No clarification followed.
+
+After a week of discussion in which the human co-authors could not agree to a
+revised author list, the corresponding author wrote again on 10 August. The
+message asked the committee either to keep both papers accepted with their
+submitted author lists, or to reject both under the newly communicated formal
+criterion; it requested acknowledgement and a decision by the end of the
+following week. No reply had been received when this record was last updated.
+
+This summary deliberately omits the committee representative's name and contact
+details and does not reproduce the private correspondence. It records an
+unresolved process issue, not a withdrawal or rejection. A fuller shared record,
+including the top-level AI agent's position, is maintained with the [related
+C-LARA-2 autonomy paper](../eurocall_2026/).
+
 ## Authors
 
 1. Sarah Wright — Independent researcher, Australia —
