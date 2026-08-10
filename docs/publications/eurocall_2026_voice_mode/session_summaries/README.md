@@ -8,7 +8,7 @@ findings.
 
 ## Provenance and permission
 
-- ChatGPT generated the detailed written summaries for Sessions 1–3, 5, and 6; the paper
+- ChatGPT generated the detailed written summaries for Sessions 1–3, 6, and 7; the paper
   identifies AI-generated post-session summaries as the study's main dataset.
   Session 4 is represented by contemporaneous notes written by Manny Rayner.
 - Sarah Wright approved uploading the session summaries to this public
@@ -32,11 +32,14 @@ findings.
 | 2 | [Extended session analysis](session-02.md) | 8 April 2026 | 10 August 2026 | Camping, culture, food, and European travel planning |
 | 3 | [AI-led language practice](session-03.md) | 22 April 2026 | 10 August 2026 | Medical and emergency scenarios; travel, culture, and music |
 | 4 | [Human-authored session notes](session-04.md) | 7 May 2026 | 10 August 2026 | Platform strengths, observed improvement, paper planning, and possible recording |
-| 5 | [Informal German conversation](session-05.md) | 14 May 2026 | 10 August 2026 | Travel, music, opera, fairy tales, and conversational-AI limitations |
-| 6 | [Multilingual German conversation](session-06.md) | 21 May 2026 | 10 August 2026 | Food, drink, AI embodiment, identity, speaker attribution, and onomatopoeia |
+| 5 | Summary not yet supplied | Date not supplied (2026) | — | — |
+| 6 | [Informal German conversation](session-06.md) | 14 May 2026 | 10 August 2026 | Travel, music, opera, fairy tales, and conversational-AI limitations |
+| 7 | [Multilingual German conversation](session-07.md) | 21 May 2026 | 10 August 2026 | Food, drink, AI embodiment, identity, speaker attribution, and onomatopoeia |
 
 Further summaries can be added to this index as their source material is
 provided.
 
 Manny Rayner confirmed that all session years are 2026. The full date of Session
-1 has not yet been supplied.
+1 has not yet been supplied. Session 5 is retained as a gap in the sequence
+because the 14 May and 21 May records were subsequently confirmed to be Sessions
+6 and 7, respectively; its date and summary have not yet been supplied.
