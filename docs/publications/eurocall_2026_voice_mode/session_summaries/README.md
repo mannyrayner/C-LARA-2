@@ -8,7 +8,7 @@ findings.
 
 ## Provenance and permission
 
-- ChatGPT generated the detailed written summaries for Sessions 1–3, 6, and 7; the paper
+- ChatGPT generated the detailed written summaries for Sessions 1–3 and 6–8; the paper
   identifies AI-generated post-session summaries as the study's main dataset.
   Session 4 is represented by contemporaneous notes written by Manny Rayner.
 - Sarah Wright approved uploading the session summaries to this public
@@ -35,6 +35,7 @@ findings.
 | 5 | Summary not yet supplied | Date not supplied (2026) | — | — |
 | 6 | [Informal German conversation](session-06.md) | 14 May 2026 | 10 August 2026 | Travel, music, opera, fairy tales, and conversational-AI limitations |
 | 7 | [Multilingual German conversation](session-07.md) | 21 May 2026 | 10 August 2026 | Food, drink, AI embodiment, identity, speaker attribution, and onomatopoeia |
+| 8 | [Music, travel, chess, and language](session-08.md) | 1 June 2026 | 10 August 2026 | Music, travel, chess, pronunciation, language families, and factual reliability |
 
 Further summaries can be added to this index as their source material is
 provided.
