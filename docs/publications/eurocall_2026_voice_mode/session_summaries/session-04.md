@@ -1,8 +1,8 @@
 ---
 title: "Session Notes (Session 4)"
 session_number: 4
-session_date: 2026-05-07
-session_date_note: "The date was supplied as 7 May, and Manny Rayner confirmed that the year is 2026."
+session_date: 2026-04-22
+session_date_note: "Manny Rayner corrected and confirmed the Session 4 date as 22 April 2026. The note body says 7 May, so its file association must be reviewed before the source text is changed."
 participants:
   - "Sarah Wright (learner)"
   - "Manny Rayner (facilitator and note author)"
@@ -19,7 +19,7 @@ session_recording: false
 formal_transcript: false
 repository_visibility: public
 permission: "Sarah Wright approved repository upload of the session summaries; approval reported by Manny Rayner on 2026-08-10."
-editorial_note: "Encoding artefacts, paragraph structure, and evident typographical errors were regularised during Markdown conversion; substantive observations were preserved."
+editorial_note: "Encoding artefacts, paragraph structure, and evident typographical errors were regularised during Markdown conversion; substantive observations were preserved. The corrected session-date metadata conflicts with the 7 May date in the supplied note body, indicating a likely file-pointer mismatch that has not yet been resolved."
 ---
 
 # Session Notes (Session 4)

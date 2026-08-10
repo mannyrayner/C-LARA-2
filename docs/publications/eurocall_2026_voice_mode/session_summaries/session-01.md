@@ -1,8 +1,8 @@
 ---
 title: "Session Report: AI-Led Roleplay Language Learning (Session 1)"
 session_number: 1
-session_date: null
-session_year: 2026
+session_date: 2026-04-02
+session_date_note: "Manny Rayner confirmed the date as 2 April 2026."
 duration: "approximately 60–90 minutes"
 participants:
   - "Sarah Wright (learner)"
