@@ -3,6 +3,11 @@
 This directory contains a repository-oriented LaTeX conversion of the final
 Word manuscript supplied inline on 1 August 2026.
 
+The paper's accepted-submission status is subject to an unresolved authorship
+challenge from the conference committee. The dated, privacy-conscious record is
+maintained in [`../README.md`](../README.md); this source continues to preserve
+the submitted author list while the outcome is unknown.
+
 - Main source: `eurocall_clara2_v6e.tex`
 - Figure descriptions: `figures/README.md` (the submitted JPEGs are intentionally represented as text for PR compatibility).
 - Bibliography: `references.bib`.
