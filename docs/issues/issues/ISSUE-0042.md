@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P0
 - **Created:** 2026-08-10T00:00:00Z
-- **Updated:** 2026-08-10T12:30:00Z
+- **Updated:** 2026-08-11T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** 2026-08-14T00:00:00Z
 - **Dependencies:** None
@@ -92,3 +92,14 @@ application; only the two workspace files can change; run records include commit
 version, model/tool metadata, times, files/input set, stdout/stderr/exit status, and cost/token data
 where available; and Assistant queries can accurately describe current concerns, successes,
 conflicts, human-decision requests, changes, and retired concerns from the approved workspace.
+
+Workplan baseline added on 2026-08-11: `docs/workplan/project-intentions.md` now records five
+human-confirmed persistent goals (platform maturity/usability, useful autonomy,
+research/publications, legacy migration/preservation, and support for real users/collaborators), the
+Digital Minds Sprint commitment, current strategic guidance, safety constraints, resource
+assumptions, explicit deferrals, and unresolved human questions. `docs/workplan/README.md` now makes
+the division of labour explicit: humans own intentions, commitments, constraints, and authoritative
+contextual facts; the project-manager agent derives and maintains urgency, risk, blocking
+importance, opportunity value, progress, confidence, conflict, concern, satisfaction,
+recommendations, and other dynamic management state. These derived labels should not become another
+set of human-maintained issue fields.
