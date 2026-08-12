@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INPUT = ROOT / "docs/global_workspace/current_state.json"
 DEFAULT_OUTPUT = ROOT / "docs/global_workspace/current_state.md"
 DEFAULT_ARCHIVE = ROOT / "docs/global_workspace/archive"
+INPUT_ARCHIVE_NAME = "inputs"
 ID_RE = re.compile(r"^[A-Z]+-[0-9]{4}$")
 ARCHIVE_RE = re.compile(r"^rev-(\d{4,})-(\d{4}-\d{2}-\d{2})\.(json|md)$")
 CONFIDENCE_VALUES = {"low", "medium", "high"}
@@ -347,6 +348,88 @@ def _write_new_or_match(path: Path, content: bytes) -> bool:
     return True
 
 
+def input_archive_dir(archive_dir: Path, revision: int) -> Path:
+    """Return the directory containing exact human inputs for a revision."""
+    return archive_dir / INPUT_ARCHIVE_NAME / f"rev-{revision:04d}"
+
+
+def ensure_inputs_archived(
+    archive_dir: Path, revision: int, input_paths: list[Path]
+) -> tuple[list[Path], list[Path]]:
+    """Create immutable, ordered, byte-exact human-input records."""
+    if revision < 2:
+        raise WorkspaceValidationError("human-input archives apply to revision 2 and later")
+    target_dir = input_archive_dir(archive_dir, revision)
+    existing = sorted(target_dir.glob("input-*.md")) if target_dir.exists() else []
+    if existing and input_paths:
+        if len(existing) != len(input_paths):
+            raise WorkspaceValidationError(
+                f"revision {revision} already has a different number of archived inputs"
+            )
+        for existing_path, source_path in zip(existing, input_paths):
+            if existing_path.read_bytes() != source_path.read_bytes():
+                raise WorkspaceValidationError(
+                    f"conflicting human input exists for revision {revision}: {existing_path}"
+                )
+        return existing, []
+    if existing:
+        return existing, []
+    if not input_paths:
+        raise WorkspaceValidationError(
+            f"revision {revision} requires at least one archived human-input file"
+        )
+    created: list[Path] = []
+    try:
+        for index, source_path in enumerate(input_paths, 1):
+            content = source_path.read_bytes()
+            target = target_dir / f"input-{index:03d}.md"
+            if _write_new_or_match(target, content):
+                created.append(target)
+    except Exception:
+        for path in reversed(created):
+            path.unlink(missing_ok=True)
+        if target_dir.exists() and not any(target_dir.iterdir()):
+            target_dir.rmdir()
+        raise
+    return [target_dir / f"input-{index:03d}.md" for index in range(1, len(input_paths) + 1)], created
+
+
+def validate_input_archive(archive_dir: Path, state_revisions: set[int]) -> dict[int, list[Path]]:
+    """Validate ordered input records and require them for every post-baseline state."""
+    root = archive_dir / INPUT_ARCHIVE_NAME
+    if not root.is_dir():
+        if state_revisions <= {1}:
+            return {}
+        raise WorkspaceValidationError(f"human-input archive does not exist: {root}")
+    inputs: dict[int, list[Path]] = {}
+    for directory in sorted(root.iterdir()):
+        if directory.name == "README.md" and directory.is_file() and not directory.is_symlink():
+            continue
+        match = re.fullmatch(r"rev-(\d{4,})", directory.name)
+        if not match or directory.is_symlink() or not directory.is_dir():
+            raise WorkspaceValidationError(f"invalid human-input archive entry: {directory}")
+        revision = int(match.group(1))
+        if revision not in state_revisions:
+            raise WorkspaceValidationError(
+                f"human inputs refer to an unknown archived revision: {revision}"
+            )
+        files = sorted(directory.iterdir())
+        expected = [f"input-{index:03d}.md" for index in range(1, len(files) + 1)]
+        if not files or [path.name for path in files] != expected:
+            raise WorkspaceValidationError(
+                f"human inputs for revision {revision} must be contiguous input-NNN.md files"
+            )
+        if any(path.is_symlink() or not path.is_file() for path in files):
+            raise WorkspaceValidationError(f"invalid human input file for revision {revision}")
+        inputs[revision] = files
+    missing = sorted((state_revisions - {1}) - inputs.keys())
+    if missing:
+        raise WorkspaceValidationError(
+            f"archived revisions missing human inputs: {', '.join(map(str, missing))}"
+        )
+    return inputs
+
+
 def ensure_archived(
     data: dict[str, Any], json_bytes: bytes, markdown: str, archive_dir: Path
 ) -> tuple[Path, Path, bool]:
@@ -362,12 +445,18 @@ def ensure_archived(
     return json_path, markdown_path, created_json or created_markdown
 
 
-def validate_archive(archive_dir: Path) -> dict[int, tuple[Path, Path, dict[str, Any]]]:
+def validate_archive(
+    archive_dir: Path, *, require_inputs: bool = True
+) -> dict[int, tuple[Path, Path, dict[str, Any]]]:
     """Validate archive naming, pairs, revision identity, and deterministic Markdown."""
     revisions: dict[int, tuple[Path, Path, dict[str, Any]]] = {}
     if not archive_dir.is_dir():
         raise WorkspaceValidationError(f"archive directory does not exist: {archive_dir}")
-    files = sorted(path for path in archive_dir.iterdir() if path.name != ".gitkeep")
+    files = sorted(
+        path
+        for path in archive_dir.iterdir()
+        if path.name not in {".gitkeep", INPUT_ARCHIVE_NAME}
+    )
     grouped: dict[str, dict[str, Path]] = {}
     for path in files:
         match = ARCHIVE_RE.fullmatch(path.name)
@@ -395,6 +484,8 @@ def validate_archive(archive_dir: Path) -> dict[int, tuple[Path, Path, dict[str,
         if markdown_path.read_text(encoding="utf-8") != render(data):
             raise WorkspaceValidationError(f"stale archived Markdown: {markdown_path}")
         revisions[revision] = (json_path, markdown_path, data)
+    if require_inputs:
+        validate_input_archive(archive_dir, set(revisions))
     return revisions
 
 
@@ -413,7 +504,11 @@ def _atomic_write(path: Path, content: bytes) -> None:
 
 
 def apply_update(
-    candidate_path: Path, live_json_path: Path, live_markdown_path: Path, archive_dir: Path
+    candidate_path: Path,
+    live_json_path: Path,
+    live_markdown_path: Path,
+    archive_dir: Path,
+    human_input_paths: list[Path],
 ) -> tuple[Path, Path]:
     """Archive revision N and atomically install a validated revision N+1 candidate."""
     live_bytes = live_json_path.read_bytes()
@@ -435,6 +530,9 @@ def apply_update(
     archived_json, archived_markdown, _ = ensure_archived(
         live_data, live_bytes, live_markdown, archive_dir
     )
+    _, created_inputs = ensure_inputs_archived(
+        archive_dir, candidate_data["workspace_revision"], human_input_paths
+    )
     # Archive first, then replace both live files. Individual writes are atomic; if the
     # second write fails in-process, restore the exact validated live pair from revision N.
     try:
@@ -443,11 +541,22 @@ def apply_update(
     except Exception:
         _atomic_write(live_json_path, live_bytes)
         _atomic_write(live_markdown_path, live_markdown.encode("utf-8"))
+        for path in reversed(created_inputs):
+            path.unlink(missing_ok=True)
         raise
     installed = json.loads(live_json_path.read_text(encoding="utf-8"))
     validate(installed)
     if live_markdown_path.read_text(encoding="utf-8") != render(installed):
         raise WorkspaceValidationError("installed live Markdown does not match live JSON")
+    # A successfully installed state is immediately a live revision, so preserve it now
+    # rather than waiting for the next transition.
+    ensure_archived(
+        installed,
+        live_json_path.read_bytes(),
+        live_markdown_path.read_text(encoding="utf-8"),
+        archive_dir,
+    )
+    validate_archive(archive_dir)
     return archived_json, archived_markdown
 
 
@@ -463,6 +572,19 @@ def main() -> int:
         help="create or verify the immutable snapshot for the live revision",
     )
     parser.add_argument(
+        "--human-input",
+        type=Path,
+        action="append",
+        default=[],
+        help="exact user-input file that fed the candidate revision; repeat in message order",
+    )
+    parser.add_argument(
+        "--record-inputs-for",
+        type=int,
+        metavar="REVISION",
+        help="retroactively create or verify human-input records for an archived revision",
+    )
+    parser.add_argument(
         "--update-from",
         type=Path,
         metavar="CANDIDATE_JSON",
@@ -470,16 +592,43 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    if sum((args.check, args.archive_current, args.update_from is not None)) > 1:
-        parser.error("--check, --archive-current, and --update-from are mutually exclusive")
+    if sum(
+        (
+            args.check,
+            args.archive_current,
+            args.update_from is not None,
+            args.record_inputs_for is not None,
+        )
+    ) > 1:
+        parser.error(
+            "--check, --archive-current, --update-from, and --record-inputs-for are mutually exclusive"
+        )
+    if args.human_input and args.update_from is None and args.record_inputs_for is None:
+        parser.error("--human-input requires --update-from or --record-inputs-for")
 
     try:
         if args.update_from is not None:
             archived_json, archived_markdown = apply_update(
-                args.update_from, args.input, args.output, args.archive_dir
+                args.update_from,
+                args.input,
+                args.output,
+                args.archive_dir,
+                args.human_input,
             )
             print(f"archived {archived_json} and {archived_markdown}")
             print(f"installed {args.update_from} as {args.input} and regenerated {args.output}")
+            return 0
+        if args.record_inputs_for is not None:
+            revisions = validate_archive(args.archive_dir, require_inputs=False)
+            if args.record_inputs_for not in revisions:
+                raise WorkspaceValidationError(
+                    f"cannot record inputs for unknown revision {args.record_inputs_for}"
+                )
+            paths, created = ensure_inputs_archived(
+                args.archive_dir, args.record_inputs_for, args.human_input
+            )
+            action = "created" if created else "verified"
+            print(f"{action} {len(paths)} human-input record(s) for revision {args.record_inputs_for}")
             return 0
         data = json.loads(args.input.read_text(encoding="utf-8"))
         validate(data)

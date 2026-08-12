@@ -25,6 +25,8 @@ class GlobalWorkspaceArchiveTests(unittest.TestCase):
         self.live_markdown = self.root / "current_state.md"
         self.archive = self.root / "archive"
         self.archive.mkdir()
+        self.human_input = self.root / "human-input.md"
+        self.human_input.write_text("Test human input.\n", encoding="utf-8")
         self.live_json.write_bytes(self.baseline_bytes)
         self.live_markdown.write_text(workspace.render(self.baseline), encoding="utf-8")
 
@@ -57,6 +59,22 @@ class GlobalWorkspaceArchiveTests(unittest.TestCase):
                 self.baseline, self.baseline_bytes, rendered, self.archive
             )
 
+    def test_human_input_archive_is_idempotent_and_refuses_conflicts(self):
+        paths, created = workspace.ensure_inputs_archived(
+            self.archive, 2, [self.human_input]
+        )
+        self.assertEqual(len(created), 1)
+        self.assertEqual(paths[0].read_bytes(), self.human_input.read_bytes())
+        _, created_again = workspace.ensure_inputs_archived(
+            self.archive, 2, [self.human_input]
+        )
+        self.assertEqual(created_again, [])
+
+        conflicting = self.root / "conflicting.md"
+        conflicting.write_text("Different human input.\n", encoding="utf-8")
+        with self.assertRaisesRegex(workspace.WorkspaceValidationError, "conflicting human input"):
+            workspace.ensure_inputs_archived(self.archive, 2, [conflicting])
+
     def test_apply_update_archives_live_state_before_installing_next_revision(self):
         candidate = copy.deepcopy(self.baseline)
         candidate["workspace_revision"] = 2
@@ -66,13 +84,22 @@ class GlobalWorkspaceArchiveTests(unittest.TestCase):
         candidate_path.write_text(json.dumps(candidate, indent=2) + "\n", encoding="utf-8")
 
         archived_json, archived_markdown = workspace.apply_update(
-            candidate_path, self.live_json, self.live_markdown, self.archive
+            candidate_path,
+            self.live_json,
+            self.live_markdown,
+            self.archive,
+            [self.human_input],
         )
 
         self.assertEqual(archived_json.read_bytes(), self.baseline_bytes)
         self.assertEqual(archived_markdown.read_text(encoding="utf-8"), workspace.render(self.baseline))
         self.assertEqual(json.loads(self.live_json.read_text())["workspace_revision"], 2)
         self.assertEqual(self.live_markdown.read_text(encoding="utf-8"), workspace.render(candidate))
+        self.assertEqual(
+            (self.archive / "inputs/rev-0002/input-001.md").read_bytes(),
+            self.human_input.read_bytes(),
+        )
+        self.assertTrue((self.archive / "rev-0002-2026-08-13.json").is_file())
 
     def test_apply_update_requires_exactly_next_revision(self):
         candidate = copy.deepcopy(self.baseline)
@@ -81,7 +108,13 @@ class GlobalWorkspaceArchiveTests(unittest.TestCase):
         candidate_path.write_text(json.dumps(candidate), encoding="utf-8")
 
         with self.assertRaisesRegex(workspace.WorkspaceValidationError, "exactly one greater"):
-            workspace.apply_update(candidate_path, self.live_json, self.live_markdown, self.archive)
+            workspace.apply_update(
+                candidate_path,
+                self.live_json,
+                self.live_markdown,
+                self.archive,
+                [self.human_input],
+            )
         self.assertEqual(list(self.archive.iterdir()), [])
 
     def test_apply_update_refuses_stale_live_markdown(self):
@@ -92,8 +125,25 @@ class GlobalWorkspaceArchiveTests(unittest.TestCase):
         candidate_path.write_text(json.dumps(candidate), encoding="utf-8")
 
         with self.assertRaisesRegex(workspace.WorkspaceValidationError, "live Markdown is stale"):
-            workspace.apply_update(candidate_path, self.live_json, self.live_markdown, self.archive)
+            workspace.apply_update(
+                candidate_path,
+                self.live_json,
+                self.live_markdown,
+                self.archive,
+                [self.human_input],
+            )
         self.assertEqual(list(self.archive.iterdir()), [])
+
+    def test_apply_update_requires_human_input_for_next_revision(self):
+        candidate = copy.deepcopy(self.baseline)
+        candidate["workspace_revision"] = 2
+        candidate_path = self.root / "candidate.json"
+        candidate_path.write_text(json.dumps(candidate), encoding="utf-8")
+
+        with self.assertRaisesRegex(workspace.WorkspaceValidationError, "requires at least one"):
+            workspace.apply_update(
+                candidate_path, self.live_json, self.live_markdown, self.archive, []
+            )
 
 
 if __name__ == "__main__":

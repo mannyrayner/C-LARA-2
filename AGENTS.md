@@ -37,5 +37,5 @@ Do not update the global workspace mechanically because a task completed. Ask in
 
 If not, no workspace change is needed. If it does, update the global workspace according to its
 README. Before replacing the live `current_state`, ensure that its existing revision is preserved in
-the global-workspace archive; never rewrite archived historical states. Do not silently rewrite
-human intentions.
+the global-workspace archive and preserve the human input that materially informed the new revision;
+never rewrite archived historical states or inputs. Do not silently rewrite human intentions.

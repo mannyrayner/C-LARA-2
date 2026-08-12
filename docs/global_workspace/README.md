@@ -29,11 +29,15 @@ The minimal live workspace consists of:
   never edited independently.
 - `archive/`: immutable, revision-numbered JSON snapshots of successive live states and their
   deterministic Markdown renderings.
+- `archive/inputs/rev-NNNN/input-NNN.md`: immutable, ordered copies of the human messages that
+  materially informed revision N.
 
 Every live revision must have an archive snapshot. Revision 1 is archived even while it remains
 live; before revision N is replaced by revision N+1, tooling must create or verify revision N's
 snapshot. Obsolete concerns must be retired or revised in the live state rather than preserved as if
 current; the archive retains what the project manager believed earlier without making it current.
+Revision 1 has no triggering human-input record because it was the repository-derived baseline.
+Every later revision must preserve at least one human input before it can be installed.
 
 Do not split goals, deadlines, priorities, and constraints into parallel intention files until real
 reviews show that doing so is useful. If repeated dry runs show that Markdown cannot be inspected
@@ -187,9 +191,11 @@ application ceremony is not required for ordinary derived-state maintenance. The
 1. orient from human-owned intentions, the live state, roadmaps, canonical issues, and other evidence;
 2. decide whether the project-level assessment materially changed;
 3. create or verify the immutable archive snapshot for live revision N;
-4. construct and validate revision N+1;
-5. replace canonical `current_state.json` and deterministically regenerate `current_state.md`; and
-6. report the changes and normal code-review evidence clearly.
+4. capture, in message order, the human input that materially informs revision N+1;
+5. construct and validate revision N+1;
+6. install and immediately archive canonical `current_state.json` plus its deterministic Markdown;
+   and
+7. report the changes and normal code-review evidence clearly.
 
 Human disagreement is new authoritative evidence, not a reason to rewrite history. If Manny says an
 assessment is inaccurate, incomplete, misleading, or based on a false assumption, the agent should
@@ -223,6 +229,14 @@ advisory comments, review notes, and outcome ledgers are different experimental 
 be kept separately under an approved research-data convention, but must not be confused with the
 live-state archive or presented as formerly current assessments.
 
+Human inputs that materially feed a live revision are the exception: they are part of the
+longitudinal project-memory record and live under `archive/inputs/`. Each input is stored as the
+UTF-8 Markdown supplied to the update tool, without generated headings, summaries, or corrections.
+Multiple messages are numbered in their original order. These files preserve what the human said;
+canonical intentions and issues preserve the subsequently reviewed facts and commitments. Sensitive
+or private material must not be copied into this public archive without an explicit retention and
+redaction decision. An existing input may be verified byte-for-byte but never overwritten.
+
 ## Authoring and revision rules
 
 1. Use stable `GOAL-*` identifiers for persistent objectives.
@@ -236,6 +250,8 @@ live-state archive or presented as formerly current assessments.
    update tool's write scope.
 8. Keep the live assessment current; preserve each live revision in the immutable archive and keep
    richer experiment history in distinct immutable artifacts and Git.
+9. Preserve every material human message that informs a post-baseline revision; do not substitute an
+   agent summary for the input archive.
 
 ## Assistant use
 
@@ -260,15 +276,32 @@ python scripts/render_global_workspace.py --archive-current
 ```
 
 For the normal N to N+1 lifecycle, prepare a complete candidate JSON whose revision is exactly one
-greater than the live revision, then run:
+greater than the live revision and save each material human message to a file without editing its
+contents, then run:
 
 ```bash
-python scripts/render_global_workspace.py --update-from /path/to/candidate.json
+python scripts/render_global_workspace.py \
+  --update-from /path/to/candidate.json \
+  --human-input /path/to/human-message-1.md \
+  --human-input /path/to/human-message-2.md
 ```
 
 This validates the live state and archive, refuses stale live Markdown, archives revision N before
-replacement, validates the candidate, writes its canonical JSON bytes, deterministically renders
-Markdown, and validates the installed result. It will not overwrite a conflicting archive snapshot.
+replacement, immutably records ordered inputs for N+1, validates and installs the candidate, renders
+Markdown, immediately archives N+1, and validates the result. It will not overwrite a conflicting
+state or input archive. If installation fails in-process, newly created input records are removed
+with the failed transition.
+
+For historical backfill only, record a supplied input for an already archived revision with:
+
+```bash
+python scripts/render_global_workspace.py \
+  --record-inputs-for 2 \
+  --human-input /path/to/retrospectively-supplied-message.md
+```
+
+Revision 2 and revision 3 inputs were supplied retrospectively by Manny for this initial backfill;
+future revisions should capture the original message during the update itself.
 CI or reviewers can verify the live pair and every archived pair without rewriting them:
 
 ```bash
