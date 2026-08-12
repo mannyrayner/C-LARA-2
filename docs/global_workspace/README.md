@@ -219,3 +219,18 @@ The authenticated Assistant may read and explain both the human-owned intentions
 assessment conversationally, while identifying their different ownership and authority. It must
 label proposal or experiment artifacts as unapproved or historical if those are later archived in
 the repository. An ordinary Assistant answer cannot approve or apply a workspace update.
+
+## Validate and render the live state
+
+`current_state.json` is canonical and `current_state.md` is generated. After an authorized change to
+the JSON, regenerate the companion and validate its evidence/reference structure with:
+
+```bash
+python scripts/render_global_workspace.py
+```
+
+CI or reviewers can verify that the checked-in Markdown is current without rewriting it:
+
+```bash
+python scripts/render_global_workspace.py --check
+```
