@@ -1,0 +1,22 @@
+# ISSUE-0043: Resolve the EuroCALL 2026 AI-authorship dispute for two submitted papers
+
+- **Status:** active
+- **Priority:** P0
+- **Created:** 2026-08-12T00:00:00Z
+- **Updated:** 2026-08-12T00:00:00Z
+- **Origin:** human-suggestion
+- **Deadline:** None
+- **Dependencies:** None
+- **Canonical JSON:** [ISSUE-0043.json](ISSUE-0043.json)
+
+## Notes
+
+Manny Rayner confirmed on 2026-08-12 that both EuroCALL papers were submitted by the deadline. A few
+hours before final submission closed, the EuroCALL committee said AI authors were not allowed,
+although AI authorship is central to the C-LARA-2 paper and the AI author's name appeared on the
+accepted abstract. The team queried the decision immediately and had received no response after more
+than a week. It has told EuroCALL that it will accept only (a) retaining both papers with the same
+author lists, including the AI author, or (b) rejecting both papers on formal grounds. The presenter
+had already registered and made travel arrangements based on the accepted paper. Track the committee
+response, preserve correspondence and submission evidence, and coordinate any necessary
+communication or publication-plan consequences without weakening the stated authorship position.

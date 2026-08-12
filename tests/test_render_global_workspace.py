@@ -10,7 +10,11 @@ from scripts import render_global_workspace as workspace
 class GlobalWorkspaceArchiveTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.baseline_path = workspace.DEFAULT_INPUT
+        # Use the immutable first revision as the fixture so later live revisions do
+        # not silently change the semantics of these archive-transition tests.
+        cls.baseline_path = (
+            workspace.DEFAULT_ARCHIVE / "rev-0001-2026-08-12.json"
+        )
         cls.baseline_bytes = cls.baseline_path.read_bytes()
         cls.baseline = json.loads(cls.baseline_bytes)
 

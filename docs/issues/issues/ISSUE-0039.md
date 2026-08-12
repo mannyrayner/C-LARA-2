@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P0
 - **Created:** 2026-06-16T11:43:14Z
-- **Updated:** 2026-06-18T10:15:00Z
+- **Updated:** 2026-08-12T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** 2026-07-13
 - **Dependencies:** [ISSUE-0011](ISSUE-0011.md), [ISSUE-0020](ISSUE-0020.md), [ISSUE-0028](ISSUE-0028.md), [ISSUE-0030](ISSUE-0030.md), [ISSUE-0037](ISSUE-0037.md), [ISSUE-0038](ISSUE-0038.md)
@@ -112,3 +112,7 @@ list, the dictionary project debugging link was moved to the end of the organise
 exercise play links are now surfaced from both organiser and community-member dictionary pages.
 Exercise detail/play pages accept a safe next URL so community-launched exercise sessions link back
 to the community dictionary page rather than the subsidiary project.
+
+Human outcome update from Manny Rayner on 2026-08-12: Sophie has briefly reviewed the
+picture-dictionary workflow and says it looks good. Her next community visit is 2026-08-24, after
+which stronger classroom-use evidence should be available.

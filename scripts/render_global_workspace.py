@@ -202,7 +202,11 @@ def render(data: dict[str, Any]) -> str:
     approved_run = (
         f"`{data['approved_run_id']}`"
         if data["approved_run_id"]
-        else "None (direct initial baseline)"
+        else (
+            "None (direct initial baseline)"
+            if data["workspace_revision"] == 1
+            else "None (no recorded run)"
+        )
     )
     lines = [
         "# C-LARA-2 current project state",
@@ -256,7 +260,12 @@ def render(data: dict[str, Any]) -> str:
 
     lines.extend(["## Reported valence", ""])
     if data["reported_valence"] is None:
-        lines.extend(["None. This initial baseline deliberately uses neutral factual and assessment language.", ""])
+        absence_text = (
+            "None. This initial baseline deliberately uses neutral factual and assessment language."
+            if data["workspace_revision"] == 1
+            else "None. This revision uses neutral factual and assessment language."
+        )
+        lines.extend([absence_text, ""])
     else:
         lines.extend(
             [
