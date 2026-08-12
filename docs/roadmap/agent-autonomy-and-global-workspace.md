@@ -305,20 +305,21 @@ proposal-review artifacts.
 - `docs/roadmap/`: long-term strategy, architecture, and research programme.
 - `docs/issues/issues/*.json`: tactical work state, priority, dependencies, and issue deadlines.
 - `docs/issues/index.json`: ordered current issue focus.
-- `docs/workplan/project-intentions.md`: human-owned cross-cutting intent that cannot be derived
-  reliably from individual issues (goal relationships, external commitments, resource assumptions,
-  strategic trade-offs, and explicit deferrals). It links rather than copies issue facts.
+- `docs/global_workspace/project-intentions.md`: human-owned cross-cutting intent that cannot be
+  derived reliably from individual issues (goal relationships, external commitments, resource
+  assumptions, strategic trade-offs, and explicit deferrals). It links rather than copies issue
+  facts.
 - `docs/global_workspace/current_state.json`: approved, revisable workspace state at one commit.
 - `docs/global_workspace/current_state.md`: deterministically rendered human companion; never edited
   independently.
 - Proposal/run/decision/outcome records: immutable experimental artifacts, separate from the live
   workspace and initially outside the checkout until a reviewed archival convention is approved.
 
-This deliberately starts with one workplan document rather than separate goals, dependencies,
-deadlines, priorities, and constraints files. Splitting those concepts now would duplicate canonical
-issue fields and create synchronization failures. If repeated reviews show that Codex cannot
-reliably parse the Markdown intentions, stable intention IDs can later move to JSON with a rendered
-companion.
+This deliberately starts with one human-owned intentions document rather than separate goals,
+dependencies, deadlines, priorities, and constraints files. Splitting those concepts now would
+duplicate canonical issue fields and create synchronization failures. If repeated reviews show that
+Codex cannot reliably parse the Markdown intentions, stable intention IDs can later move to JSON
+with a rendered companion.
 
 ### Proposed workspace and proposal schema
 
@@ -341,5 +342,5 @@ state, priority, deadlines, or dependencies should point to canonical JSON rathe
 overview prose. Free-form affective text is permitted but never required and cannot stand without a
 linked project-valence assessment.
 
-Detailed directory ownership and authoring rules are recorded in `docs/workplan/README.md` and
-`docs/global_workspace/README.md`.
+Detailed ownership, authority, and authoring rules for both intentions and derived state are recorded
+in `docs/global_workspace/README.md`.

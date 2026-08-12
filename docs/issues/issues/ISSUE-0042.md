@@ -73,9 +73,10 @@ deterministic application command accepts only a validated reviewed proposal, ve
 writes only canonical global-workspace JSON plus derived Markdown, displays the diff, and leaves
 commit/PR review to the normal workflow.
 
-The smallest coherent pre-Sprint implementation is: (1) add `docs/workplan/project-intentions.md`
-with human-confirmed persistent goals, commitments, strategic guidance, resource assumptions, and
-deferrals while leaving issue facts canonical in issue JSON; (2) define and validate version-1
+The smallest coherent pre-Sprint implementation is: (1) add
+`docs/global_workspace/project-intentions.md` with human-confirmed persistent goals, commitments,
+strategic guidance, resource assumptions, and deferrals while leaving issue facts canonical in issue
+JSON; (2) define and validate version-1
 current-state, proposal, manifest, review-decision, and prediction/outcome schemas; (3) factor the
 existing Codex CLI wrapper and add trusted commit-SHA/run metadata capture; (4) add
 `propose_global_workspace_review` and `apply_global_workspace_review` laptop management commands
@@ -93,13 +94,14 @@ version, model/tool metadata, times, files/input set, stdout/stderr/exit status,
 where available; and Assistant queries can accurately describe current concerns, successes,
 conflicts, human-decision requests, changes, and retired concerns from the approved workspace.
 
-Workplan baseline added on 2026-08-11: `docs/workplan/project-intentions.md` now records five
-human-confirmed persistent goals (platform maturity/usability, useful autonomy,
-research/publications, legacy migration/preservation, and support for real users/collaborators), the
-Digital Minds Sprint commitment, current strategic guidance, safety constraints, resource
-assumptions, explicit deferrals, and unresolved human questions. `docs/workplan/README.md` now makes
-the division of labour explicit: humans own intentions, commitments, constraints, and authoritative
-contextual facts; the project-manager agent derives and maintains urgency, risk, blocking
-importance, opportunity value, progress, confidence, conflict, concern, satisfaction,
-recommendations, and other dynamic management state. These derived labels should not become another
-set of human-maintained issue fields.
+Project-intentions baseline added on 2026-08-11:
+`docs/global_workspace/project-intentions.md` now records five human-confirmed persistent goals
+(platform maturity/usability, useful autonomy, research/publications, legacy
+migration/preservation, and support for real users/collaborators), the Digital Minds Sprint
+commitment, current strategic guidance, safety constraints, resource assumptions, explicit
+deferrals, and unresolved human questions. `docs/global_workspace/README.md` now makes the division
+of labour explicit: humans own intentions, commitments, constraints, and authoritative contextual
+facts; the project-manager agent derives and maintains urgency, risk, blocking importance,
+opportunity value, progress, confidence, conflict, concern, satisfaction, recommendations, and other
+dynamic management state. These derived labels should not become another set of human-maintained
+issue fields.
