@@ -1,9 +1,9 @@
 # ISSUE-0034: Add restricted project-understanding assistant with versioned evidence records
 
-- **Status:** active
+- **Status:** closed
 - **Priority:** P1
 - **Created:** 2026-05-30T10:34:56Z
-- **Updated:** 2026-06-23T00:00:00Z
+- **Updated:** 2026-08-13T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0008](ISSUE-0008.md), [ISSUE-0033](ISSUE-0033.md)
@@ -97,3 +97,7 @@ successfully. This debugging sequence should be considered as a report vignette 
 cooperation: human observations exposed the language/query-dependent failure pattern, while the AI
 iteratively adjusted worker startup, diagnostics, detector scope, and model-based result
 classification until the Assistant could answer self-understanding questions reliably again.
+
+Human issue-review update from Manny Rayner on 2026-08-13: The restricted project-understanding
+Assistant can be regarded as complete for now. Any later product hardening or new regression should
+be tracked as a focused follow-up rather than keeping this umbrella issue open.

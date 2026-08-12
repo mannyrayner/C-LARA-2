@@ -12,8 +12,9 @@ project manager currently thinks about progress toward those goals**. Keeping th
 does not blur their ownership: human-authored intention and agent-maintained derived state have
 different authority, revision rules, and write boundaries.
 
-The workspace is not an append-only diary and does not replace roadmaps, canonical issues, tests, or
-git history.
+The **live** workspace is not an append-only diary and does not replace roadmaps, canonical issues,
+tests, or Git history. Successive live assessments are preserved separately in the archive as
+long-term project memory.
 
 ## Files and canonical ownership
 
@@ -22,14 +23,21 @@ The minimal live workspace consists of:
 - [`project-intentions.md`](project-intentions.md): durable, human-owned objectives, external
   commitments, strategic guidance, cross-cutting constraints, resource assumptions, explicit
   deferrals, unresolved questions requiring human judgment, and authoritative contextual facts.
-- `current_state.json`: the canonical approved, revisable state of the project-manager agent's
-  derived assessment.
+- `current_state.json`: the canonical, revisable state of the project-manager agent's derived
+  assessment.
 - `current_state.md`: the deterministic human-readable rendering of `current_state.json`; it is
   never edited independently.
+- `archive/`: immutable, revision-numbered JSON snapshots of successive live states and their
+  deterministic Markdown renderings.
+- `archive/inputs/rev-NNNN/input-NNN.md`: immutable, ordered copies of the human messages that
+  materially informed revision N.
 
-The two `current_state.*` files should be created by the first approved dry run, not populated with
-an invented assessment during infrastructure setup. Git history records prior approved states.
-Obsolete concerns must be retired or revised in current state rather than preserved as if current.
+Every live revision must have an archive snapshot. Revision 1 is archived even while it remains
+live; before revision N is replaced by revision N+1, tooling must create or verify revision N's
+snapshot. Obsolete concerns must be retired or revised in the live state rather than preserved as if
+current; the archive retains what the project manager believed earlier without making it current.
+Revision 1 has no triggering human-input record because it was the repository-derived baseline.
+Every later revision must preserve at least one human input before it can be installed.
 
 Do not split goals, deadlines, priorities, and constraints into parallel intention files until real
 reviews show that doing so is useful. If repeated dry runs show that Markdown cannot be inspected
@@ -169,36 +177,65 @@ The current-state schema keeps these concepts distinct:
 4. uncertainty and goal conflict;
 5. predictions with operational outcomes and horizons;
 6. proposed next actions and requests for human intervention; and
-7. approval metadata and changes from the previous workspace revision.
+7. provenance/revision metadata and changes from the previous workspace revision.
 
 Reported valence may be absent. Emotional vocabulary is not evidence, and its frequency is not a
 success measure. Issue facts should cite `docs/issues/issues/*.json`, not a derived overview.
 
-## Proposal, authorization, and experimental auditability
+## Autonomous update lifecycle
 
-The read-only Codex observer emits a proposed complete next state plus an explicit delta. A trusted
-wrapper stores the raw proposal and run manifest outside the repository for the Sprint MVP. Manny
-reviews a distinct copy and records one of `accept`, `reject`, `revision_requested`, or
-`partially_accept`, with comments and per-item dispositions when needed. ChatGPT C-LARA-Instance may
-add attributed advice but does not authorize repository writes.
+The project-manager agent normally maintains `current_state.*` autonomously when substantive work or
+an explicit global review produces material evidence. A separate proposal, pre-approval, and
+application ceremony is not required for ordinary derived-state maintenance. The normal cycle is:
 
-An application command must:
+1. orient from human-owned intentions, the live state, roadmaps, canonical issues, and other evidence;
+2. decide whether the project-level assessment materially changed;
+3. create or verify the immutable archive snapshot for live revision N;
+4. capture, in message order, the human input that materially informs revision N+1;
+5. construct and validate revision N+1;
+6. install and immediately archive canonical `current_state.json` plus its deterministic Markdown;
+   and
+7. report the changes and normal code-review evidence clearly.
 
-- accept only a validated and human-authorized reviewed proposal;
-- verify that its base commit and workspace revision still match;
-- reject symlinks, arbitrary output paths, and unknown fields where the schema is strict;
-- write only `current_state.json` and derived `current_state.md`; and
-- show the Git diff and leave commit/PR review to the normal workflow.
+Human disagreement is new authoritative evidence, not a reason to rewrite history. If Manny says an
+assessment is inaccurate, incomplete, misleading, or based on a false assumption, the agent should
+reassess and record the correction in a later live revision. It must not edit the archived earlier
+revision to make that revision appear better informed than it was.
 
-The command must never alter `project-intentions.md`; changes to human-owned intentions require
-ordinary human review. Increasing agent autonomy should reduce human effort spent maintaining the
-derived interpretation, not transfer authority over goals, commitments, constraints, or actions.
+This autonomy applies only to the derived project-management interpretation. The update mechanism
+must never alter `project-intentions.md`. Fundamental goals, external commitments, strategic
+constraints, authoritative contextual facts, explicit human deferrals, and human authorization
+boundaries remain human-owned and require explicit human input or ordinary human review. Humans also
+retain authority over actions whose execution requires human authorization.
 
-Raw proposals, prompts, manifests, advisory comments, decisions, snapshots, and resolved outcomes
-are immutable experimental evidence and remain separate from the live files. For the Sprint MVP they
-remain outside the checkout. Any later repository archive must use a separately reviewed convention,
-keep artifacts clearly labelled as unapproved or historical, and must not turn the live workspace
-into an autobiography.
+## Archive and longitudinal memory
+
+`archive/` is part of the persistent global-workspace architecture, not disposable Sprint
+instrumentation. It records what the project manager believed at successive points, including
+assessments later shown to be wrong, incomplete, stale, optimistic, or pessimistic. This supports
+operational reconstruction, future-session context recovery, human understanding of decisions,
+prediction/outcome comparison, and longitudinal research on autonomy, continuity, confidence, and
+human correction.
+
+Snapshot names use `rev-NNNN-YYYY-MM-DD.{json,md}`. Revision numbers make them naturally sortable
+and unambiguous even when several revisions share a date. Archived JSON is an exact byte-for-byte
+snapshot of the canonical JSON for that revision; archived Markdown is its deterministic rendering.
+An existing identical pair makes archiving idempotent. A missing pair, duplicate revision, filename
+mismatch, stale rendering, or conflicting content with the same revision identity is an error and
+must never be repaired by overwriting history.
+
+The archive stores successive **live states**. Raw prompts, candidate states, run manifests,
+advisory comments, review notes, and outcome ledgers are different experimental artifacts. They may
+be kept separately under an approved research-data convention, but must not be confused with the
+live-state archive or presented as formerly current assessments.
+
+Human inputs that materially feed a live revision are the exception: they are part of the
+longitudinal project-memory record and live under `archive/inputs/`. Each input is stored as the
+UTF-8 Markdown supplied to the update tool, without generated headings, summaries, or corrections.
+Multiple messages are numbered in their original order. These files preserve what the human said;
+canonical intentions and issues preserve the subsequently reviewed facts and commitments. Sensitive
+or private material must not be copied into this public archive without an explicit retention and
+redaction decision. An existing input may be verified byte-for-byte but never overwritten.
 
 ## Authoring and revision rules
 
@@ -207,15 +244,66 @@ into an autobiography.
 3. Link canonical issues and roadmaps instead of duplicating their dynamic fields.
 4. Do not add human-curated urgency, risk, confidence, progress, concern, or satisfaction fields.
 5. Record an override or strategic correction as new attributed evidence; do not erase the agent's
-   prior assessment from experimental records.
+   prior assessment from the archive or experimental records.
 6. Keep project intentions concise enough to review manually.
 7. Changes to intentions require ordinary human review and remain outside the current-state
-   application command's write allowlist.
-8. Keep the live assessment current; preserve experiment history in immutable artifacts and Git.
+   update tool's write scope.
+8. Keep the live assessment current; preserve each live revision in the immutable archive and keep
+   richer experiment history in distinct immutable artifacts and Git.
+9. Preserve every material human message that informs a post-baseline revision; do not substitute an
+   agent summary for the input archive.
 
 ## Assistant use
 
-The authenticated Assistant may read and explain both the human-owned intentions and approved live
+The authenticated Assistant may read and explain both the human-owned intentions and current live
 assessment conversationally, while identifying their different ownership and authority. It must
-label proposal or experiment artifacts as unapproved or historical if those are later archived in
-the repository. An ordinary Assistant answer cannot approve or apply a workspace update.
+label proposal or experiment artifacts as unapproved or historical if those are later stored in
+the repository. Archived live revisions must be identified as historical rather than current.
+
+## Validate, archive, and update the live state
+
+`current_state.json` is canonical and `current_state.md` is generated. To validate the JSON and
+regenerate its companion without changing the revision, run:
+
+```bash
+python scripts/render_global_workspace.py
+```
+
+Create or idempotently verify the archive snapshot for the live revision with:
+
+```bash
+python scripts/render_global_workspace.py --archive-current
+```
+
+For the normal N to N+1 lifecycle, prepare a complete candidate JSON whose revision is exactly one
+greater than the live revision and save each material human message to a file without editing its
+contents, then run:
+
+```bash
+python scripts/render_global_workspace.py \
+  --update-from /path/to/candidate.json \
+  --human-input /path/to/human-message-1.md \
+  --human-input /path/to/human-message-2.md
+```
+
+This validates the live state and archive, refuses stale live Markdown, archives revision N before
+replacement, immutably records ordered inputs for N+1, validates and installs the candidate, renders
+Markdown, immediately archives N+1, and validates the result. It will not overwrite a conflicting
+state or input archive. If installation fails in-process, newly created input records are removed
+with the failed transition.
+
+For historical backfill only, record a supplied input for an already archived revision with:
+
+```bash
+python scripts/render_global_workspace.py \
+  --record-inputs-for 2 \
+  --human-input /path/to/retrospectively-supplied-message.md
+```
+
+Revision 2 and revision 3 inputs were supplied retrospectively by Manny for this initial backfill;
+future revisions should capture the original message during the update itself.
+CI or reviewers can verify the live pair and every archived pair without rewriting them:
+
+```bash
+python scripts/render_global_workspace.py --check
+```
