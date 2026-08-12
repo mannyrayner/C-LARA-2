@@ -1,8 +1,8 @@
 # C-LARA-2 project intentions
 
 - **Document owner:** Manny Rayner
-- **Last confirmed:** 2026-08-11
-- **Status:** Initial human-confirmed strategic baseline
+- **Last confirmed:** 2026-08-12
+- **Status:** Human-confirmed strategic baseline with 12 August updates
 
 This document contains durable human-owned intentions and contextual facts. It deliberately does not
 assign current urgency, risk, progress, confidence, concern, or satisfaction; those are derived and
@@ -115,6 +115,50 @@ operational before 14 August so the Sprint can focus on experiments rather than 
   associated task appears architecturally secondary.
 - Permit the project manager to derive conclusions that differ from earlier human management
   judgments when it cites changed evidence; humans retain authority over action and authorization.
+
+### Post-Sprint execution sequence
+
+- **Human owner:** Manny Rayner
+- **Last confirmed:** 2026-08-12
+
+- Finish the nearly complete legacy migration first as low-hanging fruit.
+- Then give substantial attention to the project-manager/autonomy framework, an initial mobile
+  implementation, and learned annotation prompts. The autonomy work is theoretically novel; mobile
+  access is practically important; and learned prompts are showing strong early results with both
+  product-quality and publication potential.
+- The first desired mobile outcome is a lightweight content-browsing and exercise experience for
+  Sophie's Indigenous users and other users before mid-September 2026, subject to a near-term scope
+  and effort discussion.
+
+## Human-confirmed current context
+
+### Publication and collaboration outcomes
+
+- **Human owner:** Manny Rayner
+- **Last confirmed:** 2026-08-12
+- **Canonical issues:** [ISSUE-0008](../issues/issues/ISSUE-0008.json),
+  [ISSUE-0043](../issues/issues/ISSUE-0043.json), and
+  [ISSUE-0044](../issues/issues/ISSUE-0044.json)
+
+- The first progress report was posted on ResearchGate on 23 July 2026.
+- Both EuroCALL papers were submitted on time. Shortly before the final deadline, the committee said
+  AI authors were not allowed even though AI authorship is central to the C-LARA-2 paper and the AI
+  author's name appeared on the accepted abstract. The team has received no response to its query
+  after more than a week and will accept only unchanged author lists or formal rejection of both
+  papers. The presenter had already registered and made travel arrangements based on acceptance.
+- No decision has been made on the ALTA target; its exclusion of AI authors is a serious negative.
+  Francis Bond has expressed interest in collaborating on MWE work, creating a positive alternative
+  publication opportunity.
+
+### Picture-dictionary user feedback
+
+- **Human owner:** Manny Rayner
+- **Last confirmed:** 2026-08-12
+- **Canonical issues:** [ISSUE-0037](../issues/issues/ISSUE-0037.json) and
+  [ISSUE-0039](../issues/issues/ISSUE-0039.json)
+
+Sophie has briefly reviewed the picture-dictionary workflow and says it looks good. She is visiting
+her community again on 24 August 2026 and expects to have stronger use evidence afterward.
 
 ## Cross-cutting constraints
 

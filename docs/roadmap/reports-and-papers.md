@@ -11,9 +11,14 @@ Linked issues and companion docs:
 
 ## Current status snapshot
 
-- **First progress report:** in progress, target date **2026-06-15**; self-understanding is now one of the central themes.
-- **EuroCALL 2026 paper:** accepted; full-paper deadline now confirmed as **2026-07-31**.
-- **ALTA 2026 paper:** active target, deadline currently treated as **mid-September 2026** until confirmed more precisely.
+- **First progress report:** posted on ResearchGate on **2026-07-23**; completed under
+  [ISSUE-0008](../issues/issues/ISSUE-0008.json).
+- **EuroCALL 2026 papers:** both submitted on time; a late committee statement excluding AI authors
+  created an unresolved dispute. The team will accept either unchanged AI-inclusive author lists or
+  formal rejection of both papers. Track this in [ISSUE-0043](../issues/issues/ISSUE-0043.json).
+- **ALTA 2026 paper:** undecided; its exclusion of AI authors is a serious negative.
+- **MWE/learned-prompt publication:** Francis Bond has expressed interest in collaboration, creating
+  a promising alternative tracked in [ISSUE-0044](../issues/issues/ISSUE-0044.json).
 - **Possible David Gunkel AI-authorship paper:** increasingly likely but not yet fully agreed.
 
 ## Completed or settled framing decisions

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "issue_id": "ISSUE-0045",
+  "title": "Deliver a lightweight mobile content-and-exercises experience",
+  "state": "reported",
+  "priority": "P1",
+  "created_at": "2026-08-12T00:00:00Z",
+  "updated_at": "2026-08-12T00:00:00Z",
+  "origin": "human-suggestion",
+  "notes": "Manny Rayner confirmed on 2026-08-12 that mobile access is most important initially for Sophie's Indigenous users, while being broadly wanted. The desired first outcome is a lightweight mobile experience for browsing content and using exercises before mid-September 2026. Sophie would be very happy with that scope. First perform a bounded technical/product discussion and effort assessment, then define the smallest usable slice and acceptance checks across representative content and exercises. Coordinate with the mobile-access roadmap, picture-dictionary workflows, and the legacy catalogue mobile corpus audit rather than assuming full mobile authoring in the first cut.",
+  "deadline": "2026-09-15T00:00:00Z",
+  "dependencies": []
+}
