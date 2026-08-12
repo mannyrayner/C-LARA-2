@@ -1,5 +1,11 @@
 # Community judging autosave roadmap
 
+## Scheduling update (13 August 2026)
+
+The earlier post-visit deferral has expired. Autosave is now active, low-hanging user-protection work
+with similar Indigenous-community timing to recorded audio; aim to complete it before Sophie’s
+24 August visit if feasible.
+
 ## Purpose
 
 Capture a low-risk implementation plan for autosave-on-change in the community judging page so we can schedule delivery after the June 1 Kok Kaper visit.

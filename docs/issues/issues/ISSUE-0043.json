@@ -5,9 +5,9 @@
   "state": "active",
   "priority": "P0",
   "created_at": "2026-08-12T00:00:00Z",
-  "updated_at": "2026-08-12T00:00:00Z",
+  "updated_at": "2026-08-13T00:00:00Z",
   "origin": "human-suggestion",
-  "notes": "Manny Rayner confirmed on 2026-08-12 that both EuroCALL papers were submitted by the deadline. A few hours before final submission closed, the EuroCALL committee said AI authors were not allowed, although AI authorship is central to the C-LARA-2 paper and the AI author's name appeared on the accepted abstract. The team queried the decision immediately and had received no response after more than a week. It has told EuroCALL that it will accept only (a) retaining both papers with the same author lists, including the AI author, or (b) rejecting both papers on formal grounds. The presenter had already registered and made travel arrangements based on the accepted paper. Track the committee response, preserve correspondence and submission evidence, and coordinate any necessary communication or publication-plan consequences without weakening the stated authorship position.",
-  "deadline": null,
+  "notes": "Manny Rayner confirmed on 2026-08-12 that both EuroCALL papers were submitted by the deadline. A few hours before final submission closed, the EuroCALL committee said AI authors were not allowed, although AI authorship is central to the C-LARA-2 paper and the AI author's name appeared on the accepted abstract. The team queried the decision immediately and had received no response after more than a week. It has told EuroCALL that it will accept only (a) retaining both papers with the same author lists, including the AI author, or (b) rejecting both papers on formal grounds. The presenter had already registered and made travel arrangements based on the accepted paper. Track the committee response, preserve correspondence and submission evidence, and coordinate any necessary communication or publication-plan consequences without weakening the stated authorship position.\n\nHuman issue-review update from Manny Rayner on 2026-08-13: The team was told that the responsible EuroCALL person was on leave and returns on 13 August. A response may therefore arrive today; follow up and record the outcome promptly.",
+  "deadline": "2026-08-13T23:59:59Z",
   "dependencies": []
 }

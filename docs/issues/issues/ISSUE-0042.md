@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P0
 - **Created:** 2026-08-10T00:00:00Z
-- **Updated:** 2026-08-12T00:00:00Z
+- **Updated:** 2026-08-13T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** 2026-08-14T00:00:00Z
 - **Dependencies:** None
@@ -112,3 +112,6 @@ boundaries remain human-owned. Every successive live state is preserved in the i
 Controlled read-only proposals and human ratings remain available as experimental conditions, not as
 a prerequisite for maintaining derived state. See `docs/global_workspace/README.md` and the revised
 implementation decision in `docs/roadmap/agent-autonomy-and-global-workspace.md`.
+
+Human issue-review update from Manny Rayner on 2026-08-13: This remains critical and is currently in
+progress for the Digital Minds Research Sprint.

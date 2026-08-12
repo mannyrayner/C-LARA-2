@@ -1,11 +1,11 @@
 # ISSUE-0039: Build a unified picture-dictionary source-of-truth workspace
 
 - **Status:** active
-- **Priority:** P0
+- **Priority:** P1
 - **Created:** 2026-06-16T11:43:14Z
-- **Updated:** 2026-08-12T00:00:00Z
+- **Updated:** 2026-08-13T00:00:00Z
 - **Origin:** human-suggestion
-- **Deadline:** 2026-07-13
+- **Deadline:** 2026-08-24T00:00:00Z
 - **Dependencies:** [ISSUE-0011](ISSUE-0011.md), [ISSUE-0020](ISSUE-0020.md), [ISSUE-0028](ISSUE-0028.md), [ISSUE-0030](ISSUE-0030.md), [ISSUE-0037](ISSUE-0037.md), [ISSUE-0038](ISSUE-0038.md)
 - **Canonical JSON:** [ISSUE-0039.json](ISSUE-0039.json)
 
@@ -116,3 +116,7 @@ to the community dictionary page rather than the subsidiary project.
 Human outcome update from Manny Rayner on 2026-08-12: Sophie has briefly reviewed the
 picture-dictionary workflow and says it looks good. Her next community visit is 2026-08-24, after
 which stronger classroom-use evidence should be available.
+
+Human issue-review update from Manny Rayner on 2026-08-13: Treat this similarly to ISSUE-0037: the
+workflow appears resolved and has positive initial feedback, but verify the relevant organiser flow
+before 24 August and then close or record a specific remaining gap.

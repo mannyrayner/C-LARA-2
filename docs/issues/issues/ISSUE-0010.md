@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-05-09T00:37:55Z
-- **Updated:** 2026-08-12T00:00:00Z
+- **Updated:** 2026-08-13T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0002](ISSUE-0002.md)
@@ -128,3 +128,7 @@ Strategic update from Manny Rayner on 2026-08-12: legacy migration is now nearly
 be finished first after the Sprint as low-hanging fruit. Confirm the remaining operational steps,
 execute them, and record completion evidence rather than allowing the last small portion to remain
 open.
+
+Human issue-review update from Manny Rayner on 2026-08-13: The mechanisms are nearly all complete;
+finish the actual migration soon as low-hanging fruit. ISSUE-0013 should be re-evaluated during this
+completion attempt if performance/timeouts recur.

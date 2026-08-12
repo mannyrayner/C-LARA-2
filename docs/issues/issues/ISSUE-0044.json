@@ -2,12 +2,12 @@
   "schema_version": 1,
   "issue_id": "ISSUE-0044",
   "title": "Choose the next annotation and AI-authorship publication targets",
-  "state": "reported",
-  "priority": "P1",
+  "state": "active",
+  "priority": "P0",
   "created_at": "2026-08-12T00:00:00Z",
-  "updated_at": "2026-08-12T00:00:00Z",
+  "updated_at": "2026-08-13T00:00:00Z",
   "origin": "human-suggestion",
-  "notes": "Split from ISSUE-0008 after Manny Rayner's 2026-08-12 publication update. The team has not decided whether to pursue ALTA 2026; a negative is that ALTA also does not allow AI authors. A positive new opportunity is that Francis Bond, a leading MWE expert, has expressed interest in collaborating. Assess suitable publication venues and collaboration scope, particularly for learned annotation prompts/MWE work that is beginning to produce excellent results under ISSUE-0036. Keep venue AI-authorship policy explicit before investing in a submission, and coordinate with the broader autonomy/authorship research programme.",
+  "notes": "Split from ISSUE-0008 after Manny Rayner's 2026-08-12 publication update. The team has not decided whether to pursue ALTA 2026; a negative is that ALTA also does not allow AI authors. A positive new opportunity is that Francis Bond, a leading MWE expert, has expressed interest in collaborating. Assess suitable publication venues and collaboration scope, particularly for learned annotation prompts/MWE work that is beginning to produce excellent results under ISSUE-0036. Keep venue AI-authorship policy explicit before investing in a submission, and coordinate with the broader autonomy/authorship research programme.\n\nHuman issue-review update from Manny Rayner on 2026-08-13: Discuss the collaboration and publication direction with Francis Bond as soon as possible. Manny intends to contact him soon; the ALTA AI-authorship restriction must remain explicit in that discussion.",
   "deadline": null,
   "dependencies": [
     "ISSUE-0036"

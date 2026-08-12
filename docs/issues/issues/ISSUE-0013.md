@@ -3,7 +3,7 @@
 - **Status:** reported
 - **Priority:** P1
 - **Created:** 2026-05-13T01:12:11Z
-- **Updated:** 2026-07-01T13:36:21Z
+- **Updated:** 2026-08-13T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** None
@@ -50,3 +50,7 @@ checkpointing/retry semantics for segmentation_phase_2, translation, MWE, lemma,
 refreshes; preserve already-written valid stage artifacts; record enough per-call trace data to
 diagnose repeated offenders; and ensure batch runners can continue while isolating unrecoverable
 projects for analysis.
+
+Human issue-review update from Manny Rayner on 2026-08-13: It is uncertain whether the
+performance/timeout problem remains. Treat completion of ISSUE-0010 as the next verification point
+and close or reactivate this issue from observed behavior.

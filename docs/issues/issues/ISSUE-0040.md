@@ -3,7 +3,7 @@
 - **Status:** closed
 - **Priority:** P1
 - **Created:** 2026-07-03T01:15:44Z
-- **Updated:** 2026-07-04T01:50:00Z
+- **Updated:** 2026-08-13T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0025](ISSUE-0025.md)
@@ -125,3 +125,7 @@ Additional post-closure polish on 2026-07-04: the per-segment Unsaved changes la
 directly after each Save this segment control was also made more salient, using a warning marker,
 highlighted background, strong border, and bold text so reviewers can more easily spot segments that
 still need checkpointing.
+
+Human issue-review update from Manny Rayner on 2026-08-13: Manny’s review independently confirms
+that this appears resolved. It remains closed; reopen only with a reproducible large-editor
+persistence failure.

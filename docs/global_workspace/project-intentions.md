@@ -1,8 +1,8 @@
 # C-LARA-2 project intentions
 
 - **Document owner:** Manny Rayner
-- **Last confirmed:** 2026-08-12
-- **Status:** Human-confirmed strategic baseline with 12 August updates
+- **Last confirmed:** 2026-08-13
+- **Status:** Human-confirmed strategic baseline with 13 August updates
 
 This document contains durable human-owned intentions and contextual facts. It deliberately does not
 assign current urgency, risk, progress, confidence, concern, or satisfaction; those are derived and
@@ -159,6 +159,31 @@ operational before 14 August so the Sprint can focus on experiments rather than 
 
 Sophie has briefly reviewed the picture-dictionary workflow and says it looks good. She is visiting
 her community again on 24 August 2026 and expects to have stronger use evidence afterward.
+
+### Indigenous-language and ComputEL-10 work
+
+- **Human owner:** Manny Rayner
+- **Last confirmed:** 2026-08-13
+- **Canonical issues:** [ISSUE-0026](../issues/issues/ISSUE-0026.json),
+  [ISSUE-0029](../issues/issues/ISSUE-0029.json), and
+  [ISSUE-0045](../issues/issues/ISSUE-0045.json)
+
+Sophie is very keen to write a ComputEL-10 paper, with a deadline described as early October 2026
+but not yet confirmed to an exact date. Community-recorded audio is needed as soon as possible for
+that work and would ideally have an initial usable form before her 24 August community visit.
+Community-judging autosave has similar timing and is expected to be an easier improvement. Mobile
+content browsing and exercises are not realistic for the August visit, but delivery by mid-September
+could allow them to be included in the paper.
+
+### Pending collaborator contact
+
+- **Human owner:** Manny Rayner
+- **Last confirmed:** 2026-08-13
+- **Canonical issues:** [ISSUE-0044](../issues/issues/ISSUE-0044.json) and
+  [ISSUE-0045](../issues/issues/ISSUE-0045.json)
+
+Manny intends to contact Francis Bond promptly about the MWE/learned-prompt collaboration and Sophie
+about the mobile scope. Further decisions on these questions should wait for those conversations.
 
 ## Cross-cutting constraints
 

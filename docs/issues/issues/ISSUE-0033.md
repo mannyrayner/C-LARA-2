@@ -1,9 +1,9 @@
 # ISSUE-0033: Clean up and phase-track roadmap file maintenance
 
-- **Status:** reported
-- **Priority:** P2
+- **Status:** active
+- **Priority:** P1
 - **Created:** 2026-05-29T12:45:30Z
-- **Updated:** 2026-05-29T12:45:30Z
+- **Updated:** 2026-08-13T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0008](ISSUE-0008.md)
@@ -20,3 +20,7 @@ useful; avoid overlong historical accretion that obscures current priorities; an
 progress in docs/roadmap/roadmap-cleanup.md by repeatable phases. Priority is P2 because this is
 important repository/process hygiene that supports AI context management and publication work, but
 it is not a blocking production defect.
+
+Human issue-review update from Manny Rayner on 2026-08-13: Roadmap cleanup is clearly important both
+practically and theoretically: it improves project evidence and tests how much maintenance the new
+project manager can perform autonomously.

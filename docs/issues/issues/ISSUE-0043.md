@@ -3,9 +3,9 @@
 - **Status:** active
 - **Priority:** P0
 - **Created:** 2026-08-12T00:00:00Z
-- **Updated:** 2026-08-12T00:00:00Z
+- **Updated:** 2026-08-13T00:00:00Z
 - **Origin:** human-suggestion
-- **Deadline:** None
+- **Deadline:** 2026-08-13T23:59:59Z
 - **Dependencies:** None
 - **Canonical JSON:** [ISSUE-0043.json](ISSUE-0043.json)
 
@@ -20,3 +20,7 @@ author lists, including the AI author, or (b) rejecting both papers on formal gr
 had already registered and made travel arrangements based on the accepted paper. Track the committee
 response, preserve correspondence and submission evidence, and coordinate any necessary
 communication or publication-plan consequences without weakening the stated authorship position.
+
+Human issue-review update from Manny Rayner on 2026-08-13: The team was told that the responsible
+EuroCALL person was on leave and returns on 13 August. A response may therefore arrive today; follow
+up and record the outcome promptly.

@@ -1,9 +1,9 @@
 # ISSUE-0044: Choose the next annotation and AI-authorship publication targets
 
-- **Status:** reported
-- **Priority:** P1
+- **Status:** active
+- **Priority:** P0
 - **Created:** 2026-08-12T00:00:00Z
-- **Updated:** 2026-08-12T00:00:00Z
+- **Updated:** 2026-08-13T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0036](ISSUE-0036.md)
@@ -18,3 +18,7 @@ Assess suitable publication venues and collaboration scope, particularly for lea
 prompts/MWE work that is beginning to produce excellent results under ISSUE-0036. Keep venue
 AI-authorship policy explicit before investing in a submission, and coordinate with the broader
 autonomy/authorship research programme.
+
+Human issue-review update from Manny Rayner on 2026-08-13: Discuss the collaboration and publication
+direction with Francis Bond as soon as possible. Manny intends to contact him soon; the ALTA
+AI-authorship restriction must remain explicit in that discussion.
