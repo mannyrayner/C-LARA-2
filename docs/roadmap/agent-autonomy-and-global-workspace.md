@@ -305,7 +305,7 @@ proposal-review artifacts.
 - `docs/roadmap/`: long-term strategy, architecture, and research programme.
 - `docs/issues/issues/*.json`: tactical work state, priority, dependencies, and issue deadlines.
 - `docs/issues/index.json`: ordered current issue focus.
-- `docs/workplan/project-intentions.md`: human-owned cross-cutting intent that cannot be derived
+- `docs/global_workspace/project-intentions.md`: human-owned cross-cutting intent that cannot be derived
   reliably from individual issues (goal relationships, external commitments, resource assumptions,
   strategic trade-offs, and explicit deferrals). It links rather than copies issue facts.
 - `docs/global_workspace/current_state.json`: approved, revisable workspace state at one commit.
@@ -341,5 +341,5 @@ state, priority, deadlines, or dependencies should point to canonical JSON rathe
 overview prose. Free-form affective text is permitted but never required and cannot stand without a
 linked project-valence assessment.
 
-Detailed directory ownership and authoring rules are recorded in `docs/workplan/README.md` and
-`docs/global_workspace/README.md`.
+Detailed ownership, task-cycle, and authoring rules are consolidated in
+`docs/global_workspace/README.md`; the root `AGENTS.md` points ordinary Codex tasks to them.

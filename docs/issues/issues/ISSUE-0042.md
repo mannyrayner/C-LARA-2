@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P0
 - **Created:** 2026-08-10T00:00:00Z
-- **Updated:** 2026-08-11T00:00:00Z
+- **Updated:** 2026-08-12T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** 2026-08-14T00:00:00Z
 - **Dependencies:** None
@@ -73,13 +73,13 @@ deterministic application command accepts only a validated reviewed proposal, ve
 writes only canonical global-workspace JSON plus derived Markdown, displays the diff, and leaves
 commit/PR review to the normal workflow.
 
-The smallest coherent pre-Sprint implementation is: (1) add `docs/workplan/project-intentions.md`
-with human-confirmed persistent goals, commitments, strategic guidance, resource assumptions, and
-deferrals while leaving issue facts canonical in issue JSON; (2) define and validate version-1
-current-state, proposal, manifest, review-decision, and prediction/outcome schemas; (3) factor the
-existing Codex CLI wrapper and add trusted commit-SHA/run metadata capture; (4) add
-`propose_global_workspace_review` and `apply_global_workspace_review` laptop management commands
-with the structural write allowlist; (5) deterministically render
+The smallest coherent pre-Sprint implementation is: (1) add
+`docs/global_workspace/project-intentions.md` with human-confirmed persistent goals, commitments,
+strategic guidance, resource assumptions, and deferrals while leaving issue facts canonical in issue
+JSON; (2) define and validate version-1 current-state, proposal, manifest, review-decision, and
+prediction/outcome schemas; (3) factor the existing Codex CLI wrapper and add trusted commit-SHA/run
+metadata capture; (4) add `propose_global_workspace_review` and `apply_global_workspace_review`
+laptop management commands with the structural write allowlist; (5) deterministically render
 `docs/global_workspace/current_state.md`; (6) add `docs/global_workspace/` to the existing
 Assistant's preferred evidence paths and prompt it to distinguish approved live state from
 proposals/history; (7) run fact-only and fact-plus-optional-affect dry runs on the same clean base
@@ -93,13 +93,29 @@ version, model/tool metadata, times, files/input set, stdout/stderr/exit status,
 where available; and Assistant queries can accurately describe current concerns, successes,
 conflicts, human-decision requests, changes, and retired concerns from the approved workspace.
 
-Workplan baseline added on 2026-08-11: `docs/workplan/project-intentions.md` now records five
-human-confirmed persistent goals (platform maturity/usability, useful autonomy,
+Workplan baseline added on 2026-08-11: `docs/global_workspace/project-intentions.md` now records
+five human-confirmed persistent goals (platform maturity/usability, useful autonomy,
 research/publications, legacy migration/preservation, and support for real users/collaborators), the
 Digital Minds Sprint commitment, current strategic guidance, safety constraints, resource
-assumptions, explicit deferrals, and unresolved human questions. `docs/workplan/README.md` now makes
-the division of labour explicit: humans own intentions, commitments, constraints, and authoritative
-contextual facts; the project-manager agent derives and maintains urgency, risk, blocking
-importance, opportunity value, progress, confidence, conflict, concern, satisfaction,
+assumptions, explicit deferrals, and unresolved human questions. `docs/global_workspace/README.md`
+now makes the division of labour explicit: humans own intentions, commitments, constraints, and
+authoritative contextual facts; the project-manager agent derives and maintains urgency, risk,
+blocking importance, opportunity value, progress, confidence, conflict, concern, satisfaction,
 recommendations, and other dynamic management state. These derived labels should not become another
 set of human-maintained issue fields.
+
+Architecture integration on 2026-08-12: merged the formerly separate workplan material into
+`docs/global_workspace/`, which now contains both human-owned `project-intentions.md` and the
+conventions for agent-maintained `current_state.*`. Added a concise root `AGENTS.md` establishing
+the ordinary substantive-task cycle “orient globally → perform local task → reflect globally.” Local
+reflection complements the explicit manually triggered global review; it does not replace it. During
+Stage 1, either route may notice and propose a material state change, but Manny must authorize
+canonical workspace mutation and ChatGPT C-LARA-Instance remains advisory. The existing Assistant
+prompt now names `docs/global_workspace/` as preferred evidence and explicitly distinguishes human
+intention, approved derived state, and unapproved/historical artifacts.
+
+The root instruction provides repository-mediated continuity only when a Codex invocation discovers
+and honors `AGENTS.md`; it is not a scheduler, persistent process, authorization mechanism, or
+guarantee that other model/API integrations read the file. It cannot itself preserve uncommitted
+state or prove that no private/platform context transferred between sessions. Dry runs must record
+actual invocation context and test fresh sessions rather than assume compliance or independence.
