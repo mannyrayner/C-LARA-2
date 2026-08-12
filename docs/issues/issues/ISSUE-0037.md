@@ -3,9 +3,9 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-13T00:54:28Z
-- **Updated:** 2026-06-13T11:31:36Z
+- **Updated:** 2026-08-13T00:00:00Z
 - **Origin:** human-suggestion
-- **Deadline:** 2026-07-13
+- **Deadline:** 2026-08-24T00:00:00Z
 - **Dependencies:** [ISSUE-0020](ISSUE-0020.md), [ISSUE-0011](ISSUE-0011.md)
 - **Canonical JSON:** [ISSUE-0037.json](ISSUE-0037.json)
 
@@ -33,3 +33,12 @@ save. As of 2026-06-13, the implemented flow has been exercised successfully: de
 prefill, subset creation, and flashcard exercise generation from the resulting subdictionary all
 functioned as intended. Next step is server deployment on 2026-06-14 and Sophie review; keep the
 issue active/P1 until that user review confirms the workflow is classroom-ready.
+
+Human outcome update from Manny Rayner on 2026-08-12: Sophie has briefly reviewed the
+picture-dictionary/subset workflow and says it looks good. She will visit her community again on
+2026-08-24 and expects to know more after that visit. Keep the issue active until the community-use
+evidence is recorded.
+
+Human issue-review update from Manny Rayner on 2026-08-13: Manny believes this is resolved but wants
+that checked before Sophie’s 24 August community visit. Keep it active only for focused
+verification; close it promptly if the implemented subset workflow passes the check.

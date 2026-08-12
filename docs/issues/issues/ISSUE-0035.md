@@ -1,9 +1,9 @@
 # ISSUE-0035: Track intermittent Codex PR update-branch refusal
 
-- **Status:** reported
-- **Priority:** P2
+- **Status:** active
+- **Priority:** P1
 - **Created:** 2026-05-31T09:29:15Z
-- **Updated:** 2026-06-03T12:30:00Z
+- **Updated:** 2026-08-13T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** None
@@ -29,3 +29,8 @@ replacement PR from the same Codex branch did not resolve the maintainer's Updat
 the same false-positive refusal still appeared. The next attempted workaround is to create a
 replacement PR from a freshly named branch with a new tracking commit, so the GitHub/Codex branch
 provenance metadata is different from the affected PR branch.
+
+Human issue-review update from Manny Rayner on 2026-08-13: The intermittent Codex PR update-branch
+refusal remains important and unexplained. Another occurrence on 12 August wasted considerable time;
+exiting Codex completely, restarting it, and creating a new task resolved the incident. Try that
+workaround first on the next recurrence while continuing to record conditions and diagnostics.

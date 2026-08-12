@@ -1,9 +1,9 @@
 # ISSUE-0031: Improve compiled-content presentation context and configurable public access controls
 
-- **Status:** reported
+- **Status:** active
 - **Priority:** P1
 - **Created:** 2026-05-25T01:11:48Z
-- **Updated:** 2026-05-25T01:11:48Z
+- **Updated:** 2026-08-13T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0024](ISSUE-0024.md), [ISSUE-0010](ISSUE-0010.md)
@@ -19,3 +19,6 @@ publisher-managed access policy for compiled/published content, including suppor
 anonymous/public access where appropriate and a reset/change mechanism for access level after
 publication. Scope should include UI controls, permission checks, stable serving paths, and
 regression coverage for logged-in vs anonymous readers.
+
+Human issue-review update from Manny Rayner on 2026-08-13: Its priority is similar to ISSUE-0030: a
+concrete user-facing usability/access issue that is likely worth resolving in a bounded pass.

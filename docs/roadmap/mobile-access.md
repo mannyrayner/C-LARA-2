@@ -2,6 +2,15 @@
 
 Many C-LARA-2 users will access the platform from phones and tablets rather than desktop or laptop browsers. Mobile access should therefore be a first-class delivery goal, starting with the lowest-risk learner-facing use cases, then supporting default-driven content creation, and finally exploring selected review/editing workflows where small screens are not too painful.
 
+## First requested outcome (12 August 2026)
+
+The first concrete target is a lightweight mobile experience for browsing content and using
+exercises before mid-September 2026. This is most important initially for Sophie's Indigenous users,
+though it is broadly useful. Before committing to implementation scope, run a bounded audit of the
+current responsive behavior and representative exercise types, then define what fits in the first
+slice and what must be deferred. Track this in
+[ISSUE-0045](../issues/issues/ISSUE-0045.json).
+
 ## Goals
 
 - Make published/compiled texts readable and usable on common mobile devices.

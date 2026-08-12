@@ -2,12 +2,12 @@
   "schema_version": 1,
   "issue_id": "ISSUE-0029",
   "title": "Autosave community judging inputs to prevent accidental data loss",
-  "state": "reported",
-  "priority": "P1",
+  "state": "active",
+  "priority": "P0",
   "created_at": "2026-05-24T13:00:00Z",
-  "updated_at": "2026-05-24T14:00:00Z",
+  "updated_at": "2026-08-13T00:00:00Z",
   "origin": "human-suggestion",
-  "notes": "Created from human suggestion #18 (2026-05-24, mannyrayner). Community members can lose entered judgements on communities/.../member/projects/.../judge/ when leaving before pressing Save. Scope: implement autosave-on-change (or equivalent immediate persistence) for judgement entries, add clear saved-state feedback, and verify recovery across navigation/reload. Planning roadmap: docs/roadmap/community-judging-autosave.md (implementation deferred until after June 1 Kok Kaper visit).",
-  "deadline": null,
+  "notes": "Created from human suggestion #18 (2026-05-24, mannyrayner). Community members can lose entered judgements on communities/.../member/projects/.../judge/ when leaving before pressing Save. Scope: implement autosave-on-change (or equivalent immediate persistence) for judgement entries, add clear saved-state feedback, and verify recovery across navigation/reload. Planning roadmap: docs/roadmap/community-judging-autosave.md (implementation deferred until after June 1 Kok Kaper visit).\n\nHuman issue-review update from Manny Rayner on 2026-08-13: This has similar Indigenous-community timing to ISSUE-0026 but is probably much easier. Treat autosave as low-hanging fruit and aim to land it before the 24 August visit if feasible.",
+  "deadline": "2026-08-24T00:00:00Z",
   "dependencies": []
 }

@@ -1,9 +1,9 @@
-# ISSUE-0008: Write C-LARA-2 technical report and academic papers
+# ISSUE-0008: Publish the first C-LARA-2 progress report
 
-- **Status:** reported
+- **Status:** closed
 - **Priority:** P1
 - **Created:** 2026-05-06T08:36:24Z
-- **Updated:** 2026-05-29T13:30:00Z
+- **Updated:** 2026-08-12T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** 2026-06-15T00:00:00Z
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md)
@@ -66,3 +66,8 @@ distinguish settled framing decisions, current writing targets, planned paper sp
 comparison, workflow rules, and near-term actions. Corrected the EuroCALL 2026 full-paper deadline
 to 2026-07-31 and synchronized the reports roadmap with the progress-report Markdown workspace
 section map.
+
+Outcome confirmed by Manny Rayner on 2026-08-12: the first progress report was posted on
+ResearchGate on 2026-07-23. This issue is now narrowed to that completed deliverable and closed. The
+EuroCALL submissions/authorship dispute moved to ISSUE-0043, and future publication choices and the
+Francis Bond MWE collaboration opportunity moved to ISSUE-0044.
