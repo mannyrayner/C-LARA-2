@@ -15,7 +15,7 @@ request relates to persistent goals, current project state, external commitments
 successes, urgency, risks, blockers, conflicts or uncertainties, and requests for human intervention.
 Use judgment: this is project-level orientation, not a requirement to reread every management file
 before a trivial operation. Remember that `project-intentions.md` is human-owned and authoritative,
-whereas `current_state.*` is the project-manager agent's approved, derived assessment.
+whereas `current_state.*` is the project-manager agent's derived assessment.
 
 ## Perform the local task
 
@@ -35,6 +35,7 @@ Do not update the global workspace mechanically because a task completed. Ask in
 
 > **Does this evidence materially change the project manager's assessment?**
 
-If not, no workspace change is needed. If it does, follow the authority, evidence, review, and
-application boundaries in the global-workspace README; do not silently rewrite human intentions or
-bypass authorization for derived-state updates.
+If not, no workspace change is needed. If it does, update the global workspace according to its
+README. Before replacing the live `current_state`, ensure that its existing revision is preserved in
+the global-workspace archive; never rewrite archived historical states. Do not silently rewrite
+human intentions.
