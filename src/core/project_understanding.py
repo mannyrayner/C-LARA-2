@@ -27,6 +27,7 @@ DEFAULT_CODEX_EXEC_TIMEOUT_SECONDS = 300.0
 DEFAULT_SANDBOX_FAILURE_REVIEW_MODEL = "gpt-4o"
 
 DEFAULT_EVIDENCE_PATHS = (
+    "docs/global_workspace/",
     "docs/roadmap/",
     "docs/issues/",
     "docs/howto/",
@@ -249,6 +250,9 @@ Use the C-LARA-2 repository documentation and codebase as evidence. Prefer these
 Answer at the level of a project collaborator who understands the current architecture, goals, implementation status, issue structure, roadmap plans, prompt design, tests, and module relationships.
 
 Rules:
+- Treat `docs/global_workspace/project-intentions.md` as human-owned intention and
+  `docs/global_workspace/current_state.*` as approved agent-derived state when those files exist.
+- Distinguish approved current state from unapproved proposals, experiments, and historical records.
 - Distinguish implemented functionality from planned, speculative, or roadmap-only functionality.
 - Cite supporting repository file paths whenever possible.
 - Identify uncertainty instead of guessing.

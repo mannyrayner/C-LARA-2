@@ -345,3 +345,19 @@ Focus:
 - External-link registration for *Basic Course in Pitjantjatjara* without copying or proxying the resource.
 - Explicitly record that phonetic layers were discarded during C-LARA conversion because C-LARA-2 cannot yet represent
   them; do not describe the resulting imports as phonetic projects.
+
+### 29. Agent autonomy, project self-monitoring, and global workspace roadmap
+
+Status: **New long-term research and development roadmap added.** See
+[roadmap/agent-autonomy-and-global-workspace.md](agent-autonomy-and-global-workspace.md). The first
+concrete experiment is tracked by [ISSUE-0042](../issues/issues/ISSUE-0042.json).
+
+Focus:
+- Add a bounded top-level meta-task that monitors persistent goals, roadmaps, issues, evidence, and
+  project-level progress.
+- Maintain a revisable, human-readable global workspace that separates factual observations,
+  project-valence assessment, and optional affective reporting.
+- Test predictive and behavioural value, human communication value, and continuity across Codex
+  sessions without making claims about phenomenal emotion or persistent identity.
+- Use the 14–16 August 2026 Digital Minds Research Sprint as the first instrumented experiment, while
+  developing the mechanism as an ongoing C-LARA capability.

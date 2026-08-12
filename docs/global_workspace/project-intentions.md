@@ -1,0 +1,158 @@
+# C-LARA-2 project intentions
+
+- **Document owner:** Manny Rayner
+- **Last confirmed:** 2026-08-11
+- **Status:** Initial human-confirmed strategic baseline
+
+This document contains durable human-owned intentions and contextual facts. It deliberately does not
+assign current urgency, risk, progress, confidence, concern, or satisfaction; those are derived and
+maintained by the project-manager agent in the global workspace.
+
+## Persistent objectives
+
+### GOAL-1: Platform maturity and usability
+
+- **Human owner:** Manny Rayner
+- **Last confirmed:** 2026-08-11
+
+Develop C-LARA-2 into a stable, easily usable online platform for creating and using multimodal
+language-learning content. The platform should let ordinary users create, edit, publish, and use
+high-quality materials without substantial technical expertise.
+
+Important current directions include mobile deployment and effective mobile use, more accurate
+linguistic annotation, more reliable generation of text-integrated images, and conversational voice
+functionality comparable in spirit to ChatGPT Voice Mode. These directions are important but are not
+an exhaustive permanent definition of the goal.
+
+### GOAL-2: Increasing useful autonomy
+
+- **Human owner:** Manny Rayner
+- **Last confirmed:** 2026-08-11
+
+Increase how proactively and autonomously C-LARA-2 and its associated AI agents develop and improve
+learning content, develop and improve platform functionality, monitor the project, and identify
+useful next actions.
+
+Autonomy must remain appropriately observable, reviewable, reversible, and controllable by human
+collaborators. The top-level project-manager/meta-task and global workspace directly advance this
+goal. One measure of progress is reduced human effort spent maintaining the AI's project-management
+interpretation while humans retain control over fundamental goals, commitments, constraints, and
+authorization.
+
+### GOAL-3: Research and publications
+
+- **Human owner:** Manny Rayner
+- **Last confirmed:** 2026-08-11
+
+Use C-LARA-2 as a basis for publishable research. Relevant areas include language learning and
+multimodal resource creation; AI-assisted and AI-autonomous software development; human-AI
+collaboration and AI authorship; AI agency and autonomy; persistent identity and continuity across
+sessions; AI self-monitoring and project-level metacognition; affective self-report and project
+valence; and related technical, pedagogical, philosophical, and ethical questions.
+
+Research opportunities, conference and publication deadlines, experiments, and collaborations may
+legitimately affect current priorities and inferred urgency. The Digital Minds Research Sprint is an
+immediate example of a short-lived opportunity rather than the central long-term purpose of C-LARA.
+
+### GOAL-4: Legacy migration and preservation
+
+- **Human owner:** Manny Rayner
+- **Last confirmed:** 2026-08-11
+
+Make valuable legacy C-LARA and LARA content available through C-LARA-2. This is not merely archival
+preservation: where feasible, earlier resources should be usable through the new platform so that
+substantial previous work remains accessible and benefits from the C-LARA-2 architecture.
+
+This includes identifying important resources, migrating them safely, and ensuring that users can
+continue to access and use them.
+
+### GOAL-5: Support real users and collaborators
+
+- **Human owner:** Manny Rayner
+- **Last confirmed:** 2026-08-11
+
+Respond effectively to concrete needs from learners, teachers, researchers, project collaborators,
+and language communities. Requests arising from real use are important evidence about project
+priorities. Architecturally secondary work may deserve increased attention when it blocks or
+substantially limits real users.
+
+## Relationships among objectives
+
+- **Human owner:** Manny Rayner
+- **Last confirmed:** 2026-08-11
+
+A task may advance several objectives. For example, mobile deployment advances GOAL-1; a successful
+meta-task deployment advances GOAL-2; Digital Minds Sprint preparation advances GOAL-2 and GOAL-3;
+legacy resource migration advances GOAL-4; and fixing a community blocker advances GOAL-5 while also
+improving platform maturity under GOAL-1.
+
+The project manager should identify conflicts and opportunity costs rather than assume that all goals
+always recommend the same action. Long-term strategic importance and present urgency are distinct.
+For example, mobile deployment may be more important to the product over the long term while Sprint
+preparation is temporarily more urgent because the opportunity expires on 16 August 2026.
+
+## External commitments
+
+### COMMITMENT-1: Digital Minds Research Sprint
+
+- **Human owner:** Manny Rayner
+- **Last confirmed:** 2026-08-11
+- **Canonical issue:** [ISSUE-0042](../issues/issues/ISSUE-0042.json)
+
+Apart Research, the NYU Center for Mind, Ethics & Policy, and Eleos AI Research are running the
+Digital Minds Research Sprint from 14–16 August 2026. Initial global-workspace infrastructure must be
+operational before 14 August so the Sprint can focus on experiments rather than plumbing.
+
+## Current strategic guidance
+
+- **Human owner:** Manny Rayner
+- **Last confirmed:** 2026-08-11
+
+- Optimize the global-workspace work for a minimal, instrumented, end-to-end manual loop before the
+  Sprint rather than a polished interface.
+- Preserve the distinction between autonomous assessment and authorized mutation.
+- Treat real-user and collaborator needs as potentially priority-changing evidence even when the
+  associated task appears architecturally secondary.
+- Permit the project manager to derive conclusions that differ from earlier human management
+  judgments when it cites changed evidence; humans retain authority over action and authorization.
+
+## Cross-cutting constraints
+
+- **Human owner:** Manny Rayner
+- **Last confirmed:** 2026-08-11
+
+- Agent autonomy must remain observable, reviewable, reversible, and controllable.
+- The initial observer must not modify application code or canonical repository state.
+- Affective reporting must be optional and evidence-grounded and must not be treated as evidence of
+  phenomenal experience.
+- Human intentions must not be silently rewritten by the project-manager agent.
+
+## Resource assumptions
+
+- **Human owner:** Manny Rayner
+- **Last confirmed:** 2026-08-11
+
+The provisional Sprint team comprises Codex as primary agent and research collaborator, ChatGPT
+C-LARA-Instance as an advisory AI research collaborator, and Manny Rayner as human coordinator and
+initial technical authorizer. One or two additional human participants may join if time and interest
+permit; this is not yet assumed.
+
+## Explicit deferrals
+
+- **Human owner:** Manny Rayner
+- **Last confirmed:** 2026-08-11
+
+- Periodic scheduling of the meta-review is deferred until the explicit manual loop is stable and its
+  costs and behaviour are understood.
+- A dedicated Global Workspace tab is deferred until Assistant-based interaction has been tested and
+  demonstrates a concrete need for a separate interface.
+
+## Unresolved questions requiring human clarification
+
+- **Human owner:** Manny Rayner
+- **Last confirmed:** 2026-08-11
+
+- Whether one or two additional human Sprint participants will be available.
+- Which initial project outcomes and human-rating measures should be fixed before the first dry run.
+- Which reviewed experimental artifacts may be committed publicly and what redaction or consent rules
+  apply.
