@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P0
 - **Created:** 2026-08-10T00:00:00Z
-- **Updated:** 2026-08-11T00:00:00Z
+- **Updated:** 2026-08-12T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** 2026-08-14T00:00:00Z
 - **Dependencies:** None
@@ -76,11 +76,10 @@ commit/PR review to the normal workflow.
 The smallest coherent pre-Sprint implementation is: (1) add
 `docs/global_workspace/project-intentions.md` with human-confirmed persistent goals, commitments,
 strategic guidance, resource assumptions, and deferrals while leaving issue facts canonical in issue
-JSON; (2) define and validate version-1
-current-state, proposal, manifest, review-decision, and prediction/outcome schemas; (3) factor the
-existing Codex CLI wrapper and add trusted commit-SHA/run metadata capture; (4) add
-`propose_global_workspace_review` and `apply_global_workspace_review` laptop management commands
-with the structural write allowlist; (5) deterministically render
+JSON; (2) define and validate version-1 current-state, proposal, manifest, review-decision, and
+prediction/outcome schemas; (3) factor the existing Codex CLI wrapper and add trusted commit-SHA/run
+metadata capture; (4) add `propose_global_workspace_review` and `apply_global_workspace_review`
+laptop management commands with the structural write allowlist; (5) deterministically render
 `docs/global_workspace/current_state.md`; (6) add `docs/global_workspace/` to the existing
 Assistant's preferred evidence paths and prompt it to distinguish approved live state from
 proposals/history; (7) run fact-only and fact-plus-optional-affect dry runs on the same clean base
@@ -94,14 +93,22 @@ version, model/tool metadata, times, files/input set, stdout/stderr/exit status,
 where available; and Assistant queries can accurately describe current concerns, successes,
 conflicts, human-decision requests, changes, and retired concerns from the approved workspace.
 
-Project-intentions baseline added on 2026-08-11:
-`docs/global_workspace/project-intentions.md` now records five human-confirmed persistent goals
-(platform maturity/usability, useful autonomy, research/publications, legacy
-migration/preservation, and support for real users/collaborators), the Digital Minds Sprint
-commitment, current strategic guidance, safety constraints, resource assumptions, explicit
-deferrals, and unresolved human questions. `docs/global_workspace/README.md` now makes the division
-of labour explicit: humans own intentions, commitments, constraints, and authoritative contextual
-facts; the project-manager agent derives and maintains urgency, risk, blocking importance,
-opportunity value, progress, confidence, conflict, concern, satisfaction, recommendations, and other
-dynamic management state. These derived labels should not become another set of human-maintained
-issue fields.
+Project-intentions baseline added on 2026-08-11: `docs/global_workspace/project-intentions.md` now
+records five human-confirmed persistent goals (platform maturity/usability, useful autonomy,
+research/publications, legacy migration/preservation, and support for real users/collaborators), the
+Digital Minds Sprint commitment, current strategic guidance, safety constraints, resource
+assumptions, explicit deferrals, and unresolved human questions. `docs/global_workspace/README.md`
+now makes the division of labour explicit: humans own intentions, commitments, constraints, and
+authoritative contextual facts; the project-manager agent derives and maintains urgency, risk,
+blocking importance, opportunity value, progress, confidence, conflict, concern, satisfaction,
+recommendations, and other dynamic management state. These derived labels should not become another
+set of human-maintained issue fields.
+
+Architecture update on 2026-08-12: the mandatory proposal/reviewer/application gate for ordinary
+current-state maintenance is superseded. Codex may autonomously update its derived `current_state.*`
+assessment when material evidence changes, while `project-intentions.md` and human authorization
+boundaries remain human-owned. Every successive live state is preserved in the immutable
+`docs/global_workspace/archive/`; revision N must be archived or verified before N+1 is installed.
+Controlled read-only proposals and human ratings remain available as experimental conditions, not as
+a prerequisite for maintaining derived state. See `docs/global_workspace/README.md` and the revised
+implementation decision in `docs/roadmap/agent-autonomy-and-global-workspace.md`.

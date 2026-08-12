@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Validate and deterministically render the approved global-workspace state."""
+"""Validate, render, archive, and safely replace global-workspace state."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -14,7 +16,9 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INPUT = ROOT / "docs/global_workspace/current_state.json"
 DEFAULT_OUTPUT = ROOT / "docs/global_workspace/current_state.md"
+DEFAULT_ARCHIVE = ROOT / "docs/global_workspace/archive"
 ID_RE = re.compile(r"^[A-Z]+-[0-9]{4}$")
+ARCHIVE_RE = re.compile(r"^rev-(\d{4,})-(\d{4}-\d{2}-\d{2})\.(json|md)$")
 CONFIDENCE_VALUES = {"low", "medium", "high"}
 
 
@@ -307,17 +311,177 @@ def render(data: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def archive_paths(data: dict[str, Any], archive_dir: Path) -> tuple[Path, Path]:
+    """Return the deterministic archive paths for a state revision."""
+    revision = data["workspace_revision"]
+    date = data["as_of"][:10]
+    stem = f"rev-{revision:04d}-{date}"
+    return archive_dir / f"{stem}.json", archive_dir / f"{stem}.md"
+
+
+def _write_new_or_match(path: Path, content: bytes) -> bool:
+    """Create an immutable snapshot, or verify an identical existing one."""
+    if path.exists():
+        if path.is_symlink() or not path.is_file():
+            raise WorkspaceValidationError(f"archive target is not a regular file: {path}")
+        if path.read_bytes() != content:
+            raise WorkspaceValidationError(f"conflicting archive snapshot exists: {path}")
+        return False
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with path.open("xb") as stream:
+            stream.write(content)
+    except FileExistsError:
+        if path.read_bytes() != content:
+            raise WorkspaceValidationError(f"conflicting archive snapshot exists: {path}")
+        return False
+    return True
+
+
+def ensure_archived(
+    data: dict[str, Any], json_bytes: bytes, markdown: str, archive_dir: Path
+) -> tuple[Path, Path, bool]:
+    """Ensure an exact JSON snapshot and deterministic Markdown snapshot exist."""
+    json_path, markdown_path = archive_paths(data, archive_dir)
+    created_json = _write_new_or_match(json_path, json_bytes)
+    try:
+        created_markdown = _write_new_or_match(markdown_path, markdown.encode("utf-8"))
+    except Exception:
+        if created_json:
+            json_path.unlink(missing_ok=True)
+        raise
+    return json_path, markdown_path, created_json or created_markdown
+
+
+def validate_archive(archive_dir: Path) -> dict[int, tuple[Path, Path, dict[str, Any]]]:
+    """Validate archive naming, pairs, revision identity, and deterministic Markdown."""
+    revisions: dict[int, tuple[Path, Path, dict[str, Any]]] = {}
+    if not archive_dir.is_dir():
+        raise WorkspaceValidationError(f"archive directory does not exist: {archive_dir}")
+    files = sorted(path for path in archive_dir.iterdir() if path.name != ".gitkeep")
+    grouped: dict[str, dict[str, Path]] = {}
+    for path in files:
+        match = ARCHIVE_RE.fullmatch(path.name)
+        if not match or path.is_symlink() or not path.is_file():
+            raise WorkspaceValidationError(f"invalid archive entry: {path}")
+        stem = path.name.rsplit(".", 1)[0]
+        grouped.setdefault(stem, {})[match.group(3)] = path
+    for stem, pair in grouped.items():
+        if set(pair) != {"json", "md"}:
+            raise WorkspaceValidationError(f"archive snapshot is missing its JSON/Markdown pair: {stem}")
+        json_path, markdown_path = pair["json"], pair["md"]
+        try:
+            data = json.loads(json_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise WorkspaceValidationError(f"invalid archived JSON {json_path}: {exc}") from exc
+        validate(data)
+        expected_json, expected_markdown = archive_paths(data, archive_dir)
+        if json_path != expected_json or markdown_path != expected_markdown:
+            raise WorkspaceValidationError(
+                f"archive filename does not match embedded revision/as_of: {json_path.name}"
+            )
+        revision = data["workspace_revision"]
+        if revision in revisions:
+            raise WorkspaceValidationError(f"duplicate archived workspace revision: {revision}")
+        if markdown_path.read_text(encoding="utf-8") != render(data):
+            raise WorkspaceValidationError(f"stale archived Markdown: {markdown_path}")
+        revisions[revision] = (json_path, markdown_path, data)
+    return revisions
+
+
+def _atomic_write(path: Path, content: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary_name, path)
+    except Exception:
+        Path(temporary_name).unlink(missing_ok=True)
+        raise
+
+
+def apply_update(
+    candidate_path: Path, live_json_path: Path, live_markdown_path: Path, archive_dir: Path
+) -> tuple[Path, Path]:
+    """Archive revision N and atomically install a validated revision N+1 candidate."""
+    live_bytes = live_json_path.read_bytes()
+    live_data = json.loads(live_bytes)
+    validate(live_data)
+    live_markdown = render(live_data)
+    if live_markdown_path.read_text(encoding="utf-8") != live_markdown:
+        raise WorkspaceValidationError("live Markdown is stale; refusing to update")
+    validate_archive(archive_dir)
+
+    candidate_bytes = candidate_path.read_bytes()
+    candidate_data = json.loads(candidate_bytes)
+    validate(candidate_data)
+    if candidate_data["workspace_revision"] != live_data["workspace_revision"] + 1:
+        raise WorkspaceValidationError(
+            "candidate workspace_revision must be exactly one greater than the live revision"
+        )
+    candidate_markdown = render(candidate_data)
+    archived_json, archived_markdown, _ = ensure_archived(
+        live_data, live_bytes, live_markdown, archive_dir
+    )
+    # Archive first, then replace both live files. Individual writes are atomic; if the
+    # second write fails in-process, restore the exact validated live pair from revision N.
+    try:
+        _atomic_write(live_json_path, candidate_bytes)
+        _atomic_write(live_markdown_path, candidate_markdown.encode("utf-8"))
+    except Exception:
+        _atomic_write(live_json_path, live_bytes)
+        _atomic_write(live_markdown_path, live_markdown.encode("utf-8"))
+        raise
+    installed = json.loads(live_json_path.read_text(encoding="utf-8"))
+    validate(installed)
+    if live_markdown_path.read_text(encoding="utf-8") != render(installed):
+        raise WorkspaceValidationError("installed live Markdown does not match live JSON")
+    return archived_json, archived_markdown
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--archive-dir", type=Path, default=DEFAULT_ARCHIVE)
     parser.add_argument("--check", action="store_true", help="fail if the rendered file is not current")
+    parser.add_argument(
+        "--archive-current",
+        action="store_true",
+        help="create or verify the immutable snapshot for the live revision",
+    )
+    parser.add_argument(
+        "--update-from",
+        type=Path,
+        metavar="CANDIDATE_JSON",
+        help="archive the live revision and install a validated next-revision JSON",
+    )
     args = parser.parse_args()
 
+    if sum((args.check, args.archive_current, args.update_from is not None)) > 1:
+        parser.error("--check, --archive-current, and --update-from are mutually exclusive")
+
     try:
+        if args.update_from is not None:
+            archived_json, archived_markdown = apply_update(
+                args.update_from, args.input, args.output, args.archive_dir
+            )
+            print(f"archived {archived_json} and {archived_markdown}")
+            print(f"installed {args.update_from} as {args.input} and regenerated {args.output}")
+            return 0
         data = json.loads(args.input.read_text(encoding="utf-8"))
         validate(data)
         rendered = render(data)
+        if args.archive_current:
+            json_path, markdown_path, created = ensure_archived(
+                data, args.input.read_bytes(), rendered, args.archive_dir
+            )
+            action = "created" if created else "verified"
+            print(f"{action} {json_path} and {markdown_path}")
+            return 0
     except (OSError, json.JSONDecodeError, WorkspaceValidationError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
@@ -331,7 +495,19 @@ def main() -> int:
         if current != rendered:
             print(f"error: {args.output} is not the current deterministic rendering", file=sys.stderr)
             return 1
-        print(f"validated {args.input} and verified {args.output}")
+        try:
+            revisions = validate_archive(args.archive_dir)
+        except (OSError, json.JSONDecodeError, WorkspaceValidationError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        archived = revisions.get(data["workspace_revision"])
+        if archived and archived[0].read_bytes() != args.input.read_bytes():
+            print("error: archive/live JSON disagreement for current revision", file=sys.stderr)
+            return 1
+        print(
+            f"validated {args.input}, verified {args.output}, and checked "
+            f"{len(revisions)} archived revision(s)"
+        )
         return 0
 
     args.output.write_text(rendered, encoding="utf-8")
