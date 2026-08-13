@@ -16,6 +16,8 @@ from core.project_understanding import (
     build_codex_exec_command,
     build_codex_exec_environment,
     build_project_understanding_prompt,
+    build_project_manager_prompt,
+    parse_project_manager_answer,
     detect_codex_sandbox_access_failure,
     extract_codex_formatted_answer,
     extract_codex_tokens_used,
@@ -64,6 +66,57 @@ class FakeClock:
 
 
 class ProjectUnderstandingTests(unittest.IsolatedAsyncioTestCase):
+    def test_project_manager_prompt_includes_identity_governance_and_classification(self):
+        prompt = build_project_manager_prompt(
+            "The judging test worked well.",
+            collaborator_username="sophie",
+            collaborator_role="Indigenous-language resources collaborator",
+        )
+        self.assertIn("read and follow `AGENTS.md`", prompt)
+        self.assertIn("docs/global_workspace/current_state.*", prompt)
+        self.assertIn("Authenticated collaborator: sophie", prompt)
+        self.assertIn("does not, through this interaction, authorize", prompt)
+        self.assertIn("PROJECT_MANAGER_CLASSIFICATION", prompt)
+
+    def test_project_manager_answer_classification_is_removed_and_parsed(self):
+        answer, material, review, explanation = parse_project_manager_answer(
+            'This lowers the current risk.\nPROJECT_MANAGER_CLASSIFICATION: '
+            '{"material_project_evidence": true, "workspace_review_recommended": true, '
+            '"explanation": "New direct test result."}'
+        )
+        self.assertEqual("This lowers the current risk.", answer)
+        self.assertTrue(material)
+        self.assertTrue(review)
+        self.assertEqual("New direct test result.", explanation)
+
+    def test_project_manager_codex_exec_persists_mode_identity_classification_and_commit(self):
+        completed = subprocess.CompletedProcess(
+            args=["codex"],
+            returncode=0,
+            stdout=(
+                "This changes the 24 August risk.\n"
+                'PROJECT_MANAGER_CLASSIFICATION: {"material_project_evidence": true, '
+                '"workspace_review_recommended": true, "explanation": "Direct test evidence."}\n'
+            ),
+            stderr="",
+        )
+        result = answer_project_understanding_question_with_codex_exec(
+            "The test failed.",
+            repository_path=".",
+            mode="project_manager",
+            collaborator_username="sophie",
+            collaborator_role="community collaborator",
+            runner=lambda *args, **kwargs: completed,
+            commit_sha_resolver=lambda path: "a" * 40,
+        )
+        self.assertEqual("project_manager", result.mode)
+        self.assertEqual("sophie", result.collaborator_username)
+        self.assertEqual("community collaborator", result.collaborator_role)
+        self.assertEqual("a" * 40, result.repository_commit_sha)
+        self.assertEqual("This changes the 24 August risk.", result.answer)
+        self.assertTrue(result.material_project_evidence)
+        self.assertTrue(result.workspace_review_recommended)
+
     def test_build_prompt_wraps_question_with_safety_and_evidence_rules(self) -> None:
         prompt = build_project_understanding_prompt("What is ISSUE-0034?")
 

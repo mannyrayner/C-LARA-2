@@ -115,3 +115,16 @@ implementation decision in `docs/roadmap/agent-autonomy-and-global-workspace.md`
 
 Human issue-review update from Manny Rayner on 2026-08-13: This remains critical and is currently in
 progress for the Digital Minds Research Sprint.
+
+Project Manager interaction-mode implementation on 2026-08-13: the existing authenticated Assistant
+now supports a restricted Project Manager mode through the same file-backed queue, dedicated worker,
+and read-only ephemeral `codex exec` path. Staff or users in the configured
+`project_manager_collaborators` Django group may use it; a configured username-to-role mapping
+supplies concise authoritative role context. Requests/results preserve mode, authenticated identity,
+exact message, response, classification, run metadata, and trusted repository commit SHA. The prompt
+explicitly reads AGENTS/global-workspace context, separates human evidence from inference and
+authorization, forbids canonical mutation, and emits material-evidence/workspace-review flags.
+Missing or malformed classification fails conservatively to recommending human review. Initial scope
+deliberately omits conversation threads and automatic workspace mutation. Deployment still requires
+granting the group and configuring collaborator roles before Sophie or another collaborator can use
+the mode.

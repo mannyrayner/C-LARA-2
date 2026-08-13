@@ -724,3 +724,31 @@ For one queued request on a laptop or during debugging, use `python manage.py pr
 - What is the minimum curated question set needed for the first report?
 - How should human assessments be summarized without overstating model reliability?
 - How should answers cite files consistently enough for downstream parsing while still letting Codex decide what to inspect?
+
+## Project Manager mode first cut (13 August 2026)
+
+The authenticated Assistant now has an authorized **Project Manager** mode that reuses the existing
+file-backed request/result records, dedicated worker, read-only ephemeral `codex exec`, status
+monitor, cost accounting, and repository inspection. It is not a second AI service and does not
+maintain a parallel project summary.
+
+Staff users and members of the configurable `project_manager_collaborators` Django auth group may
+select the mode. `C_LARA_PROJECT_MANAGER_COLLABORATOR_ROLES` is a JSON object mapping usernames to
+concise, human-confirmed project roles; absent mappings receive a generic authorized-collaborator
+role rather than an inferred role. Example:
+
+```bash
+export C_LARA_PROJECT_MANAGER_COLLABORATOR_ROLES='{"sophie":"Indigenous-language resources and community-evaluation collaborator"}'
+```
+
+The Project Manager prompt explicitly follows `AGENTS.md`, reads the global workspace, attributes the
+speaker and role, distinguishes evidence/inference/authorization, and cannot mutate canonical state.
+Its response ends with machine-readable material-evidence and workspace-review classifications; the
+worker strips that line from conversational display and persists the classification alongside the
+exact request, response, identity, role, model/run metadata, and trusted Git commit SHA. Missing or
+malformed classification recommends manual review conservatively.
+
+This first cut intentionally has no conversation threads, automatic workspace mutation, special
+affective prompting, or experiment dashboard. Each message is a fresh repository-mediated turn.
+Deployment requires creating/assigning the authorization group and configuring roles before the
+first collaborator trial.

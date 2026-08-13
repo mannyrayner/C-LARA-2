@@ -274,3 +274,13 @@ The version-1 state retains its existing provenance fields (`approved_proposal_i
 particular state was produced, but do not imply that human pre-approval is mandatory. A future
 schema revision may rename them more neutrally. Detailed ownership, archive, and update rules are in
 `docs/global_workspace/README.md`.
+
+### Authenticated Project Manager interaction mode (13 August 2026)
+
+The existing Assistant now exposes a restricted Project Manager mode over the same read-only Codex
+worker. It supplies authenticated collaborator identity and configured role, reconstructs context
+from `AGENTS.md` and the global workspace, preserves attributed messages/responses and run/commit
+metadata, and flags material evidence that may warrant a workspace review. It does not mutate
+canonical state. This is both useful collaborator infrastructure and a natural test of
+repository-mediated continuity; conversation history and automatic update proposals remain deferred
+until real use demonstrates a need.
