@@ -303,7 +303,7 @@ Focus:
 
 ### 25. Community judging autosave roadmap
 
-Status: **Planning document added; implementation intentionally deferred until after June 1 Kok Kaper visit.** See [roadmap/community-judging-autosave.md](community-judging-autosave.md).
+Status: **Planning complete; active P0 implementation target before the 24 August 2026 community visit.** See [roadmap/community-judging-autosave.md](community-judging-autosave.md).
 
 Focus:
 - Prevent accidental loss of community member judgements on judge pages.

@@ -167,6 +167,11 @@ Acceptance checks:
 
 ### 5.2 Phase B: community-recorded audio dictionary (**ISSUE-0026**)
 
+**Current user target (13 August 2026):** Sophie needs an initial usable community-recorded audio
+workflow as soon as possible for Indigenous-language work and a planned ComputEL-10 paper. Delivery
+before her 24 August community visit would be especially valuable. The conference deadline is
+described as early October but still needs an exact date.
+
 A better long-term workflow should let community members record the audio needed for texts. This should be designed as a community-specific **audio dictionary**, but probably not merged with the picture dictionary: picture-dictionary entries are lemma-oriented, while audio entries need to be surface-word- and segment-oriented.
 This phase explicitly depends on the completed fallback behavior from **ISSUE-0016** (Section 5.1).
 

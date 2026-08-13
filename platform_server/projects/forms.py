@@ -493,11 +493,21 @@ class CreditTransferForm(forms.Form):
 
 
 class ProjectUnderstandingForm(forms.Form):
+    MODE_CHOICES = [
+        ("assistant", "Assistant"),
+        ("project_manager", "Project Manager"),
+    ]
     VISIBILITY_CHOICES = [
         ("private", "Private (visible only to me)"),
         ("public", "Public to other C-LARA-2 users/reviewers"),
     ]
 
+    mode = forms.ChoiceField(
+        choices=MODE_CHOICES, initial="assistant", required=False, widget=forms.RadioSelect
+    )
+
+    def clean_mode(self):
+        return self.cleaned_data.get("mode") or "assistant"
     question = forms.CharField(
         max_length=4000,
         label="Project-understanding question",
@@ -516,6 +526,11 @@ class ProjectUnderstandingForm(forms.Form):
         label="Log visibility",
         help_text="Private runs stay visible only to you; public runs can be reviewed by other C-LARA-2 users/reviewers.",
     )
+
+    def __init__(self, *args, allow_project_manager: bool = False, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not allow_project_manager:
+            self.fields["mode"].choices = [("assistant", "Assistant")]
 
 
 class AdminOpenAIPricingForm(forms.ModelForm):

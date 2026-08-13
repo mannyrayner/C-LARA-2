@@ -1,9 +1,9 @@
 # ISSUE-0005: Tune segmentation_phase_1 prompting to improve segment granularity by genre
 
-- **Status:** reported
+- **Status:** active
 - **Priority:** P1
 - **Created:** 2026-05-04T00:19:24Z
-- **Updated:** 2026-06-15T09:32:00Z
+- **Updated:** 2026-08-13T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -23,3 +23,7 @@ next change as a measurable prompt-and-few-shot experiment: add prose examples w
 should be ignored in favor of sentence/semantic boundaries, add poetry examples where line breaks
 can remain meaningful, and validate against the reported failure mode before promoting changes to
 defaults.
+
+Human issue-review update from Manny Rayner on 2026-08-13: This is important functionality that is
+currently not delivering acceptable results, and it appears to be low-hanging fruit. Revive it for a
+focused measurable prompt/few-shot correction.

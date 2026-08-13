@@ -1,9 +1,9 @@
 # ISSUE-0006: Investigate segmentation_phase_2 token-span failures and rerun-path correctness
 
-- **Status:** reported
+- **Status:** closed
 - **Priority:** P2
 - **Created:** 2026-05-03T23:11:10Z
-- **Updated:** 2026-05-25T00:53:31Z
+- **Updated:** 2026-08-13T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md)
@@ -25,3 +25,7 @@ whitespace/punctuation, (2) asks the model to correct boundaries (e.g., clitics/
 enforces text-preservation modulo boundaries with retry on mismatch, and (4) converts validated
 segmented text back to JSON tokens. Treat as a candidate implementation strategy/prototype under
 this issue, not yet confirmed as an easy drop-in replacement.
+
+Human issue-review update from Manny Rayner on 2026-08-13: Manny believes the segmentation_phase_2
+token-span/rerun issue was resolved some time ago but the resolution was not recorded. Close it on
+that authoritative review; reopen with a concrete reproduction if the failure recurs.

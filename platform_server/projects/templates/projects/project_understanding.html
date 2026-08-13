@@ -1,12 +1,20 @@
 {% extends "projects/base.html" %}
-{% block title %}Project understanding · C-LARA-2{% endblock %}
+{% block title %}Assistant / Project Manager · C-LARA-2{% endblock %}
 {% block content %}
-<h1>Project-understanding assistant</h1>
+<h1>Assistant / Project Manager</h1>
+<p><strong>Project-understanding assistant</strong></p>
 
 <p>
   Ask Codex high-level questions about the C-LARA-2 repository and get answers grounded in checked-in files.
   The call runs through <code>codex exec</code> with a read-only sandbox and a non-interactive prompt.
 </p>
+{% if can_use_project_manager %}
+<p>
+  <strong>Assistant</strong> answers repository questions. <strong>Project Manager</strong> discusses
+  progress, priorities, risks, and collaborator evidence. Project Manager messages and responses are
+  attributed and audited, but this web interaction never mutates canonical workspace files.
+</p>
+{% endif %}
 
 <p style="border-left: 4px solid #b70; padding-left: 0.75rem;">
   Self-understanding calls can consume large token counts. Completed runs record the reported
@@ -46,11 +54,18 @@
 <section id="project-understanding-result" {% if not result %}style="display:none;"{% endif %}>
   <h2>Answer</h2>
   <div id="project-understanding-answer" style="border: 1px solid #ddd; padding: 1rem; background: #f8f8f8;">{% if result_answer_html %}{{ result_answer_html }}{% endif %}</div>
+  <div id="project-manager-review" {% if not result or result.mode != "project_manager" %}style="display:none;"{% endif %}>
+    <h3>Project evidence review</h3>
+    <p><strong>Material project evidence:</strong> <span id="project-manager-material">{% if result.material_project_evidence %}yes{% else %}no{% endif %}</span></p>
+    <p><strong>Workspace review recommended:</strong> <span id="project-manager-review-recommended">{% if result.workspace_review_recommended %}yes{% else %}no{% endif %}</span></p>
+    <p id="project-manager-review-explanation">{% if result %}{{ result.review_explanation }}{% endif %}</p>
+  </div>
 
   <h2>Run metadata</h2>
   <table border="1" cellpadding="6" cellspacing="0">
     <tbody>
       <tr><th>Invocation route</th><td><code id="project-understanding-route">{% if result %}{{ result.invocation_route }}{% endif %}</code></td></tr>
+      <tr><th>Mode</th><td><code id="project-understanding-mode">{% if result %}{{ result.mode }}{% else %}{{ current_mode }}{% endif %}</code></td></tr>
       <tr><th>Model</th><td><code id="project-understanding-model">{% if result %}{{ result.model }}{% endif %}</code></td></tr>
       <tr><th>Prompt version</th><td><code id="project-understanding-prompt-version">{% if result %}{{ result.prompt_version }}{% endif %}</code></td></tr>
       <tr><th>Requested at</th><td><code id="project-understanding-requested-at">{% if result %}{{ result.requested_at }}{% endif %}</code></td></tr>
@@ -59,6 +74,7 @@
       <tr><th>Elapsed seconds</th><td><code id="project-understanding-elapsed">{% if result.elapsed_seconds != None %}{{ result.elapsed_seconds|floatformat:2 }}{% else %}unknown{% endif %}</code></td></tr>
       <tr><th>Exit status</th><td><code id="project-understanding-exit">{% if result.returncode != None %}{{ result.returncode }}{% else %}unknown{% endif %}</code></td></tr>
       <tr><th>Repository path</th><td><code id="project-understanding-repo">{% if result.repository_path %}{{ result.repository_path }}{% else %}unknown{% endif %}</code></td></tr>
+      <tr><th>Repository commit</th><td><code id="project-understanding-commit">{% if result.repository_commit_sha %}{{ result.repository_commit_sha }}{% else %}unknown{% endif %}</code></td></tr>
     </tbody>
   </table>
 
@@ -82,6 +98,7 @@
         const fieldsToClear = [
           "project-understanding-answer",
           "project-understanding-route",
+          "project-understanding-mode",
           "project-understanding-model",
           "project-understanding-prompt-version",
           "project-understanding-requested-at",
@@ -91,6 +108,7 @@
           "project-understanding-elapsed",
           "project-understanding-exit",
           "project-understanding-repo",
+          "project-understanding-commit",
           "project-understanding-stderr",
         ];
         fieldsToClear.forEach(function (id) {
@@ -136,6 +154,7 @@
       const answerEl = document.getElementById("project-understanding-answer");
       if (answerEl) answerEl.innerHTML = result.answer_html || "";
       setText("project-understanding-route", result.invocation_route);
+      setText("project-understanding-mode", result.mode);
       setText("project-understanding-model", result.model);
       setText("project-understanding-prompt-version", result.prompt_version);
       setText("project-understanding-requested-at", result.requested_at);
@@ -150,6 +169,16 @@
       );
       setText("project-understanding-exit", result.returncode);
       setText("project-understanding-repo", result.repository_path);
+      setText("project-understanding-commit", result.repository_commit_sha);
+      const reviewSection = document.getElementById("project-manager-review");
+      if (result.mode === "project_manager") {
+        setText("project-manager-material", result.material_project_evidence ? "yes" : "no");
+        setText("project-manager-review-recommended", result.workspace_review_recommended ? "yes" : "no");
+        setText("project-manager-review-explanation", result.review_explanation || "");
+        if (reviewSection) reviewSection.style.display = "block";
+      } else if (reviewSection) {
+        reviewSection.style.display = "none";
+      }
       const stderrSection = document.getElementById("project-understanding-stderr-section");
       if (result.stderr) {
         setText("project-understanding-stderr", result.stderr);

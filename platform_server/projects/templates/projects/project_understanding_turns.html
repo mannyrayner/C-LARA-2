@@ -10,6 +10,14 @@
 
 <form method="get" action="{% url 'project-understanding-turns' %}" style="border: 1px solid #ddd; padding: 1rem; margin-bottom: 1rem;">
   <p>
+    <label for="turn-mode">Mode</label><br>
+    <select id="turn-mode" name="mode">
+      <option value="" {% if not filters.mode %}selected{% endif %}>Any</option>
+      <option value="assistant" {% if filters.mode == "assistant" %}selected{% endif %}>Assistant</option>
+      <option value="project_manager" {% if filters.mode == "project_manager" %}selected{% endif %}>Project Manager</option>
+    </select>
+  </p>
+  <p>
     <label for="turn-q">Partial match</label><br>
     <input id="turn-q" type="search" name="q" value="{{ filters.q }}" style="width: 100%;" placeholder="Question, request ID, username, status, visibility">
   </p>
@@ -54,6 +62,7 @@
       <tr>
         <th>Submitted</th>
         <th>Question</th>
+        <th>Mode</th>
         <th>User</th>
         <th>Visibility</th>
         <th>Status</th>
@@ -66,6 +75,7 @@
         <tr>
           <td><a href="{% url 'project-understanding-monitor' turn.report_id %}">{{ turn.submitted_at|default:turn.report_id }}</a></td>
           <td>{{ turn.question|truncatechars:180 }}</td>
+          <td>{{ turn.mode }}</td>
           <td>{% if turn.username %}{{ turn.username }}{% endif %}{% if turn.user_id %} <code>#{{ turn.user_id }}</code>{% endif %}</td>
           <td>{{ turn.visibility }}</td>
           <td>{{ turn.status|default:"unknown" }}</td>
