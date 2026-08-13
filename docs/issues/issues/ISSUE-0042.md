@@ -128,3 +128,10 @@ Missing or malformed classification fails conservatively to recommending human r
 deliberately omits conversation threads and automatic workspace mutation. Deployment still requires
 granting the group and configuring collaborator roles before Sophie or another collaborator can use
 the mode.
+
+Initial laptop trial and access-control update on 2026-08-13: a natural query about the tasks most
+relevant to Sophie's Indigenous-community work returned a plausible, repository-grounded answer in
+36 seconds. Admin Tools now lets an admin enable or disable Project Manager access for a non-staff
+user; access remains off by default, and unauthorized users see an instruction to ask an admin.
+The control creates the configured authorization group on first grant, while role descriptions
+remain separately configured authoritative context.

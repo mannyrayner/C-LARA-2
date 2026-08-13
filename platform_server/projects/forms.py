@@ -456,6 +456,19 @@ class GrantAdminPrivilegesForm(forms.Form):
         self.fields["user"].queryset = queryset
 
 
+class ProjectManagerAccessForm(forms.Form):
+    ACCESS_CHOICES = [("enable", "Enable"), ("disable", "Disable")]
+
+    user = forms.ModelChoiceField(queryset=User.objects.none(), label="User")
+    access = forms.ChoiceField(choices=ACCESS_CHOICES, label="Project Manager access")
+
+    def __init__(self, *args, queryset=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if queryset is None:
+            queryset = User.objects.filter(is_staff=False).order_by("username")
+        self.fields["user"].queryset = queryset
+
+
 class AdminAdjustCreditsForm(forms.Form):
     user = forms.ModelChoiceField(queryset=User.objects.all().order_by("username"), label="User")
     amount_usd = forms.DecimalField(

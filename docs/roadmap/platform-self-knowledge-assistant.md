@@ -733,7 +733,9 @@ monitor, cost accounting, and repository inspection. It is not a second AI servi
 maintain a parallel project summary.
 
 Staff users and members of the configurable `project_manager_collaborators` Django auth group may
-select the mode. `C_LARA_PROJECT_MANAGER_COLLABORATOR_ROLES` is a JSON object mapping usernames to
+select the mode. Admins can enable or disable that group membership per non-staff user from Admin
+Tools; access is off by default, and users without it see an explanation directing them to an admin
+rather than a Project Manager selector. `C_LARA_PROJECT_MANAGER_COLLABORATOR_ROLES` is a JSON object mapping usernames to
 concise, human-confirmed project roles; absent mappings receive a generic authorized-collaborator
 role rather than an inferred role. Example:
 
@@ -750,5 +752,7 @@ malformed classification recommends manual review conservatively.
 
 This first cut intentionally has no conversation threads, automatic workspace mutation, special
 affective prompting, or experiment dashboard. Each message is a fresh repository-mediated turn.
-Deployment requires creating/assigning the authorization group and configuring roles before the
-first collaborator trial.
+The first laptop trial returned a plausible repository-grounded prioritization of Sophie's work in
+36 seconds. Server deployment still requires configuring collaborator roles; the Admin Tools control
+creates the authorization group when it first grants access, so group provisioning no longer needs
+to be performed manually.

@@ -284,3 +284,9 @@ metadata, and flags material evidence that may warrant a workspace review. It do
 canonical state. This is both useful collaborator infrastructure and a natural test of
 repository-mediated continuity; conversation history and automatic update proposals remain deferred
 until real use demonstrates a need.
+
+The first laptop query produced a plausible, evidence-linked account of Sophie's most relevant work
+in 36 seconds. Admin Tools now provides the deployment control that was missing from the first cut:
+admins can enable or disable Project Manager access for individual non-staff users, with access off
+by default. Unauthorized users retain Assistant access and see instructions to ask an admin rather
+than seeing the Project Manager mode selector.

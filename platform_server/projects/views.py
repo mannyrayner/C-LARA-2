@@ -36,6 +36,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.staticfiles import finders
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -75,6 +76,7 @@ from .forms import (
     AdminAdjustCreditsForm,
     AdminOpenAIPricingForm,
     ProjectUnderstandingForm,
+    ProjectManagerAccessForm,
     CreditTransferForm,
     ClozeExerciseSetForm,
     CrosswordExerciseSetForm,
@@ -4023,6 +4025,9 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
     grant_form = GrantAdminPrivilegesForm(
         queryset=get_user_model().objects.filter(is_staff=False).order_by("username")
     )
+    project_manager_access_form = ProjectManagerAccessForm(
+        queryset=get_user_model().objects.filter(is_staff=False).order_by("username")
+    )
     community_form = AdminCommunityForm()
     community_membership_form = AdminCommunityMembershipForm()
     delete_community_form = AdminDeleteCommunityForm()
@@ -4102,6 +4107,28 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
                 user_obj.is_staff = True
                 user_obj.save(update_fields=["is_staff"])
                 messages.success(request, f"{user_obj.username} now has admin privileges.")
+                return redirect("admin-tools")
+        elif action == "set_project_manager_access":
+            project_manager_access_form = ProjectManagerAccessForm(
+                request.POST,
+                queryset=get_user_model().objects.filter(is_staff=False).order_by("username"),
+            )
+            if project_manager_access_form.is_valid():
+                user_obj = project_manager_access_form.cleaned_data["user"]
+                enabled = project_manager_access_form.cleaned_data["access"] == "enable"
+                group_name = str(
+                    getattr(settings, "PROJECT_MANAGER_GROUP_NAME", "project_manager_collaborators")
+                ).strip()
+                if not group_name:
+                    messages.error(request, "Project Manager access group is not configured.")
+                    return redirect("admin-tools")
+                group, _ = Group.objects.get_or_create(name=group_name)
+                if enabled:
+                    user_obj.groups.add(group)
+                else:
+                    user_obj.groups.remove(group)
+                status = "enabled" if enabled else "disabled"
+                messages.success(request, f"Project Manager access {status} for {user_obj.username}.")
                 return redirect("admin-tools")
         elif action == "adjust_credits":
             adjust_credits_form = AdminAdjustCreditsForm(request.POST)
@@ -4316,6 +4343,13 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
         {
             "delete_audio_form": delete_form,
             "grant_admin_form": grant_form,
+            "project_manager_access_form": project_manager_access_form,
+            "project_manager_users": get_user_model().objects.filter(
+                is_staff=False,
+                groups__name=getattr(
+                    settings, "PROJECT_MANAGER_GROUP_NAME", "project_manager_collaborators"
+                ),
+            ).order_by("username"),
             "community_form": community_form,
             "community_membership_form": community_membership_form,
             "delete_community_form": delete_community_form,

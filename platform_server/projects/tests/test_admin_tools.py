@@ -47,6 +47,37 @@ class AdminToolsViewTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Project-understanding assistant")
         self.assertNotContains(resp, "Project Manager</label>")
+        self.assertContains(resp, "Ask an admin for access if you think you need it")
+
+    @override_settings(PROJECT_MANAGER_GROUP_NAME="project_manager_collaborators")
+    def test_admin_can_enable_and_disable_project_manager_access(self):
+        self.client.login(username="staffer", password="pw")
+
+        enabled = self.client.post(
+            reverse("admin-tools"),
+            {"action": "set_project_manager_access", "user": self.target_user.pk, "access": "enable"},
+            follow=True,
+        )
+        self.assertContains(enabled, "Project Manager access enabled for target")
+        self.assertTrue(
+            self.target_user.groups.filter(name="project_manager_collaborators").exists()
+        )
+
+        disabled = self.client.post(
+            reverse("admin-tools"),
+            {"action": "set_project_manager_access", "user": self.target_user.pk, "access": "disable"},
+            follow=True,
+        )
+        self.assertContains(disabled, "Project Manager access disabled for target")
+        self.assertFalse(
+            self.target_user.groups.filter(name="project_manager_collaborators").exists()
+        )
+
+    def test_admin_tools_shows_project_manager_access_control(self):
+        self.client.login(username="staffer", password="pw")
+        resp = self.client.get(reverse("admin-tools"))
+        self.assertContains(resp, "Project Manager access")
+        self.assertContains(resp, "Access is off by default")
 
     @override_settings(
         PROJECT_MANAGER_GROUP_NAME="project_manager_collaborators",
