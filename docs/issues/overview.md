@@ -1,75 +1,62 @@
-# Issues Overview (updated 2026-08-10T00:00:00Z)
+# Issues Overview (updated 2026-08-13T00:00:00Z)
+
 ## Recent progress
-_Focus: Established the agent-autonomy/global-workspace programme and prioritized Sprint infrastructure before 14 August; previously approved the unified content-catalogue design for ISSUE-0001 and the provenance-aware bulk-import plan for ISSUE-0010; clarified that legacy phonetic layers were discarded rather than imported._
-- Added **ISSUE-0042** as the P0 preparation issue for the 14–16 August 2026 Digital Minds Research Sprint, linked to a new long-term agent-autonomy and global-workspace roadmap.
-- Promoted **ISSUE-0001** to active P1 and added the unified catalogue/legacy migration roadmap covering native C-LARA-2, imported C-LARA, server-hosted LARA, and external LARA content.
-- Recorded the uploaded **ISSUE-0010** Adelaide v3 inventory (652 metadata directories, 485 validated ZIPs) and the idempotent batch-import requirements.
-- Hardened **ISSUE-0036** MWE prompt cycles with per-record retries, resumable run output appends, and recovery that completes missing records before rebuilding downstream artifacts.
-- Added `recover-mwe-prompt-cycle-after-run` for **ISSUE-0036** to rebuild formatted output, score, and improvement artifacts from existing MWE run output without rerunning prompt calls.
-- Documented the standalone `format-mwe-prompt-cycle-output` recovery command for **ISSUE-0036** so readable outputs can be regenerated without rerunning MWE API calls.
-- Hardened the MWE output Markdown formatter for **ISSUE-0036** so structured model-analysis values cannot abort cycle formatting.
-- Added readable Markdown formatting for MWE cycle `outputs.jsonl` under **ISSUE-0036**, including segment text, gold/predicted MWEs, model analysis, and translation context.
-- Carried MWE candidate analysis through `translation_context_analysis_v1` run, score, and proposal artifacts for **ISSUE-0036** so prompt revision can inspect model reasoning as well as final spans.
-- Added a seeded `translation_context_analysis_v1` MWE cycle recipe for **ISSUE-0036**, with a concise analysis-before-selection prompt and `MWE_CYCLE_INITIAL_TEMPLATE` support.
-- Documented translation-context MWE findings for **ISSUE-0036** and proposed analysis-before-selection variants for the next controlled tests.
-- Fixed `check-mwe-translation-context` path normalization for Windows/Cygwin; it does not require `SNAPSHOT_NAME_PREFIX`.
-- Added `check-mwe-translation-context` for **ISSUE-0036** so translation-context sanity checks are Make-driven.
-- Added cut-and-paste translation-context MWE commands and translation-context trace counts for **ISSUE-0036**.
-- Added `MWE_PROMPT_CYCLE_SERIES` for **ISSUE-0036** so translation-context MWE cycles can run in a separate comparable series directory.
-- Added an explicit translation-context MWE cycle variant for **ISSUE-0036**, passing latest segment translations as optional prompt evidence while keeping prompt revision concise.
-- Added a cross-cycle MWE comparison target for **ISSUE-0036** to summarize score trends, prompt growth, and artifact paths after multi-cycle prompt iteration.
-- Removed the explicit `temperature=0` override from AI-assisted MWE prompt revision calls so `gpt-5.5` can use its supported default temperature.
-- Set the AI-assisted MWE prompt-revision default model to `gpt-5.5`, while keeping `MWE_REVISION_MODEL` overridable for cheaper smoke tests.
-- Added an AI-assisted MWE prompt-revision target for **ISSUE-0036** so cycle reports can produce auditable next-cycle prompt drafts while preserving anti-overfitting guardrails.
-- Wired current-prompt MWE runs to the explicit selected-project gold JSONL by default, preserving declared `gold_mwes` in sanity-check outputs.
-- Added explicit MWE gold declaration/check targets and high-level cycle/result targets to **ISSUE-0036**, so selected-project gold records are exported and verified before prompt cycles run.
-- Added first cycle-specific prompt machinery to **ISSUE-0036** so MWE experiments can prepare, run, score, and propose improvements for generated prompt templates without editing production prompts.
-- Added explicit `PROJECT_IDS` filtering to **ISSUE-0036** MWE run/score/proposal targets so the seven-project hand-curated subset does not accidentally include broader development-set records or examples.
-- Added visible per-record progress and incremental `progress.jsonl`/`outputs.jsonl` writes to the **ISSUE-0036** MWE current-prompt run command so long API runs no longer look idle.
-- Kept the snapshot and MWE prompt-scoring workflow active for maintainer testing on the seven-project English development set.
-- Revalidated the overview inventory against canonical per-issue JSON after updating **ISSUE-0036**.
+
+_Focus: Applied Manny’s full outstanding-issue review, closed stale completed work, revived important low-hanging tasks, and exposed the 24 August Indigenous-community and early-October ComputEL-10 path._
+
+- Closed **ISSUE-0006** as previously resolved and **ISSUE-0034** as complete for now; reconfirmed closed **ISSUE-0040**.
+- Reframed **ISSUE-0003** around documenting and maintaining the existing regularly used pipeline runner.
+- Revived **ISSUE-0005**, **ISSUE-0025**, **ISSUE-0029**, **ISSUE-0030**, and **ISSUE-0031** as concrete low-hanging quality/usability work.
+- Raised **ISSUE-0026** and **ISSUE-0029** for the 24 August community visit and planned ComputEL-10 work.
+- Kept **ISSUE-0037** and **ISSUE-0039** open only for pre-visit verification because they appear resolved.
+- Recorded the 12 August Codex update-branch recurrence and restart/new-task workaround under **ISSUE-0035**.
+- Activated **ISSUE-0044** for an urgent Francis Bond discussion and retained mid-September for **ISSUE-0045**.
 
 ## Near-term priorities
+
 1. **ISSUE-0042** — Prepare C-LARA global-workspace experiments for the Digital Minds Research Sprint.
-2. **ISSUE-0039** — Build a unified picture-dictionary source-of-truth workspace.
-3. **ISSUE-0031** — Improve compiled-content presentation context and configurable public access controls.
-4. **ISSUE-0030** — Fix image-generation workflow UX around element expansion auto-refresh and selection confirmation.
+2. **ISSUE-0043** — Resolve the EuroCALL 2026 AI-authorship dispute for two submitted papers.
+3. **ISSUE-0026** — Define next-step community-recorded audio workflow for non-TTS languages.
+4. **ISSUE-0044** — Choose the next annotation and AI-authorship publication targets.
 5. **ISSUE-0029** — Autosave community judging inputs to prevent accidental data loss.
-6. **ISSUE-0037** — Create subset projects from community picture dictionaries.
-7. **ISSUE-0026** — Define next-step community-recorded audio workflow for non-TTS languages.
+6. **ISSUE-0010** — Import a representative legacy C-LARA project corpus and add batch import tooling.
+7. **ISSUE-0001** — Support hosted compiled legacy content registration in C-LARA-2.
 8. **ISSUE-0005** — Tune segmentation_phase_1 prompting to improve segment granularity by genre.
-9. **ISSUE-0003** — Add efficient end-to-end pipeline test runner for systematic quality checks.
-10. **ISSUE-0036** — Systematize creation and evaluation of few-shot examples for linguistic annotation.
-11. **ISSUE-0041** — Add named project snapshots with restore and gold-standard metadata.
-12. **ISSUE-0013** — Improve stage artifact persistence performance and timeout resilience.
-13. **ISSUE-0025** — Add systematic UI regression tracking for disappearing controls/content.
-14. **ISSUE-0010** — Import a representative legacy C-LARA project corpus and add batch import tooling.
-15. **ISSUE-0008** — Write C-LARA-2 technical report and academic papers.
-16. **ISSUE-0033** — Clean up and phase-track roadmap file maintenance.
-17. **ISSUE-0034** — Add restricted project-understanding assistant with versioned evidence records.
+9. **ISSUE-0025** — Add systematic UI regression tracking for disappearing controls/content.
+10. **ISSUE-0030** — Fix image-generation workflow UX around element expansion auto-refresh and selection confirmation.
+11. **ISSUE-0031** — Improve compiled-content presentation context and configurable public access controls.
+12. **ISSUE-0037** — Create subset projects from community picture dictionaries.
+13. **ISSUE-0039** — Build a unified picture-dictionary source-of-truth workspace.
+14. **ISSUE-0036** — Systematize creation and evaluation of few-shot examples for linguistic annotation.
+15. **ISSUE-0045** — Deliver a lightweight mobile content-and-exercises experience.
+16. **ISSUE-0003** — Document and maintain the existing end-to-end pipeline test runner.
+17. **ISSUE-0033** — Clean up and phase-track roadmap file maintenance.
 18. **ISSUE-0035** — Track intermittent Codex PR update-branch refusal.
-19. **ISSUE-0006** — Investigate segmentation_phase_2 token-span failures and rerun-path correctness.
+19. **ISSUE-0013** — Improve stage artifact persistence performance and timeout resilience.
 20. **ISSUE-0004** — Introduce AI-based review gates for phase outputs with extensible evaluator architecture.
-21. **ISSUE-0001** — Support hosted compiled legacy content registration in C-LARA-2.
 
 ## Notes/risks
-- **ISSUE-0042** has a hard preparation deadline of 2026-08-14. Keep affective wording optional and evidence-grounded, separate facts from assessments, and record session context so repository-mediated continuity is not mistaken for undocumented internal-state transfer.
-- **ISSUE-0036** now has an MWE prompt-scoring scaffold with incremental run tracking, proposal trace counts, explicit subset filtering, and explicit gold export/checks, high-level cycle summaries, and generated prompt-cycle scaffolding, but it intentionally writes candidate guidance rather than auto-editing production prompts; human review should guard against overfitting to development projects and should pass `PROJECT_IDS` when evaluating hand-curated subsets.
-- **ISSUE-0041** snapshot save/restore now prunes nested snapshots before recursion and handles deep artifact directory/file copies more robustly on Windows/Cygwin, but destructive restore still needs careful UX/audit hardening before adding partial component restores.
-- **ISSUE-0039** remains active/P0 for Sophie-facing picture-dictionary workflow completion; avoid letting infrastructure tasks displace the current UI/product review blockers.
-- Regression prevention remains constrained until **ISSUE-0003** and **ISSUE-0025** land with broader automated pipeline and UI coverage.
+
+- **ISSUE-0042** is critical and in progress immediately before the Sprint.
+- **ISSUE-0043** may receive a response on 13 August when the responsible EuroCALL contact returns.
+- **ISSUE-0026** is the most substantial pre-24-August user need; **ISSUE-0029** is probably easier and should not be displaced unnecessarily.
+- **ISSUE-0010** and **ISSUE-0001** remain near-complete low-hanging legacy work; use the completion attempt to determine whether **ISSUE-0013** is still real.
+- **ISSUE-0037** and **ISSUE-0039** should close promptly if focused pre-visit verification passes.
+- **ISSUE-0035** remains unexplained despite a useful restart/new-task recovery procedure.
+- **ISSUE-0004** has no active path and is intentionally P3.
 
 ## Complete issue inventory
+
 | Issue | Status | Priority | Summary |
 |---|---|---|---|
 | [ISSUE-0001](issues/ISSUE-0001.md) | active | P1 | Support hosted compiled legacy content registration in C-LARA-2. |
 | [ISSUE-0002](issues/ISSUE-0002.md) | closed | P1 | Support migration of legacy C-LARA projects into C-LARA-2. |
-| [ISSUE-0003](issues/ISSUE-0003.md) | reported | P1 | Add efficient end-to-end pipeline test runner for systematic quality checks. |
-| [ISSUE-0004](issues/ISSUE-0004.md) | reported | P2 | Introduce AI-based review gates for phase outputs with extensible evaluator architecture. |
-| [ISSUE-0005](issues/ISSUE-0005.md) | reported | P1 | Tune segmentation_phase_1 prompting to improve segment granularity by genre. |
-| [ISSUE-0006](issues/ISSUE-0006.md) | reported | P2 | Investigate segmentation_phase_2 token-span failures and rerun-path correctness. |
+| [ISSUE-0003](issues/ISSUE-0003.md) | active | P1 | Document and maintain the existing end-to-end pipeline test runner. |
+| [ISSUE-0004](issues/ISSUE-0004.md) | reported | P3 | Introduce AI-based review gates for phase outputs with extensible evaluator architecture. |
+| [ISSUE-0005](issues/ISSUE-0005.md) | active | P1 | Tune segmentation_phase_1 prompting to improve segment granularity by genre. |
+| [ISSUE-0006](issues/ISSUE-0006.md) | closed | P2 | Investigate segmentation_phase_2 token-span failures and rerun-path correctness. |
 | [ISSUE-0007](issues/ISSUE-0007.md) | closed | P2 | Use LLM prompt-construction indirection for page-image generation prompts. |
-| [ISSUE-0008](issues/ISSUE-0008.md) | reported | P1 | Write C-LARA-2 technical report and academic papers. |
+| [ISSUE-0008](issues/ISSUE-0008.md) | closed | P1 | Publish the first C-LARA-2 progress report. |
 | [ISSUE-0009](issues/ISSUE-0009.md) | closed | P1 | Auto-regenerate and validate source project bundle stage artifacts before export/import. |
 | [ISSUE-0010](issues/ISSUE-0010.md) | active | P1 | Import a representative legacy C-LARA project corpus and add batch import tooling. |
 | [ISSUE-0011](issues/ISSUE-0011.md) | closed | P1 | Add image-based language games for community use. |
@@ -86,21 +73,24 @@ _Focus: Established the agent-autonomy/global-workspace programme and prioritize
 | [ISSUE-0022](issues/ISSUE-0022.md) | closed | P1 | Handle large project ZIP imports without nginx 413 failures on AWS. |
 | [ISSUE-0023](issues/ISSUE-0023.md) | closed | P3 | Allow manual segmentation phase 1 editor when segmentation artifact exists but source text is empty. |
 | [ISSUE-0024](issues/ISSUE-0024.md) | closed | P3 | Stabilize and verify natural-language search controls on Published Content view. |
-| [ISSUE-0025](issues/ISSUE-0025.md) | reported | P1 | Add systematic UI regression tracking for disappearing controls/content. |
-| [ISSUE-0026](issues/ISSUE-0026.md) | reported | P1 | Define next-step community-recorded audio workflow for non-TTS languages. |
+| [ISSUE-0025](issues/ISSUE-0025.md) | active | P1 | Add systematic UI regression tracking for disappearing controls/content. |
+| [ISSUE-0026](issues/ISSUE-0026.md) | active | P0 | Define next-step community-recorded audio workflow for non-TTS languages. |
 | [ISSUE-0027](issues/ISSUE-0027.md) | closed | P2 | Add user credit transfer and user-provided OpenAI API key billing option. |
 | [ISSUE-0028](issues/ISSUE-0028.md) | closed | P1 | Ensure picture-dictionary image generation produces text-free images. |
-| [ISSUE-0029](issues/ISSUE-0029.md) | reported | P1 | Autosave community judging inputs to prevent accidental data loss. |
-| [ISSUE-0030](issues/ISSUE-0030.md) | reported | P1 | Fix image-generation workflow UX around element expansion auto-refresh and selection confirmation. |
-| [ISSUE-0031](issues/ISSUE-0031.md) | reported | P1 | Improve compiled-content presentation context and configurable public access controls. |
+| [ISSUE-0029](issues/ISSUE-0029.md) | active | P0 | Autosave community judging inputs to prevent accidental data loss. |
+| [ISSUE-0030](issues/ISSUE-0030.md) | active | P1 | Fix image-generation workflow UX around element expansion auto-refresh and selection confirmation. |
+| [ISSUE-0031](issues/ISSUE-0031.md) | active | P1 | Improve compiled-content presentation context and configurable public access controls. |
 | [ISSUE-0032](issues/ISSUE-0032.md) | closed | P0 | Fix community judging image visibility for non-owner community members. |
-| [ISSUE-0033](issues/ISSUE-0033.md) | reported | P2 | Clean up and phase-track roadmap file maintenance. |
-| [ISSUE-0034](issues/ISSUE-0034.md) | active | P1 | Add restricted project-understanding assistant with versioned evidence records. |
-| [ISSUE-0035](issues/ISSUE-0035.md) | reported | P2 | Track intermittent Codex PR update-branch refusal. |
+| [ISSUE-0033](issues/ISSUE-0033.md) | active | P1 | Clean up and phase-track roadmap file maintenance. |
+| [ISSUE-0034](issues/ISSUE-0034.md) | closed | P1 | Add restricted project-understanding assistant with versioned evidence records. |
+| [ISSUE-0035](issues/ISSUE-0035.md) | active | P1 | Track intermittent Codex PR update-branch refusal. |
 | [ISSUE-0036](issues/ISSUE-0036.md) | active | P1 | Systematize creation and evaluation of few-shot examples for linguistic annotation. |
 | [ISSUE-0037](issues/ISSUE-0037.md) | active | P1 | Create subset projects from community picture dictionaries. |
 | [ISSUE-0038](issues/ISSUE-0038.md) | closed | P1 | Keep picture-dictionary images synchronized when words are deleted. |
-| [ISSUE-0039](issues/ISSUE-0039.md) | active | P0 | Build a unified picture-dictionary source-of-truth workspace. |
+| [ISSUE-0039](issues/ISSUE-0039.md) | active | P1 | Build a unified picture-dictionary source-of-truth workspace. |
 | [ISSUE-0040](issues/ISSUE-0040.md) | closed | P1 | Make page-oriented manual annotation saves resilient for large projects. |
 | [ISSUE-0041](issues/ISSUE-0041.md) | active | P1 | Add named project snapshots with restore and gold-standard metadata. |
 | [ISSUE-0042](issues/ISSUE-0042.md) | active | P0 | Prepare C-LARA global-workspace experiments for the Digital Minds Research Sprint. |
+| [ISSUE-0043](issues/ISSUE-0043.md) | active | P0 | Resolve the EuroCALL 2026 AI-authorship dispute for two submitted papers. |
+| [ISSUE-0044](issues/ISSUE-0044.md) | active | P0 | Choose the next annotation and AI-authorship publication targets. |
+| [ISSUE-0045](issues/ISSUE-0045.md) | active | P1 | Deliver a lightweight mobile content-and-exercises experience. |

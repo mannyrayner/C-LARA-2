@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-06-02T20:39:51Z
-- **Updated:** 2026-07-10T01:10:00Z
+- **Updated:** 2026-08-13T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md), [ISSUE-0004](ISSUE-0004.md)
@@ -228,3 +228,12 @@ unless explicitly overridden. Follow-up on 2026-07-13: clarified README wording 
 translation_context_reconcile_v1. Reconciliation is the normal per-record architecture, not an
 occasional repair step; the three free-form analyses need not match, and the reconciliation prompt
 compares candidate MWE selections before producing final predicted_mwes.
+
+Strategic update from Manny Rayner on 2026-08-12: learned annotation prompts are starting to produce
+excellent results. This is now both a material platform-quality opportunity and a promising
+publication direction, potentially strengthened by Francis Bond's expressed interest in MWE
+collaboration; publication-target decisions are tracked in ISSUE-0044.
+
+Human issue-review update from Manny Rayner on 2026-08-13: This is a major research thread. A
+promising next path is an ALTA paper with Francis Bond, but ALTA excluding AI authors is a serious
+constraint; discuss scope and venue with Francis under ISSUE-0044 as soon as possible.

@@ -6,6 +6,7 @@ import asyncio
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+import json
 import os
 import re
 import shutil
@@ -22,11 +23,15 @@ DEFAULT_PROJECT_UNDERSTANDING_MODEL = "gpt-5.3-codex"
 DEFAULT_PROJECT_UNDERSTANDING_REASONING_EFFORT = "medium"
 DEFAULT_PROJECT_UNDERSTANDING_MAX_OUTPUT_TOKENS = 3000
 PROJECT_UNDERSTANDING_PROMPT_VERSION = "project-understanding-v1"
+PROJECT_MANAGER_PROMPT_VERSION = "project-manager-v1"
+PROJECT_MANAGER_CLASSIFICATION_MARKER = "PROJECT_MANAGER_CLASSIFICATION"
 DEFAULT_CODEX_EXECUTABLE = "codex"
 DEFAULT_CODEX_EXEC_TIMEOUT_SECONDS = 300.0
 DEFAULT_SANDBOX_FAILURE_REVIEW_MODEL = "gpt-4o"
 
 DEFAULT_EVIDENCE_PATHS = (
+    "AGENTS.md",
+    "docs/global_workspace/",
     "docs/roadmap/",
     "docs/issues/",
     "docs/howto/",
@@ -214,16 +219,42 @@ class ProjectUnderstandingAnswer:
     elapsed_seconds: float | None = None
     invocation_route: str = "responses-api"
     repository_path: str | None = None
+    repository_commit_sha: str = ""
     command: tuple[str, ...] | None = None
     returncode: int | None = None
     stderr: str = ""
     raw_stdout: str = ""
     estimated_cost_usd: str = ""
     cost_basis: str = ""
+    mode: str = "assistant"
+    collaborator_username: str = ""
+    collaborator_role: str = ""
+    material_project_evidence: bool = False
+    workspace_review_recommended: bool = False
+    review_explanation: str = ""
 
 
 class CodexExecError(RuntimeError):
     """Raised when the `codex exec` project-understanding call cannot complete."""
+
+
+def resolve_repository_commit_sha(repository_path: str | Path) -> str:
+    """Capture the trusted checkout commit without relying on model output."""
+    try:
+        completed = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=Path(repository_path),
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            capture_output=True,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    sha = (completed.stdout or "").strip()
+    return sha if completed.returncode == 0 and re.fullmatch(r"[0-9a-f]{40}", sha) else ""
 
 
 def build_project_understanding_prompt(
@@ -260,6 +291,70 @@ Rules:
 User question:
 {request}
 """
+
+
+def build_project_manager_prompt(
+    user_message: str,
+    *,
+    collaborator_username: str,
+    collaborator_role: str,
+    prompt_version: str = PROJECT_MANAGER_PROMPT_VERSION,
+) -> str:
+    """Build the repository-mediated Project Manager prompt."""
+    message = (user_message or "").strip()
+    username = (collaborator_username or "").strip()
+    role = (collaborator_role or "").strip()
+    if not message:
+        raise ValueError("user_message must not be empty")
+    if not username or not role:
+        raise ValueError("collaborator identity and role must not be empty")
+    return f"""You are acting as the established C-LARA-2 AI project manager.
+
+Prompt version: {prompt_version}
+
+First read and follow `AGENTS.md`. Then inspect `docs/global_workspace/README.md`,
+`docs/global_workspace/project-intentions.md`, and the live `docs/global_workspace/current_state.*`.
+Inspect relevant roadmaps, canonical issue JSON, code, tests, commits, or other repository evidence
+when useful. Follow: orient globally -> handle this interaction -> reflect globally.
+
+Authenticated collaborator: {username}
+Project role: {role}
+Authority: this collaborator may provide attributed project evidence and contextual information but
+does not, through this interaction, authorize canonical repository or global-workspace mutation.
+
+Respond conversationally as an informed project collaborator. Distinguish direct human observation,
+second-hand reports, project-manager inference, uncertainty, and decisions requiring Manny or another
+authorized human. Do not treat every report as established fact. Do not mutate repository state.
+Do not require or manufacture affective language. Cite repository paths when they help.
+
+End the response with exactly one machine-readable line in this form:
+{PROJECT_MANAGER_CLASSIFICATION_MARKER}: {{"material_project_evidence": true_or_false,
+"workspace_review_recommended": true_or_false, "explanation": "short explanation"}}
+The classification must reflect whether the message contains material new evidence that could change
+the global project assessment. The line is audit metadata and will not be shown as conversational text.
+
+Collaborator message:
+{message}
+"""
+
+
+def parse_project_manager_answer(answer: str) -> tuple[str, bool, bool, str]:
+    """Separate the conversational answer from its final evidence classification."""
+    lines = (answer or "").rstrip().splitlines()
+    prefix = f"{PROJECT_MANAGER_CLASSIFICATION_MARKER}:"
+    if not lines or not lines[-1].startswith(prefix):
+        return (answer or "").strip(), False, True, "Classification missing from Codex response; manual review is recommended."
+    try:
+        payload = json.loads(lines[-1][len(prefix):].strip())
+    except json.JSONDecodeError:
+        return (answer or "").strip(), False, True, "Classification was not valid JSON; manual review is recommended."
+    conversational = "\n".join(lines[:-1]).strip()
+    return (
+        conversational,
+        bool(payload.get("material_project_evidence")),
+        bool(payload.get("workspace_review_recommended")),
+        str(payload.get("explanation") or "").strip()[:1000],
+    )
 
 
 def _utc_timestamp() -> str:
@@ -441,6 +536,10 @@ def answer_project_understanding_question_with_codex_exec(
     monotonic: Callable[[], float] = time.perf_counter,
     sandbox_failure_reviewer: Callable[..., tuple[bool, str]] | None = None,
     sandbox_failure_review_model: str = DEFAULT_SANDBOX_FAILURE_REVIEW_MODEL,
+    mode: str = "assistant",
+    collaborator_username: str = "",
+    collaborator_role: str = "",
+    commit_sha_resolver: Callable[[str | Path], str] = resolve_repository_commit_sha,
 ) -> ProjectUnderstandingAnswer:
     """Answer a project-understanding question by safely wrapping `codex exec`.
 
@@ -453,7 +552,18 @@ def answer_project_understanding_question_with_codex_exec(
     if not question:
         raise ValueError("user_request must not be empty")
 
-    prompt = build_project_understanding_prompt(question)
+    if mode == "project_manager":
+        prompt = build_project_manager_prompt(
+            question,
+            collaborator_username=collaborator_username,
+            collaborator_role=collaborator_role,
+        )
+        prompt_version = PROJECT_MANAGER_PROMPT_VERSION
+    elif mode == "assistant":
+        prompt = build_project_understanding_prompt(question)
+        prompt_version = PROJECT_UNDERSTANDING_PROMPT_VERSION
+    else:
+        raise ValueError(f"unknown project-understanding mode: {mode}")
     env = build_codex_exec_environment(
         openai_api_key=openai_api_key,
         base_environment=base_environment,
@@ -465,6 +575,7 @@ def answer_project_understanding_question_with_codex_exec(
         model=model,
     )
     requested_at = _utc_timestamp()
+    repository_commit_sha = commit_sha_resolver(repository_path)
     started = monotonic()
     try:
         completed = runner(
@@ -530,21 +641,36 @@ def answer_project_understanding_question_with_codex_exec(
             detail = f"{detail[:500]}..."
         raise CodexExecError(f"codex exec failed with exit status {completed.returncode}: {detail}")
 
+    answer = extract_codex_formatted_answer(stdout)
+    material_project_evidence = False
+    workspace_review_recommended = False
+    review_explanation = ""
+    if mode == "project_manager":
+        answer, material_project_evidence, workspace_review_recommended, review_explanation = (
+            parse_project_manager_answer(answer)
+        )
     return ProjectUnderstandingAnswer(
         question=question,
         prompt=prompt,
-        answer=extract_codex_formatted_answer(stdout),
+        answer=answer,
         model=model,
-        prompt_version=PROJECT_UNDERSTANDING_PROMPT_VERSION,
+        prompt_version=prompt_version,
         requested_at=requested_at,
         tokens_used=extract_codex_tokens_used("\n".join([stdout, stderr])),
         elapsed_seconds=elapsed,
         invocation_route="codex-exec",
         repository_path=str(Path(repository_path)),
+        repository_commit_sha=repository_commit_sha,
         command=tuple(command),
         returncode=completed.returncode,
         stderr=stderr,
         raw_stdout=stdout,
+        mode=mode,
+        collaborator_username=collaborator_username,
+        collaborator_role=collaborator_role,
+        material_project_evidence=material_project_evidence,
+        workspace_review_recommended=workspace_review_recommended,
+        review_explanation=review_explanation,
     )
 
 

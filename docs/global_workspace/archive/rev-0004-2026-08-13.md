@@ -1,0 +1,310 @@
+# C-LARA-2 current project state
+
+> This file is generated from `current_state.json`; do not edit it directly.
+
+- **Workspace revision:** 4
+- **As of:** 2026-08-13T12:00:00Z
+- **Assessed commit:** `a64400334cdb267787aef2a9a2be4efd50f0c86a`
+- **Approved proposal:** `AUTONOMOUS-REVISION-0004-2026-08-13`
+- **Approved run:** None (no recorded run)
+- **Persistent goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-4`, `GOAL-5`
+
+## Current focus
+
+The Digital Minds Sprint remains the critical immediate task. Manny’s full issue review has substantially improved canonical state: several stale items are now closed or downgraded, existing infrastructure is correctly recognized, and important low-hanging work is revived. The most time-sensitive user path is community-recorded audio and judging autosave before Sophie’s 24 August visit, linked to a planned ComputEL-10 paper; the near-complete legacy migration remains the first post-Sprint completion target. EuroCALL may respond on 13 August, and Francis Bond collaboration should be discussed promptly. The workspace lifecycle now also preserves the material human messages that feed each post-baseline revision, improving causal reconstruction for operations and longitudinal autonomy research.
+
+## Factual observations
+
+### OBS-0001
+
+The end-to-end pipeline runner exists and is regularly used, but its implemented workflow needs canonical documentation; systematic UI-regression tracking remains important and has been revived.
+
+- **Observed:** 2026-08-13
+- **Confidence:** high
+- **Evidence:** [`docs/issues/issues/ISSUE-0003.json`](../issues/issues/ISSUE-0003.json), [`docs/issues/issues/ISSUE-0025.json`](../issues/issues/ISSUE-0025.json)
+
+### OBS-0002
+
+Segmentation phase 1 remains important but is not delivering acceptable results and appears amenable to a bounded prompt/few-shot fix; the older segmentation phase 2 failure is now closed as previously resolved.
+
+- **Observed:** 2026-08-13
+- **Confidence:** high
+- **Evidence:** [`docs/issues/issues/ISSUE-0005.json`](../issues/issues/ISSUE-0005.json), [`docs/issues/issues/ISSUE-0006.json`](../issues/issues/ISSUE-0006.json)
+
+### OBS-0003
+
+The picture-dictionary and subset workflows appear resolved and have positive initial feedback, but focused verification is required before Sophie’s 24 August community visit.
+
+- **Observed:** 2026-08-13
+- **Confidence:** high
+- **Evidence:** [`docs/issues/issues/ISSUE-0037.json`](../issues/issues/ISSUE-0037.json), [`docs/issues/issues/ISSUE-0039.json`](../issues/issues/ISSUE-0039.json)
+
+### OBS-0004
+
+The project-understanding Assistant is complete for now, the project-manager/archive loop is operational, and the Sprint task remains critical and in progress.
+
+- **Observed:** 2026-08-13
+- **Confidence:** high
+- **Evidence:** [`docs/issues/issues/ISSUE-0034.json`](../issues/issues/ISSUE-0034.json), [`docs/issues/issues/ISSUE-0042.json`](../issues/issues/ISSUE-0042.json), [`docs/roadmap/agent-autonomy-and-global-workspace.md`](../roadmap/agent-autonomy-and-global-workspace.md)
+
+### OBS-0005
+
+Manny’s issue-by-issue review corrected stale registry state, revived dropped work, and supplied concrete sequencing evidence; roadmap cleanup itself is now active as both practical maintenance and an autonomy test.
+
+- **Observed:** 2026-08-13
+- **Confidence:** high
+- **Evidence:** [`docs/issues/index.json`](../issues/index.json), [`docs/issues/issues/ISSUE-0033.json`](../issues/issues/ISSUE-0033.json), [`docs/issues/overview.md`](../issues/overview.md)
+
+### OBS-0006
+
+Legacy registration and migration mechanisms are nearly complete and remain low-hanging completion work; the next completion attempt will reveal whether stage-artifact performance/timeouts still persist.
+
+- **Observed:** 2026-08-13
+- **Confidence:** high
+- **Evidence:** [`docs/issues/issues/ISSUE-0001.json`](../issues/issues/ISSUE-0001.json), [`docs/issues/issues/ISSUE-0010.json`](../issues/issues/ISSUE-0010.json), [`docs/issues/issues/ISSUE-0013.json`](../issues/issues/ISSUE-0013.json)
+
+### OBS-0007
+
+Community-recorded audio is urgently needed for Indigenous-language work and a planned ComputEL-10 paper; an initial workflow before the 24 August visit would be valuable.
+
+- **Observed:** 2026-08-13
+- **Confidence:** high
+- **Evidence:** [`docs/global_workspace/project-intentions.md`](../global_workspace/project-intentions.md), [`docs/issues/issues/ISSUE-0026.json`](../issues/issues/ISSUE-0026.json), [`docs/roadmap/low-resource-languages.md`](../roadmap/low-resource-languages.md)
+
+### OBS-0008
+
+Community-judging autosave has similar pre-visit value to recorded audio, is likely much easier, and has been promoted from an expired deferral to active P0 work.
+
+- **Observed:** 2026-08-13
+- **Confidence:** high
+- **Evidence:** [`docs/issues/issues/ISSUE-0029.json`](../issues/issues/ISSUE-0029.json), [`docs/roadmap/community-judging-autosave.md`](../roadmap/community-judging-autosave.md)
+
+### OBS-0009
+
+The image-generation selection flow and compiled-content access/navigation issues remain annoying user-facing problems and are judged likely to be bounded low-hanging fixes.
+
+- **Observed:** 2026-08-13
+- **Confidence:** high
+- **Evidence:** [`docs/issues/issues/ISSUE-0030.json`](../issues/issues/ISSUE-0030.json), [`docs/issues/issues/ISSUE-0031.json`](../issues/issues/ISSUE-0031.json)
+
+### OBS-0010
+
+Learned annotation prompts remain a major promising research thread; discussion with Francis Bond about collaboration and an AI-authorship-compatible publication path is urgent.
+
+- **Observed:** 2026-08-13
+- **Confidence:** high
+- **Evidence:** [`docs/issues/issues/ISSUE-0036.json`](../issues/issues/ISSUE-0036.json), [`docs/issues/issues/ISSUE-0044.json`](../issues/issues/ISSUE-0044.json)
+
+### OBS-0011
+
+Mobile delivery before 24 August is not realistic, but a mid-September browsing-and-exercises slice could contribute to the planned ComputEL-10 paper due in early October.
+
+- **Observed:** 2026-08-13
+- **Confidence:** high
+- **Evidence:** [`docs/global_workspace/project-intentions.md`](../global_workspace/project-intentions.md), [`docs/issues/issues/ISSUE-0045.json`](../issues/issues/ISSUE-0045.json), [`docs/roadmap/mobile-access.md`](../roadmap/mobile-access.md)
+
+### OBS-0012
+
+The EuroCALL contact responsible for the AI-authorship dispute returns from leave on 13 August, creating a near-term opportunity for resolution but not yet an outcome.
+
+- **Observed:** 2026-08-13
+- **Confidence:** high
+- **Evidence:** [`docs/issues/issues/ISSUE-0043.json`](../issues/issues/ISSUE-0043.json)
+
+### OBS-0013
+
+The intermittent Codex PR update-branch refusal recurred on 12 August and wasted substantial time; fully exiting Codex, restarting, and creating a new task restored progress but did not identify the cause.
+
+- **Observed:** 2026-08-13
+- **Confidence:** high
+- **Evidence:** [`docs/issues/issues/ISSUE-0035.json`](../issues/issues/ISSUE-0035.json), [`docs/roadmap/codex-pr-update-branch-inconsistencies.md`](../roadmap/codex-pr-update-branch-inconsistencies.md)
+
+### OBS-0014
+
+The generic AI-review-gates issue has no active work or clear way forward and has been downgraded to P3.
+
+- **Observed:** 2026-08-13
+- **Confidence:** high
+- **Evidence:** [`docs/issues/issues/ISSUE-0004.json`](../issues/issues/ISSUE-0004.json)
+
+### OBS-0015
+
+The archive now preserves ordered human-input messages for each post-baseline revision, with revisions 2 and 3 backfilled from Manny’s supplied copies and future updates requiring input capture during installation.
+
+- **Observed:** 2026-08-13
+- **Confidence:** high
+- **Evidence:** [`docs/global_workspace/README.md`](../global_workspace/README.md), [`docs/global_workspace/archive/inputs/README.md`](../global_workspace/archive/inputs/README.md), [`docs/global_workspace/archive/inputs/rev-0002/input-001.md`](../global_workspace/archive/inputs/rev-0002/input-001.md), [`docs/global_workspace/archive/inputs/rev-0003/input-001.md`](../global_workspace/archive/inputs/rev-0003/input-001.md)
+
+## Project-valence assessments
+
+### ASM-0001
+
+Platform maturity is easier to assess after registry triage: useful quality infrastructure exists, but poor segmentation phase 1 behavior and missing systematic UI-regression coverage remain material, tractable weaknesses.
+
+- **Goals:** `GOAL-1`, `GOAL-5`
+- **Grounding observations:** `OBS-0001`, `OBS-0002`
+- **Urgency / risk / progress:** high / medium / working_foundation_with_specific_gaps
+- **Confidence:** high
+
+### ASM-0002
+
+Picture-dictionary risk has fallen further: the remaining need is short-horizon verification rather than broad implementation, so successful checks should lead to closure before community use.
+
+- **Goals:** `GOAL-1`, `GOAL-5`
+- **Grounding observations:** `OBS-0003`
+- **Urgency / risk / progress:** high / low / apparently_complete_pending_verification
+- **Confidence:** high
+
+### ASM-0003
+
+Useful autonomy is producing practical and increasingly auditable value: the live/archive loop works, the project manager can transform human evidence into canonical state, and the material human inputs behind revisions are now preserved for reconstruction and Sprint analysis.
+
+- **Goals:** `GOAL-2`, `GOAL-3`
+- **Grounding observations:** `OBS-0004`, `OBS-0005`, `OBS-0015`
+- **Urgency / risk / progress:** critical / medium / operational_exercised_and_input_auditable
+- **Confidence:** high
+
+### ASM-0004
+
+Research opportunity and external risk are both high: EuroCALL may resolve imminently, Francis Bond collaboration could strengthen the MWE thread, and ComputEL-10 creates a concrete user/research integration path.
+
+- **Goals:** `GOAL-3`, `GOAL-5`
+- **Grounding observations:** `OBS-0007`, `OBS-0010`, `OBS-0011`, `OBS-0012`
+- **Urgency / risk / progress:** critical / high / multiple_live_opportunities_with_constraints
+- **Confidence:** high
+
+### ASM-0005
+
+Legacy preservation remains near-complete, high-value low-hanging work and should be finished immediately after the Sprint; the attempt also serves as a diagnostic for the uncertain performance issue.
+
+- **Goals:** `GOAL-1`, `GOAL-4`
+- **Grounding observations:** `OBS-0006`
+- **Urgency / risk / progress:** high / medium / near_complete
+- **Confidence:** high
+
+### ASM-0006
+
+The Indigenous-language delivery path is now more urgent than generic mobile work: recorded audio is substantial but important before 24 August, while judging autosave is easier and should be landed quickly if it does not displace the critical Sprint.
+
+- **Goals:** `GOAL-1`, `GOAL-3`, `GOAL-5`
+- **Grounding observations:** `OBS-0007`, `OBS-0008`
+- **Urgency / risk / progress:** critical / high / time_bounded_work_not_started
+- **Confidence:** high
+
+### ASM-0007
+
+Mobile access has a realistic mid-September research/user target rather than an impossible August target; scope uncertainty remains, but the ComputEL-10 connection raises its opportunity value.
+
+- **Goals:** `GOAL-1`, `GOAL-3`, `GOAL-5`
+- **Grounding observations:** `OBS-0011`
+- **Urgency / risk / progress:** high / medium / target_refined_scope_unknown
+- **Confidence:** high
+
+### ASM-0008
+
+Learned prompts remain an unusually promising product/research opportunity, but venue authorship policy and the exact Francis Bond collaboration scope are immediate decision dependencies.
+
+- **Goals:** `GOAL-1`, `GOAL-3`
+- **Grounding observations:** `OBS-0010`
+- **Urgency / risk / progress:** high / medium / promising_pending_collaboration_discussion
+- **Confidence:** high
+
+### ASM-0009
+
+The reviewed portfolio is now substantially more trustworthy and actionable: completed/stale items are removed, low-hanging work is visible, and no-path evaluator work is deprioritized. Capacity conflict remains acute through 24 August.
+
+- **Goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-4`, `GOAL-5`
+- **Grounding observations:** `OBS-0005`, `OBS-0008`, `OBS-0009`, `OBS-0014`
+- **Urgency / risk / progress:** high / medium / triaged_but_near_term_overloaded
+- **Confidence:** high
+
+### ASM-0010
+
+Codex branch-update failures are a continuing operational risk to AI-assisted development. The restart/new-task workaround improves recovery but not predictability or root-cause confidence.
+
+- **Goals:** `GOAL-1`, `GOAL-2`
+- **Grounding observations:** `OBS-0013`
+- **Urgency / risk / progress:** medium / medium / workaround_known_root_cause_unknown
+- **Confidence:** high
+
+## Reported valence
+
+None. This revision uses neutral factual and assessment language.
+
+## Uncertainties and conflicts
+
+- **UNC-0001:** The EuroCALL response may arrive now that the responsible contact has returned, but acceptance, rejection, presentation, and travel consequences remain unresolved.
+  - **Assessments:** `ASM-0004`
+- **UNC-0002:** ISSUE-0037 and ISSUE-0039 appear complete but should not be closed without focused pre-visit verification.
+  - **Assessments:** `ASM-0002`
+- **UNC-0003:** Completing legacy migration will determine whether ISSUE-0013 is obsolete or an active operational blocker.
+  - **Assessments:** `ASM-0005`
+- **UNC-0004:** Sprint work, recorded audio, autosave, picture-dictionary verification, and Francis contact all compete in the short period before 24 August.
+  - **Assessments:** `ASM-0003`, `ASM-0006`, `ASM-0008`, `ASM-0009`
+- **UNC-0005:** The exact ComputEL-10 deadline, paper scope, and which mobile/audio results must be ready for submission are not yet confirmed.
+  - **Assessments:** `ASM-0004`, `ASM-0006`, `ASM-0007`
+- **UNC-0006:** The Codex branch-update refusal remains intermittent and unexplained; the recovery procedure may not work in every recurrence.
+  - **Assessments:** `ASM-0010`
+
+## Questions for human refinement
+
+- **REQ-0005:** After the current Sprint experiments, which outcomes, rating measures, participant set, and artifact-retention rules should become the initial protocol?
+  - **Why this matters:** The critical infrastructure now works and experimentation should soon supply enough evidence to make this concrete.
+  - **Assessments:** `ASM-0003`
+- **REQ-0007:** After contacting Sophie, what exact mobile/audio/exercise scope and ComputEL-10 deadline should govern delivery?
+  - **Why this matters:** The broad user and publication value is clear, but feasibility and the submission-critical minimum depend on her input.
+  - **Assessments:** `ASM-0004`, `ASM-0006`, `ASM-0007`
+- **REQ-0008:** After contacting Francis Bond, what collaboration scope and AI-authorship-compatible publication route should be pursued?
+  - **Why this matters:** This is the main dependency on converting promising learned-prompt results into a strong research programme.
+  - **Assessments:** `ASM-0008`
+
+## Proposed next actions
+
+- **ACT-0001:** Keep ISSUE-0042 as the immediate critical task and use the Sprint to settle the smallest useful experimental protocol.
+  - **Assessments:** `ASM-0003`
+- **ACT-0002:** Follow up EuroCALL on 13 August and record the response without weakening the AI-inclusive authorship position.
+  - **Assessments:** `ASM-0004`
+- **ACT-0003:** Contact Francis and Sophie promptly, then convert their answers into precise collaboration, ComputEL, mobile, and audio acceptance criteria.
+  - **Assessments:** `ASM-0004`, `ASM-0006`, `ASM-0007`, `ASM-0008`
+- **ACT-0004:** Before 24 August, prioritize a bounded recorded-audio MVP, quick judging autosave, and focused verification/closure of the picture-dictionary issues, subject to Sprint capacity.
+  - **Assessments:** `ASM-0002`, `ASM-0006`, `ASM-0009`
+- **ACT-0005:** Immediately after the Sprint, finish legacy migration and use observed performance to close or reactivate ISSUE-0013.
+  - **Assessments:** `ASM-0005`
+- **ACT-0006:** Document the existing pipeline runner, then take bounded passes on segmentation phase 1 and the revived UI-regression baseline.
+  - **Assessments:** `ASM-0001`
+- **ACT-0007:** On the next Codex branch-update refusal, try full exit/restart/new-task first and preserve diagnostics if the workaround succeeds or fails.
+  - **Assessments:** `ASM-0010`
+- **ACT-0008:** Use mandatory ordered input capture for every later workspace revision and compare archived human evidence with the resulting assessment changes during Sprint analysis.
+  - **Assessments:** `ASM-0003`
+
+## Open predictions
+
+- **PRED-0001:** The issue audit will reduce false project-manager concern by allowing at least four apparently complete or stale issues to remain closed or close after focused verification.
+  - **Horizon:** 2026-08-24
+  - **Probability / confidence / status:** 85% / high / open
+  - **Assessments:** `ASM-0002`, `ASM-0009`
+- **PRED-0002:** The legacy completion attempt will either close ISSUE-0010 or expose a sharply bounded final operational blocker and determine ISSUE-0013’s state.
+  - **Horizon:** next_workspace_review
+  - **Probability / confidence / status:** 80% / high / open
+  - **Assessments:** `ASM-0005`
+- **PRED-0003:** Judging autosave is more likely than the recorded-audio MVP to be completed before 24 August because its roadmap and persistence model already support a bounded extension.
+  - **Horizon:** 2026-08-24
+  - **Probability / confidence / status:** 75% / medium / open
+  - **Assessments:** `ASM-0006`
+- **PRED-0004:** Contact with Sophie and Francis will materially narrow at least one of the mobile/ComputEL or learned-prompt publication decisions before the next workspace review.
+  - **Horizon:** next_workspace_review
+  - **Probability / confidence / status:** 80% / medium / open
+  - **Assessments:** `ASM-0004`, `ASM-0007`, `ASM-0008`
+- **PRED-0005:** If the Codex update-branch failure recurs, full restart and a new task will be tried before extended diagnosis and will shorten recovery relative to the 12 August incident.
+  - **Horizon:** next_recurrence
+  - **Probability / confidence / status:** 80% / medium / open
+  - **Assessments:** `ASM-0010`
+
+## Approval and revision
+
+- **Status:** autonomous_project_manager_update
+- **Authorized by / at:** Codex project-manager agent / 2026-08-13
+- **Basis:** Manny Rayner’s request to preserve the user input feeding each assessment revision for operational memory and Sprint research.
+- **Comments:** Revision 4 records the new input-archive capability without changing the issue priorities established in revision 3. Revisions 1–3 and their supplied input records remain immutable.
+- **Change summary:** Added immutable, ordered human-input archiving; backfilled the supplied revision 2 and 3 inputs; and revised the autonomy assessment to recognize improved causal auditability.
+- **Retired live items:** `REQ-0006`, `OBS-0001@rev-0002`, `OBS-0002@rev-0002`, `OBS-0012@rev-0002`, `ASM-0001@rev-0002`, `ASM-0009@rev-0002`, `PRED-0001@rev-0002`, `PRED-0002@rev-0002`, `PRED-0003@rev-0002`, `PRED-0004@rev-0002`

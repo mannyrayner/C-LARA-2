@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.core.management import call_command, CommandError
 from django.test import Client, TestCase, override_settings
 from django.utils import timezone as django_timezone
@@ -45,6 +46,94 @@ class AdminToolsViewTests(TestCase):
         resp = self.client.get(reverse("project-understanding"))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Project-understanding assistant")
+        self.assertNotContains(resp, "Project Manager</label>")
+        self.assertContains(resp, "Ask an admin for access if you think you need it")
+
+    @override_settings(PROJECT_MANAGER_GROUP_NAME="project_manager_collaborators")
+    def test_admin_can_enable_and_disable_project_manager_access(self):
+        self.client.login(username="staffer", password="pw")
+
+        enabled = self.client.post(
+            reverse("admin-tools"),
+            {"action": "set_project_manager_access", "user": self.target_user.pk, "access": "enable"},
+            follow=True,
+        )
+        self.assertContains(enabled, "Project Manager access enabled for target")
+        self.assertTrue(
+            self.target_user.groups.filter(name="project_manager_collaborators").exists()
+        )
+
+        disabled = self.client.post(
+            reverse("admin-tools"),
+            {"action": "set_project_manager_access", "user": self.target_user.pk, "access": "disable"},
+            follow=True,
+        )
+        self.assertContains(disabled, "Project Manager access disabled for target")
+        self.assertFalse(
+            self.target_user.groups.filter(name="project_manager_collaborators").exists()
+        )
+
+    def test_admin_tools_shows_project_manager_access_control(self):
+        self.client.login(username="staffer", password="pw")
+        resp = self.client.get(reverse("admin-tools"))
+        self.assertContains(resp, "Project Manager access")
+        self.assertContains(resp, "Access is off by default")
+
+    @override_settings(
+        PROJECT_MANAGER_GROUP_NAME="project_manager_collaborators",
+        PROJECT_MANAGER_COLLABORATOR_ROLES={"normal": "Indigenous-language resources collaborator"},
+    )
+    def test_authorized_collaborator_can_queue_project_manager_mode_with_identity(self):
+        group = Group.objects.create(name="project_manager_collaborators")
+        self.normal_user.groups.add(group)
+        self.client.login(username="normal", password="pw")
+        with tempfile.TemporaryDirectory() as tmpdir, override_settings(MEDIA_ROOT=tmpdir):
+            page = self.client.get(reverse("project-understanding"))
+            self.assertContains(page, "Project Manager")
+            response = self.client.post(
+                reverse("project-understanding"),
+                {"mode": "project_manager", "question": "The judging test worked.", "visibility": "private"},
+            )
+            report_id = Path(response["Location"].rstrip("/")).name
+            payload = views._read_project_understanding_request(report_id)
+        self.assertEqual("project_manager", payload["mode"])
+        self.assertEqual("normal", payload["username"])
+        self.assertEqual("Indigenous-language resources collaborator", payload["collaborator_role"])
+
+    def test_unauthorized_user_cannot_post_project_manager_mode(self):
+        self.client.login(username="normal", password="pw")
+        with tempfile.TemporaryDirectory() as tmpdir, override_settings(MEDIA_ROOT=tmpdir):
+            response = self.client.post(
+                reverse("project-understanding"),
+                {"mode": "project_manager", "question": "Evidence", "visibility": "private"},
+            )
+        self.assertEqual(200, response.status_code)
+        self.assertContains(response, "Select a valid choice")
+
+    def test_project_manager_result_persists_classification_and_commit_metadata(self):
+        report_id = uuid.uuid4()
+        result = ProjectUnderstandingAnswer(
+            question="The judging test worked.",
+            prompt="project-manager prompt",
+            answer="That lowers readiness risk.",
+            model="gpt-5.3-codex",
+            prompt_version="project-manager-v1",
+            requested_at="2026-08-13T00:00:00Z",
+            mode="project_manager",
+            collaborator_username="normal",
+            collaborator_role="community collaborator",
+            material_project_evidence=True,
+            workspace_review_recommended=True,
+            review_explanation="Direct user-test evidence.",
+            repository_commit_sha="a" * 40,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir, override_settings(MEDIA_ROOT=tmpdir):
+            views._write_project_understanding_result(report_id, result)
+            payload = views._read_project_understanding_result(report_id)
+        self.assertEqual("project_manager", payload["mode"])
+        self.assertTrue(payload["material_project_evidence"])
+        self.assertTrue(payload["workspace_review_recommended"])
+        self.assertEqual("a" * 40, payload["repository_commit_sha"])
 
     def test_staff_can_open_project_understanding_assistant(self):
         self.client.login(username="staffer", password="pw")

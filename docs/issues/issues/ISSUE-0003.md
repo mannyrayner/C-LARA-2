@@ -1,9 +1,9 @@
-# ISSUE-0003: Add efficient end-to-end pipeline test runner for systematic quality checks
+# ISSUE-0003: Document and maintain the existing end-to-end pipeline test runner
 
-- **Status:** reported
+- **Status:** active
 - **Priority:** P1
 - **Created:** 2026-05-03T21:46:10Z
-- **Updated:** 2026-05-10T01:02:50Z
+- **Updated:** 2026-08-13T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0010](ISSUE-0010.md)
@@ -26,3 +26,7 @@ error. At minimum, support investigation of ISSUE-0006, because gross segmentati
 token-span errors, such as lexical tokens covering an entire segment, should usually be clear in
 legacy-vs-C-LARA-2 comparisons. Design the runner so future AI-based phase reviewers can be plugged
 in and can optionally stop downstream stages when quality gates fail.
+
+Human issue-review update from Manny Rayner on 2026-08-13: The end-to-end pipeline runner exists and
+is regularly used; the remaining issue is to document the implemented workflow and keep its
+systematic quality-check role clear. This is no longer a not-yet-built runner.

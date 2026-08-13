@@ -1,5 +1,12 @@
 # Roadmap: Codex PR update-branch inconsistencies
 
+## Latest operational evidence (13 August 2026)
+
+The problem remains active. Another occurrence on 12 August wasted substantial time. Exiting Codex
+completely, restarting it, and creating a new task cleared the failure; use that as the first
+workaround on recurrence while continuing to capture diagnostics and the preceding task/branch
+state. This workaround reduces recovery time but does not explain the root cause.
+
 Tracked by [ISSUE-0035](../issues/issues/ISSUE-0035.json).
 
 ## Goal

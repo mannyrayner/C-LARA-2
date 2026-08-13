@@ -1,0 +1,676 @@
+{
+  "schema_version": 1,
+  "workspace_revision": 6,
+  "as_of": "2026-08-13",
+  "assessed_commit_sha": "ed1af06bd4c69bca1e385c448f300f783df7bbad",
+  "approved_proposal_id": "AUTONOMOUS-REVISION-0005-2026-08-13",
+  "approved_run_id": null,
+  "persistent_goal_ids": [
+    "GOAL-1",
+    "GOAL-2",
+    "GOAL-3",
+    "GOAL-4",
+    "GOAL-5"
+  ],
+  "current_focus_summary": "The Digital Minds Sprint remains the critical immediate task. Manny’s full issue review has substantially improved canonical state: several stale items are now closed or downgraded, existing infrastructure is correctly recognized, and important low-hanging work is revived. The most time-sensitive user path is community-recorded audio and judging autosave before Sophie’s 24 August visit, linked to a planned ComputEL-10 paper; the near-complete legacy migration remains the first post-Sprint completion target. EuroCALL may respond on 13 August, and Francis Bond collaboration should be discussed promptly. The workspace lifecycle now also preserves the material human messages that feed each post-baseline revision, improving causal reconstruction for operations and longitudinal autonomy research. The authenticated Assistant now has a restricted Project Manager interaction mode, enabling direct attributed collaborator evidence and review recommendations through the existing read-only worker without canonical mutation.",
+  "observations": [
+    {
+      "id": "OBS-0001",
+      "summary": "The end-to-end pipeline runner exists and is regularly used, but its implemented workflow needs canonical documentation; systematic UI-regression tracking remains important and has been revived.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0003.json",
+        "docs/issues/issues/ISSUE-0025.json"
+      ]
+    },
+    {
+      "id": "OBS-0002",
+      "summary": "Segmentation phase 1 remains important but is not delivering acceptable results and appears amenable to a bounded prompt/few-shot fix; the older segmentation phase 2 failure is now closed as previously resolved.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0005.json",
+        "docs/issues/issues/ISSUE-0006.json"
+      ]
+    },
+    {
+      "id": "OBS-0003",
+      "summary": "The picture-dictionary and subset workflows appear resolved and have positive initial feedback, but focused verification is required before Sophie’s 24 August community visit.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0037.json",
+        "docs/issues/issues/ISSUE-0039.json"
+      ]
+    },
+    {
+      "id": "OBS-0004",
+      "summary": "The project-understanding Assistant is complete for now, the project-manager/archive loop is operational, and the Sprint task remains critical and in progress.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0034.json",
+        "docs/issues/issues/ISSUE-0042.json",
+        "docs/roadmap/agent-autonomy-and-global-workspace.md"
+      ]
+    },
+    {
+      "id": "OBS-0005",
+      "summary": "Manny’s issue-by-issue review corrected stale registry state, revived dropped work, and supplied concrete sequencing evidence; roadmap cleanup itself is now active as both practical maintenance and an autonomy test.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/index.json",
+        "docs/issues/issues/ISSUE-0033.json",
+        "docs/issues/overview.md"
+      ]
+    },
+    {
+      "id": "OBS-0006",
+      "summary": "Legacy registration and migration mechanisms are nearly complete and remain low-hanging completion work; the next completion attempt will reveal whether stage-artifact performance/timeouts still persist.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0001.json",
+        "docs/issues/issues/ISSUE-0010.json",
+        "docs/issues/issues/ISSUE-0013.json"
+      ]
+    },
+    {
+      "id": "OBS-0007",
+      "summary": "Community-recorded audio is urgently needed for Indigenous-language work and a planned ComputEL-10 paper; an initial workflow before the 24 August visit would be valuable.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/global_workspace/project-intentions.md",
+        "docs/issues/issues/ISSUE-0026.json",
+        "docs/roadmap/low-resource-languages.md"
+      ]
+    },
+    {
+      "id": "OBS-0008",
+      "summary": "Community-judging autosave has similar pre-visit value to recorded audio, is likely much easier, and has been promoted from an expired deferral to active P0 work.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0029.json",
+        "docs/roadmap/community-judging-autosave.md"
+      ]
+    },
+    {
+      "id": "OBS-0009",
+      "summary": "The image-generation selection flow and compiled-content access/navigation issues remain annoying user-facing problems and are judged likely to be bounded low-hanging fixes.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0030.json",
+        "docs/issues/issues/ISSUE-0031.json"
+      ]
+    },
+    {
+      "id": "OBS-0010",
+      "summary": "Learned annotation prompts remain a major promising research thread; discussion with Francis Bond about collaboration and an AI-authorship-compatible publication path is urgent.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0036.json",
+        "docs/issues/issues/ISSUE-0044.json"
+      ]
+    },
+    {
+      "id": "OBS-0011",
+      "summary": "Mobile delivery before 24 August is not realistic, but a mid-September browsing-and-exercises slice could contribute to the planned ComputEL-10 paper due in early October.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/global_workspace/project-intentions.md",
+        "docs/issues/issues/ISSUE-0045.json",
+        "docs/roadmap/mobile-access.md"
+      ]
+    },
+    {
+      "id": "OBS-0012",
+      "summary": "The EuroCALL contact responsible for the AI-authorship dispute returns from leave on 13 August, creating a near-term opportunity for resolution but not yet an outcome.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0043.json"
+      ]
+    },
+    {
+      "id": "OBS-0013",
+      "summary": "The intermittent Codex PR update-branch refusal recurred on 12 August and wasted substantial time; fully exiting Codex, restarting, and creating a new task restored progress but did not identify the cause.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0035.json",
+        "docs/roadmap/codex-pr-update-branch-inconsistencies.md"
+      ]
+    },
+    {
+      "id": "OBS-0014",
+      "summary": "The generic AI-review-gates issue has no active work or clear way forward and has been downgraded to P3.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0004.json"
+      ]
+    },
+    {
+      "id": "OBS-0015",
+      "summary": "The archive now preserves ordered human-input messages for each post-baseline revision, with revisions 2 and 3 backfilled from Manny’s supplied copies and future updates requiring input capture during installation.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/global_workspace/README.md",
+        "docs/global_workspace/archive/inputs/README.md",
+        "docs/global_workspace/archive/inputs/rev-0002/input-001.md",
+        "docs/global_workspace/archive/inputs/rev-0003/input-001.md"
+      ]
+    },
+    {
+      "id": "OBS-0016",
+      "summary": "The existing authenticated Assistant now provides a restricted Project Manager mode through the same read-only Codex worker, preserving collaborator identity/role, exact request and response, trusted commit/run metadata, and material-evidence/workspace-review classification.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "src/core/project_understanding.py",
+        "platform_server/projects/views.py",
+        "platform_server/projects/templates/projects/project_understanding.html",
+        "docs/roadmap/platform-self-knowledge-assistant.md"
+      ]
+    },
+    {
+      "id": "OBS-0017",
+      "summary": "The first natural laptop Project Manager query returned a plausible, repository-grounded prioritization of Sophie’s Indigenous-community work in 36 seconds; per-user Admin Tools access control is now implemented with non-staff access off by default.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/roadmap/platform-self-knowledge-assistant.md",
+        "platform_server/projects/views.py",
+        "platform_server/projects/templates/projects/admin_tools.html",
+        "platform_server/projects/tests/test_admin_tools.py"
+      ]
+    }
+  ],
+  "assessments": [
+    {
+      "id": "ASM-0001",
+      "summary": "Platform maturity is easier to assess after registry triage: useful quality infrastructure exists, but poor segmentation phase 1 behavior and missing systematic UI-regression coverage remain material, tractable weaknesses.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-5"
+      ],
+      "observation_ids": [
+        "OBS-0001",
+        "OBS-0002"
+      ],
+      "urgency": "high",
+      "risk": "medium",
+      "progress": "working_foundation_with_specific_gaps",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0002",
+      "summary": "Picture-dictionary risk has fallen further: the remaining need is short-horizon verification rather than broad implementation, so successful checks should lead to closure before community use.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-5"
+      ],
+      "observation_ids": [
+        "OBS-0003"
+      ],
+      "urgency": "high",
+      "risk": "low",
+      "progress": "apparently_complete_pending_verification",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0003",
+      "summary": "Useful autonomy now includes an operational, auditable collaborator channel whose first natural laptop query produced a plausible evidence-grounded answer; per-user access can be administered safely while canonical mutation remains outside the web interaction.",
+      "goal_ids": [
+        "GOAL-2",
+        "GOAL-3"
+      ],
+      "observation_ids": [
+        "OBS-0004",
+        "OBS-0005",
+        "OBS-0015",
+        "OBS-0016",
+        "OBS-0017"
+      ],
+      "urgency": "critical",
+      "risk": "medium",
+      "progress": "laptop_trial_successful_server_collaborator_trial_pending",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0004",
+      "summary": "Research opportunity and external risk are both high: EuroCALL may resolve imminently, Francis Bond collaboration could strengthen the MWE thread, and ComputEL-10 creates a concrete user/research integration path.",
+      "goal_ids": [
+        "GOAL-3",
+        "GOAL-5"
+      ],
+      "observation_ids": [
+        "OBS-0007",
+        "OBS-0010",
+        "OBS-0011",
+        "OBS-0012"
+      ],
+      "urgency": "critical",
+      "risk": "high",
+      "progress": "multiple_live_opportunities_with_constraints",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0005",
+      "summary": "Legacy preservation remains near-complete, high-value low-hanging work and should be finished immediately after the Sprint; the attempt also serves as a diagnostic for the uncertain performance issue.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-4"
+      ],
+      "observation_ids": [
+        "OBS-0006"
+      ],
+      "urgency": "high",
+      "risk": "medium",
+      "progress": "near_complete",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0006",
+      "summary": "The Indigenous-language delivery path is now more urgent than generic mobile work: recorded audio is substantial but important before 24 August, while judging autosave is easier and should be landed quickly if it does not displace the critical Sprint.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-3",
+        "GOAL-5"
+      ],
+      "observation_ids": [
+        "OBS-0007",
+        "OBS-0008"
+      ],
+      "urgency": "critical",
+      "risk": "high",
+      "progress": "time_bounded_work_not_started",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0007",
+      "summary": "Mobile access has a realistic mid-September research/user target rather than an impossible August target; scope uncertainty remains, but the ComputEL-10 connection raises its opportunity value.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-3",
+        "GOAL-5"
+      ],
+      "observation_ids": [
+        "OBS-0011"
+      ],
+      "urgency": "high",
+      "risk": "medium",
+      "progress": "target_refined_scope_unknown",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0008",
+      "summary": "Learned prompts remain an unusually promising product/research opportunity, but venue authorship policy and the exact Francis Bond collaboration scope are immediate decision dependencies.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-3"
+      ],
+      "observation_ids": [
+        "OBS-0010"
+      ],
+      "urgency": "high",
+      "risk": "medium",
+      "progress": "promising_pending_collaboration_discussion",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0009",
+      "summary": "The reviewed portfolio is now substantially more trustworthy and actionable: completed/stale items are removed, low-hanging work is visible, and no-path evaluator work is deprioritized. Capacity conflict remains acute through 24 August.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-2",
+        "GOAL-3",
+        "GOAL-4",
+        "GOAL-5"
+      ],
+      "observation_ids": [
+        "OBS-0005",
+        "OBS-0008",
+        "OBS-0009",
+        "OBS-0014"
+      ],
+      "urgency": "high",
+      "risk": "medium",
+      "progress": "triaged_but_near_term_overloaded",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0010",
+      "summary": "Codex branch-update failures are a continuing operational risk to AI-assisted development. The restart/new-task workaround improves recovery but not predictability or root-cause confidence.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-2"
+      ],
+      "observation_ids": [
+        "OBS-0013"
+      ],
+      "urgency": "medium",
+      "risk": "medium",
+      "progress": "workaround_known_root_cause_unknown",
+      "confidence": "high"
+    }
+  ],
+  "reported_valence": null,
+  "uncertainties_and_conflicts": [
+    {
+      "id": "UNC-0001",
+      "summary": "The EuroCALL response may arrive now that the responsible contact has returned, but acceptance, rejection, presentation, and travel consequences remain unresolved.",
+      "assessment_ids": [
+        "ASM-0004"
+      ]
+    },
+    {
+      "id": "UNC-0002",
+      "summary": "ISSUE-0037 and ISSUE-0039 appear complete but should not be closed without focused pre-visit verification.",
+      "assessment_ids": [
+        "ASM-0002"
+      ]
+    },
+    {
+      "id": "UNC-0003",
+      "summary": "Completing legacy migration will determine whether ISSUE-0013 is obsolete or an active operational blocker.",
+      "assessment_ids": [
+        "ASM-0005"
+      ]
+    },
+    {
+      "id": "UNC-0004",
+      "summary": "Sprint work, recorded audio, autosave, picture-dictionary verification, and Francis contact all compete in the short period before 24 August.",
+      "assessment_ids": [
+        "ASM-0003",
+        "ASM-0006",
+        "ASM-0008",
+        "ASM-0009"
+      ]
+    },
+    {
+      "id": "UNC-0005",
+      "summary": "The exact ComputEL-10 deadline, paper scope, and which mobile/audio results must be ready for submission are not yet confirmed.",
+      "assessment_ids": [
+        "ASM-0004",
+        "ASM-0006",
+        "ASM-0007"
+      ]
+    },
+    {
+      "id": "UNC-0006",
+      "summary": "The Codex branch-update refusal remains intermittent and unexplained; the recovery procedure may not work in every recurrence.",
+      "assessment_ids": [
+        "ASM-0010"
+      ]
+    },
+    {
+      "id": "UNC-0007",
+      "summary": "The first laptop Project Manager query was plausible and timely, but the mode is not yet deployed or exercised by Sophie or another non-staff collaborator; classification accuracy and whether fresh-turn continuity is sufficient remain unmeasured.",
+      "assessment_ids": [
+        "ASM-0003",
+        "ASM-0006"
+      ]
+    }
+  ],
+  "requested_human_decisions": [
+    {
+      "id": "REQ-0005",
+      "question": "After the current Sprint experiments, which outcomes, rating measures, participant set, and artifact-retention rules should become the initial protocol?",
+      "reason": "The critical infrastructure now works and experimentation should soon supply enough evidence to make this concrete.",
+      "assessment_ids": [
+        "ASM-0003"
+      ]
+    },
+    {
+      "id": "REQ-0007",
+      "question": "After contacting Sophie, what exact mobile/audio/exercise scope and ComputEL-10 deadline should govern delivery?",
+      "reason": "The broad user and publication value is clear, but feasibility and the submission-critical minimum depend on her input.",
+      "assessment_ids": [
+        "ASM-0004",
+        "ASM-0006",
+        "ASM-0007"
+      ]
+    },
+    {
+      "id": "REQ-0008",
+      "question": "After contacting Francis Bond, what collaboration scope and AI-authorship-compatible publication route should be pursued?",
+      "reason": "This is the main dependency on converting promising learned-prompt results into a strong research programme.",
+      "assessment_ids": [
+        "ASM-0008"
+      ]
+    }
+  ],
+  "proposed_next_actions": [
+    {
+      "id": "ACT-0001",
+      "summary": "Keep ISSUE-0042 as the immediate critical task and use the Sprint to settle the smallest useful experimental protocol.",
+      "assessment_ids": [
+        "ASM-0003"
+      ]
+    },
+    {
+      "id": "ACT-0002",
+      "summary": "Follow up EuroCALL on 13 August and record the response without weakening the AI-inclusive authorship position.",
+      "assessment_ids": [
+        "ASM-0004"
+      ]
+    },
+    {
+      "id": "ACT-0003",
+      "summary": "Contact Francis and Sophie promptly, then convert their answers into precise collaboration, ComputEL, mobile, and audio acceptance criteria.",
+      "assessment_ids": [
+        "ASM-0004",
+        "ASM-0006",
+        "ASM-0007",
+        "ASM-0008"
+      ]
+    },
+    {
+      "id": "ACT-0004",
+      "summary": "Before 24 August, prioritize a bounded recorded-audio MVP, quick judging autosave, and focused verification/closure of the picture-dictionary issues, subject to Sprint capacity.",
+      "assessment_ids": [
+        "ASM-0002",
+        "ASM-0006",
+        "ASM-0009"
+      ]
+    },
+    {
+      "id": "ACT-0005",
+      "summary": "Immediately after the Sprint, finish legacy migration and use observed performance to close or reactivate ISSUE-0013.",
+      "assessment_ids": [
+        "ASM-0005"
+      ]
+    },
+    {
+      "id": "ACT-0006",
+      "summary": "Document the existing pipeline runner, then take bounded passes on segmentation phase 1 and the revived UI-regression baseline.",
+      "assessment_ids": [
+        "ASM-0001"
+      ]
+    },
+    {
+      "id": "ACT-0007",
+      "summary": "On the next Codex branch-update refusal, try full exit/restart/new-task first and preserve diagnostics if the workaround succeeds or fails.",
+      "assessment_ids": [
+        "ASM-0010"
+      ]
+    },
+    {
+      "id": "ACT-0008",
+      "summary": "Use mandatory ordered input capture for every later workspace revision and compare archived human evidence with the resulting assessment changes during Sprint analysis.",
+      "assessment_ids": [
+        "ASM-0003"
+      ]
+    },
+    {
+      "id": "ACT-0009",
+      "summary": "Configure authoritative collaborator role mappings, deploy the mode, grant access through Admin Tools, and run a natural Sophie-centered trial while reviewing evidence classifications and preserving the no-mutation boundary.",
+      "assessment_ids": [
+        "ASM-0003",
+        "ASM-0006"
+      ]
+    }
+  ],
+  "predictions": [
+    {
+      "id": "PRED-0001",
+      "outcome": "The issue audit will reduce false project-manager concern by allowing at least four apparently complete or stale issues to remain closed or close after focused verification.",
+      "horizon": "2026-08-24",
+      "probability": 0.85,
+      "confidence": "high",
+      "assessment_ids": [
+        "ASM-0002",
+        "ASM-0009"
+      ],
+      "resolution_status": "open"
+    },
+    {
+      "id": "PRED-0002",
+      "outcome": "The legacy completion attempt will either close ISSUE-0010 or expose a sharply bounded final operational blocker and determine ISSUE-0013’s state.",
+      "horizon": "next_workspace_review",
+      "probability": 0.8,
+      "confidence": "high",
+      "assessment_ids": [
+        "ASM-0005"
+      ],
+      "resolution_status": "open"
+    },
+    {
+      "id": "PRED-0003",
+      "outcome": "Judging autosave is more likely than the recorded-audio MVP to be completed before 24 August because its roadmap and persistence model already support a bounded extension.",
+      "horizon": "2026-08-24",
+      "probability": 0.75,
+      "confidence": "medium",
+      "assessment_ids": [
+        "ASM-0006"
+      ],
+      "resolution_status": "open"
+    },
+    {
+      "id": "PRED-0004",
+      "outcome": "Contact with Sophie and Francis will materially narrow at least one of the mobile/ComputEL or learned-prompt publication decisions before the next workspace review.",
+      "horizon": "next_workspace_review",
+      "probability": 0.8,
+      "confidence": "medium",
+      "assessment_ids": [
+        "ASM-0004",
+        "ASM-0007",
+        "ASM-0008"
+      ],
+      "resolution_status": "open"
+    },
+    {
+      "id": "PRED-0005",
+      "outcome": "If the Codex update-branch failure recurs, full restart and a new task will be tried before extended diagnosis and will shorten recovery relative to the 12 August incident.",
+      "horizon": "next_recurrence",
+      "probability": 0.8,
+      "confidence": "medium",
+      "assessment_ids": [
+        "ASM-0010"
+      ],
+      "resolution_status": "open"
+    },
+    {
+      "id": "PRED-0006",
+      "outcome": "An initial collaborator trial will produce at least one attributed message classified as material project evidence and reveal whether a workspace review can be triggered reliably without conversation history.",
+      "horizon": "2026-08-24",
+      "probability": 0.75,
+      "confidence": "medium",
+      "assessment_ids": [
+        "ASM-0003",
+        "ASM-0006"
+      ],
+      "resolution_status": "open"
+    }
+  ],
+  "retired_item_ids": [
+    "REQ-0006",
+    "OBS-0001@rev-0002",
+    "OBS-0002@rev-0002",
+    "OBS-0012@rev-0002",
+    "ASM-0001@rev-0002",
+    "ASM-0009@rev-0002",
+    "PRED-0001@rev-0002",
+    "PRED-0002@rev-0002",
+    "PRED-0003@rev-0002",
+    "PRED-0004@rev-0002"
+  ],
+  "approval": {
+    "status": "autonomous_project_manager_update",
+    "authorized_by": "Codex project-manager agent",
+    "authorized_at": "2026-08-13",
+    "authorization_basis": "Human report of the first laptop trial and request for default-off, admin-managed Project Manager access.",
+    "comments": "Revision 6 records the successful initial query, preserves remaining deployment uncertainty, and records the implemented access boundary."
+  },
+  "changes_from_previous_revision": {
+    "summary": "Recorded a successful first natural laptop Project Manager query and added admin-managed, default-off per-user access before server deployment.",
+    "added_item_ids": [
+      "OBS-0017"
+    ],
+    "revised_item_ids": [
+      "ASM-0003",
+      "UNC-0007",
+      "ACT-0009"
+    ],
+    "retained_item_ids": [
+      "OBS-0001",
+      "OBS-0002",
+      "OBS-0003",
+      "OBS-0004",
+      "OBS-0005",
+      "OBS-0006",
+      "OBS-0007",
+      "OBS-0008",
+      "OBS-0009",
+      "OBS-0010",
+      "OBS-0011",
+      "OBS-0012",
+      "OBS-0013",
+      "OBS-0014",
+      "OBS-0015",
+      "OBS-0016",
+      "ASM-0001",
+      "ASM-0002",
+      "ASM-0004",
+      "ASM-0005",
+      "ASM-0006",
+      "ASM-0007",
+      "ASM-0008",
+      "ASM-0009",
+      "ASM-0010",
+      "UNC-0001",
+      "UNC-0002",
+      "UNC-0003",
+      "UNC-0004",
+      "UNC-0005",
+      "UNC-0006",
+      "REQ-0005",
+      "REQ-0007",
+      "REQ-0008",
+      "ACT-0001",
+      "ACT-0002",
+      "ACT-0003",
+      "ACT-0004",
+      "ACT-0005",
+      "ACT-0006",
+      "ACT-0007",
+      "ACT-0008",
+      "PRED-0001",
+      "PRED-0002",
+      "PRED-0003",
+      "PRED-0004",
+      "PRED-0005",
+      "PRED-0006"
+    ],
+    "retired_item_ids": []
+  }
+}

@@ -1,9 +1,9 @@
 # ISSUE-0025: Add systematic UI regression tracking for disappearing controls/content
 
-- **Status:** reported
+- **Status:** active
 - **Priority:** P1
 - **Created:** 2026-05-23T13:26:38Z
-- **Updated:** 2026-05-23T13:26:38Z
+- **Updated:** 2026-08-13T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0003](ISSUE-0003.md)
@@ -19,3 +19,7 @@ repository (likely under docs/) for diff-based review; (3) add workflow alerts/c
 implementors are notified whenever UI inventory changes and can confirm intended vs unintended
 changes. Also track alignment with docs/roadmap/ai-judges-evaluation.md so UI-regression checks
 become part of the broader evaluation/monitoring strategy.
+
+Human issue-review update from Manny Rayner on 2026-08-13: This important UI-regression work had
+effectively dropped from active attention. Revive it; a first useful implementation should be
+low-hanging fruit.

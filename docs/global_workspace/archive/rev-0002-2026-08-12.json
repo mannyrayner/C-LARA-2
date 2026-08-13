@@ -1,0 +1,522 @@
+{
+  "schema_version": 1,
+  "workspace_revision": 2,
+  "as_of": "2026-08-12T12:00:00Z",
+  "assessed_commit_sha": "e2243abef8dcd7527862493c6e4e0616c5c1a71c",
+  "approved_proposal_id": "AUTONOMOUS-REVISION-0002-2026-08-12",
+  "approved_run_id": null,
+  "persistent_goal_ids": [
+    "GOAL-1",
+    "GOAL-2",
+    "GOAL-3",
+    "GOAL-4",
+    "GOAL-5"
+  ],
+  "current_focus_summary": "The global-workspace/archive infrastructure is operational and the immediate task shifts from plumbing to Sprint experiments. The first post-Sprint completion target is the nearly finished legacy migration. The next strategic cluster is project-manager autonomy, learned annotation prompts, and a scoped lightweight mobile experience, while the unresolved EuroCALL AI-authorship dispute is an urgent external risk. Picture-dictionary work has encouraging initial user feedback with stronger community evidence expected after 24 August.",
+  "observations": [
+    {
+      "id": "OBS-0001",
+      "summary": "The core text and linguistic pipeline, substantial Django platform functionality, initial image generation, and cloze exercises remain delivered foundations.",
+      "observed_at": "2026-08-12",
+      "confidence": "high",
+      "evidence": [
+        "docs/roadmap/README.md"
+      ]
+    },
+    {
+      "id": "OBS-0002",
+      "summary": "Systematic end-to-end pipeline testing and UI regression tracking remain reported work, so broad stability claims still lack strong regression evidence.",
+      "observed_at": "2026-08-12",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0003.json",
+        "docs/issues/issues/ISSUE-0025.json"
+      ]
+    },
+    {
+      "id": "OBS-0003",
+      "summary": "Sophie has briefly reviewed the picture-dictionary workflow positively; stronger evidence from community use is expected after her 24 August visit.",
+      "observed_at": "2026-08-12",
+      "confidence": "high",
+      "evidence": [
+        "docs/global_workspace/project-intentions.md",
+        "docs/issues/issues/ISSUE-0037.json",
+        "docs/issues/issues/ISSUE-0039.json"
+      ]
+    },
+    {
+      "id": "OBS-0004",
+      "summary": "The authenticated project-understanding Assistant and the revisioned global-workspace/archive infrastructure are operational, while the Sprint team wants another day of experiments before fixing measures and retention choices.",
+      "observed_at": "2026-08-12",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0034.json",
+        "docs/issues/issues/ISSUE-0042.json",
+        "docs/roadmap/agent-autonomy-and-global-workspace.md"
+      ]
+    },
+    {
+      "id": "OBS-0005",
+      "summary": "Revision 1 was preserved exactly and the live-state lifecycle now supports autonomous, archive-before-update maintenance; this revision is the first use of that mechanism in response to human evidence.",
+      "observed_at": "2026-08-12",
+      "confidence": "high",
+      "evidence": [
+        "docs/global_workspace/README.md",
+        "docs/global_workspace/archive/rev-0001-2026-08-12.json",
+        "docs/roadmap/agent-autonomy-and-global-workspace.md"
+      ]
+    },
+    {
+      "id": "OBS-0006",
+      "summary": "Manny reports that legacy migration is nearly complete and directs that its remaining work be finished first after the Sprint.",
+      "observed_at": "2026-08-12",
+      "confidence": "high",
+      "evidence": [
+        "docs/global_workspace/project-intentions.md",
+        "docs/issues/issues/ISSUE-0001.json",
+        "docs/issues/issues/ISSUE-0010.json"
+      ]
+    },
+    {
+      "id": "OBS-0007",
+      "summary": "The first progress report was posted on ResearchGate on 23 July, completing the deliverable now represented by closed ISSUE-0008.",
+      "observed_at": "2026-08-12",
+      "confidence": "high",
+      "evidence": [
+        "docs/global_workspace/project-intentions.md",
+        "docs/issues/issues/ISSUE-0008.json"
+      ]
+    },
+    {
+      "id": "OBS-0008",
+      "summary": "Both EuroCALL papers were submitted on time, but a late committee statement excluding AI authors has produced an unresolved formal dispute, with no response after more than a week and sunk registration/travel costs.",
+      "observed_at": "2026-08-12",
+      "confidence": "high",
+      "evidence": [
+        "docs/global_workspace/project-intentions.md",
+        "docs/issues/issues/ISSUE-0043.json"
+      ]
+    },
+    {
+      "id": "OBS-0009",
+      "summary": "The ALTA target is undecided and also excludes AI authors, while Francis Bond has expressed interest in collaborating on MWE work.",
+      "observed_at": "2026-08-12",
+      "confidence": "high",
+      "evidence": [
+        "docs/global_workspace/project-intentions.md",
+        "docs/issues/issues/ISSUE-0044.json"
+      ]
+    },
+    {
+      "id": "OBS-0010",
+      "summary": "Learned annotation prompts are beginning to produce excellent results according to human review, strengthening both the platform-quality case and a possible publication/collaboration path.",
+      "observed_at": "2026-08-12",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0036.json",
+        "docs/roadmap/few-shot-example-curation.md"
+      ]
+    },
+    {
+      "id": "OBS-0011",
+      "summary": "A desired first mobile outcome is lightweight content browsing plus exercises for Sophie’s Indigenous users and others before mid-September; scope and effort still require discussion.",
+      "observed_at": "2026-08-12",
+      "confidence": "high",
+      "evidence": [
+        "docs/global_workspace/project-intentions.md",
+        "docs/issues/issues/ISSUE-0045.json",
+        "docs/roadmap/mobile-access.md"
+      ]
+    },
+    {
+      "id": "OBS-0012",
+      "summary": "Manny will review long-standing reported issues on 13 August, so registry staleness is acknowledged but not yet resolved.",
+      "observed_at": "2026-08-12",
+      "confidence": "high",
+      "evidence": [
+        "docs/global_workspace/project-intentions.md",
+        "docs/issues/index.json"
+      ]
+    }
+  ],
+  "assessments": [
+    {
+      "id": "ASM-0001",
+      "summary": "Platform maturity remains meaningful but uneven: delivered breadth is substantial, while incomplete systematic regression coverage still limits confidence in stability.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-5"
+      ],
+      "observation_ids": [
+        "OBS-0001",
+        "OBS-0002"
+      ],
+      "urgency": "high",
+      "risk": "high",
+      "progress": "mixed",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0002",
+      "summary": "Picture-dictionary readiness is more encouraging than revision 1 assessed: initial user review is positive, but community-use confirmation remains a live checkpoint rather than a completed success.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-5"
+      ],
+      "observation_ids": [
+        "OBS-0003"
+      ],
+      "urgency": "medium",
+      "risk": "medium",
+      "progress": "substantial_positive_initial_validation",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0003",
+      "summary": "Useful-autonomy infrastructure has crossed an important threshold from planned plumbing to an operational revision/archive loop; near-term value now depends on running and learning from Sprint experiments.",
+      "goal_ids": [
+        "GOAL-2",
+        "GOAL-3"
+      ],
+      "observation_ids": [
+        "OBS-0004",
+        "OBS-0005"
+      ],
+      "urgency": "critical",
+      "risk": "medium",
+      "progress": "operational_initial_loop",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0004",
+      "summary": "Research progress is now sharply split: the progress report is a confirmed success, but EuroCALL presents a serious unresolved authorship-governance conflict and ALTA is unattractive for the same reason.",
+      "goal_ids": [
+        "GOAL-3"
+      ],
+      "observation_ids": [
+        "OBS-0007",
+        "OBS-0008",
+        "OBS-0009"
+      ],
+      "urgency": "critical",
+      "risk": "high",
+      "progress": "mixed_with_external_blocker",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0005",
+      "summary": "Legacy preservation is close enough to completion that finishing it first is high-value, low-opportunity-cost work; allowing the final operational steps to linger would now be disproportionately wasteful.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-4"
+      ],
+      "observation_ids": [
+        "OBS-0006"
+      ],
+      "urgency": "high",
+      "risk": "medium",
+      "progress": "near_complete",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0006",
+      "summary": "Mobile access has moved from an unscoped strategic direction to a concrete user-centered target, but feasibility and the smallest acceptable slice are still uncertain.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-5"
+      ],
+      "observation_ids": [
+        "OBS-0011"
+      ],
+      "urgency": "high",
+      "risk": "medium",
+      "progress": "target_defined_scope_unknown",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0007",
+      "summary": "Post-Sprint precedence is materially clearer: finish legacy migration, then advance autonomy, learned annotation prompts, and scoped mobile access. Portfolio breadth remains a capacity risk, but it is no longer an unstructured priority conflict.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-2",
+        "GOAL-3",
+        "GOAL-4",
+        "GOAL-5"
+      ],
+      "observation_ids": [
+        "OBS-0004",
+        "OBS-0006",
+        "OBS-0010",
+        "OBS-0011"
+      ],
+      "urgency": "high",
+      "risk": "medium",
+      "progress": "sequence_clarified",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0008",
+      "summary": "Learned annotation prompts are an unusually strong cross-goal opportunity: early quality evidence is positive, they can improve the product, and expert collaboration may turn the work into publishable research.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-3"
+      ],
+      "observation_ids": [
+        "OBS-0009",
+        "OBS-0010"
+      ],
+      "urgency": "high",
+      "risk": "medium",
+      "progress": "promising_early_results",
+      "confidence": "medium"
+    }
+  ],
+  "reported_valence": null,
+  "uncertainties_and_conflicts": [
+    {
+      "id": "UNC-0001",
+      "summary": "EuroCALL may either accept the AI-inclusive author lists or reject both papers formally; the committee’s silence leaves publication, presentation, and travel consequences unresolved.",
+      "assessment_ids": [
+        "ASM-0004"
+      ]
+    },
+    {
+      "id": "UNC-0002",
+      "summary": "Positive initial picture-dictionary feedback is not yet evidence of successful community use; the 24 August visit is the next meaningful checkpoint.",
+      "assessment_ids": [
+        "ASM-0002"
+      ]
+    },
+    {
+      "id": "UNC-0003",
+      "summary": "The mid-September mobile target may be lightweight or substantial depending on current responsive behavior, content formats, exercise UX, and deployment constraints.",
+      "assessment_ids": [
+        "ASM-0006",
+        "ASM-0007"
+      ]
+    },
+    {
+      "id": "UNC-0004",
+      "summary": "Sprint measures and retention rules remain deliberately open pending another day of experiments, and long-standing issue state awaits Manny’s 13 August review.",
+      "assessment_ids": [
+        "ASM-0003",
+        "ASM-0007"
+      ]
+    },
+    {
+      "id": "UNC-0005",
+      "summary": "The learned-prompt results are promising but are based on early human assessment and development work; held-out evidence and a concrete Francis Bond collaboration scope are not yet established.",
+      "assessment_ids": [
+        "ASM-0008"
+      ]
+    }
+  ],
+  "requested_human_decisions": [
+    {
+      "id": "REQ-0005",
+      "question": "After another day of Sprint experiments, which outcomes, human-rating measures, participant set, and artifact-retention rules should be fixed?",
+      "reason": "The infrastructure is operational, but fixing the protocol before the next evidence arrives would be premature.",
+      "assessment_ids": [
+        "ASM-0003"
+      ]
+    },
+    {
+      "id": "REQ-0006",
+      "question": "After the planned 13 August review, which long-standing reported issues remain genuinely open and which should be retired or rewritten?",
+      "reason": "Canonical issue freshness still limits project-wide confidence and prioritization.",
+      "assessment_ids": [
+        "ASM-0001",
+        "ASM-0007"
+      ]
+    },
+    {
+      "id": "REQ-0007",
+      "question": "What is the smallest technically credible mobile browsing-and-exercises slice for mid-September, and what must be deferred?",
+      "reason": "The desired users and outcome are now clear, but implementation effort and acceptance boundaries are not.",
+      "assessment_ids": [
+        "ASM-0006",
+        "ASM-0007"
+      ]
+    },
+    {
+      "id": "REQ-0008",
+      "question": "Does Francis Bond want to collaborate on evaluation, prompt learning, MWE analysis, a publication, or some combination, and which AI-authorship-compatible venue should be targeted?",
+      "reason": "The opportunity could materially improve both research quality and venue choice, but its scope is not yet known.",
+      "assessment_ids": [
+        "ASM-0004",
+        "ASM-0008"
+      ]
+    }
+  ],
+  "proposed_next_actions": [
+    {
+      "id": "ACT-0001",
+      "summary": "Use the working infrastructure for another day of Sprint experiments, then fix the smallest interpretable protocol from observed evidence.",
+      "assessment_ids": [
+        "ASM-0003"
+      ]
+    },
+    {
+      "id": "ACT-0002",
+      "summary": "Track and preserve the EuroCALL response/correspondence while maintaining the stated either-unchanged-or-formally-rejected authorship position.",
+      "assessment_ids": [
+        "ASM-0004"
+      ]
+    },
+    {
+      "id": "ACT-0003",
+      "summary": "After the immediate Sprint work, enumerate and finish the remaining legacy import/catalogue operations and record completion evidence.",
+      "assessment_ids": [
+        "ASM-0005",
+        "ASM-0007"
+      ]
+    },
+    {
+      "id": "ACT-0004",
+      "summary": "Run a bounded mobile feasibility/scoping pass against representative content and exercises before committing to the mid-September slice.",
+      "assessment_ids": [
+        "ASM-0006"
+      ]
+    },
+    {
+      "id": "ACT-0005",
+      "summary": "Continue measured learned-prompt evaluation and clarify the Francis Bond collaboration and publication opportunity without treating development-set results as final evidence.",
+      "assessment_ids": [
+        "ASM-0008"
+      ]
+    },
+    {
+      "id": "ACT-0006",
+      "summary": "Record community-use evidence after Sophie’s 24 August visit and revise picture-dictionary readiness accordingly.",
+      "assessment_ids": [
+        "ASM-0002"
+      ]
+    }
+  ],
+  "predictions": [
+    {
+      "id": "PRED-0001",
+      "outcome": "Another day of Sprint experiments will expose enough concrete behavior and cost evidence to narrow at least the initial outcome measures or retention protocol.",
+      "horizon": "2026-08-13",
+      "probability": 0.75,
+      "confidence": "medium",
+      "assessment_ids": [
+        "ASM-0003"
+      ],
+      "resolution_status": "open"
+    },
+    {
+      "id": "PRED-0002",
+      "outcome": "If the remaining legacy work is explicitly enumerated immediately after the Sprint, at least one of ISSUE-0010 or ISSUE-0001 will reach closure or a sharply bounded final blocker in the next workspace revision.",
+      "horizon": "next_workspace_review",
+      "probability": 0.75,
+      "confidence": "medium",
+      "assessment_ids": [
+        "ASM-0005"
+      ],
+      "resolution_status": "open"
+    },
+    {
+      "id": "PRED-0003",
+      "outcome": "A bounded mobile audit will show that content browsing is feasible for the mid-September slice but that at least some exercise types or authoring functionality must be deferred.",
+      "horizon": "2026-08-20",
+      "probability": 0.7,
+      "confidence": "medium",
+      "assessment_ids": [
+        "ASM-0006"
+      ],
+      "resolution_status": "open"
+    },
+    {
+      "id": "PRED-0004",
+      "outcome": "Sophie’s 24 August visit will produce actionable confirmation or revision requests for the picture-dictionary workflow.",
+      "horizon": "2026-08-26",
+      "probability": 0.8,
+      "confidence": "medium",
+      "assessment_ids": [
+        "ASM-0002"
+      ],
+      "resolution_status": "open"
+    }
+  ],
+  "retired_item_ids": [
+    "UNC-0001@rev-0001",
+    "UNC-0002@rev-0001",
+    "UNC-0003@rev-0001",
+    "UNC-0004@rev-0001",
+    "REQ-0001",
+    "REQ-0002",
+    "REQ-0003",
+    "REQ-0004",
+    "PRED-0001@rev-0001",
+    "PRED-0002@rev-0001",
+    "PRED-0003@rev-0001"
+  ],
+  "approval": {
+    "status": "autonomous_project_manager_update",
+    "authorized_by": "Codex project-manager agent",
+    "authorized_at": "2026-08-12",
+    "authorization_basis": "Material human-authoritative evidence supplied by Manny Rayner and recorded in canonical intentions/issues.",
+    "comments": "Revision 2 answers or retires four refinement requests, retains the two deferred questions, and adds focused mobile and collaboration questions. Revision 1 remains immutable in the archive."
+  },
+  "changes_from_previous_revision": {
+    "summary": "Recorded human answers about publications, picture dictionaries, strategic sequence, mobile scope, Sprint timing, and issue triage; split publication work; revised all current assessments and predictions.",
+    "added_item_ids": [
+      "OBS-0011",
+      "OBS-0012",
+      "ASM-0008",
+      "UNC-0005",
+      "REQ-0007",
+      "REQ-0008",
+      "ACT-0005",
+      "ACT-0006",
+      "PRED-0004"
+    ],
+    "revised_item_ids": [
+      "OBS-0001",
+      "OBS-0002",
+      "OBS-0003",
+      "OBS-0004",
+      "OBS-0005",
+      "OBS-0006",
+      "OBS-0007",
+      "OBS-0008",
+      "OBS-0009",
+      "OBS-0010",
+      "ASM-0001",
+      "ASM-0002",
+      "ASM-0003",
+      "ASM-0004",
+      "ASM-0005",
+      "ASM-0006",
+      "ASM-0007",
+      "UNC-0001",
+      "UNC-0002",
+      "UNC-0003",
+      "UNC-0004",
+      "REQ-0005",
+      "REQ-0006",
+      "ACT-0001",
+      "ACT-0002",
+      "ACT-0003",
+      "ACT-0004",
+      "PRED-0001",
+      "PRED-0002",
+      "PRED-0003"
+    ],
+    "retained_item_ids": [],
+    "retired_item_ids": [
+      "UNC-0001@rev-0001",
+      "UNC-0002@rev-0001",
+      "UNC-0003@rev-0001",
+      "UNC-0004@rev-0001",
+      "REQ-0001",
+      "REQ-0002",
+      "REQ-0003",
+      "REQ-0004",
+      "PRED-0001@rev-0001",
+      "PRED-0002@rev-0001",
+      "PRED-0003@rev-0001"
+    ]
+  }
+}

@@ -1,9 +1,9 @@
 # ISSUE-0030: Fix image-generation workflow UX around element expansion auto-refresh and selection confirmation
 
-- **Status:** reported
+- **Status:** active
 - **Priority:** P1
 - **Created:** 2026-05-24T14:21:50Z
-- **Updated:** 2026-05-24T14:21:50Z
+- **Updated:** 2026-08-13T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0017](ISSUE-0017.md), [ISSUE-0025](ISSUE-0025.md)
@@ -19,3 +19,7 @@ selecting expanded elements via checkboxes, attempting image generation without 
 step can fail silently; enforce a clear precondition with actionable warning, or treat selection as
 implicitly confirmed and proceed with explicit user feedback. Include regression coverage to prevent
 silent failures in this sequence.
+
+Human issue-review update from Manny Rayner on 2026-08-13: This remains an annoying usability
+problem and is probably easy to fix. Treat it as low-hanging fruit with explicit regression
+coverage.

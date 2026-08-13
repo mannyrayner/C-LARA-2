@@ -456,6 +456,19 @@ class GrantAdminPrivilegesForm(forms.Form):
         self.fields["user"].queryset = queryset
 
 
+class ProjectManagerAccessForm(forms.Form):
+    ACCESS_CHOICES = [("enable", "Enable"), ("disable", "Disable")]
+
+    user = forms.ModelChoiceField(queryset=User.objects.none(), label="User")
+    access = forms.ChoiceField(choices=ACCESS_CHOICES, label="Project Manager access")
+
+    def __init__(self, *args, queryset=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if queryset is None:
+            queryset = User.objects.filter(is_staff=False).order_by("username")
+        self.fields["user"].queryset = queryset
+
+
 class AdminAdjustCreditsForm(forms.Form):
     user = forms.ModelChoiceField(queryset=User.objects.all().order_by("username"), label="User")
     amount_usd = forms.DecimalField(
@@ -493,11 +506,21 @@ class CreditTransferForm(forms.Form):
 
 
 class ProjectUnderstandingForm(forms.Form):
+    MODE_CHOICES = [
+        ("assistant", "Assistant"),
+        ("project_manager", "Project Manager"),
+    ]
     VISIBILITY_CHOICES = [
         ("private", "Private (visible only to me)"),
         ("public", "Public to other C-LARA-2 users/reviewers"),
     ]
 
+    mode = forms.ChoiceField(
+        choices=MODE_CHOICES, initial="assistant", required=False, widget=forms.RadioSelect
+    )
+
+    def clean_mode(self):
+        return self.cleaned_data.get("mode") or "assistant"
     question = forms.CharField(
         max_length=4000,
         label="Project-understanding question",
@@ -516,6 +539,11 @@ class ProjectUnderstandingForm(forms.Form):
         label="Log visibility",
         help_text="Private runs stay visible only to you; public runs can be reviewed by other C-LARA-2 users/reviewers.",
     )
+
+    def __init__(self, *args, allow_project_manager: bool = False, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not allow_project_manager:
+            self.fields["mode"].choices = [("assistant", "Assistant")]
 
 
 class AdminOpenAIPricingForm(forms.ModelForm):

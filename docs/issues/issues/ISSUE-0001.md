@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-05-03T08:13:34Z
-- **Updated:** 2026-07-30T00:00:00Z
+- **Updated:** 2026-08-13T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** None
@@ -46,3 +46,6 @@ Pitjantjatjara` is the sole external-hosting exception: keep its public authoris
 ordinary discovery/comments/ratings/outbound counts/availability checks, and do not copy, proxy,
 scrape, thumbnail, cache, or send it to AI services. Full decisions and phases are in
 `docs/roadmap/unified-content-catalogue-and-legacy-migration.md`.
+
+Human issue-review update from Manny Rayner on 2026-08-13: This should be completed soon and is
+low-hanging fruit. Keep it in the near-term legacy completion cluster with ISSUE-0010.

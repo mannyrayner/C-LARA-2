@@ -44,6 +44,25 @@ terminal window is currently the more reliable local-development workaround.
   <button class="btn" type="submit">Grant admin</button>
 </form>
 
+<h2>Project Manager access</h2>
+<p>
+  Enable or disable the Project Manager option for a non-admin user. Access is off by default;
+  admins retain access automatically.
+</p>
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="set_project_manager_access" />
+  {{ project_manager_access_form.as_p }}
+  <button class="btn" type="submit">Update Project Manager access</button>
+</form>
+<p><strong>Users currently enabled:</strong>
+  {% for project_manager_user in project_manager_users %}
+    {{ project_manager_user.username }}{% if not forloop.last %}, {% endif %}
+  {% empty %}
+    none
+  {% endfor %}
+</p>
+
 <h2>Adjust user credits</h2>
 <form method="post">
   {% csrf_token %}

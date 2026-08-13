@@ -36,6 +36,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.staticfiles import finders
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -75,6 +76,7 @@ from .forms import (
     AdminAdjustCreditsForm,
     AdminOpenAIPricingForm,
     ProjectUnderstandingForm,
+    ProjectManagerAccessForm,
     CreditTransferForm,
     ClozeExerciseSetForm,
     CrosswordExerciseSetForm,
@@ -3106,6 +3108,28 @@ def _extract_openai_pricing_with_ai(
 PROJECT_UNDERSTANDING_TASK_TYPE = "admin_project_understanding"
 
 
+def _can_use_project_manager_mode(user) -> bool:
+    """Restrict Project Manager mode to staff or an explicit authorization group."""
+    if not getattr(user, "is_authenticated", False):
+        return False
+    if getattr(user, "is_staff", False):
+        return True
+    group_name = str(getattr(settings, "PROJECT_MANAGER_GROUP_NAME", "project_manager_collaborators"))
+    return bool(group_name and user.groups.filter(name=group_name).exists())
+
+
+def _project_manager_collaborator_role(user) -> str:
+    """Return concise configured role context without inferring it from unrelated data."""
+    roles = getattr(settings, "PROJECT_MANAGER_COLLABORATOR_ROLES", {})
+    if isinstance(roles, dict):
+        configured = str(roles.get(getattr(user, "username", "")) or "").strip()
+        if configured:
+            return configured
+    if getattr(user, "is_staff", False):
+        return "C-LARA-2 staff collaborator"
+    return "authorized C-LARA-2 project collaborator"
+
+
 _MARKDOWN_LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
 _MARKDOWN_CODE_RE = re.compile(r"`([^`]+)`")
 _WINDOWS_ABSOLUTE_LINK_RE = re.compile(r"^/?[A-Za-z]:[\\/]")
@@ -3265,6 +3289,8 @@ def _write_project_understanding_request(
     username: str = "",
     visibility: str = "private",
     status: str = "queued",
+    mode: str = "assistant",
+    collaborator_role: str = "",
 ) -> None:
     now = django_timezone.now().isoformat()
     _project_understanding_request_path(report_id).write_text(
@@ -3276,6 +3302,8 @@ def _write_project_understanding_request(
                 "username": username,
                 "submitted_at": now,
                 "queue_status": status,
+                "mode": mode if mode in {"assistant", "project_manager"} else "assistant",
+                "collaborator_role": collaborator_role,
                 "queued_at": now if status == "queued" else "",
             },
             ensure_ascii=False,
@@ -3408,6 +3436,7 @@ def _list_project_understanding_turns(user) -> list[dict[str, Any]]:
                 "visibility": visibility,
                 "username": str(request_payload.get("username") or ""),
                 "user_id": request_payload.get("user_id"),
+                "mode": str(request_payload.get("mode") or "assistant"),
                 "submitted_at": str(request_payload.get("submitted_at") or ""),
                 "status": latest_update.status if latest_update and latest_update.status else ("finished" if result else "running"),
                 "tokens_used": result.get("tokens_used") if result else None,
@@ -3424,6 +3453,7 @@ def _filter_project_understanding_turns(turns: list[dict[str, Any]], filters: di
     user_id = filters.get("user_id", "").strip()
     visibility = filters.get("visibility", "").strip()
     status = filters.get("status", "").strip()
+    mode = filters.get("mode", "").strip()
 
     filtered: list[dict[str, Any]] = []
     for turn in turns:
@@ -3444,6 +3474,8 @@ def _filter_project_understanding_turns(turns: list[dict[str, Any]], filters: di
         if visibility and str(turn.get("visibility") or "") != visibility:
             continue
         if status and str(turn.get("status") or "") != status:
+            continue
+        if mode and str(turn.get("mode") or "assistant") != mode:
             continue
         filtered.append(turn)
     return filtered
@@ -3566,6 +3598,7 @@ def _run_project_understanding_task(question: str, user_id: int, report_id: str)
             status="running",
         )
         heartbeat_thread.start()
+        request_payload = _read_project_understanding_request(report_id)
         result = answer_project_understanding_question_with_codex_exec(
             question,
             repository_path=getattr(settings, "PROJECT_UNDERSTANDING_REPOSITORY_PATH", settings.ROOT_DIR),
@@ -3573,6 +3606,9 @@ def _run_project_understanding_task(question: str, user_id: int, report_id: str)
             model=getattr(settings, "PROJECT_UNDERSTANDING_MODEL", "gpt-5.3-codex"),
             timeout_seconds=float(getattr(settings, "PROJECT_UNDERSTANDING_TIMEOUT_SECONDS", 300)),
             openai_api_key=getattr(settings, "OPENAI_API_KEY", ""),
+            mode=str(request_payload.get("mode") or "assistant"),
+            collaborator_username=str(request_payload.get("username") or ""),
+            collaborator_role=str(request_payload.get("collaborator_role") or ""),
         )
         if result.tokens_used is not None:
             estimated_cost = record_openai_total_token_upper_bound_usage_and_charge(
@@ -3613,17 +3649,24 @@ def _run_project_understanding_task(question: str, user_id: int, report_id: str)
 
 @login_required
 def project_understanding(request: HttpRequest) -> HttpResponse:
+    can_use_project_manager = _can_use_project_manager_mode(request.user)
     if request.method == "POST":
-        form = ProjectUnderstandingForm(request.POST)
+        form = ProjectUnderstandingForm(request.POST, allow_project_manager=can_use_project_manager)
         if form.is_valid():
             report_id = uuid.uuid4()
             question = form.cleaned_data["question"]
+            mode = form.cleaned_data["mode"]
+            if mode == "project_manager" and not can_use_project_manager:
+                raise PermissionDenied("Project Manager mode is restricted to authorized collaborators.")
+            collaborator_role = _project_manager_collaborator_role(request.user) if mode == "project_manager" else ""
             _write_project_understanding_request(
                 report_id,
                 question,
                 user_id=request.user.id,
                 username=request.user.username,
                 visibility=form.cleaned_data["visibility"],
+                mode=mode,
+                collaborator_role=collaborator_role,
             )
             _record_project_understanding_update(
                 report_id=report_id,
@@ -3638,10 +3681,10 @@ def project_understanding(request: HttpRequest) -> HttpResponse:
                 message="Project-understanding request is waiting for the dedicated Codex worker.",
                 status="running",
             )
-            messages.info(request, "Codex project-understanding request queued for the dedicated worker. Opening live status monitor.")
+            messages.info(request, f"Codex {mode.replace('_', ' ')} request queued for the dedicated worker. Opening live status monitor.")
             return redirect("project-understanding-monitor", report_id=report_id)
     else:
-        form = ProjectUnderstandingForm()
+        form = ProjectUnderstandingForm(allow_project_manager=can_use_project_manager)
     return render(
         request,
         "projects/project_understanding.html",
@@ -3655,6 +3698,8 @@ def project_understanding(request: HttpRequest) -> HttpResponse:
             "repository_path": getattr(settings, "PROJECT_UNDERSTANDING_REPOSITORY_PATH", settings.ROOT_DIR),
             "codex_model": getattr(settings, "PROJECT_UNDERSTANDING_MODEL", "gpt-5.3-codex"),
             "timeout_seconds": getattr(settings, "PROJECT_UNDERSTANDING_TIMEOUT_SECONDS", 300),
+            "can_use_project_manager": can_use_project_manager,
+            "current_mode": "assistant",
         },
     )
 
@@ -3668,6 +3713,7 @@ def project_understanding_turns(request: HttpRequest) -> HttpResponse:
         "user_id": request.GET.get("user_id", ""),
         "visibility": request.GET.get("visibility", ""),
         "status": request.GET.get("status", ""),
+        "mode": request.GET.get("mode", ""),
     }
     all_visible_turns = _list_project_understanding_turns(request.user)
     turns = _filter_project_understanding_turns(all_visible_turns, filters)[:100]
@@ -3690,6 +3736,7 @@ def project_understanding_monitor(request: HttpRequest, report_id: str) -> HttpR
     current_request = _read_project_understanding_request(report_id)
     current_question = str(current_request.get("question") or "").strip()
     current_visibility = str(current_request.get("visibility") or "private")
+    current_mode = str(current_request.get("mode") or "assistant")
     result = _read_project_understanding_result(report_id)
     initial_updates = TaskUpdate.objects.filter(
         report_id=report_id,
@@ -3700,7 +3747,10 @@ def project_understanding_monitor(request: HttpRequest, report_id: str) -> HttpR
         request,
         "projects/project_understanding.html",
         {
-            "form": ProjectUnderstandingForm(initial={"question": current_question, "visibility": current_visibility}),
+            "form": ProjectUnderstandingForm(
+                initial={"question": current_question, "visibility": current_visibility, "mode": current_mode},
+                allow_project_manager=_can_use_project_manager_mode(request.user),
+            ),
             "result": result,
             "result_answer_html": mark_safe(render_project_understanding_answer_html(str(result.get("answer") or ""))) if result else "",
             "initial_updates": initial_updates,
@@ -3709,6 +3759,8 @@ def project_understanding_monitor(request: HttpRequest, report_id: str) -> HttpR
             "repository_path": getattr(settings, "PROJECT_UNDERSTANDING_REPOSITORY_PATH", settings.ROOT_DIR),
             "codex_model": getattr(settings, "PROJECT_UNDERSTANDING_MODEL", "gpt-5.3-codex"),
             "timeout_seconds": getattr(settings, "PROJECT_UNDERSTANDING_TIMEOUT_SECONDS", 300),
+            "can_use_project_manager": _can_use_project_manager_mode(request.user),
+            "current_mode": current_mode,
         },
     )
 
@@ -3973,6 +4025,9 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
     grant_form = GrantAdminPrivilegesForm(
         queryset=get_user_model().objects.filter(is_staff=False).order_by("username")
     )
+    project_manager_access_form = ProjectManagerAccessForm(
+        queryset=get_user_model().objects.filter(is_staff=False).order_by("username")
+    )
     community_form = AdminCommunityForm()
     community_membership_form = AdminCommunityMembershipForm()
     delete_community_form = AdminDeleteCommunityForm()
@@ -4052,6 +4107,28 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
                 user_obj.is_staff = True
                 user_obj.save(update_fields=["is_staff"])
                 messages.success(request, f"{user_obj.username} now has admin privileges.")
+                return redirect("admin-tools")
+        elif action == "set_project_manager_access":
+            project_manager_access_form = ProjectManagerAccessForm(
+                request.POST,
+                queryset=get_user_model().objects.filter(is_staff=False).order_by("username"),
+            )
+            if project_manager_access_form.is_valid():
+                user_obj = project_manager_access_form.cleaned_data["user"]
+                enabled = project_manager_access_form.cleaned_data["access"] == "enable"
+                group_name = str(
+                    getattr(settings, "PROJECT_MANAGER_GROUP_NAME", "project_manager_collaborators")
+                ).strip()
+                if not group_name:
+                    messages.error(request, "Project Manager access group is not configured.")
+                    return redirect("admin-tools")
+                group, _ = Group.objects.get_or_create(name=group_name)
+                if enabled:
+                    user_obj.groups.add(group)
+                else:
+                    user_obj.groups.remove(group)
+                status = "enabled" if enabled else "disabled"
+                messages.success(request, f"Project Manager access {status} for {user_obj.username}.")
                 return redirect("admin-tools")
         elif action == "adjust_credits":
             adjust_credits_form = AdminAdjustCreditsForm(request.POST)
@@ -4266,6 +4343,13 @@ def admin_tools(request: HttpRequest) -> HttpResponse:
         {
             "delete_audio_form": delete_form,
             "grant_admin_form": grant_form,
+            "project_manager_access_form": project_manager_access_form,
+            "project_manager_users": get_user_model().objects.filter(
+                is_staff=False,
+                groups__name=getattr(
+                    settings, "PROJECT_MANAGER_GROUP_NAME", "project_manager_collaborators"
+                ),
+            ).order_by("username"),
             "community_form": community_form,
             "community_membership_form": community_membership_form,
             "delete_community_form": delete_community_form,
