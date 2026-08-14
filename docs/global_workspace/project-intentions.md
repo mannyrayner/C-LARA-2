@@ -166,6 +166,10 @@ operational before 14 August so the Sprint can focus on experiments rather than 
   sustained unconstrained conversation, avoid untested superiority claims, and reserve a controlled
   comparison for future work. Manny does not want to resubscribe after an unpleasant cancellation
   experience unless there is convincing evidence that subscription-management problems are fixed.
+- The report conclusion should cautiously connect the economics of sustained generative interaction
+  with sharply falling inference costs and the prospect of affordable multimodal free-conversation
+  tutors. The human authors, primarily Manny Rayner, have reviewed the report and take responsibility
+  for the version released publicly; cited web evidence still requires source verification.
 - No decision has been made on the ALTA target; its exclusion of AI authors is a serious negative.
   Francis Bond has expressed interest in collaborating on MWE work, creating a positive alternative
   publication opportunity.

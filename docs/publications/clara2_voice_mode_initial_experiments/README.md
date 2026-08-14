@@ -51,4 +51,10 @@ Mode with C-LARA-2.
 > prepared. The Jumpspeak, App Store, Langoly, and Trustpilot entries are therefore
 > provisional pointers derived from the supplied research advice and must be opened,
 > checked against the manuscript claims, and corrected or replaced before public
-> release.
+> release. The Stanford AI Index citation and quoted 280-fold figure added later
+> must likewise be checked against the report before release.
+
+- The third revision strengthens the conclusion with a cautiously framed economic
+  hypothesis and a Stanford AI Index inference-cost trend, and records that the
+  human authors, primarily Manny Rayner, have reviewed and accepted responsibility
+  for the public version.
