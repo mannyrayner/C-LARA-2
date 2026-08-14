@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "workspace_revision": 11,
+  "workspace_revision": 9,
   "as_of": "2026-08-14",
-  "assessed_commit_sha": "66ac03e7b742a9194577c3f239cfc6f335bfb003",
+  "assessed_commit_sha": "c7f829129dd1f5807f7a19a0511981fb948f7bd0",
   "approved_proposal_id": "AUTONOMOUS-REVISION-0005-2026-08-13",
   "approved_run_id": null,
   "persistent_goal_ids": [
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "The Digital Minds Sprint remains the critical immediate task. The Voice Mode report now has human review led primarily by Manny and a stronger conclusion: it frames commercial cost constraints as a hypothesis, cites the Stanford 2025 AI Index inference-cost trend, and links continued price-performance improvements to the prospect of affordable multimodal free-conversation tutors. The human authors accept responsibility for the public version, but public release remains blocked on manual verification of the provisional Jumpspeak sources and the Stanford figure because web access was unavailable during editing. The submitted EuroCALL papers remain unchanged. The most time-sensitive user path remains community-recorded audio and judging autosave before Sophie’s 24 August visit; legacy migration remains the first post-Sprint completion target.",
+  "current_focus_summary": "The Digital Minds Sprint remains the critical immediate task. The separately titled Voice Mode report now has a stronger review draft: it explains the pragmatic selection of ChatGPT Voice Mode / Pro Tier, positions Jumpspeak as a commercial comparison without assuming its conversations are unconstrained, normalizes the system name, and time-bounds the original pedagogical-control limitation using Manny’s anecdotal French test with ChatGPT version 5.6. The submitted EuroCALL papers remain unchanged and no redundant C-LARA-2 update is planned. The most time-sensitive user path remains community-recorded audio and judging autosave before Sophie’s 24 August visit; legacy migration remains the first post-Sprint completion target.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -215,29 +215,6 @@
         "docs/publications/clara2_voice_mode_initial_experiments/latex/references.bib",
         "docs/issues/issues/ISSUE-0043.json"
       ]
-    },
-    {
-      "id": "OBS-0020",
-      "summary": "The revised report now presents Jumpspeak as a plausible generative but tutoring/role-play-centered comparator, explicitly treats the interaction-type distinction as an untested hypothesis, explains why no firsthand comparison was completed, and marks its new web sources as provisional pending verification.",
-      "observed_at": "2026-08-14",
-      "confidence": "high",
-      "evidence": [
-        "docs/publications/clara2_voice_mode_initial_experiments/README.md",
-        "docs/publications/clara2_voice_mode_initial_experiments/latex/clara2_voice_mode_initial_experiments.tex",
-        "docs/publications/clara2_voice_mode_initial_experiments/latex/references.bib",
-        "docs/issues/issues/ISSUE-0043.json"
-      ]
-    },
-    {
-      "id": "OBS-0021",
-      "summary": "Manny has reviewed the Voice Mode report; its conclusion now frames commercial cost limits as a testable hypothesis, cites a reported greater-than-280-fold fall in GPT-3.5-level inference cost, and argues conditionally that affordable multimodal free-conversation tutors may soon be feasible.",
-      "observed_at": "2026-08-14",
-      "confidence": "high",
-      "evidence": [
-        "docs/publications/clara2_voice_mode_initial_experiments/latex/clara2_voice_mode_initial_experiments.tex",
-        "docs/publications/clara2_voice_mode_initial_experiments/latex/references.bib",
-        "docs/issues/issues/ISSUE-0043.json"
-      ]
     }
   ],
   "assessments": [
@@ -293,7 +270,7 @@
     },
     {
       "id": "ASM-0004",
-      "summary": "EuroCALL process risk remains acute, but the Voice Mode report is now human-reviewed and has a stronger, appropriately conditional economic conclusion; source verification, rather than substantive drafting, is the main release blocker.",
+      "summary": "EuroCALL process risk remains acute, but the non-duplicative Voice Mode publication path now has a substantively stronger review draft that separates time-bounded study evidence, later anecdotal capability evidence, and open comparative questions.",
       "goal_ids": [
         "GOAL-3",
         "GOAL-5"
@@ -304,13 +281,11 @@
         "OBS-0011",
         "OBS-0012",
         "OBS-0018",
-        "OBS-0019",
-        "OBS-0020",
-        "OBS-0021"
+        "OBS-0019"
       ],
       "urgency": "critical",
       "risk": "high",
-      "progress": "human_reviewed_voice_mode_report_pending_source_verification",
+      "progress": "revised_voice_mode_report_draft_ready_for_author_review_external_status_unresolved",
       "confidence": "high"
     },
     {
@@ -509,7 +484,7 @@
     },
     {
       "id": "ACT-0002",
-      "summary": "Verify every provisional Jumpspeak source and claim-to-source match plus the Stanford AI Index citation and 280-fold figure; after final co-author confirmation, post the separately titled report, preserve both EuroCALL submissions, and continue recording any committee response.",
+      "summary": "Have the co-authors review the revised “Combining C-LARA-2 and ChatGPT Voice Mode: Initial experiments” draft, verify the Jumpspeak characterization when web access is available, and then post it as a separately titled ResearchGate report; preserve both EuroCALL submissions and continue recording any committee response.",
       "assessment_ids": [
         "ASM-0004"
       ]
@@ -658,13 +633,13 @@
     "status": "autonomous_project_manager_update",
     "authorized_by": "Codex project-manager agent",
     "authorized_at": "2026-08-14",
-    "authorization_basis": "Manny Rayner reviewed the report, accepted primary human responsibility, and requested a stronger cost-trend conclusion with a supporting reference.",
-    "comments": "Revision 11 records human review and narrows the remaining publication blocker to external-source verification and final co-author confirmation."
+    "authorization_basis": "Manny Rayner supplied four substantive report revisions and anecdotal evidence from a new ChatGPT version 5.6 French test.",
+    "comments": "Revision 9 records the strengthened report draft, time-bounds its pedagogical limitation claim, and preserves uncertainty around the web characterization of Jumpspeak."
   },
   "changes_from_previous_revision": {
-    "summary": "Recorded Manny-led human review, strengthened the report conclusion with a conditional inference-cost argument, and retained source verification as the release blocker.",
+    "summary": "Recorded the revised Voice Mode report framing, cautious Jumpspeak comparison, terminology cleanup, and later anecdotal evidence about error correction.",
     "added_item_ids": [
-      "OBS-0021"
+      "OBS-0019"
     ],
     "revised_item_ids": [
       "ASM-0004",
@@ -689,8 +664,6 @@
       "OBS-0016",
       "OBS-0017",
       "OBS-0018",
-      "OBS-0019",
-      "OBS-0020",
       "ASM-0001",
       "ASM-0002",
       "ASM-0003",
