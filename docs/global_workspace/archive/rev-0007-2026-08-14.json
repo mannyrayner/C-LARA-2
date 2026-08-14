@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "workspace_revision": 9,
+  "workspace_revision": 7,
   "as_of": "2026-08-14",
-  "assessed_commit_sha": "c7f829129dd1f5807f7a19a0511981fb948f7bd0",
+  "assessed_commit_sha": "6596e285392820d31af26bd326df54b89fc86655",
   "approved_proposal_id": "AUTONOMOUS-REVISION-0005-2026-08-13",
   "approved_run_id": null,
   "persistent_goal_ids": [
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "The Digital Minds Sprint remains the critical immediate task. The separately titled Voice Mode report now has a stronger review draft: it explains the pragmatic selection of ChatGPT Voice Mode / Pro Tier, positions Jumpspeak as a commercial comparison without assuming its conversations are unconstrained, normalizes the system name, and time-bounds the original pedagogical-control limitation using Manny’s anecdotal French test with ChatGPT version 5.6. The submitted EuroCALL papers remain unchanged and no redundant C-LARA-2 update is planned. The most time-sensitive user path remains community-recorded audio and judging autosave before Sophie’s 24 August visit; legacy migration remains the first post-Sprint completion target.",
+  "current_focus_summary": "The Digital Minds Sprint remains the critical immediate task, while the unresolved EuroCALL authorship dispute now requires a parallel publication-preservation response: after two weeks without substantive committee information, separately identified updated versions of both papers should be prepared promptly for ResearchGate with the original author lists. The updates can report material new evidence—the consented public Voice Mode session summaries are queryable through the Assistant, and passing a C-LARA-2 text URL to ChatGPT before Voice Mode now provides a substantially cleaner preliminary multimodal integration. The most time-sensitive user path remains community-recorded audio and judging autosave before Sophie’s 24 August visit; legacy migration remains the first post-Sprint completion target.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -196,23 +196,12 @@
     },
     {
       "id": "OBS-0018",
-      "summary": "The EuroCALL C-LARA-2 paper needs no separate update because the first ResearchGate progress report subsumes it; a new Voice Mode report now preserves the submitted paper while extending it with the URL-based integration and Assistant-queryable session evidence.",
+      "summary": "Sarah-approved session summaries are now public and queryable through the C-LARA-2 Assistant, while ChatGPT can use a C-LARA-2 text URL before Voice Mode to access text, navigate pages, and view images without the earlier screenshot-upload workflow.",
       "observed_at": "2026-08-14",
       "confidence": "high",
       "evidence": [
-        "docs/publications/clara2_voice_mode_initial_experiments/README.md",
-        "docs/publications/clara2_voice_mode_initial_experiments/latex/clara2_voice_mode_initial_experiments.tex",
-        "docs/issues/issues/ISSUE-0043.json"
-      ]
-    },
-    {
-      "id": "OBS-0019",
-      "summary": "The new Voice Mode report draft now explains the system-selection rationale, adds Jumpspeak as a cautious commercial comparison, uses consistent product terminology, and distinguishes the original pedagogical limitations from Manny’s anecdotal observation that ChatGPT version 5.6 corrected French gender and article errors more effectively.",
-      "observed_at": "2026-08-14",
-      "confidence": "high",
-      "evidence": [
-        "docs/publications/clara2_voice_mode_initial_experiments/latex/clara2_voice_mode_initial_experiments.tex",
-        "docs/publications/clara2_voice_mode_initial_experiments/latex/references.bib",
+        "docs/publications/eurocall_2026_voice_mode/session_summaries/README.md",
+        "docs/publications/eurocall_2026_voice_mode/latex/voice_mode_german_case_study.tex",
         "docs/issues/issues/ISSUE-0043.json"
       ]
     }
@@ -270,7 +259,7 @@
     },
     {
       "id": "ASM-0004",
-      "summary": "EuroCALL process risk remains acute, but the non-duplicative Voice Mode publication path now has a substantively stronger review draft that separates time-bounded study evidence, later anecdotal capability evidence, and open comparative questions.",
+      "summary": "EuroCALL process risk is now acute after two weeks without substantive information, while the papers are becoming technically stale; prompt, separately versioned ResearchGate updates preserve the original authorship position and convert two recent platform developments into citable research evidence.",
       "goal_ids": [
         "GOAL-3",
         "GOAL-5"
@@ -280,12 +269,11 @@
         "OBS-0010",
         "OBS-0011",
         "OBS-0012",
-        "OBS-0018",
-        "OBS-0019"
+        "OBS-0018"
       ],
       "urgency": "critical",
       "risk": "high",
-      "progress": "revised_voice_mode_report_draft_ready_for_author_review_external_status_unresolved",
+      "progress": "researchgate_insurance_update_ready_to_prepare_external_status_unresolved",
       "confidence": "high"
     },
     {
@@ -392,7 +380,7 @@
   "uncertainties_and_conflicts": [
     {
       "id": "UNC-0001",
-      "summary": "EuroCALL acceptance, rejection, presentation, and travel consequences remain unresolved; the new report must remain clearly distinguished from the immutable Voice Mode submission and requires co-author review before ResearchGate posting.",
+      "summary": "EuroCALL acceptance, rejection, presentation, and travel consequences remain unresolved after two weeks without substantive committee information; public updated versions must be clearly distinguished from the immutable submitted versions.",
       "assessment_ids": [
         "ASM-0004"
       ]
@@ -484,7 +472,7 @@
     },
     {
       "id": "ACT-0002",
-      "summary": "Have the co-authors review the revised “Combining C-LARA-2 and ChatGPT Voice Mode: Initial experiments” draft, verify the Jumpspeak characterization when web access is available, and then post it as a separately titled ResearchGate report; preserve both EuroCALL submissions and continue recording any committee response.",
+      "summary": "Prepare and post clearly dated, separately versioned ResearchGate updates of both EuroCALL papers with their original author lists, add the session-summary/Assistant evidence and URL-based Voice Mode integration where relevant, preserve the submitted manuscripts unchanged, and continue to record any EuroCALL response.",
       "assessment_ids": [
         "ASM-0004"
       ]
@@ -633,16 +621,18 @@
     "status": "autonomous_project_manager_update",
     "authorized_by": "Codex project-manager agent",
     "authorized_at": "2026-08-14",
-    "authorization_basis": "Manny Rayner supplied four substantive report revisions and anecdotal evidence from a new ChatGPT version 5.6 French test.",
-    "comments": "Revision 9 records the strengthened report draft, time-bounds its pedagogical limitation claim, and preserves uncertainty around the web characterization of Jumpspeak."
+    "authorization_basis": "Manny Rayner reported two weeks without further EuroCALL information and proposed prompt ResearchGate insurance versions preserving the original authors and incorporating two recent developments.",
+    "comments": "Revision 7 records the increased publication-process risk and recommends separately versioned updates without altering the historical submission artifacts."
   },
   "changes_from_previous_revision": {
-    "summary": "Recorded the revised Voice Mode report framing, cautious Jumpspeak comparison, terminology cleanup, and later anecdotal evidence about error correction.",
+    "summary": "Recorded the prolonged EuroCALL silence, the decision direction toward ResearchGate insurance versions, and two material developments that now make the papers stale.",
     "added_item_ids": [
-      "OBS-0019"
+      "OBS-0018"
     ],
     "revised_item_ids": [
+      "OBS-0012",
       "ASM-0004",
+      "UNC-0001",
       "ACT-0002"
     ],
     "retained_item_ids": [
@@ -657,13 +647,11 @@
       "OBS-0009",
       "OBS-0010",
       "OBS-0011",
-      "OBS-0012",
       "OBS-0013",
       "OBS-0014",
       "OBS-0015",
       "OBS-0016",
       "OBS-0017",
-      "OBS-0018",
       "ASM-0001",
       "ASM-0002",
       "ASM-0003",
@@ -673,7 +661,6 @@
       "ASM-0008",
       "ASM-0009",
       "ASM-0010",
-      "UNC-0001",
       "UNC-0002",
       "UNC-0003",
       "UNC-0004",
