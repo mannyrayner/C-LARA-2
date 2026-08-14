@@ -1,8 +1,8 @@
 # C-LARA-2 project intentions
 
 - **Document owner:** Manny Rayner
-- **Last confirmed:** 2026-08-13
-- **Status:** Human-confirmed strategic baseline with 13 August updates
+- **Last confirmed:** 2026-08-14
+- **Status:** Human-confirmed strategic baseline with 14 August updates
 
 This document contains durable human-owned intentions and contextual facts. It deliberately does not
 assign current urgency, risk, progress, confidence, concern, or satisfaction; those are derived and
@@ -146,6 +146,15 @@ operational before 14 August so the Sprint can focus on experiments rather than 
   author's name appeared on the accepted abstract. The team has received no response to its query
   after more than a week and will accept only unchanged author lists or formal rejection of both
   papers. The presenter had already registered and made travel arrangements based on acceptance.
+- By 14 August, two weeks had passed without further substantive information from the EuroCALL
+  programme committee. Manny considers the delay concerning and wants updated versions of both
+  papers posted promptly on ResearchGate as publication insurance, preserving their original author
+  lists rather than replacing the submitted historical versions.
+- The updated papers should record two recent developments: with Sarah Wright's consent, the Voice
+  Mode session summaries are now publicly available in the repository and can be queried through the
+  C-LARA-2 Assistant; and ChatGPT can now receive the URL of an open C-LARA-2 text before Voice Mode,
+  then access its text, navigate its pages, and view its images without the earlier screenshot-upload
+  workflow.
 - No decision has been made on the ALTA target; its exclusion of AI authors is a serious negative.
   Francis Bond has expressed interest in collaborating on MWE work, creating a positive alternative
   publication opportunity.
