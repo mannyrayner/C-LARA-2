@@ -156,6 +156,11 @@ operational before 14 August so the Sprint can focus on experiments rather than 
   two developments: with Sarah Wright's consent, the Voice Mode session summaries are now public and
   queryable through the C-LARA-2 Assistant; and ChatGPT can now receive a C-LARA-2 text URL before
   Voice Mode, access its text, navigate its pages, and view its images without screenshot uploads.
+- Manny's informal French test with ChatGPT version 5.6 indicates materially better correction of
+  grammatical gender and article errors than the system used in the main Voice Mode study. The new
+  report should present this as anecdotal, time-bounded evidence and note that general model
+  improvements may continue to add pedagogically relevant capabilities without specialised CALL
+  engineering.
 - No decision has been made on the ALTA target; its exclusion of AI authors is a serious negative.
   Francis Bond has expressed interest in collaborating on MWE work, creating a positive alternative
   publication opportunity.

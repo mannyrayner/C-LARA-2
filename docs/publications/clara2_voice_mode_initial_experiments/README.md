@@ -33,3 +33,10 @@ Mode with C-LARA-2.
   not transcripts.
 - Adds a first-page provenance note explaining the relationship to the
   unresolved EuroCALL submission and linking to its preserved source.
+
+## Revision notes
+
+- The first revision after the initial draft adds the rationale for selecting
+  ChatGPT Voice Mode / Pro Tier, mentions Jumpspeak as a commercial comparison,
+  normalises the system name, and time-bounds the pedagogical-control findings
+  in light of a later informal ChatGPT version 5.6 test.
