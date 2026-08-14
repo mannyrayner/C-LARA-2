@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "workspace_revision": 10,
+  "workspace_revision": 9,
   "as_of": "2026-08-14",
-  "assessed_commit_sha": "61cb60178977ef8fab83c8edf7444f46c35b1c1a",
+  "assessed_commit_sha": "c7f829129dd1f5807f7a19a0511981fb948f7bd0",
   "approved_proposal_id": "AUTONOMOUS-REVISION-0005-2026-08-13",
   "approved_run_id": null,
   "persistent_goal_ids": [
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "The Digital Minds Sprint remains the critical immediate task. The Voice Mode report now places a fuller but still brief Jumpspeak comparison after the academic related work, distinguishes generative role-play/tutoring interaction from sustained general conversation, avoids untested superiority claims, and proposes a controlled comparison. It transparently separates Manny’s cancellation experience and unverified consumer complaints from pedagogical assessment. Because web access was unavailable during editing, all new Jumpspeak source metadata and claim-to-source matches require author verification before release. The submitted EuroCALL papers remain unchanged. The most time-sensitive user path remains community-recorded audio and judging autosave before Sophie’s 24 August visit; legacy migration remains the first post-Sprint completion target.",
+  "current_focus_summary": "The Digital Minds Sprint remains the critical immediate task. The separately titled Voice Mode report now has a stronger review draft: it explains the pragmatic selection of ChatGPT Voice Mode / Pro Tier, positions Jumpspeak as a commercial comparison without assuming its conversations are unconstrained, normalizes the system name, and time-bounds the original pedagogical-control limitation using Manny’s anecdotal French test with ChatGPT version 5.6. The submitted EuroCALL papers remain unchanged and no redundant C-LARA-2 update is planned. The most time-sensitive user path remains community-recorded audio and judging autosave before Sophie’s 24 August visit; legacy migration remains the first post-Sprint completion target.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -215,18 +215,6 @@
         "docs/publications/clara2_voice_mode_initial_experiments/latex/references.bib",
         "docs/issues/issues/ISSUE-0043.json"
       ]
-    },
-    {
-      "id": "OBS-0020",
-      "summary": "The revised report now presents Jumpspeak as a plausible generative but tutoring/role-play-centered comparator, explicitly treats the interaction-type distinction as an untested hypothesis, explains why no firsthand comparison was completed, and marks its new web sources as provisional pending verification.",
-      "observed_at": "2026-08-14",
-      "confidence": "high",
-      "evidence": [
-        "docs/publications/clara2_voice_mode_initial_experiments/README.md",
-        "docs/publications/clara2_voice_mode_initial_experiments/latex/clara2_voice_mode_initial_experiments.tex",
-        "docs/publications/clara2_voice_mode_initial_experiments/latex/references.bib",
-        "docs/issues/issues/ISSUE-0043.json"
-      ]
     }
   ],
   "assessments": [
@@ -282,7 +270,7 @@
     },
     {
       "id": "ASM-0004",
-      "summary": "EuroCALL process risk remains acute, while the Voice Mode report now has a more analytically useful Jumpspeak hypothesis and transparent limits; it is ready for substantive author review but not public release until the provisional web citations are verified.",
+      "summary": "EuroCALL process risk remains acute, but the non-duplicative Voice Mode publication path now has a substantively stronger review draft that separates time-bounded study evidence, later anecdotal capability evidence, and open comparative questions.",
       "goal_ids": [
         "GOAL-3",
         "GOAL-5"
@@ -293,12 +281,11 @@
         "OBS-0011",
         "OBS-0012",
         "OBS-0018",
-        "OBS-0019",
-        "OBS-0020"
+        "OBS-0019"
       ],
       "urgency": "critical",
       "risk": "high",
-      "progress": "revised_voice_mode_report_pending_source_verification_and_author_review",
+      "progress": "revised_voice_mode_report_draft_ready_for_author_review_external_status_unresolved",
       "confidence": "high"
     },
     {
@@ -497,7 +484,7 @@
     },
     {
       "id": "ACT-0002",
-      "summary": "Verify every provisional Jumpspeak source and claim-to-source match, then have co-authors review the revised report and decide whether the subscription footnote belongs in the public version; post only after those checks, preserve both EuroCALL submissions, and continue recording any committee response.",
+      "summary": "Have the co-authors review the revised “Combining C-LARA-2 and ChatGPT Voice Mode: Initial experiments” draft, verify the Jumpspeak characterization when web access is available, and then post it as a separately titled ResearchGate report; preserve both EuroCALL submissions and continue recording any committee response.",
       "assessment_ids": [
         "ASM-0004"
       ]
@@ -646,13 +633,13 @@
     "status": "autonomous_project_manager_update",
     "authorized_by": "Codex project-manager agent",
     "authorized_at": "2026-08-14",
-    "authorization_basis": "Manny Rayner supplied researched Jumpspeak guidance, clarified the absence of a firsthand comparison, and set a constraint against resubscribing without evidence of corrected subscription management.",
-    "comments": "Revision 10 records the nuanced comparison and makes source verification a release blocker because the editing environment could not access the web."
+    "authorization_basis": "Manny Rayner supplied four substantive report revisions and anecdotal evidence from a new ChatGPT version 5.6 French test.",
+    "comments": "Revision 9 records the strengthened report draft, time-bounds its pedagogical limitation claim, and preserves uncertainty around the web characterization of Jumpspeak."
   },
   "changes_from_previous_revision": {
-    "summary": "Moved and strengthened the Jumpspeak comparison, separated pedagogical hypotheses from subscription concerns, and added an explicit pre-release source-verification requirement.",
+    "summary": "Recorded the revised Voice Mode report framing, cautious Jumpspeak comparison, terminology cleanup, and later anecdotal evidence about error correction.",
     "added_item_ids": [
-      "OBS-0020"
+      "OBS-0019"
     ],
     "revised_item_ids": [
       "ASM-0004",
@@ -677,7 +664,6 @@
       "OBS-0016",
       "OBS-0017",
       "OBS-0018",
-      "OBS-0019",
       "ASM-0001",
       "ASM-0002",
       "ASM-0003",
