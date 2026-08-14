@@ -40,3 +40,15 @@ Mode with C-LARA-2.
   ChatGPT Voice Mode / Pro Tier, mentions Jumpspeak as a commercial comparison,
   normalises the system name, and time-bounds the pedagogical-control findings
   in light of a later informal ChatGPT version 5.6 test.
+
+- The second revision moves Jumpspeak later in the related-work discussion and
+  distinguishes generative spoken production inside a tutoring framework from
+  sustained unconstrained conversation. It treats a direct comparison as future
+  work and separates unverified subscription-management reports from pedagogical
+  assessment.
+
+> **Source-verification note:** Web access was unavailable while this revision was
+> prepared. The Jumpspeak, App Store, Langoly, and Trustpilot entries are therefore
+> provisional pointers derived from the supplied research advice and must be opened,
+> checked against the manuscript claims, and corrected or replaced before public
+> release.

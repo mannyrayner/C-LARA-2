@@ -161,6 +161,11 @@ operational before 14 August so the Sprint can focus on experiments rather than 
   report should present this as anecdotal, time-bounded evidence and note that general model
   improvements may continue to add pedagogically relevant capabilities without specialised CALL
   engineering.
+- The report's Jumpspeak comparison should be brief and placed later in previous work. It should
+  distinguish generative spoken production within an explicit tutoring/role-play framework from
+  sustained unconstrained conversation, avoid untested superiority claims, and reserve a controlled
+  comparison for future work. Manny does not want to resubscribe after an unpleasant cancellation
+  experience unless there is convincing evidence that subscription-management problems are fixed.
 - No decision has been made on the ALTA target; its exclusion of AI authors is a serious negative.
   Francis Bond has expressed interest in collaborating on MWE work, creating a positive alternative
   publication opportunity.
