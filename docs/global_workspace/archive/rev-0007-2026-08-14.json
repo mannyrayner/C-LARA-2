@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "workspace_revision": 8,
+  "workspace_revision": 7,
   "as_of": "2026-08-14",
-  "assessed_commit_sha": "ac210f4306f9e62922226fae924d576e5a8c9a34",
+  "assessed_commit_sha": "6596e285392820d31af26bd326df54b89fc86655",
   "approved_proposal_id": "AUTONOMOUS-REVISION-0005-2026-08-13",
   "approved_run_id": null,
   "persistent_goal_ids": [
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "The Digital Minds Sprint remains the critical immediate task, while EuroCALL publication preservation now has a precise bounded response: the submitted papers remain unchanged, no new C-LARA-2 paper is needed because the existing ResearchGate progress report subsumes it, and a separately titled Voice Mode report now has a first repository draft. That draft preserves the original authors, explains its provenance and unresolved EuroCALL status, reframes the study around adding free conversation to C-LARA-2, and reports both the URL-based Voice Mode workflow and Assistant access to consented session summaries. The most time-sensitive user path remains community-recorded audio and judging autosave before Sophie’s 24 August visit; legacy migration remains the first post-Sprint completion target.",
+  "current_focus_summary": "The Digital Minds Sprint remains the critical immediate task, while the unresolved EuroCALL authorship dispute now requires a parallel publication-preservation response: after two weeks without substantive committee information, separately identified updated versions of both papers should be prepared promptly for ResearchGate with the original author lists. The updates can report material new evidence—the consented public Voice Mode session summaries are queryable through the Assistant, and passing a C-LARA-2 text URL to ChatGPT before Voice Mode now provides a substantially cleaner preliminary multimodal integration. The most time-sensitive user path remains community-recorded audio and judging autosave before Sophie’s 24 August visit; legacy migration remains the first post-Sprint completion target.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -196,12 +196,12 @@
     },
     {
       "id": "OBS-0018",
-      "summary": "The EuroCALL C-LARA-2 paper needs no separate update because the first ResearchGate progress report subsumes it; a new Voice Mode report now preserves the submitted paper while extending it with the URL-based integration and Assistant-queryable session evidence.",
+      "summary": "Sarah-approved session summaries are now public and queryable through the C-LARA-2 Assistant, while ChatGPT can use a C-LARA-2 text URL before Voice Mode to access text, navigate pages, and view images without the earlier screenshot-upload workflow.",
       "observed_at": "2026-08-14",
       "confidence": "high",
       "evidence": [
-        "docs/publications/clara2_voice_mode_initial_experiments/README.md",
-        "docs/publications/clara2_voice_mode_initial_experiments/latex/clara2_voice_mode_initial_experiments.tex",
+        "docs/publications/eurocall_2026_voice_mode/session_summaries/README.md",
+        "docs/publications/eurocall_2026_voice_mode/latex/voice_mode_german_case_study.tex",
         "docs/issues/issues/ISSUE-0043.json"
       ]
     }
@@ -259,7 +259,7 @@
     },
     {
       "id": "ASM-0004",
-      "summary": "EuroCALL process risk remains acute, but the publication-insurance scope is now efficient and non-duplicative: retain both submissions unchanged, rely on the existing progress report for C-LARA-2 coverage, and publish the new extended Voice Mode report after author review.",
+      "summary": "EuroCALL process risk is now acute after two weeks without substantive information, while the papers are becoming technically stale; prompt, separately versioned ResearchGate updates preserve the original authorship position and convert two recent platform developments into citable research evidence.",
       "goal_ids": [
         "GOAL-3",
         "GOAL-5"
@@ -273,7 +273,7 @@
       ],
       "urgency": "critical",
       "risk": "high",
-      "progress": "first_voice_mode_report_draft_ready_for_author_review_external_status_unresolved",
+      "progress": "researchgate_insurance_update_ready_to_prepare_external_status_unresolved",
       "confidence": "high"
     },
     {
@@ -380,7 +380,7 @@
   "uncertainties_and_conflicts": [
     {
       "id": "UNC-0001",
-      "summary": "EuroCALL acceptance, rejection, presentation, and travel consequences remain unresolved; the new report must remain clearly distinguished from the immutable Voice Mode submission and requires co-author review before ResearchGate posting.",
+      "summary": "EuroCALL acceptance, rejection, presentation, and travel consequences remain unresolved after two weeks without substantive committee information; public updated versions must be clearly distinguished from the immutable submitted versions.",
       "assessment_ids": [
         "ASM-0004"
       ]
@@ -472,7 +472,7 @@
     },
     {
       "id": "ACT-0002",
-      "summary": "Review and revise the first draft of “Combining C-LARA-2 and ChatGPT Voice Mode: Initial experiments,” then post it as a separately titled ResearchGate report with the unchanged author list and provenance note; do not create a redundant C-LARA-2 paper update, and continue recording any EuroCALL response.",
+      "summary": "Prepare and post clearly dated, separately versioned ResearchGate updates of both EuroCALL papers with their original author lists, add the session-summary/Assistant evidence and URL-based Voice Mode integration where relevant, preserve the submitted manuscripts unchanged, and continue to record any EuroCALL response.",
       "assessment_ids": [
         "ASM-0004"
       ]
@@ -621,14 +621,16 @@
     "status": "autonomous_project_manager_update",
     "authorized_by": "Codex project-manager agent",
     "authorized_at": "2026-08-14",
-    "authorization_basis": "Manny Rayner corrected the publication strategy and requested a first version of a new Voice Mode report rather than updates to both EuroCALL papers.",
-    "comments": "Revision 8 narrows the insurance plan to a separately titled Voice Mode report, records the completed first draft, and preserves both EuroCALL submissions unchanged."
+    "authorization_basis": "Manny Rayner reported two weeks without further EuroCALL information and proposed prompt ResearchGate insurance versions preserving the original authors and incorporating two recent developments.",
+    "comments": "Revision 7 records the increased publication-process risk and recommends separately versioned updates without altering the historical submission artifacts."
   },
   "changes_from_previous_revision": {
-    "summary": "Corrected the ResearchGate strategy to avoid a redundant C-LARA-2 update and recorded completion of the first extended Voice Mode report draft.",
-    "added_item_ids": [],
+    "summary": "Recorded the prolonged EuroCALL silence, the decision direction toward ResearchGate insurance versions, and two material developments that now make the papers stale.",
+    "added_item_ids": [
+      "OBS-0018"
+    ],
     "revised_item_ids": [
-      "OBS-0018",
+      "OBS-0012",
       "ASM-0004",
       "UNC-0001",
       "ACT-0002"
@@ -645,7 +647,6 @@
       "OBS-0009",
       "OBS-0010",
       "OBS-0011",
-      "OBS-0012",
       "OBS-0013",
       "OBS-0014",
       "OBS-0015",
