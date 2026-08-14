@@ -69,3 +69,6 @@ Mode with C-LARA-2.
 - The fifth revision adds a final abstract sentence summarising the report's broader
   conclusion about the prospect of affordable multimodal AI language tutors capable
   of free conversation.
+
+- The sixth revision clarifies in the first-page provenance footnote that the
+  author list is in anti-alphabetical (reverse alphabetical) order.
