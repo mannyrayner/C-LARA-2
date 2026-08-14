@@ -52,9 +52,16 @@ Mode with C-LARA-2.
 > provisional pointers derived from the supplied research advice and must be opened,
 > checked against the manuscript claims, and corrected or replaced before public
 > release. The Stanford AI Index citation and quoted 280-fold figure added later
-> must likewise be checked against the report before release.
+> must likewise be checked against the report before release. The METR citation
+> and seven-month capability-doubling claim added in the fourth revision are also
+> provisional pending the same manual check.
 
 - The third revision strengthens the conclusion with a cautiously framed economic
   hypothesis and a Stanford AI Index inference-cost trend, and records that the
   human authors, primarily Manny Rayner, have reviewed and accepted responsibility
   for the public version.
+
+- The fourth revision separates the final economic argument into its own paragraph,
+  states the authors' conclusion more strongly, and adds METR's reported trend in
+  frontier-system software-task horizons as a second indicator of improving model
+  capability.
