@@ -65,3 +65,7 @@ Mode with C-LARA-2.
   states the authors' conclusion more strongly, and adds METR's reported trend in
   frontier-system software-task horizons as a second indicator of improving model
   capability.
+
+- The fifth revision adds a final abstract sentence summarising the report's broader
+  conclusion about the prospect of affordable multimodal AI language tutors capable
+  of free conversation.
