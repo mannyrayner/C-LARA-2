@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "workspace_revision": 13,
+  "workspace_revision": 12,
   "as_of": "2026-08-17",
   "assessed_commit_sha": "f49181bcb03796373a31ce001f27e862af92c71f",
   "approved_proposal_id": null,
@@ -330,7 +330,7 @@
     },
     {
       "id": "ASM-0006",
-      "summary": "The Indigenous-language delivery path is now more urgent than generic mobile work: recorded audio remains substantial but important before 24 August, while judging autosave is easier and should be landed quickly alongside the final legacy publication step.",
+      "summary": "The Indigenous-language delivery path is now more urgent than generic mobile work: recorded audio is substantial but important before 24 August, while judging autosave is easier and should be landed quickly if it does not displace the critical Sprint.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-3",
@@ -474,7 +474,7 @@
   "requested_human_decisions": [
     {
       "id": "REQ-0005",
-      "question": "Should the prepared global-workspace experiments now be run independently of the expired Sprint, and if so which outcomes, rating measures, participant set, and artifact-retention rules should define the initial protocol?",
+      "question": "After the current Sprint experiments, which outcomes, rating measures, participant set, and artifact-retention rules should become the initial protocol?",
       "reason": "The critical infrastructure now works and experimentation should soon supply enough evidence to make this concrete.",
       "assessment_ids": [
         "ASM-0003"
@@ -549,7 +549,7 @@
     },
     {
       "id": "ACT-0008",
-      "summary": "Use mandatory ordered input capture for every later workspace revision and compare archived human evidence with assessment changes during the ongoing autonomy research programme.",
+      "summary": "Use mandatory ordered input capture for every later workspace revision and compare archived human evidence with the resulting assessment changes during Sprint analysis.",
       "assessment_ids": [
         "ASM-0003"
       ]
@@ -652,30 +652,36 @@
     "status": "autonomous_project_manager_update",
     "authorized_by": "Codex project-manager agent",
     "authorized_at": "2026-08-17",
-    "authorization_basis": "The revision-12 Sprint outcome made three retained Sprint-contingent statements obsolete.",
-    "comments": "Revision 13 removes stale critical-Sprint capacity language while retaining the infrastructure and open decision about independent experiments."
+    "authorization_basis": "Manny Rayner reported successful corpus-wide legacy compilation, a five-item publication smoke test, the absent Sprint response, and a renewed EuroCALL escalation.",
+    "comments": "Revision 12 makes legacy full publication the immediate completion action, retires the expired Sprint action while preserving its infrastructure value, and records worsening EuroCALL process uncertainty."
   },
   "changes_from_previous_revision": {
-    "summary": "Removed three stale Sprint-contingent statements left after the event expired.",
+    "summary": "Recorded successful legacy batch compilation and publication smoke testing, retired the expired Sprint action after no response, and updated the unresolved EuroCALL escalation.",
     "added_item_ids": [],
     "revised_item_ids": [
-      "ASM-0006",
-      "REQ-0005",
-      "ACT-0008"
+      "OBS-0004",
+      "OBS-0006",
+      "OBS-0012",
+      "ASM-0003",
+      "ASM-0004",
+      "ASM-0005",
+      "UNC-0001",
+      "UNC-0003",
+      "UNC-0004",
+      "ACT-0002",
+      "ACT-0004",
+      "ACT-0005"
     ],
     "retained_item_ids": [
       "OBS-0001",
       "OBS-0002",
       "OBS-0003",
-      "OBS-0004",
       "OBS-0005",
-      "OBS-0006",
       "OBS-0007",
       "OBS-0008",
       "OBS-0009",
       "OBS-0010",
       "OBS-0011",
-      "OBS-0012",
       "OBS-0013",
       "OBS-0014",
       "OBS-0015",
@@ -687,28 +693,22 @@
       "OBS-0021",
       "ASM-0001",
       "ASM-0002",
-      "ASM-0003",
-      "ASM-0004",
-      "ASM-0005",
+      "ASM-0006",
       "ASM-0007",
       "ASM-0008",
       "ASM-0009",
       "ASM-0010",
-      "UNC-0001",
       "UNC-0002",
-      "UNC-0003",
-      "UNC-0004",
       "UNC-0005",
       "UNC-0006",
       "UNC-0007",
+      "REQ-0005",
       "REQ-0007",
       "REQ-0008",
-      "ACT-0002",
       "ACT-0003",
-      "ACT-0004",
-      "ACT-0005",
       "ACT-0006",
       "ACT-0007",
+      "ACT-0008",
       "ACT-0009",
       "PRED-0001",
       "PRED-0002",
@@ -717,6 +717,8 @@
       "PRED-0005",
       "PRED-0006"
     ],
-    "retired_item_ids": []
+    "retired_item_ids": [
+      "ACT-0001"
+    ]
   }
 }
