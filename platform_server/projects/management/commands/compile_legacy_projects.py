@@ -7,7 +7,7 @@ from django.core.management.base import BaseCommand, CommandError
 from projects.legacy_batch import (
     append_jsonl,
     imported_project_records,
-    latest_render_input,
+    inspect_render_input,
     prepare_report,
     render_project_html,
     valid_compiled_index,
@@ -42,12 +42,13 @@ class Command(BaseCommand):
             base = {"source_system": record.source_system, "legacy_project_id": record.legacy_project_id,
                     "project_id": project.id, "title": project.title}
             existing = valid_compiled_index(project)
-            render_input = latest_render_input(project)
+            render_input, input_diagnostics = inspect_render_input(project)
             if existing and not options["force"]:
                 row = {**base, "status": "skipped_compiled", "message": str(existing)}
             elif render_input is None:
                 row = {**base, "status": "skipped_missing_input",
-                       "message": "no readable upstream stage artifact with a non-empty pages list"}
+                       "message": "no readable upstream stage artifact with a pages list",
+                       "diagnostics": input_diagnostics}
             elif options["dry_run"]:
                 stage, run_dir, _payload = render_input
                 row = {**base, "status": "would_compile", "input_stage": stage, "input_run": run_dir.name}
@@ -60,6 +61,9 @@ class Command(BaseCommand):
                     row = {**base, "status": "failed", "message": str(exc)}
             counts[row["status"]] += 1
             append_jsonl(report, row)
-            self.stdout.write(f"[{index}/{len(records)}] {record.legacy_project_id} {row['status']}")
+            detail = ""
+            if row["status"] == "skipped_missing_input":
+                detail = ": " + "; ".join(row["diagnostics"])
+            self.stdout.write(f"[{index}/{len(records)}] {record.legacy_project_id} {row['status']}{detail}")
         summary = ", ".join(f"{key}={value}" for key, value in sorted(counts.items())) or "no candidates"
         self.stdout.write(self.style.SUCCESS(f"Legacy HTML batch complete: {summary}"))

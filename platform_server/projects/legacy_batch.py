@@ -12,7 +12,20 @@ from pipeline.stage_artifacts import read_stage_artifact, write_stage_artifact
 from .models import LegacyProjectImport, Project
 
 
-RENDER_INPUT_STAGES = ("audio", "pinyin", "gloss", "lemma", "mwe", "translation", "segmentation_phase_2")
+RENDER_INPUT_STAGES = (
+    "audio",
+    "pinyin",
+    "gloss",
+    "lemma",
+    "mwe",
+    "translation",
+    "segmentation_phase_2",
+    # Legacy imports initially wrote their rich converted annotation payload to
+    # every later-stage file, including compile_html.json.  A normal renderer
+    # result has no pages list and is rejected below, while the legacy payload
+    # remains a valid last-resort rendering input.
+    "compile_html",
+)
 
 
 def imported_project_records(*, source_system: str, legacy_ids: set[str] | None = None):
@@ -42,38 +55,65 @@ def valid_compiled_index(project: Project) -> Path | None:
     return candidate if candidate.is_file() and candidate.suffix.lower() == ".html" else None
 
 
-def latest_render_input(project: Project) -> tuple[str, Path, dict[str, Any]] | None:
-    """Find the newest readable, structurally valid final-stage rendering input."""
+def inspect_render_input(project: Project) -> tuple[tuple[str, Path, dict[str, Any]] | None, list[str]]:
+    """Find a render input and explain why no usable artifact was found."""
 
     runs_root = project.artifact_dir().resolve() / "runs"
     if not runs_root.is_dir():
-        return None
+        return None, [f"runs directory does not exist: {runs_root}"]
     candidates: list[tuple[float, int, str, Path]] = []
+    run_count = 0
     for run_dir in runs_root.iterdir():
         if not run_dir.is_dir():
             continue
+        run_count += 1
         for priority, stage in enumerate(RENDER_INPUT_STAGES):
             path = run_dir / "stages" / f"{stage}.json"
             if path.is_file():
                 candidates.append((path.stat().st_mtime, -priority, stage, run_dir))
+    if not candidates:
+        searched = ", ".join(f"{stage}.json" for stage in RENDER_INPUT_STAGES)
+        return None, [
+            f"found {run_count} run director{'y' if run_count == 1 else 'ies'} below {runs_root}",
+            f"none contained a stages artifact named: {searched}",
+        ]
+    rejected: list[str] = []
     for _mtime, _priority, stage, run_dir in sorted(
         candidates, key=lambda row: (row[0], row[1], row[2], str(row[3])), reverse=True
     ):
         try:
             payload = read_stage_artifact(run_dir, stage)
-        except Exception:
+        except Exception as exc:
+            rejected.append(f"{run_dir.name}/stages/{stage}.json is unreadable: {exc}")
             continue
-        if isinstance(payload, dict) and isinstance(payload.get("pages"), list) and payload["pages"]:
-            return stage, run_dir, payload
-    return None
+        if not isinstance(payload, dict):
+            rejected.append(f"{run_dir.name}/stages/{stage}.json is not a JSON object")
+            continue
+        if not isinstance(payload.get("pages"), list):
+            rejected.append(f"{run_dir.name}/stages/{stage}.json has no pages list")
+            continue
+        if not payload["pages"]:
+            rejected.append(f"{run_dir.name}/stages/{stage}.json has an empty pages list")
+            continue
+        # Image availability is not a rendering prerequisite; images are
+        # optional annotations within a page payload.
+        return (stage, run_dir, payload), []
+    return None, rejected
+
+
+def latest_render_input(project: Project) -> tuple[str, Path, dict[str, Any]] | None:
+    """Find the newest readable, structurally valid final-stage rendering input."""
+
+    render_input, _diagnostics = inspect_render_input(project)
+    return render_input
 
 
 def render_project_html(project: Project) -> tuple[Path, str, Path]:
     """Run only ``compile_html`` from an existing imported annotation artifact."""
 
-    render_input = latest_render_input(project)
+    render_input, diagnostics = inspect_render_input(project)
     if render_input is None:
-        raise ValueError("no readable upstream stage artifact with a non-empty pages list")
+        raise ValueError("no readable upstream stage artifact with a pages list: " + "; ".join(diagnostics))
     stage, source_run, payload = render_input
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
     output_dir = project.artifact_dir().resolve() / "runs" / f"run_legacy_render_{timestamp}"

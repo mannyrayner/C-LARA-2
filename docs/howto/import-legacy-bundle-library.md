@@ -410,8 +410,10 @@ detectable in a ZIP, the import record explicitly notes that the phonetic layer 
 
 Compilation of the migrated corpus is deliberately limited to the final HTML renderer. The command reads an existing
 annotation-stage artifact, preferring the latest readable final-stage payload, and does not run segmentation,
-translation, MWE, lemma, gloss, pinyin, audio generation, or any AI call. A project with no readable artifact containing
-a non-empty `pages` list is reported as `skipped_missing_input` for later review.
+translation, MWE, lemma, gloss, pinyin, audio generation, or any AI call. Images are optional and are not used when
+deciding whether a project can be rendered. A project with no readable artifact containing a `pages` list is reported
+as `skipped_missing_input` for later review; the console and JSONL report identify the searched artifact location and
+whether files were absent, unreadable, or structurally unsuitable.
 
 Start with an auditable dry run and a small batch:
 

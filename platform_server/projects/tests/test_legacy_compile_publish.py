@@ -100,6 +100,51 @@ class LegacyCompilePublishCommandTests(TestCase):
         missing.project.refresh_from_db()
         self.assertEqual(missing.project.compiled_path, "")
 
+    def test_compile_accepts_legacy_compile_html_payload_and_does_not_require_images(self):
+        record = self._record("14", with_stage=False)
+        payload = {
+            "pages": [
+                {
+                    "segments": [
+                        {
+                            "surface": "Text without an image",
+                            "tokens": [{"surface": "Text", "annotations": {"lemma": "text"}}],
+                            "annotations": {},
+                        }
+                    ],
+                    "annotations": {},
+                }
+            ]
+        }
+        write_stage_artifact(
+            record.project.artifact_dir() / "runs" / "run_imported", "compile_html", payload
+        )
+
+        output = self._call("compile_legacy_projects", "--only-id", "14")
+
+        self.assertIn("compiled=1", output)
+        record.project.refresh_from_db()
+        compiled = record.project.artifact_dir() / record.project.compiled_path
+        self.assertTrue(compiled.is_file())
+        stage_path = compiled.parent.parent / "stages" / "compile_html.json"
+        stage = json.loads(stage_path.read_text(encoding="utf-8"))
+        self.assertEqual(stage["legacy_batch_render"]["input_stage"], "compile_html")
+
+    def test_missing_input_output_and_report_explain_searched_location(self):
+        record = self._record("15", with_stage=False)
+        report = Path(self.tempdir.name) / "missing.jsonl"
+
+        output = self._call(
+            "compile_legacy_projects", "--only-id", "15", "--report", str(report)
+        )
+
+        expected_runs_root = record.project.artifact_dir().resolve() / "runs"
+        self.assertIn("skipped_missing_input: runs directory does not exist", output)
+        self.assertIn(str(expected_runs_root), output)
+        row = json.loads(report.read_text(encoding="utf-8"))
+        self.assertEqual(row["status"], "skipped_missing_input")
+        self.assertIn(str(expected_runs_root), row["diagnostics"][0])
+
     def test_dry_run_does_not_compile_or_publish(self):
         record = self._record("10")
         compile_output = self._call("compile_legacy_projects", "--dry-run")
