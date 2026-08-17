@@ -1,9 +1,9 @@
 # ISSUE-0042: Prepare C-LARA global-workspace experiments for the Digital Minds Research Sprint
 
-- **Status:** active
-- **Priority:** P0
+- **Status:** closed
+- **Priority:** P3
 - **Created:** 2026-08-10T00:00:00Z
-- **Updated:** 2026-08-13T00:00:00Z
+- **Updated:** 2026-08-17T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** 2026-08-14T00:00:00Z
 - **Dependencies:** None
@@ -130,8 +130,14 @@ granting the group and configuring collaborator roles before Sophie or another c
 the mode.
 
 Initial laptop trial and access-control update on 2026-08-13: a natural query about the tasks most
-relevant to Sophie's Indigenous-community work returned a plausible, repository-grounded answer in
+relevant to Sophie’s Indigenous-community work returned a plausible, repository-grounded answer in
 36 seconds. Admin Tools now lets an admin enable or disable Project Manager access for a non-staff
-user; access remains off by default, and unauthorized users see an instruction to ask an admin.
-The control creates the configured authorization group on first grant, while role descriptions
-remain separately configured authoritative context.
+user; access remains off by default, and unauthorized users see an instruction to ask an admin. The
+control creates the configured authorization group on first grant, while role descriptions remain
+separately configured authoritative context.
+
+Human outcome update from Manny Rayner on 2026-08-17: the team never heard back from the Digital
+Minds Research Sprint. Manny infers that the Sprint was probably oversubscribed and the team did not
+make the cut, although a misunderstanding remains possible. The 14–16 August event has passed, so
+close this time-bounded preparation issue. The reusable global-workspace and Project Manager
+infrastructure remains available for the ongoing autonomy research programme.

@@ -3,9 +3,9 @@
 - **Status:** active
 - **Priority:** P0
 - **Created:** 2026-08-12T00:00:00Z
-- **Updated:** 2026-08-13T00:00:00Z
+- **Updated:** 2026-08-17T00:00:00Z
 - **Origin:** human-suggestion
-- **Deadline:** 2026-08-13T23:59:59Z
+- **Deadline:** 2026-08-14T23:59:59Z
 - **Dependencies:** None
 - **Canonical JSON:** [ISSUE-0043.json](ISSUE-0043.json)
 
@@ -24,3 +24,63 @@ communication or publication-plan consequences without weakening the stated auth
 Human issue-review update from Manny Rayner on 2026-08-13: The team was told that the responsible
 EuroCALL person was on leave and returns on 13 August. A response may therefore arrive today; follow
 up and record the outcome promptly.
+
+Human update from Manny Rayner on 2026-08-14: two weeks have now passed without further substantive
+information from the programme committee, increasing concern about the process. Because the papers
+are also becoming outdated as AI capabilities change, Manny wants updated versions posted promptly
+on ResearchGate as publication insurance, with the original author lists. The updates should
+document (1) the consented public session-summary dataset and successful Assistant queries over it,
+and (2) the cleaner preliminary C-LARA-2/ChatGPT Voice Mode workflow in which ChatGPT receives a
+C-LARA-2 text URL and can access the text, navigate pages, and view images without repeated
+screenshot uploads. Preserve the submitted manuscripts as historical submission records; prepare
+separately identifiable updated versions and record their publication details.
+
+Human correction from Manny Rayner on 2026-08-14: do not prepare a ResearchGate update of the
+EuroCALL C-LARA-2 paper, because its content is subsumed by the already-posted first progress
+report. Instead, preserve the EuroCALL Voice Mode submission unchanged and create a new report,
+provisionally titled 'Combining C-LARA-2 and ChatGPT Voice Mode: Initial experiments', based on and
+extending that submission with the unchanged author list. Its first page should explain its
+provenance, the unresolved EuroCALL AI-authorship-policy issue, and the repository location of the
+submitted manuscript. Reframe the introduction around free conversation inside C-LARA-2, distinguish
+conversational quality from integration feasibility, replace Section 5 with the URL-based
+integration experiment, and include the consented session summaries and a repository-grounded
+Assistant example. A first repository version now lives in
+docs/publications/clara2_voice_mode_initial_experiments/.
+
+Human report revision guidance from Manny Rayner on 2026-08-14: add a bridge explaining the
+pragmatic selection of ChatGPT Voice Mode / Pro Tier; mention Jumpspeak near the start of related
+work and investigate its free-conversation positioning; use 'ChatGPT Voice Mode / Pro Tier'
+consistently; and time-bound the pedagogical-control limitation. Manny's informal French test with
+ChatGPT version 5.6 found improved correction of gender and article errors. Present this as
+anecdotal rather than controlled evidence, while noting the reasonable expectation that rapid
+general-model progress will continue to yield pedagogically useful capabilities. The report draft
+now incorporates these revisions.
+
+Human Jumpspeak guidance from Manny Rayner on 2026-08-14: move the comparison later in previous work
+and make it more nuanced. Available research advice suggests that Jumpspeak supports genuinely
+generative spoken production but remains centered on role-play scenarios and explicit tutoring,
+while ChatGPT may support a different kind of general conversation with language learning as an
+unobtrusive layer. Treat this as a hypothesis, not demonstrated superiority, and propose a
+controlled comparison. Do not imply a firsthand evaluation: Manny stopped before comparison after an
+unpleasant cancellation experience and does not want to resubscribe without evidence that reported
+subscription-management problems are fixed. If cancellation reports are mentioned, label them as
+unverified consumer reports and keep them separate from pedagogical assessment. The draft now
+follows this structure; external source details remain subject to author verification because web
+access was unavailable in the editing environment.
+
+Human review update from Manny Rayner on 2026-08-14: strengthen the conclusion by cautiously
+suggesting that leading commercial systems, particularly Jumpspeak, may be constrained substantially
+by cost, and connect falling AI inference costs to the prospect of affordable multimodal
+free-conversation tutors. Add a suitable reference. Also change the responsibility statement to
+record that the human authors, primarily Manny, have reviewed the report and take full
+responsibility for the public version. The draft now makes the commercial-cost point an explicit
+hypothesis requiring comparison and cites the Stanford 2025 AI Index's reported
+greater-than-280-fold reduction in GPT-3.5-level inference cost from November 2022 to October 2024.
+This citation and figure require manual verification because web access was unavailable in the
+editing environment.
+
+Human follow-up from Manny Rayner on 2026-08-17: there has still been no response from Ana or other
+substantive resolution. After Yazdan said the previous week that Ana would return from annual leave
+on Thursday, Manny emailed Yazdan asking whether she was in fact back and stating that the team
+still had no idea what was happening. Continue preserving correspondence and awaiting a concrete
+response without weakening the authorship position.

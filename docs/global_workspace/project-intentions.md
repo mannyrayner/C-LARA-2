@@ -119,7 +119,7 @@ operational before 14 August so the Sprint can focus on experiments rather than 
 ### Post-Sprint execution sequence
 
 - **Human owner:** Manny Rayner
-- **Last confirmed:** 2026-08-12
+- **Last confirmed:** 2026-08-17
 
 - Finish the nearly complete legacy migration first as low-hanging fruit.
 - Then give substantial attention to the project-manager/autonomy framework, an initial mobile
@@ -135,7 +135,7 @@ operational before 14 August so the Sprint can focus on experiments rather than 
 ### Publication and collaboration outcomes
 
 - **Human owner:** Manny Rayner
-- **Last confirmed:** 2026-08-12
+- **Last confirmed:** 2026-08-17
 - **Canonical issues:** [ISSUE-0008](../issues/issues/ISSUE-0008.json),
   [ISSUE-0043](../issues/issues/ISSUE-0043.json), and
   [ISSUE-0044](../issues/issues/ISSUE-0044.json)
@@ -150,6 +150,9 @@ operational before 14 August so the Sprint can focus on experiments rather than 
   programme committee. Manny considers the delay concerning. No separate update to the EuroCALL
   C-LARA-2 paper is needed because its content is subsumed by the first progress report already on
   ResearchGate.
+- By 17 August, there was still no response from Ana. After Yazdan had said that Ana would return
+  from annual leave on Thursday, Manny emailed Yazdan to ask whether she was in fact back and to say
+  that the team still had no idea what was happening.
 - Instead, the Voice Mode submission should remain unchanged while a new, separately titled report
   based on and extending it is posted promptly on ResearchGate with the same author list. The new
   report should state its provenance and the unresolved EuroCALL AI-authorship-policy issue, and add
@@ -173,6 +176,17 @@ operational before 14 August so the Sprint can focus on experiments rather than 
 - No decision has been made on the ALTA target; its exclusion of AI authors is a serious negative.
   Francis Bond has expressed interest in collaborating on MWE work, creating a positive alternative
   publication opportunity.
+
+### Digital Minds Research Sprint outcome
+
+- **Human owner:** Manny Rayner
+- **Last confirmed:** 2026-08-17
+- **Canonical issue:** [ISSUE-0042](../issues/issues/ISSUE-0042.json)
+
+The team never heard back from the Digital Minds Research Sprint. Manny thinks it was probably
+oversubscribed and the C-LARA team did not make the cut, although a misunderstanding is another
+possibility. The event has passed; the infrastructure created in preparation remains useful for the
+longer-term autonomy research programme.
 
 ### Picture-dictionary user feedback
 

@@ -3,7 +3,7 @@
 - **Status:** active
 - **Priority:** P1
 - **Created:** 2026-05-09T00:37:55Z
-- **Updated:** 2026-08-13T00:00:00Z
+- **Updated:** 2026-08-17T00:00:00Z
 - **Origin:** human-suggestion
 - **Deadline:** None
 - **Dependencies:** [ISSUE-0002](ISSUE-0002.md)
@@ -132,3 +132,9 @@ open.
 Human issue-review update from Manny Rayner on 2026-08-13: The mechanisms are nearly all complete;
 finish the actual migration soon as low-hanging fruit. ISSUE-0013 should be re-evaluated during this
 completion attempt if performance/timeouts recur.
+
+Operational progress update from Manny Rayner on 2026-08-17: all imported C-LARA projects were
+successfully batch-compiled on AWS using the renderer-only management command, and several spot
+checks looked good. A five-project publication smoke batch (legacy IDs 1, 100, 101, 102, and 103)
+also succeeded. The full batch publication is planned for 18 August; keep the issue active until
+that run and its report are reviewed.
