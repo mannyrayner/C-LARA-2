@@ -406,6 +406,57 @@ Use repeatable `--only-id <legacy-id>` options to target specific projects. The 
 with their source identity, status, project, attempt count, diagnostics, and error. If legacy phonetic files are
 detectable in a ZIP, the import record explicitly notes that the phonetic layer was not imported into C-LARA-2 stages.
 
+## Step 6: render and publish imported projects in batches
+
+Compilation of the migrated corpus is deliberately limited to the final HTML renderer. The command reads an existing
+annotation-stage artifact, preferring the latest readable final-stage payload, and does not run segmentation,
+translation, MWE, lemma, gloss, pinyin, audio generation, or any AI call. Images are optional and are not used when
+deciding whether a project can be rendered. A project with no readable artifact containing a `pages` list is reported
+as `skipped_missing_input` for later review; the console and JSONL report identify the searched artifact location and
+whether files were absent, unreadable, or structurally unsuitable.
+
+Start with an auditable dry run and a small batch:
+
+```bash
+/srv/C-LARA-2/.venv/bin/python manage.py compile_legacy_projects \
+  --source-system clara_adelaide \
+  --dry-run \
+  --limit 5 \
+  --report /tmp/legacy-compile-dry-run.jsonl
+```
+
+Then render the smoke batch. Existing valid HTML is skipped unless `--force` is supplied:
+
+```bash
+/srv/C-LARA-2/.venv/bin/python manage.py compile_legacy_projects \
+  --source-system clara_adelaide \
+  --limit 5 \
+  --report /tmp/legacy-compile-smoke.jsonl
+```
+
+Review the generated HTML and report before running without `--limit`. `--only-id <legacy-id>` is repeatable and can
+be used to isolate specific projects. A rendering failure is recorded for that project and does not stop the batch.
+
+Publication is a separate, idempotent operation. It refuses to publish a project unless `compiled_path` identifies an
+existing HTML file below that project's artifact root:
+
+```bash
+/srv/C-LARA-2/.venv/bin/python manage.py publish_legacy_projects \
+  --source-system clara_adelaide \
+  --dry-run \
+  --limit 5 \
+  --report /tmp/legacy-publish-dry-run.jsonl
+
+/srv/C-LARA-2/.venv/bin/python manage.py publish_legacy_projects \
+  --source-system clara_adelaide \
+  --limit 5 \
+  --report /tmp/legacy-publish-smoke.jsonl
+```
+
+Publication normally generates missing discovery metadata using the same helper as interactive publication. Use
+`--skip-discovery-metadata` only when deliberately deferring that work. The compile and publish commands operate only
+on successful `LegacyProjectImport` records with a linked project, so native C-LARA-2 projects are not included.
+
 ## What gets imported
 
 For supported legacy bundles, C-LARA-2 imports:
