@@ -6,8 +6,8 @@ the accepted submission, including **ChatGPT C-LARA-Instance** as an author.
 
 ## Submission status
 
-- **Recorded status:** accepted, but under unresolved authorship challenge
-- **Status last checked:** 10 August 2026
+- **Recorded status:** accepted submission; AI authorship pending publisher ethics review
+- **Status last checked:** 18 August 2026
 - **Manuscript:** [`latex/eurocall_clara2_v6e.tex`](latex/eurocall_clara2_v6e.tex)
 - **Related paper:** [Using ChatGPT Voice for spoken German practice: A case
   study](../eurocall_2026_voice_mode/)
@@ -27,6 +27,14 @@ accepted with their submitted author lists, or to reject both under the newly
 communicated formal criterion. It also requested acknowledgement and a decision
 by the end of the following week. No reply had been received when this record
 was last updated.
+
+On 18 August, the programme committee set out a formal next step. It confirmed that the
+question applies to this paper as well as the Voice Mode paper. Because Universitat Politècnica de
+València publishes the volume, the matter is to be referred to its Ethics Committee during the first
+week of September. The authors were asked for an AI-authorship justification and replied by
+identifying the earlier EuroCALL precedent, maintaining the submitted author lists, and pointing to
+the detailed contribution evidence in the public extended reports. No ethics decision has yet been
+reported.
 
 This is a factual summary rather than a reproduction of private correspondence:
 the committee representative's name and contact details are intentionally
