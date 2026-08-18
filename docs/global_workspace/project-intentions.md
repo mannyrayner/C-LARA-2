@@ -1,8 +1,8 @@
 # C-LARA-2 project intentions
 
 - **Document owner:** Manny Rayner
-- **Last confirmed:** 2026-08-13
-- **Status:** Human-confirmed strategic baseline with 13 August updates
+- **Last confirmed:** 2026-08-18
+- **Status:** Human-confirmed strategic baseline with 18 August EuroCALL update
 
 This document contains durable human-owned intentions and contextual facts. It deliberately does not
 assign current urgency, risk, progress, confidence, concern, or satisfaction; those are derived and
@@ -135,7 +135,7 @@ operational before 14 August so the Sprint can focus on experiments rather than 
 ### Publication and collaboration outcomes
 
 - **Human owner:** Manny Rayner
-- **Last confirmed:** 2026-08-12
+- **Last confirmed:** 2026-08-18
 - **Canonical issues:** [ISSUE-0008](../issues/issues/ISSUE-0008.json),
   [ISSUE-0043](../issues/issues/ISSUE-0043.json), and
   [ISSUE-0044](../issues/issues/ISSUE-0044.json)
@@ -146,6 +146,40 @@ operational before 14 August so the Sprint can focus on experiments rather than 
   author's name appeared on the accepted abstract. The team has received no response to its query
   after more than a week and will accept only unchanged author lists or formal rejection of both
   papers. The presenter had already registered and made travel arrangements based on acceptance.
+- By 14 August, two weeks had passed without further substantive information from the EuroCALL
+  programme committee. Manny considers the delay concerning. No separate update to the EuroCALL
+  C-LARA-2 paper is needed because its content is subsumed by the first progress report already on
+  ResearchGate.
+- Instead, the Voice Mode submission should remain unchanged while a new, separately titled report
+  based on and extending it is posted promptly on ResearchGate with the same author list. The new
+  report should state its provenance and the unresolved EuroCALL AI-authorship-policy issue, and add
+  two developments: with Sarah Wright's consent, the Voice Mode session summaries are now public and
+  queryable through the C-LARA-2 Assistant; and ChatGPT can now receive a C-LARA-2 text URL before
+  Voice Mode, access its text, navigate its pages, and view its images without screenshot uploads.
+- Manny's informal French test with ChatGPT version 5.6 indicates materially better correction of
+  grammatical gender and article errors than the system used in the main Voice Mode study. The new
+  report should present this as anecdotal, time-bounded evidence and note that general model
+  improvements may continue to add pedagogically relevant capabilities without specialised CALL
+  engineering.
+- The report's Jumpspeak comparison should be brief and placed later in previous work. It should
+  distinguish generative spoken production within an explicit tutoring/role-play framework from
+  sustained unconstrained conversation, avoid untested superiority claims, and reserve a controlled
+  comparison for future work. Manny does not want to resubscribe after an unpleasant cancellation
+  experience unless there is convincing evidence that subscription-management problems are fixed.
+- The report conclusion should cautiously connect the economics of sustained generative interaction
+  with sharply falling inference costs and the prospect of affordable multimodal free-conversation
+  tutors. The human authors, primarily Manny Rayner, have reviewed the report and take responsibility
+  for the version released publicly; cited web evidence still requires source verification.
+- On 18 August, the programme committee confirmed that the AI-authorship question affects both
+  papers and will be referred to the Universitat Politècnica de València Ethics Committee during the
+  first week of September because UPV publishes the volume. The committee requested a statement
+  justifying AI authorship. Manny replied that the submissions relied in good faith on an earlier
+  EuroCALL precedent, that neither AI author can be removed after making an authorship-level
+  contribution, and that the papers may instead be rejected on formal grounds. He directed the
+  committee to the detailed justification in the first progress report's Afterword and to both
+  extended ResearchGate reports.
+- The extended Voice Mode report was posted on ResearchGate by 18 August with the unchanged author
+  list. Both public reports now provide publication insurance while the UPV ethics review is pending.
 - No decision has been made on the ALTA target; its exclusion of AI authors is a serious negative.
   Francis Bond has expressed interest in collaborating on MWE work, creating a positive alternative
   publication opportunity.
