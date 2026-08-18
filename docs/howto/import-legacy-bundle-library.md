@@ -453,6 +453,26 @@ existing HTML file below that project's artifact root:
   --report /tmp/legacy-publish-smoke.jsonl
 ```
 
+After reviewing the smoke batch, run the full publication as the `ubuntu` media owner while letting root load the
+service environment (the `ubuntu` account cannot read `/etc/clara2.env` directly on the current deployment):
+
+```bash
+sudo bash -lc '
+  set -a
+  . /etc/clara2.env
+  set +a
+  cd /srv/C-LARA-2/platform_server
+  exec runuser -u ubuntu -- \
+    /srv/C-LARA-2/.venv/bin/python manage.py publish_legacy_projects \
+      --source-system clara_adelaide \
+      --report /tmp/legacy-publish.jsonl
+'
+```
+
+With no `--dry-run`, `--limit`, or `--only-id`, this attempts every successfully imported `clara_adelaide` project
+that has a safe compiled HTML entry point. Re-running it is safe: projects already published are reported as
+`skipped_published`.
+
 Publication normally generates missing discovery metadata using the same helper as interactive publication. Use
 `--skip-discovery-metadata` only when deliberately deferring that work. The compile and publish commands operate only
 on successful `LegacyProjectImport` records with a linked project, so native C-LARA-2 projects are not included.
