@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -11,7 +12,7 @@ from django.core.management import call_command
 from django.test import TestCase, override_settings
 
 from pipeline.stage_artifacts import write_stage_artifact
-from projects.models import LegacyProjectImport, Project
+from projects.models import LegacyProjectImport, Project, ProjectImagePage, ProjectImagePageVariant
 
 
 class LegacyCompilePublishCommandTests(TestCase):
@@ -129,6 +130,35 @@ class LegacyCompilePublishCommandTests(TestCase):
         stage_path = compiled.parent.parent / "stages" / "compile_html.json"
         stage = json.loads(stage_path.read_text(encoding="utf-8"))
         self.assertEqual(stage["legacy_batch_render"]["input_stage"], "compile_html")
+
+    def test_compile_includes_preferred_project_page_images(self):
+        record = self._record("16")
+        image_path = "images/pages/page_001/preferred.png"
+        image_file = record.project.artifact_dir() / image_path
+        image_file.parent.mkdir(parents=True, exist_ok=True)
+        image_file.write_bytes(b"png")
+        page = ProjectImagePage.objects.create(
+            project=record.project,
+            page_number=1,
+            image_path="images/pages/page_001/fallback.png",
+        )
+        preferred = ProjectImagePageVariant.objects.create(
+            page=page,
+            variant_index=1,
+            image_path=image_path,
+        )
+        page.preferred_variant = preferred
+        page.save(update_fields=["preferred_variant", "updated_at"])
+
+        output = self._call("compile_legacy_projects", "--only-id", "16")
+
+        self.assertIn("compiled=1", output)
+        record.project.refresh_from_db()
+        compiled = record.project.artifact_dir() / record.project.compiled_path
+        html = compiled.read_text(encoding="utf-8")
+        expected_path = os.path.relpath(image_file, compiled.parent).replace("\\", "/")
+        self.assertIn(f'src="{expected_path}"', html)
+        self.assertIn("generated-page-image-bottom", html)
 
     def test_missing_input_output_and_report_explain_searched_location(self):
         record = self._record("15", with_stage=False)
