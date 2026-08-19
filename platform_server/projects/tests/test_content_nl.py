@@ -1,7 +1,9 @@
+import tempfile
+from pathlib import Path
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -176,3 +178,49 @@ class ContentNaturalLanguageTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, '<select id="text_language" name="text_language">', html=False)
         self.assertContains(resp, '<select id="annotation_language" name="annotation_language">', html=False)
+
+    def test_content_list_paginates_and_preserves_filters(self):
+        Project.objects.bulk_create(
+            [
+                Project(
+                    owner=self.user,
+                    title=f"French Story {index:02d}",
+                    source_text="Story text",
+                    language="fr",
+                    target_language="en",
+                    is_published=True,
+                    published_at=timezone.now(),
+                )
+                for index in range(50)
+            ]
+        )
+
+        first = self.client.get(reverse("content-list"), {"text_language": "fr"})
+        second = self.client.get(reverse("content-list"), {"text_language": "fr", "page": 2})
+
+        self.assertEqual(len(first.context["result_rows"]), 50)
+        self.assertEqual(first.context["result_count"], 51)
+        self.assertEqual(len(second.context["result_rows"]), 1)
+        self.assertContains(first, "Page 1 of 2")
+        self.assertContains(first, "text_language=fr&amp;page=2", html=False)
+
+    def test_published_compiled_page_never_links_to_private_project(self):
+        with tempfile.TemporaryDirectory() as tempdir, override_settings(
+            PIPELINE_OUTPUT_ROOT=Path(tempdir) / "artifacts"
+        ):
+            compiled = self.project.artifact_dir() / "runs" / "published" / "html" / "page_2.html"
+            compiled.parent.mkdir(parents=True)
+            compiled.write_text("<html><body><p>Last page</p></body></html>", encoding="utf-8")
+            self.project.compiled_path = compiled.relative_to(self.project.artifact_dir()).as_posix()
+            self.project.artifact_root = str(self.project.artifact_dir())
+            self.project.save(update_fields=["compiled_path", "artifact_root", "updated_at"])
+            url = reverse("project-compiled", args=[self.project.pk, self.project.compiled_path])
+
+            direct = self.client.get(url)
+            from_content = self.client.get(url, {"ctx": "content"})
+
+            self.assertEqual(direct.status_code, 200)
+            self.assertNotContains(direct, "Back to project")
+            self.assertNotContains(direct, reverse("project-detail", args=[self.project.pk]))
+            self.assertContains(from_content, "Back to content")
+            self.assertContains(from_content, reverse("content-detail", args=[self.project.pk]))
