@@ -35,7 +35,7 @@ def imported_project_records(*, source_system: str, legacy_ids: set[str] | None 
         source_system=source_system,
         status=LegacyProjectImport.STATUS_IMPORTED,
         project__isnull=False,
-    ).select_related("project")
+    ).select_related("project", "project__owner")
     if legacy_ids:
         records = records.filter(legacy_project_id__in=legacy_ids)
     return records.order_by("legacy_project_id", "id")

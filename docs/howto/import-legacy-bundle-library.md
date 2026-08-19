@@ -477,6 +477,23 @@ Publication normally generates missing discovery metadata using the same helper 
 `--skip-discovery-metadata` only when deliberately deferring that work. The compile and publish commands operate only
 on successful `LegacyProjectImport` records with a linked project, so native C-LARA-2 projects are not included.
 
+### Inventory legacy titles before cleanup
+
+The title inventory command is read-only: it does not rename projects or call an AI service. It records placeholder
+titles, credible source titles retained in import provenance, possible owner/title collisions, text fingerprints, and
+normalized duplicate-title groups. Run it before proposing or applying any title cleanup:
+
+```bash
+/srv/C-LARA-2/.venv/bin/python manage.py inventory_legacy_project_titles \
+  --source-system clara_adelaide \
+  --report /tmp/legacy-title-inventory.json
+```
+
+Duplicate groups with more than one glossing language are classified as `safe_language_disambiguation`; groups whose
+members all have the same glossing language remain `same_language_duplicate` for human review. Use repeatable
+`--only-id <legacy-id>` options or `--limit` for a smaller diagnostic inventory. The report is evidence for a later
+proposal step and must not itself be treated as approval to rename projects.
+
 ## What gets imported
 
 For supported legacy bundles, C-LARA-2 imports:

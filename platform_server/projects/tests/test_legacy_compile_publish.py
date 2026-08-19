@@ -218,3 +218,38 @@ class LegacyCompilePublishCommandTests(TestCase):
         self.assertIn("skipped_missing_html=1", output)
         record.project.refresh_from_db()
         self.assertFalse(record.project.is_published)
+
+    def test_title_inventory_reports_placeholders_duplicates_and_collisions_without_mutating(self):
+        placeholder = self._record("20")
+        placeholder.project.title = "Imported legacy C-LARA project (20)"
+        placeholder.project.save(update_fields=["title", "updated_at"])
+        placeholder.source_title = "Recovered title"
+        placeholder.save(update_fields=["source_title", "updated_at"])
+        collision = Project.objects.create(
+            owner=self.user,
+            title="Recovered title",
+            language="de",
+            target_language="en",
+        )
+        english = self._record("21")
+        english.project.title = "Shared Story"
+        english.project.save(update_fields=["title", "updated_at"])
+        french = self._record("22")
+        french.project.title = "Shared story"
+        french.project.target_language = "fr"
+        french.project.save(update_fields=["title", "target_language", "updated_at"])
+        report_path = Path(self.tempdir.name) / "title-inventory.json"
+
+        output = self._call("inventory_legacy_project_titles", "--report", str(report_path))
+
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        self.assertIn("placeholders=1", output)
+        self.assertEqual(report["summary"]["project_count"], 3)
+        self.assertEqual(report["summary"]["placeholder_title_count"], 1)
+        placeholder_row = next(row for row in report["projects"] if row["legacy_project_id"] == "20")
+        self.assertTrue(placeholder_row["credible_source_title"])
+        self.assertEqual(placeholder_row["source_title_collision_project_ids"], [collision.id])
+        self.assertEqual(report["duplicate_groups"][0]["classification"], "safe_language_disambiguation")
+        self.assertEqual(report["duplicate_groups"][0]["gloss_languages"], ["en", "fr"])
+        placeholder.project.refresh_from_db()
+        self.assertEqual(placeholder.project.title, "Imported legacy C-LARA project (20)")
