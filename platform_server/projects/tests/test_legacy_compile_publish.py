@@ -341,6 +341,7 @@ class LegacyCompilePublishCommandTests(TestCase):
         )
 
         self.assertIn("regenerated=1", output)
+        self.assertIn(f"project_id={record.project_id} legacy_id=24 regenerated", output)
         audio_spec = mock_annotate_audio.call_args.args[0]
         self.assertTrue(audio_spec.require_real_tts)
         self.assertIn("audio_repository/de", str(audio_spec.cache_dir).replace("\\", "/"))
@@ -365,3 +366,24 @@ class LegacyCompilePublishCommandTests(TestCase):
             f"C-LARA-2 project IDs are not successful clara_adelaide imports: {native.id}",
         ):
             self._call("regenerate_legacy_audio", "--project-id", str(native.id), "--dry-run")
+
+    def test_regenerate_audio_trace_explains_missing_input(self):
+        record = self._record("25", with_stage=False)
+        report_path = Path(self.tempdir.name) / "missing-audio-input.jsonl"
+
+        output = self._call(
+            "regenerate_legacy_audio",
+            "--project-id",
+            str(record.project_id),
+            "--dry-run",
+            "--trace",
+            "--report",
+            str(report_path),
+        )
+
+        self.assertIn(f"project_id={record.project_id} legacy_id=25 skipped_missing_input", output)
+        self.assertIn("input diagnostic: runs directory does not exist", output)
+        self.assertIn('"computed_artifact_root"', output)
+        row = json.loads(report_path.read_text(encoding="utf-8"))
+        self.assertEqual(row["status"], "skipped_missing_input")
+        self.assertFalse(row["artifact_trace"]["runs_root_exists"])

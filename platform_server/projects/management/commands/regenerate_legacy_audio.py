@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import os
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,6 +27,42 @@ def _audio_repository_dir(language: str) -> Path:
     return Path(settings.MEDIA_ROOT).resolve() / "audio_repository" / language_slug
 
 
+def _input_trace(project) -> dict:
+    artifact_root = project.artifact_dir().resolve()
+    runs_root = artifact_root / "runs"
+    trace = {
+        "computed_artifact_root": str(artifact_root),
+        "stored_artifact_root": project.artifact_root,
+        "runs_root": str(runs_root),
+        "runs_root_exists": runs_root.exists(),
+        "runs_root_is_directory": runs_root.is_dir(),
+        "runs_root_readable": os.access(runs_root, os.R_OK),
+        "runs_root_searchable": os.access(runs_root, os.X_OK),
+        "runs": [],
+    }
+    try:
+        run_dirs = sorted((path for path in runs_root.iterdir() if path.is_dir()), key=lambda path: path.name)
+    except OSError as exc:
+        trace["listing_error"] = str(exc)
+        return trace
+    for run_dir in run_dirs:
+        stages_dir = run_dir / "stages"
+        stage_files = []
+        try:
+            for stage_path in sorted(stages_dir.glob("*.json")):
+                stage_files.append(
+                    {
+                        "name": stage_path.name,
+                        "readable": os.access(stage_path, os.R_OK),
+                        "size": stage_path.stat().st_size,
+                    }
+                )
+        except OSError as exc:
+            stage_files.append({"inspection_error": str(exc)})
+        trace["runs"].append({"name": run_dir.name, "stages": stage_files})
+    return trace
+
+
 class Command(BaseCommand):
     help = "Regenerate current-quality audio for imported legacy projects and rebuild their published HTML."
 
@@ -40,6 +78,7 @@ class Command(BaseCommand):
         parser.add_argument("--limit", type=int)
         parser.add_argument("--voice", default="", help="Optional TTS voice; otherwise use the configured default.")
         parser.add_argument("--dry-run", action="store_true")
+        parser.add_argument("--trace", action="store_true", help="Print detailed artifact/run/stage diagnostics.")
         parser.add_argument("--report", help="Optional JSONL outcome report.")
 
     def handle(self, *args, **options):
@@ -71,12 +110,14 @@ class Command(BaseCommand):
                 "language": project.language,
             }
             render_input, diagnostics = inspect_render_input(project)
+            artifact_trace = _input_trace(project) if options["trace"] or render_input is None else None
             if render_input is None:
                 row = {
                     **base,
                     "status": "skipped_missing_input",
                     "message": "no readable annotation artifact with a pages list",
                     "diagnostics": diagnostics,
+                    "artifact_trace": artifact_trace,
                 }
             elif options["dry_run"]:
                 stage, run_dir, _payload = render_input
@@ -112,7 +153,15 @@ class Command(BaseCommand):
                     row = {**base, "status": "failed", "message": str(exc)}
             counts[row["status"]] += 1
             append_jsonl(report, row)
-            self.stdout.write(f"[{index}/{len(records)}] {record.legacy_project_id} {row['status']}")
+            self.stdout.write(
+                f"[{index}/{len(records)}] project_id={project.id} "
+                f"legacy_id={record.legacy_project_id} {row['status']}"
+            )
+            if row["status"] == "skipped_missing_input":
+                for diagnostic in row.get("diagnostics", []):
+                    self.stdout.write(f"  input diagnostic: {diagnostic}")
+            if options["trace"]:
+                self.stdout.write(json.dumps(artifact_trace, ensure_ascii=False, indent=2))
 
         summary = ", ".join(f"{status}={count}" for status, count in sorted(counts.items())) or "no candidates"
         self.stdout.write(self.style.SUCCESS(f"Legacy audio regeneration complete: {summary}"))

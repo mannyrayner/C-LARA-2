@@ -65,14 +65,21 @@ def inspect_render_input(project: Project) -> tuple[tuple[str, Path, dict[str, A
         return None, [f"runs directory does not exist: {runs_root}"]
     candidates: list[tuple[float, int, str, Path]] = []
     run_count = 0
-    for run_dir in runs_root.iterdir():
+    try:
+        run_dirs = list(runs_root.iterdir())
+    except OSError as exc:
+        return None, [f"cannot list runs directory {runs_root}: {exc}"]
+    for run_dir in run_dirs:
         if not run_dir.is_dir():
             continue
         run_count += 1
         for priority, stage in enumerate(RENDER_INPUT_STAGES):
             path = run_dir / "stages" / f"{stage}.json"
-            if path.is_file():
-                candidates.append((path.stat().st_mtime, -priority, stage, run_dir))
+            try:
+                if path.is_file():
+                    candidates.append((path.stat().st_mtime, -priority, stage, run_dir))
+            except OSError as exc:
+                return None, [f"cannot inspect stage artifact {path}: {exc}"]
     if not candidates:
         searched = ", ".join(f"{stage}.json" for stage in RENDER_INPUT_STAGES)
         return None, [

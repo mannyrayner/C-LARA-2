@@ -456,6 +456,20 @@ media-owner wrapper used below. The shared
 per-language audio repository makes the operation resumable and reuses current audio for identical text. Failures are
 reported per project and do not stop later projects.
 
+Progress lines show both identities, for example `project_id=141 legacy_id=86`; this confirms that project 141 was
+selected and that 86 is only its source-system provenance ID. If the result is `skipped_missing_input`, rerun the dry
+run with `--trace`. The command will print—and include in the JSONL row—the computed and stored artifact roots,
+directory access checks, run names, stage filenames, readability, sizes, and the exact input-rejection diagnostics:
+
+```bash
+/srv/C-LARA-2/.venv/bin/python manage.py regenerate_legacy_audio \
+  --source-system clara_adelaide \
+  --project-id 141 \
+  --dry-run \
+  --trace \
+  --report /tmp/legacy-audio-project-141-trace.jsonl
+```
+
 Publication is a separate, idempotent operation. It refuses to publish a project unless `compiled_path` identifies an
 existing HTML file below that project's artifact root:
 
