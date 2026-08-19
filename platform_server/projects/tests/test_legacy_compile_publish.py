@@ -315,3 +315,39 @@ class LegacyCompilePublishCommandTests(TestCase):
         )
         record.project.refresh_from_db()
         self.assertEqual(record.project.title, "Rocket Raccoon Rides the Subway")
+
+    @patch("projects.management.commands.regenerate_legacy_audio.annotate_audio")
+    def test_regenerate_audio_writes_fresh_stage_and_recompiles(self, mock_annotate_audio):
+        record = self._record("24")
+        audio_file = Path(self.tempdir.name) / "fresh-audio.wav"
+        audio_file.write_bytes(b"fresh audio")
+
+        async def fake_annotate(spec):
+            payload = json.loads(json.dumps(spec.text))
+            segment = payload["pages"][0]["segments"][0]
+            segment["annotations"]["audio"] = {"path": str(audio_file)}
+            segment["tokens"][0]["annotations"]["audio"] = {"path": str(audio_file)}
+            return payload
+
+        mock_annotate_audio.side_effect = fake_annotate
+        report_path = Path(self.tempdir.name) / "audio-report.jsonl"
+
+        output = self._call(
+            "regenerate_legacy_audio",
+            "--only-id",
+            "24",
+            "--report",
+            str(report_path),
+        )
+
+        self.assertIn("regenerated=1", output)
+        audio_spec = mock_annotate_audio.call_args.args[0]
+        self.assertTrue(audio_spec.require_real_tts)
+        self.assertIn("audio_repository/de", str(audio_spec.cache_dir).replace("\\", "/"))
+        row = json.loads(report_path.read_text(encoding="utf-8"))
+        self.assertEqual(row["status"], "regenerated")
+        record.project.refresh_from_db()
+        compiled = record.project.artifact_dir() / record.project.compiled_path
+        self.assertIn("data-audio=", compiled.read_text(encoding="utf-8"))
+        audio_stage = record.project.artifact_dir() / "runs" / row["audio_run"] / "stages" / "audio.json"
+        self.assertTrue(audio_stage.is_file())

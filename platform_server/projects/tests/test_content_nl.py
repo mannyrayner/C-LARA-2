@@ -1,7 +1,9 @@
+import tempfile
+from pathlib import Path
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -201,3 +203,24 @@ class ContentNaturalLanguageTests(TestCase):
         self.assertEqual(len(second.context["result_rows"]), 1)
         self.assertContains(first, "Page 1 of 2")
         self.assertContains(first, "text_language=fr&amp;page=2", html=False)
+
+    def test_published_compiled_page_never_links_to_private_project(self):
+        with tempfile.TemporaryDirectory() as tempdir, override_settings(
+            PIPELINE_OUTPUT_ROOT=Path(tempdir) / "artifacts"
+        ):
+            compiled = self.project.artifact_dir() / "runs" / "published" / "html" / "page_2.html"
+            compiled.parent.mkdir(parents=True)
+            compiled.write_text("<html><body><p>Last page</p></body></html>", encoding="utf-8")
+            self.project.compiled_path = compiled.relative_to(self.project.artifact_dir()).as_posix()
+            self.project.artifact_root = str(self.project.artifact_dir())
+            self.project.save(update_fields=["compiled_path", "artifact_root", "updated_at"])
+            url = reverse("project-compiled", args=[self.project.pk, self.project.compiled_path])
+
+            direct = self.client.get(url)
+            from_content = self.client.get(url, {"ctx": "content"})
+
+            self.assertEqual(direct.status_code, 200)
+            self.assertNotContains(direct, "Back to project")
+            self.assertNotContains(direct, reverse("project-detail", args=[self.project.pk]))
+            self.assertContains(from_content, "Back to content")
+            self.assertContains(from_content, reverse("content-detail", args=[self.project.pk]))

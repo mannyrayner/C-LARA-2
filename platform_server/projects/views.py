@@ -12373,14 +12373,18 @@ def serve_compiled(request: HttpRequest, pk: int, path: str) -> HttpResponse:
             if entry_context == "content":
                 back_href = reverse("content-detail", args=[project.pk])
                 back_label = "Back to content"
-            else:
+            elif not project.is_published:
                 back_href = reverse("project-detail", args=[project.pk])
                 back_label = "Back to project"
-            back_block = (
-                f'<div style="padding:0.5rem 1rem;background:#f6f6f6;border-bottom:1px solid #ddd;">'
-                f'<a href="{back_href}">&#x2190; {back_label}</a></div>'
-            )
-            html_text = html_text.replace("<body>", f"<body>\n{back_block}", 1)
+            else:
+                back_href = ""
+                back_label = ""
+            if back_href:
+                back_block = (
+                    f'<div style="padding:0.5rem 1rem;background:#f6f6f6;border-bottom:1px solid #ddd;">'
+                    f'<a href="{back_href}">&#x2190; {back_label}</a></div>'
+                )
+                html_text = html_text.replace("<body>", f"<body>\n{back_block}", 1)
             data = html_text.encode("utf-8")
         except Exception:
             pass

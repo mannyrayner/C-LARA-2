@@ -586,7 +586,7 @@ nav a { margin-right: 0.5rem; }
             const lemmaFileSlug = token.dataset.lemmaFileSlug;
             if (lemma) { loadConcordance(lemma, doc, lemmaFileSlug); }
             const mwe = token.dataset.mweId;
-            if (mwe) { highlightMwe(mwe, doc, token); }
+            if (mwe) { highlightMwe(mwe, doc); }
         });
 
         token.addEventListener('mouseover', () => {
@@ -603,8 +603,7 @@ nav a { margin-right: 0.5rem; }
             }
             const mwe = token.dataset.mweId;
             if (mwe) {
-              token.classList.add('mwe-group-hover');
-              doc.querySelectorAll(`[data-mwe-id="${mwe}"]`).forEach(el => el.classList.add('mwe-group-hover'));
+              mweTokens(doc, mwe).forEach(el => el.classList.add('mwe-group-hover'));
             }
         });
 
@@ -612,8 +611,7 @@ nav a { margin-right: 0.5rem; }
             if (glossPopup) { glossPopup.remove(); glossPopup = null; }
             const mwe = token.dataset.mweId;
             if (mwe) {
-              token.classList.remove('mwe-group-hover');
-              doc.querySelectorAll(`[data-mwe-id="${mwe}"]`).forEach(el => el.classList.remove('mwe-group-hover'));
+              mweTokens(doc, mwe).forEach(el => el.classList.remove('mwe-group-hover'));
             }
         });
     });
@@ -661,11 +659,15 @@ nav a { margin-right: 0.5rem; }
           });
         }
 
-function highlightMwe(mweId, contextDocument, sourceToken) {
+function mweTokens(contextDocument, mweId) {
+  const doc = contextDocument || document;
+  return Array.from(doc.querySelectorAll('[data-mwe-id]')).filter(el => el.dataset.mweId === mweId);
+}
+
+function highlightMwe(mweId, contextDocument) {
   const doc = contextDocument || document;
   doc.querySelectorAll('.mwe-highlight').forEach(el => el.classList.remove('mwe-highlight'));
-  doc.querySelectorAll(`[data-mwe-id="${mweId}"]`).forEach(el => el.classList.add('mwe-highlight'));
-  if (sourceToken) sourceToken.classList.add('mwe-highlight');
+  mweTokens(doc, mweId).forEach(el => el.classList.add('mwe-highlight'));
 }
 
         function setUpBackArrowEventListeners(contextDocument) {

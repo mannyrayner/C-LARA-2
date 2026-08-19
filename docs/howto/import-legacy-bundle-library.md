@@ -437,6 +437,23 @@ Then render the smoke batch. Existing valid HTML is skipped unless `--force` is 
 Review the generated HTML and report before running without `--limit`. `--only-id <legacy-id>` is repeatable and can
 be used to isolate specific projects. A rendering failure is recorded for that project and does not stop the batch.
 
+If migrated projects need fresh audio, regenerate it from the imported annotations rather than recovering the older
+legacy recordings. The command requires a real configured TTS provider, writes a new `audio` stage, and immediately
+recompiles the HTML so the published project points at the audio-enabled render. Start with a dry run and one project:
+
+```bash
+/srv/C-LARA-2/.venv/bin/python manage.py regenerate_legacy_audio \
+  --source-system clara_adelaide \
+  --only-id <legacy-id> \
+  --dry-run \
+  --report /tmp/legacy-audio-dry-run.jsonl
+```
+
+Then remove `--dry-run` for the reviewed sample and, after listening to its compiled output, remove `--only-id` for
+the full batch. Run the real command with the same root-environment/`ubuntu` media-owner wrapper used below. The shared
+per-language audio repository makes the operation resumable and reuses current audio for identical text. Failures are
+reported per project and do not stop later projects.
+
 Publication is a separate, idempotent operation. It refuses to publish a project unless `compiled_path` identifies an
 existing HTML file below that project's artifact root:
 
