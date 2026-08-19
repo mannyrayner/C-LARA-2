@@ -341,6 +341,7 @@ class LegacyCompilePublishCommandTests(TestCase):
         )
 
         self.assertIn("regenerated=1", output)
+        self.assertIn(f"[1/1] project_id={record.project_id} legacy_id=24 starting", output)
         self.assertIn(f"project_id={record.project_id} legacy_id=24 regenerated", output)
         audio_spec = mock_annotate_audio.call_args.args[0]
         self.assertTrue(audio_spec.require_real_tts)

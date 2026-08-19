@@ -102,6 +102,10 @@ class Command(BaseCommand):
         counts: Counter[str] = Counter()
         for index, record in enumerate(records, 1):
             project = record.project
+            self.stdout.write(
+                f"[{index}/{len(records)}] project_id={project.id} "
+                f"legacy_id={record.legacy_project_id} starting title={project.title!r}"
+            )
             base = {
                 "source_system": record.source_system,
                 "legacy_project_id": record.legacy_project_id,
