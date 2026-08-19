@@ -5,8 +5,8 @@ This directory contains source material and supporting evidence for the paper
 
 ## Submission status
 
-- **Recorded status:** accepted, but under unresolved authorship challenge
-- **Status last checked:** 10 August 2026
+- **Recorded status:** accepted submission; AI authorship pending publisher ethics review
+- **Status last checked:** 18 August 2026
 
 On the final-submission deadline, a representative of the EuroCALL 2026
 scientific committee told the authors that ChatGPT C-LARA-Instance could not be
@@ -21,6 +21,13 @@ message asked the committee either to keep both papers accepted with their
 submitted author lists, or to reject both under the newly communicated formal
 criterion; it requested acknowledgement and a decision by the end of the
 following week. No reply had been received when this record was last updated.
+
+On 18 August, the programme committee set out a formal next step. It confirmed that the
+question applies to both submitted papers. Because Universitat Politècnica de València publishes the
+volume, the matter is to be referred to its Ethics Committee during the first week of September. The
+authors were asked for an AI-authorship justification and replied by identifying the earlier EuroCALL
+precedent, maintaining the submitted author lists, and pointing to the detailed contribution evidence
+in the public extended reports. No ethics decision has yet been reported.
 
 This summary deliberately omits the committee representative's name and contact
 details and does not reproduce the private correspondence. It records an
