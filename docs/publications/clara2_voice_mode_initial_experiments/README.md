@@ -10,6 +10,15 @@ separate publication artifact, not a replacement submission. It retains the
 same author list and adds an initial investigation of combining ChatGPT Voice
 Mode with C-LARA-2.
 
+## Publication status
+
+- **ResearchGate status:** posted by 18 August 2026
+- **ResearchGate record:** [Combining C-LARA-2 and ChatGPT Voice Mode: Initial
+  experiments](https://www.researchgate.net/publication/412264437_Combining_C-LARA-2_and_ChatGPT_Voice_Mode_Initial_experiments)
+- **EuroCALL relationship:** this remains a separate extended report; the submitted
+  EuroCALL manuscript is unchanged and its AI-authorship status is pending review
+  through the publisher's ethics process.
+
 ## Contents
 
 - [`latex/clara2_voice_mode_initial_experiments.tex`](latex/clara2_voice_mode_initial_experiments.tex)
@@ -50,11 +59,12 @@ Mode with C-LARA-2.
 > **Source-verification note:** Web access was unavailable while this revision was
 > prepared. The Jumpspeak, App Store, Langoly, and Trustpilot entries are therefore
 > provisional pointers derived from the supplied research advice and must be opened,
-> checked against the manuscript claims, and corrected or replaced before public
-> release. The Stanford AI Index citation and quoted 280-fold figure added later
-> must likewise be checked against the report before release. The METR citation
-> and seven-month capability-doubling claim added in the fourth revision are also
-> provisional pending the same manual check.
+> checked against the manuscript claims and corrected in a later revision if
+> necessary. The report has now been posted, so this is an outstanding
+> post-publication verification task rather than a pre-release gate. The Stanford
+> AI Index citation and quoted 280-fold figure, and the METR citation and
+> seven-month capability-doubling claim, must likewise be checked and corrected in
+> a later revision if necessary.
 
 - The third revision strengthens the conclusion with a cautiously framed economic
   hypothesis and a Stanford AI Index inference-cost trend, and records that the
