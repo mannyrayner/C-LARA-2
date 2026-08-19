@@ -15,6 +15,19 @@ from pipeline.stage_artifacts import write_stage_artifact
 from projects.models import LegacyProjectImport, Project, ProjectImagePage, ProjectImagePageVariant
 
 
+class _TitleProposalClient:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    async def chat_json(self, prompt, model=None):
+        assert "Rocket Raccoon" in prompt
+        return {
+            "title": "Rocket Raccoon Rides the Subway",
+            "confidence": "high",
+            "rationale": "The raccoon's subway trip is the central event.",
+        }
+
+
 class LegacyCompilePublishCommandTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(username="legacy_owner", password="pw")
@@ -253,3 +266,52 @@ class LegacyCompilePublishCommandTests(TestCase):
         self.assertEqual(report["duplicate_groups"][0]["gloss_languages"], ["en", "fr"])
         placeholder.project.refresh_from_db()
         self.assertEqual(placeholder.project.title, "Imported legacy C-LARA project (20)")
+
+    @patch("projects.management.commands.propose_legacy_project_titles.OpenAIClient", _TitleProposalClient)
+    def test_title_proposal_and_reviewed_application_workflow(self):
+        record = self._record("23", with_stage=False)
+        record.project.title = "Imported legacy C-LARA project (23)"
+        record.project.source_text = "Rocket Raccoon surprised commuters by riding the Toronto subway."
+        record.project.save(update_fields=["title", "source_text", "updated_at"])
+        record.source_title = "ALTA EN/SW news story"
+        record.save(update_fields=["source_title", "updated_at"])
+        inventory_path = Path(self.tempdir.name) / "inventory.json"
+        proposals_path = Path(self.tempdir.name) / "proposals.json"
+        dry_run_path = Path(self.tempdir.name) / "dry-run.json"
+        applied_path = Path(self.tempdir.name) / "applied.json"
+        self._call("inventory_legacy_project_titles", "--only-id", "23", "--report", str(inventory_path))
+
+        proposal_output = self._call(
+            "propose_legacy_project_titles",
+            "--inventory",
+            str(inventory_path),
+            "--report",
+            str(proposals_path),
+        )
+        proposals = json.loads(proposals_path.read_text(encoding="utf-8"))
+        self.assertIn("Wrote 1 title proposal", proposal_output)
+        self.assertEqual(proposals["proposals"][0]["proposed_title"], "Rocket Raccoon Rides the Subway")
+        record.project.refresh_from_db()
+        self.assertEqual(record.project.title, "Imported legacy C-LARA project (23)")
+
+        self._call(
+            "apply_legacy_project_titles",
+            "--proposals",
+            str(proposals_path),
+            "--report",
+            str(dry_run_path),
+        )
+        record.project.refresh_from_db()
+        self.assertEqual(record.project.title, "Imported legacy C-LARA project (23)")
+        self.assertEqual(json.loads(dry_run_path.read_text(encoding="utf-8"))["outcomes"][0]["status"], "would_apply")
+
+        self._call(
+            "apply_legacy_project_titles",
+            "--proposals",
+            str(proposals_path),
+            "--report",
+            str(applied_path),
+            "--apply",
+        )
+        record.project.refresh_from_db()
+        self.assertEqual(record.project.title, "Rocket Raccoon Rides the Subway")

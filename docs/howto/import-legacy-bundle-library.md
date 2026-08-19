@@ -494,6 +494,37 @@ members all have the same glossing language remain `same_language_duplicate` for
 `--only-id <legacy-id>` options or `--limit` for a smaller diagnostic inventory. The report is evidence for a later
 proposal step and must not itself be treated as approval to rename projects.
 
+After reviewing the inventory, generate AI-assisted proposals for placeholder titles. This command is also read-only:
+it writes proposed titles, confidence, rationale, and collision diagnostics but never changes a project.
+
+```bash
+/srv/C-LARA-2/.venv/bin/python manage.py propose_legacy_project_titles \
+  --inventory /tmp/legacy-title-inventory.json \
+  --report /tmp/legacy-title-proposals.json
+```
+
+Review and edit the proposal file as needed. First validate the reviewed proposals against the live database without
+changing anything:
+
+```bash
+/srv/C-LARA-2/.venv/bin/python manage.py apply_legacy_project_titles \
+  --proposals /tmp/legacy-title-proposals.json \
+  --report /tmp/legacy-title-apply-dry-run.json
+```
+
+If every `would_apply` outcome is acceptable, rerun with a new report path and the explicit mutation flag:
+
+```bash
+/srv/C-LARA-2/.venv/bin/python manage.py apply_legacy_project_titles \
+  --proposals /tmp/legacy-title-proposals.json \
+  --report /tmp/legacy-title-applied.json \
+  --apply
+```
+
+Application refuses stale proposals when the owner or current title has changed, refuses titles that remain
+placeholders, and rechecks owner/title collisions inside a transaction. Repeatable `--only-id <legacy-id>` options can
+be used for a reviewed subset.
+
 ## What gets imported
 
 For supported legacy bundles, C-LARA-2 imports:
