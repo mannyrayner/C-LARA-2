@@ -1,8 +1,8 @@
 # C-LARA-2 project intentions
 
 - **Document owner:** Manny Rayner
-- **Last confirmed:** 2026-08-14
-- **Status:** Human-confirmed strategic baseline with 14 August publication correction
+- **Last confirmed:** 2026-08-18
+- **Status:** Human-confirmed strategic baseline with 18 August EuroCALL update
 
 This document contains durable human-owned intentions and contextual facts. It deliberately does not
 assign current urgency, risk, progress, confidence, concern, or satisfaction; those are derived and
@@ -135,7 +135,7 @@ operational before 14 August so the Sprint can focus on experiments rather than 
 ### Publication and collaboration outcomes
 
 - **Human owner:** Manny Rayner
-- **Last confirmed:** 2026-08-12
+- **Last confirmed:** 2026-08-18
 - **Canonical issues:** [ISSUE-0008](../issues/issues/ISSUE-0008.json),
   [ISSUE-0043](../issues/issues/ISSUE-0043.json), and
   [ISSUE-0044](../issues/issues/ISSUE-0044.json)
@@ -170,6 +170,16 @@ operational before 14 August so the Sprint can focus on experiments rather than 
   with sharply falling inference costs and the prospect of affordable multimodal free-conversation
   tutors. The human authors, primarily Manny Rayner, have reviewed the report and take responsibility
   for the version released publicly; cited web evidence still requires source verification.
+- On 18 August, the programme committee confirmed that the AI-authorship question affects both
+  papers and will be referred to the Universitat Politècnica de València Ethics Committee during the
+  first week of September because UPV publishes the volume. The committee requested a statement
+  justifying AI authorship. Manny replied that the submissions relied in good faith on an earlier
+  EuroCALL precedent, that neither AI author can be removed after making an authorship-level
+  contribution, and that the papers may instead be rejected on formal grounds. He directed the
+  committee to the detailed justification in the first progress report's Afterword and to both
+  extended ResearchGate reports.
+- The extended Voice Mode report was posted on ResearchGate by 18 August with the unchanged author
+  list. Both public reports now provide publication insurance while the UPV ethics review is pending.
 - No decision has been made on the ALTA target; its exclusion of AI authors is a serious negative.
   Francis Bond has expressed interest in collaborating on MWE work, creating a positive alternative
   publication opportunity.
