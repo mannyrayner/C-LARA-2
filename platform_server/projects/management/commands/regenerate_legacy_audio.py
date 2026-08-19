@@ -30,7 +30,13 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--source-system", default="clara_adelaide")
-        parser.add_argument("--only-id", action="append", default=[], help="Legacy project ID; repeatable.")
+        parser.add_argument(
+            "--project-id",
+            action="append",
+            type=int,
+            default=[],
+            help="C-LARA-2 project ID; repeatable.",
+        )
         parser.add_argument("--limit", type=int)
         parser.add_argument("--voice", default="", help="Optional TTS voice; otherwise use the configured default.")
         parser.add_argument("--dry-run", action="store_true")
@@ -39,11 +45,17 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if options["limit"] is not None and options["limit"] < 1:
             raise CommandError("--limit must be a positive integer.")
-        only_ids = {str(value).strip() for value in options["only_id"] if str(value).strip()}
-        records = list(imported_project_records(source_system=options["source_system"], legacy_ids=only_ids))
-        found_ids = {record.legacy_project_id for record in records}
-        if only_ids - found_ids:
-            raise CommandError("Imported legacy IDs not found: " + ", ".join(sorted(only_ids - found_ids)))
+        project_ids = {int(value) for value in options["project_id"]}
+        records_query = imported_project_records(source_system=options["source_system"])
+        if project_ids:
+            records_query = records_query.filter(project_id__in=project_ids)
+        records = list(records_query)
+        found_ids = {record.project_id for record in records}
+        if project_ids - found_ids:
+            missing = ", ".join(str(project_id) for project_id in sorted(project_ids - found_ids))
+            raise CommandError(
+                f"C-LARA-2 project IDs are not successful {options['source_system']} imports: {missing}"
+            )
         if options["limit"] is not None:
             records = records[: options["limit"]]
 

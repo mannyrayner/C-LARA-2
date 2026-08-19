@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.core.management import call_command
+from django.core.management import call_command, CommandError
 from django.test import TestCase, override_settings
 
 from pipeline.stage_artifacts import write_stage_artifact
@@ -334,8 +334,8 @@ class LegacyCompilePublishCommandTests(TestCase):
 
         output = self._call(
             "regenerate_legacy_audio",
-            "--only-id",
-            "24",
+            "--project-id",
+            str(record.project_id),
             "--report",
             str(report_path),
         )
@@ -351,3 +351,17 @@ class LegacyCompilePublishCommandTests(TestCase):
         self.assertIn("data-audio=", compiled.read_text(encoding="utf-8"))
         audio_stage = record.project.artifact_dir() / "runs" / row["audio_run"] / "stages" / "audio.json"
         self.assertTrue(audio_stage.is_file())
+
+    def test_regenerate_audio_rejects_non_imported_clara2_project_id(self):
+        native = Project.objects.create(
+            owner=self.user,
+            title="Native project",
+            language="de",
+            target_language="en",
+        )
+
+        with self.assertRaisesMessage(
+            CommandError,
+            f"C-LARA-2 project IDs are not successful clara_adelaide imports: {native.id}",
+        ):
+            self._call("regenerate_legacy_audio", "--project-id", str(native.id), "--dry-run")

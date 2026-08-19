@@ -444,13 +444,15 @@ recompiles the HTML so the published project points at the audio-enabled render.
 ```bash
 /srv/C-LARA-2/.venv/bin/python manage.py regenerate_legacy_audio \
   --source-system clara_adelaide \
-  --only-id <legacy-id> \
+  --project-id <c-lara-2-project-id> \
   --dry-run \
   --report /tmp/legacy-audio-dry-run.jsonl
 ```
 
-Then remove `--dry-run` for the reviewed sample and, after listening to its compiled output, remove `--only-id` for
-the full batch. Run the real command with the same root-environment/`ubuntu` media-owner wrapper used below. The shared
+`--project-id` is the normal C-LARA-2 project ID shown in project URLs and the project interface, not the older source
+system's legacy ID. It is repeatable. Remove `--dry-run` for the reviewed sample and, after listening to its compiled
+output, remove `--project-id` for the full batch. Run the real command with the same root-environment/`ubuntu`
+media-owner wrapper used below. The shared
 per-language audio repository makes the operation resumable and reuses current audio for identical text. Failures are
 reported per project and do not stop later projects.
 
