@@ -70,7 +70,7 @@
   <p><small>{{ nl_plan }}</small></p>
 {% endif %}
 
-<h2>Results ({{ result_rows|length }})</h2>
+<h2>Results ({{ result_count }})</h2>
 {% if result_rows %}
   <ul>
     {% for row in result_rows %}
@@ -92,5 +92,16 @@
   </ul>
 {% else %}
   <p>No published content matched your filters.</p>
+{% endif %}
+{% if page_obj and page_obj.paginator.num_pages > 1 %}
+  <nav aria-label="Published content pages">
+    {% if page_obj.has_previous %}
+      <a class="btn secondary" href="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+    {% endif %}
+    <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+      <a class="btn secondary" href="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+    {% endif %}
+  </nav>
 {% endif %}
 {% endblock %}
