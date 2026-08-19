@@ -176,3 +176,28 @@ class ContentNaturalLanguageTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, '<select id="text_language" name="text_language">', html=False)
         self.assertContains(resp, '<select id="annotation_language" name="annotation_language">', html=False)
+
+    def test_content_list_paginates_and_preserves_filters(self):
+        Project.objects.bulk_create(
+            [
+                Project(
+                    owner=self.user,
+                    title=f"French Story {index:02d}",
+                    source_text="Story text",
+                    language="fr",
+                    target_language="en",
+                    is_published=True,
+                    published_at=timezone.now(),
+                )
+                for index in range(50)
+            ]
+        )
+
+        first = self.client.get(reverse("content-list"), {"text_language": "fr"})
+        second = self.client.get(reverse("content-list"), {"text_language": "fr", "page": 2})
+
+        self.assertEqual(len(first.context["result_rows"]), 50)
+        self.assertEqual(first.context["result_count"], 51)
+        self.assertEqual(len(second.context["result_rows"]), 1)
+        self.assertContains(first, "Page 1 of 2")
+        self.assertContains(first, "text_language=fr&amp;page=2", html=False)

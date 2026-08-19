@@ -415,46 +415,6 @@ deciding whether a project can be rendered. A project with no readable artifact 
 as `skipped_missing_input` for later review; the console and JSONL report identify the searched artifact location and
 whether files were absent, unreadable, or structurally unsuitable.
 
-### Run compile and publish as the Django media owner
-
-Run these commands as the same Linux account that owns the project media, not merely as the account that owns the Git
-checkout. On the current AWS host that distinction is important: an SSM session normally runs as `ssm-user`, while
-legacy stage artifacts can be mode `600` and owned by `ubuntu:www-data`. In that situation `ssm-user` can list the
-artifact names but receives `Permission denied` when it tries to read them. Confirm the live service identity and one
-representative file before starting the batch:
-
-```bash
-sudo systemctl show gunicorn-clara2 djangoq-clara2 -p User -p Group
-sudo -iu ubuntu test -r \
-  /srv/C-LARA-2/platform_server/media/users/2/projects/project_155/runs/run_legacy_clara_20260731_063905/stages/compile_html.json \
-  && echo 'ubuntu can read the legacy stage artifact'
-```
-
-Using `sudo -iu ubuntu` is sufficient if the resulting login shell already receives all required Django/PostgreSQL
-environment settings. On the documented deployment, however, `/etc/clara2.env` is readable by `root:ssm-user` rather
-than by `ubuntu`. The safer production pattern is therefore the same wrapper used for bulk import: let root source the
-service environment, then execute Django as `ubuntu`. This preserves the database settings while giving the command the
-same media-file access and output ownership as the web/worker processes:
-
-```bash
-sudo bash -lc '
-  set -a
-  . /etc/clara2.env
-  set +a
-  cd /srv/C-LARA-2/platform_server
-  exec runuser -u ubuntu -- \
-    /srv/C-LARA-2/.venv/bin/python manage.py compile_legacy_projects \
-      --source-system clara_adelaide \
-      --dry-run \
-      --limit 5 \
-      --report /tmp/legacy-compile-dry-run.jsonl
-'
-```
-
-Use the same wrapper for the real compile and for `publish_legacy_projects`, changing only the management-command
-arguments. Do not make the imported corpus world-readable and do not loosen `/etc/clara2.env` just to run the batch.
-If the services use an account other than `ubuntu`, substitute the confirmed common runtime account.
-
 Start with an auditable dry run and a small batch:
 
 ```bash
@@ -493,9 +453,46 @@ existing HTML file below that project's artifact root:
   --report /tmp/legacy-publish-smoke.jsonl
 ```
 
+After reviewing the smoke batch, run the full publication as the `ubuntu` media owner while letting root load the
+service environment (the `ubuntu` account cannot read `/etc/clara2.env` directly on the current deployment):
+
+```bash
+sudo bash -lc '
+  set -a
+  . /etc/clara2.env
+  set +a
+  cd /srv/C-LARA-2/platform_server
+  exec runuser -u ubuntu -- \
+    /srv/C-LARA-2/.venv/bin/python manage.py publish_legacy_projects \
+      --source-system clara_adelaide \
+      --report /tmp/legacy-publish.jsonl
+'
+```
+
+With no `--dry-run`, `--limit`, or `--only-id`, this attempts every successfully imported `clara_adelaide` project
+that has a safe compiled HTML entry point. Re-running it is safe: projects already published are reported as
+`skipped_published`.
+
 Publication normally generates missing discovery metadata using the same helper as interactive publication. Use
 `--skip-discovery-metadata` only when deliberately deferring that work. The compile and publish commands operate only
 on successful `LegacyProjectImport` records with a linked project, so native C-LARA-2 projects are not included.
+
+### Inventory legacy titles before cleanup
+
+The title inventory command is read-only: it does not rename projects or call an AI service. It records placeholder
+titles, credible source titles retained in import provenance, possible owner/title collisions, text fingerprints, and
+normalized duplicate-title groups. Run it before proposing or applying any title cleanup:
+
+```bash
+/srv/C-LARA-2/.venv/bin/python manage.py inventory_legacy_project_titles \
+  --source-system clara_adelaide \
+  --report /tmp/legacy-title-inventory.json
+```
+
+Duplicate groups with more than one glossing language are classified as `safe_language_disambiguation`; groups whose
+members all have the same glossing language remain `same_language_duplicate` for human review. Use repeatable
+`--only-id <legacy-id>` options or `--limit` for a smaller diagnostic inventory. The report is evidence for a later
+proposal step and must not itself be treated as approval to rename projects.
 
 ## What gets imported
 
