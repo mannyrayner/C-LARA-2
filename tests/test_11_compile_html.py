@@ -221,6 +221,16 @@ class CompileHTMLTests(unittest.TestCase):
         self.assertIn(f".mwe-highlight {{ background: {expected}; }}", concordance_css)
         self.assertIn(f".mwe-group-hover {{ background: {expected}; }}", concordance_css)
 
+    def test_mwe_click_highlighting_matches_members_without_css_selector_interpolation(self) -> None:
+        out_root = self.artifacts / "html"
+        result = compile_html(CompileHTMLSpec(text=self.sample_text, output_dir=out_root, run_id="mwe-click"))
+        scripts = (Path(result["html_root"]) / "static" / "clara_scripts.js").read_text(encoding="utf-8")
+
+        self.assertIn("function mweTokens(contextDocument, mweId)", scripts)
+        self.assertIn("el.dataset.mweId === mweId", scripts)
+        self.assertIn("mweTokens(doc, mweId).forEach(el => el.classList.add('mwe-highlight'))", scripts)
+        self.assertNotIn('querySelectorAll(`[data-mwe-id="${mweId}"]`)', scripts)
+
     def test_concordance_deduplicates_mwe_segments(self) -> None:
         """Ensure an MWE lemma only appears once per segment in the concordance."""
 

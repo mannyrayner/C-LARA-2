@@ -166,6 +166,35 @@ class ProjectDialogueEntryTests(TestCase):
         self.assertContains(resp, "Totals for current filter")
         self.assertContains(resp, "4</strong> non-space content elements", html=False)
 
+    @patch("projects.views._project_list_content_summary", return_value={"project_count": 51})
+    def test_project_list_paginates_and_preserves_filters(self, _mock_summary):
+        Project.objects.bulk_create(
+            [
+                Project(
+                    owner=self.user,
+                    title=f"French Project {index:02d}",
+                    source_text="source",
+                    language="fr",
+                    target_language="en",
+                )
+                for index in range(51)
+            ]
+        )
+
+        first = self.client.get(
+            reverse("project-list"),
+            {"text_language": "fr", "title_substring": "Project"},
+        )
+        second = self.client.get(
+            reverse("project-list"),
+            {"text_language": "fr", "title_substring": "Project", "page": 2},
+        )
+
+        self.assertEqual(len(first.context["object_list"]), 50)
+        self.assertEqual(len(second.context["object_list"]), 1)
+        self.assertContains(first, "Page 1 of 2")
+        self.assertContains(first, "text_language=fr&amp;title_substring=Project&amp;page=2", html=False)
+
     @patch("projects.views._parse_nl_project_open_request")
     def test_project_open_parsing_receives_previous_profile_context(self, mock_parse):
         profile_obj = Profile.objects.get(user=self.user)
