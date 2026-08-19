@@ -1,7 +1,9 @@
 """Helpers for final rendering and publication of imported C-LARA projects."""
 from __future__ import annotations
 
+import copy
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -33,7 +35,7 @@ def imported_project_records(*, source_system: str, legacy_ids: set[str] | None 
         source_system=source_system,
         status=LegacyProjectImport.STATUS_IMPORTED,
         project__isnull=False,
-    ).select_related("project")
+    ).select_related("project", "project__owner")
     if legacy_ids:
         records = records.filter(legacy_project_id__in=legacy_ids)
     return records.order_by("legacy_project_id", "id")
@@ -117,6 +119,7 @@ def render_project_html(project: Project) -> tuple[Path, str, Path]:
     stage, source_run, payload = render_input
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
     output_dir = project.artifact_dir().resolve() / "runs" / f"run_legacy_render_{timestamp}"
+    payload = _attach_page_images(project, payload, output_dir / "html")
     result = compile_html(CompileHTMLSpec(text=payload, output_dir=output_dir, title=project.title))
     html_path = Path(str(result.get("html_path") or "")).resolve()
     if not html_path.is_file():
@@ -136,6 +139,52 @@ def render_project_html(project: Project) -> tuple[Path, str, Path]:
     project.artifact_root = str(project.artifact_dir().resolve())
     project.save(update_fields=["compiled_path", "artifact_root", "updated_at"])
     return html_path, stage, source_run
+
+
+def _attach_page_images(project: Project, payload: dict[str, Any], html_root: Path) -> dict[str, Any]:
+    """Rebase imported page images for the new render run and apply current DB selections."""
+
+    rendered_payload = copy.deepcopy(payload)
+    pages = rendered_payload.get("pages")
+    if not isinstance(pages, list):
+        return rendered_payload
+    artifact_root = project.artifact_dir().resolve()
+
+    def attach(page_number: int, raw_path: str, placement: str = "bottom") -> None:
+        if page_number < 1 or page_number > len(pages) or not raw_path:
+            return
+        image_path = Path(raw_path)
+        absolute_path = image_path.resolve() if image_path.is_absolute() else (artifact_root / image_path).resolve()
+        try:
+            absolute_path.relative_to(artifact_root)
+        except ValueError:
+            return
+        if not absolute_path.is_file() or not isinstance(pages[page_number - 1], dict):
+            return
+        annotations = pages[page_number - 1].setdefault("annotations", {})
+        if not isinstance(annotations, dict):
+            annotations = {}
+            pages[page_number - 1]["annotations"] = annotations
+        annotations["generated_image"] = {
+            "path": os.path.relpath(absolute_path, html_root).replace("\\", "/"),
+            "placement": placement if placement in {"top", "bottom"} else "bottom",
+        }
+
+    # Legacy JSON imports already annotate pages with their original images, but
+    # those paths must be made relative to the newly-created HTML directory.
+    for page_number, page in enumerate(pages, 1):
+        if not isinstance(page, dict):
+            continue
+        generated = (page.get("annotations") or {}).get("generated_image") or {}
+        if isinstance(generated, dict):
+            attach(page_number, str(generated.get("path") or ""), str(generated.get("placement") or "bottom"))
+
+    # Match interactive compile_html: a current preferred page-image selection
+    # takes precedence over the image preserved in the imported annotation.
+    for row in project.image_pages.select_related("preferred_variant").order_by("page_number", "id"):
+        selected_path = row.preferred_variant.image_path if row.preferred_variant_id else row.image_path
+        attach(row.page_number, selected_path or "")
+    return rendered_payload
 
 
 def append_jsonl(path: Path | None, row: dict[str, Any]) -> None:

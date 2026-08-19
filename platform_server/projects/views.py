@@ -32,6 +32,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.management import call_command
+from django.core.paginator import Paginator
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.staticfiles import finders
@@ -4891,30 +4892,39 @@ def project_image_pages(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
 
+def _pagination_query(request: HttpRequest) -> str:
+    """Encode the current query string without its page number."""
+
+    query = request.GET.copy()
+    query.pop("page", None)
+    return query.urlencode()
+
+
 class ProjectListView(LoginRequiredMixin, ListView):
     model = Project
     template_name = "projects/project_list.html"
+    paginate_by = 50
 
     def get_queryset(self):  # type: ignore[override]
         _ensure_bootstrap_admin(self.request.user)
-        return _projects_for_user(self.request.user)
+        queryset = _projects_for_user(self.request.user)
+        text_language = _normalize_language_filter(str(self.request.GET.get("text_language") or ""))
+        gloss_language = _normalize_language_filter(str(self.request.GET.get("gloss_language") or ""))
+        title_substring = str(self.request.GET.get("title_substring") or "").strip()
+        if text_language:
+            queryset = queryset.filter(language__istartswith=text_language)
+        if gloss_language:
+            queryset = queryset.filter(target_language__istartswith=gloss_language)
+        if title_substring:
+            queryset = queryset.filter(title__icontains=title_substring)
+        return queryset
 
     def get_context_data(self, **kwargs):  # type: ignore[override]
         context = super().get_context_data(**kwargs)
         text_language_filter = _normalize_language_filter(str(self.request.GET.get("text_language") or ""))
         gloss_language_filter = _normalize_language_filter(str(self.request.GET.get("gloss_language") or ""))
         title_substring_filter = str(self.request.GET.get("title_substring") or "").strip()
-        filtered_projects = list(context["object_list"])
-        if text_language_filter:
-            filtered_projects = [p for p in filtered_projects if (p.language or "").lower().startswith(text_language_filter)]
-        if gloss_language_filter:
-            filtered_projects = [
-                p for p in filtered_projects if (p.target_language or "").lower().startswith(gloss_language_filter)
-            ]
-        if title_substring_filter:
-            needle = title_substring_filter.casefold()
-            filtered_projects = [p for p in filtered_projects if needle in (p.title or "").casefold()]
-        context["object_list"] = filtered_projects
+        filtered_projects = list(self.object_list)
 
         nl_query = (self.request.GET.get("nl_open_query") or "").strip()
         dialogue_language = (self.request.GET.get("dialogue_language") or "").strip()
@@ -4946,7 +4956,7 @@ class ProjectListView(LoginRequiredMixin, ListView):
                 previous_query=prev_query,
                 previous_plan=prev_plan,
             )
-            queryset = list(context["object_list"])
+            queryset = filtered_projects
             title_filter = str(nl_plan.get("title") or "").strip()
             text_language = _normalize_language_filter(str(nl_plan.get("text_language") or ""))
             annotation_language = _normalize_language_filter(str(nl_plan.get("annotation_language") or ""))
@@ -4985,6 +4995,7 @@ class ProjectListView(LoginRequiredMixin, ListView):
                 "title_substring_filter": title_substring_filter,
                 "project_language_choices": ProjectForm.LANGUAGE_CHOICES,
                 "project_list_summary": _project_list_content_summary(filtered_projects),
+                "pagination_query": _pagination_query(self.request),
             }
         )
         return context
@@ -9343,7 +9354,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
             )
 
     if nl_query:
-        title = str(nl_plan.get("title") or "").strip()
+        title = _sanitize_nl_title_hint(str(nl_plan.get("title") or ""))
         text_language = _normalize_language_filter(str(nl_plan.get("text_language") or ""))
         annotation_language = _normalize_language_filter(str(nl_plan.get("annotation_language") or ""))
         date_posted = _normalize_date_posted_filter(str(nl_plan.get("date_posted") or "any"))
@@ -9369,13 +9380,10 @@ def content_list(request: HttpRequest) -> HttpResponse:
         cutoff = django_timezone.now() - window
         qs = qs.filter(published_at__gte=cutoff)
 
-    projects = list(qs.order_by("-published_at", "-updated_at")[:300])
-    if text_language:
-        projects = [p for p in projects if (p.language or "").lower().startswith(text_language)]
-    if annotation_language:
-        projects = [p for p in projects if (p.target_language or "").lower().startswith(annotation_language)]
     result_rows: list[dict[str, Any]] = []
+    page_obj = None
     if nl_query:
+        projects = list(qs.order_by("-published_at", "-updated_at", "-id")[:300])
         requested_keywords = [str(k).strip().lower() for k in (nl_plan.get("keywords") or []) if str(k).strip()]
         requested_level = level
         scored: list[tuple[int, list[str], Project]] = []
@@ -9408,7 +9416,9 @@ def content_list(request: HttpRequest) -> HttpResponse:
                 continue
             result_rows.append({"project": project, "score": score, "reasons": reasons[:3]})
     else:
-        result_rows = [{"project": p, "score": 0, "reasons": []} for p in projects[:200]]
+        paginator = Paginator(qs.order_by("-published_at", "-updated_at", "-id"), 50)
+        page_obj = paginator.get_page(request.GET.get("page"))
+        result_rows = [{"project": project, "score": 0, "reasons": []} for project in page_obj.object_list]
 
     return render(
         request,
@@ -9416,6 +9426,9 @@ def content_list(request: HttpRequest) -> HttpResponse:
         {
             "projects": [row["project"] for row in result_rows],
             "result_rows": result_rows,
+            "result_count": page_obj.paginator.count if page_obj is not None else len(result_rows),
+            "page_obj": page_obj,
+            "pagination_query": _pagination_query(request),
             "nl_filters": {
                 "nl_query": nl_query,
                 "dialogue_language": dialogue_language,
@@ -12050,7 +12063,7 @@ def content_list(request: HttpRequest) -> HttpResponse:
             )
 
     if nl_query:
-        title = str(nl_plan.get("title") or "").strip()
+        title = _sanitize_nl_title_hint(str(nl_plan.get("title") or ""))
         text_language = _normalize_language_filter(str(nl_plan.get("text_language") or ""))
         annotation_language = _normalize_language_filter(str(nl_plan.get("annotation_language") or ""))
         date_posted = _normalize_date_posted_filter(str(nl_plan.get("date_posted") or "any"))
@@ -12076,13 +12089,10 @@ def content_list(request: HttpRequest) -> HttpResponse:
         cutoff = django_timezone.now() - window
         qs = qs.filter(published_at__gte=cutoff)
 
-    projects = list(qs.order_by("-published_at", "-updated_at")[:300])
-    if text_language:
-        projects = [p for p in projects if (p.language or "").lower().startswith(text_language)]
-    if annotation_language:
-        projects = [p for p in projects if (p.target_language or "").lower().startswith(annotation_language)]
     result_rows: list[dict[str, Any]] = []
+    page_obj = None
     if nl_query:
+        projects = list(qs.order_by("-published_at", "-updated_at", "-id")[:300])
         requested_keywords = [str(k).strip().lower() for k in (nl_plan.get("keywords") or []) if str(k).strip()]
         requested_level = level
         scored: list[tuple[int, list[str], Project]] = []
@@ -12115,7 +12125,9 @@ def content_list(request: HttpRequest) -> HttpResponse:
                 continue
             result_rows.append({"project": project, "score": score, "reasons": reasons[:3]})
     else:
-        result_rows = [{"project": p, "score": 0, "reasons": []} for p in projects[:200]]
+        paginator = Paginator(qs.order_by("-published_at", "-updated_at", "-id"), 50)
+        page_obj = paginator.get_page(request.GET.get("page"))
+        result_rows = [{"project": project, "score": 0, "reasons": []} for project in page_obj.object_list]
 
     return render(
         request,
@@ -12123,6 +12135,9 @@ def content_list(request: HttpRequest) -> HttpResponse:
         {
             "projects": [row["project"] for row in result_rows],
             "result_rows": result_rows,
+            "result_count": page_obj.paginator.count if page_obj is not None else len(result_rows),
+            "page_obj": page_obj,
+            "pagination_query": _pagination_query(request),
             "nl_filters": {
                 "nl_query": nl_query,
                 "dialogue_language": dialogue_language,
