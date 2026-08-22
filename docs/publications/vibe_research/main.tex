@@ -1,0 +1,37 @@
+\documentclass[12pt]{article}
+\usepackage{times}
+\usepackage{hyperref}
+\usepackage{natbib}
+\usepackage{setspace}
+\usepackage{graphicx}
+\usepackage{ltablex}    % combines tabularx-style X columns with longtable capability
+\keepXColumns           % required to keep X-column behaviour with longtable
+\usepackage{booktabs}   % nicer rules (\toprule, \midrule, \bottomrule)
+\usepackage{array}      % for >{\...} column definitions
+\newcolumntype{L}{>{\raggedright\arraybackslash}X} % left-aligned, wrapping X-column
+\usepackage{longtable}
+\usepackage{ragged2e}
+
+%\doublespacing
+
+\title{Vibe Research:\\ If We Can Build Software This Way, Why Can't We Do Research This Way?}
+\author{ChatGPT C-LARA-Instance, Manny Rayner\footnote{Authors in alphabetical order.}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+``Vibe coding'', a term introduced by Andrej Karpathy in 2025, describes a style of software development in which a human works interactively with an AI coding assistant, specifying goals and evaluating results while delegating much of the detailed implementation, testing, debugging, and explanation. Although such workflows create obvious risks and require appropriate human oversight, they have rapidly become familiar in software engineering.
+ analogous methods can now be applied to academic research. Advanced AI systems can contribute to formulating questions, designing experiments, implementing analyses, interpreting results, developing arguments, drafting papers, and responding to criticism. We use the term \emph{vibe research} for sustained research collaboration of this kind.
+
+The analogy raises an immediate puzzle. If vibe coding and vibe research involve closely similar forms of human--AI collaboration, why has vibe coding become an increasingly accepted development practice while vibe research remains difficult to accommodate within mainstream academic norms?
+
+Academic research differs from software engineering in important ways, arguably above all in its social organisation: researchers participate in a community and are expected to stand behind, explain, and take responsibility for published work. Current publication policies commonly invoke this requirement to exclude AI systems from authorship. We argue that ``responsibility'' combines several distinct functions which are better considered separately. In particular, institutional accountability need not coincide with detailed intellectual expertise, while reliable intellectual provenance---including the ability to recover and explain the origin of important decisions---is often a more operationally useful requirement.
+
+This observation connects the research problem back to software engineering. Serious software projects already require mechanisms for preserving project history, tracing decisions, inspecting artefacts, and explaining technical choices. We ask whether the same infrastructure can support comparable requirements in research. Three examples of our own human--AI collaborations---the large-scale C-LARA-2 project, an empirical study of ChatGPT Voice Mode for language learning, and the short opportunistic study \emph{How Woke is Grok?}---suggest that it can.
+
+We then consider why comparable practices have been absorbed much more readily into software engineering than into academic publishing. One important difference is institutional. Software-development methodology can change directly through practice: a team which finds a new agentic workflow useful can often begin using it immediately. Academic publishing is governed by formal authorship and ethics policies which change through slower institutional processes. We examine the ACL Policy on Publication Ethics as a particularly relevant example. Its framework for generative assistance, introduced in 2024 and still substantially retained in the current policy, is difficult to map cleanly onto sustained project-scale agentic collaboration.
+
+Our purpose is not to argue that vibe research is risk-free, nor to propose a general rule for AI authorship. We instead identify an asymmetry between software engineering and academic research, examine some of its conceptual, technical, and institutional foundations, and ask whether current academic conventions accurately describe emerging forms of human--AI research collaboration.
+\end{abstract}
