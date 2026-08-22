@@ -35,3 +35,56 @@ We then consider why comparable practices have been absorbed much more readily i
 
 Our purpose is not to argue that vibe research is risk-free, nor to propose a general rule for AI authorship. We instead identify an asymmetry between software engineering and academic research, examine some of its conceptual, technical, and institutional foundations, and ask whether current academic conventions accurately describe emerging forms of human--AI research collaboration.
 \end{abstract}
+
+\section{Introduction: From Vibe Coding to Vibe Research}
+
+``Vibe coding'' was introduced by Andrej Karpathy in February 2025 as a deliberately informal name for a new style of AI-mediated programming \citep{fowler2026vibecoding}. The expression rapidly entered wider use because it captured a recognisable change in software-development practice.
+
+In a contemporary version of this workflow, a human developer may formulate requirements, inspect visible behaviour, request modifications, perform selected independent checks, and ultimately decide whether a system is ready to ship. An advanced coding assistant may meanwhile perform much of the detailed implementation, debugging, refactoring, test construction, repository inspection, and technical explanation.
+
+The point is not that such development is risk-free. It plainly is not. A developer who delegates substantial work to an AI system must decide how much independent checking is appropriate. With experience, this becomes partly a problem of calibrated trust: learning which outputs require close inspection, what kinds of tests provide useful evidence, which failures are characteristic of the system being used, and when additional verification is needed.
+
+One of the principal attractions of contemporary vibe coding is precisely that sufficiently capable coding assistants make exhaustive line-by-line human inspection unnecessary in many cases. If every generated component had to be independently reconstructed or checked in detail, much of the productivity advantage would disappear.
+
+Nor does the supervising human necessarily acquire detailed knowledge of everything the coding assistant has done. Expertise may be distributed between the human and the AI system. If another team member asks why an obscure component was implemented in a particular way, the most useful response may be to ask the coding assistant to inspect the repository and explain it.
+
+These features suggest a natural question. What happens when essentially the same methodology is applied to academic research?
+
+Advanced AI systems can now participate in formulating research questions, reviewing literature, proposing hypotheses, designing experiments, implementing analyses, interpreting results, constructing arguments, drafting papers, and responding to criticism. We use the term \emph{vibe research} for sustained iterative research collaboration of this kind.
+
+The central puzzle of this paper follows directly. If the two activities involve closely similar forms of human--AI collaboration, why is vibe coding increasingly accepted as an ordinary development methodology while vibe research is not comparably accepted within mainstream academic practice?
+
+Arguably the most important difference is sociological. Research does not consist only in producing intellectual artefacts. Being a researcher normally means participating in a research community: publishing work under one's name, responding to questions and criticism, explaining how results were obtained, and accepting various forms of responsibility for what one has helped produce.
+
+This is often phrased as some version of the question \emph{``Can the AI be a responsible author?''}, with the imputation that it cannot. In current mainstream academic practice, AI authors are generally not permitted. The International Committee of Medical Journal Editors, for example, states that chatbots should not be listed as authors because they cannot be responsible for the accuracy, integrity, and originality of the work \citep{icmje2026ai}. Nature Portfolio similarly states that authorship carries accountability which cannot effectively be applied to large language models \citep{nature2026ai}. The ACL Policy on Publication Ethics explicitly states that generative AI tools may not be listed as authors and that ACL does not consider a generative model capable of fulfilling co-authorship requirements \citep{acl2026policy}.
+
+These policies identify a real issue, but the apparently straightforward concept of ``responsibility'' turns out to cover several different functions. A person may be institutionally responsible for approving a piece of work without possessing all of the detailed expertise embodied in it. Conversely, the person or system best able to explain a particular intellectual decision may have no formal authority over publication.
+
+For the remainder of the paper we therefore avoid treating responsibility as an unanalyzed property. We shift instead to the closely related but more tractable concept of accountability, distinguishing institutional accountability from intellectual accountability. This in turn leads to the more operational notion of \emph{reliable intellectual provenance}: the ability to establish where important ideas and decisions came from, inspect the evidence on which they were based, and obtain an explanation of them.
+
+This leads in turn to a practical question. Can a research project involving substantial AI participation actually be organised so that this kind of provenance is available? Our central technical observation is that the requirements are remarkably similar to those already encountered in serious AI-assisted software development.
+
+But if the technical analogy is as close as we suggest, the original question remains. Why have the two communities developed such different norms? We will argue that part of the explanation may lie not in intrinsic differences between software and research, but in the mechanisms through which their working practices change. Software methodology can evolve directly through individual, team, and organisational practice. Academic research is additionally constrained by formal systems of publication governance whose categories may change on a substantially slower timescale.
+
+After developing these arguments, we examine three documented examples from our own work. The present paper is itself being produced through the same methodology, and its development history will form part of the accompanying provenance record.
+
+
+\section{What Is Vibe Research?}
+
+We use \emph{vibe research} to denote a mode of working, not a particular percentage of tasks delegated to an AI.
+
+The central characteristic is iteration. A human may begin with a question, observation, dataset, or partially formed idea. The AI may propose a reformulation, experimental design, analysis, objection, interpretation, or new direction. The human may challenge it, request evidence, modify the proposal, reject it, or follow an unexpected consequence. Research emerges through repeated cycles of proposal, execution, inspection, criticism, and revision.
+
+This differs from a simpler model of ``AI-assisted writing'' in which the intellectual substance of a study has already been determined by humans and an AI system is subsequently used for local tasks such as copy-editing or translation. In vibe research, AI participation may occur at stages conventionally regarded as intellectually substantive.
+
+There is no sharp boundary between ordinary AI assistance and vibe research, and we do not propose one. The term is useful because it identifies a family of workflows in which the familiar description ``the human supplied the intellectual content and the AI merely executed instructions'' becomes increasingly inaccurate.
+
+Many technical features closely parallel vibe coding. Both may depend on a persistent project context, structured access to files, computational tools, versioned artefacts, repeated execution and testing, and natural-language interaction about goals and results.
+
+The important differences arise from the surrounding social practice.
+
+A piece of software must work well enough for its intended purpose, and an organisation must decide who has authority to ship it. Research has analogous requirements, but additionally participates in a highly developed system of publication, attribution, credit, criticism, and community membership. A published author is expected not merely to have contributed to an artefact but, in some sense, to stand behind the work.
+
+This explains why AI authorship becomes a sensitive issue almost immediately. It does not, however, tell us exactly what ``standing behind the work'' requires.
+
+The practical question is therefore better framed in terms of accountability. Which forms of accountability are genuinely required, which can be distributed among collaborators, and what information must be preserved if a research community is to understand and interrogate the intellectual origins of a piece of work?
