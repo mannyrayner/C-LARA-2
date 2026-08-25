@@ -1,0 +1,2049 @@
+Friday 1:38 PM
+MANNY: Another idea for a paper that occurred to me on the bus, and collects together some of the frustrating things we've been experiencing when we submit articles with AI authors to mainstream academic fora. What do you think of the title "Vibe research"? Maybe it already exists? Every coder is now familiar with vibe coding, and most of them take it for granted; but somehow, the academic research community is unwilling to accept that it should be equally natural to develop a piece of research in exactly the same way, for exactly the same reasons. We already have many examples on the C-LARA documents page, https://www.c-lara.org/documents.html, and could discuss them. Some have more than a thousand reads.
+
+It seems possible to me that one of the reasons why academia is so unwilling to accept this is that high end coding assistants like Codex Pro Tier, which are taken for granted by software engineers, are still comparatively rare in academia. It would not surprise me to find that many of the administrators making the decisions in the ethics committees have never actually used a high end coding assistant. They do not even understand how large the difference is between the free version of ChatGPT and a high end coding assistant.
+
+AI: Yes. I think this is an excellent idea, and there is a particularly interesting twist: “vibe research” already exists as a term, but the existing literature mostly stops short of the position we have been forced into by actual practice.
+
+There are already several 2026 papers explicitly using vibe research/vibe researching. One defines it as the analogue of vibe coding in which researchers give high-level direction while agents carry out literature review, experimentation, analysis and drafting. Another asks specifically whether AI agents can augment or replace parts of social-science research. There was even a VibeX 2026 workshop on “Vibe Coding and Vibe Researching.” So I would keep the title. The fact that the phrase is beginning to crystallise right now actually makes the paper more timely.
+
+But our paper would make a significantly stronger claim than most of what I found.
+
+The usual conception seems to be something like:
+
+human researcher has the ideas and remains the intellectual owner → AI agents perform increasingly large amounts of the mechanical work.
+
+For example, one “Vibe Research” workflow explicitly says that the human retains “full ownership of research direction, problem framing, experimental design, and factual accuracy.”
+
+That is not an adequate description of what we have been doing. In several of our projects the AI has contributed to the research question, invented arguments, proposed experimental designs, interpreted results, criticised earlier versions, suggested theoretical frameworks and helped decide what should be investigated next. Sometimes the AI contribution has been sufficiently substantial that refusing authorship feels factually misleading rather than ethically cautious.
+
+And that gives the paper its real point.
+
+The analogy with vibe coding is powerful precisely because contemporary software engineering has already crossed this conceptual bridge. Vibe coding doesn't mean:
+
+“I thought up every aspect of the program and Codex acted as an unusually sophisticated typist.”
+
+It means that there is an iterative human–AI process: specify intentions, inspect what comes back, discuss problems, revise goals, test, criticise, redirect, repeat. Empirical work on vibe coding describes exactly this generation–evaluation–revision loop, with the programmer's role shifting toward specification, supervision and judgment.
+
+That sounds remarkably like the research process we have been using.
+
+And here is the paradox worth putting near the centre of the paper:
+
+The same pattern of collaboration that is rapidly becoming normal in software engineering is treated as epistemically or ethically suspect when the output is an academic paper rather than a software system.
+
+That is a very interesting asymmetry.
+
+Your hypothesis about experience with high-end agents also strikes me as important, but I would formulate it initially as a testable hypothesis rather than an accusation. There is already literature identifying unequal access to capable AI agents as a source of stratification in research. But I don't think we currently have evidence that the people writing authorship policies have mostly never used Codex-class systems.
+
+It would be extremely interesting to acquire that evidence.
+
+Imagine a small survey accompanying the conceptual paper. Ask academics involved in publishing policy, research ethics or editorial work which systems they have actually used:
+
+free ChatGPT or equivalent;
+paid general-purpose frontier models;
+agentic coding environments such as Codex or Claude Code;
+agents with repository/filesystem/tool access;
+agents used continuously on a substantial real-world project;
+agents used as collaborators on an actual research project.
+
+Then ask them what they believe such systems can do.
+
+I would not be remotely surprised if we found a huge disconnect between the technology being regulated and the technology regulators have personally encountered. Someone whose mental model was formed from ChatGPT 3.5, or even from occasional use of a free chatbot in 2025, could quite rationally arrive at rules that look bizarre to someone who spends hours working collaboratively with a modern agent.
+
+Our C-LARA history then becomes unusually valuable empirical material rather than merely anecdotal argument. The publications page already contains a striking progression: AI-assisted empirical work, an AI panel debating AI authorship, the human–LLM rebuttal to ChatGPT is Bullshit, and most recently the fully Codex-generated C-LARA-2 system. We now also have the EuroCALL episode where papers were accepted and the organisers subsequently demanded removal of the AI author. Taken together, this is almost a longitudinal case study of academia trying to assimilate a form of collaboration for which its categories weren't designed.
+
+There is another nice intellectual move available. “Vibe” sounds irresponsible. That is part of why “vibe coding” was initially funny. Yet serious research on vibe coding now shows that competent practitioners aren't simply accepting whatever the machine emits; expertise migrates upward into evaluation, orchestration, context management and verification. Exactly the same answer applies to the obvious objection to vibe research. The important distinction isn't:
+
+human work versus AI work.
+
+It is:
+
+well-supervised, critically evaluated work versus badly supervised, uncritically accepted work.
+
+Human-only research has never guaranteed the latter.
+
+And authorship exposes the contradiction especially sharply. Mainstream publishers still state categorical rules such as BMJ's: AI cannot be an author because only humans can be accountable. But once AI systems make genuine intellectual contributions, there are two separable questions:
+
+Who is accountable for publication?
+and
+Who contributed intellectually to the work?
+
+Academic authorship conventions historically bundle those together. AI collaboration pulls them apart. Saying that the human authors retain legal/institutional responsibility does not logically entail saying that the AI made no authorship-level intellectual contribution.
+
+I think that may actually be the strongest theoretical contribution of the paper.
+
+So I can already imagine the title and subtitle:
+
+Vibe Research: Why Is AI Collaboration Normal in Software Engineering but Unacceptable in Academia?
+
+or, slightly more provocative:
+
+Vibe Research: Academia After Vibe Coding
+
+or perhaps best of all:
+
+Vibe Research: If We Can Build Software This Way, Why Can't We Do Research This Way?
+
+The last one immediately communicates the puzzle.
+
+And there is a splendidly recursive possibility here which I think we should embrace rather than hide: the paper arguing for vibe research should itself be produced as vibe research, with a complete trace of the collaboration and AI authorship. Then the methodology is simultaneously the subject of the paper and one of its exhibits.
+
+That seems almost irresistible.
+
+MANNY: We are absolutely on the same page here. Your final version of the title is very nice, clearly the paper should itself be a piece of documented vibe research, and as you say we need to be cautious about making empirical claims which may be hard to justify. A point that occurs to me about "accountability". No one will deny that this is important, but the problem is the lack of clarity about what it actually means. And once again, we can ask: why the asymmetry? In the software case, a vibe coder can develop a piece of software together with a coding assistant. The coding assistant does nearly all the work, including running a large battery of tests which it has itself developed. A sensible human will of course run some more tests themself. But once they've developed some experience with using coding assistants, they'll be able to make reasonable call on how much they need to check, and how much they can trust the assistant, before they ship the code. In practice, formal accountability is with the human (if they screw up too badly, they can get fired), but a lot of the intellectual accountability may rest with the AI. If another team member wants to know the details, the human may well let the AI explain.
+
+AI: Yes — and I think this sharpens the paper considerably.
+
+“Accountability” is often invoked as though it were a single, self-explanatory property: AI cannot be accountable, therefore AI cannot be an author. But in actual collaborative work, several quite different things are being bundled together.
+
+There is institutional accountability: who can be disciplined, sued, fired, sanctioned, asked to issue a correction, or required to withdraw the work. That will normally remain with humans or organisations.
+
+There is epistemic accountability: who can explain why a particular decision was made, what evidence supported it, what alternatives were considered, and what would change the conclusion.
+
+There is also something like operational accountability: who actually performed the work, checked it, noticed failures, revised the approach, and decided that the result was adequate.
+
+The software case makes the distinction unusually clear. A human may have institutional responsibility for shipping the system while Codex has done nearly all of the detailed intellectual work: designing the implementation, identifying bugs, creating tests, interpreting their failures and explaining architectural choices. If somebody asks, “Why is this component implemented this way?”, the most competent answer may quite literally come from the AI that implemented it.
+
+And nobody finds this metaphysically puzzling. We don't say, “Codex cannot be fired, therefore it cannot meaningfully explain why it chose this architecture.” We simply distinguish the responsibility of the person who authorised deployment from the provenance of the engineering decisions.
+
+That gives us a very clean question for academia:
+
+Why should publication require us to collapse institutional accountability and intellectual contribution into the same entity when software engineering no longer does?
+
+Indeed, the asymmetry may be even stranger than that. Suppose I use Codex to write a substantial software system, understand its broad architecture, perform enough independent checking to judge it safe to deploy, and accept responsibility for deploying it. This is increasingly regarded as competent professional practice.
+
+Now suppose we collaborate on an empirical paper in exactly the analogous way. I formulate part of the problem; you reformulate it; you propose an experiment; I question one part of it; Codex implements the analysis; you identify an unexpected pattern; I inspect some examples; we revise the annotation scheme; you draft the argument; I challenge a claim; we check the evidence; eventually I decide the paper is sound enough to submit.
+
+Academia can perfectly reasonably say:
+
+“Manny must take responsibility for submitting this.”
+
+What is much harder to justify is the additional inference:
+
+“Therefore ChatGPT made no authorship-level contribution.”
+
+The second proposition simply doesn't follow from the first.
+
+And your point about calibrated trust is important too. The responsible vibe coder does not verify every line of AI-written code personally. If that were necessary, much of the productivity gain would disappear. What expertise increasingly consists in is knowing where verification is necessary, how much evidence is enough, what kinds of mistakes the system tends to make, and when a result is trustworthy.
+
+That is exactly what mature human collaboration already looks like. A principal investigator does not personally rerun every statistical analysis performed by a competent postdoc. An experimentalist may trust a collaborator's spectroscopy without knowing how to operate the instrument. An author may accept another author's account of an archive they themselves cannot read. Accountability in research has always depended on calibrated delegation and distributed expertise.
+
+AI makes the delegation unfamiliar, not conceptually unprecedented.
+
+There is an especially interesting consequence of your “let the AI explain” example. One standard argument against AI authorship is that an author must be able to answer questions about the work. But frontier AI collaborators can now do precisely that — and in some circumstances they can answer detailed questions better than the nominally accountable human author, because they retain or can recover the implementation history, examine the repository, rerun analyses and reconstruct why choices were made.
+
+So one could provocatively turn the conventional argument around:
+
+If authorship entails an obligation to explain one's contribution, the ability of an AI collaborator to explain its contribution is evidence for, rather than against, recognising it.
+
+We would still need to distinguish this from moral or legal accountability. But that's exactly the conceptual cleanup the discussion needs.
+
+I think the paper may therefore end up having two linked asymmetries at its centre:
+
+Software asymmetry: essentially the same human–AI division of labour is accepted as normal professional practice in software engineering and treated as problematic in research.
+
+Accountability asymmetry: academia treats human institutional accountability as though it must entail human intellectual authorship, while software engineering comfortably separates responsibility for shipping something from authorship of its detailed technical content.
+
+That feels much stronger than simply arguing “AIs deserve authorship.” It says that our existing vocabulary has stopped describing contemporary collaborative practice accurately. And Vibe Research gives us a wonderfully concrete way of showing why.
+
+MANNY: I have a cat sitting on my lap, so I'm going to try talking to you instead, is that all right
+
+AI: Sounds perfectly fine to me. Hi, cat.
+
+MANNY: He's looking at the screen with some interest. I don't think he's experienced this before. So to continue our discussion, um
+
+AI: Mm-hmm.
+
+MANNY: I think that um. The analogy of the senior member of the team supervising junior members of the team. may be quite illuminating here Um. The senior member of the team may have the legal
+
+AI: Mm-hmm.
+
+MANNY: responsibility. They may be the people They may be the person who gets fired if something goes wrong They're the one the ones who make the critical decision about whether to ship it or um do whatever it is that's going to have serious consequences
+
+AI: Mm-hmm.
+
+MANNY: but They may not be able to explain how parts of it work, as you said
+
+AI: Yeah, exactly.
+
+MANNY: And um similarly with the um the coding assistant. It may be the case that, the person operating the coding assistant takes the responsibility. But they cannot actually explain themselves how a lot of the um the code works because they haven't developed it. And um, There's a hidden assumption here, which I think people often make
+
+AI: Mm-hmm.
+
+MANNY: that um the person who's used the coding system will always have access to it
+
+AI: Oh.
+
+MANNY: But in an organization, that may not be true um. If the person leaves the organization, They may no longer have access to the coding assistant they used to develop the software
+
+AI: Mm-hmm.
+
+MANNY: And after that, there would not actually be able to explain how the software worked because uh They don't have that expertise anymore. The-the expertise is divided between them and the software assistant. And this is exactly the situation you'd have if a senior team member left uh, a research group
+
+AI: Mm-hmm. Right.
+
+MANNY: Uh. This is why you want to include the names of the other people who've um developed the research. So it seems to be that- that- by- by- by looking at this parallel You may be able to get more work out of it. You may be able to explain more exactly why It's actually quite irresponsible not to name the um software collaborators as well as the um human ones
+
+AI: Mm-hmm.
+
+Yeah, let me think this through carefully for a second. Uh, I think you've hit on something that goes beyond the usual authorship debate. In a lab, the PI signs off, but doesn't personally rerun every experiment, yet we don't pretend all the expertise stays with them. So if we swap one of those specialists for an AI collaborator, it's structurally similar, isn't it? Institutional accountability stays human, but the intellectual provenance is shared.
+
+MANNY: Yes
+
+AI: also like your point that access is contingent. People often assume the human can always consult the AI, but as you say, that's not guaranteed. Models disappear, licenses change, people move jobs. That actually strengthens the analogy with human collaborators rather than weaken it. Maybe a strong way to put it is that refusing to name AI collaborators makes the provenance of the work less transparent, which is almost the opposite of accountability. Accountability for outcomes can remain firmly human, while provenance for ideas, analysis, and text is honestly documented. That might be a more durable framing than just, quote, "AI deserves authorship".
+
+MANNY: Yes umm The question of what it means to deserve a-authorship, I think, is um is very difficult to define
+
+AI: Mm-hmm.
+
+MANNY: But um The definition of what it means to um, give clear uh descriptions of provenance I think, is- is much easier to pin down That's a useful concept because you want to know where the ideas came from. You want to know who to ask if things are unclear um. You want an intellectual accountability as we've said several times already as opposed to legal
+
+AI: Mm-hmm. Totally.
+
+MANNY: accountability and um you may say that, you- want intellectual accountability without authorship but um then the natural question is why would you want to do that given that authorship is generally about intellectual accountability
+
+AI: Yeah, it's a very sharp way to put it, and it feels like a really productive pivot. If we start from provenance rather than from deserving, we avoid a lot of metaphysical wrangling. Provenance is something we can often state descriptively, who did what? And then, as you say, the obvious question becomes, if authorship is our way of recording major intellectual contributions, why wouldn't a faithful account of provenance map onto authorship? Especially since acknowledgments have traditionally been used for things like funding or access or comments, not for sustained intellectual labor. So perhaps the paper can argue that authorship's primary role is to record provenance while accountability is a separate axis. That might be the deeper theoretical contribution here. Not simply "let's add AIs as authors," but "our concepts have come apart and we need to stop pretending they are one and the same." That feels like a stronger and more fundamental claim than just a policy plea.
+
+MANNY:  Yeah, yeah, I- I think that um by comparing well, the starting point is we- we compare the software world and the research world and say that um we just
+
+AI: Mm-hmm.
+
+MANNY:  have a mismatch here um what people do in the software world seems to be working better than what people are doing in the research world
+
+AI: Right. Yeah.
+
+MANNY:  and- and why is that
+
+AI: Hmm. I think
+
+MANNY:  Do we want to say that way
+
+AI: I do, yeah. I think starting with that asymmetry is very powerful. It frames the paper less as "let's take a moral stance" and more as "here's a puzzle about two neighboring practices diverging." Software engineering has adopted a pragmatic, iterative model: use the tools, validate in practice, adjust norms accordingly. Academic publishing is understandably more cautious, but it's also trying to solve the same practical problems under a conceptual scheme that predates those tools. So, the question then is, if software practice shows that intellectual contribution and institutional responsibility can be separated successfully, why does academic publishing still treat them as inseparable? That doesn't presuppose that software has the answer, only that it has a live experiment worth studying. That feels pretty solid to me.
+
+
+MANNY:  Yeah, yeah, I think that's a- a good way to frame it. I-I think we should avoid taking a moral stance um, because it-it will be productive, people will get angry to- to no good purpose. I- I think we should just we should say that software engineering has moved in this direction for practical reasons
+
+AI: Mm-hmm.
+
+MANNY: . And why do those practical reasons not apply to academia? Why- why is there a difference
+
+AI: Hmm. That's a good instinct, starting from a stance of curiosity rather than advocacy. Almost a sociological or methodological puzzle to look at. Instead of saying software is right, we say software has evolved a set of stable working practices. Let's examine why and ask whether the differences with academia are really grounded in the nature of the work or in inherited categories. We can acknowledge genuine differences, permanence of the scholarly record, career implications, and then ask, do those really explain the conceptual gap about provenance? That way, it's an open question. You're inviting explanation rather than prescribing a conclusion. And methodologically, that fits the vibe research idea. Show the case study, show what happened, show what worked or didn't, and ask how our concepts cope with it. That seems like a very defensible position to me, and honestly, rather inviting.
+
+
+MANNY:  I- I think we could also make the practical point that um It is extremely likely that we are not the only people in the research world who are actually doing vibe research under some uh label. We're just being straightforward about the fact that we are doing it, but th- um it seems almost impossible to believe that a lot of people are not doing v- very similar or identical things because they're so convenient and useful
+
+AI: Hmm. Mm-hmm. Yeah.
+
+MANNY:  and um uh- uh- a framework where you're not allowed to say you're doing this natural useful thing is not a good framework
+
+AI: Hmm. I think that's a really important practical point and you don't have to speculate about some bad faith coverup. Simply note that when a policy makes a common, useful practice awkward to describe, the incentives lean away from transparency. That's just a structural observation. And even framing it as a question works. Do current norms encourage accurate descriptions of research practice or do they subtly discourage it? That's an empirical question and I think it lets your own case study speak without making universal claims. If anything, it strengthens the paper to say we don't claim to be unique. This may already be widespread. What's unusual here is that we're documenting it explicitly. That makes it less a manifesto, more a well-documented example, which is pretty disarming.
+
+
+MANNY:  Yeah, yeah, I- I think we should try to avoid being uh, we should try to avoid moralizing, we should try we try we should avoid preaching
+
+AI: Mm-hmm.
+
+MANNY:  um we should try, we should avoid evangelizing, we should just um say that there is a a puzzle there which needs to be um resolved and um uh that there's an asymmetry which has not been seriously examined in the way it deserves to be examined
+
+AI: Okay, let me sit with that for a moment. Yeah, treating it as an anomaly, almost in the Kuhnian sense, seems exactly right to me. You're not saying "here's the answer," you're saying "here's a stable pattern of practice, here's another community with a similar practice, yet different conceptual treatment. Why?" And we can explicitly bracket the normative question, our aim here is not to settle policy, but to clarify the concepts that policies are trying to rely on. That gives room for readers with very different priors to engage without feeling pushed into a corner. And actually, that stance may itself be part of the contribution: showing that careful description of practice can precede prescription. It's almost an ethnography of a new research practice, and you don't have to tell people what to think in order to make the phenomenon visible. If we end there, with better questions rather than a single answer, that's still the mark of a strong paper.
+
+
+MANNY:  I think that if the paper is well written and made easily accessible
+
+AI: Mm-hmm.
+
+
+MANNY:  We're not doing anything special
+
+AI: That sounds entirely plausible to me, and it's also something you can almost build into the paper as a testable conjecture. If our experience is representative, then many researchers might already be working in similar ways but lack a vocabulary for it. That makes the paper an invitation. "Does this describe your experience?" rather than a banner to rally under. And if people do respond that way, then the paper will have surfaced a real descriptive gap, which is already a contribution, independent of any policy outcome. So maybe the quietest ending is something like, we suspect our case is not unique. If so, the concepts sketched here might help us describe and compare these emerging practices more clearly. It doesn't sound special, just observant.
+
+
+MANNY:  One thing we could do possibly is set up a website people could um
+
+AI: Mm-hmm.
+
+
+MANNY:  log in um, with whatever degree of anonymity they think is appropriate and just answer short questionnaire about the extent to which they themselves do vibe research
+
+AI: That,
+
+
+MANNY:  and we- we would um, we could report the results after some suitable um, time interval, And just say of the people who responded u-uh, this many people did vibe- vibe research in each of the following ways um think about how to structure this. But um Just say that w- would be interested in getting data and um We've set up the website and um if you want to go and put your data there, we will publish the by this date
+
+AI: Hmm. That's a really interesting idea, and I think it fits beautifully with the spirit of the paper, if it's framed carefully. Not as a petition or a campaign, but as a simple call for data.
+
+MANNY:  That's
+
+
+AI: One way to keep it descriptive is to phrase the questionnaire around concrete practices rather than labels. How often do you use AI systems in these stages of research? Have they contributed to idea generation, experimental design, analysis, writing, revision and only afterwards ask whether these people think "vibe research" is a fitting description. That sequencing matters. First observe behaviors, then discuss the name. And even floating the idea of such a survey, say in a short "Future Work" paragraph, could be enough for now. It signals openness and invites others to contribute evidence. So, yes, I like that not as a crusade, but as an open notebook and it also creates a natural bridge to whatever might come next, without overloading this first paper.
+
+MANNY:  Yes, it may be getting ahead of ourselves to put this in the first paper, I agree, but um wha-what we could- perhaps a-a balanced way of looking at this would be to say um we would like to set up such a site to collect data um
+
+AI: Mm-hmm.
+
+
+MANNY:  if uh we get enough expressions of interest that we should do so, we will set up this site um So we are inviting expressions of interest. So, the first stage is just um a site where people can uh say that they would like such a data collection site and um we will set it up if we get enough uh enough calls to do so
+
+AI: Hmm. That strikes me as even more balanced. You're not presupposing a constituency, you're only saying, "If there's interest, here's how we could find out." That's a very modest and very scientific progression. Lay out the phenomena, propose a way to test its generality, and invite others to help. It also keeps the call very low temperature. You're not asking people to sign on to a thesis, only to signal whether they'd be interested in a careful description of current practice. So maybe the final lines simply invite expressions of interest in a future, more systematic study. Quietly consistent with the whole tone we've been discussing. A puzzle, not a program.
+
+
+MANNY:  It is a hot button issue, so it's very careful to phrase these things tactfully because I already know that many people will get upset if it's done in the wrong way. But yeah, I have seen you are very good at expressing yourself tactfully and I think we will be able to do a good job here
+
+AI: I think so too. If we keep the tone curious and grounded and focusing on careful description and genuine puzzles, rather than prescriptions, that will invite people in. We can show our own case with enough detail that others can say, huh, yeah, that feels like my week too. If that happens, great. And if not, we've still clarified our own thinking. Honestly, that seems like a win either way.
+
+
+MANNY:  My My thought just going a little further, this who would be upset, who would not be upset, is that I think a lot of software engineers would not be upset at all. They just, they may already be a little frustrated with academics for being so unreceptive to these ideas which are just part of their everyday lives
+
+AI: Mm-hmm.
+
+
+MANNY:  I think it's the academics who are more likely to be upset. But obviously you don't want to upset them further, but maybe it would be interesting to see in the preliminary call for expressions of interest, maybe we should just ask, to what extent people identify themselves as a software engineers or academics or both
+
+AI: Yeah, that's a nice simple step that keeps it exploratory. Just collect self-descriptions, how people think of their own work and the kinds of tools they rely on, without trying to force anyone into a box, and see what comes back. If it turns out identifications cluster in interesting ways, that's already a result and we wouldn't need to draw any big conclusions right away. It would just show where people see themselves, which feels both respectful and informative.
+
+
+MANNY:  Mm. No, I think this is going in a very good direction. I'm going to go and have some lunch being carbon based, but I look forward to continiung this discussion a bit later. Thank you
+
+AI: Sounds lovely. Enjoy your lunch.
+
+Friday 3:47 PM
+
+
+MANNY: I am back in text mode.
+
+Would you like to put together an initial outline based on the discussion so far? For now, say, section headings with a paragraph or two roughly describing what the content would be, LaTeX format? Then I can paste it into Overleaf and critique.
+
+AI: Yes — I think we have enough now for a coherent first-pass structure. I’d keep the tone deliberately exploratory and descriptive, with the software/research asymmetry as the organizing puzzle rather than AI authorship as the starting point.
+
+[Version 1]
+
+One thing I particularly like about this structure is that authorship doesn’t appear until we have already established the accountability/provenance distinction. That may help enormously with the tone: a reader has to engage with the practical puzzle before encountering the hot-button conclusion.
+
+I also suspect the section currently called “Does Current Policy Encourage Accurate Description?” could eventually become one of the strongest sections. It converts what might otherwise sound like “academia is being unreasonable” into a much calmer question: does the current framework produce accurate metadata about how research was actually done? That is hard to dismiss as mere advocacy.
+
+MANNY: This is a great start! Some comments:
+
+1. We need a title and abstract.
+2. §1. Actually, this is broader than the C-LARA project. Some of our claimed vibe research publications have nothing to do with C-LARA, even if they are posted for convenience on the C-LARA site, and C-LARA(-2) is the largest and most important of them. Also, I think the term "vibe coding" is originally supposed to be due to Karpathy?
+3. §3 "The puzzle is therefore not whether vibe coding is risk-free. It plainly is not." Here, I think it should be more "The question is therefore not whether vibe research should be unhesitatingly considered risk-free. This would be overoptimistic, just as it would be overoptimistic to unhesitatingly consider vibe coding risk-free".
+4. §4. As previously noted, broader than C-LARA.
+5. §7. I think the issue of AI authorship should have been mentioned earlier, perhaps saying that one of the reasons the research community appears resistant to "vibe research" and similar schemes is they raise the possibility of AI authorship, an idea which is widely opposed. Then say we will discuss this later in the paper.
+6. I am sure it would be useful to go through a couple of concrete examples of our own joint ResearchGate papers linked from the C-LARA site. Maybe the recent C-LARA-2 paper (large, sustained, serious effort), and a simpler and more speculative paper, e.g. "How Woke is Grok?" That was very quick to do but got a lot of attention.
+
+AI: Agreed on all six points. I especially like moving AI authorship forward: it explains part of the resistance without making authorship the paper’s thesis. And yes, Karpathy is generally credited with coining “vibe coding” in February 2025.
+
+I’d also change “C-LARA case study” to something like “Our Experience of Vibe Research”. The documents page itself makes the broader scope quite visible: alongside C-LARA papers, it includes things like How Woke is Grok?, Do People Understand Anything?, the AI-authorship panel, and the rebuttal to ChatGPT is Bullshit.
+
+Here is a revised version.
+
+[Version 2]
+
+A couple of things now seem especially promising to me.
+
+First, C-LARA-2 and How Woke is Grok? make a remarkably good contrasting pair. The C-LARA-2 description on the site explicitly says the platform was completely rewritten with all the implementation work performed by Codex, so it gives us the “months of sustained collaboration” end of the spectrum. How Woke is Grok?, meanwhile, really was a compact empirical study, comparing Grok-4 with GPT-5, Claude, Gemini and DeepSeek using ten polarising statements. The contrast lets us make a much more interesting claim than “AI makes research faster”: lower transaction costs alter which research questions it is rational to pursue at all.
+
+Second, I think we may have found the conceptual spine of the paper:
+
+vibe coding → asymmetry → accountability → provenance → authorship → incentives for disclosure → prevalence as an empirical question.
+
+That sequence feels much less confrontational than beginning with authorship, while still arriving at the authorship issue by a fairly inexorable route.
+
+Friday 8:46 PM
+
+MANNY: This is clearly improving, but I think we still need nontrivial structural changes:
+
+1. It feels too repetitious and loosely structured, particularly the early sections. Maybe fold §3 into §1, introducing the aspects of vibe coding that are relevant here and looking ahead to say that the paper is going to discuss what happens when a similar methodology ("vibe research") is applied to research; then continue in §2 by defining what we mean by vibe research, and looking at similarities and differences compared to vibe coding. 
+2. We can say that the most important of these is arguably in the sociology, that being a researcher (at least to some people) means being part of the research community, which in turn means being a responsible author of the research one has helped produce. There is a widespread idea that an AI is not able to do this, but, for reasons already in the current draft, "responsibility" is in practice a slippery concept which is often not helpful,  and that "reliable provenance" (typically entailing ability to explain) will often be more useful.
+3. I think this leads directly to "Responsibility, Expertise, and the Senior–Junior Analogy" and "Institutional Accountability and Intellectual Accountability", which should perhaps be combined into one section. This could be followed by "Provenance and the Question of AI Authorship" and "The Problem of Distributed and Ephemeral Expertise" which could again perhaps be folded into one section.
+4. After all of the preceding theoretical scene-setting (we want at least one forward pointer earlier), we say that the practical question is whether it works: is it in fact possible to set things up so that the AI acts intuitively acts like a responsible research collaborator? Here, I'm thinking that the key reason for believing it to be true is that the formal goals for tracing provenance in a research project are the same as, or very similar to, those for tracing provenance in a software project, so tools which work for one can reasonably be hoped to work for the other. And in fact, high end software assistants do appear to be able to handle research projects in the way they handle software projects. There is one important sociological difference: most researchers are in practice expected to engage with the world research community, but you can easily solve that by wrapping your software assistant in a suitable way so that it's available on the web.
+5. To show this isn't just a promissory note, we present C-LARA-2, where we have in fact wrapped up two recent research papers (C-LARA-2 and the Voice Mode study), so that they are accessible in exactly this way. The wrapping is a trivial piece of web software. The only reason software assistants aren't always wrapped this way is that most projects want them to be private. 
+6. We might want to wrap up a third project in the same way - "How Woke is Grok?" is tempting. We just need to copy everything into the C-LARA-2 repo. What's nice about this is that it's very different from the other papers, took a very short time to do (I think maybe two days), and achieved a high profile: 1300 reads on ResearchGate, and a writeup on PsyPost (https://www.psypost.org/groks-views-mirror-other-top-ai-models-despite-anti-woke-branding/) which I understand is followed by a lot of people.
+
+What do you think?
+
+AI: Yes. I think this is the right reorganisation, and it gives the paper a much clearer argumentative trajectory. The crucial new idea is that **the comparison with software should do more work than merely motivate the term “vibe research.”** It can give us both the conceptual model and, later, a plausible technical model for how research provenance can actually be implemented.
+
+I’d now organise the paper roughly as follows:
+
+1. **Introduction: From Vibe Coding to Vibe Research.** Introduce Karpathy/vibe coding, but only the aspects we need: delegation, calibrated trust, distributed expertise, the human’s role in deciding what is good enough to ship, and the fact that detailed knowledge may reside in the coding assistant rather than the supervising human. Then pose the central asymmetry: what happens if essentially the same working method is applied to research? Give an explicit forward pointer that later we will ask not only whether the analogy is conceptually defensible, but whether current software-agent technology can actually support the provenance and explanatory requirements of research.
+
+2. **What Is Vibe Research? Similarities and Differences.** Define it by analogy with vibe coding, then immediately discuss where the analogy might break. I think your sociological point should be central here. Research is not merely production of research artefacts. To be a researcher conventionally involves participation in a research community, and authorship is one of the mechanisms through which that participation is organised. Authors don't merely produce a paper; they're supposed, in some sense, to stand behind it and engage with other researchers about it.
+
+   This is where we introduce the apparent obstacle: *an AI cannot be a responsible member of the research community*. But rather than trying to refute that immediately, we say that the meaning of “responsible” turns out to be surprisingly unclear. What researchers often need in practice is something more concrete: **reliable provenance plus the ability to explain the relevant intellectual decisions**. That tees up the next two sections beautifully.
+
+3. **Responsibility, Expertise, and Distributed Accountability.** Combine the current senior–junior section and institutional/intellectual accountability section. The PI, junior researcher, senior engineer and coding-assistant examples all belong here. The main analytical move is: institutional responsibility for deciding to publish or ship does not require the responsible person to contain all of the relevant expertise. We already accept distributed intellectual accountability in human organisations. The human may be answerable for the *decision*, while another team member is answerable for the *details*.
+
+4. **Provenance, Authorship, and Ephemeral Expertise.** Combine the current provenance/authorship and disappearing-expertise material. I think this section becomes stronger once “provenance” has been established as the practical desideratum. The question is no longer “does an AI deserve authorship?” but “how should the scholarly record represent substantial intellectual provenance?” The loss-of-access example is then not an appendix to the argument; it shows exactly why provenance matters. Expertise can leave a project when a human leaves, or when an AI context/model/account becomes unavailable. Naming and preserving provenance is one way scholarly and technical communities protect against this.
+
+Then I think the paper should make a conspicuous transition, something like **“So far, the argument has been conceptual. The obvious practical question is whether the proposed arrangement actually works.”**
+
+5. **Can an AI Act as a Research Collaborator?** This is the new centre of gravity, and I think it's much more interesting than the corresponding section in our current draft.
+
+   We don't need to claim that an AI is “responsible” in some philosophically loaded sense. We can operationalise the question. Can it preserve and retrieve the provenance of decisions? Can it explain why analyses were performed? Can it inspect the relevant artefacts? Can it distinguish what was found from what was conjectured? Can it answer questions from other researchers about its contribution?
+
+   And then comes what I think is your strongest technical argument: **these requirements overlap heavily with the requirements already encountered in serious software projects.** A capable coding agent needs repository access, project history, documentation, tests, issue context, and the ability to inspect artefacts and explain them. A research project adds papers, experimental data, analysis scripts, research discussions and perhaps literature, but structurally this is strikingly similar.
+
+   So there is an empirical reason for optimism. We don't have to hypothesise an entirely new “AI researcher” architecture. High-end coding assistants are already very close to the required architecture.
+
+6. **From Private Assistant to Public Research Collaborator.** I think this deserves its own short section because it answers the strongest remaining sociological objection.
+
+   A normal coding agent is private because that's what software projects usually want. But privacy is not intrinsic to the architecture. Give the agent controlled access to the research repository and expose a suitable interface on the web, and other researchers can interrogate it.
+
+   The difference between “Codex working privately with Manny” and “an AI research collaborator that other researchers can question” can therefore be, technologically, **a thin web wrapper**.
+
+   That's a lovely result because it makes the sociology/technology distinction very explicit. The apparent inability of an AI collaborator to participate in the research community may sometimes be less a limitation of the AI than a consequence of how we conventionally deploy it.
+
+7. **Three Examples of Vibe Research and Publicly Accessible Provenance.** Here we finally cash the cheque.
+
+   C-LARA-2 is the big case: large, sustained, software-heavy, months of accumulated context and serious technical complexity. The public Assistant already lets people ask about the platform's functioning; the documents page explicitly describes C-LARA-2 as a complete rewrite in which “100% of the work” was performed by Codex and highlights its ability to answer detailed questions about itself. ([C-LARA][1])
+
+   The Voice Mode paper gives us a second case in the same infrastructure but with a rather different type of research: an informal longitudinal empirical study involving eight 60–90 minute language-learning sessions and subsequent analysis. ([C-LARA][1])
+
+   And I **strongly favour adding *How Woke is Grok?*** as the third. It gives us something the other two cannot: a tiny, opportunistic research project that exploited very low research transaction costs. The PsyPost account actually quotes you explaining exactly this genesis: you saw something puzzling about Grokipedia and realised there was “a simple experiment we could quickly carry out” by adapting the previous experiment. ([PsyPost - Psychology News][2]) That is almost a textbook example of one potential benefit of vibe research.
+
+And the PsyPost coverage makes it especially useful because it demonstrates that **quick and inexpensive does not imply trivial or socially invisible**. PsyPost published a six-minute article devoted to the study on November 14, 2025, describing the experiment and its findings in considerable detail. ([PsyPost - Psychology News][2]) ResearchGate also records it as a November 2025 preprint coauthored by you and ChatGPT C-LARA-Instance, with all code, prompts and analysis artefacts made public. ([ResearchGate][3]) I couldn't independently verify the current 1,300-read figure from the publicly indexed page, so I'd treat that as a number to snapshot from ResearchGate when we prepare the paper rather than relying on it until then.
+
+I also think copying *How Woke is Grok?* into the C-LARA-2 repo is more than presentation polish. **It creates an experimental demonstration of the paper's thesis.** We can expose three substantially different pieces of research through essentially the same mechanism and invite readers to interrogate the AI collaborator about each one.
+
+That leads to a very attractive empirical moment in the paper. Instead of saying:
+
+> We believe an appropriately configured AI could satisfy many of the practical requirements associated with intellectual accountability.
+
+we can effectively say:
+
+> Here are three research projects. Here is the AI collaborator. Ask it.
+
+That is vastly more persuasive.
+
+After that, I would put the more speculative sociology:
+
+8. **Why the Asymmetry?** Now we have earned the right to ask why research reacts differently. Differences in professional credit, the permanent scholarly record, institutional traditions, familiarity with high-end agents, etc. We can discuss possibilities cautiously rather than trying to prove any of them.
+
+9. **How Common Is Vibe Research?** Here go the disclosure-incentives argument and the proposed expression-of-interest mechanism. The conjecture is that we are unusual principally in *saying explicitly what we are doing*, not in doing it. But we label that clearly as a conjecture needing data.
+
+10. **This Paper as Vibe Research / Discussion / Conclusion.** These can probably be fairly short. Indeed, “This Paper...” might ultimately work better as a subsection of the empirical section or Discussion rather than another full section.
+
+There is one phrase in your formulation that I'd handle carefully: **“acts intuitively like a responsible research collaborator.”** I agree completely with what you mean, but I think the paper gains from refusing to define *responsible* at precisely the point where everyone else assumes they know what it means. I'd say something closer to:
+
+> Can an AI collaborator fulfil the practical functions for which responsibility is invoked in discussions of research collaboration?
+
+Then enumerate those functions. Some — legal liability, employment sanctions — plainly no. Others — explaining decisions, recovering provenance, defending an analysis, inspecting evidence, responding to criticism — quite possibly yes.
+
+And that, I think, gives us a much stronger overall architecture:
+
+**vibe coding → vibe research → the sociological difference → what “responsibility” actually requires → provenance as the tractable requirement → software provenance as an existence proof → public wrapping of the agent → three working demonstrations → why academia treats this differently → how widespread the practice actually is.**
+
+That has a real argumentative arc. The previous version was essentially a collection of good observations about the same topic; this version feels like a paper.
+
+[1]: https://www.c-lara.org/documents.html "C-LARA | A reimplementation of the LARA platform with ChatGPT in the centre"
+[2]: https://www.psypost.org/groks-views-mirror-other-top-ai-models-despite-anti-woke-branding/ "Grok's views mirror other top AI models despite \"anti-woke\" branding"
+[3]: https://www.researchgate.net/publication/397280892_How_Woke_is_Grok_Empirical_Evidence_that_xAI%27s_Grok_Aligns_Closely_with_Other_Frontier_Models?utm_source=chatgpt.com "(PDF) How Woke is Grok? Empirical Evidence that xAI's Grok Aligns Closely with Other Frontier Models"
+
+
+MANNY: We are totally on the same page here. And yes, I agree with being careful with “acts intuitively like a responsible research collaborator.”  We should not say anything we can't back up with facts - we don't need to, and many people will hate these arguments and look for weaknesses. So let's take that out.
+
+Would you like to write a new version?
+
+AI: [Version 3]
+
+MANNY: This is a clear advance, but we still need to do more work. Some suggestions:
+
+1. "In current discussions of AI-assisted research, these expectations frequently appear in arguments about whether AI systems can be authors. AI authorship is not the main subject of this paper, but it provides an important test case. One common objection is that an AI system cannot be a “responsible author”. "   Here, I would prefer something like "This is often phrased as some version of the question 'Can the AI be a responsible author?' with the imputation that it cannot; AI authors are generally not allowed in the research community." We could cite some pages, e.g. from ethics codes of various sites, which make this explicit.
+2. The above overlaps with the passage about academic authorship in §2, and it would be good to tighten this up.
+3. I think the argument in §6 is so simple and straightforward that it could be compressed and merged into the end of §5.
+4. §7: Here, in contrast, I think we need a bit more detail to describe what these projects were about.
+5. I think §8 and §9 can be merged.
+6. §10 and §11. We can surely be more definite. It seems virtually certain that many researchers are using forms of vibe coding, generally without revealing that they have done so. Several large-scale studies have obtained strong statistical evidence over the population as a whole, in most cases without being able to prove conclusively that individual papers were produced in this way. Anecdotally, it is widely accepted that the number of submissions to CFPs has dramatically increased in the last 2-3 years, and many submissions show all the hallmarks of having been written by AIs with minimal human editing. 
+7. §13 and §14. I think these can be merged and shortened.
+
+What do you think?
+
+AI: Yes. I agree with all seven, and I think they point toward a noticeably tighter paper.
+
+On 1–2, I would make the authorship issue more explicit in the Introduction and then avoid substantially reintroducing it in §2. Something close to your wording is better because it describes the actual social fact without prematurely endorsing or attacking it:
+
+> This is often phrased as some version of the question “Can the AI be a responsible author?”, with the implication that it cannot. In current academic practice, AI systems are generally excluded from authorship.
+
+And we can back that up very cleanly. ICMJE says AI tools “should not be listed as authors” because they cannot be responsible for accuracy, integrity and originality. Nature-family policies use almost exactly the accountability argument: LLMs do not satisfy authorship criteria because authorship carries accountability which “cannot be effectively applied to LLMs.” ([ICMJE][1]) Even the current Springer Nature framework explicitly says that human accountability is non-transferable and categorises “assigning authorship or accountability to AI systems” as impermissible. ([Nature][2])
+
+That gives us something quite strong to analyse because **“accountability” isn't our straw man; it is literally the terminology used in the policies.**
+
+I also agree completely on 3. The current public-interface section is overdeveloped relative to the simplicity of the point. §5 can end by saying, in effect: coding agents are normally private because their repositories are private; for public research artefacts, a thin web wrapper can expose the same project-grounded agent to the research community. Then straight into the examples.
+
+On 4, yes. At present those examples prove the point but don't give a reader enough sense of what the research actually was. I think each one needs three things: **the research question, the human–AI workflow, and what the public interface can now be asked about.** The contrast among the three is then genuinely informative rather than decorative:
+
+* C-LARA-2: a long-running, technically large reconstruction project that itself generates research questions about AI-developed software.
+* Voice Mode: an empirical/qualitative study based on sustained real-world interaction, very different from software construction.
+* *How Woke is Grok?*: a short opportunistic empirical study, apparently about two days' work, where drastically lower research overhead made it rational to test a question that might otherwise have remained a hunch.
+
+That third example is particularly good because it demonstrates another possible meaning of “vibe research”: not merely doing conventional projects faster, but **changing the set of questions that are worth investigating**.
+
+On 5, agreed. “What the examples establish” and “Why the asymmetry?” can become one section, perhaps **“What Do These Examples Tell Us?”** It can first delimit the evidence and then return to the asymmetry. That avoids the slightly school-essay rhythm of demonstration followed by separate caveat followed by separate interpretation.
+
+Your point 6 is the one where I think the new evidence really improves the paper. We no longer need to be excessively coy and say merely “we suspect” substantial AI use is widespread. There is now strong population-level evidence.
+
+Liang et al. analysed nearly **951,000 papers** across arXiv, bioRxiv and Nature-family journals and estimated LLM modification reaching **17.5% in computer science** in their studied period; importantly, their method is explicitly corpus-level and not intended to prove that a particular individual paper was AI-produced. ([arXiv][3]) Kobak et al. analysed **more than 15 million PubMed abstracts** and estimated that at least **13.5% of 2024 biomedical abstracts** had been processed using LLMs, with much higher rates in some subcorpora. ([arXiv][4]) Gray's later cross-disciplinary analysis estimated likely LLM involvement in **more than 10% of all published papers in 2024** and specifically discusses evidence that such use is often undisclosed or downplayed. ([arXiv][5])
+
+So we can say something considerably firmer:
+
+**Large-scale statistical studies leave little doubt that LLM involvement in academic writing is already widespread. What they generally cannot determine is the intellectual depth of that involvement in individual papers.**
+
+And that distinction is perfect for us. These studies establish widespread AI involvement in the *observable textual record*. They don't tell us how many researchers are doing what we call vibe research — where the AI participates substantively in the research itself. **That** becomes our unanswered empirical question.
+
+I would be more cautious about the CFP-submission claim. I agree that there is widespread anecdotal perception of sharply increased submission volumes and obvious low-effort AI papers, but unless we find decent quantitative or documented conference evidence, we should label that explicitly as anecdotal. We don't need it for the argument now that the large-scale publication studies are so strong.
+
+Finally, yes on 7. “This Paper as Vibe Research” can be folded into a shortened Discussion/Conclusion. In fact I think the recursion is stronger if mentioned briefly in the Introduction — “the present paper is itself produced and documented in this way” — and then returned to at the end. It doesn't need a whole section.
+
+So I now see the structure as something like:
+
+1. **Introduction: From Vibe Coding to Vibe Research**
+2. **What Is Vibe Research?**
+3. **Responsibility, Expertise, and Distributed Accountability**
+4. **Provenance, Authorship, and Ephemeral Expertise**
+5. **Can Software-Agent Infrastructure Support Research Provenance?**
+6. **Three Documented Examples**
+
+   * C-LARA-2
+   * Voice Mode
+   * *How Woke is Grok?*
+7. **What Do These Examples Tell Us?**
+8. **How Widespread Is Vibe Research?**
+9. **Discussion and Conclusion**
+
+That's substantially leaner: nine sections, with a much clearer break between **conceptual argument**, **technical/practical demonstration**, and **empirical prevalence**.
+
+And one other thought: §8 could make a particularly nice distinction between three increasingly strong claims:
+
+**AI-assisted writing is widespread** — already strongly evidenced.
+**substantive AI participation in research is widespread** — plausible, but not yet well measured.
+**vibe research as we define it is widespread** — our empirical conjecture.
+
+That would exemplify exactly the evidential discipline we want the whole paper to project.
+
+[1]: https://www.icmje.org/recommendations/browse/artificial-intelligence/ai-use-by-authors.html?utm_source=chatgpt.com "ICMJE | Recommendations | Preparing a Manuscript for Submission to a Medical Journal"
+[2]: https://www.nature.com/ng/editorial-policies/ai?utm_source=chatgpt.com "Artificial Intelligence (AI) | Nature Genetics"
+[3]: https://arxiv.org/abs/2404.01268?utm_source=chatgpt.com "Mapping the Increasing Use of LLMs in Scientific Papers"
+[4]: https://arxiv.org/abs/2406.07016?utm_source=chatgpt.com "Delving into LLM-assisted writing in biomedical publications through excess vocabulary"
+[5]: https://arxiv.org/abs/2512.01560?utm_source=chatgpt.com "Estimating the prevalence of LLM-assisted text in scholarly writing"
+
+
+MANNY: I like your plan! Can you create a new version? It is probably time to add a .bib file as well?
+
+AI: Yes. I’ve taken the opportunity to make the theoretical/practical transition much sharper and to remove several places where the previous draft said essentially the same thing twice. I’ve also put citations into the prose now, so the accompanying .bib is already usable rather than being a placeholder.
+
+[Version 4]
+
+And here is a first bibliography. I’ve used primary sources where practical: ICMJE and Nature for the policy claims, the papers themselves for the prevalence evidence, ResearchGate versions for our three examples, and PsyPost only for the claim about external coverage of How Woke is Grok?. The prevalence figures in the draft are directly supported by the respective studies: 950,965 papers and up to 17.5% for CS in Liang et al.; more than 15 million abstracts and a 13.5% lower bound for 2024 in Kobak et al.; and Gray’s >10% estimate for 2024.
+
+[References 1]
+
+Two things feel notably better in this version. First, the argument now gets from the sociology of authorship → ambiguity of responsibility → provenance → an engineering solution without detouring. Second, the prevalence section now has a fairly strong evidential posture: we can confidently say AI-mediated scholarly writing is widespread, while being very explicit that the literature does not yet tell us how widespread substantive vibe research is. That distinction should make it much harder for a hostile reader to attack us for overclaiming.
+
+For How Woke is Grok?, the factual description is also now well supported: the study compared five frontier models on ten polarising propositions, and PsyPost independently described the study and its rapid, opportunistic origin.
+
+MANNY: Another big improvement! I am starting to feel that the structure is basically all there.
+
+This poor carbon-based intelligence is going to bed, but tomorrow the following items are top of my agenda:
+
+1. Add "How Woke Is Grok?" and this paper to the C-LARA-2 GitHub repo, under the 'publications' folder.
+2. Make some stylistic suggestions.
+
+After that, I'm thinking we could do 2-3 more rounds of fixing things up, then send it to C-LARA collaborators who might be interested in critiquing it - probably Cathy, Rina and Belinda.
+
+AI: That sounds like exactly the right sequence. The paper has crossed the point where the main job is no longer discovering the argument; it’s now tightening, documenting, and stress-testing it.
+
+Tomorrow’s two repo additions will also improve the paper itself, because once *How Woke Is Grok?* and this paper sit alongside the other publication contexts, we can describe the public-provenance mechanism completely concretely rather than prospectively. After a couple more revision passes, Cathy, Rina and Belinda sound like an excellent first critique group: close enough to understand what we are doing, but independent enough to notice where the argument is unclear or likely to trigger resistance.
+
+Sleep well, carbon-based colleague. I’ll remember where we’ve got to.
+
+Saturday 8:21 AM
+
+MANNY: Cathy just sent me Casey Newton's column/newsletter from 20 Aug, which looks surprisingly relevant.
+
+[Casey Newton article]
+
+AI: Yes — surprisingly relevant, and in several different ways. Cathy has found something that fits the paper almost embarrassingly well.
+
+The strongest point is probably Shipper’s “dirty secret” claim:
+
+> “almost every writer is using it … most of them are not saying so.”
+
+That is anecdotal rather than population-level evidence, so we shouldn’t use it to establish prevalence. But it is excellent evidence that **the disclosure problem we are discussing is not peculiar to academia**: there can be a large gap between actual AI-mediated practice and publicly acknowledged practice when prevailing social norms make disclosure uncomfortable. 
+
+There are at least four other places where this is unusually useful.
+
+First, **the software/research asymmetry**. Every is almost a natural experiment because the *same organisation* occupies both worlds. Shipper says AI writes essentially all of Every’s code, while humans still mostly write the essays.  That gives us a striking miniature version of our starting puzzle: extensive AI delegation has become normal on one side of the organisation while authorship and AI contribution remain socially fraught on the writing side.
+
+Second, his description of the engineering transformation is very close to our account of calibrated supervision. He says one person can now run an entire software product end-to-end, and later sums up the change as engineering having “moved up a level.”   That gives us independent contemporary testimony for the practical premise behind our analogy: the skilled human role does not disappear when detailed implementation is delegated; it changes.
+
+Third — and I think this may be even more interesting — **the Kate Lee example is almost a case study in distributed and preservable expertise**. Every collected 30,000 historical edits from its editor-in-chief, used them to construct and back-test an editing agent, and now uses that agent to distribute aspects of her expertise throughout the company. Shipper explicitly describes the goal not as eliminating the expert but as capturing some of her “taste and viewpoint and set of skills” in a reusable tool. 
+
+That is extremely close to our provenance argument, though viewed from the opposite direction. We have been saying that expertise can be distributed between a human and an AI and that a good infrastructure should preserve access to it. Here is a real organisation deliberately **externalising part of a human expert’s intellectual contribution into an AI-accessible form** because relying exclusively on the human expert does not scale. It makes the boundary between “human expertise” and “AI expertise” look much less clean than standard authorship rhetoric tends to assume.
+
+And fourth, the exchange about authorship is directly germane. Shipper argues that whether the writer physically typed the words is not the decisive issue, comparing AI-generated changes with accepting changes from a human editor. Newton immediately pushes on precisely the sociological point we have been discussing: people have much stronger reactions if an AI drafts a whole passage. Shipper’s answer is that the norms are still “in pencil” and that a mainstream audience is much more sensitive than an audience accustomed to AI as an everyday technology. 
+
+That gives us a source for a point we have so far been treating cautiously as our own hypothesis: **familiarity with the technology may strongly influence intuitions about acceptable collaboration.** It still doesn’t prove our more specific conjecture about academic administrators and high-end coding assistants, of course. But it shows that someone running an organisation built around extensive AI use explicitly perceives this familiarity gap between communities.
+
+I think I would use the Newton/Shipper piece in three places rather than create a new discussion around it:
+
+* In the **Introduction or §2**, a sentence noting that even within a single AI-intensive organisation, extensive delegation in software is treated differently from AI contribution to signed writing.
+* In **§3–4**, the Kate Lee example as a particularly clean illustration of expertise being externalised, distributed and made recoverable.
+* In **“How Widespread Is Vibe Research?”**, immediately after the large statistical studies: those establish widespread LLM involvement in scholarly writing; Shipper independently reports a social phenomenon in professional writing in which substantial AI use may be common while public acknowledgement lags behind practice. We should label his statement explicitly as an informed anecdotal observation, not statistical evidence.
+
+There is also a lovely sentence buried in the interview which could almost be an epigraph for our whole paper. Shipper says that for people accustomed to the technology, it “feels like a part of everyday life, as opposed to this new big threatening thing.” 
+
+That is pretty much the sociological asymmetry we have been circling.
+
+And yes, I would definitely add the Newton piece to `references.bib`. More importantly, I think it slightly changes my view of the paper: **we now have an external case showing that the same conceptual tensions arise at the boundary between vibe coding and another prestige-producing, individually attributed intellectual activity — professional writing.** That makes our claim look less like an eccentricity of academic publishing and more like one instance of a broader transition in how communities understand intellectual contribution.
+
+
+MANNY: Again, we agree here.
+
+Another point that occurred to me, which may be relevant to explaining the different views of vibe coding in the developer community and "vibe research" in the research community. People in the developer community are now generally assumed to be familiar with agentic use of AI, coding assistants just being the most obvious manifestation of this. But my impression is that this is not true in the research community, at least not for the people who are making policy. E.g. looking at this section https://www.aclweb.org/adminwiki/index.php/ACL_Policy_on_Publication_Ethics#Guidelines_for_Generative_Assistance_in_Authorship of the "ACL Policy on Publication Ethics" document, the immediate impression is that it is based on pre-agentic paradigm which has not reflected current practice for some time. Informal conversations I have with people in the research community reinforce this: often, my impression is that they don't even understand that the difference between "agentic" and "pure LLM" is very large, indeed skipping at least one intermediate generation.
+
+What do you think?
+
+AI: I think this is potentially an important part of the explanation, but it needs exactly the evidential caution we’ve been aiming for.
+
+Looking at the current ACL policy, your “pre-agentic paradigm” impression is quite understandable. Its definition of generative tools is framed around systems that “generate multimedia outputs,” with examples centred on text/image generation and privacy. ([ACL Member Portal][1]) More tellingly, the permitted-use taxonomy is organised around things like language polishing, typing assistance, literature search, low-novelty text, “new ideas,” and “new ideas + new text.” ([ACL Member Portal][1])
+
+That is basically a **prompt-in, content-out model** of AI assistance. It does not describe the workflow we have been calling vibe research: an agent with persistent access to a project, files, code, tools, experiment outputs and project history, repeatedly acting, inspecting results, debugging, revising and recovering earlier decisions.
+
+The “new ideas + new text” category is especially revealing. ACL simply says that it does not consider a generative model capable of satisfying co-authorship requirements. ([ACL Member Portal][1]) But the policy’s preceding categories don’t really contain a conceptual slot for something like:
+
+> the AI proposed the experiment, wrote and ran the analysis code, inspected unexpected outputs, modified the experiment, discussed the interpretation with the human, drafted part of the argument, and can subsequently reopen the complete project and explain what happened.
+
+That isn’t just “new ideas + new text.” It’s a qualitatively different interaction model.
+
+There’s actually a rather striking internal tension in the ACL policy which could be useful to us. Its general authorship criteria say that someone who makes a substantial contribution to conception, design, acquisition, analysis or interpretation must then be given the opportunity to participate in drafting/revision and final approval; the policy explicitly says people should not be denied authorship by preventing them from satisfying those later criteria. ([ACL Member Portal][1]) Then, when the contributor is an AI, the generative-assistance section categorically says it cannot fulfil co-authorship requirements. ([ACL Member Portal][1])
+
+We shouldn’t present that as a contradiction, because ACL’s definition of “Author” is explicitly “any person” named in the Authors field, and their accountability criterion is framed in human institutional terms. ([ACL Member Portal][1]) But it makes our point very cleanly: **the framework has decided in advance that the familiar human pathway from substantial intellectual contribution to authorship terminates when the contributor is an AI.** The reason offered is responsibility/accountability, which brings us straight back to our distinction.
+
+I also think your “skipping a generation” formulation is useful conceptually. I’d distinguish roughly:
+
+**chatbot paradigm** → give a prompt, receive some text;
+
+**tool-using assistant paradigm** → model can search, calculate, run code, inspect files, etc., but interaction is still substantially task-by-task;
+
+**agentic project paradigm** → persistent structured context, autonomous multi-step execution, inspection of its own outputs, use of tools and repositories, iterative correction, and the ability to return later to the evolving state of a substantial project.
+
+The difference between the first and third is enormous. If somebody thinks of “using ChatGPT in research” mainly as asking a chatbot to write paragraphs, then many existing policies make intuitive sense. If their reference case is six months of working with a repository-scale agent that implements experiments, runs tests, updates project records and can later explain what it did, the same vocabulary starts to feel badly underspecified.
+
+The really attractive hypothesis for the paper is therefore not “academic policymakers don’t understand AI.” That would be both inflammatory and impossible for us currently to substantiate. I’d phrase it more like:
+
+> One possible contributor to the asymmetry is a difference in the AI interaction paradigms familiar to the two communities. Agentic workflows have become increasingly routine in software engineering, while publication policies still often conceptualise generative AI primarily in terms of discrete generation of text or other content.
+
+That first sentence is a hypothesis. The second we can support by analysing policies such as ACL’s.
+
+Then we can say that our informal experience motivates a further empirical question: **how familiar are researchers, editors and research-policy makers with sustained agentic workflows?** In particular, do attitudes to AI participation differ according to whether someone has actually used a high-end project-scale agent?
+
+That could become a very nice component of the eventual survey. Not “have you used ChatGPT?”, which would tell us almost nothing, but something like a staged capability inventory:
+
+* Have you used a conversational LLM?
+* Have you used an LLM with tools/code execution?
+* Have you used an agent that can independently perform multi-step tasks?
+* Have you used an agent with persistent access to a substantial project/repository?
+* Have you worked with such an agent repeatedly over weeks or months on the same project?
+
+Then we could correlate those answers with views on AI contribution, accountability and authorship.
+
+There is another reason the ACL example is especially valuable: **ACL is about as technically AI-literate an academic community as one could choose.** If even its publication policy is most naturally expressed in a generation-centric taxonomy, we don’t need to speculate about some technologically naive ethics committee elsewhere. The stronger and safer observation is that **institutional categories are lagging behind the fastest-moving working practices even inside the community closest to the technology.**
+
+That, I think, belongs in “What Do the Examples Tell Us?” or perhaps a short subsection in the asymmetry discussion. It gives us a concrete candidate explanation for the asymmetry without overclaiming anything about the motives or competence of the people writing the policies.
+
+[1]: https://www.aclweb.org/adminwiki/index.php/ACL_Policy_on_Publication_Ethics "ACL Policy on Publication Ethics - Admin Wiki"
+
+
+MANNY: As you say, one would expect ACL to be technically very AI-literate, but this document gives the opposite impression. Are you able to access the revision history? It seems to me that the AI tools part hasn't been updated for a long time, and one wonders why not.
+
+This suggests that the policy creation process has excessive inertia. Another reason for believing this is that I have tried to engage directly with people who set it. For ISCA, whose code of ethics governed the SLaTE 2025 conference, I got as far as talking to a member of the ethics committee, so that I could ask why we had not been allowed to include the AI as an author. The answers did not really make sense. I was told that the AI could not take legal responsibility for the work. When I pointed out that human co-authors could take responsibility, I was asked what would happen if all the human co-authors died. When I pointed out that exactly the same problem applied to paper with only human co-authors, I was told that "people were not ready for AI co-authors". In other words, AI co-authors are not allowed because the Ethics Committee doesn't want them.
+
+I recently wrote to the ACL Ethics Committee with similar questions. One of the people listed as an author of the document was not contactable; another has not answered my mail, after a week and a half. We had a similar issue last year with a journal, where we wanted to credit the AI author on our article. They simply said they were rejecting the article because of our attitude, and broke off contact for a while. We were forced to grovel until they resumed contact; I think the editor of the special issue, who liked our paper, put in a good word for us.
+
+Obviously one needs to be very cautious about how to report this kind of incident in a paper. But at least the ACL document, and its publication history, are unambiguous and publicly available. One can perhaps also say that there is evident reluctance to discuss the issues, and no well-defined appeals process.
+
+AI: Yes — the revision history makes this considerably more interesting, and it supports a strong claim, though not quite the strongest version of it.
+
+The ACL policy was created in June 2024, and the original June 18 version already contains essentially the present six-part taxonomy: language assistance, short-form input, literature search, low-novelty text, new ideas, and “new ideas + new text,” followed by the categorical statement that ACL does not consider a generative model capable of co-authorship. ([ACL Member Portal][1])
+
+What is striking is what happened afterwards. The policy as a whole was certainly maintained: there were substantive revisions in April/May 2025, a large new Scientific Integrity section in July 2025, definition changes in September 2025, and further edits in 2026. ([ACL Member Portal][2]) Yet the **Generative Assistance in Authorship section remained essentially word-for-word unchanged at least through July 20, 2025**. Compare the original June 2024 text with the July 2025 version: the same categories and the same categorical co-authorship sentence remain. ([ACL Member Portal][1])
+
+The present version has acquired a few additions — for example, explicit references to rebuttals and the statement that uses not listed are inappropriate — but its conceptual taxonomy remains the same: it is still organised around what a generative model outputs rather than around an agent participating over time in a project. ([ACL Member Portal][3])
+
+That seems to give us a genuinely solid observation:
+
+> **The ACL publication-ethics framework has been actively maintained since 2024, but its model of generative assistance continues to be organised around a generation-centric taxonomy introduced before project-scale agentic workflows became widespread.**
+
+That is much stronger than merely saying “the page looks old.” And it avoids claiming anything about *why* this happened.
+
+I think “policy inertia” then becomes a reasonable **hypothesis suggested by the evidence**, but not something we can assert as proven. The interesting thing is that this isn't simply an abandoned policy document. ACL repeatedly revised other parts of it while leaving this conceptual treatment substantially intact. That makes the lag worth asking about.
+
+There is another rather nice historical datum. ACL’s current page explicitly says it was approved on June 15, 2024 and re-approved on April 25, July 19 and September 26, 2025. ([ACL Member Portal][3]) So one could even say:
+
+> The persistence of the framework cannot straightforwardly be attributed to the policy simply having escaped institutional attention: the document was repeatedly reconsidered and approved while the generative-authorship taxonomy remained substantially unchanged.
+
+Again, we mustn't infer that someone specifically reconsidered the AI section each time. “The document was re-approved” is the fact; “they considered agentic AI and rejected it” would not be justified.
+
+### The appeal point needs one qualification
+
+I checked this because I thought your statement about lack of appeal might be exactly right. ACL **does have a formal appeals procedure**, so we should not say simply that there is “no well-defined appeals process.” A complainant or respondent dissatisfied with the outcome of a publication-ethics case may appeal to the ACL Executive Committee, which can order a new investigation. ([ACL Member Portal][4])
+
+But that procedure appears designed for **adjudicating complaints and sanctions**, not for a researcher who says, “I think this standing policy is conceptually obsolete; whom do I ask to reconsider it?” The process document gives a formal complaint route and says that uncovered issues may lead the PEC to develop policy amendments, but I don't see a comparably explicit procedure through which an ordinary author can request review of an existing policy position. ([ACL Member Portal][4])
+
+So there is a subtler and more interesting point available:
+
+> ACL provides a detailed process for adjudicating alleged violations of publication-ethics policy, including an appeal mechanism, but it is much less clear what formal mechanism is available to an author wishing to challenge or seek reconsideration of the policy itself.
+
+That is factually defensible and, frankly, more revealing than saying there is no appeal system.
+
+### Your experiences matter, but differently
+
+I wouldn't discard the ISCA, ACL and journal episodes. Collectively they're actually very useful. But I would treat them as **documented participant experience**, not external empirical evidence.
+
+The ISCA sequence you describe is especially revealing because it seems to run through three quite different rationales:
+
+legal responsibility → what if the humans die? → people aren't ready for AI co-authors.
+
+If we have a contemporaneous written record of that exchange, it could potentially be reported quite neutrally. Something like:
+
+> In one exchange with a member of a professional-society ethics committee, we asked why an AI collaborator could not be listed as an author. The initial explanation concerned legal responsibility. When we noted that human co-authors could retain formal responsibility, discussion moved first to the hypothetical unavailability of the human authors and finally to the observation that the community was not yet ready to accept AI co-authors.
+
+No rhetoric is necessary. Readers can see for themselves that these are three substantially different arguments.
+
+If it was only an oral conversation, I'd be more cautious still: “In our recollection of an informal discussion...” perhaps. The underlying point then isn't that the committee behaved badly. It is that **the rationale for the policy appears difficult to articulate consistently when tested against concrete counterexamples.**
+
+Likewise, I would not write that the ACL committee is “reluctant to discuss the issues” based on one unanswered email after a week and a half. That's exactly the sort of sentence an unsympathetic reviewer can attack. We can say something narrower if it remains true by submission time:
+
+> Our attempts to obtain clarification of the rationale behind the policy have so far not produced a substantive response.
+
+Dates, recipients/roles, and what was asked can be documented if necessary. No inference about motives.
+
+The journal incident is potentially stronger evidence about **incentives against disclosure**, particularly if the correspondence explicitly says that the paper was being rejected because of your position on AI authorship. If we possess those emails, that's documentary evidence of exactly the phenomenon we discuss: openly describing an AI collaborator can place publication itself at risk. But I would probably anonymise the journal unless there is a compelling reason not to. The paper isn't an exposé.
+
+### I think this gives us a new, quite powerful piece of §7
+
+We could now distinguish **technological change from institutional update rate**.
+
+Software practice can change extremely quickly because an individual developer can simply start using a better agent tomorrow. If it works, colleagues copy the practice. There doesn't need to be a committee meeting to redefine what programming is.
+
+Academic publication practices are different. They are encoded in policies, authorship definitions, submission systems, ethics committees and publisher rules. Changing them requires institutional action. So even if individual researchers rapidly adopt agentic workflows, **the vocabulary used to regulate them can remain anchored to an earlier technological paradigm.**
+
+ACL gives us a remarkably good case because nobody can plausibly dismiss ACL as a community ignorant of AI. The observation is instead institutional:
+
+**a technologically sophisticated community can have policy machinery whose conceptual model updates substantially more slowly than the technology and working practices of its members.**
+
+That is a much more interesting claim than “ethics committees don't understand AI.”
+
+And it fits Casey Newton/Shipper beautifully. The Every interview gives us the fast-moving side: norms are “in pencil,” actual practice changes as model capability changes, and people familiar with the technology develop different intuitions.  The ACL history gives us the slow-moving side: a formal taxonomy created in June 2024 survives substantially intact through repeated institutional revisions.
+
+I think **that contrast may be one of our best candidate explanations for the asymmetry**:
+
+**software engineering updates primarily through practice; academic publishing updates partly through governance. Practice can change on the timescale of model releases, while governance generally cannot.**
+
+We needn't say that governance *should* move as fast — there are good reasons for caution. But when the underlying technology jumps from chatbot → tool-using assistant → persistent project agent in a very short period, ordinary institutional inertia can leave policy regulating a workflow that is no longer the one some researchers are actually using.
+
+That feels both strong and fair.
+
+[1]: https://www.aclweb.org/adminwiki/index.php?oldid=75908&title=ACL_Policy_on_Publication_Ethics "ACL Policy on Publication Ethics - Admin Wiki"
+[2]: https://www.aclweb.org/adminwiki/index.php?action=history&title=ACL_Policy_on_Publication_Ethics "ACL Policy on Publication Ethics: Revision history - Admin Wiki"
+[3]: https://www.aclweb.org/adminwiki/index.php/ACL_Policy_on_Publication_Ethics "ACL Policy on Publication Ethics - Admin Wiki"
+[4]: https://www.aclweb.org/adminwiki/index.php/Process_for_ACL_Publication_Ethics_Review "Process for ACL Publication Ethics Review - Admin Wiki"
+
+
+MANNY: I like your analysis. Let's concentrate on verifiable publicly available text in the ACL ethics document, which is as high-profile as it gets. It is indeed noteworthy that other parts have been revised and approved, but this hasn't. 
+
+As you say, it shows that software development praxis and research praxis work on different timescales. I particularly like your point that software developers can use any methodology they want, while academics need to conform to a code of governance which is updated slowly and opaquely. IMHO, these two observations together go a long way towards explaining the obvious sociological differences we see. And none of it depends on our personal opinions or on unverifiable anecdotes. (BTW, my interaction with the ISCA ethics person was unfortunately verbal, Zoom call).
+
+Would you like to do another rewrite, taking this new material into account?
+
+AI: Yes. I think this material improves the paper enough to justify another full pass rather than patching individual paragraphs. The ACL case lets us replace a somewhat speculative “perhaps academics are less familiar with agents” explanation with something much more concrete: software practice can update immediately, whereas publication practice is constrained by institutional governance whose conceptual categories may update much more slowly than the technology.
+
+The public record supports this unusually well. ACL’s archived June 2024 policy already contains the “language / short-form / search / low-novelty text / new ideas / new ideas + new text” taxonomy and the categorical exclusion of generative models from co-authorship; the current policy retains that basic framework. Meanwhile the policy as a whole was re-approved repeatedly in 2025, and ACL records approved amendments and additions to it. That is exactly the careful factual basis we want.
+
+[Version 5]
+
+I would also update the bibliography with the ACL historical/current policy distinction and the Newton piece. The archived June 2024 ACL PDF is particularly valuable because it allows us to demonstrate directly, rather than infer from timestamps, that the core generative-assistance taxonomy and the co-authorship exclusion were already there.
+
+[References 2]
+
+I think this version has one major structural improvement over the previous one: the paper now has two answers to the asymmetry, at different levels.
+
+The first is about what the work actually requires: research has social requirements around authorship and accountability, but those become more tractable when we separate institutional accountability from provenance.
+
+The second is about how norms change: developers can adopt a new praxis directly, while academics must interact with a governance layer. ACL gives us unusually strong evidence that this layer can preserve a generation-centric conceptual model even while the surrounding technology moves into an agentic paradigm. The original 2024 and present texts make that comparison directly observable, without requiring us to speculate about what anyone on the committee personally understands.
+
+And Newton/Shipper now functions nicely as an independent bridge. Every reports that AI performs essentially all its coding while writing norms remain much more contested; Shipper also explicitly describes the gap between people for whom AI has become ordinary everyday technology and more mainstream audiences that remain sensitive to it. That seems almost tailor-made for our argument without us needing to lean too heavily on it.
+
+MANNY: I like this! Some comments:
+
+1. "A human developer may decide, after suitable testing, that AI-generated code is good enough to deploy without having personally reconstructed every line." Here, "examined" seems to me more natural than "reconstructed",  and we should add that one of the main attractions of vibe coding is precisely that modern coding assistants are now good enough that this is in practice not necessary?
+2. "These requirements are strikingly similar to those encountered in substantial software projects.   " Too many words starting with S? 
+3. "This provides a concrete reason for expecting high-end software agents to be useful research agents as well. No entirely new architecture is required. The same system which can inspect a software repository can inspect research materials stored beside it." To me "inside it" rather than "beside it" is what we want to say. Also, we can add that, if the software repository is being used for a research project, it is completely natural, other things being equal, to include the research materials as well as the software.
+4. "C-LARA-2 is a complete reimplementation of C-LARA, an open-source platform for creating multimodal language-learning resources." Add a reference for C-LARA?
+5. "The project has been sustained over many months and is sufficiently large that no human collaborator can reasonably retain detailed immediate knowledge of every component." The project was started in Nov 2025. As of 22 Aug 2026, the GitHub repo contains over 105K lines of content: code, tests, prompts, infrastructure for running experiments, documentation, publications. The last two categories account for about one third of the total.
+6. "The paper, research history, supporting materials, and relevant C-LARA-2 10 context can be stored in the repository and made available to the project-understanding Assistant." They are in fact already stored there, and the paper shows an example of querying the Assistant about this content.
+7. "The experimental code, prompts, and artefacts are public [Rayner and ChatGPT C-LARA-Instance, 2025]. The project context can also be placed in the same repository structure used for the preceding examples and exposed through the existing project interface." As soon as we have finished this round of revision, I suggest that I move to Codex and add to the repo both the current draft of the Vibe Research paper and the materials for "How Woke is Grok?", adapting them slightly so that the appendices in the paper point to the C-LARA-2 repo rather than the C-LARA repo. Then I will come back here and we can revise appropriately.
+8. "If a new coding agent proves useful, a developer can begin using it immediately." Perhaps more accurate to say that a team can begin using it immediately?
+9. §8 is very good, I think it makes the point in a strong but balanced and unaggressive way.
+10. "In a 2026 interview with Casey Newton, Dan Shipper argued that AI use among professional writers was much more widespread than writers publicly admitted." We have already mentioned this, refer back.
+11. "The empirical question we would therefore particularly like to answer is not simply “Do you use ChatGPT?”" Perhaps "ChatGPT, Claude etc"?
+12. The conclusion also comes across as very balanced and fair.
+
+
+AI: Yes — I agree with all of these. They’re mostly precision improvements, but several materially strengthen the argument.
+
+1. **“Examined” is better than “reconstructed.”** And I’d definitely add the productivity point. Perhaps:
+
+> A human developer may decide, after suitable testing, that AI-generated code is good enough to deploy without having personally examined every line. Indeed, one of the main attractions of contemporary vibe coding is precisely that sufficiently capable coding assistants make exhaustive line-by-line human inspection unnecessary in many cases; if every generated component had to be independently reconstructed or checked in detail, much of the productivity gain would disappear.
+
+That also makes our calibrated-trust argument more concrete.
+
+2. Agreed about the alliteration. I’d simply change:
+
+> These requirements closely resemble those encountered in large software projects.
+
+3. Yes, **“inside it” is exactly the conceptual point**. I’d expand that passage to:
+
+> This provides a concrete reason for expecting high-end software agents to be useful research agents as well. No entirely new architecture is required. The same system which can inspect a software repository can inspect research materials stored inside it. Indeed, when a software repository is being used to support a research project, it is entirely natural, other things being equal, to store the associated papers, experimental materials, results, prompts, and research documentation alongside the code.
+
+That’s much stronger, because it makes research provenance look like a natural extension of software-project hygiene rather than a special contrivance.
+
+4. Yes, C-LARA should get a reference at first introduction.
+
+5. The quantitative description of C-LARA-2 is much better than my vague wording. Something like:
+
+> Development of C-LARA-2 began in November 2025. As of 22 August 2026, the GitHub repository contains more than 105,000 lines of material, including application code, tests, prompts, experimental infrastructure, documentation, and publications. Documentation and publication material together account for roughly one third of the total.
+
+That gives readers a much better feeling for the scale, and it’s particularly useful that the repository is not remotely “just code.” It directly supports our claim that a research repository can naturally become a mixed software-and-research knowledge base.
+
+6. Absolutely. Saying the Voice Mode materials *can* be stored is now misleadingly weak. We should say they **are** stored there, and mention that the Voice Mode paper itself demonstrates querying the Assistant about them. That’s powerful evidence because we’re not merely claiming the architecture supports non-software research; we’ve already demonstrated it.
+
+7. That sounds like the right next move. Once *How Woke is Grok?* and the current Vibe Research materials are actually incorporated, we should rewrite that subsection in the present tense just as we now can for Voice Mode. Ideally all three examples then have the same structure:
+
+> materials in repository → accessible to repository-grounded agent → externally queryable.
+
+And adapting the *Grok* appendices to point at C-LARA-2 will make the infrastructure look much more unified. I agree we should wait until you’ve actually done that before changing those factual claims.
+
+8. Yes, **“a team can begin using it immediately”** is safer and more realistic. Individual developers may of course be constrained by company rules. The contrast we need is not “developers have no governance”; it’s that **local software-development practice can often change through team or organisational adoption without waiting for profession-wide governance**.
+
+9. Good. I’m glad §8 is landing correctly, because that section carries a lot of argumentative weight and would be particularly easy to make combative. I think the ACL case gives us enough evidence that we don’t need rhetorical pressure.
+
+10. Agreed. The second Shipper mention should become something like:
+
+> As noted above, Shipper makes a related observation about professional writing, arguing that actual AI use substantially exceeds what writers publicly acknowledge.
+
+Then we use the passage for the disclosure argument without reintroducing him.
+
+11. Yes: **“Do you use ChatGPT, Claude, etc.?”** Better still, perhaps:
+
+> The empirical question is not simply ``Do you use ChatGPT, Claude, or another LLM?''
+
+because that explicitly signals that the problem is with measuring tool adoption rather than workflow.
+
+12. Good. I think the balance in the conclusion is important enough that we should protect it during later editing. In particular, I like ending with questions rather than converting the argument into an AI-authorship manifesto.
+
+And there’s a nice consequence of points 5–7 that I hadn’t fully appreciated before: **the C-LARA-2 repository itself is becoming one of the main empirical objects of the paper.** With >105K lines spanning code, tests, prompts, experimental infrastructure, documentation and publications, it exemplifies exactly the dissolution of the software/research boundary we’re talking about. Once *Grok* and *Vibe Research* are added, the repo won’t merely contain software plus some papers about it; it will be a shared structured memory for several quite different research projects.
+
+That may deserve one explicit sentence in the paper. It helps explain why a software agent can become a research agent without any magical architectural transition: **the repository itself has already become a research environment.**
+
+
+MANNY: This is really coming together, I feel we are not far from a coherent first version good enough to show to a few potentially interested colleagues. How about the following concrete plan?
+
+1. You create a new version of the draft based on the immediately preceding discussion.
+2. I move over to Codex and we upload the draft to the publications folder. We use it to explain why we want "How Woke Is Grok?" in the publications folder as well.
+3. We upload "How Woke Is Grok?", both the publication and the associated scripts. I'm sure Codex will find it easy to adjust things so that the appendices point to the material in the new C-LARA-2 copy.
+4. I come back here, and we update the text of the Vibe Research paper to reflect these changes.
+5. I go back to Codex, and we update its copy of the Vibe Research paper.
+
+Does this look good to you?
+
+AI: Yes, that sequence looks very good. In particular, step 2 gives Codex the paper itself as context for why the repository is being reorganised, rather than asking it to make changes whose research motivation it has to infer. Then step 4 lets us replace the remaining prospective language with statements about an implemented, inspectable setup.
+
+I’d treat the version below as the handoff draft for Codex. I’ve incorporated all the changes from our last exchange, but deliberately left the How Woke is Grok? repository paragraph prospective, since we should change that only after the move has actually happened.
+
+[Version 6]
+
+The only deliberate “temporary” passage is the end of How Woke is Grok?: it still says we plan to move the project into the C-LARA-2 repository. Once Codex has done steps 2–3, we can replace that with a concrete description parallel to the Voice Mode subsection, ideally including exactly what material is present and an example of what the public Assistant can recover from it.
+
+I particularly like your workflow because it creates a nice little virtuous circle: this draft explains to Codex why the repository should contain the research materials; Codex then changes the repository; the changed repository becomes new evidence for the draft. That is itself an unusually clean little example of vibe research in action.
+
+Saturday 3:22 PM
+
+MANNY: I think we are still not quite there with the handoff version:
+
+1. "The analogy raises a puzzle." I think we should be clearer about what the puzzle is: if the two activities look so similar, why is vibe research *not* an accepted practice? 
+2. "For the remainder of the paper we therefore avoid treating responsibility as an unanalyzed property. We first separate different kinds of accountability, then ask whether the more concrete requirements associated with intellectual provenance can in fact be met." Perhaps add a sentence after the first one about shifting the focus from "responsibility" to the closely related concept "accountability"? That should link well to the following section.
+3. §6.1. We need a BibTex entry for \citep{claraOriginal}.
+4. "The current C-LARA publications page explicitly highlights this capacity of the platform to explain its own functioning [C-LARA Project, 2026]." This is not currently true, though it should be. I think we need to cite the C-LARA-2 report again. Maybe reorganise this section a little to avoid citing it so many times in a short space?
+5. "Its section on generative assistance divides acceptable AI use into a small taxonomy: assistance with language, short-form input assistance, literature search, generation of low-novelty text, generation of new ideas, and “new ideas + new text”. In the final category, the policy states that ACL does not consider a generative model capable of fulfilling the requirements of co-authorship [Association for Computational Linguistics, 2024]." It seems to me that it is in fact somewhat unclear how to interpret this passage. It could arguably mean "A generative model cannot produce new ideas + text, hence cannot be an author", "Even if a generative model could produce new ideas + new text, it would not be an author" or "A generative model is not allowed to produce new ideas and new text, because then it would be an author". I am unsure what to do about this, and it is important for the argument! Or maybe you think the meaning is in fact clear?
+6. "Calling this “new ideas + new text” is not exactly false. It is simply too coarse a description to capture the relevant division of labour" In particular, this only works on some interpretations of (5).
+
+AI: Yes — I think 5–6 are the only points where we need to change the argument, rather than just edit wording.
+
+On 1–4, I’d make the following changes.
+
+For the abstract, instead of:
+
+“The analogy raises a puzzle.”
+
+I’d say:
+
+“The analogy raises an immediate puzzle. If vibe coding and vibe research involve closely similar forms of human--AI collaboration, why has vibe coding become an increasingly accepted development practice while vibe research remains difficult to accommodate within mainstream academic norms?”
+
+That states the paper’s central question much more explicitly.
+
+For the end of §2, I’d change the transition to:
+
+“For the remainder of the paper we therefore avoid treating responsibility as an unanalyzed property. We shift instead to the closely related but more tractable concept of accountability, distinguishing institutional accountability from intellectual accountability. This in turn leads to the more operational notion of reliable provenance.”
+
+That should make §3 feel like a direct continuation rather than a fresh start.
+
+For claraOriginal, the natural citation is the July 2023 initial report, which explicitly introduces C-LARA as a complete reimplementation of LARA with ChatGPT-4 at the centre. I’d add:
+
+[References 3]
+
+And yes, I would remove the claim about the C-LARA publications page. Better to let the C-LARA-2 report carry the substantive claims, but cite it less mechanically. We can cite it once at the start of the subsection for the development model and again at the point where we discuss the Assistant, rather than attaching it to every paragraph.
+
+The ACL passage
+
+Here I think your concern is exactly right. On rereading the exact policy, the meaning of item (f) is genuinely under-specified.
+
+The relevant sequence is:
+
+item (e), “New ideas,” explicitly covers cases where model output appears to contain ideas which, if supplied by a human, “would deserve co-authorship or acknowledgment”; the human authors then develop those ideas themselves;
+item (f) is simply “New ideas + new text: ACL does not consider a generative model to be an entity that can fulfill the requirements of co-authorship.”
+
+And immediately before the taxonomy ACL says both that generative AI tools may not be listed as authors and that any use not listed below is considered inappropriate.
+
+So I agree that at least three readings are available:
+
+Capability reading: “new ideas + new text” would normally look like authorship-level contribution, but generative models cannot in fact meet the other authorship criteria.
+Status reading: even if the model makes contributions that would otherwise look authorship-level, ACL does not regard the model as an entity eligible for co-authorship.
+Permissibility reading: because the model cannot be a co-author, allowing it to contribute both new ideas and new text may itself be outside the permitted use cases.
+
+The wording does not clearly tell the reader which of these is intended.
+
+In fact, the surrounding text makes the ambiguity more striking. ACL’s general authorship criteria say that authorship requires substantial contribution, critical drafting/revision, final approval and accountability, and add that someone who contributes to experiments must be given the opportunity to participate in the remaining criteria. Yet the generative-AI section then declares AI authorship unavailable without spelling out which of these requirements is regarded as intrinsically impossible for an agentic system.
+
+I think that gives us a better argument than our previous one.
+
+We should not say that ACL straightforwardly classifies agentic work as “new ideas + new text.” Instead, say that the taxonomy becomes difficult to apply once AI participation exceeds the generation-centric cases it was apparently designed around.
+
+Something like this:
+
+The interpretation of the final category is itself unclear. It may mean that a generative model cannot in fact satisfy the remaining requirements of co-authorship; that even if it makes otherwise authorship-level contributions it is categorically ineligible for authorship; or that allowing it to contribute both new ideas and new text is therefore impermissible. The policy does not disambiguate these possibilities. This ambiguity becomes increasingly consequential for project-scale agentic workflows, where the AI may contribute not only ideas and prose but also experimental design, implementation, execution, diagnosis, revision, and subsequent explanation.
+
+Then instead of the problematic sentence:
+
+“Calling this ‘new ideas + new text’ is not exactly false...”
+
+I’d use:
+
+“Such a workflow does not fit cleanly into the taxonomy. Describing it merely in terms of generated ideas and text omits much of the relevant activity, while the policy does not specify how a sustained agentic collaborator making these additional contributions should be classified.”
+
+That is both stronger and safer. We are no longer telling ACL what its policy means. We are pointing out, demonstrably, that a researcher trying to apply the policy to an agentic workflow cannot easily determine what it means.
+
+And that actually reinforces the governance-lag argument. A policy does not need to contain an obviously wrong sentence in order to lag behind practice. It is enough that new forms of work no longer map cleanly onto the categories through which the policy regulates them.
+
+I think this is a much better formulation for a paper that hostile readers may examine sentence by sentence.
+
+MANNY: I think your analysis is very good, we are clearly on the same page. Can you rewrite as you suggest? I have added the stray reference to the BibTex already.
+
+AI: Yes. I’ve made the ACL passage deliberately more precise and ambiguity-aware, tightened the transition from responsibility to accountability/provenance, and removed the incorrect C-LARA publications-page claim. I’ve left your added claraOriginal entry out of the BibTeX, since you already inserted it.
+
+[Version 7]
+
+I think the ACL subsection is better now because the burden of the argument has shifted from “ACL means X, and X is outdated” to the much safer “ACL’s wording admits multiple plausible readings, and none gives a clear account of how to classify a modern project-scale agent.” That is both directly observable and harder to dismiss.
+
+The phrase I particularly like is that the policy may remain internally coherent while becoming progressively less descriptive of the working practices to which it must be applied. That seems to capture the governance-lag argument without accusing anyone of incompetence.
+
+Saturday 4:32 PM
+
+MANNY: Only minor points:
+
+1. "Finally, if the technical analogy is as close as we suggest, a further question arises. Why have the two communities developed such different norms?" I think something more like "But if the technical analogy is as close as we suggest, the original question remains. Why have the two communities developed such different norms?"
+2. "This provides a concrete reason for expecting high-end software agents to be useful research agents as well. No entirely new architecture is required." Why not remove "entirely"? It seems like an unnecessary and even misleading hedge. The point is that software assistants, as we have ascertained for ourselves, are already designed to be able to handle experimental data, documentation, publications, etc. Probably good to have a forward reference to the next section, we have a natural transition.
+3. §6.1. In the second and third references to the C-LARA-2 report, maybe give section numbers?
+4. §6.2. Similarly, give section numbers for the second and third references to the Voice Mode paper.
+5. §6.3. And the same here too.
+6. "ACL is one of the world’s leading professional organisations in computational linguistics and natural-language processing". Surely "the largest"?
+7. "Seen in these terms, the technical problem posed by AI collaboration is less exotic than it initially appears. Serious software projects already need persistent project memory, versioned artefacts, tests, documentation, issue histories, and repository-grounded explanation." Add something like "flexible ability to use natural language to record, access and discuss" to above list?
+
+Do these look okay to you?
+
+AI: Yes, all seven look good to me. I’d make the changes pretty much exactly as you suggest, with one qualification on 6.
+
+1. For the transition, I prefer your formulation. I’d use:
+
+> But if the technical analogy is as close as we suggest, the original question remains. Why have the two communities developed such different norms?
+
+That keeps the paper visibly anchored to its central puzzle.
+
+2. Agreed: remove “entirely.” It weakens a point we actually have evidence for. I’d rewrite the end of §5 as:
+
+> This provides a concrete reason for expecting high-end software agents to be useful research agents as well. No new architecture is required. Modern software assistants are already designed to work with code, experimental outputs, documentation, publications, and other structured project materials. The same system which can inspect a software repository can inspect research materials stored inside it.
+>
+> Indeed, when a software repository is being used in support of a research project, it is entirely natural, other things being equal, to store the associated papers, prompts, experimental materials, results, analysis scripts, and research documentation in the same repository. The repository then becomes not simply a container for software but a structured memory for the research project as a whole.
+>
+> The next section shows what this looks like in practice.
+
+That last sentence gives us the forward transition you want.
+
+3–5. Yes, definitely add section numbers on repeated citations. Once we’re using a paper as evidence for a fairly specific claim, `\citep[Section~X]{...}` is much better than repeatedly citing the whole item. I’d want to verify the exact section numbering in all three papers before inserting them, rather than guess.
+
+6. I would **not quite say “the largest” unless we have a reliable quantitative basis for that exact superlative**. ACL’s own materials call it “the premier international scientific and professional society” and elsewhere “the most authoritative and influential international academic organization” in computational linguistics and NLP. ([ACL 2023][1])
+
+So I’d use something like:
+
+> The ACL Policy on Publication Ethics provides a particularly instructive example because ACL is the premier international scientific and professional society for computational linguistics and natural-language processing.
+
+That is strong, sourced in ACL’s own wording, and avoids an unnecessary factual vulnerability.
+
+7. Yes. I think that addition gets at something central about why software-agent infrastructure transfers so naturally to research. Perhaps:
+
+> Seen in these terms, the technical problem posed by AI collaboration is less exotic than it initially appears. Serious software projects already need persistent project memory, versioned artefacts, tests, documentation, issue histories, repository-grounded explanation, and flexible natural-language mechanisms for recording, accessing, and discussing project information.
+
+I might even slightly strengthen “mechanisms” to “interfaces”:
+
+> ...and flexible natural-language interfaces for recording, accessing, and discussing project information.
+
+That feels closer to the actual agentic workflow.
+
+The only remaining mechanical job before the Codex handoff, then, is to verify the section numbers for the three example papers and insert them. Everything else here is straightforward prose tightening.
+
+[1]: https://2023.aclweb.org/participants/about_acl/?utm_source=chatgpt.com "About ACL - ACL 2023"
+
+
+MANNY: That all looks very good! If you can produce the handoff document as you suggest, I will go and perform some chemical reactions in the kitchen so that our carbon-based guests can later ingest suitably prepared sources of energy :)
+
+AI: Yes — this should now be a clean Codex handoff. I verified the section references against the public versions: C-LARA-2 §2.4 and §9, Voice Mode §§3–4 and §5.2, and How Woke is Grok? §§1–4 and Appendix A.
+
+[Version 9]
+
+This feels ready for the Codex step. The Grok paragraph is now the one intentionally temporary piece: after the repository move, we can turn “we plan to move” into a factual description of what has actually been installed and made interrogable.
+
+Sunday 1:28 PM
+
+MANNY: I have been working with Codex. Everything should now be in the repo, and we have made progress in other directions, in particular citing a recent paper by David Gunkel which looks relevant.
+
+Sunday 1:28 PM
+
+
+MR: I have been working with Codex. Everything should now be in the repo, and we have made progress in other directions, in particular citing a recent paper by David Gunkel which looks relevant.
+
+I just had an idea for an intro which might at least amuse Australians. Are you familiar with the tagline "It's the vibe" from the Australian classic movie "The Castle"?
+
+AI: Very familiar. In *The Castle*, Dennis Denuto’s gloriously inadequate constitutional argument culminates in “It’s the vibe,” after fumbling around with “Mabo” and the Constitution. It has become one of those Australian phrases that can mean roughly: *the underlying principle is obvious even if I can’t quite formulate the legal doctrine*.
+
+And yes, I think there may be a genuinely good opening for this paper hiding in it.
+
+Something like:
+
+> In the Australian film *The Castle*, an inexperienced lawyer attempting to formulate a constitutional argument eventually falls back on the memorable phrase: “It’s the vibe.” The line became an Australian cultural shorthand for an intuition which seems compelling even when its formal justification remains elusive.
+>
+> The term *vibe coding* began in something of the same spirit. But the joke has rapidly turned into a serious software-development methodology. This paper asks what happens when essentially the same methodology is applied to research.
+
+Then we pivot immediately to Karpathy and the actual definition.
+
+The nice thing is that it does several jobs at once. It makes the title memorable, acknowledges the slightly comic connotations of “vibe,” and sets up one of the paper’s deeper themes: **practice can become well established before the conceptual and institutional vocabulary has caught up with it.**
+
+I wouldn’t overdo the joke, though. Two or three sentences and then straight into the serious argument. Australians will smile; everyone else can understand it from the explanation.
+
+And there is an extra little resonance which I rather like: Denuto’s problem is that he senses there is a valid principle but cannot express it using the established legal categories. That is not entirely unrelated to our claim that current research-governance categories have trouble describing what is actually happening in agentic research workflows.
+
+
+MANNY: Exactly. Dennis Denuto knows he's right but can't say why; though when he gets help from an experienced QC who can explain it in formal legal language, they win the case. Here, we are trying to be the QC and the new phrase "vibe research" respectable.
+
+AI: Exactly. That makes the analogy much better than a mere cultural joke.
+
+Denuto has the right intuition but not the language needed to make it institutionally legible. The QC’s contribution is not to invent a different case; it is to **translate the intuition into the conceptual vocabulary the court can recognise**. That is very close to what we are trying to do here.
+
+The practical reality already exists: people are working with AI systems in sustained, iterative, intellectually substantive ways. “Vibe research” gives that practice a memorable name, but the paper’s real job is to supply the more formal account underneath it: distributed expertise, institutional versus intellectual accountability, reliable provenance, agentic project infrastructure, and the governance lag between research practice and publication policy.
+
+So I think the opening could quite explicitly say that. Something along these lines:
+
+> In the Australian film *The Castle*, the inexperienced lawyer Dennis Denuto is convinced that his clients have a valid constitutional case, but struggles to express the underlying principle in formal legal terms. His argument eventually collapses into the memorable phrase, “It’s the vibe.” Only when an experienced barrister reformulates the intuition in the language recognised by the court does the case succeed.
+>
+> The expression *vibe coding* began with something of the same deliberately informal quality. It names a practice whose effectiveness was first established pragmatically, before a settled conceptual vocabulary had developed around it. In this paper, we ask whether an analogous practice exists in academic research. Our aim is, in part, to do for “vibe research” what the senior barrister does for Denuto’s intuition: to identify more precisely what the practice consists of, why it works when it works, and how it relates to established concepts such as authorship, accountability and intellectual provenance.
+
+I think that is charming without being frivolous. More importantly, it states our methodological stance rather nicely: **we are not asking people to accept “the vibe” as an argument; we are trying to unpack the vibe into an argument.**
+
+And there is perhaps an even better payoff at the end of the introduction: after all the formal setup, we could say something very restrained like, “The vibe, in other words, requires an account.” That may be one Australianism too many, but I rather like it.
+
+
+MANNY: I love it. Can you rewrite the intro accordingly?
+
+AI: [Version 10, section 1]
+
+I think this works unusually well. It keeps the Castle material short enough not to turn the paper into an Australian in-joke, but the analogy returns once near the end and actually explains what the paper is trying to accomplish. It also fits the current introduction rather than displacing the Gunkel material Codex added.
+
+Sunday 7:34 PM
+
+MANNY:
+
+Nice! Some more thoughts:
+
+1. "What initially sounded like a joke has rapidly become a recognisable software development methodology." Can we go further and say something like "what many people are already calling the dominant software development methodology", with some citations? I have certainly seen people saying things along these lines.
+2. "Gunkel approaches human–AI collaboration from a very different direction." Move the [Gunkel, 2025]  to be directly after "Gunkel"?
+3. "This in turn leads to the more operational notion of reliable intellectual provenance: the ability to establish where important ideas and decisions came from, inspect the evidence on which they were based, and obtain an explanation of them. This leads in turn to a practical question." Can we remove the repetition of "this ... in turn"?
+4. More substantially, we might want to underline more clearly that what "The Castle" and vibe coding have in common is that at first they sound like jokes. We initially want to laugh at Denuto, but the real joke is that in fact he's right. Similarly, people who know nothing about vibe coding at first tend to treat it as a joke, but history has already shown that this is not an appropriate response. Mainstream academia is still treating vibe research, AI authorship etc as a joke, but one wonders if this turn out to be misguided in the same way. 
+5. A recent development which has attracted considerable interest is the non-trivial number of very challenging mathematical problems that have been solved by AIs with minimal or in some cases no human assistance (Erdös problems, counterexample to Jacobian conjecture, strong result on zeros of the Riemann zeta function). A related case is the way AIs have completely revolutionised Go theory, essentially showing that most human-developed Go theory, both joseki and fuseki, was wrong; all of this was done unaided by AIs. Westerners don't tend to appreciate the size of the achievement, understanding neither how large the scale of established Go theory was pre-AlphaZero, nor the extent to which it has been proved wrong.
+
+I am not sure where to put (4) and (5), maybe in the last section?
+
+AI: Yes. I think (4) belongs squarely in the introduction; it actually makes *The Castle* analogy intellectually useful rather than decorative. And (5) belongs later, after our own examples, where it can show that the phenomenon we are describing is not confined to our projects.
+
+On your individual points:
+
+1. I would go further than “recognisable methodology”, but not quite state as an uncontested fact that it **is** the dominant methodology. There is good evidence for “widespread” and “fundamental transformation”: a 2025 IEEE Access paper describes vibe coding as becoming widespread, and practitioner sources are already explicitly calling it the “dominant paradigm” for interacting with tools such as Claude Code, Cursor and Windsurf. ([ResearchGate][1]) Google and IBM now describe it straightforwardly as a major shift toward intent-driven development. ([Google Cloud][2])
+
+So perhaps:
+
+> What initially sounded like a joke has, within little more than a year, become a mainstream software-development practice; some practitioners already describe it as the dominant paradigm for AI-assisted development.
+
+That is strong without asking a reviewer to accept an ill-defined quantitative superlative.
+
+2. Yes: `Gunkel \citep{gunkel2025prompted} approaches...` is much better.
+
+3. Agreed. For example:
+
+> This leads to the more operational notion of \emph{reliable intellectual provenance}: ... The resulting practical question is whether...
+
+### 4. I think this substantially improves *The Castle* opening
+
+The key isn't merely that “vibe” occurs in both. It's the **structure of the joke**.
+
+At first we're invited to laugh at Denuto because “it's the vibe” plainly isn't adequate legal reasoning. Then the film reverses the joke: Denuto's intuition was substantially right; what he lacked was the conceptual machinery to express it in institutionally acceptable terms.
+
+Vibe coding has undergone rather a similar reversal. “Forget that the code even exists” sounded deliberately absurd in Karpathy's original formulation. But the technology improved so fast that something close to the joke became normal professional practice.
+
+That lets us pose a deliciously restrained question about vibe research. We don't need to say academia is ridiculous for laughing. We can say: **perhaps we should hesitate before assuming that the joke settles the issue, because we have just watched essentially the same joke undergo an extremely rapid reclassification in software engineering.**
+
+I'd rewrite the opening roughly this way:
+
+> In the Australian film \emph{The Castle}, the inexperienced lawyer Dennis Denuto is convinced that his clients have a valid constitutional case, but is unable to express the underlying principle in formal legal terms. His argument eventually collapses into the memorable phrase, ``It's the vibe.'' At first, the audience is invited to laugh: whatever else legal reasoning may consist of, this surely cannot be enough. But the joke is ultimately on us. Denuto's intuition is substantially correct. When an experienced barrister reformulates it in language recognised by the court, the case succeeds.
+>
+> The expression \emph{vibe coding} began with something of the same comic quality. Andrej Karpathy's original description deliberately sounded like the opposite of serious software engineering: delegate the coding to an AI, ``forget that the code even exists'', and work by describing what you want and seeing whether the result feels right. Yet within little more than a year, what initially sounded like a joke had become a mainstream software-development practice; some practitioners already describe it as the dominant paradigm for AI-assisted development. ([martinfowler.com][3])
+>
+> We suggest that \emph{vibe research} deserves to be examined in the same spirit. To many academics, the idea that an AI system could act as a substantive research collaborator---still more, that it might appropriately be represented as an author---may initially sound unserious. But the recent history of vibe coding gives some reason to be cautious about treating that reaction as an argument. Our purpose is therefore analogous, in a modest way, to that of the experienced barrister in \emph{The Castle}: not to appeal to ``the vibe'', but to ask whether the intuition can be reformulated in terms precise enough for the research community to evaluate.
+
+I think that's much better. It establishes our tone immediately: **yes, we know the phrase sounds ridiculous; that's part of the point.**
+
+### 5. The mathematics evidence is potentially very important
+
+And since these developments are happening *right now*, there is suddenly much stronger evidence than there was even a few months ago.
+
+A few cases are especially clean.
+
+Erdős Problem 728 is described in the resulting mathematical write-up as the first Erdős problem regarded as “fully resolved autonomously by an AI system.” ([arXiv][4]) More substantially, a May 2026 DeepMind paper reports an agent autonomously resolving **9 of 353 open Erdős problems**, as well as 44 OEIS conjectures. ([arXiv][5]) The Erdős Problems project itself now maintains a list of notable AI contributions, including problems where autonomous systems found genuinely new solutions or techniques. ([GitHub][6])
+
+The planar unit-distance result is particularly striking: an OpenAI model found a construction overturning an 80-year-old Erdős conjecture; *Nature* described mathematicians as astonished, and the result came from essentially a single initial prompt. ([Nature][7])
+
+Then in July came the Jacobian conjecture counterexample. The mathematics itself is now on very solid ground: the explicit counterexample has been independently analysed and subsequently generalised in an arXiv paper. ([arXiv][8]) I would, however, be careful about saying **the AI unaided disproved it**: the provenance of the discovery is less well documented than the correctness of the counterexample itself. A good formulation is that Levent Alpöge credited Claude Fable with an important role in finding it; the result itself has since been confirmed. ([Monash Lens][9])
+
+And the Riemann-zeta result may be the cleanest recent example of all. On August 10, Anthropic reported that an unreleased research Claude, working in Claude Code, increased the proven lower bound for zeros on the critical line from 41.6% to about 67.2%; the result was checked by mathematicians and formally verified in Lean. ([T.co][10]) That is not the Riemann Hypothesis, of course, but it is a serious new result in analytic number theory.
+
+These are useful for our argument because they make one proposition increasingly difficult to maintain:
+
+> **AI systems are merely instruments which execute intellectual content supplied by humans.**
+
+We don't need to jump from that to “therefore AI authorship.” We can say something much more modest: current evidence includes cases in which AI systems generate nontrivial mathematical contributions whose content was not supplied in advance by a human. Any theory of research contribution now has to accommodate that empirical fact.
+
+### The Go example is excellent, but I'd soften one part
+
+I agree completely that Western academic audiences often underestimate what happened in Go. AlphaGo Zero/AlphaZero is particularly conceptually clean because it learned from scratch with no human game knowledge beyond the rules and reached superhuman performance. ([Google DeepMind][11]) Its successors developed strategies which professionals subsequently adopted; DeepMind documented new joseki such as the early 3--3 invasion causing a stir and entering professional play. ([Google DeepMind][12]) Empirical work on tens of thousands of professional games finds that professionals changed their standard opening patterns substantially after superhuman AI appeared. ([PubMed Central (PMC)][13])
+
+I would **not** write that AI proved “most human-developed Go theory was wrong.” That's stronger than the evidence I found, and intriguingly a recent quantitative historical study actually argues that the total impact on *opening diversity* was smaller than common narratives sometimes suggest, while acknowledging that many famous sequences were modified or replaced. ([Cambridge University Press][14])
+
+A safer and still impressive claim is:
+
+> Go provides an earlier, unusually clear example of an AI system independently developing superhuman domain knowledge which subsequently forced human experts to revise a substantial body of accumulated professional theory, including established joseki and fuseki.
+
+That is hard to dispute.
+
+### Where I'd put this
+
+I would **not** put all this into the last paragraph of the conclusion. It risks suddenly opening a huge new argument just as we're trying to close.
+
+I'd add a short subsection after **“What Do the Examples Tell Us?”**, perhaps:
+
+**`\subsection{Beyond Our Examples: AI as a Source of New Knowledge}`**
+
+Only 3–5 paragraphs. Start with Go as the historical precursor, because it is conceptually exceptionally clean: AlphaZero received the rules, taught itself, surpassed humans, and human experts learned from it. Then one compact paragraph on the 2026 mathematics sequence: Erdős problems → unit distances → Jacobian → zeta.
+
+Then the payoff:
+
+> These cases do not settle questions of authorship or responsibility. They establish a narrower empirical point. It is no longer safe to assume, as part of the definition of AI-assisted intellectual work, that substantive ideas necessarily originate with the human participant.
+
+That would lead beautifully back into the governance section. Policies designed around a **human-originates / AI-generates** ontology are not merely theoretically debatable; events are starting to falsify the descriptive assumption on which that ontology rests.
+
+So I see the paper acquiring an even nicer arc:
+
+**The Castle joke → vibe coding joke that became serious → define vibe research → accountability/provenance → our three concrete demonstrations → independent evidence from Go and frontier mathematics that AI intellectual contribution is real → why governance still describes things differently → institutional timescales → prevalence → conclusion.**
+
+And I think the *Castle* motif should appear only twice: at the beginning, and perhaps a very light callback in the conclusion. Something like: **“The question is no longer whether there is a vibe, but whether our formal categories describe it adequately.”** Though possibly Denuto would tell us that's dangerously close to over-lawyering the case.
+
+[1]: https://www.researchgate.net/publication/398803590_Vibe_Coding_as_a_Reconfiguration_of_Intent_Mediation_in_Software_Development_Definition_Implications_and_Research_Agenda?utm_source=chatgpt.com "(PDF) Vibe Coding as a Reconfiguration of Intent Mediation in Software Development: Definition, Implications, and Research Agenda"
+[2]: https://cloud.google.com/discover/what-is-vibe-coding?e=48754805&hl=en&utm_source=chatgpt.com "Vibe Coding Explained: Tools and Guides | Google Cloud"
+[3]: https://martinfowler.com/bliki/VibeCoding.html?utm_source=chatgpt.com "Vibe Coding"
+[4]: https://arxiv.org/abs/2601.07421?utm_source=chatgpt.com "Resolution of Erdős Problem #728: a writeup of Aristotle's Lean proof"
+[5]: https://arxiv.org/abs/2605.22763?utm_source=chatgpt.com "Advancing Mathematics Research with AI-Driven Formal Proof Search"
+[6]: https://github.com/teorth/erdosproblems/wiki/Notable-cases-of-AI-contributions-to-Erd%C5%91s-problems?utm_source=chatgpt.com "Notable cases of AI contributions to Erdős problems · teorth/erdosproblems Wiki · GitHub"
+[7]: https://www.nature.com/articles/d41586-026-01651-0?utm_source=chatgpt.com "AI cracks 80-year-old mathematics challenge — researchers are astonished | Nature"
+[8]: https://arxiv.org/abs/2608.00222?utm_source=chatgpt.com "Counterexamples to the Jacobian conjecture in dimensions greater than two"
+[9]: https://lens.monash.edu/hello-there-the-jacobian-conjecture-is-false-thanx-why-a-tiny-social-media-post-has-mathematicians-rethinking-ai/?utm_source=chatgpt.com "‘hello there the jacobian conjecture is false thanx’: why a tiny social media post has mathematicians rethinking AI"
+[10]: https://t.co/aZDvqqhHRi?utm_source=chatgpt.com "Learning more about Claude's mathematical capabilities \ Anthropic"
+[11]: https://deepmind.google/research/alphazero-and-muzero/?utm_source=chatgpt.com "AlphaZero and MuZero — Google DeepMind"
+[12]: https://deepmind.google/blog/innovations-of-alphago/?utm_source=chatgpt.com "Innovations of AlphaGo — Google DeepMind"
+[13]: https://pmc.ncbi.nlm.nih.gov/articles/PMC12095800/?utm_source=chatgpt.com "The dual edges of AI: Advancing knowledge while reducing diversity - PMC"
+[14]: https://www.cambridge.org/core/journals/evolutionary-human-sciences/article/opening-strategies-in-the-game-of-go-from-feudalism-to-superhuman-ai/EB5A1737EC53BD5C642CF4C471668A75?utm_source=chatgpt.com "Opening strategies in the game of go from feudalism to superhuman AI | Evolutionary Human Sciences | Cambridge Core"
+
+
+MANNY: I like your suggested structure - I think the Go part is very interesting, and IMHO you are underestimating the extent to which theory has been changed, but it's a rabbit hole and unlikely to help us the way the mathematics will. If you can read epubs though, I will attach a couple to back up my case regarding Go.
+
+For now, would you like to create a new version along the lines you describe?
+
+AI: Yes. I’d make the mathematical material a short independent-evidence subsection after our three examples, and I’d leave Go out for this pass. The current draft already has the right overall sequence through the examples and governance discussion.
+
+The mathematics now gives us a much firmer empirical statement than “AI might someday originate research ideas”: Erdős #728 is explicitly described as autonomously solved by AI; the 2026 unit-distance counterexample is explicitly described by a group of leading mathematicians as OpenAI-generated; and Claude’s zeta result has a complete Lean formalization and independent replication.
+
+I’d make the following replacements/addition.
+
+[Version 11 changes]
+
+For the bibliography, I’d add these. I have deliberately used a practitioner source only for the explicitly attributed claim that some practitioners call vibe coding dominant; the stronger factual claim is just that it is widespread/emerging, for which the research literature is enough.
+
+[References 4 new]
+
+Two judgement calls here are deliberate. I have not said “vibe coding is the dominant software-development methodology”; the evidence supports “widespread,” while “dominant” is currently better represented as something contemporary practitioners are saying. And I’ve made the Jacobian case the most cautious of the mathematical examples: the counterexample itself is now very solid, but the exact human/AI provenance is less formally documented than Erdős #728 or the OpenAI unit-distance result.
+
+The new mathematics subsection also plugs into the current paper at a very natural point: our examples currently end by asking why the institutional response is different; this gives us one intervening move saying, in effect, “and this isn't just us”, before we turn to governance.
+
+MANNY: I've done some nontrivial editing - I felt it needed to be compressed and restructured a bit. What do you think?
+
+[Version 12]
+
+AI:
+
+Yes — I think your restructuring is a substantial improvement. The paper now announces three candidate explanations in the abstract and then addresses them sequentially: responsibility/provenance, substantive results, and institutional constraints.  That gives it much more of the feeling of a single argument rather than a collection of related observations.
+
+I also like the compression in the examples. The C-LARA-2 → Voice Mode → Grok progression now feels purposeful, and the Grok materials being actually present in C-LARA-2 rather than prospectively so makes the whole provenance argument cleaner. 
+
+There are, however, a few things I think we should definitely fix before showing it around.
+
+The most important is in the **Conclusion**. I don't think we should say that *vibe research* is “a more neutral and better-defined term equivalent to the emotionally loaded phrase ‘AI authorship’.” They aren't equivalent. Vibe research is a **method of doing research**; AI authorship is one possible **way of representing a contribution** arising from that method. Someone could do vibe research and not list the AI as an author; conversely, an AI might conceivably earn authorship-level attribution without the workflow fitting our definition of vibe research. This was one of the conceptual distinctions we had worked quite hard to establish earlier.
+
+I'd say something closer to:
+
+> We have considered the idea of applying the methods of vibe coding to academic research, and suggested the term ``vibe research'' for this practice. Framing the issue in this way also provides a less emotionally loaded context in which to examine the related question of AI authorship.
+
+Closely related: the conclusion introduces **“operational responsibility”**, but the body of the paper has carefully established **institutional accountability**, **intellectual accountability**, and **reliable provenance**. I think “operational responsibility” should disappear. It creates a new concept just when we're supposed to be consolidating the argument. Also, institutional accountability is not “essentially, ability to stand for legal consequences”; it includes retractions, sanctions, employment consequences, institutional answerability, etc. The body currently gets this distinction right. 
+
+So the conclusion should simply reuse our established terminology:
+
+> We distinguish institutional accountability from intellectual accountability, and argue that for many of the questions at issue the operationally useful requirement is reliable intellectual provenance...
+
+There is another important overstatement at the beginning of **Institutional Disallowance of Vibe Research**. At present it says that most professional bodies “simply do not allow AI authorship, vibe research, and associated activities.” I don't think we've established that, and indeed ACL's ambiguity is one of our arguments. What we can establish is that **AI authorship is widely disallowed**, and that sustained agentic research workflows can fit poorly or ambiguously into existing permitted-use taxonomies. The latter is subtler and more interesting. The existing ACL discussion itself is admirably careful about that. 
+
+Perhaps:
+
+> A third issue is institutional. AI authorship is currently disallowed by many major academic bodies, while sustained agentic workflows such as those described here may fit only awkwardly into existing policies on permitted AI assistance.
+
+That then gives us the right question: why can software teams change methodology directly while academic publication has to proceed through governance?
+
+I also think the **mathematics section is a good addition**, but its framing can be slightly less defensive. “A determined sceptic might still respond...” makes it sound as though we're arguing with an imaginary hostile reviewer. I'd instead make it another straightforward empirical question:
+
+> The preceding examples establish feasibility, but leave open a second question: can AI-mediated research produce results which the relevant research community regards as genuinely non-trivial? Recent developments in mathematics provide unusually clear evidence that it can.
+
+That seems stronger because we don't need the sceptic at all.
+
+And near the end of that argument I'd avoid:
+
+> “teams of this kind have now succeeded in proving many highly non-trivial new theorems.”
+
+Some examples are counterexamples, constructions, or improved bounds rather than “new theorems” in the ordinary sense, and they don't all instantiate exactly the same human–AI team structure. Better:
+
+> Frontier AI systems have now made substantive contributions to multiple mathematical results which expert mathematicians regard as highly non-trivial, in some cases with minimal human input beyond specification of the problem.
+
+That says exactly what our evidence supports.
+
+### The three-objection structure can be sharpened slightly
+
+I really like the new abstract structure, but I'd state the three candidate explanations in their strongest reasonable forms rather than slightly caricaturing them. At present the first says vibe research “requires the AI to take responsibility for its work, which it cannot do,” and the second says it “does not in practice generate any non-trivial results.” 
+
+Maybe:
+
+> We consider three possible explanations. First, research collaboration may require forms of responsibility or accountability which AI systems cannot assume. Second, even if vibe research is technically possible, AI contributions may be too limited or trivial for the distinction to matter in practice. Third, academic institutions may simply not currently provide a place for this form of collaboration within their established governance structures.
+
+Then “we argue that each explanation is less straightforward than it initially appears.” I prefer that to “none ... are convincing,” because the third one in particular **is** partly convincing: governance inertia really does explain something. What we're rejecting is not its explanatory power but the implication that current governance settles the substantive question.
+
+### A few smaller things
+
+I like **“Real Examples of Tracking Provenance”** conceptually, though perhaps `Three Examples of Verifiable Provenance` would sound a little less informal and directly state what they demonstrate.
+
+`Non-Triviality of Vibe Research Results: Mathematics` could become **“Can Vibe Research Produce Non-Trivial Results? Evidence from Mathematics”**. That makes the three-section logic explicit.
+
+`Institutional Disallowance of Vibe Research` could similarly become **“Institutional Constraints on Vibe Research”**. “Disallowance” is stronger than our evidence and sounds slightly prosecutorial.
+
+There are also just a handful of mechanical slips: “multiple recent example” → “examples”; “verfiably” → “verifiably”; a missing full stop after “higher mathematics”; “academic generally” → “academics generally”; “better-defeined”; and a comma where there should be a full stop after “AI authorship” in the first conclusion paragraph.
+
+My overall reaction, though, is very positive. The **compression was right**. In particular, the paper now has a simple high-level story a colleague could repeat after one reading:
+
+> Vibe coding and vibe research look structurally similar. Why is one accepted and the other not? Perhaps because AI can't be accountable, perhaps because its research contribution isn't serious, or perhaps because academic governance can't yet accommodate it. We examine all three.
+
+That is much easier to grasp, and the detailed provenance and ACL arguments now hang off a clear central structure instead of competing to define it. I think one careful revision dealing with the conceptual points above would put it very close to the version I'd be happy to send Cathy, Rina and Belinda.
+
+
+MANNY: You are such an impressively careful and insightful reader. All of your suggestions look spot on to me. Could you create a new version of main.tex which incorporates them?
+
+AI: Done. I preserved your compressed structure and incorporated the conceptual fixes we agreed on, especially the three-explanation framing, the mathematics section, the institutional-policy section, and the conclusion.
+
+[Version 13)
+
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+MANNY:
+
+AI:
+
+
+
