@@ -1,0 +1,12 @@
+[
+  {"decision_id":"VR-DEC-001","title":"Use the software/research asymmetry as the organizing puzzle","exchanges":["VR-E0001","VR-E0020","VR-E0022"],"chunks":["VR-C001","VR-C004"]},
+  {"decision_id":"VR-DEC-002","title":"Focus on provenance rather than whether an AI deserves authorship","exchanges":["VR-E0015","VR-E0016"],"chunks":["VR-C003"]},
+  {"decision_id":"VR-DEC-003","title":"Avoid moralizing and present an empirical anomaly","exchanges":["VR-E0021","VR-E0025","VR-E0026"],"chunks":["VR-C004"]},
+  {"decision_id":"VR-DEC-004","title":"Treat the prevalence of vibe research as an empirical question","exchanges":["VR-E0028","VR-E0031","VR-E0034"],"chunks":["VR-C005"]},
+  {"decision_id":"VR-DEC-005","title":"Use public, interrogable project context as the operational provenance test","exchanges":["VR-E0002","VR-E0040","VR-E0043"],"chunks":["VR-C002","VR-C007","VR-C009"]},
+  {"decision_id":"VR-DEC-006","title":"Use the Casey Newton article as contextual rather than prevalence evidence","exchanges":["VR-E0046"],"chunks":["VR-C010"]},
+  {"decision_id":"VR-DEC-007","title":"Base the ACL discussion on verifiable policy text and calibrated claims","exchanges":["VR-E0047","VR-E0048","VR-E0049"],"chunks":["VR-C011"]},
+  {"decision_id":"VR-DEC-008","title":"Use The Castle to frame institutional legibility rather than as a decorative joke","exchanges":["VR-E0056","VR-E0057","VR-E0058"],"chunks":["VR-C015"]},
+  {"decision_id":"VR-DEC-009","title":"Add mathematics as independent evidence and defer the Go discussion","exchanges":["VR-E0059","VR-E0060"],"chunks":["VR-C016","VR-C017"]},
+  {"decision_id":"VR-DEC-010","title":"Organize the final paper around three candidate explanations","exchanges":["VR-E0061","VR-E0062"],"chunks":["VR-C018","VR-C019"]}
+]

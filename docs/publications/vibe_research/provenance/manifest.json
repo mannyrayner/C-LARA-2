@@ -1,0 +1,46 @@
+{
+  "format_version": 1,
+  "publication": "Vibe Research",
+  "canonical_manuscript": "paper/main.tex",
+  "canonical_bibliography": "paper/references.bib",
+  "raw_trace": {
+    "path": "provenance/raw/session_transcript_original.txt",
+    "sha256": "7ec2eced0e1c7f7263d4bbfb788022ad4dda151794e6e0403537ea058a556b56"
+  },
+  "generator": "scripts/build_provenance.py",
+  "counts": {
+    "exchanges": 62,
+    "chunks": 19,
+    "artifacts": 20
+  },
+  "derived_files": [
+    "provenance/exchanges/exchanges.jsonl",
+    "provenance/exchanges/transcript_normalized.md",
+    "provenance/metadata/chunks.json",
+    "provenance/metadata/artifacts.json",
+    "provenance/metadata/normalization_report.json",
+    "provenance/indexes/keywords.json",
+    "provenance/indexes/chronological.md",
+    "provenance/indexes/topics.md",
+    "provenance/indexes/artifacts.md",
+    "provenance/chunks/VR-C001.md",
+    "provenance/chunks/VR-C002.md",
+    "provenance/chunks/VR-C003.md",
+    "provenance/chunks/VR-C004.md",
+    "provenance/chunks/VR-C005.md",
+    "provenance/chunks/VR-C006.md",
+    "provenance/chunks/VR-C007.md",
+    "provenance/chunks/VR-C008.md",
+    "provenance/chunks/VR-C009.md",
+    "provenance/chunks/VR-C010.md",
+    "provenance/chunks/VR-C011.md",
+    "provenance/chunks/VR-C012.md",
+    "provenance/chunks/VR-C013.md",
+    "provenance/chunks/VR-C014.md",
+    "provenance/chunks/VR-C015.md",
+    "provenance/chunks/VR-C016.md",
+    "provenance/chunks/VR-C017.md",
+    "provenance/chunks/VR-C018.md",
+    "provenance/chunks/VR-C019.md"
+  ]
+}
