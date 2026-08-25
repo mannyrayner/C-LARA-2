@@ -1,0 +1,216 @@
+```latex
+\title{Vibe Research:\\
+If We Can Build Software This Way, Why Can't We Do Research This Way?}
+
+\begin{abstract}
+The rapid adoption of advanced AI coding assistants has produced a new style of software development commonly known as \emph{vibe coding}, a term introduced by Andrej Karpathy in 2025. In this mode of work, a human developer may specify goals, inspect results, request modifications, and decide when a system is ready to ship, while an AI assistant performs much or even most of the detailed implementation, testing, debugging, and explanation. Although the risks of this approach are widely recognised, the basic working pattern is increasingly familiar in software engineering.
+
+Closely analogous methods can be used in academic research. Advanced AI systems can participate in formulating questions, designing experiments, implementing analyses, interpreting results, developing arguments, drafting papers, and responding to criticism. We call this mode of collaboration \emph{vibe research}. Yet the academic community has so far appeared substantially less comfortable than the software community with acknowledging such divisions of intellectual labour. One particularly sensitive consequence is the possibility of AI authorship, which remains widely opposed by academic publishers and institutions.
+
+Rather than arguing directly for a particular authorship policy, we examine the resulting asymmetry. Why should patterns of human--AI collaboration that are increasingly accepted in software engineering be regarded so differently in research? Drawing on several documented examples of our own human--AI collaborations, ranging from a large sustained software and research project to small speculative empirical studies, we distinguish institutional accountability from intellectual accountability and argue that questions of provenance deserve separate consideration. We suggest that current academic categories may make it unnecessarily difficult to describe accurately how some research is already being carried out, and identify the prevalence of such practices as an important empirical question.
+\end{abstract}
+
+
+\section{Introduction: Vibe Research}
+
+``Vibe coding'' has rapidly become a familiar term in software engineering. The expression was introduced by Andrej Karpathy in early 2025 to describe a style of programming in which the developer increasingly interacts with an AI system through natural-language instructions rather than by directly manipulating the code. The term was initially playful and deliberately provocative, but it captured a real change in working practice which has since become increasingly familiar to software developers.
+
+In a contemporary vibe-coding workflow, a human developer may specify goals at a relatively high level, inspect what the system produces, test it, identify problems, request changes, and progressively refine both the implementation and the specification. An advanced coding assistant may perform a very large proportion of the detailed intellectual and technical work, including implementation, debugging, refactoring, test construction, and explanation.
+
+Closely analogous practices are now possible in academic research. A researcher can work iteratively with an AI system on formulating questions, reviewing literature, designing experiments, implementing analyses, interpreting results, developing arguments, drafting text, and responding to criticism. We will use the term \emph{vibe research} for research carried out in this way.
+
+The analogy immediately raises a puzzle. Human--AI collaboration involving substantial delegation of intellectual work is rapidly becoming normal in software engineering. Similar collaboration in academic research remains much harder to accommodate within established conventions. Why should the two domains respond so differently to broadly similar technological possibilities?
+
+One reason for the difference may be that vibe research raises questions about authorship. If an AI system makes contributions which would conventionally be considered authorship-level contributions when made by a human researcher, it is natural to ask whether the AI should be named as an author. AI authorship is at present widely rejected by academic publishers and institutions, often on grounds of accountability. We return to this issue later. Our immediate purpose is not to advocate a particular answer, but to examine more carefully the practices and concepts which give rise to the question.
+
+Our discussion draws on several years of documented human--AI collaborative work. Much of this work has taken place in and around the C-LARA project, and C-LARA-2 provides our largest and most sustained example. Other studies, however, have been independent of C-LARA and are hosted on the C-LARA publications page largely for convenience. Taken together, these projects provide examples ranging from long-term software development and empirical research to short, speculative studies produced over a much smaller timescale.
+
+Our purpose is primarily descriptive and exploratory. We do not assume that software engineering has necessarily found the correct model, nor that academic research should simply imitate it. We ask instead why the two communities have evolved differently, and whether the differences are adequately explained by genuine differences between the activities.
+
+
+\section{What We Mean by Vibe Research}
+
+The term \emph{vibe research} describes a mode of working rather than a particular degree of automation. The defining feature is an iterative collaborative process in which human and AI participants jointly develop a piece of research. Instructions may begin at a high level, but the process typically consists of repeated cycles of proposal, implementation, inspection, criticism, revision, and redirection.
+
+This is importantly different from the familiar picture in which a researcher determines the intellectual content of a paper and subsequently uses an AI system merely to improve wording, retrieve information, or carry out routine tasks. In vibe research, the AI system may contribute at stages normally regarded as intellectually substantive: identifying problems, proposing hypotheses, suggesting experimental designs, discovering unexpected patterns, challenging interpretations, constructing arguments, and deciding what should be investigated next.
+
+There is no sharp boundary between ``AI-assisted research'' and vibe research, and we do not attempt to impose one. Nor do we claim that every use of an advanced AI system constitutes vibe research. The concept is intended to make visible an emerging family of practices in which the conventional distinction between a human intellectual contribution and an AI tool carrying out a predetermined instruction becomes increasingly difficult to maintain.
+
+The analogy with vibe coding is useful partly because software developers have already acquired an informal vocabulary for discussing this shift. Academic researchers may increasingly be engaging in comparable practices without having an equally accepted way of describing them.
+
+
+\section{The Software Engineering Parallel}
+
+Modern coding assistants can implement substantial systems, inspect repositories, diagnose faults, design and execute tests, refactor code, explain architectural decisions, and propose further improvements. The human developer increasingly operates at the level of goals, constraints, evaluation, and judgment rather than personally constructing every component.
+
+Competent use of such systems does not necessarily require the human developer independently to reproduce every step performed by the AI. Instead, developers acquire experience in \emph{calibrated trust}: learning what kinds of output require close checking, what forms of testing provide adequate evidence, where particular systems are unreliable, and when additional independent verification is necessary. A sensible developer will perform independent checks, but the productivity advantage would largely disappear if every AI contribution had to be reconstructed line by line.
+
+This way of organizing work is not radically different from other forms of technical collaboration. A senior engineer may take responsibility for shipping a system without personally understanding every implementation detail contributed by junior engineers or specialists. Responsibility for the final decision and detailed knowledge of the artefact are already distributed across different members of a team.
+
+The question is therefore not whether vibe research should be unhesitatingly considered risk-free. This would clearly be overoptimistic, just as it would be overoptimistic to consider vibe coding unhesitatingly risk-free. Both practices create new opportunities for error, misplaced trust, and inadequate verification. The interesting question is instead how those risks should be managed, and why practical arrangements which are increasingly accepted as reasonable in software engineering should be treated so differently when applied to research.
+
+
+\section{Our Experience of Vibe Research}
+
+We illustrate the idea using examples from our own human--AI collaborative work. C-LARA has provided an important setting for this collaboration, but the relevant body of work is broader than the C-LARA project itself. Several papers concern quite different research questions and are linked from the C-LARA website simply because it provides a convenient common publications page.
+
+The examples span a useful range. At one extreme is C-LARA-2, a complete reimplementation of a substantial software platform in which the implementation work was carried out by Codex. Developing the system required sustained interaction over a long period, involving architecture, implementation, debugging, testing, documentation, analysis of unexpected behaviour, and eventually research questions concerning the consequences of building a platform in this way. The associated paper is therefore an example of large-scale vibe research emerging from a large-scale vibe-coding exercise.
+
+At the other extreme are much smaller and more opportunistic studies. \emph{How Woke is Grok?}, for example, adapted an existing experimental paradigm to compare the responses of Grok with several other frontier models on a small set of politically and scientifically polarised propositions. The study was comparatively quick to design and execute, but attracted substantial reader interest. It illustrates a different potential advantage of vibe research: when implementation, experimentation, analysis, and drafting can be carried out quickly through human--AI collaboration, it becomes practical to investigate questions which might otherwise remain informal speculations.
+
+Between these extremes are several other examples involving empirical experiments, conceptual arguments, discussions of AI authorship, and critiques of existing publications. Rather than presenting these merely as a catalogue, we will select a small number and reconstruct how the work actually proceeded: where the original question came from, what the AI contributed, how ideas changed during discussion, how experiments were designed and interpreted, and which parts of the final argument emerged from the interaction.
+
+The aim is primarily phenomenological. What does vibe research actually look like when carried out over minutes, days, months, or years? Which forms of intellectual contribution are easy to attribute, and which emerge from iterative interaction in ways that resist simple decomposition?
+
+
+\section{Two Contrasting Examples}
+
+\subsection{C-LARA-2: Sustained Collaboration at Scale}
+
+C-LARA-2 provides our clearest example of sustained human--AI collaboration. The project involved rebuilding a large existing software platform using Codex as the implementation agent. The human role centred increasingly on defining objectives, identifying undesirable behaviour, evaluating proposed solutions, requesting changes, testing important functionality, and deciding which directions were worth pursuing. Codex handled the detailed implementation and much of the associated testing and diagnosis.
+
+The resulting collaboration subsequently became a research object in its own right. In particular, we noticed that a system constructed entirely by an AI coding assistant had an interesting capacity to explain its own architecture and behaviour through the same AI environment. This observation was not simply part of the original specification; it emerged from working with the completed system and became a central topic of the associated paper.
+
+The example is valuable because the collaboration is both extensive and difficult to describe using a simple ``human idea, AI implementation'' model. Software construction, experimental observation, interpretation, and paper development formed part of one extended human--AI process.
+
+
+\subsection{How Woke is Grok?: Opportunistic Research at Small Scale}
+
+\emph{How Woke is Grok?} illustrates a rather different kind of vibe research. Public claims about Grok suggested an obvious empirical question: did its responses in fact differ systematically from those of other frontier models on politically controversial issues? An experimental framework was already available from earlier work and could be adapted rapidly.
+
+The resulting study compared several frontier systems under identical conditions and found considerably more convergence than the surrounding public rhetoric might have suggested. The experiment itself was small and could be implemented, run, analysed, and written up with relatively little overhead.
+
+The significance of this example is not that every rapidly produced experiment is valuable. Rather, AI collaboration substantially changes the economics of small research questions. A question which might previously have seemed too minor to justify several days of implementation and analysis may become worth testing when the marginal cost is much lower. Some such studies will prove uninteresting; others may attract significant attention or reveal effects worth pursuing further.
+
+Together, C-LARA-2 and \emph{How Woke is Grok?} show that ``vibe research'' need not designate a single scale or style of project. It can support both sustained engineering and research programmes and lightweight empirical investigations prompted by a particular question.
+
+
+\section{Responsibility, Expertise, and the Senior--Junior Analogy}
+
+A common concern about substantial AI participation in research concerns accountability. Accountability is unquestionably important, but the term often combines several distinct ideas which need to be separated.
+
+Consider a senior member of a software or research team. The senior person may have formal responsibility for approving a release, submitting a paper, or making some other consequential decision. They may be the person who is disciplined or dismissed if the decision proves seriously negligent. Yet they need not personally possess all the expertise embodied in the work. Detailed knowledge may reside in junior researchers, engineers, statisticians, experimental specialists, or other collaborators.
+
+This arrangement is not normally considered anomalous. Indeed, it is one of the purposes of collaborative work. A senior researcher is expected to exercise sufficiently good judgment to decide whether specialist work can be trusted; they are not expected personally to duplicate every specialist competence represented in the team.
+
+AI collaboration creates a structurally similar situation. A human researcher or developer may retain institutional responsibility for deciding that a result is ready to publish or a system is ready to ship, while substantial detailed intellectual work has been performed by an AI system. The fact that institutional responsibility remains human does not by itself imply that the underlying intellectual contribution is exclusively human.
+
+This analogy suggests that arguments based on ``accountability'' need to specify what kind of accountability is intended rather than treating the word as a single indivisible concept.
+
+
+\section{Institutional Accountability and Intellectual Accountability}
+
+We propose distinguishing at least two notions. \emph{Institutional accountability} concerns who can formally be held responsible for a consequential action. A human researcher can be sanctioned, dismissed, required to issue a correction, or otherwise subjected to institutional processes in ways that a current AI system cannot.
+
+\emph{Intellectual accountability}, by contrast, concerns the provenance and explanation of intellectual decisions. Who proposed a particular analysis? Who designed an implementation? Who noticed an anomaly? Who can explain why one interpretation was preferred to another? These questions need not have the same answer as the institutional-accountability question.
+
+The distinction is already familiar in collaborative human work. A principal investigator may accept institutional responsibility for a project while relying on collaborators whose detailed expertise exceeds their own in particular areas. If a technical question arises, the appropriate response may be to consult the collaborator who actually performed the relevant work.
+
+The same point can apply to AI collaborators. If an AI system developed a substantial component of an analysis or implementation, the most accurate explanation may come from the AI rather than from the human who supervised the overall project. In contemporary software development this possibility is increasingly unsurprising: a developer confronted with a detailed question about AI-generated code may simply ask the coding assistant to inspect the relevant components and explain them.
+
+This observation bears directly on AI authorship. One of the most common arguments against allowing an AI system to be listed as an author is that an author must be accountable for the work. But if ``accountability'' includes the ability to give a detailed intellectual account of a contribution, the situation becomes more complicated. Current AI collaborators may sometimes be well placed to provide such an account, even though institutional sanctions can only meaningfully be directed at humans.
+
+
+\section{Provenance and the Question of AI Authorship}
+
+Debates over AI authorship are often framed in terms of whether an AI system ``deserves'' to be an author. We think this formulation may create unnecessary difficulties. Questions about what kinds of entities morally or metaphysically deserve authorship are difficult to resolve and can easily turn a practical discussion into an ideological one.
+
+A more concrete starting point is provenance. Scholarly communication should, as far as reasonably possible, provide an accurate account of where the intellectual content of a piece of research came from. Readers may want to know who proposed an idea, performed an analysis, constructed an argument, or can answer detailed questions about a contribution.
+
+Authorship has historically served several functions simultaneously. It allocates credit; it identifies people associated with the work; it provides information about intellectual provenance; and it carries expectations concerning responsibility. With exclusively human collaborators, these functions could often be bundled together without serious difficulty. Human--AI collaboration exposes the fact that they are conceptually distinct.
+
+This does not immediately establish that an AI collaborator should be listed as an author. Alternative mechanisms for recording contribution are possible. But it changes the form of the question. If a system has made sustained contributions of kinds which would normally justify authorship when made by a human collaborator, what information is gained or lost by refusing to represent that fact through authorship?
+
+The issue is therefore not primarily whether an AI ``deserves'' a reward. It is whether the scholarly record accurately represents the intellectual provenance of the work.
+
+
+\section{The Problem of Distributed and Ephemeral Expertise}
+
+There is a further practical issue. Discussions of AI-assisted work sometimes tacitly assume that the human collaborator will always retain access to the AI system which helped produce the artefact. In organizational settings this assumption is unsafe.
+
+An employee may leave an organization and lose access to the coding assistant, research agent, repository, conversation history, or model configuration used during development. A commercial system may change or disappear. Licences may expire. The particular context in which an AI system acquired detailed knowledge of a project may no longer be recoverable.
+
+Suppose, for example, that a developer supervised an AI assistant which implemented a large software component. During development, questions about obscure parts of the implementation could be answered by asking the assistant which created them. If the developer subsequently leaves the organization, both the human supervisor and that particular AI context may become unavailable. It may then be incorrect to suppose that the relevant expertise had ever resided fully in the human developer.
+
+Again, this is not fundamentally different from the departure of a human specialist from a research group or engineering team. Part of the expertise embodied in the project leaves with the collaborator. This is precisely one reason why conventional practice records who contributed to a piece of work: attribution helps preserve intellectual provenance even when the original team later disperses.
+
+Seen from this perspective, failing to record substantial AI contributions may reduce rather than increase transparency. The formal record can imply that knowledge was located exclusively in the human authors when, in fact, important parts of the relevant expertise were distributed between humans and AI systems.
+
+
+\section{Why the Asymmetry?}
+
+We can now state the central puzzle more precisely. Software engineering increasingly accepts a working arrangement in which humans retain final responsibility while delegating substantial intellectual work to AI systems. Expertise may be distributed, verification may be selective rather than exhaustive, and the AI may sometimes be better placed than the human supervisor to explain detailed technical decisions.
+
+Academic research increasingly supports almost exactly the same technical possibilities. Yet comparable arrangements remain harder to describe and accommodate, particularly when the role of the AI becomes sufficiently substantial to raise questions about attribution and authorship.
+
+There may be good reasons for this difference. Scholarly publications have distinctive functions: they contribute to a long-term record, allocate professional credit, interact with systems of employment and promotion, and make epistemic claims intended for scrutiny by a research community. Research errors can also have important consequences which differ from software failures in both kind and distribution.
+
+Conversely, software systems can have enormous financial, social, and safety consequences, and software engineering also has strong requirements concerning testing, maintainability, provenance, and responsibility. It is therefore not obvious that the greater caution surrounding research follows simply from research being a more consequential activity.
+
+We do not attempt to resolve the comparison by assertion. The useful question is which differences between the two domains genuinely justify different treatment, and which may instead reflect historical conventions or different levels of familiarity with current AI systems.
+
+
+\section{Does Current Policy Encourage Accurate Description?}
+
+We strongly suspect that the practices described here are not unique to us. Advanced AI systems are sufficiently convenient and useful that it would be surprising if substantial numbers of researchers were not already employing them in ways which resemble vibe research.
+
+At present, however, this is a conjecture rather than an established empirical fact. Our own experience shows that such practices are possible and can be useful; it does not establish their prevalence.
+
+This uncertainty raises a potentially more important question. Do current academic conventions encourage researchers to give accurate accounts of substantial AI collaboration, or do they unintentionally create incentives to underdescribe it?
+
+If researchers believe that describing an AI system as having originated an argument, proposed an experiment, or performed a major part of an analysis will create difficulties in publication, the predictable response may not be abandonment of the useful practice. It may simply be less explicit reporting of how the work was done.
+
+A framework which makes a natural and useful research practice difficult to describe is potentially problematic even if the underlying policy goals are reasonable. At minimum, it risks degrading information about provenance.
+
+The issue can therefore be framed without assuming misconduct or bad faith. We can simply ask whether the incentives created by present conventions favour complete and accurate descriptions of contemporary research workflows.
+
+
+\section{How Common Is Vibe Research?}
+
+The prevalence of vibe research is ultimately an empirical question. One possible next step would be to collect systematic data about how researchers currently use advanced AI systems.
+
+Such a study should probably avoid beginning with contested labels. Respondents could instead be asked about concrete practices: whether AI systems have contributed to problem formulation, literature review, experimental design, implementation, statistical analysis, interpretation, criticism, drafting, and revision; how much independent verification the human collaborators perform; and how they understand the resulting division of intellectual labour.
+
+It would also be interesting to examine professional background. Our initial impression is that software engineers may find the basic model of collaboration much less surprising than researchers whose experience has been primarily within academia. But this too should be treated as a hypothesis rather than a conclusion. Respondents might simply be asked to indicate the extent to which they identify professionally with software engineering, academic research, both, or neither.
+
+Rather than immediately launching a substantial survey, a modest first step would be to invite expressions of interest. The present paper could provide a simple mechanism through which readers could indicate that they would be willing to participate in a future anonymous or pseudonymous study of vibe-research practices. If sufficient interest emerged, a subsequent study could collect and publish aggregate data.
+
+Such an approach would allow the reaction to the present paper itself to help determine whether a larger empirical study is warranted.
+
+
+\section{This Paper as an Instance of Vibe Research}
+
+The present article is itself being developed using the method it describes. The human and AI authors have jointly explored the central questions, proposed and criticized arguments, developed analogies, reconsidered terminology, searched for relevant evidence, and shaped the structure of the paper through an extended dialogue.
+
+We therefore intend to document the production history of the paper sufficiently to allow readers to inspect how the collaboration developed. This provides a concrete example against which claims about provenance, responsibility, intellectual contribution, and authorship can be evaluated.
+
+The recursive character of the exercise is useful rather than merely decorative. Instead of discussing human--AI research collaboration entirely in the abstract, we can present an actual research artefact together with evidence about how it came into existence.
+
+It also provides a test of the concepts discussed in the paper. If a reader examines the development trace, which contributions would they describe as human assistance to an AI, AI assistance to a human, or genuine collaboration? Would conventional authorship and contribution categories provide an accurate description? The answers need not be stipulated in advance.
+
+
+\section{Discussion}
+
+The comparison developed here does not establish that academic research should simply copy the norms of contemporary software engineering. Nor does it establish that every substantial AI contribution should be represented through conventional authorship. Those are questions on which reasonable people may disagree.
+
+What the comparison reveals is an asymmetry which deserves explanation. Two domains increasingly support closely related forms of human--AI collaboration. In software engineering, extensive delegation to advanced AI systems is becoming an ordinary part of professional practice. In academic research, similar practices remain conceptually and institutionally difficult, particularly when they are described openly enough to raise questions about intellectual provenance and authorship.
+
+Several distinctions appear especially important: between institutional and intellectual accountability; between responsibility for approving an artefact and provenance of its detailed content; between independently reproducing a collaborator's work and exercising calibrated judgment about whether that work can be trusted; and between authorship as an allocation of reward and authorship as a record of intellectual contribution.
+
+These distinctions do not determine policy automatically. They do, however, suggest that some familiar arguments may rely on concepts whose apparently simple meanings conceal several different functions.
+
+The empirical situation is also unclear. We do not know how common vibe research already is. It is entirely possible that practices similar to those described here are widespread and that what is unusual about our own work is not the collaboration itself but our willingness to document it explicitly. Establishing whether this is true is an obvious topic for further investigation.
+
+
+\section{Conclusion}
+
+Vibe research is not proposed here as a prescription for how research ought to be conducted. It is a name for a mode of collaboration which current AI systems make possible and which we have repeatedly found useful in practice.
+
+Our central observation is a simple one. Software engineering has responded to closely related capabilities by developing pragmatic working methods in which human responsibility, AI contribution, distributed expertise, testing, and calibrated trust coexist. Academic research has so far responded differently.
+
+There may be sound reasons for this difference. But those reasons need to be identified rather than assumed.
+
+We have suggested that separating institutional accountability from intellectual accountability, and treating provenance as an important goal in its own right, makes the comparison easier to analyse. We have also suggested that the prevalence of vibe research is an empirical question which deserves systematic investigation.
+
+Our aim is therefore less to propose a new doctrine than to identify a phenomenon and a puzzle. If substantial numbers of researchers recognise the working practices described here as similar to their own, then the question of how academic norms should describe and accommodate those practices will become increasingly difficult to avoid.
+```
