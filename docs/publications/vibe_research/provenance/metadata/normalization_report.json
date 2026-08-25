@@ -1,0 +1,26 @@
+{
+  "source_lines": 2049,
+  "speaker_blocks": 497,
+  "nonempty_blocks_before_editorial_deduplication": 125,
+  "retained_turns": 124,
+  "discarded_empty_blocks": 372,
+  "discarded_duplicate_blocks": [
+    {
+      "source_lines": [
+        1027,
+        1028
+      ],
+      "reason": "truncated duplicate of the MR turn beginning at source line 1032"
+    }
+  ],
+  "speaker_aliases": {
+    "MR": "MANNY"
+  },
+  "structural_corrections": [
+    {
+      "source": "[Version 13)",
+      "normalized": "Version 13",
+      "source_line": 1301
+    }
+  ]
+}

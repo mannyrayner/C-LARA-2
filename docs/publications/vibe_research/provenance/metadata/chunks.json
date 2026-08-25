@@ -1,0 +1,370 @@
+[
+  {
+    "chunk_id": "VR-C001",
+    "title": "The initial Vibe Research proposal",
+    "first_exchange": "VR-E0001",
+    "last_exchange": "VR-E0001",
+    "exchange_count": 1,
+    "session_headings": [
+      "Friday 1:38 PM"
+    ],
+    "summary": "Manny proposes the paper; the AI identifies the software/research asymmetry, prior uses of the term, authorship tensions, and possible empirical work.",
+    "topics": [
+      "paper conception",
+      "vibe coding",
+      "vibe research",
+      "AI authorship"
+    ],
+    "artifacts": []
+  },
+  {
+    "chunk_id": "VR-C002",
+    "title": "Accountability and public access",
+    "first_exchange": "VR-E0002",
+    "last_exchange": "VR-E0002",
+    "exchange_count": 1,
+    "session_headings": [
+      "Friday 1:38 PM"
+    ],
+    "summary": "The discussion sharpens the paper around distributed expertise, institutional accountability, provenance, and public access to project-grounded AI collaborators.",
+    "topics": [
+      "accountability",
+      "distributed expertise",
+      "public access",
+      "provenance"
+    ],
+    "artifacts": []
+  },
+  {
+    "chunk_id": "VR-C003",
+    "title": "Voice discussion: responsibility, expertise, and provenance",
+    "first_exchange": "VR-E0003",
+    "last_exchange": "VR-E0016",
+    "exchange_count": 14,
+    "session_headings": [
+      "Friday 1:38 PM"
+    ],
+    "summary": "A spoken exchange develops the senior-researcher analogy, contingent access to AI expertise, and the decision to frame the practical issue around provenance rather than deserving authorship.",
+    "topics": [
+      "authorship",
+      "ephemeral expertise",
+      "provenance",
+      "responsibility"
+    ],
+    "artifacts": []
+  },
+  {
+    "chunk_id": "VR-C004",
+    "title": "Framing the asymmetry without moralising",
+    "first_exchange": "VR-E0017",
+    "last_exchange": "VR-E0026",
+    "exchange_count": 10,
+    "session_headings": [
+      "Friday 1:38 PM"
+    ],
+    "summary": "The collaborators decide to present different treatment of vibe coding and vibe research as a descriptive puzzle, avoiding moralising or evangelising language.",
+    "topics": [
+      "academic norms",
+      "framing",
+      "software engineering",
+      "tone"
+    ],
+    "artifacts": []
+  },
+  {
+    "chunk_id": "VR-C005",
+    "title": "Prevalence as an empirical question",
+    "first_exchange": "VR-E0027",
+    "last_exchange": "VR-E0038",
+    "exchange_count": 12,
+    "session_headings": [
+      "Friday 1:38 PM"
+    ],
+    "summary": "The discussion considers whether vibe research is already widespread and develops a cautious invitation to collect self-reports rather than assume prevalence.",
+    "topics": [
+      "prevalence",
+      "questionnaire",
+      "research design",
+      "researcher disclosure"
+    ],
+    "artifacts": []
+  },
+  {
+    "chunk_id": "VR-C006",
+    "title": "First outline and Version 1",
+    "first_exchange": "VR-E0039",
+    "last_exchange": "VR-E0039",
+    "exchange_count": 1,
+    "session_headings": [
+      "Friday 3:47 PM"
+    ],
+    "summary": "After returning to text mode, Manny requests an outline and the AI supplies the first structured draft, with the asymmetry as the organising puzzle.",
+    "topics": [
+      "outline",
+      "paper structure",
+      "Version 1"
+    ],
+    "artifacts": [
+      "VR-DRAFT-001"
+    ]
+  },
+  {
+    "chunk_id": "VR-C007",
+    "title": "First critique and Version 2",
+    "first_exchange": "VR-E0040",
+    "last_exchange": "VR-E0040",
+    "exchange_count": 1,
+    "session_headings": [
+      "Friday 3:47 PM"
+    ],
+    "summary": "Manny requests a title, abstract, broader examples, earlier treatment of authorship, and a more concrete public-provenance account; the AI produces Version 2.",
+    "topics": [
+      "abstract",
+      "authorship",
+      "paper revision",
+      "Version 2"
+    ],
+    "artifacts": [
+      "VR-DRAFT-002"
+    ]
+  },
+  {
+    "chunk_id": "VR-C008",
+    "title": "Major restructuring and Version 3",
+    "first_exchange": "VR-E0041",
+    "last_exchange": "VR-E0042",
+    "exchange_count": 2,
+    "session_headings": [
+      "Friday 8:46 PM"
+    ],
+    "summary": "A long structural review removes repetition, strengthens the software analogy, separates accountability from provenance, and leads to Version 3.",
+    "topics": [
+      "accountability",
+      "paper revision",
+      "provenance",
+      "Version 3"
+    ],
+    "artifacts": [
+      "VR-DRAFT-003"
+    ]
+  },
+  {
+    "chunk_id": "VR-C009",
+    "title": "Policy citations and Version 4",
+    "first_exchange": "VR-E0043",
+    "last_exchange": "VR-E0045",
+    "exchange_count": 3,
+    "session_headings": [
+      "Friday 8:46 PM"
+    ],
+    "summary": "The collaborators refine authorship-policy claims, the three examples, and public interrogation of provenance; Version 4 and the first bibliography are produced.",
+    "topics": [
+      "bibliography",
+      "publication policy",
+      "source verification",
+      "Version 4"
+    ],
+    "artifacts": [
+      "VR-DRAFT-004",
+      "VR-BIB-001"
+    ]
+  },
+  {
+    "chunk_id": "VR-C010",
+    "title": "The Casey Newton article",
+    "first_exchange": "VR-E0046",
+    "last_exchange": "VR-E0046",
+    "exchange_count": 1,
+    "session_headings": [
+      "Saturday 8:21 AM"
+    ],
+    "summary": "A newly supplied Casey Newton article is analysed for its discussion of distributed editorial expertise, AI-supported writing, disclosure, and the boundary between assistance and authorship.",
+    "topics": [
+      "Casey Newton",
+      "distributed expertise",
+      "editorial automation",
+      "writing"
+    ],
+    "artifacts": [
+      "VR-SOURCE-001"
+    ]
+  },
+  {
+    "chunk_id": "VR-C011",
+    "title": "ACL policy history and Version 5",
+    "first_exchange": "VR-E0047",
+    "last_exchange": "VR-E0049",
+    "exchange_count": 3,
+    "session_headings": [
+      "Saturday 8:21 AM"
+    ],
+    "summary": "The discussion investigates whether governance reflects older AI paradigms, checks ACL policy history, narrows claims to public evidence, and produces Version 5 plus a policy bibliography.",
+    "topics": [
+      "ACL",
+      "governance lag",
+      "publication policy",
+      "Version 5"
+    ],
+    "artifacts": [
+      "VR-DRAFT-005",
+      "VR-BIB-002"
+    ]
+  },
+  {
+    "chunk_id": "VR-C012",
+    "title": "Precision edits and Codex handoff",
+    "first_exchange": "VR-E0050",
+    "last_exchange": "VR-E0051",
+    "exchange_count": 2,
+    "session_headings": [
+      "Saturday 8:21 AM"
+    ],
+    "summary": "Detailed edits improve the responsibility/accountability distinction and concrete examples; Version 6 is prepared as a handoff for repository work by Codex.",
+    "topics": [
+      "Codex handoff",
+      "paper revision",
+      "provenance examples",
+      "Version 6"
+    ],
+    "artifacts": [
+      "VR-DRAFT-006"
+    ]
+  },
+  {
+    "chunk_id": "VR-C013",
+    "title": "Reworking the central puzzle and Version 7",
+    "first_exchange": "VR-E0052",
+    "last_exchange": "VR-E0053",
+    "exchange_count": 2,
+    "session_headings": [
+      "Saturday 3:22 PM"
+    ],
+    "summary": "The abstract, transitions, ACL analysis, and Grok provenance are tightened; the revised argument is emitted as Version 7.",
+    "topics": [
+      "ACL",
+      "central argument",
+      "How Woke is Grok?",
+      "Version 7"
+    ],
+    "artifacts": [
+      "VR-BIB-003",
+      "VR-DRAFT-007"
+    ]
+  },
+  {
+    "chunk_id": "VR-C014",
+    "title": "Final handoff review and Version 9",
+    "first_exchange": "VR-E0054",
+    "last_exchange": "VR-E0055",
+    "exchange_count": 2,
+    "session_headings": [
+      "Saturday 4:32 PM"
+    ],
+    "summary": "Minor conceptual and mechanical issues are resolved, citations are checked, and Version 9 becomes the clean handoff document for Codex.",
+    "topics": [
+      "Codex handoff",
+      "citation checking",
+      "paper revision",
+      "Version 9"
+    ],
+    "artifacts": [
+      "VR-DRAFT-009"
+    ]
+  },
+  {
+    "chunk_id": "VR-C015",
+    "title": "The Castle analogy and replacement introduction",
+    "first_exchange": "VR-E0056",
+    "last_exchange": "VR-E0058",
+    "exchange_count": 3,
+    "session_headings": [
+      "Sunday 1:28 PM"
+    ],
+    "summary": "After Codex repository work, the collaborators develop The Castle as a framing device for making an initially comic practice institutionally legible and produce a replacement introduction.",
+    "topics": [
+      "The Castle",
+      "institutional legibility",
+      "paper introduction",
+      "Version 10"
+    ],
+    "artifacts": [
+      "VR-DRAFT-010"
+    ]
+  },
+  {
+    "chunk_id": "VR-C016",
+    "title": "Vibe coding claims and mathematical evidence",
+    "first_exchange": "VR-E0059",
+    "last_exchange": "VR-E0059",
+    "exchange_count": 1,
+    "session_headings": [
+      "Sunday 7:34 PM"
+    ],
+    "summary": "A long exchange checks stronger claims about vibe coding and surveys difficult mathematical results and Go as independent evidence of substantive AI contributions.",
+    "topics": [
+      "Go",
+      "mathematics",
+      "non-trivial results",
+      "vibe coding"
+    ],
+    "artifacts": []
+  },
+  {
+    "chunk_id": "VR-C017",
+    "title": "Mathematics section and Version 11 changes",
+    "first_exchange": "VR-E0060",
+    "last_exchange": "VR-E0060",
+    "exchange_count": 1,
+    "session_headings": [
+      "Sunday 7:34 PM"
+    ],
+    "summary": "The collaborators retain the mathematical evidence but defer Go, carefully calibrate claims, and produce replacement passages and bibliography additions.",
+    "topics": [
+      "claim calibration",
+      "mathematics",
+      "Version 11"
+    ],
+    "artifacts": [
+      "VR-DRAFT-011",
+      "VR-BIB-004"
+    ]
+  },
+  {
+    "chunk_id": "VR-C018",
+    "title": "Human compression and review of Version 12",
+    "first_exchange": "VR-E0061",
+    "last_exchange": "VR-E0061",
+    "exchange_count": 1,
+    "session_headings": [
+      "Sunday 7:34 PM"
+    ],
+    "summary": "Manny supplies a substantially compressed Version 12; the AI endorses the three-explanation structure and identifies conceptual overstatements and mechanical corrections.",
+    "topics": [
+      "human editing",
+      "paper structure",
+      "three explanations",
+      "Version 12"
+    ],
+    "artifacts": [
+      "VR-DRAFT-012"
+    ]
+  },
+  {
+    "chunk_id": "VR-C019",
+    "title": "Final requested revision and Version 13",
+    "first_exchange": "VR-E0062",
+    "last_exchange": "VR-E0062",
+    "exchange_count": 1,
+    "session_headings": [
+      "Sunday 7:34 PM"
+    ],
+    "summary": "Manny accepts the review and requests the final revision; the AI reports incorporating the agreed conceptual fixes into Version 13.",
+    "topics": [
+      "final revision",
+      "Version 13"
+    ],
+    "artifacts": [
+      "VR-DRAFT-013"
+    ]
+  }
+]

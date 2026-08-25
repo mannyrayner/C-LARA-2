@@ -1,0 +1,190 @@
+{
+  "abstract": [
+    "VR-C007"
+  ],
+  "academic norms": [
+    "VR-C004"
+  ],
+  "accountability": [
+    "VR-C002",
+    "VR-C008"
+  ],
+  "ACL": [
+    "VR-C011",
+    "VR-C013"
+  ],
+  "AI authorship": [
+    "VR-C001"
+  ],
+  "authorship": [
+    "VR-C003",
+    "VR-C007"
+  ],
+  "bibliography": [
+    "VR-C009"
+  ],
+  "Casey Newton": [
+    "VR-C010"
+  ],
+  "central argument": [
+    "VR-C013"
+  ],
+  "citation checking": [
+    "VR-C014"
+  ],
+  "claim calibration": [
+    "VR-C017"
+  ],
+  "Codex handoff": [
+    "VR-C012",
+    "VR-C014"
+  ],
+  "distributed expertise": [
+    "VR-C002",
+    "VR-C010"
+  ],
+  "editorial automation": [
+    "VR-C010"
+  ],
+  "ephemeral expertise": [
+    "VR-C003"
+  ],
+  "final revision": [
+    "VR-C019"
+  ],
+  "framing": [
+    "VR-C004"
+  ],
+  "Go": [
+    "VR-C016"
+  ],
+  "governance lag": [
+    "VR-C011"
+  ],
+  "How Woke is Grok?": [
+    "VR-C013"
+  ],
+  "human editing": [
+    "VR-C018"
+  ],
+  "institutional legibility": [
+    "VR-C015"
+  ],
+  "mathematics": [
+    "VR-C016",
+    "VR-C017"
+  ],
+  "non-trivial results": [
+    "VR-C016"
+  ],
+  "outline": [
+    "VR-C006"
+  ],
+  "paper conception": [
+    "VR-C001"
+  ],
+  "paper introduction": [
+    "VR-C015"
+  ],
+  "paper revision": [
+    "VR-C007",
+    "VR-C008",
+    "VR-C012",
+    "VR-C014"
+  ],
+  "paper structure": [
+    "VR-C006",
+    "VR-C018"
+  ],
+  "prevalence": [
+    "VR-C005"
+  ],
+  "provenance": [
+    "VR-C002",
+    "VR-C003",
+    "VR-C008"
+  ],
+  "provenance examples": [
+    "VR-C012"
+  ],
+  "public access": [
+    "VR-C002"
+  ],
+  "publication policy": [
+    "VR-C009",
+    "VR-C011"
+  ],
+  "questionnaire": [
+    "VR-C005"
+  ],
+  "research design": [
+    "VR-C005"
+  ],
+  "researcher disclosure": [
+    "VR-C005"
+  ],
+  "responsibility": [
+    "VR-C003"
+  ],
+  "software engineering": [
+    "VR-C004"
+  ],
+  "source verification": [
+    "VR-C009"
+  ],
+  "The Castle": [
+    "VR-C015"
+  ],
+  "three explanations": [
+    "VR-C018"
+  ],
+  "tone": [
+    "VR-C004"
+  ],
+  "Version 1": [
+    "VR-C006"
+  ],
+  "Version 10": [
+    "VR-C015"
+  ],
+  "Version 11": [
+    "VR-C017"
+  ],
+  "Version 12": [
+    "VR-C018"
+  ],
+  "Version 13": [
+    "VR-C019"
+  ],
+  "Version 2": [
+    "VR-C007"
+  ],
+  "Version 3": [
+    "VR-C008"
+  ],
+  "Version 4": [
+    "VR-C009"
+  ],
+  "Version 5": [
+    "VR-C011"
+  ],
+  "Version 6": [
+    "VR-C012"
+  ],
+  "Version 7": [
+    "VR-C013"
+  ],
+  "Version 9": [
+    "VR-C014"
+  ],
+  "vibe coding": [
+    "VR-C001",
+    "VR-C016"
+  ],
+  "vibe research": [
+    "VR-C001"
+  ],
+  "writing": [
+    "VR-C010"
+  ]
+}

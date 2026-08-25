@@ -1,0 +1,165 @@
+[
+  {
+    "artifact_id": "VR-DRAFT-001",
+    "marker": "Version 1",
+    "path": "drafts/version_1.tex",
+    "kind": "complete manuscript",
+    "introduced_at": "VR-E0039",
+    "sha256": "0cc918cf54c8565695194a39fe29991f3c839c2caf125d2be6ae6445e02b6807"
+  },
+  {
+    "artifact_id": "VR-DRAFT-002",
+    "marker": "Version 2",
+    "path": "drafts/version_2.tex",
+    "kind": "complete manuscript",
+    "introduced_at": "VR-E0040",
+    "sha256": "9a2446ffb0527740dec0fe72a5b9e84799ac4f249f0bb20f225fa7b84dfa7543"
+  },
+  {
+    "artifact_id": "VR-DRAFT-003",
+    "marker": "Version 3",
+    "path": "drafts/version_3.tex",
+    "kind": "complete manuscript",
+    "introduced_at": "VR-E0042",
+    "sha256": "05db59ba0c69b9c98037ce7631adc9e3195e6915c6de5fb28035de4e43e6be47"
+  },
+  {
+    "artifact_id": "VR-DRAFT-004",
+    "marker": "Version 4",
+    "path": "drafts/version_4.tex",
+    "kind": "complete manuscript",
+    "introduced_at": "VR-E0044",
+    "sha256": "61db1bad78fe1d47e5e5ef55a6c91a42b2ab404ab066f437a10d2725a17e87dc"
+  },
+  {
+    "artifact_id": "VR-BIB-001",
+    "marker": "References 1",
+    "path": "bibliography_snapshots/references_1.bib",
+    "kind": "bibliography snapshot",
+    "introduced_at": "VR-E0044",
+    "sha256": "eefe5ba674e412f98652f6e98a8e0b7a59a61b4fbe4c662677a140cc14edc921"
+  },
+  {
+    "artifact_id": "VR-SOURCE-001",
+    "marker": "Casey Newton article",
+    "path": "sources/casey_newton_article_summary.md",
+    "kind": "source summary",
+    "introduced_at": "VR-E0046",
+    "sha256": "b4741bcaa9f315251410782346257646e63ce730d461faad215d59dab1a82c8a"
+  },
+  {
+    "artifact_id": "VR-DRAFT-005",
+    "marker": "Version 5",
+    "path": "drafts/version_5.tex",
+    "kind": "complete manuscript",
+    "introduced_at": "VR-E0049",
+    "sha256": "5b3612a548f3c801036e3f7af2f3e69ed118c2d574720f1e003e87a0f4846b1f"
+  },
+  {
+    "artifact_id": "VR-BIB-002",
+    "marker": "References 2",
+    "path": "bibliography_snapshots/references_2.bib",
+    "kind": "bibliography snapshot",
+    "introduced_at": "VR-E0049",
+    "sha256": "9737d14af0d18d9a0c6d6f344b45368af2fc49b37df68990420df19dd55c3457"
+  },
+  {
+    "artifact_id": "VR-DRAFT-006",
+    "marker": "Version 6",
+    "path": "drafts/version_6.tex",
+    "kind": "complete manuscript",
+    "introduced_at": "VR-E0051",
+    "sha256": "9cbad7c150f0c2dfb2382cfa3600393a44dddb2e98ca512ec1f056788d17154a"
+  },
+  {
+    "artifact_id": "VR-BIB-003",
+    "marker": "References 3",
+    "path": "bibliography_snapshots/references_3.bib",
+    "kind": "bibliography snapshot",
+    "introduced_at": "VR-E0052",
+    "sha256": "909313dbfdc7ef4d8bcab74cabda1551d3ab29f14f7f4d854729d63f6e111ee5"
+  },
+  {
+    "artifact_id": "VR-DRAFT-007",
+    "marker": "Version 7",
+    "path": "drafts/version_7.tex",
+    "kind": "complete manuscript",
+    "introduced_at": "VR-E0053",
+    "sha256": "24b51a4baa22495f3c504512ffa5f2b8ccf23118656a56ad07dcc628180c6e07"
+  },
+  {
+    "artifact_id": "VR-DRAFT-009",
+    "marker": "Version 9",
+    "path": "drafts/version_9.tex",
+    "kind": "complete manuscript",
+    "introduced_at": "VR-E0055",
+    "sha256": "eaad0736e82070af373e1107ea027bdaf64499b10702052c55ab39157daa09df"
+  },
+  {
+    "artifact_id": "VR-DRAFT-010",
+    "marker": "Version 10, section 1",
+    "path": "drafts/version_10_section_1.tex",
+    "kind": "replacement section",
+    "introduced_at": "VR-E0058",
+    "sha256": "62b77abd28be7f9248d951a5ac4f7bfb60aa53f2e36967947c9fea3018eceaed"
+  },
+  {
+    "artifact_id": "VR-DRAFT-011",
+    "marker": "Version 11 changes",
+    "path": "drafts/version_11_changes.tex",
+    "kind": "replacement passages",
+    "introduced_at": "VR-E0060",
+    "sha256": "e26e49fd15fa4d59da79a8db69581f5cb570c3cf7b9b42a03f8e71cdb47a3e1f"
+  },
+  {
+    "artifact_id": "VR-BIB-004",
+    "marker": "References 4 new",
+    "path": "bibliography_snapshots/references_4_new.bib",
+    "kind": "bibliography snapshot",
+    "introduced_at": "VR-E0060",
+    "sha256": "e572c562de468f74e305c2130408aec88a7762025621354db8a6194f3262348f"
+  },
+  {
+    "artifact_id": "VR-DRAFT-012",
+    "marker": "Version 12",
+    "path": "drafts/version_12.tex",
+    "kind": "complete manuscript",
+    "introduced_at": "VR-E0061",
+    "sha256": "f70f25876655c99412855c330cf5cf765c96bfb58c6e48887cb361f54e7d960d"
+  },
+  {
+    "artifact_id": "VR-DRAFT-013",
+    "marker": "Version 13",
+    "path": "drafts/version_13.tex",
+    "kind": "complete manuscript",
+    "introduced_at": "VR-E0062",
+    "sha256": "7a997470a4aaa5e5bb53ecd16528c46725a785f47523d72d57acc58ecb690411"
+  },
+  {
+    "artifact_id": "VR-DRAFT-008",
+    "marker": null,
+    "path": "drafts/version_8.tex",
+    "kind": "complete manuscript",
+    "introduced_at": null,
+    "note": "No explicit Version 8 marker occurs in the uploaded trace.",
+    "sha256": "2069c406bff86cdc2c0a94237668aeb919918495b098d066d3d58408466909ee"
+  },
+  {
+    "artifact_id": "VR-PAPER-CURRENT",
+    "marker": null,
+    "path": "paper/main.tex",
+    "kind": "current manuscript",
+    "introduced_at": null,
+    "note": "Canonical manuscript at the time of reorganization.",
+    "sha256": "53526699d66dfe3567ce717543ddc3c63b2fa8bc8e57bfbe1aa248326d9ad6ad"
+  },
+  {
+    "artifact_id": "VR-BIB-CURRENT",
+    "marker": null,
+    "path": "paper/references.bib",
+    "kind": "current bibliography",
+    "introduced_at": null,
+    "note": "Canonical consolidated bibliography.",
+    "sha256": "02d0a0377dfa5a9b1c7fec131d3689f6992967d3053e28c25aeb08bdde1b9e65"
+  }
+]
