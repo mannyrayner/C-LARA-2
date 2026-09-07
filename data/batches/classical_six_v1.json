@@ -1,0 +1,11 @@
+{
+  "batch_id": "classical_six_v1",
+  "works": [
+    {"work_id": "wharton-age-of-innocence", "source_id": "gutenberg-541", "provenance": "data/provenance/classical_six/gutenberg-541.json"},
+    {"work_id": "lawrence-women-in-love", "source_id": "gutenberg-4240", "provenance": "data/provenance/classical_six/gutenberg-4240.json"},
+    {"work_id": "hamsun-victoria", "source_id": "runeberg-hamsun-victoria", "provenance": "data/provenance/classical_six/runeberg-hamsun-victoria.json"},
+    {"work_id": "hamsun-pan", "source_id": "runeberg-hamsun-pan", "provenance": "data/provenance/classical_six/runeberg-hamsun-pan.json"},
+    {"work_id": "dumas-fils-la-dame-aux-camelias", "source_id": "gutenberg-2419", "provenance": "data/provenance/classical_six/gutenberg-2419.json"},
+    {"work_id": "constant-adolphe", "source_id": "gutenberg-13861", "provenance": "data/provenance/classical_six/gutenberg-13861.json"}
+  ]
+}

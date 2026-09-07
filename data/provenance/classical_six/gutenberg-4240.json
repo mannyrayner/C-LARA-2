@@ -1,0 +1,26 @@
+{
+  "source_id": "gutenberg-4240",
+  "work_id": "lawrence-women-in-love",
+  "status": "acquisition_pending_human_review",
+  "bibliography": {
+    "title": "Women in Love",
+    "author": "D. H. Lawrence",
+    "language": "English",
+    "author_death_date": "1930-03-02"
+  },
+  "provider": "Project Gutenberg",
+  "catalogue_ebook_number": 4240,
+  "catalogue_url": "https://www.gutenberg.org/ebooks/4240",
+  "download_url": null,
+  "retrieval_date": null,
+  "rights_review": {
+    "provider_statement": "Project Gutenberg describes the eBook as free in the United States; verify on the live catalogue page.",
+    "australian_basis": "Independently eligible as public domain in Australia under the established life-plus-70 convention because the author died more than 70 years ago.",
+    "approved": false
+  },
+  "raw_path": null,
+  "raw_sha256": null,
+  "literary_text_path": null,
+  "literary_text_sha256": null,
+  "processing_transformations": []
+}

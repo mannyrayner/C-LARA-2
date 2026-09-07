@@ -1,0 +1,26 @@
+{
+  "source_id": "gutenberg-2419",
+  "work_id": "dumas-fils-la-dame-aux-camelias",
+  "status": "acquisition_pending_human_review",
+  "bibliography": {
+    "title": "La Dame aux camélias",
+    "author": "Alexandre Dumas fils",
+    "language": "French",
+    "author_death_date": "1895-11-27"
+  },
+  "provider": "Project Gutenberg",
+  "catalogue_ebook_number": 2419,
+  "catalogue_url": "https://www.gutenberg.org/ebooks/2419",
+  "download_url": null,
+  "retrieval_date": null,
+  "rights_review": {
+    "provider_statement": "Project Gutenberg describes the eBook as free in the United States; verify on the live catalogue page.",
+    "australian_basis": "Independently eligible as public domain in Australia under the established life-plus-70 convention because the author died more than 70 years ago.",
+    "approved": false
+  },
+  "raw_path": null,
+  "raw_sha256": null,
+  "literary_text_path": null,
+  "literary_text_sha256": null,
+  "processing_transformations": []
+}

@@ -1,0 +1,31 @@
+{
+  "source_id": "runeberg-hamsun-victoria",
+  "work_id": "hamsun-victoria",
+  "status": "acquisition_pending_human_review",
+  "bibliography": {
+    "title": "Victoria",
+    "author": "Knut Hamsun",
+    "language": "Norwegian",
+    "author_death_year": 1952,
+    "edition": "Samlede verker, sixth edition (1963–1964)",
+    "volume": 3,
+    "printed_page_range": "89–162"
+  },
+  "provider": "Project Runeberg",
+  "volume_contents_url": "https://runeberg.org/hamsun/6-3/",
+  "verified_url_index_range": null,
+  "retrieval_date": null,
+  "source_properties": [
+    "Digitized from Norwegian National Library scans and OCRed by Project Runeberg.",
+    "The collected edition may contain modernized spelling and does not necessarily reproduce first-edition orthography.",
+    "OCR pages may be unproofread; acquisition must not silently correct OCR."
+  ],
+  "rights_review": {
+    "australian_basis": "Independently eligible as public domain in Australia under the established life-plus-70 convention because Hamsun died in 1952.",
+    "approved": false
+  },
+  "raw_pages": [],
+  "assembled_text_path": null,
+  "assembled_text_sha256": null,
+  "processing_transformations": []
+}
