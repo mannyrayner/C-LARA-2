@@ -6,6 +6,7 @@ Welcome! This folder collects specifications, architecture notes, and delivery r
 
 - **How-to**: [Quickstart](howto/quickstart.md)
 - **How-to**: [Run the Django platform locally](howto/run-django-platform.md)
+- **Community dictionary prototype**: [Specification](roadmap/community-dictionary.md) · [Setup and phone trial](howto/community-dictionary.md)
 - **How-to**: [Locate compile progress logs](howto/compile-logs.md)
 - **How-to**: [Credits and billing operations](howto/credits-and-billing.md)
 - **How-to**: [Clone a project snapshot](howto/clone-project.md)

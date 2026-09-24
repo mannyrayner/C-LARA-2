@@ -1,0 +1,52 @@
+{% extends 'community_dictionary/base.html' %}
+{% block content %}
+<p class="eyebrow">{{ dictionary.name }}</p>
+<h1>{% if response_to %}Add a {{ response_to.get_kind_display|lower }}{% elif editing %}Add or edit words{% elif entry %}Add to {{ entry.title }}{% else %}What shall we add?{% endif %}</h1>
+{% if response_to %}
+<div class="notice"><strong>{{ response_to.partnership.name }}</strong> · {{ response_to.note|default:'Your partner would like some help with this entry.' }} <a href="{% url 'community_dictionary:entry' dictionary.pk entry.pk %}">See the entry and discussion</a></div>
+{% elif editing %}
+<p class="lead">Add the word and a translation or explanation. Both can be searched when browsing the dictionary.</p>
+{% else %}
+<p class="lead">A picture or a recording is enough. You can also add words and a translation below.</p>
+{% endif %}
+<form method="post" enctype="multipart/form-data" class="stack contribution-form" data-draft-form>
+{% csrf_token %}
+<input type="hidden" name="submission_id" value="{{ submission_id }}">
+<input type="hidden" name="base_version" value="{{ form.base_version.value|default:0 }}">
+{% if editing %}<input type="hidden" name="edit_text" value="1">{% endif %}
+{% if not editing %}
+<div class="capture-grid">
+{% if not response_to or response_to.kind == 'image' %}
+<section class="panel">
+<h2>Picture</h2>
+<label class="button photo-button">Take photo<input type="file" name="photo" accept="image/*" capture="environment" data-camera></label>
+<label class="file-alternative">Or choose a picture <input type="file" name="photo" accept="image/*"></label>
+<img data-photo-preview class="photo-preview" alt="Your picture preview" hidden>
+<button type="button" class="quiet" data-clear-photo hidden>Remove picture</button>
+</section>
+{% endif %}
+{% if not response_to or response_to.kind == 'audio' %}
+<section class="panel"><h2>Voice</h2>{% include 'community_dictionary/recording.html' %}</section>
+{% endif %}
+</div>
+<p>{{ form.label.label_tag }}{{ form.label }}</p>
+{% endif %}
+{% if not response_to %}
+{% if not entry or editing %}
+<section class="panel word-fields">
+<h2>Words and meaning <span class="muted">— optional</span></h2>
+<p class="help">Add these now or later. They help people find the entry by either language.</p>
+<p>{{ form.word.label_tag }}{{ form.word }}</p>
+<p>{{ form.meaning.label_tag }}{{ form.meaning }}</p>
+<p>{{ form.category.label_tag }}{{ form.category }}</p>
+</section>
+{% else %}
+<p><a href="{% url 'community_dictionary:contribute' dictionary.pk entry.pk %}?wording=1">Add or edit the word and its meaning →</a></p>
+{% endif %}
+{% endif %}
+{% if not editing %}<label class="check"><input type="checkbox" name="consent">{{ form.consent.label }}</label>{% endif %}
+{% if editor %}<label class="check"><input type="checkbox" name="publish_now" checked>Accept my contributions immediately</label>{% endif %}
+{% include 'community_dictionary/draft_status.html' %}
+<div class="actions"><button type="submit">{% if editing %}Save words{% else %}Share contribution{% endif %}</button>{% if entry %}<a href="{% url 'community_dictionary:entry' dictionary.pk entry.pk %}">Back to entry</a>{% endif %}</div>
+</form>
+{% endblock %}

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "workspace_revision": 14,
+  "workspace_revision": 13,
   "as_of": "2026-09-24",
   "assessed_commit_sha": "bc21188595bae9f2ee89c080243a76fdd4a960b1",
   "approved_proposal_id": null,
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "Scoped community-dictionary laptop confirmation: Manny reports that direct recording now works after selecting the correct microphone; the previous browser default selected the wrong input. Together with his earlier picture/MP3 upload and text feedback, this removes the reported laptop recording blocker. Both implementation patches and the confirmation should now be checked in from his tested checkout. GitHub’s feature branch still points to the bootstrap. The next functional dependency is HTTPS deployment and actual phone/cross-device trials. The existing 21 Django test passes and controlled Chromium checks remain the automated evidence; no runtime code changed in this follow-up. This is positive evidence for the bounded development experiment, not full mobile acceptance or learning/community-suitability evidence. Wider historical August assessments remain outside this scoped review.",
+  "current_focus_summary": "Scoped community-dictionary trial assessment: Manny reports successful laptop use with two Swedish picture/audio entries and confirms that words, translations and categories work after explanation. Browser recording remains the concrete blocker despite Audacity recovering. The second incremental patch makes text fields discoverable and adds microphone selection, live input checks and silent-take protection. Twenty-one Django tests and a stronger Chromium rehearsal pass, including nonzero decoded recording samples and preservation of an earlier take after a silent retake. Laptop microphone confirmation is the next dependency before deployment and physical-phone trials. This is progress in a bounded implementation experiment, not acceptance of Windows capture, phone compatibility, Indigenous-community suitability or learning outcomes. Wider historical August assessments remain outside this scoped review.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -288,15 +288,6 @@
         "experiments/community_dictionary/browser_workflow.cjs",
         "platform_server/community_dictionary/tests/test_workflow.py"
       ]
-    },
-    {
-      "id": "OBS-0027",
-      "summary": "Manny confirms that direct recording now works and attributes the earlier failure to the browser defaulting to the wrong input. He requests check-in of the material. GitHub’s feature branch still points to bootstrap bc211885; the agreed workflow is to commit the installed implementation and repair from Manny’s tested laptop checkout. This is human-reported recording success, not a new automated or phone test.",
-      "observed_at": "2026-09-24",
-      "confidence": "high",
-      "evidence": [
-        "experiments/community_dictionary/laptop-trial-2026-09-24.md"
-      ]
     }
   ],
   "assessments": [
@@ -473,7 +464,7 @@
     },
     {
       "id": "ASM-0011",
-      "summary": "Human laptop use supports picture/audio upload, optional text and now direct recording with the correct microphone. The concrete recording blocker is resolved according to Manny’s trial; preserving the tested implementation is the immediate action. Deployment and physical-phone trials are the next functional dependencies. Two implementation iterations have produced encouraging local and human-trial evidence, but broader mobile and community acceptance remain unestablished.",
+      "summary": "Human laptop use now supports the picture/audio upload and text workflows, but direct voice capture remains a blocker to the intended camera/voice-first experience. The tested repair adds actionable diagnostics and protects against silently replacing a usable take; it does not establish the hardware/browser cause. A focused laptop retest is the immediate dependency before phone trials. The implementation experiment has positive early evidence, with elapsed-time claims remaining human estimates.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-2",
@@ -485,12 +476,11 @@
         "OBS-0023",
         "OBS-0024",
         "OBS-0025",
-        "OBS-0026",
-        "OBS-0027"
+        "OBS-0026"
       ],
       "urgency": "next_authorized_step_no_fixed_deadline",
       "risk": "medium",
-      "progress": "laptop_recording_confirmed_checkin_and_phone_trial_next",
+      "progress": "laptop_upload_and_text_success_recording_repair_awaiting_retest",
       "confidence": "medium"
     }
   ],
@@ -553,7 +543,7 @@
     },
     {
       "id": "UNC-0008",
-      "summary": "The reported laptop capture blocker is resolved by choosing the correct input. Actual iPhone/Safari and Android/Chrome camera/microphone behavior, cross-device playback, deployment configuration and the full collaborative workflow on physical devices still require the pilot. This success does not establish those outcomes. Wider August outcomes need a separate review.",
+      "summary": "Why browser capture is silent on Manny’s laptop remains unknown despite successful external recording/upload. The repair needs a hardware retest: selected input, level-meter movement and final audio. Actual camera/microphone permissions, Safari behavior, cross-device playback, deployment configuration and usability without coaching still require the pilot. Controlled Chromium input does not resolve those questions. Wider August outcomes need a separate review.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -659,7 +649,7 @@
     },
     {
       "id": "ACT-0010",
-      "summary": "Preserve both functional patches, tests, setup/experiment documentation and the laptop confirmation by committing and pushing from Manny’s tested feature-branch checkout. Then proceed to HTTPS deployment and actual iPhone/Android testing, retaining human camera/voice contributions as the first priority and keeping AI generation and practice deferred.",
+      "summary": "Deliver the incremental repair over installed prototype 1. Manny applies it, refreshes the browser, selects the working microphone, checks the meter and records/listens; any remaining failure should include browser/input name and displayed message. After laptop confirmation, proceed to HTTPS deployment and actual iPhone/Android testing. Keep AI generation and practice deferred.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -753,13 +743,14 @@
     "status": "autonomous_project_manager_update",
     "authorized_by": "Assistant following AGENTS.md",
     "authorized_at": "2026-09-24",
-    "authorization_basis": "Manny confirmed successful direct recording and requested check-in; repository instructions authorize derived-state maintenance.",
-    "comments": "Documentation-only reflection on human trial feedback. The assessed SHA remains the known bootstrap commit, which is also the current remote branch tip. The tested patch files are identified in the laptop-trial record; this update does not claim they have been pushed. Human intentions, canonical issues and archived prior assessments remain unchanged."
+    "authorization_basis": "Manny supplied prototype feedback and clarified that text works but needs better discoverability; repository instructions authorize derived-state maintenance.",
+    "comments": "Scoped repair and trial evidence only. The assessed SHA remains the known bootstrap commit; delivered prototype-1 and prepared repair file trees are described in iteration-002.md because Manny’s implementation commit is not yet supplied. Human intentions, canonical issues and older archived states are unchanged. Windows capture and production/phone trials remain pending."
   },
   "changes_from_previous_revision": {
-    "summary": "Recorded successful direct laptop recording with the correct input, retired the active laptop capture concern and shifted the next action to check-in followed by deployment and real-phone trials.",
+    "summary": "Recorded real laptop upload/text success and the correction from missing text functionality to discoverability; kept browser recording open pending hardware retest and recorded a locally verified repair with stronger audio-signal checks.",
     "added_item_ids": [
-      "OBS-0027"
+      "OBS-0025",
+      "OBS-0026"
     ],
     "revised_item_ids": [
       "ASM-0011",
@@ -791,8 +782,6 @@
       "OBS-0022",
       "OBS-0023",
       "OBS-0024",
-      "OBS-0025",
-      "OBS-0026",
       "ASM-0001",
       "ASM-0002",
       "ASM-0003",

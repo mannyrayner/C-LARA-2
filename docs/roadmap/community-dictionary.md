@@ -2,7 +2,7 @@
 
 Version 0.4 · 23 September 2026 · Discussion draft
 
-> Imported from the version 0.4 discussion draft for the bootstrap patch. This records the proposed product and development plan; it is not an implementation report. Directory placeholders now exist, while application behaviour remains unimplemented. See the [setup guide](../howto/community-dictionary.md) for the current executable state.
+> This preserves the version 0.4 discussion specification used as the first build brief. The first functional patch is now prepared against bootstrap commit `bc21188595bae9f2ee89c080243a76fdd4a960b1`. The proposal/history below is retained; use the [setup guide](../howto/community-dictionary.md) and [iteration record](../../experiments/community_dictionary/iteration-001.md) for implemented behaviour, verification and remaining acceptance checks. Physical phone selection and testing were deferred to the deployment trial; they are not claimed as completed.
 
 This draft proposes a small first release and an explicit experiment in AI-led software development. It is not yet an agreed implementation contract. Inspection of the C-LARA-2 layout, contributor instructions, Django configuration, test conventions and CI supports the proposal to implement a separate Django app within that repository. Detailed model/service reuse and production deployment have not yet been checked.
 

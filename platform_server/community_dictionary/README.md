@@ -1,20 +1,35 @@
 # Community dictionary app
 
-Status: bootstrap scaffold; no user-facing functionality yet.
+First functional prototype: invited dictionaries built from photographs, human
+recordings, discussion and review, with partnership request queues.
 
-This app will support mobile construction and discussion of shared picture/audio
-dictionaries, including partnerships that divide picture and recording work.
-The first prototype uses phone photographs and human recordings. AI content
-generation and dedicated practice activities are later increments.
+- [Specification](../../docs/roadmap/community-dictionary.md)
+- [Setup, deployment, recovery and phone checks](../../docs/howto/community-dictionary.md)
+- [Experiment evidence](../../experiments/community_dictionary/iteration-001.md)
 
-- [Specification and development workflow](../../docs/roadmap/community-dictionary.md)
-- [Setup and testing guide](../../docs/howto/community-dictionary.md)
-- [Development experiment](../../experiments/community_dictionary/README.md)
+The app owns its models, migrations, permissions, media views, templates and small
+JavaScript/CSS interface. Its route is `/community-dictionaries/`. It reuses
+C-LARA authentication/accounts and database/static infrastructure. It does not call
+the project compilation pipeline, AI clients, task queue or existing dictionary
+commands. Existing `projects.PictureDictionary` records are tied to compiled
+projects and require written entries, so this contribution workflow uses separate
+models. There is no automatic synchronization with the older dictionary representation.
 
-Keep new feature code, templates, static files, migrations and Django tests in
-this app. Inspect existing account, community and dictionary models before
-choosing reuse boundaries. Store uploaded media outside Git, with access checks.
+Uploads live under `COMMUNITY_DICTIONARY_MEDIA_ROOT`, outside public media/static
+roots, and are read only through membership-checked views. Photos are re-encoded
+with Pillow. Audio containers are checked and stored without transcoding. JavaScript
+uses browser MediaRecorder and IndexedDB; there is no frontend build step or CDN.
 
-The bootstrap includes an app configuration but deliberately does not add it to
-`INSTALLED_APPS`, expose a URL, define database models, or alter existing behaviour.
-Those integration changes belong to the first functional implementation.
+Text revisions are immutable contribution snapshots. The entry stores its accepted
+presentation and version number. Acceptance checks that version under an entry
+lock. Media candidates keep separate contributor credits. Submission receipts make
+normal upload retries idempotent; the receipt and database writes commit together.
+A failed transaction removes newly written files, although a process crash can
+leave an unreferenced file requiring later operator cleanup. SQLite serializes
+writes; PostgreSQL provides row locks. High-contention/load testing remains future work.
+
+The export contains all app records except submission receipts and includes
+contributor-ID/username mapping. Operational backups need the shared user database
+and private files too. Future TTS/image services should enter through an explicit
+adapter and create reviewable contributions with provenance. No AI generation or
+practice functionality is included here.

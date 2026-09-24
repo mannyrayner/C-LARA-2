@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "projects",
+    "community_dictionary.apps.CommunityDictionaryConfig",
     "django_q",
 ]
 
@@ -39,6 +40,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "community_dictionary.middleware.PrivatePagesMiddleware",
 ]
 
 # Use a database-backed session store so background threads can persist
@@ -104,6 +106,11 @@ STATICFILES_DIRS = [BASE_DIR / "projects" / "static"]
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# Human-contributed dictionary media must not be served by the public /media/ alias.
+COMMUNITY_DICTIONARY_MEDIA_ROOT = Path(os.environ.get(
+    "CLARA_COMMUNITY_MEDIA_ROOT", str(BASE_DIR / "private_uploads" / "community_dictionary")
+))
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

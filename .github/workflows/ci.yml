@@ -23,6 +23,14 @@ jobs:
           . .venv/bin/activate
           pip install -r requirements.txt -r requirements-dev.txt
       
+      - name: Community dictionary workflow and access tests
+        run: |
+          . .venv/bin/activate
+          cd platform_server
+          python manage.py check
+          python manage.py makemigrations --check --dry-run community_dictionary
+          python manage.py test community_dictionary
+
       - name: Run tests + coverage
         run: |
           . .venv/bin/activate

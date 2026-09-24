@@ -1,6 +1,11 @@
 # Community dictionary development experiment
 
-Status: preparation. No functional implementation iteration has been completed.
+Status: [iteration 1](iteration-001.md) produced the first functional patch,
+with initial laptop success reported by Manny. [Iteration 2](iteration-002.md)
+repairs microphone feedback and text discoverability. Its 21 backend tests and
+controlled Chromium workflow pass. Manny subsequently confirmed that direct
+laptop recording works after selecting the correct input: see the
+[laptop trial](laptop-trial-2026-09-24.md). Actual-phone acceptance remains pending.
 
 - [Specification and acceptance criteria](../../docs/roadmap/community-dictionary.md)
 - [Setup and testing](../../docs/howto/community-dictionary.md)

@@ -1,0 +1,11 @@
+{% load static %}<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}Community dictionaries{% endblock %} · C-LARA</title>
+<link rel="stylesheet" href="{% static 'community_dictionary/app.css' %}?v=2">
+<script src="{% static 'community_dictionary/recorder.js' %}?v=2" defer></script>
+<script src="{% static 'community_dictionary/app.js' %}?v=2" defer></script></head>
+<body data-user="{{ request.user.pk }}"><a class="skip" href="#main">Skip to content</a>
+<header class="site-header"><a class="brand" href="{% url 'community_dictionary:home' %}"><span class="brand-mark" aria-hidden="true">◒</span> Community dictionaries</a><span class="account">{{ request.user.username }} · <a href="{% url 'project-list' %}">C-LARA</a></span></header>
+{% if dictionary %}<nav class="dictionary-nav" aria-label="Dictionary"><a href="{% url 'community_dictionary:dictionary' dictionary.pk %}">Browse</a><a href="{% url 'community_dictionary:new' dictionary.pk %}">+ Contribute</a><a href="{% url 'community_dictionary:queue' dictionary.pk %}">For our group</a><a href="{% url 'community_dictionary:people' dictionary.pk %}">People</a></nav>{% endif %}
+<main id="main">{% for message in messages %}<div class="notice" role="status">{{ message }}</div>{% endfor %}{% block content %}{% endblock %}</main>
+<footer>Made together. Pictures, voices and the words that connect them.</footer></body></html>

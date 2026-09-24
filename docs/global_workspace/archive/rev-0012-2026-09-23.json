@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "workspace_revision": 14,
-  "as_of": "2026-09-24",
+  "workspace_revision": 12,
+  "as_of": "2026-09-23",
   "assessed_commit_sha": "bc21188595bae9f2ee89c080243a76fdd4a960b1",
   "approved_proposal_id": null,
   "approved_run_id": null,
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "Scoped community-dictionary laptop confirmation: Manny reports that direct recording now works after selecting the correct microphone; the previous browser default selected the wrong input. Together with his earlier picture/MP3 upload and text feedback, this removes the reported laptop recording blocker. Both implementation patches and the confirmation should now be checked in from his tested checkout. GitHub’s feature branch still points to the bootstrap. The next functional dependency is HTTPS deployment and actual phone/cross-device trials. The existing 21 Django test passes and controlled Chromium checks remain the automated evidence; no runtime code changed in this follow-up. This is positive evidence for the bounded development experiment, not full mobile acceptance or learning/community-suitability evidence. Wider historical August assessments remain outside this scoped review.",
+  "current_focus_summary": "Scoped community-dictionary implementation assessment: Manny has committed and pushed the bootstrap and authorized continued construction/discussion work. The first functional patch now covers invited dictionaries, human photo/audio contributions, partnerships, discussion, review, protected media and recovery. Twenty Django workflow/access tests and a local Chromium two-account workflow pass. The next useful step is Manny applying the patch, deploying it and trying actual iPhone/Android devices. This is local implementation evidence, not evidence of phone acceptance, Indigenous-community suitability or learning outcomes. Earlier August Sprint/visit urgency is historical; this scoped review does not establish the outcomes of those events or reset the wider issue portfolio.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -268,35 +268,6 @@
         "docs/global_workspace/archive/rev-0011-2026-08-14.json",
         "docs/global_workspace/project-intentions.md"
       ]
-    },
-    {
-      "id": "OBS-0025",
-      "summary": "Manny reports two Swedish entries with uploaded pictures and MP3 audio and successful image browsing. Browser recording still fails after Audacity began working again. He then confirms that words, translations and categories can be added after explanation, correcting the initial impression of missing functionality. The input cause is unresolved.",
-      "observed_at": "2026-09-24",
-      "confidence": "high",
-      "evidence": [
-        "experiments/community_dictionary/iteration-002.md"
-      ]
-    },
-    {
-      "id": "OBS-0026",
-      "summary": "Iteration 2 exposes optional word/translation/category fields and adds named microphone selection, live input testing and silence detection that preserves an earlier take. All 21 app tests pass; the controlled Chromium rehearsal verifies nonzero decoded samples, permission-error recovery, rejection of a deliberately silent retake, media preservation after adding searchable Swedish/English text, and the existing collaborative workflow. Real Windows capture and physical-phone acceptance are still unverified.",
-      "observed_at": "2026-09-24",
-      "confidence": "high",
-      "evidence": [
-        "experiments/community_dictionary/iteration-002.md",
-        "experiments/community_dictionary/browser_workflow.cjs",
-        "platform_server/community_dictionary/tests/test_workflow.py"
-      ]
-    },
-    {
-      "id": "OBS-0027",
-      "summary": "Manny confirms that direct recording now works and attributes the earlier failure to the browser defaulting to the wrong input. He requests check-in of the material. GitHub’s feature branch still points to bootstrap bc211885; the agreed workflow is to commit the installed implementation and repair from Manny’s tested laptop checkout. This is human-reported recording success, not a new automated or phone test.",
-      "observed_at": "2026-09-24",
-      "confidence": "high",
-      "evidence": [
-        "experiments/community_dictionary/laptop-trial-2026-09-24.md"
-      ]
     }
   ],
   "assessments": [
@@ -473,7 +444,7 @@
     },
     {
       "id": "ASM-0011",
-      "summary": "Human laptop use supports picture/audio upload, optional text and now direct recording with the correct microphone. The concrete recording blocker is resolved according to Manny’s trial; preserving the tested implementation is the immediate action. Deployment and physical-phone trials are the next functional dependencies. Two implementation iterations have produced encouraging local and human-trial evidence, but broader mobile and community acceptance remain unestablished.",
+      "summary": "The bounded dictionary prototype has moved from specification to a locally exercised implementation, supporting the mobile usability and AI-development experiment goals. Deployment and real-device feedback are the immediate dependencies. This warrants a small trial, not a claim that the few-iteration experiment or community acceptance criteria are complete.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-2",
@@ -483,14 +454,11 @@
       "observation_ids": [
         "OBS-0022",
         "OBS-0023",
-        "OBS-0024",
-        "OBS-0025",
-        "OBS-0026",
-        "OBS-0027"
+        "OBS-0024"
       ],
       "urgency": "next_authorized_step_no_fixed_deadline",
       "risk": "medium",
-      "progress": "laptop_recording_confirmed_checkin_and_phone_trial_next",
+      "progress": "patch_prepared_local_workflow_verified_phone_trial_pending",
       "confidence": "medium"
     }
   ],
@@ -553,7 +521,7 @@
     },
     {
       "id": "UNC-0008",
-      "summary": "The reported laptop capture blocker is resolved by choosing the correct input. Actual iPhone/Safari and Android/Chrome camera/microphone behavior, cross-device playback, deployment configuration and the full collaborative workflow on physical devices still require the pilot. This success does not establish those outcomes. Wider August outcomes need a separate review.",
+      "summary": "Actual camera/microphone permissions, Safari behavior, cross-device audio playback, deployment configuration and usability without coaching require the pilot. Local Chromium emulation does not resolve those questions. Wider August outcomes need a separate project review.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -659,7 +627,7 @@
     },
     {
       "id": "ACT-0010",
-      "summary": "Preserve both functional patches, tests, setup/experiment documentation and the laptop confirmation by committing and pushing from Manny’s tested feature-branch checkout. Then proceed to HTTPS deployment and actual iPhone/Android testing, retaining human camera/voice contributions as the first priority and keeping AI generation and practice deferred.",
+      "summary": "Deliver the patch against bc211885, have Manny apply and commit it, follow the documented deployment and phone trial, then use one consolidated feedback packet for the next repair iteration. Keep AI generation and practice deferred.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -752,19 +720,53 @@
   "approval": {
     "status": "autonomous_project_manager_update",
     "authorized_by": "Assistant following AGENTS.md",
-    "authorized_at": "2026-09-24",
-    "authorization_basis": "Manny confirmed successful direct recording and requested check-in; repository instructions authorize derived-state maintenance.",
-    "comments": "Documentation-only reflection on human trial feedback. The assessed SHA remains the known bootstrap commit, which is also the current remote branch tip. The tested patch files are identified in the laptop-trial record; this update does not claim they have been pushed. Human intentions, canonical issues and archived prior assessments remain unchanged."
+    "authorized_at": "2026-09-23",
+    "authorization_basis": "The human requested bootstrap setup followed by implementation and has now supplied the committed bootstrap; repository instructions authorize derived-state maintenance.",
+    "comments": "Scoped implementation evidence only. Human-owned intentions and canonical issues were not rewritten; older August urgency is explicitly historical. Functional code is a prepared patch, not deployed software."
   },
   "changes_from_previous_revision": {
-    "summary": "Recorded successful direct laptop recording with the correct input, retired the active laptop capture concern and shifted the next action to check-in followed by deployment and real-phone trials.",
+    "summary": "Recorded the authorized community dictionary pilot and first local implementation evidence; identified real-phone/deployment acceptance as the next dependency and marked August urgency as historical without inferring event outcomes.",
     "added_item_ids": [
-      "OBS-0027"
-    ],
-    "revised_item_ids": [
+      "OBS-0022",
+      "OBS-0023",
+      "OBS-0024",
       "ASM-0011",
       "UNC-0008",
       "ACT-0010"
+    ],
+    "revised_item_ids": [
+      "ASM-0001",
+      "ASM-0002",
+      "ASM-0003",
+      "ASM-0004",
+      "ASM-0005",
+      "ASM-0006",
+      "ASM-0007",
+      "ASM-0008",
+      "ASM-0009",
+      "ASM-0010",
+      "ACT-0001",
+      "ACT-0002",
+      "ACT-0003",
+      "ACT-0004",
+      "ACT-0005",
+      "ACT-0006",
+      "ACT-0007",
+      "ACT-0008",
+      "ACT-0009",
+      "UNC-0001",
+      "UNC-0002",
+      "UNC-0003",
+      "UNC-0004",
+      "UNC-0005",
+      "UNC-0006",
+      "UNC-0007",
+      "REQ-0005",
+      "REQ-0007",
+      "REQ-0008",
+      "PRED-0001",
+      "PRED-0003",
+      "PRED-0006"
     ],
     "retained_item_ids": [
       "OBS-0001",
@@ -788,46 +790,9 @@
       "OBS-0019",
       "OBS-0020",
       "OBS-0021",
-      "OBS-0022",
-      "OBS-0023",
-      "OBS-0024",
-      "OBS-0025",
-      "OBS-0026",
-      "ASM-0001",
-      "ASM-0002",
-      "ASM-0003",
-      "ASM-0004",
-      "ASM-0005",
-      "ASM-0006",
-      "ASM-0007",
-      "ASM-0008",
-      "ASM-0009",
-      "ASM-0010",
-      "UNC-0001",
-      "UNC-0002",
-      "UNC-0003",
-      "UNC-0004",
-      "UNC-0005",
-      "UNC-0006",
-      "UNC-0007",
-      "REQ-0005",
-      "REQ-0007",
-      "REQ-0008",
-      "ACT-0001",
-      "ACT-0002",
-      "ACT-0003",
-      "ACT-0004",
-      "ACT-0005",
-      "ACT-0006",
-      "ACT-0007",
-      "ACT-0008",
-      "ACT-0009",
-      "PRED-0001",
       "PRED-0002",
-      "PRED-0003",
       "PRED-0004",
-      "PRED-0005",
-      "PRED-0006"
+      "PRED-0005"
     ],
     "retired_item_ids": []
   }

@@ -7,6 +7,7 @@ from django.views.generic.base import RedirectView
 from projects import views as project_views
 
 urlpatterns = [
+    path("community-dictionaries/", include("community_dictionary.urls")),
     path("favicon.ico", project_views.favicon, name="favicon"),
     path("admin/", admin.site.urls),
     path("accounts/register/", project_views.register, name="register"),

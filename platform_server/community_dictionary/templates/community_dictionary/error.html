@@ -1,0 +1,1 @@
+{% extends 'community_dictionary/base.html' %}{% block content %}<h1>We couldn’t save that yet</h1><div class="notice error">{{ message|linebreaksbr }}</div><p>Return to the form to check your contribution, or reopen the dictionary.</p><a class="button" href="{% url 'community_dictionary:home' %}">Your dictionaries</a>{% endblock %}

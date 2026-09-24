@@ -1,0 +1,20 @@
+<div class="recording" data-recorder>
+  <label>Microphone
+    <select data-microphone><option value="">Browser default microphone</option></select>
+  </label>
+  <p class="help" data-microphone-name>Choose an input, or use the browser default. Names may appear after permission is granted.</p>
+  <div class="record-controls">
+    <button type="button" class="record-button" data-record>● Record</button>
+    <button type="button" class="secondary" data-check-mic>Check microphone</button>
+  </div>
+  <div class="mic-feedback">
+    <meter data-mic-level min="0" max="1" value="0" aria-label="Microphone input level"></meter>
+    <span class="help" data-mic-level-text>The level will move when sound reaches the microphone.</span>
+  </div>
+  <p class="muted" data-record-state role="status">Ready when you are</p>
+  <p data-record-notice class="notice" role="status" hidden></p>
+  <audio controls preload="none" data-audio-preview hidden></audio>
+  <button type="button" class="quiet" data-clear-audio hidden>Remove this recording</button>
+  <label class="file-alternative">Or choose an audio file <input type="file" name="audio" accept="audio/*"></label>
+  <p class="help">Listen before sharing. You can record again. Up to 90 seconds or a 15 MB file.</p>
+</div>
