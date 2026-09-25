@@ -17,7 +17,7 @@ if str(SRC_DIR) not in sys.path:
     else:
         sys.path.insert(0, str(SRC_DIR))
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key")
-DEBUG = True
+DEBUG = False
 ALLOWED_HOSTS: list[str] = ["*"]
 
 INSTALLED_APPS = [
