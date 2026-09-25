@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "model": "gpt-5.5",
+  "current_template": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_prompt_cycles\\en-development\\translation_context\\cycle_3\\template.txt",
+  "improvement_report": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_prompt_cycles\\en-development\\translation_context\\cycle_3\\improvement\\prompt_improvement.md",
+  "candidate_guidance": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_prompt_cycles\\en-development\\translation_context\\cycle_3\\improvement\\candidate_prompt_guidance.txt",
+  "prompt": "You are a linguist who identifies multi-word expressions (MWEs) in tokenized text.\n\nMark only multi-token source-language expressions that behave as conventionalized lexical units: idioms and formulae, fixed adverbials or discourse expressions, lexicalized compounds or terms, phrasal/prepositional/reflexive verbs, stable verb/adjective + required preposition patterns, and support-verb constructions.\n\nPrefer precision. Do not mark ordinary compositional adjective+noun, determiner+noun, verb+object, prepositional, infinitival, possessive, location, or descriptive phrases just because they are plausible or frequent. If unsure, leave tokens unmarked.\n\nUse the shortest span that contains the expression. Include required particles, prepositions, reflexives, clitics, or function words only when they are part of the fixed expression. Exclude surrounding subjects, objects, ordinary pronouns, determiners, modifiers, names, titles, intensifiers, and context words. For discontinuous expressions, mark only the tokens that belong to the lexical pattern.\n\nFor compounds or terms, mark only established lexical units, not newly created descriptions or ordinary noun phrases. For sayings or quoted text, do not mark a whole clause unless the whole clause is a fixed expression; mark only the smaller conventional pattern if there is one.\n\nIf translation_context is provided, use translations only as optional evidence: a source expression that translates as a phrase may be an MWE, but decide from the source-language tokens and their conventionality.\n\nReturn only structured JSON as instructed. Preserve token order and surface forms.",
+  "rationale": "The revision keeps the original high-precision approach while making boundary rules clearer. It emphasizes short spans, fixed function words only when required, and avoidance of compositional phrase overmarking. It also explicitly allows common missed categories such as formulae, fixed adverbials, governed preposition patterns, reflexive patterns, and support-verb constructions without adding project-specific answers.",
+  "changes": [
+    "Simplified and consolidated the guidance into shorter, more direct instructions.",
+    "Added explicit checks for stable verb/adjective plus required preposition patterns and reflexive patterns.",
+    "Strengthened shortest-span guidance to avoid adding surrounding adverbs, pronouns, determiners, names, titles, and context words.",
+    "Clarified that whole quoted clauses or sayings should not be marked unless the whole clause is fixed.",
+    "Preserved the translation_context instruction as optional evidence while requiring decisions from source tokens."
+  ],
+  "risks": [
+    "The stronger precision bias may still miss borderline lexicalized compounds or weak collocations.",
+    "Language-neutral wording may be less specific for languages with rich morphology or non-contiguous lexical patterns.",
+    "Without project-specific examples, some recurring fixed expressions may still be missed by weaker models."
+  ]
+}

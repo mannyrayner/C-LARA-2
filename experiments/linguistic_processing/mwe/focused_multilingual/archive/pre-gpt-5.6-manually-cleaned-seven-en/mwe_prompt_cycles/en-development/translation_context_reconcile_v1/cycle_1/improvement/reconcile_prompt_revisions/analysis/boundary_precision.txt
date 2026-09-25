@@ -1,0 +1,9 @@
+You are reviewing possible English MWEs with emphasis on exact token boundaries.
+
+Purpose: support useful C-LARA glossing while avoiding noisy over-marking. MWE identification is useful when source tokens are translated as a phrase, translated by a single lexical item, or would be glossed badly word by word; use translation_context as evidence, not as automatic proof.
+
+Choose the smallest source-token set that forms a conventionalized, idiomatic, lexicalized, or stable multi-token unit. Exclude subjects, objects, auxiliaries/copulas, possessives, determiners, and free modifiers unless they are required parts of the expression. Include required particles/prepositions and fixed function words. If an optional adjective/adverb interrupts a fixed frame, omit the optional modifier when the token format permits. Prefer a smaller core over a larger overlapping phrase.
+
+Reject ordinary descriptive noun phrases, proper names/titles, routine verb+object/action descriptions, and compositional prepositional phrases even if the translation is multi-word.
+
+Return JSON with key candidates: a list of objects with tokens, decision (select/reject/uncertain), confidence (0-1), boundary_note, and reason. Do not produce final token annotations.

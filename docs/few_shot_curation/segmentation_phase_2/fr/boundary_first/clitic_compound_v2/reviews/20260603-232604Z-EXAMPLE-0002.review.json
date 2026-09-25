@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "request_id": "20260603-232604Z",
+  "example_id": "EXAMPLE-0002",
+  "operation": "segmentation_phase_2",
+  "language": "fr",
+  "mechanism": "boundary_first",
+  "target_set": "clitic_compound_v2",
+  "reviewed_at": "2026-06-04T00:44:02.990470Z",
+  "review_model": "gpt-5",
+  "review_prompt_version": "fewshot-review-v5",
+  "template_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\review_templates\\template.json",
+  "candidate": {
+    "input": "L’ordinateur ne fonctionne pas.",
+    "boundary_marked": "L’¦ordinateur¦ ¦ne¦ ¦fonctionne¦ ¦pas¦.",
+    "boundary_marker": "¦",
+    "interpretation_notes": [
+      "Each boundary marker separates two proposed word-like or meaningful units.",
+      "Read a marked string such as Donne¦-¦le¦-¦moi as the proposed units Donne, -, le, -, moi.",
+      "Spaces, hyphens, apostrophes, and punctuation can be separate units; do not reject an example merely because these separators have been split out.",
+      "Deterministic validation has already checked that removing the boundary markers recreates the input exactly."
+    ],
+    "reference_examples": [
+      {
+        "input": "the boy's dog",
+        "boundary_marked": "the¦ ¦boy¦'s¦ ¦dog",
+        "judgement": "acceptable: possessive 's is a small meaningful piece for learners"
+      },
+      {
+        "input": "bubblegum",
+        "boundary_marked": "bubble¦gum",
+        "judgement": "acceptable when the compound parts are transparent enough to be useful"
+      },
+      {
+        "input": "barbecue",
+        "boundary_marked": "bar¦becue",
+        "judgement": "reject: this is a misleading false-compound split"
+      },
+      {
+        "input": "Donne-le-moi",
+        "boundary_marked": "Donne¦-¦le¦-¦moi",
+        "judgement": "usually acceptable here: verb, hyphens, and clitic pronouns are visible meaningful/separator units"
+      }
+    ],
+    "phenomenon": "clitic",
+    "rationale": "Illustrates contraction with 'L’' and how to maintain it as a single token."
+  },
+  "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0002.json",
+  "severity": "none",
+  "review": {
+    "decision": "accept",
+    "severity": "none",
+    "strongest_reason": "no_issue",
+    "explanation": "The split treats l’ as the elided definite article, and separates the negative markers ne and pas from the verb, all of which are learner-relevant clitic/functional pieces. Handling of the apostrophe with the article is acceptable under the guidance, and the remaining units are standard words/punctuation.",
+    "suggested_boundary_marked": "L’¦ordinateur¦ ¦ne¦ ¦fonctionne¦ ¦pas¦.",
+    "notes": [
+      "Makes the ne … pas negation visible as two units around the verb.",
+      "Elided article l’ shown as a reusable piece before a vowel-initial noun.",
+      "Keeping spaces/punctuation as separate units is allowed and not misleading here."
+    ]
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "input": "Qu'est-ce que c'est que ça ?",
+  "output": {
+    "surface": "Qu'est-ce que c'est que ça ?",
+    "tokens": [
+      {
+        "surface": "Qu'"
+      },
+      {
+        "surface": "est-ce"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "que"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "c'"
+      },
+      {
+        "surface": "est"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "que"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "ça"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "?"
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "compound",
+  "rationale": "Contains compound word 'Qu'est-ce' that skews typical token boundaries.",
+  "provenance": {
+    "example_id": "EXAMPLE-0047",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0047.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

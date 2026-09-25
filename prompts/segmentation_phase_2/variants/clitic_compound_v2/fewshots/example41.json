@@ -1,0 +1,50 @@
+{
+  "input": "Regarde ce qu'il a fait.",
+  "output": {
+    "surface": "Regarde ce qu'il a fait.",
+    "tokens": [
+      {
+        "surface": "Regarde"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "ce"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "qu'"
+      },
+      {
+        "surface": "il"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "a"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "fait"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic",
+  "rationale": "This example handles a clitic 'qu'' combined with a subject 'il', illustrating how to properly segment clitics preceding subject pronouns.",
+  "provenance": {
+    "example_id": "EXAMPLE-0043",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0043.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

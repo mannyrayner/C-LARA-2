@@ -1,0 +1,5 @@
+Additional conservative MWE guidance:
+- Identify only conventionalized, idiomatic, lexicalized, or stable multi-token lexical units.
+- Do not mark ordinary compositional phrases merely because their words occur together.
+- Prefer precision over recall: if an expression is doubtful, leave it unmarked.
+- Keep the original tokens unchanged and assign an MWE ID only to tokens in the accepted expression.

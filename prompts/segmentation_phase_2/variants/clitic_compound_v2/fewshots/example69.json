@@ -1,0 +1,47 @@
+{
+  "input": "Je voudrais acheter du pain-au-chocolat.",
+  "output": {
+    "surface": "Je voudrais acheter du pain-au-chocolat.",
+    "tokens": [
+      {
+        "surface": "Je"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "voudrais"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "acheter"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "du"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "pain-au-chocolat"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "compound",
+  "rationale": "Demonstrates the tokenization of a compound noun that contains hyphens, ensuring spaces and compounds are correctly processed.",
+  "provenance": {
+    "example_id": "EXAMPLE-0077",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0077.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

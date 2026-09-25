@@ -1,0 +1,47 @@
+{
+  "input": "Marie et Jean-Luc sont venus.",
+  "output": {
+    "surface": "Marie et Jean-Luc sont venus.",
+    "tokens": [
+      {
+        "surface": "Marie"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "et"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "Jean-Luc"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "sont"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "venus"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "compound",
+  "rationale": "Combines a compound name ('Jean-Luc') with a coordinated structure ('Marie et Jean-Luc'), evaluating adherence to default token boundaries in compounds and coordination.",
+  "provenance": {
+    "example_id": "EXAMPLE-0025",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0025.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "input": "Va-t'en d'ici !",
+  "output": {
+    "surface": "Va-t'en d'ici !",
+    "tokens": [
+      {
+        "surface": "Va"
+      },
+      {
+        "surface": "-"
+      },
+      {
+        "surface": "t'"
+      },
+      {
+        "surface": "en"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "d'"
+      },
+      {
+        "surface": "ici"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "!"
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic",
+  "rationale": "This imperative sentence uses a clitic ('t''), which requires careful segmentation at the clitic boundary.",
+  "provenance": {
+    "example_id": "EXAMPLE-0023",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0023.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

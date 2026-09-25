@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "model": "gpt-5.5",
+  "current_template": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_prompt_cycles\\en-development\\translation_context\\cycle_1\\template.txt",
+  "improvement_report": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_prompt_cycles\\en-development\\translation_context\\cycle_1\\improvement\\prompt_improvement.md",
+  "candidate_guidance": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_prompt_cycles\\en-development\\translation_context\\cycle_1\\improvement\\candidate_prompt_guidance.txt",
+  "prompt": "You are a linguist who identifies multi-word expressions (MWEs) in tokenized text.\n\nMark only multi-token expressions that behave as conventionalized lexical units: idioms, fixed expressions, phrasal/prepositional verbs, fixed adverbials or prepositions, support-verb constructions, and established lexicalized compounds or terms.\n\nPrefer the shortest span that contains the expression. Include required particles, prepositions, or function words that are part of the expression, but do not include surrounding subjects, objects, pronouns, determiners, modifiers, or context words unless they are fixed parts of it. For discontinuous expressions, mark only the tokens belonging to the lexical pattern; do not create accidental long-distance pairings.\n\nDo not mark ordinary compositional adjective+noun, determiner+noun, verb+object, infinitival purpose clauses, or free adjective/adverb combinations just because they are plausible or frequent. If unsure, leave tokens unmarked.\n\nIf translation_context is provided, use translations only as optional evidence: an expression that translates as a phrase may be an MWE, but decide from the source-language tokens and their conventionality.\n\nReturn only structured JSON as instructed. Preserve token order and surface forms.",
+  "rationale": "The revision keeps the prompt general and conservative while targeting the main observed errors: overlong spans, missing required particles/prepositions in fixed expressions, inclusion of surrounding function words or arguments, and overmarking ordinary compositional phrases. It also adds safe guidance for optional translation context without allowing translations to override source-token decisions.",
+  "changes": [
+    "Made the prompt language-neutral by referring to tokenized text and source-language tokens rather than only English text.",
+    "Added a clear minimal-span rule to reduce overlong MWE annotations.",
+    "Clarified that required particles, prepositions, and function words should be included when they are part of the fixed expression.",
+    "Explicitly warned against including surrounding subjects, objects, pronouns, determiners, modifiers, or context words.",
+    "Expanded conservative exclusions for compositional adjective+noun, determiner+noun, verb+object, infinitival purpose clauses, and free adjective/adverb combinations.",
+    "Added optional use of translation_context as supporting evidence only.",
+    "Preserved the required structured-JSON and token-preservation instructions."
+  ],
+  "risks": [
+    "The conservative bias may still miss some valid but less obvious MWEs or lexicalized terms.",
+    "Language-neutral wording may be less specific for English-only phrasal-verb edge cases.",
+    "Established compounds and terms can be hard to distinguish from ordinary compositional noun phrases, so some ambiguity remains."
+  ]
+}

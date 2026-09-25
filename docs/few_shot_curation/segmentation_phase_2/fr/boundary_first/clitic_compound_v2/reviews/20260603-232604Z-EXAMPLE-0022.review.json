@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "request_id": "20260603-232604Z",
+  "example_id": "EXAMPLE-0022",
+  "operation": "segmentation_phase_2",
+  "language": "fr",
+  "mechanism": "boundary_first",
+  "target_set": "clitic_compound_v2",
+  "reviewed_at": "2026-06-04T00:44:23.684859Z",
+  "review_model": "gpt-5",
+  "review_prompt_version": "fewshot-review-v5",
+  "template_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\review_templates\\template.json",
+  "candidate": {
+    "input": "aujourd'hui",
+    "boundary_marked": "aujourd'hui",
+    "boundary_marker": "¦",
+    "interpretation_notes": [
+      "Each boundary marker separates two proposed word-like or meaningful units.",
+      "Read a marked string such as Donne¦-¦le¦-¦moi as the proposed units Donne, -, le, -, moi.",
+      "Spaces, hyphens, apostrophes, and punctuation can be separate units; do not reject an example merely because these separators have been split out.",
+      "Deterministic validation has already checked that removing the boundary markers recreates the input exactly."
+    ],
+    "reference_examples": [
+      {
+        "input": "the boy's dog",
+        "boundary_marked": "the¦ ¦boy¦'s¦ ¦dog",
+        "judgement": "acceptable: possessive 's is a small meaningful piece for learners"
+      },
+      {
+        "input": "bubblegum",
+        "boundary_marked": "bubble¦gum",
+        "judgement": "acceptable when the compound parts are transparent enough to be useful"
+      },
+      {
+        "input": "barbecue",
+        "boundary_marked": "bar¦becue",
+        "judgement": "reject: this is a misleading false-compound split"
+      },
+      {
+        "input": "Donne-le-moi",
+        "boundary_marked": "Donne¦-¦le¦-¦moi",
+        "judgement": "usually acceptable here: verb, hyphens, and clitic pronouns are visible meaningful/separator units"
+      }
+    ],
+    "phenomenon": "compound",
+    "rationale": "This highlights the compound nature of 'aujourd'hui', which is formed from 'au jour d''hui'."
+  },
+  "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0022.json",
+  "severity": "none",
+  "review": {
+    "decision": "accept",
+    "severity": "none",
+    "strongest_reason": "no_issue",
+    "explanation": "aujourd'hui is a lexicalized adverb that normally stays as a single word; splitting at the apostrophe would be misleading. Keeping it intact is linguistically sound and aligns with the guidance.",
+    "suggested_boundary_marked": "aujourd'hui",
+    "notes": [
+      "Although etymologically from au jour d'hui, it is now a fixed form; the lack of internal boundaries is appropriate for learners."
+    ]
+  }
+}

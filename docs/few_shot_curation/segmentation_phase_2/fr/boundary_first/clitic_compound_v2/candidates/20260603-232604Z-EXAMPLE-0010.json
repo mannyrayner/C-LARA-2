@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "example_id": "EXAMPLE-0010",
+  "request_id": "20260603-232604Z",
+  "status": "validation_failed",
+  "operation": "segmentation_phase_2",
+  "language": "fr",
+  "mechanism": "boundary_first",
+  "target_set": "clitic_compound_v2",
+  "phenomena": [
+    "clitic",
+    "compound"
+  ],
+  "generated_at": "2026-06-03T23:26:04.980596Z",
+  "generator_model": "gpt-4o",
+  "generator_prompt_version": "fewshot-curation-v1",
+  "shard_index": 2,
+  "candidate": {
+    "input": "L’entraînement commence à 9h.",
+    "phenomenon": "compound",
+    "rationale": "Demonstrates a compound structure '9h' without separation, important for time expressions in the French language.",
+    "output": {
+      "surface": "L’entraînement commence à 9h.",
+      "tokens": [
+        {
+          "surface": "L’"
+        },
+        {
+          "surface": "entraînement"
+        },
+        {
+          "surface": "commence"
+        },
+        {
+          "surface": "à"
+        },
+        {
+          "surface": "9h"
+        },
+        {
+          "surface": "."
+        }
+      ],
+      "annotations": {}
+    }
+  },
+  "validation": {
+    "schema_pass": false,
+    "errors": [
+      "concatenated token surfaces must exactly match input"
+    ],
+    "token_count": 6,
+    "input_length": 29
+  }
+}

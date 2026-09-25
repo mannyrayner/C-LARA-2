@@ -1,0 +1,47 @@
+{
+  "input": "On y va chez Marie-Claire.",
+  "output": {
+    "surface": "On y va chez Marie-Claire.",
+    "tokens": [
+      {
+        "surface": "On"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "y"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "va"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "chez"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "Marie-Claire"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "compound",
+  "rationale": "This example includes a compound proper noun 'Marie-Claire', showing how to tokenize names with hyphens while maintaining spaces and punctuation.",
+  "provenance": {
+    "example_id": "EXAMPLE-0045",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0045.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

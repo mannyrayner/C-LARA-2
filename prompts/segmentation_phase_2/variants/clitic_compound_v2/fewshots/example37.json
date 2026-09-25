@@ -1,0 +1,41 @@
+{
+  "input": "Les frères Dupont arrivent.",
+  "output": {
+    "surface": "Les frères Dupont arrivent.",
+    "tokens": [
+      {
+        "surface": "Les"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "frères"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "Dupont"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "arrivent"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "compound",
+  "rationale": "Highlights the non-separation of a proper compound noun, useful in further emphasizing name preservation.",
+  "provenance": {
+    "example_id": "EXAMPLE-0039",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0039.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

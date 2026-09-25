@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "split": "development",
+  "outputs_jsonl": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_prompt_cycles\\en-development\\translation_context_reconcile_v1\\cycle_1\\run\\outputs.jsonl",
+  "record_count": 336,
+  "exact_match_count": 24,
+  "exact_match_rate": 0.07142857142857142,
+  "true_positive": 61,
+  "false_positive": 625,
+  "false_negative": 114,
+  "precision": 0.08892128279883382,
+  "recall": 0.3485714285714286,
+  "f1": 0.14169570267131243,
+  "project_ids": [
+    239,
+    245,
+    254,
+    255,
+    257,
+    261,
+    263
+  ],
+  "per_record_scores_jsonl": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_prompt_cycles\\en-development\\translation_context_reconcile_v1\\cycle_1\\score\\per_record_scores.jsonl"
+}

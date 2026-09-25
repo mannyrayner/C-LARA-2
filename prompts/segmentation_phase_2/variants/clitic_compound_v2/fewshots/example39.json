@@ -1,0 +1,44 @@
+{
+  "input": "Je l'ai vu hier.",
+  "output": {
+    "surface": "Je l'ai vu hier.",
+    "tokens": [
+      {
+        "surface": "Je"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "l'"
+      },
+      {
+        "surface": "ai"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "vu"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "hier"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic",
+  "rationale": "This example demonstrates the use of a single clitic 'l'' followed by a verb, along with proper handling of punctuation and spaces.",
+  "provenance": {
+    "example_id": "EXAMPLE-0041",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0041.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

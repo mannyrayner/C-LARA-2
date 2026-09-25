@@ -1,0 +1,56 @@
+{
+  "input": "Il n'y avait rien à dire.",
+  "output": {
+    "surface": "Il n'y avait rien à dire.",
+    "tokens": [
+      {
+        "surface": "Il"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "n'"
+      },
+      {
+        "surface": "y"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "avait"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "rien"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "à"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "dire"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic",
+  "rationale": "Demonstrates clitic contraction in 'n'y' and its effect on tokenization.",
+  "provenance": {
+    "example_id": "EXAMPLE-0046",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0046.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

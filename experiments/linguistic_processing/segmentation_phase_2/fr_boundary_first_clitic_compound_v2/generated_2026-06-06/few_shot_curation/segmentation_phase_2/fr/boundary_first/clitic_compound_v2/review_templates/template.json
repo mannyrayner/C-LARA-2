@@ -1,0 +1,29 @@
+{
+  "template_text": "Please review the following marked string for its appropriateness as a linguistic example and determine the strongest reason it should not be used as a few-shot example. Focus on whether the boundary markers '¦' correctly represent linguistically meaningful units beneficial for French learners. Ensure that the boundaries expose useful divisions, such as clitics and elisions, while keeping lexicalized forms intact. Pay special attention to the examples provided and the French-specific guidance below:\n\n- Do NOT assume clitics or elided forms should always stay with connected words.\n- Productive clitic/elision pieces (e.g., C¦'est, l'¦avait, j'¦ai, qu'¦il) must often stand alone.\n- Lexicalized apostrophe combinations (e.g., aujourd'hui, quelqu'un) should generally remain whole.\n- Contractions (e.g., au, aux) must not be split unless policy states otherwise.\n- Hyphenated compounds and imperatives with pronouns require judgement; learner-relevant splits may be justified.\n- Do not dismiss 'spaces', 'hyphens', 'apostrophes', and 'punctuation' as separate units if they clarify linguistic boundaries.\n\nReturn your decision as structured JSON:\n\n{candidate_json}",
+  "language_specific_risks": [
+    "Inappropriate separation of clitics or elisions can misguide learners about French language structure.",
+    "Incorrect handling of lexicalized forms could confuse learners about standard French orthography."
+  ],
+  "checklist": [
+    "Does the marked string expose smaller meaningful pieces useful to learners?",
+    "Are lexicalized apostrophe forms incorrectly divided?",
+    "Are any clitic/elision pieces meaningfully separated as needed?",
+    "Are hyphenated compounds and imperative clitic chains assessed for learner relevance?"
+  ],
+  "severity_definitions": {
+    "fatal": "The example places boundary markers incorrectly in ways that break core linguistic principles, like separating lexicalized forms or failing to separate essential clitic units.",
+    "serious": "Several inappropriate boundary markers could significantly disrupt learner understanding.",
+    "minor": "A few questionable boundaries exist, but the example aligns with core learning goals.",
+    "none": "All boundary markers effectively delineate meaningful units in line with guidance."
+  },
+  "reconciliation_rationale": "This template synthesizes key elements from all drafts, providing a comprehensive review process that balances linguistic correctness with pedagogical value. It maintains focus on the need for meaningful linguistic segmentation while adhering to French-specific guidance about clitics, lexicalized forms, and compounds, ensuring that learners gain the most benefit from the examples.",
+  "schema_version": 1,
+  "operation": "segmentation_phase_2",
+  "language": "fr",
+  "mechanism": "boundary_first",
+  "target_set": "clitic_compound_v2",
+  "model": "gpt-4o",
+  "prompt_version": "fewshot-review-v5",
+  "created_at": "2026-06-05T15:31:14.976770Z",
+  "draft_count": 3
+}

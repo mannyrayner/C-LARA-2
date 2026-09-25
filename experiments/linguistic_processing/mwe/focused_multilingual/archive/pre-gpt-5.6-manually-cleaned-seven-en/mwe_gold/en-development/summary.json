@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "project_ids": [
+    239,
+    245,
+    254,
+    255,
+    257,
+    261,
+    263
+  ],
+  "language": "en",
+  "split": "development",
+  "output_jsonl": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_gold\\en-development\\selected_segments.jsonl",
+  "review_markdown": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_gold\\en-development\\review.md",
+  "record_count": 336,
+  "records_with_gold_mwes": 142,
+  "gold_mwe_count": 176,
+  "projects": [
+    {
+      "project_id": 239,
+      "project_title": "Madame Bovary retold",
+      "latest_mwe_run": "mwe_annotation_refresh_v1_project_239",
+      "latest_mwe_path": "C:\\cygwin64\\home\\github\\c-lara-2\\platform_server\\media\\users\\1\\projects\\project_239\\runs\\mwe_annotation_refresh_v1_project_239\\stages\\mwe.json",
+      "record_count": 28,
+      "records_with_gold_mwes": 19,
+      "gold_mwe_count": 22
+    },
+    {
+      "project_id": 245,
+      "project_title": "First Responder Felix Loves Correct Use of Definite, Indefinite and Null Articles",
+      "latest_mwe_run": "mwe_annotation_refresh_v1_project_245",
+      "latest_mwe_path": "C:\\cygwin64\\home\\github\\c-lara-2\\platform_server\\media\\users\\1\\projects\\project_245\\runs\\mwe_annotation_refresh_v1_project_245\\stages\\mwe.json",
+      "record_count": 57,
+      "records_with_gold_mwes": 21,
+      "gold_mwe_count": 22
+    },
+    {
+      "project_id": 254,
+      "project_title": "The Voice of Connection: How an AI Brought a Community Together",
+      "latest_mwe_run": "mwe_annotation_refresh_v1_project_254",
+      "latest_mwe_path": "C:\\cygwin64\\home\\github\\c-lara-2\\platform_server\\media\\users\\1\\projects\\project_254\\runs\\mwe_annotation_refresh_v1_project_254\\stages\\mwe.json",
+      "record_count": 30,
+      "records_with_gold_mwes": 11,
+      "gold_mwe_count": 13
+    },
+    {
+      "project_id": 255,
+      "project_title": "Cosmo in Orbit: The ISS's Unexpected Feline Visitor",
+      "latest_mwe_run": "mwe_annotation_refresh_v1_project_255",
+      "latest_mwe_path": "C:\\cygwin64\\home\\github\\c-lara-2\\platform_server\\media\\users\\1\\projects\\project_255\\runs\\mwe_annotation_refresh_v1_project_255\\stages\\mwe.json",
+      "record_count": 28,
+      "records_with_gold_mwes": 16,
+      "gold_mwe_count": 19
+    },
+    {
+      "project_id": 257,
+      "project_title": "Dr. Pussy: The Feline Mastermind of Willow Creek",
+      "latest_mwe_run": "mwe_annotation_refresh_v1_project_257",
+      "latest_mwe_path": "C:\\cygwin64\\home\\github\\c-lara-2\\platform_server\\media\\users\\1\\projects\\project_257\\runs\\mwe_annotation_refresh_v1_project_257\\stages\\mwe.json",
+      "record_count": 25,
+      "records_with_gold_mwes": 12,
+      "gold_mwe_count": 16
+    },
+    {
+      "project_id": 261,
+      "project_title": "Robot Climber",
+      "latest_mwe_run": "mwe_annotation_refresh_v1_project_261",
+      "latest_mwe_path": "C:\\cygwin64\\home\\github\\c-lara-2\\platform_server\\media\\users\\1\\projects\\project_261\\runs\\mwe_annotation_refresh_v1_project_261\\stages\\mwe.json",
+      "record_count": 38,
+      "records_with_gold_mwes": 10,
+      "gold_mwe_count": 10
+    },
+    {
+      "project_id": 263,
+      "project_title": "Understanding Electricity: From Basics to Future Innovations",
+      "latest_mwe_run": "mwe_annotation_refresh_v1_project_263",
+      "latest_mwe_path": "C:\\cygwin64\\home\\github\\c-lara-2\\platform_server\\media\\users\\1\\projects\\project_263\\runs\\mwe_annotation_refresh_v1_project_263\\stages\\mwe.json",
+      "record_count": 130,
+      "records_with_gold_mwes": 53,
+      "gold_mwe_count": 74
+    }
+  ]
+}

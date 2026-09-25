@@ -1,0 +1,56 @@
+{
+  "input": "L'encre du stylo bleu est vide.",
+  "output": {
+    "surface": "L'encre du stylo bleu est vide.",
+    "tokens": [
+      {
+        "surface": "L'"
+      },
+      {
+        "surface": "encre"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "du"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "stylo"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "bleu"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "est"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "vide"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "compound",
+  "rationale": "The example uses 'L'' to show the elision before a noun and includes 'stylo bleu', a compound noun phrase.",
+  "provenance": {
+    "example_id": "EXAMPLE-0062",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0062.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

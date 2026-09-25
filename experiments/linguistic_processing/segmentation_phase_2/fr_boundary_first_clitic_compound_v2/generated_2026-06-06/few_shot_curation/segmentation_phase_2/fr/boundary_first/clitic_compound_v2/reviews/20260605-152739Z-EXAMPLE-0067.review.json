@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "request_id": "20260605-152739Z",
+  "example_id": "EXAMPLE-0067",
+  "operation": "segmentation_phase_2",
+  "language": "fr",
+  "mechanism": "boundary_first",
+  "target_set": "clitic_compound_v2",
+  "reviewed_at": "2026-06-05T23:45:40.012148Z",
+  "review_model": "gpt-4o",
+  "review_prompt_version": "fewshot-review-v5",
+  "template_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\review_templates\\template.json",
+  "candidate": {
+    "input": "château-fort",
+    "boundary_marked": "château¦-¦fort",
+    "boundary_marker": "¦",
+    "interpretation_notes": [
+      "Each boundary marker separates two proposed word-like or meaningful units.",
+      "Read a marked string such as Donne¦-¦le¦-¦moi as the proposed units Donne, -, le, -, moi.",
+      "Spaces, hyphens, apostrophes, and punctuation can be separate units; do not reject an example merely because these separators have been split out.",
+      "Deterministic validation has already checked that removing the boundary markers recreates the input exactly."
+    ],
+    "reference_examples": [
+      {
+        "input": "the boy's dog",
+        "boundary_marked": "the¦ ¦boy¦'s¦ ¦dog",
+        "judgement": "acceptable: possessive 's is a small meaningful piece for learners"
+      },
+      {
+        "input": "bubblegum",
+        "boundary_marked": "bubble¦gum",
+        "judgement": "acceptable when the compound parts are transparent enough to be useful"
+      },
+      {
+        "input": "barbecue",
+        "boundary_marked": "bar¦becue",
+        "judgement": "reject: this is a misleading false-compound split"
+      },
+      {
+        "input": "Donne-le-moi",
+        "boundary_marked": "Donne¦-¦le¦-¦moi",
+        "judgement": "usually acceptable here: verb, hyphens, and clitic pronouns are visible meaningful/separator units"
+      },
+      {
+        "input": "Je l'ai fait.",
+        "boundary_marked": "Je¦ ¦l'¦ai¦ ¦fait¦.",
+        "judgement": "acceptable: l' and ai can be separate learner-useful clitic/auxiliary units; do not reject because l'ai is a normal written contraction"
+      },
+      {
+        "input": "L'ami arrive.",
+        "boundary_marked": "L'¦ami¦ ¦arrive¦.",
+        "judgement": "acceptable: separating an elided article from the noun can expose a meaningful French unit"
+      }
+    ],
+    "phenomenon": "compound",
+    "rationale": "The hyphenated compound word 'château-fort' is a useful example to illustrate how compounds are formed and segmented in French."
+  },
+  "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0067.json",
+  "severity": "fatal",
+  "review": {
+    "decision": "reject",
+    "severity": "fatal",
+    "strongest_reason": "false compound split",
+    "explanation": "The boundary in 'château¦-¦fort' misleadingly suggests these are separate meaningful units when 'château-fort' is an established compound noun in French, a single lexical unit, meaning 'castle'. The boundary markers here imply separate semantic components where there are none, making it a false compound split.",
+    "suggested_boundary_marked": "château-fort",
+    "notes": [
+      "Château-fort is a lexicalized compound and should remain whole to convey its meaning as a single conceptual entity."
+    ]
+  }
+}

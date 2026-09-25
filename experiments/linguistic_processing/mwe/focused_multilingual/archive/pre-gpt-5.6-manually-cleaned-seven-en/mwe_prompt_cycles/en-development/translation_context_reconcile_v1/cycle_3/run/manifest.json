@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "input_records_jsonl": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_gold\\en-development\\selected_segments.jsonl",
+  "run_label": "run",
+  "record_count": 336,
+  "resumed": false,
+  "existing_output_count": 0,
+  "project_ids": [
+    239,
+    245,
+    254,
+    255,
+    257,
+    261,
+    263
+  ],
+  "outputs_jsonl": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_prompt_cycles\\en-development\\translation_context_reconcile_v1\\cycle_3\\run\\outputs.jsonl",
+  "progress_jsonl": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_prompt_cycles\\en-development\\translation_context_reconcile_v1\\cycle_3\\run\\progress.jsonl",
+  "analysis_templates": [
+    "boundary_precision",
+    "source_conservative",
+    "translation_glossing"
+  ],
+  "reconcile_template": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_prompt_cycles\\en-development\\translation_context_reconcile_v1\\cycle_2\\improvement\\reconcile_prompt_revisions\\reconcile.txt",
+  "max_record_attempts": 3
+}

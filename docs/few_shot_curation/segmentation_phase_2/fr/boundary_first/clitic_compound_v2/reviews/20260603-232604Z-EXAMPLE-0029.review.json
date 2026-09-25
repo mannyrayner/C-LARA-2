@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "request_id": "20260603-232604Z",
+  "example_id": "EXAMPLE-0029",
+  "operation": "segmentation_phase_2",
+  "language": "fr",
+  "mechanism": "boundary_first",
+  "target_set": "clitic_compound_v2",
+  "reviewed_at": "2026-06-04T00:44:45.023323Z",
+  "review_model": "gpt-5",
+  "review_prompt_version": "fewshot-review-v5",
+  "template_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\review_templates\\template.json",
+  "candidate": {
+    "input": "Champs-Élysées",
+    "boundary_marked": "Champs¦-¦Élysées",
+    "boundary_marker": "¦",
+    "interpretation_notes": [
+      "Each boundary marker separates two proposed word-like or meaningful units.",
+      "Read a marked string such as Donne¦-¦le¦-¦moi as the proposed units Donne, -, le, -, moi.",
+      "Spaces, hyphens, apostrophes, and punctuation can be separate units; do not reject an example merely because these separators have been split out.",
+      "Deterministic validation has already checked that removing the boundary markers recreates the input exactly."
+    ],
+    "reference_examples": [
+      {
+        "input": "the boy's dog",
+        "boundary_marked": "the¦ ¦boy¦'s¦ ¦dog",
+        "judgement": "acceptable: possessive 's is a small meaningful piece for learners"
+      },
+      {
+        "input": "bubblegum",
+        "boundary_marked": "bubble¦gum",
+        "judgement": "acceptable when the compound parts are transparent enough to be useful"
+      },
+      {
+        "input": "barbecue",
+        "boundary_marked": "bar¦becue",
+        "judgement": "reject: this is a misleading false-compound split"
+      },
+      {
+        "input": "Donne-le-moi",
+        "boundary_marked": "Donne¦-¦le¦-¦moi",
+        "judgement": "usually acceptable here: verb, hyphens, and clitic pronouns are visible meaningful/separator units"
+      }
+    ],
+    "phenomenon": "compound",
+    "rationale": "A proper noun compound word showing that named entities need careful segmentation despite hyphenation."
+  },
+  "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0029.json",
+  "severity": "serious",
+  "review": {
+    "decision": "reject",
+    "severity": "serious",
+    "strongest_reason": "Unhelpful split of fixed proper name",
+    "explanation": "Champs-Élysées is a conventional proper noun. Splitting it as Champs, -, Élysées implies productive, recombinable parts, but especially \"Élysées\" is not a free, learner-reusable element. Per the guidance on named entities, keep the conventional form intact unless a clear pedagogical gain exists; here the hyphen split adds no value.",
+    "suggested_boundary_marked": "Champs-Élysées",
+    "notes": [
+      "For demonstrating transparent hyphenated compounds, prefer items like porte¦-¦monnaie or arc¦-¦en¦-¦ciel.",
+      "If contextually included (les Champs-Élysées), the article could be a separate unit, but the name itself should remain intact."
+    ]
+  }
+}

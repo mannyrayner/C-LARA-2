@@ -1,0 +1,38 @@
+{
+  "input": "Je m'appelle Jean-Michel.",
+  "output": {
+    "surface": "Je m'appelle Jean-Michel.",
+    "tokens": [
+      {
+        "surface": "Je"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "m'"
+      },
+      {
+        "surface": "appelle"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "Jean-Michel"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic, compound",
+  "rationale": "Examines clitic 'm'' with the compound name 'Jean-Michel'.",
+  "provenance": {
+    "example_id": "EXAMPLE-0034",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0034.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

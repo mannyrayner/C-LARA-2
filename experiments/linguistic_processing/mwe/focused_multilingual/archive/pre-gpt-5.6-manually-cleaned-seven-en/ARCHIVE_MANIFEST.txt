@@ -1,0 +1,4 @@
+archive_name=pre-gpt-5.6-manually-cleaned-seven-en
+archived_at_utc=2026-08-05T07:41:56Z
+replacement_series=gpt-5.6-prompt-learning-v1
+model=gpt-5.6

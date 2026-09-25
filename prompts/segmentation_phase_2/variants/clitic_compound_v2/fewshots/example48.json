@@ -1,0 +1,38 @@
+{
+  "input": "L'hôtel est fermé.",
+  "output": {
+    "surface": "L'hôtel est fermé.",
+    "tokens": [
+      {
+        "surface": "L'"
+      },
+      {
+        "surface": "hôtel"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "est"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "fermé"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic",
+  "rationale": "Shows use of 'L'' as a clitic attached to a noun beginning with a vowel, needing careful segmentation.",
+  "provenance": {
+    "example_id": "EXAMPLE-0054",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0054.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

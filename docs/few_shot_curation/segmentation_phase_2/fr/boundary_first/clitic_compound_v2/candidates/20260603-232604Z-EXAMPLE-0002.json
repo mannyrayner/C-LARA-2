@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "example_id": "EXAMPLE-0002",
+  "request_id": "20260603-232604Z",
+  "status": "schema_validated",
+  "operation": "segmentation_phase_2",
+  "language": "fr",
+  "mechanism": "boundary_first",
+  "target_set": "clitic_compound_v2",
+  "phenomena": [
+    "clitic",
+    "compound"
+  ],
+  "generated_at": "2026-06-03T23:26:04.980596Z",
+  "generator_model": "gpt-4o",
+  "generator_prompt_version": "fewshot-curation-v1",
+  "shard_index": 1,
+  "candidate": {
+    "input": "L’ordinateur ne fonctionne pas.",
+    "phenomenon": "clitic",
+    "rationale": "Illustrates contraction with 'L’' and how to maintain it as a single token.",
+    "output": {
+      "surface": "L’ordinateur ne fonctionne pas.",
+      "tokens": [
+        {
+          "surface": "L’"
+        },
+        {
+          "surface": "ordinateur"
+        },
+        {
+          "surface": " "
+        },
+        {
+          "surface": "ne"
+        },
+        {
+          "surface": " "
+        },
+        {
+          "surface": "fonctionne"
+        },
+        {
+          "surface": " "
+        },
+        {
+          "surface": "pas"
+        },
+        {
+          "surface": "."
+        }
+      ],
+      "annotations": {}
+    }
+  },
+  "validation": {
+    "schema_pass": true,
+    "errors": [],
+    "token_count": 9,
+    "input_length": 31
+  }
+}

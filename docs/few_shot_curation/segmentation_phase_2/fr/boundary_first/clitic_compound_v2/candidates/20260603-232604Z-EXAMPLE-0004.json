@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "example_id": "EXAMPLE-0004",
+  "request_id": "20260603-232604Z",
+  "status": "schema_validated",
+  "operation": "segmentation_phase_2",
+  "language": "fr",
+  "mechanism": "boundary_first",
+  "target_set": "clitic_compound_v2",
+  "phenomena": [
+    "clitic",
+    "compound"
+  ],
+  "generated_at": "2026-06-03T23:26:04.980596Z",
+  "generator_model": "gpt-4o",
+  "generator_prompt_version": "fewshot-curation-v1",
+  "shard_index": 1,
+  "candidate": {
+    "input": "Va-t'en immédiatement!",
+    "phenomenon": "clitic",
+    "rationale": "Focuses on imperative with clitic pronouns and their ordering.",
+    "output": {
+      "surface": "Va-t'en immédiatement!",
+      "tokens": [
+        {
+          "surface": "Va"
+        },
+        {
+          "surface": "-"
+        },
+        {
+          "surface": "t'"
+        },
+        {
+          "surface": "en"
+        },
+        {
+          "surface": " "
+        },
+        {
+          "surface": "immédiatement"
+        },
+        {
+          "surface": "!"
+        }
+      ],
+      "annotations": {}
+    }
+  },
+  "validation": {
+    "schema_pass": true,
+    "errors": [],
+    "token_count": 7,
+    "input_length": 22
+  }
+}

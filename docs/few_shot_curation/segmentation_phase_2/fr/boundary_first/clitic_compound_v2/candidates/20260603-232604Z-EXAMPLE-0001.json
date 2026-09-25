@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "example_id": "EXAMPLE-0001",
+  "request_id": "20260603-232604Z",
+  "status": "schema_validated",
+  "operation": "segmentation_phase_2",
+  "language": "fr",
+  "mechanism": "boundary_first",
+  "target_set": "clitic_compound_v2",
+  "phenomena": [
+    "clitic",
+    "compound"
+  ],
+  "generated_at": "2026-06-03T23:26:04.980596Z",
+  "generator_model": "gpt-4o",
+  "generator_prompt_version": "fewshot-curation-v1",
+  "shard_index": 1,
+  "candidate": {
+    "input": "Je t’aime bien.",
+    "phenomenon": "clitic",
+    "rationale": "Demonstrates how clitics 't' attach to verbs and how to segment them.",
+    "output": {
+      "surface": "Je t’aime bien.",
+      "tokens": [
+        {
+          "surface": "Je"
+        },
+        {
+          "surface": " "
+        },
+        {
+          "surface": "t’"
+        },
+        {
+          "surface": "aime"
+        },
+        {
+          "surface": " "
+        },
+        {
+          "surface": "bien"
+        },
+        {
+          "surface": "."
+        }
+      ],
+      "annotations": {}
+    }
+  },
+  "validation": {
+    "schema_pass": true,
+    "errors": [],
+    "token_count": 7,
+    "input_length": 15
+  }
+}

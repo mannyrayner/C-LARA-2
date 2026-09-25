@@ -1,0 +1,44 @@
+{
+  "input": "Il s'est levé tôt.",
+  "output": {
+    "surface": "Il s'est levé tôt.",
+    "tokens": [
+      {
+        "surface": "Il"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "s'"
+      },
+      {
+        "surface": "est"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "levé"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "tôt"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic",
+  "rationale": "Demonstrates the use of a reflexive clitic 's'' in a pronominal verb, showing segmentation around contractions.",
+  "provenance": {
+    "example_id": "EXAMPLE-0016",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0016.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

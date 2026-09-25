@@ -1,0 +1,50 @@
+{
+  "input": "L'étudiant a fait ses devoirs.",
+  "output": {
+    "surface": "L'étudiant a fait ses devoirs.",
+    "tokens": [
+      {
+        "surface": "L'"
+      },
+      {
+        "surface": "étudiant"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "a"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "fait"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "ses"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "devoirs"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic",
+  "rationale": "Features an example of 'L'' showing a contraction with a vowel-starting noun 'étudiant'.",
+  "provenance": {
+    "example_id": "EXAMPLE-0064",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0064.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

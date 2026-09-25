@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "request_id": "20260603-232604Z",
+  "example_id": "EXAMPLE-0026",
+  "operation": "segmentation_phase_2",
+  "language": "fr",
+  "mechanism": "boundary_first",
+  "target_set": "clitic_compound_v2",
+  "reviewed_at": "2026-06-04T00:44:32.777009Z",
+  "review_model": "gpt-5",
+  "review_prompt_version": "fewshot-review-v5",
+  "template_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\review_templates\\template.json",
+  "candidate": {
+    "input": "l'avocat",
+    "boundary_marked": "l'¦avocat",
+    "boundary_marker": "¦",
+    "interpretation_notes": [
+      "Each boundary marker separates two proposed word-like or meaningful units.",
+      "Read a marked string such as Donne¦-¦le¦-¦moi as the proposed units Donne, -, le, -, moi.",
+      "Spaces, hyphens, apostrophes, and punctuation can be separate units; do not reject an example merely because these separators have been split out.",
+      "Deterministic validation has already checked that removing the boundary markers recreates the input exactly."
+    ],
+    "reference_examples": [
+      {
+        "input": "the boy's dog",
+        "boundary_marked": "the¦ ¦boy¦'s¦ ¦dog",
+        "judgement": "acceptable: possessive 's is a small meaningful piece for learners"
+      },
+      {
+        "input": "bubblegum",
+        "boundary_marked": "bubble¦gum",
+        "judgement": "acceptable when the compound parts are transparent enough to be useful"
+      },
+      {
+        "input": "barbecue",
+        "boundary_marked": "bar¦becue",
+        "judgement": "reject: this is a misleading false-compound split"
+      },
+      {
+        "input": "Donne-le-moi",
+        "boundary_marked": "Donne¦-¦le¦-¦moi",
+        "judgement": "usually acceptable here: verb, hyphens, and clitic pronouns are visible meaningful/separator units"
+      }
+    ],
+    "phenomenon": "clitic",
+    "rationale": "This example demonstrates the segmentation of a clitic article with a noun, which is common in French."
+  },
+  "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0026.json",
+  "severity": "none",
+  "review": {
+    "decision": "accept",
+    "severity": "none",
+    "strongest_reason": "no_issue",
+    "explanation": "The split l'¦avocat cleanly shows the elided definite article l' before a vowel-initial noun. This aligns with the guidance (e.g., l'¦avait) that elided clitic-like pieces can be separated and is pedagogically useful for learners to recognize the article.",
+    "suggested_boundary_marked": "l'¦avocat",
+    "notes": [
+      "Attaching the apostrophe to l' is consistent with common teaching of elision.",
+      "Alternative treatments of the apostrophe are possible, but not required here."
+    ]
+  }
+}

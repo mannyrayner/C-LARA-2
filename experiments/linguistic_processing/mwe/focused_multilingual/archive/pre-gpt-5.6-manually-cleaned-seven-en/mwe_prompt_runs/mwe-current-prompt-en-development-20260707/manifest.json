@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "input_records_jsonl": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_gold\\en-development\\selected_segments.jsonl",
+  "run_label": "mwe-current-prompt-en-development-20260707",
+  "record_count": 336,
+  "project_ids": [
+    239,
+    245,
+    254,
+    255,
+    257,
+    261,
+    263
+  ],
+  "outputs_jsonl": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_prompt_runs\\mwe-current-prompt-en-development-20260707\\outputs.jsonl",
+  "progress_jsonl": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_prompt_runs\\mwe-current-prompt-en-development-20260707\\progress.jsonl",
+  "template_file": null
+}

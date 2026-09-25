@@ -1,0 +1,44 @@
+{
+  "input": "Je n'en peux plus.",
+  "output": {
+    "surface": "Je n'en peux plus.",
+    "tokens": [
+      {
+        "surface": "Je"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "n'"
+      },
+      {
+        "surface": "en"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "peux"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "plus"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic",
+  "rationale": "Illustrates contracted negation and indirect object pronoun ('n'en'), with attention to preserving spaces and punctuation.",
+  "provenance": {
+    "example_id": "EXAMPLE-0015",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0015.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

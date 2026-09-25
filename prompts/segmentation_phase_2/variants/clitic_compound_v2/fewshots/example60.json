@@ -1,0 +1,35 @@
+{
+  "input": "L'oiseau s'envole!",
+  "output": {
+    "surface": "L'oiseau s'envole!",
+    "tokens": [
+      {
+        "surface": "L'"
+      },
+      {
+        "surface": "oiseau"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "s'"
+      },
+      {
+        "surface": "envole"
+      },
+      {
+        "surface": "!"
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic_boundary",
+  "rationale": "Illustrates the contractions 'l'' and 's'' showing clitic usage in French.",
+  "provenance": {
+    "example_id": "EXAMPLE-0068",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0068.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

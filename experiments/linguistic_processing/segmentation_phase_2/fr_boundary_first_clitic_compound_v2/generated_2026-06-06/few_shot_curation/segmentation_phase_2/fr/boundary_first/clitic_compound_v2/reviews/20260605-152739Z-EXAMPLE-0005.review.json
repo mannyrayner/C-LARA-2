@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "request_id": "20260605-152739Z",
+  "example_id": "EXAMPLE-0005",
+  "operation": "segmentation_phase_2",
+  "language": "fr",
+  "mechanism": "boundary_first",
+  "target_set": "clitic_compound_v2",
+  "reviewed_at": "2026-06-05T23:45:34.047459Z",
+  "review_model": "gpt-4o",
+  "review_prompt_version": "fewshot-review-v5",
+  "template_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\review_templates\\template.json",
+  "candidate": {
+    "input": "C'est-à-dire.",
+    "boundary_marked": "C'¦est-à-dire¦.",
+    "boundary_marker": "¦",
+    "interpretation_notes": [
+      "Each boundary marker separates two proposed word-like or meaningful units.",
+      "Read a marked string such as Donne¦-¦le¦-¦moi as the proposed units Donne, -, le, -, moi.",
+      "Spaces, hyphens, apostrophes, and punctuation can be separate units; do not reject an example merely because these separators have been split out.",
+      "Deterministic validation has already checked that removing the boundary markers recreates the input exactly."
+    ],
+    "reference_examples": [
+      {
+        "input": "the boy's dog",
+        "boundary_marked": "the¦ ¦boy¦'s¦ ¦dog",
+        "judgement": "acceptable: possessive 's is a small meaningful piece for learners"
+      },
+      {
+        "input": "bubblegum",
+        "boundary_marked": "bubble¦gum",
+        "judgement": "acceptable when the compound parts are transparent enough to be useful"
+      },
+      {
+        "input": "barbecue",
+        "boundary_marked": "bar¦becue",
+        "judgement": "reject: this is a misleading false-compound split"
+      },
+      {
+        "input": "Donne-le-moi",
+        "boundary_marked": "Donne¦-¦le¦-¦moi",
+        "judgement": "usually acceptable here: verb, hyphens, and clitic pronouns are visible meaningful/separator units"
+      },
+      {
+        "input": "Je l'ai fait.",
+        "boundary_marked": "Je¦ ¦l'¦ai¦ ¦fait¦.",
+        "judgement": "acceptable: l' and ai can be separate learner-useful clitic/auxiliary units; do not reject because l'ai is a normal written contraction"
+      },
+      {
+        "input": "L'ami arrive.",
+        "boundary_marked": "L'¦ami¦ ¦arrive¦.",
+        "judgement": "acceptable: separating an elided article from the noun can expose a meaningful French unit"
+      }
+    ],
+    "phenomenon": "compound",
+    "rationale": "This fixed expression shows how compounding with hyphens can alter typical token boundaries."
+  },
+  "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0005.json",
+  "severity": "serious",
+  "review": {
+    "decision": "reject",
+    "severity": "serious",
+    "strongest_reason": "false compound split",
+    "explanation": "The boundary split 'est-à' incorrectly divides the fixed expression 'c'est-à-dire', which is a lexicalized phrase where splitting across 'est-à' does not result in meaningful standalone units for learners. This can mislead learners by suggesting a false breakdown of a compound part.",
+    "suggested_boundary_marked": "C'est-à-dire¦.",
+    "notes": [
+      "'C'est-à-dire' is a set phrase and should be kept intact to be linguistically useful and accurate for learners."
+    ]
+  }
+}

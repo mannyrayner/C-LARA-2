@@ -1,0 +1,47 @@
+{
+  "input": "Il m'appelle à l'aube.",
+  "output": {
+    "surface": "Il m'appelle à l'aube.",
+    "tokens": [
+      {
+        "surface": "Il"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "m'"
+      },
+      {
+        "surface": "appelle"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "à"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "l'"
+      },
+      {
+        "surface": "aube"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic",
+  "rationale": "This example captures the clitic 'm'' and the contraction 'l'' in a real-world usage context.",
+  "provenance": {
+    "example_id": "EXAMPLE-0001",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0001.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

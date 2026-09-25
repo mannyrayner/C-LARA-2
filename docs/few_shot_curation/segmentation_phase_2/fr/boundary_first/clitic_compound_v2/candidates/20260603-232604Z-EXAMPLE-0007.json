@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "example_id": "EXAMPLE-0007",
+  "request_id": "20260603-232604Z",
+  "status": "validation_failed",
+  "operation": "segmentation_phase_2",
+  "language": "fr",
+  "mechanism": "boundary_first",
+  "target_set": "clitic_compound_v2",
+  "phenomena": [
+    "clitic",
+    "compound"
+  ],
+  "generated_at": "2026-06-03T23:26:04.980596Z",
+  "generator_model": "gpt-4o",
+  "generator_prompt_version": "fewshot-curation-v1",
+  "shard_index": 2,
+  "candidate": {
+    "input": "Il m’apporte des oranges.",
+    "phenomenon": "clitic",
+    "rationale": "Shows the usage of the clitic 'm'' as a pronoun attached to the verb, crucial for understanding object pronoun attachment in French sentences.",
+    "output": {
+      "surface": "Il m’apporte des oranges.",
+      "tokens": [
+        {
+          "surface": "Il"
+        },
+        {
+          "surface": "m’"
+        },
+        {
+          "surface": "apporte"
+        },
+        {
+          "surface": "des"
+        },
+        {
+          "surface": "oranges"
+        },
+        {
+          "surface": "."
+        }
+      ],
+      "annotations": {}
+    }
+  },
+  "validation": {
+    "schema_pass": false,
+    "errors": [
+      "concatenated token surfaces must exactly match input"
+    ],
+    "token_count": 6,
+    "input_length": 25
+  }
+}

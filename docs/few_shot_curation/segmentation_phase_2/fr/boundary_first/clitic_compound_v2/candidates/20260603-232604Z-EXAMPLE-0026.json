@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "example_id": "EXAMPLE-0026",
+  "request_id": "20260603-232604Z",
+  "status": "schema_validated",
+  "operation": "segmentation_phase_2",
+  "language": "fr",
+  "mechanism": "boundary_first",
+  "target_set": "clitic_compound_v2",
+  "phenomena": [
+    "clitic",
+    "compound"
+  ],
+  "generated_at": "2026-06-03T23:26:04.980596Z",
+  "generator_model": "gpt-4o",
+  "generator_prompt_version": "fewshot-curation-v1",
+  "shard_index": 6,
+  "candidate": {
+    "input": "l'avocat",
+    "phenomenon": "clitic",
+    "rationale": "This example demonstrates the segmentation of a clitic article with a noun, which is common in French.",
+    "output": {
+      "surface": "l'avocat",
+      "tokens": [
+        {
+          "surface": "l'"
+        },
+        {
+          "surface": "avocat"
+        }
+      ],
+      "annotations": {}
+    }
+  },
+  "validation": {
+    "schema_pass": true,
+    "errors": [],
+    "token_count": 2,
+    "input_length": 8
+  }
+}

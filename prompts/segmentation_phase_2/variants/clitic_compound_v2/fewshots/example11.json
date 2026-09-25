@@ -1,0 +1,44 @@
+{
+  "input": "Je t'ai dit non.",
+  "output": {
+    "surface": "Je t'ai dit non.",
+    "tokens": [
+      {
+        "surface": "Je"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "t'"
+      },
+      {
+        "surface": "ai"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "dit"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "non"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic",
+  "rationale": "This example includes a clitic with an apostrophe, showcasing the segmentation of a verb (t'ai) plus an extra word with punctuation.",
+  "provenance": {
+    "example_id": "EXAMPLE-0011",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0011.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

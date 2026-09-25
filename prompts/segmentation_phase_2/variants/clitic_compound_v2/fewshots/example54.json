@@ -1,0 +1,38 @@
+{
+  "input": "J'aime les pommes.",
+  "output": {
+    "surface": "J'aime les pommes.",
+    "tokens": [
+      {
+        "surface": "J'"
+      },
+      {
+        "surface": "aime"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "les"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "pommes"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic",
+  "rationale": "This example includes the clitic 'J'', illustrating the contraction of 'Je' with a vowel-starting verb.",
+  "provenance": {
+    "example_id": "EXAMPLE-0061",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0061.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

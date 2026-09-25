@@ -1,0 +1,38 @@
+{
+  "input": "Je m'appelle Jean-Paul.",
+  "output": {
+    "surface": "Je m'appelle Jean-Paul.",
+    "tokens": [
+      {
+        "surface": "Je"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "m'"
+      },
+      {
+        "surface": "appelle"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "Jean-Paul"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic, compound",
+  "rationale": "It combines a clitic form of the reflexive pronoun ('m'') with a compound name ('Jean-Paul'), showing tokenization of compounds and clitics.",
+  "provenance": {
+    "example_id": "EXAMPLE-0022",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0022.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

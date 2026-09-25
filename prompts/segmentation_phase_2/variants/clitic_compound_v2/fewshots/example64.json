@@ -1,0 +1,47 @@
+{
+  "input": "Qu'est-ce que c'est?",
+  "output": {
+    "surface": "Qu'est-ce que c'est?",
+    "tokens": [
+      {
+        "surface": "Qu'"
+      },
+      {
+        "surface": "est"
+      },
+      {
+        "surface": "-"
+      },
+      {
+        "surface": "ce"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "que"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "c'"
+      },
+      {
+        "surface": "est"
+      },
+      {
+        "surface": "?"
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic",
+  "rationale": "Highlights the segmentation in a common interrogative phrase with clitics.",
+  "provenance": {
+    "example_id": "EXAMPLE-0072",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0072.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

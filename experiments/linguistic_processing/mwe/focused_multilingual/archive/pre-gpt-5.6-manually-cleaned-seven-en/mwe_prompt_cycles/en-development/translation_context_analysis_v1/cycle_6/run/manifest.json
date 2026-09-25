@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "input_records_jsonl": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_gold\\en-development\\selected_segments.jsonl",
+  "run_label": "run",
+  "record_count": 336,
+  "resumed": true,
+  "existing_output_count": 333,
+  "project_ids": [
+    239,
+    245,
+    254,
+    255,
+    257,
+    261,
+    263
+  ],
+  "outputs_jsonl": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_prompt_cycles\\en-development\\translation_context_analysis_v1\\cycle_6\\run\\outputs.jsonl",
+  "progress_jsonl": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_prompt_cycles\\en-development\\translation_context_analysis_v1\\cycle_6\\run\\progress.jsonl",
+  "template_file": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_prompt_cycles\\en-development\\translation_context_analysis_v1\\cycle_6\\template.txt",
+  "use_translation_context": false,
+  "translation_context_record_count": 0,
+  "max_record_attempts": 3
+}

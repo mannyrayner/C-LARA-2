@@ -1,0 +1,44 @@
+{
+  "input": "C'est une belle journée.",
+  "output": {
+    "surface": "C'est une belle journée.",
+    "tokens": [
+      {
+        "surface": "C'"
+      },
+      {
+        "surface": "est"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "une"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "belle"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "journée"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic",
+  "rationale": "Highlights the use of 'c'est' as a contraction introducing a description.",
+  "provenance": {
+    "example_id": "EXAMPLE-0075",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0075.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "input": "Elle m'appelle souvent Jean-Paul.",
+  "output": {
+    "surface": "Elle m'appelle souvent Jean-Paul.",
+    "tokens": [
+      {
+        "surface": "Elle"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "m'"
+      },
+      {
+        "surface": "appelle"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "souvent"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "Jean-Paul"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic",
+  "rationale": "This example illustrates a common use of a reflexive verb with a clitic and a compound name.",
+  "provenance": {
+    "example_id": "EXAMPLE-0076",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0076.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

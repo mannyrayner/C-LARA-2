@@ -1,0 +1,41 @@
+{
+  "input": "Elle nous téléphone souvent.",
+  "output": {
+    "surface": "Elle nous téléphone souvent.",
+    "tokens": [
+      {
+        "surface": "Elle"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "nous"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "téléphone"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "souvent"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic",
+  "rationale": "Explores a reflexive verb with a personal pronoun used as a clitic before another verb, a common structure in French.",
+  "provenance": {
+    "example_id": "EXAMPLE-0080",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0080.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

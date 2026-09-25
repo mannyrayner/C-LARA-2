@@ -1,0 +1,44 @@
+{
+  "input": "Ils s'en vont demain.",
+  "output": {
+    "surface": "Ils s'en vont demain.",
+    "tokens": [
+      {
+        "surface": "Ils"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "s'"
+      },
+      {
+        "surface": "en"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "vont"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "demain"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic",
+  "rationale": "Contains two clitics: 's'' in 's'en', demonstrating reflexive verb usage with an elided 'se'.",
+  "provenance": {
+    "example_id": "EXAMPLE-0063",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0063.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

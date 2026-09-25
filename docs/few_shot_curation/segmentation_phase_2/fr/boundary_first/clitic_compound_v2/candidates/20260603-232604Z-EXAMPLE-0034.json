@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "example_id": "EXAMPLE-0034",
+  "request_id": "20260603-232604Z",
+  "status": "validation_failed",
+  "operation": "segmentation_phase_2",
+  "language": "fr",
+  "mechanism": "boundary_first",
+  "target_set": "clitic_compound_v2",
+  "phenomena": [
+    "clitic",
+    "compound"
+  ],
+  "generated_at": "2026-06-03T23:26:04.980596Z",
+  "generator_model": "gpt-4o",
+  "generator_prompt_version": "fewshot-curation-v1",
+  "shard_index": 7,
+  "candidate": {
+    "input": "Jean-Pierre a-t-il vu cela?",
+    "phenomenon": "compound clitic",
+    "rationale": "Demonstrates the use of hyphenated compound names and the inverted interrogative clitic 'a-t-il', important for both recognition and parsing.",
+    "output": {
+      "surface": "Jean-Pierre a-t-il vu cela?",
+      "tokens": [
+        {
+          "surface": "Jean-Pierre"
+        },
+        {
+          "surface": "a"
+        },
+        {
+          "surface": "-"
+        },
+        {
+          "surface": "t"
+        },
+        {
+          "surface": "-"
+        },
+        {
+          "surface": "il"
+        },
+        {
+          "surface": "vu"
+        },
+        {
+          "surface": "cela"
+        },
+        {
+          "surface": "?"
+        }
+      ],
+      "annotations": {}
+    }
+  },
+  "validation": {
+    "schema_pass": false,
+    "errors": [
+      "concatenated token surfaces must exactly match input"
+    ],
+    "token_count": 9,
+    "input_length": 27
+  }
+}

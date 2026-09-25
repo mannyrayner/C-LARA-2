@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "example_id": "EXAMPLE-0005",
+  "request_id": "20260603-232604Z",
+  "status": "schema_validated",
+  "operation": "segmentation_phase_2",
+  "language": "fr",
+  "mechanism": "boundary_first",
+  "target_set": "clitic_compound_v2",
+  "phenomena": [
+    "clitic",
+    "compound"
+  ],
+  "generated_at": "2026-06-03T23:26:04.980596Z",
+  "generator_model": "gpt-4o",
+  "generator_prompt_version": "fewshot-curation-v1",
+  "shard_index": 1,
+  "candidate": {
+    "input": "La mésange charbonnière est un oiseau.",
+    "phenomenon": "compound",
+    "rationale": "Shows how to segment compound entity names in French, such as bird names.",
+    "output": {
+      "surface": "La mésange charbonnière est un oiseau.",
+      "tokens": [
+        {
+          "surface": "La"
+        },
+        {
+          "surface": " "
+        },
+        {
+          "surface": "mésange"
+        },
+        {
+          "surface": " "
+        },
+        {
+          "surface": "charbonnière"
+        },
+        {
+          "surface": " "
+        },
+        {
+          "surface": "est"
+        },
+        {
+          "surface": " "
+        },
+        {
+          "surface": "un"
+        },
+        {
+          "surface": " "
+        },
+        {
+          "surface": "oiseau"
+        },
+        {
+          "surface": "."
+        }
+      ],
+      "annotations": {}
+    }
+  },
+  "validation": {
+    "schema_pass": true,
+    "errors": [],
+    "token_count": 12,
+    "input_length": 38
+  }
+}

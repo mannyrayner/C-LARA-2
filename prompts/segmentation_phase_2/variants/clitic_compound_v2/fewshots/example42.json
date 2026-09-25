@@ -1,0 +1,50 @@
+{
+  "input": "C'est le livre de Paul.",
+  "output": {
+    "surface": "C'est le livre de Paul.",
+    "tokens": [
+      {
+        "surface": "C'"
+      },
+      {
+        "surface": "est"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "le"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "livre"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "de"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "Paul"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "compound",
+  "rationale": "Demonstrates how to manage contractions like 'C'' beginning a sentence, along with handling possessive structures involving a proper noun.",
+  "provenance": {
+    "example_id": "EXAMPLE-0044",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0044.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

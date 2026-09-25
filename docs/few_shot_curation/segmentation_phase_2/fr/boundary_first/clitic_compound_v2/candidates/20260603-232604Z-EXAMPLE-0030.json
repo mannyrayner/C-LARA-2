@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "example_id": "EXAMPLE-0030",
+  "request_id": "20260603-232604Z",
+  "status": "schema_validated",
+  "operation": "segmentation_phase_2",
+  "language": "fr",
+  "mechanism": "boundary_first",
+  "target_set": "clitic_compound_v2",
+  "phenomena": [
+    "clitic",
+    "compound"
+  ],
+  "generated_at": "2026-06-03T23:26:04.980596Z",
+  "generator_model": "gpt-4o",
+  "generator_prompt_version": "fewshot-curation-v1",
+  "shard_index": 6,
+  "candidate": {
+    "input": "c'est-à-dire",
+    "phenomenon": "clitic_compound",
+    "rationale": "This example combines both clitics and compounds, illustrating multiple phenomena.",
+    "output": {
+      "surface": "c'est-à-dire",
+      "tokens": [
+        {
+          "surface": "c'"
+        },
+        {
+          "surface": "est"
+        },
+        {
+          "surface": "-"
+        },
+        {
+          "surface": "à"
+        },
+        {
+          "surface": "-"
+        },
+        {
+          "surface": "dire"
+        }
+      ],
+      "annotations": {}
+    }
+  },
+  "validation": {
+    "schema_pass": true,
+    "errors": [],
+    "token_count": 6,
+    "input_length": 12
+  }
+}

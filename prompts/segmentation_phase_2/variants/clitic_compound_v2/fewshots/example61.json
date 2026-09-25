@@ -1,0 +1,44 @@
+{
+  "input": "J'adore le chocolat suisse.",
+  "output": {
+    "surface": "J'adore le chocolat suisse.",
+    "tokens": [
+      {
+        "surface": "J'"
+      },
+      {
+        "surface": "adore"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "le"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "chocolat"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "suisse"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic_boundary",
+  "rationale": "Showcases clitic 'J'' (contraction of 'je') and can introduce compound names like 'chocolat suisse.'",
+  "provenance": {
+    "example_id": "EXAMPLE-0069",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0069.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

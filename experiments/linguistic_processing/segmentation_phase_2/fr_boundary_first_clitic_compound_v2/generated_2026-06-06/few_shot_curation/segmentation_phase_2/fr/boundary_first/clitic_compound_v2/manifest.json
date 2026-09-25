@@ -1,0 +1,495 @@
+{
+  "schema_version": 1,
+  "request_id": "20260606-035516Z",
+  "operation": "segmentation_phase_2",
+  "language": "fr",
+  "mechanism": "boundary_first",
+  "target_set": "clitic_compound_v2",
+  "candidate_count": 80,
+  "batch_size": 5,
+  "max_concurrency": 4,
+  "accepted_count": 0,
+  "prompt_files": [],
+  "records": [
+    {
+      "example_id": "EXAMPLE-0001",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0002",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0003",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0004",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0005",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0006",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0007",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0008",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0009",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0010",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0011",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0012",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0013",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0014",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0015",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0016",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0017",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0018",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0019",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0020",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0021",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic and compound"
+    },
+    {
+      "example_id": "EXAMPLE-0022",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0023",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0024",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0025",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0026",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0027",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0028",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound and clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0029",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0030",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound and clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0031",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0032",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0033",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0034",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic, compound"
+    },
+    {
+      "example_id": "EXAMPLE-0035",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0036",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic with negation"
+    },
+    {
+      "example_id": "EXAMPLE-0037",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic with pronoun"
+    },
+    {
+      "example_id": "EXAMPLE-0038",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound with article"
+    },
+    {
+      "example_id": "EXAMPLE-0039",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic with compound"
+    },
+    {
+      "example_id": "EXAMPLE-0040",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic with indefinite pronoun"
+    },
+    {
+      "example_id": "EXAMPLE-0041",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0042",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0043",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0044",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0045",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0046",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0047",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0048",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0049",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic, compound"
+    },
+    {
+      "example_id": "EXAMPLE-0050",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0051",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0052",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0053",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0054",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0055",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0056",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0057",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0058",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0059",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0060",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0061",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0062",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0063",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0064",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic, compound"
+    },
+    {
+      "example_id": "EXAMPLE-0065",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0066",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0067",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0068",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0069",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic, compound"
+    },
+    {
+      "example_id": "EXAMPLE-0070",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0071",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0072",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic, compound"
+    },
+    {
+      "example_id": "EXAMPLE-0073",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0074",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0075",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0076",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0077",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "named entity"
+    },
+    {
+      "example_id": "EXAMPLE-0078",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    },
+    {
+      "example_id": "EXAMPLE-0079",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "clitic"
+    },
+    {
+      "example_id": "EXAMPLE-0080",
+      "status": "schema_validated",
+      "schema_pass": true,
+      "phenomenon": "compound"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "input": "Veux-tu de l'orange?",
+  "output": {
+    "surface": "Veux-tu de l'orange?",
+    "tokens": [
+      {
+        "surface": "Veux"
+      },
+      {
+        "surface": "-"
+      },
+      {
+        "surface": "tu"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "de"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "l'"
+      },
+      {
+        "surface": "orange"
+      },
+      {
+        "surface": "?"
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic",
+  "rationale": "This question incorporates a clitic with elision and tests the handling of questions and punctuation.",
+  "provenance": {
+    "example_id": "EXAMPLE-0030",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0030.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

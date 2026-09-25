@@ -1,0 +1,47 @@
+{
+  "input": "L'esprit d'équipe est important.",
+  "output": {
+    "surface": "L'esprit d'équipe est important.",
+    "tokens": [
+      {
+        "surface": "L'"
+      },
+      {
+        "surface": "esprit"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "d'"
+      },
+      {
+        "surface": "équipe"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "est"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "important"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "compound",
+  "rationale": "Illustrates a compound noun involving a definite article and an apostrophe for a more complex segmentation case.",
+  "provenance": {
+    "example_id": "EXAMPLE-0079",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0079.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "input": "L'ensemble est prêt.",
+  "output": {
+    "surface": "L'ensemble est prêt.",
+    "tokens": [
+      {
+        "surface": "L'"
+      },
+      {
+        "surface": "ensemble"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "est"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "prêt"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "compound",
+  "rationale": "The compound 'L'ensemble' includes an elision, demonstrating correct segmentation and elision before a vowel.",
+  "provenance": {
+    "example_id": "EXAMPLE-0029",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0029.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "input": "C'est un beau jour d'automne.",
+  "output": {
+    "surface": "C'est un beau jour d'automne.",
+    "tokens": [
+      {
+        "surface": "C'"
+      },
+      {
+        "surface": "est"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "un"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "beau"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "jour"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "d'"
+      },
+      {
+        "surface": "automne"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic, compound",
+  "rationale": "Illustrates a clitic 'C'' and a compound 'd'automne'.",
+  "provenance": {
+    "example_id": "EXAMPLE-0035",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0035.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

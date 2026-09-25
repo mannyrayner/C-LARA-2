@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "split": "development",
+  "outputs_jsonl": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_prompt_cycles\\en-development\\cycle_2\\run\\outputs.jsonl",
+  "record_count": 336,
+  "exact_match_count": 194,
+  "exact_match_rate": 0.5773809523809523,
+  "true_positive": 49,
+  "false_positive": 88,
+  "false_negative": 126,
+  "precision": 0.35766423357664234,
+  "recall": 0.28,
+  "f1": 0.31410256410256415,
+  "project_ids": [
+    239,
+    245,
+    254,
+    255,
+    257,
+    261,
+    263
+  ],
+  "per_record_scores_jsonl": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_prompt_cycles\\en-development\\cycle_2\\score\\per_record_scores.jsonl"
+}

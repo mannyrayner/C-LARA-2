@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "example_id": "EXAMPLE-0019",
+  "request_id": "20260603-232604Z",
+  "status": "schema_validated",
+  "operation": "segmentation_phase_2",
+  "language": "fr",
+  "mechanism": "boundary_first",
+  "target_set": "clitic_compound_v2",
+  "phenomena": [
+    "clitic",
+    "compound"
+  ],
+  "generated_at": "2026-06-03T23:26:04.980596Z",
+  "generator_model": "gpt-4o",
+  "generator_prompt_version": "fewshot-curation-v1",
+  "shard_index": 4,
+  "candidate": {
+    "input": "C'est-à-dire",
+    "phenomenon": "compound",
+    "rationale": "This sequence is an example of a compound, fixed expression that learners should recognize as a single semantic unit.",
+    "output": {
+      "surface": "C'est-à-dire",
+      "tokens": [
+        {
+          "surface": "C'"
+        },
+        {
+          "surface": "est"
+        },
+        {
+          "surface": "-à-"
+        },
+        {
+          "surface": "dire"
+        }
+      ],
+      "annotations": {}
+    }
+  },
+  "validation": {
+    "schema_pass": true,
+    "errors": [],
+    "token_count": 4,
+    "input_length": 12
+  }
+}

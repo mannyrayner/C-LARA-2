@@ -1,0 +1,50 @@
+{
+  "input": "L'arbre est près du château.",
+  "output": {
+    "surface": "L'arbre est près du château.",
+    "tokens": [
+      {
+        "surface": "L'"
+      },
+      {
+        "surface": "arbre"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "est"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "près"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "du"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "château"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "compound",
+  "rationale": "Illustrates a noun phrase ('l'arbre') and a compound preposition ('près de'), pointing out the need to respect contracted forms and adjacent nouns.",
+  "provenance": {
+    "example_id": "EXAMPLE-0024",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0024.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

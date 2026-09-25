@@ -1,0 +1,44 @@
+{
+  "input": "J'ai rencontré Pierre Dupont.",
+  "output": {
+    "surface": "J'ai rencontré Pierre Dupont.",
+    "tokens": [
+      {
+        "surface": "J'"
+      },
+      {
+        "surface": "ai"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "rencontré"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "Pierre"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "Dupont"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic, named entity",
+  "rationale": "Features an elided clitic 'J'' and a named entity 'Pierre Dupont'.",
+  "provenance": {
+    "example_id": "EXAMPLE-0033",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0033.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

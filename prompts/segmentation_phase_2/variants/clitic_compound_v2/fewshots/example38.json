@@ -1,0 +1,44 @@
+{
+  "input": "Elle t'appelle au minuit.",
+  "output": {
+    "surface": "Elle t'appelle au minuit.",
+    "tokens": [
+      {
+        "surface": "Elle"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "t'"
+      },
+      {
+        "surface": "appelle"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "au"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "minuit"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic",
+  "rationale": "Provides example of direct object clitic, useful for demonstrating word order and apostrophe usage.",
+  "provenance": {
+    "example_id": "EXAMPLE-0040",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0040.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

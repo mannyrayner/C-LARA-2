@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "example_id": "EXAMPLE-0027",
+  "request_id": "20260603-232604Z",
+  "status": "schema_validated",
+  "operation": "segmentation_phase_2",
+  "language": "fr",
+  "mechanism": "boundary_first",
+  "target_set": "clitic_compound_v2",
+  "phenomena": [
+    "clitic",
+    "compound"
+  ],
+  "generated_at": "2026-06-03T23:26:04.980596Z",
+  "generator_model": "gpt-4o",
+  "generator_prompt_version": "fewshot-curation-v1",
+  "shard_index": 6,
+  "candidate": {
+    "input": "porte-monnaie",
+    "phenomenon": "compound",
+    "rationale": "This compound noun shows how hyphenated compounds should be treated as multi-token segments.",
+    "output": {
+      "surface": "porte-monnaie",
+      "tokens": [
+        {
+          "surface": "porte"
+        },
+        {
+          "surface": "-"
+        },
+        {
+          "surface": "monnaie"
+        }
+      ],
+      "annotations": {}
+    }
+  },
+  "validation": {
+    "schema_pass": true,
+    "errors": [],
+    "token_count": 3,
+    "input_length": 13
+  }
+}

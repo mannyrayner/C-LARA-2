@@ -1,0 +1,44 @@
+{
+  "input": "C'est un casse-tête difficile.",
+  "output": {
+    "surface": "C'est un casse-tête difficile.",
+    "tokens": [
+      {
+        "surface": "C'"
+      },
+      {
+        "surface": "est"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "un"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "casse-tête"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "difficile"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "compound",
+  "rationale": "Illustrates compound nouns (casse-tête) that do not require separation within the token array.",
+  "provenance": {
+    "example_id": "EXAMPLE-0012",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0012.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

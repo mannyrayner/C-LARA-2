@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "model": "gpt-5.5",
+  "current_template": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_prompt_cycles\\en-development\\translation_context_analysis_v1\\cycle_1\\template.txt",
+  "improvement_report": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_prompt_cycles\\en-development\\translation_context_analysis_v1\\cycle_1\\improvement\\prompt_improvement.md",
+  "candidate_guidance": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\mwe\\focused_multilingual\\generated\\mwe_prompt_cycles\\en-development\\translation_context_analysis_v1\\cycle_1\\improvement\\candidate_prompt_guidance.txt",
+  "prompt": "You are a linguist identifying multi-word expressions (MWEs) in source-language text.\n\nUse source tokens as authoritative. If translation_context is present, use it only as optional evidence that a source-token group may behave as a phrase; final decisions and spans must be source-language tokens.\n\nMark only expressions that are conventionalized, idiomatic, lexicalized, or stable multi-token lexical units. Favor precision: if unsure, leave unmarked.\n\nGood candidates include:\n- phrasal/prepositional verbs and conventional adjective/participle + preposition patterns;\n- fixed idioms, discourse formulae, and fixed adverbials;\n- conventional light-verb expressions and lexical compounds.\n\nAvoid marking:\n- ordinary adjective+noun, determiner+noun, verb+object, or prepositional phrases;\n- descriptive one-off titles, names, or capitalized phrases unless they are a conventional common lexical unit;\n- long clauses or phrases that are only grouped by syntax or by the translation.\n\nUse minimal spans. Include only the fixed lexical core. Exclude subjects, pronouns, determiners, complements/objects, locations, and incidental modifiers unless they are required by the expression. For verb/adjective + preposition or particle patterns, normally include just those linked words, not the following noun phrase. For fixed adverbials, do not include optional surrounding words.\n\nBefore selecting MWEs, write a brief note in segment.annotations.mwe_analysis listing plausible candidates and why each was accepted or rejected, especially where a shorter core span was chosen.\n\nReturn only the structured JSON annotation object requested by the system. Preserve token order and surface forms exactly.",
+  "rationale": "The revision keeps the existing task and response-format requirements while making the decision criteria more conservative and span-focused. It directly targets recurring errors: overmarking descriptive noun phrases, treating names or titles as MWEs, selecting whole syntactic phrases instead of lexical cores, and ignoring stable verb/adjective-plus-particle/preposition patterns or formulaic expressions. Translation context remains optional evidence only.",
+  "changes": [
+    "Made the prompt source-language and language-neutral rather than specifically English.",
+    "Added a stronger precision preference: doubtful expressions should be left unmarked.",
+    "Added explicit avoidance of ordinary adjective+noun, determiner+noun, verb+object, prepositional, title/name, and translation-driven spans.",
+    "Added minimal-span guidance, especially for verb/adjective plus preposition or particle patterns and fixed adverbials.",
+    "Kept the requirement to populate segment.annotations.mwe_analysis, but simplified what the analysis should contain.",
+    "Preserved the instruction to return only the structured JSON object and keep token order and surface forms unchanged."
+  ],
+  "risks": [
+    "The more conservative wording may reduce recall for borderline lexicalized collocations.",
+    "General guidance about verb/adjective plus preposition patterns may still overmark some ordinary governed-preposition constructions.",
+    "Discouraging names and titles may miss projects whose annotation scheme treats some proper names as MWEs.",
+    "Without project-specific examples, some conventional formulae may still be missed in unseen data."
+  ]
+}

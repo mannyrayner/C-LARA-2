@@ -1,0 +1,47 @@
+{
+  "input": "C'est l'heure de partir.",
+  "output": {
+    "surface": "C'est l'heure de partir.",
+    "tokens": [
+      {
+        "surface": "C'"
+      },
+      {
+        "surface": "est"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "l'"
+      },
+      {
+        "surface": "heure"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "de"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "partir"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic",
+  "rationale": "This example includes 'C'' as a clitic along with an apostrophe to demonstrate separation from the verb 'est', offering practice in recognizing contraction in clitics.",
+  "provenance": {
+    "example_id": "EXAMPLE-0006",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0006.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

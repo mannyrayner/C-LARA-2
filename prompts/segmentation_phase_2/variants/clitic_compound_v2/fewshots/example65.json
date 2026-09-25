@@ -1,0 +1,47 @@
+{
+  "input": "Le bonhomme de neige fond.",
+  "output": {
+    "surface": "Le bonhomme de neige fond.",
+    "tokens": [
+      {
+        "surface": "Le"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "bonhomme"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "de"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "neige"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "fond"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "compound",
+  "rationale": "Shows the decomposition of a compound noun phrase.",
+  "provenance": {
+    "example_id": "EXAMPLE-0073",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0073.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

@@ -1,0 +1,247 @@
+{
+  "schema_version": 1,
+  "request_id": "20260603-232604Z",
+  "review_count": 11,
+  "skipped_validation_failed_count": 29,
+  "skipped_validation_failed": [
+    {
+      "example_id": "EXAMPLE-0006",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0006.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0007",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0007.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0008",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0008.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0009",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0009.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0010",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0010.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0011",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0011.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0012",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0012.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0013",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0013.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0014",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0014.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0015",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0015.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0016",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0016.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0017",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0017.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0018",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0018.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0020",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0020.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0021",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0021.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0023",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0023.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0024",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0024.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0025",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0025.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0028",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0028.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0031",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0031.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0032",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0032.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0033",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0033.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0034",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0034.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0035",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0035.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0036",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0036.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0037",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0037.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0038",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0038.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0039",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0039.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0040",
+      "candidate_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260603-232604Z-EXAMPLE-0040.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    }
+  ],
+  "severity_counts": {
+    "fatal": 0,
+    "serious": 2,
+    "minor": 1,
+    "none": 8
+  },
+  "template_path": "docs\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\review_templates\\template.json"
+}

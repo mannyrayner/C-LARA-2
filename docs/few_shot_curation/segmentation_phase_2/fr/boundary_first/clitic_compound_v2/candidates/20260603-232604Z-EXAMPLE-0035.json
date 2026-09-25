@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "example_id": "EXAMPLE-0035",
+  "request_id": "20260603-232604Z",
+  "status": "validation_failed",
+  "operation": "segmentation_phase_2",
+  "language": "fr",
+  "mechanism": "boundary_first",
+  "target_set": "clitic_compound_v2",
+  "phenomena": [
+    "clitic",
+    "compound"
+  ],
+  "generated_at": "2026-06-03T23:26:04.980596Z",
+  "generator_model": "gpt-4o",
+  "generator_prompt_version": "fewshot-curation-v1",
+  "shard_index": 7,
+  "candidate": {
+    "input": "Est-ce que ça marche?",
+    "phenomenon": "clitic",
+    "rationale": "This example shows a common question construction in French using clitics 'Est-ce', helping learners understand auxiliary placement and clitics.",
+    "output": {
+      "surface": "Est-ce que ça marche?",
+      "tokens": [
+        {
+          "surface": "Est"
+        },
+        {
+          "surface": "-"
+        },
+        {
+          "surface": "ce"
+        },
+        {
+          "surface": "que"
+        },
+        {
+          "surface": "ça"
+        },
+        {
+          "surface": "marche"
+        },
+        {
+          "surface": "?"
+        }
+      ],
+      "annotations": {}
+    }
+  },
+  "validation": {
+    "schema_pass": false,
+    "errors": [
+      "concatenated token surfaces must exactly match input"
+    ],
+    "token_count": 7,
+    "input_length": 21
+  }
+}

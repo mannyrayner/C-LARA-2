@@ -1,0 +1,50 @@
+{
+  "input": "J'adore le café au lait.",
+  "output": {
+    "surface": "J'adore le café au lait.",
+    "tokens": [
+      {
+        "surface": "J'"
+      },
+      {
+        "surface": "adore"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "le"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "café"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "au"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "lait"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic",
+  "rationale": "The contraction 'J'' for 'Je' illustrates the clitic form with an apostrophe, highlighting an edge case in clitic usage before a vowel.",
+  "provenance": {
+    "example_id": "EXAMPLE-0007",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0007.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

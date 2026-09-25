@@ -1,0 +1,41 @@
+{
+  "input": "Je ne sais pas.",
+  "output": {
+    "surface": "Je ne sais pas.",
+    "tokens": [
+      {
+        "surface": "Je"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "ne"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "sais"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "pas"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic",
+  "rationale": "Demonstrates negative particle placement in a simple negation construction.",
+  "provenance": {
+    "example_id": "EXAMPLE-0074",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0074.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

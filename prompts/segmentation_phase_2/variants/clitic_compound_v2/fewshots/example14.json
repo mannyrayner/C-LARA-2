@@ -1,0 +1,56 @@
+{
+  "input": "J'ai un frère et une sœur.",
+  "output": {
+    "surface": "J'ai un frère et une sœur.",
+    "tokens": [
+      {
+        "surface": "J'"
+      },
+      {
+        "surface": "ai"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "un"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "frère"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "et"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "une"
+      },
+      {
+        "surface": " "
+      },
+      {
+        "surface": "sœur"
+      },
+      {
+        "surface": "."
+      }
+    ],
+    "annotations": {}
+  },
+  "phenomenon": "clitic",
+  "rationale": "This example includes a clitic with an apostrophe and showcases coordination with 'et' and punctuation.",
+  "provenance": {
+    "example_id": "EXAMPLE-0014",
+    "candidate_path": "C:\\cygwin64\\home\\github\\c-lara-2\\experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260615-072115Z-EXAMPLE-0014.json",
+    "review_decision": "accept",
+    "review_severity": "none"
+  }
+}

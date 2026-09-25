@@ -1,0 +1,543 @@
+{
+  "schema_version": 1,
+  "request_id": "20260605-152739Z",
+  "review_count": 14,
+  "skipped_validation_failed_count": 66,
+  "skipped_validation_failed": [
+    {
+      "example_id": "EXAMPLE-0001",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0001.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0002",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0002.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0003",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0003.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0004",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0004.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0016",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0016.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0017",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0017.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0018",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0018.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0019",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0019.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0020",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0020.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0021",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0021.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0022",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0022.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0023",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0023.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0024",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0024.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0025",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0025.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0026",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0026.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0027",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0027.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0028",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0028.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0029",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0029.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0030",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0030.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0031",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0031.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0032",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0032.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0033",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0033.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0034",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0034.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0035",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0035.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0036",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0036.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0037",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0037.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0038",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0038.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0039",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0039.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0040",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0040.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0041",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0041.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0042",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0042.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0043",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0043.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0044",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0044.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0045",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0045.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0046",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0046.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0047",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0047.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0048",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0048.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0049",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0049.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0050",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0050.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0051",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0051.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0052",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0052.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0053",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0053.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0054",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0054.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0055",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0055.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0056",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0056.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0057",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0057.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0058",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0058.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0059",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0059.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0060",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0060.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0061",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0061.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0062",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0062.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0063",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0063.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0064",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0064.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0065",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0065.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0066",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0066.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0068",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0068.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0071",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0071.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0072",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0072.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0073",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0073.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0074",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0074.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0075",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0075.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0076",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0076.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0077",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0077.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0078",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0078.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0079",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0079.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    },
+    {
+      "example_id": "EXAMPLE-0080",
+      "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0080.json",
+      "status": "validation_failed",
+      "validation_errors": [
+        "concatenated token surfaces must exactly match input"
+      ]
+    }
+  ],
+  "severity_counts": {
+    "fatal": 1,
+    "serious": 9,
+    "minor": 0,
+    "none": 4
+  },
+  "template_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\review_templates\\template.json"
+}

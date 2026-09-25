@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "request_id": "20260605-152739Z",
+  "example_id": "EXAMPLE-0006",
+  "operation": "segmentation_phase_2",
+  "language": "fr",
+  "mechanism": "boundary_first",
+  "target_set": "clitic_compound_v2",
+  "reviewed_at": "2026-06-05T23:45:33.853327Z",
+  "review_model": "gpt-4o",
+  "review_prompt_version": "fewshot-review-v5",
+  "template_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\review_templates\\template.json",
+  "candidate": {
+    "input": "Je t'aime bien.",
+    "boundary_marked": "Je¦ ¦t'¦aime¦ ¦bien¦.",
+    "boundary_marker": "¦",
+    "interpretation_notes": [
+      "Each boundary marker separates two proposed word-like or meaningful units.",
+      "Read a marked string such as Donne¦-¦le¦-¦moi as the proposed units Donne, -, le, -, moi.",
+      "Spaces, hyphens, apostrophes, and punctuation can be separate units; do not reject an example merely because these separators have been split out.",
+      "Deterministic validation has already checked that removing the boundary markers recreates the input exactly."
+    ],
+    "reference_examples": [
+      {
+        "input": "the boy's dog",
+        "boundary_marked": "the¦ ¦boy¦'s¦ ¦dog",
+        "judgement": "acceptable: possessive 's is a small meaningful piece for learners"
+      },
+      {
+        "input": "bubblegum",
+        "boundary_marked": "bubble¦gum",
+        "judgement": "acceptable when the compound parts are transparent enough to be useful"
+      },
+      {
+        "input": "barbecue",
+        "boundary_marked": "bar¦becue",
+        "judgement": "reject: this is a misleading false-compound split"
+      },
+      {
+        "input": "Donne-le-moi",
+        "boundary_marked": "Donne¦-¦le¦-¦moi",
+        "judgement": "usually acceptable here: verb, hyphens, and clitic pronouns are visible meaningful/separator units"
+      },
+      {
+        "input": "Je l'ai fait.",
+        "boundary_marked": "Je¦ ¦l'¦ai¦ ¦fait¦.",
+        "judgement": "acceptable: l' and ai can be separate learner-useful clitic/auxiliary units; do not reject because l'ai is a normal written contraction"
+      },
+      {
+        "input": "L'ami arrive.",
+        "boundary_marked": "L'¦ami¦ ¦arrive¦.",
+        "judgement": "acceptable: separating an elided article from the noun can expose a meaningful French unit"
+      }
+    ],
+    "phenomenon": "clitic",
+    "rationale": "The clitic 't'' is attached to the verb 'aime', which demonstrates how French clitics work in context."
+  },
+  "candidate_path": "experiments\\linguistic_processing\\segmentation_phase_2\\fr_boundary_first_clitic_compound_v2\\generated\\few_shot_curation\\segmentation_phase_2\\fr\\boundary_first\\clitic_compound_v2\\candidates\\20260605-152739Z-EXAMPLE-0006.json",
+  "severity": "none",
+  "review": {
+    "decision": "accept",
+    "severity": "none",
+    "strongest_reason": "appropriate clitic split",
+    "explanation": "The boundary markers correctly separate the clitic 't'' from the verb 'aime', which is a meaningful demonstration of French clitics for learners. Other components, such as spaces and punctuation, are separated in line with the policy that allows separating these units for clarity.",
+    "suggested_boundary_marked": "Je¦ ¦t'¦aime¦ ¦bien¦.",
+    "notes": [
+      "The separation of the clitic 't'' is beneficial for understanding the structure of French clitics and is aligned with the review policy."
+    ]
+  }
+}
