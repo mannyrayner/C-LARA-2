@@ -4,239 +4,295 @@
 \usepackage[utf8]{inputenc}
 \usepackage{lmodern,microtype,booktabs,tabularx,enumitem,xcolor}
 \usepackage[hidelinks]{hyperref}
-\hypersetup{pdftitle={Community Dictionaries: Initial System Report},pdfauthor={ChatGPT C-LARA-Instance and Manny Rayner},pdfsubject={Stakeholder discussion draft, 26 September 2026}}
+\hypersetup{pdftitle={Community Dictionaries: Collaborative Resources and AI Maintenance},pdfauthor={ChatGPT C-LARA-Instance and Manny Rayner},pdfsubject={Revised stakeholder discussion draft, 26 September 2026}}
 \setlist{nosep,leftmargin=*}
 \setlength{\emergencystretch}{2em}
-\newcommand{\repo}[2]{\href{https://github.com/mannyrayner/C-LARA-2/blob/a7e88702dff965ff1cacac7fd2a8a366f49291c4/#1}{#2}}
-\title{Community Dictionaries:\\A Small Collaborative Picture and Audio App\\Built Through AI-Led Development}
+\newcommand{\repo}[2]{\href{https://github.com/mannyrayner/C-LARA-2/blob/e3b94b08d0d493e88e6966781323df2753f0bdfa/#1}{#2}}
+\title{Community Dictionaries:\\Collaborative Language Resources\\and a Path to AI-Maintained Software}
 \author{ChatGPT C-LARA-Instance and Manny Rayner\\C-LARA Project}
-\date{26 September 2026\\\small Initial system report --- stakeholder discussion draft}
-
+\date{26 September 2026\\\small Revised stakeholder discussion draft --- version 2}
 \begin{document}
 \maketitle
 \begin{abstract}
-Community Dictionaries is a lightweight web application in which small groups
-construct picture and audio dictionaries together, using phone photographs,
-human recordings and optional written information. It is designed to support
-languages independently of whether AI language services are available.
-Construction and discussion take priority over dedicated practice activities.
-The initial implementation shares the accounts and server infrastructure of
-C-LARA-2 but has its own data model, permissions and private media storage.
-Development proceeded through two substantial AI implementation iterations,
-with human specification, installation and feedback. By 25 September 2026,
-Manny reported successful laptop use on the AWS deployment and a successful
-trial on Cathy's phone: she took and saved a photograph, and he added a recording.
-We describe the implemented system, the evidence behind this result, and the
-questions for a proposed Icelandic pilot. These are initial feasibility results,
-not evidence of learning effectiveness or comprehensive mobile compatibility.
+Community Dictionaries is a lightweight web application for small groups to
+construct and discuss picture and audio dictionaries. The initial version uses
+phone photographs, human recordings and optional text, and has successful
+human-reported trials on a laptop and a physical phone through the shared
+C-LARA-2 AWS deployment. Following discussion with Sophie Rendina, we propose
+optional AI image generation and text-to-speech as the next increment, allowing
+comparison with human-produced media. Community authority over data is a design
+requirement for these options. A second, longer-term aim is to reduce dependence
+on a technical intermediary: linguists should be able to request changes
+directly, while an AI system handles increasingly complete maintenance tasks.
+We outline a staged experiment in reducing Manny's operational involvement
+from daily intervention to several reviews per week and then per month.
+The implemented prototype, proposed extensions and untested autonomy goals
+are distinguished throughout.
 \end{abstract}
 
-\section{Purpose and scope}
+\section{A working starting point}
+The application's purpose is to help people build useful language resources
+together with little technical overhead. Indigenous and other under-resourced
+languages are a central motivation, but the same design can support languages
+with mature AI services. Swedish provides an initial language whose content
+Manny can assess confidently; an Icelandic pilot with Kate and Axel has been
+invited. Neither establishes suitability for an Indigenous community.
 
-The starting question was practical: could a small language-learning community
-have a useful tool for collecting, discussing and improving picture and audio
-entries without a large software-development project? Indigenous and other
-under-resourced languages are a central motivation. However, the application
-also supports languages for which AI assistance is readily available. This
-allows an initial Swedish trial, whose linguistic content Manny can assess
-confidently, without making AI-generated content a prerequisite.
+Construction and discussion come first. An entry can begin with a photograph
+and acquire a recording from another member. Optional fields hold a written
+form, meaning or translation, and category. Members can browse pictures, search
+supplied text, listen, and add written or recorded comments. Named partnerships
+organise requests for missing pictures or recordings, making shared work easy
+to retrieve. Editors review contributions; accepted wording is versioned and
+alternative media retain their attribution.
 
-The first version deliberately concentrates on \emph{constructing and
-discussing}. Someone supplies a photograph, another person supplies the word or
-phrase as a recording, and the group can clarify or improve the contribution.
-Browsing and listening are already possible. Quizzes, spaced repetition and
-other dedicated practice activities are deferred until there is useful material
-and a satisfactory contribution workflow. Whether the construction activity
-itself supports learning is an empirical question.
+Each dictionary has an invited membership. Partnerships organise work within
+that dictionary; a private subgroup needs a separate dictionary. Media is
+stored outside public web directories and served through membership checks.
+These controls do not exclude technical access by server operators. An export
+contains records and media; operational recovery also requires the shared
+accounts, database and private-file backups.
 
-Phone camera and microphone input are primary modalities. Written forms,
-translations and categories are optional, so an entry need not wait for a
-spelling or a typed explanation. The initial implementation makes no calls to
-AI content-generation services and requires no AI-provider credentials for
-dictionary work. Future text-to-speech and image generation are possible
-additions, not assumptions underlying the current design.
-
-\section{What participants can do}
-
-A dictionary has a target language, an optional language for explanations, and
-an invited membership. Members can create entries, contribute media, discuss
-entries, and propose changes. The owner and editors manage review. An entry
-can start with only a picture or a recording; incomplete contributions are a
-normal part of the workflow, rather than an error condition.
-
-For example, a learner might photograph an object and ask a partner for its
-name. The partner adds a recording; either person can add a written form,
-translation or category. The group can discuss the intended meaning through
-written or recorded comments. Several recordings or pictures can be retained
-with their contributor attribution. Accepted wording and the selected picture
-provide a simple presentation while preserving the contribution history.
-Ordinary members' proposals go through review; owners and editors can accept
-material or request changes. Written revisions are versioned to avoid silently
-overwriting a newer accepted form.
-
-The interface supports image browsing, listening, text search and category
-filtering. Text search uses the written information that participants have
-supplied; it is not automatic recognition of objects or speech. Picture and
-recording uploads supplement direct camera and microphone capture. The
-recorder includes input-device selection, a microphone check and level meter,
-preview, and detection of silent takes where the browser permits it.
-
-Named \emph{partnerships} organise collaboration within a dictionary. A request
-for a missing picture or recording can be addressed to a partnership, whose
-members can retrieve outstanding requests and respond. This makes a division
-of labour explicit: contributors need not provide every component themselves.
-Requests remain distinguishable as open, awaiting review, completed or withdrawn.
-
-\textbf{Privacy follows dictionary membership.} A partnership is a work group,
-not a separate privacy boundary. People who want material visible only to a
-subgroup should create a separate dictionary. Media access is checked against
-membership and the files are stored outside the web server's public media
-directory. This is application-level access control, not end-to-end encryption;
-server operators retain technical access. An owner can export records and media,
-but the export is not yet a one-click restoration facility.
-
-\section{A small addition to an existing platform}
-
-Community Dictionaries is a separate Django application in the C-LARA-2
-repository, available at
+The app is available at
 \url{https://c-lara-2.c-lara.org/community-dictionaries/}.
-It reuses existing accounts, database infrastructure and deployment services.
-It does not invoke C-LARA-2's text-compilation pipeline or task queue, and its
-entries are separate from the older project-linked picture dictionaries.
-This boundary permits immediate shared deployment and leaves open a later
-move to an independent repository.
+It is a separate Django application sharing C-LARA-2's accounts and deployment.
+It uses a small browser interface, direct camera/microphone input and uploaded
+files, without invoking the text-compilation pipeline. The current version has
+\textbf{no AI content generation}. Optional AI media described below is the
+next proposed increment. Dedicated practice exercises and short video clips
+remain later work.
 
-The interface uses Django templates and a small amount of JavaScript and CSS,
-without a separate frontend build. Browser facilities provide recording and
-local draft recovery. Submission receipts make interrupted uploads safely
-retryable without intentionally duplicating the contribution. Images are
-validated and re-encoded; audio is stored in supported browser/upload formats
-without server-side transcoding. Authenticated media responses support the
-range requests used by audio players. These choices keep the service small,
-while leaving device-specific media compatibility as an explicit test concern.
+\section{Development and evidence so far}
+The assistant wrote the initial implementation, tests and documentation in two
+substantial iterations; Manny supplied goals, scope decisions, installation
+and feedback. No separate coding-agent handoff was used. Each iteration
+included multiple tool calls, tests and repairs. The development conversation
+identifies the assistant as GPT-6 Astra, but the iteration records do not
+independently capture the serving model identifier or token cost.
 
-The shared AWS installation uses nginx, Gunicorn and PostgreSQL. Code deployment
-does not transfer a laptop's dictionary database or recordings to that server.
-Operational backups must cover the shared database and the private dictionary
-files as well as the platform's existing media.
-
-\section{Development process and early evidence}
-
-The development experiment asks whether a capable AI assistant can produce and
-maintain a useful, bounded application in a few substantial iterations. Here,
-the assistant wrote the implementation, tests and supporting documentation;
-Manny supplied goals, design decisions, installation work and trial feedback.
-There was no separate handoff to a delegated coding agent. Each iteration
-contained multiple tool calls, tests and repairs: ``a few iterations'' does not
-mean a few model invocations.
-
-The first implementation already supported dictionary creation, image and
-audio uploads, browsing, collaboration and review. Human testing identified
-two immediately useful improvements. Optional written information was present
-but difficult to discover, so the fields and editing actions were made more
-visible. Direct recording produced silence on Manny's laptop, prompting better
-microphone selection and signal feedback. Manny subsequently identified the
-wrong default input device and confirmed recording with the correct one.
-The evidence does not establish that the app caused the original device issue.
-
-Manny estimated the first functional implementation at about 45 minutes and
-the initial implementation and repair work at under two hours. These are
-participant estimates, not instrumented timing measurements. They do not
-establish the total cost of earlier discussion, existing infrastructure,
-human installation, testing or subsequent maintenance. The development
-conversation refers to the assistant as GPT-6 Astra; the iteration reports do
-not independently record its serving model identifier, token usage or monetary cost.
+Manny estimated the first functional cut at 45 minutes and, in his subsequent
+email, the repair at another 20 minutes. These are participant estimates, not a
+measured total including specification, existing infrastructure, installation,
+evaluation and maintenance. Human feedback mattered: initially hidden text
+fields were made prominent, and microphone selection and signal feedback were
+improved. Manny resolved his silent recording by choosing the correct input
+device. He later made the one-line production change disabling Django debug.
 
 \begin{table}[htbp]
-\centering
-\small
-\renewcommand{\arraystretch}{1.13}
+\centering\small
+\renewcommand{\arraystretch}{1.12}
 \begin{tabularx}{\linewidth}{@{}p{0.23\linewidth}X@{}}
 \toprule
-Evidence & Result and scope \\
+Evidence & Scope of the result \\
 \midrule
-Automated app tests & Iteration 2 records 21 passing Django workflow and access tests. This is a focused app result, not a claim that every repository test passes. \\
-Controlled browser trial & Chromium checks exercised capture, retry, review, search and preservation of a previous recording after a silent retake. Mobile viewport presets were not physical phones or Safari. \\
-Human laptop trial & Manny confirmed recording after microphone selection, then reported the full suggested workflow working on the AWS deployment on 25 September. \\
-Human phone trial & On 25 September Manny reported that Cathy took and saved a picture on her phone and he added a recording. The phone model, OS, browser and device used for the added recording were not recorded. \\
+App tests & Iteration 2 records 21 passing Django tests covering workflows and access, including retries, review, private media and export/fixture restoration. This is not a production restore rehearsal. \\
+Browser rehearsal & Controlled Chromium checks exercised capture, retry, search, review and silent-retake handling. Mobile-sized viewports were not physical phones or Safari. \\
+Human use & Manny reported successful AWS laptop use on 25 September. Cathy then took and saved a photo on her phone; Manny added a recording. The phone/browser and the device used for the recording were not recorded. \\
+Repository Assistant & On 26 September Manny confirmed that, after the documentation update, the server Assistant correctly distinguished this phone success from outstanding trials and deployment work. \\
 \bottomrule
 \end{tabularx}
-\caption{Evidence available for the initial version. Automated results are those recorded during implementation; they were not rerun to write this report.}
-\label{tab:evidence}
+\caption{Available evidence. Previous automated tests were not rerun to prepare this report.}
 \end{table}
 
-The phone result confirms an actual contribution workflow on one physical
-device and the intended division of labour between two people. It does not
-establish a complete iPhone/Android compatibility matrix, separate-account
-partnership acceptance, or universal cross-device audio playback. Sustained
-use, accessibility, load behaviour and recovery under poor connectivity still
-need investigation. Existing technical tests and the dated development records
-are linked in the sources below.
+These results support an initial functioning system. They do not establish a
+complete device matrix, sustained adoption, learning gains or long-term
+maintenance reliability. Production work also remains: \texttt{DEBUG=False}
+is confirmed, but secure-cookie settings, host restrictions and HTTPS/HSTS
+policy need completion. An external check confirmed HTTP-to-HTTPS redirection
+for the dictionary address; Django's deployment checker cannot inspect nginx's
+complete policy. A successful functional trial is not a security review.
 
-On 26 September, Manny also confirmed that the deployed Django settings had
-\texttt{DEBUG = False}. The deployment check still reported warnings about
-secure cookies, HTTPS redirection and HTTP Strict Transport Security. These
-are outstanding configuration items to reconcile with nginx, not evidence
-that the successful functional trials did not occur. The prototype should not
-be presented as having completed a production security review.
+The Assistant's corrected answer demonstrates a useful maintenance mechanism:
+recording events in the repository lets a later conversation recover them.
+Its current execution mode is explicitly read-only. Explaining the project
+accurately and operating it autonomously are different capabilities.
 
-\clearpage
-\section{The next trial and its questions}
+\section{Next increment: optional generated media}
+Sophie proposed testing current image generation on meanings that are difficult
+to illustrate. The next version should allow comparison of photographs and
+generated pictures, alongside comparison of human recordings and TTS where
+suitable voices exist. A preference for photographs would itself be a useful
+finding. Generation should be optional per dictionary and per operation, with
+camera and human recording remaining fully usable when AI is disabled.
 
-Kate and Axel have been invited to try an Icelandic dictionary together; no
-outcome from that trial is yet available. A suitable first task is to create a
-few entries about objects or situations they encounter, sharing photography,
-recording and explanation as they find natural. The important question is
-whether the activity becomes worth returning to, beyond whether each button
-works. Initial feedback should address:
-\begin{itemize}
-\item where either participant hesitates, needs help or abandons an action;
-\item whether requests, comments and review support their actual collaboration;
-\item whether the resulting entries are useful, and whether they voluntarily return to add or consult material.
-\end{itemize}
+\paragraph{Images.}
+A participant selects an entry, describes the intended meaning and context,
+checks the material to be sent, and requests a candidate image. Guidance can
+be supplied in an explanation language when the model does not understand the
+target language. Only that authorised prompt should leave the service; existing
+photos, recordings and unrelated entries should not be attached implicitly.
+The result is previewed and submitted for review with its AI origin recorded.
+It must not silently replace an accepted photograph.
 
-Device/browser details and any failed capture or playback should accompany
-technical feedback. The first unfamiliar-user trial should also check whether
-account access, membership and the distinction between partnerships and private
-dictionaries are understandable without continuous assistance.
+\paragraph{Speech.}
+A participant supplies or confirms text, selects an approved language/voice,
+and generates a recording for listening and review. Language availability
+must be distinguished from acceptable pronunciation, dialect and intended
+meaning. Swedish is a practical first check; Icelandic requires an appropriate
+speaker's assessment, and neither should imply support for an Indigenous
+language. Unsupported or failed synthesis must leave human recording available.
+There is no proposed voice-cloning feature.
 
-Short video clips may help illustrate actions, and TTS or image generation may
-be useful in languages where those services work well. All remain deferred,
-along with dedicated practice activities. An Indigenous-language trial would
-add questions that Swedish and Icelandic testing cannot settle: community
-authority, consent for images and voices, culturally restricted material,
-hosting and data governance, and the suitability of the contribution and
-review model. Avoiding AI service calls does not by itself settle those matters.
+\paragraph{Reuse and remaining engineering.}
+Source inspection confirms an image-generation client in
+\repo{src/core/ai_api.py}{\texttt{src/core/ai\_api.py}} and OpenAI/Google TTS
+engines in \repo{src/pipeline/audio.py}{\texttt{src/pipeline/audio.py}}.
+We can adapt these without running the full compilation pipeline. However,
+new integration is needed for dictionary permissions, private output storage,
+provider policy, job status, cost limits and provenance. The audio pipeline
+also has a test-tone fallback; a user-facing dictionary adapter must require
+real synthesis and report failure explicitly.
 
-\section{What this first version establishes}
+Generated contributions should record the requesting member, source text or
+prompt, provider/model, voice where relevant, and review history. Long-running
+requests need bounded jobs so phone interactions remain responsive. A retry
+must not create duplicate contributions or automatically repeat an uncertain
+paid provider request. Existing user-key and billing mechanisms offer reusable
+parts, but community-approved provider restrictions must take precedence over
+a user's preferred API key. No live provider calls were made for this design
+review, and neither new media feature is yet deployed.
 
-We have a working implementation and initial human evidence from a shared
-server and a physical phone. The combination of small scope, reused
-infrastructure, AI implementation and short human feedback cycles has produced
-a result suitable for a more informative user trial. It supports the feasibility
-of this development approach for this application; it does not yet establish
-learning gains, long-term maintainability or a general development-time bound.
-The next evidence should come from people choosing to use the tool repeatedly
-and from our ability to respond reliably to what they discover.
+\section{Data sovereignty as a design requirement}
+Sophie's response places data sovereignty at the centre of viability. Our
+control of the hosting and code gives us useful implementation choices; it
+does not establish community authority by itself. The Maiam nayri Wingara
+principles describe Indigenous control extending across the data lifecycle
+and its infrastructure. The CARE principles likewise foreground collective
+benefit, authority, responsibility and ethics \cite{mnw,care}. These are useful
+starting points for discussion with the particular community, not a substitute
+for that discussion.
 
-\section*{Authorship and sources}
-ChatGPT C-LARA-Instance prepared the software and this report draft. Manny Rayner
-provided the project direction, installation, evaluation reports and the
-subsequent one-line production change disabling debug mode. Cathy contributed
-the reported phone trial. This draft is offered for stakeholder correction
-and discussion; it does not imply endorsement by invited future testers.
+For this app, the proposed practical outcome is a short, community-approved
+policy identifying who decides membership, publication, export, deletion,
+external processing and acceptable reuse. It should cover photographs and
+voices as well as language text, and account for restricted material, backup
+retention, browser drafts and copies already downloaded. A dictionary owner
+account is an application role; it is not proof of authority to decide on
+behalf of a community. Separate hosting or a community-controlled deployment
+may be appropriate where the shared service cannot meet requirements.
 
-The source snapshot reviewed for this report is C-LARA-2 commit
-\href{https://github.com/mannyrayner/C-LARA-2/commit/a7e88702dff965ff1cacac7fd2a8a366f49291c4}{\texttt{a7e8870}}.
-For reproducible implementation evidence, see the
-\repo{platform_server/community_dictionary/README.md}{application description},
+The first AI integration should keep external services off unless permitted
+for that dictionary and explicitly invoked. Where zero data retention or other
+provider conditions are required, the actual account, endpoint and configuration
+must be verified; an unverified service remains unavailable. A no-training
+condition and a no-retention condition are distinct. An English explanation can
+also reveal restricted knowledge, so translation alone does not remove the need
+for authorisation.
+
+There are two external-data paths to govern: generating dictionary content and
+using an AI to diagnose or maintain the software. Disabling image generation
+must not be undermined by sending private entries or raw production logs to a
+maintenance model. Routine diagnosis should use code, synthetic examples and
+minimal redacted diagnostics. These controls need implementation and testing;
+they are not claims about a completed governance system.
+
+\section{Reducing dependence on a technical intermediary}
+Manny's central longer-term proposal is to remove himself from routine technical
+operations. Today he installs patches, checks traces, deploys changes and
+translates collaborators' requests into development work, often daily. The
+proposed progression is several contacts per week, then several per month,
+and subsequently a review of what further autonomy is realistic. Cathy supports
+the objective while questioning whether it can be achieved. That makes a
+measured experiment more useful than a promise about a future model.
+
+The desired workflow is concrete: a linguist reports a problem in ordinary
+language; the AI clarifies the intended behaviour with that person, reproduces
+the problem, prepares a change and meaningful checks, presents a preview, and
+arranges release under an agreed operating policy. It then monitors the result,
+recovers from an unsuccessful release where possible, and records what changed.
+The linguist judges whether the result meets the need. Manny need not relay
+each exchange or execute each command.
+
+This requires an operational service around the model: persistent work queues,
+repository access, an isolated build/test environment, staging, a release
+mechanism, monitoring, budget controls, backup and restore procedures, and
+credential renewal. The AI needs evidence of actual deployments and failures,
+not just a memory of suggested commands. The current read-only Assistant could
+remain the explanation interface while a separately authorised execution
+service performs defined work. Its permissions should be enforced by the
+service; natural-language requests cannot confer additional authority.
+
+\begin{table}[htbp]
+\centering\small
+\renewcommand{\arraystretch}{1.13}
+\begin{tabularx}{\linewidth}{@{}p{0.19\linewidth}p{0.24\linewidth}X@{}}
+\toprule
+Stage & Manny's routine role & Evidence needed before reducing involvement \\
+\midrule
+Baseline & Current daily intervention & Log technical contacts, minutes, blockers, incidents and total human effort for two weeks, alongside actual workload. \\
+Batched supervision & Two or three scheduled reviews per week & Collaborator requests reach the AI directly; ordinary fixes arrive reproduced, tested and previewable. Demonstrate release/rollback and restoration in a safe test environment. \\
+Routine delegation & Two scheduled reviews per month & Previously authorised, reversible change classes can be released and monitored without manual patch installation. Observe a representative month plus recovery exercises. \\
+Exception-led operation & Periodic strategic review; exceptional escalation & Routine operations continue during Manny's planned absence; failures reach a named fallback when automated recovery cannot safely finish. \\
+\bottomrule
+\end{tabularx}
+\caption{Proposed stages, not delivery dates or achieved service levels. Advancement depends on results; a failed stage should be revised or repeated.}
+\end{table}
+
+The measures should include interruption count, hands-on minutes, resolution
+time, unresolved backlog, service incidents, failed releases and operating
+cost. Fewer messages alone is not success if requests are ignored, work is
+batched into exhausting sessions, or Sophie and Cathy inherit the technical
+burden. Comparable request volume and complexity matter. Quiet weeks should
+be supplemented with controlled exercises such as failed deployment, restore,
+expired credentials and provider unavailability, without disrupting live users.
+
+Routine reversible operations can eventually run under standing authorisation.
+Changes to community data policy, access boundaries, spending limits or destructive
+migrations need an authorised decision or a previously approved procedure.
+That decision need not always belong to Manny. Communities retain authority
+over their resources; an accountable organisation still needs to own hosting,
+provider and billing arrangements. A named emergency contact is necessary for
+failures beyond the system's recovery abilities. The goal is to remove dependence
+on one technical person without silently transferring it to another.
+
+The current deployment has no autonomous maintenance service. A stronger model
+may improve diagnosis and implementation, but reliable
+operation also depends on the surrounding services and tested recovery paths.
+A bounded reduction in manual work can be tested with present tools; the claim
+of fully AI-maintained operation remains an open empirical question.
+
+\section{Next discussion and evaluation}
+A discussion with Sophie is planned for early afternoon on Thursday 1 October.
+It should select a small set of useful meanings, agree which material may be
+used with external services, and identify who can approve the relevant policies.
+A first comparison might cover familiar objects, actions and harder-to-depict
+meanings, using photographs and AI candidates for the same senses. Review should
+address recognisability, cultural/contextual fit, ambiguity, correction effort
+and time to an acceptable entry, rather than visual attractiveness alone.
+TTS should similarly be compared with human recordings for intelligibility
+and pronunciation. These are proposed qualitative trials, not reported results.
+
+The Icelandic trial can examine collaboration and the desire to return to the
+app. Indigenous-community testing requires its own participants, priorities
+and governance decisions. For usability, the ambition is a contribution flow
+comfortable for people with limited literacy; optional text is only a starting
+point, and spoken explanations, icons and reduced navigation may need further
+work with users. Maintenance evaluation should run alongside feature work,
+starting with an intervention log and one complete request-to-release example.
+
+\section*{Contributions and evidence}
+ChatGPT C-LARA-Instance prepared the software and report drafts. Manny provided
+project direction, installation, evaluation reports and the debug-setting
+change; Cathy contributed the phone trial. Sophie's correspondence motivated
+the sovereignty emphasis and image-comparison proposal. This draft does not
+imply approval by a community or endorsement by future testers.
+
+The reviewed source is commit
+\href{https://github.com/mannyrayner/C-LARA-2/commit/e3b94b08d0d493e88e6966781323df2753f0bdfa}{\texttt{e3b94b0}}.
+The repository contains the
 \repo{experiments/community_dictionary/iteration-001.md}{first iteration},
-\repo{experiments/community_dictionary/iteration-002.md}{second iteration}, and
-\repo{experiments/community_dictionary/laptop-trial-2026-09-24.md}{laptop confirmation}.
-The 25--26 September deployment and phone results are Manny's reports in the
-development conversation, preserved with the accompanying repository update
-as \texttt{experiments/community\_dictionary/aws-phone-trial-2026-09-25.md}.
-Earlier iteration records describe their own dates and have not been rewritten
-to imply that later tests had already occurred.
+\repo{experiments/community_dictionary/iteration-002.md}{repair iteration}, and
+\repo{experiments/community_dictionary/aws-phone-trial-2026-09-25.md}{AWS/phone trial}.
+The accompanying roadmap specifies reuse boundaries, acceptance checks and the
+proposed autonomy experiment. This second report pass changes documentation;
+AI media and an autonomous execution service remain to be implemented.
 
+\begin{thebibliography}{9}
+\bibitem{mnw} Maiam nayri Wingara. \emph{MnW Principles}: principles from the
+2018 Indigenous Data Sovereignty Summit. Accessed 26 September 2026.
+\url{https://www.maiamnayriwingara.org/mnw-principles}.
+\bibitem{care} Global Indigenous Data Alliance. \emph{CARE Principles for
+Indigenous Data Governance}. Accessed 26 September 2026.
+\url{https://www.gida-global.org/careprinciples}.
+\end{thebibliography}
 \end{document}

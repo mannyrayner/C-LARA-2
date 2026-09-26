@@ -1,0 +1,5 @@
+We should do another pass, in particular the following:
+
+1. Support for AI-based image generation in Community Dictionaries. We can presumably adapt this easily from C-LARA-2. If nothing else, it will be useful to compare phone camera and AI images, and if it turns out that everyone wants phone camera then we've learned something.
+2. For languages with TTS, similarly support TTS-based generation of audio.
+3. To my mind most interestingly: start thinking seriously about what would need to be done to take me out of the loop, and have a fully AI-maintained project, where you or the next model after you is in charge of all operational requirements. I think in practice that this would be done as a gradual reduction of my involvement. At the moment, I do things almost every day, often several times a day. We could aim for a schedule of moving this to several times a week, then several times a month, then see where we were. Cathy strongly approves of this idea, she is just sceptical that it can be achieved.

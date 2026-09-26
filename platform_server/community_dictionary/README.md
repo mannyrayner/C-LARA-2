@@ -7,6 +7,7 @@ recordings, discussion and review, with partnership request queues.
 - [Setup, deployment, recovery and phone checks](../../docs/howto/community-dictionary.md)
 - [Experiment evidence and current status](../../experiments/community_dictionary/README.md)
 - [AWS and first phone trial](../../experiments/community_dictionary/aws-phone-trial-2026-09-25.md)
+- [Proposed AI media and maintenance increment](../../docs/roadmap/community-dictionary-ai-and-maintenance.md)
 
 The prototype is on `main` and deployed on the shared AWS server. On 25 September
 2026 Manny reported successful laptop use and a physical-phone contribution

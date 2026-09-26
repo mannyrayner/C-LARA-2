@@ -12,6 +12,12 @@ trial: Cathy took and saved a picture, then he added a recording. See the
 production-settings follow-up. Broader phone/browser coverage, closure of the
 remaining deployment warnings and the invited Icelandic pilot remain pending.
 
+On 26 September Manny confirmed that the server Assistant now retrieves this
+updated evidence. He then requested optional image generation/TTS and a plan to
+reduce his routine technical work. See the [direction review](direction-review-2026-09-26.md)
+and [next-stage roadmap](../../docs/roadmap/community-dictionary-ai-and-maintenance.md).
+These functions and an operational AI service are proposed, not yet implemented.
+
 - [Specification and acceptance criteria](../../docs/roadmap/community-dictionary.md)
 - [Setup and testing](../../docs/howto/community-dictionary.md)
 - [Application](../../platform_server/community_dictionary/README.md)
@@ -20,7 +26,10 @@ remaining deployment warnings and the invited Icelandic pilot remain pending.
 The experiment asks whether the agreed, bounded prototype can be produced in a
 few substantial AI implementation iterations with little human technical work.
 It starts with community construction and discussion using photographs and
-human recordings. AI media generation and practice are later work.
+human recordings. Optional AI media is now the next proposed implementation
+increment; dedicated practice and video remain later work. The new maintenance
+experiment measures required human interventions, service outcomes and total
+human effort as well as software development speed.
 
 Specification work, repository setup and this scaffold count as preparation and
 must be reported as part of the total effort. A development iteration may

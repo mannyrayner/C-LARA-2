@@ -9,6 +9,10 @@ for the evidence and limits. Phone/browser details and a broader compatibility
 matrix remain unrecorded. The Icelandic pilot has been invited but not reported.
 `DEBUG = False` is confirmed on the server; remaining deployment warnings about
 cookies, redirects and HSTS still need resolution with the nginx configuration.
+The next proposed increment adds optional image generation and TTS; it is
+specified in the [AI-media and maintenance roadmap](../roadmap/community-dictionary-ai-and-maintenance.md).
+Those features and a write-capable operational agent are not installed by the
+documentation update. The existing explanation Assistant remains read-only.
 
 - [Specification](../roadmap/community-dictionary.md)
 - [App boundary](../../platform_server/community_dictionary/README.md)

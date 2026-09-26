@@ -1,6 +1,14 @@
 # Community picture/audio dictionary app — initial specification
 
-Version 0.4 · 23 September 2026 · Discussion draft
+Version 0.4 · 23 September 2026 · Historical discussion draft
+
+**Direction update, 26 September:** following successful initial AWS/phone use,
+Manny requests optional AI image generation and TTS as the next increment and a
+staged reduction in his routine operational involvement. The
+[new implementation and maintenance roadmap](community-dictionary-ai-and-maintenance.md)
+supersedes the priority ordering below for future work. It retains the original
+human-media path and external-data safeguards. Neither AI media nor an autonomous
+operator is implemented by this documentation pass; practice and video remain deferred.
 
 > This preserves the version 0.4 discussion specification used as the first build brief. Current status (26 September 2026): the implementation is on `main`, shares the AWS deployment, and has successful human-reported laptop and initial physical-phone use. See the [setup guide](../howto/community-dictionary.md), [AWS/phone trial](../../experiments/community_dictionary/aws-phone-trial-2026-09-25.md) and [initial report](../publications/community_dictionaries_initial/README.md). Broader device coverage, remaining production configuration and the invited Icelandic pilot are still pending. The proposal/history below describes the original discussion, not the current deployment state.
 
