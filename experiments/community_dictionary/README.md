@@ -17,6 +17,9 @@ updated evidence. He then requested optional image generation/TTS and a plan to
 reduce his routine technical work. See the [direction review](direction-review-2026-09-26.md)
 and [next-stage roadmap](../../docs/roadmap/community-dictionary-ai-and-maintenance.md).
 These functions and an operational AI service are proposed, not yet implemented.
+A later [situated-learning review](situated-learning-review-2026-09-26.md) adds spoken
+sentences grounded in personal photographs and learner-history connections to the
+proposal; the stakeholder paper is now a two-page version 3.
 
 - [Specification and acceptance criteria](../../docs/roadmap/community-dictionary.md)
 - [Setup and testing](../../docs/howto/community-dictionary.md)

@@ -12,7 +12,10 @@ cookies, redirects and HSTS still need resolution with the nginx configuration.
 The next proposed increment adds optional image generation and TTS; it is
 specified in the [AI-media and maintenance roadmap](../roadmap/community-dictionary-ai-and-maintenance.md).
 Those features and a write-capable operational agent are not installed by the
-documentation update. The existing explanation Assistant remains read-only.
+documentation update. The existing explanation Assistant remains read-only. The later same-day
+[situated-learning proposal](../roadmap/community-dictionary-ai-and-maintenance.md#later-26-september-direction-sentences-grounded-in-experience)
+adds sentences about pictures, links to earlier entries and personal-history adaptation
+to the proposed direction; these are also unimplemented.
 
 - [Specification](../roadmap/community-dictionary.md)
 - [App boundary](../../platform_server/community_dictionary/README.md)

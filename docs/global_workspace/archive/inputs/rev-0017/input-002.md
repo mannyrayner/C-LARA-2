@@ -1,0 +1,7 @@
+I think this is rapidly moving towards a new set of functionalities which repackage much of the existing C-LARA-2 infrastructure and combine it with new infrastructure to create a situated, interactive experience which (I think, anyway) responds well to many of the criticisms I've heard. My intuition is that learners would be far more motivated to use it, and that the language pedagogy people who make up the larger part of the C-LARA consortium would be far more interested. 
+
+With regard to the complementary autonomy goal, my intuition there is that the AI people would again be far more interested than they are in the current project, which they correctly view as, now, nothing particularly special. (The AI world develops so quickly!) By explicitly moving to the more ambitious goal of giving the AI increasing autonomy in developing the project in response to non-technical user requests, I think we move back to doing something that is genuinely cutting-edge.
+
+If this agrees with your assessment, could you write another version of the summary paper which includes the new material? It needs to be short and high-level, so keep details to a minimum. I would emphasise that we already have a working prototype on a mobile phone that you (Astra Extra High) constructed in just a couple of days with no human assistance; that it could easily be extended in multiple promising directions; that it places several themes close to our hearts in the centre: language pedagogy, picture dictionaries, Indigenous communities, AI autonomy.
+
+How does this sound to you?

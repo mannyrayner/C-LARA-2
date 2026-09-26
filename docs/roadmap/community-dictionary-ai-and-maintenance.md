@@ -2,15 +2,16 @@
 
 Discussion and implementation plan, 26 September 2026. Reviewed source:
 `e3b94b08d0d493e88e6966781323df2753f0bdfa`. This document proposes the next
-increment; it does not implement generation or an autonomous operator.
+increment; it does not implement generation or an autonomous operator. The later
+26 September sentence-learning proposal below was reviewed against `6ad49ee`.
 
 ## Direction and current boundary
 
 Manny now requests optional image generation, optional TTS for suitable languages,
 and a serious experiment in reducing his routine technical involvement. These
 supersede the earlier deferral of AI media beyond the next increment. Camera,
-human recording, construction and discussion remain central. Practice and video
-remain deferred. Sophie identifies data sovereignty as central and proposes
+human recording, construction and discussion remain central. Sentence-based learning
+is now a proposed extension; a full practice system and video remain later work. Sophie identifies data sovereignty as central and proposes
 testing difficult-to-illustrate meanings; a discussion is planned for early
 afternoon on Thursday 1 October. No new community approval is inferred.
 
@@ -22,6 +23,32 @@ in `src/core/project_understanding.py`; its prompt also prohibits mutation.
 That boundary remains in force. A future authorised execution service must
 enforce its own permissions rather than treating a request as permission to
 override the existing Assistant's restrictions.
+
+## Later 26 September direction: sentences grounded in experience
+
+Manny proposes extending picture entries with spoken sentences, optional text and
+translations. A human partner must be able to contribute a sentence without AI or
+mandatory transcription. Where permitted, sentence generation and TTS could reuse
+familiar vocabulary, and C-LARA-2 annotations could link words or expressions to
+earlier dictionary entries. Encounter history is not evidence of mastery; personal
+learning records should remain distinct from shared dictionary content.
+
+Start with explicit sentences attached to pictures and their recordings. Guided
+replay, earlier-entry thumbnails and an optional picture-first speaking attempt are
+interface proposals to test. Continuous word/audio synchronisation needs timing
+information in addition to text annotation. These are not existing app features.
+
+Describing an actual scene requires the image or a human description. External
+processing of photographs or learning history needs its own authorised scope; the
+image-generation permission below does not automatically permit either. Retain the
+complete human-only path and community control over data.
+
+The [two-page stakeholder paper](../publications/community_dictionaries_initial/README.md)
+connects this situated-learning proposal with maintenance driven by non-technical
+user requests. Motivation, spoken-language gains and reduced technical mediation are
+hypotheses to evaluate, not demonstrated outcomes. A small Italian trial using Manny's
+own photographs is proposed; no trial result is recorded. Detailed AI-media and
+operational acceptance criteria below remain applicable when those components are built.
 
 ## 1. Product behaviour for the next increment
 

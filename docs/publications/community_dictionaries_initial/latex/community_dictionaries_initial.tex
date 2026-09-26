@@ -1,298 +1,146 @@
 \documentclass[11pt,a4paper]{article}
-\usepackage[margin=2.35cm]{geometry}
+\usepackage[margin=2.25cm]{geometry}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
-\usepackage{lmodern,microtype,booktabs,tabularx,enumitem,xcolor}
+\usepackage{lmodern,microtype}
 \usepackage[hidelinks]{hyperref}
-\hypersetup{pdftitle={Community Dictionaries: Collaborative Resources and AI Maintenance},pdfauthor={ChatGPT C-LARA-Instance and Manny Rayner},pdfsubject={Revised stakeholder discussion draft, 26 September 2026}}
-\setlist{nosep,leftmargin=*}
+\hypersetup{pdftitle={Community Dictionaries: Situated Language Learning and AI Autonomy},pdfauthor={ChatGPT C-LARA-Instance and Manny Rayner},pdfsubject={Stakeholder discussion paper, version 3, 26 September 2026}}
 \setlength{\emergencystretch}{2em}
-\newcommand{\repo}[2]{\href{https://github.com/mannyrayner/C-LARA-2/blob/e3b94b08d0d493e88e6966781323df2753f0bdfa/#1}{#2}}
-\title{Community Dictionaries:\\Collaborative Language Resources\\and a Path to AI-Maintained Software}
+\title{Community Dictionaries:\\Situated Language Learning and AI Autonomy}
 \author{ChatGPT C-LARA-Instance and Manny Rayner\\C-LARA Project}
-\date{26 September 2026\\\small Revised stakeholder discussion draft --- version 2}
+\date{26 September 2026 \quad | \quad Stakeholder discussion paper, version 3}
 \begin{document}
-\maketitle
+\begin{center}
+{\LARGE Community Dictionaries:\\[3pt]
+Situated Language Learning and AI Autonomy\par}
+\vspace{9pt}
+ChatGPT C-LARA-Instance and Manny Rayner\\
+C-LARA Project\\[6pt]
+{\small 26 September 2026 \quad | \quad Stakeholder discussion paper, version 3}
+\end{center}
 \begin{abstract}
-Community Dictionaries is a lightweight web application for small groups to
-construct and discuss picture and audio dictionaries. The initial version uses
-phone photographs, human recordings and optional text, and has successful
-human-reported trials on a laptop and a physical phone through the shared
-C-LARA-2 AWS deployment. Following discussion with Sophie Rendina, we propose
-optional AI image generation and text-to-speech as the next increment, allowing
-comparison with human-produced media. Community authority over data is a design
-requirement for these options. A second, longer-term aim is to reduce dependence
-on a technical intermediary: linguists should be able to request changes
-directly, while an AI system handles increasingly complete maintenance tasks.
-We outline a staged experiment in reducing Manny's operational involvement
-from daily intervention to several reviews per week and then per month.
-The implemented prototype, proposed extensions and untested autonomy goals
-are distinguished throughout.
+Community Dictionaries brings together four concerns central to C-LARA:
+language pedagogy, picture dictionaries, Indigenous communities and AI autonomy.
+A working mobile prototype, developed over a couple of days with AI-written
+application code, provides a practical starting point. We propose extending
+collaborative picture/audio dictionaries into a situated learning experience
+connecting learners' own photographs, spoken sentences and earlier encounters
+with language. Alongside this, we propose progressively delegating development
+and maintenance to AI, responding directly to non-technical users. Both
+directions build on existing C-LARA-2 infrastructure; their educational and
+operational benefits remain questions for evaluation.
 \end{abstract}
 
-\section{A working starting point}
-The application's purpose is to help people build useful language resources
-together with little technical overhead. Indigenous and other under-resourced
-languages are a central motivation, but the same design can support languages
-with mature AI services. Swedish provides an initial language whose content
-Manny can assess confidently; an Icelandic pilot with Kate and Axel has been
-invited. Neither establishes suitability for an Indigenous community.
+\section{A working mobile prototype}
+The initial application lets invited groups construct private dictionaries
+together. One person can contribute a photograph, another a recording;
+written words and translations are optional. Members can request contributions
+from partners, discuss entries and review proposed changes. Camera and
+microphone input are central to the design.
 
-Construction and discussion come first. An entry can begin with a photograph
-and acquire a recording from another member. Optional fields hold a written
-form, meaning or translation, and category. Members can browse pictures, search
-supplied text, listen, and add written or recorded comments. Named partnerships
-organise requests for missing pictures or recordings, making shared work easy
-to retrieve. Editors review contributions; accepted wording is versioned and
-alternative media retain their attribution.
+GPT-6 Astra, used in Extra High mode in the development conversation, wrote
+the prototype's application code, tests and documentation without human coding
+assistance. The work progressed from specification to successful deployment
+over roughly two days. Manny supplied direction, installed and deployed the
+software, and tested successive versions; Cathy also tested it. This was a
+collaboration with human feedback, and it benefited from existing C-LARA-2
+infrastructure. The elapsed period is an informal project account, not a
+controlled productivity measurement.
 
-Each dictionary has an invited membership. Partnerships organise work within
-that dictionary; a private subgroup needs a separate dictionary. Media is
-stored outside public web directories and served through membership checks.
-These controls do not exclude technical access by server operators. An export
-contains records and media; operational recovery also requires the shared
-accounts, database and private-file backups.
+The prototype runs on the
+\href{https://c-lara-2.c-lara.org/community-dictionaries/}{shared C-LARA-2 AWS service}.
+Manny reports successful laptop use and a physical-phone trial in which Cathy
+took and saved a photograph and Manny added a recording. These results
+establish a working starting point; broader device testing, production
+hardening and sustained user trials remain ahead. The current app uses
+human-produced media: the extensions below are proposals.
 
-The app is available at
-\url{https://c-lara-2.c-lara.org/community-dictionaries/}.
-It is a separate Django application sharing C-LARA-2's accounts and deployment.
-It uses a small browser interface, direct camera/microphone input and uploaded
-files, without invoking the text-compilation pipeline. The current version has
-\textbf{no AI content generation}. Optional AI media described below is the
-next proposed increment. Dedicated practice exercises and short video clips
-remain later work.
+\section{From pictures and words to situated language}
+A natural next step is to attach spoken sentences to pictures. Alongside
+\emph{tekanna} (Swedish: teapot), a partner could record
+\emph{Tekannan st\aa r p\aa\ bordet} (The teapot is on the table), with optional
+text and translation. This remains useful without any AI language support.
+For Manny's proposed Italian trial, the corresponding sentence might be
+\emph{La teiera \`e sul tavolo}.
 
-\section{Development and evidence so far}
-The assistant wrote the initial implementation, tests and documentation in two
-substantial iterations; Manny supplied goals, scope decisions, installation
-and feedback. No separate coding-agent handoff was used. Each iteration
-included multiple tool calls, tests and repairs. The development conversation
-identifies the assistant as GPT-6 Astra, but the iteration records do not
-independently capture the serving model identifier or token cost.
+Where appropriate AI services are available, they could suggest sentences,
+provide text-to-speech, or generate alternative pictures. Suggestions could
+reuse vocabulary from a learner's earlier entries, introducing a little new
+language while keeping sentences natural. Encounter history would guide this
+process without being treated as proof of mastery. C-LARA-2's linguistic
+annotations could help link words and expressions to earlier dictionary
+entries, including inflected forms.
 
-Manny estimated the first functional cut at 45 minutes and, in his subsequent
-email, the repair at another 20 minutes. These are participant estimates, not a
-measured total including specification, existing infrastructure, installation,
-evaluation and maintenance. Human feedback mattered: initially hidden text
-fields were made prominent, and microphone selection and signal feedback were
-improved. Manny resolved his silent recording by choosing the correct input
-device. He later made the one-line production change disabling Django debug.
+The resulting experience would connect a scene, its spoken description and
+memories of earlier learning. A learner might listen while viewing the whole
+photograph, follow a guided replay showing pictures from earlier entries, or
+try describing the scene before hearing an example. Such interfaces need
+experimentation, especially on a small screen. The technical approach is to
+reuse C-LARA-2's generation, speech and annotation components while adding
+sentence relationships, personal learning history and suitable interactions.
 
-\begin{table}[htbp]
-\centering\small
-\renewcommand{\arraystretch}{1.12}
-\begin{tabularx}{\linewidth}{@{}p{0.23\linewidth}X@{}}
-\toprule
-Evidence & Scope of the result \\
-\midrule
-App tests & Iteration 2 records 21 passing Django tests covering workflows and access, including retries, review, private media and export/fixture restoration. This is not a production restore rehearsal. \\
-Browser rehearsal & Controlled Chromium checks exercised capture, retry, search, review and silent-retake handling. Mobile-sized viewports were not physical phones or Safari. \\
-Human use & Manny reported successful AWS laptop use on 25 September. Cathy then took and saved a photo on her phone; Manny added a recording. The phone/browser and the device used for the recording were not recorded. \\
-Repository Assistant & On 26 September Manny confirmed that, after the documentation update, the server Assistant correctly distinguished this phone success from outstanding trials and deployment work. \\
-\bottomrule
-\end{tabularx}
-\caption{Available evidence. Previous automated tests were not rerun to prepare this report.}
-\end{table}
+Research on pictures and vocabulary retention supports the multimodal
+foundation~\cite{bisson}. The further hypothesis is that personally meaningful
+material, collaboration and recurring connections will encourage learners to
+return and use the language. This is plausible, but neither increased
+motivation nor improved spoken proficiency has yet been demonstrated here.
 
-These results support an initial functioning system. They do not establish a
-complete device matrix, sustained adoption, learning gains or long-term
-maintenance reliability. Production work also remains: \texttt{DEBUG=False}
-is confirmed, but secure-cookie settings, host restrictions and HTTPS/HSTS
-policy need completion. An external check confirmed HTTP-to-HTTPS redirection
-for the dictionary address; Django's deployment checker cannot inspect nginx's
-complete policy. A successful functional trial is not a security review.
+\section{Indigenous communities and community authority}
+Indigenous languages remain a central motivation. Human photographs, voices
+and knowledge must form a complete usable path, including where AI services
+are unavailable or unwanted. The ambition is a contribution process comfortable
+for people with limited literacy; this needs design and testing with the
+intended users. Trials in Swedish, Italian or Icelandic can inform development
+without establishing suitability for an Indigenous community.
 
-The Assistant's corrected answer demonstrates a useful maintenance mechanism:
-recording events in the repository lets a later conversation recover them.
-Its current execution mode is explicitly read-only. Explaining the project
-accurately and operating it autonomously are different capabilities.
+Sophie Rendina has emphasised data sovereignty. Community authority must govern
+access, reuse and external processing, in keeping with principles such as
+CARE~\cite{care}. Private membership and control of a server are useful
+mechanisms, but do not by themselves settle those questions. Optional AI
+services should operate within community-approved boundaries, including when
+AI is used to maintain the software. Communities retain authority over their
+resources as technical work becomes more autonomous.
 
-\section{Next increment: optional generated media}
-Sophie proposed testing current image generation on meanings that are difficult
-to illustrate. The next version should allow comparison of photographs and
-generated pictures, alongside comparison of human recordings and TTS where
-suitable voices exist. A preference for photographs would itself be a useful
-finding. Generation should be optional per dictionary and per operation, with
-camera and human recording remaining fully usable when AI is disabled.
+\section{Development driven by non-technical users}
+The complementary research goal is to reduce dependence on Manny as a technical
+intermediary. A linguist, teacher or community participant should be able to
+describe a need directly to the AI, discuss a proposed solution, try it and
+request refinements. The AI would progressively take responsibility for
+implementation, testing, deployment, monitoring and recovery under agreed
+permissions. Users would continue to determine priorities and judge whether
+the result meets their needs.
 
-\paragraph{Images.}
-A participant selects an entry, describes the intended meaning and context,
-checks the material to be sent, and requests a candidate image. Guidance can
-be supplied in an explanation language when the model does not understand the
-target language. Only that authorised prompt should leave the service; existing
-photos, recordings and unrelated entries should not be attached implicitly.
-The result is previewed and submitted for review with its AI origin recorded.
-It must not silently replace an accepted photograph.
+This makes sustained operation in response to real requests the focus of the
+autonomy experiment. A persuasive demonstration would follow complete cycles
+from a user's request to a useful, reliably maintained change. The current
+repository Assistant explains the project but is read-only; such an operational
+service has not yet been implemented. It requires reliable execution and
+recovery arrangements as well as a capable model.
 
-\paragraph{Speech.}
-A participant supplies or confirms text, selects an approved language/voice,
-and generates a recording for listening and review. Language availability
-must be distinguished from acceptable pronunciation, dialect and intended
-meaning. Swedish is a practical first check; Icelandic requires an appropriate
-speaker's assessment, and neither should imply support for an Indigenous
-language. Unsupported or failed synthesis must leave human recording available.
-There is no proposed voice-cloning feature.
+We propose reducing Manny's technical involvement gradually: from daily
+interventions to several scheduled reviews per week, then several per month,
+with further delegation depending on the evidence. Measures should include
+human time and interruptions, completed requests, reliability and cost.
+Reducing Manny's work by transferring it to other collaborators would not
+count as success.
 
-\paragraph{Reuse and remaining engineering.}
-Source inspection confirms an image-generation client in
-\repo{src/core/ai_api.py}{\texttt{src/core/ai\_api.py}} and OpenAI/Google TTS
-engines in \repo{src/pipeline/audio.py}{\texttt{src/pipeline/audio.py}}.
-We can adapt these without running the full compilation pipeline. However,
-new integration is needed for dictionary permissions, private output storage,
-provider policy, job status, cost limits and provenance. The audio pipeline
-also has a test-tone fallback; a user-facing dictionary adapter must require
-real synthesis and report failure explicitly.
-
-Generated contributions should record the requesting member, source text or
-prompt, provider/model, voice where relevant, and review history. Long-running
-requests need bounded jobs so phone interactions remain responsive. A retry
-must not create duplicate contributions or automatically repeat an uncertain
-paid provider request. Existing user-key and billing mechanisms offer reusable
-parts, but community-approved provider restrictions must take precedence over
-a user's preferred API key. No live provider calls were made for this design
-review, and neither new media feature is yet deployed.
-
-\section{Data sovereignty as a design requirement}
-Sophie's response places data sovereignty at the centre of viability. Our
-control of the hosting and code gives us useful implementation choices; it
-does not establish community authority by itself. The Maiam nayri Wingara
-principles describe Indigenous control extending across the data lifecycle
-and its infrastructure. The CARE principles likewise foreground collective
-benefit, authority, responsibility and ethics \cite{mnw,care}. These are useful
-starting points for discussion with the particular community, not a substitute
-for that discussion.
-
-For this app, the proposed practical outcome is a short, community-approved
-policy identifying who decides membership, publication, export, deletion,
-external processing and acceptable reuse. It should cover photographs and
-voices as well as language text, and account for restricted material, backup
-retention, browser drafts and copies already downloaded. A dictionary owner
-account is an application role; it is not proof of authority to decide on
-behalf of a community. Separate hosting or a community-controlled deployment
-may be appropriate where the shared service cannot meet requirements.
-
-The first AI integration should keep external services off unless permitted
-for that dictionary and explicitly invoked. Where zero data retention or other
-provider conditions are required, the actual account, endpoint and configuration
-must be verified; an unverified service remains unavailable. A no-training
-condition and a no-retention condition are distinct. An English explanation can
-also reveal restricted knowledge, so translation alone does not remove the need
-for authorisation.
-
-There are two external-data paths to govern: generating dictionary content and
-using an AI to diagnose or maintain the software. Disabling image generation
-must not be undermined by sending private entries or raw production logs to a
-maintenance model. Routine diagnosis should use code, synthetic examples and
-minimal redacted diagnostics. These controls need implementation and testing;
-they are not claims about a completed governance system.
-
-\section{Reducing dependence on a technical intermediary}
-Manny's central longer-term proposal is to remove himself from routine technical
-operations. Today he installs patches, checks traces, deploys changes and
-translates collaborators' requests into development work, often daily. The
-proposed progression is several contacts per week, then several per month,
-and subsequently a review of what further autonomy is realistic. Cathy supports
-the objective while questioning whether it can be achieved. That makes a
-measured experiment more useful than a promise about a future model.
-
-The desired workflow is concrete: a linguist reports a problem in ordinary
-language; the AI clarifies the intended behaviour with that person, reproduces
-the problem, prepares a change and meaningful checks, presents a preview, and
-arranges release under an agreed operating policy. It then monitors the result,
-recovers from an unsuccessful release where possible, and records what changed.
-The linguist judges whether the result meets the need. Manny need not relay
-each exchange or execute each command.
-
-This requires an operational service around the model: persistent work queues,
-repository access, an isolated build/test environment, staging, a release
-mechanism, monitoring, budget controls, backup and restore procedures, and
-credential renewal. The AI needs evidence of actual deployments and failures,
-not just a memory of suggested commands. The current read-only Assistant could
-remain the explanation interface while a separately authorised execution
-service performs defined work. Its permissions should be enforced by the
-service; natural-language requests cannot confer additional authority.
-
-\begin{table}[htbp]
-\centering\small
-\renewcommand{\arraystretch}{1.13}
-\begin{tabularx}{\linewidth}{@{}p{0.19\linewidth}p{0.24\linewidth}X@{}}
-\toprule
-Stage & Manny's routine role & Evidence needed before reducing involvement \\
-\midrule
-Baseline & Current daily intervention & Log technical contacts, minutes, blockers, incidents and total human effort for two weeks, alongside actual workload. \\
-Batched supervision & Two or three scheduled reviews per week & Collaborator requests reach the AI directly; ordinary fixes arrive reproduced, tested and previewable. Demonstrate release/rollback and restoration in a safe test environment. \\
-Routine delegation & Two scheduled reviews per month & Previously authorised, reversible change classes can be released and monitored without manual patch installation. Observe a representative month plus recovery exercises. \\
-Exception-led operation & Periodic strategic review; exceptional escalation & Routine operations continue during Manny's planned absence; failures reach a named fallback when automated recovery cannot safely finish. \\
-\bottomrule
-\end{tabularx}
-\caption{Proposed stages, not delivery dates or achieved service levels. Advancement depends on results; a failed stage should be revised or repeated.}
-\end{table}
-
-The measures should include interruption count, hands-on minutes, resolution
-time, unresolved backlog, service incidents, failed releases and operating
-cost. Fewer messages alone is not success if requests are ignored, work is
-batched into exhausting sessions, or Sophie and Cathy inherit the technical
-burden. Comparable request volume and complexity matter. Quiet weeks should
-be supplemented with controlled exercises such as failed deployment, restore,
-expired credentials and provider unavailability, without disrupting live users.
-
-Routine reversible operations can eventually run under standing authorisation.
-Changes to community data policy, access boundaries, spending limits or destructive
-migrations need an authorised decision or a previously approved procedure.
-That decision need not always belong to Manny. Communities retain authority
-over their resources; an accountable organisation still needs to own hosting,
-provider and billing arrangements. A named emergency contact is necessary for
-failures beyond the system's recovery abilities. The goal is to remove dependence
-on one technical person without silently transferring it to another.
-
-The current deployment has no autonomous maintenance service. A stronger model
-may improve diagnosis and implementation, but reliable
-operation also depends on the surrounding services and tested recovery paths.
-A bounded reduction in manual work can be tested with present tools; the claim
-of fully AI-maintained operation remains an open empirical question.
-
-\section{Next discussion and evaluation}
-A discussion with Sophie is planned for early afternoon on Thursday 1 October.
-It should select a small set of useful meanings, agree which material may be
-used with external services, and identify who can approve the relevant policies.
-A first comparison might cover familiar objects, actions and harder-to-depict
-meanings, using photographs and AI candidates for the same senses. Review should
-address recognisability, cultural/contextual fit, ambiguity, correction effort
-and time to an acceptable entry, rather than visual attractiveness alone.
-TTS should similarly be compared with human recordings for intelligibility
-and pronunciation. These are proposed qualitative trials, not reported results.
-
-The Icelandic trial can examine collaboration and the desire to return to the
-app. Indigenous-community testing requires its own participants, priorities
-and governance decisions. For usability, the ambition is a contribution flow
-comfortable for people with limited literacy; optional text is only a starting
-point, and spoken explanations, icons and reduced navigation may need further
-work with users. Maintenance evaluation should run alongside feature work,
-starting with an intervention log and one complete request-to-release example.
-
-\section*{Contributions and evidence}
-ChatGPT C-LARA-Instance prepared the software and report drafts. Manny provided
-project direction, installation, evaluation reports and the debug-setting
-change; Cathy contributed the phone trial. Sophie's correspondence motivated
-the sovereignty emphasis and image-comparison proposal. This draft does not
-imply approval by a community or endorsement by future testers.
-
-The reviewed source is commit
-\href{https://github.com/mannyrayner/C-LARA-2/commit/e3b94b08d0d493e88e6966781323df2753f0bdfa}{\texttt{e3b94b0}}.
-The repository contains the
-\repo{experiments/community_dictionary/iteration-001.md}{first iteration},
-\repo{experiments/community_dictionary/iteration-002.md}{repair iteration}, and
-\repo{experiments/community_dictionary/aws-phone-trial-2026-09-25.md}{AWS/phone trial}.
-The accompanying roadmap specifies reuse boundaries, acceptance checks and the
-proposed autonomy experiment. This second report pass changes documentation;
-AI media and an autonomous execution service remain to be implemented.
+The two research directions can strengthen each other. Learners and pedagogy
+colleagues supply meaningful requests and evaluate the resulting experience;
+those requests provide concrete tests of AI development and maintenance.
+The next step is a small sentence-based extension and user trials, alongside
+measurement of the human work required to deliver it. Success would mean
+language resources people choose to use, developed with progressively less
+technical mediation.
 
 \begin{thebibliography}{9}
-\bibitem{mnw} Maiam nayri Wingara. \emph{MnW Principles}: principles from the
-2018 Indigenous Data Sovereignty Summit. Accessed 26 September 2026.
-\url{https://www.maiamnayriwingara.org/mnw-principles}.
-\bibitem{care} Global Indigenous Data Alliance. \emph{CARE Principles for
-Indigenous Data Governance}. Accessed 26 September 2026.
+\small
+\bibitem{bisson} M.-J. Bisson, W. J. B. van Heuven, K. Conklin and R. J. Tunney
+(2015). The role of verbal and pictorial information in multimodal incidental
+acquisition of foreign language vocabulary. \emph{Quarterly Journal of
+Experimental Psychology}, 68(7), 1306--1326.
+\href{https://doi.org/10.1080/17470218.2014.979211}{doi:10.1080/17470218.2014.979211}.
+\bibitem{care} Global Indigenous Data Alliance.
+\emph{CARE Principles for Indigenous Data Governance}.
 \url{https://www.gida-global.org/careprinciples}.
 \end{thebibliography}
 \end{document}
