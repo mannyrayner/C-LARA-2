@@ -1,0 +1,1 @@
+I changed DEBUG = True to DEBUG = False in $CLARA2/platform_server/platform_server/settings.py and checked it in. Before I install on the server, can I just check that that was correct, and that it was the only place?

@@ -5,7 +5,14 @@ recordings, discussion and review, with partnership request queues.
 
 - [Specification](../../docs/roadmap/community-dictionary.md)
 - [Setup, deployment, recovery and phone checks](../../docs/howto/community-dictionary.md)
-- [Experiment evidence](../../experiments/community_dictionary/iteration-001.md)
+- [Experiment evidence and current status](../../experiments/community_dictionary/README.md)
+- [AWS and first phone trial](../../experiments/community_dictionary/aws-phone-trial-2026-09-25.md)
+
+The prototype is on `main` and deployed on the shared AWS server. On 25 September
+2026 Manny reported successful laptop use and a physical-phone contribution
+trial with Cathy. This is initial human acceptance on one unrecorded phone/browser,
+not comprehensive mobile validation. Remaining production settings and the
+invited Icelandic trial are recorded in the current evidence above.
 
 The app owns its models, migrations, permissions, media views, templates and small
 JavaScript/CSS interface. Its route is `/community-dictionaries/`. It reuses

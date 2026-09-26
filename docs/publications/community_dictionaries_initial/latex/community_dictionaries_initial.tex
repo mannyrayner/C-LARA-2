@@ -1,0 +1,242 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.35cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern,microtype,booktabs,tabularx,enumitem,xcolor}
+\usepackage[hidelinks]{hyperref}
+\hypersetup{pdftitle={Community Dictionaries: Initial System Report},pdfauthor={ChatGPT C-LARA-Instance and Manny Rayner},pdfsubject={Stakeholder discussion draft, 26 September 2026}}
+\setlist{nosep,leftmargin=*}
+\setlength{\emergencystretch}{2em}
+\newcommand{\repo}[2]{\href{https://github.com/mannyrayner/C-LARA-2/blob/a7e88702dff965ff1cacac7fd2a8a366f49291c4/#1}{#2}}
+\title{Community Dictionaries:\\A Small Collaborative Picture and Audio App\\Built Through AI-Led Development}
+\author{ChatGPT C-LARA-Instance and Manny Rayner\\C-LARA Project}
+\date{26 September 2026\\\small Initial system report --- stakeholder discussion draft}
+
+\begin{document}
+\maketitle
+\begin{abstract}
+Community Dictionaries is a lightweight web application in which small groups
+construct picture and audio dictionaries together, using phone photographs,
+human recordings and optional written information. It is designed to support
+languages independently of whether AI language services are available.
+Construction and discussion take priority over dedicated practice activities.
+The initial implementation shares the accounts and server infrastructure of
+C-LARA-2 but has its own data model, permissions and private media storage.
+Development proceeded through two substantial AI implementation iterations,
+with human specification, installation and feedback. By 25 September 2026,
+Manny reported successful laptop use on the AWS deployment and a successful
+trial on Cathy's phone: she took and saved a photograph, and he added a recording.
+We describe the implemented system, the evidence behind this result, and the
+questions for a proposed Icelandic pilot. These are initial feasibility results,
+not evidence of learning effectiveness or comprehensive mobile compatibility.
+\end{abstract}
+
+\section{Purpose and scope}
+
+The starting question was practical: could a small language-learning community
+have a useful tool for collecting, discussing and improving picture and audio
+entries without a large software-development project? Indigenous and other
+under-resourced languages are a central motivation. However, the application
+also supports languages for which AI assistance is readily available. This
+allows an initial Swedish trial, whose linguistic content Manny can assess
+confidently, without making AI-generated content a prerequisite.
+
+The first version deliberately concentrates on \emph{constructing and
+discussing}. Someone supplies a photograph, another person supplies the word or
+phrase as a recording, and the group can clarify or improve the contribution.
+Browsing and listening are already possible. Quizzes, spaced repetition and
+other dedicated practice activities are deferred until there is useful material
+and a satisfactory contribution workflow. Whether the construction activity
+itself supports learning is an empirical question.
+
+Phone camera and microphone input are primary modalities. Written forms,
+translations and categories are optional, so an entry need not wait for a
+spelling or a typed explanation. The initial implementation makes no calls to
+AI content-generation services and requires no AI-provider credentials for
+dictionary work. Future text-to-speech and image generation are possible
+additions, not assumptions underlying the current design.
+
+\section{What participants can do}
+
+A dictionary has a target language, an optional language for explanations, and
+an invited membership. Members can create entries, contribute media, discuss
+entries, and propose changes. The owner and editors manage review. An entry
+can start with only a picture or a recording; incomplete contributions are a
+normal part of the workflow, rather than an error condition.
+
+For example, a learner might photograph an object and ask a partner for its
+name. The partner adds a recording; either person can add a written form,
+translation or category. The group can discuss the intended meaning through
+written or recorded comments. Several recordings or pictures can be retained
+with their contributor attribution. Accepted wording and the selected picture
+provide a simple presentation while preserving the contribution history.
+Ordinary members' proposals go through review; owners and editors can accept
+material or request changes. Written revisions are versioned to avoid silently
+overwriting a newer accepted form.
+
+The interface supports image browsing, listening, text search and category
+filtering. Text search uses the written information that participants have
+supplied; it is not automatic recognition of objects or speech. Picture and
+recording uploads supplement direct camera and microphone capture. The
+recorder includes input-device selection, a microphone check and level meter,
+preview, and detection of silent takes where the browser permits it.
+
+Named \emph{partnerships} organise collaboration within a dictionary. A request
+for a missing picture or recording can be addressed to a partnership, whose
+members can retrieve outstanding requests and respond. This makes a division
+of labour explicit: contributors need not provide every component themselves.
+Requests remain distinguishable as open, awaiting review, completed or withdrawn.
+
+\textbf{Privacy follows dictionary membership.} A partnership is a work group,
+not a separate privacy boundary. People who want material visible only to a
+subgroup should create a separate dictionary. Media access is checked against
+membership and the files are stored outside the web server's public media
+directory. This is application-level access control, not end-to-end encryption;
+server operators retain technical access. An owner can export records and media,
+but the export is not yet a one-click restoration facility.
+
+\section{A small addition to an existing platform}
+
+Community Dictionaries is a separate Django application in the C-LARA-2
+repository, available at
+\url{https://c-lara-2.c-lara.org/community-dictionaries/}.
+It reuses existing accounts, database infrastructure and deployment services.
+It does not invoke C-LARA-2's text-compilation pipeline or task queue, and its
+entries are separate from the older project-linked picture dictionaries.
+This boundary permits immediate shared deployment and leaves open a later
+move to an independent repository.
+
+The interface uses Django templates and a small amount of JavaScript and CSS,
+without a separate frontend build. Browser facilities provide recording and
+local draft recovery. Submission receipts make interrupted uploads safely
+retryable without intentionally duplicating the contribution. Images are
+validated and re-encoded; audio is stored in supported browser/upload formats
+without server-side transcoding. Authenticated media responses support the
+range requests used by audio players. These choices keep the service small,
+while leaving device-specific media compatibility as an explicit test concern.
+
+The shared AWS installation uses nginx, Gunicorn and PostgreSQL. Code deployment
+does not transfer a laptop's dictionary database or recordings to that server.
+Operational backups must cover the shared database and the private dictionary
+files as well as the platform's existing media.
+
+\section{Development process and early evidence}
+
+The development experiment asks whether a capable AI assistant can produce and
+maintain a useful, bounded application in a few substantial iterations. Here,
+the assistant wrote the implementation, tests and supporting documentation;
+Manny supplied goals, design decisions, installation work and trial feedback.
+There was no separate handoff to a delegated coding agent. Each iteration
+contained multiple tool calls, tests and repairs: ``a few iterations'' does not
+mean a few model invocations.
+
+The first implementation already supported dictionary creation, image and
+audio uploads, browsing, collaboration and review. Human testing identified
+two immediately useful improvements. Optional written information was present
+but difficult to discover, so the fields and editing actions were made more
+visible. Direct recording produced silence on Manny's laptop, prompting better
+microphone selection and signal feedback. Manny subsequently identified the
+wrong default input device and confirmed recording with the correct one.
+The evidence does not establish that the app caused the original device issue.
+
+Manny estimated the first functional implementation at about 45 minutes and
+the initial implementation and repair work at under two hours. These are
+participant estimates, not instrumented timing measurements. They do not
+establish the total cost of earlier discussion, existing infrastructure,
+human installation, testing or subsequent maintenance. The development
+conversation refers to the assistant as GPT-6 Astra; the iteration reports do
+not independently record its serving model identifier, token usage or monetary cost.
+
+\begin{table}[htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.13}
+\begin{tabularx}{\linewidth}{@{}p{0.23\linewidth}X@{}}
+\toprule
+Evidence & Result and scope \\
+\midrule
+Automated app tests & Iteration 2 records 21 passing Django workflow and access tests. This is a focused app result, not a claim that every repository test passes. \\
+Controlled browser trial & Chromium checks exercised capture, retry, review, search and preservation of a previous recording after a silent retake. Mobile viewport presets were not physical phones or Safari. \\
+Human laptop trial & Manny confirmed recording after microphone selection, then reported the full suggested workflow working on the AWS deployment on 25 September. \\
+Human phone trial & On 25 September Manny reported that Cathy took and saved a picture on her phone and he added a recording. The phone model, OS, browser and device used for the added recording were not recorded. \\
+\bottomrule
+\end{tabularx}
+\caption{Evidence available for the initial version. Automated results are those recorded during implementation; they were not rerun to write this report.}
+\label{tab:evidence}
+\end{table}
+
+The phone result confirms an actual contribution workflow on one physical
+device and the intended division of labour between two people. It does not
+establish a complete iPhone/Android compatibility matrix, separate-account
+partnership acceptance, or universal cross-device audio playback. Sustained
+use, accessibility, load behaviour and recovery under poor connectivity still
+need investigation. Existing technical tests and the dated development records
+are linked in the sources below.
+
+On 26 September, Manny also confirmed that the deployed Django settings had
+\texttt{DEBUG = False}. The deployment check still reported warnings about
+secure cookies, HTTPS redirection and HTTP Strict Transport Security. These
+are outstanding configuration items to reconcile with nginx, not evidence
+that the successful functional trials did not occur. The prototype should not
+be presented as having completed a production security review.
+
+\clearpage
+\section{The next trial and its questions}
+
+Kate and Axel have been invited to try an Icelandic dictionary together; no
+outcome from that trial is yet available. A suitable first task is to create a
+few entries about objects or situations they encounter, sharing photography,
+recording and explanation as they find natural. The important question is
+whether the activity becomes worth returning to, beyond whether each button
+works. Initial feedback should address:
+\begin{itemize}
+\item where either participant hesitates, needs help or abandons an action;
+\item whether requests, comments and review support their actual collaboration;
+\item whether the resulting entries are useful, and whether they voluntarily return to add or consult material.
+\end{itemize}
+
+Device/browser details and any failed capture or playback should accompany
+technical feedback. The first unfamiliar-user trial should also check whether
+account access, membership and the distinction between partnerships and private
+dictionaries are understandable without continuous assistance.
+
+Short video clips may help illustrate actions, and TTS or image generation may
+be useful in languages where those services work well. All remain deferred,
+along with dedicated practice activities. An Indigenous-language trial would
+add questions that Swedish and Icelandic testing cannot settle: community
+authority, consent for images and voices, culturally restricted material,
+hosting and data governance, and the suitability of the contribution and
+review model. Avoiding AI service calls does not by itself settle those matters.
+
+\section{What this first version establishes}
+
+We have a working implementation and initial human evidence from a shared
+server and a physical phone. The combination of small scope, reused
+infrastructure, AI implementation and short human feedback cycles has produced
+a result suitable for a more informative user trial. It supports the feasibility
+of this development approach for this application; it does not yet establish
+learning gains, long-term maintainability or a general development-time bound.
+The next evidence should come from people choosing to use the tool repeatedly
+and from our ability to respond reliably to what they discover.
+
+\section*{Authorship and sources}
+ChatGPT C-LARA-Instance prepared the software and this report draft. Manny Rayner
+provided the project direction, installation, evaluation reports and the
+subsequent one-line production change disabling debug mode. Cathy contributed
+the reported phone trial. This draft is offered for stakeholder correction
+and discussion; it does not imply endorsement by invited future testers.
+
+The source snapshot reviewed for this report is C-LARA-2 commit
+\href{https://github.com/mannyrayner/C-LARA-2/commit/a7e88702dff965ff1cacac7fd2a8a366f49291c4}{\texttt{a7e8870}}.
+For reproducible implementation evidence, see the
+\repo{platform_server/community_dictionary/README.md}{application description},
+\repo{experiments/community_dictionary/iteration-001.md}{first iteration},
+\repo{experiments/community_dictionary/iteration-002.md}{second iteration}, and
+\repo{experiments/community_dictionary/laptop-trial-2026-09-24.md}{laptop confirmation}.
+The 25--26 September deployment and phone results are Manny's reports in the
+development conversation, preserved with the accompanying repository update
+as \texttt{experiments/community\_dictionary/aws-phone-trial-2026-09-25.md}.
+Earlier iteration records describe their own dates and have not been rewritten
+to imply that later tests had already occurred.
+
+\end{document}

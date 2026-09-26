@@ -1,18 +1,36 @@
 # Community dictionary: setup and testing
 
-Status: prototype 1 has successful initial laptop feedback. The incremental
-[iteration 2 repair](../../experiments/community_dictionary/iteration-002.md) adds
-microphone diagnostics and makes optional words easier to find. Manny has now
-[confirmed laptop recording](../../experiments/community_dictionary/laptop-trial-2026-09-24.md)
-after selecting the correct input. Deployment and actual iPhone/Android trials
-remain pending.
+Status as of 26 September 2026: the implementation and microphone/text repairs
+are on `main` and deployed alongside ordinary C-LARA-2 on AWS. Manny reports
+successful laptop use on that server and a first physical-phone trial: Cathy
+took and saved a picture on her phone, then Manny added a recording. See the
+[AWS/phone trial record](../../experiments/community_dictionary/aws-phone-trial-2026-09-25.md)
+for the evidence and limits. Phone/browser details and a broader compatibility
+matrix remain unrecorded. The Icelandic pilot has been invited but not reported.
+`DEBUG = False` is confirmed on the server; remaining deployment warnings about
+cookies, redirects and HSTS still need resolution with the nginx configuration.
 
 - [Specification](../roadmap/community-dictionary.md)
 - [App boundary](../../platform_server/community_dictionary/README.md)
 - [Existing platform setup](run-django-platform.md)
 - [Existing server administration](server-admin-tasks.md)
+- [Initial stakeholder report](../publications/community_dictionaries_initial/README.md)
 
-## Update an installed prototype 1
+## Current installation
+
+Use the current `main` branch and the normal server deployment procedure below.
+Do not reapply the historical prototype or repair patches to `main`; their
+changes are included in implementation commit `692e44d`. Private media storage,
+database migrations and `collectstatic` remain part of initial server setup.
+As of `a7e8870`, the shared settings hardcode `DEBUG = False`, including on a
+laptop. A local development configuration must explicitly enable debug mode
+to use Django's normal development static/public-media serving; production
+nginx already serves those public paths. Environment-specific settings are a
+pending configuration improvement, not an implemented environment switch.
+
+## Historical instructions: update an installed prototype 1
+
+These instructions describe the earlier patch installation before merge to `main`.
 
 Save `community_dictionary_repair_02.patch` one directory above the checkout.
 Preserve unrelated local edits, then run from the repository root:
@@ -57,7 +75,9 @@ git commit -m "Improve community dictionary recording and word discovery"
 git push
 ```
 
-## Apply the functional patch
+## Historical instructions: apply the functional patch
+
+These instructions describe the original bootstrap-to-prototype installation.
 
 Save `community_dictionary_prototype_01.patch` one directory above the checkout.
 With unrelated work preserved and the working tree clean, run from the repo root:
@@ -139,7 +159,7 @@ roles and dictionary settings under **People**. Dictionary access remains privat
 
 Use the normal server runbook and preserve its existing environment/security
 configuration. Before deploying, back up the database and existing platform media.
-Confirm that checking out this feature branch does not omit other server changes.
+Deploy from `main`, which now includes the dictionary implementation and repairs.
 
 For the documented `/srv/C-LARA-2` installation, create private storage owned
 by the application service account (the existing runbook uses `ubuntu:www-data`):
@@ -154,7 +174,7 @@ absolute path. Do not put it under public `media` or `staticfiles`, or create an
 nginx alias for it. Django checks the configured public roots; an operator must
 also check any other nginx aliases. Media is served through authenticated views.
 
-After fetching the reviewed feature commit, activate the environment and run:
+After pulling the reviewed `main` commit, activate the environment and run:
 
 ```bash
 cd /srv/C-LARA-2

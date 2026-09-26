@@ -5,11 +5,17 @@ with initial laptop success reported by Manny. [Iteration 2](iteration-002.md)
 repairs microphone feedback and text discoverability. Its 21 backend tests and
 controlled Chromium workflow pass. Manny subsequently confirmed that direct
 laptop recording works after selecting the correct input: see the
-[laptop trial](laptop-trial-2026-09-24.md). Actual-phone acceptance remains pending.
+[laptop trial](laptop-trial-2026-09-24.md). The implementation is now on `main`.
+On 25 September Manny confirmed AWS laptop use and a first physical-phone
+trial: Cathy took and saved a picture, then he added a recording. See the
+[AWS/phone trial](aws-phone-trial-2026-09-25.md), including the 26 September
+production-settings follow-up. Broader phone/browser coverage, closure of the
+remaining deployment warnings and the invited Icelandic pilot remain pending.
 
 - [Specification and acceptance criteria](../../docs/roadmap/community-dictionary.md)
 - [Setup and testing](../../docs/howto/community-dictionary.md)
 - [Application](../../platform_server/community_dictionary/README.md)
+- [Initial stakeholder report](../../docs/publications/community_dictionaries_initial/README.md)
 
 The experiment asks whether the agreed, bounded prototype can be produced in a
 few substantial AI implementation iterations with little human technical work.
