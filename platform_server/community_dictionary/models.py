@@ -6,11 +6,15 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+from .voices import DEFAULT_VOICE, VOICE_CHOICES
+
 
 class Dictionary(models.Model):
     name = models.CharField(max_length=160)
     language = models.CharField(max_length=80)
     explanation_language = models.CharField(max_length=80, blank=True)
+    photo_ai_enabled = models.BooleanField(default=True)
+    tts_enabled = models.BooleanField(default=True)
     text_direction = models.CharField(max_length=4, choices=[('auto', 'Automatic'), ('ltr', 'Left to right'), ('rtl', 'Right to left')], default='auto')
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     created_at = models.DateTimeField(default=timezone.now)
@@ -115,6 +119,7 @@ class Contribution(models.Model):
     label = models.CharField(max_length=200, blank=True)
     body = models.TextField(blank=True, max_length=3000)
     base_version = models.PositiveIntegerField(default=0)
+    provenance = models.JSONField(default=dict, blank=True)
     file_path = models.CharField(max_length=200, blank=True)
     mime_type = models.CharField(max_length=80, blank=True)
     file_size = models.PositiveIntegerField(default=0)
@@ -146,3 +151,65 @@ class Submission(models.Model):
     digest = models.CharField(max_length=64)
     result_url = models.CharField(max_length=250, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
+
+
+class PhotoStudy(models.Model):
+    """Private, short-lived learning attempt; a saved entry has its own media copy."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    dictionary = models.ForeignKey(Dictionary, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+    expires_at = models.DateTimeField()
+    status = models.CharField(max_length=16, default='processing', choices=[
+        (s, s) for s in ['processing', 'candidate', 'unclear', 'failed', 'confirmed', 'saved', 'discarded']])
+    file_path = models.CharField(max_length=200, blank=True)
+    mime_type = models.CharField(max_length=80, default='image/jpeg')
+    file_size = models.PositiveIntegerField(default=0)
+    language = models.CharField(max_length=80)
+    explanation_language = models.CharField(max_length=80)
+    model = models.CharField(max_length=80)
+    result = models.JSONField(default=dict, blank=True)
+    usage = models.JSONField(default=dict, blank=True)
+    cost_usd = models.DecimalField(max_digits=12, decimal_places=6, null=True)
+    personal_key = models.BooleanField(default=False)
+    failure_code = models.CharField(max_length=40, blank=True)
+    confirmed_at = models.DateTimeField(null=True)
+    saved_entry = models.ForeignKey(Entry, on_delete=models.SET_NULL, null=True, blank=True)
+    source_entry = models.ForeignKey(Entry, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    source_image_id = models.PositiveBigIntegerField(null=True, blank=True)
+    source_text_version = models.PositiveIntegerField(default=0)
+
+
+class VoicePreference(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    dictionary = models.ForeignKey(Dictionary, on_delete=models.CASCADE)
+    voice = models.CharField(max_length=40, choices=VOICE_CHOICES, default=DEFAULT_VOICE)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['user', 'dictionary'], name='cd_unique_voice_preference')]
+
+
+class AudioStudy(models.Model):
+    """A private TTS preview; saving copies it into a reviewed contribution."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    dictionary = models.ForeignKey(Dictionary, on_delete=models.CASCADE)
+    entry = models.ForeignKey(Entry, on_delete=models.SET_NULL, null=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+    expires_at = models.DateTimeField()
+    status = models.CharField(max_length=16, default='processing', choices=[
+        (s, s) for s in ['processing', 'ready', 'failed', 'saved', 'discarded']])
+    source_text = models.CharField(max_length=255)
+    source_text_version = models.PositiveIntegerField()
+    source_text_id = models.PositiveBigIntegerField()
+    language = models.CharField(max_length=80)
+    language_code = models.CharField(max_length=16)
+    model = models.CharField(max_length=80)
+    voice = models.CharField(max_length=40)
+    personal_key = models.BooleanField(default=False)
+    file_path = models.CharField(max_length=200, blank=True)
+    mime_type = models.CharField(max_length=80, default='audio/wav')
+    file_size = models.PositiveIntegerField(default=0)
+    duration_seconds = models.FloatField(null=True)
+    cost_usd = models.DecimalField(max_digits=12, decimal_places=6, null=True)
+    saved_contribution = models.ForeignKey(Contribution, on_delete=models.SET_NULL, null=True, blank=True)

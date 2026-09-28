@@ -1,0 +1,88 @@
+const {chromium, devices} = require(process.env.COMMUNITY_PLAYWRIGHT_MODULE || 'playwright');
+const assert = require('node:assert/strict');
+const output = process.env.COMMUNITY_BROWSER_OUTPUT;
+(async () => {
+  const browser = await chromium.launch({headless:true, executablePath:process.env.COMMUNITY_CHROMIUM_PATH || undefined,
+    args:['--no-sandbox','--disable-dev-shm-usage','--disable-gpu']});
+  console.log('Chromium', await browser.version(), 'with mocked OpenAI; no physical phone');
+  for (const device of ['iPhone 13', 'Pixel 7']) {
+    const context = await browser.newContext({...devices[device], defaultBrowserType:undefined});
+    const page = await context.newPage(); const errors=[];
+    page.on('pageerror', error => errors.push(String(error)));
+    await page.goto('http://127.0.0.1:8766/accounts/login/');
+    await page.locator('[name=username]').fill('photo_owner');
+    await page.locator('[name=password]').fill('local-photo-test');
+    await page.locator('button[type=submit]').click();
+    await page.goto('http://127.0.0.1:8766/community-dictionaries/1/');
+    await page.getByRole('link',{name:'Learn from a photo', exact:true}).click();
+    await page.locator('[name=photo]').setInputFiles(output+'/fixture.png');
+    await page.locator('[name=ai_consent]').check();
+    await page.getByRole('button',{name:'Identify this object'}).click();
+    await page.getByRole('button',{name:'Yes, that’s the object'}).waitFor();
+    assert.equal(await page.getByText('la teiera',{exact:true}).count(),0);
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await page.screenshot({path:output+'/'+device.replace(' ','-')+'-confirm.png',fullPage:true});
+    await page.getByRole('button',{name:'Yes, that’s the object'}).click();
+    await page.getByRole('heading',{name:'la teiera'}).waitFor();
+    await page.locator('[name=word]').fill('una teiera');
+    await page.locator('[name=consent]').check();
+    await page.screenshot({path:output+'/'+device.replace(' ','-')+'-save.png',fullPage:true});
+    await page.getByRole('button',{name:'Save to dictionary'}).click();
+    await page.getByRole('heading',{name:'una teiera',exact:true}).waitFor();
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    // Leave the saved entry and return: no second image upload is needed.
+    const entryURL = page.url();
+    await page.getByRole('link',{name:'Browse',exact:true}).click();
+    await page.goto(entryURL);
+    await page.getByRole('link',{name:'Learn from this photo',exact:true}).click();
+    assert.equal(await page.locator('input[type=file]').count(),0);
+    await page.locator('[name=ai_consent]').check();
+    await page.getByRole('button',{name:'Identify this object'}).click();
+    await page.getByRole('button',{name:'Yes, that’s the object'}).click();
+    await page.locator('[name=word]').fill('teiera');
+    await page.locator('[name=consent]').check();
+    await page.getByRole('button',{name:'Save to dictionary'}).click();
+    await page.getByRole('heading',{name:'teiera',exact:true}).waitFor();
+    assert.equal(page.url(),entryURL);
+    await page.getByRole('link',{name:'Create spoken audio',exact:true}).click();
+    await page.getByRole('heading',{name:'teiera',exact:true}).waitFor();
+    await page.locator('[name=voice]').selectOption('cedar');
+    await page.screenshot({path:output+'/'+device.replace(' ','-')+'-voice-menu.png',fullPage:true});
+    await page.locator('[name=ai_consent]').check();
+    await page.getByRole('button',{name:'Create audio preview'}).click();
+    await page.getByRole('heading',{name:'Your audio preview'}).waitFor();
+    await page.getByText('AI-generated voice · Cedar',{exact:true}).waitFor();
+    await page.locator('audio').evaluate(async audio => {
+      await audio.play();
+      await new Promise((resolve,reject) => {audio.onended=resolve; audio.onerror=reject; setTimeout(()=>reject(new Error('playback timeout')),5000);});
+      if (!audio.duration || audio.currentTime <= 0) throw new Error('no playback');
+    });
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await page.screenshot({path:output+'/'+device.replace(' ','-')+'-audio-preview.png',fullPage:true});
+    await page.locator('[name=consent]').check();
+    await page.getByRole('button',{name:'Save audio to entry'}).click();
+    await page.getByRole('heading',{name:'teiera',exact:true}).waitFor();
+    assert.equal(page.url(),entryURL);
+    await page.reload();
+    await page.getByText('AI-generated voice · Italian',{exact:false}).first().waitFor();
+    await page.screenshot({path:output+'/'+device.replace(' ','-')+'-saved-entry.png',fullPage:true});
+    const savedAudio=page.locator('.audio-item audio');
+    await savedAudio.evaluate(async audio => {await audio.play();});
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await page.getByRole('link',{name:'Create spoken audio',exact:true}).click();
+    assert.equal(await page.locator('[name=voice]').inputValue(),'cedar');
+    await page.goto('http://127.0.0.1:8766/community-dictionaries/1/learn-photo/');
+    // A validation failure must render a usable fresh page, including its JS.
+    await page.locator('[name=photo]').setInputFiles({name:'bad.jpg',mimeType:'image/jpeg',buffer:Buffer.from('invalid')});
+    await page.locator('[name=ai_consent]').check();
+    await page.getByRole('button',{name:'Identify this object'}).click();
+    await page.getByText('This picture could not be read.',{exact:false}).waitFor();
+    await page.locator('[name=photo]').setInputFiles(output+'/fixture.png');
+    await page.getByRole('button',{name:'Identify this object'}).click();
+    await page.getByRole('button',{name:'No — try another photo'}).click();
+    await page.getByRole('heading',{name:'Learn from a photo',exact:true}).waitFor();
+    assert.deepEqual(errors,[]); console.log(device+': upload, return to saved image, same-entry interpretation, edited-word audio preview/playback/save, validation recovery and discard passed');
+    await context.close();
+  }
+  await browser.close();
+})().catch(error => {console.error(error); process.exit(1);});

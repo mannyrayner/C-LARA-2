@@ -2,18 +2,63 @@ from django import forms
 
 from .models import Dictionary, Partnership, Request
 from .storage import prepare_upload
+from .voices import VOICE_CHOICES
 
 
 class DictionaryForm(forms.ModelForm):
+    photo_ai_enabled = forms.BooleanField(required=False, initial=True, label='Enable Learn from a photo (OpenAI)', help_text='Members can choose to send a photo and the language names to OpenAI. Each request requires confirmation and incurs API costs. Uncheck if your community does not permit this processing.')
+    tts_enabled = forms.BooleanField(required=False, initial=True, label='Enable saved spoken audio (OpenAI)', help_text='Members can generate synthetic audio from accepted words in supported languages, with confirmation and API costs. Human microphone recording works whether this is enabled or not.')
+
     class Meta:
         model = Dictionary
-        fields = ['name', 'language', 'explanation_language']
+        fields = ['name', 'language', 'explanation_language', 'photo_ai_enabled', 'tts_enabled']
         labels = {'language': 'Language we are collecting', 'explanation_language': 'Language for explanations (optional)'}
+
+    def clean(self):
+        data = super().clean()
+        if data.get('tts_enabled'):
+            from .tts import language_code
+            if not language_code(data.get('language', '')):
+                self.add_error('tts_enabled', 'Saved TTS is not configured for this language. Keep using human recordings.')
+        return data
 
 
 class DictionarySettingsForm(DictionaryForm):
     class Meta(DictionaryForm.Meta):
-        fields = DictionaryForm.Meta.fields + ['text_direction']
+        fields = ['name', 'language', 'explanation_language', 'text_direction', 'photo_ai_enabled', 'tts_enabled']
+
+
+class PhotoStudyForm(forms.Form):
+    photo = forms.FileField(label='Take or choose a photo', widget=forms.FileInput(attrs={'accept': 'image/*', 'capture': 'environment'}))
+    ai_consent = forms.BooleanField(label='I have permission to send this photo to OpenAI for this analysis, at the cost shown above.')
+
+    def clean_photo(self):
+        return prepare_upload(self.cleaned_data['photo'], 'image')
+
+    def __init__(self, *args, existing_image=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        if existing_image:
+            self.fields.pop('photo')
+            self.fields['base_version'] = forms.IntegerField(min_value=0, widget=forms.HiddenInput)
+
+
+class PhotoSaveForm(forms.Form):
+    word = forms.CharField(max_length=255)
+    meaning = forms.CharField(max_length=3000, required=False, label='Meaning or translation')
+    consent = forms.BooleanField(label='I have permission to share this photo with the dictionary.')
+    publish_now = forms.BooleanField(required=False, label='Accept this entry now (editors only)')
+
+
+class AudioGenerateForm(forms.Form):
+    source_text_id = forms.IntegerField(widget=forms.HiddenInput)
+    source_text_version = forms.IntegerField(widget=forms.HiddenInput)
+    voice = forms.ChoiceField(choices=VOICE_CHOICES, help_text='Your selection is remembered for this dictionary. Generate a preview to hear it before saving. Choosing another voice and generating again is a new paid request.')
+    ai_consent = forms.BooleanField(label='I have permission to send this wording and language to OpenAI to generate audio, at the cost shown above.')
+
+
+class AudioSaveForm(forms.Form):
+    consent = forms.BooleanField(label='I have listened to this synthetic recording and have permission to share it with the dictionary.')
+    publish_now = forms.BooleanField(required=False, label='Accept this recording now (editors only)')
 
 
 class UploadForm(forms.Form):

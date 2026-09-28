@@ -48,10 +48,18 @@ def get_entry(dictionary, pk):
     return get_object_or_404(Entry.objects.select_related('selected_image', 'current_text').prefetch_related('contributions__author'), dictionary=dictionary, pk=pk)
 
 
-def summary(entry):
+def outdated_tts(contribution, entry, dictionary):
+    """Only synthetic recordings have a known spoken text to compare."""
+    source = contribution.provenance
+    return (contribution.kind == 'audio' and source.get('origin') == 'synthetic'
+            and (source.get('source_text') != entry.word
+                 or source.get('language') != dictionary.language))
+
+
+def summary(entry, dictionary):
     contributions = list(entry.contributions.all())
     visible = [c for c in contributions if c.status in {'accepted', 'pending'} and c.kind != 'note']
-    return {'entry': entry, 'image': entry.selected_image or next((c for c in visible if c.kind == 'image'), None), 'sample_audio': next((c for c in visible if c.kind == 'audio'), None), 'accepted': any(c.status == 'accepted' for c in visible), 'pending': sum(c.status == 'pending' for c in visible)}
+    return {'entry': entry, 'image': entry.selected_image or next((c for c in visible if c.kind == 'image'), None), 'sample_audio': next((c for c in visible if c.kind == 'audio' and not outdated_tts(c, entry, dictionary)), None), 'accepted': any(c.status == 'accepted' for c in visible), 'pending': sum(c.status == 'pending' for c in visible)}
 
 
 @login_required
@@ -93,7 +101,7 @@ def dictionary(request, pk):
         entries = entries.filter(category=category)
     page = Paginator(entries.distinct(), 24).get_page(request.GET.get('page'))
     categories = item.entries.exclude(category='').values_list('category', flat=True).distinct().order_by('category')
-    return render(request, 'community_dictionary/dictionary.html', context(request, item, cards=[summary(e) for e in page], page=page, show=show, query=query, category=category, categories=categories))
+    return render(request, 'community_dictionary/dictionary.html', context(request, item, cards=[summary(e, item) for e in page], page=page, show=show, query=query, category=category, categories=categories))
 
 
 @login_required
@@ -137,8 +145,10 @@ def entry_detail(request, pk, entry_id):
     dictionary = get_dictionary(request.user, pk)
     entry = get_entry(dictionary, entry_id)
     contributions = [c for c in entry.contributions.all() if c.status not in {'withdrawn', 'rejected'} or c.author_id == request.user.pk or is_editor(request.user, dictionary)]
+    for contribution in contributions:
+        contribution.outdated_tts = outdated_tts(contribution, entry, dictionary)
     members_requests = entry.requests.select_related('partnership', 'created_by', 'completed_with').prefetch_related('responses')
-    return render(request, 'community_dictionary/entry.html', context(request, dictionary, **summary(entry), contributions=contributions, audio=[c for c in contributions if c.kind == 'audio' and c.status == 'accepted'], notes=[c for c in reversed(contributions) if c.kind == 'note' and c.status != 'removed'], requests=members_requests, form=NoteForm(), can_request=Partnership.objects.filter(dictionary=dictionary, partners__user=request.user, partners__accepted=True).exists(), events=dictionary.events.filter(entry=entry).select_related('actor')[:30]))
+    return render(request, 'community_dictionary/entry.html', context(request, dictionary, **summary(entry, dictionary), contributions=contributions, audio=[c for c in contributions if c.kind == 'audio' and c.status == 'accepted' and not c.outdated_tts], notes=[c for c in reversed(contributions) if c.kind == 'note' and c.status != 'removed'], requests=members_requests, form=NoteForm(), can_request=Partnership.objects.filter(dictionary=dictionary, partners__user=request.user, partners__accepted=True).exists(), events=dictionary.events.filter(entry=entry).select_related('actor')[:30]))
 
 
 @login_required
@@ -187,7 +197,7 @@ def review(request, pk, contribution_id):
                     raise Conflict('Only an accepted wording version can be restored.')
                 if str(entry.text_version) != request.POST.get('version'):
                     raise Conflict('The wording changed. Reload before restoring a version.')
-                restored = Contribution.objects.create(entry=entry, author=request.user, kind='text', word=contribution.word, meaning=contribution.meaning, category=contribution.category, base_version=entry.text_version)
+                restored = Contribution.objects.create(entry=entry, author=request.user, kind='text', word=contribution.word, meaning=contribution.meaning, category=contribution.category, base_version=entry.text_version, provenance=contribution.provenance)
                 accept(restored, request.user)
                 event(dictionary, request.user, 'restore_text', entry, f'Restored contribution {contribution.pk} as {restored.pk}')
             elif action == 'select':
@@ -210,6 +220,7 @@ def review(request, pk, contribution_id):
                 contribution.file_size = 0
                 contribution.word = contribution.meaning = contribution.category = ''
                 contribution.body = contribution.label = contribution.mime_type = ''
+                contribution.provenance = {}
                 contribution.save()
                 Request.objects.filter(completed_with=contribution).update(completed_with=None)
                 transaction.on_commit(lambda: delete_file(old_path))
@@ -275,7 +286,7 @@ def queue(request, pk):
             continue
         if show == 'awaiting' and state != 'awaiting':
             continue
-        rows.append({'request': req, 'state': state, **summary(req.entry)})
+        rows.append({'request': req, 'state': state, **summary(req.entry, dictionary)})
     return render(request, 'community_dictionary/queue.html', context(request, dictionary, rows=rows, groups=groups, show=show, selected=selected))
 
 
@@ -374,7 +385,11 @@ def media(request, pk, contribution_id):
     # Withdrawn material is no longer shared, while editors can inspect rejected proposals.
     if item.status in {'withdrawn', 'rejected'} and item.author_id != request.user.pk and not is_editor(request.user, dictionary):
         raise Http404
-    path = path_for(item.file_path)
+    return private_media_response(request, item.file_path, item.mime_type, f'contribution-{item.pk}')
+
+
+def private_media_response(request, relative, mime_type, filename):
+    path = path_for(relative)
     if not path.is_file():
         raise Http404
     size = path.stat().st_size
@@ -398,15 +413,15 @@ def media(request, pk, contribution_id):
                         break
                     remaining -= len(chunk)
                     yield chunk
-        response = StreamingHttpResponse(chunks(), status=206, content_type=item.mime_type)
+        response = StreamingHttpResponse(chunks(), status=206, content_type=mime_type)
         response['Content-Range'] = f'bytes {start}-{end}/{size}'
         response['Content-Length'] = end - start + 1
     else:
-        response = FileResponse(path.open('rb'), content_type=item.mime_type)
+        response = FileResponse(path.open('rb'), content_type=mime_type)
     response['Accept-Ranges'] = 'bytes'
     response['Cache-Control'] = 'private, no-store'
     response['X-Content-Type-Options'] = 'nosniff'
-    response['Content-Disposition'] = f'inline; filename="contribution-{item.pk}{path.suffix}"'
+    response['Content-Disposition'] = f'inline; filename="{filename}{path.suffix}"'
     return response
 
 
@@ -429,7 +444,7 @@ def export_dictionary(request, pk):
     output = tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024)
     try:
         with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
-            archive.writestr('manifest.json', json.dumps({'format': 'clara-community-dictionary', 'version': 1, 'dictionary_id': pk, 'origin': 'human', 'users': users}, ensure_ascii=False, indent=2))
+            archive.writestr('manifest.json', json.dumps({'format': 'clara-community-dictionary', 'version': 1, 'dictionary_id': pk, 'origin': 'mixed' if any(isinstance(obj, Contribution) and obj.provenance for obj in objects) else 'human', 'users': users}, ensure_ascii=False, indent=2))
             archive.writestr('records.json', serializers.serialize('json', objects, indent=2))
             archive.writestr('README.txt', 'Portable dictionary export. records.json contains Django-labelled records and original IDs; manifest.json maps contributor IDs to usernames. media/ paths match contribution file_path fields. Credentials and submission receipts are excluded. This is an interchange export, not a full server backup. Use database plus private-media backups for operational restoration.\n')
             for item in media_items:

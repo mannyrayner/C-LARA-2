@@ -1,0 +1,10 @@
+[Unit]
+Description=Remove expired private Community Dictionaries photo drafts
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=www-data
+WorkingDirectory=/srv/C-LARA-2/platform_server
+EnvironmentFile=/etc/clara2.env
+ExecStart=/srv/C-LARA-2/.venv/bin/python manage.py expire_photo_studies

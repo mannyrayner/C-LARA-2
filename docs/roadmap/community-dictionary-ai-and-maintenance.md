@@ -5,6 +5,41 @@ Discussion and implementation plan, 26 September 2026. Reviewed source:
 increment; it does not implement generation or an autonomous operator. The later
 26 September sentence-learning proposal below was reviewed against `6ad49ee`.
 
+## 28 September priority and bounded implementation
+
+Manny and Cathy have shifted priority toward sustained operation with minimal expert
+human intervention, limiting runtime additions to small changes driven by user needs.
+The earlier image-generation, TTS and sentence-learning proposals below remain
+proposals rather than a committed next sequence. Possible AI help with obtaining
+operating funds is a discussion topic, not implemented authority to contact donors
+or make financial commitments.
+
+The specifically approved exception is [single-object photo learning](../howto/community-photo-learning.md):
+capture/upload, one image-analysis call, confirmation, word and optional saving.
+That first cut is implemented with private drafts, dictionary opt-in, explicit
+outbound consent, usage accounting and reviewable provenance. Tests use mocked
+provider responses; Manny subsequently reports successful live laptop recognition
+and Swedish device-voice playback. AWS/physical-phone evaluation remains pending.
+The device-voice preview does not implement the proposed saved TTS service.
+
+The [first live trial](../../experiments/community_dictionary/photo-laptop-trial-2026-09-28.md)
+identifies a bounded follow-up: entry-level analysis of an existing photo and
+explicitly saved synthetic audio from edited text. Manny also proposes recognising
+an object in the commenting language and locally retrieving accepted community
+words/recordings, so the target language need not be AI-supported. Manny approves the entry-level control and saved TTS; the
+[follow-up patch](../howto/community-entry-photo-audio.md) implements both, including
+returning to older images. Manny subsequently reports it is all working. His next
+small usability requests are implemented in the
+[defaults and named-voice patch](../howto/community-voices-and-defaults.md): new
+forms visibly enable both AI options, existing settings are preserved, and a voice
+menu remembers each learner's choice per dictionary. This has 64 passing
+mocked-provider tests and Chromium phone-viewport checks; its live listening test
+is pending. He explicitly defers local dictionary lookup until discussion
+with Sophie. Article/headword wording stays editable. A lookup
+must not invent missing target-language words or imply permission to send the
+dictionary out to the provider. External processing of the photo still needs
+community authorisation. Larger runtime additions remain deferred.
+
 ## Direction and current boundary
 
 Manny now requests optional image generation, optional TTS for suitable languages,
@@ -17,8 +52,9 @@ afternoon on Thursday 1 October. No new community approval is inferred.
 
 The human-media prototype is deployed, with positive laptop and initial phone
 reports. Its explanation Assistant now retrieves the updated trial evidence.
-Both new AI media functions and a write-capable maintenance workflow are still
-absent. The platform's existing Assistant uses `codex exec --sandbox read-only`
+The initial proposals below are historical requirements: saved TTS is now
+implemented in the 28 September entry/audio patch, with a broad human success report;
+image generation and a write-capable maintenance workflow remain absent. The platform's existing Assistant uses `codex exec --sandbox read-only`
 in `src/core/project_understanding.py`; its prompt also prohibits mutation.
 That boundary remains in force. A future authorised execution service must
 enforce its own permissions rather than treating a request as permission to
@@ -107,7 +143,11 @@ alone is not a passing runtime test.
 
 Use a dictionary policy with independent image/TTS capabilities, approved provider
 configuration, authorised decision-maker, outbound content scope and cost limit.
-Keep both operations disabled until enabled under that policy. Check permission
+The original proposal kept both operations disabled until enabled under that policy.
+Manny's later 28 September usability request changes the implemented photo-analysis
+and saved-TTS creation defaults to visible, checked options with opt-outs. Existing
+disabled settings remain disabled and each external call still requires confirmation.
+AI image generation remains a proposal. Check permission
 again at job execution: revocation or membership removal between queuing and
 execution must prevent new outbound processing.
 

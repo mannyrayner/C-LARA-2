@@ -1,0 +1,5 @@
+Cathy and I have been discussing this further over breakfast. It seems to us that it's counterproductive to focus on more elaborate runtime functionality, except for small, targeted changes directly driven by urgent user requests. Two reasons: a) It is likely to make the system more brittle and harder to learn to use, b) Since so many people are building this kind of app, there will be no research novelty.
+
+In contrast, it seems far more interesting to focus on the autonomy goal: building a system which can keep itself running over long periods with minimal or no expert human intervention. This would be very useful, and could also be of significant research interest.
+
+One specific question that intrigued us. A requirement for keeping the system running is obtaining minimal funding to run the servers etc. To what extent can the AI be responsible for this? It would presumably have to work through a human, but the human could do little more than forward messages.

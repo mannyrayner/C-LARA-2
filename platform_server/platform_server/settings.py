@@ -149,6 +149,7 @@ BOOTSTRAP_ADMIN_USERNAMES = [
 CREDITS_ENABLED = os.environ.get("C_LARA_CREDITS_ENABLED", "1").lower() not in {"0", "false", "no"}
 CREDITS_MIN_BALANCE_USD = os.environ.get("C_LARA_CREDITS_MIN_BALANCE_USD", "0.0500")
 OPENAI_TOKEN_PRICING_USD_PER_1M = {
+    "gpt-6-sol": {"input": "2.00", "output": "10.00"},
     # Default fallback used when a model-specific entry is not configured.
     "default": {"input": "5.00", "output": "15.00"},
     # Override these via local settings/environment-specific patch as needed.
@@ -173,6 +174,10 @@ OPENAI_PRICING_TRACKED_MODELS = [
 ]
 OPENAI_PRICING_AI_MODEL = os.environ.get("C_LARA_OPENAI_PRICING_AI_MODEL", "gpt-5")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+# Optional community photo learning; each dictionary must also opt in.
+COMMUNITY_DICTIONARY_PHOTO_MODEL = os.environ.get("C_LARA_COMMUNITY_PHOTO_MODEL", "gpt-6-sol")
+COMMUNITY_DICTIONARY_PHOTO_DAILY_LIMIT = int(os.environ.get("C_LARA_COMMUNITY_PHOTO_DAILY_LIMIT", "20"))
+COMMUNITY_DICTIONARY_TTS_DAILY_LIMIT = int(os.environ.get("C_LARA_COMMUNITY_TTS_DAILY_LIMIT", "20"))
 PROJECT_UNDERSTANDING_CODEX_EXECUTABLE = os.environ.get("C_LARA_CODEX_EXECUTABLE", "codex")
 PROJECT_UNDERSTANDING_REPOSITORY_PATH = os.environ.get("C_LARA_PROJECT_UNDERSTANDING_REPO", str(ROOT_DIR))
 PROJECT_UNDERSTANDING_MODEL = os.environ.get("C_LARA_PROJECT_UNDERSTANDING_MODEL", "gpt-5.3-codex")

@@ -1,0 +1,26 @@
+{% extends 'community_dictionary/base.html' %}{% load static %}
+{% block title %}Your photo{% endblock %}{% block content %}
+<p class="eyebrow">{{ dictionary.name }} · {{ study.language }}</p><h1>Your photo</h1>
+{% if study.file_path %}<img class="photo-preview" src="{% url 'community_dictionary:photo-media' dictionary.pk study.pk %}" alt="Photo you are learning from">{% endif %}
+<section class="panel">
+{% if study.status == 'candidate' %}
+<p class="meaning" dir="auto">{{ study.result.feedback }}</p>
+<form method="post" action="{% url 'community_dictionary:photo-action' dictionary.pk study.pk %}">{% csrf_token %}<div class="actions"><button name="action" value="confirm">Yes, that’s the object</button><button name="action" value="discard" class="secondary">No — try another photo</button></div></form>
+{% elif study.status == 'confirmed' %}
+<h2 dir="auto" data-spoken-word>{{ study.result.word }}</h2><p dir="auto">{{ study.result.meaning }}</p>
+{% if not dictionary.tts_enabled %}<button type="button" class="secondary" data-photo-speak data-language="{{ study.result.language_code }}" hidden>Listen (device voice)</button><p class="help" data-voice-status></p>{% endif %}
+<p class="help">AI suggestion. Check the wording; confirming the object does not verify the translation.</p>
+{% if dictionary.tts_enabled %}<p class="help">To keep a recording: save the wording below, then choose <strong>Create spoken audio</strong> on the entry. It will speak your final edited wording.</p>{% endif %}
+<details open><summary>{% if study.source_image_id %}Save wording to this entry{% else %}Save the photo and word to {{ dictionary.name }}{% endif %}</summary>
+<form method="post" action="{% url 'community_dictionary:photo-action' dictionary.pk study.pk %}" class="stack">{% csrf_token %}<input type="hidden" name="action" value="save">{{ form.as_p }}<button>Save to dictionary</button></form></details>
+{% elif study.status == 'unclear' %}<p class="meaning" dir="auto">{{ study.result.feedback }}</p>
+{% elif study.status == 'failed' %}<p>We couldn’t obtain a usable answer. You can take another photo or ask a partner. This attempt will not be sent again automatically.</p>
+{% elif study.status == 'processing' %}{% if timed_out %}<p>The result could not be recovered. It may still have incurred a provider charge. This attempt will not be sent again automatically.</p>{% else %}<p>The photo is being analysed. Refresh this page in a moment.</p><a class="button secondary" href="">Check for the result</a>{% endif %}
+{% elif study.status == 'saved' %}<p>The saved entry has since been removed.</p>
+{% else %}<p>This photo has been discarded.</p>{% endif %}
+{% if study.cost_usd != None %}<p class="help">Estimated API cost: ${{ study.cost_usd }}{% if study.personal_key %} (your OpenAI account){% endif %}.</p>{% endif %}
+</section>
+{% if study.status != 'saved' and study.status != 'discarded' and study.status != 'candidate' %}<form method="post" action="{% url 'community_dictionary:photo-action' dictionary.pk study.pk %}">{% csrf_token %}<button class="secondary" name="action" value="discard">Discard and take another photo</button></form>{% endif %}
+<p><a href="{% url 'community_dictionary:dictionary' dictionary.pk %}">Back to dictionary</a> · <a href="{% url 'community_dictionary:new' dictionary.pk %}">Ask a partner by adding it without AI</a></p>
+<script src="{% static 'community_dictionary/photo.js' %}?v=2" defer></script>
+{% endblock %}

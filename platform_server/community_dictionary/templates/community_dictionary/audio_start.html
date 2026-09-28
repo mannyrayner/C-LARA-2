@@ -1,0 +1,19 @@
+{% extends 'community_dictionary/base.html' %}{% load static %}
+{% block title %}Create spoken audio{% endblock %}{% block content %}
+<p class="eyebrow">{{ dictionary.name }} · {{ dictionary.language }}</p>
+<h1>Create spoken audio</h1>
+<section class="panel">
+<p>The recording will say:</p><h2 dir="auto">{{ entry.word }}</h2>
+<p><a href="{% url 'community_dictionary:contribute' dictionary.pk entry.pk %}?wording=1">Edit words first</a></p>
+{% if setup_error %}<p class="notice">{{ setup_error }}</p>{% else %}
+<p>Choose a named voice below. OpenAI will create a synthetic recording; listen before saving it to this entry.</p>
+<p>{% if personal %}Paid through your OpenAI account.{% elif charge_credits %}Paid from your C-LARA credit balance.{% else %}Paid by the server operator.{% endif %}</p>
+<details><summary>Cost and privacy</summary><p class="help">{{ model }} · your selected voice. Estimated output cost: ${{ rate }} per minute, plus a small input-text estimate. A short word usually costs less than one cent. The displayed cost is estimated from recording length and text size; the provider invoice is authoritative. Only this wording and the language go to OpenAI; no picture or human recording is sent. OpenAI’s retention rules apply. Limit: {{ limit }} audio attempts per 24 hours per learner and per dictionary. Failed or discarded attempts count; an interrupted call may still incur a charge.</p></details>
+<form method="post" class="stack" data-audio-generate>
+{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}">
+{{ form.as_p }}<button>Create audio preview</button><p role="status" data-audio-status></p>
+</form>{% endif %}</section>
+{% if recent %}<section class="panel"><h2>Your recent audio</h2><p class="help">If a request was interrupted, open its existing attempt here.</p><ul>{% for study in recent %}<li><a href="{% url 'community_dictionary:audio-study' dictionary.pk study.pk %}">{{ study.created_at|date:'j M, H:i' }} · {{ study.source_text }} · {{ study.voice|title }} · {{ study.get_status_display }}</a></li>{% endfor %}</ul></section>{% endif %}
+<p><a href="{% url 'community_dictionary:entry' dictionary.pk entry.pk %}">Back to entry</a></p>
+<script src="{% static 'community_dictionary/saved_audio.js' %}?v=1" defer></script>
+{% endblock %}

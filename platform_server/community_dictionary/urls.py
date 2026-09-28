@@ -1,9 +1,18 @@
 from django.urls import path
 
-from . import views
+from . import audio_views, photo_views, views
 
 app_name = 'community_dictionary'
 urlpatterns = [
+    path('<int:pk>/entries/<int:entry_id>/pictures/<int:image_id>/learn/', photo_views.start, name='entry-photo'),
+    path('<int:pk>/entries/<int:entry_id>/create-audio/', audio_views.start, name='audio-start'),
+    path('<int:pk>/audio-preview/<uuid:study_id>/', audio_views.detail, name='audio-study'),
+    path('<int:pk>/audio-preview/<uuid:study_id>/media/', audio_views.media, name='audio-media'),
+    path('<int:pk>/audio-preview/<uuid:study_id>/action/', audio_views.action, name='audio-action'),
+    path('<int:pk>/learn-photo/', photo_views.start, name='photo-start'),
+    path('<int:pk>/learn-photo/<uuid:study_id>/', photo_views.detail, name='photo-study'),
+    path('<int:pk>/learn-photo/<uuid:study_id>/image/', photo_views.media, name='photo-media'),
+    path('<int:pk>/learn-photo/<uuid:study_id>/action/', photo_views.action, name='photo-action'),
     path('', views.home, name='home'),
     path('<int:pk>/join/', views.join_dictionary, name='join'),
     path('<int:pk>/', views.dictionary, name='dictionary'),

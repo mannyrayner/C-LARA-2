@@ -65,9 +65,10 @@ class SimpleTTSEngine:
 class OpenAITTSEngine:
     """OpenAI-backed TTS engine using the synchronous SDK."""
 
-    def __init__(self, *, config: OpenAIConfig | None = None, client: Any | None = None, model: str | None = None):
+    def __init__(self, *, config: OpenAIConfig | None = None, client: Any | None = None, model: str | None = None, require_language_instructions: bool = False):
         self.config = config or OpenAIConfig()
         self.model = model or os.getenv("OPENAI_TTS_MODEL", "gpt-4o-mini-tts")
+        self.require_language_instructions = require_language_instructions
 
         if client is not None:
             self._client = client
@@ -107,6 +108,8 @@ class OpenAITTSEngine:
             try:
                 response_ctx = streaming_factory.create(**request_kwargs)
             except TypeError:  # older SDKs may not support "instructions"
+                if self.require_language_instructions:
+                    raise
                 request_kwargs.pop("instructions", None)
                 response_ctx = streaming_factory.create(**request_kwargs)
             with response_ctx as response:
@@ -115,6 +118,8 @@ class OpenAITTSEngine:
             try:
                 response = self._client.audio.speech.create(**request_kwargs)
             except TypeError:  # older SDKs may not support "instructions"
+                if self.require_language_instructions:
+                    raise
                 request_kwargs.pop("instructions", None)
                 response = self._client.audio.speech.create(**request_kwargs)
             stream_to_file = getattr(response, "stream_to_file", None)
@@ -261,6 +266,8 @@ def _tts_language_hint(language: str | None) -> str | None:
         "hi": "Hindi (hi)",
         "it": "Italian (it)",
         "pt": "Portuguese (pt)",
+        "sv": "Swedish (sv)",
+        "is": "Icelandic (is)",
         "zh": "Mandarin Chinese (zh)",
     }
     base = lang.split("-", 1)[0]

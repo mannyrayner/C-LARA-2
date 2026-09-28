@@ -23,6 +23,27 @@ to the proposed direction; these are also unimplemented.
 - [Existing server administration](server-admin-tasks.md)
 - [Initial stakeholder report](../publications/community_dictionaries_initial/README.md)
 
+## 28 September addition: learn from a photo
+
+A first implementation now supports one-object photo analysis, confirmation in the
+explanation language, target-language wording, optional device-voice preview and
+optional dictionary saving. The latest follow-up enables the AI options by default
+on the new-dictionary form, with visible opt-outs; existing settings are preserved. See
+[photo-learning setup and trial](community-photo-learning.md), including migration,
+credits, privacy, daily draft cleanup and the boundary between automated testing
+and the pending live phone trial. This is image understanding, not image generation.
+The later [entry-photo/audio follow-up](community-entry-photo-audio.md) adds
+interpretation from any existing entry image and persistent synthetic audio after
+preview/review. Manny now reports that increment is working. The latest
+[defaults and named-voice patch](community-voices-and-defaults.md) adds migration
+0004. Manny reports it works, then identifies old TTS still playing after a wording
+change. The [current-audio repair](community-current-audio.md) addresses that with
+67 passing mocked-provider tests, and Manny confirms the fix on his laptop.
+AWS deployment and physical-phone acceptance of the AI additions are planned for
+29 September and remain unreported. Sentence learning and dictionary lookup
+remain deferred while operational autonomy and small user-requested improvements
+take priority.
+
 ## Current installation
 
 Use the current `main` branch and the normal server deployment procedure below.

@@ -18,8 +18,9 @@ invited Icelandic trial are recorded in the current evidence above.
 The app owns its models, migrations, permissions, media views, templates and small
 JavaScript/CSS interface. Its route is `/community-dictionaries/`. It reuses
 C-LARA authentication/accounts and database/static infrastructure. It does not call
-the project compilation pipeline, AI clients, task queue or existing dictionary
-commands. Existing `projects.PictureDictionary` records are tied to compiled
+the project compilation pipeline, task queue or existing dictionary commands.
+The optional Learn from a photo flow calls OpenAI through a scoped adapter and
+reuses C-LARA account/key and token-accounting components. Existing `projects.PictureDictionary` records are tied to compiled
 projects and require written entries, so this contribution workflow uses separate
 models. There is no automatic synchronization with the older dictionary representation.
 
@@ -36,8 +37,29 @@ A failed transaction removes newly written files, although a process crash can
 leave an unreferenced file requiring later operator cleanup. SQLite serializes
 writes; PostgreSQL provides row locks. High-contention/load testing remains future work.
 
-The export contains all app records except submission receipts and includes
+The export excludes submission receipts and private learning drafts, and includes
 contributor-ID/username mapping. Operational backups need the shared user database
 and private files too. Future TTS/image services should enter through an explicit
-adapter and create reviewable contributions with provenance. No AI generation or
-practice functionality is included here.
+adapter and create reviewable contributions with provenance. Image generation and a practice system remain deferred. The 28 September patch adds optional single-object
+photo analysis, confirmation, a device-voice preview and saving as reviewable contributions.
+See [photo learning](../../docs/howto/community-photo-learning.md) for setup and trial
+boundaries. Manny reports a successful live laptop horse-identification trial on
+28 September; AWS/physical-phone acceptance of this new flow remains unreported.
+Device speech remains an unsaved preview. The later
+[entry-photo/audio patch](../../docs/howto/community-entry-photo-audio.md) adds
+interpretation of an existing saved image and separately enabled persistent TTS
+with private previews and contribution review. Manny reports this is working.
+The [defaults and named-voice follow-up](../../docs/howto/community-voices-and-defaults.md)
+adds visible, checked AI options to new-dictionary forms and remembers each user's
+voice choice per dictionary. Existing settings and recordings are preserved. Its
+64 mocked-provider app tests and Chromium phone-viewport rehearsals pass; live
+listening and physical-phone acceptance remain separate work. Commenting-language
+lookup remains deferred until discussion with Sophie.
+
+The latest [current-audio repair](../../docs/howto/community-current-audio.md)
+responds to Manny's successful voice-menu trial and report of outdated TTS.
+Normal playback and partnership previews exclude synthetic recordings whose
+source wording or language no longer matches; history retains them with a label.
+Human recordings remain available. The app suite now has 67 passing tests.
+Manny confirms the repair on his laptop and plans AWS/mobile testing on
+29 September; this is not yet evidence of that deployment or phone trial.

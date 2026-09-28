@@ -1,0 +1,20 @@
+{% extends 'community_dictionary/base.html' %}
+{% block title %}Your audio preview{% endblock %}{% block content %}
+<p class="eyebrow">{{ dictionary.name }} · {{ study.language }}</p><h1>Your audio preview</h1>
+<section class="panel"><h2 dir="auto">{{ study.source_text }}</h2>
+<p>AI-generated voice · {{ study.voice|title }}</p>
+{% if study.status == 'ready' %}
+<audio controls preload="metadata" src="{% url 'community_dictionary:audio-media' dictionary.pk study.pk %}"></audio>
+{% if stale %}<p class="notice">The wording or language changed. Return to the entry and generate a recording for its current wording.</p>{% else %}
+<p>Listen and check the pronunciation before sharing. This preview is private until you save it.</p>
+<form method="post" action="{% url 'community_dictionary:audio-action' dictionary.pk study.pk %}" class="stack">{% csrf_token %}<input type="hidden" name="action" value="save">{{ form.as_p }}<button>Save audio to entry</button></form>{% endif %}
+{% elif study.status == 'processing' %}
+{% if timed_out %}<p>The result could not be recovered. It may still have incurred a provider charge. This attempt will not be sent again automatically.</p>{% else %}<p>The audio is being generated. Refresh this page in a moment.</p><a class="button secondary" href="">Check for the result</a>{% endif %}
+{% elif study.status == 'failed' %}<p>We couldn’t obtain a usable recording. You can try again from the entry or add a human recording. An interrupted provider request may still incur a charge. This attempt will not be sent again automatically.</p>
+{% else %}<p>This audio preview has been discarded.</p>{% endif %}
+{% if study.cost_usd != None %}<p class="help">Estimated API cost: ${{ study.cost_usd }}{% if study.personal_key %} (your OpenAI account){% endif %}. Based on audio duration and input size; not measured provider usage.</p>{% endif %}</section>
+{% if study.status != 'discarded' %}<form method="post" action="{% url 'community_dictionary:audio-action' dictionary.pk study.pk %}">{% csrf_token %}<button class="secondary" name="action" value="discard">Discard preview</button></form>{% endif %}
+<p><a href="{% url 'community_dictionary:audio-start' dictionary.pk study.entry_id %}">Try another voice</a></p>
+<p class="help">Private previews expire after 24 hours. Saved recordings remain part of the entry.</p>
+<p><a href="{% url 'community_dictionary:entry' dictionary.pk study.entry_id %}">Back to entry</a></p>
+{% endblock %}

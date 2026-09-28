@@ -1,5 +1,29 @@
 # Community dictionary development experiment
 
+Latest repair: [generated audio follows current wording](../../docs/howto/community-current-audio.md).
+Manny reports the defaults/voices increment works but found outdated TTS still in
+normal playback after editing. The repair keeps that audio in labelled history;
+67 mocked-provider app tests pass. Manny subsequently confirms that only matching
+audio is now shown. He requests check-in and plans AWS deployment/mobile testing
+on 29 September; this new deployment/trial has not yet happened.
+
+Preceding implementation and human evidence:
+[working entry/photo/audio report, followed by defaults and named voices](voices-and-defaults-2026-09-28.md).
+Manny reports the previous entry/audio patch is all working. His two further
+requests are implemented with 64 passing mocked-provider tests and Chromium
+phone-viewport rehearsals. The original voice/defaults patch has since received a broad human success report;
+AWS/physical-phone acceptance of the AI additions is unreported.
+[Install and try](../../docs/howto/community-voices-and-defaults.md). Local dictionary
+lookup remains explicitly deferred until discussion with Sophie.
+
+Earlier human evidence: [first live laptop photo trial](photo-laptop-trial-2026-09-28.md).
+Manny reports quick horse recognition, Swedish wording, good device-voice playback
+and saved edited text. Entry-level discovery and persistent synthetic audio motivate the later patch above. The [SDK repair](photo-import-fix-2026-09-28.md) brings the backend suite
+to 41 tests; automated provider responses remain mocked. AWS/physical-phone
+acceptance of this new flow is unreported. The existing human-media phone success
+remains a separate earlier result. See the original
+[28 September implementation record](photo-learning-2026-09-28.md) for build evidence.
+
 Status: [iteration 1](iteration-001.md) produced the first functional patch,
 with initial laptop success reported by Manny. [Iteration 2](iteration-002.md)
 repairs microphone feedback and text discoverability. Its 21 backend tests and
