@@ -1,11 +1,18 @@
 # Community dictionary development experiment
 
-Latest repair: [generated audio follows current wording](../../docs/howto/community-current-audio.md).
+Latest increment: [clearer saving and invitations](save-ux-2026-09-30.md).
+Manny reports successful AWS update on 29 September; Cathy supplies concrete
+saving/recovery feedback on 30 September. The prepared UX patch has 70 passing
+backend tests and controlled Chromium phone-viewport checks. Human acceptance
+of this patch remains pending.
+
+Preceding repair: [generated audio follows current wording](../../docs/howto/community-current-audio.md).
 Manny reports the defaults/voices increment works but found outdated TTS still in
 normal playback after editing. The repair keeps that audio in labelled history;
 67 mocked-provider app tests pass. Manny subsequently confirms that only matching
 audio is now shown. He requests check-in and plans AWS deployment/mobile testing
-on 29 September; this new deployment/trial has not yet happened.
+on 29 September. He subsequently reports that the AWS update worked; detailed
+physical-device acceptance of the AI features remains unrecorded.
 
 Preceding implementation and human evidence:
 [working entry/photo/audio report, followed by defaults and named voices](voices-and-defaults-2026-09-28.md).

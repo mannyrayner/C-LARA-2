@@ -106,6 +106,17 @@ class ContributionForm(UploadForm):
         return data
 
 
+class EntryAudioForm(UploadForm):
+    label = forms.CharField(max_length=200, required=False, label='About this recording (optional)')
+    publish_now = forms.BooleanField(required=False)
+
+    def clean(self):
+        data = super().clean()
+        if not data.get('audio'):
+            self.add_error('audio', 'Record or choose an audio file before saving.')
+        return data
+
+
 class NoteForm(UploadForm):
     body = forms.CharField(max_length=3000, required=False, widget=forms.Textarea(attrs={'rows': 3}), label='Comment (optional if you record it)')
 

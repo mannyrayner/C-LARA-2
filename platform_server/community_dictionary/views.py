@@ -14,7 +14,7 @@ from django.http import FileResponse, Http404, HttpResponse, JsonResponse, Strea
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from .forms import ContributionForm, DictionaryForm, DictionarySettingsForm, NoteForm, RequestForm
+from .forms import ContributionForm, DictionaryForm, DictionarySettingsForm, EntryAudioForm, NoteForm, RequestForm
 from .models import Contribution, Dictionary, Entry, Membership, Partner, Partnership, Request
 from .permissions import dictionaries_for, get_dictionary, is_editor, require_editor, require_owner
 from .services import Conflict, accept, add_contributions, entry_url, event, submit_once
@@ -105,7 +105,7 @@ def dictionary(request, pk):
 
 
 @login_required
-def contribute(request, pk, entry_id=None, request_id=None):
+def contribute(request, pk, entry_id=None, request_id=None, audio_only=False):
     dictionary = get_dictionary(request.user, pk)
     entry = get_entry(dictionary, entry_id) if entry_id else None
     response_to = None
@@ -116,11 +116,14 @@ def contribute(request, pk, entry_id=None, request_id=None):
         if request.method == 'GET' and response_to.progress in {'complete', 'withdrawn'}:
             return fail(request, 'This request is closed. You can still contribute directly to the entry.', 409)
         entry = get_entry(dictionary, response_to.entry_id)
-    editing = bool(entry and request.GET.get('wording') == '1' and not response_to)
+    editing = bool(entry and request.GET.get('wording') == '1' and not response_to and not audio_only)
     initial = {'publish_now': is_editor(request.user, dictionary), 'base_version': entry.text_version if entry else 0}
     if editing:
         initial.update(word=entry.word, meaning=entry.meaning, category=entry.category, edit_text=True)
-    form = ContributionForm(request.POST or None, request.FILES or None, initial=initial, dictionary=dictionary)
+    if audio_only:
+        form = EntryAudioForm(request.POST or None, request.FILES or None, initial=initial)
+    else:
+        form = ContributionForm(request.POST or None, request.FILES or None, initial=initial, dictionary=dictionary)
     if request.method == 'POST':
         if not form.is_valid():
             return fail(request, form.errors.as_text())
@@ -137,7 +140,9 @@ def contribute(request, pk, entry_id=None, request_id=None):
             return entry_url(target)
         scope = f'contribute:{entry.pk if entry else 0}:{request_id or 0}'
         return perform(request, dictionary, scope, create)
-    return render(request, 'community_dictionary/contribute.html', context(request, dictionary, entry=entry, response_to=response_to, editing=editing, form=form))
+    template = 'community_dictionary/record_audio.html' if audio_only else 'community_dictionary/contribute.html'
+    image = summary(entry, dictionary)['image'] if audio_only else None
+    return render(request, template, context(request, dictionary, entry=entry, image=image, response_to=response_to, editing=editing, form=form))
 
 
 @login_required
@@ -373,7 +378,14 @@ def people(request, pk):
         return redirect('community_dictionary:people', pk=pk)
     my_partners = Partner.objects.filter(user=request.user, partnership__dictionary=dictionary).select_related('partnership')
     group_rows = [{'group': p.partnership, 'membership': p, 'members': p.partnership.partners.select_related('user')} for p in my_partners]
-    return render(request, 'community_dictionary/people.html', context(request, dictionary, memberships=dictionary.memberships.select_related('user'), people=member_users(dictionary), group_rows=group_rows, settings_form=settings_form))
+    # Match the existing project collaborator picker: usernames only, owner-only.
+    # Include current members because this same form also changes their roles.
+    invite_accounts = (
+        get_user_model().objects.filter(is_active=True).exclude(pk=dictionary.owner_id)
+        .order_by('username').values_list('username', flat=True)
+        if request.user.pk == dictionary.owner_id else []
+    )
+    return render(request, 'community_dictionary/people.html', context(request, dictionary, memberships=dictionary.memberships.select_related('user'), people=member_users(dictionary), invite_accounts=invite_accounts, group_rows=group_rows, settings_form=settings_form))
 
 
 @login_required

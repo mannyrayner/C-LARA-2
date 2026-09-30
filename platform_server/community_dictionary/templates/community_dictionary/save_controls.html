@@ -1,0 +1,7 @@
+<div class="save-controls">
+  <button type="submit" data-save-submit {% if not editing %}name="consent" value="on" aria-describedby="save-permission-{{ position }}"{% endif %}>{{ save_label|default:'Save' }}</button>
+  <div>
+    {% if not editing %}<p class="save-permission" id="save-permission-{{ position }}">By choosing {{ save_label|default:'Save' }}, I confirm I have permission to share what I add with this dictionary.</p>{% endif %}
+    {% if position == 'top' %}<p class="save-state" data-save-status>Not yet saved to the dictionary.</p>{% endif %}
+  </div>
+</div>

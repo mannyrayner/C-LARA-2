@@ -18,7 +18,7 @@ PLATFORM = ROOT / 'platform_server'
 PROBE = Path(__file__).with_name('browser_workflow.cjs')
 
 
-def main():
+def main(workflow=PROBE):
     output = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else ROOT / 'reports' / 'community-browser'
     output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='community-browser-') as temporary:
@@ -26,12 +26,13 @@ def main():
         settings = scratch / 'community_rehearsal_settings.py'
         settings.write_text(
             'from platform_server.settings import *\n'
+            'DEBUG = True\n'
             f'DATABASES = {{"default": {{"ENGINE": "django.db.backends.sqlite3", "NAME": {str(scratch / "db.sqlite3")!r}}}}}\n'
             f'COMMUNITY_DICTIONARY_MEDIA_ROOT = Path({str(scratch / "private")!r})\n'
             f'MEDIA_ROOT = Path({str(scratch / "public")!r})\n'
             'PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]\n'
         )
-        env = {**os.environ, 'PYTHONPATH': str(scratch), 'DJANGO_SETTINGS_MODULE': 'community_rehearsal_settings', 'COMMUNITY_BROWSER_OUTPUT': str(output)}
+        env = {**os.environ, 'PYTHONPATH': str(scratch) + os.pathsep + os.environ.get('PYTHONPATH', ''), 'DJANGO_SETTINGS_MODULE': 'community_rehearsal_settings', 'COMMUNITY_BROWSER_OUTPUT': str(output)}
         subprocess.run([sys.executable, 'manage.py', 'migrate', '--noinput', '--settings', 'community_rehearsal_settings'], cwd=PLATFORM, env=env, check=True, stdout=subprocess.DEVNULL)
         seed = '''
 import django
@@ -71,7 +72,7 @@ with wave.open(str(Path(os.environ['COMMUNITY_BROWSER_OUTPUT'])/'microphone-tone
                         time.sleep(.1)
                 else:
                     raise RuntimeError('Local server did not become ready')
-                subprocess.run(['node', str(PROBE)], env=env, check=True)
+                subprocess.run(['node', str(workflow)], env=env, check=True)
             finally:
                 server.terminate()
                 server.wait(timeout=10)

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "workspace_revision": 27,
+  "workspace_revision": 25,
   "as_of": "2026-09-30",
   "assessed_commit_sha": "c72c33b992db50365d2489fefb0a27598210abd6",
   "approved_proposal_id": null,
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "Manny confirms successful laptop password recovery and resumed joint testing with Cathy. They report unclear saving after recording on an existing entry and no direct dictionary logout. A bounded patch adds a Record audio / Save audio pronunciation flow, distinguishes spoken discussion, and adds protected logout with draft-aware navigation and dictionary login. All 130 relevant Django tests and the focused Chromium phone-viewport workflow pass; the saving/recovery navigation regression is also checked. Human acceptance of these new controls remains pending. Keep further runtime changes driven by observed needs; Sophie discussion, unfamiliar-user trials and physical-phone checks remain next. Sustained low-intervention operation and broader compatibility are not established; August assessments are not revalidated.",
+  "current_focus_summary": "Manny reports that the 29 September AWS update worked. Kate/Axel requested onboarding and Stéphanie expressed interest; these are not completed independent trials. Cathy’s subsequent use supplies concrete saving and draft-loss feedback. A bounded patch adds top/bottom Save with explicit one-click permission, draft-aware navigation protection and owner-only account menus; 70 mocked-provider Django tests and controlled Chromium phone-viewport rehearsals pass. The patch awaits human acceptance and check-in. Keep runtime scope driven by observed user needs; introductory wording/image generation and lookup remain deferred to the agreed Sophie discussion. Detailed physical-phone AI acceptance and long-run low-intervention operations are still unproven. Historical August assessments are not revalidated.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -504,30 +504,6 @@
         "platform_server/community_dictionary/tests/test_save_ux.py",
         "experiments/community_dictionary/save_ux_browser.cjs"
       ]
-    },
-    {
-      "id": "OBS-0047",
-      "observed_at": "2026-09-30",
-      "confidence": "high",
-      "summary": "Manny reports installing the saving UX patch but cannot test as his normal account because the saved password was lost; admin login is still available. At his request, an incremental patch adds Admin account reset and Profile self-service password change, using Django password forms, eligibility checks, CSRF, session invalidation and password-free audit records. Fifteen new password tests plus existing Profile/Admin and all 70 dictionary tests pass (123 total). A controlled Chromium Pixel 7 viewport rehearsal completes reset, login, personal change and subsequent login. This is a prepared recovery path, not evidence of real account recovery or production deployment.",
-      "evidence": [
-        "docs/howto/account-passwords.md",
-        "platform_server/projects/account_views.py",
-        "platform_server/projects/tests/test_passwords.py",
-        "experiments/community_dictionary/password_browser_workflow.cjs"
-      ]
-    },
-    {
-      "id": "OBS-0048",
-      "observed_at": "2026-09-30",
-      "confidence": "high",
-      "summary": "Manny confirms the password-management patch worked and he can log in as himself on the laptop. Joint testing with Cathy reports missing apparent save for entry audio and no direct logout. Source inspection shows the visible entry recorder belongs to Discussion. The prepared incremental patch adds a focused pronunciation-recording page with explicit Save audio, folds and labels spoken discussion, and adds POST/CSRF-protected logout that preserves unsaved-draft choices and returns to dictionary login. Seven new backend tests bring the relevant set to 130 passing tests. A controlled Chromium rehearsal reproduces member photo/English, editor Swedish, recording/save/playback, failed-save/logout protection, recovery and spoken comments. Actual human acceptance of this increment is not yet reported.",
-      "evidence": [
-        "docs/howto/community-recording-and-logout.md",
-        "platform_server/community_dictionary/tests/test_record_and_logout.py",
-        "experiments/community_dictionary/record_logout_browser.cjs",
-        "experiments/community_dictionary/save_ux_browser.cjs"
-      ]
     }
   ],
   "assessments": [
@@ -704,7 +680,7 @@
     },
     {
       "id": "ASM-0011",
-      "summary": "The account-access blocker is resolved by human-reported laptop recovery. Joint use now supplies two further concrete UX corrections: a clear pronunciation save path and direct dictionary logout. The tested incremental patch addresses them without speculative feature expansion. The exercise demonstrates responsiveness to real use, but successful local automated/browser checks still require Manny/Cathy acceptance and phone checks after deployment. Broad compatibility and autonomous operations remain unproven.",
+      "summary": "The AI/photo/audio increment is now reported deployed, while Cathy’s actual use reveals ordinary saving and recovery friction deserving immediate bounded repair. The prepared UX patch has automated and controlled-browser evidence and is ready for laptop/phone acceptance. This concretely advances user-driven maintenance without adding speculative runtime scope. Upcoming independent trials should determine further changes; current evidence does not establish broad phone compatibility or autonomous operations.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-2",
@@ -736,13 +712,11 @@
         "OBS-0043",
         "OBS-0044",
         "OBS-0045",
-        "OBS-0046",
-        "OBS-0047",
-        "OBS-0048"
+        "OBS-0046"
       ],
-      "urgency": "bounded_user_workflow_repairs_before_further_trials",
+      "urgency": "bounded_user_friction_repair_before_further_trials",
       "risk": "medium",
-      "progress": "password_recovery_accepted_recording_logout_patch_ready",
+      "progress": "aws_update_reported_saving_invitation_patch_ready_for_human_acceptance",
       "confidence": "medium"
     },
     {
@@ -827,7 +801,7 @@
     },
     {
       "id": "UNC-0008",
-      "summary": "AWS update completion is human-reported, but detailed device/OS/browser acceptance of the AI additions remains unrecorded. Cathy's exact lost-image session was not reproduced; the patch fixes a verified code defect in unsaved-change warning state and passes controlled checks. Native browser warnings and local recovery cannot guarantee retention through every mobile OS termination or storage loss. Password recovery is now accepted on the laptop and joint testing resumed. The new pronunciation-saving/logout controls have automated and controlled-browser evidence but await human installation and acceptance. Exact physical-phone behaviour is still unrecorded for these increments. Voice/language quality, latency/cost, HEIC handling, unfamiliar-user uptake and learning outcomes remain open. Lookup and optional image generation remain subject to Sophie discussion. Production security and backup/restore evidence remain incomplete; cleanup installation is covered only by the reported runbook success. No hard global budget or long-run autonomous operation is claimed.",
+      "summary": "AWS update completion is human-reported, but detailed device/OS/browser acceptance of the AI additions remains unrecorded. Cathy's exact lost-image session was not reproduced; the patch fixes a verified code defect in unsaved-change warning state and passes controlled checks. Native browser warnings and local recovery cannot guarantee retention through every mobile OS termination or storage loss. The new UX awaits human acceptance. Voice/language quality, latency/cost, HEIC handling, unfamiliar-user uptake and learning outcomes remain open. Lookup and optional image generation remain subject to Sophie discussion. Production security and backup/restore evidence remain incomplete; cleanup installation is covered only by the reported runbook success. No hard global budget or long-run autonomous operation is claimed.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -940,7 +914,7 @@
     },
     {
       "id": "ACT-0010",
-      "summary": "Apply the pronunciation-saving/logout patch after the installed password patch; repeat Cathy's photo/English → Manny's Swedish → Record audio → Save audio → playback workflow and direct logout with an unsaved recording. Confirm the invitation/saving changes, review and check in, then deploy with static collection and Gunicorn restart and record physical-phone details. Support Kate/Axel and prospective Nouméa trials at their own pace. Discuss community scope, wording, optional image generation and lookup with Sophie on 1 October before expanding functionality.",
+      "summary": "Apply the saving/invitation patch on the clean laptop checkout and confirm top/bottom Save, combined permission, leave-and-return recovery and the owner invitation menu. After acceptance/check-in, deploy with static collection and Gunicorn restart and let Cathy repeat the phone sequence; record device/OS/browser details. Support Kate/Axel and the prospective Nouméa trial at their own pace. Discuss community scope, wording, optional image generation and lookup with Sophie on 1 October before expanding functionality.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1041,13 +1015,14 @@
     "status": "autonomous_project_manager_update",
     "authorized_by": "Assistant following AGENTS.md",
     "authorized_at": "2026-09-30",
-    "authorization_basis": "Manny reports successful password recovery and requests clearer audio saving plus direct dictionary logout after joint testing with Cathy; AGENTS.md authorizes derived-state maintenance.",
-    "comments": "The material human message is preserved. The deliverable is an incremental patch; only disposable test accounts/media were used. No AWS deployment, real password change, message to another person or paid provider call was performed. Human intentions remain unchanged."
+    "authorization_basis": "Manny reports AWS update success and requests bounded UX improvements; AGENTS.md authorizes derived-state maintenance.",
+    "comments": "Human messages are preserved with this revision. The deliverable is an installable patch; no production deployment, real invitation or paid provider call was performed. Human intentions were not rewritten."
   },
   "changes_from_previous_revision": {
-    "summary": "Closed the reported laptop account-access blocker; recorded continued joint acceptance testing and the tested pronunciation-saving/direct-logout patch.",
+    "summary": "Recorded reported AWS update success and prospective-user onboarding, then Cathy’s concrete saving feedback and the tested, not yet deployed UX patch.",
     "added_item_ids": [
-      "OBS-0048"
+      "OBS-0045",
+      "OBS-0046"
     ],
     "revised_item_ids": [
       "ASM-0011",
@@ -1099,9 +1074,6 @@
       "OBS-0042",
       "OBS-0043",
       "OBS-0044",
-      "OBS-0045",
-      "OBS-0046",
-      "OBS-0047",
       "ASM-0001",
       "ASM-0002",
       "ASM-0003",

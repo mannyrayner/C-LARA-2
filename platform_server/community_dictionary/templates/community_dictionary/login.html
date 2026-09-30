@@ -1,0 +1,15 @@
+{% extends 'community_dictionary/base.html' %}
+{% block title %}Log in{% endblock %}
+{% block content %}
+<section class="panel account-login">
+  <h1>Log in</h1>
+  <p>Use your account to return to your dictionaries.</p>
+  <form method="post" class="stack">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="hidden" name="next" value="{{ next }}">
+    <button type="submit">Log in</button>
+  </form>
+  <p class="help">New here? <a href="{% url 'register' %}">Create an account</a>.</p>
+</section>
+{% endblock %}

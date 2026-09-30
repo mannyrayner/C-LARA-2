@@ -1,9 +1,12 @@
 from django.urls import path
+from django.contrib.auth import views as auth_views
 
 from . import audio_views, photo_views, views
 
 app_name = 'community_dictionary'
 urlpatterns = [
+    path('login/', auth_views.LoginView.as_view(template_name='community_dictionary/login.html', next_page='community_dictionary:home'), name='login'),
+    path('logout/', auth_views.LogoutView.as_view(next_page='community_dictionary:login'), name='logout'),
     path('<int:pk>/entries/<int:entry_id>/pictures/<int:image_id>/learn/', photo_views.start, name='entry-photo'),
     path('<int:pk>/entries/<int:entry_id>/create-audio/', audio_views.start, name='audio-start'),
     path('<int:pk>/audio-preview/<uuid:study_id>/', audio_views.detail, name='audio-study'),
@@ -23,6 +26,7 @@ urlpatterns = [
     path('<int:pk>/new/', views.contribute, name='new'),
     path('<int:pk>/entries/<int:entry_id>/', views.entry_detail, name='entry'),
     path('<int:pk>/entries/<int:entry_id>/contribute/', views.contribute, name='contribute'),
+    path('<int:pk>/entries/<int:entry_id>/record/', views.contribute, {'audio_only': True}, name='record-audio'),
     path('<int:pk>/entries/<int:entry_id>/comment/', views.comment, name='comment'),
     path('<int:pk>/entries/<int:entry_id>/ask/', views.ask, name='ask'),
     path('<int:pk>/entries/<int:entry_id>/remove/', views.remove_entry, name='remove-entry'),

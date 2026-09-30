@@ -1,0 +1,1 @@
+We want an admin-only command that lets the admin reset the password for another user, and a command available to all users that lets them reset their own password. I can log in as 'admin' so this will let me recover.

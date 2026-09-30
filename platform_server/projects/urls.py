@@ -1,11 +1,13 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 from . import views
+from . import account_views
 
 urlpatterns = [
     path("accounts/login/", auth_views.LoginView.as_view(template_name="projects/login.html"), name="login"),
     path("accounts/logout/", auth_views.LogoutView.as_view(next_page="login"), name="logout"),
     path("accounts/profile/", views.profile, name="profile"),
+    path("accounts/password/change/", account_views.change_password, name="password-change"),
     path("accounts/register/", views.register, name="register"),
     path("issues/", views.issues_home, name="issues-home"),
     path("issues/suggest/", views.submit_issue_suggestion, name="issue-suggestion-submit"),
@@ -44,6 +46,8 @@ urlpatterns = [
     ),
     path("admin-tools/issue-suggestions/", views.admin_issue_suggestions, name="admin-issue-suggestions"),
     path("admin-tools/", views.admin_tools, name="admin-tools"),
+    path("admin-tools/passwords/", account_views.password_reset_users, name="admin-password-reset-users"),
+    path("admin-tools/passwords/<int:user_id>/", account_views.reset_user_password, name="admin-reset-password"),
     path("", views.ProjectListView.as_view(), name="project-list"),
     path("content/", views.content_list, name="content-list"),
     path("content/<int:pk>/", views.content_detail, name="content-detail"),

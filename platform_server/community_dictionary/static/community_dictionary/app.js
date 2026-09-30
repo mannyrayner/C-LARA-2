@@ -1,4 +1,4 @@
-/* No external services. Media and words stay in the browser until Share succeeds. */
+/* Local drafts are recovery copies, not confirmation of a dictionary save. */
 (() => {
   'use strict';
   let database;
@@ -30,33 +30,38 @@
 
   document.querySelectorAll('[data-draft-form]').forEach(async form => {
     const key = `${document.body.dataset.user}:${new URL(form.action).pathname}:${location.search}`;
-    const status = form.querySelector('[data-draft-status]');
+    const status = message => form.querySelectorAll('[data-draft-status], [data-save-status]').forEach(el => { el.textContent = message; });
     const error = form.querySelector('[data-submit-error]');
     const files = {};
     const previews = {};
-    let timer, dirty = false, sending = false, ready = false, recorder;
+    // dirty means not saved to the SERVER. IndexedDB persistence never clears it.
+    let timer, dirty = false, sending = false, ready = false, recorder, leaving = false, confirmed = false;
+    let revision = 0, writes = Promise.resolve(), afterSave = null;
     const initialControls = Array.from(form.elements).map(el => [el, el.disabled]);
     initialControls.forEach(([el]) => { el.disabled = true; });
     form.addEventListener('submit', event => { if (!ready) event.preventDefault(); });
-    const tellError = message => { error.textContent = message; error.hidden = false; };
+    const tellError = message => { error.textContent = message; error.hidden = false; error.focus(); };
     const clearError = () => { error.hidden = true; error.textContent = ''; };
     const fields = () => Array.from(form.elements).filter(el => el.name && !['file', 'submit', 'button'].includes(el.type) && el.name !== 'csrfmiddlewaretoken');
-    const snapshot = () => ({values: fields().map(el => [el.name, el.type === 'checkbox' ? el.checked : el.value]), files, updated: Date.now()});
-    async function persist() {
+    const snapshot = () => ({values: fields().map(el => [el.name, el.type === 'checkbox' ? el.checked : el.value]), files: {...files}, updated: Date.now()});
+    async function persist(force = false) {
       clearTimeout(timer);
-      if (!ready || sending) return;
+      if (!ready || !dirty || (sending && !force)) return;
+      const version = revision, value = snapshot();
+      // Serialize writes so an older snapshot cannot replace a newer draft or
+      // reappear after a confirmed save/discard has deleted it.
+      const write = writes.then(() => draftOperation(key, 'put', value));
+      writes = write.catch(() => {});
       try {
-        await draftOperation(key, 'put', snapshot());
-        status.textContent = 'Draft saved on this device. Not yet shared. Clearing browser data will remove it.';
-        dirty = false;
+        await write;
+        if (!sending && !leaving && version === revision) status('Not saved to the dictionary yet. A recovery draft is stored on this device. Choose Save when ready.');
       } catch (_) {
-        status.textContent = 'Local draft saving is unavailable. Keep this page open until your contribution is shared.';
-        dirty = true;
+        if (!sending && !leaving) status('Not saved. Draft recovery is unavailable on this device. Keep this page open and choose Save.');
       }
     }
     function changed() {
-      dirty = true;
-      status.textContent = 'Saving draft on this device…';
+      dirty = true; revision += 1;
+      if (!sending) status('Not saved to the dictionary. Preparing a recovery draft…');
       clearTimeout(timer);
       timer = setTimeout(persist, 250);
     }
@@ -70,6 +75,8 @@
       if (files[kind]) {
         previews[kind] = URL.createObjectURL(files[kind]);
         target.src = previews[kind];
+        const comment = target.closest('[data-recorded-comment]');
+        if (comment) comment.open = true;
       } else {
         target.removeAttribute('src');
       }
@@ -101,10 +108,14 @@
       const file = input.files[0];
       if (!file) return;
       const kind = input.name === 'audio' ? 'audio' : 'photo';
+      // Retain the original immediately: navigating while a large photo is
+      // being resized must already count as unsaved work.
+      files[kind] = file; changed(); void persist();
       mediaPending = mediaPending.then(async () => {
         clearError();
-        status.textContent = 'Preparing your media…';
-        files[kind] = kind === 'photo' ? await smallPhoto(file) : file;
+        const prepared = kind === 'photo' ? await smallPhoto(file) : file;
+        if (files[kind] !== file) return; // Removed or replaced while preparing.
+        files[kind] = prepared;
         preview(kind);
         if (files[kind].size > 15 * 1024 * 1024) tellError('This file is larger than 15 MB. Choose a shorter recording or a smaller picture.');
         changed();
@@ -122,20 +133,24 @@
       if (existing) {
         existing.values.forEach(([name, value]) => {
           const element = form.elements.namedItem(name);
-          if (element && name !== 'csrfmiddlewaretoken') {
+          // Old drafts may contain the former consent checkbox. Do not restore
+          // its value into the new explicit Save/permission submit button.
+          if (element && name !== 'csrfmiddlewaretoken' && !['file', 'submit', 'button'].includes(element.type)) {
             if (element.type === 'checkbox') element.checked = value; else element.value = value;
           }
         });
         Object.assign(files, existing.files);
         preview('photo'); preview('audio');
-        status.textContent = 'Your draft was restored from this device. It has not yet been confirmed as shared.';
+        dirty = true;
+        status('Draft restored on this device. Not confirmed as saved to the dictionary. Choose Save when ready.');
       }
-    } catch (_) { status.textContent = 'Local draft saving is unavailable. Keep this page open until you share.'; }
+    } catch (_) { status('Draft recovery is unavailable on this device. Keep this page open until you save.'); }
     ready = true;
     initialControls.forEach(([el, disabled]) => { el.disabled = disabled; });
     const recorderRoot = form.querySelector('[data-recorder]');
     if (recorderRoot && window.CommunityRecorder) {
       recorder = window.CommunityRecorder(recorderRoot, async file => {
+        clearError();
         files.audio = file;
         const input = form.querySelector('input[name=audio]');
         if (input) input.value = '';
@@ -143,44 +158,108 @@
       });
     }
     form.querySelector('[data-discard]')?.addEventListener('click', async () => {
-      if (!confirm('Discard the draft stored on this device? This does not remove anything already shared.')) return;
-      try { await draftOperation(key, 'delete'); } catch (_) { /* No stored copy is available. */ }
-      dirty = false; location.reload();
+      if (sending) return;
+      if (recorder?.busy) { tellError('Finish recording or stop the microphone check first.'); return; }
+      if (!confirm('Discard the draft stored on this device? This does not remove anything already saved to the dictionary.')) return;
+      sending = true; clearTimeout(timer);
+      await mediaPending; clearTimeout(timer); await writes;
+      try { await draftOperation(key, 'delete'); }
+      catch (_) { sending = false; tellError('Could not remove the recovery draft. Keep editing or try again.'); return; }
+      dirty = false; leaving = true; location.reload();
     });
     form.addEventListener('submit', async event => {
       event.preventDefault();
       if (!ready || sending) return;
-      if (recorder?.busy) { tellError('Finish recording or stop the microphone check before sharing.'); return; }
-      await mediaPending;
+      if (recorder?.busy) { afterSave = null; tellError('Finish recording or stop the microphone check before saving.'); return; }
       if (!form.reportValidity()) return;
-      clearError(); await persist();
+      clearError();
       const data = new FormData(form);
-      data.delete('photo'); data.delete('audio'); data.delete('camera');
-      if (files.photo) data.set('photo', files.photo, files.photo.name || 'picture.jpg');
-      if (files.audio) data.set('audio', files.audio, files.audio.name || 'recording.webm');
+      // FormData(form) omits the clicked submit button. Its explicit affirmation
+      // is required for media uploads, just as on a native (non-JS) submission.
+      const submitter = event.submitter || form.querySelector('[data-save-submit]');
+      if (submitter?.name) data.set(submitter.name, submitter.value);
       const controls = Array.from(form.elements).map(el => [el, el.disabled]);
       controls.forEach(([el]) => { el.disabled = true; });
-      sending = true; status.textContent = 'Sharing… waiting for the server to confirm.';
+      sending = true; dirty = true; clearTimeout(timer);
+      status('Saving to the dictionary… waiting for confirmation.');
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 60000);
+      let timeout;
       try {
+        await mediaPending;
+        await persist(true);
+        data.delete('photo'); data.delete('audio'); data.delete('camera');
+        if (files.photo) data.set('photo', files.photo, files.photo.name || 'picture.jpg');
+        if (files.audio) data.set('audio', files.audio, files.audio.name || 'recording.webm');
+        timeout = setTimeout(() => controller.abort(), 60000);
         const response = await fetch(form.action, {method: 'POST', body: data, credentials: 'same-origin', headers: {Accept: 'application/json'}, signal: controller.signal});
         const type = response.headers.get('Content-Type') || '';
         if (!type.includes('application/json')) throw new Error(response.status === 413 ? 'The upload is too large for this server. Try a smaller picture or recording.' : 'Your session may have expired, or the server could not respond. Your draft remains here. Reload or sign in, then retry.');
         const result = await response.json();
         if (!response.ok || !result.saved) throw new Error(result.error || 'The server could not save this yet.');
         try { await draftOperation(key, 'delete'); } catch (_) { /* Replaying the retained token is safe. */ }
-        dirty = false; sending = false; status.textContent = 'Saved on the server.';
-        location.assign(result.url);
+        dirty = false; sending = false; confirmed = true; leaving = true;
+        status('Saved to the dictionary.');
+        if (afterSave) afterSave();
+        else location.assign(result.url);
       } catch (exc) {
         tellError(exc.name === 'AbortError' ? 'Confirmation took too long. You can retry safely: the same submission will not be added twice.' : exc.message || 'Connection lost. Keep this page open or restore the draft and retry.');
-        status.textContent = 'Not confirmed as shared. Your current contribution is still here; retry when connected.';
-        sending = false;
+        status('Not confirmed as saved. Your contribution is still here; choose Save to retry when connected.');
+        sending = false; afterSave = null;
         controls.forEach(([el, disabled]) => { el.disabled = disabled; });
       } finally { clearTimeout(timeout); }
     });
+    // Links and the POST-only logout form share Save and leave. Browser
+    // Back/close/reload use the browser's own warning instead.
+    const dialog = document.querySelector('[data-leave-dialog]');
+    function guardLeaving(event, leave) {
+      if (leaving || !(dirty || sending || recorder?.busy)) return;
+      if (!dialog?.showModal) return; // Native beforeunload remains available.
+      event.preventDefault();
+      if (sending) { tellError('Saving is in progress. Please wait for confirmation.'); return; }
+      if (recorder?.busy) { tellError('Finish recording or stop the microphone check before leaving.'); return; }
+      if (dialog.open) return;
+      const save = form.querySelector('[data-save-submit]') || form.querySelector('button:not([type]), button[type=submit]');
+      dialog.querySelector('[data-leave-permission]').hidden = save?.name !== 'consent';
+      dialog.querySelector('[data-leave-stay]').onclick = () => dialog.close();
+      dialog.querySelector('[data-leave-save]').onclick = () => {
+        dialog.close();
+        if (!save || !form.reportValidity()) return;
+        afterSave = leave;
+        form.requestSubmit(save);
+      };
+      dialog.querySelector('[data-leave-anyway]').onclick = async () => {
+        dialog.close();
+        sending = true; clearTimeout(timer);
+        Array.from(form.elements).forEach(el => { el.disabled = true; });
+        await mediaPending; await persist(true); await writes;
+        leaving = true; leave();
+      };
+      dialog.showModal();
+    }
+    document.addEventListener('click', event => {
+      const link = event.target.closest('a[href]');
+      if (!link || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || link.hasAttribute('download') || (link.target && link.target !== '_self')) return;
+      const target = new URL(link.href, location.href);
+      if (!['http:', 'https:'].includes(target.protocol) || (target.pathname === location.pathname && target.search === location.search && target.hash)) return;
+      guardLeaving(event, () => location.assign(target.href));
+    });
+    document.addEventListener('submit', event => {
+      const logout = event.target;
+      if (event.defaultPrevented || !logout.matches('form[data-leave-form]')) return;
+      // Submit natively only after the user's decision, retaining CSRF and POST
+      // while avoiding a second interception of our own submit event.
+      guardLeaving(event, () => HTMLFormElement.prototype.submit.call(logout));
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') void persist();
+    });
+    window.addEventListener('pagehide', () => { void persist(); });
+    window.addEventListener('pageshow', event => {
+      if (event.persisted && (confirmed || leaving)) location.reload();
+      else if (event.persisted) leaving = false;
+    });
     window.addEventListener('beforeunload', event => {
-      if (dirty || sending || recorder?.busy) { event.preventDefault(); event.returnValue = ''; }
+      if (!leaving && (dirty || sending || recorder?.busy)) { event.preventDefault(); event.returnValue = ''; }
     });
   });
 })();

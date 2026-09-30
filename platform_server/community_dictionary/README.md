@@ -44,7 +44,8 @@ adapter and create reviewable contributions with provenance. Image generation an
 photo analysis, confirmation, a device-voice preview and saving as reviewable contributions.
 See [photo learning](../../docs/howto/community-photo-learning.md) for setup and trial
 boundaries. Manny reports a successful live laptop horse-identification trial on
-28 September; AWS/physical-phone acceptance of this new flow remains unreported.
+28 September; Manny reports a successful AWS update on 29 September; detailed physical-phone
+acceptance of the AI flow remains unrecorded.
 Device speech remains an unsaved preview. The later
 [entry-photo/audio patch](../../docs/howto/community-entry-photo-audio.md) adds
 interpretation of an existing saved image and separately enabled persistent TTS
@@ -60,6 +61,12 @@ The latest [current-audio repair](../../docs/howto/community-current-audio.md)
 responds to Manny's successful voice-menu trial and report of outdated TTS.
 Normal playback and partnership previews exclude synthetic recordings whose
 source wording or language no longer matches; history retains them with a label.
-Human recordings remain available. The app suite now has 67 passing tests.
-Manny confirms the repair on his laptop and plans AWS/mobile testing on
-29 September; this is not yet evidence of that deployment or phone trial.
+Human recordings remain available. That increment had 67 passing tests.
+Manny confirms the repair on his laptop and subsequently reports successful
+AWS update on 29 September.
+
+The [30 September saving/invitation patch](../../docs/howto/community-saving-and-invitations.md)
+responds to Cathy’s use: top/bottom Save with explicit permission, clearer local
+draft versus server-save status, navigation protection, and owner-only account
+selection. It has 70 passing app tests and controlled Chromium browser checks;
+human laptop/phone acceptance of this patch remains pending.

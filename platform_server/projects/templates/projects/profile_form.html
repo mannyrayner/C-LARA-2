@@ -4,6 +4,7 @@
 
 {% block content %}
 <h1>Profile</h1>
+<p><a class="btn" href="{% url 'password-change' %}">Change my password</a></p>
 <form method="post">
   {% csrf_token %}
   <table>

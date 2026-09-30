@@ -1,0 +1,1 @@
+This installed, and I am trying to test it on the laptop, but I have a stupid problem: I had my password stored by Chrome, and somehow I have lost it. Could you add two new commands to C-LARA-2:

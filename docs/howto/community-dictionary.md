@@ -39,10 +39,19 @@ preview/review. Manny now reports that increment is working. The latest
 0004. Manny reports it works, then identifies old TTS still playing after a wording
 change. The [current-audio repair](community-current-audio.md) addresses that with
 67 passing mocked-provider tests, and Manny confirms the fix on his laptop.
-AWS deployment and physical-phone acceptance of the AI additions are planned for
-29 September and remain unreported. Sentence learning and dictionary lookup
+Manny reports successful completion of the AWS update on 29 September.
+A device-by-device acceptance record for the AI additions remains open. Sentence learning and dictionary lookup
 remain deferred while operational autonomy and small user-requested improvements
 take priority.
+
+## 30 September: clearer saving and invitations
+
+Cathy reports difficulty finding Save and losing an unsaved image. The
+[save and invitation update](community-saving-and-invitations.md) adds top/bottom
+Save controls with explicit one-click permission, clearer draft status and
+leave-page protection, plus owner-only account selection for invitations.
+This is a prepared patch based on `c72c33b`; laptop/phone acceptance of this
+new UX remains pending. See its runbook before applying it.
 
 ## Current installation
 

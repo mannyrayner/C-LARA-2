@@ -1,0 +1,22 @@
+{% extends 'community_dictionary/base.html' %}
+{% block title %}Record audio · {{ entry.title }}{% endblock %}
+{% block content %}
+<p class="eyebrow">{{ dictionary.name }} · {{ dictionary.language }}</p>
+<h1>Record audio</h1>
+<div class="audio-entry-context">
+  {% if image %}<img src="{% url 'community_dictionary:media' dictionary.pk image.pk %}" alt="Picture for {{ entry.title }}">{% endif %}
+  <div><h2 dir="{{ dictionary.text_direction }}">{{ entry.title }}</h2>{% if entry.meaning %}<p dir="auto">{{ entry.meaning }}</p>{% endif %}</div>
+</div>
+<p class="lead">Record the word or phrase, listen, then choose Save audio.</p>
+<form method="post" enctype="multipart/form-data" class="stack" data-draft-form>
+  {% csrf_token %}
+  <input type="hidden" name="submission_id" value="{{ submission_id }}">
+  {% include 'community_dictionary/save_controls.html' with position='top' save_label='Save audio' %}
+  <section class="panel">{% include 'community_dictionary/recording.html' %}</section>
+  {% include 'community_dictionary/save_controls.html' with position='bottom' save_label='Save audio' %}
+  <p>{{ form.label.label_tag }}{{ form.label }}</p>
+  {% if editor %}<label class="check"><input type="checkbox" name="publish_now" checked>Accept my recording immediately</label>{% else %}<p class="help">Your recording will be sent for review by an editor.</p>{% endif %}
+  {% include 'community_dictionary/draft_status.html' %}
+  <a href="{% url 'community_dictionary:entry' dictionary.pk entry.pk %}">Back to entry</a>
+</form>
+{% endblock %}
