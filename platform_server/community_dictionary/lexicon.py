@@ -13,7 +13,7 @@ def outdated_tts(contribution, entry, dictionary):
 
 
 def vocabulary(dictionary):
-    return Entry.objects.filter(dictionary=dictionary).exclude(word='').prefetch_related(
+    return Entry.objects.filter(dictionary=dictionary, archived=False).exclude(word='').prefetch_related(
         Prefetch('contributions', queryset=Contribution.objects.filter(kind='audio', status='accepted').exclude(file_path=''), to_attr='lexicon_audio'))
 
 

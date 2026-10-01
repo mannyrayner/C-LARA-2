@@ -1,0 +1,22 @@
+<article class="panel collection-entry" data-entry-id="{{ card.entry.pk }}" aria-labelledby="collection-entry-{{ card.entry.pk }}">
+  <div class="section-heading">
+    <div><p class="eyebrow">{{ card.entry.dictionary.name }} · Entry {{ card.entry.pk }}</p><h2 id="collection-entry-{{ card.entry.pk }}" dir="auto" {% if card.title_reference %}class="reference-title"{% endif %}>{{ card.title }}</h2></div>
+    {% if card.can_open %}<a href="{% url 'community_dictionary:entry' card.entry.dictionary_id card.entry.pk %}">{% if mode == 'private' %}Open private entry{% else %}Open entry{% endif %} →</a>{% endif %}
+  </div>
+  {% if card.restricted %}<p class="help">Only your contributions are shown. Other people's material is unavailable because you cannot currently open this shared entry.</p>{% endif %}
+  {% if card.source_entry %}<p class="help">For context, this card also shows material still in the <a href="{% url 'community_dictionary:entry' card.source_entry.dictionary_id card.source_entry.pk %}">shared entry</a>. It is for reference only and is not part of your private collection.</p>{% endif %}
+  <div class="entry-layout collection-entry-layout">
+    <div>
+      {% if card.image %}{% include 'community_dictionary/collection_component.html' with item=card.image only %}{% else %}<p class="empty">No picture available here.</p>{% endif %}
+      {% if card.other_images %}<details class="collection-details"><summary>More pictures ({{ card.other_images|length }})</summary>{% for item in card.other_images %}{% include 'community_dictionary/collection_component.html' %}{% endfor %}</details>{% endif %}
+      {% if card.linked_words %}<div class="collection-component reference-component"><p class="component-heading"><strong>More words for this picture</strong> <span class="badge">For reference</span></p>{% for row in card.linked_words %}{% include 'community_dictionary/word_row.html' with dictionary=card.linked_dictionary %}{% endfor %}</div>{% endif %}
+    </div>
+    <div>
+      {% for item in card.fields %}{% include 'community_dictionary/collection_component.html' %}{% empty %}<p class="help">No current wording available here.</p>{% endfor %}
+      {% for item in card.audio %}{% include 'community_dictionary/collection_component.html' %}{% empty %}<p class="help">No current recording available here.</p>{% endfor %}
+    </div>
+  </div>
+  {% if card.source_fields or card.source_audio %}<details class="collection-details"><summary>Wording and recordings in the shared entry · for reference</summary>{% for item in card.source_fields %}{% include 'community_dictionary/collection_component.html' %}{% endfor %}{% for item in card.source_audio %}{% include 'community_dictionary/collection_component.html' %}{% endfor %}</details>{% endif %}
+  {% if card.notes %}<details class="collection-details"><summary>Comments and requests ({{ card.notes|length }})</summary>{% for item in card.notes %}{% include 'community_dictionary/collection_component.html' %}{% endfor %}</details>{% endif %}
+  {% if card.history %}<details class="collection-details"><summary>Your other contributions and earlier versions ({{ card.history|length }})</summary>{% for item in card.history %}{% include 'community_dictionary/collection_component.html' %}{% endfor %}</details>{% endif %}
+</article>

@@ -163,6 +163,8 @@ def action(request, pk, study_id):
     paths = []
     try:
         with transaction.atomic():
+            Dictionary.objects.select_for_update().get(pk=pk)
+            get_dictionary(request.user, pk)
             study = get_study(request, dictionary, study_id, lock=True)
             choice = request.POST.get('action')
             if study.status == 'saved':
@@ -191,7 +193,8 @@ def action(request, pk, study_id):
                 'source_text_id': study.source_text_id, 'source_text_version': study.source_text_version,
                 'study_id': str(study.pk), 'generated_at': study.created_at.isoformat(),
                 'reviewed_by': request.user.pk, 'reviewed_at': timezone.now().isoformat()}
-            contribution.save(update_fields=['provenance'])
+            contribution.shared_from_id = target.current_text_id
+            contribution.save(update_fields=['provenance', 'shared_from'])
             old_path = study.file_path
             study.status, study.file_path, study.saved_contribution = 'saved', '', contribution
             study.save(update_fields=['status', 'file_path', 'saved_contribution'])

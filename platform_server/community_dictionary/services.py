@@ -5,8 +5,8 @@ import uuid
 from django.db import IntegrityError, transaction
 from django.urls import reverse
 
-from .models import Contribution, Entry, Event, Submission
-from .permissions import require_editor
+from .models import Contribution, Dictionary, Entry, Event, Submission
+from .permissions import get_dictionary, require_editor
 from .storage import delete_file, write_upload
 
 
@@ -50,6 +50,8 @@ def submit_once(request, dictionary, scope, callback):
     created_paths = []
     try:
         with transaction.atomic():
+            Dictionary.objects.select_for_update().get(pk=dictionary.pk)
+            get_dictionary(request.user, dictionary.pk)
             receipt = Submission.objects.create(token=token, user=request.user, dictionary=dictionary, scope=scope, digest=digest)
             result = callback(created_paths)
             receipt.result_url = result
@@ -69,6 +71,7 @@ def submit_once(request, dictionary, scope, callback):
 
 @transaction.atomic
 def accept(contribution, user):
+    Dictionary.objects.select_for_update().get(pk=contribution.entry.dictionary_id)
     entry = Entry.objects.select_for_update().select_related('dictionary').get(pk=contribution.entry_id)
     require_editor(user, entry.dictionary)
     contribution = Contribution.objects.select_for_update().get(pk=contribution.pk)
@@ -77,17 +80,23 @@ def accept(contribution, user):
     if contribution.status != 'pending' or contribution.kind == 'note':
         raise Conflict('This contribution is no longer awaiting review.')
     if contribution.kind == 'text':
-        if contribution.base_version != entry.text_version:
-            raise Conflict('The accepted wording changed after this proposal was made. Open “Edit words” to propose a combined revision.')
-        entry.word, entry.meaning, entry.category = contribution.word, contribution.meaning, contribution.category
-        entry.text_version += 1
-        entry.current_text = contribution
+        from .text import FIELDS, split_legacy
+        if not contribution.text_field:
+            parts = split_legacy(contribution)
+            for part in parts:
+                accept(part, user)
+            return
+        pointer, counter = FIELDS[contribution.text_field]
+        if contribution.base_version != getattr(entry, counter):
+            raise Conflict('This text component changed after the proposal was made. Reload Edit words to propose a revision.')
+        setattr(entry, contribution.text_field, getattr(contribution, contribution.text_field))
+        setattr(entry, counter, getattr(entry, counter) + 1)
+        setattr(entry, pointer, contribution)
     elif contribution.kind == 'image' and not entry.selected_image_id:
         entry.selected_image = contribution
     elif contribution.kind == 'audio' and contribution.provenance.get('origin') == 'synthetic':
         source = contribution.provenance
-        if (source.get('source_text_version') != entry.text_version or source.get('source_text') != entry.word
-                or source.get('language') != entry.dictionary.language):
+        if (source.get('source_text') != entry.word or source.get('language') != entry.dictionary.language):
             raise Conflict('The wording or language changed since this synthetic recording was generated. Create a new recording for the current wording.')
     entry.save()
     contribution.status = 'accepted'
@@ -105,7 +114,9 @@ def add_contributions(entry, user, data, created_paths, *, publish=False, respon
     if data.get('edit_text') or any(data.get(k) for k in ['word', 'meaning', 'category']):
         if response_to:
             raise Conflict('Use the response form for the requested media; edit wording separately.')
-        made.append(Contribution.objects.create(entry=entry, author=user, kind='text', word=data.get('word', ''), meaning=data.get('meaning', ''), category=data.get('category', ''), base_version=data.get('base_version') or 0))
+        from .text import propose
+        entry.refresh_from_db()
+        made.extend(propose(entry, user, data))
     for key, kind in [('photo', 'image'), ('audio', 'audio')]:
         if data.get('prepared_' + key):
             if response_to and kind != response_to.kind:
@@ -113,6 +124,10 @@ def add_contributions(entry, user, data, created_paths, *, publish=False, respon
             media = write_upload(data['prepared_' + key], entry.dictionary_id, created_paths)
             made.append(Contribution.objects.create(entry=entry, author=user, kind=kind, label=data.get('label', ''), request=response_to, **media))
     for contribution in made:
+        if data.get('contributor'):
+            contribution.controlled_by = data['contributor']
+            contribution.provenance = {**contribution.provenance, 'attributed_by': user.pk, 'permission_confirmed': True}
+            contribution.save(update_fields=['controlled_by', 'provenance'])
         event(entry.dictionary, user, 'contribute', entry, f'{contribution.kind} {contribution.pk}; media permission confirmed' if contribution.file_path else f'{contribution.kind} {contribution.pk}')
         if publish:
             accept(contribution, user)

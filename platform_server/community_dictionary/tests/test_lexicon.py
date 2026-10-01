@@ -230,7 +230,9 @@ class LexiconTests(TestCase):
             self.client.post(self.url('review', self.sofa_photo.pk), {'action': 'remove'})
         self.assertFalse(ImageWordLink.objects.exists())
         self.assertTrue(Entry.objects.filter(pk=self.cat.pk).exists())
-        self.assertFalse(path_for(self.sofa_photo.file_path).exists())
+        self.assertTrue(path_for(self.sofa_photo.file_path).exists())
+        self.sofa_photo.refresh_from_db()
+        self.assertTrue(self.sofa_photo.entry.dictionary.personal)
         self.assertEqual(list(self.client.get(self.url('word', self.cat.pk)).context['pictures']), [self.cat_photo])
         self.assertEqual(self.client.get(self.url('entry', self.sofa.pk), {'picture': self.sofa_photo.pk}).status_code, 404)
 
@@ -255,7 +257,7 @@ class LexiconTests(TestCase):
         self.client.force_login(self.owner)
         response = self.client.get(self.url('export'))
         with zipfile.ZipFile(io.BytesIO(b''.join(response.streaming_content))) as archive:
-            self.assertEqual(json.loads(archive.read('manifest.json'))['version'], 2)
+            self.assertEqual(json.loads(archive.read('manifest.json'))['version'], 3)
             records = archive.read('records.json').decode()
             self.assertIn('community_dictionary.imagewordlink', records)
             self.assertEqual(len([p for p in archive.namelist() if p.startswith('media/')]), Contribution.objects.exclude(file_path='').count())

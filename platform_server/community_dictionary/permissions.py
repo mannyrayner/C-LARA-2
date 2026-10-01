@@ -5,7 +5,7 @@ from .models import Dictionary, Membership
 
 
 def dictionaries_for(user):
-    return Dictionary.objects.filter(Q(owner=user) | Q(memberships__user=user, memberships__accepted=True)).distinct()
+    return Dictionary.objects.filter(Q(owner=user) | Q(personal=False, memberships__user=user, memberships__accepted=True, memberships__status='active')).distinct()
 
 
 def get_dictionary(user, pk):
@@ -16,7 +16,11 @@ def get_dictionary(user, pk):
 
 
 def is_editor(user, dictionary):
-    return dictionary.owner_id == user.pk or Membership.objects.filter(dictionary=dictionary, user=user, accepted=True, role='editor').exists()
+    return dictionary.owner_id == user.pk or (not dictionary.personal and Membership.objects.filter(dictionary=dictionary, user=user, accepted=True, status='active', role__in=['editor', 'coordinator']).exists())
+
+
+def is_coordinator(user, dictionary):
+    return dictionary.owner_id == user.pk or (not dictionary.personal and Membership.objects.filter(dictionary=dictionary, user=user, accepted=True, status='active', role='coordinator').exists())
 
 
 def require_editor(user, dictionary):

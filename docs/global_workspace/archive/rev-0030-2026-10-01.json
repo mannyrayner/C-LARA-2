@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "workspace_revision": 32,
+  "workspace_revision": 30,
   "as_of": "2026-10-01",
   "assessed_commit_sha": "ffbbef9d24873cd930cb866d979e1bd3a735e41b",
   "approved_proposal_id": null,
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "Manny confirms that the revised My contributions display works as intended after further laptop testing and requests check-in. The contribution-control and entry-context patches are ready to commit with this documentation-only acceptance update; their 128 app tests and Chromium phone/desktop rehearsal remain the automated evidence. Main is still ffbbef9 at the pre-check-in read. The report does not specify individual withdrawal/governance acceptance cases; AWS/physical-phone validation of the new increment remains pending. Axel's account-input investigation is separate, awaiting device/browser details; no login changes are included. No autonomous production operation is claimed. Unrelated August assessments remain historical.",
+  "current_focus_summary": "The picture/word-link increment is on main ffbbef9 and Manny reports successful AWS installation and exploratory use. He subsequently authorises independent word/translation/category provenance, personal retention and explicit sharing, persistent inactive memberships and membership governance. The prepared contribution-control increment has 118 passing app tests, a historical-schema migration check and a disposable Chromium phone/desktop rehearsal. Migrations 0006/0007 require a pre-upgrade database backup; 0007 is deliberately irreversible. Human laptop acceptance and AWS upgrade of this new revision remain pending. No autonomous production operation, broader device matrix or learning outcomes are claimed. Unrelated August assessments remain historical.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -580,28 +580,6 @@
         "platform_server/community_dictionary/tests/test_contribution_control.py",
         "platform_server/community_dictionary/tests/test_provenance_migration.py"
       ]
-    },
-    {
-      "id": "OBS-0054",
-      "observed_at": "2026-10-01",
-      "confidence": "high",
-      "summary": "Manny reports that the contribution-control revision installs, the server restarts and adding an entry works. He requests My contributions display complete entry context with other people's components greyed/marked for reference. The follow-up implements entry cards, entry pagination, matching own-component selection, visible history and permission-checked live private context. 128 app tests and a Chromium phone/desktop rehearsal pass; no schema changes. The report does not identify a new AWS or physical-phone trial, and full human workflow acceptance remains pending.",
-      "evidence": [
-        "docs/howto/community-contributions-by-entry.md",
-        "experiments/community_dictionary/contribution-display-2026-10-01.md",
-        "platform_server/community_dictionary/tests/test_contribution_display.py",
-        "experiments/community_dictionary/contribution_display_browser.cjs"
-      ]
-    },
-    {
-      "id": "OBS-0055",
-      "observed_at": "2026-10-01",
-      "confidence": "high",
-      "summary": "Manny confirms further testing of My contributions and reports that it works as intended. He requests check-in and says he has asked Axel for the missing login-device details. This supplies human laptop acceptance of the entry-context display, without a per-action withdrawal/governance matrix or new AWS/phone claim. GitHub main remains ffbbef9 at the pre-check-in read. The follow-up records acceptance only; runtime code is unchanged and the prior 128-test/browser evidence is retained.",
-      "evidence": [
-        "experiments/community_dictionary/contribution-display-2026-10-01.md",
-        "docs/howto/community-contributions-by-entry.md"
-      ]
     }
   ],
   "assessments": [
@@ -778,7 +756,7 @@
     },
     {
       "id": "ASM-0011",
-      "summary": "The contribution-control increment has basic human installation/use evidence and the entry-context repair now has explicit human laptop acceptance. This is sufficient to check in the tested revision without further feature changes. The next distinct step is controlled deployment and physical-phone checking, retaining the original migration backup requirement. Full governance/withdrawal acceptance is not established by the general display report. The account-input issue should stay a separate targeted investigation until Axel supplies device/browser details. Community trust, broad compatibility, pedagogical benefit and autonomous operation remain separate outcomes.",
+      "summary": "The deployed picture/word-link increment now has human AWS exploratory-use evidence. Contribution control is the next authorised foundation: it addresses actual lost attribution and preserves withdrawal rights independently of project access. The new patch passes automated migration/workflow/access tests and a phone-viewport rehearsal, but its data rewrite increases upgrade risk relative to earlier additive increments. A database backup, laptop acceptance and controlled AWS upgrade are the next gates. User trust, broad compatibility, pedagogical benefit and autonomous operation remain separate unproven outcomes.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-2",
@@ -817,13 +795,11 @@
         "OBS-0050",
         "OBS-0051",
         "OBS-0052",
-        "OBS-0053",
-        "OBS-0054",
-        "OBS-0055"
+        "OBS-0053"
       ],
-      "urgency": "accepted_display_ready_for_check_in",
+      "urgency": "authorised_contribution_control_ready_for_laptop_acceptance",
       "risk": "medium",
-      "progress": "entry_context_human_accepted_check_in_requested",
+      "progress": "contribution_control_implemented_tested_not_deployed",
       "confidence": "medium"
     },
     {
@@ -908,7 +884,7 @@
     },
     {
       "id": "UNC-0008",
-      "summary": "My contributions now has explicit human laptop acceptance, alongside basic contribution-control installation/use. Individual withdrawal/private-sharing/governance acceptance cases and a new AWS/physical-phone trial are not recorded. The app has 128 SQLite tests and Chromium phone/desktop checks. Axel's exact account-input failure is unresolved pending device/browser details; no fix is claimed. Existing deleted attribution cannot be reconstructed; local copies, prior exports and administrator access remain privacy limits. Production security/backup evidence, sustained engagement and learning outcomes remain unestablished.",
+      "summary": "The new contribution-control revision has SQLite migration and regression evidence plus Chromium phone/desktop viewport checks. Manny has not installed or accepted this new revision, and AWS PostgreSQL/physical-phone checks remain pending. Earlier AWS picture/word-link success is human-reported and is not evidence for the new data migration. Existing deleted attribution cannot be reconstructed; local copies, prior exports and administrator access remain privacy limits. Community governance requires agreed operators and recovery arrangements. Image generation, games and target-language migration are outside this increment. Production security/backup evidence, sustained engagement and learning outcomes remain unestablished.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1021,7 +997,7 @@
     },
     {
       "id": "ACT-0010",
-      "summary": "Commit the installed contribution-control and entry-context patches together with the documentation-only human acceptance update; keep unrelated edits out of the commit. Then use the existing AWS runbook with a pre-migration database backup, migrations 0006/0007 and collectstatic, and check the new flow on a physical phone. Complete explicit disposable-entry checks for private retention, inactive access, reviewed resharing and governance. Resume the separate account-form investigation when Axel supplies device/browser details.",
+      "summary": "Apply the contribution-control patch on the laptop after backing up the database, migrate 0006/0007 and test the Cathy-photo/English then Manny-Swedish workflow. Exercise inactive-member withdrawal, private media/search/export boundaries, reviewed resharing and optional two-person decisions. After human acceptance, commit/deploy in a brief maintenance window with backup and collectstatic, then test on a physical phone. Keep future media/game/translation uses tied to contributor provenance and withdrawal controls.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1122,13 +1098,14 @@
     "status": "autonomous_project_manager_update",
     "authorized_by": "Assistant following AGENTS.md",
     "authorized_at": "2026-10-01",
-    "authorization_basis": "Manny reports successful My contributions testing and explicitly requests check-in; AGENTS.md authorises derived-state maintenance.",
-    "comments": "The new acceptance/check-in request is preserved verbatim. This documentation-only update records laptop display acceptance, not new test execution, AWS deployment or every governance workflow. Axel's private email is not copied. Human-owned intentions remain unchanged."
+    "authorization_basis": "Manny explicitly requests the agreed provenance, personal collection, withdrawal and membership revision; AGENTS.md authorises derived-state maintenance.",
+    "comments": "The prior server acceptance and relevant implementation/design messages are preserved verbatim. No sensitive stakeholder narratives are copied. This revision records implementation evidence only; no remote commit, production data access or deployment is claimed. Human-owned intentions remain unchanged."
   },
   "changes_from_previous_revision": {
-    "summary": "Recorded human laptop acceptance of My contributions and the request to check in the tested revision; kept the account-input investigation separate.",
+    "summary": "Recorded prior AWS success and the newly authorised, implemented and tested contribution-control revision, with backup/migration and human acceptance next.",
     "added_item_ids": [
-      "OBS-0055"
+      "OBS-0052",
+      "OBS-0053"
     ],
     "revised_item_ids": [
       "ASM-0011",
@@ -1187,9 +1164,6 @@
       "OBS-0049",
       "OBS-0050",
       "OBS-0051",
-      "OBS-0052",
-      "OBS-0053",
-      "OBS-0054",
       "ASM-0001",
       "ASM-0002",
       "ASM-0003",

@@ -108,7 +108,7 @@ class EntryMediaTests(TestCase):
         self.assertTrue(path_for(self.image.file_path).exists())
         self.assertFalse(path_for(study.file_path).exists())
         self.photo_save(study)
-        self.assertEqual(Contribution.objects.filter(kind='text').count(), 2)
+        self.assertEqual(Contribution.objects.filter(kind='text').count(), 3)
 
     def test_source_scope_policy_consent_and_removed_image(self):
         self.assertEqual(self.interpret(ai_consent='').status_code, 200)

@@ -80,8 +80,8 @@ class PhotoLearningTests(TestCase):
         self.assertEqual(saved.status_code, 302)
         entry = Entry.objects.get()
         self.assertEqual(entry.word, '')  # Member cannot publish, even with a forged checkbox.
-        self.assertEqual(entry.contributions.count(), 2)
-        wording = entry.contributions.get(kind='text')
+        self.assertEqual(entry.contributions.count(), 3)
+        wording = entry.contributions.get(kind='text', text_field='word')
         self.assertEqual(wording.word, 'una teiera')
         self.assertEqual(wording.provenance['proposed_word'], 'la teiera')
         self.assertEqual(wording.status, 'pending')

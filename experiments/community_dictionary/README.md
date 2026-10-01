@@ -105,3 +105,13 @@ and physical-phone trial remains next.
 - Validation and subsequent environment results: reported with the delivered
   patch and recorded with the next implementation work. No passing functional
   app test is claimed by this bootstrap.
+
+- [Contribution control, 1 October](contribution-control-2026-10-01.md): 118
+  tests, migration fixture and Chromium phone/desktop rehearsal; laptop/AWS
+  acceptance of this increment remains pending.
+
+- [Contribution display, 1 October](contribution-display-2026-10-01.md): Manny reports
+  successful contribution-control installation and entry creation, then requests
+  entry context. The display-only follow-up passes 128 app tests and a Chromium
+  phone/desktop rehearsal. Manny subsequently confirms the display works as intended on his laptop and
+  requests check-in; new AWS/physical-phone acceptance remains pending.

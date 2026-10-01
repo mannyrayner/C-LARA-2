@@ -87,13 +87,20 @@ class ContributionForm(UploadForm):
     label = forms.CharField(max_length=200, required=False, label='About this recording or picture (optional)')
     edit_text = forms.BooleanField(required=False)
     base_version = forms.IntegerField(min_value=0, required=False)
+    text_snapshot = forms.CharField(required=False, widget=forms.HiddenInput)
     publish_now = forms.BooleanField(required=False)
 
-    def __init__(self, *args, dictionary=None, **kwargs):
+    def __init__(self, *args, dictionary=None, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['meaning'].label = 'Meaning or translation (optional)'
         self.fields['meaning'].widget.attrs.update(rows=2, placeholder='A translation or short explanation')
         self.fields['word'].widget.attrs['dir'] = dictionary.text_direction if dictionary else 'auto'
+        if dictionary and user and not dictionary.personal:
+            from .permissions import is_editor
+            if is_editor(user, dictionary):
+                from .views import member_users
+                self.fields['contributor'] = forms.ModelChoiceField(queryset=member_users(dictionary), required=False, label='Contributor', empty_label='Myself')
+                self.fields['contributor_permission'] = forms.BooleanField(required=False, label='I have this person’s permission to contribute this material and give them control of it.')
         if dictionary:
             self.fields['word'].label = f'Word or phrase in {dictionary.language} (optional)'
             if dictionary.explanation_language:
@@ -101,6 +108,11 @@ class ContributionForm(UploadForm):
 
     def clean(self):
         data = super().clean()
+        if data.get('contributor') and not data.get('contributor_permission'):
+            self.add_error('contributor_permission', 'Confirm that you have this person’s permission.')
+        for field in ('word', 'meaning', 'category'):
+            if field not in self.data:
+                data.pop(field, None)
         if not any(data.get(k) for k in ['photo', 'audio', 'word', 'meaning', 'category', 'edit_text']):
             raise forms.ValidationError('Add a picture, recording or some written information.')
         return data
@@ -117,7 +129,7 @@ class LinkWordForm(forms.Form):
 
     def __init__(self, *args, dictionary, source_entry_id, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['word_entry'].queryset = dictionary.entries.exclude(word='').exclude(pk=source_entry_id).order_by('word', 'pk')
+        self.fields['word_entry'].queryset = dictionary.entries.filter(archived=False).exclude(word='').exclude(pk=source_entry_id).order_by('word', 'pk')
 
 
 class EntryAudioForm(UploadForm):

@@ -5,6 +5,16 @@ Discussion and implementation plan, 26 September 2026. Reviewed source:
 increment; it does not implement generation or an autonomous operator. The later
 26 September sentence-learning proposal below was reviewed against `6ad49ee`.
 
+## 1 October: prerequisite contribution control
+
+The approved [contribution-control revision](../howto/community-contribution-control.md)
+implements independent word/translation/category histories, personal collections,
+withdrawal and explicit sharing, persistent membership statuses and optional
+shared membership governance. These provide prerequisites for future image
+creation, games and translated dictionaries to preserve contributor control.
+Those runtime additions are not part of this revision. Human acceptance and AWS
+upgrade of contribution control remain pending; see its runbook and test record.
+
 ## 28 September priority and bounded implementation
 
 Manny and Cathy have shifted priority toward sustained operation with minimal expert

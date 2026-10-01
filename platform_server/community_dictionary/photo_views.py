@@ -182,6 +182,8 @@ def action(request, pk, study_id):
     dictionary = get_dictionary(request.user, pk)
     try:
         with transaction.atomic():
+            Dictionary.objects.select_for_update().get(pk=pk)
+            get_dictionary(request.user, pk)
             study = get_study(request, dictionary, study_id, lock=True)
             choice = request.POST.get('action')
             if choice == 'discard' and study.status != 'saved':
@@ -229,7 +231,7 @@ def action(request, pk, study_id):
                         contribution.provenance = {'origin': 'ai-assisted', 'provider': 'openai', 'model': study.model,
                             'prompt_version': photo_ai.PROMPT_VERSION, 'study_id': str(study.pk),
                             'language': study.language, 'explanation_language': study.explanation_language,
-                            'proposed_word': study.result['word'], 'proposed_meaning': study.result['meaning'],
+                            'proposed_' + contribution.text_field: study.result.get(contribution.text_field, ''),
                             'subject_confirmed_by': request.user.pk, 'subject_confirmed_at': study.confirmed_at.isoformat(),
                             'source_image_id': study.source_image_id}
                         contribution.save(update_fields=['provenance'])

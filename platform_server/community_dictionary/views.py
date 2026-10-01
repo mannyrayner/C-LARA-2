@@ -6,7 +6,7 @@ import zipfile
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.core import serializers
+from django.core import serializers, signing
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q
@@ -17,13 +17,13 @@ from django.views.decorators.http import require_POST
 from .forms import ContributionForm, DictionaryForm, DictionarySettingsForm, EntryAudioForm, LinkWordForm, NoteForm, RequestForm
 from .models import Contribution, Dictionary, Entry, ImageWordLink, Membership, Partner, Partnership, Request
 from .lexicon import linked_words, outdated_tts, valid_links, vocabulary, word_row
-from .permissions import dictionaries_for, get_dictionary, is_editor, require_editor, require_owner
+from .permissions import dictionaries_for, get_dictionary, is_editor, is_coordinator, require_editor, require_owner
 from .services import Conflict, accept, add_contributions, entry_url, event, submit_once
 from .storage import delete_file, path_for, write_upload
 
 
 def context(request, dictionary=None, **extra):
-    return {'dictionary': dictionary, 'editor': bool(dictionary and is_editor(request.user, dictionary)), 'owner': bool(dictionary and dictionary.owner_id == request.user.pk), 'submission_id': uuid.uuid4(), **extra}
+    return {'dictionary': dictionary, 'editor': bool(dictionary and is_editor(request.user, dictionary)), 'owner': bool(dictionary and dictionary.owner_id == request.user.pk), 'coordinator': bool(dictionary and is_coordinator(request.user, dictionary)), 'submission_id': uuid.uuid4(), **extra}
 
 
 def fail(request, message, status=400):
@@ -46,7 +46,7 @@ def perform(request, dictionary, scope, callback):
 
 
 def get_entry(dictionary, pk):
-    return get_object_or_404(Entry.objects.select_related('selected_image', 'current_text').prefetch_related('contributions__author'), dictionary=dictionary, pk=pk)
+    return get_object_or_404(Entry.objects.select_related('selected_image', 'current_text').prefetch_related('contributions__author'), dictionary=dictionary, pk=pk, archived=False)
 
 
 def summary(entry, dictionary):
@@ -64,15 +64,20 @@ def home(request):
         dictionary.save()
         event(dictionary, request.user, 'create_dictionary')
         return redirect('community_dictionary:dictionary', pk=dictionary.pk)
-    return render(request, 'community_dictionary/home.html', {'dictionaries': dictionaries_for(request.user), 'invitations': Membership.objects.filter(user=request.user, accepted=False).select_related('dictionary'), 'form': form})
+    return render(request, 'community_dictionary/home.html', {'dictionaries': dictionaries_for(request.user), 'invitations': Membership.objects.filter(user=request.user, accepted=False, status='invited', dictionary__personal=False).select_related('dictionary'), 'form': form})
 
 
 @login_required
 @require_POST
+@transaction.atomic
 def join_dictionary(request, pk):
-    membership = get_object_or_404(Membership, dictionary_id=pk, user=request.user, accepted=False)
+    Dictionary.objects.select_for_update().get(pk=pk)
+    membership = get_object_or_404(Membership, dictionary_id=pk, user=request.user, accepted=False, status='invited', dictionary__personal=False)
     membership.accepted = True
-    membership.save(update_fields=['accepted'])
+    membership.status = 'active'
+    membership.save(update_fields=['accepted', 'status'])
+    from django.db.models import F
+    Dictionary.objects.filter(pk=pk).update(membership_revision=F('membership_revision') + 1)
     event(membership.dictionary, request.user, 'join_dictionary')
     return redirect('community_dictionary:dictionary', pk=pk)
 
@@ -89,18 +94,18 @@ def dictionary(request, pk):
         if query:
             entries = entries.filter(Q(word__icontains=query) | Q(meaning__icontains=query))
     else:
-        entries = item.entries.select_related('selected_image', 'current_text').prefetch_related('contributions__author')
+        entries = item.entries.filter(archived=False).select_related('selected_image', 'current_text').prefetch_related('contributions__author')
         if show == 'accepted':
             entries = entries.filter(contributions__status='accepted', contributions__kind__in=['text', 'image', 'audio'])
         elif show == 'review':
             entries = entries.filter(contributions__status='pending')
         if query:
             linked_sources = valid_links(item).filter(Q(word_entry__word__icontains=query) | Q(word_entry__meaning__icontains=query)).values('image__entry_id')
-            entries = entries.filter(Q(word__icontains=query) | Q(meaning__icontains=query) | Q(contributions__word__icontains=query) | Q(contributions__meaning__icontains=query) | Q(pk__in=linked_sources))
+            entries = entries.filter(Q(word__icontains=query) | Q(meaning__icontains=query) | Q(contributions__word__icontains=query, contributions__status__in=['accepted', 'pending']) | Q(contributions__meaning__icontains=query, contributions__status__in=['accepted', 'pending']) | Q(pk__in=linked_sources))
     if category:
         entries = entries.filter(category=category)
     page = Paginator(entries.distinct(), 24).get_page(request.GET.get('page'))
-    categories = item.entries.exclude(category='').values_list('category', flat=True).distinct().order_by('category')
+    categories = item.entries.filter(archived=False).exclude(category='').values_list('category', flat=True).distinct().order_by('category')
     cards = [summary(e, item) for e in page] if mode == 'pictures' else []
     words = [word_row(e, item) for e in page] if mode == 'words' else []
     return render(request, 'community_dictionary/dictionary.html', context(request, item, cards=cards, words=words, mode=mode, page=page, show=show, query=query, category=category, categories=categories))
@@ -120,12 +125,15 @@ def contribute(request, pk, entry_id=None, request_id=None, audio_only=False):
         entry = get_entry(dictionary, response_to.entry_id)
     editing = bool(entry and request.GET.get('wording') == '1' and not response_to and not audio_only)
     initial = {'publish_now': is_editor(request.user, dictionary), 'base_version': entry.text_version if entry else 0}
+    if entry:
+        from .text import field_snapshot
+        initial['text_snapshot'] = signing.dumps({'entry': entry.pk, 'fields': field_snapshot(entry)}, salt='community-text-fields')
     if editing:
         initial.update(word=entry.word, meaning=entry.meaning, category=entry.category, edit_text=True)
     if audio_only:
         form = EntryAudioForm(request.POST or None, request.FILES or None, initial=initial)
     else:
-        form = ContributionForm(request.POST or None, request.FILES or None, initial=initial, dictionary=dictionary)
+        form = ContributionForm(request.POST or None, request.FILES or None, initial=initial, dictionary=dictionary, user=request.user)
     if request.method == 'POST':
         if not form.is_valid():
             return fail(request, form.errors.as_text())
@@ -168,11 +176,14 @@ def entry_detail(request, pk, entry_id):
     if image and image.status == 'accepted' and is_editor(request.user, dictionary):
         link_form = LinkWordForm(dictionary=dictionary, source_entry_id=entry.pk)
         link_form.fields['word_entry'].queryset = link_form.fields['word_entry'].queryset.exclude(pk__in=[e.pk for e in extra_words])
-    contributions = [c for c in entry.contributions.all() if c.status not in {'withdrawn', 'rejected'} or c.author_id == request.user.pk or is_editor(request.user, dictionary)]
+    contributions = [c for c in entry.contributions.all() if c.status not in {'removed', 'withdrawn', 'rejected'} or (c.status == 'rejected' and (c.author_id == request.user.pk or is_editor(request.user, dictionary)))]
     for contribution in contributions:
         contribution.outdated_tts = outdated_tts(contribution, entry, dictionary)
+        from .text import FIELDS
+        contribution.component_version = getattr(entry, FIELDS.get(contribution.text_field, ('current_text', 'text_version'))[1])
+        contribution.is_current_component = contribution.text_field in FIELDS and getattr(entry, FIELDS[contribution.text_field][0] + '_id') == contribution.pk
     members_requests = entry.requests.select_related('partnership', 'created_by', 'completed_with').prefetch_related('responses')
-    return render(request, 'community_dictionary/entry.html', context(request, dictionary, **presentation, linked_words=[word_row(e, dictionary) for e in extra_words], link_form=link_form, contributions=contributions, audio=[c for c in contributions if c.kind == 'audio' and c.status == 'accepted' and not c.outdated_tts], notes=[c for c in reversed(contributions) if c.kind == 'note' and c.status != 'removed'], requests=members_requests, form=NoteForm(), can_request=Partnership.objects.filter(dictionary=dictionary, partners__user=request.user, partners__accepted=True).exists(), events=dictionary.events.filter(entry=entry).select_related('actor')[:30]))
+    return render(request, 'community_dictionary/entry.html', context(request, dictionary, **presentation, linked_words=[word_row(e, dictionary) for e in extra_words], link_form=link_form, contributions=contributions, audio=[c for c in contributions if c.kind == 'audio' and c.status == 'accepted' and not c.outdated_tts], notes=[c for c in reversed(contributions) if c.kind == 'note' and c.status != 'removed' and c.label != 'Partner request'], requests=members_requests, form=NoteForm(), can_request=Partnership.objects.filter(dictionary=dictionary, partners__user=request.user, partners__accepted=True).exists(), events=dictionary.events.filter(entry=entry).select_related('actor')[:30]))
 
 
 @login_required
@@ -197,31 +208,45 @@ def review(request, pk, contribution_id):
     dictionary = get_dictionary(request.user, pk)
     contribution = get_object_or_404(Contribution.objects.select_related('entry'), pk=contribution_id, entry__dictionary=dictionary)
     action = request.POST.get('action')
-    if action == 'withdraw':
-        if contribution.author_id != request.user.pk or contribution.status != 'pending':
-            raise Http404
-    elif action == 'remove' and contribution.kind == 'note' and contribution.author_id == request.user.pk:
-        pass
-    else:
-        require_editor(request.user, dictionary)
+    if action in {'withdraw', 'remove'}:
+        from .collections import withdraw
+        try:
+            if action == 'withdraw' or (contribution.kind == 'note' and contribution.author_id == request.user.pk):
+                withdraw(request.user, [contribution.pk])
+            else:
+                require_editor(request.user, dictionary)
+                withdraw(request.user, [contribution.pk], moderator_dictionary=dictionary)
+        except Conflict as exc:
+            return fail(request, exc, 409)
+        return redirect(entry_url(contribution.entry))
+    require_editor(request.user, dictionary)
     try:
         with transaction.atomic():
+            Dictionary.objects.select_for_update().get(pk=pk)
+            get_dictionary(request.user, pk)
             entry = Entry.objects.select_for_update().get(pk=contribution.entry_id)
+            contribution = get_object_or_404(Contribution, pk=contribution.pk, entry=entry)
             contribution.refresh_from_db()
             if action == 'accept':
                 accept(contribution, request.user)
-            elif action in {'reject', 'withdraw'}:
+            elif action == 'reject':
                 if contribution.status != 'pending':
                     raise Conflict('This contribution is no longer awaiting review.')
-                contribution.status = 'rejected' if action == 'reject' else 'withdrawn'
+                contribution.status = 'rejected'
                 contribution.save(update_fields=['status'])
                 event(dictionary, request.user, action, entry, f'Contribution {contribution.pk}: {request.POST.get("reason", "")}'[:400])
             elif action == 'restore':
-                if contribution.kind != 'text' or contribution.status != 'accepted':
-                    raise Conflict('Only an accepted wording version can be restored.')
-                if str(entry.text_version) != request.POST.get('version'):
-                    raise Conflict('The wording changed. Reload before restoring a version.')
-                restored = Contribution.objects.create(entry=entry, author=request.user, kind='text', word=contribution.word, meaning=contribution.meaning, category=contribution.category, base_version=entry.text_version, provenance=contribution.provenance)
+                from .text import FIELDS
+                if contribution.kind != 'text' or contribution.status != 'accepted' or contribution.text_field not in FIELDS:
+                    raise Conflict('Only a shared, accepted text component can be restored.')
+                pointer, counter = FIELDS[contribution.text_field]
+                if str(getattr(entry, counter)) != request.POST.get('version'):
+                    raise Conflict('This component changed. Reload before restoring a version.')
+                restored = Contribution.objects.create(entry=entry, author=contribution.author,
+                    controlled_by=contribution.controlled_by, kind='text', text_field=contribution.text_field,
+                    shared_from=contribution, previous_revision=getattr(entry, pointer),
+                    base_version=getattr(entry, counter), provenance={**contribution.provenance, 'restored_by': request.user.pk},
+                    **{contribution.text_field: getattr(contribution, contribution.text_field)})
                 accept(restored, request.user)
                 event(dictionary, request.user, 'restore_text', entry, f'Restored contribution {contribution.pk} as {restored.pk}')
             elif action == 'select':
@@ -230,27 +255,6 @@ def review(request, pk, contribution_id):
                 entry.selected_image = contribution
                 entry.save(update_fields=['selected_image'])
                 event(dictionary, request.user, 'select_image', entry, f'Contribution {contribution.pk}')
-            elif action == 'remove':
-                if entry.current_text_id == contribution.pk:
-                    entry.current_text = None
-                    entry.word = entry.meaning = entry.category = ''
-                    entry.text_version += 1
-                if entry.selected_image_id == contribution.pk:
-                    entry.selected_image = None
-                entry.save()
-                old_path = contribution.file_path
-                if contribution.kind == 'image':
-                    ImageWordLink.objects.filter(image=contribution).delete()
-                contribution.status = 'removed'
-                contribution.file_path = ''
-                contribution.file_size = 0
-                contribution.word = contribution.meaning = contribution.category = ''
-                contribution.body = contribution.label = contribution.mime_type = ''
-                contribution.provenance = {}
-                contribution.save()
-                Request.objects.filter(completed_with=contribution).update(completed_with=None)
-                transaction.on_commit(lambda: delete_file(old_path))
-                event(dictionary, request.user, 'remove_contribution', entry, f'Contribution {contribution.pk}')
             else:
                 return fail(request, 'Unknown review action.')
     except Conflict as exc:
@@ -264,12 +268,16 @@ def remove_entry(request, pk, entry_id):
     dictionary = get_dictionary(request.user, pk)
     require_editor(request.user, dictionary)
     entry = get_entry(dictionary, entry_id)
-    paths = list(entry.contributions.exclude(file_path='').values_list('file_path', flat=True))
+    from .collections import withdraw
     with transaction.atomic():
-        event(dictionary, request.user, 'remove_entry', detail=f'Entry {entry.pk}')
-        entry.delete()
-        for path in paths:
-            transaction.on_commit(lambda path=path: delete_file(path))
+        ids = list(entry.contributions.exclude(status='removed').values_list('pk', flat=True))
+        if ids:
+            withdraw(request.user, ids, moderator_dictionary=dictionary)
+        entry.archived = True
+        entry.save(update_fields=['archived'])
+        entry.requests.update(withdrawn=True)
+        ImageWordLink.objects.filter(word_entry=entry).delete()
+        event(dictionary, request.user, 'archive_entry', entry, 'Contributions retained in personal collections')
     return redirect('community_dictionary:dictionary', pk=pk)
 
 
@@ -283,9 +291,10 @@ def ask(request, pk, entry_id):
             return fail(request, form.errors.as_text())
         def create(paths):
             req = Request.objects.create(entry=entry, partnership=form.cleaned_data['partnership'], kind=form.cleaned_data['kind'], note=form.cleaned_data['note'], created_by=request.user)
-            if form.cleaned_data.get('prepared_audio'):
-                media = write_upload(form.cleaned_data['prepared_audio'], dictionary.pk, paths)
-                Contribution.objects.create(entry=entry, author=request.user, kind='note', status='accepted', body='Spoken request', request=req, **media)
+            if form.cleaned_data.get('prepared_audio') or form.cleaned_data.get('note'):
+                media = write_upload(form.cleaned_data['prepared_audio'], dictionary.pk, paths) if form.cleaned_data.get('prepared_audio') else {}
+                Contribution.objects.create(entry=entry, author=request.user, kind='note', status='accepted',
+                    body=form.cleaned_data.get('note', ''), label='Partner request', request=req, **media)
             event(dictionary, request.user, 'request', entry, f'Request {req.pk}: {req.kind}' + ('; media permission confirmed' if form.cleaned_data.get('prepared_audio') else ''))
             return entry_url(entry)
         return perform(request, dictionary, f'ask:{entry.pk}', create)
@@ -335,12 +344,17 @@ def request_action(request, pk, request_id):
 
 
 def member_users(dictionary):
-    return get_user_model().objects.filter(Q(pk=dictionary.owner_id) | Q(membership__dictionary=dictionary, membership__accepted=True)).distinct().order_by('username')
+    return get_user_model().objects.filter(Q(pk=dictionary.owner_id) | Q(membership__dictionary=dictionary, membership__accepted=True, membership__status='active')).distinct().order_by('username')
 
 
 @login_required
+@transaction.atomic
 def people(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(Dictionary.objects.select_for_update(), pk=pk)
     dictionary = get_dictionary(request.user, pk)
+    if dictionary.personal:
+        raise Http404
     settings_form = DictionarySettingsForm(instance=dictionary)
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -358,16 +372,28 @@ def people(request, pk):
             role = request.POST.get('role', 'member')
             if not user or user.pk == dictionary.owner_id or role not in {'member', 'editor'}:
                 return fail(request, 'Choose an existing account other than the owner, and a valid role.')
-            Membership.objects.update_or_create(dictionary=dictionary, user=user, defaults={'role': role})
-            event(dictionary, request.user, 'invite_or_change_role', detail=f'{user.username}: {role}')
-            messages.success(request, 'Invitation or role saved. Invitations appear when the person opens Community dictionaries.')
-        elif action == 'remove_member':
-            require_owner(request.user, dictionary)
-            membership = get_object_or_404(Membership, pk=request.POST.get('member_id'), dictionary=dictionary)
+            from . import membership as membership_service
             with transaction.atomic():
-                Partner.objects.filter(partnership__dictionary=dictionary, user=membership.user).delete()
-                event(dictionary, request.user, 'remove_member', detail=membership.user.username)
-                membership.delete()
+                locked = Dictionary.objects.select_for_update().get(pk=dictionary.pk)
+                existing = Membership.objects.filter(dictionary=dictionary, user=user).first()
+                if existing:
+                    if existing.role != role:
+                        try:
+                            membership_service.propose(request.user, locked, 'role', existing, role)
+                        except Conflict as exc:
+                            return fail(request, exc, 409)
+                    messages.success(request, 'Membership retained. Use the status controls to reactivate an inactive member.')
+                else:
+                    # A new coordinator must first join as an ordinary member.
+                    if role != 'member' and locked.membership_policy == 'coordinators':
+                        return fail(request, 'Invite as a member first, then propose the role change.', 409)
+                    Membership.objects.create(dictionary=dictionary, user=user, role=role)
+                    locked.membership_revision += 1
+                    locked.save(update_fields=['membership_revision'])
+                    event(dictionary, request.user, 'invite', detail=user.username)
+                    messages.success(request, 'Invitation saved. No email is sent.')
+        elif action == 'remove_member':
+            return fail(request, 'Use Make inactive. Membership and contribution rights are retained.', 409)
         elif action == 'create_group':
             name = request.POST.get('name', '').strip()[:100]
             ids = set(request.POST.getlist('partners'))
@@ -406,17 +432,17 @@ def people(request, pk):
         .order_by('username').values_list('username', flat=True)
         if request.user.pk == dictionary.owner_id else []
     )
-    return render(request, 'community_dictionary/people.html', context(request, dictionary, memberships=dictionary.memberships.select_related('user'), people=member_users(dictionary), invite_accounts=invite_accounts, group_rows=group_rows, settings_form=settings_form))
+    return render(request, 'community_dictionary/people.html', context(request, dictionary, memberships=dictionary.memberships.select_related('user'), people=member_users(dictionary), invite_accounts=invite_accounts, group_rows=group_rows, settings_form=settings_form, decisions=dictionary.membership_decisions.select_related('member__user', 'proposed_by', 'approved_by')[:30]))
 
 
 @login_required
 def media(request, pk, contribution_id):
     dictionary = get_dictionary(request.user, pk)
     item = get_object_or_404(Contribution, pk=contribution_id, entry__dictionary=dictionary)
-    if not item.file_path or item.status == 'removed':
+    if not item.file_path or item.status in {'removed', 'withdrawn'}:
         raise Http404
     # Withdrawn material is no longer shared, while editors can inspect rejected proposals.
-    if item.status in {'withdrawn', 'rejected'} and item.author_id != request.user.pk and not is_editor(request.user, dictionary):
+    if item.status == 'rejected' and item.author_id != request.user.pk and not is_editor(request.user, dictionary):
         raise Http404
     return private_media_response(request, item.file_path, item.mime_type, f'contribution-{item.pk}')
 
@@ -459,15 +485,17 @@ def private_media_response(request, relative, mime_type, filename):
 
 
 @login_required
+@transaction.atomic
 def export_dictionary(request, pk):
     dictionary = get_dictionary(request.user, pk)
     require_owner(request.user, dictionary)
-    sets = [Dictionary.objects.filter(pk=pk), dictionary.memberships.all(), dictionary.partnerships.all(), Partner.objects.filter(partnership__dictionary=dictionary), dictionary.entries.all(), Contribution.objects.filter(entry__dictionary=dictionary), Request.objects.filter(entry__dictionary=dictionary), ImageWordLink.objects.filter(image__entry__dictionary=dictionary, word_entry__dictionary=dictionary), dictionary.events.all()]
+    Dictionary.objects.select_for_update().get(pk=pk)
+    sets = [Dictionary.objects.filter(pk=pk), dictionary.memberships.all(), dictionary.partnerships.all(), Partner.objects.filter(partnership__dictionary=dictionary), dictionary.entries.all(), Contribution.objects.filter(entry__dictionary=dictionary).exclude(status__in=['withdrawn', 'removed']), Request.objects.filter(entry__dictionary=dictionary), ImageWordLink.objects.filter(image__entry__dictionary=dictionary, word_entry__dictionary=dictionary), dictionary.events.all(), dictionary.membership_decisions.all()]
     objects = [obj for queryset in sets for obj in queryset]
-    media_items = list(Contribution.objects.filter(entry__dictionary=dictionary).exclude(file_path=''))
+    media_items = list(Contribution.objects.filter(entry__dictionary=dictionary).exclude(status__in=['withdrawn', 'removed']).exclude(file_path=''))
     user_ids = {dictionary.owner_id}
     for obj in objects:
-        for field in ['user_id', 'author_id', 'created_by_id', 'actor_id']:
+        for field in ['user_id', 'author_id', 'created_by_id', 'actor_id', 'controlled_by_id', 'proposed_by_id', 'approved_by_id']:
             value = getattr(obj, field, None)
             if value:
                 user_ids.add(value)
@@ -477,8 +505,23 @@ def export_dictionary(request, pk):
     output = tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024)
     try:
         with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
-            archive.writestr('manifest.json', json.dumps({'format': 'clara-community-dictionary', 'version': 2, 'dictionary_id': pk, 'origin': 'mixed' if any(isinstance(obj, Contribution) and obj.provenance for obj in objects) else 'human', 'users': users}, ensure_ascii=False, indent=2))
-            archive.writestr('records.json', serializers.serialize('json', objects, indent=2))
+            archive.writestr('manifest.json', json.dumps({'format': 'clara-community-dictionary', 'version': 3, 'dictionary_id': pk, 'origin': 'mixed' if any(isinstance(obj, Contribution) and obj.provenance for obj in objects) else 'human', 'users': users}, ensure_ascii=False, indent=2))
+            records = json.loads(serializers.serialize('json', objects))
+            exported_parts = {o.pk for o in objects if isinstance(o, Contribution)}
+            exported_entries = {o.pk for o in objects if isinstance(o, Entry)}
+            for row in records:
+                fields = row['fields']
+                if row['model'] == 'community_dictionary.contribution':
+                    for field in ['shared_from', 'previous_revision']:
+                        if fields.get(field) not in exported_parts:
+                            fields[field] = None
+                    if fields.get('withdrawn_from') not in exported_entries:
+                        fields['withdrawn_from'] = None
+                elif row['model'] == 'community_dictionary.entry':
+                    fields['collection_source'] = None
+                elif row['model'] == 'community_dictionary.dictionary':
+                    fields['collection_source'] = None
+            archive.writestr('records.json', json.dumps(records, ensure_ascii=False, indent=2))
             archive.writestr('README.txt', 'Portable dictionary export. records.json contains Django-labelled records and original IDs; manifest.json maps contributor IDs to usernames. media/ paths match contribution file_path fields. Additional picture-to-word links are included as community_dictionary.imagewordlink records; original picture-to-word associations follow the picture contribution’s entry. Credentials and submission receipts are excluded. This is an interchange export, not a full server backup. Use database plus private-media backups for operational restoration.\n')
             for item in media_items:
                 archive.write(path_for(item.file_path), 'media/' + item.file_path)

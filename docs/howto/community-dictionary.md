@@ -61,9 +61,27 @@ Manny reports successful joint use with about fifty Swedish entries. The next
 Pictures/Words browsing, links to existing words, inline listening and hidden
 translations, and word pages with their associated pictures. Its 95 app tests
 and controlled browser rehearsal pass. Manny now confirms that the sofa/cat
-workflow works first time on his laptop and plans a fuller server trial.
-**Migration 0005 is required** on AWS; server/phone acceptance of this increment
-is still pending.
+workflow works first time on his laptop. He subsequently reports successful AWS
+installation and exploratory use. The latest main commit is `ffbbef9`; this does
+not add a new physical-phone/device-matrix report.
+
+## 1 October: provenance, collections and membership
+
+The [contribution-control revision](community-contribution-control.md) implements
+separate word/translation/category provenance, personal collections, withdrawal
+and explicit resharing, persistent inactive memberships and optional two-person
+membership decisions. Migrations 0006 and 0007 are required. 118 app tests and a
+disposable Chromium phone/desktop rehearsal pass. This increment awaits Manny's
+laptop acceptance and AWS deployment; prior server success concerns picture/word
+links. Follow the new runbook's backup and migration instructions.
+
+Manny subsequently reports successful installation/restart/new-entry creation,
+with a contribution-list usability issue. The
+[entry-context follow-up](community-contributions-by-entry.md) groups My contributions
+by entry with own-component controls and grey reference context; 128 app tests
+and a disposable browser rehearsal pass. This follow-up adds no migration.
+Manny now confirms laptop testing of My contributions works as intended and
+requests check-in. AWS/physical-phone validation of this increment is still pending.
 
 ## Current installation
 

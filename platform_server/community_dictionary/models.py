@@ -19,20 +19,32 @@ class Dictionary(models.Model):
     text_direction = models.CharField(max_length=4, choices=[('auto', 'Automatic'), ('ltr', 'Left to right'), ('rtl', 'Right to left')], default='auto')
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     created_at = models.DateTimeField(default=timezone.now)
+    personal = models.BooleanField(default=False)
+    collection_source = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, related_name='personal_collections')
+    membership_policy = models.CharField(max_length=16, default='owner', choices=[('owner', 'Owner manages membership'), ('coordinators', 'Two coordinators approve changes')])
+    membership_revision = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ['name', 'pk']
+        constraints = [models.UniqueConstraint(fields=['owner', 'collection_source'], condition=models.Q(personal=True), name='cd_personal_collection')]
 
     def __str__(self):
         return self.name
 
 
 class Membership(models.Model):
-    ROLES = [('member', 'Member'), ('editor', 'Editor')]
+    ROLES = [('member', 'Member'), ('editor', 'Editor'), ('coordinator', 'Coordinator')]
     dictionary = models.ForeignKey(Dictionary, on_delete=models.CASCADE, related_name='memberships')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     role = models.CharField(max_length=12, choices=ROLES, default='member')
     accepted = models.BooleanField(default=False)
+    status = models.CharField(max_length=10, default='invited', choices=[('invited', 'Invited'), ('active', 'Active'), ('inactive', 'Inactive')])
+
+    def save(self, *args, **kwargs):
+        # Keep old integrations that create accepted memberships compatible.
+        if self._state.adding and self.accepted and self.status == 'invited':
+            self.status = 'active'
+        super().save(*args, **kwargs)
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['dictionary', 'user'], name='cd_unique_member')]
@@ -70,9 +82,16 @@ class Entry(models.Model):
     text_version = models.PositiveIntegerField(default=0)
     current_text = models.ForeignKey('Contribution', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     selected_image = models.ForeignKey('Contribution', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    current_meaning = models.ForeignKey('Contribution', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    current_category = models.ForeignKey('Contribution', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    meaning_version = models.PositiveIntegerField(default=0)
+    category_version = models.PositiveIntegerField(default=0)
+    archived = models.BooleanField(default=False)
+    collection_source = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, related_name='collection_entries')
 
     class Meta:
         ordering = ['-created_at', '-pk']
+        constraints = [models.UniqueConstraint(fields=['dictionary', 'collection_source'], condition=models.Q(collection_source__isnull=False), name='cd_collection_entry')]
 
     @property
     def title(self):
@@ -126,6 +145,41 @@ class Contribution(models.Model):
     file_size = models.PositiveIntegerField(default=0)
     request = models.ForeignKey(Request, null=True, blank=True, on_delete=models.SET_NULL, related_name='responses')
     created_at = models.DateTimeField(default=timezone.now)
+    text_field = models.CharField(max_length=10, blank=True, choices=[('word', 'Word or phrase'), ('meaning', 'Translation or explanation'), ('category', 'Category')])
+    controlled_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name='controlled_dictionary_contributions')
+    previous_revision = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, related_name='later_revisions')
+    shared_from = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, related_name='shared_copies')
+    withdrawn_from = models.ForeignKey(Entry, null=True, blank=True, on_delete=models.PROTECT, related_name='withdrawn_contributions')
+    withdrawn_at = models.DateTimeField(null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.controlled_by_id:
+            self.controlled_by_id = self.author_id
+        super().save(*args, **kwargs)
+
+    class Meta:
+        ordering = ['-created_at', '-pk']
+
+    @property
+    def component_label(self):
+        return self.get_text_field_display() if self.kind == 'text' and self.text_field else self.get_kind_display()
+
+    @property
+    def text_value(self):
+        return getattr(self, self.text_field, '') if self.text_field else self.word
+
+
+class MembershipDecision(models.Model):
+    dictionary = models.ForeignKey(Dictionary, on_delete=models.CASCADE, related_name='membership_decisions')
+    proposed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+')
+    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name='+')
+    action = models.CharField(max_length=16)
+    member = models.ForeignKey(Membership, null=True, blank=True, on_delete=models.PROTECT)
+    value = models.CharField(max_length=16, blank=True)
+    base_revision = models.PositiveIntegerField()
+    status = models.CharField(max_length=12, default='pending')
+    created_at = models.DateTimeField(default=timezone.now)
+    decided_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at', '-pk']

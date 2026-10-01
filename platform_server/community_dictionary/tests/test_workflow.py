@@ -152,7 +152,7 @@ class WorkflowTests(TestCase):
         for user in [self.member, self.third]:
             self.client.force_login(user)
             self.post('respond', {'audio': recording(), 'consent': 'on'}, req.pk)
-        self.assertEqual(req.responses.count(), 2)
+        self.assertEqual(req.responses.filter(kind='audio').count(), 2)
         self.client.force_login(self.owner)
         for reply in req.responses.all():
             self.client.post(self.url('review', reply.pk), {'action': 'reject', 'reason': 'Please try once more.'})
@@ -217,7 +217,7 @@ class WorkflowTests(TestCase):
         self.assertEqual(result.status_code, 200)
         entry.refresh_from_db()
         self.assertEqual(entry.word, 'katt')
-        self.assertEqual(entry.contributions.get(kind='text', status='pending').word, 'katten')
+        self.assertEqual(entry.contributions.get(kind='text', text_field='word', status='pending').word, 'katten')
 
     def test_outsider_and_pending_invitation_cannot_access_any_content(self):
         entry = self.create_entry()
@@ -252,8 +252,11 @@ class WorkflowTests(TestCase):
         self.assertTrue(membership.accepted)
         self.assertEqual(Membership.objects.get(dictionary=self.dictionary, user=self.third).role, 'member')
         self.client.force_login(self.owner)
-        self.client.post(self.url('people'), {'action': 'remove_member', 'member_id': Membership.objects.get(dictionary=self.dictionary, user=self.third).pk})
-        self.assertFalse(Partner.objects.filter(partnership=self.group, user=self.third).exists())
+        membership = Membership.objects.get(dictionary=self.dictionary, user=self.third)
+        self.client.post(self.url('membership-action'), {'action': 'deactivate', 'member_id': membership.pk})
+        self.assertTrue(Partner.objects.filter(partnership=self.group, user=self.third).exists())
+        membership.refresh_from_db()
+        self.assertEqual(membership.status, 'inactive')
         self.client.force_login(self.third)
         self.assertEqual(self.client.get(self.url('dictionary')).status_code, 404)
 
@@ -282,7 +285,7 @@ class WorkflowTests(TestCase):
         self.assertEqual(self.post('new', {'photo': picture()}).status_code, 400)
         self.assertFalse(Entry.objects.exists())
 
-    def test_removal_deletes_media_and_reopens_request(self):
+    def test_removal_retains_media_privately_and_reopens_request(self):
         entry = self.create_entry()
         req = self.make_request(entry)
         self.client.force_login(self.owner)
@@ -292,7 +295,7 @@ class WorkflowTests(TestCase):
         with self.captureOnCommitCallbacks(execute=True):
             response = self.client.post(self.url('review', audio.pk), {'action': 'remove'})
         self.assertEqual(response.status_code, 302)
-        self.assertFalse(path.exists())
+        self.assertTrue(path.exists())
         self.assertEqual(self.client.get(self.url('media', audio.pk)).status_code, 404)
         req.refresh_from_db()
         self.assertEqual(req.progress, 'open')
@@ -301,7 +304,7 @@ class WorkflowTests(TestCase):
         entry = self.create_entry()
         self.make_request(entry)
         self.client.force_login(self.owner)
-        self.client.post(self.url('review', entry.contributions.get().pk), {'action': 'accept'})
+        self.client.post(self.url('review', entry.contributions.get(kind='image').pk), {'action': 'accept'})
         response = self.client.get(self.url('export'))
         data = b''.join(response.streaming_content)
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
@@ -348,7 +351,7 @@ class WorkflowTests(TestCase):
         self.dictionary.refresh_from_db()
         self.assertEqual(self.dictionary.name, 'Our Swedish')
 
-    def test_withdrawn_wording_is_hidden_and_removal_erases_content(self):
+    def test_withdrawn_wording_is_private_and_cannot_be_removed_by_former_editor(self):
         entry = self.create_entry(word='A private withdrawn proposal')
         proposal = entry.contributions.get(kind='text')
         self.client.post(self.url('review', proposal.pk), {'action': 'withdraw'})
@@ -357,5 +360,6 @@ class WorkflowTests(TestCase):
         self.client.force_login(self.owner)
         self.client.post(self.url('review', proposal.pk), {'action': 'remove'})
         proposal.refresh_from_db()
-        self.assertEqual(proposal.word, '')
-        self.assertEqual(proposal.status, 'removed')
+        self.assertEqual(proposal.word, 'A private withdrawn proposal')
+        self.assertTrue(proposal.entry.dictionary.personal)
+        self.assertEqual(proposal.status, 'accepted')

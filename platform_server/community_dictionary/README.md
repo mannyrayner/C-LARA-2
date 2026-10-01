@@ -78,4 +78,18 @@ translation disclosure, and word galleries. Original associations stay implicit;
 extra links point to specific accepted pictures and existing word entries in the
 same dictionary. Export version 2 includes them. All 95 app tests and a controlled
 browser rehearsal pass. Manny now confirms first-time laptop success with the
-sofa/cat example; deployment and a fuller server/phone trial are next.
+sofa/cat example and subsequently reports successful AWS installation and exploration.
+A new physical-phone matrix is not claimed.
+
+The [contribution-control revision](../../docs/howto/community-contribution-control.md)
+adds separate text-field provenance, retained private collections, withdrawal and
+explicit sharing, inactive memberships and optional two-coordinator decisions.
+Migrations 0006/0007 and a database backup are required. 118 tests and a Chromium
+phone/desktop rehearsal pass. Manny subsequently reports successful installation,
+restart and new-entry creation, with a My contributions display issue. The
+[entry-context follow-up](../../docs/howto/community-contributions-by-entry.md)
+addresses it using complete entry cards, own-material selection and grey reference
+components. It has 128 passing app tests and a Chromium phone/desktop rehearsal;
+Manny now confirms laptop testing of My contributions works as intended and
+requests check-in. AWS/physical-phone validation of this increment remains pending;
+his report does not specify separate governance/withdrawal acceptance cases.
