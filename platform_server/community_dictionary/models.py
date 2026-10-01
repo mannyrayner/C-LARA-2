@@ -3,6 +3,7 @@
 import uuid
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
@@ -128,6 +129,30 @@ class Contribution(models.Model):
 
     class Meta:
         ordering = ['-created_at', '-pk']
+
+
+class ImageWordLink(models.Model):
+    """An additional word for one accepted picture; its original word is implicit."""
+    image = models.ForeignKey(Contribution, on_delete=models.CASCADE, related_name='word_links')
+    word_entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name='picture_links')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['image', 'word_entry'], name='cd_unique_image_word')]
+
+    def clean(self):
+        super().clean()
+        if not self.image_id or not self.word_entry_id:
+            return
+        if self.image.kind != 'image' or self.image.status != 'accepted' or not self.image.file_path:
+            raise ValidationError('Choose an accepted picture.')
+        if self.image.entry.dictionary_id != self.word_entry.dictionary_id:
+            raise ValidationError('The picture and word must belong to the same dictionary.')
+        if not self.word_entry.word:
+            raise ValidationError('Choose an entry with accepted wording.')
+        if self.image.entry_id == self.word_entry_id:
+            raise ValidationError('The original word is already associated with this picture.')
 
 
 class Event(models.Model):

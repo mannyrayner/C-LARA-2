@@ -1,0 +1,13 @@
+<article class="word-row" data-word-row>
+  <h3 dir="{{ dictionary.text_direction }}">{{ row.entry.word }}</h3>
+  <div class="word-actions">
+    {% if row.audio %}
+    <button type="button" class="secondary" data-word-listen aria-label="Listen to {{ row.entry.word }}" aria-pressed="false" hidden>Listen</button>
+    <audio controls preload="none" data-word-audio aria-label="Recording of {{ row.entry.word }}" src="{% url 'community_dictionary:media' dictionary.pk row.audio.pk %}"></audio>
+    {% else %}<span class="help">No recording yet</span>{% endif %}
+    {% if row.entry.meaning %}<details class="word-translation"><summary>Translation</summary><p dir="auto">{{ row.entry.meaning|linebreaksbr }}</p></details>{% endif %}
+    {% if not on_word_page %}<a class="word-page-link" href="{% url 'community_dictionary:word' dictionary.pk row.entry.pk %}">Word page →</a>{% endif %}
+  </div>
+  {% if row.audio.provenance.origin == 'synthetic' %}<p class="help">AI-generated voice</p>{% endif %}
+  <p class="help" data-word-playback-status role="status" hidden></p>
+</article>

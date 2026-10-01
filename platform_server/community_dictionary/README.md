@@ -69,4 +69,13 @@ The [30 September saving/invitation patch](../../docs/howto/community-saving-and
 responds to Cathy’s use: top/bottom Save with explicit permission, clearer local
 draft versus server-save status, navigation protection, and owner-only account
 selection. It has 70 passing app tests and controlled Chromium browser checks;
-human laptop/phone acceptance of this patch remains pending.
+Manny subsequently accepted the related password recovery and pronunciation-saving/
+logout changes on his laptop. These combined changes are on main at `b945623`.
+
+The [1 October manual picture/word links](../../docs/howto/community-picture-word-links.md)
+add `ImageWordLink` in migration 0005, picture/word browse modes, inline audio and
+translation disclosure, and word galleries. Original associations stay implicit;
+extra links point to specific accepted pictures and existing word entries in the
+same dictionary. Export version 2 includes them. All 95 app tests and a controlled
+browser rehearsal pass. Manny now confirms first-time laptop success with the
+sofa/cat example; deployment and a fuller server/phone trial are next.

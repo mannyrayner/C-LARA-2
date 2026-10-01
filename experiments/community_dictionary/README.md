@@ -84,6 +84,16 @@ observations. Use relative links to committed evidence. Keep uploaded community
 media and credentials out of experiment records. This directory does not replace
 the existing issue tracker or global workspace.
 
+## Latest user-driven increment
+
+The [1 October picture/word-link record](picture-word-links-2026-10-01.md)
+records acceptance of the preceding laptop repairs, main commit `b945623`, and
+Manny/Cathy's roughly fifty-entry Swedish dictionary. It implements requested
+manual links and complementary browsing with inline listening/translation.
+95 dictionary tests and controlled browser checks pass. Manny subsequently
+confirms first-time laptop success with the sofa/cat example; a fuller server
+and physical-phone trial remains next.
+
 ## Bootstrap record
 
 - Base: `82bb185181acf0fa01958a19a3187f6ee8492f4f`.

@@ -1,0 +1,19 @@
+{% extends 'community_dictionary/base.html' %}
+{% block title %}{{ entry.word }} · Words{% endblock %}
+{% block content %}
+<p class="eyebrow">{{ dictionary.name }} · {{ dictionary.language }}</p>
+<h1 dir="{{ dictionary.text_direction }}">{{ entry.word }}</h1>
+<nav class="tabs" aria-label="Browse by"><a href="{% url 'community_dictionary:dictionary' dictionary.pk %}">Pictures</a><a href="{% url 'community_dictionary:dictionary' dictionary.pk %}?view=words" aria-current="page">Words</a></nav>
+<section class="panel">
+  {% include 'community_dictionary/word_row.html' with on_word_page=True %}
+  {% if word_audio|length > 1 %}<details><summary>Other recordings</summary>{% for recording in word_audio %}{% if recording.pk != row.audio.pk %}<p class="credit">{{ recording.author.username }}{% if recording.label %} · {{ recording.label }}{% endif %}{% if recording.provenance.origin == 'synthetic' %} · AI-generated voice{% endif %}</p><audio controls preload="none" src="{% url 'community_dictionary:media' dictionary.pk recording.pk %}"></audio>{% endif %}{% endfor %}</details>{% endif %}
+  <p class="help"><a href="{% url 'community_dictionary:entry' dictionary.pk entry.pk %}">Open original entry and discussion →</a></p>
+</section>
+<h2>Pictures for this word</h2>
+<div class="entry-grid">
+  {% for picture in pictures %}<a class="entry-card" href="{% url 'community_dictionary:entry' dictionary.pk picture.entry_id %}?picture={{ picture.pk }}">
+    <div class="card-image"><img src="{% url 'community_dictionary:media' dictionary.pk picture.pk %}" alt="{{ entry.word }} — picture from {{ picture.entry.word|default:'a dictionary entry' }}" loading="lazy"></div>
+    <div class="card-copy"><h3 dir="{{ dictionary.text_direction }}">{{ picture.entry.word|default:'Open picture' }}</h3></div>
+  </a>{% empty %}<p class="empty">No accepted pictures are associated with this word yet.</p>{% endfor %}
+</div>
+{% endblock %}

@@ -1,7 +1,7 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
 
-from . import audio_views, photo_views, views
+from . import audio_views, photo_views, views, lexicon_views
 
 app_name = 'community_dictionary'
 urlpatterns = [
@@ -25,6 +25,8 @@ urlpatterns = [
     path('<int:pk>/requests/<int:request_id>/action/', views.request_action, name='request-action'),
     path('<int:pk>/new/', views.contribute, name='new'),
     path('<int:pk>/entries/<int:entry_id>/', views.entry_detail, name='entry'),
+    path('<int:pk>/words/<int:entry_id>/', lexicon_views.word_detail, name='word'),
+    path('<int:pk>/entries/<int:entry_id>/pictures/<int:image_id>/words/', lexicon_views.image_words, name='image-words'),
     path('<int:pk>/entries/<int:entry_id>/contribute/', views.contribute, name='contribute'),
     path('<int:pk>/entries/<int:entry_id>/record/', views.contribute, {'audio_only': True}, name='record-audio'),
     path('<int:pk>/entries/<int:entry_id>/comment/', views.comment, name='comment'),

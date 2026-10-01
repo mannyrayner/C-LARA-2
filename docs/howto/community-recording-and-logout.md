@@ -62,7 +62,9 @@ Try Cathy's image/English entry → review → Edit words → Save → Record au
 Stop recording → Save audio → play from Listen and explore. Then try Logout
 with an unsaved recording, choosing Keep editing first. After acceptance, review
 and commit the staged changes together; AWS uses the usual runbook including
-`collectstatic --noinput` and Gunicorn restart. This patch is not yet deployed.
+`collectstatic --noinput` and Gunicorn restart. Manny subsequently confirmed laptop acceptance; the combined patches are now
+on main at `b945623`. His following report describes about fifty working entries,
+without a new instrumented AWS/device trace.
 
 ## Verification evidence
 
@@ -91,5 +93,5 @@ for the existing browser experiments:
 python -c 'from pathlib import Path; from experiments.community_dictionary.browser_rehearsal import main; main(Path("experiments/community_dictionary/record_logout_browser.cjs").resolve())' /tmp/community-record-logout
 ```
 
-The helper always creates a disposable database. Human acceptance of these new
-controls on the laptop and physical phones remains to be reported.
+The helper always creates a disposable database. Manny has now confirmed laptop acceptance of these controls. A detailed
+physical-device record remains separate from that report.

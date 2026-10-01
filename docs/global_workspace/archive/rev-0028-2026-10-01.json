@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "workspace_revision": 29,
+  "workspace_revision": 28,
   "as_of": "2026-10-01",
   "assessed_commit_sha": "b945623017bb1c938a9273353a62bec5bd808de5",
   "approved_proposal_id": null,
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "Manny reports the picture/word-link increment works first time on his laptop and the sofa/cat example behaves exactly as intended. This closes the first human acceptance step; he proposes check-in and a fuller server trial with the existing roughly fifty-entry Swedish dictionary. The follow-up records acceptance and deployment steps without changing application code; the 95-test and controlled-browser evidence remains unchanged. Migration 0005 and static collection are required on AWS. No server or physical-phone acceptance of this increment is claimed yet. Further runtime changes remain driven by real use; sustained low-intervention operation, broader compatibility and learning outcomes remain unestablished. August assessments are not revalidated.",
+  "current_focus_summary": "Manny confirms laptop acceptance of recording/logout and now reports about fifty working Swedish entries made jointly with Cathy. GitHub main b945623 includes the preceding UX/account repairs. Their real-use example motivates a bounded manual picture/word-link increment: existing vocabulary, Pictures/Words browsing, inline listening/translation, and word galleries. The prepared patch passes all 95 dictionary tests and a controlled Chromium browser rehearsal; human acceptance of these new links remains pending. This is user-driven runtime work within the minimal-app strategy. Sophie discussion, unfamiliar-user trials and physical-device evidence remain next; sustained low-intervention operation and learning outcomes are not established. August assessments are not revalidated.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -549,16 +549,6 @@
         "experiments/community_dictionary/lexicon_browser.cjs",
         "experiments/community_dictionary/picture-word-links-2026-10-01.md"
       ]
-    },
-    {
-      "id": "OBS-0051",
-      "observed_at": "2026-10-01",
-      "confidence": "high",
-      "summary": "Manny reports the manual picture/word links work first time on his laptop and the sofa/cat example behaves exactly as intended. Because his laptop dictionary is small, he proposes checking in and testing with the larger server dictionary. The documentation-only follow-up records this acceptance and the required AWS migration/static collection. Main remains b945623 at the check; neither a remote feature commit nor server/phone acceptance of this increment has yet been reported.",
-      "evidence": [
-        "experiments/community_dictionary/picture-word-links-2026-10-01.md",
-        "docs/howto/community-picture-word-links.md"
-      ]
     }
   ],
   "assessments": [
@@ -735,7 +725,7 @@
     },
     {
       "id": "ASM-0011",
-      "summary": "The manual picture/word-link increment now has positive first-time human laptop acceptance, alongside its automated/browser evidence. Deploying the bounded change for a fuller trial with the existing Swedish dictionary is a reasonable next step. The user has directly confirmed the motivating sofa/cat interaction, but the small laptop dataset leaves richer navigation and physical-phone use to test. Keep further runtime changes driven by observed friction. Broader compatibility, learning benefit and autonomous operations remain unproven.",
+      "summary": "The preceding laptop UX/account blockers are accepted, and roughly fifty co-created Swedish entries provide stronger evidence of real use. Manual picture/word links are a concrete request arising from that dataset, consistent with the minimal-app strategy. The implementation reuses vocabulary/audio and private access rules, with passing backend/browser evidence. Human testing should now determine whether this makes exploration useful and understandable before adding AI tagging or other runtime complexity. Broader device compatibility, learning benefit and autonomous operations remain unproven.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-2",
@@ -771,12 +761,11 @@
         "OBS-0047",
         "OBS-0048",
         "OBS-0049",
-        "OBS-0050",
-        "OBS-0051"
+        "OBS-0050"
       ],
-      "urgency": "accepted_increment_ready_for_server_trial",
+      "urgency": "bounded_user_requested_increment_ready_for_acceptance",
       "risk": "medium",
-      "progress": "picture_word_links_accepted_on_laptop_server_trial_next",
+      "progress": "joint_use_established_manual_word_links_patch_ready",
       "confidence": "medium"
     },
     {
@@ -861,7 +850,7 @@
     },
     {
       "id": "UNC-0008",
-      "summary": "Manny accepts the laptop pronunciation/logout controls and reports about fifty working entries, but does not supply a new device-by-device trace. The manual picture/word-link patch has backend/Chromium evidence and Manny now confirms first-time laptop success with the sofa/cat example. Richer use of the larger server dictionary, deployment and physical-phone acceptance of this increment remain unverified. This is not evidence of learning benefit or long-term engagement. Native browser warnings and local recovery cannot guarantee retention through every mobile OS termination/storage loss. Voice/language quality, latency/cost, HEIC handling and unfamiliar-user uptake remain open. Lookup and optional image generation remain subject to Sophie discussion. Production security and backup/restore evidence remain incomplete. No hard global budget or long-run autonomous operation is claimed.",
+      "summary": "Manny accepts the laptop pronunciation/logout controls and reports about fifty working entries, but does not supply a new device-by-device trace. The manual picture/word-link patch has backend and Chromium viewport evidence; usability with real entries and physical phones remains untested. This is not evidence of learning benefit or long-term engagement. Native browser warnings and local recovery cannot guarantee retention through every mobile OS termination/storage loss. Voice/language quality, latency/cost, HEIC handling and unfamiliar-user uptake remain open. Lookup and optional image generation remain subject to Sophie discussion. Production security and backup/restore evidence remain incomplete. No hard global budget or long-run autonomous operation is claimed.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -974,7 +963,7 @@
     },
     {
       "id": "ACT-0010",
-      "summary": "Commit and push the accepted manual picture/word-link implementation plus its acceptance record. Deploy using the established AWS runbook with migration 0005 and collectstatic, then test with the larger Swedish dictionary and a physical phone. Check inline audio/translation, galleries and unlinking while preserving original media; record actual friction and device details. Keep AI tagging deferred. Support Kate/Axel and prospective Nouméa trials at their own pace, and discuss community scope/wording and optional AI features with Sophie before expansion.",
+      "summary": "Apply the manual picture/word-link patch against main b945623, run migration 0005, and try linking existing words across the Swedish photos, inline listening/translation and word-gallery round trips. Obtain Manny/Cathy feedback before check-in/deployment; collect static files on AWS and repeat on a physical phone with device details. Keep AI tagging deferred. Support Kate/Axel and prospective Nouméa trials at their own pace; discuss community scope, wording, optional image generation and lookup with Sophie before expanding functionality.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1075,13 +1064,14 @@
     "status": "autonomous_project_manager_update",
     "authorized_by": "Assistant following AGENTS.md",
     "authorized_at": "2026-10-01",
-    "authorization_basis": "Manny reports first-time laptop acceptance and proposes check-in plus a fuller server trial; AGENTS.md authorizes derived-state maintenance.",
-    "comments": "The latest human message is preserved verbatim. This follow-up changes documentation and derived state only, with applicability/archive checks. Prior application test evidence is retained rather than rerun. No remote commit/push or AWS deployment is claimed or performed; human intentions remain unchanged."
+    "authorization_basis": "Manny confirms laptop acceptance, reports the joint-use dataset, narrows the next step to manual existing-word links and both browse modes, and explicitly requests implementation; AGENTS.md authorizes derived-state maintenance.",
+    "comments": "The five material human messages are preserved in order; dates use Manny's Adelaide morning. The deliverable is an incremental patch with synthetic local test evidence. No community photograph is committed, no real account is changed, and no remote push, AWS deployment, outbound message or paid provider call is performed. Human intentions remain unchanged."
   },
   "changes_from_previous_revision": {
-    "summary": "Recorded first-time laptop acceptance of picture/word links and moved the next action to check-in, AWS deployment and fuller server/phone testing.",
+    "summary": "Recorded acceptance and roughly fifty-entry joint use; verified main baseline and prepared/tested the user-requested manual picture/word-link increment.",
     "added_item_ids": [
-      "OBS-0051"
+      "OBS-0049",
+      "OBS-0050"
     ],
     "revised_item_ids": [
       "ASM-0011",
@@ -1174,9 +1164,7 @@
       "PRED-0003",
       "PRED-0004",
       "PRED-0005",
-      "PRED-0006",
-      "OBS-0049",
-      "OBS-0050"
+      "PRED-0006"
     ],
     "retired_item_ids": []
   }

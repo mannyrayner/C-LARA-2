@@ -14,8 +14,9 @@ from django.http import FileResponse, Http404, HttpResponse, JsonResponse, Strea
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from .forms import ContributionForm, DictionaryForm, DictionarySettingsForm, EntryAudioForm, NoteForm, RequestForm
-from .models import Contribution, Dictionary, Entry, Membership, Partner, Partnership, Request
+from .forms import ContributionForm, DictionaryForm, DictionarySettingsForm, EntryAudioForm, LinkWordForm, NoteForm, RequestForm
+from .models import Contribution, Dictionary, Entry, ImageWordLink, Membership, Partner, Partnership, Request
+from .lexicon import linked_words, outdated_tts, valid_links, vocabulary, word_row
 from .permissions import dictionaries_for, get_dictionary, is_editor, require_editor, require_owner
 from .services import Conflict, accept, add_contributions, entry_url, event, submit_once
 from .storage import delete_file, path_for, write_upload
@@ -46,14 +47,6 @@ def perform(request, dictionary, scope, callback):
 
 def get_entry(dictionary, pk):
     return get_object_or_404(Entry.objects.select_related('selected_image', 'current_text').prefetch_related('contributions__author'), dictionary=dictionary, pk=pk)
-
-
-def outdated_tts(contribution, entry, dictionary):
-    """Only synthetic recordings have a known spoken text to compare."""
-    source = contribution.provenance
-    return (contribution.kind == 'audio' and source.get('origin') == 'synthetic'
-            and (source.get('source_text') != entry.word
-                 or source.get('language') != dictionary.language))
 
 
 def summary(entry, dictionary):
@@ -87,21 +80,30 @@ def join_dictionary(request, pk):
 @login_required
 def dictionary(request, pk):
     item = get_dictionary(request.user, pk)
-    entries = item.entries.select_related('selected_image', 'current_text').prefetch_related('contributions__author')
-    show = request.GET.get('show', 'accepted')
-    if show == 'accepted':
-        entries = entries.filter(contributions__status='accepted', contributions__kind__in=['text', 'image', 'audio'])
-    elif show == 'review':
-        entries = entries.filter(contributions__status='pending')
+    mode = 'words' if request.GET.get('view') == 'words' else 'pictures'
+    show = request.GET.get('show', 'accepted') if mode == 'pictures' else 'accepted'
     query = request.GET.get('q', '').strip()[:200]
     category = request.GET.get('category', '')[:80]
-    if query:
-        entries = entries.filter(Q(word__icontains=query) | Q(meaning__icontains=query) | Q(contributions__word__icontains=query) | Q(contributions__meaning__icontains=query))
+    if mode == 'words':
+        entries = vocabulary(item).order_by('word', 'pk')
+        if query:
+            entries = entries.filter(Q(word__icontains=query) | Q(meaning__icontains=query))
+    else:
+        entries = item.entries.select_related('selected_image', 'current_text').prefetch_related('contributions__author')
+        if show == 'accepted':
+            entries = entries.filter(contributions__status='accepted', contributions__kind__in=['text', 'image', 'audio'])
+        elif show == 'review':
+            entries = entries.filter(contributions__status='pending')
+        if query:
+            linked_sources = valid_links(item).filter(Q(word_entry__word__icontains=query) | Q(word_entry__meaning__icontains=query)).values('image__entry_id')
+            entries = entries.filter(Q(word__icontains=query) | Q(meaning__icontains=query) | Q(contributions__word__icontains=query) | Q(contributions__meaning__icontains=query) | Q(pk__in=linked_sources))
     if category:
         entries = entries.filter(category=category)
     page = Paginator(entries.distinct(), 24).get_page(request.GET.get('page'))
     categories = item.entries.exclude(category='').values_list('category', flat=True).distinct().order_by('category')
-    return render(request, 'community_dictionary/dictionary.html', context(request, item, cards=[summary(e, item) for e in page], page=page, show=show, query=query, category=category, categories=categories))
+    cards = [summary(e, item) for e in page] if mode == 'pictures' else []
+    words = [word_row(e, item) for e in page] if mode == 'words' else []
+    return render(request, 'community_dictionary/dictionary.html', context(request, item, cards=cards, words=words, mode=mode, page=page, show=show, query=query, category=category, categories=categories))
 
 
 @login_required
@@ -149,11 +151,28 @@ def contribute(request, pk, entry_id=None, request_id=None, audio_only=False):
 def entry_detail(request, pk, entry_id):
     dictionary = get_dictionary(request.user, pk)
     entry = get_entry(dictionary, entry_id)
+    presentation = summary(entry, dictionary)
+    if 'picture' in request.GET:
+        try:
+            picture_id = int(request.GET['picture'])
+            if not 0 < picture_id < 2**63:
+                raise ValueError
+        except (ValueError, TypeError):
+            raise Http404
+        presentation['image'] = get_object_or_404(entry.contributions, pk=picture_id, kind='image', status='accepted')
+        if not presentation['image'].file_path:
+            raise Http404
+    image = presentation['image']
+    extra_words = list(linked_words(image, dictionary)) if image and image.status == 'accepted' else []
+    link_form = None
+    if image and image.status == 'accepted' and is_editor(request.user, dictionary):
+        link_form = LinkWordForm(dictionary=dictionary, source_entry_id=entry.pk)
+        link_form.fields['word_entry'].queryset = link_form.fields['word_entry'].queryset.exclude(pk__in=[e.pk for e in extra_words])
     contributions = [c for c in entry.contributions.all() if c.status not in {'withdrawn', 'rejected'} or c.author_id == request.user.pk or is_editor(request.user, dictionary)]
     for contribution in contributions:
         contribution.outdated_tts = outdated_tts(contribution, entry, dictionary)
     members_requests = entry.requests.select_related('partnership', 'created_by', 'completed_with').prefetch_related('responses')
-    return render(request, 'community_dictionary/entry.html', context(request, dictionary, **summary(entry, dictionary), contributions=contributions, audio=[c for c in contributions if c.kind == 'audio' and c.status == 'accepted' and not c.outdated_tts], notes=[c for c in reversed(contributions) if c.kind == 'note' and c.status != 'removed'], requests=members_requests, form=NoteForm(), can_request=Partnership.objects.filter(dictionary=dictionary, partners__user=request.user, partners__accepted=True).exists(), events=dictionary.events.filter(entry=entry).select_related('actor')[:30]))
+    return render(request, 'community_dictionary/entry.html', context(request, dictionary, **presentation, linked_words=[word_row(e, dictionary) for e in extra_words], link_form=link_form, contributions=contributions, audio=[c for c in contributions if c.kind == 'audio' and c.status == 'accepted' and not c.outdated_tts], notes=[c for c in reversed(contributions) if c.kind == 'note' and c.status != 'removed'], requests=members_requests, form=NoteForm(), can_request=Partnership.objects.filter(dictionary=dictionary, partners__user=request.user, partners__accepted=True).exists(), events=dictionary.events.filter(entry=entry).select_related('actor')[:30]))
 
 
 @login_required
@@ -220,6 +239,8 @@ def review(request, pk, contribution_id):
                     entry.selected_image = None
                 entry.save()
                 old_path = contribution.file_path
+                if contribution.kind == 'image':
+                    ImageWordLink.objects.filter(image=contribution).delete()
                 contribution.status = 'removed'
                 contribution.file_path = ''
                 contribution.file_size = 0
@@ -441,7 +462,7 @@ def private_media_response(request, relative, mime_type, filename):
 def export_dictionary(request, pk):
     dictionary = get_dictionary(request.user, pk)
     require_owner(request.user, dictionary)
-    sets = [Dictionary.objects.filter(pk=pk), dictionary.memberships.all(), dictionary.partnerships.all(), Partner.objects.filter(partnership__dictionary=dictionary), dictionary.entries.all(), Contribution.objects.filter(entry__dictionary=dictionary), Request.objects.filter(entry__dictionary=dictionary), dictionary.events.all()]
+    sets = [Dictionary.objects.filter(pk=pk), dictionary.memberships.all(), dictionary.partnerships.all(), Partner.objects.filter(partnership__dictionary=dictionary), dictionary.entries.all(), Contribution.objects.filter(entry__dictionary=dictionary), Request.objects.filter(entry__dictionary=dictionary), ImageWordLink.objects.filter(image__entry__dictionary=dictionary, word_entry__dictionary=dictionary), dictionary.events.all()]
     objects = [obj for queryset in sets for obj in queryset]
     media_items = list(Contribution.objects.filter(entry__dictionary=dictionary).exclude(file_path=''))
     user_ids = {dictionary.owner_id}
@@ -456,9 +477,9 @@ def export_dictionary(request, pk):
     output = tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024)
     try:
         with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
-            archive.writestr('manifest.json', json.dumps({'format': 'clara-community-dictionary', 'version': 1, 'dictionary_id': pk, 'origin': 'mixed' if any(isinstance(obj, Contribution) and obj.provenance for obj in objects) else 'human', 'users': users}, ensure_ascii=False, indent=2))
+            archive.writestr('manifest.json', json.dumps({'format': 'clara-community-dictionary', 'version': 2, 'dictionary_id': pk, 'origin': 'mixed' if any(isinstance(obj, Contribution) and obj.provenance for obj in objects) else 'human', 'users': users}, ensure_ascii=False, indent=2))
             archive.writestr('records.json', serializers.serialize('json', objects, indent=2))
-            archive.writestr('README.txt', 'Portable dictionary export. records.json contains Django-labelled records and original IDs; manifest.json maps contributor IDs to usernames. media/ paths match contribution file_path fields. Credentials and submission receipts are excluded. This is an interchange export, not a full server backup. Use database plus private-media backups for operational restoration.\n')
+            archive.writestr('README.txt', 'Portable dictionary export. records.json contains Django-labelled records and original IDs; manifest.json maps contributor IDs to usernames. media/ paths match contribution file_path fields. Additional picture-to-word links are included as community_dictionary.imagewordlink records; original picture-to-word associations follow the picture contribution’s entry. Credentials and submission receipts are excluded. This is an interchange export, not a full server backup. Use database plus private-media backups for operational restoration.\n')
             for item in media_items:
                 archive.write(path_for(item.file_path), 'media/' + item.file_path)
         output.seek(0)

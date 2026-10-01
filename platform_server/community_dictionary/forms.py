@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Dictionary, Partnership, Request
+from .models import Dictionary, Entry, Partnership, Request
 from .storage import prepare_upload
 from .voices import VOICE_CHOICES
 
@@ -104,6 +104,20 @@ class ContributionForm(UploadForm):
         if not any(data.get(k) for k in ['photo', 'audio', 'word', 'meaning', 'category', 'edit_text']):
             raise forms.ValidationError('Add a picture, recording or some written information.')
         return data
+
+
+class WordChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, entry):
+        meaning = ' '.join(entry.meaning.split())
+        return f'{entry.word} — {meaning[:90]}' if meaning else entry.word
+
+
+class LinkWordForm(forms.Form):
+    word_entry = WordChoiceField(queryset=Entry.objects.none(), label='Existing word or phrase', empty_label='Choose a word…')
+
+    def __init__(self, *args, dictionary, source_entry_id, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['word_entry'].queryset = dictionary.entries.exclude(word='').exclude(pk=source_entry_id).order_by('word', 'pk')
 
 
 class EntryAudioForm(UploadForm):

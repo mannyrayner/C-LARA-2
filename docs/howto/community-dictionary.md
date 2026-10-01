@@ -50,8 +50,20 @@ Cathy reports difficulty finding Save and losing an unsaved image. The
 [save and invitation update](community-saving-and-invitations.md) adds top/bottom
 Save controls with explicit one-click permission, clearer draft status and
 leave-page protection, plus owner-only account selection for invitations.
-This is a prepared patch based on `c72c33b`; laptop/phone acceptance of this
-new UX remains pending. See its runbook before applying it.
+Manny subsequently accepted the password recovery and recording/logout changes
+on the laptop; the combined changes are on main at `b945623`. See the
+[recording/logout runbook](community-recording-and-logout.md) for that iteration.
+
+## 1 October: pictures and words
+
+Manny reports successful joint use with about fifty Swedish entries. The next
+[manual picture/word linking increment](community-picture-word-links.md) adds
+Pictures/Words browsing, links to existing words, inline listening and hidden
+translations, and word pages with their associated pictures. Its 95 app tests
+and controlled browser rehearsal pass. Manny now confirms that the sofa/cat
+workflow works first time on his laptop and plans a fuller server trial.
+**Migration 0005 is required** on AWS; server/phone acceptance of this increment
+is still pending.
 
 ## Current installation
 
