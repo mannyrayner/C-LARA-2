@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 
 from django.forms import modelformset_factory
 
+from .authentication_forms import UsernameInputMixin
 from .models import (
     Community,
     CommunityMembership,
@@ -21,7 +22,7 @@ from .models import (
 )
 
 
-class RegistrationForm(UserCreationForm):
+class RegistrationForm(UsernameInputMixin, UserCreationForm):
     email = forms.EmailField(required=True)
 
     class Meta:

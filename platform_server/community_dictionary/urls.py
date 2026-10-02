@@ -1,5 +1,6 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
+from projects.authentication_forms import LoginForm
 
 from . import audio_views, photo_views, views, lexicon_views, collection_views, participation_views
 
@@ -14,7 +15,7 @@ urlpatterns = [
     path('my-contributions/entries/<int:entry_id>/share-back/', collection_views.obsolete_action, name='share-back'),
     path('my-contributions/media/<int:contribution_id>/', collection_views.own_media, name='own-media'),
     path('<int:pk>/membership/', collection_views.membership_action, name='membership-action'),
-    path('login/', auth_views.LoginView.as_view(template_name='community_dictionary/login.html', next_page='community_dictionary:home'), name='login'),
+    path('login/', auth_views.LoginView.as_view(template_name='community_dictionary/login.html', authentication_form=LoginForm, next_page='community_dictionary:home'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='community_dictionary:login'), name='logout'),
     path('<int:pk>/entries/<int:entry_id>/pictures/<int:image_id>/learn/', photo_views.start, name='entry-photo'),
     path('<int:pk>/entries/<int:entry_id>/create-audio/', audio_views.start, name='audio-start'),

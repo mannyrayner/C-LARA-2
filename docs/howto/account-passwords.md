@@ -1,5 +1,33 @@
 # Changing and recovering account passwords
 
+## Username entry on phones (3 October 2026)
+
+Registration and both login pages now use the same username keyboard hints:
+`autocapitalize="none"`, `autocorrect="off"`, `spellcheck="false"`, and
+`autocomplete="username"`. Password-manager autofill remains available; the
+server's username validation, case matching and password handling are unchanged.
+No accounts are renamed, and deliberately typed capitals remain valid.
+
+This follows a report of an unexpected capital in the username field on Chrome
+on an iPhone. Inspection of the deployed pages found that the login fields already
+disabled automatic capitalisation, registration did not, and none explicitly
+disabled autocorrection. The inconsistency is corrected, but the exact phone-side
+cause is not established. A physical-device retest is still needed.
+
+After deploying, refresh the login page and try manually entering the existing
+username. If the capital still appears, note whether it appears with the first
+keystroke, after finishing the word, or when selecting a saved login. An incorrect
+saved username may need correcting in the password manager. There is no need to
+reset the account password for this change.
+
+Verification for this increment: Django system checks and the 22 existing
+password-management/recording/logout tests pass. All three rendered pages have
+the same username hints, their password autofill hints are retained, and bound
+username fields preserve deliberately mixed-case input. These checks do not
+simulate the iPhone keyboard.
+
+## Original password-management installation
+
 30 September 2026. This patch follows the installed
 `community_dictionary_save_ux.patch` on main at `c72c33b`.
 
