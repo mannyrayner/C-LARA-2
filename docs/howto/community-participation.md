@@ -100,7 +100,9 @@ and allowing 0009. The audit below requires the earlier personal-collection sche
 it cannot run against a server that still precedes migration 0006.
 
 
-No AWS deployment has yet been reported for this revision. Before the first deployment
+AWS deployment and a withdrawal/restoration trial are now reported successful;
+see the [server record](../../experiments/community_dictionary/participation-aws-2026-10-02.md).
+The following preflight applies to a server that has not yet applied 0009. Before the first deployment
 of migration 0009, use the normal database/private-media backup procedure and pause
 writes during the upgrade. Confirm the assumption that AWS has no private material:
 
@@ -125,5 +127,7 @@ without reconciling those decisions.
 SQLite and synthetic media, including migration fixtures. They cover privacy,
 permissions, overlapping withdrawals, duplicate/stale requests, moderation, newer
 text, ownership handover, failed-handover rollback and one-time migration behaviour.
-No new AWS, physical Safari/Android or PostgreSQL concurrency evidence is claimed.
+The subsequent human-reported AWS trial adds deployment and basic
+withdrawal/restoration evidence. No new physical Safari/Android matrix or
+PostgreSQL concurrency stress test is claimed.
 See [the dated record](../../experiments/community_dictionary/participation-2026-10-02.md).

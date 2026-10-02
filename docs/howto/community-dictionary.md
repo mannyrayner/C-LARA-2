@@ -10,9 +10,12 @@ withdrawn members cannot browse or contribute. Owners hand over when withdrawing
 and restoration retains valid prior approval. The one-time migration restores the
 laptop's experimental private material as explicitly authorised by Manny.
 **156 tests and a Chromium rehearsal pass. Manny reports successful laptop use
-and finds the simpler model much better. AWS deployment remains pending.** Use the
+and finds the simpler model much better. He now also reports successful AWS
+deployment and a withdrawal/restoration trial.** Use the
 [deployment sequence](community-participation-aws.md), including database/media
-backup and the private-content audit between migrations 0008 and 0009. Earlier incremental descriptions below
+backup and the private-content audit between migrations 0008 and 0009. The guide
+now includes the PostgreSQL-client, backup-progress and source-permission corrections
+from the [server trial](../../experiments/community_dictionary/participation-aws-2026-10-02.md). Earlier incremental descriptions below
 are historical where they describe individual contribution controls.
 
 

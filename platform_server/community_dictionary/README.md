@@ -8,7 +8,9 @@ the individual contribution/private-dictionary interfaces described in older not
 below. Migrations 0008/0009 establish the model and restore the authorised laptop
 experiments. 156 tests and a browser rehearsal pass. Manny reports successful
 laptop acceptance; [AWS deployment](../../docs/howto/community-participation-aws.md)
-is next and remains unverified.
+and a withdrawal/restoration trial are now reported successful. See the
+[server record](../../experiments/community_dictionary/participation-aws-2026-10-02.md)
+for operational incidents, recovery and evidence limits.
 
 
 First functional prototype: invited dictionaries built from photographs, human

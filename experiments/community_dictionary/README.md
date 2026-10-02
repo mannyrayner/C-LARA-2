@@ -3,8 +3,9 @@
 Latest: [dictionary-wide participation, 2 October](participation-2026-10-02.md).
 Manny's successful use of the prior shortcut exposed excessive conceptual complexity.
 The replacement has 156 passing tests and a Chromium rehearsal. Manny now reports
-successful laptop use and a much simpler model; AWS deployment is the next step
-and remains pending. Earlier component-selection and share-back browser
+successful laptop use and a much simpler model, followed by successful
+[AWS deployment and withdrawal/restoration](participation-aws-2026-10-02.md).
+The server record includes backup, client-version and file-permission lessons. Earlier component-selection and share-back browser
 scripts record superseded interfaces. The current script is `participation_browser.cjs`.
 
 
