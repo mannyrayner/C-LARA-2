@@ -15,9 +15,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from .forms import ContributionForm, DictionaryForm, DictionarySettingsForm, EntryAudioForm, LinkWordForm, NoteForm, RequestForm
-from .models import Contribution, Dictionary, Entry, ImageWordLink, Membership, Partner, Partnership, Request
+from .models import Contribution, Dictionary, Entry, ImageWordLink, Membership, Partner, Partnership, Participation, Request
 from .lexicon import linked_words, outdated_tts, valid_links, vocabulary, word_row
-from .permissions import dictionaries_for, get_dictionary, is_editor, is_coordinator, require_editor, require_owner
+from .permissions import entitled_dictionaries, dictionaries_for, get_dictionary, is_editor, is_coordinator, require_editor, require_owner
 from .services import Conflict, accept, add_contributions, entry_url, event, submit_once
 from .storage import delete_file, path_for, write_upload
 
@@ -64,7 +64,8 @@ def home(request):
         dictionary.save()
         event(dictionary, request.user, 'create_dictionary')
         return redirect('community_dictionary:dictionary', pk=dictionary.pk)
-    return render(request, 'community_dictionary/home.html', {'dictionaries': dictionaries_for(request.user), 'invitations': Membership.objects.filter(user=request.user, accepted=False, status='invited', dictionary__personal=False).select_related('dictionary'), 'form': form})
+    from .participation import controls
+    return render(request, 'community_dictionary/home.html', {'projects': [controls(request.user, d) for d in entitled_dictionaries(request.user)], 'invitations': Membership.objects.filter(user=request.user, accepted=False, status='invited', dictionary__personal=False, dictionary__archived=False).select_related('dictionary'), 'form': form})
 
 
 @login_required
@@ -72,7 +73,7 @@ def home(request):
 @transaction.atomic
 def join_dictionary(request, pk):
     Dictionary.objects.select_for_update().get(pk=pk)
-    membership = get_object_or_404(Membership, dictionary_id=pk, user=request.user, accepted=False, status='invited', dictionary__personal=False)
+    membership = get_object_or_404(Membership, dictionary__archived=False, dictionary_id=pk, user=request.user, accepted=False, status='invited', dictionary__personal=False)
     membership.accepted = True
     membership.status = 'active'
     membership.save(update_fields=['accepted', 'status'])
@@ -84,7 +85,11 @@ def join_dictionary(request, pk):
 
 @login_required
 def dictionary(request, pk):
-    item = get_dictionary(request.user, pk)
+    from .participation import controls
+    item = get_object_or_404(entitled_dictionaries(request.user), pk=pk)
+    participation = controls(request.user, item)
+    if not participation['can_browse']:
+        return render(request, 'community_dictionary/participation_status.html', {'project': item, 'participation': participation})
     mode = 'words' if request.GET.get('view') == 'words' else 'pictures'
     show = request.GET.get('show', 'accepted') if mode == 'pictures' else 'accepted'
     query = request.GET.get('q', '').strip()[:200]
@@ -108,7 +113,7 @@ def dictionary(request, pk):
     categories = item.entries.filter(archived=False).exclude(category='').values_list('category', flat=True).distinct().order_by('category')
     cards = [summary(e, item) for e in page] if mode == 'pictures' else []
     words = [word_row(e, item) for e in page] if mode == 'words' else []
-    return render(request, 'community_dictionary/dictionary.html', context(request, item, cards=cards, words=words, mode=mode, page=page, show=show, query=query, category=category, categories=categories))
+    return render(request, 'community_dictionary/dictionary.html', context(request, item, participation=participation, cards=cards, words=words, mode=mode, page=page, show=show, query=query, category=category, categories=categories))
 
 
 @login_required
@@ -208,14 +213,15 @@ def review(request, pk, contribution_id):
     dictionary = get_dictionary(request.user, pk)
     contribution = get_object_or_404(Contribution.objects.select_related('entry'), pk=contribution_id, entry__dictionary=dictionary)
     action = request.POST.get('action')
-    if action in {'withdraw', 'remove'}:
+    if action == 'withdraw':
+        return fail(request, 'Use Withdraw my content on the dictionary page.', 409)
+    if action == 'remove':
         from .collections import withdraw
         try:
-            if action == 'withdraw' or (contribution.kind == 'note' and contribution.author_id == request.user.pk):
-                withdraw(request.user, [contribution.pk])
-            else:
-                require_editor(request.user, dictionary)
-                withdraw(request.user, [contribution.pk], moderator_dictionary=dictionary)
+            require_editor(request.user, dictionary)
+            if (contribution.controlled_by_id or contribution.author_id) == request.user.pk:
+                raise Conflict('Use Withdraw my content on the dictionary page for your own material.')
+            withdraw(request.user, [contribution.pk], moderator_dictionary=dictionary)
         except Conflict as exc:
             return fail(request, exc, 409)
         return redirect(entry_url(contribution.entry))
@@ -327,7 +333,9 @@ def queue(request, pk):
 
 @login_required
 @require_POST
+@transaction.atomic
 def request_action(request, pk, request_id):
+    Dictionary.objects.select_for_update().get(pk=pk)
     dictionary = get_dictionary(request.user, pk)
     req = get_object_or_404(Request, pk=request_id, entry__dictionary=dictionary)
     if req.created_by_id != request.user.pk:
@@ -344,7 +352,8 @@ def request_action(request, pk, request_id):
 
 
 def member_users(dictionary):
-    return get_user_model().objects.filter(Q(pk=dictionary.owner_id) | Q(membership__dictionary=dictionary, membership__accepted=True, membership__status='active')).distinct().order_by('username')
+    withdrawn = Participation.objects.filter(dictionary=dictionary, withdrawn=True).values('user_id')
+    return get_user_model().objects.filter(is_active=True).filter(Q(pk=dictionary.owner_id) | Q(membership__dictionary=dictionary, membership__accepted=True, membership__status='active')).exclude(pk__in=withdrawn).distinct().order_by('username')
 
 
 @login_required
@@ -432,7 +441,11 @@ def people(request, pk):
         .order_by('username').values_list('username', flat=True)
         if request.user.pk == dictionary.owner_id else []
     )
-    return render(request, 'community_dictionary/people.html', context(request, dictionary, memberships=dictionary.memberships.select_related('user'), people=member_users(dictionary), invite_accounts=invite_accounts, group_rows=group_rows, settings_form=settings_form, decisions=dictionary.membership_decisions.select_related('member__user', 'proposed_by', 'approved_by')[:30]))
+    memberships = list(dictionary.memberships.exclude(user_id=dictionary.owner_id).select_related('user'))
+    withdrawn_users = set(Participation.objects.filter(dictionary=dictionary, withdrawn=True).values_list('user_id', flat=True))
+    for member in memberships:
+        member.content_withdrawn = member.user_id in withdrawn_users
+    return render(request, 'community_dictionary/people.html', context(request, dictionary, memberships=memberships, people=member_users(dictionary), invite_accounts=invite_accounts, group_rows=group_rows, settings_form=settings_form, decisions=dictionary.membership_decisions.select_related('member__user', 'proposed_by', 'approved_by')[:30]))
 
 
 @login_required
@@ -490,6 +503,8 @@ def export_dictionary(request, pk):
     dictionary = get_dictionary(request.user, pk)
     require_owner(request.user, dictionary)
     Dictionary.objects.select_for_update().get(pk=pk)
+    dictionary = get_dictionary(request.user, pk)
+    require_owner(request.user, dictionary)
     sets = [Dictionary.objects.filter(pk=pk), dictionary.memberships.all(), dictionary.partnerships.all(), Partner.objects.filter(partnership__dictionary=dictionary), dictionary.entries.all(), Contribution.objects.filter(entry__dictionary=dictionary).exclude(status__in=['withdrawn', 'removed']), Request.objects.filter(entry__dictionary=dictionary), ImageWordLink.objects.filter(image__entry__dictionary=dictionary, word_entry__dictionary=dictionary), dictionary.events.all(), dictionary.membership_decisions.all()]
     objects = [obj for queryset in sets for obj in queryset]
     media_items = list(Contribution.objects.filter(entry__dictionary=dictionary).exclude(status__in=['withdrawn', 'removed']).exclude(file_path=''))
@@ -523,8 +538,11 @@ def export_dictionary(request, pk):
                     fields['collection_source'] = None
             archive.writestr('records.json', json.dumps(records, ensure_ascii=False, indent=2))
             archive.writestr('README.txt', 'Portable dictionary export. records.json contains Django-labelled records and original IDs; manifest.json maps contributor IDs to usernames. media/ paths match contribution file_path fields. Additional picture-to-word links are included as community_dictionary.imagewordlink records; original picture-to-word associations follow the picture contribution’s entry. Credentials and submission receipts are excluded. This is an interchange export, not a full server backup. Use database plus private-media backups for operational restoration.\n')
+            written = set()
             for item in media_items:
-                archive.write(path_for(item.file_path), 'media/' + item.file_path)
+                if item.file_path not in written:
+                    archive.write(path_for(item.file_path), 'media/' + item.file_path)
+                    written.add(item.file_path)
         output.seek(0)
     except Exception:
         output.close()

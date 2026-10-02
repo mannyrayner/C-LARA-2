@@ -77,7 +77,7 @@ def accept(contribution, user):
     contribution = Contribution.objects.select_for_update().get(pk=contribution.pk)
     if contribution.status == 'accepted':
         return
-    if contribution.status != 'pending' or contribution.kind == 'note':
+    if contribution.status != 'pending':
         raise Conflict('This contribution is no longer awaiting review.')
     if contribution.kind == 'text':
         from .text import FIELDS, split_legacy
@@ -110,6 +110,10 @@ def accept(contribution, user):
 
 
 def add_contributions(entry, user, data, created_paths, *, publish=False, response_to=None):
+    if data.get('contributor'):
+        from .views import member_users
+        if not member_users(entry.dictionary).filter(pk=data['contributor'].pk).exists():
+            raise Conflict('That contributor is no longer participating in this dictionary.')
     made = []
     if data.get('edit_text') or any(data.get(k) for k in ['word', 'meaning', 'category']):
         if response_to:

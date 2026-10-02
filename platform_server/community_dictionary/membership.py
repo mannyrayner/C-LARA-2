@@ -4,14 +4,15 @@ from django.db import transaction
 from django.http import Http404
 from django.utils import timezone
 
-from .models import Dictionary, Membership, MembershipDecision
+from .models import Dictionary, Membership, MembershipDecision, Participation
 from .permissions import get_dictionary, is_coordinator
 from .services import Conflict, event
 
 
 def coordinators(dictionary):
     ids = list(Membership.objects.filter(dictionary=dictionary, accepted=True, status='active', role='coordinator').values_list('user_id', flat=True))
-    return get_user_model().objects.filter(pk__in=[dictionary.owner_id, *ids], is_active=True)
+    withdrawn = Participation.objects.filter(dictionary=dictionary, withdrawn=True).values('user_id')
+    return get_user_model().objects.filter(pk__in=[dictionary.owner_id, *ids], is_active=True).exclude(pk__in=withdrawn)
 
 
 def validate(dictionary, action, member, value):
@@ -21,6 +22,8 @@ def validate(dictionary, action, member, value):
         raise Conflict('Unknown membership change.')
     if action != 'policy' and (not member or member.dictionary_id != dictionary.pk):
         raise Conflict('Choose a member of this dictionary.')
+    if member and member.user_id == dictionary.owner_id:
+        raise Conflict('The owner can transfer ownership when withdrawing; membership controls cannot suspend the owner.')
     if action == 'deactivate' and member.status == 'inactive':
         raise Conflict('This member is already inactive.')
     if action == 'reactivate' and member.status != 'inactive':
@@ -69,7 +72,14 @@ def propose(user, dictionary, action, member=None, value=''):
     validate(dictionary, action, member, value)
     decision = MembershipDecision.objects.create(dictionary=dictionary, proposed_by=user, action=action,
         member=member, value=value, base_revision=dictionary.membership_revision)
-    if dictionary.membership_policy == 'coordinators':
+    recovery = (dictionary.membership_policy == 'coordinators' and dictionary.owner_id == user.pk
+                and action == 'role' and value == 'coordinator' and member.accepted
+                and member.status == 'active' and not Participation.objects.filter(dictionary=dictionary, user=member.user, withdrawn=True).exists()
+                and coordinators(dictionary).count() < 2)
+    if recovery:
+        apply(dictionary, decision, user)
+        event(dictionary, user, 'membership_recovery', detail='Owner appointed a second coordinator; two-person policy retained')
+    elif dictionary.membership_policy == 'coordinators':
         event(dictionary, user, 'membership_proposed', detail=f'Decision {decision.pk}: {action}')
     else:
         apply(dictionary, decision, user)
@@ -95,20 +105,5 @@ def decide(user, dictionary, decision_id, *, cancel=False):
     if decision.base_revision != dictionary.membership_revision or not is_coordinator(decision.proposed_by, dictionary):
         raise Conflict('Membership changed after this proposal. Cancel it and make a new proposal.')
     validate(dictionary, decision.action, decision.member, decision.value)
-    apply(dictionary, decision, user)
-    return decision
-
-
-@transaction.atomic
-def leave(user, dictionary):
-    dictionary = Dictionary.objects.select_for_update().get(pk=dictionary.pk)
-    get_dictionary(user, dictionary.pk)
-    if dictionary.owner_id == user.pk:
-        raise Conflict('The owner remains responsible for this dictionary. Arrange an ownership transfer before leaving.')
-    member = Membership.objects.select_for_update().get(dictionary=dictionary, user=user, status='active')
-    # Leaving voluntarily never requires someone else's agreement. If this
-    # leaves fewer than two coordinators, protected changes wait for recovery.
-    decision = MembershipDecision.objects.create(dictionary=dictionary, proposed_by=user, member=member,
-        action='deactivate', base_revision=dictionary.membership_revision)
     apply(dictionary, decision, user)
     return decision

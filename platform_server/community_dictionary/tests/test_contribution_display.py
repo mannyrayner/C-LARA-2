@@ -14,10 +14,13 @@ class Inputs(HTMLParser):
     def __init__(self, response):
         super().__init__()
         self.ids = set()
+        self.displayed = set()
         self.feed(response.content.decode())
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
+        if attrs.get('data-contribution-id'):
+            self.displayed.add(int(attrs['data-contribution-id']))
         if tag == 'input' and attrs.get('name') == 'contributions':
             self.ids.add(int(attrs['value']))
 
@@ -42,23 +45,24 @@ class ContributionDisplayTests(TestCase):
         self.client.force_login(self.member)
         return entry
 
-    def assert_selectable(self, response, parts):
-        self.assertEqual(Inputs(response).ids, {p.pk for p in parts})
+    def assert_readonly(self, response, parts):
+        self.assertEqual(Inputs(response).ids, set())
+        self.assertTrue({p.pk for p in parts}.issubset(Inputs(response).displayed))
 
-    def test_shared_card_groups_all_components_and_only_own_parts_are_selectable(self):
+    def test_shared_card_groups_components_with_read_only_own_and_reference_labels(self):
         entry = self.mixed_entry()
         response = self.mine()
         self.assertEqual(len(response.context['cards']), 1)
         for value in ['soffa', 'sofa', 'Home', 'Contributor: owner', 'For reference']:
             self.assertContains(response, value)
         own = entry.contributions.filter(controlled_by=self.member)
-        self.assert_selectable(response, own)
+        self.assert_readonly(response, own)
         audio = entry.contributions.get(kind='audio')
         self.assertContains(response, self.url('media', audio.pk))
         self.assertEqual(self.client.get(self.url('media', audio.pk)).status_code, 200)
         # Context cannot be turned into a withdrawal by editing the submitted IDs.
         url = reverse('community_dictionary:withdraw')
-        self.assertEqual(self.client.post(url, {'contributions': [audio.pk]}).status_code, 404)
+        self.assertEqual(self.client.post(url, {'contributions': [audio.pk]}).status_code, 409)
 
     def test_owner_sees_members_picture_and_translation_for_reference(self):
         entry = self.mixed_entry()
@@ -70,7 +74,7 @@ class ContributionDisplayTests(TestCase):
         card = response.context['cards'][0]
         self.assertTrue(card['image']['reference'])
         self.assertFalse(card['image']['selectable'])
-        self.assert_selectable(response, entry.contributions.filter(controlled_by=self.owner))
+        self.assert_readonly(response, entry.contributions.filter(controlled_by=self.owner))
 
     def test_inactive_member_keeps_own_material_without_foreign_text_or_media(self):
         entry = self.mixed_entry()
@@ -84,42 +88,22 @@ class ContributionDisplayTests(TestCase):
         self.assertNotContains(response, self.url('entry', entry.pk))
         image = entry.contributions.get(kind='image')
         self.assertContains(response, reverse('community_dictionary:own-media', args=[image.pk]))
-        self.assert_selectable(response, entry.contributions.filter(controlled_by=self.member))
+        self.assert_readonly(response, entry.contributions.filter(controlled_by=self.member))
 
-    def test_private_collection_uses_live_shared_context_and_never_selects_it(self):
+    def test_withdrawn_view_shows_only_own_content_and_blocks_personal_editing(self):
+        from community_dictionary.participation import withdraw_all
         entry = self.mixed_entry()
-        image = entry.contributions.get(kind='image')
-        withdraw(self.member, [image.pk])
-        response = self.mine(view='private')
-        self.assertContains(response, 'soffa')
-        self.assertContains(response, 'sofa')  # Still shared by the same member: reference only here.
-        self.assertContains(response, 'not part of your private collection')
-        self.assert_selectable(response, [image])
-        self.client.force_login(self.owner)
-        self.edit(entry, word='en soffa')
-        self.client.force_login(self.member)
-        self.assertContains(self.mine(view='private'), 'en soffa')
-        Membership.objects.filter(dictionary=self.dictionary, user=self.member).update(status='inactive')
-        response = self.mine(view='private')
+        own = list(entry.contributions.filter(controlled_by=self.member))
+        withdraw_all(self.member, self.dictionary.pk, 0)
+        response = self.mine()
+        self.assertContains(response, 'sofa')
         self.assertNotContains(response, 'soffa')
         self.assertNotContains(response, 'Home')
-        self.assertNotContains(response, self.url('entry', entry.pk))
-        self.assert_selectable(response, [image])
-
-        # A private word can differ from the source. Keep the source recording
-        # beside its own wording rather than presenting it as the private word.
-        Membership.objects.filter(dictionary=self.dictionary, user=self.member).update(status='active')
-        image.refresh_from_db()
-        private = image.entry
-        private_text = Contribution.objects.create(entry=private, author=self.member, kind='text',
-            text_field='word', word='min soffa', status='accepted')
-        private.word = private_text.word
-        private.current_text = private_text
-        private.save()
-        card = self.mine(view='private').context['cards'][0]
-        self.assertEqual(card['title'], 'min soffa')
-        self.assertEqual(card['audio'], [])
-        self.assertEqual(len(card['source_audio']), 1)
+        self.assertNotContains(response, 'For reference')
+        self.assert_readonly(response, own)
+        own[0].refresh_from_db()
+        for route in ['new', 'people']:
+            self.assertEqual(self.client.get(reverse('community_dictionary:'+route, args=[own[0].entry.dictionary_id])).status_code, 404)
 
     def test_other_peoples_withdrawn_and_rejected_material_is_not_reference_context(self):
         entry = self.mixed_entry()
@@ -133,19 +117,18 @@ class ContributionDisplayTests(TestCase):
         self.assertNotContains(response, reverse('community_dictionary:own-media', args=[audio.pk]))
         self.client.force_login(self.owner)
         # Nor is somebody else's personal collection listed for the owner.
-        self.assertEqual(len(self.mine(view='private').context['cards']), 1)
+        self.assertEqual(len(self.mine().context['cards']), 2)
         self.client.force_login(self.member)
-        self.assertEqual(len(self.mine(view='private').context['cards']), 0)
+        self.assertEqual(len(self.mine().context['cards']), 1)
 
-    def test_kind_filter_keeps_context_but_only_matching_own_material_selectable(self):
+    def test_obsolete_component_filters_do_not_hide_material(self):
         entry = self.mixed_entry()
         response = self.mine(kind='image', dictionary=self.dictionary.pk)
         self.assertContains(response, 'soffa')
         self.assertContains(response, 'sofa')
-        self.assertContains(response, 'outside this filter')
-        self.assert_selectable(response, entry.contributions.filter(kind='image'))
-        response = self.mine(kind='audio')
-        self.assertEqual(len(response.context['cards']), 0)  # Only the owner's audio exists.
+        self.assertNotContains(response, 'outside this filter')
+        self.assert_readonly(response, entry.contributions.filter(controlled_by=self.member))
+        self.assertEqual(len(self.mine(kind='audio').context['cards']), 1)
 
     def test_picture_word_links_remain_reference_and_require_current_membership(self):
         entry = self.mixed_entry()
@@ -158,7 +141,7 @@ class ContributionDisplayTests(TestCase):
         self.assertContains(response, 'katt')
         self.assertContains(response, 'cat')
         self.assertContains(response, self.url('word', word.pk))
-        self.assert_selectable(response, entry.contributions.filter(controlled_by=self.member))
+        self.assert_readonly(response, entry.contributions.filter(controlled_by=self.member))
         Membership.objects.filter(dictionary=self.dictionary, user=self.member).update(status='inactive')
         self.assertNotContains(self.mine(), 'katt')
 
@@ -177,8 +160,8 @@ class ContributionDisplayTests(TestCase):
         second_ids = {card['entry'].pk for card in second.context['cards']}
         self.assertFalse(first_ids & second_ids)
         self.assertEqual(first_ids | second_ids, {e.pk for e in entries})
-        self.assert_selectable(first, Contribution.objects.filter(entry_id__in=first_ids))
-        self.assert_selectable(second, Contribution.objects.filter(entry_id__in=second_ids))
+        self.assert_readonly(first, Contribution.objects.filter(entry_id__in=first_ids))
+        self.assert_readonly(second, Contribution.objects.filter(entry_id__in=second_ids))
 
     def test_current_word_and_audio_are_separate_from_owned_history(self):
         self.client.force_login(self.owner)
@@ -194,7 +177,7 @@ class ContributionDisplayTests(TestCase):
         self.assertEqual(card['title'], 'häst')
         self.assertEqual(card['audio'], [])
         self.assertEqual({c['part'].pk for c in card['history']}, {old.pk, audio.pk, rejected.pk})
-        self.assert_selectable(response, entry.contributions.all())
+        self.assert_readonly(response, entry.contributions.all())
 
     def test_pending_only_and_archived_entries_do_not_lose_owned_controls(self):
         entry = self.create_entry(word='Pending word', meaning='Pending translation')
@@ -202,7 +185,7 @@ class ContributionDisplayTests(TestCase):
         self.assertContains(response, 'Pending word')
         self.assertContains(response, 'Pending translation')
         self.assertContains(response, 'Awaiting review')
-        self.assert_selectable(response, entry.contributions.all())
+        self.assert_readonly(response, entry.contributions.all())
         self.client.force_login(self.owner)
         self.edit(entry, word='HIDDEN-ARCHIVED-WORD')
         Entry.objects.filter(pk=entry.pk).update(archived=True)
@@ -210,4 +193,4 @@ class ContributionDisplayTests(TestCase):
         response = self.mine()
         self.assertNotContains(response, 'HIDDEN-ARCHIVED-WORD')
         self.assertNotContains(response, self.url('entry', entry.pk))
-        self.assert_selectable(response, entry.contributions.filter(controlled_by=self.member))
+        self.assert_readonly(response, entry.contributions.filter(controlled_by=self.member))

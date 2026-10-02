@@ -1,0 +1,13 @@
+<section class="panel participation-controls" aria-label="Your participation">
+{% if participation.state.withdrawn %}
+  <h2>Your content is withdrawn</h2>
+  <p>Your contributions are saved privately. Restore them to rejoin and browse this dictionary.</p>
+  <div class="actions">
+  {% if participation.can_restore %}<form method="post" action="{% url 'community_dictionary:restore-content' participation.dictionary.pk %}">{% csrf_token %}<input type="hidden" name="revision" value="{{ participation.state.revision }}"><button>Restore my content</button></form>{% endif %}
+  {% if not viewing_content %}<a class="button secondary" href="{% url 'community_dictionary:my-content' participation.dictionary.pk %}">View my saved content</a>{% endif %}
+  </div>
+  {% if not participation.can_restore %}<p class="help">{% if participation.dictionary.archived %}This dictionary is archived. Its owner must reopen it before you can rejoin.{% else %}Your membership is inactive. Ask the owner to reactivate it before restoring. Your saved content remains yours.{% endif %}</p>{% endif %}
+{% else %}
+  <div class="actions">{% if not viewing_content %}<a class="button secondary" href="{% url 'community_dictionary:my-content' participation.dictionary.pk %}">View my contributions</a>{% endif %}<a class="quiet" href="{% url 'community_dictionary:withdraw-content' participation.dictionary.pk %}">Withdraw my content</a></div>
+{% endif %}
+</section>

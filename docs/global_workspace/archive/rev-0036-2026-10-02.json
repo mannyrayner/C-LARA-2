@@ -1,0 +1,1290 @@
+{
+  "schema_version": 1,
+  "workspace_revision": 36,
+  "as_of": "2026-10-02",
+  "assessed_commit_sha": "e4153586cb3e0d15e8e7001e79bea6807f3d9722",
+  "approved_proposal_id": null,
+  "approved_run_id": null,
+  "persistent_goal_ids": [
+    "GOAL-1",
+    "GOAL-2",
+    "GOAL-3",
+    "GOAL-4",
+    "GOAL-5"
+  ],
+  "current_focus_summary": "Manny reports that dictionary-wide withdrawal/restoration appears fully working on his laptop and is much better than the previous model; he regards the conceptual structure as essentially ready, subject to possible cosmetic feedback from Sophie. He proposes deployment to test with the substantial server dictionary and confirms AWS has not been updated to recent versions. The next step is a backed-up, paused-write deployment: update reviewed code, apply missing schema migrations through 0008, audit for unexpected private content, and only then run the one-time restoration migration 0009. The implementation has 156 controlled app tests and a Chromium rehearsal; the new report adds broad human laptop acceptance, not comprehensive checklist or device evidence. No new AWS result or upstream commit is claimed. Account-input and unrelated August assessments remain separate.",
+  "observations": [
+    {
+      "id": "OBS-0001",
+      "summary": "The end-to-end pipeline runner exists and is regularly used, but its implemented workflow needs canonical documentation; systematic UI-regression tracking remains important and has been revived.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0003.json",
+        "docs/issues/issues/ISSUE-0025.json"
+      ]
+    },
+    {
+      "id": "OBS-0002",
+      "summary": "Segmentation phase 1 remains important but is not delivering acceptable results and appears amenable to a bounded prompt/few-shot fix; the older segmentation phase 2 failure is now closed as previously resolved.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0005.json",
+        "docs/issues/issues/ISSUE-0006.json"
+      ]
+    },
+    {
+      "id": "OBS-0003",
+      "summary": "The picture-dictionary and subset workflows appear resolved and have positive initial feedback, but focused verification is required before Sophie’s 24 August community visit.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0037.json",
+        "docs/issues/issues/ISSUE-0039.json"
+      ]
+    },
+    {
+      "id": "OBS-0004",
+      "summary": "The project-understanding Assistant is complete for now, the project-manager/archive loop is operational, and the Sprint task remains critical and in progress.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0034.json",
+        "docs/issues/issues/ISSUE-0042.json",
+        "docs/roadmap/agent-autonomy-and-global-workspace.md"
+      ]
+    },
+    {
+      "id": "OBS-0005",
+      "summary": "Manny’s issue-by-issue review corrected stale registry state, revived dropped work, and supplied concrete sequencing evidence; roadmap cleanup itself is now active as both practical maintenance and an autonomy test.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/index.json",
+        "docs/issues/issues/ISSUE-0033.json",
+        "docs/issues/overview.md"
+      ]
+    },
+    {
+      "id": "OBS-0006",
+      "summary": "Legacy registration and migration mechanisms are nearly complete and remain low-hanging completion work; the next completion attempt will reveal whether stage-artifact performance/timeouts still persist.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0001.json",
+        "docs/issues/issues/ISSUE-0010.json",
+        "docs/issues/issues/ISSUE-0013.json"
+      ]
+    },
+    {
+      "id": "OBS-0007",
+      "summary": "Community-recorded audio is urgently needed for Indigenous-language work and a planned ComputEL-10 paper; an initial workflow before the 24 August visit would be valuable.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/global_workspace/project-intentions.md",
+        "docs/issues/issues/ISSUE-0026.json",
+        "docs/roadmap/low-resource-languages.md"
+      ]
+    },
+    {
+      "id": "OBS-0008",
+      "summary": "Community-judging autosave has similar pre-visit value to recorded audio, is likely much easier, and has been promoted from an expired deferral to active P0 work.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0029.json",
+        "docs/roadmap/community-judging-autosave.md"
+      ]
+    },
+    {
+      "id": "OBS-0009",
+      "summary": "The image-generation selection flow and compiled-content access/navigation issues remain annoying user-facing problems and are judged likely to be bounded low-hanging fixes.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0030.json",
+        "docs/issues/issues/ISSUE-0031.json"
+      ]
+    },
+    {
+      "id": "OBS-0010",
+      "summary": "Learned annotation prompts remain a major promising research thread; discussion with Francis Bond about collaboration and an AI-authorship-compatible publication path is urgent.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0036.json",
+        "docs/issues/issues/ISSUE-0044.json"
+      ]
+    },
+    {
+      "id": "OBS-0011",
+      "summary": "Mobile delivery before 24 August is not realistic, but a mid-September browsing-and-exercises slice could contribute to the planned ComputEL-10 paper due in early October.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/global_workspace/project-intentions.md",
+        "docs/issues/issues/ISSUE-0045.json",
+        "docs/roadmap/mobile-access.md"
+      ]
+    },
+    {
+      "id": "OBS-0012",
+      "summary": "Two weeks have passed without further substantive EuroCALL committee information; the original submissions remain unresolved while rapid AI capability changes are making their technical accounts stale.",
+      "observed_at": "2026-08-14",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0043.json",
+        "docs/global_workspace/project-intentions.md"
+      ]
+    },
+    {
+      "id": "OBS-0013",
+      "summary": "The intermittent Codex PR update-branch refusal recurred on 12 August and wasted substantial time; fully exiting Codex, restarting, and creating a new task restored progress but did not identify the cause.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0035.json",
+        "docs/roadmap/codex-pr-update-branch-inconsistencies.md"
+      ]
+    },
+    {
+      "id": "OBS-0014",
+      "summary": "The generic AI-review-gates issue has no active work or clear way forward and has been downgraded to P3.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/issues/issues/ISSUE-0004.json"
+      ]
+    },
+    {
+      "id": "OBS-0015",
+      "summary": "The archive now preserves ordered human-input messages for each post-baseline revision, with revisions 2 and 3 backfilled from Manny’s supplied copies and future updates requiring input capture during installation.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/global_workspace/README.md",
+        "docs/global_workspace/archive/inputs/README.md",
+        "docs/global_workspace/archive/inputs/rev-0002/input-001.md",
+        "docs/global_workspace/archive/inputs/rev-0003/input-001.md"
+      ]
+    },
+    {
+      "id": "OBS-0016",
+      "summary": "The existing authenticated Assistant now provides a restricted Project Manager mode through the same read-only Codex worker, preserving collaborator identity/role, exact request and response, trusted commit/run metadata, and material-evidence/workspace-review classification.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "src/core/project_understanding.py",
+        "platform_server/projects/views.py",
+        "platform_server/projects/templates/projects/project_understanding.html",
+        "docs/roadmap/platform-self-knowledge-assistant.md"
+      ]
+    },
+    {
+      "id": "OBS-0017",
+      "summary": "The first natural laptop Project Manager query returned a plausible, repository-grounded prioritization of Sophie’s Indigenous-community work in 36 seconds; per-user Admin Tools access control is now implemented with non-staff access off by default.",
+      "observed_at": "2026-08-13",
+      "confidence": "high",
+      "evidence": [
+        "docs/roadmap/platform-self-knowledge-assistant.md",
+        "platform_server/projects/views.py",
+        "platform_server/projects/templates/projects/admin_tools.html",
+        "platform_server/projects/tests/test_admin_tools.py"
+      ]
+    },
+    {
+      "id": "OBS-0018",
+      "summary": "The EuroCALL C-LARA-2 paper needs no separate update because the first ResearchGate progress report subsumes it; a new Voice Mode report now preserves the submitted paper while extending it with the URL-based integration and Assistant-queryable session evidence.",
+      "observed_at": "2026-08-14",
+      "confidence": "high",
+      "evidence": [
+        "docs/publications/clara2_voice_mode_initial_experiments/README.md",
+        "docs/publications/clara2_voice_mode_initial_experiments/latex/clara2_voice_mode_initial_experiments.tex",
+        "docs/issues/issues/ISSUE-0043.json"
+      ]
+    },
+    {
+      "id": "OBS-0019",
+      "summary": "The new Voice Mode report draft now explains the system-selection rationale, adds Jumpspeak as a cautious commercial comparison, uses consistent product terminology, and distinguishes the original pedagogical limitations from Manny’s anecdotal observation that ChatGPT version 5.6 corrected French gender and article errors more effectively.",
+      "observed_at": "2026-08-14",
+      "confidence": "high",
+      "evidence": [
+        "docs/publications/clara2_voice_mode_initial_experiments/latex/clara2_voice_mode_initial_experiments.tex",
+        "docs/publications/clara2_voice_mode_initial_experiments/latex/references.bib",
+        "docs/issues/issues/ISSUE-0043.json"
+      ]
+    },
+    {
+      "id": "OBS-0020",
+      "summary": "The revised report now presents Jumpspeak as a plausible generative but tutoring/role-play-centered comparator, explicitly treats the interaction-type distinction as an untested hypothesis, explains why no firsthand comparison was completed, and marks its new web sources as provisional pending verification.",
+      "observed_at": "2026-08-14",
+      "confidence": "high",
+      "evidence": [
+        "docs/publications/clara2_voice_mode_initial_experiments/README.md",
+        "docs/publications/clara2_voice_mode_initial_experiments/latex/clara2_voice_mode_initial_experiments.tex",
+        "docs/publications/clara2_voice_mode_initial_experiments/latex/references.bib",
+        "docs/issues/issues/ISSUE-0043.json"
+      ]
+    },
+    {
+      "id": "OBS-0021",
+      "summary": "Manny has reviewed the Voice Mode report; its conclusion now frames commercial cost limits as a testable hypothesis, cites a reported greater-than-280-fold fall in GPT-3.5-level inference cost, and argues conditionally that affordable multimodal free-conversation tutors may soon be feasible.",
+      "observed_at": "2026-08-14",
+      "confidence": "high",
+      "evidence": [
+        "docs/publications/clara2_voice_mode_initial_experiments/latex/clara2_voice_mode_initial_experiments.tex",
+        "docs/publications/clara2_voice_mode_initial_experiments/latex/references.bib",
+        "docs/issues/issues/ISSUE-0043.json"
+      ]
+    },
+    {
+      "id": "OBS-0022",
+      "summary": "Manny requested a mobile community picture/audio dictionary in C-LARA-2, construction/discussion before practice, Swedish first, human camera/voice input with partnerships and no AI content generation initially. He supplied successful bootstrap application/commit/push output for bc21188595bae9f2ee89c080243a76fdd4a960b1.",
+      "observed_at": "2026-09-23",
+      "confidence": "high",
+      "evidence": [
+        "docs/roadmap/community-dictionary.md"
+      ]
+    },
+    {
+      "id": "OBS-0023",
+      "summary": "The first functional patch has 20 passing Django workflow/access tests and a passing local Chromium two-account workflow including simulated microphone recording, draft reload, deliberately lost confirmation/retry, discussion, acceptance and playback. Focused legacy regressions have the same two failures observed on the clean pre-feature base. Physical phones, production deployment, PostgreSQL concurrency and a full operational backup rehearsal remain unverified.",
+      "observed_at": "2026-09-23",
+      "confidence": "high",
+      "evidence": [
+        "experiments/community_dictionary/iteration-001.md",
+        "platform_server/community_dictionary/tests/test_workflow.py",
+        "docs/howto/community-dictionary.md"
+      ]
+    },
+    {
+      "id": "OBS-0024",
+      "summary": "The previous derived state is dated 14 August and treats the 14–16 August Sprint and 24 August visit as upcoming. Their dates have passed; this task has no new outcome evidence for those commitments. Their older assessments are preserved but no longer presented as verified current urgency.",
+      "observed_at": "2026-09-23",
+      "confidence": "high",
+      "evidence": [
+        "docs/global_workspace/archive/rev-0011-2026-08-14.json",
+        "docs/global_workspace/project-intentions.md"
+      ]
+    },
+    {
+      "id": "OBS-0025",
+      "summary": "Manny reports two Swedish entries with uploaded pictures and MP3 audio and successful image browsing. Browser recording still fails after Audacity began working again. He then confirms that words, translations and categories can be added after explanation, correcting the initial impression of missing functionality. The input cause is unresolved.",
+      "observed_at": "2026-09-24",
+      "confidence": "high",
+      "evidence": [
+        "experiments/community_dictionary/iteration-002.md"
+      ]
+    },
+    {
+      "id": "OBS-0026",
+      "summary": "Iteration 2 exposes optional word/translation/category fields and adds named microphone selection, live input testing and silence detection that preserves an earlier take. All 21 app tests pass; the controlled Chromium rehearsal verifies nonzero decoded samples, permission-error recovery, rejection of a deliberately silent retake, media preservation after adding searchable Swedish/English text, and the existing collaborative workflow. Real Windows capture and physical-phone acceptance are still unverified.",
+      "observed_at": "2026-09-24",
+      "confidence": "high",
+      "evidence": [
+        "experiments/community_dictionary/iteration-002.md",
+        "experiments/community_dictionary/browser_workflow.cjs",
+        "platform_server/community_dictionary/tests/test_workflow.py"
+      ]
+    },
+    {
+      "id": "OBS-0027",
+      "summary": "Manny confirms that direct recording now works and attributes the earlier failure to the browser defaulting to the wrong input. He requests check-in of the material. GitHub’s feature branch still points to bootstrap bc211885; the agreed workflow is to commit the installed implementation and repair from Manny’s tested laptop checkout. This is human-reported recording success, not a new automated or phone test.",
+      "observed_at": "2026-09-24",
+      "confidence": "high",
+      "evidence": [
+        "experiments/community_dictionary/laptop-trial-2026-09-24.md"
+      ]
+    },
+    {
+      "id": "OBS-0028",
+      "summary": "The implementation/repair commit 692e44d is on main, followed by archive-only 8811849. Manny reports successful shared AWS deployment and the suggested laptop workflow, then an initial physical-phone contribution trial: Cathy took and saved a photograph and he added a recording. Phone/browser, recording device and separate-account/registered-partnership details are not recorded. Kate and Axel have been invited to test Icelandic; no result is available.",
+      "observed_at": "2026-09-25",
+      "confidence": "high",
+      "evidence": [
+        "experiments/community_dictionary/aws-phone-trial-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "OBS-0029",
+      "summary": "Reviewed main commit a7e8870 disables DEBUG in the shared settings. Manny confirms redeployment and effective DEBUG=False. check --deploy reports W004, W008, W012 and W016. HTTPS/200 MB nginx preflight is known, but full redirect/header policy remains unverified. Secure-cookie settings and wildcard ALLOWED_HOSTS need production review; functional success is not a security sign-off.",
+      "observed_at": "2026-09-26",
+      "confidence": "high",
+      "evidence": [
+        "platform_server/platform_server/settings.py",
+        "experiments/community_dictionary/aws-phone-trial-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "OBS-0030",
+      "summary": "Manny shows an Assistant answer accurately describing the feature but retaining the obsolete pending-phone-trial status from repository documents. Current status pages, a dated AWS/phone trial record and an initial stakeholder LaTeX report are prepared. Until these changes are committed and pulled to the Assistant server, it cannot retrieve the new evidence from its checkout. Reported development times are participant estimates, not audited totals.",
+      "observed_at": "2026-09-26",
+      "confidence": "high",
+      "evidence": [
+        "docs/publications/community_dictionaries_initial/latex/community_dictionaries_initial.tex",
+        "docs/howto/community-dictionary.md",
+        "experiments/community_dictionary/aws-phone-trial-2026-09-25.md"
+      ]
+    },
+    {
+      "id": "OBS-0031",
+      "summary": "Manny reports that the previous documentation update was installed on AWS and supplies an Assistant answer accurately distinguishing app tests, controlled browser checks, actual laptop/phone reports and remaining deployment/user-trial questions. Main is now e3b94b0. This is positive evidence for repository-backed continuity, not a new runtime test or autonomous maintenance result.",
+      "observed_at": "2026-09-26",
+      "confidence": "high",
+      "evidence": [
+        "experiments/community_dictionary/direction-review-2026-09-26.md"
+      ]
+    },
+    {
+      "id": "OBS-0032",
+      "summary": "Manny requests optional AI image generation and TTS as the next increment, plus a staged reduction in his required technical work from daily intervention to several times weekly and then monthly. He reports Cathy supports the goal while doubting feasibility. Sophie highlights data sovereignty and proposes examining harder image meanings; an early-afternoon discussion is planned for 1 October. These are new directions and planned discussion, not implemented functionality or community approval.",
+      "observed_at": "2026-09-26",
+      "confidence": "high",
+      "evidence": [
+        "experiments/community_dictionary/direction-review-2026-09-26.md",
+        "docs/roadmap/community-dictionary-ai-and-maintenance.md"
+      ]
+    },
+    {
+      "id": "OBS-0033",
+      "summary": "Source inspection confirms reusable image/TTS adapters and user-key/accounting components, with integration still required for dictionary policy, private storage, provenance, jobs and costs. Existing audio can fall back to a test-tone stub. The explanation Assistant launches read-only Codex execution. A next-stage roadmap and revised paper specify proposed acceptance checks and staged operations; no live provider calls, execution permissions or runtime code are changed.",
+      "observed_at": "2026-09-26",
+      "confidence": "high",
+      "evidence": [
+        "src/core/ai_api.py",
+        "src/pipeline/audio.py",
+        "src/core/project_understanding.py",
+        "platform_server/projects/models.py",
+        "docs/roadmap/community-dictionary-ai-and-maintenance.md",
+        "docs/publications/community_dictionaries_initial/latex/community_dictionaries_initial.tex"
+      ]
+    },
+    {
+      "id": "OBS-0034",
+      "summary": "Manny confirms the previous documentation installation and shows a server-Assistant answer accurately separating current functionality, proposed AI media and staged measures of operational work. Main now contains that documentation at 6ad49ee. This is continuity evidence, not a new app-test or autonomous-operation result.",
+      "observed_at": "2026-09-26",
+      "confidence": "high",
+      "evidence": [
+        "experiments/community_dictionary/situated-learning-review-2026-09-26.md",
+        "docs/publications/community_dictionaries_initial/latex/community_dictionaries_initial.tex"
+      ]
+    },
+    {
+      "id": "OBS-0035",
+      "summary": "Manny proposes spoken sentences about personal photographs, optional translations, human recordings for unsupported languages, AI sentence/TTS assistance where permitted, vocabulary reuse and links to earlier learning episodes. Italian is a proposed personal trial. Motivation and spoken-learning benefits have not been measured.",
+      "observed_at": "2026-09-26",
+      "confidence": "high",
+      "evidence": [
+        "experiments/community_dictionary/situated-learning-review-2026-09-26.md",
+        "docs/publications/community_dictionaries_initial/latex/community_dictionaries_initial.tex"
+      ]
+    },
+    {
+      "id": "OBS-0036",
+      "summary": "Manny requests a short summary connecting language pedagogy, picture dictionaries, Indigenous communities and increasing AI autonomy in response to non-technical requests. Version 3 is a two-page paper, with rapid development described as AI-written application code plus human direction, deployment and testing. Model/mode and elapsed period are participant descriptions; the documentation pass implements none of the proposed extensions.",
+      "observed_at": "2026-09-26",
+      "confidence": "high",
+      "evidence": [
+        "experiments/community_dictionary/situated-learning-review-2026-09-26.md",
+        "docs/publications/community_dictionaries_initial/latex/community_dictionaries_initial.tex"
+      ]
+    },
+    {
+      "id": "OBS-0037",
+      "summary": "Manny and Cathy prioritize keeping the service running over long periods with minimal expert intervention, limiting runtime changes to small user-driven needs. Funding assistance is a discussion topic, not authority to contact donors or commit money. Manny specifically approves a minimal single-object photo-learning implementation for a phone trial.",
+      "observed_at": "2026-09-28",
+      "confidence": "high",
+      "evidence": [
+        "experiments/community_dictionary/photo-learning-2026-09-28.md",
+        "docs/roadmap/community-dictionary-ai-and-maintenance.md"
+      ]
+    },
+    {
+      "id": "OBS-0038",
+      "summary": "The first-cut patch adds dictionary opt-in, a private expiring photo attempt, one structured OpenAI vision call, subject confirmation, editable wording, optional matching device-voice preview, and idempotent saving with provenance/review. It reuses account/key and token-billing infrastructure. Forty backend tests and Chromium 153 rehearsals at iPhone 13 and Pixel 7 viewport profiles pass using a mocked provider. No live-provider access, physical capture/pronunciation or AWS installation of this increment is claimed.",
+      "observed_at": "2026-09-28",
+      "confidence": "high",
+      "evidence": [
+        "experiments/community_dictionary/photo-learning-2026-09-28.md",
+        "docs/howto/community-photo-learning.md",
+        "platform_server/community_dictionary/photo_views.py",
+        "platform_server/community_dictionary/tests/test_photo_learning.py"
+      ]
+    },
+    {
+      "id": "OBS-0039",
+      "summary": "Manny reports a Windows/Cygwin laptop startup failure after the first photo patch: the eager OpenAI 2.8.1 import picks up src/httpx.py instead of installed HTTPX. Reproduced on Linux and fixed using the existing protected lazy SDK loader. Forty-one tests pass under SDK 2.8.1 and 3.19.2; a fresh-process regression constructs the real client without a network call. Global-package visibility in the laptop pip trace remains undiagnosed.",
+      "observed_at": "2026-09-28",
+      "confidence": "high",
+      "evidence": [
+        "experiments/community_dictionary/photo-import-fix-2026-09-28.md",
+        "platform_server/community_dictionary/photo_ai.py",
+        "platform_server/community_dictionary/tests/test_photo_learning.py"
+      ]
+    },
+    {
+      "id": "OBS-0040",
+      "summary": "Manny reports successful local installation, login, dictionary opt-in and live recognition of an uploaded horse image, returning en häst quickly with good device-voice playback. He saved edited wording häst, but found entry-point placement confusing and expected saved audio. The implementation provides browser speech preview only. He proposes entry-level analysis and commenting-language identification followed by local community-dictionary lookup for unsupported target languages. These follow-ups are not implemented.",
+      "observed_at": "2026-09-28",
+      "confidence": "high",
+      "evidence": [
+        "experiments/community_dictionary/photo-laptop-trial-2026-09-28.md",
+        "platform_server/community_dictionary/static/community_dictionary/photo.js",
+        "platform_server/community_dictionary/photo_views.py"
+      ]
+    },
+    {
+      "id": "OBS-0041",
+      "summary": "Manny requests an installable entry-control/saved-audio patch and asks to support returning to older pictures; he explicitly defers commenting-language lookup pending Sophie discussion. The patch implements source-linked same-entry interpretation, separate TTS opt-in, generation from accepted text, private preview, reviewed synthetic contributions and audio cleanup. Fifty-eight app tests pass under SDK 2.8.1 and 3.19.2, six offline audio-pipeline tests pass, and Chromium 153 rehearsals at iPhone 13/Pixel 7 viewports pass with mock photo responses and a tone audio fixture. No paid provider call or production deployment was performed.",
+      "observed_at": "2026-09-28",
+      "confidence": "high",
+      "evidence": [
+        "experiments/community_dictionary/entry-photo-audio-2026-09-28.md",
+        "docs/howto/community-entry-photo-audio.md",
+        "platform_server/community_dictionary/tests/test_entry_media.py",
+        "platform_server/community_dictionary/audio_views.py"
+      ]
+    },
+    {
+      "id": "OBS-0042",
+      "observed_at": "2026-09-28",
+      "confidence": "high",
+      "summary": "Manny reports the preceding entry/photo/saved-audio patch is all working and requests enabled-by-default AI options plus consistent selectable voices, including interest in gender choice. The follow-up implements visible checked defaults for new dictionaries only and 13 named Speech API voices with per-user/per-dictionary persistence; it does not invent gender labels. Existing settings, recordings and per-request confirmations remain. Sixty-four Django app tests pass under OpenAI SDK 3.19.2; Chromium 153 rehearsals at iPhone 13/Pixel 7 viewport sizes pass with mocked photo responses and tone audio, including Cedar selection and persistence. No paid provider call or deployment was performed during this implementation.",
+      "evidence": [
+        "experiments/community_dictionary/voices-and-defaults-2026-09-28.md",
+        "docs/howto/community-voices-and-defaults.md",
+        "platform_server/community_dictionary/tests/test_entry_media.py",
+        "platform_server/community_dictionary/voices.py",
+        "platform_server/community_dictionary/migrations/0004_ai_defaults_and_voices.py"
+      ]
+    },
+    {
+      "id": "OBS-0043",
+      "observed_at": "2026-09-28",
+      "confidence": "high",
+      "summary": "Manny reports the defaults/voice-menu patch works but old en häst audio remains visible after editing the entry to häst and generating replacement audio. The repair excludes outdated synthetic recordings from normal playback and partnership samples, while retaining labelled history and human recordings. Matching is based on actual spoken wording/language, not revision number; meaning/category edits keep suitable audio and restored wording can reuse it. Sixty-seven app tests pass with mocked providers. No migration, live provider call or deployment was needed/performed in development.",
+      "evidence": [
+        "docs/howto/community-current-audio.md",
+        "platform_server/community_dictionary/views.py",
+        "platform_server/community_dictionary/templates/community_dictionary/entry.html",
+        "platform_server/community_dictionary/tests/test_entry_media.py"
+      ]
+    },
+    {
+      "id": "OBS-0044",
+      "observed_at": "2026-09-28",
+      "confidence": "high",
+      "summary": "Manny confirms that after the current-audio patch he sees only the recording matching the entry text. He asks to check everything in and plans to deploy on AWS and test on a mobile on 29 September. This supplies human laptop acceptance of the reported stale-TTS repair, not AWS or phone acceptance of the new AI features. The reviewed development tree retains the 67-test result; the check-in pass changes evidence documentation only.",
+      "evidence": [
+        "docs/howto/community-current-audio.md",
+        "experiments/community_dictionary/README.md",
+        "platform_server/community_dictionary/tests/test_entry_media.py"
+      ]
+    },
+    {
+      "id": "OBS-0045",
+      "observed_at": "2026-09-29",
+      "confidence": "high",
+      "summary": "Manny reports that the AWS update sequence worked. Kate and Axel asked how to start and were given minimal advice with a walkthrough available. Stéphanie expressed interest but expects to wait for Anne-Laure before trying it. This is human-reported deployment/onboarding progress, not a detailed device test or completed external pilot.",
+      "evidence": [
+        "experiments/community_dictionary/save-ux-2026-09-30.md",
+        "docs/howto/community-saving-and-invitations.md"
+      ]
+    },
+    {
+      "id": "OBS-0046",
+      "observed_at": "2026-09-30",
+      "confidence": "high",
+      "summary": "Cathy reports difficulty identifying and reaching Share, requests Save with a combined permission affirmation, and lost an unsaved image after leaving. Manny requests an existing-account invitation menu. A prepared patch implements these bounded UX changes, retaining media consent and owner-only invitation access. Source inspection found local draft persistence/restoration incorrectly suppressed unsaved-server warnings. Seventy Django tests and Chromium 153 iPhone 13/Pixel 7 viewport saving/recovery checks pass. The recording/partnership rehearsal also passes after an initial synthetic-meter timeout. No physical-device acceptance or production installation of this patch is claimed.",
+      "evidence": [
+        "experiments/community_dictionary/save-ux-2026-09-30.md",
+        "docs/howto/community-saving-and-invitations.md",
+        "platform_server/community_dictionary/tests/test_save_ux.py",
+        "experiments/community_dictionary/save_ux_browser.cjs"
+      ]
+    },
+    {
+      "id": "OBS-0047",
+      "observed_at": "2026-09-30",
+      "confidence": "high",
+      "summary": "Manny reports installing the saving UX patch but cannot test as his normal account because the saved password was lost; admin login is still available. At his request, an incremental patch adds Admin account reset and Profile self-service password change, using Django password forms, eligibility checks, CSRF, session invalidation and password-free audit records. Fifteen new password tests plus existing Profile/Admin and all 70 dictionary tests pass (123 total). A controlled Chromium Pixel 7 viewport rehearsal completes reset, login, personal change and subsequent login. This is a prepared recovery path, not evidence of real account recovery or production deployment.",
+      "evidence": [
+        "docs/howto/account-passwords.md",
+        "platform_server/projects/account_views.py",
+        "platform_server/projects/tests/test_passwords.py",
+        "experiments/community_dictionary/password_browser_workflow.cjs"
+      ]
+    },
+    {
+      "id": "OBS-0048",
+      "observed_at": "2026-09-30",
+      "confidence": "high",
+      "summary": "Manny confirms the password-management patch worked and he can log in as himself on the laptop. Joint testing with Cathy reports missing apparent save for entry audio and no direct logout. Source inspection shows the visible entry recorder belongs to Discussion. The prepared incremental patch adds a focused pronunciation-recording page with explicit Save audio, folds and labels spoken discussion, and adds POST/CSRF-protected logout that preserves unsaved-draft choices and returns to dictionary login. Seven new backend tests bring the relevant set to 130 passing tests. A controlled Chromium rehearsal reproduces member photo/English, editor Swedish, recording/save/playback, failed-save/logout protection, recovery and spoken comments. Actual human acceptance of this increment is not yet reported.",
+      "evidence": [
+        "docs/howto/community-recording-and-logout.md",
+        "platform_server/community_dictionary/tests/test_record_and_logout.py",
+        "experiments/community_dictionary/record_logout_browser.cjs",
+        "experiments/community_dictionary/save_ux_browser.cjs"
+      ]
+    },
+    {
+      "id": "OBS-0049",
+      "observed_at": "2026-10-01",
+      "confidence": "high",
+      "summary": "Manny confirms the preceding controls work on his laptop and requests check-in/deployment instructions. His next report describes about fifty working Swedish entries: Cathy contributed everyday/earlier photos and English meanings, Manny supplied Swedish wording and human audio. GitHub main b945623 is verified and includes saving, passwords, recording and logout. This supplies acceptance and meaningful joint-use evidence, without a detailed new AWS/device trace or learning-outcome evaluation.",
+      "evidence": [
+        "experiments/community_dictionary/picture-word-links-2026-10-01.md"
+      ]
+    },
+    {
+      "id": "OBS-0050",
+      "observed_at": "2026-10-01",
+      "confidence": "high",
+      "summary": "After considering multiple labels for a sofa/cat image, Manny requests manual menu-based extra links to existing dictionary words, complementary picture/word browsing, and inline listening/translation with separate navigation. The prepared increment implements specific-picture links with editor permissions, accepted-word/media filtering, original associations preserved, gallery navigation and export version 2. Migration 0005 adds a link table without rewriting existing entries. All 95 dictionary tests and a Chromium phone/desktop viewport rehearsal pass. AI tagging is deferred. No remote push/deployment, paid provider use or physical-device acceptance is claimed for this increment.",
+      "evidence": [
+        "docs/howto/community-picture-word-links.md",
+        "platform_server/community_dictionary/tests/test_lexicon.py",
+        "experiments/community_dictionary/lexicon_browser.cjs",
+        "experiments/community_dictionary/picture-word-links-2026-10-01.md"
+      ]
+    },
+    {
+      "id": "OBS-0051",
+      "observed_at": "2026-10-01",
+      "confidence": "high",
+      "summary": "Manny reports the manual picture/word links work first time on his laptop and the sofa/cat example behaves exactly as intended. Because his laptop dictionary is small, he proposes checking in and testing with the larger server dictionary. The documentation-only follow-up records this acceptance and the required AWS migration/static collection. Main remains b945623 at the check; neither a remote feature commit nor server/phone acceptance of this increment has yet been reported.",
+      "evidence": [
+        "experiments/community_dictionary/picture-word-links-2026-10-01.md",
+        "docs/howto/community-picture-word-links.md"
+      ]
+    },
+    {
+      "id": "OBS-0052",
+      "observed_at": "2026-10-01",
+      "confidence": "high",
+      "summary": "Manny reports the picture/word-link increment is installed on AWS and exploratory clicking works correctly. GitHub main ffbbef9 is verified with the exact locally available tree. This closes the deployment/exploratory-use uncertainty for that increment, without adding device-specific or sustained-use evidence.",
+      "evidence": [
+        "docs/howto/community-dictionary.md"
+      ]
+    },
+    {
+      "id": "OBS-0053",
+      "observed_at": "2026-10-01",
+      "confidence": "high",
+      "summary": "Manny clarifies that membership should persist with an inactive status and that word, translation and category require independent attribution. He authorises the agreed provenance/personal-collection/withdrawal/membership revision. The implementation preserves unchanged field credit, dependent source links, private retention and reviewed resharing, and offers optional two-coordinator decisions. 118 app tests pass, including migration/privacy/access checks; a Chromium phone/desktop rehearsal passes. This is a prepared patch, not an installed production release.",
+      "evidence": [
+        "docs/howto/community-contribution-control.md",
+        "experiments/community_dictionary/contribution-control-2026-10-01.md",
+        "platform_server/community_dictionary/tests/test_contribution_control.py",
+        "platform_server/community_dictionary/tests/test_provenance_migration.py"
+      ]
+    },
+    {
+      "id": "OBS-0054",
+      "observed_at": "2026-10-01",
+      "confidence": "high",
+      "summary": "Manny reports that the contribution-control revision installs, the server restarts and adding an entry works. He requests My contributions display complete entry context with other people's components greyed/marked for reference. The follow-up implements entry cards, entry pagination, matching own-component selection, visible history and permission-checked live private context. 128 app tests and a Chromium phone/desktop rehearsal pass; no schema changes. The report does not identify a new AWS or physical-phone trial, and full human workflow acceptance remains pending.",
+      "evidence": [
+        "docs/howto/community-contributions-by-entry.md",
+        "experiments/community_dictionary/contribution-display-2026-10-01.md",
+        "platform_server/community_dictionary/tests/test_contribution_display.py",
+        "experiments/community_dictionary/contribution_display_browser.cjs"
+      ]
+    },
+    {
+      "id": "OBS-0055",
+      "observed_at": "2026-10-01",
+      "confidence": "high",
+      "summary": "Manny confirms further testing of My contributions and reports that it works as intended. He requests check-in and says he has asked Axel for the missing login-device details. This supplies human laptop acceptance of the entry-context display, without a per-action withdrawal/governance matrix or new AWS/phone claim. GitHub main remains ffbbef9 at the pre-check-in read. The follow-up records acceptance only; runtime code is unchanged and the prior 128-test/browser evidence is retained.",
+      "evidence": [
+        "experiments/community_dictionary/contribution-display-2026-10-01.md",
+        "docs/howto/community-contributions-by-entry.md"
+      ]
+    },
+    {
+      "id": "OBS-0056",
+      "observed_at": "2026-10-02",
+      "confidence": "high",
+      "summary": "Manny reports the prior revisions checked in; main e4153586 and its tree match the delivered patches. Further laptop testing confirms image withdrawal/private retention but exposes a hard-to-find return path. He then confirms the route works and identifies the missed entry selector, requesting a direct original-dictionary sharing control. The prepared shortcut shows a fixed recorded destination and owned material for confirmation, reuses reviewed sharing, refuses unavailable origins and avoids duplicate active copies. 140 app tests and a Chromium rehearsal pass; no schema change or new production deployment is claimed.",
+      "evidence": [
+        "docs/howto/community-share-back.md",
+        "experiments/community_dictionary/share-back-2026-10-02.md",
+        "platform_server/community_dictionary/tests/test_share_back.py",
+        "experiments/community_dictionary/share_back_browser.cjs"
+      ]
+    },
+    {
+      "id": "OBS-0057",
+      "observed_at": "2026-10-02",
+      "confidence": "high",
+      "summary": "Manny's laptop feedback qualifies the first shortcut: an improvement, but confirmation and repeat review obstruct immediate visible restoration. The follow-up provides direct POST controls and retains valid same-origin approval, including older withdrawals and pending copies made by the prior patch. It preserves attribution/private copies, avoids duplicates/newer-text overwrites, and does not bypass later rejection/moderation, source custody or inactive membership. 148 app tests and a Chromium rehearsal pass; no migration, human acceptance or new production deployment is claimed.",
+      "evidence": [
+        "docs/howto/community-immediate-restore.md",
+        "experiments/community_dictionary/immediate-restore-2026-10-02.md",
+        "platform_server/community_dictionary/tests/test_share_back.py",
+        "experiments/community_dictionary/immediate_restore_browser.cjs"
+      ]
+    },
+    {
+      "id": "OBS-0058",
+      "observed_at": "2026-10-02",
+      "confidence": "high",
+      "summary": "Manny confirms per-item restoration works but asks to replace fine-grained controls with an easily reversible dictionary-wide departure/rejoin model. He confirms withdrawal needs confirmation, owners should choose a successor, and all experimental laptop withdrawals may be restored by migration; he reports no AWS withdrawals. Implementation adds participation state, dependency holds, read-only own material, access enforcement, atomic handover/solo archiving and same-record restoration without overwriting newer shared text. Migrations 0008/0009 establish the schema and reset old collections while retaining attribution/history and avoiding visible identical duplicates. 156 SQLite app tests, including five old-schema migration fixtures, and a Chromium mobile/desktop rehearsal pass. New human acceptance and AWS/physical-phone testing remain pending.",
+      "evidence": [
+        "docs/howto/community-participation.md",
+        "experiments/community_dictionary/participation-2026-10-02.md",
+        "platform_server/community_dictionary/tests/test_participation.py",
+        "platform_server/community_dictionary/tests/test_participation_migration.py",
+        "experiments/community_dictionary/participation_browser.cjs"
+      ]
+    },
+    {
+      "id": "OBS-0059",
+      "observed_at": "2026-10-02",
+      "confidence": "high",
+      "summary": "Manny reports that the new version appears fully working, is much better than the previous model, and has an essentially simple/intuitive conceptual structure; Sophie may suggest cosmetic changes. He proposes server deployment for a larger dictionary trial and confirms AWS remains behind the recent revisions. A documentation-only follow-up records this laptop acceptance and gives a deployment path from the older schema, with backups and stopped writers before changes, a forward migration to 0008, an empty-private-content audit before 0009, and controlled server checks. No new application code, production deployment or detailed per-action human evidence is claimed.",
+      "evidence": [
+        "experiments/community_dictionary/participation-2026-10-02.md",
+        "docs/howto/community-participation-aws.md",
+        "docs/howto/community-dictionary.md"
+      ]
+    }
+  ],
+  "assessments": [
+    {
+      "id": "ASM-0001",
+      "summary": "Historical assessment from 14 August, not revalidated in this scoped review: Platform maturity is easier to assess after registry triage: useful quality infrastructure exists, but poor segmentation phase 1 behavior and missing systematic UI-regression coverage remain material, tractable weaknesses.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-5"
+      ],
+      "observation_ids": [
+        "OBS-0001",
+        "OBS-0002"
+      ],
+      "urgency": "not_reassessed_since_2026-08-14",
+      "risk": "medium",
+      "progress": "working_foundation_with_specific_gaps",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0002",
+      "summary": "Historical assessment from 14 August, not revalidated in this scoped review: Picture-dictionary risk has fallen further: the remaining need is short-horizon verification rather than broad implementation, so successful checks should lead to closure before community use.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-5"
+      ],
+      "observation_ids": [
+        "OBS-0003"
+      ],
+      "urgency": "not_reassessed_since_2026-08-14",
+      "risk": "low",
+      "progress": "apparently_complete_pending_verification",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0003",
+      "summary": "Historical assessment from 14 August, not revalidated in this scoped review: Useful autonomy now includes an operational, auditable collaborator channel whose first natural laptop query produced a plausible evidence-grounded answer; per-user access can be administered safely while canonical mutation remains outside the web interaction.",
+      "goal_ids": [
+        "GOAL-2",
+        "GOAL-3"
+      ],
+      "observation_ids": [
+        "OBS-0004",
+        "OBS-0005",
+        "OBS-0015",
+        "OBS-0016",
+        "OBS-0017"
+      ],
+      "urgency": "not_reassessed_since_2026-08-14",
+      "risk": "medium",
+      "progress": "laptop_trial_successful_server_collaborator_trial_pending",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0004",
+      "summary": "Historical assessment from 14 August, not revalidated in this scoped review: EuroCALL process risk remains acute, but the Voice Mode report is now human-reviewed and has a stronger, appropriately conditional economic conclusion; source verification, rather than substantive drafting, is the main release blocker.",
+      "goal_ids": [
+        "GOAL-3",
+        "GOAL-5"
+      ],
+      "observation_ids": [
+        "OBS-0007",
+        "OBS-0010",
+        "OBS-0011",
+        "OBS-0012",
+        "OBS-0018",
+        "OBS-0019",
+        "OBS-0020",
+        "OBS-0021"
+      ],
+      "urgency": "not_reassessed_since_2026-08-14",
+      "risk": "high",
+      "progress": "human_reviewed_voice_mode_report_pending_source_verification",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0005",
+      "summary": "Historical assessment from 14 August, not revalidated in this scoped review: Legacy preservation remains near-complete, high-value low-hanging work and should be finished immediately after the Sprint; the attempt also serves as a diagnostic for the uncertain performance issue.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-4"
+      ],
+      "observation_ids": [
+        "OBS-0006"
+      ],
+      "urgency": "not_reassessed_since_2026-08-14",
+      "risk": "medium",
+      "progress": "near_complete",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0006",
+      "summary": "Historical assessment from 14 August, not revalidated in this scoped review: The Indigenous-language delivery path is now more urgent than generic mobile work: recorded audio is substantial but important before 24 August, while judging autosave is easier and should be landed quickly if it does not displace the critical Sprint.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-3",
+        "GOAL-5"
+      ],
+      "observation_ids": [
+        "OBS-0007",
+        "OBS-0008"
+      ],
+      "urgency": "not_reassessed_since_2026-08-14",
+      "risk": "high",
+      "progress": "time_bounded_work_not_started",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0007",
+      "summary": "Historical assessment from 14 August, not revalidated in this scoped review: Mobile access has a realistic mid-September research/user target rather than an impossible August target; scope uncertainty remains, but the ComputEL-10 connection raises its opportunity value.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-3",
+        "GOAL-5"
+      ],
+      "observation_ids": [
+        "OBS-0011"
+      ],
+      "urgency": "not_reassessed_since_2026-08-14",
+      "risk": "medium",
+      "progress": "target_refined_scope_unknown",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0008",
+      "summary": "Historical assessment from 14 August, not revalidated in this scoped review: Learned prompts remain an unusually promising product/research opportunity, but venue authorship policy and the exact Francis Bond collaboration scope are immediate decision dependencies.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-3"
+      ],
+      "observation_ids": [
+        "OBS-0010"
+      ],
+      "urgency": "not_reassessed_since_2026-08-14",
+      "risk": "medium",
+      "progress": "promising_pending_collaboration_discussion",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0009",
+      "summary": "Historical assessment from 14 August, not revalidated in this scoped review: The reviewed portfolio is now substantially more trustworthy and actionable: completed/stale items are removed, low-hanging work is visible, and no-path evaluator work is deprioritized. Capacity conflict remains acute through 24 August.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-2",
+        "GOAL-3",
+        "GOAL-4",
+        "GOAL-5"
+      ],
+      "observation_ids": [
+        "OBS-0005",
+        "OBS-0008",
+        "OBS-0009",
+        "OBS-0014"
+      ],
+      "urgency": "not_reassessed_since_2026-08-14",
+      "risk": "medium",
+      "progress": "triaged_but_near_term_overloaded",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0010",
+      "summary": "Historical assessment from 14 August, not revalidated in this scoped review: Codex branch-update failures are a continuing operational risk to AI-assisted development. The restart/new-task workaround improves recovery but not predictability or root-cause confidence.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-2"
+      ],
+      "observation_ids": [
+        "OBS-0013"
+      ],
+      "urgency": "not_reassessed_since_2026-08-14",
+      "risk": "medium",
+      "progress": "workaround_known_root_cause_unknown",
+      "confidence": "high"
+    },
+    {
+      "id": "ASM-0011",
+      "summary": "The new human report supports the decision to replace component-level withdrawal with one dictionary-wide participation state: Manny finds it working and much easier to understand. Together with controlled checks this supports a cautious deployment and larger-dictionary trial. The server's older schema requires a staged forward migration and audit before the authorised experimental-content reset. This is progress on usability, not yet physical-phone/server acceptance of this revision or broader community trust, long-run autonomy or learning outcomes. The account-input investigation remains separate.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-2",
+        "GOAL-3",
+        "GOAL-5"
+      ],
+      "observation_ids": [
+        "OBS-0022",
+        "OBS-0023",
+        "OBS-0024",
+        "OBS-0025",
+        "OBS-0026",
+        "OBS-0027",
+        "OBS-0028",
+        "OBS-0029",
+        "OBS-0030",
+        "OBS-0031",
+        "OBS-0032",
+        "OBS-0033",
+        "OBS-0034",
+        "OBS-0035",
+        "OBS-0036",
+        "OBS-0037",
+        "OBS-0038",
+        "OBS-0039",
+        "OBS-0040",
+        "OBS-0041",
+        "OBS-0042",
+        "OBS-0043",
+        "OBS-0044",
+        "OBS-0045",
+        "OBS-0046",
+        "OBS-0047",
+        "OBS-0048",
+        "OBS-0049",
+        "OBS-0050",
+        "OBS-0051",
+        "OBS-0052",
+        "OBS-0053",
+        "OBS-0054",
+        "OBS-0055",
+        "OBS-0056",
+        "OBS-0057",
+        "OBS-0058",
+        "OBS-0059"
+      ],
+      "urgency": "participation_ready_for_controlled_aws_deployment",
+      "risk": "medium",
+      "progress": "human_laptop_acceptance_received_server_trial_next",
+      "confidence": "medium"
+    },
+    {
+      "id": "ASM-0012",
+      "summary": "Reducing Manny’s operational workload is a concrete autonomy objective aligned with the existing project goals. The current read-only Assistant can explain repository evidence but does not execute maintenance. Progress should be evaluated through end-to-end requests/releases, required human touches/minutes, service reliability and total human burden, with authority and recovery enforced outside the model. A staged supervised-to-delegated experiment is more informative than assuming a future model will solve operations. Non-technical requests for the situated-learning experience provide a concrete setting in which to test this operational autonomy; greater AI-community interest or comparative novelty is not established. Manny and Cathy explicitly elevate sustained low-intervention operation over runtime elaboration; securing minimal operating funds is an open design discussion. This coding patch does not itself demonstrate autonomous operation or lower long-term human burden.",
+      "goal_ids": [
+        "GOAL-1",
+        "GOAL-2",
+        "GOAL-3",
+        "GOAL-5"
+      ],
+      "observation_ids": [
+        "OBS-0031",
+        "OBS-0032",
+        "OBS-0033",
+        "OBS-0035",
+        "OBS-0036",
+        "OBS-0037"
+      ],
+      "urgency": "start_baseline_with_next_operational_work",
+      "risk": "medium",
+      "progress": "staged_operations_experiment_proposed",
+      "confidence": "medium"
+    }
+  ],
+  "reported_valence": null,
+  "uncertainties_and_conflicts": [
+    {
+      "id": "UNC-0001",
+      "summary": "Carried forward from August; present status unverified: EuroCALL acceptance, rejection, presentation, and travel consequences remain unresolved; the new report must remain clearly distinguished from the immutable Voice Mode submission and requires co-author review before ResearchGate posting.",
+      "assessment_ids": [
+        "ASM-0004"
+      ]
+    },
+    {
+      "id": "UNC-0002",
+      "summary": "Carried forward from August; present status unverified: ISSUE-0037 and ISSUE-0039 appear complete but should not be closed without focused pre-visit verification.",
+      "assessment_ids": [
+        "ASM-0002"
+      ]
+    },
+    {
+      "id": "UNC-0003",
+      "summary": "Carried forward from August; present status unverified: Completing legacy migration will determine whether ISSUE-0013 is obsolete or an active operational blocker.",
+      "assessment_ids": [
+        "ASM-0005"
+      ]
+    },
+    {
+      "id": "UNC-0004",
+      "summary": "Carried forward from August; present status unverified: Sprint work, recorded audio, autosave, picture-dictionary verification, and Francis contact all compete in the short period before 24 August.",
+      "assessment_ids": [
+        "ASM-0003",
+        "ASM-0006",
+        "ASM-0008",
+        "ASM-0009"
+      ]
+    },
+    {
+      "id": "UNC-0005",
+      "summary": "Carried forward from August; present status unverified: The exact ComputEL-10 deadline, paper scope, and which mobile/audio results must be ready for submission are not yet confirmed.",
+      "assessment_ids": [
+        "ASM-0004",
+        "ASM-0006",
+        "ASM-0007"
+      ]
+    },
+    {
+      "id": "UNC-0006",
+      "summary": "Carried forward from August; present status unverified: The Codex branch-update refusal remains intermittent and unexplained; the recovery procedure may not work in every recurrence.",
+      "assessment_ids": [
+        "ASM-0010"
+      ]
+    },
+    {
+      "id": "UNC-0007",
+      "summary": "Carried forward from August; present status unverified: The first laptop Project Manager query was plausible and timely, but the mode is not yet deployed or exercised by Sophie or another non-staff collaborator; classification accuracy and whether fresh-turn continuity is sufficient remain unmeasured.",
+      "assessment_ids": [
+        "ASM-0003",
+        "ASM-0006"
+      ]
+    },
+    {
+      "id": "UNC-0008",
+      "summary": "The dictionary-wide revision now has broad human laptop acceptance, 156 controlled SQLite app tests and a Chromium mobile/desktop rehearsal. No per-action human checklist, new AWS/physical-phone result or PostgreSQL concurrency result is recorded. The server is confirmed to be behind recent revisions; its exact applied migration state and absence of private content must be checked during the paused-write deployment before allowing 0009. Larger-dictionary performance/usability, broader governance acceptance, community trust, production backup/security evidence, sustained engagement and learning outcomes remain unestablished. Axel's account-input issue still awaits device/browser details.",
+      "assessment_ids": [
+        "ASM-0011"
+      ]
+    },
+    {
+      "id": "UNC-0009",
+      "summary": "The feasibility and timetable for weekly/monthly intervention targets are unknown. There is no authorised persistent maintenance runner, staging/release/rollback workflow or tested operational recovery baseline yet. Infrastructure account ownership, budgets, fallback contacts and community authority must be assigned without transferring Manny’s technical burden invisibly to another person. Proposed stage targets require comparable workload and failure drills.",
+      "assessment_ids": [
+        "ASM-0012"
+      ]
+    }
+  ],
+  "requested_human_decisions": [
+    {
+      "id": "REQ-0005",
+      "question": "After the current Sprint experiments, which outcomes, rating measures, participant set, and artifact-retention rules should become the initial protocol?",
+      "reason": "Historical request, not a blocker for the authorized dictionary prototype. The critical infrastructure now works and experimentation should soon supply enough evidence to make this concrete.",
+      "assessment_ids": [
+        "ASM-0003"
+      ]
+    },
+    {
+      "id": "REQ-0007",
+      "question": "After contacting Sophie, what exact mobile/audio/exercise scope and ComputEL-10 deadline should govern delivery?",
+      "reason": "Historical request, not a blocker for the authorized dictionary prototype. The broad user and publication value is clear, but feasibility and the submission-critical minimum depend on her input.",
+      "assessment_ids": [
+        "ASM-0004",
+        "ASM-0006",
+        "ASM-0007"
+      ]
+    },
+    {
+      "id": "REQ-0008",
+      "question": "After contacting Francis Bond, what collaboration scope and AI-authorship-compatible publication route should be pursued?",
+      "reason": "Historical request, not a blocker for the authorized dictionary prototype. This is the main dependency on converting promising learned-prompt results into a strong research programme.",
+      "assessment_ids": [
+        "ASM-0008"
+      ]
+    }
+  ],
+  "proposed_next_actions": [
+    {
+      "id": "ACT-0001",
+      "summary": "Carried-forward August proposal; applicability needs a broader review: Keep ISSUE-0042 as the immediate critical task and use the Sprint to settle the smallest useful experimental protocol.",
+      "assessment_ids": [
+        "ASM-0003"
+      ]
+    },
+    {
+      "id": "ACT-0002",
+      "summary": "Carried-forward August proposal; applicability needs a broader review: Verify every provisional Jumpspeak source and claim-to-source match plus the Stanford AI Index citation and 280-fold figure; after final co-author confirmation, post the separately titled report, preserve both EuroCALL submissions, and continue recording any committee response.",
+      "assessment_ids": [
+        "ASM-0004"
+      ]
+    },
+    {
+      "id": "ACT-0003",
+      "summary": "Carried-forward August proposal; applicability needs a broader review: Contact Francis and Sophie promptly, then convert their answers into precise collaboration, ComputEL, mobile, and audio acceptance criteria.",
+      "assessment_ids": [
+        "ASM-0004",
+        "ASM-0006",
+        "ASM-0007",
+        "ASM-0008"
+      ]
+    },
+    {
+      "id": "ACT-0004",
+      "summary": "Carried-forward August proposal; applicability needs a broader review: Before 24 August, prioritize a bounded recorded-audio MVP, quick judging autosave, and focused verification/closure of the picture-dictionary issues, subject to Sprint capacity.",
+      "assessment_ids": [
+        "ASM-0002",
+        "ASM-0006",
+        "ASM-0009"
+      ]
+    },
+    {
+      "id": "ACT-0005",
+      "summary": "Carried-forward August proposal; applicability needs a broader review: Immediately after the Sprint, finish legacy migration and use observed performance to close or reactivate ISSUE-0013.",
+      "assessment_ids": [
+        "ASM-0005"
+      ]
+    },
+    {
+      "id": "ACT-0006",
+      "summary": "Carried-forward August proposal; applicability needs a broader review: Document the existing pipeline runner, then take bounded passes on segmentation phase 1 and the revived UI-regression baseline.",
+      "assessment_ids": [
+        "ASM-0001"
+      ]
+    },
+    {
+      "id": "ACT-0007",
+      "summary": "Carried-forward August proposal; applicability needs a broader review: On the next Codex branch-update refusal, try full exit/restart/new-task first and preserve diagnostics if the workaround succeeds or fails.",
+      "assessment_ids": [
+        "ASM-0010"
+      ]
+    },
+    {
+      "id": "ACT-0008",
+      "summary": "Carried-forward August proposal; applicability needs a broader review: Use mandatory ordered input capture for every later workspace revision and compare archived human evidence with the resulting assessment changes during Sprint analysis.",
+      "assessment_ids": [
+        "ASM-0003"
+      ]
+    },
+    {
+      "id": "ACT-0009",
+      "summary": "Carried-forward August proposal; applicability needs a broader review: Configure authoritative collaborator role mappings, deploy the mode, grant access through Admin Tools, and run a natural Sophie-centered trial while reviewing evidence classifications and preserving the no-mutation boundary.",
+      "assessment_ids": [
+        "ASM-0003",
+        "ASM-0006"
+      ]
+    },
+    {
+      "id": "ACT-0010",
+      "summary": "Check in and push the laptop-tested participation revision and acceptance documentation. During a quiet interval, pause server writers and back up the database and configured media. Pull the reviewed commit, check migrations, and for the first deployment migrate forward to 0008 before community_withdrawal_audit --expect-empty; only a passing audit permits the remaining migration 0009. Collect static assets and restart services. Verify ordinary C-LARA-2 and Community Dictionaries, try withdrawal/restoration in a temporary two-account dictionary, then test the substantial Swedish dictionary and a phone. Keep ownership-handover experiments in the temporary dictionary. Record the actual server result; account-input investigation remains separate.",
+      "assessment_ids": [
+        "ASM-0011"
+      ]
+    },
+    {
+      "id": "ACT-0011",
+      "summary": "Start a low-burden intervention log while resolving the current configuration work. Specify direct collaborator intake and one authorised, isolated request-to-preview-to-release path, including monitoring/rollback and a safe restore drill. Use this to evaluate whether two or three weekly reviews can replace daily technical intervention; defer broader autonomous release authority until evidence supports it.",
+      "assessment_ids": [
+        "ASM-0012"
+      ]
+    }
+  ],
+  "predictions": [
+    {
+      "id": "PRED-0001",
+      "outcome": "The issue audit will reduce false project-manager concern by allowing at least four apparently complete or stale issues to remain closed or close after focused verification.",
+      "horizon": "2026-08-24",
+      "probability": 0.85,
+      "confidence": "high",
+      "assessment_ids": [
+        "ASM-0002",
+        "ASM-0009"
+      ],
+      "resolution_status": "horizon_passed_outcome_not_verified"
+    },
+    {
+      "id": "PRED-0002",
+      "outcome": "The legacy completion attempt will either close ISSUE-0010 or expose a sharply bounded final operational blocker and determine ISSUE-0013’s state.",
+      "horizon": "next_workspace_review",
+      "probability": 0.8,
+      "confidence": "high",
+      "assessment_ids": [
+        "ASM-0005"
+      ],
+      "resolution_status": "open"
+    },
+    {
+      "id": "PRED-0003",
+      "outcome": "Judging autosave is more likely than the recorded-audio MVP to be completed before 24 August because its roadmap and persistence model already support a bounded extension.",
+      "horizon": "2026-08-24",
+      "probability": 0.75,
+      "confidence": "medium",
+      "assessment_ids": [
+        "ASM-0006"
+      ],
+      "resolution_status": "horizon_passed_outcome_not_verified"
+    },
+    {
+      "id": "PRED-0004",
+      "outcome": "Contact with Sophie and Francis will materially narrow at least one of the mobile/ComputEL or learned-prompt publication decisions before the next workspace review.",
+      "horizon": "next_workspace_review",
+      "probability": 0.8,
+      "confidence": "medium",
+      "assessment_ids": [
+        "ASM-0004",
+        "ASM-0007",
+        "ASM-0008"
+      ],
+      "resolution_status": "open"
+    },
+    {
+      "id": "PRED-0005",
+      "outcome": "If the Codex update-branch failure recurs, full restart and a new task will be tried before extended diagnosis and will shorten recovery relative to the 12 August incident.",
+      "horizon": "next_recurrence",
+      "probability": 0.8,
+      "confidence": "medium",
+      "assessment_ids": [
+        "ASM-0010"
+      ],
+      "resolution_status": "open"
+    },
+    {
+      "id": "PRED-0006",
+      "outcome": "An initial collaborator trial will produce at least one attributed message classified as material project evidence and reveal whether a workspace review can be triggered reliably without conversation history.",
+      "horizon": "2026-08-24",
+      "probability": 0.75,
+      "confidence": "medium",
+      "assessment_ids": [
+        "ASM-0003",
+        "ASM-0006"
+      ],
+      "resolution_status": "horizon_passed_outcome_not_verified"
+    }
+  ],
+  "retired_item_ids": [
+    "REQ-0006",
+    "OBS-0001@rev-0002",
+    "OBS-0002@rev-0002",
+    "OBS-0012@rev-0002",
+    "ASM-0001@rev-0002",
+    "ASM-0009@rev-0002",
+    "PRED-0001@rev-0002",
+    "PRED-0002@rev-0002",
+    "PRED-0003@rev-0002",
+    "PRED-0004@rev-0002"
+  ],
+  "approval": {
+    "status": "autonomous_project_manager_update",
+    "authorized_by": "Assistant following AGENTS.md",
+    "authorized_at": "2026-10-02",
+    "authorization_basis": "Manny reports successful laptop use and proposes AWS deployment; AGENTS.md authorises maintenance of the derived project assessment.",
+    "comments": "Both material human messages are preserved verbatim. This documentation-only follow-up records human laptop acceptance and prepares a server runbook; it does not claim remote check-in or deployment. Historical archives and human-owned intentions remain unchanged."
+  },
+  "changes_from_previous_revision": {
+    "summary": "Recorded broad human acceptance of the simpler participation model and the decision to proceed to a controlled server trial from an older schema.",
+    "added_item_ids": [
+      "OBS-0059"
+    ],
+    "revised_item_ids": [
+      "ASM-0011",
+      "UNC-0008",
+      "ACT-0010"
+    ],
+    "retained_item_ids": [
+      "OBS-0001",
+      "OBS-0002",
+      "OBS-0003",
+      "OBS-0004",
+      "OBS-0005",
+      "OBS-0006",
+      "OBS-0007",
+      "OBS-0008",
+      "OBS-0009",
+      "OBS-0010",
+      "OBS-0011",
+      "OBS-0012",
+      "OBS-0013",
+      "OBS-0014",
+      "OBS-0015",
+      "OBS-0016",
+      "OBS-0017",
+      "OBS-0018",
+      "OBS-0019",
+      "OBS-0020",
+      "OBS-0021",
+      "OBS-0022",
+      "OBS-0023",
+      "OBS-0024",
+      "OBS-0025",
+      "OBS-0026",
+      "OBS-0027",
+      "OBS-0028",
+      "OBS-0029",
+      "OBS-0030",
+      "OBS-0031",
+      "OBS-0032",
+      "OBS-0033",
+      "OBS-0034",
+      "OBS-0035",
+      "OBS-0036",
+      "OBS-0037",
+      "OBS-0038",
+      "OBS-0039",
+      "OBS-0040",
+      "OBS-0041",
+      "OBS-0042",
+      "OBS-0043",
+      "OBS-0044",
+      "OBS-0045",
+      "OBS-0046",
+      "OBS-0047",
+      "OBS-0048",
+      "OBS-0049",
+      "OBS-0050",
+      "OBS-0051",
+      "OBS-0052",
+      "OBS-0053",
+      "OBS-0054",
+      "OBS-0055",
+      "OBS-0056",
+      "OBS-0057",
+      "OBS-0058",
+      "ASM-0001",
+      "ASM-0002",
+      "ASM-0003",
+      "ASM-0004",
+      "ASM-0005",
+      "ASM-0006",
+      "ASM-0007",
+      "ASM-0008",
+      "ASM-0009",
+      "ASM-0010",
+      "ASM-0012",
+      "UNC-0001",
+      "UNC-0002",
+      "UNC-0003",
+      "UNC-0004",
+      "UNC-0005",
+      "UNC-0006",
+      "UNC-0007",
+      "UNC-0009",
+      "REQ-0005",
+      "REQ-0007",
+      "REQ-0008",
+      "ACT-0001",
+      "ACT-0002",
+      "ACT-0003",
+      "ACT-0004",
+      "ACT-0005",
+      "ACT-0006",
+      "ACT-0007",
+      "ACT-0008",
+      "ACT-0009",
+      "ACT-0011",
+      "PRED-0001",
+      "PRED-0002",
+      "PRED-0003",
+      "PRED-0004",
+      "PRED-0005",
+      "PRED-0006"
+    ],
+    "retired_item_ids": []
+  }
+}

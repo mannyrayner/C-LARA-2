@@ -258,7 +258,7 @@ class WorkflowTests(TestCase):
         membership.refresh_from_db()
         self.assertEqual(membership.status, 'inactive')
         self.client.force_login(self.third)
-        self.assertEqual(self.client.get(self.url('dictionary')).status_code, 404)
+        self.assertContains(self.client.get(self.url('dictionary')), 'Your membership is inactive')
 
     def test_group_creation_rejects_people_outside_dictionary(self):
         response = self.client.post(self.url('people'), {'action': 'create_group', 'name': 'Wrong group', 'partners': [self.outsider.pk]})
@@ -292,6 +292,8 @@ class WorkflowTests(TestCase):
         self.post('respond', {'audio': recording(), 'consent': 'on', 'publish_now': 'on'}, req.pk)
         audio = req.responses.get(kind='audio')
         path = path_for(audio.file_path)
+        Membership.objects.filter(dictionary=self.dictionary, user=self.third).update(role='editor')
+        self.client.force_login(self.third)
         with self.captureOnCommitCallbacks(execute=True):
             response = self.client.post(self.url('review', audio.pk), {'action': 'remove'})
         self.assertEqual(response.status_code, 302)
@@ -354,7 +356,7 @@ class WorkflowTests(TestCase):
     def test_withdrawn_wording_is_private_and_cannot_be_removed_by_former_editor(self):
         entry = self.create_entry(word='A private withdrawn proposal')
         proposal = entry.contributions.get(kind='text')
-        self.client.post(self.url('review', proposal.pk), {'action': 'withdraw'})
+        self.client.post(self.url('withdraw-content'), {'confirm': 'yes', 'revision': 0})
         self.client.force_login(self.third)
         self.assertNotContains(self.client.get(self.url('entry', entry.pk)), proposal.word)
         self.client.force_login(self.owner)

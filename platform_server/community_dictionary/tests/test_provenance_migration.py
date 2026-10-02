@@ -11,6 +11,7 @@ class ProvenanceMigrationTests(TransactionTestCase):
         # This disposable database is empty. Only for preparing the old-schema
         # fixture, reversing the data-only operation is therefore a no-op.
         executor.loader.get_migration('community_dictionary', '0007_split_text_provenance').operations[0].reverse_code = migrations.RunPython.noop
+        executor.loader.get_migration('community_dictionary', '0009_restore_experimental_collections').operations[0].reverse_code = migrations.RunPython.noop
         executor.migrate([('community_dictionary', '0005_image_word_links')])
         old = executor.loader.project_state([('community_dictionary', '0005_image_word_links')]).apps
         User = old.get_model('auth', 'User')
@@ -46,9 +47,10 @@ class ProvenanceMigrationTests(TransactionTestCase):
             self.assertEqual(NewEntry.objects.get(pk=lost.pk).current_meaning.controlled_by_id, manny.pk)
             self.assertEqual(Contribution.objects.get(pk=audio.pk).shared_from_id, updated.current_text_id)
             retained = Contribution.objects.get(pk=proposal.pk)
-            self.assertTrue(retained.entry.dictionary.personal)
-            self.assertEqual(retained.entry.dictionary.owner_id, cathy.pk)
-            self.assertFalse(updated.contributions.filter(word='private').exists())
+            self.assertEqual(retained.entry_id, updated.pk)
+            self.assertEqual(retained.controlled_by_id, cathy.pk)
+            self.assertEqual(retained.status, 'pending')
+            self.assertEqual(updated.word, 'soffa')
         finally:
             executor = MigrationExecutor(connection)
             executor.migrate(executor.loader.graph.leaf_nodes())

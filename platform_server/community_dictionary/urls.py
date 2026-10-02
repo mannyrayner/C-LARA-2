@@ -1,13 +1,17 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
 
-from . import audio_views, photo_views, views, lexicon_views, collection_views
+from . import audio_views, photo_views, views, lexicon_views, collection_views, participation_views
 
 app_name = 'community_dictionary'
 urlpatterns = [
+    path('<int:pk>/my-content/', participation_views.my_content, name='my-content'),
+    path('<int:pk>/withdraw-content/', participation_views.withdraw_content, name='withdraw-content'),
+    path('<int:pk>/restore-content/', participation_views.restore_content, name='restore-content'),
     path('my-contributions/', collection_views.mine, name='mine'),
-    path('my-contributions/withdraw/', collection_views.withdraw, name='withdraw'),
-    path('my-contributions/share/', collection_views.share, name='share'),
+    path('my-contributions/withdraw/', collection_views.obsolete_action, name='withdraw'),
+    path('my-contributions/share/', collection_views.obsolete_action, name='share'),
+    path('my-contributions/entries/<int:entry_id>/share-back/', collection_views.obsolete_action, name='share-back'),
     path('my-contributions/media/<int:contribution_id>/', collection_views.own_media, name='own-media'),
     path('<int:pk>/membership/', collection_views.membership_action, name='membership-action'),
     path('login/', auth_views.LoginView.as_view(template_name='community_dictionary/login.html', next_page='community_dictionary:home'), name='login'),

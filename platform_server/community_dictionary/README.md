@@ -1,5 +1,16 @@
 # Community dictionary app
 
+Current withdrawal UX: [dictionary-wide participation](../../docs/howto/community-participation.md).
+A member can view, withdraw all content with confirmation, or restore all content
+and rejoin. Retained material is read-only; shared browsing and contribution are
+blocked while withdrawn. Owner handover is atomic with withdrawal. This supersedes
+the individual contribution/private-dictionary interfaces described in older notes
+below. Migrations 0008/0009 establish the model and restore the authorised laptop
+experiments. 156 tests and a browser rehearsal pass. Manny reports successful
+laptop acceptance; [AWS deployment](../../docs/howto/community-participation-aws.md)
+is next and remains unverified.
+
+
 First functional prototype: invited dictionaries built from photographs, human
 recordings, discussion and review, with partnership request queues.
 
@@ -93,3 +104,12 @@ components. It has 128 passing app tests and a Chromium phone/desktop rehearsal;
 Manny now confirms laptop testing of My contributions works as intended and
 requests check-in. AWS/physical-phone validation of this increment remains pending;
 his report does not specify separate governance/withdrawal acceptance cases.
+
+The [2 October immediate-restoration follow-up](../../docs/howto/community-immediate-restore.md)
+removes the confirmation step from Share back to the original dictionary. Unchanged,
+previously accepted material voluntarily withdrawn by its custodian is visible
+immediately; new/unreviewed, rejected or moderator-returned material needs review.
+Newer shared text, custody, private copies and access checks remain protected.
+148 app tests and a Chromium rehearsal pass, with no migration. Manny requested
+this simplification after testing the first shortcut; human acceptance and new
+AWS/physical-phone validation of this follow-up remain pending.

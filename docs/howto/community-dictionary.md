@@ -1,5 +1,21 @@
 # Community dictionary: setup and testing
 
+## Current contribution controls — 2 October
+
+The [dictionary-wide participation revision](community-participation.md) replaces
+component-level withdrawal and sharing with **Withdraw my content** / **Restore my
+content** on each dictionary, plus a withdrawn status and Restore button on the
+platform home page. Withdrawal is confirmed; retained content is read-only and
+withdrawn members cannot browse or contribute. Owners hand over when withdrawing,
+and restoration retains valid prior approval. The one-time migration restores the
+laptop's experimental private material as explicitly authorised by Manny.
+**156 tests and a Chromium rehearsal pass. Manny reports successful laptop use
+and finds the simpler model much better. AWS deployment remains pending.** Use the
+[deployment sequence](community-participation-aws.md), including database/media
+backup and the private-content audit between migrations 0008 and 0009. Earlier incremental descriptions below
+are historical where they describe individual contribution controls.
+
+
 Status as of 26 September 2026: the implementation and microphone/text repairs
 are on `main` and deployed alongside ordinary C-LARA-2 on AWS. Manny reports
 successful laptop use on that server and a first physical-phone trial: Cathy
@@ -82,6 +98,13 @@ by entry with own-component controls and grey reference context; 128 app tests
 and a disposable browser rehearsal pass. This follow-up adds no migration.
 Manny now confirms laptop testing of My contributions works as intended and
 requests check-in. AWS/physical-phone validation of this increment is still pending.
+
+The [2 October immediate-restoration follow-up](community-immediate-restore.md)
+responds to Manny's report that the Share back shortcut is an improvement but still
+too complicated. Returning to the original entry now takes one click; unchanged,
+previously accepted material keeps its approval. New/unreviewed or moderated material
+still needs review. 148 app tests and a controlled browser rehearsal pass; human
+acceptance and new AWS/physical-phone validation are pending. No migration is added.
 
 ## Current installation
 

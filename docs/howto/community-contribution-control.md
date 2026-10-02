@@ -1,5 +1,10 @@
 # Community Dictionaries: contribution control
 
+> Historical revision. The current [dictionary-wide participation model](community-participation.md)
+> replaces individual withdrawal/sharing, editable personal collections and the
+> per-entry return shortcut. Use its runbook for the new migration and laptop trial.
+
+
 Prepared 1 October 2026 against main `ffbbef9d24873cd930cb866d979e1bd3a735e41b`.
 This increment implements Manny's agreed provenance, personal-collection,
 withdrawal and membership model. It does not add image generation, games or
@@ -12,6 +17,13 @@ by entry, with other people's material marked for reference. It adds no migratio
 128 app tests and a new browser rehearsal pass. Manny now confirms laptop
 acceptance of My contributions and requests check-in. His report does not specify
 separate withdrawal/governance test cases or a new AWS/phone deployment.
+
+The [2 October Share back shortcut](community-share-back.md) makes returning
+withdrawn material to its original entry explicit and avoids the destination-entry
+menu. Its [immediate-restoration follow-up](community-immediate-restore.md) removes
+confirmation and retains existing approval for unchanged, voluntarily withdrawn
+material returned to the original entry. New/moderated material still needs review;
+custody remains intact and no migration is added.
 
 ## What changes for users
 

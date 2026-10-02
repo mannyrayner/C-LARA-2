@@ -1,0 +1,12 @@
+{% extends 'community_dictionary/base.html' %}{% block content %}
+<h1>Withdraw my content</h1><p class="eyebrow">{{ project.name }}</p>
+<p>Withdraw all your contributions and leave this dictionary? Your material will be saved privately. You can restore it later to rejoin.</p>
+<p>You will not be able to browse or add content until you restore. Other people's independent contributions stay shared. Copies already downloaded cannot be recalled.</p>
+<p><a href="{% url 'community_dictionary:my-content' project.pk %}">View my contributions first →</a></p>
+<form method="post" class="panel stack withdrawal-confirmation">{% csrf_token %}<input type="hidden" name="revision" value="{{ participation.state.revision }}">
+{% if is_owner %}{% if successors %}
+<label>New dictionary owner<select name="successor" required><option value="">Choose an active member…</option>{% for person in successors %}<option value="{{ person.pk }}">{{ person.username }}</option>{% endfor %}</select></label>
+<p>The person you choose will become the owner when you withdraw. Restoring your content later restores participation, not ownership.</p>
+{% else %}<p><strong>There is no active member to take over.</strong> Withdrawing will archive this dictionary. You can restore your content to reopen it. Everyone retains access to their own saved contributions.</p>{% endif %}{% endif %}
+<div class="actions"><button name="confirm" value="yes" class="danger">Confirm withdrawal</button><a href="{% url 'community_dictionary:dictionary' project.pk %}">Cancel</a></div>
+</form>{% endblock %}

@@ -9,7 +9,7 @@ from django.views.decorators.http import require_POST
 
 from .forms import LinkWordForm
 from .lexicon import pictures_for_word, recordings, vocabulary, word_row
-from .models import Contribution, Entry, ImageWordLink
+from .models import Contribution, Dictionary, Entry, ImageWordLink
 from .permissions import get_dictionary, require_editor
 from .services import event
 from .views import context, fail
@@ -37,6 +37,9 @@ def image_words(request, pk, entry_id, image_id):
         return fail(request, form.errors.as_text())
     target_id = form.cleaned_data['word_entry'].pk
     with transaction.atomic():
+        Dictionary.objects.select_for_update().get(pk=pk)
+        get_dictionary(request.user, pk)
+        require_editor(request.user, dictionary)
         # Lock in a stable order, also coordinating with text/media review and
         # deletion. Incremental add/remove never overwrites another editor's set.
         entries = {e.pk: e for e in Entry.objects.select_for_update().filter(

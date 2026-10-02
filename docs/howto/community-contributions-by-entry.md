@@ -1,5 +1,10 @@
 # My contributions: entry context
 
+> Historical revision. The current [dictionary-wide participation model](community-participation.md)
+> replaces individual withdrawal/sharing, editable personal collections and the
+> per-entry return shortcut. Use its runbook for the new migration and laptop trial.
+
+
 Prepared 1 October 2026 as a follow-up to the installed contribution-control
 revision. Apply this patch **after** `community_dictionary_contribution_control.patch`.
 It changes presentation and adds tests; there are no new migrations or dependencies.
@@ -75,3 +80,13 @@ Manny subsequently confirms successful laptop testing of My contributions on
 1 October and requests check-in. New AWS/physical-phone acceptance remains pending.
 The account-form capitalisation investigation is separate and has no code changes
 in this revision.
+
+## 2 October: returning withdrawn material
+
+Manny confirms the return workflow works but found the entry selector easy to
+miss. After trying the prominent Share back shortcut, he requests a further
+simplification. The [immediate-restoration follow-up](community-immediate-restore.md)
+returns current material to its original entry in one click, retaining prior
+approval where still valid. Private copies and reference-only context remain.
+148 app tests and a Chromium rehearsal pass; human acceptance and new server/phone
+validation are pending. No migration is added.

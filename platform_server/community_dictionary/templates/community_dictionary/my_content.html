@@ -1,0 +1,8 @@
+{% extends 'community_dictionary/base.html' %}{% block content %}
+<p class="eyebrow">{{ project.name }}</p><h1>{% if participation.state.withdrawn %}My saved content{% else %}My contributions{% endif %}</h1>
+{% include 'community_dictionary/participation_controls.html' %}
+{% if participation.state.withdrawn %}<p>Only your own material is shown here. It is saved privately and cannot be edited while you are withdrawn.</p>{% else %}<p>Your contributions are grouped by entry. Grey panels provide context from the shared dictionary.</p>{% endif %}
+<div class="contribution-grid contribution-entries">{% for card in cards %}{% include 'community_dictionary/collection_entry.html' %}{% empty %}<p class="empty">You have no contributions in this dictionary yet.</p>{% endfor %}</div>
+{% if page.has_other_pages %}<nav class="pagination">{% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">Previous</a>{% endif %}<span>{{ page.number }} / {{ page.paginator.num_pages }}</span>{% if page.has_next %}<a href="?page={{ page.next_page_number }}">Next</a>{% endif %}</nav>{% endif %}
+<p><a href="{% url 'community_dictionary:dictionary' project.pk %}">Back to dictionary</a></p>
+{% endblock %}

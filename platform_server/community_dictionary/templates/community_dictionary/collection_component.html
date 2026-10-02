@@ -1,10 +1,8 @@
 <div class="collection-component {% if item.reference %}reference-component{% endif %}" data-contribution-id="{{ item.part.pk }}">
-  {% if item.selectable %}
-    <label class="check"><input type="checkbox" name="contributions" value="{{ item.part.pk }}"><strong>{{ item.part.component_label }}</strong><span class="badge">Yours</span></label>
-  {% else %}
-    <p class="component-heading"><strong>{{ item.part.component_label }}</strong> <span class="badge">{% if item.reference %}For reference{% else %}Yours · outside this filter{% endif %}</span></p>
-  {% endif %}
+  <p class="component-heading"><strong>{{ item.part.component_label }}</strong> <span class="badge">{% if item.reference %}For reference{% else %}Yours{% endif %}</span></p>
   {% if item.part.status != 'accepted' %}<p class="badge {% if item.part.status == 'pending' %}pending{% endif %}">{{ item.part.get_status_display }}</p>{% endif %}
+  {% if item.already_shared %}<p class="help">Already shared with this entry or awaiting review there.</p>{% endif %}
+  {% if item.conflicting_text %}<p class="help">The original entry already has different text here. Use Edit words in that entry to propose a change.</p>{% endif %}
   {% if item.part.kind == 'image' and item.media_url %}<img class="candidate-image" src="{{ item.media_url }}" alt="Picture for this entry" loading="lazy">{% elif item.media_url %}<audio controls preload="none" src="{{ item.media_url }}"></audio>{% endif %}
   {% if item.part.kind == 'text' %}<p class="component-value" dir="auto">{{ item.part.text_value|default:'(Empty component)'|linebreaksbr }}</p>{% endif %}
   {% if item.part.body %}<p dir="auto">{{ item.part.body|linebreaksbr }}</p>{% endif %}

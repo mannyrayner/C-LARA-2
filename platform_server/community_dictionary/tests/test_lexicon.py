@@ -226,6 +226,7 @@ class LexiconTests(TestCase):
 
     def test_image_removal_deletes_links_but_keeps_words(self):
         self.link()
+        self.client.force_login(self.editor)
         with self.captureOnCommitCallbacks(execute=True):
             self.client.post(self.url('review', self.sofa_photo.pk), {'action': 'remove'})
         self.assertFalse(ImageWordLink.objects.exists())
@@ -246,6 +247,7 @@ class LexiconTests(TestCase):
 
     def test_removing_accepted_wording_hides_links_until_wording_is_restored(self):
         self.link()
+        self.client.force_login(self.editor)
         self.client.post(self.url('review', self.cat.current_text_id), {'action': 'remove'})
         self.assertEqual(self.client.get(self.url('entry', self.sofa.pk)).context['linked_words'], [])
         self.assertEqual(self.client.get(self.url('word', self.cat.pk)).status_code, 404)

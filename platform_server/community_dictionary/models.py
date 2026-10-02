@@ -20,6 +20,7 @@ class Dictionary(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     created_at = models.DateTimeField(default=timezone.now)
     personal = models.BooleanField(default=False)
+    archived = models.BooleanField(default=False)
     collection_source = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, related_name='personal_collections')
     membership_policy = models.CharField(max_length=16, default='owner', choices=[('owner', 'Owner manages membership'), ('coordinators', 'Two coordinators approve changes')])
     membership_revision = models.PositiveIntegerField(default=0)
@@ -48,6 +49,27 @@ class Membership(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['dictionary', 'user'], name='cd_unique_member')]
+
+
+class Participation(models.Model):
+    """Voluntary withdrawal is independent of membership and its moderation."""
+    dictionary = models.ForeignKey(Dictionary, on_delete=models.CASCADE, related_name='participations')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    withdrawn = models.BooleanField(default=False)
+    revision = models.PositiveIntegerField(default=0)
+    updated_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['dictionary', 'user'], name='cd_unique_participation')]
+
+
+class WithdrawalHold(models.Model):
+    """A contribution stays private until every source withdrawal is restored."""
+    participation = models.ForeignKey(Participation, on_delete=models.CASCADE, related_name='holds')
+    contribution = models.ForeignKey('Contribution', on_delete=models.CASCADE, related_name='withdrawal_holds')
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['participation', 'contribution'], name='cd_unique_withdrawal_hold')]
 
 
 class Partnership(models.Model):
@@ -128,7 +150,7 @@ class Request(models.Model):
 
 class Contribution(models.Model):
     KINDS = [('text', 'Written information'), ('image', 'Picture'), ('audio', 'Recording'), ('note', 'Comment')]
-    STATUSES = [('pending', 'Awaiting review'), ('accepted', 'Accepted'), ('rejected', 'Changes requested'), ('withdrawn', 'Withdrawn'), ('removed', 'Removed')]
+    STATUSES = [('pending', 'Awaiting review'), ('accepted', 'Accepted'), ('rejected', 'Changes requested'), ('withdrawn', 'Withdrawn'), ('removed', 'Removed'), ('superseded', 'Earlier copy')]
     entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name='contributions')
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     kind = models.CharField(max_length=8, choices=KINDS)

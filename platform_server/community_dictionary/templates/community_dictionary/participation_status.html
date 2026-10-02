@@ -1,0 +1,6 @@
+{% extends 'community_dictionary/base.html' %}{% block title %}{{ project.name }}{% endblock %}{% block content %}
+<p class="eyebrow">{{ project.language }}</p><h1>{{ project.name }}</h1>
+{% if not participation.state.withdrawn %}<p class="notice">{% if project.archived %}This dictionary is archived.{% else %}Your membership is inactive.{% endif %} You can still view or withdraw your own contributions.</p>{% endif %}
+{% include 'community_dictionary/participation_controls.html' %}
+<p><a href="{% url 'community_dictionary:home' %}">Your dictionaries →</a></p>
+{% endblock %}

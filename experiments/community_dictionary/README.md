@@ -1,5 +1,13 @@
 # Community dictionary development experiment
 
+Latest: [dictionary-wide participation, 2 October](participation-2026-10-02.md).
+Manny's successful use of the prior shortcut exposed excessive conceptual complexity.
+The replacement has 156 passing tests and a Chromium rehearsal. Manny now reports
+successful laptop use and a much simpler model; AWS deployment is the next step
+and remains pending. Earlier component-selection and share-back browser
+scripts record superseded interfaces. The current script is `participation_browser.cjs`.
+
+
 Latest increment: [clearer saving and invitations](save-ux-2026-09-30.md).
 Manny reports successful AWS update on 29 September; Cathy supplies concrete
 saving/recovery feedback on 30 September. The prepared UX patch has 70 passing
@@ -115,3 +123,14 @@ and physical-phone trial remains next.
   entry context. The display-only follow-up passes 128 app tests and a Chromium
   phone/desktop rehearsal. Manny subsequently confirms the display works as intended on his laptop and
   requests check-in; new AWS/physical-phone acceptance remains pending.
+
+- [Share back, 2 October](share-back-2026-10-02.md): the checked-in contribution
+  controls work on the laptop, but the destination selector is hard to discover.
+  A shortcut confirms the original entry automatically. 140 app tests and a
+  Chromium rehearsal pass at that revision. Manny subsequently finds the shortcut
+  an improvement but asks to remove confirmation and repeat review.
+
+- [Immediate restoration, 2 October](immediate-restore-2026-10-02.md): one click
+  returns current material to its original entry and retains valid prior approval.
+  148 app tests and a Chromium rehearsal pass; human acceptance of this follow-up
+  and new AWS/physical-phone validation remain pending.

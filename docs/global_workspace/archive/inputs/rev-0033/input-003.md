@@ -1,0 +1,1 @@
+You are right, it does work, but as you say it is definitely too complicated as it stands. If I could miss the "Select entry" control, which is the mistake I made, I'm sure many other people will too. I agree that a simple "Share back to the original dictionary" control is almost certainly what we want in practice. Could you implement that, and I'll try it out?

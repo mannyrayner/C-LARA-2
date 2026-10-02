@@ -66,18 +66,20 @@ def entry_cards(entries, user, kind=''):
         def component(part):
             yours = (part.controlled_by_id or part.author_id) == user.pk
             in_collection = entry.pk == selectable_entry_id
-            selectable = yours and in_collection and (not kind or part.kind == kind)
+            selectable = False
             media_url = ''
             if part.file_path:
                 media_url = reverse('community_dictionary:own-media', args=[part.pk]) if yours else reverse(
                     'community_dictionary:media', args=[entry.dictionary_id, part.pk])
             return {'part': part, 'yours': yours, 'selectable': selectable,
-                    'filtered': yours and in_collection and not selectable,
+                    'filtered': False,
                     'reference': not yours or not in_collection, 'media_url': media_url}
 
         title_part = next((p for p in fields if p.text_field == 'word' and p.word), None)
+        if title_part is None:
+            title_part = next((p for p in fields if p.text_field == 'meaning' and p.meaning), None)
         return {
-            'entry': entry, 'title': title_part.word if title_part else f'Entry {entry.pk}',
+            'entry': entry, 'title': title_part.text_value[:120] if title_part else f'Entry {entry.pk}',
             'title_reference': bool(title_part and ((title_part.controlled_by_id or title_part.author_id) != user.pk
                                                    or entry.pk != selectable_entry_id)),
             'fields': [component(p) for p in fields],

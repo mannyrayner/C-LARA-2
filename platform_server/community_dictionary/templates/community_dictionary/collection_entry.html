@@ -1,7 +1,7 @@
 <article class="panel collection-entry" data-entry-id="{{ card.entry.pk }}" aria-labelledby="collection-entry-{{ card.entry.pk }}">
   <div class="section-heading">
-    <div><p class="eyebrow">{{ card.entry.dictionary.name }} · Entry {{ card.entry.pk }}</p><h2 id="collection-entry-{{ card.entry.pk }}" dir="auto" {% if card.title_reference %}class="reference-title"{% endif %}>{{ card.title }}</h2></div>
-    {% if card.can_open %}<a href="{% url 'community_dictionary:entry' card.entry.dictionary_id card.entry.pk %}">{% if mode == 'private' %}Open private entry{% else %}Open entry{% endif %} →</a>{% endif %}
+    <div><p class="eyebrow">{% if card.entry.dictionary.personal %}Saved material{% else %}{{ card.entry.dictionary.name }} · Entry {{ card.entry.pk }}{% endif %}</p><h2 id="collection-entry-{{ card.entry.pk }}" dir="auto" {% if card.title_reference %}class="reference-title"{% endif %}>{{ card.title }}</h2></div>
+    {% if card.can_open %}<a href="{% url 'community_dictionary:entry' card.entry.dictionary_id card.entry.pk %}">Open entry →</a>{% endif %}
   </div>
   {% if card.restricted %}<p class="help">Only your contributions are shown. Other people's material is unavailable because you cannot currently open this shared entry.</p>{% endif %}
   {% if card.source_entry %}<p class="help">For context, this card also shows material still in the <a href="{% url 'community_dictionary:entry' card.source_entry.dictionary_id card.source_entry.pk %}">shared entry</a>. It is for reference only and is not part of your private collection.</p>{% endif %}

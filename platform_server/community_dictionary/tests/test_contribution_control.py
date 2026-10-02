@@ -32,10 +32,18 @@ class ContributionControlTests(TestCase):
         entry.refresh_from_db()
 
     def mine(self, **query):
-        return self.client.get(reverse('community_dictionary:mine'), query)
+        return self.client.get(self.url('my-content'), query)
 
     def withdraw_url(self):
         return reverse('community_dictionary:withdraw')
+
+    def withdraw_all_request(self):
+        from django.contrib.auth import get_user_model
+        from community_dictionary.participation import state_for
+        user = get_user_model().objects.get(pk=self.client.session['_auth_user_id'])
+        state = state_for(user, self.dictionary)
+        return self.client.post(self.url('withdraw-content'), {'confirm': 'yes', 'revision': state.revision,
+            'successor': self.member.pk if user == self.owner else ''})
 
     def inactive(self, member=None):
         member = member or self.member
@@ -97,14 +105,14 @@ class ContributionControlTests(TestCase):
         picture_part = entry.contributions.get(kind='image')
         self.inactive()
         self.client.force_login(self.member)
-        for name, args in [('dictionary', []), ('entry', [entry.pk]), ('people', []), ('media', [picture_part.pk]), ('export', [])]:
+        for name, args in [('entry', [entry.pk]), ('people', []), ('media', [picture_part.pk]), ('export', [])]:
             self.assertEqual(self.client.get(self.url(name, *args)).status_code, 404)
         self.assertContains(self.mine(), 'PRIVATE-TRANSLATION')
-        response = self.client.post(self.withdraw_url(), {'scope': 'all', 'dictionary': self.dictionary.pk, 'kind': 'text'})
+        response = self.withdraw_all_request()
         self.assertEqual(response.status_code, 302)
         entry.refresh_from_db()
         self.assertEqual(entry.meaning, '')
-        self.assertTrue(entry.contributions.filter(kind='image').exists())
+        self.assertFalse(entry.contributions.filter(kind='image').exists())
         self.assertContains(self.mine(view='private'), 'PRIVATE-TRANSLATION')
         self.assertEqual(self.client.post(self.url('join')).status_code, 404)
 
@@ -113,7 +121,7 @@ class ContributionControlTests(TestCase):
         self.accept_pending(entry)
         image = entry.contributions.get(kind='image')
         text = entry.current_meaning
-        self.client.post(self.withdraw_url(), {'scope': 'all', 'dictionary': self.dictionary.pk})
+        self.withdraw_all_request()
         image.refresh_from_db()
         self.assertTrue(image.entry.dictionary.personal)
         self.client.force_login(self.owner)
@@ -135,22 +143,11 @@ class ContributionControlTests(TestCase):
         self.post('record-audio', {'audio': recording(), 'consent': 'on', 'publish_now': 'on'}, entry.pk)
         audio = entry.contributions.get(kind='audio')
         self.client.force_login(self.member)
-        self.client.post(self.withdraw_url(), {'scope': 'all', 'dictionary': self.dictionary.pk, 'kind': 'image'})
+        self.withdraw_all_request()
         entry.refresh_from_db()
         self.assertEqual(entry.word, 'soffa')
         self.assertEqual(entry.contributions.get(kind='audio'), audio)
         self.assertIsNone(entry.selected_image_id)
-
-    def test_bulk_withdrawal_cannot_take_someone_elses_material(self):
-        entry = self.create_entry()
-        self.accept_pending(entry)
-        self.client.force_login(self.owner)
-        self.edit(entry, word='soffa')
-        entry.refresh_from_db()
-        self.client.force_login(self.member)
-        self.assertEqual(self.client.post(self.withdraw_url(), {'contributions': [entry.current_text_id]}).status_code, 404)
-        entry.refresh_from_db()
-        self.assertEqual(entry.word, 'soffa')
 
     def test_component_history_withdrawal_cannot_be_undone_by_restore(self):
         entry = self.create_entry(meaning='couch')
@@ -162,7 +159,7 @@ class ContributionControlTests(TestCase):
         newer = entry.current_meaning
         self.assertEqual(newer.previous_revision_id, old.pk)
         self.client.force_login(self.member)
-        self.client.post(self.withdraw_url(), {'contributions': [old.pk]})
+        self.withdraw_all_request()
         entry.refresh_from_db()
         self.assertEqual(entry.meaning, '')
         newer.refresh_from_db()
@@ -178,7 +175,7 @@ class ContributionControlTests(TestCase):
         entry = self.create_entry(meaning='sofa')
         m = self.inactive()
         self.client.force_login(self.member)
-        self.client.post(self.withdraw_url(), {'scope': 'all', 'dictionary': self.dictionary.pk})
+        self.withdraw_all_request()
         self.client.force_login(self.owner)
         self.assertEqual(self.client.post(self.url('membership-action'), {'action': 'reactivate', 'member_id': m.pk}).status_code, 302)
         self.client.force_login(self.member)
@@ -186,26 +183,9 @@ class ContributionControlTests(TestCase):
         self.assertFalse(entry.contributions.exists())
         self.assertContains(self.mine(view='private'), 'sofa')
 
-    def test_resharing_preserves_credit_and_is_idempotent_and_reviewed(self):
-        entry = self.create_entry(word='soffa', meaning='sofa')
-        self.accept_pending(entry)
-        parts = list(entry.contributions.all())
-        self.client.post(self.withdraw_url(), {'scope': 'all', 'dictionary': self.dictionary.pk})
-        data = {'contributions': [p.pk for p in parts], 'target_dictionary': self.dictionary.pk,
-                'confirm': 'yes', 'consent': 'on', 'submission_id': str(uuid.uuid4())}
-        first = self.client.post(reverse('community_dictionary:share'), data)
-        self.assertEqual(first.status_code, 302, first.content)
-        self.assertEqual(self.client.post(reverse('community_dictionary:share'), data).url, first.url)
-        copies = Contribution.objects.filter(shared_from__in=parts, entry__dictionary=self.dictionary)
-        self.assertEqual(copies.count(), len(parts))
-        self.assertTrue(all(c.author == self.member and c.status == 'pending' for c in copies))
-        target = copies.first().entry
-        self.accept_pending(target)
-        self.assertEqual((target.word, target.meaning), ('soffa', 'sofa'))
-
     def test_private_dictionary_cannot_be_shared_by_inviting_other_accounts(self):
         entry = self.create_entry()
-        self.client.post(self.withdraw_url(), {'scope': 'all', 'dictionary': self.dictionary.pk})
+        self.withdraw_all_request()
         private = Dictionary.objects.get(personal=True)
         Membership.objects.create(dictionary=private, user=self.owner, accepted=True, role='editor')
         self.client.force_login(self.owner)
@@ -266,7 +246,7 @@ class ContributionControlTests(TestCase):
         audio = AudioStudy.objects.create(dictionary=self.dictionary, entry=entry, user=self.third,
             expires_at=timezone.now()+timedelta(days=1), status='ready', source_text='katt', source_text_id=entry.current_text_id,
             source_text_version=entry.text_version, language='Swedish', language_code='sv', model='mock', voice='mock')
-        self.client.post(self.withdraw_url(), {'scope': 'all', 'dictionary': self.dictionary.pk})
+        self.withdraw_all_request()
         photo.refresh_from_db(); audio.refresh_from_db()
         self.assertEqual((photo.status, photo.result), ('discarded', {}))
         self.assertEqual((audio.status, audio.source_text), ('discarded', ''))
@@ -282,7 +262,7 @@ class ContributionControlTests(TestCase):
         self.assertEqual(part.author, self.owner)
         self.assertEqual(part.controlled_by, self.member)
         self.client.force_login(self.member)
-        self.assertEqual(self.client.post(self.withdraw_url(), {'contributions': [part.pk]}).status_code, 302)
+        self.assertEqual(self.withdraw_all_request().status_code, 302)
         part.refresh_from_db()
         self.assertEqual(part.entry.dictionary.owner, self.member)
 
@@ -299,7 +279,7 @@ class ContributionControlTests(TestCase):
         copy_entry = Entry.objects.create(dictionary=other, created_by=self.owner)
         copied = Contribution.objects.create(entry=copy_entry, author=self.member, controlled_by=self.member,
             kind='image', status='accepted', shared_from=root, file_path=root.file_path, mime_type=root.mime_type)
-        self.client.post(self.withdraw_url(), {'contributions': [root.pk]})
+        self.withdraw_all_request()
         copied.refresh_from_db()
         self.assertTrue(copied.entry.dictionary.personal)
         self.assertEqual(copied.entry.dictionary.owner, self.member)
@@ -312,7 +292,7 @@ class ContributionControlTests(TestCase):
         from community_dictionary.models import Request
         req = Request.objects.get()
         note = req.responses.get(kind='note')
-        self.client.post(self.withdraw_url(), {'contributions': [note.pk]})
+        self.withdraw_all_request()
         req.refresh_from_db()
         self.assertEqual(req.note, '')
         self.assertTrue(req.withdrawn)
