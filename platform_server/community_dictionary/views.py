@@ -12,9 +12,9 @@ from django.db import transaction
 from django.db.models import Q
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 
-from .forms import ContributionForm, DictionaryForm, DictionarySettingsForm, EntryAudioForm, LinkWordForm, NoteForm, RequestForm
+from .forms import ContributionForm, DictionaryForm, DictionarySettingsForm, EntryAudioForm, EntryPictureForm, LinkWordForm, NoteForm, RequestForm
 from .models import Contribution, Dictionary, Entry, ImageWordLink, Membership, Partner, Partnership, Participation, Request
 from .lexicon import linked_words, outdated_tts, valid_links, vocabulary, word_row
 from .permissions import entitled_dictionaries, dictionaries_for, get_dictionary, is_editor, is_coordinator, require_editor, require_owner
@@ -117,7 +117,7 @@ def dictionary(request, pk):
 
 
 @login_required
-def contribute(request, pk, entry_id=None, request_id=None, audio_only=False):
+def contribute(request, pk, entry_id=None, request_id=None, audio_only=False, picture_only=False):
     dictionary = get_dictionary(request.user, pk)
     entry = get_entry(dictionary, entry_id) if entry_id else None
     response_to = None
@@ -128,14 +128,16 @@ def contribute(request, pk, entry_id=None, request_id=None, audio_only=False):
         if request.method == 'GET' and response_to.progress in {'complete', 'withdrawn'}:
             return fail(request, 'This request is closed. You can still contribute directly to the entry.', 409)
         entry = get_entry(dictionary, response_to.entry_id)
-    editing = bool(entry and request.GET.get('wording') == '1' and not response_to and not audio_only)
+    editing = bool(entry and request.GET.get('wording') == '1' and not response_to and not audio_only and not picture_only)
     initial = {'publish_now': is_editor(request.user, dictionary), 'base_version': entry.text_version if entry else 0}
     if entry:
         from .text import field_snapshot
         initial['text_snapshot'] = signing.dumps({'entry': entry.pk, 'fields': field_snapshot(entry)}, salt='community-text-fields')
     if editing:
         initial.update(word=entry.word, meaning=entry.meaning, category=entry.category, edit_text=True)
-    if audio_only:
+    if picture_only:
+        form = EntryPictureForm(request.POST or None, request.FILES or None, initial=initial)
+    elif audio_only:
         form = EntryAudioForm(request.POST or None, request.FILES or None, initial=initial)
     else:
         form = ContributionForm(request.POST or None, request.FILES or None, initial=initial, dictionary=dictionary, user=request.user)
@@ -155,8 +157,9 @@ def contribute(request, pk, entry_id=None, request_id=None, audio_only=False):
             return entry_url(target)
         scope = f'contribute:{entry.pk if entry else 0}:{request_id or 0}'
         return perform(request, dictionary, scope, create)
-    template = 'community_dictionary/record_audio.html' if audio_only else 'community_dictionary/contribute.html'
-    image = summary(entry, dictionary)['image'] if audio_only else None
+    template = ('community_dictionary/add_picture.html' if picture_only else
+        'community_dictionary/record_audio.html' if audio_only else 'community_dictionary/contribute.html')
+    image = summary(entry, dictionary)['image'] if audio_only or picture_only else None
     return render(request, template, context(request, dictionary, entry=entry, image=image, response_to=response_to, editing=editing, form=form))
 
 
@@ -357,6 +360,33 @@ def member_users(dictionary):
 
 
 @login_required
+@require_http_methods(['GET', 'POST'])
+@transaction.atomic
+def dictionary_settings(request, pk):
+    if request.method == 'POST':
+        get_object_or_404(Dictionary.objects.select_for_update(), pk=pk)
+    dictionary = get_dictionary(request.user, pk)
+    require_editor(request.user, dictionary)
+    form = DictionarySettingsForm(instance=dictionary)
+    if request.method == 'POST':
+        require_owner(request.user, dictionary)
+        form = DictionarySettingsForm(request.POST, instance=dictionary)
+        if form.is_valid():
+            if 'image_generation_enabled' in form.changed_data:
+                dictionary.image_generation_revision += 1
+                from .image_generation import discard_studies
+                from .models import ImageStudy
+                discard_studies(ImageStudy.objects.filter(dictionary=dictionary, status__in=['processing', 'ready']))
+            form.save()
+            event(dictionary, request.user, 'dictionary_settings')
+            messages.success(request, 'Dictionary settings saved.')
+            return redirect('community_dictionary:settings', pk=pk)
+        # Bound form values survive, but style controls reflect saved policy.
+        dictionary.refresh_from_db()
+    return render(request, 'community_dictionary/settings.html', context(request, dictionary, settings_form=form))
+
+
+@login_required
 @transaction.atomic
 def people(request, pk):
     if request.method == 'POST':
@@ -364,17 +394,11 @@ def people(request, pk):
     dictionary = get_dictionary(request.user, pk)
     if dictionary.personal:
         raise Http404
-    settings_form = DictionarySettingsForm(instance=dictionary)
     if request.method == 'POST':
         action = request.POST.get('action')
         if action == 'settings':
-            require_owner(request.user, dictionary)
-            settings_form = DictionarySettingsForm(request.POST, instance=dictionary)
-            if not settings_form.is_valid():
-                return fail(request, settings_form.errors.as_text())
-            settings_form.save()
-            event(dictionary, request.user, 'dictionary_settings')
-            messages.success(request, 'Dictionary settings saved.')
+            # Keep forms opened before this update working, with the same checks.
+            return dictionary_settings(request, pk)
         elif action == 'invite':
             require_owner(request.user, dictionary)
             user = get_user_model().objects.filter(username=request.POST.get('username', '').strip(), is_active=True).first()
@@ -445,7 +469,7 @@ def people(request, pk):
     withdrawn_users = set(Participation.objects.filter(dictionary=dictionary, withdrawn=True).values_list('user_id', flat=True))
     for member in memberships:
         member.content_withdrawn = member.user_id in withdrawn_users
-    return render(request, 'community_dictionary/people.html', context(request, dictionary, memberships=memberships, people=member_users(dictionary), invite_accounts=invite_accounts, group_rows=group_rows, settings_form=settings_form, decisions=dictionary.membership_decisions.select_related('member__user', 'proposed_by', 'approved_by')[:30]))
+    return render(request, 'community_dictionary/people.html', context(request, dictionary, memberships=memberships, people=member_users(dictionary), invite_accounts=invite_accounts, group_rows=group_rows, decisions=dictionary.membership_decisions.select_related('member__user', 'proposed_by', 'approved_by')[:30]))
 
 
 @login_required
@@ -536,6 +560,8 @@ def export_dictionary(request, pk):
                     fields['collection_source'] = None
                 elif row['model'] == 'community_dictionary.dictionary':
                     fields['collection_source'] = None
+                    if fields.get('image_style') not in exported_parts:
+                        fields['image_style'] = None
             archive.writestr('records.json', json.dumps(records, ensure_ascii=False, indent=2))
             archive.writestr('README.txt', 'Portable dictionary export. records.json contains Django-labelled records and original IDs; manifest.json maps contributor IDs to usernames. media/ paths match contribution file_path fields. Additional picture-to-word links are included as community_dictionary.imagewordlink records; original picture-to-word associations follow the picture contribution’s entry. Credentials and submission receipts are excluded. This is an interchange export, not a full server backup. Use database plus private-media backups for operational restoration.\n')
             written = set()

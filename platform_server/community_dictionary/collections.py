@@ -141,6 +141,9 @@ def withdraw(user, ids, *, moderator_dictionary=None, participation=None):
         ImageWordLink.objects.filter(image_id__in=moving_ids).delete()
         Request.objects.filter(completed_with_id__in=moving_ids).update(completed_with=None)
         # Private AI previews can contain a second copy of withdrawn media/text.
+        from .image_generation import discard_studies
+        from .models import ImageStudy
+        discard_studies(ImageStudy.objects.filter(source_style_id__in=moving_ids))
         for study in PhotoStudy.objects.select_for_update().filter(source_image_id__in=moved_media_ids).exclude(status='discarded'):
             path = study.file_path
             study.status, study.file_path, study.result = 'discarded', '', {}

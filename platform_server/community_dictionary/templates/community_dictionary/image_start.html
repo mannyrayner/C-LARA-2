@@ -1,0 +1,30 @@
+{% extends 'community_dictionary/base.html' %}{% load static %}
+{% block title %}{% if style_sample %}Dictionary image style{% else %}Generate a picture{% endif %}{% endblock %}
+{% block content %}
+<p class="eyebrow">{{ dictionary.name }}</p>
+<h1>{% if style_sample %}Dictionary image style{% else %}Generate a picture{% endif %}</h1>
+{% if entry %}<p>For <strong dir="auto">{{ entry.title }}</strong>. Describe its intended meaning below; the entry’s text and existing pictures are not sent automatically.</p>{% endif %}
+{% if style %}{% if style_sample %}<section class="panel"><h2>Approved style</h2>{% else %}<details class="panel"><summary>Approved style — view sample and description</summary>{% endif %}
+<img class="candidate-image" src="{% url 'community_dictionary:media' dictionary.pk style.pk %}" alt="Approved style sample">
+<p dir="auto">{{ style.body|linebreaksbr }}</p><p class="credit">AI-generated sample · approved by {{ style.author.username }}</p>
+{% if not style_sample %}<p><a href="{% url 'community_dictionary:image-style' dictionary.pk %}">View or change the dictionary style</a></p>{% endif %}
+{% if style_sample %}</section>{% else %}</details>{% endif %}{% endif %}
+{% if style_sample %}<p>{% if style %}To try a different style, describe it and generate a new sample below. The current style stays in use until you approve its replacement.{% else %}Describe a shared visual style and create a sample. Check and approve it before generating pictures for entries.{% endif %}</p>
+<p class="help">Pictures will use these style instructions; their appearance may still vary. The sample and style description are your contributions. Withdrawing them also withdraws pictures that depend on that style until you restore it.</p>{% endif %}
+{% if setup_error %}<div class="notice">{{ setup_error }}{% if not style_sample and not style %} <a href="{% url 'community_dictionary:image-style' dictionary.pk %}">Set up the image style</a>.{% endif %}</div>
+{% else %}<section class="panel">
+<p><strong>OpenAI · {{ model }} · high quality</strong><br>One square picture per request. Allow a few minutes.</p>
+<p>{% if personal %}Paid through your OpenAI account.{% elif charge_credits %}Paid from your C-LARA credit balance.{% else %}Paid by the server operator.{% endif %} Budget estimate: <strong>US${{ allowance }}</strong> per preview; actual cost varies.</p>
+<details><summary>What is sent and how costs work</summary><p>Only the picture description you type and the style description are sent, with instructions to make a clear illustration without labels. No photographs, recordings, dictionary history or sample image are sent. OpenAI’s retention rules apply.</p>
+<p>Standard rates used here: US$5 per million text input tokens and US$30 per million image output tokens. The budget estimate is a planning allowance, not a provider price guarantee or spending cap. Actual returned usage is recorded. Failed, interrupted or discarded requests may still cost money. Limit: {{ limit }} attempts per 24 hours per account and per dictionary, including style samples.</p></details>
+<form method="post" class="stack" data-image-generate>{% csrf_token %}
+<input type="hidden" name="submission_id" value="{{ submission_id }}">
+{{ form.as_p }}
+{% if not style_sample %}<p class="help">The approved style description shown above is included with your description.</p>{% endif %}
+<button type="submit">{% if style_sample %}Generate style sample{% else %}Generate picture preview{% endif %}</button>
+<p role="status" data-image-status></p></form>
+</section>{% endif %}
+{% if recent %}<section class="panel"><h2>Your recent attempts</h2><p class="help">If a connection was interrupted, check the existing attempt before generating again.</p><ul>{% for attempt in recent %}<li><a href="{% url 'community_dictionary:image-study' dictionary.pk attempt.pk %}">{{ attempt.created_at|date:'j M, H:i' }} · {{ attempt.subject|truncatechars:60 }} · {{ attempt.get_status_display }}</a></li>{% endfor %}</ul></section>{% endif %}
+<p>{% if entry %}<a href="{% url 'community_dictionary:entry' dictionary.pk entry.pk %}">Back to entry</a>{% else %}<a href="{% url 'community_dictionary:dictionary' dictionary.pk %}">Back to dictionary</a>{% endif %}</p>
+<script src="{% static 'community_dictionary/image_generation.js' %}?v=1" defer></script>
+{% endblock %}

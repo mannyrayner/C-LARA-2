@@ -7,6 +7,6 @@
   {% if item.part.kind == 'text' %}<p class="component-value" dir="auto">{{ item.part.text_value|default:'(Empty component)'|linebreaksbr }}</p>{% endif %}
   {% if item.part.body %}<p dir="auto">{{ item.part.body|linebreaksbr }}</p>{% endif %}
   {% if item.part.label %}<p dir="auto">{{ item.part.label }}</p>{% endif %}
-  {% if item.part.provenance.origin == 'synthetic' %}<p class="help">AI-generated voice · {{ item.part.provenance.language }} · Spoken text: <span dir="auto">{{ item.part.provenance.source_text }}</span>{% if item.part.earlier_audio %}<br>Earlier or unconfirmed wording — kept in history.{% endif %}</p>{% endif %}
+  {% if item.part.provenance.origin == 'generated' %}<p class="badge">AI-generated picture · {{ item.part.provenance.model }}</p>{% endif %}{% if item.part.provenance.origin == 'synthetic' %}<p class="help">AI-generated voice · {{ item.part.provenance.language }} · Spoken text: <span dir="auto">{{ item.part.provenance.source_text }}</span>{% if item.part.earlier_audio %}<br>Earlier or unconfirmed wording — kept in history.{% endif %}</p>{% endif %}
   <p class="credit">Contributor: {{ item.part.controlled_by.username|default:item.part.author.username }}{% if item.part.controlled_by_id and item.part.author_id != item.part.controlled_by_id %} · Revision by {{ item.part.author.username }}{% endif %}<br>{{ item.part.created_at|date:'j M Y, H:i' }}</p>
 </div>

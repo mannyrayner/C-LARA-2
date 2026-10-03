@@ -1,5 +1,17 @@
 # Community dictionary development experiment
 
+Latest: Manny reports successful laptop image-generation use. The
+[Settings/photo follow-up](../../docs/howto/community-settings-and-photos.md) addresses
+configuration discovery and adding manual pictures after words. 189 app tests
+and a Chromium rehearsal at 320/390/1280px pass; follow-up human/AWS acceptance
+remains pending.
+
+Latest prepared feature: [optional AI pictures, 3 October](image-generation-2026-10-03.md).
+Shared-style approval and entry-image previews integrate with contribution
+provenance/withdrawal. Provider responses are simulated in verification;
+systematic image-quality evaluation and AWS deployment remain pending; Manny has
+subsequently supplied a broad successful laptop report.
+
 Latest: [dictionary-wide participation, 2 October](participation-2026-10-02.md).
 Manny's successful use of the prior shortcut exposed excessive conceptual complexity.
 The replacement has 156 passing tests and a Chromium rehearsal. Manny now reports

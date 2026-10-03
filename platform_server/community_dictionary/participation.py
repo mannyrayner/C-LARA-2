@@ -94,6 +94,9 @@ def withdraw_all(user, dictionary_id, expected_revision, successor_id=None):
             event(dictionary, user, 'archive_dictionary', detail='Owner withdrew; no active successor')
     ids = list(content_for(user, dictionary).values_list('pk', flat=True))
     count = withdraw(user, ids, participation=state) if ids else 0
+    from .image_generation import discard_studies
+    from .models import ImageStudy
+    discard_studies(ImageStudy.objects.filter(dictionary=dictionary, user=user))
     _finish(state, True)
     event(dictionary, user, 'withdraw_all', detail=f'{count} contributions retained privately')
     return count

@@ -3,9 +3,17 @@ from django.contrib.auth import views as auth_views
 from projects.authentication_forms import LoginForm
 
 from . import audio_views, photo_views, views, lexicon_views, collection_views, participation_views
+from . import image_views
 
 app_name = 'community_dictionary'
 urlpatterns = [
+    path('<int:pk>/settings/', views.dictionary_settings, name='settings'),
+    path('<int:pk>/entries/<int:entry_id>/picture/', views.contribute, {'picture_only': True}, name='add-picture'),
+    path('<int:pk>/image-style/', image_views.start, name='image-style'),
+    path('<int:pk>/entries/<int:entry_id>/generate-picture/', image_views.start, name='image-start'),
+    path('<int:pk>/image-preview/<uuid:study_id>/', image_views.detail, name='image-study'),
+    path('<int:pk>/image-preview/<uuid:study_id>/media/', image_views.media, name='image-media'),
+    path('<int:pk>/image-preview/<uuid:study_id>/action/', image_views.action, name='image-action'),
     path('<int:pk>/my-content/', participation_views.my_content, name='my-content'),
     path('<int:pk>/withdraw-content/', participation_views.withdraw_content, name='withdraw-content'),
     path('<int:pk>/restore-content/', participation_views.restore_content, name='restore-content'),

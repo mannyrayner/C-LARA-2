@@ -1,4 +1,5 @@
 """Entry context must aid recognition without granting custody or extra access."""
+from contextlib import closing
 from html.parser import HTMLParser
 
 from django.test import TestCase
@@ -59,7 +60,10 @@ class ContributionDisplayTests(TestCase):
         self.assert_readonly(response, own)
         audio = entry.contributions.get(kind='audio')
         self.assertContains(response, self.url('media', audio.pk))
-        self.assertEqual(self.client.get(self.url('media', audio.pk)).status_code, 200)
+        # A status-only check does not consume/close a streaming response.
+        # Release its file before TemporaryDirectory cleanup on Windows.
+        with closing(self.client.get(self.url('media', audio.pk))) as media_response:
+            self.assertEqual(media_response.status_code, 200)
         # Context cannot be turned into a withdrawal by editing the submitted IDs.
         url = reverse('community_dictionary:withdraw')
         self.assertEqual(self.client.post(url, {'contributions': [audio.pk]}).status_code, 409)

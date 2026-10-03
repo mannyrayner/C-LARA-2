@@ -1,5 +1,15 @@
 # Community dictionary app
 
+Latest UX follow-up: [Settings and text-first photos](../../docs/howto/community-settings-and-photos.md).
+Manny reports the image-generation increment works on his laptop; configuration
+now has its own tab and entries explicitly offer camera/upload. 189 app tests
+and the updated browser rehearsal pass; AWS deployment remains pending.
+
+Preceding increment: [optional AI pictures](../../docs/howto/community-image-generation.md),
+3 October. Off by default; editors approve a shared style, preview a generated
+picture, then save it as an ordinary contribution. Private media, provenance and
+withdrawal dependencies are preserved. A broad human laptop success report is recorded; systematic quality and AWS trials remain pending.
+
 Current withdrawal UX: [dictionary-wide participation](../../docs/howto/community-participation.md).
 A member can view, withdraw all content with confirmation, or restore all content
 and rejoin. Retained material is read-only; shared browsing and contribution are
@@ -53,7 +63,7 @@ writes; PostgreSQL provides row locks. High-contention/load testing remains futu
 The export excludes submission receipts and private learning drafts, and includes
 contributor-ID/username mapping. Operational backups need the shared user database
 and private files too. Future TTS/image services should enter through an explicit
-adapter and create reviewable contributions with provenance. Image generation and a practice system remain deferred. The 28 September patch adds optional single-object
+adapter and create reviewable contributions with provenance. The optional image-generation implementation is described above; a practice system remains deferred. The 28 September patch adds optional single-object
 photo analysis, confirmation, a device-voice preview and saving as reviewable contributions.
 See [photo learning](../../docs/howto/community-photo-learning.md) for setup and trial
 boundaries. Manny reports a successful live laptop horse-identification trial on

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "workspace_revision": 40,
+  "workspace_revision": 39,
   "as_of": "2026-10-03",
   "assessed_commit_sha": "02ba3cfa6c3bce1d4a7d3dfd58949bf80a58c833",
   "approved_proposal_id": null,
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "Manny reports successful laptop use of optional image generation and asks for two usability adjustments before check-in/AWS: a Settings tab and clearer manual photo input after words. The prepared follow-up moves configuration/style into Settings and gives every entry a direct Add a photo route, preserving AI-independent camera/upload, attribution and review. 189 app tests and a simulated-provider browser rehearsal at 320/390/1280px pass. This closes the broad laptop-acceptance question for the preceding image-generation version; human acceptance of the UX follow-up and AWS/physical-phone deployment of image generation remain pending. Systematic image quality/cost and Sophie's community feedback are still open. Photo-to-illustration remains later work, and no autonomous-maintenance result is inferred.",
+  "current_focus_summary": "The participation model has human-reported laptop and AWS acceptance. Manny also confirms laptop-to-AWS login after the username-input repair; Axel's physical iPhone confirmation remains pending. Optional image generation is now implemented and locally verified: owner opt-in (off by default), editor-approved shared style/sample, single private previews, explicit saving/review, and provenance-linked withdrawal. 181 app tests and a simulated-provider Chromium phone/desktop rehearsal pass. Two existing C-LARA page-image failures reproduce on the unchanged base. No paid generation, real illustration-quality trial, feature deployment or new physical-phone acceptance is claimed. Sophie's camera-to-illustration proposal remains explicitly later work. Next is a small laptop/live-provider trial before server rollout, preserving the minimal ordinary-member interface and operational-autonomy priority.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -691,18 +691,6 @@
         "experiments/community_dictionary/image-generation-2026-10-03.md",
         "platform_server/community_dictionary/tests/test_image_generation.py"
       ]
-    },
-    {
-      "id": "OBS-0064",
-      "observed_at": "2026-10-03",
-      "confidence": "high",
-      "summary": "Manny reports that optional image generation works in laptop testing and requests Settings navigation plus access to manual photos after entering words. Code inspection finds the manual route under Add a contribution, with no AI-based upload restriction. The prepared follow-up adds a Settings page with existing role boundaries and an explicit Add a photo flow for existing entries. 189 app tests pass; Chromium checks text-first camera/upload with AI off/on, preservation of selected media, member controls and 320/390/1280px layouts. No schema change, paid call for this repair, follow-up human acceptance or AWS deployment is claimed.",
-      "evidence": [
-        "docs/howto/community-settings-and-photos.md",
-        "experiments/community_dictionary/image-generation-2026-10-03.md",
-        "platform_server/community_dictionary/tests/test_settings_and_pictures.py",
-        "experiments/community_dictionary/image_browser_workflow.cjs"
-      ]
     }
   ],
   "assessments": [
@@ -879,7 +867,7 @@
     },
     {
       "id": "ASM-0011",
-      "summary": "Image generation now has broad human laptop acceptance. The two reported usability issues fit the agreed policy of small user-driven changes: move configuration into Settings and expose ordinary camera/upload beside generation. The follow-up is locally verified and keeps permission, review and withdrawal rules; it merits a short human recheck before check-in/AWS. Systematic quality/cost, community suitability and physical-phone behaviour remain open. This iteration supplies useful application progress but does not establish lower long-term operational burden or autonomous maintenance.",
+      "summary": "The simpler participation model has laptop and human-reported AWS acceptance. Optional image generation, the next bounded user-requested addition, is implemented and locally verified while preserving an off-by-default ordinary-member interface. Live provider access, difficult meanings, shared-style consistency and dependency-withdrawal comprehension remain to be evaluated. This is prepared software, not a production result. The recent deployment required substantial human intervention; corrected runbooks and local tests do not demonstrate autonomous maintenance or lower long-term operational burden.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-2",
@@ -928,12 +916,11 @@
         "OBS-0060",
         "OBS-0061",
         "OBS-0062",
-        "OBS-0063",
-        "OBS-0064"
+        "OBS-0063"
       ],
-      "urgency": "brief_ux_acceptance_before_checkin_and_aws",
+      "urgency": "small_live_trial_before_feature_deployment",
       "risk": "medium",
-      "progress": "image_generation_laptop_accepted_ux_followup_prepared",
+      "progress": "optional_image_generation_prepared_locally_verified",
       "confidence": "medium"
     },
     {
@@ -1018,7 +1005,7 @@
     },
     {
       "id": "UNC-0008",
-      "summary": "Manny reports successful laptop image-generation use, but no measured output-quality/cost series, new physical-phone trial or AWS image-generation deployment is recorded. The Settings/manual-photo follow-up has automated/browser evidence and awaits human acceptance. Community approval of style dependencies and provider retention remains separate. Existing production security/backup-policy, exact deployed SHA, broad device coverage and long-run reliability questions remain open. Axel's original iPhone casing behaviour is still awaiting confirmation. Two old C-LARA page-image test expectations previously failed independently of this increment.",
+      "summary": "AWS participation through 0009 and a withdrawal/restore trial have human acceptance; broader community/device coverage, exact deployed SHA, full backup restore rehearsal and sustained reliability remain open. Laptop-to-AWS login after the username fix works; Axel's iPhone behaviour is not yet confirmed fixed. Image generation has mocked-provider/browser evidence only: live model access, quality, cultural appropriateness, actual cost, phone usability and shared-style withdrawal need a bounded human trial. Provider retention is distinct from local withdrawal. Two existing C-LARA page-image regression expectations fail independently of this increment.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1131,7 +1118,7 @@
     },
     {
       "id": "ACT-0010",
-      "summary": "Apply the small Settings/photo follow-up to the tested laptop; verify Settings, create a text-only entry and add a camera/uploaded picture. After acceptance, commit/push the accumulated image-generation, Windows-test-cleanup and UX changes, then deploy using the corrected runbook with migration 0010 and static collection. Test the combined workflow on a phone and obtain Sophie's image-quality/community feedback. Preserve the earlier successful backup; do not repeat the 0009 reset. Keep photo-to-illustration deferred and measure human operational effort separately.",
+      "summary": "Apply the optional-image patch to the tested laptop baseline, migrate forward to 0010, enable one trial dictionary, approve a style and generate a few concrete/difficult subjects. Evaluate fidelity, cost, style consistency and UI clarity, including preserving an existing photo and a disposable-dictionary dependency-withdrawal trial. Then check in/deploy via the corrected runbook and test on a phone. Obtain Axel's iPhone feedback separately. Keep photo-to-illustration and candidate ranking deferred; do not repeat migration 0009 or treat this as autonomous operations evidence.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1232,13 +1219,14 @@
     "status": "autonomous_project_manager_update",
     "authorized_by": "Assistant following AGENTS.md",
     "authorized_at": "2026-10-03",
-    "authorization_basis": "Manny reports laptop success and requests bounded navigation/manual-photo changes before check-in and deployment; AGENTS.md authorises derived-state reflection.",
-    "comments": "The current user message is preserved verbatim. The assessed SHA remains the assembled local patch baseline, not a verified deployed commit. Historical states/intentions are unchanged; no AWS action or paid request was made."
+    "authorization_basis": "Manny requests this first cut and places photo-to-illustration in a later iteration; AGENTS.md authorises reflecting material implementation evidence in derived state.",
+    "comments": "Human inputs archived verbatim; intentions/history unchanged. Assessed SHA is a local assembled delivered-patch baseline, not a verified remote/deployed commit. No production action or paid provider call made."
   },
   "changes_from_previous_revision": {
-    "summary": "Recorded human laptop acceptance of image generation and prepared the requested Settings/manual-photo follow-up; deployment remains pending.",
+    "summary": "Recorded laptop-to-AWS login success and the locally verified optional-image increment with a pending live trial; photo-to-illustration remains later work.",
     "added_item_ids": [
-      "OBS-0064"
+      "OBS-0062",
+      "OBS-0063"
     ],
     "revised_item_ids": [
       "ASM-0011",
@@ -1307,8 +1295,6 @@
       "OBS-0059",
       "OBS-0060",
       "OBS-0061",
-      "OBS-0062",
-      "OBS-0063",
       "ASM-0001",
       "ASM-0002",
       "ASM-0003",

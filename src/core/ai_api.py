@@ -449,6 +449,7 @@ class OpenAIClient:
         size: str = "1024x1024",
         quality: str = "medium",
         output_format: str = "png",
+        require_inline: bool = False,
     ) -> dict[str, Any]:
         """Generate an image and return decoded bytes plus provider metadata."""
 
@@ -469,8 +470,12 @@ class OpenAIClient:
         )
         image_bytes: bytes | None = None
         if b64_json:
-            image_bytes = base64.b64decode(b64_json)
+            if require_inline and len(b64_json) > 22 * 1024 * 1024:
+                raise ValueError("Image response is too large")
+            image_bytes = base64.b64decode(b64_json, validate=require_inline)
         else:
+            if require_inline:
+                raise ValueError("Inline image data is required")
             url = getattr(first, "url", None) or (
                 first.get("url") if isinstance(first, dict) else None
             )

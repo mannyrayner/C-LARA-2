@@ -18,7 +18,7 @@ PLATFORM = ROOT / 'platform_server'
 PROBE = Path(__file__).with_name('browser_workflow.cjs')
 
 
-def main(workflow=PROBE):
+def main(workflow=PROBE, image_generation=False):
     output = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else ROOT / 'reports' / 'community-browser'
     output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='community-browser-') as temporary:
@@ -55,12 +55,42 @@ with wave.open(str(Path(os.environ['COMMUNITY_BROWSER_OUTPUT'])/'microphone-tone
     audio.setparams((1, 2, 48000, 0, 'NONE', 'not compressed'))
     audio.writeframes(b''.join(struct.pack('<h', int(6000 * math.sin(2 * math.pi * 440 * i / 48000))) for i in range(48000)))
 '''
+        if image_generation:
+            with settings.open('a') as stream:
+                stream.write('OPENAI_API_KEY = "local-fixture-not-real"\nCREDITS_ENABLED = False\n')
+            seed += '''
+from community_dictionary.models import Entry
+Entry.objects.create(dictionary=d, created_by=owner, word='tekanna', meaning='teapot')
+'''
         subprocess.run([sys.executable, '-c', seed], cwd=PLATFORM, env=env, check=True)
         # Refuse to attach the test to an unrelated service already using the port.
         with socket.socket() as probe:
             probe.bind(('127.0.0.1', 8765))
         with (output / 'server.log').open('w') as log:
-            server = subprocess.Popen([sys.executable, 'manage.py', 'runserver', '127.0.0.1:8765', '--noreload', '--settings', 'community_rehearsal_settings'], cwd=PLATFORM, env=env, stdout=log, stderr=log)
+            command = [sys.executable, 'manage.py', 'runserver', '127.0.0.1:8765', '--noreload', '--settings', 'community_rehearsal_settings']
+            if image_generation:
+                # Test-only process injection; no production backend switch or paid call.
+                command = [sys.executable, '-c', '''
+import django, io, time
+django.setup()
+from PIL import Image, ImageDraw
+from django.core.management import call_command
+from community_dictionary import image_generation as images
+def fixture(study, key):
+    time.sleep(.4)
+    picture=Image.new('RGB',(640,640),'#f5f4ee')
+    draw=ImageDraw.Draw(picture)
+    draw.ellipse((130,240,450,500),fill='#67958a')
+    draw.polygon([(425,315),(575,235),(480,415)],fill='#67958a')
+    draw.ellipse((75,295,205,450),outline='#67958a',width=26)
+    draw.rectangle((245,215,335,240),fill='#365e56')
+    draw.text((165,555),'SIMULATED PROVIDER RESPONSE',fill='#365e56')
+    out=io.BytesIO();picture.save(out,'JPEG')
+    return (out.getvalue(),'image/jpeg','.jpg'), {'prompt_tokens':100,'completion_tokens':2000,'total_tokens':2100}, ''
+images.generate=fixture
+call_command('runserver','127.0.0.1:8765',use_reloader=False)
+''']
+            server = subprocess.Popen(command, cwd=PLATFORM, env=env, stdout=log, stderr=log)
             try:
                 for _ in range(100):
                     if server.poll() is not None:

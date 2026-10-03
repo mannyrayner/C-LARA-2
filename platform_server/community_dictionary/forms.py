@@ -6,12 +6,13 @@ from .voices import VOICE_CHOICES
 
 
 class DictionaryForm(forms.ModelForm):
+    image_generation_enabled = forms.BooleanField(required=False, initial=False, label='Enable AI picture generation (OpenAI)', help_text='Owners and editors can approve a shared style and generate pictures from descriptions. Off by default. Each request needs permission to send its text to OpenAI and incurs API costs.')
     photo_ai_enabled = forms.BooleanField(required=False, initial=True, label='Enable Learn from a photo (OpenAI)', help_text='Members can choose to send a photo and the language names to OpenAI. Each request requires confirmation and incurs API costs. Uncheck if your community does not permit this processing.')
     tts_enabled = forms.BooleanField(required=False, initial=True, label='Enable saved spoken audio (OpenAI)', help_text='Members can generate synthetic audio from accepted words in supported languages, with confirmation and API costs. Human microphone recording works whether this is enabled or not.')
 
     class Meta:
         model = Dictionary
-        fields = ['name', 'language', 'explanation_language', 'photo_ai_enabled', 'tts_enabled']
+        fields = ['name', 'language', 'explanation_language', 'photo_ai_enabled', 'tts_enabled', 'image_generation_enabled']
         labels = {'language': 'Language we are collecting', 'explanation_language': 'Language for explanations (optional)'}
 
     def clean(self):
@@ -25,7 +26,7 @@ class DictionaryForm(forms.ModelForm):
 
 class DictionarySettingsForm(DictionaryForm):
     class Meta(DictionaryForm.Meta):
-        fields = ['name', 'language', 'explanation_language', 'text_direction', 'photo_ai_enabled', 'tts_enabled']
+        fields = ['name', 'language', 'explanation_language', 'text_direction', 'photo_ai_enabled', 'tts_enabled', 'image_generation_enabled']
 
 
 class PhotoStudyForm(forms.Form):
@@ -130,6 +131,17 @@ class LinkWordForm(forms.Form):
     def __init__(self, *args, dictionary, source_entry_id, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['word_entry'].queryset = dictionary.entries.filter(archived=False).exclude(word='').exclude(pk=source_entry_id).order_by('word', 'pk')
+
+
+class EntryPictureForm(UploadForm):
+    photo = forms.FileField(label='Picture')
+    label = forms.CharField(max_length=200, required=False, label='About this picture (optional)')
+    publish_now = forms.BooleanField(required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # This entry point only adds a picture; existing words/audio are untouched.
+        self.fields.pop('audio')
 
 
 class EntryAudioForm(UploadForm):

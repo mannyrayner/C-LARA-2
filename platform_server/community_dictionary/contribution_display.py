@@ -78,8 +78,9 @@ def entry_cards(entries, user, kind=''):
         title_part = next((p for p in fields if p.text_field == 'word' and p.word), None)
         if title_part is None:
             title_part = next((p for p in fields if p.text_field == 'meaning' and p.meaning), None)
+        is_style = any(p.provenance.get('role') == 'dictionary_style' for p in parts)
         return {
-            'entry': entry, 'title': title_part.text_value[:120] if title_part else f'Entry {entry.pk}',
+            'entry': entry, 'title': title_part.text_value[:120] if title_part else 'Dictionary image style' if is_style else f'Entry {entry.pk}',
             'title_reference': bool(title_part and ((title_part.controlled_by_id or title_part.author_id) != user.pk
                                                    or entry.pk != selectable_entry_id)),
             'fields': [component(p) for p in fields],

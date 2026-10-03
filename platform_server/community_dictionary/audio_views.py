@@ -67,7 +67,7 @@ def start(request, pk, entry_id):
     dictionary = get_dictionary(request.user, pk)
     entry = get_entry(dictionary, entry_id)
     if not dictionary.tts_enabled:
-        return fail(request, 'The dictionary owner can enable saved spoken audio under People → Dictionary settings.', 403)
+        return fail(request, 'The dictionary owner can enable saved spoken audio under Settings.', 403)
     config, setup_error = None, ''
     try:
         config = tts.configuration(request.user, dictionary)

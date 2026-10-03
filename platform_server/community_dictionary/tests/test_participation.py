@@ -1,3 +1,4 @@
+from contextlib import closing
 import io
 import uuid
 import zipfile
@@ -93,7 +94,9 @@ class ParticipationTests(TestCase):
                 response = getattr(self.client, method)(self.url(name, *args))
                 self.assertEqual(response.status_code, 404, (name, method, response.status_code))
         image.refresh_from_db()
-        self.assertEqual(self.client.get(reverse('community_dictionary:own-media', args=[image.pk])).status_code, 200)
+        # Close the unconsumed file response before temporary-media cleanup.
+        with closing(self.client.get(reverse('community_dictionary:own-media', args=[image.pk]))) as media_response:
+            self.assertEqual(media_response.status_code, 200)
         for name, args in [('dictionary', []), ('entry', [image.entry_id]), ('new', []), ('export', [])]:
             url = reverse('community_dictionary:'+name, args=[image.entry.dictionary_id, *args])
             self.assertEqual(self.client.get(url).status_code, 404)

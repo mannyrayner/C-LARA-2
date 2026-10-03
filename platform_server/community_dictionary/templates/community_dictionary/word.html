@@ -12,7 +12,7 @@
 <h2>Pictures for this word</h2>
 <div class="entry-grid">
   {% for picture in pictures %}<a class="entry-card" href="{% url 'community_dictionary:entry' dictionary.pk picture.entry_id %}?picture={{ picture.pk }}">
-    <div class="card-image"><img src="{% url 'community_dictionary:media' dictionary.pk picture.pk %}" alt="{{ entry.word }} — picture from {{ picture.entry.word|default:'a dictionary entry' }}" loading="lazy"></div>
+    {% if picture.provenance.origin == 'generated' %}<span class="badge">AI-generated picture</span>{% endif %}<div class="card-image"><img src="{% url 'community_dictionary:media' dictionary.pk picture.pk %}" alt="{{ entry.word }} — picture from {{ picture.entry.word|default:'a dictionary entry' }}" loading="lazy"></div>
     <div class="card-copy"><h3 dir="{{ dictionary.text_direction }}">{{ picture.entry.word|default:'Open picture' }}</h3></div>
   </a>{% empty %}<p class="empty">No accepted pictures are associated with this word yet.</p>{% endfor %}
 </div>

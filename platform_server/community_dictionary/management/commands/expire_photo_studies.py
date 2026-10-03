@@ -2,16 +2,17 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
-from community_dictionary.models import AudioStudy, PhotoStudy
+from community_dictionary.models import AudioStudy, ImageStudy, PhotoStudy
 from community_dictionary.storage import delete_file
 
 
 class Command(BaseCommand):
-    help = 'Delete expired private photo/audio drafts (run daily). Saved dictionary media is separate.'
+    help = 'Delete expired private photo/audio/generated-image drafts (run daily). Saved dictionary media is separate.'
 
     def handle(self, **options):
         self.expire(PhotoStudy, 'photo')
         self.expire(AudioStudy, 'audio')
+        self.expire(ImageStudy, 'generated image')
 
     def expire(self, model, name):
         count = 0

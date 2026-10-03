@@ -5,6 +5,18 @@ Discussion and implementation plan, 26 September 2026. Reviewed source:
 increment; it does not implement generation or an autonomous operator. The later
 26 September sentence-learning proposal below was reviewed against `6ad49ee`.
 
+## 3 October: optional image-generation first cut
+
+The [text-to-image implementation](../howto/community-image-generation.md) now
+provides owner enablement (off by default), editor-approved style descriptions
+and samples, private previews, reviewable saved pictures and withdrawal-linked
+provenance. It reuses the C-LARA image adapter. One high-quality candidate is
+generated per request; live quality/model access and deployment remain untested.
+Sophie’s suggested photo → understanding → illustration flow is explicitly a
+later iteration, as are multiple candidates and automated filtering. The simpler
+participation model has since received laptop and AWS acceptance. Earlier dated
+proposals below remain historical where superseded.
+
 ## 1 October: prerequisite contribution control
 
 The approved [contribution-control revision](../howto/community-contribution-control.md)
@@ -64,7 +76,7 @@ The human-media prototype is deployed, with positive laptop and initial phone
 reports. Its explanation Assistant now retrieves the updated trial evidence.
 The initial proposals below are historical requirements: saved TTS is now
 implemented in the 28 September entry/audio patch, with a broad human success report;
-image generation and a write-capable maintenance workflow remain absent. The platform's existing Assistant uses `codex exec --sandbox read-only`
+optional image generation is now implemented as described above; a write-capable maintenance workflow remains absent. The platform's existing Assistant uses `codex exec --sandbox read-only`
 in `src/core/project_understanding.py`; its prompt also prohibits mutation.
 That boundary remains in force. A future authorised execution service must
 enforce its own permissions rather than treating a request as permission to
@@ -157,7 +169,7 @@ The original proposal kept both operations disabled until enabled under that pol
 Manny's later 28 September usability request changes the implemented photo-analysis
 and saved-TTS creation defaults to visible, checked options with opt-outs. Existing
 disabled settings remain disabled and each external call still requires confirmation.
-AI image generation remains a proposal. Check permission
+AI image generation is now implemented with owner enablement off by default. Check permission
 again at job execution: revocation or membership removal between queuing and
 execution must prevent new outbound processing.
 

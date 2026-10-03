@@ -1,5 +1,22 @@
 # Community dictionary: setup and testing
 
+## Settings and photos — 3 October
+
+Manny reports successful laptop image-generation use. The [UX follow-up](community-settings-and-photos.md)
+puts configuration/style under Settings and adds explicit camera/upload controls
+to existing entries, including text-first entries. 189 tests and a controlled
+browser rehearsal pass. AWS deployment remains pending.
+
+## Optional AI pictures — 3 October
+
+The [image-generation first cut](community-image-generation.md) is implemented
+and has a broad successful laptop report from Manny. Owners explicitly enable it; editors approve a
+shared visual style, generate one picture from a description, preview and save.
+Saved pictures retain private storage, review and withdrawal/provenance rules.
+Migration 0010 is additive and leaves the feature off. It has not yet been
+reported deployed on AWS. Photo-to-illustration
+and automatic candidate filtering remain later iterations.
+
 ## Current contribution controls — 2 October
 
 The [dictionary-wide participation revision](community-participation.md) replaces

@@ -1,0 +1,17 @@
+{% extends 'community_dictionary/base.html' %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<p class="eyebrow">{{ dictionary.name }}</p><h1>Settings</h1>
+{% if owner %}
+<section class="panel"><h2>Dictionary settings</h2>
+<form method="post" class="stack">{% csrf_token %}{{ settings_form.as_p }}<button>Save settings</button></form>
+</section>
+{% else %}<p class="help">The dictionary owner manages its name, languages and AI options.</p>{% endif %}
+<section class="panel"><h2>Image style</h2>
+{% if dictionary.image_generation_enabled %}
+<p>Choose the shared style for AI-generated pictures.</p>
+<a class="button secondary" href="{% url 'community_dictionary:image-style' dictionary.pk %}">Set up or view image style</a>
+{% else %}<p>{% if owner %}Enable AI picture generation above and save to set up an image style.{% else %}The owner can enable AI picture generation here before you set up a style.{% endif %}</p>{% endif %}
+<p class="help">You can always take or upload your own pictures, whether AI generation is enabled or not.</p>
+</section>
+{% endblock %}

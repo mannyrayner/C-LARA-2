@@ -23,3 +23,7 @@
 /* Dictionary-wide participation controls must stay legible on a phone. */
 .dictionary-grid .dictionary-card{margin:0}.withdrawal-confirmation button.danger{background:var(--danger);border-color:var(--danger);color:white}
 @media(max-width:700px){.dictionary-grid{grid-template-columns:1fr}.dictionary-grid .actions{align-items:stretch}.dictionary-grid .actions form{width:100%}.dictionary-grid .actions button{width:100%}}
+
+.image-prompt{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px}
+
+.dictionary-nav{flex-wrap:wrap}.dictionary-nav a[aria-current="page"]{background:#edf3ec}.entry-picture-actions{margin-bottom:22px}

@@ -74,7 +74,7 @@ def finish_analysis(study, api_key):
 def start(request, pk, entry_id=None, image_id=None):
     dictionary = get_dictionary(request.user, pk)
     if not dictionary.photo_ai_enabled:
-        return fail(request, 'The dictionary owner can enable Learn from a photo under People → Dictionary settings.', 403)
+        return fail(request, 'The dictionary owner can enable Learn from a photo under Settings.', 403)
     source_entry = get_entry(dictionary, entry_id) if entry_id else None
     source_image = get_object_or_404(Contribution, pk=image_id, entry=source_entry,
         kind='image', status__in=['accepted', 'pending']) if source_entry else None

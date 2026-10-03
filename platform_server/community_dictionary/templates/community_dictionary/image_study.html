@@ -1,0 +1,18 @@
+{% extends 'community_dictionary/base.html' %}
+{% block title %}Your picture preview{% endblock %}{% block content %}
+<p class="eyebrow">{{ dictionary.name }}</p><h1>{% if study.kind == 'style' %}Your style sample{% else %}Your picture preview{% endif %}</h1>
+<section class="panel"><p dir="auto">{{ study.subject }}</p>
+{% if study.status == 'ready' %}<img class="entry-image" src="{% url 'community_dictionary:image-media' dictionary.pk study.pk %}" alt="AI-generated preview">
+<p class="help">AI-generated picture · {{ study.model }}. Private until saved.</p>
+{% if stale %}<p class="notice">The style, settings or membership changed. Return and generate a new preview before saving.</p>
+{% else %}<p>Check that the intended meaning, details and cultural context are right.</p>
+<form method="post" action="{% url 'community_dictionary:image-action' dictionary.pk study.pk %}" class="stack">{% csrf_token %}<input type="hidden" name="action" value="save">{{ form.as_p }}<button>{% if study.kind == 'style' %}Approve this style{% else %}Save picture to entry{% endif %}</button></form>{% endif %}
+{% elif study.status == 'processing' %}<p>{% if timed_out %}The request was interrupted or its result could not be recovered. It will not be sent again automatically and may still incur a provider charge.{% else %}Your picture is being generated. Check again in a moment.{% endif %}</p><a class="button secondary" href="">Check for the result</a>
+{% elif study.status == 'failed' %}<p>We couldn’t obtain a usable image. Check that your OpenAI account can use this model, or try another request. Your existing pictures are unchanged. An interrupted request may still incur a charge; this attempt will not be repeated automatically.</p>
+{% else %}<p>This preview was discarded or its permission changed.</p>{% endif %}
+{% if study.cost_usd != None %}<p class="help">API cost calculated from returned token usage: US${{ study.cost_usd }}. The provider invoice is authoritative.</p>{% else %}<p class="help">No provider usage is available yet; this does not mean the request was free.</p>{% endif %}
+{% if study.status != 'discarded' %}<details><summary>Generation details</summary><p dir="auto">{{ study.style_description|linebreaksbr }}</p><pre class="image-prompt">{{ study.prompt }}</pre></details>{% endif %}</section>
+{% if study.status != 'discarded' %}<form method="post" action="{% url 'community_dictionary:image-action' dictionary.pk study.pk %}">{% csrf_token %}<button class="secondary" name="action" value="discard">Discard preview</button></form>{% endif %}
+<p class="help">Private previews expire after 24 hours. Saved pictures remain in the dictionary.</p>
+<p>{% if study.kind == 'style' %}<a href="{% url 'community_dictionary:image-style' dictionary.pk %}">Try another style sample / back to style</a>{% elif study.entry_id %}<a href="{% url 'community_dictionary:image-start' dictionary.pk study.entry_id %}">Try another picture</a> · <a href="{% url 'community_dictionary:entry' dictionary.pk study.entry_id %}">Back to entry</a>{% else %}<a href="{% url 'community_dictionary:dictionary' dictionary.pk %}">Back to dictionary</a>{% endif %}</p>
+{% endblock %}
