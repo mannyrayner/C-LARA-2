@@ -1,7 +1,7 @@
 # Community Dictionaries: optional AI pictures
 
-First cut, 3 October 2026. Manny now reports successful laptop use; AWS
-deployment is still pending. The [Settings/photo follow-up](community-settings-and-photos.md)
+First cut, 3 October 2026. Manny now reports successful laptop and AWS use,
+including two photorealistic outputs he liked; broader quality feedback is pending. The [Settings/photo follow-up](community-settings-and-photos.md)
 addresses the two remaining discovery problems he identifies. No paid provider call or community quality trial was performed
 while building this patch. See the [verification record](../../experiments/community_dictionary/image-generation-2026-10-03.md).
 

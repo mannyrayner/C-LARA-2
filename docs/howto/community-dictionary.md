@@ -1,11 +1,27 @@
 # Community dictionary: setup and testing
 
+Latest: Manny reports the first practice update works and requests C-LARA-style
+[multiple-choice flashcards](community-practice-choices.md). Multiple choice is now the default
+for all six directions, with reveal mode retained. 215 app tests and a browser
+rehearsal pass; this follow-up awaits human acceptance. Practice AWS deployment
+remains pending.
+
+## Practice and image-generation deployment — 3 October
+
+The [Practise update](community-practice.md) adds six flashcard directions,
+picture crosswords and word searches from accepted shared content, with no AI
+calls, schema changes or saved exercise copies. 205 app tests and mobile-viewport
+browser checks pass; laptop acceptance of practice is the next step.
+Manny now reports the preceding image-generation/Settings release installed and
+working on AWS, with two photorealistic outputs he liked. See the
+[dated evidence](../../experiments/community_dictionary/practice-2026-10-03.md).
+
 ## Settings and photos — 3 October
 
 Manny reports successful laptop image-generation use. The [UX follow-up](community-settings-and-photos.md)
 puts configuration/style under Settings and adds explicit camera/upload controls
 to existing entries, including text-first entries. 189 tests and a controlled
-browser rehearsal pass. AWS deployment remains pending.
+browser rehearsal passed; Manny subsequently reports successful AWS deployment.
 
 ## Optional AI pictures — 3 October
 

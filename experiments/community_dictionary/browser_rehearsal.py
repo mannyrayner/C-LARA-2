@@ -18,7 +18,7 @@ PLATFORM = ROOT / 'platform_server'
 PROBE = Path(__file__).with_name('browser_workflow.cjs')
 
 
-def main(workflow=PROBE, image_generation=False):
+def main(workflow=PROBE, image_generation=False, practice=False):
     output = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else ROOT / 'reports' / 'community-browser'
     output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='community-browser-') as temporary:
@@ -61,6 +61,25 @@ with wave.open(str(Path(os.environ['COMMUNITY_BROWSER_OUTPUT'])/'microphone-tone
             seed += '''
 from community_dictionary.models import Entry
 Entry.objects.create(dictionary=d, created_by=owner, word='tekanna', meaning='teapot')
+'''
+        if practice:
+            seed += '''
+from community_dictionary.models import Entry
+from community_dictionary.services import add_contributions
+from PIL import ImageDraw
+import io
+words=[('katt','cat'),('tak','roof'),('anka','duck'),('kanin','rabbit'),('häst','horse'),('tekanna','teapot'),('fartölva','laptop'),('en häst','a horse')]
+for index,(word,meaning) in enumerate(words):
+    entry=Entry.objects.create(dictionary=d,created_by=owner)
+    picture=Image.new('RGB',(480,360),['#eee4cc','#d5e7dd','#e6dcf1','#dce9f5'][index%4])
+    draw=ImageDraw.Draw(picture)
+    draw.ellipse((140,80,340,285),fill='#669985',outline='#23473f',width=4)
+    draw.ellipse((175,145,195,165),fill='#23473f')
+    draw.ellipse((270,145,290,165),fill='#23473f')
+    out=io.BytesIO();picture.save(out,'PNG')
+    add_contributions(entry,owner,{'word':word,'meaning':meaning,'category':'Home' if index%2 else 'Outside',
+        'prepared_photo':(out.getvalue(),'image/png','.png'),
+        'prepared_audio':((Path(os.environ['COMMUNITY_BROWSER_OUTPUT'])/'microphone-tone.wav').read_bytes(),'audio/wav','.wav')},[],publish=True)
 '''
         subprocess.run([sys.executable, '-c', seed], cwd=PLATFORM, env=env, check=True)
         # Refuse to attach the test to an unrelated service already using the port.

@@ -1,16 +1,28 @@
 # Community dictionary development experiment
 
-Latest: Manny reports successful laptop image-generation use. The
+Latest: Manny reports the first practice update works and requests C-LARA-style
+[multiple-choice flashcards](../../docs/howto/community-practice-choices.md). Multiple choice is now the default
+for all six directions, with reveal mode retained. 215 app tests and a browser
+rehearsal pass; this follow-up awaits human acceptance. Practice AWS deployment
+remains pending.
+
+Latest prepared feature: [one-request practice update](practice-2026-10-03.md).
+Six card directions, picture crosswords and word searches; 205 app tests plus
+both legacy puzzle tests and a 320/390/1280px browser trial pass. Human practice
+acceptance/deployment remain pending. Manny reports image generation and the
+Settings/photo follow-up now installed and working on AWS, with two pleasing
+photorealistic examples; this is not a systematic quality trial.
+
+Previous report: Manny reports successful laptop image-generation use. The
 [Settings/photo follow-up](../../docs/howto/community-settings-and-photos.md) addresses
 configuration discovery and adding manual pictures after words. 189 app tests
-and a Chromium rehearsal at 320/390/1280px pass; follow-up human/AWS acceptance
-remains pending.
+and a Chromium rehearsal at 320/390/1280px pass; Manny subsequently reports follow-up laptop and AWS acceptance.
 
 Latest prepared feature: [optional AI pictures, 3 October](image-generation-2026-10-03.md).
 Shared-style approval and entry-image previews integrate with contribution
 provenance/withdrawal. Provider responses are simulated in verification;
-systematic image-quality evaluation and AWS deployment remain pending; Manny has
-subsequently supplied a broad successful laptop report.
+systematic image-quality evaluation remains pending; Manny has subsequently
+supplied successful laptop and AWS reports.
 
 Latest: [dictionary-wide participation, 2 October](participation-2026-10-02.md).
 Manny's successful use of the prior shortcut exposed excessive conceptual complexity.

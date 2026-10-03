@@ -1,14 +1,27 @@
 # Community dictionary app
 
-Latest UX follow-up: [Settings and text-first photos](../../docs/howto/community-settings-and-photos.md).
+Latest: Manny reports the first practice update works and requests C-LARA-style
+[multiple-choice flashcards](../../docs/howto/community-practice-choices.md). Multiple choice is now the default
+for all six directions, with reveal mode retained. 215 app tests and a browser
+rehearsal pass; this follow-up awaits human acceptance. Practice AWS deployment
+remains pending.
+
+Latest prepared increment: [Practise](../../docs/howto/community-practice.md),
+3 October: six flashcard directions, picture crosswords and picture word searches.
+205 app tests and a Chromium rehearsal pass; human practice acceptance is pending.
+No schema change, paid calls or stored exercise copies. The image-generation and
+Settings/photo release is now reported working on AWS; Manny liked two
+photorealistic examples, with wider quality/community feedback still needed.
+
+Previous UX follow-up: [Settings and text-first photos](../../docs/howto/community-settings-and-photos.md).
 Manny reports the image-generation increment works on his laptop; configuration
 now has its own tab and entries explicitly offer camera/upload. 189 app tests
-and the updated browser rehearsal pass; AWS deployment remains pending.
+and the updated browser rehearsal passed; Manny subsequently accepted and deployed this release.
 
 Preceding increment: [optional AI pictures](../../docs/howto/community-image-generation.md),
 3 October. Off by default; editors approve a shared style, preview a generated
 picture, then save it as an ordinary contribution. Private media, provenance and
-withdrawal dependencies are preserved. A broad human laptop success report is recorded; systematic quality and AWS trials remain pending.
+withdrawal dependencies are preserved. A broad human laptop success report is recorded; AWS deployment is reported successful; systematic quality trials remain pending.
 
 Current withdrawal UX: [dictionary-wide participation](../../docs/howto/community-participation.md).
 A member can view, withdraw all content with confirmation, or restore all content
@@ -63,7 +76,7 @@ writes; PostgreSQL provides row locks. High-contention/load testing remains futu
 The export excludes submission receipts and private learning drafts, and includes
 contributor-ID/username mapping. Operational backups need the shared user database
 and private files too. Future TTS/image services should enter through an explicit
-adapter and create reviewable contributions with provenance. The optional image-generation implementation is described above; a practice system remains deferred. The 28 September patch adds optional single-object
+adapter and create reviewable contributions with provenance. The optional image-generation implementation is described above; the first practice games are now implemented as described above. The 28 September patch adds optional single-object
 photo analysis, confirmation, a device-voice preview and saving as reviewable contributions.
 See [photo learning](../../docs/howto/community-photo-learning.md) for setup and trial
 boundaries. Manny reports a successful live laptop horse-identification trial on

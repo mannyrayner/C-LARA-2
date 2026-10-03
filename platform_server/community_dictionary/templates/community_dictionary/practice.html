@@ -1,0 +1,42 @@
+{% extends 'community_dictionary/base.html' %}{% load static %}
+{% block title %}Practise · {{ dictionary.name }}{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'community_dictionary/practice.css' %}?v=2">
+<script src="{% static 'community_dictionary/practice.js' %}?v=2" defer></script>
+<div class="practice-intro"><div class="page-heading"><h1>Practise</h1><span>{{ dictionary.name }}</span></div>
+<p class="lead">Learn with the pictures, voices and words you have collected together.</p></div>
+<div id="practice" data-url="{% url 'community_dictionary:practice-data' dictionary.pk %}" data-category="{{ selected_category }}">
+  <p id="practice-status" role="status" aria-live="polite"></p>
+  <div id="practice-choices">
+    <form method="get" class="search">
+      <label for="practice-category">Choose words</label>
+      <select name="category" id="practice-category"><option value="">All categories</option>{% for category in categories %}<option value="{{ category }}"{% if category == selected_category %} selected{% endif %}>{{ category }}</option>{% endfor %}</select>
+      <button type="submit" class="secondary">Use category</button>
+    </form>
+    <div class="practice-options">
+      <section class="panel"><h2>Flashcards</h2><p>Look or listen, then choose the matching answer. Up to ten cards at a time.</p>
+        <label for="flashcard-mode">What would you like to practise?</label>
+        <select id="flashcard-mode">{% for mode in practice_modes %}<option value="{{ mode.value }}"{% if not mode.count %} disabled{% endif %}>{{ mode.label }} ({{ mode.count }})</option>{% endfor %}</select>
+        <label for="flashcard-style">How would you like to answer?</label>
+        <select id="flashcard-style"><option value="choice">Multiple choice</option><option value="recall">Reveal the answer</option></select>
+        {% if not has_cards %}<p class="help">No cards are ready in this category yet. Add and accept some pictures, words or recordings, or choose another category.</p>{% endif %}
+        <button type="button" data-start="flashcards"{% if not has_cards %} disabled{% endif %}>Start flashcards</button>
+      </section>
+      <section class="panel"><h2>Picture crossword</h2><p>Use the pictures to fill in the words. Choose a clue, then type its answer.</p>
+        <button type="button" data-start="crossword"{% if puzzle_count < 2 %} disabled{% endif %}>Start crossword</button>
+      </section>
+      <section class="panel"><h2>Word scramble</h2><p>A picture-clue word search. Find a word in the grid and tap its first and last letters.</p>
+        <button type="button" data-start="scramble"{% if puzzle_count < 2 %} disabled{% endif %}>Start word scramble</button>
+      </section>
+    </div>
+    <p class="help">Only accepted material is used. Each activity needs both of its chosen kinds of content. Letter games need at least two different picture words with 2–12 letters; spaces, hyphens and apostrophes are left out, and accents are kept. Words that do not fit the grid are still available in flashcards.</p>
+    <p class="help">No AI calls or charges. Your answers stay in this page; leaving starts a fresh practice session.</p>
+  </div>
+  <section id="practice-game" class="panel" hidden aria-label="Practice activity">
+    <div class="page-heading"><h2 id="game-title" tabindex="-1"></h2><button type="button" class="quiet" id="practice-back">Choose another activity</button></div>
+    <p id="game-progress" role="status"></p>
+    <div id="game-body"></div>
+  </section>
+</div>
+<noscript><p class="notice">These games need JavaScript. You can still use Browse to look at pictures, read words and play recordings.</p></noscript>
+{% endblock %}

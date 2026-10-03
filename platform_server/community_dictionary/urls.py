@@ -3,10 +3,13 @@ from django.contrib.auth import views as auth_views
 from projects.authentication_forms import LoginForm
 
 from . import audio_views, photo_views, views, lexicon_views, collection_views, participation_views
-from . import image_views
+from . import image_views, practice_views
 
 app_name = 'community_dictionary'
 urlpatterns = [
+    path('<int:pk>/practise/', practice_views.home, name='practice'),
+    path('<int:pk>/practise/data/', practice_views.data, name='practice-data'),
+    path('<int:pk>/practise/media/<int:contribution_id>/', practice_views.media, name='practice-media'),
     path('<int:pk>/settings/', views.dictionary_settings, name='settings'),
     path('<int:pk>/entries/<int:entry_id>/picture/', views.contribute, {'picture_only': True}, name='add-picture'),
     path('<int:pk>/image-style/', image_views.start, name='image-style'),

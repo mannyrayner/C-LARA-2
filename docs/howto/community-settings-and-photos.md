@@ -51,7 +51,8 @@ Check Settings, then save a word-only entry and use Add a photo. Try both a came
 picture and an uploaded image if convenient. Existing words should stay in place.
 After acceptance, the accumulated staged changes can be committed and pushed.
 AWS will need the original image-generation migration 0010 plus `collectstatic`
-and the normal application restart. This follow-up is not yet deployed.
+and the normal application restart. Manny subsequently reports successful laptop acceptance and AWS installation on
+3 October; see the practice experiment record for this human report.
 
 ## Evidence and limits
 

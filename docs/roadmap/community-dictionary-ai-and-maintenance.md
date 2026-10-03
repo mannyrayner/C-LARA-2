@@ -5,13 +5,27 @@ Discussion and implementation plan, 26 September 2026. Reviewed source:
 increment; it does not implement generation or an autonomous operator. The later
 26 September sentence-learning proposal below was reviewed against `6ad49ee`.
 
+## 3 October: bounded practice experiment
+
+Manny reports successful AWS use of image generation, including two pleasing
+photorealistic examples. He requests Sophie's six flashcard modes, picture
+crosswords and word scrambles together as a one-request implementation experiment.
+The [prepared practice update](../howto/community-practice.md) reuses the pure
+C-LARA puzzle builders and current community media rules, with no paid calls,
+new schema or stored learner history. It has 205 passing app tests and browser
+checks; real-user acceptance remains the next gate. Its development evidence is
+separate from comparative model performance and sustained operational autonomy.
+Photo-to-illustration, translated-dictionary migration and a French stakeholder
+summary remain separate work; this patch does not implement them.
+
 ## 3 October: optional image-generation first cut
 
 The [text-to-image implementation](../howto/community-image-generation.md) now
 provides owner enablement (off by default), editor-approved style descriptions
 and samples, private previews, reviewable saved pictures and withdrawal-linked
 provenance. It reuses the C-LARA image adapter. One high-quality candidate is
-generated per request; live quality/model access and deployment remain untested.
+generated per request. Manny subsequently reports successful AWS use and two
+pleasing photorealistic examples; systematic quality evaluation remains open.
 Sophie’s suggested photo → understanding → illustration flow is explicitly a
 later iteration, as are multiple candidates and automated filtering. The simpler
 participation model has since received laptop and AWS acceptance. Earlier dated
