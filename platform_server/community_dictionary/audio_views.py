@@ -12,9 +12,9 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from projects.billing import credits_enabled, has_minimum_balance_for_compile
-from . import tts
+from . import tts, pronunciation
 from .forms import AudioGenerateForm, AudioSaveForm
-from .models import AudioStudy, Dictionary, Entry, VoicePreference
+from .models import AudioStudy, ContributionDependency, Dictionary, Entry, VoicePreference
 from .permissions import get_dictionary, is_editor
 from .services import Conflict, add_contributions, entry_url, event, submit_once
 from .storage import delete_file, path_for, write_upload
@@ -35,21 +35,36 @@ def get_study(request, dictionary, study_id, lock=False):
 
 def finish(study, api_key):
     prepared, duration = None, None
+    report = {}
+
+    def still_allowed():
+        current = AudioStudy.objects.select_related('entry', 'dictionary', 'user').get(pk=study.pk)
+        get_dictionary(current.user, current.dictionary_id)
+        if (current.status != 'processing' or not current.entry_id or current.entry.archived or
+                not current.dictionary.tts_enabled or stale_study(current) or
+                tts.api_credentials(current.user) != (api_key, current.personal_key)):
+            raise Conflict('The wording, access or audio settings changed. Start again from the entry.')
+
     try:
         prepared, duration = tts.synthesize(study.source_text, language=study.language_code,
-            model=study.model, voice=study.voice, api_key=api_key)
+            model=study.model, voice=study.voice, api_key=api_key, meaning=study.source_meaning,
+            meaning_language=study.dictionary.explanation_language, report=report, before_request=still_allowed)
     except Exception as exc:
         logger.warning('Audio study %s failed (%s)', study.pk, type(exc).__name__)
     paths = []
     try:
         with transaction.atomic():
             current = AudioStudy.objects.select_for_update().get(pk=study.pk)
-            if prepared and current.cost_usd is None:
+            if current.status != 'discarded':
+                current.synthesis = report
+            cost = tts.report_cost(report) if report else (tts.estimate_cost(current.source_text, duration) if prepared else None)
+            if cost is not None and current.cost_usd is None:
                 current.duration_seconds = duration
-                current.cost_usd = tts.estimate_cost(current.source_text, duration)
-                tts.record_charge(current)
+                current.cost_usd = cost
+                if cost:
+                    tts.record_charge(current)
             if current.status == 'processing':
-                if prepared and current.entry_id:
+                if prepared and current.entry_id and not stale_study(current):
                     for key, value in write_upload(prepared, current.dictionary_id, paths).items():
                         setattr(current, key, value)
                     current.status = 'ready'
@@ -62,6 +77,13 @@ def finish(study, api_key):
         raise
 
 
+def stale_study(study):
+    return (not study.entry_id or study.entry.text_version != study.source_text_version or
+            study.entry.word != study.source_text or study.dictionary.language != study.language or
+            (study.source_meaning_id is not None and
+             (study.entry.current_meaning_id != study.source_meaning_id or study.entry.meaning != study.source_meaning)))
+
+
 @login_required
 def start(request, pk, entry_id):
     dictionary = get_dictionary(request.user, pk)
@@ -69,10 +91,13 @@ def start(request, pk, entry_id):
     if not dictionary.tts_enabled:
         return fail(request, 'The dictionary owner can enable saved spoken audio under Settings.', 403)
     config, setup_error = None, ''
+    guidance_model, guidance_prices = '', {}
     try:
         config = tts.configuration(request.user, dictionary)
         if not entry.word or not entry.current_text_id:
             raise Conflict('Add and accept the wording before creating audio. A dictionary editor can accept proposed words.')
+        if pronunciation.homographs(entry.word, config[2]):
+            guidance_model, guidance_prices = tts.guidance_configuration()
     except Conflict as exc:
         setup_error = str(exc)
     preferred_voice = VoicePreference.objects.filter(user=request.user, dictionary=dictionary).values_list('voice', flat=True).first() or tts.VOICE
@@ -98,13 +123,15 @@ def start(request, pk, entry_id):
             limit = settings.COMMUNITY_DICTIONARY_TTS_DAILY_LIMIT
             if recent.filter(user=request.user).count() >= limit or recent.filter(dictionary=dictionary).count() >= limit:
                 raise Conflict('The daily audio-generation limit has been reached. Please try tomorrow.')
-            if recent.filter(user=request.user, status='processing', created_at__gte=timezone.now()-timedelta(seconds=90)).exists():
+            if recent.filter(user=request.user, status='processing', created_at__gte=timezone.now()-timedelta(seconds=180)).exists():
                 raise Conflict('Your previous recording is still being generated. Open the recent attempt below.')
             study = AudioStudy.objects.create(dictionary=dictionary, entry=target, user=request.user,
                 expires_at=timezone.now()+timedelta(days=1), source_text=target.word,
                 source_text_id=target.current_text_id, source_text_version=target.text_version,
                 language=dictionary.language, language_code=code, model=tts.MODEL, voice=form.cleaned_data['voice'],
-                personal_key=personal)
+                personal_key=personal,
+                source_meaning=target.meaning if pronunciation.homographs(target.word, code) and target.current_meaning_id else '',
+                source_meaning_id=target.current_meaning_id if pronunciation.homographs(target.word, code) else None)
             VoicePreference.objects.update_or_create(user=request.user, dictionary=dictionary,
                 defaults={'voice': study.voice})
             event(dictionary, request.user, 'audio_generation', target, f'OpenAI TTS consent; attempt {study.pk}')
@@ -124,16 +151,17 @@ def start(request, pk, entry_id):
         entry=entry, form=form, setup_error=setup_error, recent=recent, model=tts.MODEL,
         rate=tts.USD_PER_MINUTE, limit=settings.COMMUNITY_DICTIONARY_TTS_DAILY_LIMIT,
         personal=config[1] if config else False, charge_credits=credits_enabled(),
+        guidance_model=guidance_model, guidance_prices=guidance_prices,
+        guidance_estimate=tts.guidance_estimate(guidance_prices) if guidance_prices else None,
         submission_id=request.POST.get('submission_id') or context(request)['submission_id']))
 
 
 def render_study(request, dictionary, study, form):
     if not is_editor(request.user, dictionary):
         form.fields.pop('publish_now', None)
-    stale = (study.entry.text_version != study.source_text_version or study.entry.word != study.source_text
-             or dictionary.language != study.language)
+    stale = stale_study(study)
     return render(request, 'community_dictionary/audio_study.html', context(request, dictionary,
-        study=study, form=form, stale=stale, timed_out=study.created_at < timezone.now()-timedelta(seconds=90)))
+        study=study, form=form, stale=stale, timed_out=study.created_at < timezone.now()-timedelta(seconds=180)))
 
 
 @login_required
@@ -181,8 +209,7 @@ def action(request, pk, study_id):
             if not form.is_valid():
                 return render_study(request, dictionary, study, form)
             target = Entry.objects.select_for_update().get(pk=study.entry_id)
-            if (target.text_version != study.source_text_version or target.word != study.source_text
-                    or dictionary.language != study.language):
+            if stale_study(study):
                 raise Conflict('The wording or language changed. Return to the entry and generate audio for the current wording.')
             data = {'prepared_audio': (path_for(study.file_path).read_bytes(), 'audio/wav', '.wav'),
                     'label': f'Synthetic voice: {study.source_text}'[:200]}
@@ -193,8 +220,15 @@ def action(request, pk, study_id):
                 'source_text_id': study.source_text_id, 'source_text_version': study.source_text_version,
                 'study_id': str(study.pk), 'generated_at': study.created_at.isoformat(),
                 'reviewed_by': request.user.pk, 'reviewed_at': timezone.now().isoformat()}
+            if study.synthesis:
+                contribution.provenance['instructions_version'] = study.synthesis.get('instructions_version', '')
+                contribution.provenance['synthesis'] = study.synthesis
+            if study.source_meaning_id:
+                contribution.provenance['source_meaning_id'] = study.source_meaning_id
             contribution.shared_from_id = target.current_text_id
             contribution.save(update_fields=['provenance', 'shared_from'])
+            if study.source_meaning_id:
+                ContributionDependency.objects.get_or_create(derived=contribution, source_id=study.source_meaning_id)
             old_path = study.file_path
             study.status, study.file_path, study.saved_contribution = 'saved', '', contribution
             study.save(update_fields=['status', 'file_path', 'saved_contribution'])

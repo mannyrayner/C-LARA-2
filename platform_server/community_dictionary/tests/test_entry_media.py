@@ -237,7 +237,7 @@ class EntryMediaTests(TestCase):
         self.assertEqual(study.status,'failed')
         self.assertEqual(self.speech.call_count,1)
         self.assertNotContains(self.client.get(self.url('audio-study',study.pk)),'private-provider-error')
-        AudioStudy.objects.update(status='processing',created_at=timezone.now()-timedelta(minutes=2))
+        AudioStudy.objects.update(status='processing',created_at=timezone.now()-timedelta(minutes=4))
         self.assertContains(self.client.get(self.url('audio-study',study.pk)),'could not be recovered')
         self.assertEqual(self.speech.call_count,1)
 
@@ -249,8 +249,8 @@ class EntryMediaTests(TestCase):
         token=uuid.uuid4(); self.generate(token); self.generate(token)
         charge=AIUsageCharge.objects.get(operation='community_tts')
         self.assertEqual(charge.total_tokens,0)
-        self.assertIn('Estimated',charge.notes)
-        self.assertEqual(charge.ledger_entry.metadata['cost_basis'],'duration_and_input_bytes_estimate')
+        self.assertIn('estimated speech',charge.notes)
+        self.assertEqual(charge.ledger_entry.metadata['cost_basis'],'guidance_tokens_plus_speech_duration_and_input_bytes')
 
     def test_personal_key_and_empty_key_do_not_charge_or_fall_back(self):
         profile,_=Profile.objects.get_or_create(user=self.owner)
@@ -401,7 +401,7 @@ class SavedSpeechContractTests(TestCase):
             self.assertEqual(sdk.call_args.kwargs['max_retries'],0)
             self.assertEqual(stream.call_count,1)
             self.assertEqual(stream.call_args.kwargs['input'],'häst')
-            self.assertIn('Swedish',stream.call_args.kwargs['instructions'])
+            self.assertIn('svenska',stream.call_args.kwargs['instructions'])
             self.assertNotIn('photo',stream.call_args.kwargs)
             stream.side_effect=TypeError('instructions not supported')
             with self.assertRaises(TypeError):

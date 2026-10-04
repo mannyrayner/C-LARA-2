@@ -3,6 +3,10 @@
 {% block content %}
 <p class="eyebrow">{{ dictionary.name }}</p><h1>Settings</h1>
 {% if owner %}
+<section class="panel"><h2>Language versions</h2>
+<a class="button secondary" href="{% url 'community_dictionary:port-start' dictionary.pk %}">Create a version in another language</a>
+{% if dictionary.language_port %}<p><a href="{% url 'community_dictionary:port-update' dictionary.language_port.source_id dictionary.language_port.pk %}">Update this version from its source dictionary</a></p>{% endif %}
+<p class="help">Preview the cost, approve processing, then review the translated entries.</p></section>
 <section class="panel"><h2>Dictionary settings</h2>
 <form method="post" class="stack">{% csrf_token %}{{ settings_form.as_p }}<button>Save settings</button></form>
 </section>

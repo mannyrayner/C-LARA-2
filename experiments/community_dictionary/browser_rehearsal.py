@@ -18,7 +18,7 @@ PLATFORM = ROOT / 'platform_server'
 PROBE = Path(__file__).with_name('browser_workflow.cjs')
 
 
-def main(workflow=PROBE, image_generation=False, practice=False):
+def main(workflow=PROBE, image_generation=False, practice=False, porting=False):
     output = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else ROOT / 'reports' / 'community-browser'
     output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='community-browser-') as temporary:
@@ -33,6 +33,10 @@ def main(workflow=PROBE, image_generation=False, practice=False):
             'PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]\n'
         )
         env = {**os.environ, 'PYTHONPATH': str(scratch) + os.pathsep + os.environ.get('PYTHONPATH', ''), 'DJANGO_SETTINGS_MODULE': 'community_rehearsal_settings', 'COMMUNITY_BROWSER_OUTPUT': str(output)}
+        real_port_queue = porting and os.environ.get('COMMUNITY_PORT_BROWSER_QUEUE','real') == 'real'
+        if porting:
+            env['DJANGO_Q_USE_REAL'] = '1' if real_port_queue else '0'
+            (output / 'queue-events.jsonl').unlink(missing_ok=True)
         subprocess.run([sys.executable, 'manage.py', 'migrate', '--noinput', '--settings', 'community_rehearsal_settings'], cwd=PLATFORM, env=env, check=True, stdout=subprocess.DEVNULL)
         seed = '''
 import django
@@ -62,7 +66,7 @@ with wave.open(str(Path(os.environ['COMMUNITY_BROWSER_OUTPUT'])/'microphone-tone
 from community_dictionary.models import Entry
 Entry.objects.create(dictionary=d, created_by=owner, word='tekanna', meaning='teapot')
 '''
-        if practice:
+        if practice or porting:
             seed += '''
 from community_dictionary.models import Entry
 from community_dictionary.services import add_contributions
@@ -81,6 +85,10 @@ for index,(word,meaning) in enumerate(words):
         'prepared_photo':(out.getvalue(),'image/png','.png'),
         'prepared_audio':((Path(os.environ['COMMUNITY_BROWSER_OUTPUT'])/'microphone-tone.wav').read_bytes(),'audio/wav','.wav')},[],publish=True)
 '''
+        if porting:
+            with settings.open('a') as stream:
+                stream.write('OPENAI_API_KEY = \"local-fixture-not-real\"\nCREDITS_ENABLED = True\nQ_CLUSTER = {**Q_CLUSTER, \"workers\": 2, \"poll\": .2}\nCOMMUNITY_DICTIONARY_PORT_WINDOW = 2\n')
+            seed += '\nfrom projects.models import CreditAccount\nCreditAccount.objects.create(user=owner,balance_usd=1)\n'
         subprocess.run([sys.executable, '-c', seed], cwd=PLATFORM, env=env, check=True)
         # Refuse to attach the test to an unrelated service already using the port.
         with socket.socket() as probe:
@@ -109,6 +117,11 @@ def fixture(study, key):
 images.generate=fixture
 call_command('runserver','127.0.0.1:8765',use_reloader=False)
 ''']
+            worker = None
+            if real_port_queue:
+                worker = subprocess.Popen([sys.executable, str(Path(__file__).with_name('port_browser_worker.py'))], cwd=PLATFORM, env={**env, 'PYTHONPATH':str(PLATFORM)+os.pathsep+env['PYTHONPATH']}, stdout=log, stderr=log)
+            if porting and not real_port_queue:
+                command = [sys.executable, '-c', 'import django,runpy; django.setup(); runpy.run_path('+repr(str(Path(__file__).with_name('port_browser_worker.py')))+'); from django.core.management import call_command; call_command(\"runserver\",\"127.0.0.1:8765\",use_reloader=False)']
             server = subprocess.Popen(command, cwd=PLATFORM, env=env, stdout=log, stderr=log)
             try:
                 for _ in range(100):
@@ -125,6 +138,9 @@ call_command('runserver','127.0.0.1:8765',use_reloader=False)
             finally:
                 server.terminate()
                 server.wait(timeout=10)
+                if worker:
+                    worker.terminate()
+                    worker.wait(timeout=20)
         print(f'Browser screenshots and server log: {output}')
 
 

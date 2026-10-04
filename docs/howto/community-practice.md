@@ -1,5 +1,10 @@
 # Community Dictionaries: Practise
 
+**Acceptance update, 4 October:** Manny accepted the multiple-choice follow-up,
+checked it in and now reports the combined practice release deployed and working
+on AWS. Earlier pending statements below describe the original delivery date;
+a detailed device matrix and external learner trials are still unrecorded.
+
 First cut, 3 October 2026. One request covers six flashcard directions, picture
 crosswords and C-LARA's picture-clue word-search game. This is implemented and
 locally verified; Manny reports laptop success. AWS deployment of **practice** is pending.

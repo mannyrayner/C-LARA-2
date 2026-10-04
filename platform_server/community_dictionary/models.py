@@ -306,6 +306,9 @@ class AudioStudy(models.Model):
     source_text = models.CharField(max_length=255)
     source_text_version = models.PositiveIntegerField()
     source_text_id = models.PositiveBigIntegerField()
+    source_meaning = models.TextField(blank=True)
+    source_meaning_id = models.PositiveBigIntegerField(null=True, blank=True)
+    synthesis = models.JSONField(default=dict, blank=True)
     language = models.CharField(max_length=80)
     language_code = models.CharField(max_length=16)
     model = models.CharField(max_length=80)
@@ -349,3 +352,89 @@ class ImageStudy(models.Model):
     mime_type = models.CharField(max_length=80, blank=True)
     file_size = models.PositiveIntegerField(default=0)
     saved_contribution = models.ForeignKey(Contribution, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+
+
+class ContributionDependency(models.Model):
+    """Additional source components used by a derived contribution."""
+    source = models.ForeignKey(Contribution, on_delete=models.PROTECT, related_name='derived_uses')
+    derived = models.ForeignKey(Contribution, on_delete=models.CASCADE, related_name='source_dependencies')
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['source', 'derived'], name='cd_unique_dependency')]
+
+
+class LanguagePort(models.Model):
+    source = models.ForeignKey(Dictionary, on_delete=models.PROTECT, related_name='language_ports')
+    destination = models.OneToOneField(Dictionary, null=True, blank=True, on_delete=models.PROTECT, related_name='language_port')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    name = models.CharField(max_length=160)
+    language = models.CharField(max_length=80)
+    explanation_language = models.CharField(max_length=80)
+    voice = models.CharField(max_length=40, choices=VOICE_CHOICES, default=DEFAULT_VOICE)
+    created_at = models.DateTimeField(default=timezone.now)
+
+
+class PortRun(models.Model):
+    """An immutable quote, approved once, with a refundable credit reservation."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    port = models.ForeignKey(LanguagePort, on_delete=models.CASCADE, related_name='runs')
+    status = models.CharField(max_length=16, default='estimate')
+    source_language = models.CharField(max_length=80)
+    source_explanation_language = models.CharField(max_length=80)
+    model = models.CharField(max_length=80)
+    prices = models.JSONField(default=dict)
+    category_plan = models.JSONField(default=dict, blank=True)
+    payer = models.CharField(max_length=8)
+    estimated_usd = models.DecimalField(max_digits=12, decimal_places=4, default=0)
+    allowance_usd = models.DecimalField(max_digits=12, decimal_places=4, default=0)
+    reserved_usd = models.DecimalField(max_digits=12, decimal_places=4, default=0)
+    charged_usd = models.DecimalField(max_digits=12, decimal_places=4, default=0)
+    settled = models.BooleanField(default=False)
+    skipped = models.PositiveIntegerField(default=0)
+    protected = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField()
+    approved_at = models.DateTimeField(null=True)
+    completed_at = models.DateTimeField(null=True)
+    queue_error = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class PortEntryLink(models.Model):
+    port = models.ForeignKey(LanguagePort, on_delete=models.CASCADE, related_name='entry_links')
+    source = models.ForeignKey(Entry, on_delete=models.PROTECT, related_name='+')
+    destination = models.ForeignKey(Entry, on_delete=models.PROTECT, related_name='+')
+    source_digest = models.CharField(max_length=64)
+    manually_edited = models.BooleanField(default=False)
+    destination_digest = models.CharField(max_length=64)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['port', 'source'], name='cd_unique_port_entry')]
+
+
+class PortItem(models.Model):
+    run = models.ForeignKey(PortRun, on_delete=models.CASCADE, related_name='items')
+    source_entry = models.ForeignKey(Entry, on_delete=models.PROTECT, related_name='+')
+    sources = models.ManyToManyField(Contribution, related_name='port_previews')
+    snapshot = models.JSONField(default=dict)
+    destination_digest = models.CharField(max_length=64, blank=True)
+    status = models.CharField(max_length=16, default='waiting', db_index=True)
+    phase = models.CharField(max_length=16, blank=True)
+    result = models.JSONField(default=dict)
+    file_path = models.CharField(max_length=200, blank=True)
+    usage = models.JSONField(default=dict)
+    translation_cost = models.DecimalField(max_digits=12, decimal_places=6, default=0)
+    audio_cost = models.DecimalField(max_digits=12, decimal_places=6, default=0)
+    estimated_usd = models.DecimalField(max_digits=12, decimal_places=4, default=0)
+    allowance_usd = models.DecimalField(max_digits=12, decimal_places=4, default=0)
+    uncertain_cost = models.BooleanField(default=False)
+    invalidated = models.BooleanField(default=False)
+    message = models.CharField(max_length=300, blank=True)
+    started_at = models.DateTimeField(null=True)
+    finished_at = models.DateTimeField(null=True)
+
+    class Meta:
+        ordering = ['pk']
+        constraints = [models.UniqueConstraint(fields=['run', 'source_entry'], name='cd_unique_port_item')]

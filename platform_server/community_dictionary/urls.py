@@ -3,10 +3,16 @@ from django.contrib.auth import views as auth_views
 from projects.authentication_forms import LoginForm
 
 from . import audio_views, photo_views, views, lexicon_views, collection_views, participation_views
-from . import image_views, practice_views
+from . import image_views, practice_views, port_views
 
 app_name = 'community_dictionary'
 urlpatterns = [
+    path('<int:pk>/language-versions/', port_views.start, name='port-start'),
+    path('<int:pk>/language-versions/<int:port_id>/update/', port_views.start, name='port-update'),
+    path('<int:pk>/language-port/<uuid:run_id>/', port_views.detail, name='port-run'),
+    path('<int:pk>/language-port/<uuid:run_id>/action/', port_views.action, name='port-action'),
+    path('<int:pk>/language-port/<uuid:run_id>/entries/<int:item_id>/', port_views.review, name='port-review'),
+    path('<int:pk>/language-port/<uuid:run_id>/entries/<int:item_id>/<str:kind>/', port_views.media, name='port-media'),
     path('<int:pk>/practise/', practice_views.home, name='practice'),
     path('<int:pk>/practise/data/', practice_views.data, name='practice-data'),
     path('<int:pk>/practise/media/<int:contribution_id>/', practice_views.media, name='practice-media'),

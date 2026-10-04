@@ -1,17 +1,16 @@
 # Community dictionary app
 
-Latest: Manny reports the first practice update works and requests C-LARA-style
-[multiple-choice flashcards](../../docs/howto/community-practice-choices.md). Multiple choice is now the default
-for all six directions, with reveal mode retained. 215 app tests and a browser
-rehearsal pass; this follow-up awaits human acceptance. Practice AWS deployment
-remains pending.
+Manny's first Swedish/English → French/English laptop port mostly works. The
+[follow-up](../../docs/howto/community-language-porting.md) adds contextual category translation,
+stronger TTS language instructions and editable uncertain results, including old
+blocked previews. Updates can repair earlier generated outputs while protecting
+human corrections. 257 app tests, six shared audio unit tests and a real-queue
+browser rehearsal pass. Human retesting and AWS porting deployment remain pending.
 
-Latest prepared increment: [Practise](../../docs/howto/community-practice.md),
-3 October: six flashcard directions, picture crosswords and picture word searches.
-205 app tests and a Chromium rehearsal pass; human practice acceptance is pending.
-No schema change, paid calls or stored exercise copies. The image-generation and
-Settings/photo release is now reported working on AWS; Manny liked two
-photorealistic examples, with wider quality/community feedback still needed.
+
+Manny reports the practice/multiple-choice release deployed and working on AWS on
+4 October. This supersedes its earlier pending-deployment status. Exact deployed
+SHA/device matrix and broader learner/community feedback remain unrecorded.
 
 Previous UX follow-up: [Settings and text-first photos](../../docs/howto/community-settings-and-photos.md).
 Manny reports the image-generation increment works on his laptop; configuration
@@ -54,7 +53,8 @@ invited Icelandic trial are recorded in the current evidence above.
 The app owns its models, migrations, permissions, media views, templates and small
 JavaScript/CSS interface. Its route is `/community-dictionaries/`. It reuses
 C-LARA authentication/accounts and database/static infrastructure. It does not call
-the project compilation pipeline, task queue or existing dictionary commands.
+the project compilation pipeline or existing dictionary commands. Language porting
+now uses the shared Django-Q adapter for background work.
 The optional Learn from a photo flow calls OpenAI through a scoped adapter and
 reuses C-LARA account/key and token-accounting components. Existing `projects.PictureDictionary` records are tied to compiled
 projects and require written entries, so this contribution workflow uses separate
@@ -138,3 +138,12 @@ Newer shared text, custody, private copies and access checks remain protected.
 148 app tests and a Chromium rehearsal pass, with no migration. Manny requested
 this simplification after testing the first shortcut; human acceptance and new
 AWS/physical-phone validation of this follow-up remain pending.
+
+## Pronunciation follow-up (5 October 2026)
+
+The prepared [homograph guidance and bounded silence retry](../../docs/howto/community-tts-guidance.md) increment
+includes review warnings, explicit cost accounting and additive migration 0013.
+275 app tests pass. Manny now reports successful chat/lit generation and a successful
+small-dictionary laptop test. The local startup notes now retain `--insecure` for
+static files with `DEBUG=False`. AWS deployment and larger-dictionary acceptance
+remain the next step, not a completed result.

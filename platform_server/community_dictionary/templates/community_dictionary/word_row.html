@@ -1,3 +1,4 @@
+{% load pronunciation_tags %}
 <article class="word-row" data-word-row>
   <h3 dir="{{ dictionary.text_direction }}">{{ row.entry.word }}</h3>
   <div class="word-actions">
@@ -8,6 +9,6 @@
     {% if row.entry.meaning %}<details class="word-translation"><summary>Translation</summary><p dir="auto">{{ row.entry.meaning|linebreaksbr }}</p></details>{% endif %}
     {% if not on_word_page %}<a class="word-page-link" href="{% url 'community_dictionary:word' dictionary.pk row.entry.pk %}">Word page →</a>{% endif %}
   </div>
-  {% if row.audio.provenance.origin == 'synthetic' %}<p class="help">AI-generated voice</p>{% endif %}
+  {% if row.audio.provenance.origin == 'synthetic' %}<p class="help">AI-generated voice</p>{% pronunciation_warning row.entry.word dictionary.language %}{% endif %}
   <p class="help" data-word-playback-status role="status" hidden></p>
 </article>

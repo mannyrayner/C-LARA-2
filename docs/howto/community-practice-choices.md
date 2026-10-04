@@ -1,5 +1,10 @@
 # Multiple-choice Community Dictionary flashcards
 
+**Acceptance update, 4 October:** Manny accepted the multiple-choice follow-up,
+checked it in and now reports the combined practice release deployed and working
+on AWS. Earlier pending statements below describe the original delivery date;
+a detailed device matrix and external learner trials are still unrecorded.
+
 3 October 2026. Manny reports that the first practice update works, and requests
 multiple-choice answers like the flashcards people liked in C-LARA-2. This
 increment makes **Multiple choice** the default under **Practise → Flashcards**;

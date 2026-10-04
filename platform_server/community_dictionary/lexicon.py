@@ -9,7 +9,9 @@ def outdated_tts(contribution, entry, dictionary):
     source = contribution.provenance
     return (contribution.kind == 'audio' and source.get('origin') == 'synthetic'
             and (source.get('source_text') != entry.word
-                 or source.get('language') != dictionary.language))
+                 or source.get('language') != dictionary.language
+                 or (source.get('source_meaning_id') is not None and
+                     source['source_meaning_id'] != entry.current_meaning_id)))
 
 
 def vocabulary(dictionary):

@@ -54,7 +54,7 @@ class AudioGenerateForm(forms.Form):
     source_text_id = forms.IntegerField(widget=forms.HiddenInput)
     source_text_version = forms.IntegerField(widget=forms.HiddenInput)
     voice = forms.ChoiceField(choices=VOICE_CHOICES, help_text='Your selection is remembered for this dictionary. Generate a preview to hear it before saving. Choosing another voice and generating again is a new paid request.')
-    ai_consent = forms.BooleanField(label='I have permission to send this wording and language to OpenAI to generate audio, at the cost shown above.')
+    ai_consent = forms.BooleanField(label='I have permission to send this wording, language and available meaning to OpenAI for audio and pronunciation guidance, including one retry for silent audio, at the costs shown above.')
 
 
 class AudioSaveForm(forms.Form):

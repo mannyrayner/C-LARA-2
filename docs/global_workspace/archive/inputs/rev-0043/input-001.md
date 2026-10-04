@@ -1,0 +1,1 @@
+Oh, one more thing we should do: it would be very handy to have a control to change the languages in a dictionary. In particular, being able to change the target language would let me create an Italian version of the current Swedish dictionary, replacing all the audio with TTS-generated. Then I could experience it properly from the learner viewpoint.

@@ -5,6 +5,19 @@ Discussion and implementation plan, 26 September 2026. Reviewed source:
 increment; it does not implement generation or an autonomous operator. The later
 26 September sentence-learning proposal below was reviewed against `6ad49ee`.
 
+## 4 October: language-porting first cut
+
+Manny reports the combined practice/multiple-choice release deployed and working
+on AWS. The [prepared language-version workflow](../howto/community-language-porting.md)
+now implements independently selected target/commenting languages, multimodal
+sense preservation, reviewed TTS, incremental update protection, concurrent jobs,
+explicit cost approval and C-LARA funding reservations. Source contribution
+withdrawal dependencies are preserved. 243 tests and real-queue/laptop browser
+rehearsals pass; human porting acceptance and paid quality trials remain next.
+The immediate experiment is Swedish/English → Italian/English, potentially also
+Icelandic/English for Kate/Axel. Dictionary merging, community discovery,
+photo-to-illustration and the French stakeholder summary remain separate work.
+
 ## 3 October: bounded practice experiment
 
 Manny reports successful AWS use of image generation, including two pleasing

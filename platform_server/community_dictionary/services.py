@@ -95,8 +95,8 @@ def accept(contribution, user):
     elif contribution.kind == 'image' and not entry.selected_image_id:
         entry.selected_image = contribution
     elif contribution.kind == 'audio' and contribution.provenance.get('origin') == 'synthetic':
-        source = contribution.provenance
-        if (source.get('source_text') != entry.word or source.get('language') != entry.dictionary.language):
+        from .lexicon import outdated_tts
+        if outdated_tts(contribution, entry, entry.dictionary):
             raise Conflict('The wording or language changed since this synthetic recording was generated. Create a new recording for the current wording.')
     entry.save()
     contribution.status = 'accepted'

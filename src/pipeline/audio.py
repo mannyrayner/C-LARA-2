@@ -85,7 +85,8 @@ class OpenAITTSEngine:
         self._client = OpenAI(**kwargs)
 
     def synthesize_to_path(
-        self, text: str, output_path: Path, *, voice: str | None = None, language: str | None = None
+        self, text: str, output_path: Path, *, voice: str | None = None, language: str | None = None,
+        instructions: str | None = None
     ) -> None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         request_kwargs: dict[str, Any] = {
@@ -95,11 +96,17 @@ class OpenAITTSEngine:
             "response_format": "wav",
         }
         language_hint = _tts_language_hint(language)
-        if language_hint:
+        if instructions:
+            request_kwargs["instructions"] = instructions
+        elif language_hint:
             # Helps disambiguate short forms such as "in"/"nun" when using
             # multilingual voices.
             request_kwargs["instructions"] = (
-                f"Pronounce the text in {language_hint}. Keep the original text unchanged."
+                f"The input is entirely in {language_hint}. Speak only in {language_hint}, "
+                "with natural native pronunciation and accent. Read the input verbatim: "
+                "do not translate, explain, spell out, or add any words. For short words "
+                "whose spelling also exists in another language, use the specified "
+                "language pronunciation, regardless of that other meaning."
             )
 
         streaming_factory = getattr(self._client.audio.speech, "with_streaming_response", None)

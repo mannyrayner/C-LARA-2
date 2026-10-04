@@ -1,0 +1,14 @@
+{% extends 'community_dictionary/base.html' %}{% load pronunciation_tags %}
+{% block title %}Review language version{% endblock %}
+{% block content %}
+<p class="eyebrow">{{ run.port.name }}</p><h1>Review entry</h1>
+<div class="entry-layout"><section>{% if item.snapshot.image %}<img class="entry-image" src="{% url 'community_dictionary:port-media' dictionary.pk run.pk item.pk 'image' %}" alt="Source dictionary picture">{% endif %}<p><strong>{{ source.word }}</strong> · {{ source.meaning }}</p><p class="help">{{ source.category }}</p></section>
+<section><p class="badge">AI-assisted translation · review before saving</p>{% if item.result.feedback %}<p>{{ item.result.feedback }}</p>{% endif %}{% if item.message and item.status != 'unclear' %}<p>{{ item.message }}</p>{% endif %}
+{% if item.result.category_language == 'uncertain' and source.category %}<p class="help">The category’s language is uncertain; the original label has been kept. You can change it below.</p>{% endif %}
+{% if item.status == 'unclear' %}<p>You can accept a tentative translation or enter your own. Saving confirms your choice.</p>{% endif %}
+{% if item.file_path or item.result.reused_audio %}<p>AI-generated voice · {{ run.port.voice }}</p><audio controls preload="none" src="{% url 'community_dictionary:port-media' dictionary.pk run.pk item.pk 'audio' %}"></audio>{% endif %}
+{% pronunciation_warning form.word.value run.port.language %}
+<form method="post" class="stack">{% csrf_token %}{{ form.as_p }}{% if change_target %}{% if item.file_path or item.result.reused_audio %}<p class="help">If you edit the word, or the meaning used for pronunciation guidance, the earlier generated recording will not be saved. You can create audio for the revised word from its entry afterwards.</p>{% else %}<p class="help">After saving, use Create audio on the entry to generate speech.</p>{% endif %}{% endif %}<button>Save entry to {{ run.port.name }}</button></form>
+<form method="post">{% csrf_token %}<button class="quiet" name="action" value="discard">Discard this result</button></form></section></div>
+<a href="{% url 'community_dictionary:port-run' dictionary.pk run.pk %}">Back to results</a>
+{% endblock %}

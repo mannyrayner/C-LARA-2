@@ -563,7 +563,10 @@ def export_dictionary(request, pk):
                     if fields.get('image_style') not in exported_parts:
                         fields['image_style'] = None
             archive.writestr('records.json', json.dumps(records, ensure_ascii=False, indent=2))
-            archive.writestr('README.txt', 'Portable dictionary export. records.json contains Django-labelled records and original IDs; manifest.json maps contributor IDs to usernames. media/ paths match contribution file_path fields. Additional picture-to-word links are included as community_dictionary.imagewordlink records; original picture-to-word associations follow the picture contribution’s entry. Credentials and submission receipts are excluded. This is an interchange export, not a full server backup. Use database plus private-media backups for operational restoration.\n')
+            from .models import ContributionDependency
+            links = list(ContributionDependency.objects.filter(derived_id__in=exported_parts).values('source_id','derived_id'))
+            archive.writestr('provenance-links.json', json.dumps(links, indent=2))
+            archive.writestr('README.txt', 'Portable dictionary export. records.json contains Django-labelled records and original IDs; manifest.json maps contributor IDs to usernames. media/ paths match contribution file_path fields. Additional picture-to-word links are included as community_dictionary.imagewordlink records; original picture-to-word associations follow the picture contribution’s entry. Credentials and submission receipts are excluded. provenance-links.json retains IDs of additional sources used by derived contributions; external source records are not included. Cross-dictionary withdrawal links require the full server database. This is an interchange export, not a full server backup. Use database plus private-media backups for operational restoration.\n')
             written = set()
             for item in media_items:
                 if item.file_path not in written:

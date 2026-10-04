@@ -1,5 +1,16 @@
 # Community dictionary: setup and testing
 
+## Language versions, 4 October 2026
+
+Manny's first Swedish/English → French/English laptop port mostly works. The
+[follow-up](community-language-porting.md) adds contextual category translation,
+stronger TTS language instructions and editable uncertain results, including old
+blocked previews. Updates can repair earlier generated outputs while protecting
+human corrections. 257 app tests, six shared audio unit tests and a real-queue
+browser rehearsal pass. Human retesting and AWS porting deployment remain pending.
+
+
+
 Latest: Manny reports the first practice update works and requests C-LARA-style
 [multiple-choice flashcards](community-practice-choices.md). Multiple choice is now the default
 for all six directions, with reveal mode retained. 215 app tests and a browser
@@ -410,3 +421,12 @@ use, public dictionaries, AI media generation and practice are outside this buil
 Send one consolidated report with successes, failures, reproduction steps and
 screenshots/log excerpts without credentials or private community media. That
 report initiates the next repair iteration.
+
+## Pronunciation follow-up (5 October 2026)
+
+The prepared [homograph guidance and bounded silence retry](community-tts-guidance.md) increment
+includes review warnings, explicit cost accounting and additive migration 0013.
+275 app tests pass. Manny now reports successful chat/lit generation and a successful
+small-dictionary laptop test. The local startup notes now retain `--insecure` for
+static files with `DEBUG=False`. AWS deployment and larger-dictionary acceptance
+remain the next step, not a completed result.

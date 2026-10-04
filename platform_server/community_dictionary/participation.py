@@ -120,6 +120,7 @@ def _restore_available(ids, actor):
             if part.pk not in eligible:
                 continue
             ancestors = [part.shared_from, part.previous_revision]
+            ancestors += [edge.source for edge in part.source_dependencies.select_related('source__entry__dictionary')]
             if any(a and a.entry.dictionary.personal and a.pk not in eligible for a in ancestors):
                 eligible.remove(part.pk)
         if eligible == before:

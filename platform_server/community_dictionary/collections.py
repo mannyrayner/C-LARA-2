@@ -10,7 +10,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from .models import AudioStudy, Contribution, Dictionary, Entry, ImageWordLink, PhotoStudy, Request
+from .models import ContributionDependency, AudioStudy, Contribution, Dictionary, Entry, ImageWordLink, PhotoStudy, Request
 from .services import Conflict, event
 from .storage import delete_file
 from .text import FIELDS, current, version
@@ -63,7 +63,7 @@ def dependent_ids(ids, *, dictionary_id=None):
     result = set(ids)
     frontier = set(ids)
     while frontier:
-        query = Contribution.objects.filter(Q(shared_from_id__in=frontier) | Q(previous_revision_id__in=frontier))
+        query = Contribution.objects.filter(Q(shared_from_id__in=frontier) | Q(previous_revision_id__in=frontier) | Q(pk__in=ContributionDependency.objects.filter(source_id__in=frontier).values('derived_id')))
         if dictionary_id:
             query = query.filter(entry__dictionary_id=dictionary_id)
         new = set(query.values_list('pk', flat=True)) - result
@@ -100,6 +100,8 @@ def withdraw(user, ids, *, moderator_dictionary=None, participation=None):
                 seeds.update(Contribution.objects.filter(entry=item.entry, kind='text', text_field=item.text_field,
                     controlled_by_id=controller(item)).values_list('pk', flat=True))
         moving_ids = dependent_ids(seeds, dictionary_id=moderator_dictionary.pk if moderator_dictionary else None)
+        from .porting import invalidate_sources
+        invalidate_sources(moving_ids)
         if participation:
             from .models import WithdrawalHold
             WithdrawalHold.objects.bulk_create([WithdrawalHold(participation=participation, contribution_id=pk)
@@ -150,10 +152,12 @@ def withdraw(user, ids, *, moderator_dictionary=None, participation=None):
             study.save(update_fields=['status', 'file_path', 'result'])
             if path:
                 transaction.on_commit(lambda path=path: delete_file(path))
-        for study in AudioStudy.objects.select_for_update().filter(source_text_id__in=word_ids).exclude(status='discarded'):
+        for study in AudioStudy.objects.select_for_update().filter(
+                Q(source_text_id__in=word_ids) | Q(source_meaning_id__in=moving_ids)).exclude(status='discarded'):
             path = study.file_path
             study.status, study.file_path, study.source_text = 'discarded', '', ''
-            study.save(update_fields=['status', 'file_path', 'source_text'])
+            study.source_meaning, study.synthesis = '', {}
+            study.save(update_fields=['status', 'file_path', 'source_text', 'source_meaning', 'synthesis'])
             if path:
                 transaction.on_commit(lambda path=path: delete_file(path))
         for pk in original_entries | destinations:
