@@ -1,5 +1,13 @@
 # Community dictionary development experiment
 
+## Current evidence — 5 October 2026
+
+[Review acceptance and the German AWS trial](german-port-review-2026-10-05.md)
+record Manny's successful faster-review acceptance and 61-entry German/English
+conversion. One noticed pronunciation issue is not a controlled accuracy estimate.
+The [three-page French stakeholder draft](../../docs/publications/community_dictionaries_update_fr/README.md)
+is ready for human review. These reports supersede earlier pending status below.
+
 ## Language porting, 4 October 2026
 
 Manny's first Swedish/English → French/English laptop port mostly works. The

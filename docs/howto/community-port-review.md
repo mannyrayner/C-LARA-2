@@ -108,5 +108,7 @@ simulated provider data exercised the controls; layouts were checked at 390px an
 call or AWS deployment was performed by the assistant.
 
 See [Manny's AWS trial and the prepared UX follow-up](../../experiments/community_dictionary/porting-aws-2026-10-05.md).
-The new UI still awaits Manny's laptop acceptance; this is not a new physical-phone
-trial or an independent assessment of French pronunciation.
+Manny subsequently reports laptop acceptance, a much faster review workflow, AWS
+deployment, and a successful German/English trial of the 61-entry dictionary.
+See the [acceptance record](../../experiments/community_dictionary/german-port-review-2026-10-05.md).
+This is not a new physical-phone trial or an independent pronunciation assessment.

@@ -1,5 +1,14 @@
 # Community dictionary app
 
+## Current update — 5 October 2026
+
+The faster port-review release is now reported accepted on the laptop and deployed
+on AWS. Manny reports a positive 61-entry Swedish/English to German/English trial,
+with “curry” the one pronunciation issue he noticed, subject to his limited German
+listening confidence. See the [trial record](../../experiments/community_dictionary/german-port-review-2026-10-05.md)
+and [French stakeholder draft](../../docs/publications/community_dictionaries_update_fr/README.md).
+Earlier pending-acceptance/deployment statements below are historical.
+
 Manny's first Swedish/English → French/English laptop port mostly works. The
 [follow-up](../../docs/howto/community-language-porting.md) adds contextual category translation,
 stronger TTS language instructions and editable uncertain results, including old

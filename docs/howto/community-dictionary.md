@@ -1,5 +1,14 @@
 # Community dictionary: setup and testing
 
+## Current update — 5 October 2026
+
+Manny reports laptop acceptance of the faster review workflow, AWS deployment,
+and a German/English port of the 61-entry Swedish/English dictionary. He noticed
+one German TTS issue, “curry”, while qualifying his listening ability; this is
+not an accuracy benchmark. See the [trial record](../../experiments/community_dictionary/german-port-review-2026-10-05.md)
+and [French stakeholder draft](../publications/community_dictionaries_update_fr/README.md).
+This supersedes the pending deployment/acceptance statements in older sections below.
+
 ## Language versions, 4 October 2026
 
 Manny's first Swedish/English → French/English laptop port mostly works. The
