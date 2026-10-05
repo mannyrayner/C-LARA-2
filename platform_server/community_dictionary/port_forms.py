@@ -30,9 +30,17 @@ class PortReviewForm(forms.Form):
     word = forms.CharField(max_length=255,label='Word or phrase')
     meaning = forms.CharField(max_length=3000,required=False,label='Translation or explanation',widget=forms.Textarea(attrs={'rows':2}))
     category = forms.CharField(max_length=80,required=False)
+    needs_attention = forms.BooleanField(required=False,label='Keep flagged for attention after saving')
+    attention_note = forms.CharField(max_length=500,required=False,label='Note for later (optional)',
+                                    widget=forms.Textarea(attrs={'rows':2}))
 
     def __init__(self,*args,change_target=True,change_explanation=True,**kwargs):
         super().__init__(*args,**kwargs)
         self.fields['word'].disabled = not change_target
         self.fields['meaning'].disabled = not change_explanation
         self.fields['category'].help_text = 'Check the proposed category; you can keep or change it.'
+
+
+class PortAttentionForm(forms.Form):
+    attention_note = forms.CharField(max_length=500,required=False,label='Note for later (optional)',
+                                    widget=forms.Textarea(attrs={'rows':2}))

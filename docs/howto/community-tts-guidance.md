@@ -1,8 +1,9 @@
 # Community Dictionary pronunciation guidance
 
 Prepared 5 October 2026; subsequent laptop acceptance reported by Manny. The small
-dictionary test works, including chat and lit. AWS and larger-dictionary acceptance
-remain pending. Human recording remains the primary workflow.
+dictionary test works, including chat and lit. Manny subsequently reports a
+61-entry French AWS conversion/review, with four initial pronunciation issues and
+two still unresolved after local remedies. See the [AWS trial record](../../experiments/community_dictionary/porting-aws-2026-10-05.md). Human recording remains the primary workflow.
 
 ## What changes
 
@@ -133,7 +134,8 @@ Start with development static-file serving (the laptop keeps `DEBUG=False`):
 Laptop acceptance is now reported. Follow the [check-in and AWS runbook](community-language-porting-aws.md)
 to back up, deploy all pending porting migrations through 0013, collect static files
 and restart web/queue workers together. Then test the larger French and Italian
-versions with fresh cost approval. No AWS change is claimed here.
+versions with fresh cost approval. The subsequent French AWS trial is now recorded;
+the [review-UX follow-up](community-port-review.md) addresses its workflow feedback.
 
 ## Evidence
 

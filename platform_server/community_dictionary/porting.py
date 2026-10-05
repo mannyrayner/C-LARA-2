@@ -229,15 +229,19 @@ def approve(user, run_id):
 def clear_preview(item, message='This preview is no longer available.'):
     path = item.file_path
     item.file_path, item.result, item.message, item.invalidated = '', {}, message, True
+    item.needs_attention, item.attention_note, item.review_values = False, '', {}
     if item.status != 'running':
         item.status = 'discarded'
-    item.save(update_fields=['file_path','result','status','message','invalidated'])
+    item.save(update_fields=['file_path','result','status','message','invalidated',
+                            'needs_attention','attention_note','review_values'])
     if path:
         transaction.on_commit(lambda path=path:delete_file(path))
 
 
 def invalidate_sources(ids):
     """Withdrawal never leaves copies of source text/audio in a private job preview."""
+    PortItem.objects.filter(sources__pk__in=ids).update(
+        needs_attention=False, attention_note='', review_values={})
     runs = set()
     for item in PortItem.objects.filter(sources__pk__in=ids).exclude(status__in=['saved','discarded']).distinct():
         clear_preview(item, 'A source contribution was withdrawn. Prepare a fresh estimate after it returns.')
@@ -428,7 +432,9 @@ def save_item(user, item_id, values):
             other_link.destination.refresh_from_db()
             other_link.destination_digest = snapshot(other_link.destination)['digest']
             other_link.save(update_fields=['destination_digest'])
-    item.status, item.result = 'saved', {}
-    item.save(update_fields=['status','result','file_path'])
+    item.status, item.result, item.review_values = 'saved', {}, {}
+    item.needs_attention = bool(values.get('needs_attention', item.needs_attention))
+    item.attention_note = values.get('attention_note', item.attention_note) if item.needs_attention else ''
+    item.save(update_fields=['status','result','file_path','review_values','needs_attention','attention_note'])
     event(port.destination,user,'save_port_entry',entry,f'Source entry {source_entry.pk}')
     return entry

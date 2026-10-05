@@ -79,6 +79,7 @@ corrected; no stylesheet/application change is required for this issue. AWS uses
 nginx and does not use this development flag.
 
 Next: [check in and deploy](../../docs/howto/community-language-porting-aws.md), then
-review the larger French version before trying Italian. PostgreSQL deployment,
-larger live costs and new phone acceptance remain pending. No AWS action was
-performed by the assistant, and no claim is made that TTS accuracy is solved.
+review the larger French version before trying Italian. Manny subsequently
+reported deployment and a 61-entry French AWS review: see [the follow-up record](porting-aws-2026-10-05.md).
+Live cost details, Italian and new phone acceptance remain unreported. No AWS action
+was performed by the assistant, and no claim is made that TTS accuracy is solved.

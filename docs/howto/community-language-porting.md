@@ -5,7 +5,9 @@ on the laptop. Short-word TTS remained unreliable. The new [pronunciation guidan
 increment](community-tts-guidance.md) adds English-homograph guidance/warnings and
 one bounded silence retry. Manny subsequently reports successful chat/lit generation
 and a successful small-dictionary laptop test of the integrated increment.
-AWS language-porting deployment remains pending; see the [deployment runbook](community-language-porting-aws.md).
+Manny now also reports conversion/review of the 61-entry French AWS version, with
+four initial pronunciation issues. See the [trial record](../../experiments/community_dictionary/porting-aws-2026-10-05.md)
+and the prepared [review-UX follow-up](community-port-review.md).
 
 ## Use it
 
@@ -229,9 +231,9 @@ including uncertain-result save, image/audio previews and incremental skipping.
 
 Provider calls in these checks are simulated. Manny subsequently confirmed the
 category and picture-interpretation fixes, then accepted the integrated pronunciation
-follow-up on the small laptop dictionary. Porting has not yet been reported deployed
-to AWS or tested on a physical phone. SQLite queue/browser checks do not substitute
-for PostgreSQL acceptance.
+follow-up on the small laptop dictionary. Porting was subsequently deployed and the French AWS conversion reviewed by Manny.
+A new physical-phone porting trial remains unreported. The latest review-UX increment
+has separate verification and still awaits human acceptance.
 
 The 5 October follow-up and current installation commands are documented in
 [Community Dictionary pronunciation guidance](community-tts-guidance.md).

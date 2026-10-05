@@ -1,0 +1,29 @@
+{% load pronunciation_tags %}
+<section class="panel">
+  <h2>{{ item.safe_label }} · {{ item.status }}</h2>
+  {% if item.attention_available and item.needs_attention %}
+    <p class="badge">Needs attention</p>
+    {% if item.attention_note %}<p>{{ item.attention_note|linebreaksbr }}</p>{% endif %}
+  {% endif %}
+  {% if item.status == 'unclear' %}<p>Check the suggestion or enter your own translation.</p>
+  {% elif item.message %}<p>{{ item.message }}</p>{% endif %}
+  {% if item.preview_available %}
+    {% pronunciation_warning item.result.word run.port.language %}
+    <a class="button" href="{% url 'community_dictionary:port-review' dictionary.pk run.pk item.pk %}{% if attention_only %}?attention=1{% endif %}">Review result</a>
+  {% elif item.saved_entry %}
+    <p><a class="button secondary" href="{% url 'community_dictionary:entry' run.port.destination_id item.saved_entry.pk %}">Open saved entry</a></p>
+    {% if item.needs_attention %}
+      <form method="post" action="{% url 'community_dictionary:port-attention' dictionary.pk run.pk item.pk %}?page={{ page.number }}{% if attention_only %}&amp;attention=1{% endif %}">
+        {% csrf_token %}<button class="secondary" name="action" value="clear">Mark as resolved</button>
+      </form>
+    {% else %}
+      <details><summary>Flag for attention</summary>
+        <form method="post" class="stack" action="{% url 'community_dictionary:port-attention' dictionary.pk run.pk item.pk %}?page={{ page.number }}{% if attention_only %}&amp;attention=1{% endif %}">
+          {% csrf_token %}<label for="attention-note-{{ item.pk }}">Note for later (optional)</label>
+          <textarea id="attention-note-{{ item.pk }}" name="attention_note" maxlength="500" rows="2"></textarea>
+          <button class="secondary" name="action" value="flag">Flag for attention</button>
+        </form>
+      </details>
+    {% endif %}
+  {% endif %}
+</section>

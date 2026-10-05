@@ -432,6 +432,9 @@ class PortItem(models.Model):
     uncertain_cost = models.BooleanField(default=False)
     invalidated = models.BooleanField(default=False)
     message = models.CharField(max_length=300, blank=True)
+    needs_attention = models.BooleanField(default=False, db_index=True)
+    attention_note = models.CharField(max_length=500, blank=True)
+    review_values = models.JSONField(default=dict, blank=True)
     started_at = models.DateTimeField(null=True)
     finished_at = models.DateTimeField(null=True)
 

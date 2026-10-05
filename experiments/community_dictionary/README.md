@@ -177,5 +177,10 @@ The prepared [homograph guidance and bounded silence retry](../../docs/howto/com
 includes review warnings, explicit cost accounting and additive migration 0013.
 275 app tests pass. Manny now reports successful chat/lit generation and a successful
 small-dictionary laptop test. The local startup notes now retain `--insecure` for
-static files with `DEBUG=False`. AWS deployment and larger-dictionary acceptance
-remain the next step, not a completed result.
+static files with `DEBUG=False`. Manny subsequently reports AWS conversion/review
+of 61 French entries, with four initially unsatisfactory recordings; two remain
+unresolved after his local remedies. A review-UX follow-up adds next-item navigation,
+saved-word labels and private attention flags (migration 0014; 286 passing tests),
+still awaiting human acceptance.
+
+See [review workflow and installation notes](../../docs/howto/community-port-review.md).

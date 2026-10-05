@@ -2,7 +2,8 @@
 
 Manny reports that the integrated small-dictionary laptop test works, including
 successful French **chat** and **lit** generation. This is the next deployment
-step, not a record of completed AWS acceptance. Human recording remains central;
+step. Manny subsequently reports a 61-entry Swedish/English to French/English AWS
+conversion and review; see the [trial record](../../experiments/community_dictionary/porting-aws-2026-10-05.md). Human recording remains central;
 generated pronunciation still needs listening review.
 
 ## 1. Check in on the laptop
@@ -74,7 +75,7 @@ the more restrictive backup mask below is confined to its subshell.
 
 ## 3. Back up before pulling or migrating
 
-Migrations 0011–0013 add tables/fields; they do not move or delete existing media.
+Migrations 0011–0014 add tables/fields; they do not move or delete existing media.
 For this release, take a fresh full database dump and Community Dictionary private
 media archive. There is no need to repeat the 22 GB public-media archive solely for
 these migrations. This scoped backup does not replace normal whole-site backups.
@@ -147,9 +148,10 @@ python manage.py showmigrations community_dictionary &&
 python manage.py migrate --plan
 ```
 
-On the last reported AWS version, Community Dictionary migrations through 0010
-are already applied; 0011, 0012 and 0013 should be pending. If any are already
-applied, leave them applied. Investigate unexpected migrations before continuing.
+The first porting deployment applied 0011–0013 over 0010 and has now been reported
+working on AWS. For the subsequent review-UX patch, only 0014 should be pending.
+If upgrading directly from 0010, apply all four in the normal forward order. Leave
+already applied migrations applied; investigate unexpected migrations before continuing.
 Do not repeat the old command targeting migration 0008 or rerun the experimental
 withdrawal-restoration procedure.
 
@@ -157,9 +159,14 @@ withdrawal-restoration procedure.
 python manage.py migrate &&
 python manage.py collectstatic --noinput &&
 python manage.py check &&
-sudo systemctl start gunicorn-clara2 djangoq-clara2 project-understanding-worker
+sudo systemctl restart gunicorn-clara2 djangoq-clara2 project-understanding-worker
 sudo systemctl status --no-pager gunicorn-clara2 djangoq-clara2 project-understanding-worker
 ```
+
+Use **restart** even if the services may already be running: **start** alone does
+not reload old workers. A missed stop caused entry-page errors in the first porting
+deployment; Manny reports that stopping/restarting restored access. Keep
+`DEBUG=False`; diagnose errors through server-side logs.
 
 All three services should stay active/running. No nginx restart or systemd
 daemon-reload is needed because this release changes neither configuration. If a
@@ -173,7 +180,7 @@ sudo journalctl -u gunicorn-clara2 -u djangoq-clara2 \
 Share relevant errors with secrets/private content removed. Do not automatically
 restore the database or reverse migrations after an installation error.
 
-## 5. Try the larger dictionary
+## 5. Larger-dictionary trial (French now reported)
 
 First check login, images and an existing human recording. Then open the source
 Swedish dictionary's **Settings → Create a version in another language** and make
@@ -190,5 +197,6 @@ Useful feedback is: entries attempted/completed/failed, estimated and recorded
 cost, any mispronounced words with language/voice, and whether review/save feels
 manageable at this size. Avoid sharing private dictionary exports just to report
 an error. Successful French acceptance can be followed by Italian/English and a
-phone playback check; larger-scale and AWS acceptance remain unclaimed until
-Manny reports the result.
+phone playback check. The subsequent French AWS trial is now recorded; Italian
+and new phone results remain unreported. The later review-UX increment has additive
+migration 0014; follow its [installation notes](community-port-review.md).

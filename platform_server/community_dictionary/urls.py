@@ -12,6 +12,7 @@ urlpatterns = [
     path('<int:pk>/language-port/<uuid:run_id>/', port_views.detail, name='port-run'),
     path('<int:pk>/language-port/<uuid:run_id>/action/', port_views.action, name='port-action'),
     path('<int:pk>/language-port/<uuid:run_id>/entries/<int:item_id>/', port_views.review, name='port-review'),
+    path('<int:pk>/language-port/<uuid:run_id>/entries/<int:item_id>/attention/', port_views.attention, name='port-attention'),
     path('<int:pk>/language-port/<uuid:run_id>/entries/<int:item_id>/<str:kind>/', port_views.media, name='port-media'),
     path('<int:pk>/practise/', practice_views.home, name='practice'),
     path('<int:pk>/practise/data/', practice_views.data, name='practice-data'),

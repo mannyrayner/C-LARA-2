@@ -23,8 +23,14 @@
 <div class="actions"><a class="button secondary" href="">Refresh progress</a>{% if run.port.destination %}<a href="{% url 'community_dictionary:dictionary' run.port.destination_id %}">Open the new dictionary</a>{% endif %}</div>
 <p class="help">You can leave this page while the background workers process entries concurrently. Only reviewed, saved results appear in the new dictionary.</p>
 {% if run.status == 'running' or run.queue_error or counts.running %}<form method="post" action="{% url 'community_dictionary:port-action' dictionary.pk run.pk %}" class="panel">{% csrf_token %}<p>If processing has stalled, resume waiting work. Attempts interrupted for over 15 minutes are marked failed; interrupted requests are never automatically repeated.</p><button class="secondary" name="action" value="resume">Resume waiting work</button></form>{% endif %}
-{% for item in page %}<section class="panel"><h2>{{ item.safe_label }} · {{ item.status }}</h2>{% if item.status == 'unclear' %}<p>Check the suggestion or enter your own translation.</p>{% elif item.message %}<p>{{ item.message }}</p>{% endif %}{% if item.preview_available %}{% pronunciation_warning item.result.word run.port.language %}<a class="button" href="{% url 'community_dictionary:port-review' dictionary.pk run.pk item.pk %}">Review result</a>{% endif %}</section>{% endfor %}
-{% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">Previous</a>{% endif %} <span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span> {% if page.has_next %}<a href="?page={{ page.next_page_number }}">Next</a>{% endif %}
+<nav class="actions" aria-label="Review filters">
+<a href="{% url 'community_dictionary:port-run' dictionary.pk run.pk %}"{% if not attention_only %} aria-current="page"{% endif %}>All results</a>
+<a href="{% url 'community_dictionary:port-run' dictionary.pk run.pk %}?attention=1"{% if attention_only %} aria-current="page"{% endif %}>Needs attention ({{ attention_count }})</a>
+</nav>
+{% for item in page %}{% include 'community_dictionary/port_item.html' %}{% empty %}<p>{% if attention_only %}No items are flagged for attention.{% else %}No results yet.{% endif %}</p>{% endfor %}
+{% if page.has_previous %}<a href="?page={{ page.previous_page_number }}{% if attention_only %}&amp;attention=1{% endif %}">Previous</a>{% endif %}
+<span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+{% if page.has_next %}<a href="?page={{ page.next_page_number }}{% if attention_only %}&amp;attention=1{% endif %}">Next</a>{% endif %}
 {% endif %}
 <section class="panel"><a href="{% url 'community_dictionary:port-update' dictionary.pk run.port_id %}">Estimate an update</a>{% if run.status != 'cancelled' %}<form method="post" action="{% url 'community_dictionary:port-action' dictionary.pk run.pk %}">{% csrf_token %}<p class="help">Stops waiting requests and discards unsaved previews. Saved entries remain. Requests already sent may still incur a cost.</p><button class="quiet danger" name="action" value="cancel">Cancel and discard unsaved results</button></form>{% endif %}</section>
 {% endblock %}
