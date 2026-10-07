@@ -110,18 +110,22 @@ def report_cost(report):
 
 
 def synthesize(text, *, language, model, voice, api_key, meaning='', meaning_language='',
-               report=None, guidance_model=None, guidance_prices=None, before_request=None):
-    if model != MODEL or voice not in VOICE_NAMES or language not in LANGUAGES.values() or not 0 < len(text) <= 255:
+               report=None, guidance_model=None, guidance_prices=None, before_request=None, speech_kind='entry'):
+    if (model != MODEL or voice not in VOICE_NAMES or language not in LANGUAGES.values()
+            or not 0 < len(text) <= 255 or speech_kind not in {'entry', 'sentence'}):
         raise ValueError('unsupported_synthesis')
     # Import lazily: URL loading must not initialize optional SDK dependencies.
     from pipeline.audio import OpenAITTSEngine
     report = report if report is not None else {}
-    report.update(instructions_version=INSTRUCTIONS_VERSION,
-                  english_homographs=pronunciation.homographs(text, language), attempts=[],
+    sentence = speech_kind == 'sentence'
+    report.update(instructions_version=pronunciation.SENTENCE_VERSION if sentence else INSTRUCTIONS_VERSION,
+                  speech_kind=speech_kind, stage='setup',
+                  english_homographs=[] if sentence else pronunciation.homographs(text, language), attempts=[],
                   guidance_cost_usd='0', speech_cost_usd='0', uncertain_cost=False)
-    instructions = pronunciation.simple_instructions(language)
-    with _openai_client(api_key=api_key, timeout=30.0, max_retries=0) as client:
+    instructions = pronunciation.sentence_instructions(language) if sentence else pronunciation.simple_instructions(language)
+    with _openai_client(api_key=api_key, timeout=60.0 if sentence else 30.0, max_retries=0) as client:
         if report['english_homographs']:
+            report['stage'] = 'guidance'
             if guidance_model is None:
                 guidance_model, guidance_prices = guidance_configuration()
             if not guidance_prices:
@@ -151,7 +155,9 @@ def synthesize(text, *, language, model, voice, api_key, meaning='', meaning_lan
                 record = {'attempt': attempt + 1, 'outcome': 'unknown'}
                 report['attempts'].append(record)
                 try:
+                    report['stage'] = 'speech'
                     engine.synthesize_to_path(text, output, voice=voice, language=language, instructions=instructions)
+                    report['stage'] = 'audio_check'
                     prepared, duration = normalize_wav(output.read_bytes())
                 except SilentAudio as exc:
                     duration = exc.duration
@@ -165,8 +171,38 @@ def synthesize(text, *, language, model, voice, api_key, meaning='', meaning_lan
                     report['uncertain_cost'] = True
                     raise  # Never retry timeouts, malformed responses or SDK/API errors.
                 record.update(outcome='usable', duration_seconds=duration)
+                report['stage'] = 'complete'
                 report['speech_cost_usd'] = str(Decimal(report['speech_cost_usd']) + estimate_cost(text + instructions, duration))
                 return prepared, duration
+
+
+def record_failure(report, exc):
+    """Bounded diagnostics: never persist provider messages or private input."""
+    if isinstance(exc, SilentAudio):
+        code = 'near_silent'
+    elif isinstance(exc, TimeoutError) or type(exc).__name__ == 'APITimeoutError':
+        code = 'timeout'
+    elif isinstance(exc, Conflict):
+        code = 'changed'
+    elif report.get('stage') == 'guidance':
+        code = 'guidance'
+    elif report.get('stage') == 'audio_check':
+        code = 'invalid_audio'
+    else:
+        code = 'provider'
+    report['failure_code'] = code
+    return code
+
+
+def failure_message(report):
+    return {
+        'near_silent': 'Both audio attempts were silent or too quiet.',
+        'timeout': 'The audio provider took too long to respond.',
+        'changed': 'The content, permissions or available credit changed during the request.',
+        'guidance': 'Pronunciation guidance could not be completed.',
+        'invalid_audio': 'The provider returned an unusable audio file.',
+        'provider': 'The audio provider request could not be completed.',
+    }.get(report.get('failure_code'), '')
 
 
 def record_charge(study):

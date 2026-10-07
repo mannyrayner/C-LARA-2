@@ -48,9 +48,12 @@ def finish(study, api_key):
     try:
         prepared, duration = tts.synthesize(study.source_text, language=study.language_code,
             model=study.model, voice=study.voice, api_key=api_key, meaning=study.source_meaning,
-            meaning_language=study.dictionary.explanation_language, report=report, before_request=still_allowed)
+            meaning_language=study.dictionary.explanation_language, report=report, before_request=still_allowed,
+            speech_kind='sentence' if study.entry.entry_type == 'sentence' else 'entry')
     except Exception as exc:
-        logger.warning('Audio study %s failed (%s)', study.pk, type(exc).__name__)
+        code = tts.record_failure(report, exc)
+        logger.warning('Audio study %s failed (%s; stage=%s; reason=%s)',
+            study.pk, type(exc).__name__, report.get('stage', 'setup'), code)
     paths = []
     try:
         with transaction.atomic():
@@ -96,7 +99,7 @@ def start(request, pk, entry_id):
         config = tts.configuration(request.user, dictionary)
         if not entry.word or not entry.current_text_id:
             raise Conflict('Add and accept the wording before creating audio. A dictionary editor can accept proposed words.')
-        if pronunciation.homographs(entry.word, config[2]):
+        if entry.entry_type != 'sentence' and pronunciation.homographs(entry.word, config[2]):
             guidance_model, guidance_prices = tts.guidance_configuration()
     except Conflict as exc:
         setup_error = str(exc)
@@ -130,8 +133,8 @@ def start(request, pk, entry_id):
                 source_text_id=target.current_text_id, source_text_version=target.text_version,
                 language=dictionary.language, language_code=code, model=tts.MODEL, voice=form.cleaned_data['voice'],
                 personal_key=personal,
-                source_meaning=target.meaning if pronunciation.homographs(target.word, code) and target.current_meaning_id else '',
-                source_meaning_id=target.current_meaning_id if pronunciation.homographs(target.word, code) else None)
+                source_meaning=target.meaning if target.entry_type != 'sentence' and pronunciation.homographs(target.word, code) and target.current_meaning_id else '',
+                source_meaning_id=target.current_meaning_id if target.entry_type != 'sentence' and pronunciation.homographs(target.word, code) else None)
             VoicePreference.objects.update_or_create(user=request.user, dictionary=dictionary,
                 defaults={'voice': study.voice})
             event(dictionary, request.user, 'audio_generation', target, f'OpenAI TTS consent; attempt {study.pk}')
@@ -161,7 +164,7 @@ def render_study(request, dictionary, study, form):
         form.fields.pop('publish_now', None)
     stale = stale_study(study)
     return render(request, 'community_dictionary/audio_study.html', context(request, dictionary,
-        study=study, form=form, stale=stale, timed_out=study.created_at < timezone.now()-timedelta(seconds=180)))
+        study=study, form=form, stale=stale, failure_reason=tts.failure_message(study.synthesis), timed_out=study.created_at < timezone.now()-timedelta(seconds=180)))
 
 
 @login_required

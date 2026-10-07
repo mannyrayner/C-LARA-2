@@ -11,11 +11,13 @@
     if (event.target instanceof HTMLAudioElement) pauseOthers(event.target);
   }, true);
 
+  function initialize() {
   document.querySelectorAll('[data-word-row]').forEach(row => {
     const audio = row.querySelector('[data-word-audio]');
     const button = row.querySelector('[data-word-listen]');
     const status = row.querySelector('[data-word-playback-status]');
-    if (!audio || !button) return;
+    if (!audio || !button || row.dataset.audioBound) return;
+    row.dataset.audioBound = 'yes';
     const name = row.querySelector('h3').textContent.trim();
     function update() {
       const playing = !audio.paused && !audio.ended;
@@ -49,4 +51,7 @@
     button.hidden = false;
     audio.hidden = true;
   });
+  }
+  initialize();
+  document.addEventListener('community-audio-updated', initialize);
 })();

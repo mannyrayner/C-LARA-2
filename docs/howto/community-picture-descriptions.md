@@ -40,7 +40,11 @@ and the single-object Learn from a photo workflow remain available.
 **Pictures**, **Words**, and **Sentences** provide complementary views. Sentence pages
 link to dictionary-form words (e.g. *Katten → katt*, *ligger → ligga*). Word pages
 link back to the sentences. An existing picture's page links to descriptions made
-from it. Listen/Translation controls work inline.
+from it. Listen/Translation controls work inline. In the normal Pictures/Accepted
+view, a described image-only source is represented by its sentence card. The original
+remains accessible through Original picture and discussion or Pictures/All; sources
+with independent content or undescribed images remain visible. Withdrawing the
+description makes its otherwise hidden source visible again.
 
 ## Meaning confirmation, language checking, and errors
 
@@ -55,8 +59,11 @@ assign editor access to a suitable speaker through People.
 Editors use the normal Edit words controls and then **Mark wording checked and
 resolve reports**. A check applies only to the exact word/sentence and translation
 revisions inspected. Later edits invalidate it. Audio is still subject to listening
-review; a waveform check cannot establish correct pronunciation. Existing English
-homograph warnings, pronunciation guidance and one near-silence retry apply.
+review; a waveform check cannot establish correct pronunciation. English homograph warnings and pronunciation coaching apply to word/MWE entries.
+Sentences and spoken confirmations use sentence-reading instructions without the
+word-definition/IPA request. Both paths retain one near-silence retry. Saved audio
+progress updates in place, preserving playback and open translations. A failed
+clip offers an explicit new audio request; no timeout is retried automatically.
 
 ## Content and privacy
 
@@ -137,9 +144,11 @@ Automated/provider-simulated evidence is in
 [the experiment record](../../experiments/community_dictionary/picture-capture-2026-10-07.md).
 Manny reports that nearly everything worked on the laptop and the workflow felt
 much faster, but the first cut split *sträcka ut sig*. Manny subsequently reports that the follow-up works on the small Swedish laptop
-dictionary and requests AWS deployment. Larger trials and AWS/phone acceptance of
-this increment remain pending; further MWE refinement is deferred until after that
-functionality trial.
+dictionary. AWS redeployment and three initial examples are now reported; the trial
+found redundant image-only source cards and one failed sentence-audio request.
+See the [focused repair and evidence](../../experiments/community_dictionary/picture-capture-aws-fixes-2026-10-07.md).
+Acceptance of that repair, broader trials and new physical-phone results remain
+pending. Further MWE refinement stays deferred until after the functionality trial.
 
 ## Multi-word expressions and editable vocabulary
 
@@ -184,3 +193,5 @@ The follow-up requires no new migration beyond **0015_picture_descriptions**.
 See [follow-up installation](community-picture-vocabulary-install.md).
 
 After laptop acceptance, use the [combined check-in/AWS runbook](community-picture-descriptions-aws.md).
+
+For the first AWS trial fixes, use [the incremental runbook](community-picture-capture-aws-fixes.md). No further migration is needed.

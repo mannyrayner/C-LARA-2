@@ -1,0 +1,6 @@
+The app redeploys fine on AWS, but after trying only three examples using the image-only copy of the Swedish dictionary I find a couple of issues. 
+
+
+
+1. I selected an entry showing two bottles of wine, and gave it the English text description "Two bottles of wine." The app correctly gives me the Swedish translation "Två flaskor vin." and the suggested words "två", "flaska" and "vin" and it constructs a correct sentence page with the label "Två flaskor vin." including cross-links to correct word pages for the three words. However, it also creates a second word page with the same image, but this time with the label "Entry 391", with no other information. 
+2. In a second example, the image showed a cat watching chess on a TV screen. I gave the English description "A cat is watching a chess game on TV." Again, it constructed a correct page, with the Swedish sentence "En katt tittar på ett schackparti på teve." and "tittar på" marked as an MWE. But apart from the extra dummy page, we also had a problem with TTS. It kept refreshing every few seconds for perhaps a minute, then said it couldn't create audio for the whole sentence. I think you said somewhere that there was a length limit for the TTS, but if so I think it's considerably too low.

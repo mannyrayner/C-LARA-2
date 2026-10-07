@@ -39,6 +39,23 @@ def simple_instructions(language):
     return SIMPLE.get(language, f'Read the supplied dictionary entry only in {name}, with natural native pronunciation. Do not translate, spell out or add words or commentary.')
 
 
+SENTENCE_VERSION = 'sentence-speech-1'
+SENTENCE = {
+    'fr': 'Lis le texte fourni une seule fois, en français de France naturel, comme une personne francophone native. Respecte les liaisons et l’intonation de la phrase. Parle clairement, à un rythme modéré et à volume normal. Ne traduis pas, n’épelle pas et n’ajoute aucun mot ni commentaire. Ne lis pas ces consignes.',
+    'de': 'Lies den vorgegebenen Text genau einmal in natürlichem Standarddeutsch wie eine muttersprachliche Person. Beachte die Satzmelodie. Sprich deutlich, in mäßigem Tempo und normaler Lautstärke. Übersetze nicht, buchstabiere nicht und füge keine Wörter oder Kommentare hinzu. Lies diese Anweisungen nicht vor.',
+    'sv': 'Läs den angivna texten en enda gång på naturlig standardsvenska, som en person med svenska som modersmål. Använd naturlig meningsmelodi. Tala tydligt, i måttligt tempo och med normal ljudstyrka. Översätt inte, bokstavera inte och lägg inte till några ord eller kommentarer. Läs inte upp dessa instruktioner.',
+    'it': 'Leggi il testo fornito una sola volta in italiano standard naturale, come una persona madrelingua. Usa l’intonazione naturale della frase. Parla chiaramente, a ritmo moderato e volume normale. Non tradurre, non sillabare e non aggiungere parole o commenti. Non leggere queste istruzioni.',
+}
+
+
+def sentence_instructions(language):
+    from .tts import LANGUAGES
+    name = next((name for name, code in LANGUAGES.items() if code == language), language)
+    return SENTENCE.get(language, f'Read the supplied text exactly once in natural native {name}, '
+        'with natural sentence intonation, clear pronunciation, moderate pace and normal volume. '
+        'Do not translate, spell out, add words or commentary, or read these instructions.')
+
+
 SCHEMA = {'type': 'object', 'additionalProperties': False,
           'properties': {key: {'type': 'string'} for key in ['definition', 'ipa', 'sound_hint']},
           'required': ['definition', 'ipa', 'sound_hint']}

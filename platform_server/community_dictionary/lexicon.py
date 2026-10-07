@@ -1,7 +1,34 @@
 """Shared, dictionary-scoped presentation queries for pictures and vocabulary."""
 from django.db.models import Exists, F, OuterRef, Prefetch, Q
 
-from .models import Contribution, Entry, ImageWordLink, SentenceWord
+from .models import Contribution, Entry, ImageWordLink, SentenceWord, Request
+
+
+def described_picture_sources(dictionary):
+    """Unlabelled source cards already represented by a live sentence card.
+
+    This is a presentation query, never an archive/delete operation. Preserve
+    sources with independent text, discussion, recordings, pending work, manual
+    tags or another undescribed image. Withdrawal of the description naturally
+    makes the source visible again, including captures made before this fix.
+    """
+    descriptions = Contribution.objects.filter(shared_from_id=OuterRef('pk'),
+        kind='image', status='accepted', entry__dictionary=dictionary,
+        entry__entry_type='sentence', entry__archived=False,
+        entry__current_text__status='accepted').exclude(file_path='').exclude(entry__word='')
+    images = Contribution.objects.filter(entry_id=OuterRef('pk'), kind='image',
+        status__in=['accepted', 'pending'])
+    uncovered = images.annotate(described=Exists(descriptions)).filter(
+        Q(described=False) | Q(status='pending'))
+    other = Contribution.objects.filter(entry_id=OuterRef('pk'),
+        status__in=['accepted', 'pending']).exclude(kind='image')
+    tags = ImageWordLink.objects.filter(image__entry_id=OuterRef('pk'), sentence_text__isnull=True)
+    requests = Request.objects.filter(entry_id=OuterRef('pk'), withdrawn=False).exclude(completed_with__status='accepted')
+    return Entry.objects.filter(dictionary=dictionary, archived=False, entry_type='word',
+        word='', meaning='', category='').annotate(
+        has_image=Exists(images), uncovered=Exists(uncovered), other=Exists(other),
+        manual_tags=Exists(tags), open_requests=Exists(requests)).filter(
+        has_image=True, uncovered=False, other=False, manual_tags=False, open_requests=False)
 
 
 def outdated_tts(contribution, entry, dictionary):

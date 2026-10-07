@@ -222,9 +222,12 @@ def speak(clip_id):
     try:
         prepared,_=tts.synthesize(clip.text,language=tts.language_code(clip.language),model=tts.MODEL,
             voice=clip.capture.voice,api_key=key,meaning=clip.meaning,meaning_language=clip.capture.explanation_language,
-            report=report,before_request=check)
+            report=report,before_request=check,
+            speech_kind='sentence' if clip.kind=='feedback' or clip.entry.entry_type=='sentence' else 'entry')
     except Exception as exc:
-        log.warning('Capture speech %s failed (%s)',clip_id,type(exc).__name__)
+        code=tts.record_failure(report,exc)
+        log.warning('Capture speech %s failed (%s; stage=%s; reason=%s)',
+            clip_id,type(exc).__name__,report.get('stage','setup'),code)
     paths=[]
     try:
         with transaction.atomic():
@@ -244,6 +247,8 @@ def speak(clip_id):
                             kind='audio',status='accepted',provenance={'origin':'synthetic','provider':'openai','model':tts.MODEL,
                             'source_text':current.text,'source_meaning_id':current.meaning_id,'language':current.language,
                             'voice':current.capture.voice,'capture_id':str(current.capture_id),
+                            'instructions_version':report.get('instructions_version',''),
+                            'speech_kind':report.get('speech_kind',''),
                             'pronunciation_guidance':report.get('guidance',{}),'english_homographs':report.get('english_homographs',[])},**media)
                         for part_id in [current.text_id,current.meaning_id]:
                             if part_id: ContributionDependency.objects.get_or_create(source_id=part_id,derived=audio)

@@ -198,4 +198,6 @@ See [review workflow and installation notes](../../docs/howto/community-port-rev
   rehearsal; live linguistic quality and human deployment/trial remain pending.
 
 
-7 October follow-up: [picture-description expressions, editable vocabulary and image-only test copies](picture-vocabulary-2026-10-07.md). Manny reports a faster laptop workflow; the correction patch has 324 passing tests and now has reported small-Swedish-dictionary laptop acceptance. AWS deployment and larger trials are next; further MWE refinement is deferred until after that trial.
+7 October follow-up: [picture-description expressions, editable vocabulary and image-only test copies](picture-vocabulary-2026-10-07.md). Manny reports a faster laptop workflow; the correction patch has 324 passing tests and now has reported small-Swedish-dictionary laptop acceptance. AWS deployment is now reported, with the first three examples exposing a redundant source card and a failed sentence TTS request; further MWE refinement remains deferred.
+
+7 October AWS follow-up: [browsing and sentence-audio fixes](picture-capture-aws-fixes-2026-10-07.md), with 334 passing app tests and simulated Chromium progress/playback checks. New live acceptance and the original provider failure diagnosis remain pending.

@@ -143,10 +143,13 @@ def detail(request,pk,study_id,vocabulary=None):
     if study.saved_entry_id:
         sentence_data=capture.sentence_context(study.saved_entry)
         word_rows=sentence_data['sentence_words']; language_check=sentence_data['language_check']
+    failed_audio=list(study.speech.filter(status='failed'))
+    for clip in failed_audio:
+        clip.failure_reason=tts.failure_message(clip.report)
     return render(request,'community_dictionary/capture_detail.html',context(request,study.dictionary,study=study,
         pending=pending,feedback=feedback,next_image=next_image,vocabulary=vocabulary,word_rows=word_rows,language_check=language_check,
         sentence_row=word_row(study.saved_entry,study.dictionary) if study.saved_entry_id else None,
-        failed_audio=study.speech.filter(status='failed'),running_audio=study.speech.filter(status='running'),
+        failed_audio=failed_audio,running_audio=study.speech.filter(status='running'),
         auto_process=study.status=='waiting' or study.speech.filter(kind='feedback',status='waiting').exists()))
 
 @login_required

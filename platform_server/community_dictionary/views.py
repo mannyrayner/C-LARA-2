@@ -106,6 +106,9 @@ def dictionary(request, pk):
             entries = entries.exclude(entry_type='word', selected_image__isnull=True, current_text__provenance__origin='picture-description')
         if show == 'accepted':
             entries = entries.filter(contributions__status='accepted', contributions__kind__in=['text', 'image', 'audio'])
+            if mode == 'pictures':
+                from .lexicon import described_picture_sources
+                entries = entries.exclude(pk__in=described_picture_sources(item).values('pk'))
         elif show == 'review':
             entries = entries.filter(contributions__status='pending')
         if query:

@@ -1,5 +1,5 @@
 {% load pronunciation_tags %}
-<article class="word-row" data-word-row>
+<article class="word-row" data-word-row data-entry-id="{{ row.entry.pk }}" data-audio-id="{{ row.audio.pk|default:'' }}">
   <h3 dir="{{ dictionary.text_direction }}"{% if hide_word_heading %} class="sr-only"{% endif %}>{{ row.entry.word }}</h3>
   <div class="word-actions">
     {% if row.audio %}
@@ -9,6 +9,6 @@
     {% if row.entry.meaning %}<details class="word-translation"><summary>Translation</summary><p dir="auto">{{ row.entry.meaning|linebreaksbr }}</p></details>{% endif %}
     {% if not on_word_page %}<a class="word-page-link" href="{% url 'community_dictionary:word' dictionary.pk row.entry.pk %}">Word page →</a>{% endif %}
   </div>
-  {% if row.audio.provenance.origin == 'synthetic' %}<p class="help">AI-generated voice</p>{% pronunciation_warning row.entry.word dictionary.language %}{% endif %}
+  {% if row.audio.provenance.origin == 'synthetic' %}<p class="help">AI-generated voice</p>{% if row.entry.entry_type != 'sentence' %}{% pronunciation_warning row.entry.word dictionary.language %}{% endif %}{% endif %}
   <p class="help" data-word-playback-status role="status" hidden></p>
 </article>

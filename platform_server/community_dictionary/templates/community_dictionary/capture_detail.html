@@ -1,6 +1,6 @@
 {% extends 'community_dictionary/base.html' %}{% load static %}{% block title %}Picture description{% endblock %}{% block content %}
 <h1>{% if study.status == 'saved' %}{{ study.saved_entry.word }}{% else %}Is this what you mean?{% endif %}</h1>
-<div class="capture-layout"><img class="capture-picture" src="{% url 'community_dictionary:capture-media' dictionary.pk study.pk 'picture' %}" alt="Your picture"><section class="panel">
+<div class="capture-layout" data-capture-stage="{{ study.status }}"><img class="capture-picture" src="{% url 'community_dictionary:capture-media' dictionary.pk study.pk 'picture' %}" alt="Your picture"><section class="panel">
 {% if study.status == 'waiting' or study.status == 'processing' %}<p role="status">Preparing your bilingual suggestion…</p><p class="help">An interrupted request is not repeated automatically. If this remains unchanged, use a fresh description from the dictionary.</p>
 {% elif study.status == 'failed' %}<p class="notice error">The suggestion could not be completed. Your picture and description are saved privately. You can revise them and try a new request.</p>
 {% else %}
@@ -20,7 +20,7 @@
 {% endif %}
 {% if study.status != 'saved' %}<p><a href="{% url 'community_dictionary:capture-start' dictionary.pk %}?revise={{ study.pk }}">Change or clarify my description</a></p>{% endif %}
 {% if pending or study.status == 'waiting' %}<form method="post" action="{% url 'community_dictionary:capture-action' dictionary.pk study.pk %}" data-capture-process data-auto="{% if auto_process %}yes{% else %}no{% endif %}">{% csrf_token %}<button class="secondary" name="action" value="process">{% if study.status == 'waiting' %}Prepare preview{% else %}Continue creating audio{% endif %}</button><p data-process-status role="status"></p></form>{% endif %}
-{% if running_audio %}<p class="help">An audio request is in progress. <a href="">Refresh its status</a>. If interrupted, use Create spoken audio on the entry to make a new attempt.</p>{% endif %}
-{% for clip in failed_audio %}<p class="notice">Audio could not be created for “{{ clip.text }}”. {% if clip.entry_id %}<a href="{% url 'community_dictionary:audio-start' dictionary.pk clip.entry_id %}">Try a new audio request</a>{% else %}Please read the written confirmation above.{% endif %}</p>{% endfor %}
+<div data-capture-audio-status aria-live="polite">{% if running_audio %}<p class="help">An audio request is in progress. <a href="">Refresh its status</a>. If interrupted, use Create spoken audio on the entry to make a new attempt.</p>{% endif %}
+{% for clip in failed_audio %}<p class="notice">Audio could not be created for “{{ clip.text }}”. {{ clip.failure_reason }} {% if clip.entry_id %}<a href="{% url 'community_dictionary:audio-start' dictionary.pk clip.entry_id %}">Try a new audio request</a>{% else %}Please read the written confirmation above.{% endif %}</p>{% endfor %}</div>
 <form method="post" action="{% url 'community_dictionary:capture-action' dictionary.pk study.pk %}">{% csrf_token %}<button class="quiet" name="action" value="discard">{% if study.status == 'saved' %}Clear private preview{% else %}Discard this preview{% endif %}</button></form>
-</section></div><script src="{% static 'community_dictionary/capture.js' %}?v=2" defer></script>{% endblock %}
+</section></div><script src="{% static 'community_dictionary/capture.js' %}?v=3" defer></script>{% endblock %}

@@ -4,13 +4,13 @@
 <h1>Create spoken audio</h1>
 <section class="panel">
 <p>The recording will say:</p><h2 dir="auto">{{ entry.word }}</h2>
-{% pronunciation_warning entry.word dictionary.language %}
+{% if entry.entry_type != 'sentence' %}{% pronunciation_warning entry.word dictionary.language %}{% endif %}
 <p><a href="{% url 'community_dictionary:contribute' dictionary.pk entry.pk %}?wording=1">Edit words first</a></p>
 {% if setup_error %}<p class="notice">{{ setup_error }}</p>{% else %}
 <p>Choose a named voice below. OpenAI will create a synthetic recording; listen before saving it to this entry.</p>
 <p>{% if personal %}Paid through your OpenAI account.{% elif charge_credits %}Paid from your C-LARA credit balance.{% else %}Paid by the server operator.{% endif %}</p>
 {% if guidance_model %}<p class="help">Pronunciation guidance: {{ guidance_model }} · rough extra estimate US${{ guidance_estimate|floatformat:4 }}. Configured rates: US${{ guidance_prices.input }}/million input tokens and US${{ guidance_prices.output }}/million output tokens.</p>{% endif %}
-<details><summary>Cost and privacy</summary><p class="help">{{ model }} · your selected voice. Estimated output cost: ${{ rate }} per minute, plus a small input-text estimate. Words sharing an English spelling also use one pronunciation-guidance request at the configured text-model rates. Silent or nearly silent output is regenerated once; both attempts can incur cost. The displayed cost is estimated from recording length and text size; the provider invoice is authoritative. The wording, language and, for pronunciation guidance, its accepted meaning go to OpenAI; no picture or human recording is sent. OpenAI’s retention rules apply. Limit: {{ limit }} audio previews per 24 hours per learner and per dictionary. Failed or discarded attempts count; an interrupted call may still incur a charge.</p></details>
+<details><summary>Cost and privacy</summary><p class="help">{{ model }} · your selected voice. Estimated output cost: ${{ rate }} per minute, plus a small input-text estimate. Individual word entries sharing an English spelling also use one pronunciation-guidance request at the configured text-model rates. Sentences use sentence-reading instructions without that extra request. Silent or nearly silent output is regenerated once; both attempts can incur cost. The displayed cost is estimated from recording length and text size; the provider invoice is authoritative. The wording, language and, for pronunciation guidance, its accepted meaning go to OpenAI; no picture or human recording is sent. OpenAI’s retention rules apply. Limit: {{ limit }} audio previews per 24 hours per learner and per dictionary. Failed or discarded attempts count; an interrupted call may still incur a charge.</p></details>
 <form method="post" class="stack" data-audio-generate>
 {% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}">
 {{ form.as_p }}<button>Create audio preview</button><p role="status" data-audio-status></p>

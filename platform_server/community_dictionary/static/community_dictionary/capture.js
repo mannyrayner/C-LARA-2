@@ -63,29 +63,63 @@
   const process = document.querySelector('[data-capture-process]');
   if (process) {
     let busy = false;
+    let timer;
     const began = Date.now();
+    function stopped(message) {
+      clearTimeout(timer);
+      process.querySelector('[data-process-status]').textContent = message;
+      process.querySelector('button').disabled = false;
+      busy = false;
+    }
+    function poll(url) {
+      if (Date.now() - began >= 180000) {
+        stopped('Audio is still pending. You can continue to another picture, refresh its status later, or use Continue creating audio.');
+        return;
+      }
+      timer = setTimeout(() => refresh(url).catch(() => {
+        stopped('Could not refresh the audio status. Your saved picture is safe. Reload to check progress.');
+      }), 2000);
+    }
     async function refresh(url) {
-      if (!vocabulary) { location.replace(url); return; }
-      // Voice feedback may finish while the learner is editing. Update only
-      // that panel: never reload and discard their vocabulary corrections.
+      const current = document.querySelector('[data-capture-stage]');
+      if (!vocabulary && current?.dataset.captureStage !== 'saved') {
+        location.replace(url); return; // Interpretation finished: show its preview once.
+      }
+      // GET only: polling never starts or repeats a paid request. Update audio
+      // in place, retaining edits, scroll position, open translations and players
+      // whose recording has not changed.
       const response = await fetch(url, {credentials:'same-origin'});
-      if (!response.ok) throw new Error('Could not refresh the spoken confirmation.');
+      if (!response.ok) throw new Error('Could not refresh the audio status.');
       const page = new DOMParser().parseFromString(await response.text(), 'text/html');
-      const feedback = page.querySelector('[data-capture-feedback]');
-      if (feedback) document.querySelector('[data-capture-feedback]').replaceWith(feedback);
+      if (!page.querySelector('[data-capture-stage]')) throw new Error('This preview is no longer available. Reload to view the current entry.');
+      for (const selector of ['[data-capture-feedback]', '[data-capture-audio-status]']) {
+        const old = document.querySelector(selector), fresh = page.querySelector(selector);
+        if (old && fresh && old.innerHTML !== fresh.innerHTML) old.replaceWith(fresh);
+      }
+      if (!vocabulary) {
+        page.querySelectorAll('[data-word-row]').forEach(fresh => {
+          const old = document.querySelector(`[data-word-row][data-entry-id="${fresh.dataset.entryId}"]`);
+          if (old && old.dataset.audioId !== fresh.dataset.audioId) {
+            const translation = fresh.querySelector('details');
+            if (translation) translation.open = !!old.querySelector('details')?.open;
+            old.replaceWith(fresh);
+          }
+        });
+        document.dispatchEvent(new Event('community-audio-updated'));
+      }
       if (page.querySelector('[data-capture-process]')) {
-        if (Date.now() - began < 180000) setTimeout(() => refresh(url).catch(() => {}), 2000);
-        else {
-          process.querySelector('[data-process-status]').textContent = 'Spoken feedback is still pending. You can keep editing or use the written confirmation.';
-          process.querySelector('button').disabled = false; busy = false;
-        }
+        process.querySelector('[data-process-status]').textContent = 'Audio is being prepared in the background. You can continue using this page or go to the next picture.';
+        process.querySelector('button').disabled = false; busy = false;
+        poll(url);
       } else {
+        clearTimeout(timer);
         process.remove();
         busy = false;
       }
     }
     async function run(event) {
       event?.preventDefault(); if (busy) return;
+      clearTimeout(timer);
       busy = true;
       const button = process.querySelector('button');
       const status = process.querySelector('[data-process-status]');
@@ -104,14 +138,8 @@
     process.addEventListener('submit', run);
     if (process.dataset.auto === 'yes') void run();
     else {
-      const key = `capture-poll:${location.pathname}`;
-      let began = Date.now();
-      try {
-        began = Number(sessionStorage.getItem(key)) || began;
-        sessionStorage.setItem(key, String(began));
-      } catch (_) {}
       process.querySelector('[data-process-status]').textContent = 'Audio is being prepared in the background. You can go to the next picture.';
-      if (Date.now() - began < 180000) setTimeout(() => refresh(location.href).catch(() => {}), 2000);
+      poll(location.href);
     }
   }
 })();
