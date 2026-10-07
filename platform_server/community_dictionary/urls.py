@@ -3,10 +3,18 @@ from django.contrib.auth import views as auth_views
 from projects.authentication_forms import LoginForm
 
 from . import audio_views, photo_views, views, lexicon_views, collection_views, participation_views
-from . import image_views, practice_views, port_views
+from . import image_views, practice_views, port_views, capture_views, image_copy
 
 app_name = 'community_dictionary'
 urlpatterns = [
+    path('<int:pk>/describe/', capture_views.start, name='capture-start'),
+    path('<int:pk>/pictures/<int:image_id>/describe/', capture_views.start, name='capture-image'),
+    path('<int:pk>/descriptions/<uuid:study_id>/', capture_views.detail, name='capture-detail'),
+    path('<int:pk>/descriptions/<uuid:study_id>/action/', capture_views.action, name='capture-action'),
+    path('<int:pk>/descriptions/<uuid:study_id>/media/<str:kind>/', capture_views.media, name='capture-media'),
+    path('<int:pk>/attention/', capture_views.attention, name='attention'),
+    path('<int:pk>/entries/<int:entry_id>/flag/', capture_views.flag, name='flag'),
+    path('<int:pk>/entries/<int:entry_id>/checked/', capture_views.checked, name='language-checked'),
     path('<int:pk>/language-versions/', port_views.start, name='port-start'),
     path('<int:pk>/language-versions/<int:port_id>/update/', port_views.start, name='port-update'),
     path('<int:pk>/language-port/<uuid:run_id>/', port_views.detail, name='port-run'),
@@ -17,6 +25,7 @@ urlpatterns = [
     path('<int:pk>/practise/', practice_views.home, name='practice'),
     path('<int:pk>/practise/data/', practice_views.data, name='practice-data'),
     path('<int:pk>/practise/media/<int:contribution_id>/', practice_views.media, name='practice-media'),
+    path('<int:pk>/settings/copy-images/', image_copy.copy_view, name='image-only-copy'),
     path('<int:pk>/settings/', views.dictionary_settings, name='settings'),
     path('<int:pk>/entries/<int:entry_id>/picture/', views.contribute, {'picture_only': True}, name='add-picture'),
     path('<int:pk>/image-style/', image_views.start, name='image-style'),

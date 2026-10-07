@@ -444,3 +444,17 @@ saved-word labels and private attention flags (migration 0014; 286 passing tests
 still awaiting human acceptance.
 
 See [review workflow and installation notes](community-port-review.md).
+
+## Optional picture descriptions
+
+The owner can enable **Picture descriptions (OpenAI)** under Settings. Members then
+use **Describe a picture**, or **Describe this picture** inside an existing accepted
+image, to turn their intended spoken/typed meaning into a bilingual sentence and
+linked words/audio. Meaning confirmation publishes immediately; language checking
+is a separate editor action. A shared **Needs attention** tab collects member reports.
+See [the first-cut workflow and limits](community-picture-descriptions.md). This
+option starts off and awaits laptop/physical-phone acceptance; human contributions
+remain available without it.
+
+
+7 October follow-up: [picture-description expressions, editable vocabulary and image-only test copies](community-picture-descriptions.md). Manny reports a faster laptop workflow; the correction patch has 324 passing tests and now has reported small-Swedish-dictionary laptop acceptance. AWS deployment and larger trials are next; further MWE refinement is deferred until after that trial.

@@ -1,7 +1,7 @@
 """Shared, dictionary-scoped presentation queries for pictures and vocabulary."""
-from django.db.models import Prefetch, Q
+from django.db.models import Exists, F, OuterRef, Prefetch, Q
 
-from .models import Contribution, Entry, ImageWordLink
+from .models import Contribution, Entry, ImageWordLink, SentenceWord
 
 
 def outdated_tts(contribution, entry, dictionary):
@@ -15,7 +15,7 @@ def outdated_tts(contribution, entry, dictionary):
 
 
 def vocabulary(dictionary):
-    return Entry.objects.filter(dictionary=dictionary, archived=False).exclude(word='').prefetch_related(
+    return Entry.objects.filter(dictionary=dictionary, archived=False, entry_type='word').exclude(word='').prefetch_related(
         Prefetch('contributions', queryset=Contribution.objects.filter(kind='audio', status='accepted').exclude(file_path=''), to_attr='lexicon_audio'))
 
 
@@ -34,9 +34,13 @@ def word_row(entry, dictionary):
 def valid_links(dictionary):
     # Scope both ends defensively, including fixtures/imports. Removed or
     # unaccepted media and entries without accepted words never enter the lexicon.
-    return ImageWordLink.objects.filter(
+    aligned = SentenceWord.objects.filter(sentence_text_id=OuterRef('sentence_text_id'),
+        word_entry_id=OuterRef('word_entry_id'), word_text_id=F('word_entry__current_text_id'))
+    return ImageWordLink.objects.annotate(aligned=Exists(aligned)).filter(
         image__entry__dictionary=dictionary, word_entry__dictionary=dictionary,
         image__kind='image', image__status='accepted',
+    ).filter(Q(sentence_text__isnull=True) | Q(aligned=True, sentence_text__status='accepted',
+        sentence_text_id=F('sentence_text__entry__current_text_id'), sentence_text__entry__dictionary=dictionary)
     ).exclude(image__file_path='').exclude(word_entry__word='')
 
 

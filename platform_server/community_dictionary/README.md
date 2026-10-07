@@ -161,3 +161,16 @@ saved-word labels and private attention flags (migration 0014; 286 passing tests
 still awaiting human acceptance.
 
 See [review workflow and installation notes](../../docs/howto/community-port-review.md).
+
+## Optional picture descriptions (7 October 2026)
+
+Migration 0015 adds an off-by-default picture + spoken/typed sentence workflow,
+bilingual meaning confirmation, immediately shared sentence/word entries, background
+TTS, revision-aware cross-links, and a shared Needs attention/editor-check queue.
+Source custody and withdrawal dependencies are retained. See
+[`community-picture-descriptions.md`](../../docs/howto/community-picture-descriptions.md)
+and the [implementation evidence](../../experiments/community_dictionary/picture-capture-2026-10-07.md).
+Live API/laptop/phone acceptance of this increment is still pending.
+
+
+7 October follow-up: [picture-description expressions, editable vocabulary and image-only test copies](../../docs/howto/community-picture-descriptions.md). Manny reports a faster laptop workflow; the correction patch has 324 passing tests and now has reported small-Swedish-dictionary laptop acceptance. AWS deployment and larger trials are next; further MWE refinement is deferred until after that trial.

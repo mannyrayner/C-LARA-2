@@ -1,0 +1,10 @@
+{% extends 'community_dictionary/base.html' %}{% block title %}Copy images only{% endblock %}{% block content %}
+<p class="eyebrow">{{ dictionary.name }}</p><h1>Create an image-only copy</h1>
+<section class="panel">
+<p>Copy {{ image_count }} shared image{{ image_count|pluralize }} to a new dictionary for testing picture descriptions. Reused copies of the same original picture count once.</p>
+<p>No words, translations, categories, audio, discussions or members are copied. Only you can browse the new dictionary initially. Its languages and picture-description setting are kept; AI picture generation starts off.</p>
+<p>The original dictionary is unchanged. Image attribution is kept, and withdrawing an original image also withdraws its copy and material derived from it.</p>
+<p class="help">This makes no AI requests and incurs no API charge.</p>
+<form method="post" class="stack">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}">{{ form.as_p }}<button>Create image-only copy</button></form>
+<p><a href="{% url 'community_dictionary:settings' dictionary.pk %}">Back to Settings</a></p>
+</section>{% endblock %}

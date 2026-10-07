@@ -10,6 +10,15 @@ class Command(BaseCommand):
     help = 'Delete expired private photo/audio/generated-image drafts (run daily). Saved dictionary media is separate.'
 
     def handle(self, **options):
+        from community_dictionary.models import PictureCapture
+        from community_dictionary.capture import discard
+        with transaction.atomic():
+            expired = PictureCapture.objects.filter(expires_at__lte=timezone.now())
+            discard(expired)
+            count = expired.count()
+            # Delete media on commit before deleting bookkeeping on a later run.
+        expired.delete()
+        self.stdout.write(f'Expired picture descriptions removed: {count}')
         self.expire(PhotoStudy, 'photo')
         self.expire(AudioStudy, 'audio')
         self.expire(ImageStudy, 'generated image')

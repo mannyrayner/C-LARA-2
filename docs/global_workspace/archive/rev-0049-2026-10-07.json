@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "workspace_revision": 51,
+  "workspace_revision": 49,
   "as_of": "2026-10-07",
   "assessed_commit_sha": "2a0a75e21d6bcd75c3890e5bcda752f32fd73106",
   "approved_proposal_id": null,
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "Manny now accepts the picture-description/MWE-editing/image-copy functionality on the small Swedish laptop dictionary and requests check-in and AWS redeployment for a larger trial. He explicitly defers further MWE refinement until after that functionality assessment. A documentation-only release follow-up provides the combined check-in/backup/0015/static/restart runbook; runtime code and the 324-test evidence are unchanged. AWS deployment and new physical-phone results remain unreported. Community consultation remains pending.",
+  "current_focus_summary": "Manny reports circulating the French note to Sophie, Stéphanie and Anne-Laure and checking in/deploying that documentation. Community feedback and an end-of-week Zoom time remain pending. He explicitly authorizes a separate optional AI-supported picture-description experiment to reduce capture friction. A first patch adds spoken/typed bilingual sentence confirmation, immediately published linked vocabulary/audio, background speech, shared attention and revision-sensitive checks, with 310 passing tests and simulated-provider Chromium rehearsal. Laptop/live-API/phone acceptance of this increment is still pending; it is off by default. Community-led design and sustained low-intervention operations remain the broader priorities.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -830,37 +830,6 @@
         "experiments/community_dictionary/picture-capture-2026-10-07.md",
         "platform_server/community_dictionary/tests/test_picture_capture.py"
       ]
-    },
-    {
-      "id": "OBS-0076",
-      "summary": "Manny reports nearly everything in the first picture-description cut working on the laptop, a much faster/more intuitive workflow and a more useful dictionary. For Katten sträcker ut sig på soffan, however, it offers sträcka and ut rather than sträcka ut sig. He requests MWE reuse, editable suggestions and a temporary image-only copy control before larger AWS tests.",
-      "observed_at": "2026-10-07",
-      "confidence": "high",
-      "evidence": [
-        "experiments/community_dictionary/picture-vocabulary-2026-10-07.md"
-      ]
-    },
-    {
-      "id": "OBS-0077",
-      "summary": "The prepared incremental patch adapts existing MWE templates/examples within the joint interpretation call (not the full annotation pipeline or another paid call), handles discontinuous expressions, permits bounded vocabulary edits/additions/removals, and creates owner-only image test copies retaining original custody and source withdrawal/restoration. 324 app tests pass; no new migration is needed. Real Django/Chromium tests at mobile/desktop widths use simulated providers. No live linguistic accuracy or human acceptance of this follow-up is yet claimed.",
-      "observed_at": "2026-10-07",
-      "confidence": "high",
-      "evidence": [
-        "docs/howto/community-picture-descriptions.md",
-        "docs/howto/community-picture-vocabulary-install.md",
-        "experiments/community_dictionary/picture-vocabulary-2026-10-07.md",
-        "platform_server/community_dictionary/tests/test_capture_vocabulary.py"
-      ]
-    },
-    {
-      "id": "OBS-0078",
-      "summary": "Manny reports that the follow-up works on the small Swedish laptop dictionary, asks to check in and redeploy to AWS, and explicitly defers further MWE work until after a broader functionality trial. The new release notes/runbook change no runtime code. The prior 324-test result is retained, not a new run; migration 0015 is the expected AWS upgrade from 0014. No assistant deployment or new AWS/phone acceptance is claimed.",
-      "observed_at": "2026-10-07",
-      "confidence": "high",
-      "evidence": [
-        "experiments/community_dictionary/picture-vocabulary-2026-10-07.md",
-        "docs/howto/community-picture-descriptions-aws.md"
-      ]
     }
   ],
   "assessments": [
@@ -1037,7 +1006,7 @@
     },
     {
       "id": "ASM-0011",
-      "summary": "The picture-description workflow and vocabulary/copy follow-up now have positive small-Swedish-dictionary laptop acceptance. The authorized next step is a combined check-in and controlled AWS release followed by a larger varied-image/phone trial. Further MWE refinement is explicitly deferred by Manny; preserve observed examples without expanding linguistic scope before the functionality trial. The release runbook retains lessons from prior PostgreSQL-client, file-permission and worker-restart incidents. The test copy avoids changing the source dictionary. Acceptance is human-reported and does not establish linguistic accuracy, community suitability or unattended operation; community partner feedback remains pending.",
+      "summary": "The accepted review workflow and 61-entry French/German ports remain the deployed baseline. The French stakeholder note has now been circulated and its repository update deployed, according to Manny; partner feedback and the Zoom time are still open. Manny explicitly requests an optional picture-centred sentence-capture experiment to address observed friction while community consultation is pending. The first cut has automated and simulated-browser evidence, with defaults preserving existing community workflows. Next assess live interpretation, grammar/lemma choices, speech recognition, audio quality and actual time per entry on the laptop; proceed to AWS/phone only after acceptance. These results do not establish Indigenous-language/community suitability or comparative pedagogy.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-2",
@@ -1098,19 +1067,16 @@
         "OBS-0072",
         "OBS-0073",
         "OBS-0074",
-        "OBS-0075",
-        "OBS-0076",
-        "OBS-0077",
-        "OBS-0078"
+        "OBS-0075"
       ],
-      "urgency": "combined_checkin_aws_release_then_larger_functionality_trial",
+      "urgency": "laptop_trial_of_optional_picture_capture_and_partner_feedback",
       "risk": "medium",
-      "progress": "picture_description_followup_laptop_accepted_aws_runbook_prepared",
+      "progress": "picture_capture_patch_prepared_310_tests_pass_live_acceptance_pending",
       "confidence": "medium"
     },
     {
       "id": "ASM-0012",
-      "summary": "Reducing Manny’s operational workload is a concrete autonomy objective aligned with the existing project goals. The current read-only Assistant can explain repository evidence but does not execute maintenance. Progress should be evaluated through end-to-end requests/releases, required human touches/minutes, service reliability and total human burden, with authority and recovery enforced outside the model. A staged supervised-to-delegated experiment is more informative than assuming a future model will solve operations. Non-technical requests for the situated-learning experience provide a concrete setting in which to test this operational autonomy; greater AI-community interest or comparative novelty is not established. Manny and Cathy explicitly elevate sustained low-intervention operation over runtime elaboration; securing minimal operating funds is an open design discussion. This coding patch does not itself demonstrate autonomous operation or lower long-term human burden. The new one-request practice increment is a bounded implementation data point; its application, laptop acceptance and AWS deployment are now reported, while subsequent maintenance burden remains unmeasured. Language porting adds another end-to-end implementation request, not evidence of sustained autonomous operation. The first laptop porting trial produced actionable defects followed by an agent-prepared repair; this is iterative maintenance evidence, not evidence of unattended long-run reliability. The TTS investigation demonstrates a limit of provider capability and the importance of bounded, human-reviewed scope; the new patch reduces repetitive handling but does not establish autonomous linguistic quality control. The AWS trial and review repair are further supervised maintenance evidence. The missed-stop recovery illustrates remaining deployment burden; the runbook is made more robust with restart, but no reduced human-hours outcome is yet measured. The accepted review release and German AWS trial add another completed supervised iteration. Manny estimates about five hours of AI development over about one week, but that is not an audited time/cost or model comparison and excludes human effort. The French draft presents reduced technical mediation as a future objective, preserving community decision authority. The requested picture-capture patch is another supervised development increment with tests and a runbook, not evidence of unattended operational maintenance; installation, live testing and feedback still require Manny. The first capture trial now provides positive usability feedback and a real MWE defect followed by a bounded correction; expert human testing still supplies essential linguistic evidence. The vocabulary follow-up is now accepted on the laptop, with release delegated through a checked runbook; Manny still performs check-in, deployment and live testing.",
+      "summary": "Reducing Manny’s operational workload is a concrete autonomy objective aligned with the existing project goals. The current read-only Assistant can explain repository evidence but does not execute maintenance. Progress should be evaluated through end-to-end requests/releases, required human touches/minutes, service reliability and total human burden, with authority and recovery enforced outside the model. A staged supervised-to-delegated experiment is more informative than assuming a future model will solve operations. Non-technical requests for the situated-learning experience provide a concrete setting in which to test this operational autonomy; greater AI-community interest or comparative novelty is not established. Manny and Cathy explicitly elevate sustained low-intervention operation over runtime elaboration; securing minimal operating funds is an open design discussion. This coding patch does not itself demonstrate autonomous operation or lower long-term human burden. The new one-request practice increment is a bounded implementation data point; its application, laptop acceptance and AWS deployment are now reported, while subsequent maintenance burden remains unmeasured. Language porting adds another end-to-end implementation request, not evidence of sustained autonomous operation. The first laptop porting trial produced actionable defects followed by an agent-prepared repair; this is iterative maintenance evidence, not evidence of unattended long-run reliability. The TTS investigation demonstrates a limit of provider capability and the importance of bounded, human-reviewed scope; the new patch reduces repetitive handling but does not establish autonomous linguistic quality control. The AWS trial and review repair are further supervised maintenance evidence. The missed-stop recovery illustrates remaining deployment burden; the runbook is made more robust with restart, but no reduced human-hours outcome is yet measured. The accepted review release and German AWS trial add another completed supervised iteration. Manny estimates about five hours of AI development over about one week, but that is not an audited time/cost or model comparison and excludes human effort. The French draft presents reduced technical mediation as a future objective, preserving community decision authority. The requested picture-capture patch is another supervised development increment with tests and a runbook, not evidence of unattended operational maintenance; installation, live testing and feedback still require Manny.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-2",
@@ -1130,10 +1096,7 @@
         "OBS-0070",
         "OBS-0072",
         "OBS-0073",
-        "OBS-0075",
-        "OBS-0076",
-        "OBS-0077",
-        "OBS-0078"
+        "OBS-0075"
       ],
       "urgency": "start_baseline_with_next_operational_work",
       "risk": "medium",
@@ -1200,7 +1163,7 @@
     },
     {
       "id": "UNC-0008",
-      "summary": "French and German 61-entry AWS conversions and faster-review acceptance are now reported. Exact deployed SHA, costs, timing, voice and listening protocol are unrecorded. Four French pronunciation issues were initially reported; German curry was noticed, with explicitly limited reviewer confidence. Neither report yields an accuracy estimate. Italian trials, broad phone compatibility, learner/community outcomes and long-run autonomous operation remain open. Manny has circulated the French note; partner responses remain pending. The development-time estimate is informal. The complete picture-description/vocabulary/copy increment is now accepted on the small Swedish laptop dictionary. Exact per-action outcomes and MWE accuracy are unmeasured. Larger AWS/phone trials remain pending; further MWE refinement is explicitly deferred until after the functionality trial.",
+      "summary": "French and German 61-entry AWS conversions and faster-review acceptance are now reported. Exact deployed SHA, costs, timing, voice and listening protocol are unrecorded. Four French pronunciation issues were initially reported; German curry was noticed, with explicitly limited reviewer confidence. Neither report yields an accuracy estimate. Italian trials, broad phone compatibility, learner/community outcomes and long-run autonomous operation remain open. The French draft has not yet been reviewed or circulated. The development-time estimate is informal.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1313,7 +1276,7 @@
     },
     {
       "id": "ACT-0010",
-      "summary": "Check in the accepted picture-description and vocabulary/copy patches plus release documentation, then deploy via the scoped database/private-media backup and migration 0015/static/restart runbook. Test existing content, create an image-only Swedish test dictionary, enable Picture descriptions there, and assess typed/spoken capture, correction, links/audio and navigation on varied images/phone. Record MWE examples and defer further MWE work until this trial is assessed. Continue awaiting Indigenous-language partner feedback.",
+      "summary": "Manny installs the optional picture-description patch on the laptop and tries typed/spoken descriptions, existing images, linked words/audio, attention, and withdrawal/restore before any AWS deployment. Record real model quality and capture friction. Keep the community-facing workflow stable while awaiting Sophie/Stéphanie/Anne-Laure feedback and the proposed Zoom time; do not infer community approval from this AI-supported experiment.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1414,18 +1377,18 @@
     "status": "autonomous_project_manager_update",
     "authorized_by": "Assistant following AGENTS.md",
     "authorized_at": "2026-10-07",
-    "authorization_basis": "Manny reports laptop acceptance and explicitly requests check-in/AWS redeployment instructions with further MWE work deferred; AGENTS.md requires reflection on material evidence.",
-    "comments": "Revision 51 preserves the new human acceptance and sequencing instruction. Assessed SHA remains the previously verified pre-capture main; the new deliverable is a documentation-only patch atop the accepted local increments. No remote commit/push/deployment, paid API calls or stakeholder messages were performed. Human-owned intentions remain unchanged."
+    "authorization_basis": "Manny explicitly requests implementation of the agreed picture-centred workflow; AGENTS.md requires material-evidence reflection.",
+    "comments": "Revision 49 preserves the human circulation/deployment reports and capture request. Assessed SHA is verified GitHub main before the new patch. New implementation evidence is local/provider-simulated; user installation and live acceptance remain pending. No messages were sent by the assistant and human-owned intentions remain unchanged."
   },
   "changes_from_previous_revision": {
-    "summary": "Recorded small-Swedish-dictionary acceptance, explicit deferral of further MWE work, and the authorized next step of check-in/AWS functionality testing. Prepared a documentation-only release runbook.",
+    "summary": "Recorded French-note circulation/deployment and pending partner feedback; prepared the explicitly requested optional picture-description experiment with bounded local evidence and a laptop trial next step.",
     "added_item_ids": [
-      "OBS-0078"
+      "OBS-0074",
+      "OBS-0075"
     ],
     "revised_item_ids": [
       "ASM-0011",
       "ASM-0012",
-      "UNC-0008",
       "ACT-0010"
     ],
     "retained_item_ids": [
@@ -1502,10 +1465,6 @@
       "OBS-0071",
       "OBS-0072",
       "OBS-0073",
-      "OBS-0074",
-      "OBS-0075",
-      "OBS-0076",
-      "OBS-0077",
       "ASM-0001",
       "ASM-0002",
       "ASM-0003",
@@ -1523,6 +1482,7 @@
       "UNC-0005",
       "UNC-0006",
       "UNC-0007",
+      "UNC-0008",
       "UNC-0009",
       "REQ-0005",
       "REQ-0007",

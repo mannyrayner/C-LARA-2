@@ -6,13 +6,14 @@ from .voices import VOICE_CHOICES
 
 
 class DictionaryForm(forms.ModelForm):
+    sentence_capture_enabled = forms.BooleanField(required=False, label='Enable Picture descriptions (OpenAI)', help_text='Optional experiment: members describe a picture by voice or text, confirm its meaning, and publish a sentence with linked words and synthetic audio. Contributor confirmation allows immediate publication; editors can check language afterwards. Picture, description and up to 200 words/meanings are sent to OpenAI. Off by default.')
     image_generation_enabled = forms.BooleanField(required=False, initial=False, label='Enable AI picture generation (OpenAI)', help_text='Owners and editors can approve a shared style and generate pictures from descriptions. Off by default. Each request needs permission to send its text to OpenAI and incurs API costs.')
     photo_ai_enabled = forms.BooleanField(required=False, initial=True, label='Enable Learn from a photo (OpenAI)', help_text='Members can choose to send a photo and the language names to OpenAI. Each request requires confirmation and incurs API costs. Uncheck if your community does not permit this processing.')
     tts_enabled = forms.BooleanField(required=False, initial=True, label='Enable saved spoken audio (OpenAI)', help_text='Members can generate synthetic audio from accepted words in supported languages, with confirmation and API costs. Human microphone recording works whether this is enabled or not.')
 
     class Meta:
         model = Dictionary
-        fields = ['name', 'language', 'explanation_language', 'photo_ai_enabled', 'tts_enabled', 'image_generation_enabled']
+        fields = ['name', 'language', 'explanation_language', 'photo_ai_enabled', 'tts_enabled', 'image_generation_enabled', 'sentence_capture_enabled']
         labels = {'language': 'Language we are collecting', 'explanation_language': 'Language for explanations (optional)'}
 
     def clean(self):
@@ -21,12 +22,16 @@ class DictionaryForm(forms.ModelForm):
             from .tts import language_code
             if not language_code(data.get('language', '')):
                 self.add_error('tts_enabled', 'Saved TTS is not configured for this language. Keep using human recordings.')
+        if data.get('sentence_capture_enabled'):
+            from .tts import language_code
+            if not data.get('tts_enabled') or not language_code(data.get('explanation_language') or 'English'):
+                self.add_error('sentence_capture_enabled', 'Enable saved audio and choose a supported explanation language for picture descriptions.')
         return data
 
 
 class DictionarySettingsForm(DictionaryForm):
     class Meta(DictionaryForm.Meta):
-        fields = ['name', 'language', 'explanation_language', 'text_direction', 'photo_ai_enabled', 'tts_enabled', 'image_generation_enabled']
+        fields = ['name', 'language', 'explanation_language', 'text_direction', 'photo_ai_enabled', 'tts_enabled', 'image_generation_enabled', 'sentence_capture_enabled']
 
 
 class PhotoStudyForm(forms.Form):

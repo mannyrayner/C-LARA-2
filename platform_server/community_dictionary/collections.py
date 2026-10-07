@@ -102,6 +102,11 @@ def withdraw(user, ids, *, moderator_dictionary=None, participation=None):
         moving_ids = dependent_ids(seeds, dictionary_id=moderator_dictionary.pk if moderator_dictionary else None)
         from .porting import invalidate_sources
         invalidate_sources(moving_ids)
+        from .capture import discard
+        from .models import PictureCapture
+        affected = PictureCapture.objects.filter(Q(source_image_id__in=moving_ids) | Q(sources__pk__in=moving_ids) |
+            Q(saved_entry__current_text_id__in=moving_ids)).values('pk')
+        discard(PictureCapture.objects.filter(pk__in=affected).exclude(status='discarded'))
         if participation:
             from .models import WithdrawalHold
             WithdrawalHold.objects.bulk_create([WithdrawalHold(participation=participation, contribution_id=pk)
@@ -126,7 +131,7 @@ def withdraw(user, ids, *, moderator_dictionary=None, participation=None):
                 'current': bool(item.text_field and getattr(old_entry, FIELDS[item.text_field][0] + '_id') == item.pk),
                 'selected_image': old_entry.selected_image_id == item.pk,
                 'completed_requests': list(Request.objects.filter(completed_with=item).values_list('pk', flat=True)),
-                'links': list(ImageWordLink.objects.filter(image=item).values('word_entry_id', 'created_by_id'))}
+                'links': list(ImageWordLink.objects.filter(image=item).values('word_entry_id', 'created_by_id', 'sentence_text_id'))}
             item.withdrawn_from = old_entry
             item.withdrawn_at = timezone.now()
             item.entry = destination

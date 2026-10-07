@@ -11,6 +11,8 @@ from .voices import DEFAULT_VOICE, VOICE_CHOICES
 
 
 class Dictionary(models.Model):
+    sentence_capture_enabled = models.BooleanField(default=False)
+    capture_revision = models.PositiveIntegerField(default=0)
     name = models.CharField(max_length=160)
     language = models.CharField(max_length=80)
     explanation_language = models.CharField(max_length=80, blank=True)
@@ -97,6 +99,7 @@ class Partner(models.Model):
 
 
 class Entry(models.Model):
+    entry_type = models.CharField(max_length=12, default='word', choices=[('word', 'Word'), ('sentence', 'Sentence')])
     dictionary = models.ForeignKey(Dictionary, on_delete=models.CASCADE, related_name='entries')
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     created_at = models.DateTimeField(default=timezone.now)
@@ -211,6 +214,7 @@ class MembershipDecision(models.Model):
 
 
 class ImageWordLink(models.Model):
+    sentence_text = models.ForeignKey('Contribution', null=True, blank=True, on_delete=models.CASCADE, related_name='+')
     """An additional word for one accepted picture; its original word is implicit."""
     image = models.ForeignKey(Contribution, on_delete=models.CASCADE, related_name='word_links')
     word_entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name='picture_links')
@@ -441,3 +445,72 @@ class PortItem(models.Model):
     class Meta:
         ordering = ['pk']
         constraints = [models.UniqueConstraint(fields=['run', 'source_entry'], name='cd_unique_port_item')]
+
+
+class PictureCapture(models.Model):
+    """One private picture/description attempt. A claim commits before each API call."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    dictionary = models.ForeignKey(Dictionary, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    source_image = models.ForeignKey(Contribution, null=True, blank=True, on_delete=models.PROTECT, related_name='+')
+    created_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField()
+    status = models.CharField(max_length=12, default='waiting')
+    language = models.CharField(max_length=80)
+    explanation_language = models.CharField(max_length=80)
+    input_language = models.CharField(max_length=80)
+    input_mode = models.CharField(max_length=8, default='text')
+    description = models.CharField(max_length=1000, blank=True)
+    file_path = models.CharField(max_length=200, blank=True)
+    recording_path = models.CharField(max_length=200, blank=True)
+    model = models.CharField(max_length=80)
+    personal_key = models.BooleanField(default=False)
+    voice = models.CharField(max_length=40, default=DEFAULT_VOICE)
+    revision = models.PositiveIntegerField(default=0)
+    membership_revision = models.PositiveIntegerField(default=0)
+    participation_revision = models.PositiveIntegerField(default=0)
+    result = models.JSONField(default=dict)
+    sources = models.ManyToManyField(Contribution, related_name='+')
+    usage = models.JSONField(default=dict)
+    saved_entry = models.ForeignKey(Entry, null=True, on_delete=models.SET_NULL, related_name='+')
+
+
+class CaptureSpeech(models.Model):
+    capture = models.ForeignKey(PictureCapture, on_delete=models.CASCADE, related_name='speech')
+    entry = models.ForeignKey(Entry, null=True, on_delete=models.CASCADE, related_name='+')
+    kind = models.CharField(max_length=12)  # feedback or vocabulary/sentence audio
+    status = models.CharField(max_length=12, default='waiting')
+    text = models.CharField(max_length=255)
+    meaning = models.CharField(max_length=1000, blank=True)
+    language = models.CharField(max_length=80)
+    text_id = models.PositiveBigIntegerField(null=True)
+    meaning_id = models.PositiveBigIntegerField(null=True)
+    file_path = models.CharField(max_length=200, blank=True)  # feedback only
+    report = models.JSONField(default=dict)
+    contribution = models.ForeignKey(Contribution, null=True, on_delete=models.SET_NULL, related_name='+')
+
+
+class SentenceWord(models.Model):
+    sentence_text = models.ForeignKey(Contribution, on_delete=models.CASCADE, related_name='sentence_words')
+    word_entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name='sentence_uses')
+    word_text = models.ForeignKey(Contribution, on_delete=models.PROTECT, related_name='+')
+    surface = models.CharField(max_length=100)
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['sentence_text', 'word_entry'], name='cd_sentence_word_unique')]
+
+
+class AttentionReport(models.Model):
+    entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name='attention_reports')
+    note = models.OneToOneField(Contribution, on_delete=models.CASCADE, related_name='+')
+    created_at = models.DateTimeField(default=timezone.now)
+    resolved_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.PROTECT, related_name='+')
+    resolved_at = models.DateTimeField(null=True)
+
+
+class LanguageCheck(models.Model):
+    """Check applies to these exact revisions, never silently to later edits."""
+    entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name='language_checks')
+    text = models.ForeignKey(Contribution, on_delete=models.CASCADE, related_name='+')
+    meaning = models.ForeignKey(Contribution, null=True, on_delete=models.CASCADE, related_name='+')
+    checked_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(default=timezone.now)

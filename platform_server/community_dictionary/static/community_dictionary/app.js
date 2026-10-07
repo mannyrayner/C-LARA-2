@@ -146,6 +146,7 @@
       }
     } catch (_) { status('Draft recovery is unavailable on this device. Keep this page open until you save.'); }
     ready = true;
+    form.dispatchEvent(new Event('community-draft-ready'));
     initialControls.forEach(([el, disabled]) => { el.disabled = disabled; });
     const recorderRoot = form.querySelector('[data-recorder]');
     if (recorderRoot && window.CommunityRecorder) {

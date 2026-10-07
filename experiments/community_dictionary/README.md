@@ -192,3 +192,10 @@ saved-word labels and private attention flags (migration 0014; 286 passing tests
 still awaiting human acceptance.
 
 See [review workflow and installation notes](../../docs/howto/community-port-review.md).
+
+- [Picture-centred sentence capture, 7 October 2026](picture-capture-2026-10-07.md):
+  optional first implementation, 310 passing tests and simulated-provider browser
+  rehearsal; live linguistic quality and human deployment/trial remain pending.
+
+
+7 October follow-up: [picture-description expressions, editable vocabulary and image-only test copies](picture-vocabulary-2026-10-07.md). Manny reports a faster laptop workflow; the correction patch has 324 passing tests and now has reported small-Swedish-dictionary laptop acceptance. AWS deployment and larger trials are next; further MWE refinement is deferred until after that trial.

@@ -9,6 +9,7 @@
   {% if word_audio|length > 1 %}<details><summary>Other recordings</summary>{% for recording in word_audio %}{% if recording.pk != row.audio.pk %}<p class="credit">{{ recording.author.username }}{% if recording.label %} · {{ recording.label }}{% endif %}{% if recording.provenance.origin == 'synthetic' %} · AI-generated voice{% endif %}</p>{% if recording.provenance.origin == 'synthetic' %}{% pronunciation_warning recording.provenance.source_text recording.provenance.language %}{% endif %}<audio controls preload="none" src="{% url 'community_dictionary:media' dictionary.pk recording.pk %}"></audio>{% endif %}{% endfor %}</details>{% endif %}
   <p class="help"><a href="{% url 'community_dictionary:entry' dictionary.pk entry.pk %}">Open original entry and discussion →</a></p>
 </section>
+{% if related_sentences %}<section class="panel"><h2>Sentences using this word</h2>{% for sentence in related_sentences %}<p><a href="{% url 'community_dictionary:entry' dictionary.pk sentence.pk %}" dir="auto">{{ sentence.word }}</a></p>{% endfor %}</section>{% endif %}
 <h2>Pictures for this word</h2>
 <div class="entry-grid">
   {% for picture in pictures %}<a class="entry-card" href="{% url 'community_dictionary:entry' dictionary.pk picture.entry_id %}?picture={{ picture.pk }}">

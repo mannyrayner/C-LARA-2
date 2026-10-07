@@ -3,6 +3,7 @@
 {% block content %}
 <p class="eyebrow">{{ dictionary.name }}</p><h1>{% if port %}Update {{ port.name }}{% else %}Create a version in another language{% endif %}</h1>
 <p class="lead">Keep the pictures and translate their intended meanings using the words, explanations and a representative picture together.</p>
+<p class="help">Language porting currently copies word entries. Picture-description sentences and their sentence links are not included.</p>
 <p>The original dictionary stays intact. The new dictionary initially has only you as a member. Attribution and withdrawal links are retained.</p>
 {% if port %}<section class="panel"><p>{{ port.language }} · explanations in {{ port.explanation_language }}</p><p>Unchanged entries are skipped unless the translation or speech rules have been improved. Entries you edited in the destination are protected. Review or discard previous results before updating.</p>
 <form method="post">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><button>Estimate update cost</button></form></section>

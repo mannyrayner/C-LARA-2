@@ -90,7 +90,7 @@ def dictionary(request, pk):
     participation = controls(request.user, item)
     if not participation['can_browse']:
         return render(request, 'community_dictionary/participation_status.html', {'project': item, 'participation': participation})
-    mode = 'words' if request.GET.get('view') == 'words' else 'pictures'
+    mode = request.GET.get('view') if request.GET.get('view') in {'words', 'sentences'} else 'pictures'
     show = request.GET.get('show', 'accepted') if mode == 'pictures' else 'accepted'
     query = request.GET.get('q', '').strip()[:200]
     category = request.GET.get('category', '')[:80]
@@ -100,6 +100,10 @@ def dictionary(request, pk):
             entries = entries.filter(Q(word__icontains=query) | Q(meaning__icontains=query))
     else:
         entries = item.entries.filter(archived=False).select_related('selected_image', 'current_text').prefetch_related('contributions__author')
+        if mode == 'sentences':
+            entries = entries.filter(entry_type='sentence')
+        else:
+            entries = entries.exclude(entry_type='word', selected_image__isnull=True, current_text__provenance__origin='picture-description')
         if show == 'accepted':
             entries = entries.filter(contributions__status='accepted', contributions__kind__in=['text', 'image', 'audio'])
         elif show == 'review':
@@ -111,7 +115,7 @@ def dictionary(request, pk):
         entries = entries.filter(category=category)
     page = Paginator(entries.distinct(), 24).get_page(request.GET.get('page'))
     categories = item.entries.filter(archived=False).exclude(category='').values_list('category', flat=True).distinct().order_by('category')
-    cards = [summary(e, item) for e in page] if mode == 'pictures' else []
+    cards = [summary(e, item) for e in page] if mode != 'words' else []
     words = [word_row(e, item) for e in page] if mode == 'words' else []
     return render(request, 'community_dictionary/dictionary.html', context(request, item, participation=participation, cards=cards, words=words, mode=mode, page=page, show=show, query=query, category=category, categories=categories))
 
@@ -191,7 +195,14 @@ def entry_detail(request, pk, entry_id):
         contribution.component_version = getattr(entry, FIELDS.get(contribution.text_field, ('current_text', 'text_version'))[1])
         contribution.is_current_component = contribution.text_field in FIELDS and getattr(entry, FIELDS[contribution.text_field][0] + '_id') == contribution.pk
     members_requests = entry.requests.select_related('partnership', 'created_by', 'completed_with').prefetch_related('responses')
-    return render(request, 'community_dictionary/entry.html', context(request, dictionary, **presentation, linked_words=[word_row(e, dictionary) for e in extra_words], link_form=link_form, contributions=contributions, audio=[c for c in contributions if c.kind == 'audio' and c.status == 'accepted' and not c.outdated_tts], notes=[c for c in reversed(contributions) if c.kind == 'note' and c.status != 'removed' and c.label != 'Partner request'], requests=members_requests, form=NoteForm(), can_request=Partnership.objects.filter(dictionary=dictionary, partners__user=request.user, partners__accepted=True).exists(), events=dictionary.events.filter(entry=entry).select_related('actor')[:30]))
+    from .capture import sentence_context
+    sentence_data = sentence_context(entry)
+    if image and image.status == 'accepted':
+        sentence_data['picture_sentences'] = Entry.objects.filter(dictionary=dictionary, entry_type='sentence', archived=False,
+            selected_image__shared_from=image, selected_image__status='accepted').exclude(word='')
+        if image.shared_from_id and image.shared_from.entry.dictionary_id == dictionary.pk and image.shared_from.status == 'accepted':
+            sentence_data['original_picture'] = image.shared_from
+    return render(request, 'community_dictionary/entry.html', context(request, dictionary, **sentence_data, **presentation, linked_words=[word_row(e, dictionary) for e in extra_words], link_form=link_form, contributions=contributions, audio=[c for c in contributions if c.kind == 'audio' and c.status == 'accepted' and not c.outdated_tts], notes=[c for c in reversed(contributions) if c.kind == 'note' and c.status != 'removed' and c.label != 'Partner request'], requests=members_requests, form=NoteForm(), can_request=Partnership.objects.filter(dictionary=dictionary, partners__user=request.user, partners__accepted=True).exists(), events=dictionary.events.filter(entry=entry).select_related('actor')[:30]))
 
 
 @login_required
@@ -372,6 +383,11 @@ def dictionary_settings(request, pk):
         require_owner(request.user, dictionary)
         form = DictionarySettingsForm(request.POST, instance=dictionary)
         if form.is_valid():
+            if set(form.changed_data) & {'sentence_capture_enabled', 'tts_enabled', 'language', 'explanation_language'}:
+                dictionary.capture_revision += 1
+                from .capture import discard
+                from .models import PictureCapture
+                discard(PictureCapture.objects.filter(dictionary=dictionary).exclude(status='discarded'))
             if 'image_generation_enabled' in form.changed_data:
                 dictionary.image_generation_revision += 1
                 from .image_generation import discard_studies
@@ -530,6 +546,10 @@ def export_dictionary(request, pk):
     dictionary = get_dictionary(request.user, pk)
     require_owner(request.user, dictionary)
     sets = [Dictionary.objects.filter(pk=pk), dictionary.memberships.all(), dictionary.partnerships.all(), Partner.objects.filter(partnership__dictionary=dictionary), dictionary.entries.all(), Contribution.objects.filter(entry__dictionary=dictionary).exclude(status__in=['withdrawn', 'removed']), Request.objects.filter(entry__dictionary=dictionary), ImageWordLink.objects.filter(image__entry__dictionary=dictionary, word_entry__dictionary=dictionary), dictionary.events.all(), dictionary.membership_decisions.all()]
+    from .models import SentenceWord, AttentionReport, LanguageCheck
+    from .capture import sentence_links
+    sets += [sentence_links(dictionary), AttentionReport.objects.filter(entry__dictionary=dictionary, note__entry__dictionary=dictionary),
+             LanguageCheck.objects.filter(entry__dictionary=dictionary, text__entry__dictionary=dictionary)]
     objects = [obj for queryset in sets for obj in queryset]
     media_items = list(Contribution.objects.filter(entry__dictionary=dictionary).exclude(status__in=['withdrawn', 'removed']).exclude(file_path=''))
     user_ids = {dictionary.owner_id}

@@ -27,3 +27,17 @@
 .image-prompt{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px}
 
 .dictionary-nav{flex-wrap:wrap}.dictionary-nav a[aria-current="page"]{background:#edf3ec}.entry-picture-actions{margin-bottom:22px}
+
+/* Picture-centred sentence capture. */
+.capture-picture {display:block;max-width:100%;max-height:55vh;width:auto;height:auto;object-fit:contain;margin:0 auto 1rem;border-radius:1rem;}
+.capture-layout {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1rem;align-items:start;}
+.capture-options {display:flex;flex-wrap:wrap;gap:1rem;}
+.capture-options p {flex:1;min-width:10rem;}
+[data-capture-form] textarea {width:100%;box-sizing:border-box;}
+[hidden] {display:none!important;}
+@media(max-width:700px) {.capture-layout {grid-template-columns:1fr;}.capture-picture {max-height:38vh;}}
+.capture-vocabulary {margin-top:1.5rem;}
+
+.vocabulary-row { margin: 1rem 0; padding: .8rem; border: 1px solid #b7c7c5; border-radius: .5rem; min-width: 0; }
+.vocabulary-row input:not([type="checkbox"]) { width: 100%; box-sizing: border-box; }
+.vocabulary-row legend { font-weight: 600; }

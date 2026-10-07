@@ -1,6 +1,6 @@
 {% load pronunciation_tags %}
 <article class="word-row" data-word-row>
-  <h3 dir="{{ dictionary.text_direction }}">{{ row.entry.word }}</h3>
+  <h3 dir="{{ dictionary.text_direction }}"{% if hide_word_heading %} class="sr-only"{% endif %}>{{ row.entry.word }}</h3>
   <div class="word-actions">
     {% if row.audio %}
     <button type="button" class="secondary" data-word-listen aria-label="Listen to {{ row.entry.word }}" aria-pressed="false" hidden>Listen</button>

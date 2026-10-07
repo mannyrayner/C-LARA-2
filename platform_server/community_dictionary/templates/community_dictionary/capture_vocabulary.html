@@ -1,0 +1,14 @@
+<details class="capture-vocabulary" {% if vocabulary.is_bound %}open{% endif %}>
+<summary>Words and expressions — edit, add or remove</summary>
+<p class="help">Keep useful expressions together, for example “sträcka ut sig”. Leave the sentence-form field blank if you are adding a related word. Up to 12 words or expressions; audio will be created for those you keep.</p>
+{{ vocabulary.management_form }}{{ vocabulary.non_form_errors }}
+<div data-vocabulary-rows>
+{% for word_form in vocabulary %}
+<fieldset class="vocabulary-row" data-vocabulary-row><legend>Word or expression {{ forloop.counter }}</legend>{{ word_form.as_p }}</fieldset>
+{% endfor %}
+</div>
+<template data-vocabulary-template><fieldset class="vocabulary-row" data-vocabulary-row><legend>New word or expression</legend>{{ vocabulary.empty_form.as_p }}</fieldset></template>
+<button class="secondary" name="action" value="add-word" formnovalidate data-add-word>Add a word or expression</button>
+<p data-vocabulary-status role="status"></p>
+</details>
+<p class="help" data-vocabulary-summary>{% for word_form in vocabulary %}{% if word_form.lemma.value and not word_form.DELETE.value %}<span dir="auto">{{ word_form.lemma.value }}</span> {% endif %}{% endfor %}</p>

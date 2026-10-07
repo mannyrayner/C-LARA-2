@@ -97,6 +97,9 @@ def withdraw_all(user, dictionary_id, expected_revision, successor_id=None):
     from .image_generation import discard_studies
     from .models import ImageStudy
     discard_studies(ImageStudy.objects.filter(dictionary=dictionary, user=user))
+    from .capture import discard
+    from .models import PictureCapture
+    discard(PictureCapture.objects.filter(dictionary=dictionary, user=user).exclude(status='discarded'))
     _finish(state, True)
     event(dictionary, user, 'withdraw_all', detail=f'{count} contributions retained privately')
     return count
@@ -172,7 +175,7 @@ def _restore_available(ids, actor):
                 if Entry.objects.filter(pk=link['word_entry_id'], dictionary_id=part.entry.dictionary_id,
                         archived=False).exclude(word='').exists():
                     ImageWordLink.objects.get_or_create(image=part, word_entry_id=link['word_entry_id'],
-                        defaults={'created_by_id': link['created_by_id']})
+                        defaults={'created_by_id': link['created_by_id'], 'sentence_text_id': link.get('sentence_text_id')})
     return len(parts)
 
 

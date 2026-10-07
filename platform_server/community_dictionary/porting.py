@@ -154,7 +154,7 @@ def quote(user, source, data, token, port=None):
         payer='personal' if personal else ('credits' if credits_enabled() else 'server'),
         expires_at=timezone.now()+timedelta(hours=1))
     links = {l.source_id:l for l in port.entry_links.select_related('destination__dictionary')}
-    entries = list(source.entries.filter(archived=False).exclude(word='').select_related(
+    entries = list(source.entries.filter(archived=False, entry_type='word').exclude(word='').select_related(
         'dictionary','current_text','current_meaning','current_category').order_by('pk'))
     run.category_plan = port_categories.build_plan(entries, port)
     for entry in entries:

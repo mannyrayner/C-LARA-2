@@ -43,6 +43,8 @@ def catalogue(dictionary, category=''):
 
     rows, categories = [], set()
     for entry in entries:
+        if entry.entry_type == 'sentence':
+            continue
         # Current pointers, when present, must still be shared accepted revisions.
         # Pointer-less accepted fields remain compatible with legacy imports.
         values = {}
