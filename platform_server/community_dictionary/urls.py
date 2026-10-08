@@ -27,6 +27,7 @@ urlpatterns = [
     path('<int:pk>/practise/media/<int:contribution_id>/', practice_views.media, name='practice-media'),
     path('<int:pk>/settings/copy-images/', image_copy.copy_view, name='image-only-copy'),
     path('<int:pk>/settings/', views.dictionary_settings, name='settings'),
+    path('<int:pk>/settings/visibility/', views.dictionary_visibility, name='visibility'),
     path('<int:pk>/settings/picture-allowance/', capture_limit_views.change, name='capture-limit'),
     path('<int:pk>/entries/<int:entry_id>/picture/', views.contribute, {'picture_only': True}, name='add-picture'),
     path('<int:pk>/image-style/', image_views.start, name='image-style'),

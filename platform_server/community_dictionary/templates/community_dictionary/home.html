@@ -1,8 +1,14 @@
 {% extends 'community_dictionary/base.html' %}{% block content %}
 <div class="hero"><p class="eyebrow">C-LARA · COLLECT TOGETHER</p><h1>A place for our<br>pictures and voices.</h1><p>Build a dictionary with people you know. Start with a photograph, a recording or a question.</p></div>
-{% if invitations %}<section class="panel"><h2>You’re invited</h2>{% for invitation in invitations %}<form method="post" action="{% url 'community_dictionary:join' invitation.dictionary_id %}" class="inline-form">{% csrf_token %}<span>{{ invitation.dictionary.name }} · {{ invitation.dictionary.language }}</span><button>Join dictionary</button></form>{% endfor %}</section>{% endif %}
-<section><h2>Your dictionaries</h2><div class="dictionary-grid">{% for row in projects %}<article class="panel dictionary-card"><span class="eyebrow">{{ row.dictionary.language }}</span><h3><a href="{% url 'community_dictionary:dictionary' row.dictionary.pk %}">{{ row.dictionary.name }}</a></h3>
-{% if row.state.withdrawn %}<p class="badge">Your content is withdrawn</p><div class="actions">{% if row.can_restore %}<form method="post" action="{% url 'community_dictionary:restore-content' row.dictionary.pk %}">{% csrf_token %}<input type="hidden" name="revision" value="{{ row.state.revision }}"><button>Restore my content</button></form>{% endif %}<a href="{% url 'community_dictionary:my-content' row.dictionary.pk %}">View my saved content</a></div>{% elif row.can_browse %}<a href="{% url 'community_dictionary:dictionary' row.dictionary.pk %}">Open dictionary →</a>{% else %}<p>{% if row.dictionary.archived %}Archived{% else %}Membership inactive{% endif %}</p><a href="{% url 'community_dictionary:dictionary' row.dictionary.pk %}">View my participation →</a>{% endif %}
-</article>{% empty %}<div class="empty">Your dictionaries will appear here. Create one below or ask its owner to invite your username: <strong>{{ request.user.username }}</strong>.</div>{% endfor %}</div></section>
+{% if invitations %}{% include 'community_dictionary/home_invitations.html' %}{% endif %}
+<section id="visible-dictionaries"><h2>Your dictionaries</h2><div class="dictionary-grid">
+{% for row in projects %}{% include 'community_dictionary/home_card.html' %}
+{% empty %}<div class="empty">{% if hidden_projects %}All your dictionaries are hidden. Open Hidden dictionaries below to find them.{% else %}Your dictionaries will appear here. Create one below or ask its owner to invite your username: <strong>{{ request.user.username }}</strong>.{% endif %}</div>{% endfor %}
+</div></section>
+{% if hidden_projects or hidden_invitations %}<details class="panel" id="hidden-dictionaries"><summary>Hidden dictionaries</summary>
+<p class="help">These dictionaries have been hidden by their owners. You can still open them and manage your own contributions.</p>
+{% if hidden_invitations %}{% include 'community_dictionary/home_invitations.html' with invitations=hidden_invitations %}{% endif %}
+<div class="dictionary-grid">{% for row in hidden_projects %}{% include 'community_dictionary/home_card.html' %}{% endfor %}</div>
+</details>{% endif %}
 <details class="panel" {% if form.errors %}open{% endif %}><summary>Create a dictionary</summary><form method="post" class="stack">{% csrf_token %}{{ form.as_p }}<button>Create dictionary</button></form></details>
 {% endblock %}

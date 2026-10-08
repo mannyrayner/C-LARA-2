@@ -1,0 +1,3 @@
+Great! That all appeared to work. But now another immediate request following discussion with Cathy. We have two copies of the Swedish dictionary accessible, the original one and the new one created by removing everything except the images from the original one and starting again with the "image understanding" scheme. The original one is now only interesting historically, and we need a way to hide it so that users aren't confused. In this case, Cathy wasn't at all sure which version to use.
+
+How about adding another control to the Settings tab, only shown to the owner of the dictionary, that toggles between "visible" and "hidden"? Then we can further clean things up before testing.

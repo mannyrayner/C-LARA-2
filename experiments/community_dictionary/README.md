@@ -1,5 +1,14 @@
 # Community dictionary development experiment
 
+## Latest follow-up — 8 October 2026
+
+Manny reports the allowance change appeared to work. Cathy was uncertain which of
+two Swedish dictionary versions to use. The prepared
+[owner-controlled visibility change](visibility-2026-10-08.md) moves historical
+versions into a collapsed section while preserving contribution rights. Migration
+0017; 356 app tests and an owner/member browser check pass. Human acceptance of
+visibility remains pending; systematic workflow testing is still ahead.
+
 ## Current evidence — 8 October 2026
 
 Manny confirms missing audio is now correctly generated after the recovery fix.

@@ -65,7 +65,15 @@ def home(request):
         event(dictionary, request.user, 'create_dictionary')
         return redirect('community_dictionary:dictionary', pk=dictionary.pk)
     from .participation import controls
-    return render(request, 'community_dictionary/home.html', {'projects': [controls(request.user, d) for d in entitled_dictionaries(request.user)], 'invitations': Membership.objects.filter(user=request.user, accepted=False, status='invited', dictionary__personal=False, dictionary__archived=False).select_related('dictionary'), 'form': form})
+    projects = [controls(request.user, d) for d in entitled_dictionaries(request.user)]
+    invitations = list(Membership.objects.filter(user=request.user, accepted=False,
+        status='invited', dictionary__personal=False, dictionary__archived=False).select_related('dictionary'))
+    return render(request, 'community_dictionary/home.html', {
+        'projects': [row for row in projects if not row['dictionary'].hidden],
+        'hidden_projects': [row for row in projects if row['dictionary'].hidden],
+        'invitations': [invite for invite in invitations if not invite.dictionary.hidden],
+        'hidden_invitations': [invite for invite in invitations if invite.dictionary.hidden],
+        'form': form})
 
 
 @login_required
@@ -371,6 +379,28 @@ def request_action(request, pk, request_id):
 def member_users(dictionary):
     withdrawn = Participation.objects.filter(dictionary=dictionary, withdrawn=True).values('user_id')
     return get_user_model().objects.filter(is_active=True).filter(Q(pk=dictionary.owner_id) | Q(membership__dictionary=dictionary, membership__accepted=True, membership__status='active')).exclude(pk__in=withdrawn).distinct().order_by('username')
+
+
+@login_required
+@require_POST
+@transaction.atomic
+def dictionary_visibility(request, pk):
+    get_object_or_404(Dictionary.objects.select_for_update(), pk=pk)
+    dictionary = get_dictionary(request.user, pk)
+    require_owner(request.user, dictionary)
+    visibility = request.POST.get('visibility')
+    if visibility not in {'visible', 'hidden'}:
+        return fail(request, 'Choose Visible or Hidden.', 400)
+    hidden = visibility == 'hidden'
+    # Explicit desired state makes repeated submissions harmless. Hiding does
+    # not archive, withdraw, invalidate AI work, or change membership/permissions.
+    if dictionary.hidden != hidden:
+        dictionary.hidden = hidden
+        dictionary.save(update_fields=['hidden'])
+        event(dictionary, request.user, 'dictionary_visibility', detail=visibility)
+    messages.success(request, 'Dictionary hidden from the main list.' if hidden else
+                     'Dictionary visible in the main list again.')
+    return redirect('community_dictionary:settings', pk=pk)
 
 
 @login_required

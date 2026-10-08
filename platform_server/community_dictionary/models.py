@@ -26,6 +26,8 @@ class Dictionary(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     created_at = models.DateTimeField(default=timezone.now)
     personal = models.BooleanField(default=False)
+    # Display preference for the shared home list; never an access restriction.
+    hidden = models.BooleanField(default=False)
     archived = models.BooleanField(default=False)
     collection_source = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, related_name='personal_collections')
     membership_policy = models.CharField(max_length=16, default='owner', choices=[('owner', 'Owner manages membership'), ('coordinators', 'Two coordinators approve changes')])

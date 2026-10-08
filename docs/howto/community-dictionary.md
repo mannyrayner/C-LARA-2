@@ -1,5 +1,15 @@
 # Community dictionary: setup and testing
 
+## Latest follow-up — 8 October 2026
+
+Manny reports the allowance change appeared to work. Cathy's confusion between
+the original and newer Swedish dictionaries motivates an owner-only
+[Visible/Hidden control](community-dictionary-visibility.md) in Settings. A hidden
+dictionary moves into a collapsed section without changing access or contribution
+rights. Additive migration 0017; 356 tests and a browser rehearsal pass. Human
+acceptance of visibility remains pending; earlier pending allowance status below
+is superseded by this report, whose test environment was not specified.
+
 ## Current update — 8 October 2026
 
 Manny confirms the audio-recovery follow-up works. The prepared
