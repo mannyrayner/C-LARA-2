@@ -98,6 +98,17 @@ VocabularyForms = forms.formset_factory(VocabularyForm, formset=VocabularyFormSe
     can_delete=True, max_num=MAX_EDITED_WORDS, validate_max=True, absolute_max=MAX_EDITED_WORDS)
 
 
+IMAGE_COPY_STATUSES = {
+    'accepted': ('accepted',), 'pending': ('pending',), 'both': ('accepted', 'pending')}
+
+
 class ImageCopyForm(forms.Form):
+    image_status = forms.ChoiceField(label='Images to copy', initial='both', required=False,
+        choices=[('accepted', 'Accepted'), ('pending', 'Awaiting review'), ('both', 'Both')])
+
+    def clean_image_status(self):
+        # Old open forms without the new control use the same default.
+        return self.cleaned_data['image_status'] or 'both'
+
     name = forms.CharField(label='Name of the new dictionary', max_length=160)
     permission = forms.BooleanField(label='I have permission to copy these images into a new dictionary.')

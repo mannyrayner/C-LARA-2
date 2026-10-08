@@ -5,12 +5,14 @@
 
 ## Using it
 
-On an accepted image's entry, **Describe this picture** now offers three equal
+On an eligible image's entry, **Describe this picture** now offers three equal
 choices: **Type**, **Speak**, and **Suggest a description**. Choose one and Continue.
 The same choices appear when starting **Describe a picture** with a new image.
 They replace the competing single-object **Learn from this photo** control where
 Picture descriptions is enabled. The older route is retained when that feature
-is off, or the picture is awaiting review.
+is off, or the current member cannot review a pending picture. Owners/editors
+can now describe pending pictures and accept them when confirming the description;
+see [the image-copy follow-up](community-image-copy-review.md).
 
 **Suggest a description** needs only the picture. Select the language for feedback,
 review the existing cost/data notice, and choose **Prepare suggestion**. AI proposes

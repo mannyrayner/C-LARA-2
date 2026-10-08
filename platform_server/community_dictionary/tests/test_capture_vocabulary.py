@@ -143,7 +143,7 @@ class CaptureVocabularyTests(TestCase):
         self.assertEqual(target.entries.count(),1)
         entry=target.entries.get();image=entry.contributions.get()
         self.assertEqual((entry.word,entry.meaning,entry.category),('','',''))
-        self.assertEqual(image.kind,'image');self.assertEqual(image.status,'accepted')
+        self.assertEqual(image.kind,'image');self.assertEqual(image.status,'pending')
         self.assertEqual(image.shared_from_id,original.pk)
         self.assertEqual(image.author_id,original.author_id)
         self.assertEqual(image.controlled_by_id,original.author_id)
@@ -161,7 +161,7 @@ class CaptureVocabularyTests(TestCase):
     def test_copy_post_replay_is_idempotent_and_get_read_only(self):
         self.image();self.client.force_login(self.owner)
         self.assertContains(self.client.get(self.url('settings')),'Create an image-only copy')
-        self.assertContains(self.client.get(self.url('image-only-copy')),'Copy 1 shared image')
+        self.assertContains(self.client.get(self.url('image-only-copy')),'Both: 1 distinct picture')
         self.assertEqual(Dictionary.objects.count(),1)
         token=uuid.uuid4()
         a=self.copy_images(submission_id=token);b=self.copy_images(submission_id=token)
@@ -180,13 +180,13 @@ class CaptureVocabularyTests(TestCase):
         self.assertEqual(strict.post(self.url('image-only-copy'),{'name':'copy'}).status_code,403)
         self.assertEqual(Dictionary.objects.count(),1)
 
-    def test_copy_excludes_archived_and_pending_images(self):
+    def test_copy_includes_pending_and_excludes_archived_images(self):
         accepted=self.image();pending=self.image();archived=self.image()
         pending.status='pending';pending.save()
         archived.entry.archived=True;archived.entry.save()
         self.copy_images()
         target=Dictionary.objects.get(name='Image test copy')
-        self.assertEqual(list(Contribution.objects.filter(entry__dictionary=target).values_list('shared_from_id',flat=True)),[accepted.pk])
+        self.assertEqual(set(Contribution.objects.filter(entry__dictionary=target).values_list('shared_from_id',flat=True)),{accepted.pk,pending.pk})
 
     def test_missing_image_rolls_back_entire_copy(self):
         first=self.image();second=self.image();path_for(second.file_path).unlink()

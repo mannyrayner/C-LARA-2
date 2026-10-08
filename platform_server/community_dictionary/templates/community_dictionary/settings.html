@@ -23,7 +23,7 @@
 {% if dictionary.language_port %}<p><a href="{% url 'community_dictionary:port-update' dictionary.language_port.source_id dictionary.language_port.pk %}">Update this version from its source dictionary</a></p>{% endif %}
 <p class="help">Preview the cost, approve processing, then review the translated entries.</p></section>
 <section class="panel"><h2>Testing picture descriptions</h2>
-<p>Create a fresh dictionary containing just the shared images, without changing this one.</p>
+<p>Create a fresh dictionary from accepted images, pictures awaiting review, or both. Copied pictures start awaiting review.</p>
 <a class="button secondary" href="{% url 'community_dictionary:image-only-copy' dictionary.pk %}">Create an image-only copy</a>
 </section>
 <section class="panel"><h2>Dictionary settings</h2>

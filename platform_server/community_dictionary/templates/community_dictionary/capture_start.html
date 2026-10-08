@@ -6,6 +6,7 @@
 <form method="post" enctype="multipart/form-data" class="stack" data-draft-form data-capture-form data-choice-fixed="{{ choice_fixed|yesno:'yes,no' }}" data-dictionary="{{ dictionary.pk }}">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}">
 {{ form.non_field_errors }}
 <section class="panel"><h2>1. Picture</h2>
+{% if image.status == 'pending' or previous.source_image.status == 'pending' %}<p class="help">This picture is awaiting review. Preparing a suggestion keeps it that way; confirming the description will also accept the picture.</p>{% endif %}
 {% if image %}<img class="capture-picture" src="{% url 'community_dictionary:media' dictionary.pk image.pk %}" alt="Picture to describe">
 {% elif previous %}<img class="capture-picture" src="{% url 'community_dictionary:capture-media' dictionary.pk previous.pk 'picture' %}" alt="Your picture">
 {% else %}<p><label for="picture-method">Picture source</label><select id="picture-method" data-picture-method><option value="camera">Camera</option><option value="upload">Choose a picture</option></select></p>

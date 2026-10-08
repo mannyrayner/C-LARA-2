@@ -35,8 +35,7 @@ def start(request,pk,image_id=None):
     dictionary=get_dictionary(request.user,pk)
     if not dictionary.sentence_capture_enabled:
         return fail(request,'The owner can enable Picture descriptions in Settings.',403)
-    image=get_object_or_404(Contribution,pk=image_id,entry__dictionary=dictionary,entry__archived=False,
-        kind='image',status='accepted') if image_id else None
+    image=get_object_or_404(capture.available_images(request.user,dictionary),pk=image_id) if image_id else None
     previous=None
     if request.GET.get('revise'):
         previous=own(request,pk,request.GET['revise'])
@@ -74,7 +73,7 @@ def start(request,pk,image_id=None):
                 prepared=(path_for(previous.file_path).read_bytes(),'image/jpeg','.jpg')
                 source=previous.source_image
             elif image:
-                source=get_object_or_404(Contribution,pk=image.pk,entry__dictionary=current,status='accepted',entry__archived=False)
+                source=get_object_or_404(capture.available_images(request.user,current),pk=image.pk)
                 prepared=(path_for(source.file_path).read_bytes(),'image/jpeg','.jpg')
             else:
                 source=None; prepared=form.cleaned_data['prepared_photo']
@@ -144,8 +143,8 @@ def detail(request,pk,study_id,vocabulary=None):
         used=Contribution.objects.filter(entry__dictionary_id=pk,entry__entry_type='sentence',
             entry__archived=False,kind='image',status='accepted',entry__current_text__status='accepted'
         ).exclude(entry__word='').exclude(shared_from=None).values('shared_from_id')
-        next_image=Contribution.objects.filter(entry__dictionary_id=pk,entry__archived=False,entry__entry_type='word',
-            kind='image',status='accepted').exclude(pk__in=used).order_by('created_at','pk').first()
+        next_image=capture.available_images(request.user,study.dictionary).filter(entry__entry_type='word'
+            ).exclude(pk__in=used).order_by('created_at','pk').first()
     from .lexicon import word_row
     word_rows=[]; language_check=None
     if study.saved_entry_id:

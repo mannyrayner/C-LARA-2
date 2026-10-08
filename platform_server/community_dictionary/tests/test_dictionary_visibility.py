@@ -132,7 +132,7 @@ class DictionaryVisibilityTests(TestCase):
         self.visibility('hidden')
         copied = target.entries.get().selected_image
         self.assertEqual(copied.shared_from_id, image.pk)
-        self.assertEqual(copied.status, 'accepted')
+        self.assertEqual(copied.status, 'pending')
         self.assertFalse(target.hidden)
         self.assertEqual(self.client.get(reverse('community_dictionary:dictionary', args=[target.pk])).status_code, 200)
         # A fresh copy made after hiding the source also starts visible.

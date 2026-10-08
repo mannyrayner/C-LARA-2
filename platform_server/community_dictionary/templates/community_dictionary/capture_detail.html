@@ -14,6 +14,7 @@
 <form method="post" action="{% url 'community_dictionary:capture-action' dictionary.pk study.pk %}" data-vocabulary-form>
 {% csrf_token %}
 {% include 'community_dictionary/capture_vocabulary.html' %}
+{% if study.source_image.status == 'pending' %}<p class="help">Saving also accepts this picture in this dictionary.</p>{% endif %}
 <button name="action" value="confirm">Yes — save and share</button><input type="hidden" name="permission" value="yes">
 <p class="help">By saving, I confirm I have permission to share this contribution with the dictionary.</p>
 </form>{% endif %}

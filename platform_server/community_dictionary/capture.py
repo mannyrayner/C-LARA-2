@@ -13,8 +13,8 @@ from projects.models import AIUsageCharge, CreditLedgerEntry
 from . import capture_ai, photo_ai, tts
 from .models import (PictureCapture, CaptureSpeech, Contribution, ContributionDependency,
     Dictionary, Entry, ImageWordLink, SentenceWord, Participation, LanguageCheck, AttentionReport)
-from .permissions import get_dictionary
-from .services import Conflict, event
+from .permissions import get_dictionary, is_editor
+from .services import Conflict, event, accept
 from .storage import path_for, write_upload, delete_file
 from .text import FIELDS
 from .capture_vocabulary import MAX_EDITED_WORDS
@@ -28,6 +28,15 @@ def fetch(pk,lock=False):
     qs=PictureCapture.objects.select_for_update(of=('self',)) if lock else PictureCapture.objects
     return qs.select_related('dictionary','user','source_image__entry').get(pk=pk)
 
+def image_statuses(user, dictionary):
+    return ('accepted', 'pending') if is_editor(user, dictionary) else ('accepted',)
+
+
+def available_images(user, dictionary):
+    return Contribution.objects.filter(entry__dictionary=dictionary, entry__archived=False,
+        kind='image', status__in=image_statuses(user, dictionary)).exclude(file_path='')
+
+
 def allowed(study, *, payment=False):
     dictionary=get_dictionary(study.user,study.dictionary_id)
     revision=Participation.objects.filter(user=study.user,dictionary=dictionary).values_list('revision',flat=True).first() or 0
@@ -37,12 +46,15 @@ def allowed(study, *, payment=False):
         (dictionary.explanation_language or 'English')!=study.explanation_language or
         study.status=='discarded' or study.expires_at<=timezone.now()):
         raise Conflict('The capture settings or your participation changed. Start again from the dictionary.')
+    permitted_images=image_statuses(study.user,dictionary)
     if study.source_image_id and not Contribution.objects.filter(pk=study.source_image_id,
-            entry__dictionary=dictionary,entry__archived=False,status='accepted',kind='image').exclude(file_path='').exists():
-        raise Conflict('The original picture is no longer shared.')
+            entry__dictionary=dictionary,entry__archived=False,status__in=permitted_images,kind='image').exclude(file_path='').exists():
+        raise Conflict('The original picture is unavailable or you no longer have permission to describe it.')
     if study.status!='saved':
         for source in study.sources.select_related('entry'):
-            if (source.entry.dictionary_id!=dictionary.pk or source.status!='accepted' or source.entry.archived or
+            permitted_pending=(source.pk==study.source_image_id and source.kind=='image' and
+                source.status=='pending' and 'pending' in permitted_images)
+            if (source.entry.dictionary_id!=dictionary.pk or (source.status!='accepted' and not permitted_pending) or source.entry.archived or
                 (source.text_field and getattr(source.entry,FIELDS[source.text_field][0]+'_id')!=source.pk)):
                 raise Conflict('Some source material changed. Please prepare a fresh suggestion.')
     if payment:
@@ -160,6 +172,10 @@ def publish(study_id, user, *, vocabulary=None):
                         (w['lemma'],w['meaning'],w['surface']) for w in data['suggested_words']]:
                     data['vocabulary_edited_by']=user.pk
                 study.result=data
+            # Confirmation is also the editor's approval of this pending source.
+            # Both changes commit together; provider calls/preview never approve it.
+            if study.source_image_id and study.source_image.status=='pending':
+                accept(study.source_image,user)
             entry=Entry.objects.create(dictionary=study.dictionary,created_by=user,entry_type='sentence')
             provenance={'origin':'picture-description','model':study.model,'recipe':data.get('recipe','picture-description-v1'),
                 'capture_id':str(study.pk),'meaning_confirmed_by':user.pk,'language':study.language,

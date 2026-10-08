@@ -184,6 +184,7 @@ def entry_detail(request, pk, entry_id):
     entry = get_entry(dictionary, entry_id)
     presentation = summary(entry, dictionary)
     from .capture_forms import DescriptionModeForm
+    from .capture import image_statuses
     description_modes=DescriptionModeForm(initial={'input_mode':request.session.get(f'capture-{pk}',{}).get('input_mode','text')})
     if 'picture' in request.GET:
         try:
@@ -192,10 +193,12 @@ def entry_detail(request, pk, entry_id):
                 raise ValueError
         except (ValueError, TypeError):
             raise Http404
-        presentation['image'] = get_object_or_404(entry.contributions, pk=picture_id, kind='image', status='accepted')
+        presentation['image'] = get_object_or_404(entry.contributions, pk=picture_id, kind='image', status__in=image_statuses(request.user,dictionary))
         if not presentation['image'].file_path:
             raise Http404
     image = presentation['image']
+    can_describe_image=bool(dictionary.sentence_capture_enabled and image and image.file_path and
+        image.status in image_statuses(request.user,dictionary))
     extra_words = list(linked_words(image, dictionary)) if image and image.status == 'accepted' else []
     link_form = None
     if image and image.status == 'accepted' and is_editor(request.user, dictionary):
@@ -215,7 +218,7 @@ def entry_detail(request, pk, entry_id):
             selected_image__shared_from=image, selected_image__status='accepted').exclude(word='')
         if image.shared_from_id and image.shared_from.entry.dictionary_id == dictionary.pk and image.shared_from.status == 'accepted':
             sentence_data['original_picture'] = image.shared_from
-    return render(request, 'community_dictionary/entry.html', context(request, dictionary, **sentence_data, **presentation, description_modes=description_modes, linked_words=[word_row(e, dictionary) for e in extra_words], link_form=link_form, contributions=contributions, audio=[c for c in contributions if c.kind == 'audio' and c.status == 'accepted' and not c.outdated_tts], notes=[c for c in reversed(contributions) if c.kind == 'note' and c.status != 'removed' and c.label != 'Partner request'], requests=members_requests, form=NoteForm(), can_request=Partnership.objects.filter(dictionary=dictionary, partners__user=request.user, partners__accepted=True).exists(), events=dictionary.events.filter(entry=entry).select_related('actor')[:30]))
+    return render(request, 'community_dictionary/entry.html', context(request, dictionary, **sentence_data, **presentation, description_modes=description_modes, can_describe_image=can_describe_image, linked_words=[word_row(e, dictionary) for e in extra_words], link_form=link_form, contributions=contributions, audio=[c for c in contributions if c.kind == 'audio' and c.status == 'accepted' and not c.outdated_tts], notes=[c for c in reversed(contributions) if c.kind == 'note' and c.status != 'removed' and c.label != 'Partner request'], requests=members_requests, form=NoteForm(), can_request=Partnership.objects.filter(dictionary=dictionary, partners__user=request.user, partners__accepted=True).exists(), events=dictionary.events.filter(entry=entry).select_related('actor')[:30]))
 
 
 @login_required

@@ -1,5 +1,14 @@
 # Community dictionary development experiment
 
+## Latest follow-up — image-only copy review, 8 October 2026
+
+Manny reports the three description modes work. The next
+[prepared repair](image-copy-review-2026-10-08.md) offers Accepted/Awaiting review/Both copying (default Both),
+creates pending copies and lets owners/editors accept a picture by confirming its
+description. Next picture includes pending work; original states and custody remain.
+376 tests and a mocked browser rehearsal pass; no new migration. Human acceptance
+of this follow-up remains pending. Earlier pending AI-mode acceptance is superseded.
+
 ## Latest update — three description modes, 8 October 2026
 
 Manny confirms visibility works and requests Cathy's preferred AI-description route.

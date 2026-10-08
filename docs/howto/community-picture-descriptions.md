@@ -36,9 +36,11 @@ control is retained where the unified workflow is unavailable.
    If queuing fails, **Continue creating audio** claims one still-waiting item.
 5. For a picture already saved in the dictionary, open its entry and choose
    **Describe this picture**, choose one of the three modes and Continue.
-   The original image must be accepted. After saving,
-   Next picture offers the oldest accepted, not-yet-described image from an ordinary
-   entry. When none remains, it opens capture for a new picture.
+   Owners/editors can also describe pending images; confirming the description
+   accepts the picture in the same transaction. After saving,
+   Next picture offers the oldest eligible, not-yet-described image from an ordinary
+   entry, including pending images for owners/editors. When none remains, it opens
+   capture for a new picture.
 
 **Pictures**, **Words**, and **Sentences** provide complementary views. Sentence pages
 link to dictionary-form words (e.g. *Katten → katt*, *ligger → ligga*). Word pages
@@ -183,8 +185,9 @@ own panel and does not reload away unsaved vocabulary edits.
 ## Image-only test dictionaries
 
 The owner can choose **Settings → Create an image-only copy**. This creates a new
-private-by-membership dictionary with shared, accepted images from non-archived
-entries; repeated derivatives of the same original image are copied once. No word,
+private-by-membership dictionary. Choose accepted images, pending images or both
+(default) from non-archived entries; repeated derivatives of the same original image are copied once. All copied images
+start Awaiting review, and the new dictionary opens on that tab. No word,
 translation, category, audio, discussion, member list or generated-style setting is
 copied. The target/commenting languages and picture-description setting are kept;
 AI image generation starts off. Image provenance is retained, including any original
@@ -217,3 +220,7 @@ prepared change, with additive migration 0016; see its
 8 October later update: [Type / Speak / Suggest a description](community-ai-descriptions.md)
 unifies the entry controls and uses the existing review/confirmation path. No new
 migration beyond 0017; live quality and usability of AI suggestions await testing.
+
+8 October later follow-up: [image-copy selection and review](community-image-copy-review.md)
+includes pending source images by default and supports owner/editor confirmation of
+pending pictures through the unified description workflow. No new migration.
