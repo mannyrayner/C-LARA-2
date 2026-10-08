@@ -1,5 +1,14 @@
 # Community dictionary development experiment
 
+## Current evidence — 8 October 2026
+
+Manny confirms missing audio is now correctly generated after the recovery fix.
+The next [prepared follow-up](capture-limits-2026-10-08.md) lets dictionary owners
+change the picture-description allowance in Settings after a daily-cost preview
+and confirmation. Migration 0016; 349 app tests and a mocked browser rehearsal
+pass. Human acceptance of this new setting and Cathy's workflow trial remain open.
+This supersedes older pending status where the later evidence applies.
+
 ## Current evidence — 5 October 2026
 
 [Review acceptance and the German AWS trial](german-port-review-2026-10-05.md)

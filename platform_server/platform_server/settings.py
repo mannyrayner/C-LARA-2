@@ -183,6 +183,9 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 COMMUNITY_DICTIONARY_PHOTO_MODEL = os.environ.get("C_LARA_COMMUNITY_PHOTO_MODEL", "gpt-6-sol")
 COMMUNITY_DICTIONARY_PHOTO_DAILY_LIMIT = int(os.environ.get("C_LARA_COMMUNITY_PHOTO_DAILY_LIMIT", "20"))
 COMMUNITY_DICTIONARY_TTS_DAILY_LIMIT = int(os.environ.get("C_LARA_COMMUNITY_TTS_DAILY_LIMIT", "20"))
+# Server ceiling: shared dictionary allowances default to 10 and are owner-configurable.
+# Also caps one account's combined picture descriptions across dictionaries in 24h.
+COMMUNITY_DICTIONARY_CAPTURE_DAILY_LIMIT = int(os.environ.get("C_LARA_COMMUNITY_CAPTURE_DAILY_LIMIT", "1000"))
 PROJECT_UNDERSTANDING_CODEX_EXECUTABLE = os.environ.get("C_LARA_CODEX_EXECUTABLE", "codex")
 PROJECT_UNDERSTANDING_REPOSITORY_PATH = os.environ.get("C_LARA_PROJECT_UNDERSTANDING_REPO", str(ROOT_DIR))
 PROJECT_UNDERSTANDING_MODEL = os.environ.get("C_LARA_PROJECT_UNDERSTANDING_MODEL", "gpt-5.3-codex")

@@ -177,4 +177,6 @@ Live API/laptop/phone acceptance of this increment is still pending.
 
 7 October AWS follow-up: [browsing and sentence-audio fixes](../../experiments/community_dictionary/picture-capture-aws-fixes-2026-10-07.md), with 334 passing app tests and simulated Chromium progress/playback checks. New live acceptance and the original provider failure diagnosis remain pending.
 
-7 October later follow-up: [audio recovery](../../docs/howto/community-audio-recovery.md) refreshes shared recordings when returning to an example and suppresses obsolete timeout notices. 338 tests pass; Manny reports very positive AWS laptop/Chrome use in both languages/modalities. New patch acceptance and Cathy’s trial remain pending.
+7 October later follow-up: [audio recovery](../../docs/howto/community-audio-recovery.md) refreshes shared recordings when returning to an example and suppresses obsolete timeout notices. 338 tests pass; Manny reports very positive AWS laptop/Chrome use in both languages/modalities. On 8 October he confirms missing audio is now correctly generated; Cathy’s trial remains unreported.
+
+8 October prepared follow-up: [owner-adjustable picture-description allowance](../../docs/howto/community-picture-description-limits.md), with local daily-cost preview and explicit confirmation under Settings. Default ten shared attempts per rolling 24 hours; usage survives changes. Additive migration 0016; 349 app tests and mocked Chromium checks pass. Laptop/AWS acceptance of the new setting remains pending.

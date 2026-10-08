@@ -1,7 +1,5 @@
 """Optional picture-first descriptions and a shared language-attention queue."""
 from datetime import timedelta
-from decimal import Decimal
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
@@ -13,7 +11,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from projects.billing import has_minimum_balance_for_compile
-from . import capture, photo_ai, tts
+from . import capture, photo_ai, tts, capture_limits
 from .capture_forms import CaptureForm, VocabularyForms
 from .models import (PictureCapture, CaptureSpeech, Contribution, ContributionDependency, Dictionary,
     Entry, Participation, VoicePreference, AttentionReport, LanguageCheck)
@@ -64,10 +62,7 @@ def start(request,pk,image_id=None):
                 raise Conflict('The capture settings changed. Reload this page.')
             if not has_minimum_balance_for_compile(request.user):
                 raise Conflict('Your C-LARA balance is too low. Add credit or use your own OpenAI key.')
-            recent=PictureCapture.objects.filter(created_at__gte=timezone.now()-timedelta(days=1))
-            limit=getattr(settings,'COMMUNITY_DICTIONARY_CAPTURE_DAILY_LIMIT',10)
-            if recent.filter(user=request.user).count()>=limit or recent.filter(dictionary=dictionary).count()>=limit:
-                raise Conflict('The daily picture-description limit has been reached. Try tomorrow.')
+            capture_limits.enforce(current, request.user)
             if previous:
                 capture.allowed(previous)
                 prepared=(path_for(previous.file_path).read_bytes(),'image/jpeg','.jpg')
@@ -112,9 +107,10 @@ def start(request,pk,image_id=None):
             return saved(request,result)
     recent=PictureCapture.objects.filter(dictionary=dictionary,user=request.user,expires_at__gt=timezone.now()).exclude(status='discarded').order_by('-created_at')[:8]
     prices=config[3] if config else {'input':0,'output':0}
-    estimate=(Decimal(12000)*Decimal(prices['input'])+Decimal(2600)*Decimal(prices['output']))/1_000_000+Decimal('.08')
+    estimate=capture_limits.unit_estimate(prices)
     return render(request,'community_dictionary/capture_start.html',context(request,dictionary,form=form,image=image,previous=previous,
         recent=recent,setup_error=setup_error,estimate=estimate,personal=config[2] if config else False,
+        counts=capture_limits.usage(dictionary,request.user),
         submission_id=request.POST.get('submission_id') or context(request)['submission_id']))
 
 @login_required

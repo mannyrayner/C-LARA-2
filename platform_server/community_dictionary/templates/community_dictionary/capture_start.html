@@ -1,6 +1,8 @@
 {% extends 'community_dictionary/base.html' %}{% load static %}{% block title %}Describe a picture{% endblock %}
 {% block content %}<h1>Describe a picture</h1><p class="lead">A picture and what you want to say about it. Confirm the meaning, then save a sentence and its words together.</p>
 {% if setup_error %}<p class="notice error">{{ setup_error }}</p>{% endif %}
+<p class="help">{{ counts.remaining }} of {{ counts.limit }} picture descriptions remaining for this dictionary in the last 24 hours.
+{% if owner %}<a href="{% url 'community_dictionary:settings' dictionary.pk %}#picture-description-allowance">Change allowance</a>{% else %}The owner can change the allowance in Settings.{% endif %}</p>
 <form method="post" enctype="multipart/form-data" class="stack" data-draft-form data-capture-form data-dictionary="{{ dictionary.pk }}">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}">
 {{ form.non_field_errors }}
 <section class="panel"><h2>1. Picture</h2>

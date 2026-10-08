@@ -12,6 +12,7 @@ from .voices import DEFAULT_VOICE, VOICE_CHOICES
 
 class Dictionary(models.Model):
     sentence_capture_enabled = models.BooleanField(default=False)
+    capture_daily_limit = models.PositiveIntegerField(default=10)
     capture_revision = models.PositiveIntegerField(default=0)
     name = models.CharField(max_length=160)
     language = models.CharField(max_length=80)

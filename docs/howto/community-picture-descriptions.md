@@ -105,8 +105,13 @@ resubmitting or queue redelivery cannot repeat a claimed call. Unknown outcomes
 are not automatically retried. A new explicit attempt may still be needed after
 interruption. Progress polling does not authorize extra attempts.
 
-The default limit is 10 capture attempts per member and dictionary per rolling day,
-configurable as `COMMUNITY_DICTIONARY_CAPTURE_DAILY_LIMIT`. At most thirteen target
+The default allowance is 10 attempts shared by all members of a dictionary in the
+preceding 24 hours. The owner can change it under **Settings → Picture-description
+allowance**, after previewing the estimated daily cost and confirming. Changing
+the allowance never resets usage; failed/discarded attempts count. See
+[allowance and cost details](community-picture-description-limits.md). A separate
+server ceiling applies to each dictionary and each account across dictionaries.
+At most thirteen target
 recordings are generated per confirmed capture, plus optional spoken feedback.
 The cost shown is a rough estimate, not a guaranteed ceiling. Existing account
 balance checks apply before each provider stage. Returned usage and estimated TTS
@@ -200,3 +205,8 @@ For the first AWS trial fixes, use [the incremental runbook](community-picture-c
 from laptop Chrome with very positive results. A word-audio timeout exposed a
 return-navigation recovery gap; see [audio recovery](community-audio-recovery.md).
 Testing with Cathy is planned for 8 October; further UX changes await that feedback.
+
+8 October: Manny confirms the missing audio is now correctly generated. The
+[configurable allowance](community-picture-description-limits.md) is the next
+prepared change, with additive migration 0016; see its
+[installation instructions](community-picture-description-limits-install.md).

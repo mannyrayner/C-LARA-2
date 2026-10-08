@@ -38,13 +38,18 @@ and invites a closer photo or a human partner; word, meaning, language_code are 
 No lists, boxes, lessons, extra sentences, or numerical confidence scores.'''
 
 
-def configuration(user):
+def pricing_configuration():
     model = settings.COMMUNITY_DICTIONARY_PHOTO_MODEL
     # Never silently use the generic billing fallback for a newly configured model.
     if model not in settings.OPENAI_TOKEN_PRICING_USD_PER_1M and not OpenAIModelPricing.objects.filter(model_name=model).exists():
         raise Conflict('The administrator needs to configure pricing for the photo model.')
+    return model, openai_price_for_model(model)
+
+
+def configuration(user):
+    model, prices = pricing_configuration()
     key, personal = api_credentials(user)
-    return model, key, personal, openai_price_for_model(model)
+    return model, key, personal, prices
 
 
 def api_credentials(user):

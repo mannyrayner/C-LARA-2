@@ -1,0 +1,29 @@
+{% extends 'community_dictionary/base.html' %}
+{% block title %}Picture-description allowance{% endblock %}
+{% block content %}
+<p class="eyebrow">{{ dictionary.name }}</p><h1>Picture-description allowance</h1>
+<p>{{ counts.used }} of {{ counts.limit }} descriptions used in the last 24 hours · {{ counts.remaining }} remaining.</p>
+{% if estimate %}
+<section class="panel"><h2>Review the daily cost</h2>
+<p class="lead">{{ estimate.limit }} picture descriptions per 24 hours</p>
+<p><strong>Rough daily cost if the full allowance is used: US${{ estimate.daily_estimate|floatformat:2 }}</strong></p>
+<p>About US${{ estimate.per_request|floatformat:4 }} per short description, including its sentence and up to six new words with audio.</p>
+<p>This allowance is shared by all dictionary members. Each request uses the requesting member’s payment settings: their OpenAI key, C-LARA credits, or server funding.</p>
+{% if balance != None %}<p>Your current C-LARA balance: US${{ balance|floatformat:2 }}.</p>{% endif %}
+{% if insufficient %}<p class="notice">Your balance may not cover the whole estimate if you make all these requests yourself. This does not include other members’ funds.</p>{% endif %}
+<p class="help">This is an estimate, not a spending cap. Longer descriptions, more vocabulary, pronunciation guidance and retries can cost more. Manual audio retries and other AI tools are additional. Changing the allowance starts no requests and reserves no money.</p>
+<details><summary>How the estimate is calculated</summary>
+<p class="help">Model: {{ estimate.model }}. Configured rates: US${{ estimate.prices.input }} per million input tokens and US${{ estimate.prices.output }} per million output tokens. Each description is budgeted as 12,000 input tokens and 2,600 output tokens, plus US${{ audio_allowance|floatformat:2 }} as an approximate allowance for associated audio, pronunciation guidance and spoken input. These are planning assumptions; actual usage and provider prices may differ. The provider invoice is authoritative.</p>
+</details>
+{% if estimate.limit < counts.used %}<p class="notice">You have already used more than this new allowance. Existing results remain available; new descriptions will wait until enough earlier requests leave the 24-hour window.</p>{% endif %}
+<form method="post" class="stack">{% csrf_token %}{{ confirmation.as_p }}
+<button name="action" value="confirm">Confirm {{ estimate.limit }} descriptions per 24 hours</button></form>
+</section>
+<details class="panel"><summary>Change the proposed allowance</summary>
+{% else %}<section class="panel"><h2>Choose an allowance</h2>{% endif %}
+{% if counts.ceiling %}<form method="post" class="stack">{% csrf_token %}{{ form.as_p }}<button name="action" value="preview">Preview daily cost</button></form>
+{% else %}<p>The server administrator has paused new picture-description requests.</p>{% endif %}
+{% if estimate %}</details>{% else %}</section>{% endif %}
+<p class="help">The window is the preceding 24 hours, not midnight to midnight. Failed and discarded attempts count. Changing the allowance does not reset usage. Your account also has a server ceiling of {{ counts.ceiling }} picture descriptions per 24 hours across all dictionaries.</p>
+<p><a href="{% url 'community_dictionary:settings' dictionary.pk %}#picture-description-allowance">Back to Settings</a></p>
+{% endblock %}

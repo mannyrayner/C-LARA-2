@@ -1,5 +1,14 @@
 # Community dictionary: setup and testing
 
+## Current update — 8 October 2026
+
+Manny confirms the audio-recovery follow-up works. The prepared
+[picture-description allowance](community-picture-description-limits.md) adds an
+owner control under Settings with a daily-cost preview and confirmation. Existing
+usage is retained; the default is ten shared attempts per 24 hours. Migration 0016
+is additive. 349 app tests and mocked Chromium checks pass; laptop/AWS acceptance
+of the setting remains pending. Cathy’s further UX trial is still unreported.
+
 ## Current update — 5 October 2026
 
 Manny reports laptop acceptance of the faster review workflow, AWS deployment,

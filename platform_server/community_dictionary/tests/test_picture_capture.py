@@ -237,7 +237,7 @@ class PictureCaptureTests(TestCase):
         with override_settings(COMMUNITY_DICTIONARY_CAPTURE_DAILY_LIMIT=0):
             r=self.client.post(self.url('capture-start'),{'submission_id':uuid.uuid4(),'photo':picture(),'description':'cat',
                 'input_language':'English','input_mode':'text','voice':'marin','ai_consent':'on'})
-            self.assertContains(r,'daily picture-description limit')
+            self.assertContains(r,'picture-description allowance')
         self.assertEqual(PictureCapture.objects.count(),0)
         with patch('community_dictionary.capture_views.has_minimum_balance_for_compile',return_value=False):
             r=self.client.post(self.url('capture-start'),{'submission_id':uuid.uuid4(),'photo':picture(),'description':'cat',

@@ -3,6 +3,14 @@
 {% block content %}
 <p class="eyebrow">{{ dictionary.name }}</p><h1>Settings</h1>
 {% if owner %}
+<section class="panel" id="picture-description-allowance"><h2>Picture-description allowance</h2>
+<p>{{ capture_usage.used }} of {{ capture_usage.limit }} descriptions used in the last 24 hours · {{ capture_usage.remaining }} remaining.</p>
+{% if capture_usage.ceiling %}
+<form method="post" action="{% url 'community_dictionary:capture-limit' dictionary.pk %}" class="stack">
+{% csrf_token %}{{ capture_allowance_form.as_p }}<button name="action" value="preview">Preview daily cost</button></form>
+<p class="help">Review the estimate, then confirm. The new allowance applies to Picture descriptions; other AI tools have their own limits.</p>
+{% else %}<p>The server administrator has paused new picture-description requests.</p>{% endif %}
+</section>
 <section class="panel"><h2>Language versions</h2>
 <a class="button secondary" href="{% url 'community_dictionary:port-start' dictionary.pk %}">Create a version in another language</a>
 {% if dictionary.language_port %}<p><a href="{% url 'community_dictionary:port-update' dictionary.language_port.source_id dictionary.language_port.pk %}">Update this version from its source dictionary</a></p>{% endif %}

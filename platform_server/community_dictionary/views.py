@@ -402,7 +402,11 @@ def dictionary_settings(request, pk):
             return redirect('community_dictionary:settings', pk=pk)
         # Bound form values survive, but style controls reflect saved policy.
         dictionary.refresh_from_db()
-    return render(request, 'community_dictionary/settings.html', context(request, dictionary, settings_form=form))
+    from .capture_limits import usage
+    from .capture_limit_views import AllowanceForm
+    return render(request, 'community_dictionary/settings.html', context(request, dictionary, settings_form=form,
+        capture_usage=usage(dictionary,request.user),
+        capture_allowance_form=AllowanceForm(initial={'daily_limit':dictionary.capture_daily_limit})))
 
 
 @login_required
