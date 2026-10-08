@@ -3,15 +3,38 @@ from .storage import prepare_upload
 from .voices import VOICE_CHOICES
 from .capture_vocabulary import MAX_EDITED_WORDS, aligned_surface
 
-class CaptureForm(forms.Form):
+MODES = [('text', 'Type'), ('voice', 'Speak'), ('ai', 'Suggest a description')]
+
+
+class DescriptionModeForm(forms.Form):
+    input_mode = forms.ChoiceField(choices=MODES, label='How would you like to describe it?',
+                                  widget=forms.RadioSelect)
+
+
+class CaptureForm(DescriptionModeForm):
     photo=forms.FileField(required=False,widget=forms.FileInput(attrs={'accept':'image/*'}))
     description=forms.CharField(max_length=1000,required=False,widget=forms.Textarea(attrs={'rows':3,'placeholder':'What would you like to say about this picture?'}))
     input_language=forms.ChoiceField(label='Language I am using')
-    input_mode=forms.ChoiceField(choices=[('text','Type'),('voice','Speak')],label='Describe by')
     audio=forms.FileField(required=False)
     voice=forms.ChoiceField(choices=VOICE_CHOICES,label='AI voice')
     ai_consent=forms.BooleanField(label='I have permission to send this picture, description and dictionary vocabulary to OpenAI and approve the estimated API costs shown here.')
     def __init__(self,*args,dictionary,existing=False,**kwargs):
+        # Ignore unused controls before validation. A recovered typed draft or
+        # recording must not silently become input to the picture-only route.
+        args=list(args)
+        data=args[0] if args else kwargs.get('data')
+        if data is not None:
+            data=data.copy()
+            if data.get('input_mode') in {'voice','ai'}:
+                data['description']=''
+            if args: args[0]=data
+            else: kwargs['data']=data
+            if data.get('input_mode') != 'voice':
+                files=args[1] if len(args)>1 else kwargs.get('files')
+                if files is not None:
+                    files=files.copy(); files.pop('audio',None)
+                    if len(args)>1: args[1]=files
+                    else: kwargs['files']=files
         super().__init__(*args,**kwargs)
         self.existing=existing
         self.fields['input_language'].choices=list(dict.fromkeys([
@@ -29,7 +52,7 @@ class CaptureForm(forms.Form):
                 self.add_error('audio','Record or upload your description.')
             else:
                 d['prepared_audio']=prepare_upload(d['audio'],'audio')
-        elif not d.get('description'):
+        elif d.get('input_mode')=='text' and not d.get('description'):
             self.add_error('description','Say what you mean by this picture.')
         return d
 

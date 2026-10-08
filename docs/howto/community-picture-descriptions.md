@@ -1,24 +1,26 @@
-# Picture descriptions (7 October 2026)
+# Picture descriptions (updated 8 October 2026)
 
 This optional workflow is for AI-supported languages. The dictionary owner enables
 **Settings → Enable Picture descriptions (OpenAI)**, with saved spoken audio also
-on. Existing dictionaries start with the new option **off**. Human-only contribution
-and the single-object Learn from a photo workflow remain available.
+on. Existing dictionaries start with the new option **off**. Human-only contribution remains available. The single-object Learn from a photo
+control is retained where the unified workflow is unavailable.
 
 ## Using it
 
 1. Choose **Describe a picture** on the dictionary page. Take a photo or choose an
-   image, then say/type what you mean. Select the target or explanation language.
-   Picture source is remembered on this device; language, input mode and AI voice
-   are remembered in this signed-in browser session. Each can be changed.
+   image, then choose **Type**, **Speak**, or **Suggest a description**. For AI
+   suggestions no description is needed; choose the target or explanation language
+   for feedback. Picture source and mode are remembered on this device; language
+   and AI voice retain session preferences. Each can be changed.
 2. **Prepare suggestion** saves a private attempt, then interprets the picture and
-   description together. Both language versions appear. Spoken input also gets
+   description together, or proposes a short visually grounded sentence in AI mode.
+   Both language versions appear. Spoken input also gets
    spoken confirmation in the input language; the transcript can be inspected.
    Mobile browsers may require tapping Play. Written feedback remains available
    if speech generation fails.
 3. Choose **Yes — save and share** to confirm the intended meaning and permission
    to share. This publishes a sentence and the vocabulary you keep (up to 12 words or expressions),
-   without requiring an expert's prior approval. **Change or clarify my description**
+   without requiring an expert's prior approval. **Change this description**
    retains the picture for another suggestion. Each new suggestion is a new paid
    attempt. Nothing is published merely by preparing a preview.
    Before saving, open **Words and expressions — edit, add or remove** to change
@@ -33,7 +35,8 @@ and the single-object Learn from a photo workflow remain available.
    separate worker; keep runserver running. AWS uses its existing Q service.
    If queuing fails, **Continue creating audio** claims one still-waiting item.
 5. For a picture already saved in the dictionary, open its entry and choose
-   **Describe this picture**. The original image must be accepted. After saving,
+   **Describe this picture**, choose one of the three modes and Continue.
+   The original image must be accepted. After saving,
    Next picture offers the oldest accepted, not-yet-described image from an ordinary
    entry. When none remains, it opens capture for a new picture.
 
@@ -210,3 +213,7 @@ Testing with Cathy is planned for 8 October; further UX changes await that feedb
 [configurable allowance](community-picture-description-limits.md) is the next
 prepared change, with additive migration 0016; see its
 [installation instructions](community-picture-description-limits-install.md).
+
+8 October later update: [Type / Speak / Suggest a description](community-ai-descriptions.md)
+unifies the entry controls and uses the existing review/confirmation path. No new
+migration beyond 0017; live quality and usability of AI suggestions await testing.

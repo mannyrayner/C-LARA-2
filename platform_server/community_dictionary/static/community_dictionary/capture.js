@@ -1,8 +1,7 @@
 /* Store only UI preferences here; app.js owns recoverable picture/audio drafts. */
 (() => {
   'use strict';
-  const form = document.querySelector('[data-capture-form]');
-  if (form) {
+  document.querySelectorAll('[data-capture-form], [data-capture-choice]').forEach(form => {
     const method = form.querySelector('[data-picture-method]');
     const key = `community-capture:${document.body.dataset.user}:${form.dataset.dictionary}`;
     if (method) {
@@ -15,14 +14,29 @@
       method.addEventListener('change', pictureChoice); pictureChoice();
     }
     const mode = form.elements.input_mode;
-    function inputChoice() {
-      form.querySelector('[data-description-text]').hidden = mode.value !== 'text';
-      form.querySelector('[data-description-voice]').hidden = mode.value !== 'voice';
+    const modeKey = `${key}:mode`;
+    if (form.dataset.choiceFixed !== 'yes') {
+      try {
+        const remembered = localStorage.getItem(modeKey);
+        if (['text', 'voice', 'ai'].includes(remembered)) mode.value = remembered;
+      } catch (_) {}
     }
-    mode.addEventListener('change', inputChoice); inputChoice();
-    // Draft recovery completes asynchronously; app.js sends this after restoring fields.
+    function inputChoice() {
+      for (const value of ['text', 'voice', 'ai']) {
+        const panel = form.querySelector(`[data-description-${value}]`);
+        if (panel) panel.hidden = mode.value !== value;
+      }
+      const label = form.querySelector('[data-description-language-label]');
+      if (label) label.textContent = mode.value === 'ai' ? 'Language for feedback' : 'Language I am using';
+    }
+    form.querySelectorAll('[name="input_mode"]').forEach(input => input.addEventListener('change', () => {
+      try { localStorage.setItem(modeKey, mode.value); } catch (_) {}
+      inputChoice();
+    }));
+    inputChoice();
+    // Draft recovery is asynchronous. Its selected radio takes precedence.
     form.addEventListener('community-draft-ready', inputChoice);
-  }
+  });
   const vocabulary = document.querySelector('[data-vocabulary-form]');
   let vocabularyDirty = false;
   if (vocabulary) {

@@ -1,9 +1,9 @@
 {% extends 'community_dictionary/base.html' %}{% load static %}{% block title %}Describe a picture{% endblock %}
-{% block content %}<h1>Describe a picture</h1><p class="lead">A picture and what you want to say about it. Confirm the meaning, then save a sentence and its words together.</p>
+{% block content %}<h1>Describe a picture</h1><p class="lead">Type, speak or ask AI to suggest a description of your picture. Confirm the meaning, then save a sentence and its words together.</p>
 {% if setup_error %}<p class="notice error">{{ setup_error }}</p>{% endif %}
 <p class="help">{{ counts.remaining }} of {{ counts.limit }} picture descriptions remaining for this dictionary in the last 24 hours.
 {% if owner %}<a href="{% url 'community_dictionary:settings' dictionary.pk %}#picture-description-allowance">Change allowance</a>{% else %}The owner can change the allowance in Settings.{% endif %}</p>
-<form method="post" enctype="multipart/form-data" class="stack" data-draft-form data-capture-form data-dictionary="{{ dictionary.pk }}">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}">
+<form method="post" enctype="multipart/form-data" class="stack" data-draft-form data-capture-form data-choice-fixed="{{ choice_fixed|yesno:'yes,no' }}" data-dictionary="{{ dictionary.pk }}">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}">
 {{ form.non_field_errors }}
 <section class="panel"><h2>1. Picture</h2>
 {% if image %}<img class="capture-picture" src="{% url 'community_dictionary:media' dictionary.pk image.pk %}" alt="Picture to describe">
@@ -12,12 +12,16 @@
 <label class="button photo-button" data-camera-choice>Take photo<input type="file" name="photo" accept="image/*" capture="environment"></label>
 <label class="file-alternative" data-upload-choice>Choose a picture<input type="file" name="photo" accept="image/*"></label>
 <img data-photo-preview class="capture-picture" alt="Your picture preview" hidden><button type="button" class="quiet" data-clear-photo hidden>Remove picture</button>{{ form.photo.errors }}{% endif %}</section>
-<section class="panel"><h2>2. What do you mean?</h2><div class="capture-options"><p>{{ form.input_language.label_tag }}{{ form.input_language }}</p><p>{{ form.input_mode.label_tag }}{{ form.input_mode }}</p></div>
-<div data-description-text>{{ form.description.errors }}{{ form.description }}</div><div data-description-voice>{% include 'community_dictionary/recording.html' %}{{ form.audio.errors }}</div>
+<section class="panel"><h2>2. Describe this picture</h2>
+{% include 'community_dictionary/capture_modes.html' with mode_field=form.input_mode %}
+<p><label for="{{ form.input_language.id_for_label }}" data-description-language-label>Language I am using</label>{{ form.input_language }}{{ form.input_language.errors }}</p>
+<div data-description-text>{{ form.description.errors }}{{ form.description }}</div>
+<div data-description-voice>{% include 'community_dictionary/recording.html' %}{{ form.audio.errors }}</div>
+<div data-description-ai><p>AI will suggest a short description of what it can see. You can change the description and its words before saving.</p></div>
 <details><summary>AI voice</summary><p>{{ form.voice.label_tag }}{{ form.voice }}</p></details><p class="help">Rough estimate: US${{ estimate|floatformat:2 }} for a short description and up to six words with audio. Actual usage varies. {% if personal %}Your own OpenAI key is used.{% else %}Costs are charged to your C-LARA account when credits are enabled.{% endif %} A failed or interrupted call may still incur a provider charge.</p>
-<p class="help">OpenAI receives this picture, your description and up to 200 existing words and meanings to help reuse vocabulary. Spoken input is transcribed. Confirmation speech and dictionary audio are synthetic.</p>
+<p class="help">OpenAI receives this picture, your description when supplied, and up to 200 existing words and meanings to help reuse vocabulary. Spoken input is transcribed. Confirmation speech and dictionary audio are synthetic.</p>
 <p>{{ form.ai_consent }}{{ form.ai_consent.label_tag }}{{ form.ai_consent.errors }}</p>
 <button data-save-submit {% if setup_error %}disabled{% endif %}>Prepare suggestion</button>
 {% include 'community_dictionary/draft_status.html' %}</section></form>
-{% if recent %}<details class="panel"><summary>Recent descriptions — continue or discard</summary><ul>{% for item in recent %}<li><a href="{% url 'community_dictionary:capture-detail' dictionary.pk item.pk %}">{{ item.description|default:'Spoken description'|truncatechars:65 }}</a> · {{ item.status }}</li>{% endfor %}</ul></details>{% endif %}
-<script src="{% static 'community_dictionary/capture.js' %}?v=2" defer></script>{% endblock %}
+{% if recent %}<details class="panel"><summary>Recent descriptions — continue or discard</summary><ul>{% for item in recent %}<li><a href="{% url 'community_dictionary:capture-detail' dictionary.pk item.pk %}">{% if item.input_mode == 'ai' %}{{ item.result.sentence|default:'AI-suggested description'|truncatechars:65 }}{% else %}{{ item.description|default:'Spoken description'|truncatechars:65 }}{% endif %}</a> · {{ item.status }}</li>{% endfor %}</ul></details>{% endif %}
+<script src="{% static 'community_dictionary/capture.js' %}?v=4" defer></script>{% endblock %}

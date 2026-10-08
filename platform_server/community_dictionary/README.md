@@ -1,5 +1,15 @@
 # Community dictionary app
 
+## Latest update — three description modes, 8 October 2026
+
+Manny confirms visibility works and requests Cathy's preferred AI-description route.
+The prepared [unified workflow](../../docs/howto/community-ai-descriptions.md) offers Type, Speak and Suggest a description
+on equal terms, remembers the choice and reuses the existing review/save/audio flow.
+365 app tests and a mocked Chromium desktop/mobile-viewport rehearsal pass. No new
+migration; human testing of this increment is next. WordPress/email recovery is
+explicitly on hold. Earlier pending visibility acceptance is superseded; its test
+environment was not specified.
+
 ## Current update — 5 October 2026
 
 The faster port-review release is now reported accepted on the laptop and deployed

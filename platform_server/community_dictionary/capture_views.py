@@ -12,7 +12,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from projects.billing import has_minimum_balance_for_compile
 from . import capture, photo_ai, tts, capture_limits
-from .capture_forms import CaptureForm, VocabularyForms
+from .capture_forms import CaptureForm, VocabularyForms, MODES
 from .models import (PictureCapture, CaptureSpeech, Contribution, ContributionDependency, Dictionary,
     Entry, Participation, VoicePreference, AttentionReport, LanguageCheck)
 from .permissions import get_dictionary, require_editor
@@ -43,8 +43,14 @@ def start(request,pk,image_id=None):
         capture.allowed(previous)
     prefs=request.session.get(f'capture-{pk}',{})
     initial={'input_mode':'text','input_language':dictionary.explanation_language or 'English','voice':tts.VOICE,**prefs}
+    requested_mode=request.GET.get('input_mode')
+    if requested_mode in dict(MODES):
+        initial['input_mode']=requested_mode
     if previous:
-        initial.update(description=previous.description,input_language=previous.input_language,input_mode='text')
+        description=previous.description
+        if previous.input_mode=='ai':
+            description=previous.result.get('sentence' if previous.input_language==dictionary.language else 'translation','')
+        initial.update(description=description,input_language=previous.input_language,input_mode='text')
     form=CaptureForm(request.POST or None,request.FILES or None,dictionary=dictionary,
         existing=bool(image or previous),initial=initial)
     config=None; setup_error=''
@@ -103,7 +109,12 @@ def start(request,pk,image_id=None):
             if 'application/json' in request.headers.get('Accept',''): return fail(request,exc,409)
             form.add_error(None,str(exc))
         else:
-            request.session[f'capture-{pk}']={key:form.cleaned_data[key] for key in ['input_mode','input_language','voice']}
+            preferences={key:form.cleaned_data[key] for key in ['input_mode','input_language','voice']}
+            if previous:
+                # Correcting a suggestion opens Type, without replacing the usual
+                # starting mode for the next picture.
+                preferences['input_mode']=prefs.get('input_mode',previous.input_mode)
+            request.session[f'capture-{pk}']=preferences
             return saved(request,result)
     recent=PictureCapture.objects.filter(dictionary=dictionary,user=request.user,expires_at__gt=timezone.now()).exclude(status='discarded').order_by('-created_at')[:8]
     prices=config[3] if config else {'input':0,'output':0}
@@ -111,6 +122,7 @@ def start(request,pk,image_id=None):
     return render(request,'community_dictionary/capture_start.html',context(request,dictionary,form=form,image=image,previous=previous,
         recent=recent,setup_error=setup_error,estimate=estimate,personal=config[2] if config else False,
         counts=capture_limits.usage(dictionary,request.user),
+        choice_fixed=previous is not None or form.is_bound or requested_mode in dict(MODES),
         submission_id=request.POST.get('submission_id') or context(request)['submission_id']))
 
 @login_required

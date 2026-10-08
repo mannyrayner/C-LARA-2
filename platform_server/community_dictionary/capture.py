@@ -101,7 +101,8 @@ def prepare(study_id):
             words.append({'id':source.entry_id,'lemma':source.word,'meaning':source.entry.meaning})
         response=capture_ai.interpret(path_for(study.file_path).read_bytes(),{
             'target_language':study.language,'explanation_language':study.explanation_language,
-            'input_language':study.input_language,'description':description,'vocabulary':words},model=study.model,api_key=key)
+            'input_language':study.input_language,'input_mode':study.input_mode,
+            'description':description,'vocabulary':words},model=study.model,api_key=key)
         account(study.pk,'interpretation',response)
         result=capture_ai.parse(response)
         result['recipe']=capture_ai.VERSION

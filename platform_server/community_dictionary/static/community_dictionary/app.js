@@ -42,7 +42,7 @@
     form.addEventListener('submit', event => { if (!ready) event.preventDefault(); });
     const tellError = message => { error.textContent = message; error.hidden = false; error.focus(); };
     const clearError = () => { error.hidden = true; error.textContent = ''; };
-    const fields = () => Array.from(form.elements).filter(el => el.name && !['file', 'submit', 'button'].includes(el.type) && el.name !== 'csrfmiddlewaretoken');
+    const fields = () => Array.from(form.elements).filter(el => el.name && !['file', 'submit', 'button'].includes(el.type) && el.name !== 'csrfmiddlewaretoken' && (el.type !== 'radio' || el.checked));
     const snapshot = () => ({values: fields().map(el => [el.name, el.type === 'checkbox' ? el.checked : el.value]), files: {...files}, updated: Date.now()});
     async function persist(force = false) {
       clearTimeout(timer);
@@ -191,6 +191,11 @@
         data.delete('photo'); data.delete('audio'); data.delete('camera');
         if (files.photo) data.set('photo', files.photo, files.photo.name || 'picture.jpg');
         if (files.audio) data.set('audio', files.audio, files.audio.name || 'recording.webm');
+        if (form.matches('[data-capture-form]')) {
+          // Retain unused drafts locally, but send only the chosen input mode.
+          if (data.get('input_mode') !== 'voice') data.delete('audio');
+          if (data.get('input_mode') !== 'text') data.set('description', '');
+        }
         timeout = setTimeout(() => controller.abort(), 60000);
         const response = await fetch(form.action, {method: 'POST', body: data, credentials: 'same-origin', headers: {Accept: 'application/json'}, signal: controller.signal});
         const type = response.headers.get('Content-Type') || '';
