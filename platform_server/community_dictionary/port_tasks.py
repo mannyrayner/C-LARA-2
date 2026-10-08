@@ -58,6 +58,9 @@ def credentials(item):
         raise Conflict('The job was cancelled.')
     if item.run.prices.get('speech_recipe') != tts.INSTRUCTIONS_VERSION:
         raise Conflict('Pronunciation processing changed. Prepare and approve a fresh estimate.')
+    if (item.snapshot.get('entry_type') == 'sentence' and
+            item.run.prices.get('sentence_speech_recipe') != port_ai.speech_version(item.snapshot)):
+        raise Conflict('Sentence speech processing changed. Prepare and approve a fresh estimate.')
     porting.current_item(item)
     if porting.payer_now(item.run.port.user) != item.run.payer:
         raise Conflict('Your payment account changed. Prepare a fresh estimate.')
@@ -87,11 +90,14 @@ def process_item(item_id):
         response = port_ai.translate(data,photo,model=item.run.model,api_key=key)
         if getattr(response,'usage',None):
             usage = {k:max(0,int(getattr(response.usage,k,0) or 0)) for k in ['input_tokens','output_tokens']}
-        result = port_ai.parse(response)
-        result['recipe'] = port_ai.VERSION
+        result = port_ai.parse(response, data)
+        result['recipe'] = port_ai.version_for(data)
         # Model output can never change fields whose language was unchanged.
         if porting.same_language(item.run.source_language,item.run.port.language):
             result['word'] = data['word']
+            if data.get('entry_type') == 'sentence':
+                result['word_links'] = [{'source_entry_id': ref['source_entry_id'], 'surface': ref['surface']}
+                                        for ref in data.get('sentence_words', [])]
         if porting.same_language(item.run.source_explanation_language,item.run.port.explanation_language):
             result['meaning'] = data['meaning']
     except Exception as exc:
@@ -131,7 +137,7 @@ def process_item(item_id):
                     recording = link.destination.contributions.filter(kind='audio',status='accepted',
                         provenance__origin='synthetic',provenance__source_text=result['word'],
                         provenance__language=item.run.port.language,provenance__voice=item.run.port.voice,
-                        provenance__instructions_version=tts.INSTRUCTIONS_VERSION).exclude(file_path='').first() if link else None
+                        provenance__instructions_version=port_ai.speech_version(item.snapshot)).exclude(file_path='').first() if link else None
                     if (recording and recording.provenance.get('synthesis', {}).get('english_homographs') and
                             link.destination.meaning != result.get('meaning', '')):
                         recording = None
@@ -156,7 +162,8 @@ def process_item(item_id):
                 model=tts.MODEL,voice=item.run.port.voice,api_key=key,
                 meaning=result.get('meaning',''), meaning_language=item.run.port.explanation_language,
                 report=speech_report, guidance_model=item.run.model, guidance_prices=item.run.prices,
-                before_request=still_allowed)
+                before_request=still_allowed,
+                speech_kind='sentence' if item.snapshot.get('entry_type') == 'sentence' else 'entry')
         except Exception as exc:
             log.warning('Language-port item %s audio failed (%s)',item_id,type(exc).__name__)
         paths = []
@@ -183,7 +190,7 @@ def process_item(item_id):
                         item.result['tts_synthesis'] = speech_report
                     if prepared:
                         item.file_path = write_upload(prepared,item.run.port.destination_id,paths)['file_path']
-                        item.result['tts_instructions_version'] = tts.INSTRUCTIONS_VERSION
+                        item.result['tts_instructions_version'] = port_ai.speech_version(item.snapshot)
                     else:
                         item.message = 'Text is ready; no usable audio was obtained. You can save the text and generate audio from the entry later, or add a human recording.'
                 item.finished_at = timezone.now()

@@ -4,13 +4,13 @@
 <p class="eyebrow">{{ dictionary.name }}</p><h1>{{ run.port.name }}</h1>
 <p>{{ run.source_language }} → {{ run.port.language }} · explanations: {{ run.source_explanation_language|default:'unspecified' }} → {{ run.port.explanation_language }}</p>
 <section class="panel"><h2>{% if run.status == 'estimate' %}Estimate before starting{% else %}Porting {{ run.status }}{% endif %}</h2>
-<p>{{ run.items.count }} entries · {{ run.skipped }} unchanged or ineligible · {{ run.protected }} protected because the destination was edited.</p>
+<p>{{ run.items.count }} entries ({{ sentence_count }} sentence{{ sentence_count|pluralize }}) · {{ run.skipped }} unchanged or ineligible · {{ run.protected }} protected because the destination was edited.</p>
 <p><strong>Rough API estimate: US${{ run.estimated_usd }}</strong></p>
 {% if run.payer == 'credits' %}<p>C-LARA credit reservation: <strong>US${{ run.allowance_usd }}</strong>. Your current available balance: <strong>US${{ balance }}</strong>.</p>
 <p class="help">We reserve an allowance above the estimate, then return the unused amount when processing finishes. Your C-LARA charge will not exceed this reservation.</p>
 {% elif run.payer == 'personal' %}<p>Paid through your personal OpenAI account. <strong>We cannot check its balance here.</strong> Check your provider account before approving.</p>
 {% else %}<p>Paid by the server operator; C-LARA credit charging is disabled.</p>{% endif %}
-<details><summary>What the estimate includes</summary><p>One text/image request per entry ({{ run.model }}), plus {{ run.port.voice }} speech when the target language changes. The estimate includes an allowance for pronunciation guidance; only words with English spellings use that extra request. Silent or nearly silent speech is retried once. The credit reservation covers both speech attempts. Prices use the server’s configured rates: US${{ run.prices.input }}/million input tokens and US${{ run.prices.output }}/million output tokens. Speech is estimated from duration and input length, including instructions. Image tokenization and translated lengths vary; this is not a provider quotation or provider spending cap.</p><p>OpenAI receives the existing word, explanation, category, language names and one representative picture per entry. Its retention rules apply. No source recordings are sent. Pronunciation guidance receives the translated word, meaning and languages. Results need your review.</p></details>
+<details><summary>What the estimate includes</summary><p>One text/image request per entry ({{ run.model }}), plus {{ run.port.voice }} speech when the target language changes. The estimate includes an allowance for pronunciation guidance; only words with English spellings use that extra request. Silent or nearly silent speech is retried once. The credit reservation covers both speech attempts. Prices use the server’s configured rates: US${{ run.prices.input }}/million input tokens and US${{ run.prices.output }}/million output tokens. Speech is estimated from duration and input length, including instructions. Image tokenization and translated lengths vary; this is not a provider quotation or provider spending cap.</p><p>OpenAI receives the existing word or sentence, explanation, category, language names and one representative picture per entry. Sentence requests also include their linked source vocabulary and meanings. Its retention rules apply. No source recordings are sent. Pronunciation guidance receives the translated word, meaning and languages. Results need your review.</p></details>
 {% if run.status == 'estimate' %}
 {% if expired %}<p>This estimate expired. Prepare another below.</p>
 {% elif not enough_funds %}<p role="alert"><strong>Insufficient C-LARA credit.</strong> Add credit or choose a personal key in your profile, then prepare a new estimate.</p>
@@ -19,6 +19,11 @@
 {% if uncertain %}<p class="help">Some requests did not return usable usage/audio information. Their provider cost may be unknown. Interrupted requests are not automatically repeated; only completed silent or nearly silent speech receives one retry.</p>{% endif %}
 </section>
 {% if run.status != 'estimate' %}
+<section class="panel" aria-label="Review and save">
+<h2>{{ review_count }} ready to review · {{ counts.saved }} saved in this run</h2>
+{% if review_count %}<p>These previews are not yet entries in the new dictionary. Review them and choose <strong>Save and next</strong> to add them.</p>{% endif %}
+{% if first_review %}<a class="button" href="{% url 'community_dictionary:port-review' dictionary.pk run.pk first_review.pk %}{% if first_review.needs_attention %}?attention=1{% endif %}">Continue reviewing and saving</a>{% endif %}
+</section>
 <p>{{ counts.waiting }} waiting · {{ counts.queued }} queued · {{ counts.running }} processing · {{ counts.ready }} ready · {{ counts.unclear }} unclear · {{ counts.failed }} failed · {{ counts.saved }} saved · {{ counts.discarded }} discarded</p>
 <div class="actions"><a class="button secondary" href="">Refresh progress</a>{% if run.port.destination %}<a href="{% url 'community_dictionary:dictionary' run.port.destination_id %}">Open the new dictionary</a>{% endif %}</div>
 <p class="help">You can leave this page while the background workers process entries concurrently. Only reviewed, saved results appear in the new dictionary.</p>

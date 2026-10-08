@@ -131,8 +131,9 @@ token rates ($1.25/$5 per million); provider billing is authoritative.
 
 Questions, learner-response grading and conversational exercises are deferred.
 Existing practice games continue using word entries (including newly linked words),
-not whole sentences. Language porting currently ports word entries only; sentence
-entries and sentence links are explicitly excluded and the porting screen says so.
+not whole sentences. The [sentence-porting follow-up](community-sentence-porting.md) extends language
+versions to sentences, images, audio and vocabulary links. Earlier releases
+excluded sentences.
 
 ## Installation and verification
 

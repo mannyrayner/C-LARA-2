@@ -32,6 +32,8 @@ def basis_ids(group):
     if not basis:
         return []
     snap = basis['snapshot']
+    if snap.get('entry_type') == 'sentence':
+        return snap['ids']
     return list(snap['fields'].values()) + ([snap['image']] if snap['image'] else [])
 
 
@@ -97,9 +99,8 @@ def check(item):
 
 
 def digest(snap, group):
-    from .port_ai import VERSION
-    from .tts import INSTRUCTIONS_VERSION
-    return hashlib.sha256(json.dumps([snap['digest'], VERSION, INSTRUCTIONS_VERSION,
+    from .port_ai import version_for, speech_version
+    return hashlib.sha256(json.dumps([snap['digest'], version_for(snap), speech_version(snap),
         group['examples'] if group else [],
         group['basis']['snapshot']['digest'] if group and group.get('basis') else None,
         group.get('decision') if group else None], sort_keys=True).encode()).hexdigest()

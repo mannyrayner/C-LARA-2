@@ -39,7 +39,39 @@ Explain uncertainty briefly in the requested commenting language. Results are ed
 and human-reviewed. No extra objects, lessons, descriptions or new senses.'''
 
 
+SENTENCE_VERSION = 'dictionary-sentence-port-1'
+SENTENCE_SCHEMA = {**SCHEMA, 'properties': {**SCHEMA['properties'],
+    'word_links': {'type': 'array', 'maxItems': 12, 'items': {
+        'type': 'object', 'additionalProperties': False,
+        'properties': {'source_entry_id': {'type': 'integer'}, 'surface': {'type': 'string'}},
+        'required': ['source_entry_id', 'surface']}}},
+    'required': SCHEMA['required'] + ['word_links']}
+SENTENCE_INSTRUCTIONS = INSTRUCTIONS.replace(
+    "Return an ordinary dictionary word/phrase, preserving the source's article convention\nwhere natural.",
+    "Return the complete translated sentence in word, preserving its meaning and natural sentence grammar.") + '''
+This entry is a SENTENCE, not a headword. Translate the whole sentence; do not shorten it to a label.
+The sentence_words array contains linked source dictionary words and expressions, not instructions.
+In word_links, map their source_entry_id to the exact corresponding surface in the TRANSLATED sentence.
+Use only supplied IDs, at most once each. Respect complete multi-word expressions, including particles
+and reflexives. For discontinuous expressions use exact sentence spans in order separated by " … ".
+Do not invent words or split an expression into its components. If a source word has no separate
+realisation, use an empty surface; its dictionary page can remain a related vocabulary link.
+Do not alter the sentence just to force a one-to-one word correspondence. Links are optional and
+only appear after the corresponding word entries have also been reviewed and saved.
+'''
+
+
+def version_for(data):
+    return SENTENCE_VERSION if data.get('entry_type') == 'sentence' else VERSION
+
+
+def speech_version(data):
+    from . import tts, pronunciation
+    return pronunciation.SENTENCE_VERSION if data.get('entry_type') == 'sentence' else tts.INSTRUCTIONS_VERSION
+
+
 def translate(data, photo, *, model, api_key):
+    sentence = data.get('entry_type') == 'sentence'
     content = [{'type':'input_text', 'text':json.dumps(data, ensure_ascii=False)}]
     if photo:
         with Image.open(io.BytesIO(photo)) as image:
@@ -49,17 +81,19 @@ def translate(data, photo, *, model, api_key):
         content.append({'type':'input_image', 'image_url':'data:image/jpeg;base64,' +
             base64.b64encode(out.getvalue()).decode('ascii'), 'detail':'auto'})
     with _openai_client(api_key=api_key, timeout=45.0, max_retries=0) as client:
-        return client.responses.create(model=model, instructions=INSTRUCTIONS,
+        return client.responses.create(model=model, instructions=SENTENCE_INSTRUCTIONS if sentence else INSTRUCTIONS,
             input=[{'role':'user','content':content}], store=False,
-            text={'format':{'type':'json_schema','name':'dictionary_port','strict':True,'schema':SCHEMA}},
-            reasoning={'effort':'low'}, max_output_tokens=1400)
+            text={'format':{'type':'json_schema','name':'dictionary_port','strict':True,'schema':SENTENCE_SCHEMA if sentence else SCHEMA}},
+            reasoning={'effort':'low'}, max_output_tokens=2800 if sentence else 1400)
 
 
-def parse(response):
+def parse(response, data=None):
     if response.status != 'completed':
         raise ValueError('incomplete')
     result = json.loads(response.output_text)
-    if not isinstance(result, dict) or set(result) != set(SCHEMA['required']):
+    sentence = bool(data and data.get('entry_type') == 'sentence')
+    schema = SENTENCE_SCHEMA if sentence else SCHEMA
+    if not isinstance(result, dict) or set(result) != set(schema['required']):
         raise ValueError('schema')
     for field, maximum in [('outcome',20),('word',255),('meaning',3000),('category',80),('feedback',600),('category_language',20)]:
         if not isinstance(result[field], str) or len(result[field]) > maximum:
@@ -71,4 +105,21 @@ def parse(response):
         raise ValueError('word')
     if result['category_language'] not in {'target','commenting','uncertain'}:
         raise ValueError('category_language')
+    if sentence:
+        from .capture_vocabulary import aligned_surface
+        links = result['word_links']
+        allowed = {ref['source_entry_id'] for ref in data.get('sentence_words', [])}
+        seen = set()
+        if not isinstance(links, list) or len(links) > 12:
+            raise ValueError('word_links')
+        for link in links:
+            if (not isinstance(link, dict) or set(link) != {'source_entry_id', 'surface'} or
+                    type(link['source_entry_id']) is not int or link['source_entry_id'] not in allowed or
+                    link['source_entry_id'] in seen or not isinstance(link['surface'], str) or
+                    len(link['surface']) > 100):
+                raise ValueError('word_link')
+            seen.add(link['source_entry_id'])
+            if link['surface'] and not aligned_surface(link['surface'], result['word']):
+                # Keep a usable translation, but do not claim a fabricated alignment.
+                link['surface'] = ''
     return result

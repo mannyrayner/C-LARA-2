@@ -111,7 +111,8 @@ def dictionary(request, pk):
         if mode == 'sentences':
             entries = entries.filter(entry_type='sentence')
         else:
-            entries = entries.exclude(entry_type='word', selected_image__isnull=True, current_text__provenance__origin='picture-description')
+            entries = entries.exclude(entry_type='word', selected_image__isnull=True, current_text__provenance__origin='picture-description').exclude(
+                entry_type='word', selected_image__isnull=True, current_text__provenance__sentence_vocabulary=True)
         if show == 'accepted':
             entries = entries.filter(contributions__status='accepted', contributions__kind__in=['text', 'image', 'audio'])
             if mode == 'pictures':
@@ -128,7 +129,9 @@ def dictionary(request, pk):
     categories = item.entries.filter(archived=False).exclude(category='').values_list('category', flat=True).distinct().order_by('category')
     cards = [summary(e, item) for e in page] if mode != 'words' else []
     words = [word_row(e, item) for e in page] if mode == 'words' else []
-    return render(request, 'community_dictionary/dictionary.html', context(request, item, participation=participation, cards=cards, words=words, mode=mode, page=page, show=show, query=query, category=category, categories=categories))
+    from .porting import pending_destination_run
+    pending_port = pending_destination_run(request.user, item)
+    return render(request, 'community_dictionary/dictionary.html', context(request, item, pending_port=pending_port, participation=participation, cards=cards, words=words, mode=mode, page=page, show=show, query=query, category=category, categories=categories))
 
 
 @login_required

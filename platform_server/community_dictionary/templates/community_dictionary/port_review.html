@@ -19,11 +19,12 @@
       <p>AI-generated voice · {{ run.port.voice }} · {{ item.result.word }}</p>
       <audio controls preload="none" src="{% url 'community_dictionary:port-media' dictionary.pk run.pk item.pk 'audio' %}"></audio>
     {% endif %}
-    {% pronunciation_warning form.word.value run.port.language %}
+    {% if source.entry_type != 'sentence' %}{% pronunciation_warning form.word.value run.port.language %}{% endif %}
+    {% if source.entry_type == 'sentence' %}<p class="help">Vocabulary links appear after their word entries are also saved. If you edit the sentence, vocabulary remains available as related words; precise word positions are cleared.</p>{% endif %}
     <form method="post" class="stack">
       {% csrf_token %}{{ form.as_p }}
       {% if change_target %}
-        {% if item.file_path or item.result.reused_audio %}<p class="help">If you edit the word, or the meaning used for pronunciation guidance, the earlier generated recording will not be saved. You can create audio for the revised word from its entry afterwards.</p>
+        {% if item.file_path or item.result.reused_audio %}<p class="help">If you edit the wording, or the meaning used for pronunciation guidance, the earlier generated recording will not be saved. You can create audio for the revised text from its entry afterwards.</p>
         {% else %}<p class="help">After saving, use Create audio on the entry to generate speech.</p>{% endif %}
       {% endif %}
       <div class="actions">

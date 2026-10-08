@@ -1,5 +1,18 @@
 # Community dictionary: setup and testing
 
+## Latest follow-up — sentence language ports, 8 October 2026
+
+Manny reports the image-copy workflow works and a Swedish dictionary with over
+150 image-associated sentence entries, roughly 90% accepted without edits. His
+French version appeared empty. The old port selected words only; results also
+require explicit review/save before appearing in the destination. The
+[prepared sentence extension](community-sentence-porting.md) preserves sentence
+identity, images, sentence speech and vocabulary links, keeps prior word results
+usable, and makes preview-versus-saved status prominent. No new migration.
+391 app tests and a mocked Chromium rehearsal support the next trial; live
+translation/phone/production acceptance of this follow-up remains pending.
+Earlier pending image-copy acceptance below is superseded by Manny's new report.
+
 ## Latest follow-up — image-only copy review, 8 October 2026
 
 Manny reports the three description modes work. The next

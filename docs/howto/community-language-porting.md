@@ -1,6 +1,10 @@
 # Community Dictionary language versions
 
-Updated 5 October 2026. Manny confirms the category and picture-interpretation fixes
+Updated 8 October 2026. The [sentence extension](community-sentence-porting.md)
+now includes accepted picture-description sentences and their vocabulary links.
+Read that guide for recovery of existing word-only attempts.
+
+Earlier trial record, 5 October 2026. Manny confirms the category and picture-interpretation fixes
 on the laptop. Short-word TTS remained unreliable. The new [pronunciation guidance
 increment](community-tts-guidance.md) adds English-homograph guidance/warnings and
 one bounded silence retry. Manny subsequently reports successful chat/lit generation
@@ -39,10 +43,11 @@ rather than automatically adopted. You can accept a tentative suggestion or supp
 your own translation, without changing the source. This also works for blocked
 previews created by the first release.
 
-Only accepted words/components and accepted pictures/audio are eligible. Image-only
+Accepted word and sentence entries, with accepted components and pictures/audio, are eligible. Image-only
 entries, pending material, archived entries and private collections are excluded.
-The model sees the word, explanation, category, language names and one representative
-picture (selected picture preferred). Category classification also uses up to five
+The model sees the word or sentence, explanation, category, language names and one representative
+picture (selected picture preferred). Sentence requests also include linked source
+vocabulary and meanings for alignment. Category classification also uses up to five
 accepted source word/explanation/category examples. Labels inferred to be in the
 target language follow that language; labels in the commenting language follow
 that one. Ambiguous/mixed/other-language labels are kept and flagged for review.

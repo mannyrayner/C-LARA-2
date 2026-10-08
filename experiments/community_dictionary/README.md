@@ -1,5 +1,8 @@
 # Community dictionary development experiment
 
+Latest: [sentence porting, 8 October 2026](sentence-porting-2026-10-08.md), following
+Manny’s report of over 150 image-associated sentences and an empty French port.
+
 ## Latest follow-up — image-only copy review, 8 October 2026
 
 Manny reports the three description modes work. The next

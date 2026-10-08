@@ -143,6 +143,9 @@ def detail(request,pk,run_id):
                 item.safe_label += ' → ' + item.result['word']
     return no_store(render(request,'community_dictionary/port_run.html',context(request,run.port.source,
         run=run,counts=counts,page=page,balance=balance,
+        review_count=counts['ready'] + counts['unclear'],
+        first_review=run.items.filter(status__in=['ready','unclear'], invalidated=False).first(),
+        sentence_count=run.items.filter(snapshot__entry_type='sentence').count(),
         attention_only=attention_only,attention_count=attention_count,
         enough_funds=balance is None or balance >= run.allowance_usd,
         expired=run.expires_at <= timezone.now(),approve_form=PortApproveForm(),
@@ -206,7 +209,7 @@ def review(request,pk,run_id,item_id):
         if 'category' not in item.review_values:
             initial['category'] = initial.get('category') or source.category
         form = PortReviewForm(request.POST if request.method == 'POST' else None,initial=initial,
-                              change_target=change_target,change_explanation=change_explanation)
+                              change_target=change_target,change_explanation=change_explanation, entry_type=source.entry_type)
         if operation == 'flag':
             form.fields['word'].required = False
         if request.method == 'POST' and form.is_valid():

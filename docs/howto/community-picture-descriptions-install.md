@@ -108,7 +108,7 @@ this from expert linguistic checking. Human-only contributions retain their exis
 workflow. The dictionary owner controls whether this optional experiment is enabled.
 
 First-cut bounds: short sentences (255 characters), up to six useful words per
-sentence; no question/answer exercises. Language porting currently includes word
+sentence; no question/answer exercises. At the time of this original release, language porting included word
 entries only, not the new sentences or their links. Source-image withdrawal follows
 existing contribution dependencies. Private previews expire after 48 hours.
 
@@ -125,3 +125,6 @@ notes and global-workspace revision 49. It contains no database, recordings, cre
 or generated private previews. AWS deployment can follow after laptop feedback;
 it will need migration, collectstatic and restart of the web and existing Q workers.
 Do not turn on DEBUG on AWS.
+
+The later [sentence-porting follow-up](community-sentence-porting-install.md) removes
+that word-only restriction. Use its runbook after applying that follow-up.

@@ -34,8 +34,11 @@ class PortReviewForm(forms.Form):
     attention_note = forms.CharField(max_length=500,required=False,label='Note for later (optional)',
                                     widget=forms.Textarea(attrs={'rows':2}))
 
-    def __init__(self,*args,change_target=True,change_explanation=True,**kwargs):
+    def __init__(self,*args,change_target=True,change_explanation=True,entry_type="word",**kwargs):
         super().__init__(*args,**kwargs)
+        if entry_type == 'sentence':
+            self.fields['word'].label = 'Sentence'
+            self.fields['word'].widget = forms.Textarea(attrs={'rows': 3})
         self.fields['word'].disabled = not change_target
         self.fields['meaning'].disabled = not change_explanation
         self.fields['category'].help_text = 'Check the proposed category; you can keep or change it.'
