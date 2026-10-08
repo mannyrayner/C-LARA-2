@@ -195,3 +195,8 @@ See [follow-up installation](community-picture-vocabulary-install.md).
 After laptop acceptance, use the [combined check-in/AWS runbook](community-picture-descriptions-aws.md).
 
 For the first AWS trial fixes, use [the incremental runbook](community-picture-capture-aws-fixes.md). No further migration is needed.
+
+7 October later AWS report: Manny tested typed/spoken input in English/Swedish
+from laptop Chrome with very positive results. A word-audio timeout exposed a
+return-navigation recovery gap; see [audio recovery](community-audio-recovery.md).
+Testing with Cathy is planned for 8 October; further UX changes await that feedback.

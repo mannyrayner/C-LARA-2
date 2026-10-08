@@ -201,3 +201,5 @@ See [review workflow and installation notes](../../docs/howto/community-port-rev
 7 October follow-up: [picture-description expressions, editable vocabulary and image-only test copies](picture-vocabulary-2026-10-07.md). Manny reports a faster laptop workflow; the correction patch has 324 passing tests and now has reported small-Swedish-dictionary laptop acceptance. AWS deployment is now reported, with the first three examples exposing a redundant source card and a failed sentence TTS request; further MWE refinement remains deferred.
 
 7 October AWS follow-up: [browsing and sentence-audio fixes](picture-capture-aws-fixes-2026-10-07.md), with 334 passing app tests and simulated Chromium progress/playback checks. New live acceptance and the original provider failure diagnosis remain pending.
+
+- [Later AWS acceptance and audio recovery, 7 October](audio-recovery-2026-10-07.md): typed/spoken English/Swedish on laptop Chrome, one reported timeout/recovery issue, 338 tests and a focused return-navigation repair; Cathy trial planned.
