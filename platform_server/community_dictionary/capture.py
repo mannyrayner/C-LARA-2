@@ -191,16 +191,8 @@ def publish(study_id, user, *, vocabulary=None):
             entry.selected_image=image; entry.save(update_fields=['selected_image'])
             sentence=component(entry,user,'word',data['sentence'],provenance,[image])
             component(entry,user,'meaning',data['translation'],provenance,[sentence])
-            for word in data['words']:
-                target=Entry.objects.filter(dictionary=study.dictionary,entry_type='word',archived=False,
-                    word=word['lemma'],meaning=word['meaning'],current_text__status='accepted',current_meaning__status='accepted').order_by('pk').first()
-                if not target:
-                    target=Entry.objects.create(dictionary=study.dictionary,created_by=user)
-                    component(target,user,'word',word['lemma'],provenance,[sentence])
-                    component(target,user,'meaning',word['meaning'],provenance,[target.current_text])
-                SentenceWord.objects.get_or_create(sentence_text=sentence,word_entry=target,
-                    defaults={'word_text':target.current_text,'surface':word['surface']})
-                ImageWordLink.objects.get_or_create(image=image,word_entry=target,defaults={'created_by':user,'sentence_text':sentence})
+            from .capture_vocabulary import publish_words
+            for target in publish_words(sentence,data['words'],user,provenance,[image]):
                 plan_speech(study,target)
             plan_speech(study,entry)
             transaction.on_commit(lambda:queue_audio(str(study.pk)))

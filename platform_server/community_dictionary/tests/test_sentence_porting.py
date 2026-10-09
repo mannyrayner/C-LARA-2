@@ -21,7 +21,11 @@ class SentencePortingTests(TestCase):
     ready = capture_tests.PictureCaptureTests.ready
     publish = capture_tests.PictureCaptureTests.publish
     url = capture_tests.PictureCaptureTests.url
-    quote = port_tests.PortingTests.quote
+    def quote(self,language='Italian',explanation='English',port=None):
+        import uuid
+        self.client.force_login(self.owner)
+        return porting.quote(self.owner,self.dictionary,dict(name='New version',language=language,
+            explanation_language=explanation,voice='marin'),uuid.uuid4(),port=port,stage='legacy')
     approve = port_tests.PortingTests.approve
     process = port_tests.PortingTests.process
     save = port_tests.PortingTests.save

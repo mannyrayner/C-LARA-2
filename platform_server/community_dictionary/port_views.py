@@ -13,7 +13,7 @@ from django.utils import timezone
 from django.utils.html import format_html
 
 from projects.billing import get_user_balance_usd
-from . import porting, port_tasks
+from . import porting, port_tasks, port_vocabulary
 from .models import Contribution, LanguagePort, PortEntryLink, PortItem, PortRun
 from .permissions import get_dictionary, require_owner
 from .port_forms import PortForm, PortApproveForm, PortReviewForm, PortAttentionForm
@@ -55,7 +55,13 @@ def saved_entry(item):
     """Use current authorised content, never the retained translation snapshot."""
     if item.status != 'saved' or item.invalidated or item.source_entry.archived:
         return None
-    if porting.snapshot(item.source_entry) != item.snapshot:
+    if item.run.stage == 'vocabulary':
+        try:
+            porting.authority(item.run.port)
+            return item.source_entry if port_vocabulary.sentence_snapshot(item.source_entry) == item.snapshot['sentence'] else None
+        except (Conflict,Http404):
+            return None
+    if porting.snapshot(item.source_entry, sentence_only=item.snapshot.get('sentence_only',False)) != item.snapshot:
         return None
     link = PortEntryLink.objects.filter(port=item.run.port, source=item.source_entry,
         destination__dictionary_id=item.run.port.destination_id,
@@ -143,6 +149,8 @@ def detail(request,pk,run_id):
                 item.safe_label += ' → ' + item.result['word']
     return no_store(render(request,'community_dictionary/port_run.html',context(request,run.port.source,
         run=run,counts=counts,page=page,balance=balance,
+        bulk_count=run.items.filter(status='ready',invalidated=False,needs_attention=False).count(),
+        speech_counts={s:run.speech.filter(status=s).count() for s in ['waiting','queued','running','ready','failed','discarded']},
         review_count=counts['ready'] + counts['unclear'],
         first_review=run.items.filter(status__in=['ready','unclear'], invalidated=False).first(),
         sentence_count=run.items.filter(snapshot__entry_type='sentence').count(),
@@ -161,6 +169,11 @@ def action(request,pk,run_id):
     try:
         if action == 'cancel':
             porting.cancel(request.user,run.pk)
+        elif action == 'accept-all':
+            if request.POST.get('accept_all') != 'on':
+                return fail(request,'Confirm acceptance of the remaining suggestions.',400)
+            saved, skipped = porting.accept_remaining(request.user,run.pk)
+            messages.success(request,f'Accepted {saved} results. {skipped} changed results were skipped; flagged or failed results are left for you.')
         elif action == 'resume':
             port_tasks.resume(request.user,run.pk)
         elif action == 'approve':
@@ -186,6 +199,8 @@ def review(request,pk,run_id,item_id):
         if item.status not in ['ready','unclear']:
             return redirect(next_review_url(run,item,attention_only))
         source, link = porting.current_item(item)
+        if run.stage == 'vocabulary':
+            return vocabulary_review(request,run,item,source,attention_only)
         operation = request.POST.get('action','save')
         if request.method == 'POST' and operation == 'discard':
             with transaction.atomic():
@@ -289,3 +304,64 @@ def media(request,pk,run_id,item_id,kind):
     except Conflict:
         raise Http404
     raise Http404
+
+
+@login_required
+@require_http_methods(['GET','POST'])
+def vocabulary_start(request,pk,port_id):
+    port=get_object_or_404(LanguagePort.objects.select_related('source','destination','user'),
+        pk=port_id,source_id=pk,user=request.user)
+    try:
+        port_vocabulary.authority(port)
+        if request.method=='POST':
+            run=port_vocabulary.quote(request.user,port,uuid.UUID(request.POST.get('submission_id','')))
+            return redirect(run_url(run))
+    except (Conflict,ValueError) as exc:
+        return fail(request,exc,409)
+    return no_store(render(request,'community_dictionary/port_vocabulary_start.html',context(request,port.destination,
+        port=port,previous=port.runs.filter(stage='vocabulary').first())))
+
+
+def vocabulary_review(request,run,item,source,attention_only):
+    from .capture_forms import VocabularyForms
+    from .port_tasks import dispatch
+    operation=request.POST.get('action','save')
+    if request.method=='POST' and operation=='discard':
+        with transaction.atomic():
+            porting.locks()
+            locked=PortItem.objects.select_for_update().get(pk=item.pk)
+            locked.run=run;porting.current_item(locked)
+            if locked.status=='ready':
+                porting.clear_preview(locked,'Discarded by reviewer.')
+            transaction.on_commit(lambda:dispatch(str(run.pk)))
+        return redirect(next_review_url(run,item,attention_only))
+    initial=item.review_values.get('words',item.result.get('words',[]))
+    data=request.POST if request.method=='POST' else None
+    if operation=='add-word' and data is not None:
+        data=data.copy()
+        try:count=int(data.get('words-TOTAL_FORMS','0'))
+        except ValueError:count=0
+        data['words-TOTAL_FORMS']=str(min(12,max(0,count)+1))
+    vocabulary=VocabularyForms(data,initial=initial,prefix='words',sentence=source.word)
+    note=request.POST.get('attention_note',item.attention_note)[:500]
+    if request.method=='POST' and operation in ['save','flag'] and vocabulary.is_valid():
+        if operation=='flag':
+            with transaction.atomic():
+                porting.locks()
+                locked=PortItem.objects.select_for_update().get(pk=item.pk)
+                locked.run=run;porting.current_item(locked)
+                if locked.status!='ready':raise Conflict('This result is no longer awaiting review.')
+                locked.needs_attention=True;locked.attention_note=note
+                locked.review_values={'words':vocabulary.words()}
+                locked.save(update_fields=['needs_attention','attention_note','review_values'])
+            messages.success(request,'Flagged for later. Your word edits are kept.')
+        else:
+            entry=port_vocabulary.save_item(request.user,item.pk,vocabulary.words())
+            messages.success(request,f'Vocabulary saved for “{entry.word}”. Missing word audio is queued.')
+        return redirect(next_review_url(run,item,attention_only))
+    if request.method=='POST' and operation not in ['save','flag','add-word']:
+        return fail(request,'Unknown action.',400)
+    return no_store(render(request,'community_dictionary/port_vocabulary_review.html',context(request,run.port.source,
+        run=run,item=item,source=source,vocabulary=vocabulary,vocabulary_open=True,attention_note=note,
+        results_url=results_url(run,attention_only),
+        remaining=run.items.filter(status='ready',invalidated=False,needs_attention=attention_only).count())))

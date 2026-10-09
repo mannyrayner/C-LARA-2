@@ -41,17 +41,20 @@ SERVER = '''
 import django; django.setup()
 from django.core.management import call_command
 from unittest.mock import patch
-from community_dictionary import port_tasks
+from community_dictionary import port_tasks, port_vocabulary_tasks
 from community_dictionary.tests.test_porting import response,speech
 
 def translate(data,photo,**kwargs):
-    words={'katt':'chat','ligga':'être couché','på':'sur','soffa':'canapé'}
-    if data.get('entry_type')=='sentence':
-        surfaces={'katt':'Le chat','ligga':'est couché','på':'sur','soffa':'le canapé'}
-        return response(word='Le chat est couché sur le canapé.',meaning=data['meaning'],category='',
-            word_links=[{'source_entry_id':w['source_entry_id'],'surface':surfaces[w['word']]} for w in data['sentence_words']])
-    return response(word=words[data['word']],meaning=data['meaning'],category='')
-with patch('community_dictionary.port_ai.translate',side_effect=translate),patch('community_dictionary.tts.synthesize',side_effect=speech),patch('community_dictionary.port_tasks.send',side_effect=port_tasks.process_item):
+    return response(word='Le chat repose sur le canapé.',meaning=data['meaning'],category='')
+def vocabulary(data,photo,**kwargs):
+    import json
+    from types import SimpleNamespace
+    return SimpleNamespace(status='completed',usage=SimpleNamespace(input_tokens=1000,output_tokens=150),
+        output_text=json.dumps({'words':[
+            {'lemma':'chat','meaning':'cat','surface':'chat','existing_id':0},
+            {'lemma':'reposer','meaning':'rest','surface':'repose','existing_id':0},
+            {'lemma':'canapé','meaning':'sofa','surface':'canapé','existing_id':0}]}))
+with patch('community_dictionary.port_ai.translate',side_effect=translate),patch('community_dictionary.port_vocabulary_ai.analyse',side_effect=vocabulary),patch('community_dictionary.tts.synthesize',side_effect=speech),patch('community_dictionary.port_tasks.send',side_effect=port_tasks.process_item),patch('community_dictionary.port_vocabulary_tasks.send_speech',side_effect=port_vocabulary_tasks.speak):
     call_command('runserver','127.0.0.1:8771',use_reloader=False,insecure=True)
 '''
 

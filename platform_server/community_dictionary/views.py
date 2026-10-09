@@ -216,6 +216,8 @@ def entry_detail(request, pk, entry_id):
     members_requests = entry.requests.select_related('partnership', 'created_by', 'completed_with').prefetch_related('responses')
     from .capture import sentence_context
     sentence_data = sentence_context(entry)
+    from .port_vocabulary import pending
+    sentence_data['vocabulary_needs_refresh'] = entry.entry_type == 'sentence' and pending(entry)
     if image and image.status == 'accepted':
         sentence_data['picture_sentences'] = Entry.objects.filter(dictionary=dictionary, entry_type='sentence', archived=False,
             selected_image__shared_from=image, selected_image__status='accepted').exclude(word='')

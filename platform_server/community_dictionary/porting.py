@@ -61,7 +61,7 @@ def authority(port):
         raise Conflict('Enable Learn from a photo in the source dictionary settings before language porting.')
 
 
-def snapshot(entry):
+def snapshot(entry, *, sentence_only=False):
     fields = {}
     parts = []
     for field, (pointer, _) in FIELDS.items():
@@ -73,7 +73,7 @@ def snapshot(entry):
     audio = [c for c in entry.contributions.filter(kind='audio', status='accepted').exclude(file_path='').order_by('pk')
              if not outdated_tts(c, entry, entry.dictionary)]
     parts += pictures + audio
-    refs = port_sentences.references(entry)
+    refs = [] if sentence_only else port_sentences.references(entry)
     parts += list(Contribution.objects.filter(pk__in=port_sentences.reference_ids(refs)).order_by('pk'))
     ids = sorted({p.pk for p in parts})
     selected = entry.selected_image_id if entry.selected_image_id in [p.pk for p in pictures] else (pictures[0].pk if pictures else None)
@@ -81,6 +81,8 @@ def snapshot(entry):
                  'selected':selected, 'archived':entry.archived,
                  'languages':[entry.dictionary.language,entry.dictionary.explanation_language]}
     extra = {'entry_type': 'sentence', 'sentence_words': refs} if entry.entry_type == 'sentence' else {}
+    if sentence_only and entry.entry_type == 'sentence':
+        extra['sentence_only'] = True
     signature.update(extra)
     return {**extra, 'fields':fields, 'images':[p.pk for p in pictures], 'audio':[p.pk for p in audio],
             'image':selected, 'ids':ids,
@@ -95,24 +97,28 @@ def input_data(item):
             'source_explanation_language':run.source_explanation_language,
             'target_language':port.language, 'explanation_language':port.explanation_language,
             **{name:field(name) for name in FIELDS}, **port_categories.inputs(item),
-            **({'entry_type': 'sentence', 'sentence_words': port_sentences.inputs(item.snapshot, parts)}
+            **({'entry_type': 'sentence', 'sentence_only': item.snapshot.get('sentence_only',False),
+                'sentence_words': port_sentences.inputs(item.snapshot, parts)}
                if item.snapshot.get('entry_type') == 'sentence' else {})}
 
 
 def current_item(item):
     """Recheck both sides before a call, before previewing, and before saving."""
     run, port = item.run, item.run.port
+    if run.stage == 'vocabulary':
+        from . import port_vocabulary
+        return port_vocabulary.current_item(item), None
     authority(port)
     if item.invalidated:
         raise Conflict('This preview was cancelled or its source was withdrawn.')
     if (port.source.language, port.source.explanation_language) != (run.source_language,run.source_explanation_language):
         raise Conflict('The source languages changed. Prepare a fresh estimate.')
     entry = Entry.objects.select_related('dictionary','current_text','current_meaning','current_category').get(pk=item.source_entry_id)
-    if entry.archived or snapshot(entry) != item.snapshot:
+    if entry.archived or snapshot(entry, sentence_only=item.snapshot.get('sentence_only',False)) != item.snapshot:
         raise Conflict('The source entry changed. Prepare a fresh estimate for this entry.')
     port_categories.check(item)
     link = PortEntryLink.objects.filter(port=port, source=entry).select_related('destination__dictionary').first()
-    actual = snapshot(link.destination)['digest'] if link else ''
+    actual = destination_snapshot(link.destination,run)['digest'] if link else ''
     if actual != item.destination_digest:
         raise Conflict('The destination was edited. Your changes have been kept.')
     return entry, link
@@ -132,8 +138,10 @@ def estimate_entry(entry, prices, audio, extra_bytes=0):
 
 
 @transaction.atomic
-def quote(user, source, data, token, port=None):
+def quote(user, source, data, token, port=None, *, stage='sentences'):
     locks()
+    if stage not in {'legacy','sentences'}:
+        raise Conflict('Unknown conversion stage.')
     previous = PortRun.objects.filter(pk=token, port__user=user, port__source=source).first()
     if previous:
         if data and any(getattr(previous.port,k) != v for k,v in data.items()):
@@ -155,7 +163,7 @@ def quote(user, source, data, token, port=None):
     if not same_language(source.language,port.language) and not tts.language_code(port.language):
         raise Conflict('Choose a target language with configured TTS for this first version.')
     port.runs.filter(status='estimate').update(status='cancelled')
-    run = PortRun.objects.create(id=token, port=port, model=model,
+    run = PortRun.objects.create(id=token, port=port, model=model, stage=stage,
         source_language=source.language, source_explanation_language=source.explanation_language,
         prices={**{k:str(v) for k,v in prices.items()}, 'speech_recipe':tts.INSTRUCTIONS_VERSION},
         payer='personal' if personal else ('credits' if credits_enabled() else 'server'),
@@ -165,19 +173,22 @@ def quote(user, source, data, token, port=None):
         'dictionary','current_text','current_meaning','current_category').order_by('pk'))
     if any(entry.entry_type == 'sentence' for entry in entries):
         run.prices['sentence_speech_recipe'] = port_ai.speech_version({'entry_type':'sentence'})
+    if stage == 'sentences':
+        entries = [entry for entry in entries if not port_sentences.vocabulary_only(entry)]
     run.category_plan = port_categories.build_plan(entries, port)
     for entry in entries:
-        snap = snapshot(entry)
+        snap = snapshot(entry, sentence_only=stage == 'sentences')
         if not snap['fields'].get('word'):
             run.skipped += 1
             continue
         link = links.get(entry.pk)
-        dest_digest = snapshot(link.destination)['digest'] if link else ''
-        if link and (link.manually_edited or dest_digest != link.destination_digest):
+        dest_digest = destination_snapshot(link.destination,run)['digest'] if link else ''
+        if link and (link.manually_edited or not destination_clean(link)):
             run.protected += 1
             continue
         group = run.category_plan.get(port_categories.key(entry.category))
-        if link and port_categories.digest(snap, group) == link.source_digest:
+        if link and (port_categories.digest(snap, group) == link.source_digest or
+                     stage == 'sentences' and legacy_sentence_unchanged(link,snap)):
             run.skipped += 1
             continue
         context_ids = port_categories.context_ids(group) if group else []
@@ -211,6 +222,9 @@ def approve(user, run_id):
         raise Conflict('This estimate expired or the payment account changed. Prepare a new estimate.')
     model, _, _, prices = photo_ai.configuration(user)
     current_prices = {**{k:str(v) for k,v in prices.items()}, 'speech_recipe':tts.INSTRUCTIONS_VERSION}
+    if run.stage == 'vocabulary':
+        from . import port_vocabulary
+        current_prices['vocabulary_recipe'] = port_vocabulary.VERSION
     if 'sentence_speech_recipe' in run.prices:
         current_prices['sentence_speech_recipe'] = port_ai.speech_version({'entry_type':'sentence'})
     if model != run.model or current_prices != run.prices:
@@ -227,6 +241,11 @@ def approve(user, run_id):
             description='Language port: temporary credit reservation', metadata={'port_run':str(run.pk),'kind':'reservation'})
         run.reserved_usd = run.allowance_usd
     port = run.port
+    if run.stage == 'vocabulary':
+        # Old derived-word previews must not later reintroduce source-language links.
+        for obsolete in PortItem.objects.filter(run__port=port,run__stage='legacy',status__in=['ready','unclear']).select_related('source_entry__dictionary','source_entry__current_text'):
+            if port_sentences.vocabulary_only(obsolete.source_entry):
+                clear_preview(obsolete,'Replaced by vocabulary from accepted destination sentences.')
     if not port.destination_id:
         port.destination = Dictionary.objects.create(name=port.name,language=port.language,
             explanation_language=port.explanation_language,owner=user,photo_ai_enabled=port.source.photo_ai_enabled,
@@ -247,6 +266,8 @@ def clear_preview(item, message='This preview is no longer available.'):
     item.needs_attention, item.attention_note, item.review_values = False, '', {}
     if item.status != 'running':
         item.status = 'discarded'
+    if item.run.stage == 'vocabulary':
+        item.speech.exclude(status__in=['ready','failed','discarded','running']).update(status='discarded', report={})
     item.save(update_fields=['file_path','result','status','message','invalidated',
                             'needs_attention','attention_note','review_values'])
     if path:
@@ -257,7 +278,11 @@ def invalidate_sources(ids):
     """Withdrawal never leaves copies of source text/audio in a private job preview."""
     PortItem.objects.filter(sources__pk__in=ids).update(
         needs_attention=False, attention_note='', review_values={})
-    runs = set()
+    from .models import PortSpeech
+    clips = PortSpeech.objects.filter(item__sources__pk__in=ids)
+    clips.update(report={})
+    clips.filter(status__in=['waiting','queued']).update(status='discarded')
+    runs = set(clips.values_list('run_id',flat=True))
     for item in PortItem.objects.filter(sources__pk__in=ids).exclude(status__in=['saved','discarded']).distinct():
         clear_preview(item, 'A source contribution was withdrawn. Prepare a fresh estimate after it returns.')
         runs.add(item.run_id)
@@ -278,9 +303,15 @@ def invalidate_sources(ids):
 def settle(run):
     if run.settled:
         return
+    if run.stage == 'vocabulary':
+        if run.items.filter(status__in=['ready','unclear']).exists() or run.speech.filter(status__in=['waiting','queued','running']).exists():
+            return
     items = list(run.items.all())
     if any(item.status not in TERMINAL for item in items):
         return
+    if run.stage == 'vocabulary':
+        from .port_vocabulary import finish
+        finish(run)
     cost = sum((min(item.translation_cost+item.audio_cost,item.allowance_usd) if run.payer == 'credits'
                 else item.translation_cost+item.audio_cost for item in items), ZERO)
     charge = min(money(cost), run.reserved_usd) if run.payer == 'credits' else money(cost)
@@ -296,12 +327,12 @@ def settle(run):
     run.save()
 
 
-def record_usage(item, *, audio=False):
+def record_usage(item, *, audio=False, cost_override=None, suffix=''):
     run = item.run
-    cost = item.audio_cost if audio else item.translation_cost
+    cost = cost_override if cost_override is not None else (item.audio_cost if audio else item.translation_cost)
     AIUsageCharge.objects.create(user=run.port.user, model=tts.MODEL if audio else run.model,
         operation='community_port_tts' if audio else 'community_port_text',
-        request_type=f'port:{item.pk}:{"audio" if audio else "text"}',
+        request_type=f'port:{item.pk}:{"audio" if audio else "text"}{suffix}',
         prompt_tokens=0 if audio else item.usage.get('input_tokens',0),
         completion_tokens=0 if audio else item.usage.get('output_tokens',0),
         total_tokens=0 if audio else sum(item.usage.values()), cost_usd=cost,
@@ -319,6 +350,8 @@ def cancel(user, run_id):
     run.save(update_fields=['status'])
     for item in run.items.exclude(status__in=['saved','discarded']):
         clear_preview(item, 'Cancelled. No further requests will be sent.')
+    if run.stage == 'vocabulary':
+        run.speech.filter(status__in=['waiting','queued']).update(status='discarded',report={})
     settle(run)
     return run
 
@@ -343,6 +376,8 @@ def copy_component(source, entry, user, port, provenance=None):
 def save_item(user, item_id, values):
     locks()
     item = PortItem.objects.select_for_update(of=('self',)).select_related('run__port__user','run__port__source','run__port__destination').get(pk=item_id,run__port__user=user)
+    if item.run.stage == 'vocabulary':
+        raise Conflict('Use the vocabulary review form for this result.')
     if item.status == 'saved':
         return PortEntryLink.objects.get(port=item.run.port,source=item.source_entry).destination
     if item.status not in {'ready','unclear'}:
@@ -352,7 +387,7 @@ def save_item(user, item_id, values):
     source_entry, link = current_item(item)
     port, run = item.run.port, item.run
     unedited_links = [l for l in port_sentences.affected_links(port, source_entry, item.snapshot)
-                      if snapshot(l.destination)['digest'] == l.destination_digest]
+                      if destination_clean(l)]
     if run.status == 'cancelled':
         raise Conflict('This port was cancelled.')
     entry = link.destination if link else Entry.objects.create(dictionary=port.destination,created_by=user,entry_type=source_entry.entry_type)
@@ -448,14 +483,15 @@ def save_item(user, item_id, values):
         for field in FIELDS if (change_target if field == 'word' else (change_explanation if field == 'meaning' else True)))
     PortEntryLink.objects.update_or_create(port=port,source=source_entry,defaults={'destination':entry,'manually_edited':manual,
         'source_digest':(port_categories.digest(item.snapshot, port_categories.group_for(item)[1])
-            if item.result.get('recipe') == port_ai.version_for(item.snapshot) else item.snapshot['digest']),'destination_digest':snapshot(entry)['digest']})
-    port_sentences.reconcile(port, user, {entry.pk} | {l.destination_id for l in unedited_links})
+            if item.result.get('recipe') == port_ai.version_for(item.snapshot) else item.snapshot['digest']),'destination_digest':destination_snapshot(entry,run)['digest']})
+    if run.stage == 'legacy':
+        port_sentences.reconcile(port, user, {entry.pk} | {l.destination_id for l in unedited_links})
     # Automatic links change pictures/sentence snapshots. Advance only trusted
     # baselines and matching unsaved previews; never bless unrelated human edits.
     for other_link in port.entry_links.filter(destination_id__in={entry.pk} | {l.destination_id for l in unedited_links}).select_related('destination__dictionary'):
         old = next((l for l in unedited_links if l.pk == other_link.pk), None)
         if other_link.destination_id == entry.pk or old:
-            digest = snapshot(other_link.destination)['digest']
+            digest = destination_snapshot(other_link.destination, run)['digest'] if other_link.destination_id == entry.pk else refreshed_digest(other_link)
             if old:
                 PortItem.objects.filter(run__port=port, source_entry_id=other_link.source_id,
                     destination_digest=old.destination_digest).exclude(status__in=['saved','discarded']).update(destination_digest=digest)
@@ -482,3 +518,48 @@ def pending_destination_run(user, dictionary):
         except (Conflict, Http404):
             return None
     return run
+
+
+def destination_snapshot(entry, run):
+    return snapshot(entry, sentence_only=run.stage == 'sentences')
+
+
+def destination_clean(link):
+    return (snapshot(link.destination)['digest'] == link.destination_digest or
+            snapshot(link.destination,sentence_only=True)['digest'] == link.destination_digest)
+
+
+def refreshed_digest(link):
+    latest = PortItem.objects.filter(run__port=link.port,source_entry_id=link.source_id,status='saved').select_related('run').order_by('-pk').first()
+    return destination_snapshot(link.destination,latest.run)['digest'] if latest else snapshot(link.destination)['digest']
+
+
+def legacy_sentence_unchanged(link, snap):
+    if snap.get('entry_type') != 'sentence':
+        return False
+    previous = PortItem.objects.filter(run__port=link.port,source_entry_id=link.source_id,status='saved').order_by('-pk').first()
+    if not previous or previous.run.stage != 'legacy':
+        return False
+    return all(previous.snapshot.get(key) == snap.get(key) for key in ['fields','images','audio','image']) and (
+        previous.run.source_language,previous.run.source_explanation_language) == (link.port.source.language,link.port.source.explanation_language)
+
+
+@transaction.atomic
+def accept_remaining(user, run_id):
+    locks()
+    run = PortRun.objects.select_related('port__user','port__source','port__destination').get(pk=run_id,port__user=user)
+    authority(run.port)
+    if run.stage == 'vocabulary':
+        from .port_vocabulary import save_item as save_vocabulary
+    saved = skipped = 0
+    for item in run.items.filter(status='ready',invalidated=False,needs_attention=False).order_by('pk'):
+        try:
+            if run.stage == 'vocabulary':
+                words=item.review_values.get('words',item.result.get('words',[]))
+                save_vocabulary(user,item.pk,words)
+            else:
+                save_item(user,item.pk,{**item.result,**item.review_values})
+            saved += 1
+        except (Conflict,Http404):
+            skipped += 1
+    return saved, skipped

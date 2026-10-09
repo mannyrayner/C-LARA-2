@@ -1,5 +1,18 @@
 # Community dictionary app
 
+## Current follow-up — sentence-first vocabulary, 9 October 2026
+
+Manny reports successful AWS conversion of the 150-entry Swedish dictionary, but
+independently translated words can disagree with the translated sentence. The
+[new two-stage workflow](../../docs/howto/community-two-stage-porting.md) reviews sentences first, then derives shared
+word pages from their final wording with the normal capture/MWE logic. Both stages
+support bulk acceptance; vocabulary review shows sentence and picture, and edits
+are tracked. Destination Settings can repair an existing version without repeating
+sentence translation. Additive migration 0018 and 410 mocked-provider app tests;
+local browser checks at phone/desktop widths. Live acceptance of this follow-up is
+pending. The 8 October installation and recovery guidance below is historical and
+superseded by the new runbook.
+
 ## Latest follow-up — sentence language ports, 8 October 2026
 
 Manny reports the image-copy workflow works and a Swedish dictionary with over

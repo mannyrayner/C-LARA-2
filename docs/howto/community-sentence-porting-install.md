@@ -1,5 +1,10 @@
 # Sentence language-porting follow-up: installation and trial
 
+> **9 October update:** Sentence vocabulary now follows a separate review stage
+> based on accepted destination sentences. See [current workflow](community-two-stage-porting.md)
+> and [installation/recovery](community-two-stage-porting-install.md). Guidance below
+> about independently porting sentence words is retained as historical context.
+
 8 October 2026. Apply on top of the image-only-copy review release just tested.
 No new migration, dependency or stylesheet change. Do not delete the existing
 French destination or launch another full conversion before checking its results.

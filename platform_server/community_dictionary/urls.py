@@ -17,6 +17,7 @@ urlpatterns = [
     path('<int:pk>/entries/<int:entry_id>/checked/', capture_views.checked, name='language-checked'),
     path('<int:pk>/language-versions/', port_views.start, name='port-start'),
     path('<int:pk>/language-versions/<int:port_id>/update/', port_views.start, name='port-update'),
+    path('<int:pk>/language-versions/<int:port_id>/vocabulary/', port_views.vocabulary_start, name='port-vocabulary'),
     path('<int:pk>/language-port/<uuid:run_id>/', port_views.detail, name='port-run'),
     path('<int:pk>/language-port/<uuid:run_id>/action/', port_views.action, name='port-action'),
     path('<int:pk>/language-port/<uuid:run_id>/entries/<int:item_id>/', port_views.review, name='port-review'),

@@ -1,0 +1,20 @@
+{% extends 'community_dictionary/base.html' %}{% load static %}
+{% block title %}Review sentence vocabulary{% endblock %}
+{% block content %}
+<p class="eyebrow">{{ run.port.name }}</p><h1>Review words and expressions</h1>
+<p><a href="{{ results_url }}">Back to results</a> · {{ remaining }} sentences awaiting vocabulary review</p>
+{% if item.needs_attention %}<p class="badge">Flagged for attention</p>{% endif %}
+<div class="entry-layout"><section>
+{% if item.snapshot.image %}<img class="entry-image" src="{% url 'community_dictionary:port-media' dictionary.pk run.pk item.pk 'image' %}" alt="Picture for the accepted sentence">{% endif %}
+<p dir="auto"><strong>{{ source.word }}</strong></p><p dir="auto">{{ source.meaning }}</p>
+<a href="{% url 'community_dictionary:entry' run.port.destination_id source.pk %}">Open sentence and listen</a>
+</section><section>
+<p>Check the words against this sentence. The same lemma and meaning will share a page wherever they occur. Different meanings stay separate. A different wording of the meaning can create a separate page; use the same meaning when you intend to share it.</p>
+<form method="post" class="stack" data-vocabulary-form>{% csrf_token %}
+{% include 'community_dictionary/capture_vocabulary.html' %}
+<label for="attention-note">Note for later (optional)</label><textarea id="attention-note" name="attention_note" maxlength="500" rows="2">{{ attention_note }}</textarea>
+<div class="actions"><button name="action" value="save">Save words and next</button><button class="secondary" name="action" value="flag" formnovalidate>Flag for later and next</button></div>
+<p class="help">Missing word recordings are generated using the cost allowance you approved. Accepting confirms your choice; it does not mark the language as checked by an expert.</p></form>
+<form method="post">{% csrf_token %}<button class="quiet" name="action" value="discard">Discard these suggestions</button></form>
+</section></div>
+<script src="{% static 'community_dictionary/capture.js' %}" defer></script>{% endblock %}

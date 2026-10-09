@@ -1,5 +1,10 @@
 # Porting dictionaries with picture descriptions
 
+> **9 October update:** Sentence vocabulary now follows a separate review stage
+> based on accepted destination sentences. See [current workflow](community-two-stage-porting.md)
+> and [installation/recovery](community-two-stage-porting-install.md). Guidance below
+> about independently porting sentence words is retained as historical context.
+
 8 October 2026. This follow-up extends language versions to accepted **sentences
 and words**. Earlier word-only ports remain usable. No new migration is required.
 

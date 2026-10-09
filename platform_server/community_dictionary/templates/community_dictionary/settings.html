@@ -20,7 +20,7 @@
 </section>
 <section class="panel"><h2>Language versions</h2>
 <a class="button secondary" href="{% url 'community_dictionary:port-start' dictionary.pk %}">Create a version in another language</a>
-{% if dictionary.language_port %}<p><a href="{% url 'community_dictionary:port-update' dictionary.language_port.source_id dictionary.language_port.pk %}">Update this version from its source dictionary</a></p>{% endif %}
+{% if dictionary.language_port %}<p><a class="button secondary" href="{% url 'community_dictionary:port-vocabulary' dictionary.language_port.source_id dictionary.language_port.pk %}">Build or update vocabulary from accepted sentences</a></p><p><a href="{% url 'community_dictionary:port-update' dictionary.language_port.source_id dictionary.language_port.pk %}">Update this version from its source dictionary</a></p>{% endif %}
 <p class="help">Preview the cost, approve processing, then review the translated entries.</p></section>
 <section class="panel"><h2>Testing picture descriptions</h2>
 <p>Create a fresh dictionary from accepted images, pictures awaiting review, or both. Copied pictures start awaiting review.</p>

@@ -39,6 +39,9 @@ def dispatch(run_id):
     if run.status != 'running':
         porting.settle(run)
         return
+    if run.stage == 'vocabulary':
+        from .port_vocabulary_tasks import dispatch as dispatch_vocabulary
+        return dispatch_vocabulary(run)
     active = run.items.filter(status__in=['queued','running']).count()
     limit = max(1,min(8,getattr(settings,'COMMUNITY_DICTIONARY_PORT_WINDOW',4)))
     for item in run.items.filter(status='waiting').order_by('pk')[:max(0,limit-active)]:
@@ -58,7 +61,7 @@ def credentials(item):
         raise Conflict('The job was cancelled.')
     if item.run.prices.get('speech_recipe') != tts.INSTRUCTIONS_VERSION:
         raise Conflict('Pronunciation processing changed. Prepare and approve a fresh estimate.')
-    if (item.snapshot.get('entry_type') == 'sentence' and
+    if (item.run.stage != 'vocabulary' and item.snapshot.get('entry_type') == 'sentence' and
             item.run.prices.get('sentence_speech_recipe') != port_ai.speech_version(item.snapshot)):
         raise Conflict('Sentence speech processing changed. Prepare and approve a fresh estimate.')
     porting.current_item(item)
@@ -69,6 +72,9 @@ def credentials(item):
 
 
 def process_item(item_id):
+    if fetch(item_id).run.stage == 'vocabulary':
+        from .port_vocabulary_tasks import process_item as process_vocabulary
+        return process_vocabulary(item_id)
     with transaction.atomic():
         porting.locks()
         item = fetch(item_id,True)
@@ -95,7 +101,7 @@ def process_item(item_id):
         # Model output can never change fields whose language was unchanged.
         if porting.same_language(item.run.source_language,item.run.port.language):
             result['word'] = data['word']
-            if data.get('entry_type') == 'sentence':
+            if data.get('entry_type') == 'sentence' and not data.get('sentence_only'):
                 result['word_links'] = [{'source_entry_id': ref['source_entry_id'], 'surface': ref['surface']}
                                         for ref in data.get('sentence_words', [])]
         if porting.same_language(item.run.source_explanation_language,item.run.port.explanation_language):
@@ -103,6 +109,9 @@ def process_item(item_id):
     except Exception as exc:
         error = type(exc).__name__
         log.warning('Language-port item %s translation failed (%s)',item_id,error)
+    if fetch(item_id).run.stage == 'vocabulary':
+        from .port_vocabulary_tasks import process_item as process_vocabulary
+        return process_vocabulary(item_id)
     with transaction.atomic():
         porting.locks()
         item = fetch(item_id,True)
@@ -210,6 +219,9 @@ def resume(user,run_id):
     porting.locks()
     run = PortRun.objects.select_for_update(of=('self',)).select_related('port__user').get(pk=run_id,port__user=user)
     cutoff = timezone.now()-timedelta(minutes=15)
+    if run.stage == 'vocabulary':
+        from .port_vocabulary_tasks import recover_speech
+        recover_speech(run,cutoff)
     for item in run.items.filter(status='running',started_at__lt=cutoff):
         porting.clear_preview(item,'This interrupted attempt was not retried. Its provider cost may be unknown.')
         item.status, item.uncertain_cost = 'failed',True

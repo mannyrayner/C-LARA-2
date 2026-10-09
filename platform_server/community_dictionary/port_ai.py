@@ -62,7 +62,7 @@ only appear after the corresponding word entries have also been reviewed and sav
 
 
 def version_for(data):
-    return SENTENCE_VERSION if data.get('entry_type') == 'sentence' else VERSION
+    return ('dictionary-sentence-port-2' if data.get('sentence_only') else SENTENCE_VERSION) if data.get('entry_type') == 'sentence' else VERSION
 
 
 def speech_version(data):
@@ -72,6 +72,7 @@ def speech_version(data):
 
 def translate(data, photo, *, model, api_key):
     sentence = data.get('entry_type') == 'sentence'
+    sentence_only = data.get('sentence_only',False)
     content = [{'type':'input_text', 'text':json.dumps(data, ensure_ascii=False)}]
     if photo:
         with Image.open(io.BytesIO(photo)) as image:
@@ -81,9 +82,11 @@ def translate(data, photo, *, model, api_key):
         content.append({'type':'input_image', 'image_url':'data:image/jpeg;base64,' +
             base64.b64encode(out.getvalue()).decode('ascii'), 'detail':'auto'})
     with _openai_client(api_key=api_key, timeout=45.0, max_retries=0) as client:
-        return client.responses.create(model=model, instructions=SENTENCE_INSTRUCTIONS if sentence else INSTRUCTIONS,
+        return client.responses.create(model=model, instructions=(SENTENCE_INSTRUCTIONS.split('The sentence_words array')[0] +
+                'Return only the sentence fields. Vocabulary will be derived after the sentence has been accepted.')
+                if sentence_only else SENTENCE_INSTRUCTIONS if sentence else INSTRUCTIONS,
             input=[{'role':'user','content':content}], store=False,
-            text={'format':{'type':'json_schema','name':'dictionary_port','strict':True,'schema':SENTENCE_SCHEMA if sentence else SCHEMA}},
+            text={'format':{'type':'json_schema','name':'dictionary_port','strict':True,'schema':SENTENCE_SCHEMA if sentence and not sentence_only else SCHEMA}},
             reasoning={'effort':'low'}, max_output_tokens=2800 if sentence else 1400)
 
 
@@ -91,7 +94,7 @@ def parse(response, data=None):
     if response.status != 'completed':
         raise ValueError('incomplete')
     result = json.loads(response.output_text)
-    sentence = bool(data and data.get('entry_type') == 'sentence')
+    sentence = bool(data and data.get('entry_type') == 'sentence' and not data.get('sentence_only'))
     schema = SENTENCE_SCHEMA if sentence else SCHEMA
     if not isinstance(result, dict) or set(result) != set(schema['required']):
         raise ValueError('schema')

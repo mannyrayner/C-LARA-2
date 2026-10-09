@@ -4,7 +4,7 @@ Only frozen, authorised source revisions enter a prompt. Destination links are
 reconciled after either endpoint is saved, without an additional provider call.
 Call reconciliation under the same dictionary locks as porting.save_item.
 """
-from .models import Contribution, ImageWordLink, SentenceWord
+from .models import Contribution, ImageWordLink, SentenceWord, VocabularyState
 from .capture import sentence_links
 
 
@@ -36,11 +36,13 @@ def vocabulary_only(entry):
     # picture onto every word would produce duplicate cards in Pictures view.
     return (entry.entry_type == 'word' and
             not entry.contributions.filter(kind='image', status='accepted').exists() and
-            sentence_links(entry.dictionary).filter(word_entry=entry).exists())
+            (entry.current_text and (entry.current_text.provenance.get('origin') == 'picture-description' or
+             entry.current_text.provenance.get('sentence_vocabulary')) or
+             sentence_links(entry.dictionary).filter(word_entry=entry).exists()))
 
 
 def provenance(item, text):
-    if item.snapshot.get('entry_type') != 'sentence':
+    if item.snapshot.get('entry_type') != 'sentence' or item.snapshot.get('sentence_only'):
         return {}
     surfaces = {link['source_entry_id']: link['surface'] for link in item.result.get('word_links', [])}
     return {'port_sentence_links': [{**ref, 'surface': surfaces.get(ref['entry'], '')
@@ -71,6 +73,8 @@ def reconcile(port, user, eligible):
     for link in sentences:
         sentence = link.destination
         text = sentence.current_text
+        if VocabularyState.objects.filter(sentence=sentence).exists():
+            continue  # Stage-two vocabulary is authoritative, including after a later edit.
         if (sentence.pk not in eligible or sentence.entry_type != 'sentence' or sentence.archived or
                 not text or text.status != 'accepted' or
                 text.shared_from_id != link.source.current_text_id):

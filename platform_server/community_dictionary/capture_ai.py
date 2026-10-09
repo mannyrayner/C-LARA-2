@@ -5,7 +5,7 @@ import json
 from decimal import Decimal
 from PIL import Image
 from .photo_ai import _openai_client
-from .capture_vocabulary import mwe_guidance, aligned_surface
+from .capture_vocabulary import mwe_guidance, aligned_surface, WORD_INSTRUCTIONS
 
 VERSION = 'picture-description-modes-v3'
 ASR_MODEL = 'gpt-4o-mini-transcribe'
@@ -58,7 +58,7 @@ def interpret(photo, data, *, model, api_key):
         output=io.BytesIO(); im.save(output,'JPEG',quality=85)
     with _openai_client(api_key=api_key, timeout=45, max_retries=0) as client:
         instructions=AI_INSTRUCTIONS if data.get('input_mode')=='ai' else INSTRUCTIONS
-        return client.responses.create(model=model, instructions=instructions + mwe_guidance(data.get('target_language', '')),
+        return client.responses.create(model=model, instructions=instructions + '\n' + WORD_INSTRUCTIONS + mwe_guidance(data.get('target_language', '')),
             input=[{'role':'user','content':[
                 {'type':'input_text','text':json.dumps(data,ensure_ascii=False)},
                 {'type':'input_image','detail':'auto','image_url':'data:image/jpeg;base64,'+base64.b64encode(output.getvalue()).decode()}]}],
@@ -84,8 +84,14 @@ def parse(response):
         return data
     if not data['sentence'] or not data['translation']:
         raise ValueError('missing_sentence')
+    validate_words(data['words'], data['sentence'])
+    return data
+
+def validate_words(words, sentence):
+    if not isinstance(words,list) or len(words)>MAX_WORDS:
+        raise ValueError('words')
     seen=set()
-    for word in data['words']:
+    for word in words:
         if not isinstance(word,dict) or set(word)!={'surface','lemma','meaning','existing_id'}:
             raise ValueError('word_fields')
         for key,limit in [('surface',100),('lemma',100),('meaning',300)]:
@@ -94,10 +100,10 @@ def parse(response):
             word[key]=word[key].strip()
         if type(word['existing_id']) is not int or not 0<=word['existing_id']<2**63:
             raise ValueError('word_id')
-        if not aligned_surface(word['surface'], data['sentence']) or (word['lemma'],word['meaning']) in seen:
+        if not aligned_surface(word['surface'], sentence) or (word['lemma'],word['meaning']) in seen:
             raise ValueError('word_alignment')
         seen.add((word['lemma'],word['meaning']))
-    return data
+    return words
 
 def transcribe(path, language, api_key):
     with _openai_client(api_key=api_key, timeout=45, max_retries=0) as client, path.open('rb') as source:

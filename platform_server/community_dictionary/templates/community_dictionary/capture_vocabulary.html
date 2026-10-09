@@ -1,4 +1,4 @@
-<details class="capture-vocabulary" {% if vocabulary.is_bound %}open{% endif %}>
+<details class="capture-vocabulary" {% if vocabulary.is_bound or vocabulary_open %}open{% endif %}>
 <summary>Words and expressions — edit, add or remove</summary>
 <p class="help">Keep useful expressions together, for example “sträcka ut sig”. Leave the sentence-form field blank if you are adding a related word. Up to 12 words or expressions; audio will be created for those you keep.</p>
 {{ vocabulary.management_form }}{{ vocabulary.non_form_errors }}

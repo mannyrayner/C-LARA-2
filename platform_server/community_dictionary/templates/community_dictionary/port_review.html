@@ -20,7 +20,7 @@
       <audio controls preload="none" src="{% url 'community_dictionary:port-media' dictionary.pk run.pk item.pk 'audio' %}"></audio>
     {% endif %}
     {% if source.entry_type != 'sentence' %}{% pronunciation_warning form.word.value run.port.language %}{% endif %}
-    {% if source.entry_type == 'sentence' %}<p class="help">Vocabulary links appear after their word entries are also saved. If you edit the sentence, vocabulary remains available as related words; precise word positions are cleared.</p>{% endif %}
+    {% if source.entry_type == 'sentence' %}<p class="help">{% if run.stage == 'sentences' %}Once the sentences are accepted, build their vocabulary in stage 2. Your final wording will be used.{% else %}This is an older translation job. After saving its sentences, use stage 2 to rebuild vocabulary from their final wording.{% endif %}</p>{% endif %}
     <form method="post" class="stack">
       {% csrf_token %}{{ form.as_p }}
       {% if change_target %}

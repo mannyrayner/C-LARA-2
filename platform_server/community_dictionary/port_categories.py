@@ -48,7 +48,7 @@ def valid(group, source):
     basis = group.get('basis')
     if basis:
         entry = Entry.objects.filter(pk=basis['entry'], dictionary=source, archived=False).first()
-        if not entry or snapshot(entry) != basis['snapshot']:
+        if not entry or snapshot(entry, sentence_only=basis['snapshot'].get('sentence_only',False)) != basis['snapshot']:
             return False
     return True
 

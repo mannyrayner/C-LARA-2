@@ -1,5 +1,10 @@
 # Community Dictionary language versions
 
+> **9 October update:** Sentence vocabulary now follows a separate review stage
+> based on accepted destination sentences. See [current workflow](community-two-stage-porting.md)
+> and [installation/recovery](community-two-stage-porting-install.md). Guidance below
+> about independently porting sentence words is retained as historical context.
+
 Updated 8 October 2026. The [sentence extension](community-sentence-porting.md)
 now includes accepted picture-description sentences and their vocabulary links.
 Read that guide for recovery of existing word-only attempts.

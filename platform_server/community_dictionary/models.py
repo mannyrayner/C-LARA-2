@@ -385,6 +385,7 @@ class PortRun(models.Model):
     """An immutable quote, approved once, with a refundable credit reservation."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     port = models.ForeignKey(LanguagePort, on_delete=models.CASCADE, related_name='runs')
+    stage = models.CharField(max_length=16, default='legacy')  # legacy, sentences, vocabulary
     status = models.CharField(max_length=16, default='estimate')
     source_language = models.CharField(max_length=80)
     source_explanation_language = models.CharField(max_length=80)
@@ -517,3 +518,28 @@ class LanguageCheck(models.Model):
     meaning = models.ForeignKey(Contribution, null=True, on_delete=models.CASCADE, related_name='+')
     checked_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     created_at = models.DateTimeField(default=timezone.now)
+
+
+class VocabularyState(models.Model):
+    """Acceptance applies to exact sentence/image/language revisions."""
+    sentence = models.OneToOneField(Entry, on_delete=models.CASCADE, related_name='vocabulary_state')
+    snapshot = models.JSONField(default=dict)
+    words = models.JSONField(default=list)
+    recipe = models.CharField(max_length=80)
+    accepted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    accepted_at = models.DateTimeField(default=timezone.now)
+
+
+class PortSpeech(models.Model):
+    """One durable speech claim per shared word revision in a vocabulary run."""
+    run = models.ForeignKey(PortRun, on_delete=models.CASCADE, related_name='speech')
+    item = models.ForeignKey(PortItem, on_delete=models.CASCADE, related_name='speech')
+    entry = models.ForeignKey(Entry, on_delete=models.PROTECT, related_name='+')
+    text = models.ForeignKey(Contribution, on_delete=models.PROTECT, related_name='+')
+    meaning = models.ForeignKey(Contribution, null=True, on_delete=models.PROTECT, related_name='+')
+    status = models.CharField(max_length=16, default='waiting', db_index=True)
+    started_at = models.DateTimeField(null=True)
+    cost_usd = models.DecimalField(max_digits=12, decimal_places=6, default=0)
+    report = models.JSONField(default=dict)
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['run','entry','text'], name='cd_port_shared_speech')]

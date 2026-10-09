@@ -1,6 +1,12 @@
 # Community dictionary development experiment
 
-Latest: [sentence porting, 8 October 2026](sentence-porting-2026-10-08.md), following
+Latest: [two-stage vocabulary, 9 October 2026](two-stage-porting-2026-10-09.md).
+Manny reports AWS sentence-port success and a vocabulary-alignment fault. The
+prepared repair uses reviewed destination sentences, shared senses and contextual
+vocabulary review; 410 mocked-provider tests and a local browser rehearsal pass.
+Live acceptance remains pending.
+
+Previous: [sentence porting, 8 October 2026](sentence-porting-2026-10-08.md), following
 Manny’s report of over 150 image-associated sentences and an empty French port.
 
 ## Latest follow-up — image-only copy review, 8 October 2026
