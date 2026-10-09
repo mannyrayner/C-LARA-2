@@ -1,5 +1,17 @@
 # Community dictionary app
 
+## Deployment incident — 9 October 2026
+
+Manny reports initial laptop/AWS use of the two-stage release, followed by
+site-wide HTTP 500s. Diagnostics confirm RDS connection exhaustion, migration
+0018 applied, and the local thread-based queue selected on AWS. A subsequent
+census confirms connection availability recovered. The
+[queue recovery patch](../../docs/howto/community-queue-recovery.md) adds explicit
+task connection cleanup, a per-process concurrency bound, private error logging
+and a read-only deployment probe. Production verification remains pending;
+pause new large AI jobs until the recovery checks pass. Earlier pending laptop
+acceptance below is superseded by this report, not by a claim of AWS stability.
+
 ## Current follow-up — sentence-first vocabulary, 9 October 2026
 
 Manny reports successful AWS conversion of the 150-entry Swedish dictionary, but

@@ -11,8 +11,9 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write(
             self.style.NOTICE(
-                "Starting django_q stub qcluster. Background tasks run inline or via threads; "
-                "leave this process running to mimic the real service."
+                "Starting django_q stub qcluster: this process does not execute queued work. "
+                "Tasks run in threads in the submitting process, with a per-process "
+                "concurrency limit. They do not survive that process restarting."
             )
         )
         try:

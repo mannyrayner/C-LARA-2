@@ -20,6 +20,28 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key")
 DEBUG = False
 ALLOWED_HOSTS: list[str] = ["*"]
 
+# Keep DEBUG off while making request tracebacks available to systemd's journal.
+# Django's default production request handler emails admins, which may not be
+# configured. Stream only server errors; do not expose debug pages to visitors.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "request_errors": {
+            "class": "logging.StreamHandler",
+            "level": "ERROR",
+            "stream": "ext://sys.stderr",
+        },
+    },
+    "loggers": {
+        "django.request": {
+            "handlers": ["request_errors"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+    },
+}
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
