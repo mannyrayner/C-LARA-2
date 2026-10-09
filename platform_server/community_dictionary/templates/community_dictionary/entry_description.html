@@ -1,0 +1,10 @@
+{% if can_describe_image %}
+<section class="panel"><h2>Describe this picture</h2>
+{% if image.status == 'pending' %}<p class="help">Confirming a description will also accept this picture.</p>{% endif %}
+<form method="get" action="{% url 'community_dictionary:capture-image' dictionary.pk image.pk %}" data-capture-choice data-dictionary="{{ dictionary.pk }}">
+{% include 'community_dictionary/capture_modes.html' with mode_field=description_modes.input_mode %}
+<p class="help">All three routes use AI to prepare a sentence and words for you to review.</p>
+<button>Continue</button>
+</form></section>
+{% elif dictionary.photo_ai_enabled %}<p><a class="button" href="{% url 'community_dictionary:entry-photo' dictionary.pk entry.pk image.pk %}">Learn from this photo</a></p>
+{% elif owner and not dictionary.personal %}<p class="help">Enable photo interpretation in <a href="{% url 'community_dictionary:settings' dictionary.pk %}">Settings</a>.</p>{% endif %}

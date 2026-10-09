@@ -1,20 +1,9 @@
-{% if image %}
+{% if picture_words %}
 <section class="panel picture-words" id="picture-words" aria-labelledby="picture-words-heading">
-  <h2 id="picture-words-heading">More words for this picture</h2>
-  {% for row in linked_words %}{% include 'community_dictionary/word_row.html' %}{% empty %}<p class="help">No additional words linked yet.</p>{% endfor %}
-  {% if link_form %}
-  <details class="link-words-editor"><summary>Link more words</summary>
-    <p class="help">Choose an existing word from this dictionary. The picture keeps its original label.</p>
-    <form method="post" action="{% url 'community_dictionary:image-words' dictionary.pk entry.pk image.pk %}" class="stack" data-leave-form>
-      {% csrf_token %}<input type="hidden" name="action" value="link">
-      {{ link_form.as_p }}
-      <button type="submit">Link word</button>
-    </form>
-    {% for row in linked_words %}<form method="post" action="{% url 'community_dictionary:image-words' dictionary.pk entry.pk image.pk %}" class="unlink-word" data-leave-form>
-      {% csrf_token %}<input type="hidden" name="action" value="unlink"><input type="hidden" name="word_entry" value="{{ row.entry.pk }}">
-      <button type="submit" class="quiet">Remove link to {{ row.entry.word }}</button>
-    </form>{% endfor %}
-  </details>
-  {% elif editor and image.status != 'accepted' %}<p class="help">Accept this picture before linking additional words.</p>{% endif %}
+  <h2 id="picture-words-heading">Words for this picture</h2>
+  {% for row in picture_words %}
+    {% if row.surface and row.surface != row.entry.word %}<p class="help" dir="auto">{{ row.surface }} → {{ row.entry.word }}</p>{% endif %}
+    {% include 'community_dictionary/word_row.html' with hide_pronunciation_warning=True %}
+  {% endfor %}
 </section>
 {% endif %}

@@ -1,0 +1,1 @@
+<div class="actions entry-picture-actions"><a class="button" href="{% url 'community_dictionary:add-picture' dictionary.pk entry.pk %}">Add a photo</a>{% if editor and dictionary.image_generation_enabled %}<a class="button secondary" href="{% url 'community_dictionary:image-start' dictionary.pk entry.pk %}">Generate a picture</a>{% endif %}</div>

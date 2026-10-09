@@ -1,0 +1,4 @@
+{% load pronunciation_tags %}
+{% for recording in audio %}{% if recording.provenance.origin == 'synthetic' %}<p class="help">AI-generated voice · {{ recording.provenance.language }} · {{ recording.provenance.voice|title }} · Spoken text: <span dir="auto">{{ recording.provenance.source_text }}</span></p>{% endif %}{% endfor %}
+{% if entry.entry_type != 'sentence' %}{% for recording in audio %}{% if recording.provenance.origin == 'synthetic' %}{% pronunciation_warning recording.provenance.source_text recording.provenance.language %}{% endif %}{% endfor %}{% endif %}
+{% for row in picture_words %}{% if row.audio.provenance.origin == 'synthetic' %}{% pronunciation_warning row.entry.word dictionary.language %}{% endif %}{% endfor %}

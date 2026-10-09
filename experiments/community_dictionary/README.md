@@ -1,6 +1,11 @@
 # Community dictionary development experiment
 
-Current: [AWS connection exhaustion and queue repair](queue-recovery-2026-10-09.md).
+Current: [AWS recovery acceptance and simpler entry pages](entry-options-2026-10-09.md).
+Manny reports the resumed French conversion completes with sentence-consistent
+word links. The next increment simplifies sentence/word reading pages; its human
+acceptance is pending. Sustained operational reliability remains to be measured.
+
+Previous: [AWS connection exhaustion and queue repair](queue-recovery-2026-10-09.md).
 Migration 0018 is confirmed applied and connection availability recovered, but
 the fallback queue has a reproduced connection-cleanup defect. The focused fix
 and deployment probe are prepared; production verification is still pending.

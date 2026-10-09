@@ -19,9 +19,9 @@ from .views import context, fail
 def word_detail(request, pk, entry_id):
     dictionary = get_dictionary(request.user, pk)
     entry = get_object_or_404(vocabulary(dictionary), pk=entry_id)
-    from .capture import linked_sentences
+    from .capture import sentence_context
     return render(request, 'community_dictionary/word.html', context(
-        request, dictionary, entry=entry, related_sentences=linked_sentences(entry), row=word_row(entry, dictionary),
+        request, dictionary, entry=entry, **sentence_context(entry), row=word_row(entry, dictionary),
         word_audio=recordings(entry, dictionary), pictures=pictures_for_word(entry, dictionary)))
 
 

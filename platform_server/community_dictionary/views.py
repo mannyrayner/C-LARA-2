@@ -216,6 +216,17 @@ def entry_detail(request, pk, entry_id):
     members_requests = entry.requests.select_related('partnership', 'created_by', 'completed_with').prefetch_related('responses')
     from .capture import sentence_context
     sentence_data = sentence_context(entry)
+    linked_rows = [word_row(e, dictionary) for e in extra_words]
+    # Sentence links and picture tags often point to the same word. Keep one
+    # playable row per entry (not spelling: identical lemmas can have senses).
+    picture_words = {}
+    for row in [*sentence_data['sentence_words'], *linked_rows]:
+        picture_words.setdefault(row['entry'].pk, row)
+    sentence_data['picture_words'] = list(picture_words.values())
+    sentence_ids = {row['entry'].pk for row in sentence_data['sentence_words']}
+    sentence_data['removable_picture_words'] = [row for row in linked_rows if row['entry'].pk not in sentence_ids]
+    if link_form:
+        link_form.fields['word_entry'].queryset = link_form.fields['word_entry'].queryset.exclude(pk__in=sentence_ids)
     from .port_vocabulary import pending
     sentence_data['vocabulary_needs_refresh'] = entry.entry_type == 'sentence' and pending(entry)
     if image and image.status == 'accepted':
@@ -223,7 +234,7 @@ def entry_detail(request, pk, entry_id):
             selected_image__shared_from=image, selected_image__status='accepted').exclude(word='')
         if image.shared_from_id and image.shared_from.entry.dictionary_id == dictionary.pk and image.shared_from.status == 'accepted':
             sentence_data['original_picture'] = image.shared_from
-    return render(request, 'community_dictionary/entry.html', context(request, dictionary, **sentence_data, **presentation, description_modes=description_modes, can_describe_image=can_describe_image, linked_words=[word_row(e, dictionary) for e in extra_words], link_form=link_form, contributions=contributions, audio=[c for c in contributions if c.kind == 'audio' and c.status == 'accepted' and not c.outdated_tts], notes=[c for c in reversed(contributions) if c.kind == 'note' and c.status != 'removed' and c.label != 'Partner request'], requests=members_requests, form=NoteForm(), can_request=Partnership.objects.filter(dictionary=dictionary, partners__user=request.user, partners__accepted=True).exists(), events=dictionary.events.filter(entry=entry).select_related('actor')[:30]))
+    return render(request, 'community_dictionary/entry.html', context(request, dictionary, **sentence_data, **presentation, description_modes=description_modes, can_describe_image=can_describe_image, linked_words=linked_rows, link_form=link_form, contributions=contributions, audio=[c for c in contributions if c.kind == 'audio' and c.status == 'accepted' and c.file_path and not c.outdated_tts], notes=[c for c in reversed(contributions) if c.kind == 'note' and c.status != 'removed' and c.label != 'Partner request'], requests=members_requests, form=NoteForm(), can_request=Partnership.objects.filter(dictionary=dictionary, partners__user=request.user, partners__accepted=True).exists(), events=dictionary.events.filter(entry=entry).select_related('actor')[:30]))
 
 
 @login_required

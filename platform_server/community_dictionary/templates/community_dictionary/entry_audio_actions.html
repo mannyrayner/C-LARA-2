@@ -1,0 +1,2 @@
+{% if dictionary.tts_enabled and entry.word %}<p><a class="button secondary" href="{% url 'community_dictionary:audio-start' dictionary.pk entry.pk %}">Create spoken audio</a></p>{% endif %}
+<div class="actions"><a class="button" href="{% url 'community_dictionary:record-audio' dictionary.pk entry.pk %}">Record audio</a>{% if can_request %}<a class="button secondary" href="{% url 'community_dictionary:ask' dictionary.pk entry.pk %}">Ask partners</a>{% endif %}</div>

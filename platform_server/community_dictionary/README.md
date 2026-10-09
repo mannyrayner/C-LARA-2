@@ -1,5 +1,15 @@
 # Community dictionary app
 
+## Reading-page cleanup — 9 October 2026
+
+Manny reports successful completion of the resumed AWS French conversion and
+consistent sentence/word links. The [reading-page revision](../../docs/howto/community-entry-options.md)
+merges sentence words and picture tags, keeps completion actions visible, and
+puts editing/history/pronunciation checks under Show more options on sentence
+and word pages. No migration or static asset change. Human layout acceptance
+remains pending. The earlier pending AWS recovery outcome below is superseded
+by this report, without claiming long-run operational stability.
+
 ## Deployment incident — 9 October 2026
 
 Manny reports initial laptop/AWS use of the two-stage release, followed by

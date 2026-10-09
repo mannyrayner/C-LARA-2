@@ -1,0 +1,17 @@
+{% if image %}
+  {% if link_form %}
+  <details class="link-words-editor"><summary>Link more words</summary>
+    <p class="help">Choose an existing word from this dictionary. The picture keeps its original label.</p>
+    {% if sentence_words %}<p class="help">Words used in the sentence stay linked here. You can add or remove other picture words below.</p>{% endif %}
+    <form method="post" action="{% url 'community_dictionary:image-words' dictionary.pk entry.pk image.pk %}" class="stack" data-leave-form>
+      {% csrf_token %}<input type="hidden" name="action" value="link">
+      {{ link_form.as_p }}
+      <button type="submit">Link word</button>
+    </form>
+    {% for row in removable_picture_words %}<form method="post" action="{% url 'community_dictionary:image-words' dictionary.pk entry.pk image.pk %}" class="unlink-word" data-leave-form>
+      {% csrf_token %}<input type="hidden" name="action" value="unlink"><input type="hidden" name="word_entry" value="{{ row.entry.pk }}">
+      <button type="submit" class="quiet">Remove link to {{ row.entry.word }}</button>
+    </form>{% endfor %}
+  </details>
+  {% elif editor and image.status != 'accepted' %}<p class="help">Accept this picture before linking additional words.</p>{% endif %}
+{% endif %}
