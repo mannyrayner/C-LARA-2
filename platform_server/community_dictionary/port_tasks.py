@@ -64,6 +64,10 @@ def credentials(item):
     if (item.run.stage != 'vocabulary' and item.snapshot.get('entry_type') == 'sentence' and
             item.run.prices.get('sentence_speech_recipe') != port_ai.speech_version(item.snapshot)):
         raise Conflict('Sentence speech processing changed. Prepare and approve a fresh estimate.')
+    if item.run.stage == 'descriptions':
+        from .batch_descriptions import VERSION
+        if item.run.prices.get('description_recipe') != VERSION:
+            raise Conflict('Picture-description processing changed. Prepare a fresh estimate.')
     porting.current_item(item)
     if porting.payer_now(item.run.port.user) != item.run.payer:
         raise Conflict('Your payment account changed. Prepare a fresh estimate.')
@@ -82,7 +86,11 @@ def process_item(item_id):
             return
         try:
             key = credentials(item)
-            data = porting.input_data(item)
+            if item.run.stage == 'descriptions':
+                from .batch_descriptions import input_data
+                data = input_data(item)
+            else:
+                data = porting.input_data(item)
             image_id = item.snapshot['image']
             photo = path_for(item.sources.get(pk=image_id).file_path).read_bytes() if image_id else None
         except (Conflict,Http404,OSError,ValueError):
@@ -93,18 +101,30 @@ def process_item(item_id):
         item.save(update_fields=['status','phase','started_at'])
     response, result, error, usage = None, None, '', {}
     try:
-        response = port_ai.translate(data,photo,model=item.run.model,api_key=key)
+        if item.run.stage == 'descriptions':
+            from .batch_descriptions import interpret
+            response = interpret(photo, data, model=item.run.model, api_key=key)
+        else:
+            response = port_ai.translate(data,photo,model=item.run.model,api_key=key)
         if getattr(response,'usage',None):
             usage = {k:max(0,int(getattr(response.usage,k,0) or 0)) for k in ['input_tokens','output_tokens']}
-        result = port_ai.parse(response, data)
-        result['recipe'] = port_ai.version_for(data)
+        if item.run.stage == 'descriptions':
+            from .batch_descriptions import parse
+            result = parse(response)
+        else:
+            result = port_ai.parse(response, data)
+        if item.run.stage == 'descriptions':
+            from .batch_descriptions import VERSION
+            result['recipe'] = VERSION
+        else:
+            result['recipe'] = port_ai.version_for(data)
         # Model output can never change fields whose language was unchanged.
-        if porting.same_language(item.run.source_language,item.run.port.language):
+        if item.run.stage != 'descriptions' and porting.same_language(item.run.source_language,item.run.port.language):
             result['word'] = data['word']
             if data.get('entry_type') == 'sentence' and not data.get('sentence_only'):
                 result['word_links'] = [{'source_entry_id': ref['source_entry_id'], 'surface': ref['surface']}
                                         for ref in data.get('sentence_words', [])]
-        if porting.same_language(item.run.source_explanation_language,item.run.port.explanation_language):
+        if item.run.stage != 'descriptions' and porting.same_language(item.run.source_explanation_language,item.run.port.explanation_language):
             result['meaning'] = data['meaning']
     except Exception as exc:
         error = type(exc).__name__
@@ -130,16 +150,16 @@ def process_item(item_id):
             item.status, item.result = 'discarded',{}
             item.message = 'The source, access or payment settings changed; the result was discarded.'
         else:
-            if result and not error:
+            if result and not error and item.run.stage != 'descriptions':
                 port_categories.canonicalize(item, result)
             if error:
-                item.status, item.message = 'failed','Translation did not return a usable result. A new estimate is required to try again.'
+                item.status, item.message = 'failed','No usable result was returned. A new estimate is required to try again.'
             elif result['outcome'] != 'candidate':
                 item.status,item.result = 'unclear',result
                 item.message = 'Check the suggestion or enter your own translation, then save. The original entry can stay as it is.'
             else:
                 item.result = result
-                if porting.same_language(item.run.source_language,item.run.port.language):
+                if item.run.stage != 'descriptions' and porting.same_language(item.run.source_language,item.run.port.language):
                     item.status = 'ready'
                 else:
                     link = PortEntryLink.objects.filter(port=item.run.port,source_id=item.source_entry_id).first()
@@ -198,7 +218,7 @@ def process_item(item_id):
                     if speech_report:
                         item.result['tts_synthesis'] = speech_report
                     if prepared:
-                        item.file_path = write_upload(prepared,item.run.port.destination_id,paths)['file_path']
+                        item.file_path = write_upload(prepared,item.run.port.target_id,paths)['file_path']
                         item.result['tts_instructions_version'] = port_ai.speech_version(item.snapshot)
                     else:
                         item.message = 'Text is ready; no usable audio was obtained. You can save the text and generate audio from the entry later, or add a human recording.'

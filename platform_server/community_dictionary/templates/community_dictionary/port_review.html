@@ -7,10 +7,11 @@
 <div class="entry-layout">
   <section>
     {% if item.snapshot.image %}<img class="entry-image" src="{% url 'community_dictionary:port-media' dictionary.pk run.pk item.pk 'image' %}" alt="Source dictionary picture">{% endif %}
-    <p><strong>{{ source.word }}</strong> · {{ source.meaning }}</p><p class="help">{{ source.category }}</p>
+    {% if run.stage == 'descriptions' %}{% if batch_hints %}<details><summary>Contributor hints</summary>{% for hint in batch_hints %}<p>{{ hint.text }}{% if hint.status == 'pending' %} <span class="help">(awaiting review)</span>{% endif %}</p>{% endfor %}</details>{% endif %}
+    {% else %}<p><strong>{{ source.word }}</strong> · {{ source.meaning }}</p><p class="help">{{ source.category }}</p>{% endif %}
   </section>
   <section>
-    <p class="badge">AI-assisted translation · review before saving</p>
+    <p class="badge">AI-assisted {% if run.stage == 'descriptions' %}description{% else %}translation{% endif %} · review before saving</p>
     {% if item.result.feedback %}<p>{{ item.result.feedback }}</p>{% endif %}
     {% if item.message and item.status != 'unclear' %}<p>{{ item.message }}</p>{% endif %}
     {% if item.result.category_language == 'uncertain' and source.category %}<p class="help">The category’s language is uncertain; the original label has been kept. You can change it below.</p>{% endif %}
@@ -19,8 +20,8 @@
       <p>AI-generated voice · {{ run.port.voice }} · {{ item.result.word }}</p>
       <audio controls preload="none" src="{% url 'community_dictionary:port-media' dictionary.pk run.pk item.pk 'audio' %}"></audio>
     {% endif %}
-    {% if source.entry_type != 'sentence' %}{% pronunciation_warning form.word.value run.port.language %}{% endif %}
-    {% if source.entry_type == 'sentence' %}<p class="help">{% if run.stage == 'sentences' %}Once the sentences are accepted, build their vocabulary in stage 2. Your final wording will be used.{% else %}This is an older translation job. After saving its sentences, use stage 2 to rebuild vocabulary from their final wording.{% endif %}</p>{% endif %}
+    {% if source.entry_type != 'sentence' and run.stage != 'descriptions' %}{% pronunciation_warning form.word.value run.port.language %}{% endif %}
+    {% if source.entry_type == 'sentence' or run.stage == 'descriptions' %}<p class="help">{% if run.stage == 'sentences' or run.stage == 'descriptions' %}Once the sentences are accepted, build their vocabulary in stage 2. Your final wording will be used.{% else %}This is an older translation job. After saving its sentences, use stage 2 to rebuild vocabulary from their final wording.{% endif %}</p>{% endif %}
     <form method="post" class="stack">
       {% csrf_token %}{{ form.as_p }}
       {% if change_target %}

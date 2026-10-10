@@ -1,9 +1,15 @@
 # Community dictionary development experiment
 
-Current: [AWS recovery acceptance and simpler entry pages](entry-options-2026-10-09.md).
+Current: [batch picture descriptions](batch-descriptions-2026-10-10.md).
+Manny has accepted the simpler reading pages. The next prepared increment lets
+owners add missing sentences and then vocabulary to existing pictures in batches,
+with optional contributor hints, cost approval and review. Rename and counts are
+included. Local tests/browser rehearsal pass; live acceptance is pending.
+
+Previous: [AWS recovery acceptance and simpler entry pages](entry-options-2026-10-09.md).
 Manny reports the resumed French conversion completes with sentence-consistent
 word links. The next increment simplifies sentence/word reading pages; its human
-acceptance is pending. Sustained operational reliability remains to be measured.
+acceptance has now been reported. Sustained operational reliability remains to be measured.
 
 Previous: [AWS connection exhaustion and queue repair](queue-recovery-2026-10-09.md).
 Migration 0018 is confirmed applied and connection availability recovered, but

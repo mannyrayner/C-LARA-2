@@ -3,6 +3,12 @@
 {% block content %}
 <p class="eyebrow">{{ dictionary.name }}</p><h1>Settings</h1>
 {% if owner %}
+<section class="panel" id="dictionary-name"><h2>Rename dictionary</h2>
+<form method="post" action="{% url 'community_dictionary:rename' dictionary.pk %}" class="stack">{% csrf_token %}{{ rename_form.as_p }}<button class="secondary">Save name</button></form></section>
+<section class="panel"><h2>Add missing sentences</h2>
+<p>Suggest sentences for pictures that do not yet have them, then build their vocabulary. Review each stage or accept all ready suggestions.</p>
+<a class="button secondary" href="{% url 'community_dictionary:batch-descriptions' dictionary.pk %}">Add missing sentences</a>
+</section>
 <section class="panel" id="dictionary-visibility"><h2>Dictionary visibility</h2>
 <p><strong>{% if dictionary.hidden %}Hidden{% else %}Visible{% endif %}</strong> in the dictionary list.</p>
 <p class="help">Hide an older or unused dictionary to keep the main list clear for everyone. Members can still find it under Hidden dictionaries or open a saved link. Content and contribution rights are unchanged.</p>

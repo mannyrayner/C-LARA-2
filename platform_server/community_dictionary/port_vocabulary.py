@@ -4,7 +4,7 @@ from decimal import Decimal
 import hashlib
 import json
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Q
 from django.http import Http404
 from django.utils import timezone
 from projects.billing import credits_enabled
@@ -19,9 +19,9 @@ VERSION = 'accepted-sentence-vocabulary-1'
 
 def authority(port):
     porting.authority(port)
-    if not port.destination_id or not port.destination.photo_ai_enabled:
+    if not port.target_id or not port.target.photo_ai_enabled:
         raise Conflict('Enable Learn from a photo in the destination dictionary settings first.')
-    if not port.destination.tts_enabled or not tts.language_code(port.language):
+    if not port.target.tts_enabled or not tts.language_code(port.language):
         raise Conflict('Enable supported spoken audio in the destination dictionary first.')
 
 
@@ -63,14 +63,14 @@ def current_item(item):
     if item.invalidated or item.run.status == 'cancelled':
         raise Conflict('This vocabulary result is no longer available.')
     entry = Entry.objects.select_related('dictionary','current_text','current_meaning').get(pk=item.source_entry_id)
-    if (entry.dictionary_id != port.destination_id or entry.entry_type != 'sentence' or entry.archived or
+    if (entry.dictionary_id != port.target_id or entry.entry_type != 'sentence' or entry.archived or
             sentence_snapshot(entry) != item.snapshot['sentence']):
         raise Conflict('The accepted sentence, explanation or picture changed. Estimate vocabulary again.')
     ids = [ref[k] for ref in item.snapshot.get('context',[]) for k in ['text','meaning'] if ref[k]]
     parts = {p.pk:p for p in Contribution.objects.filter(pk__in=ids).select_related('entry')}
     for pk in ids:
         part = parts.get(pk)
-        if (not part or part.status != 'accepted' or part.entry.dictionary_id != port.destination_id or part.entry.archived or
+        if (not part or part.status != 'accepted' or part.entry.dictionary_id != port.target_id or part.entry.archived or
                 getattr(part.entry,'current_'+('text' if part.text_field=='word' else 'meaning')+'_id') != pk):
             raise Conflict('Some supplied vocabulary changed or was withdrawn. Estimate again.')
     return entry
@@ -118,7 +118,7 @@ def quote(user, port, token):
         return previous
     if port.runs.filter(status='running').exists():
         raise Conflict('Finish the current job, including its vocabulary review, or cancel its unsaved results first.')
-    if PortItem.objects.filter(run__port=port,source_entry__entry_type='sentence',
+    if PortItem.objects.filter(Q(source_entry__entry_type='sentence') | Q(run__stage='descriptions'),run__port=port,
         status__in=['ready','unclear'],needs_attention=False,invalidated=False).exists():
         raise Conflict('Accept or flag the remaining sentence translations before building their vocabulary.')
     model,key,personal,prices = photo_ai.configuration(user)
@@ -127,10 +127,13 @@ def quote(user, port, token):
         source_language=port.language,source_explanation_language=port.explanation_language,
         prices={**{k:str(v) for k,v in prices.items()},'speech_recipe':tts.INSTRUCTIONS_VERSION,'vocabulary_recipe':VERSION},
         payer='personal' if personal else 'credits' if credits_enabled() else 'server',expires_at=timezone.now()+timedelta(hours=1))
-    refs = context(port.destination)
+    refs = context(port.target)
     context_ids = [ref[k] for ref in refs for k in ['text','meaning'] if ref[k]]
     size = sum(len(c.word)+len(c.meaning) for c in Contribution.objects.filter(pk__in=context_ids))
-    for entry in port.destination.entries.filter(entry_type='sentence',archived=False,current_text__status='accepted').exclude(word='').select_related('dictionary','current_text','current_meaning'):
+    entries = port.target.entries.filter(entry_type='sentence',archived=False,current_text__status='accepted').exclude(word='')
+    if port.is_description_batch:
+        entries = entries.filter(description_jobs__run__port=port,description_jobs__status='saved').distinct()
+    for entry in entries.select_related('dictionary','current_text','current_meaning'):
         if current_state(entry):
             run.skipped += 1
             continue
@@ -182,7 +185,7 @@ def retire_unused(port, old_links):
         entry = link.destination
         if entry.entry_type != 'word' or not vocabulary_only(link.source):
             continue
-        if sentence_links(port.destination).filter(word_entry=entry).exists():
+        if sentence_links(port.target).filter(word_entry=entry).exists():
             continue
         if ImageWordLink.objects.filter(word_entry=entry,sentence_text__isnull=True).exists():
             continue

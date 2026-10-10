@@ -23,6 +23,11 @@ class PortForm(forms.ModelForm):
 
 
 class PortApproveForm(forms.Form):
+    def __init__(self, *args, in_place=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        if in_place:
+            self.fields['approve'].label = 'I approve this cost estimate and have permission to send these pictures and texts to OpenAI and publish the reviewed results in this dictionary.'
+
     approve = forms.BooleanField(label='I approve this cost estimate and have permission to send these pictures and texts to OpenAI and reuse them in the new dictionary.')
 
 

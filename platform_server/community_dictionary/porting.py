@@ -57,6 +57,9 @@ def authority(port):
         require_owner(port.user, port.destination)
         if (port.destination.language, port.destination.explanation_language) != (port.language, port.explanation_language):
             raise Conflict('The destination languages changed. Use a new language version.')
+    if port.is_description_batch:
+        from .batch_descriptions import authority
+        authority(port)
     if not port.source.photo_ai_enabled:
         raise Conflict('Enable Learn from a photo in the source dictionary settings before language porting.')
 
@@ -108,6 +111,9 @@ def current_item(item):
     if run.stage == 'vocabulary':
         from . import port_vocabulary
         return port_vocabulary.current_item(item), None
+    if run.stage == 'descriptions':
+        from .batch_descriptions import current_item
+        return current_item(item), None
     authority(port)
     if item.invalidated:
         raise Conflict('This preview was cancelled or its source was withdrawn.')
@@ -140,6 +146,8 @@ def estimate_entry(entry, prices, audio, extra_bytes=0):
 @transaction.atomic
 def quote(user, source, data, token, port=None, *, stage='sentences'):
     locks()
+    if port and port.is_description_batch:
+        raise Conflict('Use Add missing sentences for this dictionary.')
     if stage not in {'legacy','sentences'}:
         raise Conflict('Unknown conversion stage.')
     previous = PortRun.objects.filter(pk=token, port__user=user, port__source=source).first()
@@ -225,6 +233,9 @@ def approve(user, run_id):
     if run.stage == 'vocabulary':
         from . import port_vocabulary
         current_prices['vocabulary_recipe'] = port_vocabulary.VERSION
+    if run.stage == 'descriptions':
+        from .batch_descriptions import VERSION
+        current_prices['description_recipe'] = VERSION
     if 'sentence_speech_recipe' in run.prices:
         current_prices['sentence_speech_recipe'] = port_ai.speech_version({'entry_type':'sentence'})
     if model != run.model or current_prices != run.prices:
@@ -246,7 +257,7 @@ def approve(user, run_id):
         for obsolete in PortItem.objects.filter(run__port=port,run__stage='legacy',status__in=['ready','unclear']).select_related('source_entry__dictionary','source_entry__current_text'):
             if port_sentences.vocabulary_only(obsolete.source_entry):
                 clear_preview(obsolete,'Replaced by vocabulary from accepted destination sentences.')
-    if not port.destination_id:
+    if not port.target_id:
         port.destination = Dictionary.objects.create(name=port.name,language=port.language,
             explanation_language=port.explanation_language,owner=user,photo_ai_enabled=port.source.photo_ai_enabled,
             tts_enabled=bool(tts.language_code(port.language)), image_generation_enabled=False,
@@ -376,6 +387,9 @@ def copy_component(source, entry, user, port, provenance=None):
 def save_item(user, item_id, values):
     locks()
     item = PortItem.objects.select_for_update(of=('self',)).select_related('run__port__user','run__port__source','run__port__destination').get(pk=item_id,run__port__user=user)
+    if item.run.stage == 'descriptions':
+        from .batch_descriptions import save_item
+        return save_item(user, item, values)
     if item.run.stage == 'vocabulary':
         raise Conflict('Use the vocabulary review form for this result.')
     if item.status == 'saved':
@@ -509,7 +523,7 @@ def pending_destination_run(user, dictionary):
     """Only the authorised port owner sees a link to their private previews."""
     if dictionary.owner_id != user.pk:
         return None
-    run = PortRun.objects.filter(port__destination=dictionary, port__user=user,
+    run = PortRun.objects.filter(Q(port__destination=dictionary) | Q(port__source=dictionary, port__is_description_batch=True), port__user=user,
         items__status__in=['ready','unclear'], items__invalidated=False).select_related(
         'port__source','port__destination','port__user').order_by('-created_at').first()
     if run:

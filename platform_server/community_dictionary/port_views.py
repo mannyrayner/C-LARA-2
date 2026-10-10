@@ -55,6 +55,9 @@ def saved_entry(item):
     """Use current authorised content, never the retained translation snapshot."""
     if item.status != 'saved' or item.invalidated or item.source_entry.archived:
         return None
+    if item.run.stage == 'descriptions':
+        from .batch_descriptions import saved_entry as described_entry
+        return described_entry(item)
     if item.run.stage == 'vocabulary':
         try:
             porting.authority(item.run.port)
@@ -87,7 +90,7 @@ def no_store(response):
 def start(request,pk,port_id=None):
     source = get_dictionary(request.user,pk)
     require_owner(request.user,source)
-    port = get_object_or_404(LanguagePort,pk=port_id,source=source,user=request.user) if port_id else None
+    port = get_object_or_404(LanguagePort,pk=port_id,source=source,user=request.user,is_description_batch=False) if port_id else None
     if port:
         try:
             porting.authority(port)
@@ -109,7 +112,7 @@ def start(request,pk,port_id=None):
         except Conflict as exc:
             form.add_error(None,str(exc))
     return no_store(render(request,'community_dictionary/port_start.html',context(request,source,form=form,
-        port=port,ports=source.language_ports.filter(user=request.user).select_related('destination'))))
+        port=port,ports=source.language_ports.filter(user=request.user,is_description_batch=False).select_related('destination'))))
 
 
 @login_required
@@ -146,7 +149,7 @@ def detail(request,pk,run_id):
         elif item.preview_available:
             item.safe_label = item.source_entry.word
             if item.result.get('word') and item.result['word'] != item.source_entry.word:
-                item.safe_label += ' → ' + item.result['word']
+                item.safe_label = (item.safe_label + ' → ' if item.safe_label else '') + item.result['word']
     return no_store(render(request,'community_dictionary/port_run.html',context(request,run.port.source,
         run=run,counts=counts,page=page,balance=balance,
         bulk_count=run.items.filter(status='ready',invalidated=False,needs_attention=False).count(),
@@ -156,7 +159,7 @@ def detail(request,pk,run_id):
         sentence_count=run.items.filter(snapshot__entry_type='sentence').count(),
         attention_only=attention_only,attention_count=attention_count,
         enough_funds=balance is None or balance >= run.allowance_usd,
-        expired=run.expires_at <= timezone.now(),approve_form=PortApproveForm(),
+        expired=run.expires_at <= timezone.now(),approve_form=PortApproveForm(in_place=run.port.is_description_batch),
         uncertain=run.items.filter(uncertain_cost=True).exists())))
 
 
@@ -177,7 +180,7 @@ def action(request,pk,run_id):
         elif action == 'resume':
             port_tasks.resume(request.user,run.pk)
         elif action == 'approve':
-            form = PortApproveForm(request.POST)
+            form = PortApproveForm(request.POST, in_place=run.port.is_description_batch)
             if not form.is_valid():
                 return fail(request,'Confirm permission and the displayed cost before starting.',400)
             porting.approve(request.user,run.pk)
@@ -213,8 +216,8 @@ def review(request,pk,run_id,item_id):
             return redirect(next_review_url(run,item,attention_only))
         if request.method == 'POST' and operation not in ['save','flag']:
             return fail(request,'Unknown action.',400)
-        change_target = not porting.same_language(run.source_language,run.port.language)
-        change_explanation = not porting.same_language(run.source_explanation_language,run.port.explanation_language)
+        change_target = run.stage == 'descriptions' or not porting.same_language(run.source_language,run.port.language)
+        change_explanation = run.stage == 'descriptions' or not porting.same_language(run.source_explanation_language,run.port.explanation_language)
         initial = {**item.result, **item.review_values,
                    'needs_attention':item.needs_attention,'attention_note':item.attention_note}
         if not change_target:
@@ -224,7 +227,7 @@ def review(request,pk,run_id,item_id):
         if 'category' not in item.review_values:
             initial['category'] = initial.get('category') or source.category
         form = PortReviewForm(request.POST if request.method == 'POST' else None,initial=initial,
-                              change_target=change_target,change_explanation=change_explanation, entry_type=source.entry_type)
+                              change_target=change_target,change_explanation=change_explanation, entry_type='sentence' if run.stage == 'descriptions' else source.entry_type)
         if operation == 'flag':
             form.fields['word'].required = False
         if request.method == 'POST' and form.is_valid():
@@ -251,10 +254,14 @@ def review(request,pk,run_id,item_id):
                     not (item.file_path or item.result.get('reused_audio'))):
                     messages.info(request,'Use Create audio on the saved entry to generate speech for the revised wording.')
             return redirect(next_review_url(run,item,attention_only))
+        batch_hints = []
+        if run.stage == 'descriptions':
+            from .batch_descriptions import input_data
+            batch_hints = input_data(item)['contributor_hints']
         remaining = run.items.filter(status__in=['ready','unclear'],invalidated=False,
                                      needs_attention=attention_only).count()
         return no_store(render(request,'community_dictionary/port_review.html',context(request,run.port.source,
-            run=run,item=item,source=source,form=form,change_target=change_target,
+            run=run,item=item,source=source,form=form,change_target=change_target,batch_hints=batch_hints,
             attention_only=attention_only,results_url=results_url(run,attention_only),remaining=remaining)))
     except Conflict as exc:
         return fail(request,exc,409)
@@ -296,7 +303,7 @@ def media(request,pk,run_id,item_id,kind):
             return private_media_response(request,item.file_path,'audio/wav','ported-audio')
         if kind == 'audio' and item.result.get('reused_audio'):
             recording = get_object_or_404(Contribution,
-                pk=item.result['reused_audio'],entry__dictionary=run.port.destination,kind='audio',status='accepted')
+                pk=item.result['reused_audio'],entry__dictionary=run.port.target,kind='audio',status='accepted')
             return private_media_response(request,recording.file_path,recording.mime_type,'ported-audio')
         if kind == 'image' and item.snapshot.get('image'):
             picture = item.sources.get(pk=item.snapshot['image'])
@@ -318,7 +325,7 @@ def vocabulary_start(request,pk,port_id):
             return redirect(run_url(run))
     except (Conflict,ValueError) as exc:
         return fail(request,exc,409)
-    return no_store(render(request,'community_dictionary/port_vocabulary_start.html',context(request,port.destination,
+    return no_store(render(request,'community_dictionary/port_vocabulary_start.html',context(request,port.target,
         port=port,previous=port.runs.filter(stage='vocabulary').first())))
 
 

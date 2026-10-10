@@ -66,6 +66,14 @@ def home(request):
         return redirect('community_dictionary:dictionary', pk=dictionary.pk)
     from .participation import controls
     projects = [controls(request.user, d) for d in entitled_dictionaries(request.user)]
+    from django.db.models import Count
+    browsable = [row['dictionary'].pk for row in projects if row['can_browse']]
+    counts = {(row['dictionary_id'], row['entry_type']): row['total'] for row in
+        Entry.objects.filter(dictionary_id__in=browsable,archived=False,current_text__status='accepted').exclude(word='')
+        .values('dictionary_id','entry_type').annotate(total=Count('pk'))}
+    for row in projects:
+        row['sentence_count'] = counts.get((row['dictionary'].pk,'sentence'),0)
+        row['word_count'] = counts.get((row['dictionary'].pk,'word'),0)
     invitations = list(Membership.objects.filter(user=request.user, accepted=False,
         status='invited', dictionary__personal=False, dictionary__archived=False).select_related('dictionary'))
     return render(request, 'community_dictionary/home.html', {
@@ -455,7 +463,9 @@ def dictionary_settings(request, pk):
         dictionary.refresh_from_db()
     from .capture_limits import usage
     from .capture_limit_views import AllowanceForm
+    from .batch_views import RenameForm
     return render(request, 'community_dictionary/settings.html', context(request, dictionary, settings_form=form,
+        rename_form=RenameForm(initial={'name':dictionary.name}),
         capture_usage=usage(dictionary,request.user),
         capture_allowance_form=AllowanceForm(initial={'daily_limit':dictionary.capture_daily_limit})))
 

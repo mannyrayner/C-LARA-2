@@ -1,5 +1,12 @@
 # Community dictionary: setup and testing
 
+Owners can now [add missing sentences to pictures in a batch](community-batch-descriptions.md), then review
+sentences and their derived vocabulary in two stages. This works in the current
+dictionary with optional contributor hints, cost approval and incremental runs.
+Settings also has an explicit Rename dictionary form; home cards show accepted
+sentence and word counts. Migration 0019 is required. Local verification is not
+live deployment acceptance.
+
 ## Current follow-up — sentence-first vocabulary, 9 October 2026
 
 Manny reports successful AWS conversion of the 150-entry Swedish dictionary, but

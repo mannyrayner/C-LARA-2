@@ -7,7 +7,7 @@
 <div class="entry-layout"><section>
 {% if item.snapshot.image %}<img class="entry-image" src="{% url 'community_dictionary:port-media' dictionary.pk run.pk item.pk 'image' %}" alt="Picture for the accepted sentence">{% endif %}
 <p dir="auto"><strong>{{ source.word }}</strong></p><p dir="auto">{{ source.meaning }}</p>
-<a href="{% url 'community_dictionary:entry' run.port.destination_id source.pk %}">Open sentence and listen</a>
+<a href="{% url 'community_dictionary:entry' run.port.target_id source.pk %}">Open sentence and listen</a>
 </section><section>
 <p>Check the words against this sentence. The same lemma and meaning will share a page wherever they occur. Different meanings stay separate. A different wording of the meaning can create a separate page; use the same meaning when you intend to share it.</p>
 <form method="post" class="stack" data-vocabulary-form>{% csrf_token %}

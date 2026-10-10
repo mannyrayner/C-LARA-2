@@ -91,7 +91,7 @@ def speech_row(pk,lock=False):
 def speech_credentials(clip):
     clip.item.run=clip.run
     key=credentials(clip.item)
-    if (clip.entry.archived or clip.entry.dictionary_id!=clip.run.port.destination_id or
+    if (clip.entry.archived or clip.entry.dictionary_id!=clip.run.port.target_id or
             clip.entry.current_text_id!=clip.text_id or clip.entry.current_meaning_id!=clip.meaning_id or
             clip.text.status!='accepted' or clip.meaning and clip.meaning.status!='accepted'):
         raise Conflict('This word changed. Generate audio from its current entry instead.')
@@ -107,7 +107,7 @@ def speak(pk):
             clip.status='discarded';clip.save(update_fields=['status'])
             transaction.on_commit(lambda:port_tasks.dispatch(str(clip.run_id)));return
         from .lexicon import recordings
-        if recordings(clip.entry,clip.run.port.destination):
+        if recordings(clip.entry,clip.run.port.target):
             clip.status='ready';clip.save(update_fields=['status'])
             transaction.on_commit(lambda:port_tasks.dispatch(str(clip.run_id)));return
         clip.status='running';clip.started_at=timezone.now();clip.save(update_fields=['status','started_at'])
@@ -143,7 +143,7 @@ def speak(pk):
                 clip.report=report;clip.status='ready' if prepared else 'failed'
                 if prepared:
                     from .lexicon import recordings
-                    if not recordings(clip.entry,clip.run.port.destination):
+                    if not recordings(clip.entry,clip.run.port.target):
                         media=write_upload(prepared,clip.entry.dictionary_id,paths)
                         provenance={'origin':'synthetic','source_text':clip.text.word,'language':clip.run.port.language,
                             'voice':clip.run.port.voice,'model':tts.MODEL,'instructions_version':tts.INSTRUCTIONS_VERSION,

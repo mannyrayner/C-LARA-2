@@ -4,7 +4,7 @@
 <p class="eyebrow">{{ dictionary.name }}</p><h1>2. Vocabulary from accepted sentences</h1>
 <p>The accepted sentences and their pictures are used to suggest words and expressions. Sentences are not translated again. Matching lemmas and meanings share a word page and recording.</p>
 <p>You can review and edit the suggestions beside each sentence and picture, or accept all remaining suggestions. Changed sentences and meanings are processed again; unchanged vocabulary is skipped.</p>
-<p>This also repairs vocabulary in an earlier language conversion. Unchanged, unused word pages created by the older conversion are archived after the job finishes. Human-edited pages and independent word entries are kept. Approval discards unused word previews from the older sentence conversion.</p>
+{% if not port.is_description_batch %}<p>This also repairs vocabulary in an earlier language conversion. Unchanged, unused word pages created by the older conversion are archived after the job finishes. Human-edited pages and independent word entries are kept. Approval discards unused word previews from the older sentence conversion.</p>{% endif %}
 {% if previous %}<p><a href="{% url 'community_dictionary:port-run' port.source_id previous.pk %}">Latest vocabulary job · {{ previous.status }}</a></p>{% endif %}
 <form method="post" class="panel">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ submission_id }}"><button>Estimate vocabulary cost</button><p class="help">No AI calls or charges at this step. Review the estimate and approve before processing.</p></form>
 <p><a href="{% url 'community_dictionary:dictionary' dictionary.pk %}">Back to dictionary</a></p>

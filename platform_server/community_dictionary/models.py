@@ -371,6 +371,17 @@ class ContributionDependency(models.Model):
 
 
 class LanguagePort(models.Model):
+    # A same-dictionary description job shares the port job/review machinery.
+    is_description_batch = models.BooleanField(default=False)
+
+    @property
+    def target(self):
+        return self.source if self.is_description_batch else self.destination
+
+    @property
+    def target_id(self):
+        return self.source_id if self.is_description_batch else self.destination_id
+
     source = models.ForeignKey(Dictionary, on_delete=models.PROTECT, related_name='language_ports')
     destination = models.OneToOneField(Dictionary, null=True, blank=True, on_delete=models.PROTECT, related_name='language_port')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
@@ -383,6 +394,7 @@ class LanguagePort(models.Model):
 
 class PortRun(models.Model):
     """An immutable quote, approved once, with a refundable credit reservation."""
+    options = models.JSONField(default=dict, blank=True)
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     port = models.ForeignKey(LanguagePort, on_delete=models.CASCADE, related_name='runs')
     stage = models.CharField(max_length=16, default='legacy')  # legacy, sentences, vocabulary
@@ -423,6 +435,8 @@ class PortEntryLink(models.Model):
 
 
 class PortItem(models.Model):
+    source_image = models.ForeignKey(Contribution, null=True, blank=True, on_delete=models.PROTECT, related_name="description_items")
+    saved_entry = models.ForeignKey(Entry, null=True, blank=True, on_delete=models.PROTECT, related_name='description_jobs')
     run = models.ForeignKey(PortRun, on_delete=models.CASCADE, related_name='items')
     source_entry = models.ForeignKey(Entry, on_delete=models.PROTECT, related_name='+')
     sources = models.ManyToManyField(Contribution, related_name='port_previews')
@@ -448,7 +462,10 @@ class PortItem(models.Model):
 
     class Meta:
         ordering = ['pk']
-        constraints = [models.UniqueConstraint(fields=['run', 'source_entry'], name='cd_unique_port_item')]
+        constraints = [
+            models.UniqueConstraint(fields=['run', 'source_entry'], condition=models.Q(source_image__isnull=True), name='cd_unique_port_item'),
+            models.UniqueConstraint(fields=['run', 'source_image'], condition=models.Q(source_image__isnull=False), name='cd_unique_image_job'),
+        ]
 
 
 class PictureCapture(models.Model):
