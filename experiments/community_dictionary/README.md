@@ -266,3 +266,5 @@ See [review workflow and installation notes](../../docs/howto/community-port-rev
 7 October AWS follow-up: [browsing and sentence-audio fixes](picture-capture-aws-fixes-2026-10-07.md), with 334 passing app tests and simulated Chromium progress/playback checks. New live acceptance and the original provider failure diagnosis remain pending.
 
 - [Later AWS acceptance and audio recovery, 7 October](audio-recovery-2026-10-07.md): typed/spoken English/Swedish on laptop Chrome, one reported timeout/recovery issue, 338 tests and a focused return-navigation repair; Cathy trial planned.
+
+- [Email password recovery, 10 October 2026](email-password-reset-2026-10-10.md): batch update accepted on laptop/AWS; locally verified email recovery prepared, real SMTP delivery pending.

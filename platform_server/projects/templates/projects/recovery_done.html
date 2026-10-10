@@ -1,0 +1,10 @@
+{% extends recovery_base %}
+{% block title %}Check your email{% endblock %}
+{% block content %}
+<section class="panel password-page">
+<h1>Check your email</h1>
+<p>If that address belongs to an active account, we will send a password-reset link. The link lasts for one hour.</p>
+<p>Allow a few minutes and check your spam folder. If nothing arrives, check the address and try again. After repeated requests, wait 15 minutes before trying again, or ask an administrator for help.</p>
+<p><a href="{% url recovery_login %}">Back to log in</a> · <a href="{% url recovery_start %}">Try again</a></p>
+</section>
+{% endblock %}

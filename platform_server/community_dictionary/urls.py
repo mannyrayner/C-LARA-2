@@ -1,6 +1,7 @@
-from django.urls import path
+from django.urls import include, path
 from django.contrib.auth import views as auth_views
 from projects.authentication_forms import LoginForm
+from projects import email_reset_views
 
 from . import batch_views
 from . import audio_views, photo_views, views, lexicon_views, collection_views, participation_views
@@ -8,6 +9,7 @@ from . import image_views, practice_views, port_views, capture_views, image_copy
 
 app_name = 'community_dictionary'
 urlpatterns = [
+    path('password/reset/', include(email_reset_views.patterns(community=True))),
     path('<int:pk>/settings/add-sentences/', batch_views.start, name='batch-descriptions'),
     path('<int:pk>/settings/rename/', batch_views.rename, name='rename'),
     path('<int:pk>/describe/', capture_views.start, name='capture-start'),

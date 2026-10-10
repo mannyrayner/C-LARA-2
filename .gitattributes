@@ -1,0 +1,2 @@
+# Human-input archives are verbatim records, including original trailing spaces.
+docs/global_workspace/archive/inputs/** whitespace=-blank-at-eol

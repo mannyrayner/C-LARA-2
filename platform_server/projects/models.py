@@ -716,6 +716,13 @@ class ExerciseSet(models.Model):
         ordering = ["-updated_at"]
 
 
+class PasswordResetLimit(models.Model):
+    """Shared request counters. Keys contain an HMAC, never an email address."""
+    key = models.CharField(max_length=64, primary_key=True)
+    count = models.PositiveIntegerField(default=0)
+    window_start = models.DateTimeField(default=timezone.now, db_index=True)
+
+
 class ExerciseItem(models.Model):
     exercise_set = models.ForeignKey(ExerciseSet, on_delete=models.CASCADE, related_name="items")
     order_index = models.PositiveIntegerField(default=0)

@@ -10,6 +10,7 @@
     <input type="hidden" name="next" value="{{ next }}">
     <button type="submit">Log in</button>
   </form>
+  {% if password_reset_email_enabled %}<p><a href="{% url 'community_dictionary:password-reset' %}">Forgotten password?</a></p>{% endif %}
   <p class="help">New here? <a href="{% url 'register' %}">Create an account</a>.</p>
 </section>
 {% endblock %}

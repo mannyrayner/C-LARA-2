@@ -529,3 +529,9 @@ remain available without it.
 
 
 7 October follow-up: [picture-description expressions, editable vocabulary and image-only test copies](community-picture-descriptions.md). Manny reports a faster laptop workflow; the correction patch has 324 passing tests and now has reported small-Swedish-dictionary laptop acceptance. AWS deployment and larger trials are next; further MWE refinement is deferred until after that trial.
+
+## Email password recovery
+
+The optional [email recovery workflow](email-password-reset.md) adds Forgotten password?
+to both login pages after SMTP configuration. See its [installation runbook](email-password-reset-install.md).
+Anonymous browsing remains proposed; dictionaries retain their existing membership restrictions.

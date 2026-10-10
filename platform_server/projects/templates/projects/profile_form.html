@@ -4,6 +4,8 @@
 
 {% block content %}
 <h1>Profile</h1>
+<p>Account email: <strong>{{ user.email|default:"No email address recorded" }}</strong>.
+Password-reset links are sent here. If this is incorrect or inaccessible, ask an administrator to update it after checking your identity.</p>
 <p><a class="btn" href="{% url 'password-change' %}">Change my password</a></p>
 <form method="post">
   {% csrf_token %}

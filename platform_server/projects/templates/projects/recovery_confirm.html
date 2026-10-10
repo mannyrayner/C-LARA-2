@@ -1,0 +1,16 @@
+{% extends recovery_base %}
+{% block title %}Choose a new password{% endblock %}
+{% block content %}
+<section class="panel password-page">
+{% if validlink %}
+<h1>Choose a new password</h1>
+<p>This changes your password for both Community Dictionaries and C-LARA-2.</p>
+<form method="post" class="stack">{% csrf_token %}{{ form.as_p }}
+<button class="btn" type="submit">Save new password</button></form>
+{% else %}
+<h1>This link cannot be used</h1>
+<p>It may have expired or already been used. You can request a new link.</p>
+<p><a href="{% url recovery_start %}">Request a new reset link</a></p>
+{% endif %}
+</section>
+{% endblock %}

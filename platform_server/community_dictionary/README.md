@@ -256,3 +256,7 @@ Live API/laptop/phone acceptance of this increment is still pending.
 8 October follow-up: [owner-adjustable picture-description allowance](../../docs/howto/community-picture-description-limits.md), with local daily-cost preview and explicit confirmation under Settings. Default ten shared attempts per rolling 24 hours; usage survives changes. Additive migration 0016; 349 app tests and mocked Chromium checks pass. Manny subsequently reports it appeared to work; the environment is unspecified.
 
 8 October next prepared change: [Visible/Hidden dictionaries](../../docs/howto/community-dictionary-visibility.md), an owner-only Settings control to move historical versions out of the main list. Hidden dictionaries stay accessible to their existing audience through a collapsed section, preserving contribution rights and linked images. Migration 0017; 356 tests and an owner/member browser rehearsal pass. New visibility acceptance remains pending.
+
+Email recovery is available through the shared account implementation when explicitly
+enabled and configured; see [email password recovery](../../docs/howto/email-password-reset.md).
+Visitor/anonymous browsing is still proposed, not enabled.

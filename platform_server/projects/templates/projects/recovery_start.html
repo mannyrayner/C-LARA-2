@@ -1,0 +1,15 @@
+{% extends recovery_base %}
+{% block title %}Reset password{% endblock %}
+{% block content %}
+<section class="panel password-page">
+<h1>Reset your password</h1>
+{% if unavailable %}
+<p>Email password resets are not available at the moment. Please ask an administrator for help.</p>
+{% else %}
+<p>Enter the email address you used when you created your account. We will send a link to choose a new password.</p>
+<form method="post" class="stack">{% csrf_token %}{{ form.as_p }}
+<button class="btn" type="submit">Send reset link</button></form>
+{% endif %}
+<p><a href="{% url recovery_login %}">Back to log in</a></p>
+</section>
+{% endblock %}

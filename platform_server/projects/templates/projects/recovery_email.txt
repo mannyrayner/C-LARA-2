@@ -1,0 +1,10 @@
+{% autoescape off %}Someone requested a new password for your {{ service_name }} account.
+
+Username: {{ user.get_username }}
+
+Choose a new password using this link (valid for {{ expiry_minutes }} minutes):
+{{ protocol }}://{{ domain }}{% url reset_confirm_name uidb64=uid token=token %}
+
+This account is shared by Community Dictionaries and C-LARA-2.
+If you did not request this, you can ignore this message. Your password has not changed.
+{% endautoescape %}

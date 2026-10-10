@@ -1,0 +1,9 @@
+{% extends recovery_base %}
+{% block title %}Password changed{% endblock %}
+{% block content %}
+<section class="panel password-page">
+<h1>Your password has been changed</h1>
+<p>You can now log in with your new password.</p>
+<p><a class="btn" href="{% url recovery_login %}">Log in</a></p>
+</section>
+{% endblock %}

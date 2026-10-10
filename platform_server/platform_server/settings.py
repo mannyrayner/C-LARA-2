@@ -84,6 +84,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "projects.context_processors.credit_balance",
+                "projects.email_reset.recovery_context",
             ],
         },
     },
@@ -144,6 +145,20 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Auth redirects
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
+
+# Outgoing recovery mail. Disabled until the operator configures and tests it.
+PASSWORD_RESET_EMAIL_ENABLED = os.environ.get("CLARA_PASSWORD_RESET_ENABLED", "").lower() in {"1", "true", "yes"}
+PUBLIC_BASE_URL = os.environ.get("CLARA_PUBLIC_BASE_URL", "")
+PASSWORD_RESET_TIMEOUT = 60 * 60
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "true").lower() in {"1", "true", "yes"}
+EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "false").lower() in {"1", "true", "yes"}
+EMAIL_TIMEOUT = 15
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "")
 
 # Pipeline defaults for server integration
 # Pipeline artifacts live under media/users/<user_id>/projects/project_<id>/runs/
