@@ -1,6 +1,7 @@
 {% extends 'community_dictionary/base.html' %}{% block content %}
 <div class="hero"><p class="eyebrow">C-LARA · COLLECT TOGETHER</p><h1>A place for our<br>pictures and voices.</h1><p>Build a dictionary with people you know. Start with a photograph, a recording or a question.</p></div>
 {% if invitations %}{% include 'community_dictionary/home_invitations.html' %}{% endif %}
+<p><a href="{% url 'community_dictionary:public-home' %}">Browse public dictionaries</a></p>
 <section id="visible-dictionaries"><h2>Your dictionaries</h2><div class="dictionary-grid">
 {% for row in projects %}{% include 'community_dictionary/home_card.html' %}
 {% empty %}<div class="empty">{% if hidden_projects %}All your dictionaries are hidden. Open Hidden dictionaries below to find them.{% else %}Your dictionaries will appear here. Create one below or ask its owner to invite your username: <strong>{{ request.user.username }}</strong>.{% endif %}</div>{% endfor %}

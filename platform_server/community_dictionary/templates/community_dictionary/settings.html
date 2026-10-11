@@ -3,6 +3,22 @@
 {% block content %}
 <p class="eyebrow">{{ dictionary.name }}</p><h1>Settings</h1>
 {% if owner %}
+<section class="panel" id="public-browsing"><h2>Public browsing</h2>
+<p><strong>{% if dictionary.public_browsing_enabled and not dictionary.hidden %}On — anyone can browse{% else %}Off — members only{% endif %}</strong></p>
+{% if dictionary.public_browsing_enabled and not dictionary.hidden %}
+<p><a class="button secondary" href="{% url 'community_dictionary:public-dictionary' dictionary.pk %}">View as a visitor</a></p>
+<label for="public-link">Link to share</label><input id="public-link" type="text" readonly value="{{ public_url }}">
+<form method="post" action="{% url 'community_dictionary:public-access' dictionary.pk %}">{% csrf_token %}{{ public_access_form.revision }}<button class="secondary" name="action" value="disable">Turn off public browsing</button></form>
+{% else %}
+<p>Let anyone browse accepted pictures, sentences, words, translations and recordings, without an account. This dictionary will appear in the public dictionary list.</p>
+<p>Only enable this with your contributors’ permission. Future accepted content will also be public. Drafts, discussions and member details remain private.</p>
+{% if dictionary.hidden %}<p>Make this dictionary visible below before enabling public browsing.</p>{% else %}
+<form method="post" action="{% url 'community_dictionary:public-access' dictionary.pk %}" class="stack">{% csrf_token %}{{ public_access_form.revision }}
+<label class="check">{{ public_access_form.permission }} <span>{{ public_access_form.permission.label }}</span></label>
+<button name="action" value="enable">Enable public browsing</button></form>{% endif %}
+{% endif %}
+<p class="help">Turning this off, hiding the dictionary or withdrawing content blocks future visitor access to that material. It cannot recall copies that visitors have already saved. Public browsing does not give visitors editing, AI-generation or export permissions.</p>
+</section>
 <section class="panel" id="dictionary-name"><h2>Rename dictionary</h2>
 <form method="post" action="{% url 'community_dictionary:rename' dictionary.pk %}" class="stack">{% csrf_token %}{{ rename_form.as_p }}<button class="secondary">Save name</button></form></section>
 <section class="panel"><h2>Add missing sentences</h2>
@@ -11,7 +27,7 @@
 </section>
 <section class="panel" id="dictionary-visibility"><h2>Dictionary visibility</h2>
 <p><strong>{% if dictionary.hidden %}Hidden{% else %}Visible{% endif %}</strong> in the dictionary list.</p>
-<p class="help">Hide an older or unused dictionary to keep the main list clear for everyone. Members can still find it under Hidden dictionaries or open a saved link. Content and contribution rights are unchanged.</p>
+<p class="help">Hide an older or unused dictionary to keep the main list clear for everyone. Members can still find it under Hidden dictionaries or open a saved link. Hiding also turns off public browsing; making it visible again does not turn public browsing back on. Content and contribution rights are unchanged.</p>
 <form method="post" action="{% url 'community_dictionary:visibility' dictionary.pk %}">{% csrf_token %}
 {% if dictionary.hidden %}<button name="visibility" value="visible">Make dictionary visible</button>
 {% else %}<button class="secondary" name="visibility" value="hidden">Hide dictionary</button>{% endif %}

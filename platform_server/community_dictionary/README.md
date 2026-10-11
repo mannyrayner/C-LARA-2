@@ -1,5 +1,14 @@
 # Community dictionary app
 
+Latest: [optional public browsing](../../docs/howto/community-public-browsing.md)
+adds a default-off owner setting and separate accepted-only visitor pages with
+search, playback and word/sentence/picture links. Private member routes retain
+their checks. Migration 0020; 536 regression tests and phone/desktop Chromium
+rehearsal pass. Laptop/AWS/physical-phone acceptance of this increment is pending.
+Manny has reported initial AWS password-reset/login success; Cathy's trial is pending.
+Earlier pending batch-description laptop/AWS acceptance has also been superseded
+by Manny's success reports.
+
 Owners can now [add missing sentences to pictures in a batch](../../../docs/howto/community-batch-descriptions.md), then review
 sentences and their derived vocabulary in two stages. This works in the current
 dictionary with optional contributor hints, cost approval and incremental runs.
@@ -259,4 +268,5 @@ Live API/laptop/phone acceptance of this increment is still pending.
 
 Email recovery is available through the shared account implementation when explicitly
 enabled and configured; see [email password recovery](../../docs/howto/email-password-reset.md).
-Visitor/anonymous browsing is still proposed, not enabled.
+Visitor/anonymous browsing is now implemented as a separate, default-off option;
+see the latest public-browsing instructions above.

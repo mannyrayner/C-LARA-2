@@ -1,0 +1,10 @@
+{% extends 'community_dictionary/base.html' %}
+{% block title %}{{ dictionary.name }}{% endblock %}
+{% block content %}
+<p class="eyebrow">{{ dictionary.language }} · Public view</p><h1>{{ dictionary.name }}</h1>
+<nav class="tabs" aria-label="Browse by"><a {% if mode == 'pictures' %}aria-current="page"{% endif %} href="?view=pictures&amp;q={{ query|urlencode }}">Pictures</a><a {% if mode == 'words' %}aria-current="page"{% endif %} href="?view=words&amp;q={{ query|urlencode }}">Words</a><a {% if mode == 'sentences' %}aria-current="page"{% endif %} href="?view=sentences&amp;q={{ query|urlencode }}">Sentences</a></nav>
+<form class="search" method="get"><input type="hidden" name="view" value="{{ mode }}"><label class="sr-only" for="search">Search words, translations and meanings</label><input id="search" name="q" value="{{ query }}" placeholder="Search words, translations and meanings"><label class="sr-only" for="category">Category</label><select id="category" name="category"><option value="">All categories</option>{% for tag in categories %}<option {% if tag == category %}selected{% endif %}>{{ tag }}</option>{% endfor %}</select><button class="secondary">Search</button></form>
+{% if mode == 'words' %}<div class="word-list">{% for row in rows %}{% include 'community_dictionary/public_word_row.html' %}{% empty %}<p class="empty">No accepted words match this view.</p>{% endfor %}</div>
+{% else %}<div class="entry-grid">{% for row in rows %}{% include 'community_dictionary/public_card.html' %}{% empty %}<p class="empty">No accepted entries match this view.</p>{% endfor %}</div>{% endif %}
+{% include 'community_dictionary/public_pagination.html' %}
+{% endblock %}

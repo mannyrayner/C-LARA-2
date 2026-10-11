@@ -2,16 +2,16 @@
 
 > This file is generated from `current_state.json`; do not edit it directly.
 
-- **Workspace revision:** 63
-- **As of:** 2026-10-10
-- **Assessed commit:** `9947c9667e2086b96faddf49bf2d86d74d94b68a`
+- **Workspace revision:** 64
+- **As of:** 2026-10-11
+- **Assessed commit:** `067cfc7938822858f34782fe2f28f0a532e28a7c`
 - **Approved proposal:** `None`
 - **Approved run:** None (no recorded run)
 - **Persistent goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-4`, `GOAL-5`
 
 ## Current focus
 
-Manny reports the batch-description, rename and count update working on laptop and AWS. Email recovery is the next concrete access blocker: Google Workspace is identified and Manny has an app password, which remains private. A first email-reset increment is locally verified (514 regression tests, 28 final focused tests, both browser flows at phone/desktop widths) and ready for laptop installation and an explicit AWS SMTP-delivery test. Owner-enabled anonymous read-only browsing is requested but remains proposed; publication and withdrawal rules must be preserved.
+Manny reports successful AWS email password reset followed by login: the apparent failure concerned another test account sharing his email, correctly identified by the message. Cathy's independent test remains pending. At Manny's request, owner-controlled anonymous browsing is now implemented and locally verified (536 regression tests and 320/390/1280px browser checks). It is off by default, projects only accepted learning material and preserves withdrawal and member access boundaries. The patch and migration 0020 are ready for laptop acceptance before AWS deployment; no dictionary has been published by the agent.
 
 ## Factual observations
 
@@ -743,6 +743,22 @@ Manny resumes email password recovery, corrects the mailbox provider to Google W
 - **Confidence:** high
 - **Evidence:** [`experiments/community_dictionary/email-password-reset-2026-10-10.md`](../experiments/community_dictionary/email-password-reset-2026-10-10.md), [`docs/howto/email-password-reset.md`](../howto/email-password-reset.md), [`docs/howto/email-password-reset-install.md`](../howto/email-password-reset-install.md), [`platform_server/projects/tests/test_email_reset.py`](../platform_server/projects/tests/test_email_reset.py), [`platform_server/projects/email_reset.py`](../platform_server/projects/email_reset.py), [`platform_server/projects/migrations/0044_passwordresetlimit.py`](../platform_server/projects/migrations/0044_passwordresetlimit.py)
 
+### OBS-0092
+
+Manny confirms end-to-end AWS password reset and login to the intended dummy account. His earlier difficulty was confusion between accounts sharing an email address, not a reproduced reset defect; the message named the account correctly. This closes the pending initial delivery/recovery outcome from revision 63. Cathy's independent trial is planned but unreported.
+
+- **Observed:** 2026-10-11
+- **Confidence:** high
+- **Evidence:** [`experiments/community_dictionary/public-browsing-2026-10-11.md`](../experiments/community_dictionary/public-browsing-2026-10-11.md)
+
+### OBS-0093
+
+Manny requests the previously discussed anonymous browse-only option. The prepared increment adds a default-off owner setting with contributor-permission confirmation, separate accepted-only visitor pages, audio/search/links, and live withdrawal/revocation checks. Hidden/archive/personal dictionaries remain unavailable; hiding disables public access and unhiding does not republish. Migration 0020 is additive. 536 SQLite regression tests and a disposable Chromium rehearsal at 320/390/1280px pass. No live account, AI, SMTP or production operation is performed; human laptop/AWS/phone acceptance remains pending.
+
+- **Observed:** 2026-10-11
+- **Confidence:** high
+- **Evidence:** [`docs/howto/community-public-browsing.md`](../howto/community-public-browsing.md), [`docs/howto/community-public-browsing-install.md`](../howto/community-public-browsing-install.md), [`experiments/community_dictionary/public-browsing-2026-10-11.md`](../experiments/community_dictionary/public-browsing-2026-10-11.md), [`platform_server/community_dictionary/public_browsing.py`](../platform_server/community_dictionary/public_browsing.py), [`platform_server/community_dictionary/public_views.py`](../platform_server/community_dictionary/public_views.py), [`platform_server/community_dictionary/tests/test_public_browsing.py`](../platform_server/community_dictionary/tests/test_public_browsing.py), [`platform_server/community_dictionary/migrations/0020_public_browsing.py`](../platform_server/community_dictionary/migrations/0020_public_browsing.py)
+
 ## Project-valence assessments
 
 ### ASM-0001
@@ -837,11 +853,11 @@ Historical assessment from 14 August, not revalidated in this scoped review: Cod
 
 ### ASM-0011
 
-Batch-description laptop and AWS acceptance is now reported. The immediate access/usability need is reliable self-service account recovery for Cathy and others. The prepared standard-token implementation preserves the dictionary interface and bounds requests without exposing SMTP secrets. Local verification supports installation, but actual mail delivery and a real user recovery trial remain the release gate. Anonymous read-only access could lower onboarding friction; it remains a separate proposed permission/publication change, not part of this patch.
+Initial AWS email recovery is now human-accepted, removing the immediate account-recovery blocker; Cathy can test independently. Optional visitor browsing addresses registration friction while maintaining a clear publication decision: only the owner can opt in with contributor permission, and accepted material then becomes available to anyone. Local verification supports a laptop trial and subsequent cautious AWS rollout. Community approval of what to publish remains a human decision; the implementation does not authorise publication.
 
 - **Goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-5`
-- **Grounding observations:** `OBS-0022`, `OBS-0023`, `OBS-0024`, `OBS-0025`, `OBS-0026`, `OBS-0027`, `OBS-0028`, `OBS-0029`, `OBS-0030`, `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0034`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0038`, `OBS-0039`, `OBS-0040`, `OBS-0041`, `OBS-0042`, `OBS-0043`, `OBS-0044`, `OBS-0045`, `OBS-0046`, `OBS-0047`, `OBS-0048`, `OBS-0049`, `OBS-0050`, `OBS-0051`, `OBS-0052`, `OBS-0053`, `OBS-0054`, `OBS-0055`, `OBS-0056`, `OBS-0057`, `OBS-0058`, `OBS-0059`, `OBS-0060`, `OBS-0061`, `OBS-0062`, `OBS-0063`, `OBS-0064`, `OBS-0065`, `OBS-0066`, `OBS-0067`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0071`, `OBS-0072`, `OBS-0073`, `OBS-0074`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0082`, `OBS-0083`, `OBS-0084`, `OBS-0085`, `OBS-0086`, `OBS-0087`, `OBS-0088`, `OBS-0089`, `OBS-0090`, `OBS-0091`
-- **Urgency / risk / progress:** test_email_delivery_and_real_account_recovery / medium / batch_update_accepted_email_recovery_locally_verified
+- **Grounding observations:** `OBS-0022`, `OBS-0023`, `OBS-0024`, `OBS-0025`, `OBS-0026`, `OBS-0027`, `OBS-0028`, `OBS-0029`, `OBS-0030`, `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0034`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0038`, `OBS-0039`, `OBS-0040`, `OBS-0041`, `OBS-0042`, `OBS-0043`, `OBS-0044`, `OBS-0045`, `OBS-0046`, `OBS-0047`, `OBS-0048`, `OBS-0049`, `OBS-0050`, `OBS-0051`, `OBS-0052`, `OBS-0053`, `OBS-0054`, `OBS-0055`, `OBS-0056`, `OBS-0057`, `OBS-0058`, `OBS-0059`, `OBS-0060`, `OBS-0061`, `OBS-0062`, `OBS-0063`, `OBS-0064`, `OBS-0065`, `OBS-0066`, `OBS-0067`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0071`, `OBS-0072`, `OBS-0073`, `OBS-0074`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0082`, `OBS-0083`, `OBS-0084`, `OBS-0085`, `OBS-0086`, `OBS-0087`, `OBS-0088`, `OBS-0089`, `OBS-0090`, `OBS-0091`, `OBS-0092`, `OBS-0093`
+- **Urgency / risk / progress:** test_public_browsing_on_laptop_before_aws / medium / email_recovery_accepted_public_browsing_locally_verified
 - **Confidence:** medium
 
 ### ASM-0012
@@ -873,7 +889,7 @@ None. This revision uses neutral factual and assessment language.
   - **Assessments:** `ASM-0010`
 - **UNC-0007:** Carried forward from August; present status unverified: The first laptop Project Manager query was plausible and timely, but the mode is not yet deployed or exercised by Sophie or another non-staff collaborator; classification accuracy and whether fresh-turn continuity is sufficient remain unmeasured.
   - **Assessments:** `ASM-0003`, `ASM-0006`
-- **UNC-0008:** Initial batch-description laptop/AWS acceptance is now reported. Email recovery is locally verified but its Google authentication/delivery, Windows installation and physical-phone user journey remain untested. SMTP credentials must stay in protected server configuration. The fallback queue is bounded but not durable, can delay mail behind AI work, and drops requests waiting over 15 minutes. Anonymous browsing remains proposed and must distinguish permission to publish from membership sharing and preserve withdrawal of hosted copies. Broader language/MWE quality, community reception, learning outcomes and sustained operational reliability remain open.
+- **UNC-0008:** Manny reports real AWS email recovery; Cathy's independent journey and longer-run mail/queue reliability remain unmeasured. Public browsing is locally verified but not yet human-tested on laptop, AWS/PostgreSQL or a physical phone. Owner permission includes future accepted content; public access is available to outsiders/former members and cannot recall copies already received. Private and withdrawal boundaries have regression coverage, but anonymous traffic/bandwidth at scale has not been load-tested. The fallback queue remains bounded rather than durable. Broader language/MWE quality, community reception, learning outcomes and sustained operational reliability remain open.
   - **Assessments:** `ASM-0011`
 - **UNC-0009:** The feasibility and timetable for weekly/monthly intervention targets are unknown. There is no authorised persistent maintenance runner, staging/release/rollback workflow or tested operational recovery baseline yet. Infrastructure account ownership, budgets, fallback contacts and community authority must be assigned without transferring Manny’s technical burden invisibly to another person. Proposed stage targets require comparable workload and failure drills.
   - **Assessments:** `ASM-0012`
@@ -910,7 +926,7 @@ None. This revision uses neutral factual and assessment language.
   - **Assessments:** `ASM-0003`
 - **ACT-0009:** Carried-forward August proposal; applicability needs a broader review: Configure authoritative collaborator role mappings, deploy the mode, grant access through Admin Tools, and run a natural Sophie-centered trial while reviewing evidence classifications and preserving the no-mutation boundary.
   - **Assessments:** `ASM-0003`, `ASM-0006`
-- **ACT-0010:** Back up laptop SQLite, apply/test email recovery and additive projects migration 0044, and try the console-email reset workflow. After acceptance, deploy with recovery initially disabled, privately configure the Google app password, run the no-send diagnostic and one explicit test email, then enable and test real recovery with Manny and Cathy. Retain admin recovery. Address optional anonymous browsing as a subsequent increment with publication/withdrawal semantics explicit.
+- **ACT-0010:** Apply the public-browsing patch on the laptop after SQLite backup, run regression tests and migration 0020, and test owner enablement, anonymous navigation/audio and revocation. After acceptance, commit/push and follow the AWS backup/migration runbook. Keep all production dictionaries private until contributors agree to publication. Let Cathy independently try password recovery. Record actual laptop/AWS/phone results without treating local browser emulation as physical-device acceptance.
   - **Assessments:** `ASM-0011`
 - **ACT-0011:** Start a low-burden intervention log while resolving the current configuration work. Specify direct collaborator intake and one authorised, isolated request-to-preview-to-release path, including monitoring/rollback and a safe restore drill. Use this to evaluate whether two or three weekly reviews can replace daily technical intervention; defer broader autonomous release authority until evidence supports it.
   - **Assessments:** `ASM-0012`
@@ -945,8 +961,8 @@ None. This revision uses neutral factual and assessment language.
 ## Approval and revision
 
 - **Status:** autonomous_project_manager_update
-- **Authorized by / at:** Assistant following AGENTS.md / 2026-10-10
-- **Basis:** Manny reports laptop/AWS acceptance, resumes email recovery, identifies Google Workspace and obtains an app password after the agreed setup steps. AGENTS.md requires reflecting material acceptance, progress and the remaining live-delivery gate. Human-owned intentions are unchanged.
-- **Comments:** Revision 63 records human batch acceptance separately from local email-reset verification. No secret is stored, no actual email sent, and no production operations are claimed. Anonymous browsing remains proposed.
-- **Change summary:** Recorded laptop/AWS batch acceptance; prepared and locally verified email password recovery and a private SMTP setup runbook; kept anonymous browsing as a separate proposed change.
+- **Authorized by / at:** Assistant following AGENTS.md / 2026-10-11
+- **Basis:** Manny reports working password recovery and explicitly requests anonymous browse-only access, previously scoped as owner-controlled and off by default. AGENTS.md requires reflecting material acceptance, implementation progress and remaining human validation. Human-owned intentions are unchanged.
+- **Comments:** Revision 64 distinguishes human-reported AWS email recovery from local public-browsing verification. No secrets, public dictionary publication or production operations are included. Cathy and the new visitor workflow still need independent acceptance.
+- **Change summary:** Recorded real AWS email-reset/login acceptance and prepared owner-controlled default-off public browsing with local permission and browser verification. Publication and laptop/AWS/phone acceptance remain explicit next steps.
 - **Retired live items:** `REQ-0006`, `OBS-0001@rev-0002`, `OBS-0002@rev-0002`, `OBS-0012@rev-0002`, `ASM-0001@rev-0002`, `ASM-0009@rev-0002`, `PRED-0001@rev-0002`, `PRED-0002@rev-0002`, `PRED-0003@rev-0002`, `PRED-0004@rev-0002`

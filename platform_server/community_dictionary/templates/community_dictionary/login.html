@@ -4,6 +4,7 @@
 <section class="panel account-login">
   <h1>Log in</h1>
   <p>Use your account to return to your dictionaries.</p>
+  <p><a class="button secondary" href="{% url 'community_dictionary:public-home' %}">Browse without logging in</a></p>
   <form method="post" class="stack">
     {% csrf_token %}
     {{ form.as_p }}

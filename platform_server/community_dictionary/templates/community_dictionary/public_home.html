@@ -1,0 +1,13 @@
+{% extends 'community_dictionary/base.html' %}
+{% block title %}Public dictionaries{% endblock %}
+{% block content %}
+<div class="hero"><p class="eyebrow">Pictures · Words · Voices</p><h1>Public dictionaries</h1>
+<p>Explore dictionaries their communities have chosen to share. No account is needed to browse.</p></div>
+<form class="search" method="get"><label class="sr-only" for="search">Find a dictionary or language</label><input id="search" name="q" value="{{ query }}" placeholder="Find a dictionary or language"><button class="secondary">Search</button></form>
+<div class="dictionary-grid">
+{% for row in rows %}<a class="dictionary-card" href="{% url 'community_dictionary:public-dictionary' row.dictionary.pk %}"><p class="eyebrow">{{ row.dictionary.language }}</p><h2>{{ row.dictionary.name }}</h2>
+<p>{{ row.sentence_count }} sentence{{ row.sentence_count|pluralize }} · {{ row.word_count }} word{{ row.word_count|pluralize }}</p>{% if row.dictionary.explanation_language %}<p class="help">Translations: {{ row.dictionary.explanation_language }}</p>{% endif %}<span>Browse dictionary →</span></a>
+{% empty %}<p class="empty">{% if query %}No public dictionaries match your search.{% else %}No dictionaries are available for public browsing yet. You can still log in to your own dictionaries.{% endif %}</p>{% endfor %}
+</div>
+{% include 'community_dictionary/public_pagination.html' %}
+{% endblock %}

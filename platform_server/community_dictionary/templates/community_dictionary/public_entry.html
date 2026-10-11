@@ -1,0 +1,15 @@
+{% extends 'community_dictionary/base.html' %}
+{% block title %}{{ row.title }}{% endblock %}
+{% block content %}
+<p class="eyebrow">{{ dictionary.name }} · {{ dictionary.language }} · Public view</p><h1 dir="{{ dictionary.text_direction }}">{{ row.title }}</h1>
+<div class="entry-layout">
+<div>{% if row.image %}<img class="entry-image" src="{% url 'community_dictionary:public-media' dictionary.pk row.image.id %}" alt="{{ row.title }}">{% if row.image.generated %}<p class="help">AI-generated picture</p>{% endif %}{% endif %}</div>
+<section class="panel">
+{% include 'community_dictionary/public_word_row.html' with on_entry_page=True hide_heading=True %}
+{% if row.category %}<p class="badge">{{ row.category }}</p>{% endif %}
+{% if row.recordings|length > 1 %}<details><summary>Other recordings</summary>{% for recording in row.recordings %}{% if recording.id != row.audio.id %}<audio controls preload="none" src="{% url 'community_dictionary:public-media' dictionary.pk recording.id %}"></audio>{% if recording.synthetic %}<p class="help">AI-generated voice</p>{% endif %}{% endif %}{% endfor %}</details>{% endif %}
+</section></div>
+{% if words %}<section class="panel picture-words"><h2>Words for this picture</h2>{% for row in words %}{% include 'community_dictionary/public_word_row.html' %}{% endfor %}</section>{% endif %}
+{% if related_sentences %}<section class="panel"><h2>{% if word_page %}Sentences using this word{% else %}Sentences for this picture{% endif %}</h2>{% for sentence in related_sentences %}<p><a href="{% url 'community_dictionary:public-entry' dictionary.pk sentence.id %}" dir="{{ dictionary.text_direction }}">{{ sentence.word }}</a></p>{% endfor %}</section>{% endif %}
+{% if word_page or pictures|length > 1 %}<section><h2>{% if word_page %}Pictures for this word{% else %}Pictures{% endif %}</h2><div class="entry-grid">{% for picture in pictures %}<a class="entry-card" href="{% url 'community_dictionary:public-entry' dictionary.pk picture.entry_id %}?picture={{ picture.id }}"><div class="card-image"><img loading="lazy" src="{% url 'community_dictionary:public-media' dictionary.pk picture.id %}" alt="Picture for {{ row.title }}"></div><div class="card-copy">Open picture →{% if picture.generated %}<span class="badge">AI-generated picture</span>{% endif %}</div></a>{% empty %}<p>No accepted pictures are associated with this word yet.</p>{% endfor %}</div></section>{% endif %}
+{% endblock %}

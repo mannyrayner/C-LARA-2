@@ -1,0 +1,3 @@
+Good morning! I am clearly more alert than I was last night, since I realise that the problem was just a confusion on my part: I had forgotten that I'd created a dummy account for testing purposes, which shared an email with my mail account. The password reset mail I received clearly stated that it was for the dummy account, and I was indeed able to reset and log in to that account using the new password. 
+
+So it looks like everything is fine with password retrieval, but after breakfast I will ask Cathy to see if it works for her too.

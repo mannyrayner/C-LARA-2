@@ -1,0 +1,13 @@
+<article class="word-row" data-word-row data-entry-id="{{ row.id }}" data-audio-id="{{ row.audio.id|default:'' }}">
+<h3 dir="{{ dictionary.text_direction }}"{% if hide_heading %} class="sr-only"{% endif %}>{{ row.title }}</h3>
+{% if row.surface and row.surface != row.word %}<p class="help" dir="auto">In the sentence: {{ row.surface }}</p>{% endif %}
+<div class="word-actions">
+{% if row.audio %}<button type="button" class="secondary" data-word-listen aria-label="Listen to {{ row.title }}" aria-pressed="false" hidden>Listen</button>
+<audio controls preload="none" data-word-audio aria-label="Recording of {{ row.title }}" src="{% url 'community_dictionary:public-media' dictionary.pk row.audio.id %}"></audio>
+{% else %}<span class="help">No recording available</span>{% endif %}
+{% if row.meaning %}<details class="word-translation"><summary>Translation</summary><p dir="auto">{{ row.meaning|linebreaksbr }}</p></details>{% endif %}
+{% if not on_entry_page %}<a class="word-page-link" href="{% url 'community_dictionary:public-word' dictionary.pk row.id %}">Word page →</a>{% endif %}
+</div>
+{% if row.audio.synthetic %}<p class="help">AI-generated voice</p>{% endif %}
+<p class="help" data-word-playback-status role="status" hidden></p>
+</article>

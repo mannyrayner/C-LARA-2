@@ -1,0 +1,1 @@
+We were also talking about the idea of being able to log in anonymously and just have permissions to browse content. Maybe a good moment to add that too?

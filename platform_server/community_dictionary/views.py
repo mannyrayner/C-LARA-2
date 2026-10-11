@@ -421,12 +421,17 @@ def dictionary_visibility(request, pk):
     if visibility not in {'visible', 'hidden'}:
         return fail(request, 'Choose Visible or Hidden.', 400)
     hidden = visibility == 'hidden'
-    # Explicit desired state makes repeated submissions harmless. Hiding does
-    # not archive, withdraw, invalidate AI work, or change membership/permissions.
+    # Hiding keeps member access but closes public access. Unhiding requires a
+    # fresh public-sharing decision, rather than silently republishing content.
     if dictionary.hidden != hidden:
         dictionary.hidden = hidden
         dictionary.save(update_fields=['hidden'])
         event(dictionary, request.user, 'dictionary_visibility', detail=visibility)
+    if hidden and dictionary.public_browsing_enabled:
+        dictionary.public_browsing_enabled = False
+        dictionary.public_browsing_revision += 1
+        dictionary.save(update_fields=['public_browsing_enabled', 'public_browsing_revision'])
+        event(dictionary, request.user, 'public_browsing', detail='Disabled by hiding dictionary')
     messages.success(request, 'Dictionary hidden from the main list.' if hidden else
                      'Dictionary visible in the main list again.')
     return redirect('community_dictionary:settings', pk=pk)
@@ -464,7 +469,11 @@ def dictionary_settings(request, pk):
     from .capture_limits import usage
     from .capture_limit_views import AllowanceForm
     from .batch_views import RenameForm
+    from .public_views import AccessForm
+    from django.urls import reverse
     return render(request, 'community_dictionary/settings.html', context(request, dictionary, settings_form=form,
+        public_access_form=AccessForm(initial={'revision': dictionary.public_browsing_revision}),
+        public_url=request.build_absolute_uri(reverse('community_dictionary:public-dictionary', args=[pk])),
         rename_form=RenameForm(initial={'name':dictionary.name}),
         capture_usage=usage(dictionary,request.user),
         capture_allowance_form=AllowanceForm(initial={'daily_limit':dictionary.capture_daily_limit})))

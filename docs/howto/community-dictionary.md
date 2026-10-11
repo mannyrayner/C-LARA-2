@@ -1,5 +1,18 @@
 # Community dictionary: setup and testing
 
+Latest: [public browsing without an account](community-public-browsing.md) is
+implemented as an owner-controlled, default-off option. The accepted-only visitor
+view includes pictures, words, sentences and audio; member permissions remain
+unchanged. Migration 0020 is required. Follow the
+[new installation runbook](community-public-browsing-install.md); local tests and
+browser checks pass, with human laptop/AWS acceptance still pending.
+
+Manny has now reported initial AWS email-reset delivery and successful reset/login.
+The earlier apparent failure concerned a different test account sharing his email;
+Cathy's independent trial remains pending. Initial laptop/AWS acceptance of the
+batch-description, rename and counts update has also been reported. Older
+pending-acceptance statements below describe their original increments.
+
 Owners can now [add missing sentences to pictures in a batch](community-batch-descriptions.md), then review
 sentences and their derived vocabulary in two stages. This works in the current
 dictionary with optional contributor hints, cost approval and incremental runs.
@@ -534,4 +547,5 @@ remain available without it.
 
 The optional [email recovery workflow](email-password-reset.md) adds Forgotten password?
 to both login pages after SMTP configuration. See its [installation runbook](email-password-reset-install.md).
-Anonymous browsing remains proposed; dictionaries retain their existing membership restrictions.
+Optional [anonymous browsing](community-public-browsing.md) is implemented separately;
+it is off by default and does not relax the member endpoints' permissions.

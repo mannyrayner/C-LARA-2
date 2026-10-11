@@ -1,10 +1,18 @@
 # Community dictionary development experiment
 
-Current: [batch picture descriptions](batch-descriptions-2026-10-10.md).
+Current: [public browsing and reported email-recovery success](public-browsing-2026-10-11.md).
+Manny reports real AWS password reset and login working; Cathy's independent trial
+is pending. The new prepared increment offers accepted-only browsing without an
+account, with owner opt-in, publication permission and withdrawal/revocation checks.
+536 regression tests and 320/390/1280px browser checks pass; public-browsing
+laptop/AWS/physical-phone acceptance remains pending.
+
+Previous: [batch picture descriptions](batch-descriptions-2026-10-10.md).
 Manny has accepted the simpler reading pages. The next prepared increment lets
 owners add missing sentences and then vocabulary to existing pictures in batches,
 with optional contributor hints, cost approval and review. Rename and counts are
-included. Local tests/browser rehearsal pass; live acceptance is pending.
+included. Local tests/browser rehearsal pass; Manny has since reported laptop and
+AWS acceptance, as recorded in the email-recovery and public-browsing follow-ups.
 
 Previous: [AWS recovery acceptance and simpler entry pages](entry-options-2026-10-09.md).
 Manny reports the resumed French conversion completes with sentence-consistent

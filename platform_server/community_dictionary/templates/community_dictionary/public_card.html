@@ -1,0 +1,4 @@
+<a class="entry-card" href="{% url 'community_dictionary:public-entry' dictionary.pk row.id %}">
+<div class="card-image">{% if row.image %}<img src="{% url 'community_dictionary:public-media' dictionary.pk row.image.id %}" loading="lazy" alt="{{ row.title }}">{% else %}<span aria-hidden="true">♫</span><span>Open and listen</span>{% endif %}</div>
+<div class="card-copy"><h2 dir="{{ dictionary.text_direction }}">{{ row.title }}</h2>{% if row.meaning %}<p dir="auto">{{ row.meaning|truncatechars:90 }}</p>{% endif %}
+{% if row.category %}<span class="badge">{{ row.category }}</span>{% endif %}{% if row.image.generated %}<span class="badge">AI-generated picture</span>{% endif %}</div></a>
