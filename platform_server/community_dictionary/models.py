@@ -30,6 +30,8 @@ class Dictionary(models.Model):
     hidden = models.BooleanField(default=False)
     public_browsing_enabled = models.BooleanField(default=False)
     public_browsing_revision = models.PositiveIntegerField(default=0)
+    discoverable = models.BooleanField(default=False)
+    discovery_revision = models.PositiveIntegerField(default=0)
     archived = models.BooleanField(default=False)
     collection_source = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, related_name='personal_collections')
     membership_policy = models.CharField(max_length=16, default='owner', choices=[('owner', 'Owner manages membership'), ('coordinators', 'Two coordinators approve changes')])
@@ -41,6 +43,28 @@ class Dictionary(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class CommunityProfile(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='community_profile')
+    public_name = models.CharField(max_length=100, blank=True)
+    introduction = models.TextField(max_length=600, blank=True)
+    list_as_contributor = models.BooleanField(default=False)
+    revision = models.PositiveIntegerField(default=0)
+
+
+class MembershipRequest(models.Model):
+    dictionary = models.ForeignKey(Dictionary, on_delete=models.CASCADE, related_name='membership_requests')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='dictionary_membership_requests')
+    message = models.TextField(max_length=1000, blank=True)
+    status = models.CharField(max_length=10, default='pending', choices=[('pending', 'Awaiting the owner'), ('approved', 'Approved'), ('declined', 'Declined'), ('cancelled', 'Cancelled')])
+    revision = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['-updated_at', '-pk']
+        constraints = [models.UniqueConstraint(fields=['dictionary', 'user'], name='cd_unique_membership_request')]
 
 
 class Membership(models.Model):

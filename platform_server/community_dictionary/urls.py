@@ -1,14 +1,24 @@
 from django.urls import include, path
 from django.contrib.auth import views as auth_views
 from projects.authentication_forms import LoginForm
-from projects import email_reset_views
+from projects import account_views, email_reset_views
 
-from . import batch_views, public_views
+from . import batch_views, public_views, discovery_views, profile_views
 from . import audio_views, photo_views, views, lexicon_views, collection_views, participation_views
 from . import image_views, practice_views, port_views, capture_views, image_copy, capture_limit_views
 
 app_name = 'community_dictionary'
 urlpatterns = [
+    path('about/', profile_views.about, name='about'),
+    path('profile/', profile_views.profile, name='profile'),
+    path('profile/password/', account_views.change_password, {'community': True}, name='password-change'),
+    path('contributors/<int:user_id>/', profile_views.contributor, name='contributor'),
+    path('discover/<int:pk>/', discovery_views.detail, name='discover-dictionary'),
+    path('discover/<int:pk>/request/', discovery_views.ask, name='request-membership'),
+    path('membership-requests/', discovery_views.pending, name='membership-requests'),
+    path('membership-requests/<int:request_id>/cancel/', discovery_views.cancel, name='cancel-membership-request'),
+    path('<int:pk>/membership-requests/<int:request_id>/', discovery_views.decide, name='decide-membership-request'),
+    path('<int:pk>/settings/discovery/', discovery_views.change, name='discovery-setting'),
     path('browse/', public_views.home, name='public-home'),
     path('browse/<int:pk>/', public_views.dictionary, name='public-dictionary'),
     path('browse/<int:pk>/entries/<int:entry_id>/', public_views.entry, name='public-entry'),

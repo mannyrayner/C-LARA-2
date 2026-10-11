@@ -50,15 +50,15 @@ def context(request, dictionary=None, **extra):
 
 @visitor_page
 def home(request):
+    from . import discovery
     query = request.GET.get('q', '').strip()[:200]
-    dictionaries = public.dictionaries()
+    dictionaries = discovery.dictionaries()
     if query:
         dictionaries = dictionaries.filter(Q(name__icontains=query) | Q(language__icontains=query))
     page = Paginator(dictionaries, 24).get_page(request.GET.get('page'))
-    rows = [{'dictionary': d, 'sentence_count': public.sentences(d).count(),
-             'word_count': public.words(d).count()} for d in page]
+    rows = [discovery.row(d, request.user) for d in page]
     return render(request, 'community_dictionary/public_home.html',
-                  context(request, rows=rows, page=page, query=query))
+                  context(request, discovery_rows=rows, page=page, query=query))
 
 
 @visitor_page

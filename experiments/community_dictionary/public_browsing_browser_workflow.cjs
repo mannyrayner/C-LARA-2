@@ -17,6 +17,7 @@ const output=process.env.COMMUNITY_BROWSER_OUTPUT, root='http://127.0.0.1:8773/c
   await owner.locator('#id_username').fill('owner');await owner.locator('#id_password').fill('browser-test-password-948');
   await owner.getByRole('button',{name:'Log in',exact:true}).click();await owner.waitForURL(root+'/');
   await owner.goto(root+'/1/settings/');await shot(owner,'owner-disabled-390');
+  await owner.getByRole('button',{name:'Make dictionary discoverable',exact:true}).click();
   await owner.locator('#id_permission').check();await owner.getByRole('button',{name:'Enable public browsing',exact:true}).click();
   await owner.getByRole('button',{name:'Turn off public browsing',exact:true}).waitFor();
   await shot(owner,'owner-enabled-390');assert.equal(await owner.locator('#public-link').inputValue(),root+'/browse/1/');
@@ -27,7 +28,7 @@ const output=process.env.COMMUNITY_BROWSER_OUTPUT, root='http://127.0.0.1:8773/c
    await page.goto(root+'/login/');await page.getByRole('link',{name:'Browse without logging in',exact:true}).click();
    assert(!(await page.locator('body').innerText()).includes('PRIVATE-DICTIONARY'));
    await shot(page,'visitor-list-'+width);
-   await page.getByRole('link',{name:/Everyday Swedish/}).click();await shot(page,'visitor-pictures-'+width);
+   await page.getByRole('link',{name:'Browse',exact:true}).click();await shot(page,'visitor-pictures-'+width);
    await page.getByRole('link',{name:'Sentences',exact:true}).click();
    await page.getByRole('heading',{name:'En växt står på bordet.',exact:true}).click();
    await page.getByRole('heading',{name:'Words for this picture',exact:true}).waitFor();

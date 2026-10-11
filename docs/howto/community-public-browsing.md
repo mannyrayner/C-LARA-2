@@ -1,7 +1,7 @@
 # Public browsing without an account
 
 This optional first version lets people explore a dictionary without registering.
-Every existing and new dictionary starts with public browsing **off**. No guest
+New dictionaries start with public browsing **off**; migration 0020 also left existing dictionaries off. No guest
 account, shared password or anonymous membership is created.
 
 ## Owner workflow
@@ -9,15 +9,16 @@ account, shared password or anonymous membership is created.
 Open a dictionary's **Settings → Public browsing**. Confirm that its contributors
 permit public access to the accepted material, including future accepted content,
 then choose **Enable public browsing**. This is a separate decision from sharing
-within an invited group. A public dictionary appears in the public directory;
-its link is not a secret access token.
+within an invited group. Public browsing permits access through its link, which is not a secret access token.
+Listing it in **Find dictionaries** additionally requires the separate default-off
+**Discoverability** setting. See [discovery and profiles](community-discovery-profiles.md).
 
 Settings then shows **View as a visitor**, a link to share, and **Turn off public
 browsing**. Member pages display a public-access notice. Only the owner can change
 this setting; members, editors and coordinators cannot.
 
 Visitors choose **Browse without logging in** on the dictionary login page, or
-follow the owner's link. Existing users also have a **Browse public dictionaries**
+follow the owner's link. Existing users also have a **Find dictionaries**
 link on their home page. Public routes work for signed-in outsiders too. Withdrawing
 from a project still blocks member access and contributions, but cannot stop someone
 viewing material that the remaining community has made available to everyone.
@@ -70,5 +71,6 @@ are not relaxed.
 
 See [installation instructions](community-public-browsing-install.md) and the
 [development evidence](../../experiments/community_dictionary/public-browsing-2026-10-11.md).
-The first increment is locally verified; laptop, AWS and physical-phone acceptance
-of public browsing remain to be reported.
+Manny reports that anonymous browsing works and is deployed on AWS (11 October).
+The newer discoverability/profile increment has separate local verification and
+awaits its own laptop/AWS acceptance; see the linked discovery documentation.

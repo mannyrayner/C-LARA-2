@@ -53,7 +53,7 @@ Contribution.objects.create(entry=sentence,author=user,kind='note',status='accep
 '''
 
 
-def main():
+def main(workflow="public_browsing_browser_workflow.cjs", extra_seed=""):
     output = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else ROOT/'reports'/'public-browsing-browser'
     output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='public-browsing-') as directory:
@@ -67,7 +67,7 @@ def main():
         env = {**os.environ, 'DJANGO_SETTINGS_MODULE': 'public_rehearsal_settings',
                'PYTHONPATH': str(temporary)+os.pathsep+os.environ.get('PYTHONPATH', ''),
                'COMMUNITY_BROWSER_OUTPUT': str(output)}
-        subprocess.run([sys.executable, '-c', SEED], cwd=PLATFORM, env=env, check=True)
+        subprocess.run([sys.executable, '-c', SEED + extra_seed], cwd=PLATFORM, env=env, check=True)
         with socket.socket() as sock:
             sock.bind(('127.0.0.1', 8773))
         with (output/'server.log').open('w') as log:
@@ -86,7 +86,7 @@ def main():
                         time.sleep(.1)
                 else:
                     raise RuntimeError('Server did not start')
-                subprocess.run(['node', str(HERE/'public_browsing_browser_workflow.cjs')],
+                subprocess.run(['node', str(HERE/workflow)],
                                env=env, check=True, timeout=120)
             finally:
                 server.terminate()

@@ -21,15 +21,16 @@ from .views import _require_admin
 @login_required
 @csrf_protect
 @require_http_methods(["GET", "POST"])
-def change_password(request):
+def change_password(request, community=False):
     form = AccountPasswordChangeForm(request.user, data=request.POST if request.method == "POST" else None)
     if request.method == "POST" and form.is_valid():
         user = form.save(commit=False)
         user.save(update_fields=["password"])
         update_session_auth_hash(request, user)
         messages.success(request, "Your password has been changed. You are still signed in.")
-        return redirect("profile")
-    return render(request, "projects/password_change.html", {"form": form})
+        return redirect("community_dictionary:profile" if community else "profile")
+    template = "community_dictionary/password_change.html" if community else "projects/password_change.html"
+    return render(request, template, {"form": form})
 
 
 def _resettable_users(admin):

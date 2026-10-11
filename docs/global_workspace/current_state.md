@@ -2,16 +2,16 @@
 
 > This file is generated from `current_state.json`; do not edit it directly.
 
-- **Workspace revision:** 64
+- **Workspace revision:** 65
 - **As of:** 2026-10-11
-- **Assessed commit:** `067cfc7938822858f34782fe2f28f0a532e28a7c`
+- **Assessed commit:** `4d90cf8efaa1ef31f0c79163be85dea619f76d87`
 - **Approved proposal:** `None`
 - **Approved run:** None (no recorded run)
 - **Persistent goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-4`, `GOAL-5`
 
 ## Current focus
 
-Manny reports successful AWS email password reset followed by login: the apparent failure concerned another test account sharing his email, correctly identified by the message. Cathy's independent test remains pending. At Manny's request, owner-controlled anonymous browsing is now implemented and locally verified (536 regression tests and 320/390/1280px browser checks). It is off by default, projects only accepted learning material and preserves withdrawal and member access boundaries. The patch and migration 0020 are ready for laptop acceptance before AWS deployment; no dictionary has been published by the agent.
+Manny reports anonymous browsing working and deployed on AWS, closing the initial rollout question from revision 64. Before a short introductory paper and wider trials, he requests default-off discovery, owner-reviewed membership requests, a Community Dictionaries profile with contributor opt-in, and About. The increment is implemented and locally verified: 564 tests plus discovery/public-browsing Chromium rehearsals at 320/390/1280px. Discovery advertises metadata independently of public content access; existing public links keep working but their directory listing now needs explicit owner opt-in. Migration 0021 and a laptop/AWS runbook are ready. No production publication, live mail/AI call, funding offer or forum was performed.
 
 ## Factual observations
 
@@ -759,6 +759,22 @@ Manny requests the previously discussed anonymous browse-only option. The prepar
 - **Confidence:** high
 - **Evidence:** [`docs/howto/community-public-browsing.md`](../howto/community-public-browsing.md), [`docs/howto/community-public-browsing-install.md`](../howto/community-public-browsing-install.md), [`experiments/community_dictionary/public-browsing-2026-10-11.md`](../experiments/community_dictionary/public-browsing-2026-10-11.md), [`platform_server/community_dictionary/public_browsing.py`](../platform_server/community_dictionary/public_browsing.py), [`platform_server/community_dictionary/public_views.py`](../platform_server/community_dictionary/public_views.py), [`platform_server/community_dictionary/tests/test_public_browsing.py`](../platform_server/community_dictionary/tests/test_public_browsing.py), [`platform_server/community_dictionary/migrations/0020_public_browsing.py`](../platform_server/community_dictionary/migrations/0020_public_browsing.py)
 
+### OBS-0094
+
+Manny reports that anonymous browsing works and is deployed on AWS. He proposes a short illustrated introductory paper, broad dissemination and credit-supported trials to obtain user feedback. Specific outcome rates, claims about author eligibility on dissemination services and funding terms still need substantiation or finalization before publication; current practice games use existing content without paid AI calls. The report is not written or posted in this coding increment.
+
+- **Observed:** 2026-10-11
+- **Confidence:** high
+- **Evidence:** [`experiments/community_dictionary/discovery-profiles-2026-10-11.md`](../experiments/community_dictionary/discovery-profiles-2026-10-11.md)
+
+### OBS-0095
+
+The requested discovery/profile/About increment is prepared against main 4d90cf8. Metadata discovery and public content access are independent owner choices, both default off. Requests are private, bounded, owner-decided and cannot bypass existing roles, invitations, inactivity or withdrawal. Public contributor identity is separately opt-in; account credentials and private dictionaries are excluded. Shared account preferences and password change remain available within Community Dictionaries. 564 SQLite tests and two 320/390/1280px Chromium rehearsals pass; migration 0021 is additive. No live SMTP/AI or production actions were performed. Laptop/AWS acceptance of this increment remains pending.
+
+- **Observed:** 2026-10-11
+- **Confidence:** high
+- **Evidence:** [`docs/howto/community-discovery-profiles.md`](../howto/community-discovery-profiles.md), [`docs/howto/community-discovery-profiles-install.md`](../howto/community-discovery-profiles-install.md), [`experiments/community_dictionary/discovery-profiles-2026-10-11.md`](../experiments/community_dictionary/discovery-profiles-2026-10-11.md), [`platform_server/community_dictionary/tests/test_discovery_profiles.py`](../platform_server/community_dictionary/tests/test_discovery_profiles.py), [`platform_server/community_dictionary/migrations/0021_discovery_profiles.py`](../platform_server/community_dictionary/migrations/0021_discovery_profiles.py)
+
 ## Project-valence assessments
 
 ### ASM-0001
@@ -853,11 +869,11 @@ Historical assessment from 14 August, not revalidated in this scoped review: Cod
 
 ### ASM-0011
 
-Initial AWS email recovery is now human-accepted, removing the immediate account-recovery blocker; Cathy can test independently. Optional visitor browsing addresses registration friction while maintaining a clear publication decision: only the owner can opt in with contributor permission, and accepted material then becomes available to anyone. Local verification supports a laptop trial and subsequent cautious AWS rollout. Community approval of what to publish remains a human decision; the implementation does not authorise publication.
+Email recovery and anonymous browsing now have initial human-reported AWS acceptance. Discovery, requests, profiles and About prepare a clearer path for prospective collaborators without automatically exposing content or personal account data. Local verification supports a laptop trial followed by AWS migration, with special attention to the new default-off listing behavior for already-public dictionaries. The next publication should invite real trials and distinguish rapid supervised iteration from demonstrated autonomous operation or independently measured learning/quality outcomes. Community publication decisions and contributor identity remain opt-in human choices.
 
 - **Goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-5`
-- **Grounding observations:** `OBS-0022`, `OBS-0023`, `OBS-0024`, `OBS-0025`, `OBS-0026`, `OBS-0027`, `OBS-0028`, `OBS-0029`, `OBS-0030`, `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0034`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0038`, `OBS-0039`, `OBS-0040`, `OBS-0041`, `OBS-0042`, `OBS-0043`, `OBS-0044`, `OBS-0045`, `OBS-0046`, `OBS-0047`, `OBS-0048`, `OBS-0049`, `OBS-0050`, `OBS-0051`, `OBS-0052`, `OBS-0053`, `OBS-0054`, `OBS-0055`, `OBS-0056`, `OBS-0057`, `OBS-0058`, `OBS-0059`, `OBS-0060`, `OBS-0061`, `OBS-0062`, `OBS-0063`, `OBS-0064`, `OBS-0065`, `OBS-0066`, `OBS-0067`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0071`, `OBS-0072`, `OBS-0073`, `OBS-0074`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0082`, `OBS-0083`, `OBS-0084`, `OBS-0085`, `OBS-0086`, `OBS-0087`, `OBS-0088`, `OBS-0089`, `OBS-0090`, `OBS-0091`, `OBS-0092`, `OBS-0093`
-- **Urgency / risk / progress:** test_public_browsing_on_laptop_before_aws / medium / email_recovery_accepted_public_browsing_locally_verified
+- **Grounding observations:** `OBS-0022`, `OBS-0023`, `OBS-0024`, `OBS-0025`, `OBS-0026`, `OBS-0027`, `OBS-0028`, `OBS-0029`, `OBS-0030`, `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0034`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0038`, `OBS-0039`, `OBS-0040`, `OBS-0041`, `OBS-0042`, `OBS-0043`, `OBS-0044`, `OBS-0045`, `OBS-0046`, `OBS-0047`, `OBS-0048`, `OBS-0049`, `OBS-0050`, `OBS-0051`, `OBS-0052`, `OBS-0053`, `OBS-0054`, `OBS-0055`, `OBS-0056`, `OBS-0057`, `OBS-0058`, `OBS-0059`, `OBS-0060`, `OBS-0061`, `OBS-0062`, `OBS-0063`, `OBS-0064`, `OBS-0065`, `OBS-0066`, `OBS-0067`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0071`, `OBS-0072`, `OBS-0073`, `OBS-0074`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0082`, `OBS-0083`, `OBS-0084`, `OBS-0085`, `OBS-0086`, `OBS-0087`, `OBS-0088`, `OBS-0089`, `OBS-0090`, `OBS-0091`, `OBS-0092`, `OBS-0093`, `OBS-0094`, `OBS-0095`
+- **Urgency / risk / progress:** test_discovery_profiles_before_introductory_report / medium / public_browsing_aws_accepted_discovery_profiles_locally_verified
 - **Confidence:** medium
 
 ### ASM-0012
@@ -889,7 +905,7 @@ None. This revision uses neutral factual and assessment language.
   - **Assessments:** `ASM-0010`
 - **UNC-0007:** Carried forward from August; present status unverified: The first laptop Project Manager query was plausible and timely, but the mode is not yet deployed or exercised by Sophie or another non-staff collaborator; classification accuracy and whether fresh-turn continuity is sufficient remain unmeasured.
   - **Assessments:** `ASM-0003`, `ASM-0006`
-- **UNC-0008:** Manny reports real AWS email recovery; Cathy's independent journey and longer-run mail/queue reliability remain unmeasured. Public browsing is locally verified but not yet human-tested on laptop, AWS/PostgreSQL or a physical phone. Owner permission includes future accepted content; public access is available to outsiders/former members and cannot recall copies already received. Private and withdrawal boundaries have regression coverage, but anonymous traffic/bandwidth at scale has not been load-tested. The fallback queue remains bounded rather than durable. Broader language/MWE quality, community reception, learning outcomes and sustained operational reliability remain open.
+- **UNC-0008:** Discovery/profile/About has local SQLite and Chromium evidence but no human laptop/AWS/PostgreSQL or physical-phone acceptance yet. Existing public dictionaries become unlisted until their owners opt in; their public links remain valid. Request notifications are in-app only and the new directory has not been load-tested. Public content and profiles can be copied despite later revocation. The introductory paper, trial cohort/funding terms and verified dissemination policies remain future work. Informal high acceptance rates and development-time estimates are not controlled measurements. Cathy's independent recovery trial, broader language/MWE quality, community reception, learning outcomes and sustained operational reliability remain open; fallback queue execution is bounded rather than durable.
   - **Assessments:** `ASM-0011`
 - **UNC-0009:** The feasibility and timetable for weekly/monthly intervention targets are unknown. There is no authorised persistent maintenance runner, staging/release/rollback workflow or tested operational recovery baseline yet. Infrastructure account ownership, budgets, fallback contacts and community authority must be assigned without transferring Manny’s technical burden invisibly to another person. Proposed stage targets require comparable workload and failure drills.
   - **Assessments:** `ASM-0012`
@@ -926,7 +942,7 @@ None. This revision uses neutral factual and assessment language.
   - **Assessments:** `ASM-0003`
 - **ACT-0009:** Carried-forward August proposal; applicability needs a broader review: Configure authoritative collaborator role mappings, deploy the mode, grant access through Admin Tools, and run a natural Sophie-centered trial while reviewing evidence classifications and preserving the no-mutation boundary.
   - **Assessments:** `ASM-0003`, `ASM-0006`
-- **ACT-0010:** Apply the public-browsing patch on the laptop after SQLite backup, run regression tests and migration 0020, and test owner enablement, anonymous navigation/audio and revocation. After acceptance, commit/push and follow the AWS backup/migration runbook. Keep all production dictionaries private until contributors agree to publication. Let Cathy independently try password recovery. Record actual laptop/AWS/phone results without treating local browser emulation as physical-device acceptance.
+- **ACT-0010:** Back up the laptop, apply the discovery/profile/About patch, run checks/tests and migration 0021, then test a private discoverable dictionary, two-account request/approval, profile opt-in/out and independent public access. After acceptance, commit/push and follow the AWS backup/migration runbook. Enable discovery only for dictionaries intended to be advertised. Record real acceptance, then draft the short illustrated introductory report from verified behavior and explicitly attributed trial evidence; settle trial-credit scope and participant consent before publishing an offer. No forum is required for this first step.
   - **Assessments:** `ASM-0011`
 - **ACT-0011:** Start a low-burden intervention log while resolving the current configuration work. Specify direct collaborator intake and one authorised, isolated request-to-preview-to-release path, including monitoring/rollback and a safe restore drill. Use this to evaluate whether two or three weekly reviews can replace daily technical intervention; defer broader autonomous release authority until evidence supports it.
   - **Assessments:** `ASM-0012`
@@ -962,7 +978,7 @@ None. This revision uses neutral factual and assessment language.
 
 - **Status:** autonomous_project_manager_update
 - **Authorized by / at:** Assistant following AGENTS.md / 2026-10-11
-- **Basis:** Manny reports working password recovery and explicitly requests anonymous browse-only access, previously scoped as owner-controlled and off by default. AGENTS.md requires reflecting material acceptance, implementation progress and remaining human validation. Human-owned intentions are unchanged.
-- **Comments:** Revision 64 distinguishes human-reported AWS email recovery from local public-browsing verification. No secrets, public dictionary publication or production operations are included. Cathy and the new visitor workflow still need independent acceptance.
-- **Change summary:** Recorded real AWS email-reset/login acceptance and prepared owner-controlled default-off public browsing with local permission and browser verification. Publication and laptop/AWS/phone acceptance remain explicit next steps.
+- **Basis:** Manny reports AWS anonymous-browsing acceptance and explicitly requests dictionary discovery, membership requests, a Community Dictionaries profile and About before the introductory paper. AGENTS.md requires reflecting this material outcome and the local implementation evidence; human-owned intentions remain unchanged.
+- **Comments:** Revision 65 preserves the human request and publication discussion, closes the prior pending AWS browsing outcome and distinguishes locally verified discovery from production acceptance. No real profiles or dictionaries were published, and no live funding offer or AI moderation service was created.
+- **Change summary:** Recorded AWS browsing acceptance and the upcoming introductory-paper/trials direction; added separately controlled discovery, private membership requests, opt-in contributor profiles and About with local verification and an additive migration runbook.
 - **Retired live items:** `REQ-0006`, `OBS-0001@rev-0002`, `OBS-0002@rev-0002`, `OBS-0012@rev-0002`, `ASM-0001@rev-0002`, `ASM-0009@rev-0002`, `PRED-0001@rev-0002`, `PRED-0002@rev-0002`, `PRED-0003@rev-0002`, `PRED-0004@rev-0002`

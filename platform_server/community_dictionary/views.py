@@ -76,7 +76,11 @@ def home(request):
         row['word_count'] = counts.get((row['dictionary'].pk,'word'),0)
     invitations = list(Membership.objects.filter(user=request.user, accepted=False,
         status='invited', dictionary__personal=False, dictionary__archived=False).select_related('dictionary'))
+    from . import discovery
+    discovery_page = Paginator(discovery.dictionaries(), 12).get_page(request.GET.get('page'))
     return render(request, 'community_dictionary/home.html', {
+        'discovery_rows': [discovery.row(d, request.user) for d in discovery_page],
+        'page': discovery_page, 'pending_membership_count': discovery.pending_for(request.user).count(),
         'projects': [row for row in projects if not row['dictionary'].hidden],
         'hidden_projects': [row for row in projects if row['dictionary'].hidden],
         'invitations': [invite for invite in invitations if not invite.dictionary.hidden],
@@ -432,6 +436,11 @@ def dictionary_visibility(request, pk):
         dictionary.public_browsing_revision += 1
         dictionary.save(update_fields=['public_browsing_enabled', 'public_browsing_revision'])
         event(dictionary, request.user, 'public_browsing', detail='Disabled by hiding dictionary')
+    if hidden and dictionary.discoverable:
+        dictionary.discoverable = False
+        dictionary.discovery_revision += 1
+        dictionary.save(update_fields=['discoverable', 'discovery_revision'])
+        event(dictionary, request.user, 'dictionary_discovery', detail='Disabled by hiding dictionary')
     messages.success(request, 'Dictionary hidden from the main list.' if hidden else
                      'Dictionary visible in the main list again.')
     return redirect('community_dictionary:settings', pk=pk)
@@ -470,8 +479,12 @@ def dictionary_settings(request, pk):
     from .capture_limit_views import AllowanceForm
     from .batch_views import RenameForm
     from .public_views import AccessForm
+    from .discovery_views import DiscoveryForm
+    from .discovery import pending_for
     from django.urls import reverse
     return render(request, 'community_dictionary/settings.html', context(request, dictionary, settings_form=form,
+        discovery_form=DiscoveryForm(initial={'revision': dictionary.discovery_revision}),
+        pending_membership_count=pending_for(request.user).filter(dictionary=dictionary).count(),
         public_access_form=AccessForm(initial={'revision': dictionary.public_browsing_revision}),
         public_url=request.build_absolute_uri(reverse('community_dictionary:public-dictionary', args=[pk])),
         rename_form=RenameForm(initial={'name':dictionary.name}),

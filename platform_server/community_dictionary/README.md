@@ -1,10 +1,13 @@
 # Community dictionary app
 
-Latest: [optional public browsing](../../docs/howto/community-public-browsing.md)
+Current increment: [discovery, membership requests, Profile and About](../../docs/howto/community-discovery-profiles.md); [installation runbook](../../docs/howto/community-discovery-profiles-install.md). Migration 0021 is additive and default-off. Existing public URLs continue working, but appearing in Find dictionaries now requires owner opt-in to discoverability. Public browsing has reported AWS acceptance; the new increment awaits laptop/AWS testing.
+
+
+Previous increment: [optional public browsing](../../docs/howto/community-public-browsing.md)
 adds a default-off owner setting and separate accepted-only visitor pages with
 search, playback and word/sentence/picture links. Private member routes retain
 their checks. Migration 0020; 536 regression tests and phone/desktop Chromium
-rehearsal pass. Laptop/AWS/physical-phone acceptance of this increment is pending.
+rehearsal pass. Manny now reports anonymous browsing working on AWS (11 October).
 Manny has reported initial AWS password-reset/login success; Cathy's trial is pending.
 Earlier pending batch-description laptop/AWS acceptance has also been superseded
 by Manny's success reports.

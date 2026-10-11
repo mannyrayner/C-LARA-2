@@ -1,11 +1,14 @@
 # Community dictionary: setup and testing
 
-Latest: [public browsing without an account](community-public-browsing.md) is
+Current increment: [discovery, membership requests, Profile and About](community-discovery-profiles.md); [installation runbook](community-discovery-profiles-install.md). Migration 0021 is additive and default-off. Existing public URLs continue working, but appearing in Find dictionaries now requires owner opt-in to discoverability. Public browsing has reported AWS acceptance; the new increment awaits laptop/AWS testing.
+
+
+Previous increment: [public browsing without an account](community-public-browsing.md) is
 implemented as an owner-controlled, default-off option. The accepted-only visitor
 view includes pictures, words, sentences and audio; member permissions remain
 unchanged. Migration 0020 is required. Follow the
-[new installation runbook](community-public-browsing-install.md); local tests and
-browser checks pass, with human laptop/AWS acceptance still pending.
+[original installation runbook](community-public-browsing-install.md) records that increment.
+Manny now reports anonymous browsing working on AWS (11 October).
 
 Manny has now reported initial AWS email-reset delivery and successful reset/login.
 The earlier apparent failure concerned a different test account sharing his email;

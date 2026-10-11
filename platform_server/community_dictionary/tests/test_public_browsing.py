@@ -21,6 +21,7 @@ class PublicBrowsingTests(TestCase):
         workflow.WorkflowTests.setUp(self)
         self.client.logout()
         self.dictionary.public_browsing_enabled = True
+        self.dictionary.discoverable = True
         self.dictionary.save()
         self.word = self.make_entry('katt', 'cat', 'Animals')
         self.image = self.add_media(self.word, 'image')

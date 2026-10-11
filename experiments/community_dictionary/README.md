@@ -1,11 +1,15 @@
 # Community dictionary development experiment
 
-Current: [public browsing and reported email-recovery success](public-browsing-2026-10-11.md).
+Current increment: [discovery, membership requests, profiles and About](discovery-profiles-2026-10-11.md). Default-off metadata discovery is separate from public content access. Public browsing itself is now reported working on AWS; the new increment awaits human acceptance.
+
+
+Previous increment: [public browsing and reported email-recovery success](public-browsing-2026-10-11.md).
 Manny reports real AWS password reset and login working; Cathy's independent trial
 is pending. The new prepared increment offers accepted-only browsing without an
 account, with owner opt-in, publication permission and withdrawal/revocation checks.
-536 regression tests and 320/390/1280px browser checks pass; public-browsing
-laptop/AWS/physical-phone acceptance remains pending.
+536 regression tests and 320/390/1280px browser checks passed for that increment.
+Manny now reports public browsing working and deployed on AWS (11 October); no
+new physical-device matrix was supplied.
 
 Previous: [batch picture descriptions](batch-descriptions-2026-10-10.md).
 Manny has accepted the simpler reading pages. The next prepared increment lets

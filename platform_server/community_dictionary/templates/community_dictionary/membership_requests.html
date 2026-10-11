@@ -1,0 +1,6 @@
+{% extends 'community_dictionary/base.html' %}{% block title %}Membership requests{% endblock %}
+{% block content %}<h1>Pending membership requests</h1><p>Requests for dictionaries you own. Approve to add a regular member, or decline. Messages are private to you and the requester; no email is sent.</p>
+{% for item in page %}<article class="panel"><p class="eyebrow">{{ item.dictionary.name }}</p><h2>{{ item.user.username }}</h2><p class="help">{{ item.updated_at|date:'j M Y' }}</p>{% if item.message %}<p>{{ item.message|linebreaksbr }}</p>{% endif %}
+<form method="post" action="{% url 'community_dictionary:decide-membership-request' item.dictionary_id item.pk %}" class="actions">{% csrf_token %}<input type="hidden" name="revision" value="{{ item.revision }}"><button name="action" value="approve">Approve membership</button><button class="secondary" name="action" value="decline">Decline</button></form>
+<p><a href="{% url 'community_dictionary:people' item.dictionary_id %}">Dictionary people and membership rules</a></p></article>{% empty %}<p class="empty">No pending requests.</p>{% endfor %}
+{% include 'community_dictionary/public_pagination.html' %}{% endblock %}

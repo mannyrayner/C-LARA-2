@@ -3,6 +3,11 @@
 {% block content %}
 <p class="eyebrow">{{ dictionary.name }}</p><h1>Settings</h1>
 {% if owner %}
+<section class="panel" id="discoverability"><h2>Discoverability</h2><p><strong>{% if dictionary.discoverable and not dictionary.hidden %}On — listed in Find dictionaries{% else %}Off — not listed{% endif %}</strong></p>
+<p>List this dictionary's name, languages and accepted entry counts so anyone can find it and ask to join. Your chosen public name is shown only if you opt into the contributor listing in Profile. Contents remain private unless you separately enable public browsing below.</p>
+<form method="post" action="{% url 'community_dictionary:discovery-setting' dictionary.pk %}">{% csrf_token %}{{ discovery_form.revision }}{% if dictionary.discoverable %}<button class="secondary" name="action" value="disable">Turn off discoverability</button>{% elif dictionary.hidden %}<p>Make this dictionary visible before listing it.</p>{% else %}<button name="action" value="enable">Make dictionary discoverable</button>{% endif %}</form>
+{% if dictionary.discoverable and not dictionary.hidden %}<p><a href="{% url 'community_dictionary:discover-dictionary' dictionary.pk %}">View discovery listing</a></p>{% endif %}
+<p><a href="{% url 'community_dictionary:membership-requests' %}">Pending membership requests ({{ pending_membership_count }})</a></p></section>
 <section class="panel" id="public-browsing"><h2>Public browsing</h2>
 <p><strong>{% if dictionary.public_browsing_enabled and not dictionary.hidden %}On — anyone can browse{% else %}Off — members only{% endif %}</strong></p>
 {% if dictionary.public_browsing_enabled and not dictionary.hidden %}
@@ -10,7 +15,7 @@
 <label for="public-link">Link to share</label><input id="public-link" type="text" readonly value="{{ public_url }}">
 <form method="post" action="{% url 'community_dictionary:public-access' dictionary.pk %}">{% csrf_token %}{{ public_access_form.revision }}<button class="secondary" name="action" value="disable">Turn off public browsing</button></form>
 {% else %}
-<p>Let anyone browse accepted pictures, sentences, words, translations and recordings, without an account. This dictionary will appear in the public dictionary list.</p>
+<p>Let anyone browse accepted pictures, sentences, words, translations and recordings, without an account. Its link works directly; turn on Discoverability above to include it in the dictionary list.</p>
 <p>Only enable this with your contributors’ permission. Future accepted content will also be public. Drafts, discussions and member details remain private.</p>
 {% if dictionary.hidden %}<p>Make this dictionary visible below before enabling public browsing.</p>{% else %}
 <form method="post" action="{% url 'community_dictionary:public-access' dictionary.pk %}" class="stack">{% csrf_token %}{{ public_access_form.revision }}
@@ -27,7 +32,7 @@
 </section>
 <section class="panel" id="dictionary-visibility"><h2>Dictionary visibility</h2>
 <p><strong>{% if dictionary.hidden %}Hidden{% else %}Visible{% endif %}</strong> in the dictionary list.</p>
-<p class="help">Hide an older or unused dictionary to keep the main list clear for everyone. Members can still find it under Hidden dictionaries or open a saved link. Hiding also turns off public browsing; making it visible again does not turn public browsing back on. Content and contribution rights are unchanged.</p>
+<p class="help">Hide an older or unused dictionary to keep the main list clear for everyone. Members can still find it under Hidden dictionaries or open a saved link. Hiding also turns off discoverability and public browsing; making it visible again does not turn either back on. Content and contribution rights are unchanged.</p>
 <form method="post" action="{% url 'community_dictionary:visibility' dictionary.pk %}">{% csrf_token %}
 {% if dictionary.hidden %}<button name="visibility" value="visible">Make dictionary visible</button>
 {% else %}<button class="secondary" name="visibility" value="hidden">Hide dictionary</button>{% endif %}
