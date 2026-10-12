@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "workspace_revision": 65,
+  "workspace_revision": 66,
   "as_of": "2026-10-11",
-  "assessed_commit_sha": "4d90cf8efaa1ef31f0c79163be85dea619f76d87",
+  "assessed_commit_sha": "7cb9a82fe3cf2e7aa54d383ffd80056fb452dc34",
   "approved_proposal_id": null,
   "approved_run_id": null,
   "persistent_goal_ids": [
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "Manny reports anonymous browsing working and deployed on AWS, closing the initial rollout question from revision 64. Before a short introductory paper and wider trials, he requests default-off discovery, owner-reviewed membership requests, a Community Dictionaries profile with contributor opt-in, and About. The increment is implemented and locally verified: 564 tests plus discovery/public-browsing Chromium rehearsals at 320/390/1280px. Discovery advertises metadata independently of public content access; existing public links keep working but their directory listing now needs explicit owner opt-in. Migration 0021 and a laptop/AWS runbook are ready. No production publication, live mail/AI call, funding offer or forum was performed.",
+  "current_focus_summary": "Manny reports discovery, membership requests, Profile and About working (deployment location unspecified). He requests public practice, proactive owner workflow suggestions with paid confirmation and an opt-out, and linked top-level action notices. These are implemented with migration 0022, shared existing games/batch/vocabulary workflows, accepted-only public access and signed scope/cost approval. 591 local tests plus focused checks and a 320/390/1280px Chromium rehearsal pass. Laptop/AWS acceptance of this increment is next, before the short introductory report and wider trials. No live provider, mail or production operation was performed.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -1057,6 +1057,32 @@
         "platform_server/community_dictionary/tests/test_discovery_profiles.py",
         "platform_server/community_dictionary/migrations/0021_discovery_profiles.py"
       ]
+    },
+    {
+      "id": "OBS-0096",
+      "summary": "Manny reports the discovery/profile/About increment works and requests anonymous practice without AI calls, proactive suggestions to create missing sentences/word pages with one-click confirmation and a Settings opt-out, plus prominent action indicators on dictionary cards. He authorizes a first implementation. The acceptance message does not specify laptop or AWS; remote main includes the discovery increment at 7cb9a82.",
+      "observed_at": "2026-10-11",
+      "confidence": "high",
+      "evidence": [
+        "experiments/community_dictionary/practice-guidance-2026-10-11.md"
+      ]
+    },
+    {
+      "id": "OBS-0097",
+      "summary": "The prepared increment reuses accepted-only public projections for six-mode flashcards and both puzzles. Owner cards and Browse show one prioritized next step: membership requests, unflagged reviews, progress, vocabulary, or missing sentences. No GET starts paid work. Signed expiring approval binds scope, snapshots, languages, model, voice, prices and payer; rechecks, app-credit reservation and retry receipts reuse existing transactional jobs. Migration 0022 adds a default-on owner preference; AI/public access remain independent opt-ins. The 591-test local suite passes, followed by 17 guidance checks after the flag-selection refinement; Chromium at 320/390/1280px verifies games, revocation, approval and opt-out. Physical phones, real providers and production PostgreSQL acceptance remain pending.",
+      "observed_at": "2026-10-11",
+      "confidence": "high",
+      "evidence": [
+        "docs/howto/community-practice-guidance.md",
+        "docs/howto/community-practice-guidance-install.md",
+        "experiments/community_dictionary/practice-guidance-2026-10-11.md",
+        "platform_server/community_dictionary/workflow.py",
+        "platform_server/community_dictionary/workflow_views.py",
+        "platform_server/community_dictionary/public_practice.py",
+        "platform_server/community_dictionary/tests/test_workflow_guidance.py",
+        "platform_server/community_dictionary/tests/test_public_practice.py",
+        "platform_server/community_dictionary/migrations/0022_workflow_suggestions.py"
+      ]
     }
   ],
   "assessments": [
@@ -1233,7 +1259,7 @@
     },
     {
       "id": "ASM-0011",
-      "summary": "Email recovery and anonymous browsing now have initial human-reported AWS acceptance. Discovery, requests, profiles and About prepare a clearer path for prospective collaborators without automatically exposing content or personal account data. Local verification supports a laptop trial followed by AWS migration, with special attention to the new default-off listing behavior for already-public dictionaries. The next publication should invite real trials and distinguish rapid supervised iteration from demonstrated autonomous operation or independently measured learning/quality outcomes. Community publication decisions and contributor identity remain opt-in human choices.",
+      "summary": "Anonymous browsing has AWS acceptance, and discovery/profile/About now has positive human feedback. Public practice and proactive owner guidance reduce the need to remember Settings while preserving distinct contribution and owner roles. Local tests and browser evidence support a laptop trial, then AWS migration 0022 plus collectstatic. This is a supervised usability increment, not measured learning effectiveness or operational autonomy. The forthcoming short report should invite real trials and distinguish informal acceptance/development-time reports from independently measured outcomes; community publication and contributor identity remain opt-in human choices.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-2",
@@ -1314,11 +1340,13 @@
         "OBS-0092",
         "OBS-0093",
         "OBS-0094",
-        "OBS-0095"
+        "OBS-0095",
+        "OBS-0096",
+        "OBS-0097"
       ],
-      "urgency": "test_discovery_profiles_before_introductory_report",
+      "urgency": "test_public_practice_and_guidance_before_introductory_report",
       "risk": "medium",
-      "progress": "public_browsing_aws_accepted_discovery_profiles_locally_verified",
+      "progress": "discovery_accepted_public_practice_and_guidance_locally_verified",
       "confidence": "medium"
     },
     {
@@ -1416,7 +1444,7 @@
     },
     {
       "id": "UNC-0008",
-      "summary": "Discovery/profile/About has local SQLite and Chromium evidence but no human laptop/AWS/PostgreSQL or physical-phone acceptance yet. Existing public dictionaries become unlisted until their owners opt in; their public links remain valid. Request notifications are in-app only and the new directory has not been load-tested. Public content and profiles can be copied despite later revocation. The introductory paper, trial cohort/funding terms and verified dissemination policies remain future work. Informal high acceptance rates and development-time estimates are not controlled measurements. Cathy's independent recovery trial, broader language/MWE quality, community reception, learning outcomes and sustained operational reliability remain open; fallback queue execution is bounded rather than durable.",
+      "summary": "Public practice and owner guidance have local SQLite/Chromium evidence but await human laptop/AWS/PostgreSQL and physical-phone acceptance. No large-dictionary load test was performed. Guidance handles existing batch/port workflows; it is not a general failed-job repair engine. Public content can be copied despite later revocation. The discovery acceptance message did not specify deployment location. The introductory report, trial-credit terms and verified dissemination policies remain future work. Informal quality/time estimates are not controlled measurements; Cathys independent recovery trial, language/MWE quality, community reception, learning outcomes and sustained low-intervention operations remain open.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1529,7 +1557,7 @@
     },
     {
       "id": "ACT-0010",
-      "summary": "Back up the laptop, apply the discovery/profile/About patch, run checks/tests and migration 0021, then test a private discoverable dictionary, two-account request/approval, profile opt-in/out and independent public access. After acceptance, commit/push and follow the AWS backup/migration runbook. Enable discovery only for dictionaries intended to be advertised. Record real acceptance, then draft the short illustrated introductory report from verified behavior and explicitly attributed trial evidence; settle trial-credit scope and participant consent before publishing an offer. No forum is required for this first step.",
+      "summary": "Apply the public-practice/guidance patch on the laptop after backup, run tests and migration 0022, then try owner card → cost approval → sentence review → vocabulary review, the guidance opt-out, and anonymous games/revocation using permitted test content. After acceptance, check in/push and deploy through the AWS runbook including collectstatic. Record live provider/phone evidence. Then draft the short illustrated report from verified functionality and explicitly attributed trial evidence; settle trial-credit scope and consent before publishing an offer. No forum is needed for this increment.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1634,10 +1662,10 @@
     "comments": "Revision 65 preserves the human request and publication discussion, closes the prior pending AWS browsing outcome and distinguishes locally verified discovery from production acceptance. No real profiles or dictionaries were published, and no live funding offer or AI moderation service was created."
   },
   "changes_from_previous_revision": {
-    "summary": "Recorded AWS browsing acceptance and the upcoming introductory-paper/trials direction; added separately controlled discovery, private membership requests, opt-in contributor profiles and About with local verification and an additive migration runbook.",
+    "summary": "Recorded human acceptance of discovery/profile/About; prepared public practice and proactive owner guidance with signed cost approval, local regression/browser evidence and a laptop/AWS runbook.",
     "added_item_ids": [
-      "OBS-0094",
-      "OBS-0095"
+      "OBS-0096",
+      "OBS-0097"
     ],
     "revised_item_ids": [
       "ASM-0011",
@@ -1775,7 +1803,9 @@
       "PRED-0005",
       "PRED-0006",
       "OBS-0092",
-      "OBS-0093"
+      "OBS-0093",
+      "OBS-0094",
+      "OBS-0095"
     ],
     "retired_item_ids": []
   }

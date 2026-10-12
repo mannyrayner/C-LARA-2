@@ -2,10 +2,10 @@
 {% block title %}Practise · {{ dictionary.name }}{% endblock %}
 {% block content %}
 <link rel="stylesheet" href="{% static 'community_dictionary/practice.css' %}?v=2">
-<script src="{% static 'community_dictionary/practice.js' %}?v=2" defer></script>
+<script src="{% static 'community_dictionary/practice.js' %}?v=3" defer></script>
 <div class="practice-intro"><div class="page-heading"><h1>Practise</h1><span>{{ dictionary.name }}</span></div>
 <p class="lead">Learn with the pictures, voices and words you have collected together.</p></div>
-<div id="practice" data-url="{% url 'community_dictionary:practice-data' dictionary.pk %}" data-category="{{ selected_category }}">
+<div id="practice" data-url="{{ practice_data_url }}" data-category="{{ selected_category }}">
   <p id="practice-status" role="status" aria-live="polite"></p>
   <div id="practice-choices">
     <form method="get" class="search">
@@ -19,7 +19,7 @@
         <select id="flashcard-mode">{% for mode in practice_modes %}<option value="{{ mode.value }}"{% if not mode.count %} disabled{% endif %}>{{ mode.label }} ({{ mode.count }})</option>{% endfor %}</select>
         <label for="flashcard-style">How would you like to answer?</label>
         <select id="flashcard-style"><option value="choice">Multiple choice</option><option value="recall">Reveal the answer</option></select>
-        {% if not has_cards %}<p class="help">No cards are ready in this category yet. Add and accept some pictures, words or recordings, or choose another category.</p>{% endif %}
+        {% if not has_cards %}<p class="help">No cards are ready in this category yet. {% if not public_browsing %}Add and accept some pictures, words or recordings, or {% endif %}choose another category.</p>{% endif %}
         <button type="button" data-start="flashcards"{% if not has_cards %} disabled{% endif %}>Start flashcards</button>
       </section>
       <section class="panel"><h2>Picture crossword</h2><p>Use the pictures to fill in the words. Choose a clue, then type its answer.</p>

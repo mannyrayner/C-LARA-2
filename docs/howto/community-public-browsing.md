@@ -28,6 +28,7 @@ viewing material that the remaining community has made available to everyone.
 - Pictures, Words and Sentences tabs, search and category filtering.
 - Current accepted text, translations, categories, pictures and recordings.
 - Word/sentence/picture links, inline translations and audio playback.
+- [Practise](community-practice-guidance.md): flashcards, picture crosswords and word scrambles using existing accepted material, without AI charges.
 - Dictionary name, target language, commenting language and accepted word/sentence counts.
 
 Pending/rejected/removed contributions, historical text, discussions, contributor
@@ -36,7 +37,7 @@ images and synthetic recordings retain their simple AI labels. Synthetic audio
 must match the current accepted wording, language and recorded meaning dependency.
 
 Visitor routes only accept GET/HEAD. They grant no contribution, editing, review,
-AI-generation, export or practice permissions, and make no AI calls. Existing
+AI-generation or export permissions, and make no AI calls. Existing
 member routes keep their existing permission checks. Normal hosting/bandwidth
 costs still apply.
 
@@ -72,5 +73,6 @@ are not relaxed.
 See [installation instructions](community-public-browsing-install.md) and the
 [development evidence](../../experiments/community_dictionary/public-browsing-2026-10-11.md).
 Manny reports that anonymous browsing works and is deployed on AWS (11 October).
-The newer discoverability/profile increment has separate local verification and
-awaits its own laptop/AWS acceptance; see the linked discovery documentation.
+Manny subsequently reports the discovery/profile/About increment works (deployment
+location not specified). The new visitor-practice and owner-guidance increment has
+separate local evidence and awaits laptop/AWS acceptance.

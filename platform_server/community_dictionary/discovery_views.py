@@ -99,8 +99,12 @@ def ask(request, pk):
 @login
 @require_http_methods(['GET'])
 def pending(request):
-    page = Paginator(discovery.pending_for(request.user).select_related('dictionary', 'user'), 20).get_page(request.GET.get('page'))
-    return render(request, 'community_dictionary/membership_requests.html', {'page': page})
+    requests = discovery.pending_for(request.user)
+    dictionary_id = request.GET.get('dictionary', '')
+    if dictionary_id.isdigit():
+        requests = requests.filter(dictionary_id=dictionary_id)
+    page = Paginator(requests.select_related('dictionary', 'user'), 20).get_page(request.GET.get('page'))
+    return render(request, 'community_dictionary/membership_requests.html', {'page': page, 'dictionary_filter': dictionary_id if dictionary_id.isdigit() else ''})
 
 
 @never_cache

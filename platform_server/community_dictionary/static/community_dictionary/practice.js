@@ -36,7 +36,7 @@
     try { response=await fetch(url, {credentials:'same-origin', cache:'no-store', headers:{Accept:'application/json'}, signal:controller.signal}); }
     catch(e) { throw new Error(e.name==='AbortError' ? 'The connection is taking too long. Please try again.' : 'Unable to reach the dictionary. Reconnect and start a new activity.'); }
     finally { clearTimeout(timeout); }
-    if (response.redirected || [401,403,404].includes(response.status)) throw new Error('This dictionary is no longer available. Return to My dictionaries.');
+    if (response.redirected || [401,403,404].includes(response.status)) throw new Error('This dictionary is no longer available. Return to the dictionary list.');
     if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('Unable to check the dictionary. Please try again when connected.');
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || 'Unable to start this activity. Please try again.');

@@ -71,9 +71,11 @@ def home(request):
     counts = {(row['dictionary_id'], row['entry_type']): row['total'] for row in
         Entry.objects.filter(dictionary_id__in=browsable,archived=False,current_text__status='accepted').exclude(word='')
         .values('dictionary_id','entry_type').annotate(total=Count('pk'))}
+    from .workflow import suggestion
     for row in projects:
         row['sentence_count'] = counts.get((row['dictionary'].pk,'sentence'),0)
         row['word_count'] = counts.get((row['dictionary'].pk,'word'),0)
+        row['next_step'] = suggestion(request.user, row['dictionary']) if row['can_browse'] else None
     invitations = list(Membership.objects.filter(user=request.user, accepted=False,
         status='invited', dictionary__personal=False, dictionary__archived=False).select_related('dictionary'))
     from . import discovery
@@ -143,7 +145,11 @@ def dictionary(request, pk):
     words = [word_row(e, item) for e in page] if mode == 'words' else []
     from .porting import pending_destination_run
     pending_port = pending_destination_run(request.user, item)
-    return render(request, 'community_dictionary/dictionary.html', context(request, item, pending_port=pending_port, participation=participation, cards=cards, words=words, mode=mode, page=page, show=show, query=query, category=category, categories=categories))
+    from .workflow import suggestion
+    from .port_views import no_store
+    return no_store(render(request, 'community_dictionary/dictionary.html', context(request, item,
+        next_step=suggestion(request.user, item, details=True), pending_port=pending_port, participation=participation,
+        cards=cards, words=words, mode=mode, page=page, show=show, query=query, category=category, categories=categories)))
 
 
 @login_required

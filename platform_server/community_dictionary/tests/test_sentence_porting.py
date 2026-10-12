@@ -196,6 +196,10 @@ class SentencePortingTests(TestCase):
         self.assertContains(page,'0 saved in this run')
         self.assertContains(page,'Continue reviewing and saving')
         url=reverse('community_dictionary:dictionary',args=[run.port.destination_id])
+        self.assertContains(self.client.get(url),'5 entries ready to review')
+        self.assertContains(self.client.get(url),'Review language results')
+        run.port.destination.show_workflow_suggestions=False
+        run.port.destination.save(update_fields=['show_workflow_suggestions'])
         self.assertContains(self.client.get(url),'Review and save language results')
         form=self.client.get(self.url('port-review',run.pk,run.items.get(source_entry__entry_type='sentence').pk))
         self.assertEqual(form.context['form'].fields['word'].label,'Sentence')

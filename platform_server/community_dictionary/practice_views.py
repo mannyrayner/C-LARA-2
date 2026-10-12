@@ -5,6 +5,7 @@ import secrets
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, render
+from django.urls import reverse
 from django.views.decorators.http import require_GET
 
 from . import practice
@@ -19,12 +20,17 @@ from .views import context, private_media_response
 def home(request, pk):
     dictionary = get_dictionary(request.user, pk)
     rows, categories, _ = practice.catalogue(dictionary, request.GET.get('category', ''))
+    return render(request, 'community_dictionary/practice.html', context(request, dictionary,
+        **page_data(request, dictionary, rows, categories)))
+
+
+def page_data(request, dictionary, rows, categories, *, public=False):
     modes = [{'value': mode, 'label': label, 'count': len(practice.eligible(rows, mode))}
              for mode, label in practice.MODES]
-    return render(request, 'community_dictionary/practice.html', context(request, dictionary,
-        categories=categories, selected_category=request.GET.get('category', ''),
+    return dict(categories=categories, selected_category=request.GET.get('category', ''),
         practice_modes=modes, has_cards=any(mode['count'] for mode in modes),
-        puzzle_count=len(practice.puzzle_candidates(rows))))
+        puzzle_count=len(practice.puzzle_candidates(rows)),
+        practice_data_url=reverse('community_dictionary:' + ('public-practice-data' if public else 'practice-data'), args=[dictionary.pk]))
 
 
 @login_required
@@ -32,6 +38,10 @@ def home(request, pk):
 def data(request, pk):
     dictionary = get_dictionary(request.user, pk)
     rows, _, revision = practice.catalogue(dictionary, request.GET.get('category', ''))
+    return game_response(request, rows, revision)
+
+
+def game_response(request, rows, revision):
     if request.GET.get('validate'):
         return JsonResponse({'valid': request.GET['validate'] == revision})
     game = request.GET.get('game', 'flashcards')

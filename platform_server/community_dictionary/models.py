@@ -32,6 +32,8 @@ class Dictionary(models.Model):
     public_browsing_revision = models.PositiveIntegerField(default=0)
     discoverable = models.BooleanField(default=False)
     discovery_revision = models.PositiveIntegerField(default=0)
+    show_workflow_suggestions = models.BooleanField(default=True)
+    workflow_suggestions_revision = models.PositiveIntegerField(default=0)
     archived = models.BooleanField(default=False)
     collection_source = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, related_name='personal_collections')
     membership_policy = models.CharField(max_length=16, default='owner', choices=[('owner', 'Owner manages membership'), ('coordinators', 'Two coordinators approve changes')])

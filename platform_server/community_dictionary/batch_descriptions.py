@@ -147,41 +147,60 @@ def quote(user, dictionary, token, image_status='both', voice='marin'):
         options={'image_status':image_status,'voice':voice},
         payer='personal' if personal else 'credits' if credits_enabled() else 'server',
         expires_at=timezone.now()+timedelta(hours=1))
-    images,parents,described = described_roots(dictionary)
-    outstanding = PortItem.objects.filter(run__port=port,run__stage='descriptions',
-        status__in=LIVE,invalidated=False).exclude(run__status__in=['estimate','cancelled'])
-    held_ids = set()
-    for item in outstanding.select_related('run__port__source','run__port__user'):
-        try:
-            current_item(item)
-        except (Conflict,Http404):
-            porting.clear_preview(item,'The picture or its hints changed. A new estimate is available.')
-        else:
-            held_ids.add(item.source_image_id)
-    # In-progress individual descriptions also take priority over a batch.
-    held_ids.update(PictureCapture.objects.filter(dictionary=dictionary,expires_at__gt=timezone.now(),
-        status__in=['waiting','processing','ready','clarify']).values_list('source_image_id',flat=True))
-    held = {picture_root(p,parents) for p in images if p.pk in held_ids}
-    selected = set()
-    for picture in images:
-        root = picture_root(picture,parents)
-        if (not picture.file_path or root in described or root in selected or
-                image_status != 'both' and picture.status != image_status):
-            run.skipped += 1; continue
-        if root in held:
-            run.protected += 1; continue
-        selected.add(root)
-        snap = snapshot(picture)
-        # Estimate for a full sentence, not a short source word label.
-        estimate_entry = Entry(entry_type='sentence',word='x'*180,meaning='x'*500,category='')
-        extra = sum(len(getattr(p,p.text_field).encode()) for p in hints(picture))
-        estimate,allowance = porting.estimate_entry(estimate_entry,prices,True,extra)
-        item = PortItem.objects.create(run=run,source_entry=picture.entry,source_image=picture,snapshot=snap,
-            estimated_usd=estimate,allowance_usd=allowance)
-        item.sources.set(snap['ids'])
-        run.estimated_usd += estimate;run.allowance_usd += allowance
+    planned = plan(dictionary, port, prices, image_status)
+    for item in planned['stale']:
+        porting.clear_preview(item, 'The picture or its hints changed. A new estimate is available.')
+    run.skipped, run.protected = planned['skipped'], planned['protected']
+    for values in planned['items']:
+        item = PortItem.objects.create(run=run, **values)
+        item.sources.set(values['snapshot']['ids'])
+        run.estimated_usd += item.estimated_usd
+        run.allowance_usd += item.allowance_usd
     run.save()
     return run
+
+
+def candidates(dictionary, port, image_status='both'):
+    """Read-only selection shared by estimates and proactive suggestions."""
+    images, parents, described = described_roots(dictionary)
+    outstanding = PortItem.objects.filter(run__port_id=port.pk, run__stage='descriptions',
+        status__in=LIVE, invalidated=False).exclude(run__status__in=['estimate', 'cancelled']) if port.pk else PortItem.objects.none()
+    held_ids, stale = set(), []
+    for item in outstanding.select_related('run__port__source', 'run__port__user'):
+        try:
+            current_item(item)
+        except (Conflict, Http404):
+            stale.append(item)
+        else:
+            held_ids.add(item.source_image_id)
+    held_ids.update(PictureCapture.objects.filter(dictionary=dictionary, expires_at__gt=timezone.now(),
+        status__in=['waiting', 'processing', 'ready', 'clarify']).values_list('source_image_id', flat=True))
+    held = {picture_root(p, parents) for p in images if p.pk in held_ids}
+    selected, result, skipped, protected = set(), [], 0, 0
+    for picture in images:
+        root = picture_root(picture, parents)
+        if (not picture.file_path or root in described or root in selected or
+                image_status != 'both' and picture.status != image_status):
+            skipped += 1
+            continue
+        if root in held:
+            protected += 1
+            continue
+        selected.add(root)
+        result.append(picture)
+    return {'pictures': result, 'skipped': skipped, 'protected': protected, 'stale': stale}
+
+
+def plan(dictionary, port, prices, image_status='both'):
+    selected = candidates(dictionary, port, image_status)
+    items = []
+    for picture in selected['pictures']:
+        estimate_entry = Entry(entry_type='sentence', word='x'*180, meaning='x'*500, category='')
+        extra = sum(len(getattr(p, p.text_field).encode()) for p in hints(picture))
+        estimate, allowance = porting.estimate_entry(estimate_entry, prices, True, extra)
+        items.append({'source_entry': picture.entry, 'source_image': picture, 'snapshot': snapshot(picture),
+            'estimated_usd': estimate, 'allowance_usd': allowance})
+    return {**selected, 'items': items}
 
 
 def interpret(photo, data, *, model, api_key):

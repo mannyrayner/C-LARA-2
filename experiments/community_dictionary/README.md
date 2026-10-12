@@ -1,6 +1,6 @@
 # Community dictionary development experiment
 
-Current increment: [discovery, membership requests, profiles and About](discovery-profiles-2026-10-11.md). Default-off metadata discovery is separate from public content access. Public browsing itself is now reported working on AWS; the new increment awaits human acceptance.
+Current increment: [public practice and owner guidance](practice-guidance-2026-10-11.md). The discovery/profile/About release now has human-reported acceptance (deployment location unspecified). The follow-up adds accepted-only visitor games and permission-sensitive owner next steps with explicit paid approval; local verification precedes laptop/AWS acceptance.
 
 
 Previous increment: [public browsing and reported email-recovery success](public-browsing-2026-10-11.md).

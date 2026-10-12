@@ -53,7 +53,7 @@ Contribution.objects.create(entry=sentence,author=user,kind='note',status='accep
 '''
 
 
-def main(workflow="public_browsing_browser_workflow.cjs", extra_seed=""):
+def main(workflow="public_browsing_browser_workflow.cjs", extra_seed="", server_setup=""):
     output = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else ROOT/'reports'/'public-browsing-browser'
     output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='public-browsing-') as directory:
@@ -73,7 +73,7 @@ def main(workflow="public_browsing_browser_workflow.cjs", extra_seed=""):
         with (output/'server.log').open('w') as log:
             server = subprocess.Popen([sys.executable, '-c',
                 'import django; django.setup(); from django.core.management import call_command; '
-                'call_command("runserver","127.0.0.1:8773",use_reloader=False,insecure=True)'],
+                + server_setup + 'call_command("runserver","127.0.0.1:8773",use_reloader=False,insecure=True)'],
                 cwd=PLATFORM, env=env, stdout=log, stderr=log)
             try:
                 for _ in range(100):

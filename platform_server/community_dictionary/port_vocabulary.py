@@ -127,26 +127,45 @@ def quote(user, port, token):
         source_language=port.language,source_explanation_language=port.explanation_language,
         prices={**{k:str(v) for k,v in prices.items()},'speech_recipe':tts.INSTRUCTIONS_VERSION,'vocabulary_recipe':VERSION},
         payer='personal' if personal else 'credits' if credits_enabled() else 'server',expires_at=timezone.now()+timedelta(hours=1))
-    refs = context(port.target)
-    context_ids = [ref[k] for ref in refs for k in ['text','meaning'] if ref[k]]
-    size = sum(len(c.word)+len(c.meaning) for c in Contribution.objects.filter(pk__in=context_ids))
-    entries = port.target.entries.filter(entry_type='sentence',archived=False,current_text__status='accepted').exclude(word='')
-    if port.is_description_batch:
-        entries = entries.filter(description_jobs__run__port=port,description_jobs__status='saved').distinct()
-    for entry in entries.select_related('dictionary','current_text','current_meaning'):
-        if current_state(entry):
-            run.skipped += 1
-            continue
-        snap = sentence_snapshot(entry)
-        estimated,maximum = estimate(entry,prices,size)
-        item = PortItem.objects.create(run=run,source_entry=entry,
-            snapshot={'entry_type':'sentence','sentence':snap,'image':snap['image'],'context':refs},
-            estimated_usd=estimated,allowance_usd=maximum)
-        item.sources.set(snap['ids']+context_ids)
-        run.estimated_usd += estimated
-        run.allowance_usd += maximum
+    planned = plan(port, prices)
+    run.skipped = planned['skipped']
+    for values in planned['items']:
+        item = PortItem.objects.create(run=run, **values)
+        item.sources.set(values['snapshot']['sentence']['ids'] + planned['context_ids'])
+        run.estimated_usd += item.estimated_usd
+        run.allowance_usd += item.allowance_usd
     run.save()
     return run
+
+
+def candidates(port):
+    """Accepted sentences in this workflow whose vocabulary is not current."""
+    entries = port.target.entries.filter(entry_type='sentence', archived=False,
+        current_text__status='accepted').exclude(word='')
+    if port.is_description_batch:
+        entries = entries.filter(description_jobs__run__port=port, description_jobs__status='saved').distinct()
+    result, skipped = [], 0
+    for entry in entries.select_related('dictionary', 'current_text', 'current_meaning'):
+        if current_state(entry):
+            skipped += 1
+        else:
+            result.append(entry)
+    return result, skipped
+
+
+def plan(port, prices):
+    refs = context(port.target)
+    context_ids = [ref[k] for ref in refs for k in ['text', 'meaning'] if ref[k]]
+    size = sum(len(c.word) + len(c.meaning) for c in Contribution.objects.filter(pk__in=context_ids))
+    entries, skipped = candidates(port)
+    items = []
+    for entry in entries:
+        snap = sentence_snapshot(entry)
+        estimated, maximum = estimate(entry, prices, size)
+        items.append({'source_entry': entry,
+            'snapshot': {'entry_type': 'sentence', 'sentence': snap, 'image': snap['image'], 'context': refs},
+            'estimated_usd': estimated, 'allowance_usd': maximum})
+    return {'items': items, 'skipped': skipped, 'context_ids': context_ids}
 
 
 def validated_words(words, sentence):

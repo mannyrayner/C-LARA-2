@@ -1,6 +1,6 @@
 # Community dictionary app
 
-Current increment: [discovery, membership requests, Profile and About](../../docs/howto/community-discovery-profiles.md); [installation runbook](../../docs/howto/community-discovery-profiles-install.md). Migration 0021 is additive and default-off. Existing public URLs continue working, but appearing in Find dictionaries now requires owner opt-in to discoverability. Public browsing has reported AWS acceptance; the new increment awaits laptop/AWS testing.
+Current increment: [public practice and owner workflow suggestions](../../docs/howto/community-practice-guidance.md); [installation runbook](../../docs/howto/community-practice-guidance-install.md). Migration 0022 adds a default-on owner guidance preference; AI and public access remain independently opt-in. Suggestions show costs before approval and dictionary cards link to the next step. The discovery/profile/About release has human-reported acceptance; this follow-up awaits laptop/AWS acceptance.
 
 
 Previous increment: [optional public browsing](../../docs/howto/community-public-browsing.md)

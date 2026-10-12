@@ -1,0 +1,24 @@
+{% if next_step %}<section class="panel" id="next-step" aria-labelledby="next-step-title">
+<p class="eyebrow">Next step</p><h2 id="next-step-title">{{ next_step.label }}</h2>
+{% if next_step.approval or next_step.unavailable %}
+<p>{{ next_step.scope }}</p>
+{% if next_step.unavailable %}<p>{{ next_step.unavailable }}</p>
+{% else %}
+<p><strong>Rough API estimate: US${{ next_step.estimated|floatformat:4 }}</strong> · Voice: {{ next_step.voice }}</p>
+{% if next_step.payer == 'credits' %}<p>Credit reserved: <strong>US${{ next_step.allowance|floatformat:4 }}</strong>. Available: <strong>US${{ next_step.balance|floatformat:4 }}</strong>. Unused credit is returned when the job finishes or is cancelled.</p>
+{% elif next_step.payer == 'personal' %}<p>Paid through your personal OpenAI account; its balance cannot be checked here. The estimate is not a provider spending cap.</p>
+{% else %}<p>Paid by the server operator. The estimate is not a provider spending cap.</p>{% endif %}
+<details><summary>What will be sent and created?</summary>
+{% if next_step.kind == 'descriptions' %}<p>OpenAI receives each picture, its current words and latest text suggestions, and the dictionary languages. It suggests one sentence, translation and recording. Saving a sentence also accepts its source picture if it was awaiting review. Existing contributions are kept. Word pages are a separate step.</p>
+{% else %}<p>OpenAI receives the accepted sentences, translations, representative pictures and a limited selection of existing words and meanings. It suggests words and expressions, reusing matching word pages. Missing word audio is generated after you accept the word suggestions, within this approved allowance.</p>{% endif %}
+<p>Model: {{ next_step.model }}. Actual costs vary with image size, response length and audio duration. Provider retention rules apply. You can review, edit or accept all ready suggestions afterwards; this does not claim expert linguistic checking.</p></details>
+{% if next_step.enough_funds %}<form method="post" action="{% url 'community_dictionary:workflow-start' dictionary.pk %}">{% csrf_token %}
+<input type="hidden" name="approval" value="{{ next_step.approval }}">
+<p class="help">By choosing the button below, I approve the displayed cost and have permission to send this material to OpenAI and share the reviewed results in this dictionary.</p>
+<button>{{ next_step.button }}</button></form>
+{% else %}<p><strong>Insufficient credit for the reservation.</strong> Add credit before starting, or manage your personal API key in <a href="{% url 'community_dictionary:profile' %}">Profile</a>.</p>{% endif %}
+{% endif %}
+<p class="help">For a different selection or voice, use <a href="{% url 'community_dictionary:settings' dictionary.pk %}">Settings</a>.</p>
+{% else %}<a class="button" href="{{ next_step.url }}">{{ next_step.button }}</a>{% endif %}
+<p class="help">You can turn off these suggestions in <a href="{% url 'community_dictionary:settings' dictionary.pk %}#workflow-suggestions">Settings</a>.</p>
+</section>{% endif %}
