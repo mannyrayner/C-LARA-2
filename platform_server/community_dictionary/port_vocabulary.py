@@ -120,11 +120,13 @@ def input_data(item):
 
 
 def estimate(entry, prices, extra):
-    # Analysis once per sentence; reuse can reduce audio requests substantially.
-    analysis, allowance = porting.estimate_entry(entry,prices,False,extra)
-    typical = tts.guidance_estimate(prices) + tts.estimate_cost('x'*1400,3)
-    maximum = tts.guidance_estimate(prices,allowance=True) + 2*tts.estimate_cost('x'*12000,60)
-    return porting.money(analysis+capture_ai.MAX_WORDS*typical), porting.money(allowance+capture_vocabulary.MAX_EDITED_WORDS*maximum)
+    from . import port_costs
+    analysis = port_costs.analysis(entry, prices, extra)
+    # Three new words per sentence is a planning assumption; reuse reduces it.
+    # Actual edited/reused words determine speech work after human review.
+    estimate = analysis + 3*port_costs.speech('x'*12, '', prices, unknown=True)
+    return porting.money(estimate), port_costs.allowance(estimate)
+
 
 
 @transaction.atomic
@@ -143,7 +145,7 @@ def quote(user, port, token):
         raise Conflict('Accept or flag the remaining sentence translations before building their vocabulary.')
     model,key,personal,prices = photo_ai.configuration(user)
     port.runs.filter(stage='vocabulary',status='estimate').update(status='cancelled')
-    run = PortRun.objects.create(id=token,port=port,stage='vocabulary',model=model,
+    run = PortRun.objects.create(id=token,port=port,stage='vocabulary',model=model, options={'budget_version':1},
         source_language=port.language,source_explanation_language=port.explanation_language,
         prices={**{k:str(v) for k,v in prices.items()},'speech_recipe':tts.INSTRUCTIONS_VERSION,'vocabulary_recipe':VERSION},
         payer='personal' if personal else 'credits' if credits_enabled() else 'server',expires_at=timezone.now()+timedelta(hours=1))

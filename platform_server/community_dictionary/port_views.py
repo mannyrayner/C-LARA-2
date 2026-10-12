@@ -13,7 +13,7 @@ from django.utils import timezone
 from django.utils.html import format_html
 
 from projects.billing import get_user_balance_usd
-from . import porting, port_tasks, port_vocabulary
+from . import porting, port_tasks, port_vocabulary, port_budget, port_audio
 from .models import Contribution, LanguagePort, PortEntryLink, PortItem, PortRun
 from .permissions import get_dictionary, require_owner
 from .port_forms import PortForm, PortApproveForm, PortReviewForm, PortAttentionForm
@@ -55,6 +55,11 @@ def saved_entry(item):
     """Use current authorised content, never the retained translation snapshot."""
     if item.status != 'saved' or item.invalidated or item.source_entry.archived:
         return None
+    if item.run.stage == 'audio':
+        try:
+            return port_audio.current_item(item)
+        except (Conflict,Http404):
+            return None
     if item.run.stage == 'descriptions':
         from .batch_descriptions import saved_entry as described_entry
         return described_entry(item)
@@ -124,7 +129,7 @@ def detail(request,pk,run_id):
         return fail(request,exc,409)
     balance = get_user_balance_usd(request.user) if run.payer == 'credits' else None
     counts = {status:run.items.filter(status=status).count() for status in
-              ['waiting','queued','running','ready','unclear','failed','saved','discarded']}
+              ['waiting','queued','running','budget','ready','unclear','failed','saved','discarded']}
     attention_only = request.GET.get('attention') == '1'
     attention_count = run.items.filter(needs_attention=True).count()
     items = run.items.filter(needs_attention=True) if attention_only else run.items.all()
@@ -150,10 +155,15 @@ def detail(request,pk,run_id):
             item.safe_label = item.source_entry.word
             if item.result.get('word') and item.result['word'] != item.source_entry.word:
                 item.safe_label = (item.safe_label + ' → ' if item.safe_label else '') + item.result['word']
+    budget_offer=port_budget.offer(run)
     return no_store(render(request,'community_dictionary/port_run.html',context(request,run.port.source,
-        run=run,counts=counts,page=page,balance=balance,
+        run=run,counts=counts,page=page,balance=balance, budget_offer=budget_offer,
+        enough_extra_funds=not budget_offer or balance is None or balance >= budget_offer['amount'],
+        returned=run.reserved_usd-run.charged_usd if run.settled else run.released_usd,
+        held=0 if run.settled else run.reserved_usd-run.released_usd,
+        recovery_token=uuid.uuid4(),
         bulk_count=run.items.filter(status='ready',invalidated=False,needs_attention=False).count(),
-        speech_counts={s:run.speech.filter(status=s).count() for s in ['waiting','queued','running','ready','failed','discarded']},
+        speech_counts={s:run.speech.filter(status=s).count() for s in ['waiting','queued','running','budget','ready','failed','discarded']},
         review_count=counts['ready'] + counts['unclear'],
         first_review=run.items.filter(status__in=['ready','unclear'], invalidated=False).first(),
         sentence_count=run.items.filter(snapshot__entry_type='sentence').count(),
@@ -179,6 +189,17 @@ def action(request,pk,run_id):
             messages.success(request,f'Accepted {saved} results. {skipped} changed results were skipped; flagged or failed results are left for you.')
         elif action == 'resume':
             port_tasks.resume(request.user,run.pk)
+        elif action == 'approve-more':
+            if request.POST.get('approve') != 'on':
+                return fail(request,'Approve the additional allowance before continuing.',400)
+            port_budget.approve_more(request.user,run.pk,request.POST.get('budget_token',''))
+        elif action == 'audio-estimate':
+            try:
+                token=uuid.UUID(request.POST.get('submission_id',''))
+            except ValueError:
+                return fail(request,'Reload the page before estimating audio.',400)
+            retry=port_audio.quote(request.user,run,token)
+            return redirect(run_url(retry))
         elif action == 'approve':
             form = PortApproveForm(request.POST, in_place=run.port.is_description_batch)
             if not form.is_valid():

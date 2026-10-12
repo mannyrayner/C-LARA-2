@@ -369,7 +369,10 @@ class PortingTests(TestCase):
         with self.assertRaises(Conflict):porting.approve(self.owner,run.pk)
         run=self.approve(run)
         giant=response();giant.usage.input_tokens=1000000
-        self.process(run.items.get(),giant)
+        _, synth = self.process(run.items.get(),giant)
+        self.assertFalse(synth.called)
+        self.assertEqual(run.items.get().status,'budget')
+        porting.cancel(self.owner,run.pk)
         run.refresh_from_db();self.assertEqual(run.charged_usd,run.reserved_usd)
         self.assertEqual(CreditAccount.objects.get(user=self.owner).balance_usd,5-run.reserved_usd)
 
@@ -380,6 +383,7 @@ class PortingTests(TestCase):
         args,kwargs=enqueue.call_args
         self.assertEqual(args,('community_dictionary.port_tasks.process_item',item.pk))
         self.assertEqual(set(kwargs),{'q_options'})
+        self.assertEqual(kwargs['q_options']['timeout'],240)
         self.assertNotIn('word',repr((args,kwargs)))
 
     def test_cancel_inflight_accounts_current_call_but_sends_no_speech(self):

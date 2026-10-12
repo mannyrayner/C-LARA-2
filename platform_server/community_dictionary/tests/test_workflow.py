@@ -38,6 +38,11 @@ def recording():
 
 class WorkflowTests(TestCase):
     def setUp(self):
+        from types import SimpleNamespace
+        checker = patch('community_dictionary.port_language.check', return_value=SimpleNamespace(
+            status='completed', output_text='{"verdict":"match"}',
+            usage=SimpleNamespace(input_tokens=100, output_tokens=10)))
+        checker.start(); self.addCleanup(checker.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.settings_override = override_settings(

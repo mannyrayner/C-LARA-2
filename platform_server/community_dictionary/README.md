@@ -273,3 +273,11 @@ Email recovery is available through the shared account implementation when expli
 enabled and configured; see [email password recovery](../../docs/howto/email-password-reset.md).
 Visitor/anonymous browsing is now implemented as a separate, default-off option;
 see the latest public-browsing instructions above.
+
+## Port reliability update (12 October 2026)
+
+New quotes use proportionate allowances with approved top-ups and per-item refunds.
+Japanese/Chinese exact-span validation, independent sentence-language checks and
+explicit missing-audio recovery are included. Existing approved jobs retain their
+original accounting. See [behavior and limitations](../../docs/howto/community-port-reliability.md)
+and [migration/install instructions](../../docs/howto/community-port-reliability-install.md).

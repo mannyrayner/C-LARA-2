@@ -1,5 +1,9 @@
 # Community Dictionaries: credit reservation investigation
 
+> **Follow-up:** [Port reliability](community-port-reliability.md) introduces smaller new
+> allowances, incremental refunds and an extended audit. The investigation below
+> describes the earlier implementation and its original evidence.
+
 12 October 2026. Baseline: `9fd3d9d695467c13264e447908d96ff749be5625`.
 
 Manny reports that the AWS guidance performance and duplicate-card repairs work,

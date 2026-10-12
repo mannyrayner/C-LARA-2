@@ -34,13 +34,27 @@ Swedish: Katten sträcker ut sig på soffan -> sträcka ut sig (stretch out), NO
 Swedish: Katten sträcker långsamt ut sig -> surface "sträcker … ut sig", lemma "sträcka ut sig".
 German: Der Mann zieht seine Jacke an -> surface "zieht … an", lemma "anziehen".
 For discontinuous expressions, join exact sentence spans in their original order with " … ".
-The lemma can have a different word order. Otherwise surface must be an exact whole-word span of the sentence.
+The lemma can have a different word order. Otherwise surface must be an exact whole-word span of the sentence
+(an exact lexical substring is sufficient for Japanese and Chinese, which do not require spaces).
 Return only the picture_description schema; do not return token annotations or MWE analysis fields.
 ''')
 
 
+def unspaced_character(char):
+    """Han and Japanese kana; Hangul still uses inflected surface word forms."""
+    code = ord(char)
+    return (0x3400 <= code <= 0x9fff or 0x20000 <= code <= 0x323af or
+            0xf900 <= code <= 0xfaff or 0x3040 <= code <= 0x30ff or
+            0x31f0 <= code <= 0x31ff or 0xff66 <= code <= 0xff9f)
+
+
 def aligned_surface(surface, sentence):
-    """Exact, ordered, whole-token spans; ellipsis represents omitted material."""
+    """Exact ordered spans, retaining alphabetic boundaries but allowing kana/Han.
+
+    Alignment verifies occurrence, not linguistic segmentation. The model proposes
+    lexical units; the reviewer can edit them. Never accept an arbitrary Latin
+    substring simply because a Japanese/Chinese character occurs elsewhere.
+    """
     if not surface:
         return False
     parts = re.split(r'\s*(?:…|\.{3})\s*', surface)
@@ -48,16 +62,24 @@ def aligned_surface(surface, sentence):
     for part in parts:
         if not part:
             return False
-        pattern = (r'(?<!\w)' if part[0].isalnum() else '') + re.escape(part)
-        pattern += r'(?!\w)' if part[-1].isalnum() else ''
-        match = re.search(pattern, sentence[cursor:])
-        if not match:
+        def boundary(left, right):
+            return (not (re.match(r'\w', left) and re.match(r'\w', right)) or
+                    unspaced_character(left) or unspaced_character(right))
+        match = next((m for m in re.finditer(re.escape(part), sentence[cursor:])
+            if (not part[0].isalnum() or cursor+m.start() == 0 or
+                boundary(sentence[cursor+m.start()-1],part[0])) and
+               (not part[-1].isalnum() or cursor+m.end() == len(sentence) or
+                boundary(part[-1],sentence[cursor+m.end()]))), None)
+        if match is None:
             return False
         cursor += match.end()
     return True
 
 
-WORD_INSTRUCTIONS = """Select up to six useful lexical items from the supplied target-language sentence,
+WORD_INSTRUCTIONS = """For Japanese and Chinese, select lexical units even without spaces: surface must be
+an exact substring in the sentence and lemma the dictionary form. Do not insert spaces into surface.
+For Korean, surface includes the particles/endings as written; lemma is the dictionary form.
+Select up to six useful lexical items from the supplied target-language sentence,
 including useful verbs and prepositions. Return exact surface spans and dictionary-form lemmas.
 Reuse an existing lemma AND sense only when both match; copy its lemma and meaning exactly.
 Otherwise use existing_id=0 and a short sense-specific meaning in the commenting language.

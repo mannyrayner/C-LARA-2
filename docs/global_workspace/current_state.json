@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "workspace_revision": 69,
+  "workspace_revision": 70,
   "as_of": "2026-10-12",
-  "assessed_commit_sha": "9fd3d9d695467c13264e447908d96ff749be5625",
+  "assessed_commit_sha": "3ed343a3b70565c686b836eadb5d0330c5df7f14",
   "approved_proposal_id": null,
   "approved_run_id": null,
   "persistent_goal_ids": [
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "Manny confirms the AWS guidance performance and duplicate-card repair. His new concern is unexpectedly large reserved-credit messages. Inspection finds proposed allowances labelled as reserved and settled jobs displaying the original reservation without a clear zero-hold label. Vocabulary allowances also reserve conservative audio maxima and remain held through human review. The prepared patch corrects labels and adds a read-only ledger audit; 82 focused tests pass. AWS holds, refunds and any monetary correction remain unverified. Obtain the audit before altering balances or reservation policy.",
+  "current_focus_summary": "Manny requests a repair after 150-sentence language-port trials: vocabulary allowances remain disproportionate, Japanese vocabulary fails, an Italian result is in French, and missing-audio recovery is awkward. The prepared patch reproduces and fixes Han/kana span rejection, adds independent sentence-language checks and saved-result audio recovery, and introduces smaller new allowances with explicit top-ups and per-item refunds. The full 634-test local suite passes; laptop/AWS acceptance and production accounting verification of the new policy remain pending. Existing approved jobs retain their accounting; no production balances were altered.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -1151,6 +1151,28 @@
         "platform_server/community_dictionary/management/commands/community_credit_audit.py",
         "platform_server/community_dictionary/tests/test_credit_audit.py"
       ]
+    },
+    {
+      "id": "OBS-0104",
+      "summary": "Manny reports 150-sentence AWS vocabulary estimates near US$9.9 with a roughly US$130 refundable allowance, awkward Italian audio recovery, one French sentence in an Italian port, and complete Japanese vocabulary rejection. He explicitly requests the combined repair patch. These are operator reports, not a model-quality benchmark.",
+      "observed_at": "2026-10-12",
+      "confidence": "high",
+      "evidence": [
+        "docs/howto/community-port-reliability.md",
+        "experiments/community_dictionary/port-reliability-2026-10-12.md"
+      ]
+    },
+    {
+      "id": "OBS-0105",
+      "summary": "Local code reproduction identifies alphabetic word boundaries as the cause of Japanese/Han span rejection. The repair adds script-aware exact spans, an independent target-language check with flagged review, audio-only recovery from saved current text, smaller fresh allowances, signed additional approvals and once-only per-item refunds. Migration 0023 is additive; existing approved jobs are unchanged. A mocked-provider Linux/SQLite suite passes 634 tests. Actual Japanese quality, provider check reliability, AWS concurrency and new financial-policy acceptance remain unverified.",
+      "observed_at": "2026-10-12",
+      "confidence": "high",
+      "evidence": [
+        "docs/howto/community-port-reliability.md",
+        "docs/howto/community-port-reliability-install.md",
+        "experiments/community_dictionary/port-reliability-2026-10-12.md",
+        "platform_server/community_dictionary/tests/test_port_reliability.py"
+      ]
     }
   ],
   "assessments": [
@@ -1327,7 +1349,7 @@
     },
     {
       "id": "ASM-0011",
-      "summary": "The latest navigation and duplicate-card repair has human AWS acceptance. Credit messaging is the next usability and trust issue: proposed allowances must not look like existing debits, and final charges must be distinguishable from historical reservations. Conservative vocabulary allowances can tie up funds during review. The bounded patch and read-only reconciliation are ready for laptop/AWS verification; actual accounting discrepancies remain unknown. Resolve the observed holds before redesigning budget release, then return to user trials and the illustrated report.",
+      "summary": "The expanded language-port trials exposed concrete reliability and cost-usability defects despite the earlier small-language successes. The prepared repair has reproduced validation evidence and broad local regression coverage. Lower new allowances and incremental refunds address the immediate burden while preserving old jobs. Financial policy changes still need laptop/AWS acceptance and a fresh read-only audit; no retrospective correction of balances is authorised or needed by this patch. Recover Japanese vocabulary from accepted sentences and missing audio independently before repeating whole conversions.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-2",
@@ -1416,16 +1438,18 @@
         "OBS-0100",
         "OBS-0101",
         "OBS-0102",
-        "OBS-0103"
+        "OBS-0103",
+        "OBS-0104",
+        "OBS-0105"
       ],
-      "urgency": "reconcile_aws_credit_holds_before_financial_changes",
+      "urgency": "verify_language_port_repairs_before_further_large_trials",
       "risk": "medium",
-      "progress": "guidance_repair_aws_accepted_credit_audit_prepared",
+      "progress": "four_part_repair_prepared_local_tests_pass_production_trial_pending",
       "confidence": "medium"
     },
     {
       "id": "ASM-0012",
-      "summary": "Reducing Manny’s operational workload remains a concrete objective, measured through completed requests/releases, human touches/minutes, reliability and total human burden. The staged supervised-to-delegated experiment is still proposed; the repository Assistant is read-only and no persistent maintenance runner has been established. Successive AI-authored patches and human-reported deployments demonstrate supervised iteration, not unattended operations. The now-repaired guidance latency and duplicate-card regressions show that passing small-fixture tests did not remove the need for human acceptance at realistic scale. The repair adds measured query budgets and provenance cases, but Manny still deploys and supplies production evidence. The report should include these maintenance iterations and limits, and treat Manny’s development-time estimates as informal rather than an audited model comparison. Community data/publication authority remains with people. Credit investigation also needs production evidence from Manny; read-only reconciliation reduces guesswork but does not demonstrate independent operational control.",
+      "summary": "Reducing Manny’s operational workload remains a concrete objective, measured through completed requests/releases, human touches/minutes, reliability and total human burden. The staged supervised-to-delegated experiment is still proposed; the repository Assistant is read-only and no persistent maintenance runner has been established. Successive AI-authored patches and human-reported deployments demonstrate supervised iteration, not unattended operations. The now-repaired guidance latency and duplicate-card regressions show that passing small-fixture tests did not remove the need for human acceptance at realistic scale. The repair adds measured query budgets and provenance cases, but Manny still deploys and supplies production evidence. The report should include these maintenance iterations and limits, and treat Manny’s development-time estimates as informal rather than an audited model comparison. Community data/publication authority remains with people. The new language-port repair similarly relies on Manny for deployment and production validation. Automated regression tests and read-only reconciliation reduce guesswork but do not demonstrate independent operational control.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-2",
@@ -1455,7 +1479,9 @@
         "OBS-0100",
         "OBS-0101",
         "OBS-0102",
-        "OBS-0103"
+        "OBS-0103",
+        "OBS-0104",
+        "OBS-0105"
       ],
       "urgency": "start_baseline_with_next_operational_work",
       "risk": "medium",
@@ -1522,7 +1548,7 @@
     },
     {
       "id": "UNC-0008",
-      "summary": "Manny reports the guidance repair successful on AWS, without instrumented latency figures. Exact reserved-credit messages and the production ledger have not been inspected: misleading labels, large review holds and accounting discrepancies remain distinguishable possibilities. The audit must establish which applies before any refund or policy change. Physical-phone breadth, Cathys independent recovery trial, linguistic/MWE quality, community reception, learning outcomes and sustained low-intervention operations remain open. The introductory report and trial-credit terms remain future work.",
+      "summary": "New-policy quotes, per-item returns and top-ups require AWS verification; the tests use SQLite and mocked providers. Old approved jobs deliberately retain their original large allowances. Target-language detection may be uncertain and does not certify translation or pronunciation. Japanese/Chinese lexical spans no longer fail solely for missing spaces, but segmentation quality still needs review. Physical-phone breadth, independent user recovery, community reception, learning outcomes and sustained low-intervention operations remain open. The introductory report and trial-credit terms remain future work.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1635,7 +1661,7 @@
     },
     {
       "id": "ACT-0010",
-      "summary": "Install the credit-display/audit patch, run community_credit_audit for the affected AWS account and inspect its report alongside the exact screen wording. Distinguish unapproved quotes, outstanding review/audio holds and settled charges; reconcile discrepancies before changing balances or cancelling wanted work. Then design proportionate reservations and incremental release if warranted, preserving approved limits and idempotent accounting. Resume the introductory report after the current user-facing issue is resolved.",
+      "summary": "Apply the combined patch on the laptop, back up and migrate 0023, then test a fresh small quote and Japanese vocabulary/audio recovery. After acceptance deploy with all workers stopped, retry failed Japanese vocabulary from accepted sentences, and audit new-job refunds/holds. Do not reset balances, repeat successful translation or roll old accounting code back over new-policy jobs. Return to community trials and the introductory report after this repair is accepted.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1736,14 +1762,14 @@
     "status": "autonomous_project_manager_update",
     "authorized_by": "Assistant following AGENTS.md",
     "authorized_at": "2026-10-12",
-    "authorization_basis": "Manny requests credit investigation and supplies AWS repair acceptance; AGENTS.md requires reflecting material evidence without altering human intentions.",
-    "comments": "Revision 69 records guidance-repair acceptance and the new, unverified financial concern. Messaging defects and conservative allowances are established; production ledger conclusions are pending. No AWS data, services or credit were changed."
+    "authorization_basis": "Manny requests the combined language-port repair; AGENTS.md requires reflecting material evidence while preserving human-owned intentions.",
+    "comments": "Revision 70 records the new failure report and prepared local repair, not deployed success. The account-specific audit log and balance are not copied into this public update; its detailed accounting evidence is outside this scoped revision. No production services, accounts or old ledger records were modified."
   },
   "changes_from_previous_revision": {
-    "summary": "Recorded AWS repair acceptance, diagnosed misleading credit labels and disproportionate vocabulary allowances, and prepared a read-only audit with passing focused tests. AWS monetary correctness remains unverified.",
+    "summary": "Recorded larger language-port trial failures and a combined repair with local tests; smaller allowances and incremental settlement apply to new jobs only. Production acceptance remains pending.",
     "added_item_ids": [
-      "OBS-0102",
-      "OBS-0103"
+      "OBS-0104",
+      "OBS-0105"
     ],
     "revised_item_ids": [
       "ASM-0011",
@@ -1853,6 +1879,8 @@
       "OBS-0099",
       "OBS-0100",
       "OBS-0101",
+      "OBS-0102",
+      "OBS-0103",
       "ASM-0001",
       "ASM-0002",
       "ASM-0003",

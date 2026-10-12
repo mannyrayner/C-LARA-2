@@ -280,3 +280,5 @@ See [review workflow and installation notes](../../docs/howto/community-port-rev
 - [Later AWS acceptance and audio recovery, 7 October](audio-recovery-2026-10-07.md): typed/spoken English/Swedish on laptop Chrome, one reported timeout/recovery issue, 338 tests and a focused return-navigation repair; Cathy trial planned.
 
 - [Email password recovery, 10 October 2026](email-password-reset-2026-10-10.md): batch update accepted on laptop/AWS; locally verified email recovery prepared, real SMTP delivery pending.
+
+- [Port reliability (12 October)](port-reliability-2026-10-12.md): local CJK, sentence-language, audio recovery and credit-budget regressions; AWS verification pending.

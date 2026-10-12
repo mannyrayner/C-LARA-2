@@ -24,7 +24,7 @@ from .storage import delete_file, path_for
 from .text import FIELDS
 
 VERSION = 'missing-picture-sentences-1'
-LIVE = ['waiting', 'queued', 'running', 'ready', 'unclear']
+LIVE = ['waiting', 'queued', 'running', 'budget', 'ready', 'unclear']
 SCHEMA = capture_ai.obj({key: capture_ai.string(limit) for key, limit in
     [('sentence',255), ('translation',1000), ('feedback',255)]} | {
     'outcome': {'type':'string','enum':['ready','clarify']}})
@@ -149,7 +149,7 @@ def quote(user, dictionary, token, image_status='both', voice='marin'):
         raise Conflict('Choose accepted pictures, pictures awaiting review, or both.')
     previous = PortRun.objects.filter(pk=token,port__source=dictionary,port__user=user,stage='descriptions').first()
     if previous:
-        if previous.options != {'image_status':image_status,'voice':voice}:
+        if any(previous.options.get(k) != v for k,v in {'image_status':image_status,'voice':voice}.items()):
             raise Conflict('The estimate form changed. Reload it before estimating again.')
         return previous
     if PortRun.objects.filter(pk=token).exists():
@@ -170,7 +170,7 @@ def quote(user, dictionary, token, image_status='both', voice='marin'):
         source_language=dictionary.language,source_explanation_language=dictionary.explanation_language,
         prices={**{k:str(v) for k,v in prices.items()},'description_recipe':VERSION,
             'speech_recipe':tts.INSTRUCTIONS_VERSION,'sentence_speech_recipe':port_ai.speech_version({'entry_type':'sentence'})},
-        options={'image_status':image_status,'voice':voice},
+        options={'image_status':image_status,'voice':voice,'budget_version':1,'language_check':1},
         payer='personal' if personal else 'credits' if credits_enabled() else 'server',
         expires_at=timezone.now()+timedelta(hours=1))
     planned = plan(dictionary, port, prices, image_status)

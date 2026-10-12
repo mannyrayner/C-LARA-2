@@ -5,7 +5,7 @@ from django.conf import settings
 from django.db import transaction
 from django.http import Http404
 from django.utils import timezone
-from . import porting, port_tasks, port_vocabulary as vocabulary, port_vocabulary_ai, tts
+from . import porting, port_tasks, port_vocabulary as vocabulary, port_vocabulary_ai, tts, port_budget, port_costs
 from .models import PortItem, PortRun, PortSpeech, Contribution
 from .services import Conflict, accept
 from .storage import path_for, write_upload, delete_file
@@ -38,6 +38,8 @@ def dispatch(run):
 
 
 def credentials(item):
+    if item.run.stage=='audio':
+        return port_tasks.credentials(item)
     if item.run.prices.get('vocabulary_recipe')!=vocabulary.VERSION:
         raise Conflict('Vocabulary processing changed. Prepare a new estimate.')
     return port_tasks.credentials(item)
@@ -54,15 +56,22 @@ def process_item(item_id):
             porting.clear_preview(item,'The sentence, permissions or vocabulary changed. Prepare a new estimate.')
             transaction.on_commit(lambda:port_tasks.dispatch(str(item.run_id)))
             return
+        if not port_budget.claim(item, f'item:{item.pk}', port_costs.analysis(item.source_entry,item.run.prices)):
+            item.status='budget';item.message='More allowance is needed. Use the progress page to approve it.'
+            item.save(update_fields=['status','message'])
+            transaction.on_commit(lambda:port_tasks.dispatch(str(item.run_id)));return
         item.status='running';item.phase='vocabulary';item.started_at=timezone.now();item.save()
-    result=None;usage={}
+    result=None;usage={};reason='unavailable'
     try:
         response=port_vocabulary_ai.analyse(data,photo,model=item.run.model,api_key=key)
         if getattr(response,'usage',None):
             usage={k:max(0,int(getattr(response.usage,k,0) or 0)) for k in ['input_tokens','output_tokens']}
         result=port_vocabulary_ai.parse(response,data)
     except Exception as exc:
-        log.warning('Vocabulary item %s failed (%s)',item_id,type(exc).__name__)
+        # Log known validation codes, never provider output or community text.
+        if isinstance(exc,ValueError) and str(exc) in {'word_alignment','word_fields','word_text','word_id','schema','incomplete'}:
+            reason=str(exc)
+        log.warning('Vocabulary item %s failed (%s; reason=%s)',item_id,type(exc).__name__,reason)
     with transaction.atomic():
         porting.locks();item=port_tasks.fetch(item_id,True)
         if item.status!='running':return
@@ -77,8 +86,10 @@ def process_item(item_id):
         else:
             item.status='ready' if result is not None else 'failed'
             item.result={**result,'recipe':vocabulary.VERSION} if result is not None else {}
-            if result is None:item.message='No usable vocabulary was returned. A new estimate is required to try again.'
+            if result is None:
+                item.message=('Vocabulary did not match the accepted sentence. ' if reason=='word_alignment' else 'No usable vocabulary was returned. ') + 'Retry vocabulary from accepted sentences with a fresh estimate; translations are kept.'
         item.finished_at=timezone.now();item.save()
+        port_budget.release_claim(item.run_id, f'item:{item.pk}')
     port_tasks.dispatch(str(item.run_id))
 
 
@@ -110,6 +121,10 @@ def speak(pk):
         if recordings(clip.entry,clip.run.port.target):
             clip.status='ready';clip.save(update_fields=['status'])
             transaction.on_commit(lambda:port_tasks.dispatch(str(clip.run_id)));return
+        clip.item.run=clip.run
+        if not port_budget.claim(clip.item,f'speech:{clip.pk}',port_budget.speech_forecast(clip)):
+            clip.status='budget';clip.save(update_fields=['status'])
+            transaction.on_commit(lambda:port_tasks.dispatch(str(clip.run_id)));return
         clip.status='running';clip.started_at=timezone.now();clip.save(update_fields=['status','started_at'])
     report={};prepared=None;duration=None
     def still_allowed():
@@ -120,6 +135,7 @@ def speak(pk):
         prepared,duration=tts.synthesize(clip.text.word,language=tts.language_code(clip.run.port.language),
             model=tts.MODEL,voice=clip.run.port.voice,api_key=key,
             meaning=clip.meaning.meaning if clip.meaning else '',meaning_language=clip.run.port.explanation_language,
+            speech_kind='sentence' if clip.entry.entry_type=='sentence' else 'entry',
             report=report,guidance_model=clip.run.model,guidance_prices=clip.run.prices,before_request=still_allowed)
     except Exception as exc:
         log.warning('Vocabulary audio %s failed (%s)',pk,type(exc).__name__)
@@ -146,7 +162,7 @@ def speak(pk):
                     if not recordings(clip.entry,clip.run.port.target):
                         media=write_upload(prepared,clip.entry.dictionary_id,paths)
                         provenance={'origin':'synthetic','source_text':clip.text.word,'language':clip.run.port.language,
-                            'voice':clip.run.port.voice,'model':tts.MODEL,'instructions_version':tts.INSTRUCTIONS_VERSION,
+                            'voice':clip.run.port.voice,'model':tts.MODEL,'instructions_version':port_tasks.port_ai.speech_version({'entry_type':clip.entry.entry_type}),
                             'language_port':clip.run.port_id,'synthesis':report}
                         if report.get('english_homographs') and clip.meaning_id:
                             provenance['source_meaning_id']=clip.meaning_id
@@ -155,6 +171,7 @@ def speak(pk):
                         if clip.meaning_id:porting.dependencies(part,[clip.meaning_id])
                         accept(part,clip.run.port.user)
             clip.save(update_fields=['status','report','cost_usd'])
+            port_budget.release_claim(clip.run_id,f'speech:{clip.pk}')
     except Exception:
         for path in paths:delete_file(path)
         raise
@@ -165,6 +182,7 @@ def recover_speech(run,cutoff):
     for clip in run.speech.filter(status='running',started_at__lt=cutoff):
         clip.status='failed';clip.report={};clip.save(update_fields=['status','report'])
         PortItem.objects.filter(pk=clip.item_id).update(uncertain_cost=True)
+        port_budget.release_claim(run.pk,f'speech:{clip.pk}')
     if run.status=='running':
         for pk in run.speech.filter(status='queued').values_list('pk',flat=True):
             transaction.on_commit(lambda pk=pk:send_speech(pk))

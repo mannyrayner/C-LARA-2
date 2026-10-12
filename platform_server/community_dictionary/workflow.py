@@ -84,6 +84,9 @@ def _suggestion(user, dictionary, *, details=False):
     for port in ports:
         run = port.runs.filter(status='running').first()
         if run:
+            if run.items.filter(status='budget').exists() or run.speech.filter(status='budget').exists():
+                return {'kind':'processing','label':'More allowance needs your approval',
+                    'button':'Review allowance','url':run_url(run)}
             return {'kind': 'processing', 'label': 'Processing…', 'button': 'View progress', 'url': run_url(run)}
     # Finish vocabulary for accepted sentences before describing more pictures.
     for port in ports:

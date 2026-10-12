@@ -436,6 +436,7 @@ class PortRun(models.Model):
     estimated_usd = models.DecimalField(max_digits=12, decimal_places=4, default=0)
     allowance_usd = models.DecimalField(max_digits=12, decimal_places=4, default=0)
     reserved_usd = models.DecimalField(max_digits=12, decimal_places=4, default=0)
+    released_usd = models.DecimalField(max_digits=12, decimal_places=4, default=0)
     charged_usd = models.DecimalField(max_digits=12, decimal_places=4, default=0)
     settled = models.BooleanField(default=False)
     skipped = models.PositiveIntegerField(default=0)
@@ -463,6 +464,7 @@ class PortEntryLink(models.Model):
 
 
 class PortItem(models.Model):
+    budget_closed = models.BooleanField(default=False)
     source_image = models.ForeignKey(Contribution, null=True, blank=True, on_delete=models.PROTECT, related_name="description_items")
     saved_entry = models.ForeignKey(Entry, null=True, blank=True, on_delete=models.PROTECT, related_name='description_jobs')
     run = models.ForeignKey(PortRun, on_delete=models.CASCADE, related_name='items')

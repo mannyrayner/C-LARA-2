@@ -52,7 +52,7 @@ class Command(BaseCommand):
         self.stdout.write('READ ONLY: no API requests, refunds, cancellations or account changes.')
         self.stdout.write(f'Account ID: {user_id}; available C-LARA credit: {balance if balance is not None else "no credit account"}')
         proposed = sum((r.allowance_usd for r in runs if r.payer == 'credits' and r.status == 'estimate'), ZERO)
-        held = sum((r.reserved_usd for r in runs if r.payer == 'credits' and not r.settled), ZERO)
+        held = sum(((r.reserved_usd-r.released_usd) for r in runs if r.payer == 'credits' and not r.settled), ZERO)
         charged = sum((r.charged_usd for r in runs if r.payer == 'credits' and r.settled), ZERO)
         self.stdout.write(f'Unapproved quote allowances (NOT held, may be expired): US${proposed:.4f}')
         self.stdout.write(f'Outstanding holds according to job records: US${held:.4f}')
@@ -61,15 +61,23 @@ class Command(BaseCommand):
         for run in runs:
             key = str(run.pk)
             rows = ledger.get(key, [])
-            reservations = [r['amount_usd'] for r in rows if r['metadata'].get('kind') == 'reservation']
-            refunds = [r['amount_usd'] for r in rows if r['metadata'].get('kind') == 'refund']
+            reservations = [r['amount_usd'] for r in rows if r['metadata'].get('kind') in {'reservation','topup'}]
+            refunds = [r['amount_usd'] for r in rows if r['metadata'].get('kind') in {'refund','partial_refund'}]
             expected_debit = -run.reserved_usd if run.payer == 'credits' else ZERO
-            expected_refund = run.reserved_usd - run.charged_usd if run.payer == 'credits' and run.settled else ZERO
+            expected_refund = (run.reserved_usd - run.charged_usd if run.settled else run.released_usd) if run.payer == 'credits' else ZERO
             issues = []
-            if sum(reservations, ZERO) != expected_debit or len(reservations) != int(expected_debit != 0):
+            if sum(reservations, ZERO) != expected_debit or sum(r['metadata'].get('kind')=='reservation' for r in rows) != int(expected_debit != 0) or any(v>=0 for v in reservations):
                 issues.append('reservation ledger differs from job record')
-            if sum(refunds, ZERO) != expected_refund or len(refunds) != int(expected_refund != 0):
+            if sum(refunds, ZERO) != expected_refund or sum(r['metadata'].get('kind')=='refund' for r in rows)>1 or any(v<=0 for v in refunds):
                 issues.append('refund ledger differs from job record')
+            partials=[r['metadata'].get('item') for r in rows if r['metadata'].get('kind')=='partial_refund']
+            if len(partials)!=len(set(partials)):
+                issues.append('duplicate per-item refund')
+            if run.options.get('budget_version') == 1 and sum(
+                    (r['amount_usd'] for r in rows if r['metadata'].get('kind')=='partial_refund'), ZERO) != run.released_usd:
+                issues.append('incremental refunds differ from released credit')
+            if run.released_usd < 0 or run.released_usd > run.reserved_usd:
+                issues.append('released credit outside reservation')
             if len(rows) != len(reservations) + len(refunds):
                 issues.append('unrecognised batch ledger rows')
             if run.payer == 'credits' and (run.charged_usd < 0 or run.charged_usd > run.reserved_usd):
@@ -78,9 +86,9 @@ class Command(BaseCommand):
                 issues.append('unsettled hold outside running job: inspect remaining work')
             if run.reserved_usd or rows or issues:
                 self.stdout.write(f'\nRun {key}; {run.stage}; {run.status}; settled={run.settled}; created={run.created_at.isoformat()}')
-                self.stdout.write(f'  estimate={run.estimated_usd}; original reservation={run.reserved_usd}; '
+                self.stdout.write(f'  estimate={run.estimated_usd}; total reservations={run.reserved_usd}; '
                     f'ledger refund={sum(refunds, ZERO):.4f}; final charge={run.charged_usd}; '
-                    f'held={ZERO if run.settled else run.reserved_usd:.4f}')
+                    f'held={ZERO if run.settled else run.reserved_usd-run.released_usd:.4f}')
                 self.stdout.write(f'  recorded usage estimate={known_cost[key]:.6f}; uncertain items={uncertain[key]}')
                 self.stdout.write(f'  items={dict(sorted(items[key].items()))}; audio={dict(sorted(clips[key].items()))}')
                 for issue in issues:

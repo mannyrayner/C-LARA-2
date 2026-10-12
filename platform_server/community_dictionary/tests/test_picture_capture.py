@@ -43,6 +43,11 @@ def speech(*args,report=None,**kwargs):
     PASSWORD_HASHERS=['django.contrib.auth.hashers.MD5PasswordHasher'])
 class PictureCaptureTests(TestCase):
     def setUp(self):
+        from types import SimpleNamespace
+        checker = patch('community_dictionary.port_language.check', return_value=SimpleNamespace(
+            status='completed', output_text='{"verdict":"match"}',
+            usage=SimpleNamespace(input_tokens=100, output_tokens=10)))
+        checker.start(); self.addCleanup(checker.stop)
         temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup)
         config=override_settings(COMMUNITY_DICTIONARY_MEDIA_ROOT=Path(temp.name)/'private',MEDIA_ROOT=Path(temp.name)/'public')
         config.enable();self.addCleanup(config.disable)
