@@ -12,14 +12,21 @@ def described_picture_sources(dictionary):
     tags or another undescribed image. Withdrawal of the description naturally
     makes the source visible again, including captures made before this fix.
     """
-    descriptions = Contribution.objects.filter(shared_from_id=OuterRef('pk'),
-        kind='image', status='accepted', entry__dictionary=dictionary,
-        entry__entry_type='sentence', entry__archived=False,
-        entry__current_text__status='accepted').exclude(file_path='').exclude(entry__word='')
+    # Copies made by image-only copying, description and language porting can
+    # share an ancestor rather than a direct parent. Compare explicit provenance
+    # families; never merge merely because filenames or pixels happen to match.
+    image_rows = list(Contribution.objects.filter(entry__dictionary=dictionary,
+        entry__archived=False, kind='image').values('pk','shared_from_id','entry_id',
+        'status','file_path','kind','provenance__role','provenance__source_style_id',
+        'entry__entry_type','entry__word','entry__current_text__status'))
+    roots = image_family_roots(image_rows)
+    described = {roots[row['pk']] for row in image_rows if roots[row['pk']] is not None and
+        row['status'] == 'accepted' and row['file_path'] and row['entry__entry_type'] == 'sentence' and
+        row['entry__word'] and row['entry__current_text__status'] == 'accepted'}
+    covered = [row['pk'] for row in image_rows if roots[row['pk']] in described and row['file_path']]
     images = Contribution.objects.filter(entry_id=OuterRef('pk'), kind='image',
         status__in=['accepted', 'pending'])
-    uncovered = images.annotate(described=Exists(descriptions)).filter(
-        Q(described=False) | Q(status='pending'))
+    uncovered = images.filter(~Q(pk__in=covered) | Q(status='pending'))
     other = Contribution.objects.filter(entry_id=OuterRef('pk'),
         status__in=['accepted', 'pending']).exclude(kind='image')
     tags = ImageWordLink.objects.filter(image__entry_id=OuterRef('pk'), sentence_text__isnull=True)
@@ -29,6 +36,39 @@ def described_picture_sources(dictionary):
         has_image=Exists(images), uncovered=Exists(uncovered), other=Exists(other),
         manual_tags=Exists(tags), open_requests=Exists(requests)).filter(
         has_image=True, uncovered=False, other=False, manual_tags=False, open_requests=False)
+
+
+def image_family_roots(rows):
+    """Follow copy provenance in batches; malformed/deep chains never hide cards."""
+    parents = {row['pk']:row['shared_from_id'] for row in rows}
+    records = {row['pk']:row for row in rows}
+    for _ in range(32):
+        missing = {pk for pk in parents.values() if pk and pk not in parents}
+        if not missing:
+            break
+        ancestors = list(Contribution.objects.filter(pk__in=missing).values(
+            'pk','shared_from_id','kind','provenance__role','provenance__source_style_id'))
+        fetched = {row['pk']:row['shared_from_id'] for row in ancestors}
+        records.update({row['pk']:row for row in ancestors})
+        parents.update(fetched)
+        # A missing record cannot be a trustworthy basis for grouping copies.
+        for pk in missing-fetched.keys():
+            parents[pk] = pk
+    roots = {}
+    for row in rows:
+        pk, seen = row['pk'], set()
+        while pk in parents and parents[pk] and pk not in seen:
+            parent = parents[pk]
+            if parent in records and (records[parent]['kind'] != 'image' or
+                    records[parent].get('provenance__role') == 'dictionary_style' or
+                    records[pk].get('provenance__source_style_id') == parent):
+                # shared_from can mean "generated using this style", not a
+                # copy. Capture copies can have new JPEG paths, so filenames
+                # cannot determine identity in either direction.
+                break
+            seen.add(pk); pk = parent
+        roots[row['pk']] = pk if pk in records and pk not in seen else None
+    return roots
 
 
 def outdated_tts(contribution, entry, dictionary):

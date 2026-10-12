@@ -1,5 +1,9 @@
 # Workflow suggestions for existing language versions
 
+AWS follow-up: Manny reports the update workflow producing the expected French
+content, but also duplicate image-only cards and slow navigation. See the
+[repair and measurements](community-guidance-repair.md) before further deployment.
+
 After adding and accepting sentences in a source dictionary, the owner can now
 see that an existing language version needs updating. Both dictionaries' cards
 and Browse pages link to the work. For example, the Swedish card can say

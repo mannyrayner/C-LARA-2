@@ -39,15 +39,20 @@ def basis_ids(group):
 
 def valid(group, source):
     from .porting import snapshot
+    from .workflow_data import data
+    loaded = data(source)
+    def entry_for(pk):
+        entry = loaded.entries.get(pk) if loaded else Entry.objects.filter(pk=pk, dictionary=source, archived=False).first()
+        return entry if entry and not entry.archived else None
     if group.get('invalidated'):
         return False
     for example in group['examples']:
-        entry = Entry.objects.filter(pk=example['entry'], dictionary=source, archived=False).first()
+        entry = entry_for(example['entry'])
         if not entry or context_record(entry) != example:
             return False
     basis = group.get('basis')
     if basis:
-        entry = Entry.objects.filter(pk=basis['entry'], dictionary=source, archived=False).first()
+        entry = entry_for(basis['entry'])
         if not entry or snapshot(entry, sentence_only=basis['snapshot'].get('sentence_only',False)) != basis['snapshot']:
             return False
     return True
@@ -81,7 +86,10 @@ def build_plan(entries, port):
 
 def group_for(item):
     pk = item.snapshot['fields'].get('category')
-    label = Contribution.objects.filter(pk=pk).values_list('category', flat=True).first() or ''
+    from .workflow_data import data
+    loaded = data(item.run.port.source)
+    label = (loaded.parts[pk].category if pk in loaded.parts else '') if loaded else (
+        Contribution.objects.filter(pk=pk).values_list('category', flat=True).first() or '')
     return key(label), item.run.category_plan.get(key(label)), label
 
 

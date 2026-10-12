@@ -27,6 +27,14 @@ def authority(port):
 
 def sentence_snapshot(entry):
     """Audio and generated links do not change the accepted linguistic input."""
+    from .workflow_data import data, memo
+    loaded = data(entry.dictionary)
+    if loaded:
+        entry = loaded.entry(entry)
+    return memo(('vocabulary-snapshot', entry.pk), lambda: _sentence_snapshot(entry, loaded))
+
+
+def _sentence_snapshot(entry, loaded=None):
     fields = {}
     parts = []
     for field,pointer in [('word','current_text'),('meaning','current_meaning')]:
@@ -34,8 +42,12 @@ def sentence_snapshot(entry):
         if part and part.entry_id == entry.pk and part.status == 'accepted':
             fields[field] = part.pk
             parts.append(part)
-    images = entry.contributions.filter(kind='image',status='accepted').exclude(file_path='').order_by('pk')
-    image = images.filter(pk=entry.selected_image_id).first() or images.first()
+    if loaded:
+        images = loaded.media(entry, 'image')
+        image = next((p for p in images if p.pk == entry.selected_image_id), images[0] if images else None)
+    else:
+        images = entry.contributions.filter(kind='image',status='accepted').exclude(file_path='').order_by('pk')
+        image = images.filter(pk=entry.selected_image_id).first() or images.first()
     if image:
         parts.append(image)
     data = {'fields':fields,'image':image.pk if image else None,
@@ -45,15 +57,21 @@ def sentence_snapshot(entry):
 
 
 def current_state(entry, state=None):
-    state = state or VocabularyState.objects.filter(sentence=entry).first()
+    from .workflow_data import data
+    loaded = data(entry.dictionary)
+    if loaded:
+        entry = loaded.entry(entry)
+    state = state or (loaded.states.get(entry.pk) if loaded else VocabularyState.objects.filter(sentence=entry).first())
     if not state or state.recipe != VERSION or state.snapshot != sentence_snapshot(entry):
         return False
     wanted = {(w['entry'],w['text']) for w in state.words}
-    actual = set(SentenceWord.objects.filter(sentence_text=entry.current_text,
+    actual = loaded.word_pairs[entry.current_text_id] if loaded else set(SentenceWord.objects.filter(sentence_text=entry.current_text,
         word_text__status='accepted',word_entry__archived=False,
         word_entry__current_text_id=F('word_text_id')).values_list('word_entry_id','word_text_id'))
     if actual != wanted:
         return False
+    if loaded:
+        return all(w['entry'] in loaded.entries and loaded.entries[w['entry']].current_meaning_id == w['meaning'] for w in state.words)
     return all(Entry.objects.filter(pk=w['entry'],current_meaning_id=w['meaning']).exists() for w in state.words)
 
 
@@ -62,12 +80,14 @@ def current_item(item):
     authority(port)
     if item.invalidated or item.run.status == 'cancelled':
         raise Conflict('This vocabulary result is no longer available.')
-    entry = Entry.objects.select_related('dictionary','current_text','current_meaning').get(pk=item.source_entry_id)
-    if (entry.dictionary_id != port.target_id or entry.entry_type != 'sentence' or entry.archived or
+    from .workflow_data import data
+    loaded = data(port.target)
+    entry = loaded.entries.get(item.source_entry_id) if loaded else Entry.objects.select_related('dictionary','current_text','current_meaning').get(pk=item.source_entry_id)
+    if (not entry or entry.dictionary_id != port.target_id or entry.entry_type != 'sentence' or entry.archived or
             sentence_snapshot(entry) != item.snapshot['sentence']):
         raise Conflict('The accepted sentence, explanation or picture changed. Estimate vocabulary again.')
     ids = [ref[k] for ref in item.snapshot.get('context',[]) for k in ['text','meaning'] if ref[k]]
-    parts = {p.pk:p for p in Contribution.objects.filter(pk__in=ids).select_related('entry')}
+    parts = loaded.parts if loaded else {p.pk:p for p in Contribution.objects.filter(pk__in=ids).select_related('entry')}
     for pk in ids:
         part = parts.get(pk)
         if (not part or part.status != 'accepted' or part.entry.dictionary_id != port.target_id or part.entry.archived or
@@ -140,6 +160,19 @@ def quote(user, port, token):
 
 def candidates(port):
     """Accepted sentences in this workflow whose vocabulary is not current."""
+    from .workflow_data import memo
+    return memo(('vocabulary-candidates', port.pk, port.target_id), lambda: _candidates(port))
+
+
+def _candidates(port):
+    from .workflow_data import data
+    loaded = data(port.target)
+    if loaded:
+        ids = set(PortItem.objects.filter(run__port=port, status='saved').exclude(saved_entry=None).values_list('saved_entry_id',flat=True)) if port.is_description_batch else None
+        entries = [e for e in loaded.entries.values() if e.entry_type == 'sentence' and not e.archived and
+            e.word and e.current_text and e.current_text.status == 'accepted' and (ids is None or e.pk in ids)]
+        result = [e for e in entries if not current_state(e)]
+        return result, len(entries)-len(result)
     entries = port.target.entries.filter(entry_type='sentence', archived=False,
         current_text__status='accepted').exclude(word='')
     if port.is_description_batch:

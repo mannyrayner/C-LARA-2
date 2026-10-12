@@ -72,10 +72,12 @@ def home(request):
         Entry.objects.filter(dictionary_id__in=browsable,archived=False,current_text__status='accepted').exclude(word='')
         .values('dictionary_id','entry_type').annotate(total=Count('pk'))}
     from .workflow import suggestion
-    for row in projects:
-        row['sentence_count'] = counts.get((row['dictionary'].pk,'sentence'),0)
-        row['word_count'] = counts.get((row['dictionary'].pk,'word'),0)
-        row['next_step'] = suggestion(request.user, row['dictionary']) if row['can_browse'] else None
+    from .workflow_data import reading
+    with reading():
+        for row in projects:
+            row['sentence_count'] = counts.get((row['dictionary'].pk,'sentence'),0)
+            row['word_count'] = counts.get((row['dictionary'].pk,'word'),0)
+            row['next_step'] = suggestion(request.user, row['dictionary']) if row['can_browse'] else None
     invitations = list(Membership.objects.filter(user=request.user, accepted=False,
         status='invited', dictionary__personal=False, dictionary__archived=False).select_related('dictionary'))
     from . import discovery

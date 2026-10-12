@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "workspace_revision": 67,
+  "workspace_revision": 68,
   "as_of": "2026-10-12",
-  "assessed_commit_sha": "577343213cb603ee846057313bae0c1b4ba92721",
+  "assessed_commit_sha": "dbeb9173d696a0f8574e95047dab61d3ef9a111e",
   "approved_proposal_id": null,
   "approved_run_id": null,
   "persistent_goal_ids": [
@@ -12,7 +12,7 @@
     "GOAL-4",
     "GOAL-5"
   ],
-  "current_focus_summary": "Manny reports successful AWS workflow-guidance deployment after a generated-static-directory permission repair. Adding six Swedish sentences exposed missing guidance for an existing French version. The authorized extension now offers related dictionary updates through explicit cost approval, sentence review and destination-derived vocabulary, preserving local corrections. All 609 local regression tests and a 320/390/1280px Chromium rehearsal pass; no schema or static change is required. Laptop/AWS acceptance of this extension is next, followed by the introductory report. No live AI calls, mail or production operations were performed.",
+  "current_focus_summary": "Manny reports the related-language extension deployed on AWS and produced the expected French sentences/audio/words, but duplicate image-only cards and tens-of-seconds navigation latency make this mixed acceptance. Local reproduction identifies a copy-lineage presentation gap and per-entry guidance queries. The repair uses request-local bulk reads (6,370 to 53 home queries for a 150-sentence pair) and conservative lineage filtering without deleting content. The 613-test full suite and a final 72-test focused run pass, with browser rehearsal; the resulting suite has 614 tests. Human AWS repair acceptance is next; no migration/static change or content regeneration is needed.",
   "observations": [
     {
       "id": "OBS-0001",
@@ -1108,6 +1108,29 @@
         "platform_server/community_dictionary/port_categories.py",
         "platform_server/community_dictionary/tests/test_port_guidance.py"
       ]
+    },
+    {
+      "id": "OBS-0100",
+      "summary": "Manny reports successful AWS installation of related-version guidance and the expected converted French content, but duplicate image-only cards and typically tens-of-seconds latency on simple navigation, especially the top level. This is mixed acceptance and material regression evidence. Main contains the deployed extension at dbeb917; no direct production inspection was performed.",
+      "observed_at": "2026-10-12",
+      "confidence": "high",
+      "evidence": [
+        "experiments/community_dictionary/guidance-repair-2026-10-12.md"
+      ]
+    },
+    {
+      "id": "OBS-0101",
+      "summary": "A local 150-sentence Swedish/French fixture reproduces about 6,370 home-route queries without bulk guidance reads, reduced to 53 by request-local bulk loading and memoization. Fresh requests re-read state and action checks remain fresh; 50 ready previews require 20 queries. A lineage fixture reproduces redundant image cards when copies share ancestors; presentation now follows copy provenance while distinguishing AI-style references and preserving independent contributions. The 613-test full suite passed in 150.333 seconds; after the style/capture guard, 72 relevant tests passed in 21.795 seconds. Chromium phone/laptop viewports pass. No schema/static changes, provider calls or production operation. Actual AWS latency and duplicate-row acceptance remain pending.",
+      "observed_at": "2026-10-12",
+      "confidence": "high",
+      "evidence": [
+        "experiments/community_dictionary/guidance-repair-2026-10-12.md",
+        "docs/howto/community-guidance-repair.md",
+        "docs/howto/community-guidance-repair-install.md",
+        "platform_server/community_dictionary/workflow_data.py",
+        "platform_server/community_dictionary/lexicon.py",
+        "platform_server/community_dictionary/tests/test_guidance_scaling.py"
+      ]
     }
   ],
   "assessments": [
@@ -1284,7 +1307,7 @@
     },
     {
       "id": "ASM-0011",
-      "summary": "Owner workflow guidance now has positive AWS feedback. The new related-version extension addresses a concrete gap from real Swedish/French use, while preserving cost approval and human corrections. Local regression/browser evidence supports laptop then AWS testing without schema/static deployment work. The static-permission incident is resolved by human report and recorded in the earlier runbook. This is supervised usability progress, not evidence of autonomous operations or measured learning effectiveness. The short report should distinguish informal trial/time claims from controlled outcomes; publication and contributor identity remain opt-in.",
+      "summary": "The related-language workflow is useful in AWS use, but its navigation latency and duplicate cards need repair before wider user trials or publication screenshots. Small fixture tests missed scale and multi-step copy history; the repaired suite adds cold-request query budgets and realistic media/provenance cases. Local evidence supports a code-only repair trial, not a claim of production recovery. Preserve all contributions and avoid paying to regenerate accepted French content. After real AWS acceptance, return to the short illustrated report and user trials; informal quality/time estimates must remain attributed rather than presented as controlled measurements.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-2",
@@ -1369,16 +1392,18 @@
         "OBS-0096",
         "OBS-0097",
         "OBS-0098",
-        "OBS-0099"
+        "OBS-0099",
+        "OBS-0100",
+        "OBS-0101"
       ],
-      "urgency": "test_linked_language_guidance_then_introductory_report",
+      "urgency": "repair_live_navigation_and_verify_existing_french_dictionary",
       "risk": "medium",
-      "progress": "owner_guidance_aws_accepted_related_language_updates_locally_verified",
+      "progress": "related_guidance_aws_regressions_reproduced_and_repair_prepared",
       "confidence": "medium"
     },
     {
       "id": "ASM-0012",
-      "summary": "Reducing Manny’s operational workload is a concrete autonomy objective aligned with the existing project goals. The current read-only Assistant can explain repository evidence but does not execute maintenance. Progress should be evaluated through end-to-end requests/releases, required human touches/minutes, service reliability and total human burden, with authority and recovery enforced outside the model. A staged supervised-to-delegated experiment is more informative than assuming a future model will solve operations. Non-technical requests for the situated-learning experience provide a concrete setting in which to test this operational autonomy; greater AI-community interest or comparative novelty is not established. Manny and Cathy explicitly elevate sustained low-intervention operation over runtime elaboration; securing minimal operating funds is an open design discussion. This coding patch does not itself demonstrate autonomous operation or lower long-term human burden. The new one-request practice increment is a bounded implementation data point; its application, laptop acceptance and AWS deployment are now reported, while subsequent maintenance burden remains unmeasured. Language porting adds another end-to-end implementation request, not evidence of sustained autonomous operation. The first laptop porting trial produced actionable defects followed by an agent-prepared repair; this is iterative maintenance evidence, not evidence of unattended long-run reliability. The TTS investigation demonstrates a limit of provider capability and the importance of bounded, human-reviewed scope; the new patch reduces repetitive handling but does not establish autonomous linguistic quality control. The AWS trial and review repair are further supervised maintenance evidence. The missed-stop recovery illustrates remaining deployment burden; the runbook is made more robust with restart, but no reduced human-hours outcome is yet measured. The accepted review release and German AWS trial add another completed supervised iteration. Manny estimates about five hours of AI development over about one week, but that is not an audited time/cost or model comparison and excludes human effort. The French draft presents reduced technical mediation as a future objective, preserving community decision authority. The requested picture-capture patch is another supervised development increment with tests and a runbook, not evidence of unattended operational maintenance; installation, live testing and feedback still require Manny. The first capture trial now provides positive usability feedback and a real MWE defect followed by a bounded correction; expert human testing still supplies essential linguistic evidence. The vocabulary follow-up is now accepted on the laptop, with release delegated through a checked runbook; Manny still performs check-in, deployment and live testing. The first AWS picture-description trial now supplies negative evidence as well as successful output; bounded repair is automated locally, but live listening, deployment and the original failure log still depend on Manny. Further bilingual/multimodal AWS acceptance is positive; one recovery defect illustrates the ongoing need for human use reports and live verification despite automated maintenance progress. On 8 October human acceptance closes the audio-recovery blocker and a concrete quota request is implemented with cost confirmation. This supports iterative maintenance progress, not unattended operational autonomy.",
+      "summary": "Reducing Manny’s operational workload remains a concrete objective, measured through completed requests/releases, human touches/minutes, reliability and total human burden. The staged supervised-to-delegated experiment is still proposed; the repository Assistant is read-only and no persistent maintenance runner has been established. Successive AI-authored patches and human-reported deployments demonstrate supervised iteration, not unattended operations. The live guidance latency and duplicate-card regressions show that passing small-fixture tests did not remove the need for human acceptance at realistic scale. The repair adds measured query budgets and provenance cases, but Manny still deploys and supplies production evidence. The report should include these maintenance iterations and limits, and treat Manny’s development-time estimates as informal rather than an audited model comparison. Community data/publication authority remains with people.",
       "goal_ids": [
         "GOAL-1",
         "GOAL-2",
@@ -1404,7 +1429,9 @@
         "OBS-0078",
         "OBS-0079",
         "OBS-0080",
-        "OBS-0081"
+        "OBS-0081",
+        "OBS-0100",
+        "OBS-0101"
       ],
       "urgency": "start_baseline_with_next_operational_work",
       "risk": "medium",
@@ -1471,7 +1498,7 @@
     },
     {
       "id": "UNC-0008",
-      "summary": "The related-language guidance extension has local SQLite/Chromium evidence but awaits human laptop/AWS/PostgreSQL and physical-phone acceptance; no large-dictionary load test was performed. Only existing ports controlled by the current owner at both ends are guided, one primary action at a time. Prior AWS feedback specifically supports owner guidance, not a full new public-practice device matrix. General failed-job recovery, Cathys independent password-reset trial, linguistic/MWE quality, community reception, learning outcomes and sustained low-intervention operations remain open. Public content can be copied despite revocation. The introductory report, trial-credit terms and current dissemination-policy checks remain future work.",
+      "summary": "The prepared guidance repair has scaled SQLite query measurements, regression tests and Chromium evidence, but no production PostgreSQL latency measurement or inspection of the exact duplicate rows. The local reproduced causes are credible; persistent AWS failures need entry URLs or operational diagnostics. Different deployment load/network behavior may remain. Physical-phone breadth, Cathys independent recovery trial, linguistic/MWE quality, community reception, learning outcomes and sustained low-intervention operations remain open. Public content can be copied despite revocation. The introductory report, trial-credit terms and dissemination-policy checks remain future work.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1584,7 +1611,7 @@
     },
     {
       "id": "ACT-0010",
-      "summary": "Apply the related-language guidance patch on the laptop, run the checks and test source/destination notices, cost approval, translated sentence review and destination-word generation, protected corrections and opt-out. After acceptance, check in/push and use the brief AWS code-update runbook; this patch needs no migration or collectstatic. Test the six Swedish additions against the existing French version and record phone/provider outcomes. Then draft the short illustrated report from verified functionality and attributed trial evidence, settling trial-credit scope/consent before publication.",
+      "summary": "Install and test the guidance repair on the laptop, then check in/push and deploy with the brief code-only AWS runbook. Compare repeated home/dictionary loads with guidance enabled, and inspect the French Accepted picture view while retaining originals in All entries. Do not regenerate paid content or delete records. If a duplicate persists, obtain its URL and the corresponding sentence URL. Record real latency and presentation results, then resume the illustrated introductory paper from verified behavior and attributed trial evidence.",
       "assessment_ids": [
         "ASM-0011"
       ]
@@ -1685,17 +1712,18 @@
     "status": "autonomous_project_manager_update",
     "authorized_by": "Assistant following AGENTS.md",
     "authorized_at": "2026-10-12",
-    "authorization_basis": "Manny reports successful AWS owner-guidance deployment and explicitly authorizes related-language update suggestions. AGENTS.md requires reflecting the material acceptance, deployment incident and local implementation evidence. Human-owned intentions remain unchanged.",
-    "comments": "Revision 67 preserves the deployment/error/acceptance messages and implementation request. It distinguishes the accepted prior deployment from the locally verified extension. No production data, publication settings, credits or services were changed by the agent."
+    "authorization_basis": "Manny reports AWS regressions in the just-delivered workflow extension and asks for diagnosis. This maintenance task and AGENTS.md require reflecting mixed acceptance, scaled reproduction and the prepared repair; human-owned intentions remain unchanged.",
+    "comments": "Revision 68 records the new negative production evidence, updates usability and autonomy assessments, and distinguishes local repairs from unverified AWS recovery. No production data, credits or services were changed by the agent."
   },
   "changes_from_previous_revision": {
-    "summary": "Recorded prior guidance AWS acceptance and static permission repair; prepared related-language update suggestions, stable category evidence, regression/browser checks and a code-only deployment runbook.",
+    "summary": "Recorded mixed AWS acceptance and live regressions; reproduced and repaired per-entry guidance queries and redundant ancestor-copy cards; added scaled query tests, final regression evidence and a code-only runbook.",
     "added_item_ids": [
-      "OBS-0098",
-      "OBS-0099"
+      "OBS-0100",
+      "OBS-0101"
     ],
     "revised_item_ids": [
       "ASM-0011",
+      "ASM-0012",
       "UNC-0008",
       "ACT-0010"
     ],
@@ -1797,6 +1825,8 @@
       "OBS-0095",
       "OBS-0096",
       "OBS-0097",
+      "OBS-0098",
+      "OBS-0099",
       "ASM-0001",
       "ASM-0002",
       "ASM-0003",
@@ -1807,7 +1837,6 @@
       "ASM-0008",
       "ASM-0009",
       "ASM-0010",
-      "ASM-0012",
       "UNC-0001",
       "UNC-0002",
       "UNC-0003",

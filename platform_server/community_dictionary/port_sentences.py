@@ -11,6 +11,10 @@ from .capture import sentence_links
 def references(entry):
     if entry.entry_type != 'sentence':
         return []
+    from .workflow_data import data
+    loaded = data(entry.dictionary)
+    if loaded:
+        return loaded.references[entry.pk]
     result = []
     for link in sentence_links(entry.dictionary).filter(sentence_text=entry.current_text).select_related(
             'word_entry__current_meaning').order_by('word_entry_id'):
@@ -34,6 +38,14 @@ def inputs(snapshot, parts):
 def vocabulary_only(entry):
     # A captured vocabulary entry borrows the sentence's picture. Copying that
     # picture onto every word would produce duplicate cards in Pictures view.
+    from .workflow_data import data
+    loaded = data(entry.dictionary)
+    if loaded:
+        entry = loaded.entry(entry)
+        return (entry.entry_type == 'word' and
+            not any(p.kind == 'image' and p.status == 'accepted' for p in loaded.by_entry[entry.pk]) and
+            (entry.current_text and (entry.current_text.provenance.get('origin') == 'picture-description' or
+             entry.current_text.provenance.get('sentence_vocabulary')) or entry.pk in loaded.word_link_entries))
     return (entry.entry_type == 'word' and
             not entry.contributions.filter(kind='image', status='accepted').exists() and
             (entry.current_text and (entry.current_text.provenance.get('origin') == 'picture-description' or

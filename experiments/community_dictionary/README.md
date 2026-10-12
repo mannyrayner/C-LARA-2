@@ -1,6 +1,6 @@
 # Community dictionary development experiment
 
-Current increment: [linked language-version workflow suggestions](port-guidance-2026-10-12.md). Manny reports successful AWS guidance deployment after a generated-static-directory permission repair, and requests reminders for new Swedish sentences awaiting French conversion. The extension reuses explicit cost approval and the sentence-then-vocabulary pipeline; local tests/browser checks precede human acceptance. No schema or static changes.
+Current increment: [AWS guidance latency and duplicate-card repair](guidance-repair-2026-10-12.md). Manny reports mixed AWS acceptance: French results appear, but redundant image cards and slow navigation need repair. Scaled local reproduction identifies per-entry database queries and an incomplete copy-lineage display rule; the prepared code-only fix awaits real AWS confirmation.
 
 
 Previous increment: [public browsing and reported email-recovery success](public-browsing-2026-10-11.md).

@@ -50,6 +50,12 @@ def same_language(a, b):
 
 
 def authority(port):
+    from .workflow_data import memo
+    return memo(('authority', port.pk, port.source_id, port.destination_id, port.user_id),
+                lambda: _authority(port))
+
+
+def _authority(port):
     if not port.user.is_active:
         raise Http404
     require_owner(port.user, port.source)
@@ -65,6 +71,15 @@ def authority(port):
 
 
 def snapshot(entry, *, sentence_only=False):
+    from .workflow_data import data, memo
+    loaded = data(entry.dictionary)
+    if loaded:
+        entry = loaded.entry(entry)
+    return memo(('port-snapshot', entry.pk, sentence_only),
+                lambda: _snapshot(entry, sentence_only=sentence_only, loaded=loaded))
+
+
+def _snapshot(entry, *, sentence_only=False, loaded=None):
     fields = {}
     parts = []
     for field, (pointer, _) in FIELDS.items():
@@ -72,12 +87,15 @@ def snapshot(entry, *, sentence_only=False):
         if part and part.entry_id == entry.pk and part.status == 'accepted' and part.text_field == field:
             fields[field] = part.pk
             parts.append(part)
-    pictures = list(pictures_for_word(entry, entry.dictionary).filter(entry__archived=False).order_by('pk'))
-    audio = [c for c in entry.contributions.filter(kind='audio', status='accepted').exclude(file_path='').order_by('pk')
+    pictures = sorted(loaded.pictures[entry.pk].values(), key=lambda p:p.pk) if loaded else list(
+        pictures_for_word(entry, entry.dictionary).filter(entry__archived=False).order_by('pk'))
+    audio = [c for c in (loaded.media(entry, 'audio') if loaded else
+             entry.contributions.filter(kind='audio', status='accepted').exclude(file_path='').order_by('pk'))
              if not outdated_tts(c, entry, entry.dictionary)]
     parts += pictures + audio
     refs = [] if sentence_only else port_sentences.references(entry)
-    parts += list(Contribution.objects.filter(pk__in=port_sentences.reference_ids(refs)).order_by('pk'))
+    ref_ids = port_sentences.reference_ids(refs)
+    parts += [loaded.parts[pk] for pk in ref_ids] if loaded else list(Contribution.objects.filter(pk__in=ref_ids).order_by('pk'))
     ids = sorted({p.pk for p in parts})
     selected = entry.selected_image_id if entry.selected_image_id in [p.pk for p in pictures] else (pictures[0].pk if pictures else None)
     signature = {'fields':fields, 'parts':[(p.pk,content_digest(p)) for p in parts],
@@ -119,11 +137,14 @@ def current_item(item):
         raise Conflict('This preview was cancelled or its source was withdrawn.')
     if (port.source.language, port.source.explanation_language) != (run.source_language,run.source_explanation_language):
         raise Conflict('The source languages changed. Prepare a fresh estimate.')
-    entry = Entry.objects.select_related('dictionary','current_text','current_meaning','current_category').get(pk=item.source_entry_id)
-    if entry.archived or snapshot(entry, sentence_only=item.snapshot.get('sentence_only',False)) != item.snapshot:
+    from .workflow_data import data
+    loaded = data(port.source)
+    entry = loaded.entries.get(item.source_entry_id) if loaded else Entry.objects.select_related(
+        'dictionary','current_text','current_meaning','current_category').get(pk=item.source_entry_id)
+    if not entry or entry.archived or snapshot(entry, sentence_only=item.snapshot.get('sentence_only',False)) != item.snapshot:
         raise Conflict('The source entry changed. Prepare a fresh estimate for this entry.')
     port_categories.check(item)
-    link = PortEntryLink.objects.filter(port=port, source=entry).select_related('destination__dictionary').first()
+    link = links_for(port).get(entry.pk) if loaded else PortEntryLink.objects.filter(port=port, source=entry).select_related('destination__dictionary').first()
     actual = destination_snapshot(link.destination,run)['digest'] if link else ''
     if actual != item.destination_digest:
         raise Conflict('The destination was edited. Your changes have been kept.')
@@ -201,9 +222,13 @@ def plan(port, prices=None, *, stage='sentences', sentence_updates=False):
     run = PortRun(port=port, stage=stage, prices={**{k:str(v) for k,v in (prices or {}).items()}, 'speech_recipe':tts.INSTRUCTIONS_VERSION})
     items = []
     new_count = changed_count = 0
-    links = {l.source_id:l for l in port.entry_links.select_related('destination__dictionary')}
-    entries = list(source.entries.filter(archived=False, entry_type__in=['sentence', 'word']).exclude(word='').select_related(
-        'dictionary','current_text','current_meaning','current_category').order_by('pk'))
+    links = links_for(port)
+    from .workflow_data import data
+    loaded = data(source)
+    entries = sorted((e for e in loaded.entries.values() if not e.archived and
+        e.entry_type in ['sentence','word'] and e.word), key=lambda e:e.pk) if loaded else list(
+        source.entries.filter(archived=False, entry_type__in=['sentence', 'word']).exclude(word='').select_related(
+            'dictionary','current_text','current_meaning','current_category').order_by('pk'))
     if any(entry.entry_type == 'sentence' for entry in entries):
         run.prices['sentence_speech_recipe'] = port_ai.speech_version({'entry_type':'sentence'})
     if stage == 'sentences':
@@ -227,8 +252,8 @@ def plan(port, prices=None, *, stage='sentences', sentence_updates=False):
             run.skipped += 1
             continue
         context_ids = port_categories.context_ids(group) if group else []
-        extra_bytes = sum(len(getattr(c,c.text_field).encode('utf-8')) for c in
-            Contribution.objects.filter(pk__in=context_ids))
+        context_parts = [loaded.parts[pk] for pk in context_ids] if loaded else Contribution.objects.filter(pk__in=context_ids)
+        extra_bytes = sum(len(getattr(c,c.text_field).encode('utf-8')) for c in context_parts)
         extra_bytes += len(json.dumps(port_sentences.inputs(snap, {c.pk: c for c in
             Contribution.objects.filter(pk__in=snap['ids'])}), ensure_ascii=False).encode()) if snap.get('sentence_words') else 0
         estimate, allowance = estimate_entry(entry, prices, not same_language(source.language,port.language), extra_bytes) if prices is not None else (ZERO, ZERO)
@@ -239,6 +264,17 @@ def plan(port, prices=None, *, stage='sentences', sentence_updates=False):
         changed_count += link is not None
     return {'items':items, 'skipped':run.skipped, 'protected':run.protected,
         'category_plan':run.category_plan, 'prices':run.prices, 'new':new_count, 'changed':changed_count}
+
+
+def links_for(port):
+    from .workflow_data import memo
+    def load():
+        links = {}
+        for link in port.entry_links.select_related('destination__dictionary'):
+            link.port = port
+            links[link.source_id] = link
+        return links
+    return memo(('port-links', port.pk), load)
 
 
 def payer_now(user):
@@ -578,7 +614,16 @@ def refreshed_digest(link):
 def legacy_sentence_unchanged(link, snap):
     if snap.get('entry_type') != 'sentence':
         return False
-    previous = PortItem.objects.filter(run__port=link.port,source_entry_id=link.source_id,status='saved').order_by('-pk').first()
+    from .workflow_data import data, memo
+    if data(link.port.source):
+        def latest_items():
+            result = {}
+            for item in PortItem.objects.filter(run__port=link.port,status='saved').select_related('run').order_by('-pk'):
+                result.setdefault(item.source_entry_id, item)
+            return result
+        previous = memo(('saved-port-items', link.port_id), latest_items).get(link.source_id)
+    else:
+        previous = PortItem.objects.filter(run__port=link.port,source_entry_id=link.source_id,status='saved').select_related('run').order_by('-pk').first()
     if not previous or previous.run.stage != 'legacy':
         return False
     return all(previous.snapshot.get(key) == snap.get(key) for key in ['fields','images','audio','image']) and (

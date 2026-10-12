@@ -24,7 +24,7 @@ with patch('community_dictionary.port_tasks.send'), patch('community_dictionary.
 VocabularyState.objects.create(sentence=translated,snapshot=vocab.sentence_snapshot(translated),recipe=vocab.VERSION,words=[],accepted_by=user)
 for n in range(6):
     extra=entry(f'En ny växt står på bordet {n+1}.','A new plant stands on the table.','sentence')
-    add_contributions(extra,user,{'prepared_image':(out.getvalue(),'image/jpeg','.jpg')},[],publish=True)
+    add_contributions(extra,user,{'prepared_photo':(out.getvalue(),'image/jpeg','.jpg')},[],publish=True)
 '''
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 # Community dictionary: setup and testing
 
-Current increment: [workflow suggestions for existing language versions](community-port-guidance.md); [installation runbook](community-port-guidance-install.md). Both dictionary cards can offer incremental sentence updates, followed by destination-word review, with explicit cost approval and protection for local corrections. No migration or collectstatic is needed. The previous public-practice/owner-guidance deployment now has positive AWS feedback; this extension has local verification and awaits human acceptance.
+Current increment: [repair slow guidance and redundant picture cards](community-guidance-repair.md); [installation runbook](community-guidance-repair-install.md). Manny reports related-language guidance working on AWS, but with duplicate image-only cards and long navigation delays. The prepared repair uses request-local bulk reads and provenance-aware display filtering. A 150-sentence-pair home fixture drops from 6,370 to 53 queries. No migration or collectstatic is needed; AWS repair acceptance remains pending.
 
 
 Previous increment: [public browsing without an account](community-public-browsing.md) is

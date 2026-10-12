@@ -61,6 +61,21 @@ def picture_root(picture, parents):
 
 def described_roots(dictionary):
     """Accepted or proposed sentences already satisfy the picture's workflow."""
+    from .workflow_data import memo
+    return memo(('described-roots', dictionary.pk), lambda: _described_roots(dictionary))
+
+
+def _described_roots(dictionary):
+    from .workflow_data import data
+    loaded = data(dictionary)
+    if loaded:
+        images = [p for p in loaded.parts.values() if p.kind == 'image' and
+            p.status in ['accepted','pending'] and not p.entry.archived]
+        parents = {p.pk:p.shared_from_id for p in loaded.parts.values() if p.kind == 'image'}
+        sentence_ids = {p.entry_id for p in loaded.parts.values() if p.entry.entry_type == 'sentence' and
+            not p.entry.archived and p.kind == 'text' and p.text_field == 'word' and p.word and
+            (p.status == 'pending' or p.status == 'accepted' and p.pk == p.entry.current_text_id)}
+        return images, parents, {picture_root(p,parents) for p in images if p.entry_id in sentence_ids}
     images = list(Contribution.objects.filter(entry__dictionary=dictionary,kind='image',
         status__in=['accepted','pending'],entry__archived=False))
     parents = dict(Contribution.objects.filter(entry__dictionary=dictionary,kind='image').values_list('pk','shared_from_id'))
@@ -73,6 +88,15 @@ def described_roots(dictionary):
 def hints(picture):
     entry = picture.entry
     ids = [getattr(entry,pointer+'_id') for pointer,_ in FIELDS.values()]
+    from .workflow_data import data
+    loaded = data(entry.dictionary)
+    if loaded:
+        parts = [p for p in loaded.by_entry[entry.pk] if p.pk in ids and p.status == 'accepted']
+        for field in FIELDS:
+            pending = [p for p in loaded.by_entry[entry.pk] if p.kind == 'text' and p.text_field == field and p.status == 'pending']
+            if pending:
+                parts.append(max(pending,key=lambda p:p.pk))
+        return sorted(parts,key=lambda p:p.pk)
     # Current accepted wording plus the latest pending proposal for each field.
     parts = list(entry.contributions.filter(pk__in=ids,status='accepted'))
     for field in FIELDS:
@@ -95,9 +119,11 @@ def current_item(item):
     porting.authority(item.run.port)
     if item.invalidated or item.run.status == 'cancelled':
         raise Conflict('This description was cancelled or its source was withdrawn.')
-    picture = Contribution.objects.select_related('entry__dictionary','entry__current_text',
-        'entry__current_meaning','entry__current_category').get(pk=item.snapshot['image'])
-    if (picture.entry.dictionary_id != item.run.port.source_id or picture.entry.archived or
+    from .workflow_data import data
+    loaded = data(item.run.port.source)
+    picture = loaded.parts.get(item.snapshot['image']) if loaded else Contribution.objects.select_related(
+        'entry__dictionary','entry__current_text','entry__current_meaning','entry__current_category').get(pk=item.snapshot['image'])
+    if (not picture or picture.entry.dictionary_id != item.run.port.source_id or picture.entry.archived or
         picture.entry_id != item.source_entry_id or picture.status not in ['accepted','pending'] or
         snapshot(picture) != item.snapshot):
         raise Conflict('The picture or its hints changed. Prepare another estimate.')

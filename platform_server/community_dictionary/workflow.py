@@ -15,6 +15,7 @@ from .models import LanguagePort, MembershipRequest, PortItem
 from .permissions import dictionaries_for
 from .services import Conflict
 from .voices import DEFAULT_VOICE
+from .workflow_data import reading
 
 SALT = 'community-workflow-approval-v1'
 MAX_AGE = 3600
@@ -37,6 +38,11 @@ def run_url(run):
 
 
 def suggestion(user, dictionary, *, details=False):
+    with reading():
+        return _suggestion(user, dictionary, details=details)
+
+
+def _suggestion(user, dictionary, *, details=False):
     if (not user.is_authenticated or dictionary.owner_id != user.pk or dictionary.hidden or
             not dictionary.show_workflow_suggestions or
             not dictionaries_for(user).filter(pk=dictionary.pk).exists()):
@@ -55,7 +61,9 @@ def suggestion(user, dictionary, *, details=False):
     # Ready previews can be reviewed while other items finish. A vocabulary run
     # remains 'running' while it waits for this human step; don't call that busy.
     for port in ports:
-        for run in port.runs.exclude(status__in=['estimate', 'cancelled']):
+        for run in port.runs.exclude(status__in=['estimate', 'cancelled']).filter(
+                items__status__in=['ready','unclear'], items__invalidated=False,
+                items__needs_attention=False).distinct():
             ready = sentence_count = 0
             for item in run.items.filter(status__in=['ready', 'unclear'], invalidated=False, needs_attention=False).select_related('source_entry'):
                 item.run = run

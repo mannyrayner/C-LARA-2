@@ -54,7 +54,7 @@ class PortGuidanceTests(TestCase):
     def new_sentence(self, word='En katt sover.', *, pending=False, category=''):
         entry = Entry.objects.create(dictionary=self.d, created_by=self.owner, entry_type='sentence')
         add_contributions(entry, self.owner, {'word':word, 'meaning':'A cat is sleeping.', 'category':category,
-            'prepared_image':prepare_upload(picture(), 'image')}, [], publish=not pending)
+            'prepared_photo':prepare_upload(picture(), 'image')}, [], publish=not pending)
         entry.refresh_from_db()
         return entry
 
