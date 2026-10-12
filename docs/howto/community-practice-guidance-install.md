@@ -191,6 +191,33 @@ clara_manage migrate --plan
 The migration plan should contain only `community_dictionary.0022_workflow_suggestions`.
 If it contains something unexpected, stop and inspect before proceeding.
 
+### Static-directory ownership (AWS follow-up, 12 October)
+
+`clara_manage` runs as `ubuntu:www-data`. Manny's deployment initially failed
+when collectstatic tried to replace `community_dictionary/practice.js`: the
+generated static root and its subdirectory were owned by `ssm-user:ssm-user`.
+He reported successful installation after the scoped repair below. Before
+collectstatic, inspect this deployment's generated directory:
+
+```bash
+CLARA_STATIC_ROOT=/srv/C-LARA-2/platform_server/staticfiles
+ls -ld "$CLARA_STATIC_ROOT" "$CLARA_STATIC_ROOT/community_dictionary"
+ls -l "$CLARA_STATIC_ROOT/community_dictionary/practice.js"
+```
+
+If it has the reported `ssm-user:ssm-user` ownership, align just this generated
+directory with the user that collects files:
+
+```bash
+sudo chown -R ubuntu:www-data "$CLARA_STATIC_ROOT" &&
+sudo find "$CLARA_STATIC_ROOT" -type d -exec chmod 755 {} + &&
+sudo find "$CLARA_STATIC_ROOT" -type f -exec chmod 644 {} +
+```
+
+Do not apply this recursively to the repository, private/public uploads or
+environment file. Unexpected paths or ownership should be investigated rather
+than generalized. The harmless duplicate-favicon warning is unrelated.
+
 ```bash
 clara_manage migrate community_dictionary 0022_workflow_suggestions &&
 clara_manage migrate --check &&

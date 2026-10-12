@@ -69,8 +69,12 @@ def build_plan(entries, port):
             if k in seen or k not in groups:
                 continue
             seen.add(k)
-            if (old.get('version') == VERSION and old.get('decision') and
-                    old['examples'] == groups[k]['examples'] and valid(old, port.source)):
+            # Appending examples to a small category should not invalidate its
+            # established decision or retranslate unchanged entries. Retain the
+            # actual evidence used; edits/removals still fail this comparison or
+            # valid(). Do not silently add dependencies to the old decision.
+            if (old.get('version') == VERSION and old.get('decision') and old['examples'] and
+                    old['examples'] == groups[k]['examples'][:len(old['examples'])] and valid(old, port.source)):
                 groups[k] = old
     return groups
 

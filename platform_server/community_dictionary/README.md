@@ -1,6 +1,6 @@
 # Community dictionary app
 
-Current increment: [public practice and owner workflow suggestions](../../docs/howto/community-practice-guidance.md); [installation runbook](../../docs/howto/community-practice-guidance-install.md). Migration 0022 adds a default-on owner guidance preference; AI and public access remain independently opt-in. Suggestions show costs before approval and dictionary cards link to the next step. The discovery/profile/About release has human-reported acceptance; this follow-up awaits laptop/AWS acceptance.
+Current increment: [workflow suggestions for existing language versions](../../docs/howto/community-port-guidance.md); [installation runbook](../../docs/howto/community-port-guidance-install.md). Both dictionary cards can offer incremental sentence updates, followed by destination-word review, with explicit cost approval and protection for local corrections. No migration or collectstatic is needed. The previous public-practice/owner-guidance deployment now has positive AWS feedback; this extension has local verification and awaits human acceptance.
 
 
 Previous increment: [optional public browsing](../../docs/howto/community-public-browsing.md)

@@ -144,14 +144,18 @@ def estimate_entry(entry, prices, audio, extra_bytes=0):
 
 
 @transaction.atomic
-def quote(user, source, data, token, port=None, *, stage='sentences'):
+def quote(user, source, data, token, port=None, *, stage='sentences', sentence_updates=False):
     locks()
     if port and port.is_description_batch:
         raise Conflict('Use Add missing sentences for this dictionary.')
+    if sentence_updates and (not port or not port.destination_id or stage != 'sentences'):
+        raise Conflict('Sentence updates require an existing language version.')
     if stage not in {'legacy','sentences'}:
         raise Conflict('Unknown conversion stage.')
     previous = PortRun.objects.filter(pk=token, port__user=user, port__source=source).first()
     if previous:
+        if bool(previous.options.get('sentence_updates')) != sentence_updates:
+            raise Conflict('The update scope changed. Request a fresh estimate.')
         if data and any(getattr(previous.port,k) != v for k,v in data.items()):
             raise Conflict('This estimate form changed. Reload before requesting a different version.')
         if port and previous.port_id != port.pk:
@@ -176,6 +180,27 @@ def quote(user, source, data, token, port=None, *, stage='sentences'):
         prices={**{k:str(v) for k,v in prices.items()}, 'speech_recipe':tts.INSTRUCTIONS_VERSION},
         payer='personal' if personal else ('credits' if credits_enabled() else 'server'),
         expires_at=timezone.now()+timedelta(hours=1))
+    planned = plan(port, prices, stage=stage, sentence_updates=sentence_updates)
+    run.prices, run.category_plan = planned['prices'], planned['category_plan']
+    run.skipped, run.protected = planned['skipped'], planned['protected']
+    if sentence_updates:
+        run.options = {'sentence_updates': True}
+    for values in planned['items']:
+        source_ids = values.pop('source_ids')
+        item = PortItem.objects.create(run=run, **values)
+        item.sources.set(source_ids)
+        run.estimated_usd += item.estimated_usd
+        run.allowance_usd += item.allowance_usd
+    run.save()
+    return run
+
+
+def plan(port, prices=None, *, stage='sentences', sentence_updates=False):
+    """Read-only incremental selection and estimate shared by guidance and quotes."""
+    source = port.source
+    run = PortRun(port=port, stage=stage, prices={**{k:str(v) for k,v in (prices or {}).items()}, 'speech_recipe':tts.INSTRUCTIONS_VERSION})
+    items = []
+    new_count = changed_count = 0
     links = {l.source_id:l for l in port.entry_links.select_related('destination__dictionary')}
     entries = list(source.entries.filter(archived=False, entry_type__in=['sentence', 'word']).exclude(word='').select_related(
         'dictionary','current_text','current_meaning','current_category').order_by('pk'))
@@ -185,6 +210,8 @@ def quote(user, source, data, token, port=None, *, stage='sentences'):
         entries = [entry for entry in entries if not port_sentences.vocabulary_only(entry)]
     run.category_plan = port_categories.build_plan(entries, port)
     for entry in entries:
+        if sentence_updates and entry.entry_type != 'sentence':
+            continue
         snap = snapshot(entry, sentence_only=stage == 'sentences')
         if not snap['fields'].get('word'):
             run.skipped += 1
@@ -204,14 +231,14 @@ def quote(user, source, data, token, port=None, *, stage='sentences'):
             Contribution.objects.filter(pk__in=context_ids))
         extra_bytes += len(json.dumps(port_sentences.inputs(snap, {c.pk: c for c in
             Contribution.objects.filter(pk__in=snap['ids'])}), ensure_ascii=False).encode()) if snap.get('sentence_words') else 0
-        estimate, allowance = estimate_entry(entry, prices, not same_language(source.language,port.language), extra_bytes)
-        item = PortItem.objects.create(run=run,source_entry=entry,snapshot=snap,
-            destination_digest=dest_digest,estimated_usd=estimate,allowance_usd=allowance)
-        item.sources.set(snap['ids'] + context_ids + (port_categories.basis_ids(group) if group else []))
-        run.estimated_usd += estimate
-        run.allowance_usd += allowance
-    run.save()
-    return run
+        estimate, allowance = estimate_entry(entry, prices, not same_language(source.language,port.language), extra_bytes) if prices is not None else (ZERO, ZERO)
+        items.append({'source_entry':entry, 'snapshot':snap, 'destination_digest':dest_digest,
+            'estimated_usd':estimate, 'allowance_usd':allowance,
+            'source_ids':snap['ids'] + context_ids + (port_categories.basis_ids(group) if group else [])})
+        new_count += link is None
+        changed_count += link is not None
+    return {'items':items, 'skipped':run.skipped, 'protected':run.protected,
+        'category_plan':run.category_plan, 'prices':run.prices, 'new':new_count, 'changed':changed_count}
 
 
 def payer_now(user):

@@ -2,16 +2,16 @@
 
 > This file is generated from `current_state.json`; do not edit it directly.
 
-- **Workspace revision:** 66
-- **As of:** 2026-10-11
-- **Assessed commit:** `7cb9a82fe3cf2e7aa54d383ffd80056fb452dc34`
+- **Workspace revision:** 67
+- **As of:** 2026-10-12
+- **Assessed commit:** `577343213cb603ee846057313bae0c1b4ba92721`
 - **Approved proposal:** `None`
 - **Approved run:** None (no recorded run)
 - **Persistent goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-4`, `GOAL-5`
 
 ## Current focus
 
-Manny reports discovery, membership requests, Profile and About working (deployment location unspecified). He requests public practice, proactive owner workflow suggestions with paid confirmation and an opt-out, and linked top-level action notices. These are implemented with migration 0022, shared existing games/batch/vocabulary workflows, accepted-only public access and signed scope/cost approval. 591 local tests plus focused checks and a 320/390/1280px Chromium rehearsal pass. Laptop/AWS acceptance of this increment is next, before the short introductory report and wider trials. No live provider, mail or production operation was performed.
+Manny reports successful AWS workflow-guidance deployment after a generated-static-directory permission repair. Adding six Swedish sentences exposed missing guidance for an existing French version. The authorized extension now offers related dictionary updates through explicit cost approval, sentence review and destination-derived vocabulary, preserving local corrections. All 609 local regression tests and a 320/390/1280px Chromium rehearsal pass; no schema or static change is required. Laptop/AWS acceptance of this extension is next, followed by the introductory report. No live AI calls, mail or production operations were performed.
 
 ## Factual observations
 
@@ -791,6 +791,22 @@ The prepared increment reuses accepted-only public projections for six-mode flas
 - **Confidence:** high
 - **Evidence:** [`docs/howto/community-practice-guidance.md`](../howto/community-practice-guidance.md), [`docs/howto/community-practice-guidance-install.md`](../howto/community-practice-guidance-install.md), [`experiments/community_dictionary/practice-guidance-2026-10-11.md`](../experiments/community_dictionary/practice-guidance-2026-10-11.md), [`platform_server/community_dictionary/workflow.py`](../platform_server/community_dictionary/workflow.py), [`platform_server/community_dictionary/workflow_views.py`](../platform_server/community_dictionary/workflow_views.py), [`platform_server/community_dictionary/public_practice.py`](../platform_server/community_dictionary/public_practice.py), [`platform_server/community_dictionary/tests/test_workflow_guidance.py`](../platform_server/community_dictionary/tests/test_workflow_guidance.py), [`platform_server/community_dictionary/tests/test_public_practice.py`](../platform_server/community_dictionary/tests/test_public_practice.py), [`platform_server/community_dictionary/migrations/0022_workflow_suggestions.py`](../platform_server/community_dictionary/migrations/0022_workflow_suggestions.py)
 
+### OBS-0098
+
+Manny reports successful AWS installation and useful initial workflow suggestions, after collectstatic permissions were repaired for the generated static directory. Six newly processed Swedish pictures did not prompt an update to the existing French version; he explicitly authorizes the related-dictionary guidance extension. Main now contains the prior guidance release at 5773432. No independent server inspection was performed.
+
+- **Observed:** 2026-10-12
+- **Confidence:** high
+- **Evidence:** [`experiments/community_dictionary/port-guidance-2026-10-12.md`](../experiments/community_dictionary/port-guidance-2026-10-12.md), [`docs/howto/community-practice-guidance-install.md`](../howto/community-practice-guidance-install.md)
+
+### OBS-0099
+
+The prepared extension shares the incremental port planner, shows new/changed accepted sentence updates on both authorized dictionary cards/Browse pages, protects destination edits and uses existing signed approval, reservations, review and destination-vocabulary stages. Existing progress/review work and local tasks take priority; destination opt-out suppresses related notices. Category growth retains established decisions while their original evidence is valid. All 609 local tests pass in 131.816 seconds, with 18 new guidance cases and a 320/390/1280px Chromium rehearsal. No migration/static/dependency change, provider calls or AWS operation; production and physical-phone acceptance remain pending.
+
+- **Observed:** 2026-10-12
+- **Confidence:** high
+- **Evidence:** [`experiments/community_dictionary/port-guidance-2026-10-12.md`](../experiments/community_dictionary/port-guidance-2026-10-12.md), [`docs/howto/community-port-guidance.md`](../howto/community-port-guidance.md), [`docs/howto/community-port-guidance-install.md`](../howto/community-port-guidance-install.md), [`platform_server/community_dictionary/workflow.py`](../platform_server/community_dictionary/workflow.py), [`platform_server/community_dictionary/porting.py`](../platform_server/community_dictionary/porting.py), [`platform_server/community_dictionary/port_categories.py`](../platform_server/community_dictionary/port_categories.py), [`platform_server/community_dictionary/tests/test_port_guidance.py`](../platform_server/community_dictionary/tests/test_port_guidance.py)
+
 ## Project-valence assessments
 
 ### ASM-0001
@@ -885,11 +901,11 @@ Historical assessment from 14 August, not revalidated in this scoped review: Cod
 
 ### ASM-0011
 
-Anonymous browsing has AWS acceptance, and discovery/profile/About now has positive human feedback. Public practice and proactive owner guidance reduce the need to remember Settings while preserving distinct contribution and owner roles. Local tests and browser evidence support a laptop trial, then AWS migration 0022 plus collectstatic. This is a supervised usability increment, not measured learning effectiveness or operational autonomy. The forthcoming short report should invite real trials and distinguish informal acceptance/development-time reports from independently measured outcomes; community publication and contributor identity remain opt-in human choices.
+Owner workflow guidance now has positive AWS feedback. The new related-version extension addresses a concrete gap from real Swedish/French use, while preserving cost approval and human corrections. Local regression/browser evidence supports laptop then AWS testing without schema/static deployment work. The static-permission incident is resolved by human report and recorded in the earlier runbook. This is supervised usability progress, not evidence of autonomous operations or measured learning effectiveness. The short report should distinguish informal trial/time claims from controlled outcomes; publication and contributor identity remain opt-in.
 
 - **Goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-5`
-- **Grounding observations:** `OBS-0022`, `OBS-0023`, `OBS-0024`, `OBS-0025`, `OBS-0026`, `OBS-0027`, `OBS-0028`, `OBS-0029`, `OBS-0030`, `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0034`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0038`, `OBS-0039`, `OBS-0040`, `OBS-0041`, `OBS-0042`, `OBS-0043`, `OBS-0044`, `OBS-0045`, `OBS-0046`, `OBS-0047`, `OBS-0048`, `OBS-0049`, `OBS-0050`, `OBS-0051`, `OBS-0052`, `OBS-0053`, `OBS-0054`, `OBS-0055`, `OBS-0056`, `OBS-0057`, `OBS-0058`, `OBS-0059`, `OBS-0060`, `OBS-0061`, `OBS-0062`, `OBS-0063`, `OBS-0064`, `OBS-0065`, `OBS-0066`, `OBS-0067`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0071`, `OBS-0072`, `OBS-0073`, `OBS-0074`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0082`, `OBS-0083`, `OBS-0084`, `OBS-0085`, `OBS-0086`, `OBS-0087`, `OBS-0088`, `OBS-0089`, `OBS-0090`, `OBS-0091`, `OBS-0092`, `OBS-0093`, `OBS-0094`, `OBS-0095`, `OBS-0096`, `OBS-0097`
-- **Urgency / risk / progress:** test_public_practice_and_guidance_before_introductory_report / medium / discovery_accepted_public_practice_and_guidance_locally_verified
+- **Grounding observations:** `OBS-0022`, `OBS-0023`, `OBS-0024`, `OBS-0025`, `OBS-0026`, `OBS-0027`, `OBS-0028`, `OBS-0029`, `OBS-0030`, `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0034`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0038`, `OBS-0039`, `OBS-0040`, `OBS-0041`, `OBS-0042`, `OBS-0043`, `OBS-0044`, `OBS-0045`, `OBS-0046`, `OBS-0047`, `OBS-0048`, `OBS-0049`, `OBS-0050`, `OBS-0051`, `OBS-0052`, `OBS-0053`, `OBS-0054`, `OBS-0055`, `OBS-0056`, `OBS-0057`, `OBS-0058`, `OBS-0059`, `OBS-0060`, `OBS-0061`, `OBS-0062`, `OBS-0063`, `OBS-0064`, `OBS-0065`, `OBS-0066`, `OBS-0067`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0071`, `OBS-0072`, `OBS-0073`, `OBS-0074`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0082`, `OBS-0083`, `OBS-0084`, `OBS-0085`, `OBS-0086`, `OBS-0087`, `OBS-0088`, `OBS-0089`, `OBS-0090`, `OBS-0091`, `OBS-0092`, `OBS-0093`, `OBS-0094`, `OBS-0095`, `OBS-0096`, `OBS-0097`, `OBS-0098`, `OBS-0099`
+- **Urgency / risk / progress:** test_linked_language_guidance_then_introductory_report / medium / owner_guidance_aws_accepted_related_language_updates_locally_verified
 - **Confidence:** medium
 
 ### ASM-0012
@@ -921,7 +937,7 @@ None. This revision uses neutral factual and assessment language.
   - **Assessments:** `ASM-0010`
 - **UNC-0007:** Carried forward from August; present status unverified: The first laptop Project Manager query was plausible and timely, but the mode is not yet deployed or exercised by Sophie or another non-staff collaborator; classification accuracy and whether fresh-turn continuity is sufficient remain unmeasured.
   - **Assessments:** `ASM-0003`, `ASM-0006`
-- **UNC-0008:** Public practice and owner guidance have local SQLite/Chromium evidence but await human laptop/AWS/PostgreSQL and physical-phone acceptance. No large-dictionary load test was performed. Guidance handles existing batch/port workflows; it is not a general failed-job repair engine. Public content can be copied despite later revocation. The discovery acceptance message did not specify deployment location. The introductory report, trial-credit terms and verified dissemination policies remain future work. Informal quality/time estimates are not controlled measurements; Cathys independent recovery trial, language/MWE quality, community reception, learning outcomes and sustained low-intervention operations remain open.
+- **UNC-0008:** The related-language guidance extension has local SQLite/Chromium evidence but awaits human laptop/AWS/PostgreSQL and physical-phone acceptance; no large-dictionary load test was performed. Only existing ports controlled by the current owner at both ends are guided, one primary action at a time. Prior AWS feedback specifically supports owner guidance, not a full new public-practice device matrix. General failed-job recovery, Cathys independent password-reset trial, linguistic/MWE quality, community reception, learning outcomes and sustained low-intervention operations remain open. Public content can be copied despite revocation. The introductory report, trial-credit terms and current dissemination-policy checks remain future work.
   - **Assessments:** `ASM-0011`
 - **UNC-0009:** The feasibility and timetable for weekly/monthly intervention targets are unknown. There is no authorised persistent maintenance runner, staging/release/rollback workflow or tested operational recovery baseline yet. Infrastructure account ownership, budgets, fallback contacts and community authority must be assigned without transferring Manny’s technical burden invisibly to another person. Proposed stage targets require comparable workload and failure drills.
   - **Assessments:** `ASM-0012`
@@ -958,7 +974,7 @@ None. This revision uses neutral factual and assessment language.
   - **Assessments:** `ASM-0003`
 - **ACT-0009:** Carried-forward August proposal; applicability needs a broader review: Configure authoritative collaborator role mappings, deploy the mode, grant access through Admin Tools, and run a natural Sophie-centered trial while reviewing evidence classifications and preserving the no-mutation boundary.
   - **Assessments:** `ASM-0003`, `ASM-0006`
-- **ACT-0010:** Apply the public-practice/guidance patch on the laptop after backup, run tests and migration 0022, then try owner card → cost approval → sentence review → vocabulary review, the guidance opt-out, and anonymous games/revocation using permitted test content. After acceptance, check in/push and deploy through the AWS runbook including collectstatic. Record live provider/phone evidence. Then draft the short illustrated report from verified functionality and explicitly attributed trial evidence; settle trial-credit scope and consent before publishing an offer. No forum is needed for this increment.
+- **ACT-0010:** Apply the related-language guidance patch on the laptop, run the checks and test source/destination notices, cost approval, translated sentence review and destination-word generation, protected corrections and opt-out. After acceptance, check in/push and use the brief AWS code-update runbook; this patch needs no migration or collectstatic. Test the six Swedish additions against the existing French version and record phone/provider outcomes. Then draft the short illustrated report from verified functionality and attributed trial evidence, settling trial-credit scope/consent before publication.
   - **Assessments:** `ASM-0011`
 - **ACT-0011:** Start a low-burden intervention log while resolving the current configuration work. Specify direct collaborator intake and one authorised, isolated request-to-preview-to-release path, including monitoring/rollback and a safe restore drill. Use this to evaluate whether two or three weekly reviews can replace daily technical intervention; defer broader autonomous release authority until evidence supports it.
   - **Assessments:** `ASM-0012`
@@ -993,8 +1009,8 @@ None. This revision uses neutral factual and assessment language.
 ## Approval and revision
 
 - **Status:** autonomous_project_manager_update
-- **Authorized by / at:** Assistant following AGENTS.md / 2026-10-11
-- **Basis:** Manny reports AWS anonymous-browsing acceptance and explicitly requests dictionary discovery, membership requests, a Community Dictionaries profile and About before the introductory paper. AGENTS.md requires reflecting this material outcome and the local implementation evidence; human-owned intentions remain unchanged.
-- **Comments:** Revision 65 preserves the human request and publication discussion, closes the prior pending AWS browsing outcome and distinguishes locally verified discovery from production acceptance. No real profiles or dictionaries were published, and no live funding offer or AI moderation service was created.
-- **Change summary:** Recorded human acceptance of discovery/profile/About; prepared public practice and proactive owner guidance with signed cost approval, local regression/browser evidence and a laptop/AWS runbook.
+- **Authorized by / at:** Assistant following AGENTS.md / 2026-10-12
+- **Basis:** Manny reports successful AWS owner-guidance deployment and explicitly authorizes related-language update suggestions. AGENTS.md requires reflecting the material acceptance, deployment incident and local implementation evidence. Human-owned intentions remain unchanged.
+- **Comments:** Revision 67 preserves the deployment/error/acceptance messages and implementation request. It distinguishes the accepted prior deployment from the locally verified extension. No production data, publication settings, credits or services were changed by the agent.
+- **Change summary:** Recorded prior guidance AWS acceptance and static permission repair; prepared related-language update suggestions, stable category evidence, regression/browser checks and a code-only deployment runbook.
 - **Retired live items:** `REQ-0006`, `OBS-0001@rev-0002`, `OBS-0002@rev-0002`, `OBS-0012@rev-0002`, `ASM-0001@rev-0002`, `ASM-0009@rev-0002`, `PRED-0001@rev-0002`, `PRED-0002@rev-0002`, `PRED-0003@rev-0002`, `PRED-0004@rev-0002`

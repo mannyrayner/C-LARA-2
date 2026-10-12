@@ -1,6 +1,6 @@
 # Community dictionary development experiment
 
-Current increment: [public practice and owner guidance](practice-guidance-2026-10-11.md). The discovery/profile/About release now has human-reported acceptance (deployment location unspecified). The follow-up adds accepted-only visitor games and permission-sensitive owner next steps with explicit paid approval; local verification precedes laptop/AWS acceptance.
+Current increment: [linked language-version workflow suggestions](port-guidance-2026-10-12.md). Manny reports successful AWS guidance deployment after a generated-static-directory permission repair, and requests reminders for new Swedish sentences awaiting French conversion. The extension reuses explicit cost approval and the sentence-then-vocabulary pipeline; local tests/browser checks precede human acceptance. No schema or static changes.
 
 
 Previous increment: [public browsing and reported email-recovery success](public-browsing-2026-10-11.md).

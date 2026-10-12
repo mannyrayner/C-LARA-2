@@ -11,7 +11,7 @@ from django.urls import reverse
 
 from projects.billing import get_user_balance_usd
 from . import batch_descriptions as batch, port_vocabulary as vocabulary, porting, photo_ai, tts, port_ai
-from .models import LanguagePort, MembershipRequest
+from .models import LanguagePort, MembershipRequest, PortItem
 from .permissions import dictionaries_for
 from .services import Conflict
 from .voices import DEFAULT_VOICE
@@ -96,16 +96,21 @@ def suggestion(user, dictionary, *, details=False):
         try:
             porting.authority(port)
         except (Conflict, Http404):
-            return None
-        pictures = batch.candidates(dictionary, port)['pictures']
+            pictures = []
+        else:
+            pictures = batch.candidates(dictionary, port)['pictures']
         if not pictures:
-            return None
+            return related_suggestion(user, dictionary, details=details)
         count = len(pictures)
         result = {'kind': 'descriptions', 'port_id': port.pk,
             'label': f'{count} picture' + ('s' if count != 1 else '') + ' ready for sentences',
             'scope': 'Accepted pictures and pictures awaiting review, keeping existing words and translations as hints.',
             'button': 'Approve and create sentences', 'count': count}
-    result['url'] = reverse('community_dictionary:dictionary', args=[dictionary.pk]) + '#next-step'
+    return complete_suggestion(user, dictionary, result, port, details=details)
+
+
+def complete_suggestion(user, dictionary, result, port, *, details):
+    result.setdefault('url', reverse('community_dictionary:dictionary', args=[dictionary.pk]) + '#next-step')
     if details:
         try:
             planned = prepare(user, dictionary, result['kind'], port)
@@ -125,18 +130,24 @@ def price_basis(stage, prices):
     if stage == 'descriptions':
         result.update(description_recipe=batch.VERSION,
             sentence_speech_recipe=port_ai.speech_version({'entry_type': 'sentence'}))
+    elif stage == 'sentences':
+        result['sentence_speech_recipe'] = port_ai.speech_version({'entry_type': 'sentence'})
     else:
         result['vocabulary_recipe'] = vocabulary.VERSION
     return result
 
 
-def fingerprint(stage, port, model, prices, payer, items):
+def fingerprint(stage, port, model, prices, payer, items, *, category_plan=None):
     rows = []
     for item in items:
         rows.append({'entry': item['source_entry'].pk, 'snapshot': item['snapshot'],
             'estimate': str(item['estimated_usd']), 'allowance': str(item['allowance_usd'])})
+        if stage == 'sentences':
+            rows[-1]['destination_digest'] = item['destination_digest']
     data = [stage, port.source_id, port.target_id, port.language, port.explanation_language,
         port.voice, model, prices, payer, sorted(rows, key=lambda row: (row['entry'], json.dumps(row['snapshot'], sort_keys=True)))]
+    if stage == 'sentences':
+        data += [category_plan, port.source.language, port.source.explanation_language]
     return hashlib.sha256(json.dumps(data, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
 
 
@@ -146,6 +157,9 @@ def prepare(user, dictionary, stage, port):
     if stage == 'descriptions':
         porting.authority(port)
         planned = batch.plan(dictionary, port, prices)
+    elif stage == 'sentences':
+        porting.authority(port)
+        planned = porting.plan(port, prices, sentence_updates=True)
     else:
         vocabulary.authority(port)
         planned = vocabulary.plan(port, prices)
@@ -155,10 +169,71 @@ def prepare(user, dictionary, stage, port):
     return {'estimated': sum((i['estimated_usd'] for i in items), Decimal('0')),
         'allowance': sum((i['allowance_usd'] for i in items), Decimal('0')),
         'model': model, 'voice': port.voice, 'payer': payer,
-        'fingerprint': fingerprint(stage, port, model, price_basis(stage, prices), payer, items)}
+        'fingerprint': fingerprint(stage, port, model, price_basis(stage, prices), payer, items, category_plan=planned.get('category_plan'))}
 
 
 def run_fingerprint(run):
     items = [{'source_entry': i.source_entry, 'snapshot': i.snapshot,
-        'estimated_usd': i.estimated_usd, 'allowance_usd': i.allowance_usd} for i in run.items.select_related('source_entry')]
-    return fingerprint(run.stage, run.port, run.model, run.prices, run.payer, items)
+        'estimated_usd': i.estimated_usd, 'allowance_usd': i.allowance_usd,
+        'destination_digest': i.destination_digest} for i in run.items.select_related('source_entry')]
+    return fingerprint(run.stage, run.port, run.model, run.prices, run.payer, items, category_plan=run.category_plan)
+
+
+def related_ports(user, dictionary):
+    """Existing language relationships the current owner can operate at both ends."""
+    return (LanguagePort.objects.filter(user=user, is_description_batch=False,
+        source__hidden=False, destination__hidden=False, destination__show_workflow_suggestions=True,
+        destination__photo_ai_enabled=True).filter(Q(source=dictionary) | Q(destination=dictionary))
+        .select_related('source', 'destination', 'user').order_by('pk'))
+
+
+def related_suggestion(user, dictionary, *, details=False):
+    for port in related_ports(user, dictionary):
+        try:
+            porting.authority(port)
+        except (Conflict, Http404):
+            continue
+        if not porting.same_language(port.source.language, port.language) and (
+                not port.destination.tts_enabled or not tts.language_code(port.language)):
+            continue
+        destination = port.destination
+        label = destination.name
+        # Don't offer an update that the existing quote would refuse. The shared
+        # progress/review screen also allows stale previews to be discarded.
+        run = port.runs.filter(status='running').first()
+        if run:
+            return {'kind':'related-progress', 'label':f'{label}: work in progress',
+                'button':'View progress', 'url':run_url(run)}
+        item = (PortItem.objects.filter(run__port=port, status__in=['ready','unclear'])
+            .select_related('run__port').order_by('pk').first())
+        if item:
+            return {'kind':'related-review', 'label':f'{label}: finish reviewing the previous results',
+                'button':'Review previous results', 'url':run_url(item.run)}
+        # On the source side, point at unfinished destination vocabulary before
+        # offering a new update. Word work itself remains on the destination.
+        if dictionary.pk == port.source_id:
+            try:
+                vocabulary.authority(port)
+                pending_words, _ = vocabulary.candidates(port)
+            except (Conflict, Http404):
+                pending_words = []
+            if pending_words:
+                return {'kind':'related-vocabulary', 'label':f'{label}: word pages ready to create',
+                    'button':'Open language version',
+                    'url':reverse('community_dictionary:dictionary',args=[destination.pk])+'#next-step'}
+        planned = porting.plan(port, sentence_updates=True)
+        count = len(planned['items'])
+        if not count:
+            continue
+        new, changed = planned['new'], planned['changed']
+        def amount(n, adjective):
+            return f'{n} {adjective} sentence' + ('s' if n != 1 else '')
+        summary = ' and '.join(text for text in [amount(new,'new') if new else '', amount(changed,'changed') if changed else ''] if text)
+        result = {'kind':'sentences', 'port_id':port.pk, 'count':count,
+            'label':f'{label}: {summary} to translate' if dictionary.pk == port.source_id else f'{summary.capitalize()} available from {port.source.name}',
+            'scope':f'Update {destination.name} ({destination.language} / {destination.explanation_language}) from {port.source.name}.',
+            'button':f'Approve and update {destination.name}', 'destination_name':destination.name,
+            'new_count':new, 'changed_count':changed, 'protected_count':planned['protected'],
+            'url':reverse('community_dictionary:dictionary',args=[destination.pk])+'#next-step'}
+        return complete_suggestion(user, dictionary, result, port, details=details)
+    return None

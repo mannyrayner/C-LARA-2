@@ -2,6 +2,7 @@
 <p class="eyebrow">Next step</p><h2 id="next-step-title">{{ next_step.label }}</h2>
 {% if next_step.approval or next_step.unavailable %}
 <p>{{ next_step.scope }}</p>
+{% if next_step.kind == 'sentences' %}<p>{{ next_step.new_count }} new · {{ next_step.changed_count }} changed. Existing corrections and recordings in locally edited entries are kept.{% if next_step.protected_count %} {{ next_step.protected_count }} locally edited entries are protected and excluded.{% endif %}</p>{% endif %}
 {% if next_step.unavailable %}<p>{{ next_step.unavailable }}</p>
 {% else %}
 <p><strong>Rough API estimate: US${{ next_step.estimated|floatformat:4 }}</strong> · Voice: {{ next_step.voice }}</p>
@@ -10,11 +11,12 @@
 {% else %}<p>Paid by the server operator. The estimate is not a provider spending cap.</p>{% endif %}
 <details><summary>What will be sent and created?</summary>
 {% if next_step.kind == 'descriptions' %}<p>OpenAI receives each picture, its current words and latest text suggestions, and the dictionary languages. It suggests one sentence, translation and recording. Saving a sentence also accepts its source picture if it was awaiting review. Existing contributions are kept. Word pages are a separate step.</p>
+{% elif next_step.kind == 'sentences' %}<p>OpenAI receives the source sentences, translations, representative pictures and category examples. It creates draft translations{% if next_step.destination_name %} for {{ next_step.destination_name }}{% endif %} and audio when the target language changes. Review the sentences first; word pages are then built from the accepted destination sentences in a separate step with its own estimate.</p>
 {% else %}<p>OpenAI receives the accepted sentences, translations, representative pictures and a limited selection of existing words and meanings. It suggests words and expressions, reusing matching word pages. Missing word audio is generated after you accept the word suggestions, within this approved allowance.</p>{% endif %}
 <p>Model: {{ next_step.model }}. Actual costs vary with image size, response length and audio duration. Provider retention rules apply. You can review, edit or accept all ready suggestions afterwards; this does not claim expert linguistic checking.</p></details>
 {% if next_step.enough_funds %}<form method="post" action="{% url 'community_dictionary:workflow-start' dictionary.pk %}">{% csrf_token %}
 <input type="hidden" name="approval" value="{{ next_step.approval }}">
-<p class="help">By choosing the button below, I approve the displayed cost and have permission to send this material to OpenAI and share the reviewed results in this dictionary.</p>
+<p class="help">By choosing the button below, I approve the displayed cost and have permission to send this material to OpenAI and share the reviewed results in {% if next_step.destination_name %}{{ next_step.destination_name }}{% else %}this dictionary{% endif %}.</p>
 <button>{{ next_step.button }}</button></form>
 {% else %}<p><strong>Insufficient credit for the reservation.</strong> Add credit before starting, or manage your personal API key in <a href="{% url 'community_dictionary:profile' %}">Profile</a>.</p>{% endif %}
 {% endif %}

@@ -25,7 +25,7 @@ def start(request, pk):
     try:
         token = request.POST.get('approval', '')
         payload = signing.loads(token, salt=workflow.SALT, max_age=workflow.MAX_AGE)
-        if payload['user'] != request.user.pk or payload['dictionary'] != pk or payload['stage'] not in {'descriptions', 'vocabulary'}:
+        if payload['user'] != request.user.pk or payload['dictionary'] != pk or payload['stage'] not in {'descriptions', 'vocabulary', 'sentences'}:
             raise signing.BadSignature
         run_id = uuid.UUID(payload['id'])
     except (signing.BadSignature, KeyError, TypeError, ValueError):
@@ -46,9 +46,11 @@ def start(request, pk):
                     current.get('port_id') != payload['port']):
                 raise Conflict('The next step changed. Reload the dictionary before starting.')
             port = workflow.batch_port(request.user, dictionary) if payload['stage'] == 'descriptions' else get_object_or_404(
-                workflow.ports_for(request.user, dictionary), pk=payload['port'])
+                workflow.related_ports(request.user, dictionary) if payload['stage'] == 'sentences' else workflow.ports_for(request.user, dictionary), pk=payload['port'])
             if payload['stage'] == 'descriptions':
                 run = batch_descriptions.quote(request.user, dictionary, run_id, voice=port.voice)
+            elif payload['stage'] == 'sentences':
+                run = porting.quote(request.user, port.source, {}, run_id, port=port, sentence_updates=True)
             else:
                 run = port_vocabulary.quote(request.user, port, run_id)
             if workflow.run_fingerprint(run) != payload['fingerprint']:

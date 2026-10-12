@@ -4,6 +4,11 @@ This increment makes the existing games available to visitors and brings the
 next useful construction step out of Settings. It does not automatically enable
 public browsing or any AI feature.
 
+Manny reports successful AWS installation and useful initial owner-guidance testing
+(12 October), after the generated-static-directory permission repair now recorded
+in the installation runbook. See the next [language-version guidance increment](community-port-guidance.md)
+for reminders to update an existing translated dictionary.
+
 ## Visitors can practise
 
 When the owner has enabled **Public browsing**, the visitor navigation includes
