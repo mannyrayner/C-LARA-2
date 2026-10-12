@@ -6,7 +6,7 @@
 {% if next_step.unavailable %}<p>{{ next_step.unavailable }}</p>
 {% else %}
 <p><strong>Rough API estimate: US${{ next_step.estimated|floatformat:4 }}</strong> · Voice: {{ next_step.voice }}</p>
-{% if next_step.payer == 'credits' %}<p>Credit reserved: <strong>US${{ next_step.allowance|floatformat:4 }}</strong>. Available: <strong>US${{ next_step.balance|floatformat:4 }}</strong>. Unused credit is returned when the job finishes or is cancelled.</p>
+{% if next_step.payer == 'credits' %}<p>Credit needed to start: <strong>US${{ next_step.allowance|floatformat:4 }}</strong> (refundable allowance). Available: <strong>US${{ next_step.balance|floatformat:4 }}</strong>. Nothing has been reserved for this suggestion. Approval reserves the allowance; unused credit is returned after processing and any vocabulary review/audio finish, or after cancellation and any in-flight requests finish.</p>
 {% elif next_step.payer == 'personal' %}<p>Paid through your personal OpenAI account; its balance cannot be checked here. The estimate is not a provider spending cap.</p>
 {% else %}<p>Paid by the server operator. The estimate is not a provider spending cap.</p>{% endif %}
 <details><summary>What will be sent and created?</summary>

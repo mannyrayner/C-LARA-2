@@ -89,6 +89,8 @@ class PortingTests(TestCase):
         self.assertGreater(run.allowance_usd,run.estimated_usd)
         page=self.client.get(reverse('community_dictionary:port-run',args=[self.dictionary.pk,run.pk]))
         self.assertContains(page,'Insufficient C-LARA credit')
+        self.assertContains(page,'No credit has been reserved for this estimate.')
+        self.assertNotContains(page,'Credit held for this job:')
         action=reverse('community_dictionary:port-action',args=[self.dictionary.pk,run.pk])
         self.assertEqual(self.client.post(action,{'action':'approve'}).status_code,400)
         self.assertEqual(self.client.post(action,{'action':'approve','approve':'on'}).status_code,409)
@@ -99,6 +101,7 @@ class PortingTests(TestCase):
         source=self.seed()
         run=self.approve(self.quote()); reserved=run.allowance_usd
         self.assertEqual(CreditAccount.objects.get(user=self.owner).balance_usd,5-reserved)
+        self.assertContains(self.client.get(self.url('port-run',run.pk)), 'Credit held for this job:')
         porting.approve(self.owner,run.pk)
         self.assertEqual(CreditLedgerEntry.objects.count(),1)
         item=run.items.get();self.process(item)
@@ -106,6 +109,10 @@ class PortingTests(TestCase):
         self.assertTrue(run.settled);self.assertEqual(run.status,'complete')
         self.assertLess(run.charged_usd,reserved)
         self.assertEqual(CreditAccount.objects.get(user=self.owner).balance_usd,5-run.charged_usd)
+        page = self.client.get(self.url('port-run',run.pk))
+        self.assertContains(page, 'Credit still held for this job: <strong>US$0.0000</strong>', html=False)
+        self.assertContains(page, 'Original reservation:')
+        self.assertNotContains(page, 'Credit held for this job:')
         self.assertEqual(AIUsageCharge.objects.count(),2)
         with patch.object(port_ai,'translate') as again:
             port_tasks.process_item(item.pk)

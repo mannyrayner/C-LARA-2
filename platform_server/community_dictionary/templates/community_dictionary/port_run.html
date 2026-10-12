@@ -7,8 +7,12 @@
 <section class="panel"><h2>{% if run.status == 'estimate' %}Estimate before starting{% else %}Processing {{ run.status }}{% endif %}</h2>
 <p>{{ run.items.count }} entries ({{ sentence_count }} sentence{{ sentence_count|pluralize }}) · {{ run.skipped }} unchanged or ineligible · {{ run.protected }} {% if run.port.is_description_batch %}already awaiting review or processing{% else %}protected because the destination was edited{% endif %}.</p>
 <p><strong>Rough API estimate: US${{ run.estimated_usd }}</strong></p>
-{% if run.payer == 'credits' %}<p>C-LARA credit reservation: <strong>US${{ run.allowance_usd }}</strong>. Your current available balance: <strong>US${{ balance }}</strong>.</p>
-<p class="help">We reserve an allowance above the estimate, then return the unused amount when processing finishes.{% if run.stage == 'vocabulary' %} This stage includes your vocabulary review and the audio jobs it starts. Accept, discard or cancel remaining suggestions to finish and release the unused reservation.{% endif %} Your C-LARA charge will not exceed this reservation.</p>
+{% if run.payer == 'credits' %}
+{% if run.settled %}<p>Credit still held for this job: <strong>US$0.0000</strong>. Original reservation: US${{ run.reserved_usd }}.</p>
+{% elif run.status == 'estimate' %}<p>Credit needed to start: <strong>US${{ run.allowance_usd }}</strong> (refundable allowance). No credit has been reserved for this estimate.</p>
+{% else %}<p>Credit held for this job: <strong>US${{ run.reserved_usd }}</strong>.</p>{% endif %}
+<p>Your current available balance: <strong>US${{ balance }}</strong>.</p>
+{% if not run.settled %}<p class="help">The allowance is larger than the expected charge. Unused credit is returned when processing finishes.{% if run.stage == 'vocabulary' %} This stage includes your vocabulary review and the audio jobs it starts. Accept, discard or cancel remaining suggestions to finish and release the unused reservation.{% endif %} Cancellation waits for any in-flight requests to finish. Your C-LARA charge will not exceed the approved allowance.</p>{% endif %}
 {% elif run.payer == 'personal' %}<p>Paid through your personal OpenAI account. <strong>We cannot check its balance here.</strong> Check your provider account before approving.</p>
 {% else %}<p>Paid by the server operator; C-LARA credit charging is disabled.</p>{% endif %}
 <details><summary>What the estimate includes</summary>

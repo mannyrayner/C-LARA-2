@@ -1,6 +1,6 @@
 # Community dictionary: setup and testing
 
-Current increment: [repair slow guidance and redundant picture cards](community-guidance-repair.md); [installation runbook](community-guidance-repair-install.md). Manny reports related-language guidance working on AWS, but with duplicate image-only cards and long navigation delays. The prepared repair uses request-local bulk reads and provenance-aware display filtering. A 150-sentence-pair home fixture drops from 6,370 to 53 queries. No migration or collectstatic is needed; AWS repair acceptance remains pending.
+Current increment: [credit display correction and read-only audit](community-credit-audit.md); [installation and AWS check](community-credit-audit-install.md). Manny confirms the guidance latency and duplicate-card repairs work on AWS. He now reports unexpectedly large reserved-credit messages. Two misleading labels are corrected; actual holds and refunds need reconciliation with the AWS ledger before changing balances. The focused 82-test suite passes. No migration or collectstatic is needed.
 
 
 Previous increment: [public browsing without an account](community-public-browsing.md) is

@@ -133,6 +133,10 @@ class WorkflowGuidanceTests(TestCase):
         account.balance_usd = 100; account.save()
         offer = self.step()
         self.assertTrue(offer['enough_funds'])
+        page = self.client.get(self.url('dictionary'))
+        self.assertContains(page, 'Nothing has been reserved for this suggestion.')
+        self.assertNotContains(page, 'Credit reserved:')
+        self.assertFalse(CreditLedgerEntry.objects.filter(user=self.owner).exists())
         with patch('community_dictionary.port_tasks.dispatch'), self.captureOnCommitCallbacks(execute=True):
             self.assertEqual(self.start(offer['approval']).status_code, 302)
             self.assertEqual(self.start(offer['approval']).status_code, 302)
