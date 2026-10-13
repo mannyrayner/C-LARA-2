@@ -26,6 +26,7 @@
 {% if expired %}<p>This estimate expired. Prepare another below.</p>
 {% elif not enough_funds %}<p role="alert"><strong>Insufficient C-LARA credit.</strong> Add credit or choose a personal key in your profile, then prepare a new estimate.</p>
 {% elif run.items.count %}<form method="post" action="{% url 'community_dictionary:port-action' dictionary.pk run.pk %}" class="stack">{% csrf_token %}{{ approve_form.as_p }}<button name="action" value="approve">Approve and start {% if run.stage == 'audio' %}audio recovery{% elif run.stage == 'vocabulary' %}vocabulary{% elif run.stage == 'descriptions' %}sentences{% else %}translation{% endif %}</button></form>{% endif %}
+{% if run.stage != 'audio' %}<form method="post" action="{% url 'community_dictionary:port-action' dictionary.pk run.pk %}">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ recovery_token }}"><button class="secondary" name="action" value="automatic-retry">Estimate fully automatic processing instead</button></form>{% endif %}
 {% elif run.settled %}<p>{% if run.payer == 'credits' %}Final C-LARA charge{% else %}Recorded API cost estimate{% endif %}: US${{ run.charged_usd }}.{% if run.payer == 'credits' %} Unused reserved credit has been returned.{% endif %}</p>{% endif %}
 {% if uncertain %}<p class="help">Some requests did not return usable usage/audio information. Their provider cost may be unknown. Interrupted requests are not automatically repeated; only completed silent or nearly silent speech receives one retry.</p>{% endif %}
 </section>

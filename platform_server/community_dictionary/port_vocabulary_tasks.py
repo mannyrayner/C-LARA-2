@@ -157,6 +157,10 @@ def speak(pk):
                 clip.status='discarded';clip.report={}
             else:
                 clip.report=report;clip.status='ready' if prepared else 'failed'
+                if clip.run.options.get('automatic') and report.get('english_homographs'):
+                    item.needs_attention=True
+                    item.attention_note='Check pronunciation: one or more words can be read as English.'
+                    item.save(update_fields=['needs_attention','attention_note'])
                 if prepared:
                     from .lexicon import recordings
                     if not recordings(clip.entry,clip.run.port.target):
@@ -164,6 +168,9 @@ def speak(pk):
                         provenance={'origin':'synthetic','source_text':clip.text.word,'language':clip.run.port.language,
                             'voice':clip.run.port.voice,'model':tts.MODEL,'instructions_version':port_tasks.port_ai.speech_version({'entry_type':clip.entry.entry_type}),
                             'language_port':clip.run.port_id,'synthesis':report}
+                        if clip.run.options.get('automatic'):
+                            from .automatic import metadata
+                            provenance.update(metadata(clip.run))
                         if report.get('english_homographs') and clip.meaning_id:
                             provenance['source_meaning_id']=clip.meaning_id
                         part=Contribution.objects.create(entry=clip.entry,author=clip.run.port.user,

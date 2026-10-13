@@ -13,6 +13,7 @@ from .port_views import run_url, no_store
 from .services import Conflict, event
 from .views import context, fail
 from .voices import VOICE_CHOICES, DEFAULT_VOICE
+from .port_forms import processing_mode
 
 
 class BatchForm(forms.Form):
@@ -20,6 +21,7 @@ class BatchForm(forms.Form):
     image_status=forms.ChoiceField(label='Pictures to include',choices=[
         ('both','Accepted and awaiting review'),('accepted','Accepted only'),('pending','Awaiting review only')],initial='both')
     voice=forms.ChoiceField(label='Voice for sentence and word audio',choices=VOICE_CHOICES,initial=DEFAULT_VOICE)
+    processing_mode=processing_mode()
 
 
 class RenameForm(forms.Form):
@@ -36,7 +38,7 @@ def start(request,pk):
         try:
             run=batch_descriptions.quote(request.user,dictionary,**{
                 'token':form.cleaned_data['submission_id'],'image_status':form.cleaned_data['image_status'],
-                'voice':form.cleaned_data['voice']})
+                'voice':form.cleaned_data['voice'], 'automatic':form.cleaned_data['processing_mode']=='automatic'})
             return redirect(run_url(run))
         except Conflict as exc:form.add_error(None,str(exc))
     return no_store(render(request,'community_dictionary/batch_start.html',context(request,dictionary,

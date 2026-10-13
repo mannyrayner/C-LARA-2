@@ -1,6 +1,8 @@
 # Community dictionary app
 
-Current increment: [credit display correction and read-only audit](../../docs/howto/community-credit-audit.md); [installation and AWS check](../../docs/howto/community-credit-audit-install.md). Manny confirms the guidance latency and duplicate-card repairs work on AWS. He now reports unexpectedly large reserved-credit messages. Two misleading labels are corrected; actual holds and refunds need reconciliation with the AWS ledger before changing balances. The focused 82-test suite passes. No migration or collectstatic is needed.
+Current increment: [fully automatic processing](../../docs/howto/community-automatic-processing.md); [laptop/AWS installation](../../docs/howto/community-automatic-processing-install.md). One owner approval can cover sentences, shared vocabulary and audio without intermediate review. 654 regression tests pass; automatic-mode laptop/AWS acceptance is pending. Manny reports the preceding reliability repair and 150-entry Japanese conversion working on AWS. The tested local queue fallback is valid; do not require real Django Q. No new migration or static assets.
+
+Earlier increment: [credit display correction and read-only audit](../../docs/howto/community-credit-audit.md); [installation and AWS check](../../docs/howto/community-credit-audit-install.md). Manny confirms the guidance latency and duplicate-card repairs work on AWS. He now reports unexpectedly large reserved-credit messages. Two misleading labels are corrected; actual holds and refunds need reconciliation with the AWS ledger before changing balances. The focused 82-test suite passes. No migration or collectstatic is needed.
 
 
 Previous increment: [optional public browsing](../../docs/howto/community-public-browsing.md)

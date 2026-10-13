@@ -167,7 +167,7 @@ def estimate_entry(entry, prices, audio, extra_bytes=0):
 
 
 @transaction.atomic
-def quote(user, source, data, token, port=None, *, stage='sentences', sentence_updates=False):
+def quote(user, source, data, token, port=None, *, stage='sentences', sentence_updates=False, automatic=False):
     locks()
     if port and port.is_description_batch:
         raise Conflict('Use Add missing sentences for this dictionary.')
@@ -177,6 +177,8 @@ def quote(user, source, data, token, port=None, *, stage='sentences', sentence_u
         raise Conflict('Unknown conversion stage.')
     previous = PortRun.objects.filter(pk=token, port__user=user, port__source=source).first()
     if previous:
+        if bool(previous.options.get('automatic')) != automatic:
+            raise Conflict('The processing mode changed. Request a fresh estimate.')
         if bool(previous.options.get('sentence_updates')) != sentence_updates:
             raise Conflict('The update scope changed. Request a fresh estimate.')
         if data and any(getattr(previous.port,k) != v for k,v in data.items()):
@@ -215,6 +217,9 @@ def quote(user, source, data, token, port=None, *, stage='sentences', sentence_u
         item.sources.set(source_ids)
         run.estimated_usd += item.estimated_usd
         run.allowance_usd += item.allowance_usd
+    if automatic:
+        from .automatic import prepare_quote
+        prepare_quote(run)
     run.save()
     return run
 
@@ -292,6 +297,8 @@ def approve(user, run_id):
     authority(run.port)
     if run.status != 'estimate':
         return run  # retrying the same approval never sends again
+    from . import automatic
+    automatic.check_quote(run)
     if run.stage == 'audio' and run.port.runs.filter(status='running').exists():
         raise Conflict('Finish the current job before approving audio recovery.')
     if run.expires_at <= timezone.now() or payer_now(user) != run.payer:
@@ -308,7 +315,7 @@ def approve(user, run_id):
         current_prices['sentence_speech_recipe'] = port_ai.speech_version({'entry_type':'sentence'})
     if model != run.model or current_prices != run.prices:
         raise Conflict('The model or configured prices changed. Prepare a new estimate.')
-    if not run.items.exists():
+    if not run.items.exists() and not run.options.get('automatic_existing'):
         raise Conflict('There are no new or changed entries to port.')
     for item in run.items.all():
         current_item(item)
@@ -335,6 +342,7 @@ def approve(user, run_id):
     if run.stage=='audio':
         from .port_audio import prepare
         prepare(run)
+    automatic.prepare_approved(run)
     run.status, run.approved_at = 'running', timezone.now()
     run.save()
     from .port_tasks import dispatch
@@ -384,6 +392,8 @@ def invalidate_sources(ids):
 
 def settle(run):
     if run.settled:
+        from .automatic import continue_workflow
+        continue_workflow(run)
         return
     from . import port_budget
     port_budget.release_finished(run)
@@ -409,6 +419,8 @@ def settle(run):
         run.status = 'complete'
     run.completed_at = timezone.now()
     run.save()
+    from .automatic import continue_workflow
+    continue_workflow(run)
 
 
 def record_usage(item, *, audio=False, cost_override=None, suffix=''):
@@ -429,6 +441,8 @@ def record_usage(item, *, audio=False, cost_override=None, suffix=''):
 def cancel(user, run_id):
     locks()
     run = PortRun.objects.select_for_update(of=('self',)).select_related('port__user','port__source','port__destination').get(pk=run_id,port__user=user)
+    if run.options.get('automatic_child'):
+        cancel(user, run.options['automatic_child'])
     # Account owner may stop spending even after source membership changes.
     run.status = 'cancelled'
     run.save(update_fields=['status'])
@@ -457,12 +471,14 @@ def copy_component(source, entry, user, port, provenance=None):
 
 
 @transaction.atomic
-def save_item(user, item_id, values):
+def save_item(user, item_id, values, *, automatic=False):
     locks()
     item = PortItem.objects.select_for_update(of=('self',)).select_related('run__port__user','run__port__source','run__port__destination').get(pk=item_id,run__port__user=user)
+    if automatic and (not item.run.options.get('automatic') or item.run.status != 'running'):
+        raise Conflict('Automatic publication is not authorised.')
     if item.run.stage == 'descriptions':
         from .batch_descriptions import save_item
-        return save_item(user, item, values)
+        return save_item(user, item, values, automatic=automatic)
     if item.run.stage in {'vocabulary','audio'}:
         raise Conflict('Use the vocabulary review form for this result.')
     if item.status == 'saved':
@@ -473,6 +489,8 @@ def save_item(user, item_id, values):
         raise Conflict('Enter the translated wording before saving.')
     source_entry, link = current_item(item)
     port, run = item.run.port, item.run
+    from .automatic import metadata as automatic_metadata
+    approval = automatic_metadata(run) if automatic else {'reviewed_by':user.pk}
     unedited_links = [l for l in port_sentences.affected_links(port, source_entry, item.snapshot)
                       if destination_clean(l)]
     if run.status == 'cancelled':
@@ -517,7 +535,7 @@ def save_item(user, item_id, values):
             part = Contribution.objects.create(entry=entry,author=user,controlled_by=user,kind='text',text_field=field,
                 previous_revision=getattr(entry,pointer),shared_from=original,base_version=getattr(entry,counter),
                 provenance={'origin':'language-port','language_port':port.pk,'model':run.model,
-                    'source_language':source_language,'language':language,'reviewed_by':user.pk, 'recipe': item.result.get('recipe','dictionary-port-1'), **metadata}, **{field:text})
+                    'source_language':source_language,'language':language, **approval, 'recipe': item.result.get('recipe','dictionary-port-1'), **metadata}, **{field:text})
             dependencies(part,field_inputs)
             accept(part,user)
         entry.refresh_from_db()
@@ -544,7 +562,7 @@ def save_item(user, item_id, values):
             provenance={'origin':'synthetic','source_text':entry.word,'language':port.language,
                 'voice':port.voice,'model':tts.MODEL,'language_port':port.pk,
                 'instructions_version':item.result.get('tts_instructions_version',''),
-                'synthesis':item.result.get('tts_synthesis',{})})
+                'synthesis':item.result.get('tts_synthesis',{}), **(automatic_metadata(run) if automatic else {})})
         if item.result.get('tts_synthesis', {}).get('english_homographs') and entry.current_meaning_id:
             part.provenance['source_meaning_id'] = entry.current_meaning_id
             part.save(update_fields=['provenance'])

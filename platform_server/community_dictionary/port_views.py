@@ -101,7 +101,8 @@ def start(request,pk,port_id=None):
             porting.authority(port)
             if request.method == 'POST':
                 token = uuid.UUID(request.POST.get('submission_id',''))
-                run = porting.quote(request.user,source,{},token,port=port)
+                run = porting.quote(request.user,source,{},token,port=port,
+                    automatic=request.POST.get('processing_mode')=='automatic')
                 return redirect(run_url(run))
         except (Conflict,ValueError) as exc:
             return fail(request,exc,409)
@@ -112,7 +113,8 @@ def start(request,pk,port_id=None):
     if not port and request.method == 'POST' and form.is_valid():
         data = {k:form.cleaned_data[k] for k in ['name','language','explanation_language','voice']}
         try:
-            run = porting.quote(request.user,source,data,form.cleaned_data['submission_id'])
+            run = porting.quote(request.user,source,data,form.cleaned_data['submission_id'],
+                automatic=form.cleaned_data['processing_mode']=='automatic')
             return redirect(run_url(run))
         except Conflict as exc:
             form.add_error(None,str(exc))
@@ -127,6 +129,8 @@ def detail(request,pk,run_id):
         run = owned_run(request,pk,run_id)
     except Conflict as exc:
         return fail(request,exc,409)
+    if run.options.get('automatic') and run.status != 'estimate':
+        return automatic_detail(request, run)
     balance = get_user_balance_usd(request.user) if run.payer == 'credits' else None
     counts = {status:run.items.filter(status=status).count() for status in
               ['waiting','queued','running','budget','ready','unclear','failed','saved','discarded']}
@@ -156,7 +160,8 @@ def detail(request,pk,run_id):
             if item.result.get('word') and item.result['word'] != item.source_entry.word:
                 item.safe_label = (item.safe_label + ' → ' if item.safe_label else '') + item.result['word']
     budget_offer=port_budget.offer(run)
-    return no_store(render(request,'community_dictionary/port_run.html',context(request,run.port.source,
+    template = 'community_dictionary/automatic_estimate.html' if run.options.get('automatic') else 'community_dictionary/port_run.html'
+    return no_store(render(request,template,context(request,run.port.source,
         run=run,counts=counts,page=page,balance=balance, budget_offer=budget_offer,
         enough_extra_funds=not budget_offer or balance is None or balance >= budget_offer['amount'],
         returned=run.reserved_usd-run.charged_usd if run.settled else run.released_usd,
@@ -169,8 +174,38 @@ def detail(request,pk,run_id):
         sentence_count=run.items.filter(snapshot__entry_type='sentence').count(),
         attention_only=attention_only,attention_count=attention_count,
         enough_funds=balance is None or balance >= run.allowance_usd,
-        expired=run.expires_at <= timezone.now(),approve_form=PortApproveForm(in_place=run.port.is_description_batch),
+        expired=run.expires_at <= timezone.now(),approve_form=PortApproveForm(in_place=run.port.is_description_batch,
+            automatic=bool(run.options.get('automatic'))),
         uncertain=run.items.filter(uncertain_cost=True).exists())))
+
+
+def automatic_detail(request, run):
+    from .automatic import summary
+    from django.db.models import Q
+    state = summary(run)
+    root = state['root']
+    if run.pk != root.pk:
+        return redirect(run_url(root))
+    balance = get_user_balance_usd(request.user) if root.payer == 'credits' else None
+    active = state['active']
+    budget = port_budget.offer(active) if active else None
+    attention_only = request.GET.get('attention') == '1'
+    items = PortItem.objects.filter(run__in=state['runs'])
+    if attention_only:
+        items = items.filter(Q(needs_attention=True) | Q(status__in=['failed','discarded','budget']) |
+            Q(message__contains='no usable audio') | Q(speech__status__in=['failed','discarded','budget'])).distinct()
+    page = Paginator(items.select_related('run__port__source','run__port__destination','run__port__user',
+        'source_entry__dictionary','source_entry__current_text','source_entry__current_meaning',
+        'source_entry__current_category','saved_entry__current_text'),20).get_page(request.GET.get('page'))
+    for item in page:
+        item.saved_entry = saved_entry(item)
+        item.safe_label = item.saved_entry.word if item.saved_entry else f'Entry {item.source_entry_id}'
+        item.attention_available = bool(item.saved_entry)
+        item.preview_available = False
+    return no_store(render(request,'community_dictionary/automatic_run.html',context(request,root.port.source,
+        run=root,automatic=state,page=page,balance=balance,budget_offer=budget,
+        enough_extra_funds=not budget or balance is None or balance>=budget['amount'],
+        recovery_token=uuid.uuid4(),attention_only=attention_only)))
 
 
 @login_required
@@ -200,8 +235,16 @@ def action(request,pk,run_id):
                 return fail(request,'Reload the page before estimating audio.',400)
             retry=port_audio.quote(request.user,run,token)
             return redirect(run_url(retry))
+        elif action == 'automatic-retry':
+            from .automatic import retry_quote
+            try:
+                token=uuid.UUID(request.POST.get('submission_id',''))
+            except ValueError:
+                return fail(request,'Reload before estimating another attempt.',400)
+            return redirect(run_url(retry_quote(request.user,run,token)))
         elif action == 'approve':
-            form = PortApproveForm(request.POST, in_place=run.port.is_description_batch)
+            form = PortApproveForm(request.POST, in_place=run.port.is_description_batch,
+                automatic=bool(run.options.get('automatic')))
             if not form.is_valid():
                 return fail(request,'Confirm permission and the displayed cost before starting.',400)
             porting.approve(request.user,run.pk)
@@ -342,7 +385,8 @@ def vocabulary_start(request,pk,port_id):
     try:
         port_vocabulary.authority(port)
         if request.method=='POST':
-            run=port_vocabulary.quote(request.user,port,uuid.UUID(request.POST.get('submission_id','')))
+            run=port_vocabulary.quote(request.user,port,uuid.UUID(request.POST.get('submission_id','')),
+                automatic=request.POST.get('processing_mode')=='automatic')
             return redirect(run_url(run))
     except (Conflict,ValueError) as exc:
         return fail(request,exc,409)

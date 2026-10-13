@@ -41,6 +41,8 @@ def dispatch(run_id):
     if run.status != 'running':
         porting.settle(run)
         return
+    from .automatic import publish_ready
+    publish_ready(run)
     if run.stage in {'vocabulary','audio'}:
         from .port_vocabulary_tasks import dispatch as dispatch_vocabulary
         return dispatch_vocabulary(run)
@@ -290,6 +292,8 @@ def process_audio(item_id):
                     item.result['tts_instructions_version'] = port_ai.speech_version(item.snapshot)
                 else:
                     item.message = 'Text is ready; no usable audio was obtained. Save the text, then use Retry missing audio on the progress page, or add a human recording.'
+                    if item.run.options.get('automatic'):
+                        item.message = 'Published text has no usable audio. Retry incomplete work after this job finishes.'
             item.finished_at = timezone.now()
             item.save()
     except Exception:
@@ -307,6 +311,8 @@ def resume(user,run_id):
     """Safe broker recovery and explicit expiry, without repeating uncertain calls."""
     porting.locks()
     run = PortRun.objects.select_for_update(of=('self',)).select_related('port__user').get(pk=run_id,port__user=user)
+    if run.options.get('automatic_child'):
+        resume(user, run.options['automatic_child'])
     cutoff = timezone.now()-timedelta(minutes=15)
     if run.stage in {'vocabulary','audio'}:
         from .port_vocabulary_tasks import recover_speech

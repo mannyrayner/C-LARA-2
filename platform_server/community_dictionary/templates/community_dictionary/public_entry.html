@@ -2,6 +2,7 @@
 {% block title %}{{ row.title }}{% endblock %}
 {% block content %}
 <p class="eyebrow">{{ dictionary.name }} · {{ dictionary.language }} · Public view</p><h1 dir="{{ dictionary.text_direction }}">{{ row.title }}</h1>
+{% if row.automatic_unreviewed %}<p class="help">AI-generated · published automatically without human review</p>{% endif %}
 <div class="entry-layout">
 <div>{% if row.image %}<img class="entry-image" src="{% url 'community_dictionary:public-media' dictionary.pk row.image.id %}" alt="{{ row.title }}">{% if row.image.generated %}<p class="help">AI-generated picture</p>{% endif %}{% endif %}</div>
 <section class="panel">

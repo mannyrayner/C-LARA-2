@@ -3,8 +3,16 @@ from .models import LanguagePort
 from .voices import DEFAULT_VOICE, VOICE_CHOICES
 
 
+def processing_mode():
+    return forms.ChoiceField(label='How would you like to process the dictionary?', required=False,
+        choices=[('review','Review step by step'),('automatic','Create everything automatically')],
+        initial='review', widget=forms.RadioSelect,
+        help_text='Automatic processing publishes sentences, vocabulary and recordings without intermediate review. You approve the total estimate before it starts.')
+
+
 class PortForm(forms.ModelForm):
     submission_id = forms.UUIDField(widget=forms.HiddenInput)
+    processing_mode = processing_mode()
     class Meta:
         model = LanguagePort
         fields = ['name','language','explanation_language','voice']
@@ -23,10 +31,12 @@ class PortForm(forms.ModelForm):
 
 
 class PortApproveForm(forms.Form):
-    def __init__(self, *args, in_place=False, **kwargs):
+    def __init__(self, *args, in_place=False, automatic=False, **kwargs):
         super().__init__(*args, **kwargs)
         if in_place:
             self.fields['approve'].label = 'I approve this cost estimate and have permission to send these pictures and texts to OpenAI and publish the reviewed results in this dictionary.'
+        if automatic:
+            self.fields['approve'].label = 'I approve the estimate for the whole job, have permission to send these pictures and texts to OpenAI, and authorise publishing the results without intermediate human review (including any source pictures awaiting review).'
 
     approve = forms.BooleanField(label='I approve this cost estimate and have permission to send these pictures and texts to OpenAI and reuse them in the new dictionary.')
 

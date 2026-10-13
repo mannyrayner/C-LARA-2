@@ -298,6 +298,8 @@ def sentence_context(entry):
     reports=AttentionReport.objects.filter(entry=entry,note__entry=entry,note__status='accepted',resolved_at__isnull=True)
     return {'sentence_words':[{'surface':link.surface,**word_row(link.word_entry,entry.dictionary)} for link in links],
         'related_sentences':linked_sentences(entry), 'language_check':checked,'attention_count':reports.count(),
+        'automatic_publication':any(p and p.provenance.get('automatic_publication')
+            for p in [entry.current_text,entry.current_meaning]),
         'capture_origin':bool(entry.current_text and entry.current_text.provenance.get('origin')=='picture-description')}
 
 

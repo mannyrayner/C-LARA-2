@@ -1,0 +1,1 @@
+Everything now installs correctly on AWS, and I was able to convert the 150 entry Swedish dictionary to Japanese. We now have publicly available versions in six languages. Can you browse them at [https://c-lara-2.c-lara.org/community-dictionaries/browse/](https://c-lara-2.c-lara.org/community-dictionaries/browse/)?

@@ -2,16 +2,16 @@
 
 > This file is generated from `current_state.json`; do not edit it directly.
 
-- **Workspace revision:** 70
+- **Workspace revision:** 71
 - **As of:** 2026-10-12
-- **Assessed commit:** `3ed343a3b70565c686b836eadb5d0330c5df7f14`
+- **Assessed commit:** `7eebb121957951b350d0b7d5d4123064b11013a6`
 - **Approved proposal:** `None`
 - **Approved run:** None (no recorded run)
 - **Persistent goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-4`, `GOAL-5`
 
 ## Current focus
 
-Manny requests a repair after 150-sentence language-port trials: vocabulary allowances remain disproportionate, Japanese vocabulary fails, an Italian result is in French, and missing-audio recovery is awkward. The prepared patch reproduces and fixes Han/kana span rejection, adds independent sentence-language checks and saved-result audio recovery, and introduces smaller new allowances with explicit top-ups and per-item refunds. The full 634-test local suite passes; laptop/AWS acceptance and production accounting verification of the new policy remain pending. Existing approved jobs retain their accounting; no production balances were altered.
+Manny reports the reliability repair deployed on AWS, a successful 150-entry Japanese conversion and six publicly available language versions. The local queue fallback passes the production connection-cleanup probe; the prior real-Django-Q-only runbook assertion was incorrect and is corrected. He now requests optional fully automatic content processing before the initial paper. The prepared code connects sentence, shared vocabulary and audio stages under one approved allowance, labels automatic publication separately from human review and retains partial results. 654 regression tests and a final 20-test focused rerun pass; laptop/AWS automatic-mode acceptance and a fresh credit audit remain pending. Broader cleanup UX is deferred until a real reviewer can provide feedback.
 
 ## Factual observations
 
@@ -855,6 +855,22 @@ Local code reproduction identifies alphabetic word boundaries as the cause of Ja
 - **Confidence:** high
 - **Evidence:** [`docs/howto/community-port-reliability.md`](../howto/community-port-reliability.md), [`docs/howto/community-port-reliability-install.md`](../howto/community-port-reliability-install.md), [`experiments/community_dictionary/port-reliability-2026-10-12.md`](../experiments/community_dictionary/port-reliability-2026-10-12.md), [`platform_server/community_dictionary/tests/test_port_reliability.py`](../platform_server/community_dictionary/tests/test_port_reliability.py)
 
+### OBS-0106
+
+Manny reports the repaired local queue passed 20/20 production probes with peak two active task bodies and no task connections left open, followed by successful AWS installation and 150-entry Swedish-to-Japanese conversion. He reports six public language versions and explicitly enables Japanese browsing. This supersedes the earlier pending deployment/Japanese outcome; linguistic accuracy, production cost reconciliation and a broad device matrix are not established by that report.
+
+- **Observed:** 2026-10-12
+- **Confidence:** high
+- **Evidence:** [`experiments/community_dictionary/automatic-processing-2026-10-12.md`](../experiments/community_dictionary/automatic-processing-2026-10-12.md), [`docs/howto/community-port-reliability-install.md`](../howto/community-port-reliability-install.md)
+
+### OBS-0107
+
+At Manny’s request, the prepared automatic option publishes sentences, derives shared vocabulary from final wording and generates missing audio after one combined estimate/approval. It reuses bounded jobs, preserves human edits/withdrawal, labels automatic publication, supports partial-result recovery and caps the stage-two reservation by the approved pot. The 654-test Linux/SQLite suite and final 20-test focused rerun pass with mocked providers. No schema or environment changes; no live deployment, paid call, human acceptance or independent reviewer trial for this increment.
+
+- **Observed:** 2026-10-12
+- **Confidence:** high
+- **Evidence:** [`experiments/community_dictionary/automatic-processing-2026-10-12.md`](../experiments/community_dictionary/automatic-processing-2026-10-12.md), [`docs/howto/community-automatic-processing.md`](../howto/community-automatic-processing.md), [`platform_server/community_dictionary/automatic.py`](../platform_server/community_dictionary/automatic.py), [`platform_server/community_dictionary/tests/test_automatic.py`](../platform_server/community_dictionary/tests/test_automatic.py)
+
 ## Project-valence assessments
 
 ### ASM-0001
@@ -949,19 +965,19 @@ Historical assessment from 14 August, not revalidated in this scoped review: Cod
 
 ### ASM-0011
 
-The expanded language-port trials exposed concrete reliability and cost-usability defects despite the earlier small-language successes. The prepared repair has reproduced validation evidence and broad local regression coverage. Lower new allowances and incremental refunds address the immediate burden while preserving old jobs. Financial policy changes still need laptop/AWS acceptance and a fresh read-only audit; no retrospective correction of balances is authorised or needed by this patch. Recover Japanese vocabulary from accepted sentences and missing audio independently before repeating whole conversions.
+The previous Japanese vocabulary/deployment blocker is superseded by Manny’s successful 150-entry AWS trial. The mistaken queue-mode gate is corrected using observed connection-cleanup evidence. The automatic workflow is a focused simplification requested before the introductory paper: it reduces review steps without claiming expert verification. Its combined credit and recovery paths have broad local coverage but require small laptop/AWS acceptance, including a new audit, before larger unattended content runs. Retain the staged option and defer broader cleanup design until an actual reviewer can supply evidence.
 
 - **Goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-5`
-- **Grounding observations:** `OBS-0022`, `OBS-0023`, `OBS-0024`, `OBS-0025`, `OBS-0026`, `OBS-0027`, `OBS-0028`, `OBS-0029`, `OBS-0030`, `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0034`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0038`, `OBS-0039`, `OBS-0040`, `OBS-0041`, `OBS-0042`, `OBS-0043`, `OBS-0044`, `OBS-0045`, `OBS-0046`, `OBS-0047`, `OBS-0048`, `OBS-0049`, `OBS-0050`, `OBS-0051`, `OBS-0052`, `OBS-0053`, `OBS-0054`, `OBS-0055`, `OBS-0056`, `OBS-0057`, `OBS-0058`, `OBS-0059`, `OBS-0060`, `OBS-0061`, `OBS-0062`, `OBS-0063`, `OBS-0064`, `OBS-0065`, `OBS-0066`, `OBS-0067`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0071`, `OBS-0072`, `OBS-0073`, `OBS-0074`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0082`, `OBS-0083`, `OBS-0084`, `OBS-0085`, `OBS-0086`, `OBS-0087`, `OBS-0088`, `OBS-0089`, `OBS-0090`, `OBS-0091`, `OBS-0092`, `OBS-0093`, `OBS-0094`, `OBS-0095`, `OBS-0096`, `OBS-0097`, `OBS-0098`, `OBS-0099`, `OBS-0100`, `OBS-0101`, `OBS-0102`, `OBS-0103`, `OBS-0104`, `OBS-0105`
-- **Urgency / risk / progress:** verify_language_port_repairs_before_further_large_trials / medium / four_part_repair_prepared_local_tests_pass_production_trial_pending
+- **Grounding observations:** `OBS-0022`, `OBS-0023`, `OBS-0024`, `OBS-0025`, `OBS-0026`, `OBS-0027`, `OBS-0028`, `OBS-0029`, `OBS-0030`, `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0034`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0038`, `OBS-0039`, `OBS-0040`, `OBS-0041`, `OBS-0042`, `OBS-0043`, `OBS-0044`, `OBS-0045`, `OBS-0046`, `OBS-0047`, `OBS-0048`, `OBS-0049`, `OBS-0050`, `OBS-0051`, `OBS-0052`, `OBS-0053`, `OBS-0054`, `OBS-0055`, `OBS-0056`, `OBS-0057`, `OBS-0058`, `OBS-0059`, `OBS-0060`, `OBS-0061`, `OBS-0062`, `OBS-0063`, `OBS-0064`, `OBS-0065`, `OBS-0066`, `OBS-0067`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0071`, `OBS-0072`, `OBS-0073`, `OBS-0074`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0082`, `OBS-0083`, `OBS-0084`, `OBS-0085`, `OBS-0086`, `OBS-0087`, `OBS-0088`, `OBS-0089`, `OBS-0090`, `OBS-0091`, `OBS-0092`, `OBS-0093`, `OBS-0094`, `OBS-0095`, `OBS-0096`, `OBS-0097`, `OBS-0098`, `OBS-0099`, `OBS-0100`, `OBS-0101`, `OBS-0102`, `OBS-0103`, `OBS-0104`, `OBS-0105`, `OBS-0106`, `OBS-0107`
+- **Urgency / risk / progress:** verify_small_automatic_trial_before_large_runs_and_introductory_paper / medium / prior_japanese_aws_trial_reported_successful_automatic_option_prepared_local_tests_pass
 - **Confidence:** medium
 
 ### ASM-0012
 
-Reducing Manny’s operational workload remains a concrete objective, measured through completed requests/releases, human touches/minutes, reliability and total human burden. The staged supervised-to-delegated experiment is still proposed; the repository Assistant is read-only and no persistent maintenance runner has been established. Successive AI-authored patches and human-reported deployments demonstrate supervised iteration, not unattended operations. The now-repaired guidance latency and duplicate-card regressions show that passing small-fixture tests did not remove the need for human acceptance at realistic scale. The repair adds measured query budgets and provenance cases, but Manny still deploys and supplies production evidence. The report should include these maintenance iterations and limits, and treat Manny’s development-time estimates as informal rather than an audited model comparison. Community data/publication authority remains with people. The new language-port repair similarly relies on Manny for deployment and production validation. Automated regression tests and read-only reconciliation reduce guesswork but do not demonstrate independent operational control.
+Reducing Manny’s operational workload remains a concrete objective, measured through completed requests/releases, human touches/minutes, reliability and total human burden. The staged supervised-to-delegated experiment is still proposed; the repository Assistant is read-only and no persistent maintenance runner has been established. Successive AI-authored patches and human-reported deployments demonstrate supervised iteration, not unattended operations. The now-repaired guidance latency and duplicate-card regressions show that passing small-fixture tests did not remove the need for human acceptance at realistic scale. The repair adds measured query budgets and provenance cases, but Manny still deploys and supplies production evidence. The report should include these maintenance iterations and limits, and treat Manny’s development-time estimates as informal rather than an audited model comparison. Community data/publication authority remains with people. The new language-port repair similarly relies on Manny for deployment and production validation. Automated regression tests and read-only reconciliation reduce guesswork but do not demonstrate independent operational control. The new automatic-content option reduces user review steps but is not autonomous project maintenance. Its costs, permissions and recovery still need operator acceptance; publication must not claim it removes all human operational work.
 
 - **Goals:** `GOAL-1`, `GOAL-2`, `GOAL-3`, `GOAL-5`
-- **Grounding observations:** `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0066`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0072`, `OBS-0073`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0100`, `OBS-0101`, `OBS-0102`, `OBS-0103`, `OBS-0104`, `OBS-0105`
+- **Grounding observations:** `OBS-0031`, `OBS-0032`, `OBS-0033`, `OBS-0035`, `OBS-0036`, `OBS-0037`, `OBS-0066`, `OBS-0068`, `OBS-0069`, `OBS-0070`, `OBS-0072`, `OBS-0073`, `OBS-0075`, `OBS-0076`, `OBS-0077`, `OBS-0078`, `OBS-0079`, `OBS-0080`, `OBS-0081`, `OBS-0100`, `OBS-0101`, `OBS-0102`, `OBS-0103`, `OBS-0104`, `OBS-0105`, `OBS-0106`, `OBS-0107`
 - **Urgency / risk / progress:** start_baseline_with_next_operational_work / medium / staged_operations_experiment_proposed
 - **Confidence:** medium
 
@@ -985,7 +1001,7 @@ None. This revision uses neutral factual and assessment language.
   - **Assessments:** `ASM-0010`
 - **UNC-0007:** Carried forward from August; present status unverified: The first laptop Project Manager query was plausible and timely, but the mode is not yet deployed or exercised by Sophie or another non-staff collaborator; classification accuracy and whether fresh-turn continuity is sufficient remain unmeasured.
   - **Assessments:** `ASM-0003`, `ASM-0006`
-- **UNC-0008:** New-policy quotes, per-item returns and top-ups require AWS verification; the tests use SQLite and mocked providers. Old approved jobs deliberately retain their original large allowances. Target-language detection may be uncertain and does not certify translation or pronunciation. Japanese/Chinese lexical spans no longer fail solely for missing spaces, but segmentation quality still needs review. Physical-phone breadth, independent user recovery, community reception, learning outcomes and sustained low-intervention operations remain open. The introductory report and trial-credit terms remain future work.
+- **UNC-0008:** Manny’s Japanese/AWS success resolves the earlier total vocabulary failure report. Automatic-mode usability, real provider output quality, PostgreSQL concurrency and combined-stage accounting still require laptop/AWS trial evidence. Tests use SQLite and mocked providers; no independent reviewer is available yet, so broader cleanup UX is deferred. Existing approved jobs retain their prior accounting. Physical-phone breadth, community reception, learning outcomes and sustained low-intervention operations remain open. The introductory report and trial-credit terms remain future work.
   - **Assessments:** `ASM-0011`
 - **UNC-0009:** The feasibility and timetable for weekly/monthly intervention targets are unknown. There is no authorised persistent maintenance runner, staging/release/rollback workflow or tested operational recovery baseline yet. Infrastructure account ownership, budgets, fallback contacts and community authority must be assigned without transferring Manny’s technical burden invisibly to another person. Proposed stage targets require comparable workload and failure drills.
   - **Assessments:** `ASM-0012`
@@ -1022,7 +1038,7 @@ None. This revision uses neutral factual and assessment language.
   - **Assessments:** `ASM-0003`
 - **ACT-0009:** Carried-forward August proposal; applicability needs a broader review: Configure authoritative collaborator role mappings, deploy the mode, grant access through Admin Tools, and run a natural Sophie-centered trial while reviewing evidence classifications and preserving the no-mutation boundary.
   - **Assessments:** `ASM-0003`, `ASM-0006`
-- **ACT-0010:** Apply the combined patch on the laptop, back up and migrate 0023, then test a fresh small quote and Japanese vocabulary/audio recovery. After acceptance deploy with all workers stopped, retry failed Japanese vocabulary from accepted sentences, and audit new-job refunds/holds. Do not reset balances, repeat successful translation or roll old accounting code back over new-policy jobs. Return to community trials and the introductory report after this repair is accepted.
+- **ACT-0010:** Apply the code-only automatic patch on the laptop and try a few pictures plus a small language version, choosing the combined option. Verify word/sentence consistency, audio, automatic-publication labels and unchanged manual workflow; then commit/deploy with active jobs finished. Use community_queue_check, accepting the patched local fallback. Audit completed root/child charges before a larger run. Gather reviewer feedback before expanding cleanup controls, then return to the introductory report.
   - **Assessments:** `ASM-0011`
 - **ACT-0011:** Start a low-burden intervention log while resolving the current configuration work. Specify direct collaborator intake and one authorised, isolated request-to-preview-to-release path, including monitoring/rollback and a safe restore drill. Use this to evaluate whether two or three weekly reviews can replace daily technical intervention; defer broader autonomous release authority until evidence supports it.
   - **Assessments:** `ASM-0012`
@@ -1058,7 +1074,7 @@ None. This revision uses neutral factual and assessment language.
 
 - **Status:** autonomous_project_manager_update
 - **Authorized by / at:** Assistant following AGENTS.md / 2026-10-12
-- **Basis:** Manny requests the combined language-port repair; AGENTS.md requires reflecting material evidence while preserving human-owned intentions.
-- **Comments:** Revision 70 records the new failure report and prepared local repair, not deployed success. The account-specific audit log and balance are not copied into this public update; its detailed accounting evidence is outside this scoped revision. No production services, accounts or old ledger records were modified.
-- **Change summary:** Recorded larger language-port trial failures and a combined repair with local tests; smaller allowances and incremental settlement apply to new jobs only. Production acceptance remains pending.
+- **Basis:** Manny requests implementation of the fully automatic option; AGENTS.md requires reflection of material new evidence while preserving human-owned intentions.
+- **Comments:** Revision 71 records user-reported production recovery and a prepared local automatic-content increment. No production accounts, balances, services or content were changed by the implementation agent. Human-owned project-intentions.md is unchanged.
+- **Change summary:** Recorded reported Japanese/AWS success and corrected the queue gate; prepared an opt-in automatic workflow with combined approval, separate review provenance and recovery. Local tests pass; automatic-mode acceptance is pending.
 - **Retired live items:** `REQ-0006`, `OBS-0001@rev-0002`, `OBS-0002@rev-0002`, `OBS-0012@rev-0002`, `ASM-0001@rev-0002`, `ASM-0009@rev-0002`, `PRED-0001@rev-0002`, `PRED-0002@rev-0002`, `PRED-0003@rev-0002`, `PRED-0004@rev-0002`

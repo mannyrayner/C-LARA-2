@@ -130,13 +130,15 @@ def estimate(entry, prices, extra):
 
 
 @transaction.atomic
-def quote(user, port, token):
+def quote(user, port, token, *, automatic=False):
     porting.locks()
     if port.user_id != user.pk:
         raise Http404
     authority(port)
     previous = PortRun.objects.filter(pk=token,port=port,stage='vocabulary').first()
     if previous:
+        if bool(previous.options.get('automatic')) != automatic:
+            raise Conflict('The processing mode changed. Request a fresh estimate.')
         return previous
     if port.runs.filter(status='running').exists():
         raise Conflict('Finish the current job, including its vocabulary review, or cancel its unsaved results first.')
@@ -156,6 +158,9 @@ def quote(user, port, token):
         item.sources.set(values['snapshot']['sentence']['ids'] + planned['context_ids'])
         run.estimated_usd += item.estimated_usd
         run.allowance_usd += item.allowance_usd
+    if automatic:
+        from .automatic import prepare_quote
+        prepare_quote(run)
     run.save()
     return run
 
@@ -251,9 +256,11 @@ def retire_unused(port, old_links):
 
 
 @transaction.atomic
-def save_item(user, item_id, words):
+def save_item(user, item_id, words, *, automatic=False):
     porting.locks()
     item = PortItem.objects.select_for_update(of=('self',)).select_related('run__port__user','run__port__source','run__port__destination').get(pk=item_id,run__port__user=user,run__stage='vocabulary')
+    if automatic and (not item.run.options.get('automatic') or item.run.status != 'running'):
+        raise Conflict('Automatic publication is not authorised.')
     if item.status == 'saved':
         return item.source_entry
     if item.status != 'ready':
@@ -265,6 +272,12 @@ def save_item(user, item_id, words):
     provenance={'origin':'sentence-vocabulary','sentence_vocabulary':True,'model':item.run.model,
         'recipe':VERSION,'language':entry.dictionary.language,'language_port':item.run.port_id,
         'sentence_id':entry.pk,'accepted_by':user.pk}
+    if automatic:
+        from .automatic import metadata, queue_existing_audio
+        provenance.pop('accepted_by')
+        provenance.update(metadata(item.run))
+        if item.review_values.get('automatic_retry_audio'):
+            queue_existing_audio(item.run, item, entry)
     # Reusing a page never reattributes it or overwrites its wording/meaning.
     before_ids = set(entry.dictionary.entries.values_list('pk',flat=True))
     targets = capture_vocabulary.publish_words(entry.current_text,words,user,provenance,images,replace=True)
@@ -282,9 +295,12 @@ def save_item(user, item_id, words):
     item.status='saved';item.result={}
     item.review_values={'replaced_word_ids':[link.destination_id for link in old if link.destination.entry_type=='word']}
     item.save(update_fields=['status','result','review_values'])
-    event(entry.dictionary,user,'accept_sentence_vocabulary',entry,'Vocabulary accepted; no expert linguistic check claimed')
+    event(entry.dictionary,user,'accept_sentence_vocabulary',entry,
+        'Vocabulary published automatically under owner approval; no human review claimed' if automatic else
+        'Vocabulary accepted; no expert linguistic check claimed')
     from .port_tasks import dispatch
-    transaction.on_commit(lambda:dispatch(str(item.run_id)))
+    if not automatic:  # already inside dispatch; do not recursively dispatch
+        transaction.on_commit(lambda:dispatch(str(item.run_id)))
     return entry
 
 

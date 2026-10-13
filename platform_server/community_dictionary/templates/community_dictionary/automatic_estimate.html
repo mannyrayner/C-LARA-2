@@ -1,0 +1,20 @@
+{% extends 'community_dictionary/base.html' %}
+{% block title %}Create everything automatically{% endblock %}
+{% block content %}
+<p class="eyebrow">{{ dictionary.name }}</p><h1>Create everything automatically</h1>
+<p>{{ run.port.name }} · {{ run.port.language }} · explanations in {{ run.port.explanation_language }}</p>
+<p>One approval covers the whole job: {% if run.stage != 'vocabulary' %}{% if run.port.is_description_batch %}describe the pictures{% else %}translate the sentences and independent words{% endif %}, publish the results, then {% endif %}create shared word pages, links and missing recordings. There are no intermediate review steps.</p>
+<section class="panel"><h2>Estimate before starting</h2>
+<p>{{ run.items.count }} {% if run.stage == 'vocabulary' %}sentences needing vocabulary{% else %}new or changed entries{% endif %}{% if run.options.automatic_existing %} · {{ run.options.automatic_existing|length }} earlier sentences needing vocabulary or audio{% endif %}.</p>
+<p>{{ run.skipped }} unchanged or ineligible · {{ run.protected }} protected or already being processed.</p>
+<p><strong>Rough API estimate for the whole job: US${{ run.estimated_usd }}</strong></p>
+<p>Approved allowance: <strong>US${{ run.allowance_usd }}</strong>. No requests have been sent and no credit has been reserved.</p>
+{% if run.payer == 'credits' %}<p>Your available C-LARA credit: US${{ balance }}. The allowance is reserved once; unused credit is returned. The combined C-LARA charge will not exceed your approved allowance.</p>{% elif run.payer == 'personal' %}<p>Paid through your personal OpenAI account. We cannot check its balance or impose a provider spending cap.</p>{% else %}<p>Paid by the server operator; C-LARA credit charging is disabled.</p>{% endif %}
+<p class="help">The estimate includes sentence processing, language checks, vocabulary analysis and speech as needed. Vocabulary estimates assume three new short word recordings per sentence; sharing existing words reduces work. If the allowance is insufficient, affected work pauses for further approval. Failed requests do not remove successful results.</p>
+{% if expired %}<p>This estimate expired. Request a new estimate below.</p>{% elif not enough_funds %}<p role="alert"><strong>Insufficient C-LARA credit.</strong> Add credit or choose a personal key, then request a new estimate.</p>
+{% elif run.items.count or run.options.automatic_existing %}<form method="post" class="stack" action="{% url 'community_dictionary:port-action' dictionary.pk run.pk %}">{% csrf_token %}{{ approve_form.as_p }}<button name="action" value="approve">Approve and create everything</button></form>
+{% else %}<p>No eligible work remains.</p>{% endif %}</section>
+<p>Results are labelled as automatically published, without human review. Suggestions the AI is uncertain about remain flagged for attention. Existing human edits and recordings are kept. You can leave the page while processing continues.</p>
+<details><summary>What is sent and published</summary><p>OpenAI receives the relevant pictures, wording, translations, categories, language names and a bounded selection of existing vocabulary. Source recordings are not sent. Models: {{ run.model }} and the configured speech model; voice: {{ run.port.voice }}. Provider retention rules apply. Prices and output lengths vary; the estimate is not a provider quotation.</p><p>{% if run.port.is_description_batch %}New results appear in this dictionary, including in its public view if enabled. Publishing a sentence also accepts its source picture if it was awaiting review.{% else %}A new language version initially has only you as a member. Updates follow the destination dictionary's current sharing settings.{% endif %}</p></details>
+<p><a href="{% if run.stage == 'vocabulary' %}{% url 'community_dictionary:port-vocabulary' dictionary.pk run.port_id %}{% elif run.port.is_description_batch %}{% url 'community_dictionary:batch-descriptions' dictionary.pk %}{% else %}{% url 'community_dictionary:port-update' dictionary.pk run.port_id %}{% endif %}">Change options or request a fresh estimate</a></p>
+{% endblock %}

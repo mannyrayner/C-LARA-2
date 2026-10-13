@@ -8,7 +8,7 @@ from django.db.models import CharField, Exists, F, OuterRef, Prefetch, Q, Subque
 from django.db.models.functions import Coalesce
 
 from .lexicon import valid_links
-from .models import Contribution, Dictionary, Entry, Participation, SentenceWord
+from .models import Contribution, Dictionary, Entry, Participation, SentenceWord, LanguageCheck
 
 
 def dictionaries():
@@ -40,6 +40,12 @@ def entries(dictionary):
     audio = parts.filter(entry_id=OuterRef('pk'), kind='audio').exclude(file_path='')
     return Entry.objects.filter(dictionary=dictionary, archived=False).annotate(
         **fields,
+        public_automatic=Exists(parts.filter(entry_id=OuterRef('pk'),kind='text',
+            provenance__automatic_publication=True).filter(
+                Q(pk=OuterRef('current_text_id'),text_field='word') |
+                Q(pk=OuterRef('current_meaning_id'),text_field='meaning'))),
+        public_checked=Exists(LanguageCheck.objects.filter(entry_id=OuterRef('pk'),
+            text_id=OuterRef('current_text_id'),meaning_id=OuterRef('current_meaning_id'))),
         public_image=Exists(media.filter(entry_id=OuterRef('pk'), kind='image')),
         public_audio=Exists(audio),
     ).prefetch_related(Prefetch('contributions', queryset=media, to_attr='public_media'))
@@ -81,6 +87,7 @@ def row(entry, dictionary):
     # Only these explicit fields reach public templates. No author, prompt,
     # file path, private caption, pending text, historical version or note.
     return {'id': entry.pk, 'word': entry.public_word, 'meaning': entry.public_meaning,
+            'automatic_unreviewed':entry.public_automatic and not entry.public_checked,
             'category': entry.public_category, 'kind': entry.entry_type,
             'title': entry.public_word or ('Picture' if image else 'Recording'),
             'image': media_row(image) if image else None,

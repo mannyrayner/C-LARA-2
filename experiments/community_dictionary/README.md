@@ -1,6 +1,8 @@
 # Community dictionary development experiment
 
-Current increment: [AWS guidance latency and duplicate-card repair](guidance-repair-2026-10-12.md). Manny reports mixed AWS acceptance: French results appear, but redundant image cards and slow navigation need repair. Scaled local reproduction identifies per-entry database queries and an incomplete copy-lineage display rule; the prepared code-only fix awaits real AWS confirmation.
+Current increment: [automatic processing](automatic-processing-2026-10-12.md). The preceding Japanese/AWS reliability trial is human-reported successful. The new opt-in combined workflow passes 654 regression tests; real laptop/AWS acceptance is pending.
+
+Earlier increment: [AWS guidance latency and duplicate-card repair](guidance-repair-2026-10-12.md). Manny reports mixed AWS acceptance: French results appear, but redundant image cards and slow navigation need repair. Scaled local reproduction identifies per-entry database queries and an incomplete copy-lineage display rule; the prepared code-only fix awaits real AWS confirmation.
 
 
 Previous increment: [public browsing and reported email-recovery success](public-browsing-2026-10-11.md).

@@ -137,10 +137,12 @@ clara_manage() {
     /srv/C-LARA-2/.venv/bin/python manage.py "$@"
 }
 clara_manage check
-clara_manage shell -v 0 -c 'from django.conf import settings; import django_q.tasks; print("Queue:", django_q.tasks.__file__); assert settings.USE_REAL_DJANGO_Q, "Stop: AWS must use real Django Q"; print("Workers:", settings.Q_CLUSTER.get("workers"))'
+clara_manage community_queue_check --tasks 20
 ```
 
-Stop on a failure. Do not disclose the environment file or relax its permissions.
+Stop on a failure. The patched local Django-Q fallback is valid on AWS; check
+its concurrency and connection cleanup with the probe, not USE_REAL_DJANGO_Q.
+Do not disclose the environment file or relax its permissions.
 Use PostgreSQL 18 client tools for the backup, as in the earlier successful deployment.
 This additive migration requires a fresh database backup; it does not require
 another 22 GB public-media archive. Keep normal media backups independently.

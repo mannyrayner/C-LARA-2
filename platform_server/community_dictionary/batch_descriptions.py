@@ -141,7 +141,7 @@ def input_data(item):
 
 
 @transaction.atomic
-def quote(user, dictionary, token, image_status='both', voice='marin'):
+def quote(user, dictionary, token, image_status='both', voice='marin', *, automatic=False):
     porting.locks()
     from .permissions import require_owner
     require_owner(user,dictionary)
@@ -149,6 +149,8 @@ def quote(user, dictionary, token, image_status='both', voice='marin'):
         raise Conflict('Choose accepted pictures, pictures awaiting review, or both.')
     previous = PortRun.objects.filter(pk=token,port__source=dictionary,port__user=user,stage='descriptions').first()
     if previous:
+        if bool(previous.options.get('automatic')) != automatic:
+            raise Conflict('The processing mode changed. Request a fresh estimate.')
         if any(previous.options.get(k) != v for k,v in {'image_status':image_status,'voice':voice}.items()):
             raise Conflict('The estimate form changed. Reload it before estimating again.')
         return previous
@@ -182,6 +184,9 @@ def quote(user, dictionary, token, image_status='both', voice='marin'):
         item.sources.set(values['snapshot']['ids'])
         run.estimated_usd += item.estimated_usd
         run.allowance_usd += item.allowance_usd
+    if automatic:
+        from .automatic import prepare_quote
+        prepare_quote(run)
     run.save()
     return run
 
@@ -265,7 +270,7 @@ def saved_entry(item):
     return None
 
 
-def save_item(user, item, values):
+def save_item(user, item, values, *, automatic=False):
     # Called inside porting.save_item's transaction and dictionary locks.
     if item.status=='saved':
         entry=saved_entry(item)
@@ -278,13 +283,15 @@ def save_item(user, item, values):
     if not word or len(word)>255 or len(meaning)>3000 or len(category)>80:
         raise Conflict('Check the sentence, translation and category before saving.')
     port=item.run.port
+    from .automatic import metadata
+    approval = metadata(item.run) if automatic else {'accepted_by':user.pk}
     entry=Entry.objects.create(dictionary=port.source,created_by=user,entry_type='sentence')
     ids=item.snapshot['ids']
     for field,text in [('word',word),('meaning',meaning),('category',category)]:
         if not text:continue
         part=Contribution.objects.create(entry=entry,author=user,kind='text',text_field=field,
             provenance={'origin':'batch-picture-description','language_port':port.pk,'model':item.run.model,
-                'recipe':VERSION,'accepted_by':user.pk,'language':port.language if field=='word' else port.explanation_language},
+                'recipe':VERSION, **approval,'language':port.language if field=='word' else port.explanation_language},
             **{field:text})
         porting.dependencies(part,ids);accept(part,user);entry.refresh_from_db()
     picture=Contribution.objects.get(pk=item.snapshot['image'])
@@ -297,7 +304,7 @@ def save_item(user, item, values):
             mime_type='audio/wav',file_size=path_for(item.file_path).stat().st_size,shared_from=entry.current_text,
             provenance={'origin':'synthetic','source_text':word,'language':port.language,'voice':port.voice,
                 'model':tts.MODEL,'instructions_version':item.result.get('tts_instructions_version',''),
-                'synthesis':item.result.get('tts_synthesis',{})})
+                'synthesis':item.result.get('tts_synthesis',{}), **(metadata(item.run) if automatic else {})})
         porting.dependencies(part,ids+[entry.current_text_id]);accept(part,user)
     elif item.file_path:
         path=item.file_path;transaction.on_commit(lambda:delete_file(path))
@@ -305,5 +312,7 @@ def save_item(user, item, values):
     item.needs_attention=bool(values.get('needs_attention',item.needs_attention))
     item.attention_note=values.get('attention_note',item.attention_note) if item.needs_attention else ''
     item.save()
-    event(port.source,user,'accept_batch_sentence',entry,'Sentence accepted; no expert linguistic check claimed')
+    event(port.source,user,'accept_batch_sentence',entry,
+        'Sentence published automatically under owner approval; no human review claimed' if automatic else
+        'Sentence accepted; no expert linguistic check claimed')
     return entry

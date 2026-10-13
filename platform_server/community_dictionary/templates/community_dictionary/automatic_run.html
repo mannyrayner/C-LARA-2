@@ -1,0 +1,22 @@
+{% extends 'community_dictionary/base.html' %}
+{% block title %}Automatic processing{% endblock %}
+{% block content %}
+<p class="eyebrow">{{ dictionary.name }}</p><h1>{{ run.port.name }}</h1>
+<section class="panel"><h2>{% if automatic.active %}Creating your dictionary{% elif run.status == 'cancelled' %}Processing stopped{% else %}Processing finished{% endif %}</h2>
+<p>{{ automatic.sentences }} sentence or independent word entries published · vocabulary processed for {{ automatic.vocabulary }} sentences · {{ automatic.audio }} word or recovery recordings ready.</p>
+<p>{{ automatic.attention }} items need attention.</p>
+{% if automatic.active %}<p>{% if automatic.active.stage == 'vocabulary' %}Creating shared word pages and recordings.{% else %}Creating sentences and their recordings.{% endif %} You can leave this page; successful results appear as they become ready.</p>{% endif %}
+{% if run.options.automatic_error %}<p role="alert">{{ run.options.automatic_error }}</p>{% endif %}
+{% if run.payer == 'credits' %}<p>Credit currently held across the whole job: <strong>US${{ automatic.held }}</strong>. Charges for completed stages: US${{ automatic.charged }}. Current available balance: US${{ balance }}.</p>{% else %}<p>Recorded cost for completed stages: US${{ automatic.charged }}. This is an estimate, not a provider invoice.</p>{% endif %}
+<div class="actions">{% if run.port.target_id %}<a class="button" href="{% url 'community_dictionary:dictionary' run.port.target_id %}">Browse dictionary</a>{% endif %}<a class="button secondary" href="">Refresh progress</a></div>
+<p class="help">Automatically published material has not been human-reviewed. Completed work is kept when another item fails. Uncertain provider requests are not automatically repeated.</p></section>
+{% if budget_offer %}<section class="panel"><h2>More allowance needed</h2><p>Some work is paused. Additional allowance: US${{ budget_offer.amount }}.</p>
+{% if enough_extra_funds %}<form method="post" action="{% url 'community_dictionary:port-action' dictionary.pk automatic.active.pk %}">{% csrf_token %}<input type="hidden" name="budget_token" value="{{ budget_offer.token }}"><label><input type="checkbox" name="approve" required> I approve this additional allowance.</label><button name="action" value="approve-more">Approve allowance and continue</button></form>{% else %}<p>Insufficient available credit. Completed results are kept.</p>{% endif %}</section>{% endif %}
+{% if automatic.finished %}<form method="post" class="panel" action="{% url 'community_dictionary:port-action' dictionary.pk run.pk %}">{% csrf_token %}<input type="hidden" name="submission_id" value="{{ recovery_token }}"><button name="action" value="automatic-retry">Retry incomplete work — show estimate</button><p class="help">Also picks up new or changed eligible pictures and sentences. Completed translations, current vocabulary and usable recordings are kept. Nothing is charged until you approve.</p></form>{% endif %}
+<details><summary>Results and attention flags</summary>
+<nav class="actions"><a href="{% url 'community_dictionary:port-run' dictionary.pk run.pk %}">All results</a><a href="{% url 'community_dictionary:port-run' dictionary.pk run.pk %}?attention=1">Needs attention</a></nav>
+{% for item in page %}{% include 'community_dictionary/port_item.html' %}{% empty %}<p>No matching results.</p>{% endfor %}
+{% if page.has_previous %}<a href="?page={{ page.previous_page_number }}{% if attention_only %}&amp;attention=1{% endif %}">Previous</a>{% endif %}<span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>{% if page.has_next %}<a href="?page={{ page.next_page_number }}{% if attention_only %}&amp;attention=1{% endif %}">Next</a>{% endif %}
+</details>
+{% if automatic.active or run.options.automatic_error %}<details><summary>Processing controls</summary><form method="post" action="{% url 'community_dictionary:port-action' dictionary.pk run.pk %}">{% csrf_token %}<p>Resume safely requeues waiting work. Requests interrupted for over 15 minutes are marked failed and are not repeated without a fresh estimate.</p><button class="secondary" name="action" value="resume">Resume waiting work</button><button class="quiet danger" name="action" value="cancel">Stop processing; keep saved results</button></form></details>{% endif %}
+{% endblock %}

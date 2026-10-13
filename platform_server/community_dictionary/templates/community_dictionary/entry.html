@@ -2,6 +2,7 @@
 {% block title %}{{ entry.title }}{% endblock %}{% block content %}
 <p class="eyebrow">{% if dictionary.personal %}Private collection · {% endif %}{{ dictionary.name }}{% if entry.category %} · {{ entry.category }}{% endif %}</p>
 <div class="page-heading"><h1 dir="{{ dictionary.text_direction }}">{{ entry.title }}</h1><span class="badge {% if not accepted %}pending{% endif %}">{% if accepted %}Accepted material{% else %}Awaiting review{% endif %}</span></div>
+{% if automatic_publication %}<p class="badge">{% if language_check %}Language checked by {{ language_check.checked_by.username }}{% else %}AI-generated · published automatically without human review{% endif %}</p>{% endif %}
 <div class="entry-layout">
   <section>
     {% if image %}

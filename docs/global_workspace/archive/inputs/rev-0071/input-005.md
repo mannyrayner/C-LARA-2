@@ -1,0 +1,3 @@
+I agree with your refinements. In practice, I think many people will choose the fully automatic one-click route, and if the result seems good enough hope that other people will clean it up. The next step would then be to make the cleaning-up process as simple as possible too, but we should probably leave that for later. We don't right now have anyone to instantiate this role and provide feedback.
+
+Would you like to implement a first version of the "fully automatic" option?
